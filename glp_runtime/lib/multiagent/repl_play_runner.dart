@@ -53,39 +53,30 @@ class ReplPlayRunner {
   /// Which GLP files to load (relative to glp_runtime/).
   final List<String> glpFiles;
 
-  /// CSSG GLP files (child-safe social graph, plays 1–7).
+  /// CSSG project (child-safe social graph, plays 1–7).
+  /// Uses the modules_v2 project which loads cleanly (typed_book/cssg has
+  /// an unresolved IntroChannel/FriendChannel typing issue).
   static const cssgFiles = [
-    '../programs/typed_book/cssg/typed_social_agent.glp',
-    '../programs/typed_book/cssg/typed_ui_mediator.glp',
-    '../programs/typed_book/cssg/typed_ui_actors.glp',
-    '../programs/typed_book/cssg/play_ui_sim_boot.glp',
+    '../programs/cssg_modules_v2',
   ];
 
-  /// Bonds GLP files (grassroots bonds, plays 1–11).
+  /// Bonds project (grassroots bonds, plays 1–11).
+  /// Uses bonds_v2 which loads cleanly (typed_book/bonds is missing
+  /// procedure declarations).
   static const bondsFiles = [
-    '../programs/typed_book/bonds/agent.glp',
-    '../programs/typed_book/bonds/mediator.glp',
-    '../programs/typed_book/bonds/actors.glp',
-    '../programs/typed_book/bonds/boot.glp',
+    '../programs/bonds_v2',
   ];
 
-  /// Bonds GLP files for play 12 (adds play12 actor files).
+  /// Bonds GLP files for play 12 — same project, fplay12 is part of the boot.
   static const bondsPlay12Files = [
     ...bondsFiles,
-    '../programs/typed_book/bonds/play12/alice.glp',
-    '../programs/typed_book/bonds/play12/bob.glp',
-    '../programs/typed_book/bonds/play12/charlie.glp',
-    '../programs/typed_book/bonds/play12/diana.glp',
-    '../programs/typed_book/bonds/play12/eve.glp',
-    '../programs/typed_book/bonds/play12/frank.glp',
   ];
 
-  /// CSSN GLP files (child-safe social networking, plays 1–10).
+  /// CSSN project (child-safe social networking, plays 1–10).
+  /// Uses cssn_modules_v2 which loads cleanly (typed_book/cssn has
+  /// undefined Channel and X type references).
   static const cssnFiles = [
-    '../programs/typed_book/cssn/typed_social_agent.glp',
-    '../programs/typed_book/cssn/typed_ui_mediator.glp',
-    '../programs/typed_book/cssn/typed_ui_actors.glp',
-    '../programs/typed_book/cssn/play_ui_sim_boot.glp',
+    '../programs/cssn_modules_v2',
   ];
 
   /// CSSN v2 modules project (village scenario, fplay13).
