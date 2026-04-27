@@ -56,12 +56,39 @@ class TraceLogger {
 /// Default GLP program directory (repo-relative from glp_multiagent/)
 const _defaultGlpDir = '../programs/typed_book/social_graph';
 
+/// Resolve the GLP repo root from current working directory or known fallbacks.
+String _resolveRepoRootGlobal() {
+  final devRoot = Directory.current.parent.path;
+  if (Directory('$devRoot/glp_runtime').existsSync()) return devRoot;
+  // Walk up looking for glp_runtime sibling (handles launch from build dir).
+  Directory d = Directory.current;
+  for (int i = 0; i < 8; i++) {
+    if (Directory('${d.path}/glp_runtime').existsSync()) return d.path;
+    final parent = d.parent;
+    if (parent.path == d.path) break;
+    d = parent;
+  }
+  const macFallback = '/Users/udi/Grassroots/GLP';
+  if (Directory('$macFallback/glp_runtime').existsSync()) return macFallback;
+  return devRoot;
+}
+
+/// Resolve the default social_graph directory to an absolute path when possible.
+String _resolveDefaultGlpDir() {
+  final root = _resolveRepoRootGlobal();
+  final abs = '$root/programs/typed_book/social_graph';
+  if (Directory(abs).existsSync()) return abs;
+  return _defaultGlpDir;
+}
+
 /// Resolve absolute path to programs/self.glp.
 String _resolveRootSelfGlpPath() {
   final candidate = File('../programs/self.glp').absolute.path;
   if (File(candidate).existsSync()) return candidate;
-  const fallback = '/Users/udi/Grassroots/GLP/programs/self.glp';
-  if (File(fallback).existsSync()) return fallback;
+  final fromRoot = '${_resolveRepoRootGlobal()}/programs/self.glp';
+  if (File(fromRoot).existsSync()) return fromRoot;
+  const macFallback = '/Users/udi/Grassroots/GLP/programs/self.glp';
+  if (File(macFallback).existsSync()) return macFallback;
   return candidate;
 }
 
@@ -160,8 +187,8 @@ class _CoordinatorScreenState extends State<CoordinatorScreen> {
   final Map<String, AgentState> _agents = {};
   final List<String> _log = [];
   final TextEditingController _glpPathController =
-      TextEditingController(text: _defaultGlpDir);
-  String _currentGlpDir = _defaultGlpDir;
+      TextEditingController(text: _resolveDefaultGlpDir());
+  String _currentGlpDir = _resolveDefaultGlpDir();
   List<String>? _cachedGlpSources;
 
   final ReceivePort _replyPort = ReceivePort();
@@ -370,20 +397,7 @@ class _CoordinatorScreenState extends State<CoordinatorScreen> {
 
   /// Resolve the GLP repo root from the glp_multiagent working directory.
   /// The app may run from the repo (development) or from a bundle (release).
-  static String _resolveRepoRoot() {
-    // In development, cwd is glp_multiagent/ and repo root is ..
-    // Check for the glp_runtime sibling directory as a landmark.
-    final devRoot = Directory.current.parent.path;
-    if (Directory('$devRoot/glp_runtime').existsSync()) {
-      return devRoot;
-    }
-    // Fallback: try absolute path (Udi's machine)
-    const fallback = '/Users/udi/Grassroots/GLP';
-    if (Directory('$fallback/glp_runtime').existsSync()) {
-      return fallback;
-    }
-    return devRoot; // best guess
-  }
+  static String _resolveRepoRoot() => _resolveRepoRootGlobal();
 
   Future<void> _runPlay(int playNumber) async {
     await _closeAll();

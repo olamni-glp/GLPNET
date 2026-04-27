@@ -106,28 +106,43 @@ class ReplPlayRunner {
   /// Run a simulated play (1, 2, or 3).
   Future<void> run(int playNumber) async {
     final runtimeDir = '$repoRoot/glp_runtime';
-    final dartExe = _findDart();
 
     onLog?.call('REPL: repoRoot=$repoRoot');
     onLog?.call('REPL: runtimeDir=$runtimeDir');
-    onLog?.call('REPL: dart=$dartExe');
 
-    // Verify paths before spawning
     if (!Directory(runtimeDir).existsSync()) {
       onError?.call('Directory not found: $runtimeDir');
       return;
     }
+
+    // Prefer AOT-compiled glp_repl.exe (no Dart SDK dependency, faster startup).
+    final compiledRepl = Platform.isWindows
+        ? '$runtimeDir/bin/glp_repl.exe'
+        : '$runtimeDir/bin/glp_repl';
     final replScript = '$runtimeDir/bin/glp_repl.dart';
-    if (!File(replScript).existsSync()) {
-      onError?.call('REPL script not found: $replScript');
+
+    String executable;
+    List<String> arguments;
+    if (File(compiledRepl).existsSync()) {
+      executable = compiledRepl;
+      arguments = const [];
+      onLog?.call('REPL: exe=$compiledRepl (AOT)');
+    } else if (File(replScript).existsSync()) {
+      executable = _findDart();
+      arguments = ['run', 'bin/glp_repl.dart'];
+      onLog?.call('REPL: dart=$executable (JIT via "dart run")');
+    } else {
+      onError?.call(
+          'No REPL found: neither $compiledRepl nor $replScript exists');
       return;
     }
 
     try {
       final process = await Process.start(
-        dartExe,
-        ['run', 'bin/glp_repl.dart'],
+        executable,
+        arguments,
         workingDirectory: runtimeDir,
+        runInShell: Platform.isWindows,
       );
       _process = process;
       onLog?.call('REPL: process started (pid=${process.pid})');
@@ -160,9 +175,14 @@ class ReplPlayRunner {
       _process = null;
       onLog?.call('REPL: exited with code $exitCode');
       onDone?.call(exitCode);
+    } on ProcessException catch (e) {
+      _process = null;
+      onError?.call(
+          'REPL: ProcessException starting [$executable ${arguments.join(' ')}] in $runtimeDir: ${e.message} (errorCode=${e.errorCode})');
     } catch (e) {
       _process = null;
-      onError?.call('REPL: failed to start: $e');
+      onError?.call(
+          'REPL: failed to start [$executable ${arguments.join(' ')}] in $runtimeDir: $e');
     }
   }
 
@@ -191,6 +211,32 @@ class ReplPlayRunner {
   /// Find the dart executable. Prefer the one next to the Flutter SDK,
   /// fall back to PATH.
   String _findDart() {
+    if (Platform.isWindows) {
+      // Resolve dart.exe via PATH using `where`.
+      try {
+        final result = Process.runSync('where', ['dart.exe']);
+        if (result.exitCode == 0) {
+          final lines = (result.stdout as String)
+              .split(RegExp(r'\r?\n'))
+              .where((l) => l.trim().isNotEmpty)
+              .toList();
+          if (lines.isNotEmpty) return lines.first.trim();
+        }
+      } catch (_) {/* fall through */}
+      // Common Flutter SDK locations on Windows
+      final userProfile = Platform.environment['USERPROFILE'] ?? '';
+      final winCandidates = [
+        if (userProfile.isNotEmpty) '$userProfile\\flutter\\bin\\dart.exe',
+        if (userProfile.isNotEmpty)
+          '$userProfile\\development\\flutter\\bin\\dart.exe',
+        'C:\\flutter\\bin\\dart.exe',
+        'C:\\src\\flutter\\bin\\dart.exe',
+      ];
+      for (final path in winCandidates) {
+        if (File(path).existsSync()) return path;
+      }
+      return 'dart.exe';
+    }
     // Check common macOS Flutter/Dart locations
     final candidates = [
       '/usr/local/bin/dart',

@@ -114,7 +114,9 @@ OutputContent ::= befriend(Constant, Response?)
                 ; response(Response)
                 ; text(Constant)
                 ; intro(Constant, IntroChannel)
-                ; child_intro(Constant, IntroChannel).
+                ; child_intro(Constant, IntroChannel)
+                ; unfriend(Constant)
+                ; unfriended(Constant).
 OutputMsg ::= msg(Constant, Constant, OutputContent)
             ; msg(Constant, NetColdCall).
 OutputStream ::= [] ; [OutputMsg | OutputStream].
