@@ -45,7 +45,9 @@
       "Bash(dart run *)",
       "Bash(dart compile *)",
       "Bash(./bin/glp_repl.exe)",
-      "Bash(git -c user.email=mvonwen@gmail.com -c user.name=\"Udi\" commit -m \"Fix Windows REPL spawn, repo-root resolution, and OutputContent gaps\")"
+      "Bash(git -c user.email=mvonwen@gmail.com -c user.name=\"Udi\" commit -m \"Fix Windows REPL spawn, repo-root resolution, and OutputContent gaps\")",
+      "Bash(git -c user.email=mvonwen@gmail.com -c user.name=\"Udi\" commit -m \"Redirect cssg/bonds/cssn play sets to working *_modules_v2 projects\")",
+      "Bash(git -c user.email=mvonwen@gmail.com -c user.name=\"Udi\" commit -m \"Update Claude permissions for Windows session\")"
     ]
   }
 }
