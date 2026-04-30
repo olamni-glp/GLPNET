@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://glpnet/specs/002-d2net-init/contracts/settings-schema.json",
+  "title": "D2NET-Settings.json",
+  "description": "Settings file written at <repo-root>/.D2NET/D2NET-Settings.json by D2NET.Init. Mirrors a subset of the workspace database `setting` table plus structured connection details and the approved exclusion list. Updated for the SQLite pivot (clarification Q6).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_dir",
+    "target_extension",
+    "target_dir",
+    "excluded_directories",
+    "connection",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Format version. Always 1 in this MVP."
+    },
+    "source_dir": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\]+$",
+      "description": "Source directory name relative to the repository root. No path separators; no '..'."
+    },
+    "target_extension": {
+      "type": "string",
+      "description": "Target directory suffix (e.g. '_net'). May be empty."
+    },
+    "target_dir": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\]+$",
+      "description": "Target directory name relative to the repository root."
+    },
+    "excluded_directories": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Sorted-ascending list of forward-slash relative paths under source_dir that were approved for exclusion."
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "engine", "db_file", "connection_string" ],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "const": "sqlite",
+          "description": "Always 'sqlite' in this MVP."
+        },
+        "db_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path to the workspace SQLite database file."
+        },
+        "connection_string": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Microsoft.Data.Sqlite connection string of the form 'Data Source=<db_file>'."
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the fresh init that produced this file."
+    }
+  }
+}

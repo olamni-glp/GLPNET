@@ -1281,5 +1281,5 @@ Never ask Udi closed-form questions (multiple choice, yes/no, pick-from-list). O
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/001-d2net-scaffold/plan.md
+- specs/002-d2net-init/plan.md
 <!-- SPECKIT END -->
