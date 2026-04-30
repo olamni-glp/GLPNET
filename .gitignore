@@ -1,3 +1,14 @@
 glp_runtime/glp_repl_new
 glp_runtime/build/
 .DS_Store
+
+# .NET build artefacts (under tools/d2net/ and elsewhere)
+**/bin/
+**/obj/
+
+# Claude Code harness ephemerals
+.claude/scheduled_tasks.lock
+.claude/settings.local.json.mine
+
+# d2net-scaffold output (regenerable; do not commit)
+glp_runtime_net/

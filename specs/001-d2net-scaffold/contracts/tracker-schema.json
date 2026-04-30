@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://glpnet/specs/001-d2net-scaffold/contracts/tracker-schema.json",
+  "title": "d2net-tracker.json",
+  "description": "Tracker file produced at the root of glp_runtime_net by d2net-scaffold. One record per Dart source file in the source tree (outside pruned directories). Closed status enumeration; nine fixed companion artifact extensions per record.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/TrackerRecord" },
+  "uniqueItems": true,
+  "$defs": {
+    "TrackerRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "companions"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Path of the .dart.src file relative to the target root, using forward slashes.",
+          "pattern": "^[^\\\\]+\\.dart\\.src$"
+        },
+        "companions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Fixed nine-key map: one status per conversion artifact extension.",
+          "required": ["cs", "ana", "tst", "con", "dep", "cgn", "iss", "sta", "ver"],
+          "properties": {
+            "cs":  { "$ref": "#/$defs/Status" },
+            "ana": { "$ref": "#/$defs/Status" },
+            "tst": { "$ref": "#/$defs/Status" },
+            "con": { "$ref": "#/$defs/Status" },
+            "dep": { "$ref": "#/$defs/Status" },
+            "cgn": { "$ref": "#/$defs/Status" },
+            "iss": { "$ref": "#/$defs/Status" },
+            "sta": { "$ref": "#/$defs/Status" },
+            "ver": { "$ref": "#/$defs/Status" }
+          }
+        }
+      }
+    },
+    "Status": {
+      "type": "string",
+      "enum": ["todo", "in-progress", "done", "blocked"]
+    }
+  }
+}
