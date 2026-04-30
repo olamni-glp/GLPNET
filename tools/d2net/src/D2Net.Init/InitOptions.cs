@@ -21,11 +21,17 @@ public sealed record InitOptions(
     public bool ForceDeleteRequested => Force && DeleteExisting;
 }
 
+/// <summary>
+/// Parsed CLI options for the inspection paths (--list / --Exclusions / --current-phase).
+/// FR-012 / Q3: <see cref="BridgePortOverride"/> is non-null only when the user passed
+/// <c>--bridge-port</c> on this invocation; otherwise the inspection runner reads
+/// the persisted port from settings.
+/// </summary>
 public sealed record InspectOptions(
     string RepoRoot,
     InspectMode Mode,
     bool Json,
-    int BridgePort);
+    int? BridgePortOverride);
 
 public enum InspectMode
 {

@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Data.Sqlite;
+using System.Threading;
+using Npgsql;
 
 namespace D2Net.Init;
 
@@ -20,7 +21,7 @@ public sealed class InitRunner
 
     public int Run(InitOptions opts)
     {
-        // 1. Validate CWD
+        // 1. Validate CWD (FR-002 of 002).
         if (!WorkspaceLayout.LooksLikeRepoRoot(opts.RepoRoot, opts.SourceDir))
         {
             _stderr.WriteLine(
@@ -31,8 +32,11 @@ public sealed class InitRunner
 
         var layout = WorkspaceLayout.Resolve(opts.RepoRoot);
 
-        // 2. Decide create / force-delete / refuse
-        var workspaceExists = Directory.Exists(layout.WorkspaceDir);
+        // 2. Decide create / force-delete / refuse.
+        // FR-014: also catch SQLite-era workspaces (workspace.sqlite under pgdb/, or settings JSON
+        // recording connection.engine != "pglite").
+        var workspaceExists = Directory.Exists(layout.WorkspaceDir)
+                              || WorkspaceLayout.LooksLikeSqliteEra(opts.RepoRoot);
         if (workspaceExists && !opts.ForceDeleteRequested)
         {
             _stderr.WriteLine(
@@ -41,7 +45,7 @@ public sealed class InitRunner
             return ExitCodes.WorkspaceAlreadyExists;
         }
 
-        // 3. Fill missing inputs
+        // 3. Fill missing inputs.
         try
         {
             opts = _prompter.FillMissingInputs(opts);
@@ -57,7 +61,7 @@ public sealed class InitRunner
             return ExitCodes.ArgumentError;
         }
 
-        // 4. Validate source dir exists as direct subdir of repo root
+        // 4. Validate source dir exists as direct subdir of repo root.
         var sourceAbs = Path.Combine(opts.RepoRoot, opts.SourceDir!);
         if (!Directory.Exists(sourceAbs))
         {
@@ -66,10 +70,10 @@ public sealed class InitRunner
             return ExitCodes.SourceDirMissing;
         }
 
-        // 5. Detect proposed exclusions
+        // 5. Detect proposed exclusions.
         var proposed = ExclusionDetector.Detect(sourceAbs, opts.ManualExclusions);
 
-        // 6. Approve list
+        // 6. Approve list.
         IReadOnlyList<ProposedExclusion> approved;
         try
         {
@@ -81,7 +85,7 @@ public sealed class InitRunner
             return ExitCodes.InteractivePromptCancelled;
         }
 
-        // 7. Scan dart files
+        // 7. Scan dart files.
         var dartFiles = DartFileScanner.Scan(opts.RepoRoot, opts.SourceDir!, approved.Select(e => e.Path));
 
         // 8. Build the workspace in a temp staging folder, then atomic-rename into place.
@@ -94,33 +98,50 @@ public sealed class InitRunner
             var tempLayout = layout.AsTemp(tempWorkspace);
             Directory.CreateDirectory(tempLayout.PgDir);
 
-            // Build the DB inside the temp folder, then move the whole folder into place.
-            // The connection details persisted to the DB and JSON describe the *final*
-            // post-move file path so external clients see the right path.
-            var tempConnection = DbConnectionSettings.ForFile(tempLayout.DbFile);
-            using (var conn = new SqliteConnection(tempConnection.ConnectionString))
+            // The PGLite data tree lives under tempLayout.PgDir during the build phase.
+            // Persisted connection details describe the *post-rename* absolute path so external
+            // clients see the right path after the rename completes.
+            var tempBridgeOpts = BridgeOptions.ForDataDir(Path.GetFullPath(tempLayout.PgDir), opts.BridgePort);
+            var finalBridgeOptsForSettings = BridgeOptions.ForDataDir(Path.GetFullPath(layout.PgDir), opts.BridgePort);
+            var finalConnection = DbConnectionSettings.ForBridge(finalBridgeOptsForSettings);
+
+            // Spawn the bridge against the temp pgdir.
+            PgBridgeProcess bridge;
+            try
             {
+                bridge = PgBridgeProcess.StartAsync(tempBridgeOpts.Port, tempBridgeOpts.DataDir, _stderr).GetAwaiter().GetResult();
+            }
+            catch (BridgeStartException ex)
+            {
+                EmitBridgeStartFailure(ex, opts.BridgePort);
+                return MapBridgeStartExitCode(ex.Kind);
+            }
+
+            using (bridge)
+            {
+                var npgsqlString = DbConnectionStringBuilder.BuildNpgsql(tempBridgeOpts);
+                using var conn = new NpgsqlConnection(npgsqlString);
                 try { conn.Open(); }
-                catch (SqliteException ex)
+                catch (NpgsqlException ex)
                 {
                     _stderr.WriteLine(
-                        $"could not open the workspace database file at '{tempLayout.DbFile}'. " +
-                        $"Original error: {ex.Message}");
+                        $"could not open the workspace database via the PGLite bridge at " +
+                        $"{tempBridgeOpts.Host}:{tempBridgeOpts.Port}. Original error: {ex.Message}");
                     return ExitCodes.DbOpenFailed;
                 }
 
                 SchemaInitializer.Apply(conn);
 
-                // Persist final-form connection details (as if the rename had already happened)
-                // so settings reflect the post-move db_file path.
-                var finalConnection = DbConnectionSettings.ForFile(layout.DbFile);
                 SettingsWriter.WriteSettingRows(conn,
                     opts.SourceDir!, opts.TargetExtension ?? "", opts.TargetDir!, finalConnection);
                 ExclusionsWriter.WriteRows(conn, approved);
                 DartFilesWriter.WriteRows(conn, dartFiles);
+
+                // Close the SQL connection cleanly so the bridge sees a graceful client disconnect
+                // before its own stdin-driven shutdown.
+                conn.Close();
+                NpgsqlConnection.ClearAllPools();
             }
-            // Force release of any pooled SQLite handles before the directory move.
-            SqliteConnection.ClearAllPools();
 
             var sortedExcludedPaths = approved.Select(e => e.Path)
                 .OrderBy(p => p, StringComparer.Ordinal)
@@ -129,34 +150,34 @@ public sealed class InitRunner
                 tempLayout.SettingsFile,
                 opts.SourceDir!, opts.TargetExtension ?? "", opts.TargetDir!,
                 sortedExcludedPaths,
-                DbConnectionSettings.ForFile(layout.DbFile),
+                finalConnection,
                 createdAt);
 
             // 9. Atomic move into place. If a previous .D2NET exists, rename it aside first.
-            if (workspaceExists)
+            if (Directory.Exists(layout.WorkspaceDir))
             {
                 renamedAside = Path.Combine(opts.RepoRoot, $".D2NET.deleting.{Guid.NewGuid():N}");
                 Directory.Move(layout.WorkspaceDir, renamedAside);
             }
             Directory.Move(tempWorkspace, layout.WorkspaceDir);
 
-            // Success — discard the renamed-aside copy.
+            // Success - discard the renamed-aside copy.
             if (renamedAside is not null && Directory.Exists(renamedAside))
                 TryDelete(renamedAside);
 
-            // 10. Stdout summary
+            // 10. Stdout summary.
             new RunSummary
             {
                 WorkspaceDir = layout.WorkspaceDir,
                 SettingsFile = layout.SettingsFile,
                 PgDir = layout.PgDir,
-                DbFile = layout.DbFile,
                 SourceDir = opts.SourceDir!,
                 TargetExtension = opts.TargetExtension ?? "",
                 TargetDir = opts.TargetDir!,
                 ApprovedExclusions = approved,
                 DartFileCount = dartFiles.Count,
                 CreatedAt = createdAt,
+                BridgePort = opts.BridgePort,
             }.WriteTo(_stdout);
 
             return ExitCodes.Success;
@@ -185,6 +206,43 @@ public sealed class InitRunner
             }
         }
     }
+
+    private void EmitBridgeStartFailure(BridgeStartException ex, int port)
+    {
+        switch (ex.Kind)
+        {
+            case BridgeStartFailureKind.NodeMissing:
+                _stderr.WriteLine("The PGLite bridge requires Node.js >= 20 on PATH.");
+                _stderr.WriteLine("Install Node.js LTS from https://nodejs.org/ and retry.");
+                break;
+            case BridgeStartFailureKind.BundleMissing:
+                _stderr.WriteLine("The PGLite bridge bundle is missing or corrupt. Reinstall d2net-init.");
+                _stderr.WriteLine($"detail: {ex.Message}");
+                break;
+            case BridgeStartFailureKind.PortInUse:
+                _stderr.WriteLine($"PGLite bridge port {port} is already in use. " +
+                                  $"Either stop the conflicting process, or supply --bridge-port <n>.");
+                break;
+            case BridgeStartFailureKind.PgliteInitFailed:
+                _stderr.WriteLine("PGLite bridge failed to open the workspace database:");
+                _stderr.WriteLine($"BRIDGE_ERROR {ex.Message}");
+                _stderr.WriteLine("The workspace database appears to be unreadable. To rebuild from the source tree, re-run with:");
+                _stderr.WriteLine("  d2net-init --FORCE --DELETE-EXISTING [other flags...]");
+                break;
+            default:
+                _stderr.WriteLine($"PGLite bridge failed to start: {ex.Message}");
+                break;
+        }
+    }
+
+    private static int MapBridgeStartExitCode(BridgeStartFailureKind k) => k switch
+    {
+        BridgeStartFailureKind.NodeMissing      => ExitCodes.NodeMissing,
+        BridgeStartFailureKind.BundleMissing    => ExitCodes.BridgeBundleMissing,
+        BridgeStartFailureKind.PortInUse        => ExitCodes.BridgePortInUse,
+        BridgeStartFailureKind.PgliteInitFailed => ExitCodes.DbOpenFailed,
+        _                                       => ExitCodes.BridgeStartFailed,
+    };
 
     private static void TryDelete(string path)
     {

@@ -10,13 +10,13 @@ public sealed class RunSummary
     public string WorkspaceDir { get; init; } = "";
     public string SettingsFile { get; init; } = "";
     public string PgDir { get; init; } = "";
-    public string DbFile { get; init; } = "";
     public string SourceDir { get; init; } = "";
     public string TargetExtension { get; init; } = "";
     public string TargetDir { get; init; } = "";
     public IReadOnlyList<ProposedExclusion> ApprovedExclusions { get; init; } = Array.Empty<ProposedExclusion>();
     public int DartFileCount { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
+    public int BridgePort { get; init; }
 
     public void WriteTo(TextWriter w)
     {
@@ -29,7 +29,7 @@ public sealed class RunSummary
         w.WriteLine($"  Target extension : {TargetExtension}");
         w.WriteLine($"  Target           : {TargetDir}");
         w.WriteLine($"  Settings file    : {SettingsFile}");
-        w.WriteLine($"  Database         : {DbFile} (embedded SQLite, single-user)");
+        w.WriteLine($"  PGLite data tree : {PgDir} (engine=pglite, port={BridgePort})");
         w.WriteLine($"  Excluded dirs    : {ApprovedExclusions.Count} ({toolCount} well-known tool, {patternCount} archive/backup, {manualCount} manual)");
         w.WriteLine($"  Dart files       : {DartFileCount}");
         w.WriteLine($"  Created at       : {OutputFormat.FormatTimestamp(CreatedAt)}");

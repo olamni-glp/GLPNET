@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/olamni-glp/GLPNET/specs/005-d2net-pglite-bridge/contracts/settings-schema.json",
+  "title": "D2NET-Settings.json (PGLite)",
+  "description": "Authoritative shape of .D2NET/D2NET-Settings.json after the storage swap to PGLite WASM. Diff from shipped 002: connection.engine is 'pglite'; connection.host/port/database/user/password/data_dir are added; connection.db_file is removed; connection.connection_string is now an Npgsql string; connection.connection_string_odbc is added (Q5 clarification).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_dir",
+    "target_extension",
+    "target_dir",
+    "excluded_directories",
+    "connection",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "source_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_extension": {
+      "type": "string"
+    },
+    "target_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "excluded_directories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Sorted ascending lexicographically; one entry per approved excluded directory (relative to source_dir, forward-slash)."
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "host",
+        "port",
+        "database",
+        "user",
+        "password",
+        "data_dir",
+        "connection_string",
+        "connection_string_odbc"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "const": "pglite"
+        },
+        "host": {
+          "type": "string",
+          "default": "127.0.0.1"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "database": {
+          "type": "string",
+          "default": "d2net"
+        },
+        "user": {
+          "type": "string",
+          "default": "d2net"
+        },
+        "password": {
+          "type": "string",
+          "default": "d2net",
+          "description": "Placeholder credential; not a security boundary."
+        },
+        "data_dir": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path to the PGLite data tree (.D2NET/pgdb/). Diagnostic / disaster-recovery use only; clients connect via the wire protocol."
+        },
+        "connection_string": {
+          "type": "string",
+          "pattern": "^Host=.*;Port=.*;Database=.*;Username=.*;Password=.*;SSL Mode=Disable$",
+          "description": "Npgsql/.NET-style connection string. SSL Mode=Disable matches bridge-direct.mjs, which replies 'N' to SSLRequest."
+        },
+        "connection_string_odbc": {
+          "type": "string",
+          "pattern": "^Driver=\\{PostgreSQL ODBC Driver\\(UNICODE\\)\\};Server=.*;Port=.*;Database=.*;Uid=.*;Pwd=.*;SSLmode=disable;$",
+          "description": "psqlODBC-style connection string for Windows hosts with the modern PostgreSQL ODBC Driver(UNICODE) installer. Users on other ODBC variants edit the Driver={...} clause manually."
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+      "description": "ISO-8601 UTC timestamp recorded when the fresh-init run completed; not modified by --FORCE --DELETE-EXISTING re-init (which writes its own fresh value)."
+    }
+  }
+}

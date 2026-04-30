@@ -4,6 +4,77 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.04.30-4] — 2026-04-30
+
+### Changed
+
+- **`D2NET.Init` storage swap: SQLite → PGLite WASM via direct Postgres-wire bridge.**
+  The shipped 002 `D2NET.Init` (v2026.04.30-2) ran on embedded SQLite via
+  `Microsoft.Data.Sqlite` after the original PGLite + `pg-gateway` + ODBC stack
+  failed end-to-end. The follow-up RCA (v2026.04.30-3) shipped a working
+  hand-rolled bridge as a reference artefact. **This release integrates that
+  bridge into D2NET.Init.** The five-table schema, all CLI flags, the
+  temp-staging + atomic-rename safety pattern, and the prompt/exclusion flow
+  are preserved unchanged from 002; only the storage engine and the persisted
+  connection contract change. See
+  [`specs/005-d2net-pglite-bridge/spec.md`](specs/005-d2net-pglite-bridge/spec.md).
+- **`D2Net.Init.csproj`**: removed `Microsoft.Data.Sqlite`; added `Npgsql 8.0.3`.
+  An MSBuild target now runs `npm ci` inside `pgbridge/` before compilation;
+  the resulting tree (~256 MB, dominated by PGLite's bundled Postgres contrib
+  extensions) is excluded from git via `pgbridge/.gitignore` but bundled into
+  the build output via `<None CopyToOutputDirectory="PreserveNewest" />`.
+- **`d2net-init` version bumped to `0.2.0`** to signal the storage-engine swap.
+- **Default `--bridge-port`** is now `54400` (matching
+  `docs/research/pgbridge-reference/`'s example). On init, the chosen port is
+  persisted to `D2NET-Settings.json`'s `connection.port` and the `db_port` row
+  in the `setting` table. On inspection commands, the persisted port is the
+  default; `--bridge-port` on a non-init invocation overrides only the live
+  run and does NOT modify settings (per FR-012 / Q3 clarification).
+- **Settings JSON `connection` block reshaped**: `engine` flips from `sqlite`
+  to `pglite`; `db_file` removed; `host`, `port`, `database`, `user`,
+  `password`, `data_dir`, `connection_string` (Npgsql), and
+  `connection_string_odbc` (`PostgreSQL ODBC Driver(UNICODE)`-style) are added.
+  The `setting` table mirrors these as `db_*` keys.
+- **Pre-existing SQLite-format `.D2NET` workspaces** (a `pgdb/workspace.sqlite`
+  file or a settings JSON with `connection.engine != "pglite"`) are detected
+  by the existing-workspace gate and refused without `--FORCE
+  --DELETE-EXISTING`. No automatic data migration — re-init rebuilds from the
+  source tree.
+
+### Added
+
+- **`tools/d2net/src/D2Net.Init/PgBridgeProcess.cs`** — IDisposable lifecycle
+  wrapper for the per-invocation Node.js bridge subprocess. Spawns `node`,
+  waits up to 15 s for `BRIDGE_READY`, runs the FR-006 staged shutdown on
+  dispose (close stdin → 5 s → SIGTERM → 2 s → kill).
+- **Vendored bridge bundle** at `tools/d2net/src/D2Net.Init/pgbridge/`:
+  `bridge-direct.mjs` (verbatim port from `docs/research/pgbridge-reference/`
+  with the smoke-seed `t (x INT)` table removed to preserve the
+  inspection-modifies-zero-bytes invariant), `package.json` pinning
+  `@electric-sql/pglite@0.2.17` as the only runtime dep, and a
+  `.gitignore` for the materialized `node_modules`.
+- **`scripts/verify-pgbridge-deps.ps1`** — build-time guardrail wired into
+  `D2Net.Init.csproj` that walks the materialized `node_modules` and fails
+  the build if `pg-gateway` is anywhere in the transitive tree (FR-008 +
+  SC-010).
+- **New exit codes** for bridge failures: `BridgePortInUse` (5),
+  `BridgeStartFailed` (7), `NodeMissing` (10), `BridgeBundleMissing` (11).
+  Pre-existing exit-code numbering preserved.
+- **19 new test cases** across `PgBridgeProcessTests`,
+  `BridgeStartupTests`, `InspectionPortLifecycleTests`,
+  `SqliteEraDetectionTests`, `ExternalClientTests`, plus extended
+  `WorkspaceLayoutTests` for SQLite-era detection. Total D2Net.Init test
+  count: 89/89 passing. `D2Net.Scaffold.Tests` unaffected (34/34 passing).
+
+### Speckit artefacts
+
+- Full set under
+  [`specs/005-d2net-pglite-bridge/`](specs/005-d2net-pglite-bridge/): spec.md
+  with 5 clarifications resolved, plan.md, research.md (10 R-decisions),
+  data-model.md, contracts/ (4 files: db-schema.sql, settings-schema.json,
+  cli-contract.md, pgbridge-contract.md), quickstart.md, tasks.md (with
+  in-flight remediations from `/speckit-analyse`), checklists/.
+
 ## [v2026.04.30-3] — 2026-04-30
 
 ### Documentation

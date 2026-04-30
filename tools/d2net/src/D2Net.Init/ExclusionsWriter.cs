@@ -1,18 +1,18 @@
 using System.Collections.Generic;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace D2Net.Init;
 
 public static class ExclusionsWriter
 {
-    public static void WriteRows(SqliteConnection conn, IReadOnlyList<ProposedExclusion> approved)
+    public static void WriteRows(NpgsqlConnection conn, IReadOnlyList<ProposedExclusion> approved)
     {
         foreach (var ex in approved)
         {
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "INSERT INTO excluded_directories (path, kind) VALUES ($path, $kind);";
-            cmd.Parameters.AddWithValue("$path", ex.Path);
-            cmd.Parameters.AddWithValue("$kind", ToKindText(ex.Kind));
+            cmd.CommandText = "INSERT INTO excluded_directories (path, kind) VALUES (@path, @kind);";
+            cmd.Parameters.AddWithValue("@path", ex.Path);
+            cmd.Parameters.AddWithValue("@kind", ToKindText(ex.Kind));
             cmd.ExecuteNonQuery();
         }
     }

@@ -21,7 +21,7 @@ public static class Program
                     PrintUsage(stdout);
                     return ExitCodes.Success;
                 case ParsedCli.VersionRequested:
-                    stdout.WriteLine("d2net-init 0.1.0");
+                    stdout.WriteLine("d2net-init 0.2.0");
                     return ExitCodes.Success;
                 case ParsedCli.InitMode init:
                     {
@@ -64,6 +64,17 @@ public static class Program
         w.WriteLine("  d2net-init --current-phase  [--json] [--bridge-port <port>]");
         w.WriteLine();
         w.WriteLine("  d2net-init --help | --version");
+        w.WriteLine();
+        w.WriteLine("Notes:");
+        w.WriteLine("  Storage: PGLite WASM via a per-invocation Node.js bridge subprocess.");
+        w.WriteLine("  Requires Node.js >= 20 on PATH for the bridge.");
+        w.WriteLine("  --bridge-port default: 54400. On init, the chosen port is persisted to");
+        w.WriteLine("  D2NET-Settings.json. On --list/--Exclusions/--current-phase, the persisted");
+        w.WriteLine("  port is used; --bridge-port on an inspection invocation overrides only the");
+        w.WriteLine("  live run and does NOT modify settings.");
+        w.WriteLine();
+        w.WriteLine("  --FORCE --DELETE-EXISTING also rebuilds workspaces created by the shipped");
+        w.WriteLine("  002 (SQLite-backed) D2NET.Init -- no automatic data migration.");
     }
 }
 
@@ -84,7 +95,7 @@ internal static class ArgParser
         var manualExclusions = new List<string>();
         bool acceptSuggested = false, force = false, deleteExisting = false, nonInteractive = false;
         bool list = false, exclusions = false, currentPhase = false, json = false;
-        int bridgePort = 54329;
+        int? userBridgePort = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -129,8 +140,9 @@ internal static class ArgParser
                     json = true; break;
                 case "--bridge-port":
                     if (++i >= args.Length) return new ParsedCli.Error("--bridge-port requires a value.");
-                    if (!int.TryParse(args[i], out bridgePort) || bridgePort < 1 || bridgePort > 65535)
+                    if (!int.TryParse(args[i], out var bp) || bp < 1 || bp > 65535)
                         return new ParsedCli.Error($"--bridge-port must be an integer in [1,65535] (got '{args[i]}').");
+                    userBridgePort = bp;
                     break;
                 default:
                     return new ParsedCli.Error($"unknown argument '{a}'. Try --help.");
@@ -152,7 +164,7 @@ internal static class ArgParser
             var mode = list ? InspectMode.List
                      : exclusions ? InspectMode.Exclusions
                      : InspectMode.CurrentPhase;
-            return new ParsedCli.InspectMode(new InspectOptions(cwd, mode, json, bridgePort));
+            return new ParsedCli.InspectMode(new InspectOptions(cwd, mode, json, userBridgePort));
         }
 
         // Init mode
@@ -172,6 +184,6 @@ internal static class ArgParser
             Force: force,
             DeleteExisting: deleteExisting,
             NonInteractive: nonInteractive,
-            BridgePort: bridgePort));
+            BridgePort: userBridgePort ?? BridgeOptions.DefaultPort));
     }
 }

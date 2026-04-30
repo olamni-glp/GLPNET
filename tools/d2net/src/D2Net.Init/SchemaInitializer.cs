@@ -1,18 +1,20 @@
 using System.IO;
 using System.Reflection;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace D2Net.Init;
 
 /// <summary>
 /// Applies <c>contracts/db-schema.sql</c> (embedded as a resource) to a fresh
-/// SQLite database file via an open Microsoft.Data.Sqlite connection.
+/// PGLite database via an open <c>NpgsqlConnection</c>. The connection
+/// targets the per-invocation bridge subprocess listening on
+/// <c>127.0.0.1:&lt;port&gt;</c>.
 /// </summary>
 public static class SchemaInitializer
 {
     private const string ResourceName = "D2Net.Init.Schema.db-schema.sql";
 
-    public static void Apply(SqliteConnection openConnection)
+    public static void Apply(NpgsqlConnection openConnection)
     {
         var sql = LoadSchemaSql();
         using var tx = openConnection.BeginTransaction();

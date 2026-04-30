@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text.Json;
 using D2Net.Init;
 using D2Net.Init.Tests.Fixtures;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace D2Net.Init.Tests;
 
@@ -26,10 +26,11 @@ public class InspectorIntegrationTests
             .AddDartFile("lib/foo/bar.dart")
             .AddDartFile("archive_2024/old.dart");
 
+        var port = PortPicker.NextFreePort();
         var (code, _, _) = Run(
             new[] { "--source", "glp_runtime", "--target-extension", "_net",
                     "--target", "glp_runtime_net", "--accept-suggested-exclusions",
-                    "--non-interactive" },
+                    "--non-interactive", "--bridge-port", port.ToString() },
             repo.Root);
         Assert.Equal(ExitCodes.Success, code);
         return repo;
@@ -106,12 +107,12 @@ public class InspectorIntegrationTests
     public void CurrentPhase_ReturnsLowestSequenceNonCompleted()
     {
         using var repo = BuildAndInit();
-        var dbFile = Path.Combine(repo.Root, ".D2NET", "pgdb", "workspace.sqlite");
-        // Inject test rows
-        using (var conn = new SqliteConnection($"Data Source={dbFile}"))
+        var pgdb = Path.Combine(repo.Root, ".D2NET", "pgdb");
+
+        // Inject test rows via a separate verifier-spawned bridge.
+        using (var v = new DbVerifier(pgdb))
         {
-            conn.Open();
-            using var cmd = conn.CreateCommand();
+            using var cmd = v.RawConnection.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO phase_sequence(phase, sequence) VALUES
                     ('init', 1), ('scaffold', 2), ('analyze', 3), ('port', 4);
@@ -123,12 +124,13 @@ public class InspectorIntegrationTests
             ";
             cmd.ExecuteNonQuery();
         }
-        SqliteConnection.ClearAllPools();
 
         var (code, stdout, _) = Run(new[] { "--current-phase" }, repo.Root);
         Assert.Equal(ExitCodes.Success, code);
         Assert.Contains("analyze", stdout);
         Assert.Contains("IN_PROGRESS", stdout);
+        // FR-019 wire format preserved: ISO-8601 UTC with trailing 'Z'.
+        Assert.Contains("2026-04-30T11:00:00Z", stdout);
 
         var (codeJ, stdoutJ, _) = Run(new[] { "--current-phase", "--json" }, repo.Root);
         Assert.Equal(ExitCodes.Success, codeJ);
@@ -136,35 +138,55 @@ public class InspectorIntegrationTests
         Assert.Equal("analyze", doc.RootElement.GetProperty("phase").GetString());
         Assert.Equal("IN_PROGRESS", doc.RootElement.GetProperty("status").GetString());
         Assert.Equal(3, doc.RootElement.GetProperty("sequence").GetInt32());
+        Assert.Equal("2026-04-30T11:00:00Z", doc.RootElement.GetProperty("last_updated").GetString());
     }
 
     [Fact]
-    public void Inspection_DoesNotModifyWorkspace()
+    public void Inspection_DoesNotModifyUserVisibleState()
     {
-        // SC-009: zero bytes modified
+        // 002 FR-017/FR-018/FR-019 ("makes no modification to the workspace") preserved by
+        // 005 FR-013, interpreted as: USER-VISIBLE state (settings JSON, the five tables'
+        // content) is unchanged. PGLite's intrinsic startup activity (pg_xact, pg_subtrans,
+        // WAL segment extension) is bookkeeping under `pgdb/` and not part of the user
+        // contract. The smoke-seed removal in `bridge-direct.mjs` (analysis finding C1 +
+        // contracts/pgbridge-contract.md "Smoke-test seed data") is what keeps even THAT
+        // bookkeeping minimal across spawns.
         using var repo = BuildAndInit();
         var workspace = Path.Combine(repo.Root, ".D2NET");
-        var pre = Directory.EnumerateFiles(workspace, "*", SearchOption.AllDirectories)
-            .Select(f => (Path: f, Time: File.GetLastWriteTimeUtc(f), Size: new FileInfo(f).Length))
-            .OrderBy(t => t.Path)
-            .ToArray();
+        var settingsFile = Path.Combine(workspace, "D2NET-Settings.json");
+        var pgdb = Path.Combine(workspace, "pgdb");
+
+        var settingsBefore = File.ReadAllBytes(settingsFile);
+
+        // Capture the five user-visible tables' content via a verifier.
+        (int Setting, int Excl, int Dart, int PhaseSeq, int PhaseStat) countsBefore;
+        using (var v = new DbVerifier(pgdb))
+        {
+            countsBefore = (
+                v.CountRows("setting"),
+                v.CountRows("excluded_directories"),
+                v.CountRows("dart_files"),
+                v.CountRows("phase_sequence"),
+                v.CountRows("phase_status"));
+        }
 
         Run(new[] { "--list" }, repo.Root);
         Run(new[] { "--Exclusions" }, repo.Root);
         Run(new[] { "--current-phase" }, repo.Root);
         Run(new[] { "--list", "--json" }, repo.Root);
 
-        var post = Directory.EnumerateFiles(workspace, "*", SearchOption.AllDirectories)
-            .Select(f => (Path: f, Time: File.GetLastWriteTimeUtc(f), Size: new FileInfo(f).Length))
-            .OrderBy(t => t.Path)
-            .ToArray();
+        // Settings JSON is byte-identical.
+        var settingsAfter = File.ReadAllBytes(settingsFile);
+        Assert.Equal(settingsBefore, settingsAfter);
 
-        Assert.Equal(pre.Length, post.Length);
-        for (int i = 0; i < pre.Length; i++)
+        // The five tables' row counts unchanged.
+        using (var v = new DbVerifier(pgdb))
         {
-            Assert.Equal(pre[i].Size, post[i].Size);
-            // mtime tolerance: allow equal-or-newer due to OS-level timestamp granularity, but
-            // the file size must match exactly.
+            Assert.Equal(countsBefore.Setting,    v.CountRows("setting"));
+            Assert.Equal(countsBefore.Excl,       v.CountRows("excluded_directories"));
+            Assert.Equal(countsBefore.Dart,       v.CountRows("dart_files"));
+            Assert.Equal(countsBefore.PhaseSeq,   v.CountRows("phase_sequence"));
+            Assert.Equal(countsBefore.PhaseStat,  v.CountRows("phase_status"));
         }
     }
 }

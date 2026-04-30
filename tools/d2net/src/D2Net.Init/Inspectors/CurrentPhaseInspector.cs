@@ -1,6 +1,6 @@
 using System.IO;
 using System.Text.Json.Serialization;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace D2Net.Init.Inspectors;
 
@@ -14,11 +14,15 @@ internal sealed class CurrentPhaseRow
 
 public static class CurrentPhaseInspector
 {
-    public static void Run(SqliteConnection conn, bool json, TextWriter stdout)
+    public static void Run(NpgsqlConnection conn, bool json, TextWriter stdout)
     {
         // FR-019: lowest-sequence row in phase_status whose status != 'COMPLETED'.
+        // last_updated is TIMESTAMPTZ in PGLite; render as ISO-8601 UTC with trailing 'Z'
+        // to preserve the shipped 002 wire format.
         const string sql = @"
-            SELECT s.phase, s.status, s.last_updated, q.sequence
+            SELECT s.phase, s.status,
+                   to_char(s.last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD""T""HH24:MI:SS""Z""'),
+                   q.sequence
             FROM phase_status s
             JOIN phase_sequence q ON q.phase = s.phase
             WHERE s.status <> 'COMPLETED'
@@ -32,7 +36,7 @@ public static class CurrentPhaseInspector
         {
             var phase = rdr.GetString(0);
             var status = rdr.GetString(1);
-            var ts = rdr.GetString(2); // already ISO-8601 UTC text
+            var ts = rdr.GetString(2); // ISO-8601 UTC formatted in SQL.
             var seq = rdr.GetInt32(3);
             if (json)
             {

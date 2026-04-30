@@ -85,7 +85,21 @@
       "Bash(gh pr *)",
       "Bash(git pull *)",
       "Bash(git tag *)",
-      "PowerShell(.specify/extensions/git/scripts/powershell/create-new-feature.ps1 -Json -ShortName \"d2net-init\" \"Add D2NET.Init companion command to D2NET.Scaffold for initializing .D2NET workspace, settings, and pglite metadata DB\")"
+      "PowerShell(.specify/extensions/git/scripts/powershell/create-new-feature.ps1 -Json -ShortName \"d2net-init\" \"Add D2NET.Init companion command to D2NET.Scaffold for initializing .D2NET workspace, settings, and pglite metadata DB\")",
+      "PowerShell(.\\\\.specify\\\\extensions\\\\git\\\\scripts\\\\powershell\\\\create-new-feature.ps1 -Json -ShortName \"d2net-pglite-bridge\" \"upgrade current D2NET.init to use fix for pglite bridge and pglite wasm instead of sqlite\")",
+      "Bash(mkdir -p specs/005-d2net-pglite-bridge/checklists)",
+      "Bash(cp .specify/templates/spec-template.md specs/005-d2net-pglite-bridge/spec.md)",
+      "PowerShell(.\\\\.specify\\\\scripts\\\\powershell\\\\check-prerequisites.ps1 -Json -PathsOnly)",
+      "PowerShell(.\\\\.specify\\\\scripts\\\\powershell\\\\setup-plan.ps1 -Json)",
+      "PowerShell(.\\\\.specify\\\\scripts\\\\powershell\\\\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(npm --version)",
+      "Bash(dotnet --version)",
+      "Bash(npm install *)",
+      "Read(//d/d/BSTDEV/research/GLP/GLPNET/tools/d2net/src/D2Net.Init/**)",
+      "Read(//d/d/BSTDEV/research/GLP/GLPNET/tools/d2net/src/D2Net.Init/pgbridge/**)",
+      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive)",
+      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive --bridge-port 54420)",
+      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --list)"
     ]
   }
 }

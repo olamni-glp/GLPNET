@@ -5,15 +5,35 @@ namespace D2Net.Init.Tests;
 public class DbConnectionStringBuilderTests
 {
     [Fact]
-    public void BuildWrapsTheDbFilePathInDataSource()
+    public void EngineNameIsPglite()
     {
-        var s = DbConnectionStringBuilder.Build(@"D:\repo\.D2NET\pgdb\workspace.sqlite");
-        Assert.Equal(@"Data Source=D:\repo\.D2NET\pgdb\workspace.sqlite", s);
+        Assert.Equal("pglite", DbConnectionStringBuilder.EngineName);
     }
 
     [Fact]
-    public void EngineNameIsSqlite()
+    public void BuildNpgsqlComposesStandardConnectionString()
     {
-        Assert.Equal("sqlite", DbConnectionStringBuilder.EngineName);
+        var opts = BridgeOptions.ForDataDir(@"D:\repo\.D2NET\pgdb", port: 54400);
+        var s = DbConnectionStringBuilder.BuildNpgsql(opts);
+        Assert.Contains("Host=127.0.0.1", s);
+        Assert.Contains("Port=54400", s);
+        Assert.Contains("Database=d2net", s);
+        Assert.Contains("Username=d2net", s);
+        Assert.Contains("Password=d2net", s);
+        Assert.Contains("SSL Mode=Disable", s);
+    }
+
+    [Fact]
+    public void BuildOdbcUsesModernUnicodeDriver()
+    {
+        var opts = BridgeOptions.ForDataDir(@"D:\repo\.D2NET\pgdb", port: 54400);
+        var s = DbConnectionStringBuilder.BuildOdbc(opts);
+        Assert.StartsWith("Driver={PostgreSQL ODBC Driver(UNICODE)}", s);
+        Assert.Contains("Server=127.0.0.1", s);
+        Assert.Contains("Port=54400", s);
+        Assert.Contains("Database=d2net", s);
+        Assert.Contains("Uid=d2net", s);
+        Assert.Contains("Pwd=d2net", s);
+        Assert.Contains("SSLmode=disable", s);
     }
 }

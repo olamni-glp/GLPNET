@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json.Serialization;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace D2Net.Init.Inspectors;
 
@@ -19,7 +19,7 @@ internal sealed class ListInspectorResult
 
 public static class ListInspector
 {
-    public static void Run(SqliteConnection conn, bool json, TextWriter stdout)
+    public static void Run(NpgsqlConnection conn, bool json, TextWriter stdout)
     {
         var rows = new List<DartFileRow>();
         using (var cmd = conn.CreateCommand())

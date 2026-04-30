@@ -1,19 +1,29 @@
 using System.Collections.Generic;
-using Microsoft.Data.Sqlite;
+using System.IO;
+using D2Net.Init;
+using Npgsql;
 
 namespace D2Net.Init.Tests.Fixtures;
 
 /// <summary>
-/// Read-only SQLite verification helper for tests. Opens the workspace DB
-/// directly and runs assertion queries.
+/// Read-only PGLite verification helper for tests. Spawns its own
+/// <see cref="PgBridgeProcess"/> against the test's pgdb data directory
+/// on a free port, opens an Npgsql connection, and exposes assertion
+/// helpers that mirror the shipped 002 SQLite-era DbVerifier API.
+///
+/// Type name preserved for the migrating tests; underlying engine is now PGLite.
 /// </summary>
 public sealed class DbVerifier : IDisposable
 {
-    private readonly SqliteConnection _conn;
+    private readonly PgBridgeProcess _bridge;
+    private readonly NpgsqlConnection _conn;
 
-    public DbVerifier(string dbFile)
+    public DbVerifier(string dataDir)
     {
-        _conn = new SqliteConnection($"Data Source={dbFile};Mode=ReadOnly");
+        var port = PortPicker.NextFreePort();
+        _bridge = PgBridgeProcess.StartAsync(port, dataDir, TextWriter.Null).GetAwaiter().GetResult();
+        var bridgeOpts = BridgeOptions.ForDataDir(dataDir, port);
+        _conn = new NpgsqlConnection(DbConnectionStringBuilder.BuildNpgsql(bridgeOpts));
         _conn.Open();
     }
 
@@ -21,7 +31,7 @@ public sealed class DbVerifier : IDisposable
     {
         var names = new List<string>();
         using var cmd = _conn.CreateCommand();
-        cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;";
+        cmd.CommandText = "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;";
         using var rdr = cmd.ExecuteReader();
         while (rdr.Read()) names.Add(rdr.GetString(0));
         return names;
@@ -31,14 +41,14 @@ public sealed class DbVerifier : IDisposable
     {
         using var cmd = _conn.CreateCommand();
         cmd.CommandText = $"SELECT COUNT(*) FROM {table};";
-        return Convert.ToInt32(cmd.ExecuteScalar());
+        return System.Convert.ToInt32(cmd.ExecuteScalar());
     }
 
     public string? GetSetting(string key)
     {
         using var cmd = _conn.CreateCommand();
-        cmd.CommandText = "SELECT value FROM setting WHERE key = $k;";
-        cmd.Parameters.AddWithValue("$k", key);
+        cmd.CommandText = "SELECT value FROM setting WHERE key = @k;";
+        cmd.Parameters.AddWithValue("@k", key);
         var v = cmd.ExecuteScalar();
         return v as string;
     }
@@ -63,9 +73,12 @@ public sealed class DbVerifier : IDisposable
         return rows;
     }
 
+    public NpgsqlConnection RawConnection => _conn;
+
     public void Dispose()
     {
-        _conn.Dispose();
-        SqliteConnection.ClearAllPools();
+        try { _conn.Dispose(); } catch { }
+        NpgsqlConnection.ClearAllPools();
+        try { _bridge.Dispose(); } catch { }
     }
 }
