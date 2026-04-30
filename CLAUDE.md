@@ -1281,5 +1281,5 @@ Never ask Udi closed-form questions (multiple choice, yes/no, pick-from-list). O
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/005-d2net-pglite-bridge/plan.md
+- specs/006-d2net-init-skill/plan.md
 <!-- SPECKIT END -->

@@ -4,6 +4,36 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.04.30-5] — 2026-04-30
+
+### Added
+
+- **`/D2NET-init` Claude Code skill.** Wraps the spec-005 `d2net-init` CLI as a
+  slash command for one-line invocation from any Claude Code session in this
+  repo. Supports raw flag pass-through, key-value natural-language
+  (`source=X extension=Y target=Z`), positional verbs (`init`, `list`,
+  `exclusions`, `current-phase`, `help`, `version`), and a single-token
+  shortcut (`/D2NET-init glp_runtime` derives `_net` defaults after
+  confirmation). Auto-builds the binary on user confirmation when missing or
+  stale. Confirms before destructive operations
+  (`--FORCE --DELETE-EXISTING`); confirmed paths skip re-prompts within the
+  same conversation. Surfaces JSON outputs verbatim regardless of size;
+  plain-text outputs over 50 lines are truncated with a "show all" footer.
+  Hints recovery actions for `BridgePortInUse`, `pglite_init_failed`,
+  `NodeMissing`, and `WorkspaceAlreadyExists` exit codes. Casing is exactly
+  `D2NET-init` (filesystem path, frontmatter, slash-command name).
+- Spec under [`specs/006-d2net-init-skill/`](specs/006-d2net-init-skill/):
+  spec.md (3 clarifications resolved — auto-build with single confirmation,
+  JSON output bypasses truncation, single-token shortcut), plan.md,
+  research.md (10 R-decisions), data-model.md, contracts/skill-contract.md,
+  quickstart.md, tasks.md, validation.md.
+
+### Notes
+
+- The skill is purely additive — no changes to `tools/d2net/` or any existing
+  test. The 89 D2Net.Init tests + 34 D2Net.Scaffold tests continue to pass
+  unchanged.
+
 ## [v2026.04.30-4] — 2026-04-30
 
 ### Changed
