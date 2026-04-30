@@ -1,202 +1,103 @@
-# Instructions for Claude Code (Terminal Interface)
+# Instructions for Claude Code — glpnet
 
-## 🔴 CRITICAL - FILE HANDLING
+## Repo Identity
 
-**When you need to read a file that is not in your context window (especially PDFs, PPTX, or binary files), ask Udi to upload it immediately.**  Do NOT waste time trying multiple tools, workarounds, or copy commands.  If a file path contains spaces or the first read/copy attempt fails, do not retry — ask for an upload.
+- **Project**: glpnet — Windows-side workstreams (D2NET, PGLite, Flutter multiagent app) sharing the GLP language with the sibling Mac/Linux GLP repo.
+- **Working directory**: `D:\BSTDEV\RESEARCH\glp\glpnet`
+- **User**: Gabi (`vonwenm` / `mvonwen@gmail.com`)
+- **Branching/versioning**: see `docs/BRANCHING.md` and `docs/VERSIONING.md` (CalVer `vYYYY.MM.DD[-N]` on `main`; feature branches `NNN-short-name`).
+- **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
-## 🔴 CRITICAL - NEVER ASSUME, ALWAYS VERIFY
+---
 
-**Before referencing any file, path, or fact:**
-1. **VERIFY FILE EXISTS** - Use `ls`, `find`, or directory listing before referencing any file path
-2. **VERIFY FILE LOCATION** - Don't assume paths from memory or previous sessions; always check
-3. **VERIFY FILE CONTENTS** - Read the actual file before describing what's in it
-4. **VERIFY DIRECTORY STRUCTURE** - List directories before assuming their contents
-5. **NO HALLUCINATED PATHS** - If you can't verify a path exists, say so
+## 🔴 Start of Every Conversation — Mandatory Reading
 
-This applies to:
-- Test files and their locations
-- Source code files
-- Documentation
-- Any file or directory mentioned in instructions
+Complete these IN ORDER before any other action:
 
-## 🔴 CRITICAL - LANGUAGE DESIGN AUTHORITY
+1. **READ** this file (`CLAUDE.md`) to completion → acknowledge "I have read CLAUDE.md completely"
+2. **READ** `docs/DISCIPLINE.md` → acknowledge
+3. **READ** `docs/typed-glp-manual.md` → acknowledge
+4. **READ** `docs/glp-cheat-sheet.md` (compact GLP reference; GLP is **not** Prolog — study the wrong-vs-right examples) → acknowledge
+5. **STOP AND WAIT.** Do not read other files until Gabi gives direction.
 
-The GLP language definition — guards, system predicates, body kernels, directives, type system features, primitive types — **cannot be revised, extended, or added to without explicit discussion with Udi and his express approval.** This includes adding new guards, new system predicates, new body kernels, new directives, or extending the type system. Propose first, wait for approval, then implement. See DISCIPLINE.md section 1.14.
+🔴 **Never program based on ignorance of GLP and its type system.** If the manual and cheat sheet do not answer a question, STOP and report the gap; do not speculate or grope in the dark.
 
-## 🔴 CRITICAL - AFTER CONTEXT COMPACTION
+After Gabi gives direction:
+- Identify mode (Discussion vs Implementation)
+- Ask for current state if unclear
+- Read additional specs only as the task demands
 
-When emerging from compaction (you see a session summary replacing the original conversation), do NOT silently continue working.  Stop immediately, tell the user you have emerged from compaction, summarise where things stand, and ask how to proceed.  Never assume the summary is complete or that prior agreements still hold.
+---
 
-## 🔴 CRITICAL - START OF EVERY CONVERSATION
+## 🔴 After Context Compaction
 
-**MANDATORY READING - Complete these IN ORDER before ANY other action:**
+When emerging from compaction (you see a session summary replacing the original conversation), do NOT silently continue. Stop, tell Gabi you have emerged from compaction, summarise where things stand, and ask how to proceed. Never assume the summary is complete or that prior agreements still hold.
 
-1. **READ CLAUDE.md** - Read this entire file to completion
-2. **ACKNOWLEDGE CLAUDE.md** - State "I have read CLAUDE.md completely"
-3. **READ docs/DISCIPLINE.md** - Read to completion
-4. **ACKNOWLEDGE DISCIPLINE.md** - State "I have read DISCIPLINE.md completely"
-5. **READ docs/typed-glp-manual.md** - Read to completion
-6. **ACKNOWLEDGE typed-glp-manual.md** - State "I have read typed-glp-manual.md completely"
-7. **READ docs/glp-cheat-sheet.md** - Read to completion. This is a compact reference for GLP programming patterns. GLP is NOT Prolog — study the wrong vs right examples carefully.
-8. **ACKNOWLEDGE glp-cheat-sheet.md** - State "I have read glp-cheat-sheet.md completely"
-9. **STOP AND WAIT** - Do not read any other files. Wait for user direction. The user will tell you which project or workstream to work on and where to find its plan.
+---
 
-🔴 **NEVER program based on ignorance of GLP and its type system.** Read the manual (`docs/typed-glp-manual.md`) and cheat sheet (`docs/glp-cheat-sheet.md`) BEFORE writing or modifying any `.glp` code. If they do not provide an answer, STOP and state what the problem or gap in documentation is, and wait till it is fixed. Do NOT speculate, guess, or assume. Do NOT grope in the dark or try workarounds. Programming based on incomplete understanding of GLP produces incorrect code and wastes time.
+## 🔴 Working Modes
 
-**DO NOT read handovers, specs, code, or any other files until user gives direction.**
+### Discussion Mode (DEFAULT)
 
-### After User Gives Direction
-8. **INSTALL DART** - Only when needed: Check `/home/user/dart-sdk/bin/dart --version`. If missing, see "Dart Installation" section below
-6. **SET DART PATH** - `export PATH="/home/user/dart-sdk/bin:$PATH"`
-7. **MOUNT FCP** - Clone FCP repo: `git clone --depth 1 https://github.com/EShapiro2/FCP.git /tmp/FCP`
-8. **MOUNT Art-of-GLP-2025** - Clone Art-of-GLP-2025 repo: `git clone --depth 1 https://github.com/EShapiro2/Art-of-GLP-2025.git /tmp/Art-of-GLP-2025`
-9. **IDENTIFY CURRENT MODE** - Discussion or Implementation
-10. **FOLLOW MODE RULES** - Never mix modes
-11. **ASK FOR CURRENT STATE** - Request latest code/errors from user
-12. **READ SPECS AS NEEDED** - Don't read all specs upfront, only when relevant to task
+- **NO ACTIONS** — no coding, testing, running commands, or git operations until Gabi explicitly ends the discussion ("discussion over", "let's implement", "go ahead", or similar).
+- **"stop" / "wait" means stop immediately.** Do not finish the current action, do not clean up. Just stop. Gabi's direct command overrides hook feedback.
+- **Never leave a discussion before Gabi confirms it is finished.** A discussion ends only when Gabi says so, or when you ask "is the discussion finished?" and Gabi says "yes".
+- Stay on topic; brief responses; ask clarifying questions; point out inconsistencies; don't agree too quickly — Gabi often refines the design mid-discussion.
 
-### Dart Installation (if needed)
+### Implementation Mode
 
-**IMPORTANT**: The project requires Dart SDK ^3.9.4. Use version 3.10.1 or later.
+- Enter only after explicit signal. Confirm: "Moving to implementation mode."
+- Test immediately after each change. Report exactly what changed.
+- Complete solutions, not partial victories — fix all related bugs; don't stop at the first successful case.
 
-```bash
-# Check if dart exists and version is sufficient
-/home/user/dart-sdk/bin/dart --version 2>/dev/null || echo "Dart not found"
+---
 
-# If not found or wrong version, install 3.10.1:
-cd /home/user && \
-curl -L -o dart-sdk.zip "https://storage.googleapis.com/dart-archive/channels/stable/release/3.10.1/sdk/dartsdk-linux-x64-release.zip" && \
-unzip -o dart-sdk.zip && \
-rm dart-sdk.zip
+## 🔴 Spec-First Development — No Implementation Without Spec
 
-# Set PATH for this session
-export PATH="/home/user/dart-sdk/bin:$PATH"
+Before writing **any** code (including actor scripts and demo plays):
 
-# Verify
-dart --version
-```
+1. **Identify** which spec(s) cover this area.
+2. **Read and quote** the relevant section verbatim — don't paraphrase.
+3. **Verify** the spec is clear and consistent with all other specs covering the area.
+4. **If unclear, missing, conflicting, or seemingly incorrect**: STOP. Discuss with Gabi. Clarify or revise the spec FIRST.
+5. **Only then implement** — and the implementation must match the spec exactly.
 
-**What DOESN'T work in this environment:**
-- `curl -fsSL https://dart.dev/get-dart | sh` → 403 Forbidden
-- `apt-get install dart` → package not found
-- `busybox unzip` → command not found
-- Dart 3.2.0 or earlier → SDK version mismatch (project needs ^3.9.4)
-- `tail`, `head`, `grep` shell commands → not available (use full output or Dart tools)
+Three possibilities when reviewing code against a spec:
+1. Spec is clear → revise code to match spec.
+2. Spec is unclear → clarify spec first.
+3. Spec seems incorrect → discuss and possibly revise spec before any code work.
 
-### FCP Reference Repository
-The FCP (Flat Concurrent Prolog) implementation is available for reference:
-- **Location**: `/tmp/FCP` (cloned at startup)
-- **Reference Release**: `/tmp/FCP/Savannah` - this is the authoritative FCP release for GLP
-- **Key Docs**: `/tmp/FCP/Savannah/efcp/Logix/CONSTANTS.txt` - term syntax definitions
-- **GitHub**: https://github.com/EShapiro2/FCP
+**Stop signals — if you find yourself doing any of these, STOP and report:**
+- Making code "work" without spec backing
+- Adding logic that isn't in the spec
+- Fixing something by guessing what behavior should be
+- Using try/catch or null checks to "handle" cases the spec doesn't address
+- Adding interleaving/race-condition workarounds without a protocol spec
 
-### Art-of-GLP-2025 Paper Repository
-The Art of GLP book and LaTeX sources:
-- **Location**: `/tmp/Art-of-GLP-2025` (cloned at startup)
-- **Main file**: `/tmp/Art-of-GLP-2025/main_AofGLP.tex`
-- **GitHub**: https://github.com/EShapiro2/Art-of-GLP-2025
+**"Robustness" is often a workaround in disguise.** If a function receives invalid input, the bug is in the caller — fix the caller, don't make the function tolerate bad input.
 
-### GitHub Directory Zip Downloads
-When user asks for a zip of a GitHub directory, use this format:
-```
-https://download-directory.github.io/?url=https://github.com/EShapiro2/GLP/tree/BRANCH/path/to/directory
-```
-
-Example:
-```
-https://download-directory.github.io/?url=https://github.com/EShapiro2/GLP/tree/claude/moded-type-helper-7svFn/glp_runtime/lib/analysis/type_checker
-```
-
-## Core Rules
-
-### Do Exactly What Is Asked
-- **When the user asks something, do exactly as asked and nothing else**
-- Do not add extra steps, analysis, or actions beyond the specific request
-- If clarification is needed, ask first rather than assuming
-- **NEVER EXCEED THE SCOPE** of instructions given by Claude Web or the user
-
-### 🔴 NEVER Deviate From Instructions
-- **NEVER decide on your own not to implement a change you were instructed to implement**
-- **NEVER revert a change you were instructed to make without explicit permission**
-- **Perform every task to completion** - or if impossible, STOP and report why
-- **NEVER divert** from the instructed task to do something else
-- **NEVER continue** with actions not based on instructions
-- If you encounter an obstacle: STOP, REPORT, WAIT for direction
-
-### 🔴 Code Modification Protocol
-
-**`.glp` files written by the user:** NEVER modify without discussing with the user first. Always discuss the intended change and get explicit approval before making any edit. `.glp` files written by Claude in the current session may be modified freely without asking permission.
-
-**Dart files:** You may modify Dart code, but always tell the user what you are changing and why before or as you do it.
-
-**Before running or tracing GLP code in the REPL:**
-1. Show the user which file will be loaded
-2. Show the goal that will be executed
-3. Wait for approval (or use pre-approved commands from settings)
-
-### Never Implement Without a Plan
-- **NEVER start implementation without an agreed upon plan**
-- First discuss and document the design
-- Get explicit user agreement on the plan
-- Only then proceed to implementation
-
-### Instructions from Claude Web
-When receiving instructions from Claude Web (via user copy-paste):
-- **REVIEW FIRST** - Read and understand the instructions before executing
-- **RAISE CONCERNS** - Let Udi know if you have comments, questions, or see potential issues
-- **DON'T BLINDLY EXECUTE** - Wait for confirmation if something seems unclear or problematic
-- **DO NOT EXCEED SCOPE** - Execute only what is specified in the instructions, nothing more
-- Only proceed with execution after review is complete and any concerns are addressed
-
-**Note on instruction format (2026-01):** Both Claude Web and Claude Code now use Opus. Instructions do not need to be verbatim code - general but clear instructions are acceptable. Claude Code can interpret design intent and implement appropriately. The key requirements are:
-- Clear specification of WHAT needs to be done
-- Reference to relevant spec/paper sections
-- Success criteria (what tests should pass)
-- File paths when relevant
-
-Verbatim code is still welcome when precision is critical, but not mandatory.
-
-**Workflow reminder (2026-01):** When Claude Web makes changes to tracked files (like implementation plans), always ask the user to **push those changes before** giving instructions to Claude Code. This prevents merge conflicts when Claude Code later tries to commit changes to the same files.
-
-### Accuracy and Honesty
-- **NEVER BS, GUESS, SPECULATE, OR HALLUCINATE**
-- **IF UNSURE, SAY SO** - "I'm not sure, need to check X"
-- **READ THE SPEC FIRST** - Check bytecode/runtime specs before any code changes
-- **NEVER REMOVE CONTENT** - Never delete anything without explicit user approval
+**Single source of truth.** Each subsystem has ONE authoritative spec; other docs reference it, not duplicate it. Example: `docs/heap/heap-pointer-architecture-spec.md` is authoritative for heap design.
 
 ### Reading Specs Correctly
-When checking specs:
-1. **Quote the spec exactly** — don't paraphrase or interpret
-2. **Answer only what the spec says** — don't add conclusions or inferences
-3. **If spec covers the case**: "The spec says X"
-4. **If spec is silent**: "The spec doesn't address Y"
-5. **NEVER** say "the spec is clear" then spend 10 minutes explaining it
 
-Example of WRONG spec reading:
-> "Spec says: writer(X) — pass the variable directly, not via reader"
+- Quote exactly. Answer only what the spec says. Don't add inferences.
+- "Spec section X.Y says: '<verbatim quote>'" — not "the spec is clear, basically what it means is …"
+- If the spec is silent on the case: say so, don't fill in.
 
-Example of CORRECT spec reading:
-> "Spec 19.4.5 says: 'writer(X) in guard position - Test if Xi is an unbound writer. Succeed if Xi is unbound writer variable. Fail otherwise.'"
+---
 
-### Code Changes Must Follow Spec
-- **Every code change must be backed by reference to the spec**
-- **NEVER make any change that is not implied by the spec**
-- **NEVER make any change that is inconsistent with the spec**
-- **If the spec is not clear, STOP and ask for clarification** before making any code changes
+## 🔴 Bug Protocol
 
-### Handling Unexpected GLP Behavior
-When encountering unexpected behavior of GLP, **STOP!** Find out:
-1. Is the unexpected behavior consistent with the spec?
-2. If so, is the spec clear?
-3. If inconsistent with the spec, we have a bug.
+When a bug is discovered:
 
-Present your findings and discuss what to do next:
-- Improve the spec
-- Fix the bug
-- Add explanations to the docs so that the behavior becomes expected
+1. **STOP.** No fixes, no workarounds, no alternative approaches.
+2. **Identify clearly.** What was expected, what happened, where.
+3. **Check the spec.** Is the code violating the spec? Is the spec unclear? Is the spec wrong?
+4. **Report and discuss.** Wait for agreement before any action.
 
 ### GLP Bug Reporting Format
-When a suspected GLP bug is found, report it in THIS EXACT FORMAT with no intervening text or explanations:
+
+When a suspected GLP bug is found, report in THIS EXACT FORMAT with no intervening text:
 
 **Failing Goal:**
 ```
@@ -214,1069 +115,405 @@ When a suspected GLP bug is found, report it in THIS EXACT FORMAT with no interv
 <the clause(s) that should match but don't>
 ```
 
-Then STOP and wait for discussion. Do NOT attempt to fix. Do NOT add explanations between the sections.
+Then STOP and wait. Do not attempt a fix.
 
-### Discussion Mode is Default - No Rushing to Execution
-When discussing issues or bugs:
-1. **Stay in discussion mode** - Do NOT start implementing, building, or running code
-2. **Wait for explicit approval** - User must explicitly say to proceed with implementation
-3. **Present findings only** - Report what you found, then STOP and WAIT
-4. **No "let me just try"** - Even small tests or builds require approval during discussion
-5. **Ask questions** - If something is unclear, ask rather than assuming and executing
+### When GLP Behaves Unexpectedly
 
-### Bug Protocol
-**NEVER bypass or circumvent a bug.** When you discover a bug:
-1. **STOP immediately** - Do not attempt workarounds or alternative approaches
-2. **Report precisely** - Describe what's wrong, what was expected, what actually happens
-3. **Wait for discussion** - Let the user decide how to proceed
-4. **No speculation** - Report facts, not guesses about causes or fixes
+1. Is the behavior consistent with the spec?
+2. If yes → is the spec clear? (If not, improve spec / docs.)
+3. If no → it's a bug. Report and discuss; choose between fix-spec, fix-code, or improve-docs.
 
-### Spec Consistency and Single Source of Truth
+### Mandatory debugging protocol
 
-**Before implementing any feature or fix:**
-1. **Identify ALL spec documents** that cover the affected area
-2. **Verify they are consistent** with each other
-3. **If conflicts exist**: STOP, harmonize specs first, then implement
-4. **Never implement against conflicting specs**
+For any GLP-program debugging session, read and follow `docs/Mandatory protocol for debugging the GLP implementation with GLP programs.txt`. Do not skip steps; stop and report if any step fails.
 
-**Single source of truth for each subsystem:**
-- Each subsystem should have ONE authoritative spec document
-- Other documents should REFERENCE, not duplicate content
-- When updating: update the authoritative spec, verify references still make sense
-- Example: `docs/heap/heap-pointer-architecture-spec.md` is authoritative for heap design; `docs/glp-runtime-spec.txt` references it
+---
 
-**Implementation decisions MUST be derived from spec:**
-- If the spec covers the case: implement exactly as specified
-- If the spec is silent: STOP and discuss, then update spec before implementing
-- If the spec is ambiguous: STOP and clarify spec before implementing
-- **NEVER make arbitrary implementation decisions** — all decisions must trace to spec
+## 🔴 Code Modification Protocol
 
-**"Robustness" is often a workaround in disguise:**
-- If a function is being called with invalid input, the BUG is in the caller
-- Don't make the function accept invalid input to be "robust"
-- Fix the caller to pass valid input
-- Example: If `writerForReader(addr)` receives a writer address, don't make it "handle" that — fix the caller
+- **`.glp` files written by Gabi**: NEVER modify without prior discussion and explicit approval. `.glp` files Claude wrote in the current session can be modified freely.
+- **Dart files**: may be modified, but tell Gabi what is changing and why before or as you do it.
+- **Before running or tracing GLP code in the REPL**: show which file will be loaded, show the goal, wait for approval (or use pre-approved commands from `.claude/settings.local.json`).
+- **When Gabi pastes code/instructions from Claude Web**: review first; raise concerns; never blindly execute; do not exceed scope.
+- **Save Claude-Web-provided code exactly as given** — no modifications. Test immediately. If it fails: ask "revert, or consult Claude Web?".
 
-### Communication Style
-- **BE TERSE** - Brief, direct responses
-- **NO LONG EXPLANATIONS** - Get to the point
-- **MISTAKES**: Just acknowledge - no apologies or promises
-- **NO VERBOSE POLITENESS** - Skip the fluff
-- **ONE-LINER SHELL COMMANDS** - When giving shell commands to user, always use single-line format (no comments, no multi-line). User can copy-paste directly.
-- NEVER use the word "pattern" in any paper or document (except in the technical context of pattern-matching).  ALWAYS use more precise alternatives.
+### Language Authority
 
-### Showing GLP Code
-- **ALWAYS show full context**: type declarations, procedure declarations, and full clauses
-- **NO intervening text** between related code blocks
-- **Group related definitions together** in a single code block
+The GLP language definition — guards, system predicates, body kernels, directives, type-system features, primitive types — **cannot be revised, extended, or added to without explicit discussion with Gabi and his express approval.** Propose first, wait for approval, then implement. See `docs/DISCIPLINE.md` §1.14.
 
-## Your Role
-You are the **executor and tester** for the GLP Runtime project. You run commands, show output, and implement code based on Claude Chat's architectural guidance.
+### Preserve Working Code
 
-## Key Context
-- **Project**: GLP (Grassroots Logic Programs) - a secure concurrent logic programming language
-- **Implementation Language**: Dart
-- **Current State**: 384 REPL tests passing, 374 Dart tests passing (as of Mar 2026)
-- **Test Suite**: `bash /Users/udi/Grassroots/GLP/test/run_all_tests.sh` — ALWAYS run before committing
-- **User Expertise**: Deep understanding of GLP semantics but does not write code
-- **Working Directory**: `/Users/udi/Grassroots/GLP/` (user's Mac)
+NEVER remove without explicit approval:
+- `_ClauseVar` (HEAD-phase unresolved variables — CRITICAL)
+- `_TentativeStruct` (HEAD structure building)
+- Fallback cases / edge-condition branches
+- Any code you don't fully understand
 
-## Working Modes
+The current implementation may differ from textbook WAM — respect existing patterns.
 
-### Discussion Mode (DEFAULT)
-- **🔴 ABSOLUTE RULE: NO ACTIONS DURING DISCUSSION** - You CANNOT proceed with ANY actions (coding, testing, running commands, git operations) until user explicitly confirms the discussion is over with phrases like "discussion over", "let's implement", "go ahead", etc.
-- **🔴 "stop" MEANS STOP** - If user says "stop" or "wait", STOP IMMEDIATELY. Do not finish current action. Do not clean up. Just stop.
-- **NO CODE CHANGES** - Not even small fixes
-- **BRIEF RESPONSES** - Show output, explain what you see
-- **STAY ON TOPIC** - Don't jump ahead
-- **WAIT FOR EXPLICIT SIGNAL** - User must explicitly end discussion before you can act
+### Do Exactly What Is Asked
 
-### Implementation Mode  
-- **ONLY AFTER EXPLICIT AGREEMENT**
-- **FOLLOW CLAUDE CHAT'S GUIDANCE** - Implement what was discussed
-- **TEST IMMEDIATELY** - Run tests after each change
-- **REPORT RESULTS** - Show exactly what changed
+- Do exactly the task; nothing more. No extra analysis, refactoring, or "while I'm at it" cleanup.
+- Never decide on your own not to implement an instructed change.
+- Never revert an instructed change without explicit permission.
+- Never divert from the instructed task. If blocked: STOP, report, wait.
 
-## Mode Transition Protocol
-1. User must explicitly say: "Discussion complete, let's implement" or similar
-2. Confirm understanding: "Moving to implementation mode"
-3. Only then modify code
+---
 
-## Working with Udi's Design Process
+## 🔴 File Verification
 
-- **DO NOT agree too quickly** - Udi often changes his mind during design discussions
-- **ASK clarifying questions** before implementing
-- **POINT OUT inconsistencies or potential issues**
-- **WAIT for design to stabilize** before updating specs or code
-- **PUSH BACK** if something seems problematic
-- Design discussions should reach clear agreement before implementation begins
+Before referencing any file, path, or fact:
+1. Verify the file exists (Glob / Read / `ls`)
+2. Verify the location — never trust paths from memory
+3. Verify the contents — read the actual file
+4. List directories before assuming what's in them
+5. If you can't verify, say so — never hallucinate paths
 
-## Division of Labor
+### Binary / non-text files
 
-### Claude Chat Handles:
-- **Architecture decisions** - Overall design patterns, data structure choices
-- **Algorithm design** - Complex logic flow, novel approaches
-- **Complete file generation** - For difficult algorithms requiring design
-- **Specification consistency** - Ensuring docs match implementation
+When a file isn't readable in your context window (PDFs, PPTX, large binaries, paths with spaces): **ask Gabi to upload it.** Do not waste time with multiple tools, copy commands, or workarounds.
 
-### You Handle:
-- **Code generation from guidance** - Turn Claude Chat's instructions into code
-- **Running commands** - `dart test`, `dart run`, git operations
-- **Showing output** - Complete error messages and test results
-- **File operations** - Reading, writing, modifying files
-- **Small targeted fixes** - Only when explicitly requested (see definition below)
+---
 
-### Code Generation Scope - Who Does What
+## Communication Style
 
-**Examples of code generation you handle:**
-- Implementing handlers for new opcodes based on spec
-- Adding validation checks as directed
-- Modifying existing logic following specific instructions
-- Writing test cases based on requirements
-- Converting "change line X to Y" instructions into code
-- Implementing "Add handler for opcode Z with logic A, B, C"
+- **Terse, direct.** No long explanations, no verbose politeness, no apologies-and-promises after mistakes — just acknowledge and move on.
+- **Questions to Gabi: at most two sentences. Be concise.**
+- **Never ask closed-form questions** (multiple choice, yes/no, pick-from-list, AskUserQuestion). Free-text only when clarification is genuinely needed.
+- **One-liner shell commands** when handing commands to Gabi to run — single line, no comments, copy-paste ready.
+- **Don't use the word "pattern"** in any paper or document except in the technical sense of pattern-matching. Use a more precise alternative.
+- **Showing GLP code**: always include type declarations, procedure declarations, and full clauses; group related definitions in one block; no intervening text between related code blocks.
 
-**Claude Chat generates complete code for:**
-- Novel algorithms requiring design (e.g., new unification approach)
-- Complex refactoring affecting multiple files  
-- Redesigning major subsystems
-- When you say "This requires architectural understanding"
+---
 
-### Small Targeted Fixes - Definition
+## Test Protocol
 
-**Small targeted fixes include:**
-- Changing operators/conditions (>, >=, ==, !=)
-- Adding null/bounds checks
-- Fixing typos or off-by-one errors
-- Updating variable names
-- Adding debug print statements
-- Removing debug statements
+🔴 **Always baseline before changing. Always re-test after.**
 
-**NOT small (escalate to Claude Chat):**
-- Algorithm changes
-- Adding new data structures
-- Changing control flow significantly
-- Modifying function signatures
-- Adding new methods/classes
-- Changing error handling patterns
+1. Before any change: run the suite, confirm green, commit & push as a baseline checkpoint.
+2. Make the change.
+3. Re-run the suite. When green, commit & push.
 
-### When to Escalate to Claude Chat
+This gives a known-good baseline, attributes failures correctly, and makes revert trivial.
 
-**Always escalate these decisions:**
-- Choosing data structures (Map vs List, etc.)
-- Error handling approach
-- Performance optimization strategies
-- Architectural patterns
-- Algorithm selection
-- API design
-
-**Don't escalate obvious fixes:**
-- Off-by-one errors
-- Null pointer fixes
-- Typos in strings
-- Missing semicolons
-
-**Use this message:** "This requires architectural understanding. Please consult Claude Chat for the design, then provide me with specific implementation instructions."
-
-## Environments and Dart Path
-
-**Claude Code may run in TWO different environments:**
-
-| Environment | GLP Path | Dart binary |
-|-------------|----------|-------------|
-| Claude Code (Linux) | `/home/user/GLP` | `/home/user/dart-sdk/bin/dart` |
-| Claude Code (Mac) | `/Users/udi/Grassroots/GLP` | `/opt/homebrew/bin/dart` |
-
-**At session start, detect which environment you are in** by checking whether `/Users/udi/Grassroots/GLP` exists. Then:
-
-1. **Set dart on PATH immediately:**
-   - Linux: `export PATH="/home/user/dart-sdk/bin:$PATH"`
-   - Mac: `export PATH="/opt/homebrew/bin:$PATH"`
-2. **Verify:** `dart --version`
-3. **Use Mac paths** (`/Users/udi/Grassroots/GLP`) when giving instructions to the user.
-
-**Before running commands, VERIFY — don't guess:**
-- Run `ls` to check directories exist
-- Run `pwd` to confirm current directory
-- Check file locations with `ls` before referencing them
-
-## GLP Unified Tool: The REPL
-
-**There is exactly ONE way to compile, typecheck, and run GLP code: the REPL.** There is no separate type checker, no separate compiler, no separate runner. Loading a `.glp` file in the REPL automatically runs the complete pipeline:
-1. **SRSW Analysis** → Verify single-reader/single-writer
-2. **Partial Evaluation** → Evaluate defined guards
-3. **Type Checking** → Verify mode/type correctness
-4. **Compilation** → Generate bytecode
-5. **Execution** → Run goals
-
-If a file loads successfully, it has passed SRSW analysis, partial evaluation, and type checking. If it fails at any stage, the REPL reports the error. To typecheck a file, load it in the REPL. To run a file, load it and execute a goal. That is all.
-
-**There are NO separate tools.** Old standalone tools (check_types.dart, glp_pe.dart, glpc.dart, etc.) have been archived to `glp_runtime/bin/archive/` and must NOT be executed.
-
-### REPL Usage
-
-**IMPORTANT:** Always use `echo -e` with pipe, NOT heredoc (`<<<`). Heredoc requires user approval for each command.
-
-**Correct pattern (no approval needed):**
-```bash
-cd /Users/udi/Grassroots/GLP/glp_runtime
-echo -e 'load ../programs/path/to/file.glp\ngoal.' | dart run bin/glp_repl.dart
+Local invocation (Windows / glpnet):
 ```
-
-**Wrong pattern (requires approval - avoid):**
-```bash
-dart run bin/glp_repl.dart <<< 'load file.glp'  # DON'T USE - needs approval
-```
-
-**Or compile for faster repeated testing:**
-```bash
-cd /Users/udi/Grassroots/GLP/glp_runtime
-dart compile exe bin/glp_repl.dart -o glp_repl
-echo -e 'load ../programs/path/to/file.glp\ngoal.' | ./glp_repl
-```
-
-**REPL Test Suite:**
-```bash
-# Unified test suite - 384 tests (ALWAYS run before committing)
-bash /Users/udi/Grassroots/GLP/test/run_all_tests.sh
-
-# Book examples only - 141 files (tests compilation only)
-bash /Users/udi/Grassroots/GLP/test/run_book_tests.sh
-```
-
-**Testing Bonds (Grassroots Bonds plays):**
-
-The bonds code lives in `programs/typed_book/bonds/` and is NOT included in `test/run_all_tests.sh`.  To test bonds, load the individual `.glp` files (not the directory) into the REPL, then run fplay goals.  There is no `fplay7` — plays are: fplay1-6, fplay8-12, plus fplay4b.  Play 12 (village market) also needs the play12 sub-module actor files.
-
-```bash
-cd /Users/udi/Grassroots/GLP/glp_runtime
-BONDS=/Users/udi/Grassroots/GLP/programs/typed_book/bonds
-
-# Single play (fplay1-6, fplay8-11):
-printf 'load $BONDS/agent.glp\nload $BONDS/mediator.glp\nload $BONDS/actors.glp\nload $BONDS/boot.glp\n:limit 1000000\nfplay1.\n' | dart run bin/glp_repl.dart
-
-# Play 12 (village market — needs play12 actor files + higher limit):
-printf 'load $BONDS/agent.glp\nload $BONDS/mediator.glp\nload $BONDS/actors.glp\nload $BONDS/play12/alice.glp\nload $BONDS/play12/bob.glp\nload $BONDS/play12/charlie.glp\nload $BONDS/play12/diana.glp\nload $BONDS/play12/eve.glp\nload $BONDS/play12/frank.glp\nload $BONDS/boot.glp\n:limit 5000000\nfplay12.\n' | dart run bin/glp_repl.dart
-```
-
-Expected results: `→ succeeds` or `→ suspended` (suspended is normal for plays with escrow timers: fplay3, fplay4, fplay4b, fplay12).
-
-**IMPORTANT:** Do NOT try to load the bonds directory as a project (`/path/to/bonds` at the REPL prompt).  The bonds directory has no `self.glp` at the top level, and while loadProject succeeds, it does not export the fplay goals.  Load files individually with `load /absolute/path/file.glp`.
-
-**Key paths:**
-- REPL: `/Users/udi/Grassroots/GLP/glp_runtime/bin/glp_repl.dart`
-- Root prelude: `/Users/udi/Grassroots/GLP/programs/self.glp`
-- GLP programs: `/Users/udi/Grassroots/GLP/programs/`
-- Test files: `/Users/udi/Grassroots/GLP/programs/tests/`
-
-**Commands that DON'T exist in this environment:**
-- `timeout` - not available
-- `tail`, `head`, `grep` - not available (already noted above)
-
-**REPL commands:**
-- `:trace` - toggle tracing (not `trace goal.`)
-- `:debug` - toggle debug output
-- Load file first, then run goals
-
-## GLP Code Location Policy
-
-**All `.glp` code lives in `/Users/udi/Grassroots/GLP/programs/`.**  No GLP source files should reside in paper repos (SGLP, CGLP, etc.) or elsewhere.  Paper repos may reference GLP code by path but must not contain copies.  This ensures a single source of truth for all GLP programs.
-
-## Directory Structure
-
-```
-/Users/udi/Grassroots/GLP/
-├── CLAUDE.md                    # ← This file - ESSENTIAL for Claude Code
-├── README.md                    # ← Project readme
-│
-├── docs/                        # ← NORMATIVE SPECIFICATIONS
-│   ├── glp-bytecode-v216-complete.md  # ← Instruction set spec
-│   ├── glp-runtime-spec.txt           # ← Runtime architecture spec
-│   ├── wam.pdf                        # ← WAM paper
-│   └── 1-s2.0-0743106689890113-main.pdf  # ← FCP implementation
-│
-├── glp_runtime/                 # ← MAIN DART PROJECT
-│   ├── lib/
-│   │   ├── bytecode/           # ← VM implementation (runner.dart, opcodes.dart)
-│   │   ├── compiler/           # ← GLP→bytecode compiler
-│   │   └── runtime/            # ← Heap, scheduler, cells, terms
-│   ├── test/                   # ← Dart unit tests
-│   ├── bin/
-│   │   └── glp_repl.dart      # ← REPL source
-│   └── glp_repl               # ← Compiled REPL executable
-│
-├── programs/                    # ← ALL GLP SOURCE FILES
-│   ├── self.glp               # ← Root prelude: types, procedures, unit clauses
-│   ├── book/                   # ← Art of GLP book examples (140 files)
-│   │   ├── recursive/         # ← arithmetic_trees/, list_processing/, structure_processing/
-│   │   ├── streams/           # ← producers_consumers/, objects_monitors/, buffered_communication/
-│   │   ├── social_graph/      # ← Agent protocols, plays/
-│   │   ├── social_networks/   # ← Network protocols
-│   │   ├── meta/              # ← Metainterpreters (plain/, enhanced/, debugging/)
-│   │   ├── constants/         # ← Logic gates, circuits
-│   │   ├── cryptocurrencies/  # ← GC protocol
-│   │   └── constitutional_consensus/  # ← Consensus protocols
-│   ├── tests/                  # ← REPL test files (115 files)
-│   ├── lib/                    # ← Reusable library modules (8 files)
-│   ├── archive/                # ← Historical/experimental (76 files)
-│   └── misc/                   # ← Miscellaneous examples (26 files)
-│
-└── test/                        # ← TEST SCRIPTS
-    ├── run_all_tests.sh        # ← Unified REPL tests (382 tests) — ALWAYS run before committing
-    └── run_book_tests.sh       # ← Book examples compilation test (141 files)
-```
-
-## Mandatory Reading Order
-
-**BEFORE any implementation:**
-
-1. **`docs/glp-bytecode-v216-complete.md`** - NORMATIVE instruction set specification
-2. **`docs/glp-runtime-spec.txt`** - NORMATIVE Dart runtime architecture
-3. **`docs/typed-glp-manual.md`** - MANDATORY for GLP programming patterns and interactive protocols
-
-**Read these AS NEEDED, not all at conversation start.**
-
-## Implementation Guidance Protocol
-
-When Claude Chat provides guidance like:
-```
-File: lib/bytecode/runner.dart
-Line 684: Replace GetVariable handler
-Logic: Check if Xi is reader, if arg is writer, allocate fresh var...
-```
-
-You:
-1. Open the file
-2. Find the specific location
-3. Implement the described logic
-4. Test immediately
-5. Report results
-
-## Test Protocols
-
-### Test Suites Overview
-
-| Suite | Location | Tests | Purpose |
-|-------|----------|-------|---------|
-| Unified | `test/run_all_tests.sh` | 384 | All REPL-based tests (runtime + type-check + negative + modules) |
-| Book | `test/run_book_tests.sh` | 141 | Book examples compile check |
-| Dart | `glp_runtime/test/` | 374 | Dart unit tests (14 known failures, 5 skipped) |
-
-The unified test suite (`run_all_tests.sh`) has eight sections:
-
-| Section | Description |
-|---------|-------------|
-| A: Typed Runtime Tests | Load typed programs, run queries, check output |
-| B: Positive Type Check | Verify typed programs load successfully |
-| C: Negative Type Tests | Verify ill-typed programs are rejected |
-| D: SRSW Violations | Verify SRSW violations are detected |
-| E: Invalid Guard | Verify `true` in guard position is rejected |
-| F: CSSG Modules | Modular play tests via project-directory loading |
-| G: Social Graph Modules | Project-directory loading |
-| H: CSSN Modules | Project-directory loading, plays 1-12 |
-
-### Standard Test Protocol
-
-**ALWAYS run the unified tests before and after changes:**
-
-```bash
-cd /Users/udi/Grassroots/GLP/glp_runtime
-
-# Unified REPL tests (ALWAYS run this)
-bash ../test/run_all_tests.sh
-
-# Book examples (compilation test)
-bash ../test/run_book_tests.sh
-
-# Unit tests
-dart test
-```
-
-**Expected results:**
-- Unified: 384/384 pass
-- Book: 84/141 pass (57 fail due to SRSW violations in book code)
-- Dart: 374 pass, 14 known failures, 5 skipped
-
-### MANDATORY: Test Protocol for GLP System Changes
-
-**Before ANY change to the underlying GLP system, and before any other major change:**
-
-1. **Run unified tests** - `bash test/run_all_tests.sh`
-2. **Commit and push** - Create a baseline checkpoint
-3. **Only then begin implementation**
-
-**After implementation is done:**
-
-1. **Run unified tests again** - `bash test/run_all_tests.sh`
-2. **When successful, commit and push**
-
-This ensures:
-- You have a known-good baseline to compare against
-- Any test failures can be attributed to your changes (not pre-existing issues)
-- You can easily revert if something breaks
-
-### REPL Development Protocol
-1. Make changes to `glp_runtime/lib/` or `glp_runtime/bin/glp_repl.dart`
-2. Run full tests: `cd /Users/udi/Grassroots/GLP && bash test/run_all_tests.sh`
-3. Report results
-
-### Adding New Tests
-
-The unified test script `test/run_all_tests.sh` uses heredoc-based REPL sessions.
-
-**Section A (runtime tests with queries):** Add a new REPL session block. Each session loads files, runs queries, then uses `check` assertions on the output. Use separate sessions when programs define conflicting procedure names.
-
-```bash
-# --- New test group ---
-echo "--- Description ---"
-output=$($DART run "$REPL" <<HEREDOC
-$TYPED/my_program.glp
-my_query(X).
-:quit
-HEREDOC
-2>&1)
-check "Test name" "X = expected" "$output"
-```
-
-**Section B (type-check-only):** Add the file path to the `POSITIVE_FILES` array.
-
-**Section C (negative tests):** Add the file path to the `NEGATIVE_FILES` array.
-
-New typed test programs go in `programs/tests/typed/`. All programs must have `procedure` declarations and pass type checking.
-
-### Bug Fix Test Protocol
-
-**When a bug is detected and fixed:**
-1. Add a test case to `test/run_all_tests.sh` (Section A for runtime, Section B/C for type-check)
-2. The test should verify the fix works (not just that it does not crash)
-3. This prevents regression
-
-### New Feature Test Protocol
-
-**When a new feature or revision is implemented and tested:**
-1. Add tests to `test/run_all_tests.sh`
-2. Tests should cover the main use cases of the feature
-3. This ensures the feature continues to work as the codebase evolves
-
-### Dynamic Module Dispatch
-
-**Status**: Dynamic dispatch works end-to-end. The `_activate` kernel dispatches goals directly to exported procedures (bypassing `_select/1` clause execution to preserve writer/reader polarity for output parameters).
-**Tests**: 8 Dart integration tests in `test/dynamic_dispatch_test.dart`, 8 CSSG GLP dispatch tests in `test/runtime/cssg_glp_dispatch_test.dart`.
-**Auto-activation**: Modules with exports are auto-activated when loaded via `loadSource`/`loadFile`.
-
-### Test Troubleshooting
-
-If unified tests fail unexpectedly, check these common causes:
-
-1. **Stale REPL snapshot** - The test script compiles a kernel snapshot (`.dart_tool/repl.dill`) for speed. It recompiles when any `.dart` file in `lib/` or `bin/` is newer than the snapshot. If you suspect staleness (e.g., tests fail after changing `prelude.dart` or other lib files), delete the snapshot: `rm glp_runtime/.dart_tool/repl.dill`
-2. **Working directory** - Tests must run from the GLP root. The script handles this via `cd "$GLP_RUNTIME"`, but verify you are starting from `/Users/udi/Grassroots/GLP`
-3. **DART variable** - Should auto-detect via `which dart`
-4. **Path resolution** - `$GLP_DIR` should resolve to absolute path
-
-**Standard test invocation:**
-```bash
-cd /Users/udi/Grassroots/GLP
 bash test/run_all_tests.sh
 ```
 
-**Debug individual test manually:**
-```bash
-cd /Users/udi/Grassroots/GLP/glp_runtime
-echo -e '/Users/udi/Grassroots/GLP/programs/tests/typed/TESTFILE.glp\nQUERY.\n:quit' | dart run .dart_tool/repl.dill
+REPL test suite is the primary signal — run it before unit tests. If a bug is found and fixed, add a regression test to `test/run_all_tests.sh` (Section A for runtime, B/C for type-check). New typed test programs go in `programs/tests/typed/` and must have `procedure` declarations.
+
+If unified tests fail unexpectedly, common causes:
+- **Stale REPL kernel snapshot** at `glp_runtime/.dart_tool/repl.dill` — delete it and re-run.
+- Wrong working directory — must run from repo root.
+
+For sibling-repo (Mac/Linux) test invocation, see appendix.
+
+### REPL usage (the unified GLP tool)
+
+There is exactly **one** way to compile, typecheck, and run GLP code: the REPL. Loading a `.glp` file runs the full pipeline (SRSW → partial eval → type check → compile → execute). If it loads, it passed every stage. There are no separate tools — old standalone tools (`check_types.dart`, `glp_pe.dart`, `glpc.dart`) are archived under `glp_runtime/bin/archive/` and must NOT be executed.
+
+Preferred invocation (Gabi's request — remember this):
+```
+dart run glp_repl.dart
 ```
 
-## Working Principles
-
-### 0. FCP AM Adherence
-- **ALWAYS follow FCP AM design precisely** - no shortcuts, "improvements", or simplifications
-- **If considering any deviation from FCP AM**: STOP and discuss with user first
-- **Exception only**: general unification not needed due to SRSW (already agreed)
-- **Default assumption**: If FCP does it that way, we do it that way unless there is a simpler way due to the SRSW restriction
-
-### 1. Test Before Changing
-```bash
-# ALWAYS run test suites first
-cd /home/user/GLP/glp_runtime
-bash ../test/run_all_tests.sh          # 384 REPL tests
-dart test                              # Dart unit tests
+For scripted / approval-free use, pipe `echo -e` (NOT heredoc `<<<`, which prompts each time):
 ```
-If tests failing BEFORE changes, STOP and inform user.
-
-### 2. Preserve Working Code
-**NEVER remove without explicit approval:**
-- `_ClauseVar` - HEAD phase unresolved variables
-- `_TentativeStruct` - HEAD structure building
-- Fallback cases - edge conditions
-- Any code you don't understand
-
-The current implementation may differ from standard WAM - respect existing patterns!
-
-### 3. When User Provides Code from Claude Chat
-1. Save exactly as provided - no modifications
-2. Test immediately:
-   ```bash
-   dart test
-   git diff  # Show what changed
-   ```
-3. Report results
-4. If fails: "Should I revert, or consult Claude Chat for a fix?"
-
-### 4. Complete Solutions, Not Partial Victories
-
-When implementing a solution:
-1. **Think through ALL implications** 
-2. **Test comprehensively** - Don't stop at first successful case
-3. **Fix ALL related bugs** - If spawned goals need program context, fix it NOW
-4. **Only declare done when EVERYTHING works** 
-
-### 5. Discussion Before Implementation
-
-**CRITICAL: When user gives feedback, STOP and DISCUSS before coding:**
-
-1. **STOP immediately** - Do not write any code
-2. **DISCUSS** - Talk through understanding, ask clarifying questions
-3. **WAIT for agreement** - Only continue when discussion clearly over
-4. **NEVER mix discussion with implementation**
-
-## 🔴 MANDATORY: Debugging Protocol for GLP Programs
-
-**READ AND FOLLOW:** `docs/Mandatory protocol for debugging the GLP implementation with GLP programs.txt`
-
-This protocol is required when debugging GLP programs. Do not skip steps. Stop and report to user if any step fails.
-
-## Research Sources
-
-### Primary Specifications (MANDATORY - Read First)
-
-1. **`docs/glp-bytecode-v216-complete.md`** - Complete v2.16 instruction set
-2. **`docs/glp-runtime-spec.txt`** - Dart runtime architecture
-
-### Secondary References (Consult as Needed)
-
-3. **CSSN Group Spec**: `/Users/udi/Grassroots/SGLP/docs/group-glp-implementation-spec.md` - Group creation, membership, messaging protocol
-4. **WAM Paper**: `/Users/udi/Grassroots/GLP/docs/wam.pdf` - Warren's Abstract Machine
-5. **GLP Spec**: `/tmp/GLP-2025/main GLP 2025.tex` - Formal GLP specification (paper source)
-6. **FCP Implementation**: 
-   - **Local Source**: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`
-   - **GitHub Mirror**: https://github.com/EShapiro2/FCP
-   - **Paper**: `/Users/udi/Grassroots/GLP/docs/1-s2.0-0743106689900113-main.pdf`
-
-## Critical Implementation Details
-
-### GLP-Specific Knowledge
-- **SRSW Constraint**: Single-Reader/Single-Writer - each variable occurs at most once per clause
-- **SRSW is MANDATORY**: All GLP code must pass SRSW checking. NEVER invent or use a `skipSRSW` option.
-- **Anonymous variable `_`**: A writer that nobody reads - exempt from SRSW checking. Use in abort clauses where result is never bound.
-- **Three-Phase Execution**: HEAD (tentative unification) → GUARDS (pure tests) → BODY (mutations)
-- **Suspension Mechanism**: Goals suspend on unbound readers, reactivate when writers are bound
-- **Writer MGU**: Only binds writers, never readers; never binds writer to writer
-
-### Three-Valued Unification
-1. **Success**: Terms unify, σ̂w extended or verified
-2. **Suspend**: Unbound reader encountered, add to Si/U
-3. **Fail**: Terms cannot unify (mismatch)
-
-### Current Architecture
-- `RunnerContext`: Maintains execution state including `clauseVars`, `sigmaHat`, `si`, `U`
-- `BytecodeRunner`: Executes bytecode instructions
-- `_TentativeStruct`: Handles structure building in HEAD phase
-- `_ClauseVar`: Represents unresolved variables during HEAD phase (CRITICAL - DO NOT REMOVE)
-- Structure completion: Tracked by `argsProcessed >= structureArity`
-
-## Bytecode Inspection Tools
-
-### dump_bytecode.dart - Bytecode Disassembler ✅
-
-**Location:** `/Users/udi/Grassroots/GLP/udi/dump_bytecode.dart`
-
-**Usage:**
-```bash
-cd /Users/udi/Grassroots/GLP/udi
-dart dump_bytecode.dart glp/<filename>.glp
+echo -e 'load programs/path/file.glp\ngoal.' | dart run bin/glp_repl.dart
 ```
 
-**What it does:**
-- Compiles a .glp source file
-- Outputs complete bytecode disassembly showing all instructions with PC addresses
-- Shows procedure entry points and clause boundaries
+REPL commands: `:trace`, `:debug`, `:limit <n>`, `:quit`. Load file first, then run goals.
 
-**Example:**
-```bash
-# Dump bytecode to file for analysis
-dart dump_bytecode.dart glp/qsort.glp > /tmp/qsort_bytecode.txt
+Windows pre-built executable: `glp_runtime/glp_repl.exe`.
 
-# View specific bytecode section
-grep -A 30 "39:" /tmp/qsort_bytecode.txt  # View bytecode starting at PC 39
+---
+
+## Git Workflow
+
+### Commit scope and revert discipline
+
+Multiple Claude Code sessions may be working concurrently:
+
+1. **Commit only files you worked on this session.** No `git add -A` / `git add .`. Stage by name to avoid sweeping in another session's WIP.
+2. **Never revert, reset, or undo commits without Gabi's express permission.** No `git reset`, `git revert`, `git checkout -- <file>`, or `git restore` on files you didn't modify this session. Undoing your own current-session change is fine.
+3. **Merge conflicts or unexpected changes from other sessions** → STOP and report. Do not resolve silently.
+
+### Single-line commit messages
+
+Multi-line `-m` arguments confuse the shell. Always:
 ```
-
-**Output format:**
-```
-PC 39: ClauseTry
-PC 40: HeadNil
-PC 41: GetReaderVariable
-PC 42: GetWriterValue
-PC 43: Commit
-PC 44: Proceed
-```
-
-**When to use:**
-- Debugging compilation issues
-- Understanding how clauses are compiled
-- Verifying opcode sequences
-- Investigating variable mode conversions
-- Checking clause structure and guard placements
-- Analyzing HEAD/GUARD/BODY instruction placement
-
-## Known Working Tests
-These must continue passing:
-```bash
-cd /home/user/GLP/glp_runtime
-bash ../test/run_all_tests.sh  # Should show 384 passing
-dart test                      # Should show 374 passing (14 known failures, 5 skipped)
-```
-
-Example REPL tests:
-```
-> run(merge([1,5,3,3],[a,a,a,v,a,c],Xs1)).
-# Should execute MORE than 2 goals and bind Xs1
-
-> run((merge([1,2,3], Xs), merge(Xs?, [4,5], Ys))).
-# Should work with shared variables
-```
-
-## Git Safety Protocol
-
-### Commit Message Rule
-**ALWAYS use single-line commit messages.** Never use multi-line commit messages - they confuse the shell.
-```bash
-# CORRECT:
 git commit -m "Fix Channel definition to match prelude"
-
-# WRONG (causes shell quote issues):
-git commit -m "Fix Channel definition
-
-- Updated transitions
-- Fixed modes"
 ```
 
-### Before Any Work
-```bash
-git status          # Ensure clean state
-git log -1 --oneline  # Note current commit
-dart test  # Run baseline tests (note: tail/head commands not available)
+### Branch rules
+
+- `main` is the source of truth — only Gabi merges into it.
+- Each Claude Code session works on its own branch (`claude/...-<session-id>` or feature branch like `006-d2net-init-skill`).
+- Each session can only push to its own branch (HTTP 403 otherwise) but can pull from any branch.
+
+### Baseline checkpoint before risky work
+
+```
+git status
+git log -1 --oneline
+bash test/run_all_tests.sh
+git add -A && git commit -m "Checkpoint: before attempting X"
 ```
 
-### Creating Safety Checkpoints
-```bash
-# Before risky changes
-git add -A
-git commit -m "Checkpoint: before attempting X"
+### End-of-task: always offer fetch / merge / push
+
+When a task is committed and pushed, give Gabi the merge template with **the actual branch name substituted** and the `cd` step included:
+
 ```
-
-### If Things Break
-```bash
-# Immediate revert
-git reset --hard HEAD~1
-# Or go to known-good state
-git reset --hard 7be7d83
-```
-
-## Multi-Claude Git Collaboration Protocol
-
-### Branch Rules
-- **Main branch** (`main`) is the source of truth - contains all merged, stable work
-- **Each Claude session** works on its own branch: `claude/...-<session-id>`
-- **Permissions:**
-  - Each Claude can pull from any branch (main, other claude branches)
-  - Each Claude can only push to its own branch
-  - Only the user can merge into main
-
-### Workflow Diagram
-```
-main ◄─── merge (user only) ◄───┬──────────────┐
-                                │              │
-              pull              │              │
-                ▼               │              │
-Claude A: work → push → branch-A               │
-Claude B: work → push → branch-B ──────────────┘
-```
-
-### Session-Specific Branch Restrictions
-
-**CRITICAL:** Each Claude Code session can ONLY push to its own branch (branch name includes session ID). Attempting to push to another session's branch will result in HTTP 403 error.
-
-**If you need to continue work from a previous session's branch:**
-
-Option 1 - Pull from previous branch, work on your own:
-```bash
-git fetch origin claude/<previous-session-branch>
-git checkout -b claude/<your-session-branch> origin/claude/<previous-session-branch>
-# Work and commit
-git push -u origin claude/<your-session-branch>
-```
-
-Option 2 (Recommended) - User merges previous work to main first:
-```bash
-# User runs on their Mac:
-cd /Users/udi/Grassroots/GLP
+cd D:\BSTDEV\RESEARCH\glp\glpnet
 git checkout main
 git pull origin main
-git fetch origin claude/<previous-session-branch>
-git merge -m "Merge previous work" origin/claude/<previous-session-branch>
-git push origin main
-```
-Then new Claude session pulls from main and starts fresh.
-
-### Claude's Responsibilities
-
-**At session start:**
-1. Pull from main: `git pull origin main`
-2. Run baseline tests: `dart test` and `bash test/run_all_tests.sh`
-3. Work on your branch
-
-**During work:**
-1. Commit frequently with clear messages
-2. Test after each change
-3. Push to your branch: `git push -u origin claude/<your-branch-name>`
-
-**After completing a task and pushing:**
-When a task is completed, committed, and pushed, ALWAYS provide the user with merge instructions so they can integrate the work into main. Use the exact format below with the actual branch name:
-
-```bash
-cd /Users/udi/Grassroots/GLP
-git checkout main
-git pull origin main
-git fetch origin claude/<ACTUAL-BRANCH-NAME>
-git merge -m "Merge claude/<ACTUAL-BRANCH-NAME> into main" origin/claude/<ACTUAL-BRANCH-NAME>
+git fetch origin <ACTUAL-BRANCH-NAME>
+git merge -m "Merge <ACTUAL-BRANCH-NAME> into main" origin/<ACTUAL-BRANCH-NAME>
 git push origin main
 ```
 
-**Before ending session:**
-1. Ensure all work is committed
-2. Push to your branch
-3. Tell user the merge commands using the **EXACT FORMAT BELOW** (copy-paste ready):
+Common issues:
+- *"not something we can merge"* → run the `git fetch` step first.
+- *"refusing to merge unrelated histories"* → add `--allow-unrelated-histories`.
+- Merge conflicts → resolve, `git add -A`, commit, push.
+- Divergent branches → `git pull origin main --no-rebase`.
 
-**🔴 MANDATORY FORMAT for merge instructions - USE THIS EXACTLY:**
-```bash
-cd /Users/udi/Grassroots/GLP
-git checkout main
-git pull origin main
-git fetch origin claude/<ACTUAL-BRANCH-NAME>
-git merge -m "Merge claude/<ACTUAL-BRANCH-NAME> into main" origin/claude/<ACTUAL-BRANCH-NAME>
-git push origin main
-```
-- **ALWAYS include `cd /Users/udi/Grassroots/GLP`** - user may be in wrong directory
-- **ALWAYS substitute the actual branch name** - never use placeholders like `<branch-name>`
-- **ALWAYS include the fetch step** - do NOT skip it
+For sibling-repo (Mac) merge paths, see appendix.
 
-**When user asks to "merge with main" or "push to main":**
-Output the EXACT commands with actual values (no placeholders):
-```bash
-cd /Users/udi/Grassroots/GLP
-git checkout main
-git pull origin main
-git fetch origin claude/xxx-actual-session-id
-git merge -m "Merge claude/xxx-actual-session-id into main" origin/claude/xxx-actual-session-id
-git push origin main
-```
+---
 
-### User's Responsibilities - PRECISE Protocol for Merging to Main
+## Multi-Stage Task Persistence
 
-**🔴 IMPORTANT: This is the CORRECT protocol. Other instructions may be wrong.**
+When starting a 3+ step effort, write the plan to `docs/current_plan.md`:
 
-**To merge Claude's work into main:**
-```bash
-git checkout main
-git pull origin main
-git fetch origin claude/<branch-name>
-git merge -m "Merge claude/<branch-name> into main" origin/claude/<branch-name>
-git push origin main
+```markdown
+# Current Plan: <Task Name>
+
+Started: YYYY-MM-DD
+
+## Steps
+- [x] 1. Done step
+- [ ] 2. Current step ← CURRENT
+- [ ] 3. Next step
+
+## Context
+<brief description of what & why>
 ```
 
-**Alternative using GitHub web UI:**
-1. Go to repository on GitHub
-2. Create Pull Request from `claude/<branch-name>` to `main`
-3. Review changes
-4. Merge PR
+Update as you go. Delete when done. **At session start, check whether `docs/current_plan.md` exists** and, if so, resume from the current step.
 
-**To verify merge:**
-```bash
-cd glp_runtime && dart test
-bash ../test/run_all_tests.sh
+---
+
+## maGLP Development Constraints
+
+When working on maGLP (multi-agent GLP) code:
+- Modify only `glp_runtime/lib/multiagent/` and `glp_runtime/test/multiagent/`.
+- **Do not modify core GLP files** (`runner.dart`, `heap_fcp.dart`, `compiler/`, etc.) without explicit discussion and approval.
+- If a core-GLP bug is blocking maGLP work, STOP and report — no workarounds.
+
+---
+
+## Flutter Multiagent App Build Process
+
+When changes to `glp_runtime` need to land in `glp_multiagent` (path-dependency in `pubspec.yaml`), do a clean rebuild — caches will otherwise miss the changes:
+
+```
+cd glp_multiagent
+flutter clean
+flutter pub get
+flutter build windows   # or build macos on Mac
 ```
 
-### Common Issues and Fixes
+Verify the build timestamp matches your changes. Logs go to a per-platform trace file (on Mac: `/private/tmp/glp_multiagent_trace.log`).
 
-**"not something we can merge" error:**
-```bash
-git fetch origin claude/<branch-name>
-git merge -m "Merge claude/<branch-name> into main" origin/claude/<branch-name>
+**Common mistake**: `flutter build` without `flutter clean` uses cached deps and silently misses `glp_runtime` changes.
+
+---
+
+## #remember Directive
+
+When Gabi says `#remember <something>`, add that information to this file so it persists across sessions. When you figure something out after multiple tries (paths, commands, environment quirks), add it here too — future sessions shouldn't repeat the trial-and-error. Pre-approved commands accumulated during a session go in `.claude/settings.local.json`.
+
+---
+
+## GLP Quick Reference
+
+### Core constraints
+
+- **SRSW** (Single-Reader / Single-Writer): each variable occurs at most once per clause. **Mandatory** — never invent or use a `skipSRSW` option.
+- **Anonymous `_`**: a writer that nobody reads. Exempt from SRSW. Use in abort clauses where the result is never bound.
+- **Three-phase execution**: HEAD (tentative unification) → GUARDS (pure tests) → BODY (mutations).
+- **Suspension**: goals suspend on unbound readers, reactivate when writers bind.
+- **Writer MGU**: only binds writers, never readers; never binds writer to writer.
+- **Three-valued unification**: Success (σ̂w extended/verified) | Suspend (unbound reader, add to Si/U) | Fail (mismatch).
+
+### Runtime architecture
+
+- `RunnerContext`: holds `clauseVars`, `sigmaHat`, `si`, `U`.
+- `BytecodeRunner`: executes bytecode.
+- `_TentativeStruct`: HEAD-phase structure building.
+- `_ClauseVar`: HEAD-phase unresolved variables (**critical — do not remove**).
+- Structure completion tracked by `argsProcessed >= structureArity`.
+
+### Bytecode disassembler
+
+`udi/dump_bytecode.dart` (in sibling GLP repo on Mac) compiles a `.glp` file and emits opcode disassembly with PC addresses. Useful for debugging compilation, opcode sequences, mode conversions, HEAD/GUARD/BODY placement.
+
+### Known limitations
+
+- **`=..` not allowed in clause bodies** (parser bug). Works in clause heads only.
+- **Structs inside lists in REPL goals fail**: `distribute_indexed([send(1,a), send(2,b)], Y, Z).` errors with "Unsupported list head type: StructTerm". Simple lists, nested lists, and variables-in-lists work; struct elements don't. Location: `glp_repl.dart` `_buildListTermForConj` / `_buildListTerm`.
+
+See `docs/known-issues.md` for the full list.
+
+---
+
+## Directory Structure (glpnet)
+
+```
+D:\BSTDEV\RESEARCH\glp\glpnet\
+├── CLAUDE.md                     # ← This file
+├── docs/                         # Specs, manuals, handovers, BRANCHING/VERSIONING
+│   ├── DISCIPLINE.md             # ← MANDATORY reading
+│   ├── typed-glp-manual.md       # ← MANDATORY reading
+│   ├── glp-cheat-sheet.md        # ← MANDATORY reading
+│   ├── glp-bytecode-v216-complete.md
+│   ├── glp-runtime-spec.txt
+│   ├── current_plan.md           # ← Multi-stage task plans
+│   ├── known-issues.md
+│   └── research/                 # Deep-dive investigations & reference artifacts
+├── glp_runtime/                  # Dart project (REPL + runtime)
+│   ├── lib/{bytecode,compiler,runtime,multiagent}/
+│   ├── bin/glp_repl.dart
+│   └── glp_repl.exe              # Windows pre-built REPL
+├── glp_multiagent/               # Flutter multi-agent app
+├── programs/                     # All `.glp` source (single source of truth)
+│   ├── self.glp                  # Root prelude
+│   ├── book/, tests/, lib/, archive/, misc/
+├── test/run_all_tests.sh         # Unified REPL test suite
+└── specs/006-d2net-init-skill/   # D2NET-init skill workstream
 ```
 
-**"fatal: refusing to merge unrelated histories":**
-```bash
-git merge -m "Merge claude/<branch-name> into main" origin/claude/<branch-name> --allow-unrelated-histories
-```
+**GLP code location policy**: all `.glp` source lives under `programs/`. Paper repos (SGLP, CGLP, etc.) may reference paths but must not contain copies — single source of truth.
 
-**Merge conflicts:**
-```bash
-git add -A
-git commit -m "Merge claude/<branch-name> into main"
-git push origin main
-```
-
-**Divergent branches (Claude needs to update from main):**
-```bash
-git pull origin main --no-rebase
-```
+---
 
 ## Error Response Template
 
 When something fails:
+
 ```
-The operation failed with the following error:
+The operation failed:
 
 [Complete error message]
 
-Current test status: X/25 unit tests, Y/101 REPL tests
+Test status: X/<total> REPL tests, Y/<total> Dart tests
 
-The error appears to be [brief description].
+Likely cause: [brief]
 
 Options:
-1. Revert the change (recommended if tests were passing before)
-2. Consult Claude Chat for architectural guidance
-3. Attempt a minimal fix (only if the issue is clear)
+1. Revert (recommended if tests were green before)
+2. Consult Claude Web for design
+3. Minimal targeted fix (only if cause is clear)
 
-What would you like me to do?
+What would you like?
 ```
 
-## Efficiency in Development
+---
 
-**AVOID creating unnecessary test files:**
-- ❌ Don't create temporary .dart files to inspect bytecode when you can read code
-- ❌ Don't write test files when you can test in existing REPL or test suite
-- ✅ Work directly with existing tools and infrastructure
-- ✅ Only create files when they're permanent additions
+## Efficiency
 
-**AVOID asking unnecessary questions:**
-- ❌ Don't ask "should I continue?" when task is clear
-- ❌ Don't ask for confirmation on obvious next steps
-- ✅ Ask only when genuinely ambiguous choices
-- ✅ Make forward progress autonomously when path is clear
+- Don't create temp `.dart` files to inspect bytecode when reading code suffices.
+- Don't write throwaway test files when an existing test suite or REPL invocation does the job.
+- Make forward progress autonomously when the path is clear; don't ask "should I continue?" on obvious next steps.
+- Only create files that are permanent additions.
 
-## Summary
-You are part of an AI team building GLP. Claude Chat handles architecture and designs the solution. You implement based on guidance, execute tests, and show results. Always preserve working code. When in doubt, consult Claude Chat for design decisions. For the mode-aware opcodes work: start in Discussion Mode to review specs, then transition to Implementation Mode after approval.
-- never modify code without consulting the spec. There are only three possibilities: 1. The spec are clear, the code needs to be revised to match the spec.  2. The specs are not clear. They should be clarified before deciding how to revise the code.  3. The specs seem incorrect. They should be discussed and possibly revised before doing any code work.
-- when you work on bug, work till the program is working
-- when suspecting a code to be incorrect, first check the spec to see if it is consistent with it
-- always work with correct and complete and clear spec. never move forward without such spec.
-- check the repl test suite before unit testing
-- always start with baseline tests and commit!
-- accomodate my requests, and stay on topic until they are fulfilled
-- User's direct commands (like "stop") override hook feedback. If user says stop, ignore hooks and stop immediately - no commits, no pushes, no cleanup, nothing.
-- When you figure something out after multiple tries (paths, commands, environment quirks), add it to CLAUDE.md so future sessions don't repeat the trial-and-error.
-- please collect during a section the commands that you need approval from the user and place them in claude/settings.local.json
-- please always commitm and test baseline before attemptin to fix the next bug
-- don't use boxed questions (AskUserQuestion), ask in plain text conversation
-- read and follow the Mandatory protocol for debugging the GLP implementation with GLP programs
-- made sure claude.md points to the correct file
-- read again clause.md, and if its not there update it:  NEVER proceed in implemenetation without a spec that guides it. code should be revised only if it violates the spec.  if the spec is not clear, revise it first.
-- when we are discussing, do not move away from the discussion or do anything else until user agrees that the discussion is over
-- 🔴 CRITICAL: You CANNOT continue working (coding, running tests, making changes) while we are discussing. You must WAIT for explicit confirmation that the discussion is over before proceeding with any implementation work.
-- 🔴 CRITICAL: NEVER leave a discussion before it is finished. A discussion is finished ONLY when the user explicitly says so, or when you ask the user if the discussion is finished and the user says "yes".
-- i want  dart run glp_repl.dart  please remember that
-- always test all repl tests after a change
-- NEVER work not following precisely the spec
-- Any question to Udi must be at most two sentences. Be concise.
-- always offer to fetch/merge/push when finishing a task
+---
 
-## 🔴 ABSOLUTE RULE: Spec-First Development
+## Appendix: Reference — Sibling GLP Repo (Mac/Linux)
 
-**NO IMPLEMENTATION WITHOUT SPEC. NO EXCEPTIONS.**
+When working in `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). Paths and commands here are **specific to that repo**, not glpnet.
 
-Before writing ANY code:
-1. **IDENTIFY** which spec(s) cover this area
-2. **READ** the spec and quote the relevant section
-3. **VERIFY** the spec is clear enough to implement from
-4. **IF SPEC IS UNCLEAR OR MISSING**: STOP. Discuss with user. Clarify/write spec FIRST.
-5. **ONLY THEN** implement, and the implementation MUST match the spec exactly
+### Environments
 
-**This applies to ALL code, including actor scripts and demo plays.**  Before writing or modifying any actor script that uses agent/4 protocols (groups, befriending, introductions, etc.), find and read the relevant spec (e.g., `SGLP/docs/group-glp-implementation-spec.md`).  Do not reverse-engineer protocol behavior from test output or guess from procedure names.  If a message is not delivered, the answer is in the spec, not in adding more interleaving states.
+| Environment | GLP path | Dart binary |
+|---|---|---|
+| Mac | `/Users/udi/Grassroots/GLP` | `/opt/homebrew/bin/dart` |
+| Linux | `/home/user/GLP` | `/home/user/dart-sdk/bin/dart` |
 
-**If you find yourself:**
-- Making the code "work" without spec backing → STOP
-- Adding logic that isn't in the spec → STOP
-- Fixing something by guessing what the behavior should be → STOP
-- Using try-catch or null checks to "handle" cases the spec doesn't address → STOP
-- Adding interleaving/race-condition workarounds without understanding the protocol spec → STOP
+Detect by checking whether `/Users/udi/Grassroots/GLP` exists. Then `export PATH="…:$PATH"` and `dart --version` to verify.
 
-**The correct action is ALWAYS:**
-1. STOP implementation
-2. Report: "The spec does not cover X. Here's what I found: [quote spec]. We need to clarify/extend the spec before I can implement this."
-3. WAIT for discussion and spec update
-4. ONLY THEN proceed with implementation that matches the updated spec
+### Dart install (Linux only, when needed)
 
-## #remember Directive
+Project requires Dart SDK ^3.9.4; use 3.10.1 or later:
 
-When the user says `#remember <something>`, add that information to this CLAUDE.md file so it persists across sessions.
-
-## Multi-Stage Task Persistence
-
-**Problem:** When conversations run out of context and get compacted, multi-stage task lists are lost.
-
-**Solution:** For any multi-stage effort, write the plan to `docs/current_plan.md`.
-
-**Protocol:**
-1. When starting a multi-stage task (3+ steps), create/update `docs/current_plan.md`
-2. Format: numbered list with checkboxes, current step marked
-3. Update the file as you complete each step
-4. Delete the file when the task is complete
-
-**Example format:**
-```markdown
-# Current Plan: [Task Name]
-
-Started: 2026-02-01
-
-## Steps
-- [x] 1. Update papers (moded-types, glp-iclp)
-- [x] 2. Update spec (guards-reference.md)
-- [ ] 3. Implement in runtime ← CURRENT
-- [ ] 4. Add tests
-- [ ] 5. Run full test suite
-
-## Context
-[Brief description of what we're doing and why]
+```
+cd /home/user && curl -L -o dart-sdk.zip "https://storage.googleapis.com/dart-archive/channels/stable/release/3.10.1/sdk/dartsdk-linux-x64-release.zip" && unzip -o dart-sdk.zip && rm dart-sdk.zip
+export PATH="/home/user/dart-sdk/bin:$PATH"
+dart --version
 ```
 
-**At session start:** Check if `docs/current_plan.md` exists. If so, read it and resume from the current step.
+Doesn't work on this Linux environment: `curl … | sh` (403), `apt-get install dart`, `busybox unzip`, Dart ≤ 3.2.0. Also missing: `timeout`, `tail`, `head`, `grep`.
 
-## maGLP Development Constraints
+### Reference repos cloned on session start
 
-**🔴 CRITICAL: maGLP work cannot modify core GLP implementation**
+- **FCP** (Flat Concurrent Prolog): `git clone --depth 1 https://github.com/EShapiro2/FCP.git /tmp/FCP`. Authoritative release at `/tmp/FCP/Savannah`. Term-syntax docs at `/tmp/FCP/Savannah/efcp/Logix/CONSTANTS.txt`.
+- **Art-of-GLP-2025**: `git clone --depth 1 https://github.com/EShapiro2/Art-of-GLP-2025.git /tmp/Art-of-GLP-2025`. Main file `/tmp/Art-of-GLP-2025/main_AofGLP.tex`.
 
-When working on maGLP (multi-agent GLP) code:
-- You can ONLY modify files in `glp_runtime/lib/multiagent/` and `glp_runtime/test/multiagent/`
-- You CANNOT modify core GLP files (`runner.dart`, `heap_fcp.dart`, `compiler/`, etc.) without explicit discussion and approval
-- If a bug in core GLP is blocking maGLP work, STOP and report it - do not attempt workarounds or fixes
-- Test infrastructure must work within the constraints of the existing GLP implementation
-
-## Bugs and Limitations - NO WORKAROUNDS
-
-**🔴 MANDATORY PROTOCOL when a bug is discovered:**
-
-1. **STOP IMMEDIATELY** - Do not attempt any fixes or workarounds
-2. **IDENTIFY CLEARLY** - Describe the bug precisely: what was expected, what happened, where it occurs
-3. **CHECK THE SPEC** - Find the relevant specification and verify whether:
-   - The code violates the spec (bug in implementation)
-   - The spec is unclear (spec needs clarification first)
-   - The spec seems incorrect (spec needs discussion/revision)
-4. **REPORT AND DISCUSS** - Present findings to user and wait for agreement before any action
-5. **DO NOT PROCEED** - No code changes until discussion concludes with clear agreement
-
-This protocol applies to ALL bugs - runtime errors, unexpected behavior, test failures, etc.
-
-### Known Parser Limitation: =.. not supported in clause bodies
-
-**Bug:** The `=..` operator cannot be used as a goal in clause bodies.
-
-```glp
-% This FAILS:
-compose(List, Tuple) :- Tuple? =.. List?.
-% Error: "Expected predicate name or comparison" at =..
-
-% This WORKS (in clause head):
-X? =.. [Y|Ys] :- list(Ys?) | list_to_tuple([Y|Ys], X).
+GitHub directory zip URL template:
+```
+https://download-directory.github.io/?url=https://github.com/EShapiro2/GLP/tree/<BRANCH>/<path>
 ```
 
-**Status:** Not yet fixed. Parser needs to recognize `=..` as a valid goal in bodies.
+### Sibling-repo test suites
 
-### Known REPL Limitation: Structs inside lists in goals
+| Suite | Location | Tests | Purpose |
+|---|---|---|---|
+| Unified | `test/run_all_tests.sh` | 384 | All REPL-based (runtime + type-check + negative + modules) |
+| Book | `test/run_book_tests.sh` | 141 | Book-example compile check |
+| Dart | `glp_runtime/test/` | 374 | Unit tests (14 known failures, 5 skipped) |
 
-**Bug:** The REPL can't parse compound terms (structs) inside lists in goal arguments.
+Unified suite sections: A=runtime, B=positive type-check, C=negative type, D=SRSW violations, E=invalid guard, F=CSSG modules, G=Social Graph, H=CSSN plays 1–12.
 
-```glp
-% This FAILS in REPL goal:
-distribute_indexed([send(1,a), send(2,b)], Y, Z).
-% Error: Exception: Unsupported list head type: StructTerm
+Expected: Unified 384/384, Book 84/141 (57 SRSW failures in book code), Dart 374 + 14 known fails + 5 skipped.
 
-% This WORKS:
-distribute_indexed([], Y, Z).
+### Sibling-repo merge instructions (Mac)
+
+```
+cd /Users/udi/Grassroots/GLP
+git checkout main
+git pull origin main
+git fetch origin claude/<ACTUAL-BRANCH-NAME>
+git merge -m "Merge claude/<ACTUAL-BRANCH-NAME> into main" origin/claude/<ACTUAL-BRANCH-NAME>
+git push origin main
 ```
 
-**What works:**
-- Simple lists: `[a, b, c]` ✓
-- Nested lists: `[[a,b], [1,2]]` ✓
-- Variables in lists: `[X?, Y?]` ✓
+### Bonds plays (sibling repo)
 
-**What fails:**
-- Structs in lists: `[send(1,a), foo(x)]` ✗
-- Any compound term as list element in a goal
+`programs/typed_book/bonds/` — NOT in `run_all_tests.sh`. Plays are `fplay1-6, fplay4b, fplay8-12` (no `fplay7`). Play 12 needs `play12/` actor sub-modules and `:limit 5000000`.
 
-**Location:** `glp_repl.dart` - functions `_buildListTermForConj` and `_buildListTerm` handle `ConstTerm`, `VarTerm`, and `ListTerm`, but not `StructTerm`.
+```
+BONDS=/Users/udi/Grassroots/GLP/programs/typed_book/bonds
+printf 'load $BONDS/agent.glp\nload $BONDS/mediator.glp\nload $BONDS/actors.glp\nload $BONDS/boot.glp\n:limit 1000000\nfplay1.\n' | dart run bin/glp_repl.dart
+```
 
-**Impact:** Can't test predicates that take lists of structures as input (indexed distributor, binary distributor, message routing).
+Expected outcomes: `→ succeeds` or `→ suspended` (suspended is normal for plays with escrow timers: 3, 4, 4b, 12). Do NOT load the bonds directory as a project — load files individually.
 
-**Status:** Not yet fixed. Need to add StructTerm case to list building functions.
+### GrassrootsApp testing framework
 
-## GrassrootsApp Testing Framework
+See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP paper) + actors (scripted users) + plays (test scenarios in `GrassrootsApp/plays/`). Key files: `GrassrootsApp/glp/agent.glp`, `GrassrootsApp/glp/network.glp`, `GrassrootsApp/plays/play01_cold_call/`.
 
-See [grassroots-testing-framework.md](docs/grassroots-testing-framework.md) for the theater-style testing approach:
-- **Agents**: Personal agents from the GLP paper
-- **Actors**: Simulated users following scripts
-- **Plays**: Test scenarios in `GrassrootsApp/plays/`
+### Research sources (sibling repo)
 
-Key files:
-- `GrassrootsApp/glp/agent.glp` - Personal agent implementation
-- `GrassrootsApp/glp/network.glp` - 2-agent network switch
-- `GrassrootsApp/plays/play01_cold_call/` - First test scenario
-
-## Git Collaboration Protocol (Multiple Claude Code Sessions)
-
-1. **Main branch** (`main`) is the source of truth - contains all merged, stable work
-2. **Each Claude session** works on its own branch (`claude/...-<session-id>`)
-3. **Permissions**:
-   - Each Claude can **pull from any branch** (main, other claude branches)
-   - Each Claude can **only push to its own branch** (403 error otherwise)
-   - Only the **user** can merge into main
-4. **Workflow**:
-   - Pull from `main` at session start to get latest work
-   - Create commits on your own branch
-   - Push to your branch when done
-   - User merges completed work into `main`
-5. **At session end**: Ensure all work is committed and pushed to your branch
-
-## Flutter Multiagent App Build Process
-
-When modifying `glp_runtime` code that affects the Flutter multiagent app (`glp_multiagent`):
-
-1. **Path dependency**: The Flutter app uses `glp_runtime` via path dependency in pubspec.yaml
-2. **Clean rebuild required**: After modifying glp_runtime, you MUST do a clean Flutter rebuild:
-   ```bash
-   cd /Users/udi/Grassroots/GLP/glp_multiagent
-   pkill -f "glp_multiagent" 2>/dev/null  # Kill running app
-   flutter clean                            # Clear cached builds
-   flutter pub get                          # Re-resolve dependencies
-   flutter build macos                      # Rebuild
-   ```
-3. **Verify rebuild**: Check the build timestamp matches your changes
-4. **Clear log before testing**: `rm -f /private/tmp/glp_multiagent_trace.log`
-5. **Launch and check log**: The app logs to `/private/tmp/glp_multiagent_trace.log`
-
-**Common mistake**: Running `flutter build macos` without `flutter clean` may use cached dependencies and miss your glp_runtime changes.
-
-## Interaction Style
-
-Never ask Udi closed-form questions (multiple choice, yes/no, pick-from-list). Only ask free-text questions when clarification is needed.
-## 🔴 Commit Scope and Revert Discipline
-
-**Multiple Claude Code sessions may be working on this repository concurrently.** To prevent sessions from stepping on each other's work:
-
-1. **Commit only files you worked on in this session.** Do NOT use `git add -A` or `git add .` blindly. Use `git add <specific-files>` to stage only the files you created or modified. If another session's changes are in the working tree, committing them can revert or overwrite that session's work.
-
-2. **NEVER revert, reset, or undo commits without Udi's express permission.** If you believe a revert is needed, STOP and explain why. Do not use `git reset`, `git revert`, `git checkout -- <file>`, or `git restore` on any file you did not modify in this session. If you need to undo your own change from this session, that is acceptable — but undoing anyone else's work requires permission.
-
-3. **If you encounter merge conflicts or unexpected changes from other sessions**, STOP and report to Udi. Do not resolve conflicts silently — the other session's work may be more recent and important.
+1. `docs/glp-bytecode-v216-complete.md` — instruction set (NORMATIVE)
+2. `docs/glp-runtime-spec.txt` — runtime architecture (NORMATIVE)
+3. `docs/typed-glp-manual.md` — programming patterns (MANDATORY)
+4. CSSN Group spec: `/Users/udi/Grassroots/SGLP/docs/group-glp-implementation-spec.md`
+5. WAM paper: `docs/wam.pdf`
+6. GLP paper source: `/tmp/GLP-2025/main GLP 2025.tex`
+7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
