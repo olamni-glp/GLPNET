@@ -147,9 +147,9 @@ When the developer's request implies `--FORCE --DELETE-EXISTING` (e.g., `/D2NET-
 - **SC-001**: From a Claude Code session in a repo where a Release or Debug binary already exists, the user can complete a fresh `D2NET.Init` run end-to-end via a single `/D2NET-init <args>` message in under **30 seconds** wall-clock (typical range 5–20 s, dominated by PGLite WASM cold-init in the bridge subprocess).
 - **SC-002**: The skill correctly translates each of the following natural-language inputs into the documented flag set:
   - "init for glp_runtime targeting glp_runtime_net with extension _net" → `--source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive`
-  - "list" → `--list --non-interactive` (note: `--non-interactive` is a no-op on inspection but skill always supplies it per FR-007)
-  - "exclusions in json" → `--Exclusions --json --non-interactive`
-  - "current phase" → `--current-phase --non-interactive`
+  - "list" → `--list` (note: `--non-interactive` is NOT added on inspection — the binary rejects it as a usage error; inspection commands are non-interactive by construction)
+  - "exclusions in json" → `--Exclusions --json`
+  - "current phase" → `--current-phase`
   - "help" → `--help` (skill short-circuits Steps 5–11; no augmentation)
   - "version" → `--version` (skill short-circuits Steps 5–11; no augmentation)
   - "glp_runtime" (when `glp_runtime/` exists as a direct subdirectory) → after a one-message confirmation, `--source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive`. Without the existing-subdirectory match, the same input routes to `--help` instead.

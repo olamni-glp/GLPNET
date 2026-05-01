@@ -108,10 +108,11 @@ If not destructive, never add `--FORCE --DELETE-EXISTING` to the resolved flag s
 
 To the resolved flag set:
 
-- Always add `--non-interactive` if absent.
-- For init mode (no inspection flag set): if neither `--accept-suggested-exclusions` nor any `--exclude` flag is present, add `--accept-suggested-exclusions` AND emit a one-line warning "(no `--exclude` flags supplied; auto-accepting suggested exclusions to avoid `InteractivePromptCancelled`)".
+- For init mode (no inspection flag set):
+  - Always add `--non-interactive` if absent.
+  - If neither `--accept-suggested-exclusions` nor any `--exclude` flag is present, add `--accept-suggested-exclusions` AND emit a one-line warning "(no `--exclude` flags supplied; auto-accepting suggested exclusions to avoid `InteractivePromptCancelled`)".
 
-For inspection / help / version modes, only `--non-interactive` augmentation applies; `--accept-suggested-exclusions` is irrelevant.
+For inspection (`--list` / `--Exclusions` / `--current-phase`) and help / version modes, no augmentation applies. Inspection commands are non-interactive by construction; the binary rejects `--non-interactive` on inspection invocations as a usage error, and `--accept-suggested-exclusions` is irrelevant outside init.
 
 ### Step 8 — Invoke
 

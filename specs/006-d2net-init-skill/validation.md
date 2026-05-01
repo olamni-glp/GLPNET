@@ -22,15 +22,15 @@ The table below is the seed structure from `data-model.md`. Each row is the cont
 |---|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|--------|
 | 1 | `/D2NET-init`                                                                    | `[--help]`                                                                                                            | _pending user smoke_ |
 | 2 | `/D2NET-init source=glp_runtime extension=_net target=glp_runtime_net`           | `--source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive` | _pending user smoke_ |
-| 3 | `/D2NET-init list`                                                               | `--list --non-interactive`                                                                                            | _pending user smoke_ |
-| 4 | `/D2NET-init exclusions in json`                                                 | `--Exclusions --json --non-interactive`                                                                               | _pending user smoke_ |
-| 5 | `/D2NET-init current phase`                                                      | `--current-phase --non-interactive`                                                                                   | _pending user smoke_ |
+| 3 | `/D2NET-init list`                                                               | `--list`                                                                                                              | _pending user smoke_ |
+| 4 | `/D2NET-init exclusions in json`                                                 | `--Exclusions --json`                                                                                                 | _pending user smoke_ |
+| 5 | `/D2NET-init current phase`                                                      | `--current-phase`                                                                                                     | _pending user smoke_ |
 | 6 | `/D2NET-init glp_runtime` (single-token shortcut, with `glp_runtime/` present)   | After confirm: `--source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive` | _pending user smoke_ |
 | 7 | `/D2NET-init force rebuild` (with existing `.D2NET/`)                            | After confirm: prior flags + `--FORCE --DELETE-EXISTING`                                                              | _pending user smoke_ |
 | 8 | `/D2NET-init` re-invocation against existing workspace (no destructive verb)     | Binary exits 3 (`WorkspaceAlreadyExists`); skill surfaces hint without retry                                          | _pending user smoke_ |
 | 9 | `/D2NET-init version`                                                            | `[--version]` (short-circuit; no augmentation)                                                                        | _pending user smoke_ |
-| 10 | `/D2NET-init list --json` against a workspace with > 50 dart files              | `--list --json --non-interactive`; output surfaced verbatim regardless of size (no truncation footer)                 | _pending user smoke_ |
-| 11 | `/D2NET-init list` against a workspace with > 50 dart files (plain text)        | `--list --non-interactive`; output truncated at 50 lines + "show all" footer                                          | _pending user smoke_ |
+| 10 | `/D2NET-init list --json` against a workspace with > 50 dart files              | `--list --json`; output surfaced verbatim regardless of size (no truncation footer)                                   | _pending user smoke_ |
+| 11 | `/D2NET-init list` against a workspace with > 50 dart files (plain text)        | `--list`; output truncated at 50 lines + "show all" footer                                                            | _pending user smoke_ |
 
 ## Notes
 

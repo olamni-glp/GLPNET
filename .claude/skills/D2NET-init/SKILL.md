@@ -123,11 +123,12 @@ If the input is **not destructive**, never add `--FORCE --DELETE-EXISTING` to th
 
 If the resolved flag set is `[--help]` or `[--version]`, skip this step entirely.
 
-Otherwise:
+For inspection (`--list` / `--Exclusions` / `--current-phase`) skip this step entirely as well — inspection commands are non-interactive by construction; the binary rejects `--non-interactive` on inspection invocations as a usage error.
+
+Otherwise (init mode):
 
 - Always add `--non-interactive` if absent.
-- For init mode (no `--list` / `--Exclusions` / `--current-phase` flag in the resolved set): if **neither** `--accept-suggested-exclusions` nor any `--exclude` flag is present, add `--accept-suggested-exclusions` AND emit a one-line warning: "(no `--exclude` flags supplied; auto-accepting suggested exclusions to avoid `InteractivePromptCancelled`)".
-- For inspection / help / version, only `--non-interactive` augmentation applies (and is effectively a no-op for inspection but the skill always supplies it for consistency).
+- If **neither** `--accept-suggested-exclusions` nor any `--exclude` flag is present, add `--accept-suggested-exclusions` AND emit a one-line warning: "(no `--exclude` flags supplied; auto-accepting suggested exclusions to avoid `InteractivePromptCancelled`)".
 
 ### Step 8 — Invoke
 
@@ -208,13 +209,13 @@ User: yes
 User: /D2NET-init list
 ```
 
-→ Resolved flags: `--list --non-interactive`. Plain-text output truncated at 50 lines.
+→ Resolved flags: `--list`. Plain-text output truncated at 50 lines.
 
 ```
 User: /D2NET-init exclusions in json
 ```
 
-→ Resolved flags: `--Exclusions --json --non-interactive`. Output surfaced verbatim regardless of size.
+→ Resolved flags: `--Exclusions --json`. Output surfaced verbatim regardless of size.
 
 ### Force rebuild (destructive)
 
