@@ -4,6 +4,72 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.05.01] — 2026-05-01
+
+### Added
+
+- **`/D2NET-scaffold` Claude Code skill.** Wraps the spec-009 `d2net-scaffold`
+  CLI as a slash command, sibling to `/D2NET-init`. Empty input
+  (`/D2NET-scaffold`) runs the scaffold operation in default mode; the binary
+  takes no positional arguments — its inputs are the workspace populated by an
+  earlier `/D2NET-init`. Supports raw flag pass-through (`--json`,
+  `--bridge-port <N>`, `--FORCE --DELETE-TARGET`) and natural-language markers
+  (`as json` / `in json` / `structured` → `--json`; `bridge port N` /
+  `bridge-port=N` → `--bridge-port N`; the closed destructive-marker word list
+  `force` / `delete` / `rebuild` / `reset` / `recreate` / `reinitialise` /
+  `reinitialize` / `nuke` / `wipe` / `redo` triggers the destructive gate).
+  Help / version verbs (`help` / `--help` / `-h` / `version` / `--version`)
+  short-circuit. Unrecognized non-empty input routes to `--help` (FR-010a).
+  Auto-builds the binary on user confirmation when missing or stale.
+- **Two-confirmation destructive safety flow.** Destructive invocations
+  (`force delete target` or the literal `--FORCE --DELETE-TARGET` pair) require
+  both (a) a skill-layer confirmation prompt naming the absolute target path,
+  and (b) the binary's own interactive prompt — driven by piping `yes\n` to the
+  binary's stdin only after the skill-layer confirmation has resolved
+  affirmatively. The cache key is the **target directory's absolute path**
+  (clarified Q2), parsed from `<cwd>/.D2NET/D2NET-Settings.json`'s `target`
+  field. Already-confirmed paths skip the skill-layer prompt within the same
+  conversation but ALWAYS still drive the binary's prompt (the binary
+  re-prompts every invocation by design — spec 009 FR-012a hard safety gate).
+  Unbalanced flag pair (only one of `--FORCE` / `--DELETE-TARGET` supplied) is
+  passed through to the binary's `ArgParser` for exit 1 with the
+  argument-error hint (FR-016).
+- **Output handling.** JSON outputs (`--json` in resolved flag set) are
+  surfaced verbatim regardless of size and the Claude-side recap is
+  **suppressed entirely** (clarified Q1) so downstream tooling (`jq`, smoke
+  tests) consumes the response cleanly. Plain-text outputs over 50 lines are
+  truncated with the standard "show all / filter <substring>" footer; recap
+  appended on success: `Target at <path>; <N> files copied; <M> working
+  directories created; <K> dart_files rows updated; <T>s wall-clock.`
+- **Exit-code hints.** 22 (`ScaffoldWorkspaceMissing` → "Run /D2NET-init
+  first"), 23 (`ScaffoldSourceMissing`), 24 (`ScaffoldTargetNotEmptyAndNotManaged`
+  → suggest `/D2NET-scaffold force delete target`), 25 (`ScaffoldWorkdirCollision`),
+  26 (`ScaffoldCopyError` — idempotency note), 27 (`ScaffoldDbWriteFailed`),
+  28 (`ScaffoldWorkspaceLocked`), 29 (`ScaffoldOperatorCancelledTargetDeletion`),
+  1 (`ArgumentError`).
+- **Casing requirement.** The skill directory and frontmatter `name` are
+  exactly `D2NET-scaffold` (uppercase `D2NET`, lowercase `scaffold`). Matches
+  the casing precedent of `/D2NET-init`.
+- Spec under [`specs/010-scaffold-skill/`](specs/010-scaffold-skill/):
+  spec.md (5 clarifications resolved — JSON suppresses recap; cache key =
+  target absolute path; show-all/filter via conversation context; empty
+  input = run scaffold; unrecognized non-empty = run `--help`), plan.md,
+  research.md (11 R-decisions covering all spec-time deferrals), data-model.md,
+  contracts/skill-contract.md, quickstart.md, tasks.md, validation.md (smoke
+  walkthrough seed; PENDING rows filled at operator-driven validation time).
+
+### Notes
+
+- The skill is purely additive — no changes to `tools/d2net/` or any existing
+  test. The shipped D2Net.Init and D2Net.Scaffold test suites continue to pass
+  unchanged.
+- Bridge-port auto-retry from `/D2NET-init` (3-attempt walk-forward ladder) is
+  **deliberately not** implemented for `/D2NET-scaffold`. Scaffold's exit-code
+  catalogue does not include a dedicated `BridgePortInUse` code; collisions
+  surface as exit 27 / 28 depending on which subsystem fails first. Auto-retry
+  across these would be a guess rather than a precise recovery; operators
+  diagnose root cause manually (research.md R8).
+
 ## [v2026.04.30-5] — 2026-04-30
 
 ### Added

@@ -99,7 +99,27 @@
       "Read(//d/d/BSTDEV/research/GLP/GLPNET/tools/d2net/src/D2Net.Init/pgbridge/**)",
       "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive)",
       "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --source glp_runtime --target-extension _net --target glp_runtime_net --accept-suggested-exclusions --non-interactive --bridge-port 54420)",
-      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --list)"
+      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe --list)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)",
+      "Bash(tools/d2net/src/D2Net.Init/bin/Debug/net8.0/d2net-init.exe *)",
+      "Bash(echo \"EXIT=$?\")",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(.specify/extensions/git/scripts/powershell/create-new-feature.ps1 -Json -ShortName \"incremental-exclusions\" \"Amend d2net-init CLI tool to support non-destructive incremental addition of directory exclusions to an existing D2NET workspace\")",
+      "Bash(mkdir -p specs/007-incremental-exclusions/checklists)",
+      "Bash(cp .specify/templates/spec-template.md specs/007-incremental-exclusions/spec.md)",
+      "Bash(dir \"D:\\\\BSTDEV\\\\RESEARCH\\\\glp\\\\glpnet\\\\specs\")",
+      "PowerShell(& \".\\\\.specify\\\\extensions\\\\git\\\\scripts\\\\powershell\\\\create-new-feature.ps1\" -Json -ShortName \"scaffold-skill\" \"create a skill wrapper for the D2NET.scaffold CLI tool\")",
+      "Bash(git -C \"D:/BSTDEV/RESEARCH/glp/glpnet\" status --short)",
+      "Bash(git -C \"D:/BSTDEV/RESEARCH/glp/glpnet\" branch --show-current)",
+      "PowerShell(& \".\\\\.specify\\\\scripts\\\\powershell\\\\check-prerequisites.ps1\" -Json -PathsOnly)",
+      "PowerShell(& \".\\\\.specify\\\\scripts\\\\powershell\\\\setup-plan.ps1\" -Json)",
+      "Bash(powershell *)",
+      "PowerShell(dotnet build *)",
+      "PowerShell($ErrorActionPreference = 'Continue'; & \"tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe\"; \"EXIT:$LASTEXITCODE\")",
+      "PowerShell($ErrorActionPreference = 'Continue'; 'yes' | & \"tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe\" --FORCE --DELETE-TARGET; \"EXIT:$LASTEXITCODE\")",
+      "Bash(git rm *)"
     ]
   }
 }
