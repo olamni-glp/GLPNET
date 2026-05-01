@@ -1,14 +1,14 @@
 namespace D2Net.Scaffold.Models;
 
-public sealed record RelDir(string RelPath, string AbsSourcePath);
-
-public sealed record RelFile(string RelPath, string AbsSourcePath);
-
+/// <summary>
+/// Path-canonicalisation helpers for scaffold's source-relative work.
+/// Forward-slashes are the on-the-wire form (mirrors <c>dart_files.full_path</c>).
+/// </summary>
 public static class RelPath
 {
     public static string Normalize(string path) =>
         path.Replace('\\', '/');
 
     public static string ToNative(string relPath) =>
-        relPath.Replace('/', Path.DirectorySeparatorChar);
+        relPath.Replace('/', System.IO.Path.DirectorySeparatorChar);
 }
