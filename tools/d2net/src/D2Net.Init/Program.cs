@@ -39,6 +39,11 @@ public static class Program
                         var runner = new AddExcludeRunner(stdout, stderr);
                         return runner.Run(addExclude.Options);
                     }
+                case ParsedCli.RemoveExcludeMode removeExclude:
+                    {
+                        var runner = new RemoveExcludeRunner(stdout, stderr);
+                        return runner.Run(removeExclude.Options);
+                    }
                 case ParsedCli.Error err:
                     stderr.WriteLine(err.Message);
                     PrintUsage(stderr);
@@ -70,6 +75,16 @@ public static class Program
         w.WriteLine("             transaction. Does not touch phase_sequence or phase_status. Requires");
         w.WriteLine("             an existing workspace; will not auto-init.");
         w.WriteLine();
+        w.WriteLine("Incremental exclusion removal (mutually exclusive with init, inspection, and --add-exclude):");
+        w.WriteLine("  d2net-init --remove-exclude <path> [--remove-exclude <path> ...]");
+        w.WriteLine("             [--allow-system-exclusions] [--json] [--bridge-port <port>]");
+        w.WriteLine("             Removes one or more directory exclusions from an existing .D2NET");
+        w.WriteLine("             workspace and re-indexes any .dart files under those directories that");
+        w.WriteLine("             are not still covered by a surviving ancestor exclusion. Single");
+        w.WriteLine("             transaction; phase tables untouched. By default refuses to remove rows");
+        w.WriteLine("             whose kind is 'tool' or 'pattern' (init's auto-detected exclusions);");
+        w.WriteLine("             supply --allow-system-exclusions to override.");
+        w.WriteLine();
         w.WriteLine("Inspection (mutually exclusive):");
         w.WriteLine("  d2net-init --list           [--json] [--bridge-port <port>]");
         w.WriteLine("  d2net-init --Exclusions     [--json] [--bridge-port <port>]");
@@ -90,6 +105,9 @@ public static class Program
         w.WriteLine();
         w.WriteLine("  --add-exclude is non-destructive and idempotent. Re-running with the same");
         w.WriteLine("  paths is a no-op. Use --FORCE --DELETE-EXISTING only to wipe and rebuild.");
+        w.WriteLine();
+        w.WriteLine("  --remove-exclude is non-destructive and idempotent. Re-running with the same");
+        w.WriteLine("  paths is a no-op for paths already absent from the exclusion list.");
     }
 }
 
@@ -100,6 +118,7 @@ internal abstract record ParsedCli
     public sealed record InitMode(InitOptions Options) : ParsedCli;
     public sealed record InspectMode(InspectOptions Options) : ParsedCli;
     public sealed record AddExcludeMode(AddExcludeOptions Options) : ParsedCli;
+    public sealed record RemoveExcludeMode(RemoveExcludeOptions Options) : ParsedCli;
     public sealed record Error(string Message) : ParsedCli;
 }
 
@@ -110,8 +129,10 @@ internal static class ArgParser
         string? source = null, ext = null, target = null;
         var manualExclusions = new List<string>();
         var addExcludePaths = new List<string>();
+        var removeExcludePaths = new List<string>();
         bool acceptSuggested = false, force = false, deleteExisting = false, nonInteractive = false;
         bool list = false, exclusions = false, currentPhase = false, json = false;
+        bool allowSystemExclusions = false;
         int? userBridgePort = null;
 
         for (int i = 0; i < args.Length; i++)
@@ -139,6 +160,11 @@ internal static class ArgParser
                 case "--add-exclude":
                     if (++i >= args.Length) return new ParsedCli.Error("--add-exclude requires a value.");
                     addExcludePaths.Add(args[i]); break;
+                case "--remove-exclude":
+                    if (++i >= args.Length) return new ParsedCli.Error("--remove-exclude requires a value.");
+                    removeExcludePaths.Add(args[i]); break;
+                case "--allow-system-exclusions":
+                    allowSystemExclusions = true; break;
                 case "--accept-suggested-exclusions":
                     acceptSuggested = true; break;
                 case "--non-interactive":
@@ -173,9 +199,17 @@ internal static class ArgParser
         bool anyInitFlag = source is not null || ext is not null || target is not null
                             || manualExclusions.Count > 0 || acceptSuggested || force || deleteExisting;
         bool anyAddExclude = addExcludePaths.Count > 0;
+        bool anyRemoveExclude = removeExcludePaths.Count > 0;
 
         if (inspectFlagsSet > 1)
             return new ParsedCli.Error("--list, --Exclusions, and --current-phase are mutually exclusive.");
+
+        // --allow-system-exclusions only valid with --remove-exclude.
+        if (allowSystemExclusions && !anyRemoveExclude)
+            return new ParsedCli.Error("--allow-system-exclusions is only valid with --remove-exclude.");
+
+        if (anyAddExclude && anyRemoveExclude)
+            return new ParsedCli.Error("--add-exclude and --remove-exclude cannot be combined.");
 
         // --add-exclude mode (feature 007): mutually exclusive with init and inspection flags.
         if (anyAddExclude)
@@ -189,6 +223,23 @@ internal static class ArgParser
             return new ParsedCli.AddExcludeMode(new AddExcludeOptions(
                 RepoRoot: cwd,
                 RawPaths: addExcludePaths,
+                Json: json,
+                BridgePortOverride: userBridgePort));
+        }
+
+        // --remove-exclude mode (feature 008): mutually exclusive with init, inspection, and --add-exclude.
+        if (anyRemoveExclude)
+        {
+            if (inspectFlagsSet > 0)
+                return new ParsedCli.Error("--remove-exclude cannot be combined with --list, --Exclusions, or --current-phase.");
+            if (anyInitFlag)
+                return new ParsedCli.Error("--remove-exclude cannot be combined with init flags.");
+            if (nonInteractive)
+                return new ParsedCli.Error("--non-interactive has no effect on --remove-exclude.");
+            return new ParsedCli.RemoveExcludeMode(new RemoveExcludeOptions(
+                RepoRoot: cwd,
+                RawPaths: removeExcludePaths,
+                AllowSystemExclusions: allowSystemExclusions,
                 Json: json,
                 BridgePortOverride: userBridgePort));
         }

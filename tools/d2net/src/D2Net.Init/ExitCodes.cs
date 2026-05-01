@@ -45,4 +45,34 @@ public static class ExitCodes
 
     /// <summary>One or more --add-exclude paths refers to a regular file (or has a known file suffix).</summary>
     public const int AddExcludePathIsFile = 16;
+
+    // ---- Feature 008: incremental --remove-exclude error catalogue ----
+
+    /// <summary>One or more --remove-exclude paths resolves outside the configured source root.</summary>
+    public const int RemoveExcludePathOutsideSource = 17;
+
+    /// <summary>
+    /// The incremental remove-exclude database transaction committed, but the
+    /// settings JSON rename failed. The workspace database is updated;
+    /// re-run with the same arguments to resync the settings file.
+    /// </summary>
+    public const int RemoveExcludeSettingsWriteFailed = 18;
+
+    /// <summary>The incremental remove-exclude database transaction failed (delete, insert, or commit).</summary>
+    public const int RemoveExcludeDbWriteFailed = 19;
+
+    /// <summary>
+    /// The PGLite data directory is locked by another d2net-init process
+    /// at bridge startup time. Fail-fast per spec 007 clarification 2026-05-01,
+    /// reused by spec 008.
+    /// </summary>
+    public const int RemoveExcludeWorkspaceLocked = 20;
+
+    /// <summary>
+    /// One or more --remove-exclude paths is currently excluded with kind!='manual'
+    /// (init-time auto-detected 'tool' or 'pattern' rows) and --allow-system-exclusions
+    /// was not supplied. Per spec 008 clarification 2026-05-01: refuse-by-default,
+    /// override via explicit flag.
+    /// </summary>
+    public const int RemoveExcludeSystemKindRefused = 21;
 }
