@@ -34,6 +34,11 @@ public static class Program
                         var runner = new InspectionRunner(stdout, stderr);
                         return runner.Run(inspect.Options);
                     }
+                case ParsedCli.AddExcludeMode addExclude:
+                    {
+                        var runner = new AddExcludeRunner(stdout, stderr);
+                        return runner.Run(addExclude.Options);
+                    }
                 case ParsedCli.Error err:
                     stderr.WriteLine(err.Message);
                     PrintUsage(stderr);
@@ -58,6 +63,13 @@ public static class Program
         w.WriteLine("             [--non-interactive] [--bridge-port <port>]");
         w.WriteLine("             [--FORCE --DELETE-EXISTING]");
         w.WriteLine();
+        w.WriteLine("Incremental exclusion update (mutually exclusive with init and inspection):");
+        w.WriteLine("  d2net-init --add-exclude <path> [--add-exclude <path> ...] [--json] [--bridge-port <port>]");
+        w.WriteLine("             Adds one or more directory exclusions to an existing .D2NET workspace.");
+        w.WriteLine("             Removes any dart_files rows that fall under the new exclusions in one");
+        w.WriteLine("             transaction. Does not touch phase_sequence or phase_status. Requires");
+        w.WriteLine("             an existing workspace; will not auto-init.");
+        w.WriteLine();
         w.WriteLine("Inspection (mutually exclusive):");
         w.WriteLine("  d2net-init --list           [--json] [--bridge-port <port>]");
         w.WriteLine("  d2net-init --Exclusions     [--json] [--bridge-port <port>]");
@@ -75,6 +87,9 @@ public static class Program
         w.WriteLine();
         w.WriteLine("  --FORCE --DELETE-EXISTING also rebuilds workspaces created by the shipped");
         w.WriteLine("  002 (SQLite-backed) D2NET.Init -- no automatic data migration.");
+        w.WriteLine();
+        w.WriteLine("  --add-exclude is non-destructive and idempotent. Re-running with the same");
+        w.WriteLine("  paths is a no-op. Use --FORCE --DELETE-EXISTING only to wipe and rebuild.");
     }
 }
 
@@ -84,6 +99,7 @@ internal abstract record ParsedCli
     public sealed record VersionRequested : ParsedCli;
     public sealed record InitMode(InitOptions Options) : ParsedCli;
     public sealed record InspectMode(InspectOptions Options) : ParsedCli;
+    public sealed record AddExcludeMode(AddExcludeOptions Options) : ParsedCli;
     public sealed record Error(string Message) : ParsedCli;
 }
 
@@ -93,6 +109,7 @@ internal static class ArgParser
     {
         string? source = null, ext = null, target = null;
         var manualExclusions = new List<string>();
+        var addExcludePaths = new List<string>();
         bool acceptSuggested = false, force = false, deleteExisting = false, nonInteractive = false;
         bool list = false, exclusions = false, currentPhase = false, json = false;
         int? userBridgePort = null;
@@ -119,6 +136,9 @@ internal static class ArgParser
                 case "--exclude":
                     if (++i >= args.Length) return new ParsedCli.Error("--exclude requires a value.");
                     manualExclusions.Add(args[i]); break;
+                case "--add-exclude":
+                    if (++i >= args.Length) return new ParsedCli.Error("--add-exclude requires a value.");
+                    addExcludePaths.Add(args[i]); break;
                 case "--accept-suggested-exclusions":
                     acceptSuggested = true; break;
                 case "--non-interactive":
@@ -152,9 +172,27 @@ internal static class ArgParser
         var inspectFlagsSet = (list ? 1 : 0) + (exclusions ? 1 : 0) + (currentPhase ? 1 : 0);
         bool anyInitFlag = source is not null || ext is not null || target is not null
                             || manualExclusions.Count > 0 || acceptSuggested || force || deleteExisting;
+        bool anyAddExclude = addExcludePaths.Count > 0;
 
         if (inspectFlagsSet > 1)
             return new ParsedCli.Error("--list, --Exclusions, and --current-phase are mutually exclusive.");
+
+        // --add-exclude mode (feature 007): mutually exclusive with init and inspection flags.
+        if (anyAddExclude)
+        {
+            if (inspectFlagsSet > 0)
+                return new ParsedCli.Error("--add-exclude cannot be combined with --list, --Exclusions, or --current-phase.");
+            if (anyInitFlag)
+                return new ParsedCli.Error("--add-exclude cannot be combined with init flags.");
+            if (nonInteractive)
+                return new ParsedCli.Error("--non-interactive has no effect on --add-exclude.");
+            return new ParsedCli.AddExcludeMode(new AddExcludeOptions(
+                RepoRoot: cwd,
+                RawPaths: addExcludePaths,
+                Json: json,
+                BridgePortOverride: userBridgePort));
+        }
+
         if (inspectFlagsSet == 1)
         {
             if (anyInitFlag)
