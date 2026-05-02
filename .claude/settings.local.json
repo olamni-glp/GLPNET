@@ -119,7 +119,16 @@
       "PowerShell(dotnet build *)",
       "PowerShell($ErrorActionPreference = 'Continue'; & \"tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe\"; \"EXIT:$LASTEXITCODE\")",
       "PowerShell($ErrorActionPreference = 'Continue'; 'yes' | & \"tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe\" --FORCE --DELETE-TARGET; \"EXIT:$LASTEXITCODE\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(pwsh -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe --help)",
+      "Bash(echo \"---EXIT: $?---\")",
+      "Bash(tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe --version)",
+      "Bash(tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe)",
+      "Bash(tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe --json)",
+      "Bash(tools/d2net/src/D2Net.Scaffold/bin/Release/net8.0/d2net-scaffold.exe --json --bridge-port 55001)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
