@@ -4,6 +4,37 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.05.02] — 2026-05-02
+
+### Validated
+
+- **`/D2NET-scaffold` in-session smoke walks**. Rows 1, 2, 3, 4, 5, 8 + the
+  T013 idempotent re-run from `specs/010-scaffold-skill/validation.md` executed
+  in-session against the binary at `tools/d2net/src/D2Net.Scaffold/bin/Release/
+  net8.0/d2net-scaffold.exe` (version `0.2.0+a89bed71`) and the
+  `glp_runtime → glp_runtime_net (_net)` workspace. All seven walks PASS:
+  `--help`, `--version`, default scaffold (empty input), `--json` (verbatim,
+  recap suppressed), `--json --bridge-port 55001` (pass-through, recap
+  suppressed), `please scaffold quickly` (FR-010a → `--help`), and the
+  reconciliation-block check (`added_paths: 0, removed_paths: 0`). The
+  remaining 9 rows (T012, T012a, T014, T018–T022, T029) require an
+  operator-driven session — fresh repo, deleted binary, destructive
+  `yes/no` confirmations, or fresh-Claude-Code-session discoverability —
+  and stay PENDING in `validation.md`.
+
+### Fixed
+
+- **T013 misstatement** in `specs/010-scaffold-skill/tasks.md` and
+  `validation.md`. The task previously expected the recap to show
+  `0 files copied; 0 working directories created; 0 dart_files rows updated`
+  on idempotent re-run. The binary's `files_copied / workdirs_created /
+  dart_files_updated` fields are per-run write totals (always equal to the
+  full source-tree count on a successful scaffold), not net deltas — only
+  the reconciliation block (`added_paths / removed_paths`) carries the net
+  change. The corrected expectation references spec 009 User Story 2
+  Acceptance Scenario 3 ("zero net additions and zero net removals") and
+  the reconciliation summary's `0 added paths; 0 removed paths`.
+
 ## [v2026.05.01] — 2026-05-01
 
 ### Added
