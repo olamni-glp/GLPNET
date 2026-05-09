@@ -1,0 +1,13 @@
+{
+  "name": "glpnet-pglite-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Postgres-wire bridge for PGLite, supporting Python (psycopg/SQLAlchemy/Alembic/DBOS) and .NET (Npgsql/psqlODBC) consumers. See ../pglite/description.md.",
+  "type": "module",
+  "scripts": {
+    "start": "node pglite_bridge.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.2.17"
+  }
+}

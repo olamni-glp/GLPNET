@@ -4,6 +4,86 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.05.09] — 2026-05-09
+
+### Added
+
+- **`prereq-patterns/` catalog**. New top-level peer of `specs/`, `docs/`,
+  `programs/`, `glp_runtime/`, `glp_multiagent/`, `test/`, holding curated
+  prerequisite implementations any future glpnet feature can adopt without
+  re-deriving the design. Lands three governance files (`directory.md`,
+  `howto.md`, `policies.md`) plus eight pattern sub-directories — `pglite`
+  (active), `dbos`, `flask-sqlalchemy-alembic-api`, `pglite-backup-restore`,
+  `blazor-spa-bg-api`, `background-task-manager`, `local-secrets-store`,
+  `secure-signatures` (all `draft`) — each with its required
+  `description.md`, `applicability.md`, `sources.md`. `policies.md` carries
+  Policy 1 (no cleartext auth tokens; secret-material hashes restricted to
+  `{Argon2id, scrypt, bcrypt}`) and Policy 2 (operational data routes to
+  `D:/BSTDEV/research/glpnet-datalake/<pattern-or-app>/<data-class>/<partition>.parquet`).
+
+- **Merged pglite bridge** at `prereq-patterns/pglite/pglite_bridge.mjs`.
+  Single canonical implementation consolidating glpnet's no-pg-gateway
+  hand-rolled wire-protocol bridge (Npgsql / psqlODBC compatible; two
+  diagnosed bug fixes — PGLite implicit-Sync after `execProtocolRaw`;
+  pg-gateway 0.3.0-beta.4 response-corruption avoidance) with AIGRID's
+  `globalWorkChain` global FIFO, per-connection `workChain`,
+  `endsAtFlushBoundary()`, synthetic-`ROLLBACK` startup handshake, Windows
+  `DETACHED_PROCESS` lifecycle (via the cited Python sidecar), `sidecar.json`
+  discovery, and `@electric-sql/pglite@0.2.17` pin (sibling
+  `package.json`).  `COPY ... FROM STDIN` interception is dropped with
+  rationale — PGLite WASM does not implement COPY-IN over the wire.
+
+- **Format contracts** at `specs/011-prereq-patterns-catalog/contracts/`. Six
+  format contracts copied verbatim from AIGRID
+  (`@004a-opskit-sidecar-autospawn`, SHA `83b60585...`) and scrubbed of
+  AIGRID-only references per FR-011: `description_md_format.md`,
+  `applicability_md_format.md`, `sources_md_format.md`, `directory_md_format.md`,
+  `howto_md_format.md`, `policies_md_format.md`.
+
+- **Pglite merge analysis** at
+  `specs/011-prereq-patterns-catalog/pglite-merge-analysis.md`. Classifies
+  every distinguishing feature of both pre-merge bridges (16 from glpnet
+  `bridge-direct.mjs`, 18 from AIGRID `pglite_bridge.mjs`) as
+  `present-in-merged` / `superseded-with-rationale` / `dropped-with-rationale`.
+  Zero unclassified.
+
+- **Conformance script** at
+  `specs/011-prereq-patterns-catalog/conformance-check.ps1`. Pure PowerShell,
+  no third-party dependency. Implements C1 (three-files-per-pattern), C2
+  (lifecycle agreement), C3 (catalog self-containment), C4 (no live AIGRID
+  cross-references), C5 (format-contract reachability), C6 (migration-analysis
+  completeness). Final pre-merge gate: PASS on all six checks.
+
+- **`docs/research/pgbridge-reference/MIGRATED.md`** — forwarding note from
+  the archival pre-merge investigation directory to the canonical merged
+  bridge under `prereq-patterns/pglite/`.
+
+### Validated
+
+- **Catalog conformance gate**. `conformance-check.ps1` ran from the repo
+  root with exit code `0`: 109 internal markdown links resolve inside glpnet,
+  75 grep hits for `breenlake|aigrid|opskit` all in allowed contexts
+  (`sources.md` files or "external sibling" footnote in `policies.md`), 34
+  classification rows across 2 tables in `pglite-merge-analysis.md` all
+  with valid classifications and non-empty rationales, and "Unclassified:
+  0" assertion present.
+
+### Deferred
+
+- **SC-003 (Npgsql / psqlODBC connectivity, 100 sequential cycles)** and
+  **SC-004 (psycopg-style concurrent-pipeline invariant)**. Buildable success
+  criteria intentionally NOT verified by this catalog-import feature —
+  documented verbatim in `prereq-patterns/pglite/sources.md` (Flow D1 / D2)
+  for the first glpnet feature that *adopts* the merged bridge to run as part
+  of its own work.
+
+### References
+
+- Spec: `specs/011-prereq-patterns-catalog/spec.md`
+- Plan: `specs/011-prereq-patterns-catalog/plan.md`
+- Tasks: `specs/011-prereq-patterns-catalog/tasks.md`
+- Handover: `specs/011-prereq-patterns-catalog/handover.md`
+
 ## [v2026.05.02] — 2026-05-02
 
 ### Validated
