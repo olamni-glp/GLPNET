@@ -35,12 +35,12 @@ description: "Implementation tasks for 012-codeconv-runner — codeconv-runner h
 
 **Purpose**: Vendored libraries + shared infrastructure that EVERY user story depends on. No US can start until this phase is green.
 
-- [ ] **T010** Copy `pglite_engine_kwargs.py` verbatim from `D:/BREENDEV/aigrid/AWS-Infra/src/opskit/_vendor/pglite_engine_kwargs.py` → `codeconv/src/codeconv/_vendor/pglite_engine_kwargs.py`. Preserve module docstring. Add `# Vendored from <upstream-path>; do not edit locally.` header.
-- [ ] **T010a** [P] Inspect `tools/d2net/src/D2Net.Init/SchemaInitializer.cs` and `tools/d2net/src/D2Net.Init/Schema/` to determine which schema(s) D2NET currently uses against `.D2NET/pgdb/`. Document the actual schema name(s) in `data-model.md` under a new subsection "§ D2NET schemas". Read-only task — no code changes (FR-015 explicitly forbids D2NET schema rewrite). Per research R14.
-- [ ] **T011** [P] Copy `pglite_compat_loaders.py` verbatim from `D:/BREENDEV/aigrid/AWS-Infra/src/opskit/_vendor/pglite_compat_loaders.py` → `codeconv/src/codeconv/_vendor/pglite_compat_loaders.py`. Same header convention.
-- [ ] **T012** [P] Author `codeconv/src/codeconv/_vendor/__init__.py` (empty marker so the package imports cleanly). Same in `codeconv/src/codeconv/__init__.py`, `codeconv/src/codeconv/tools/__init__.py`.
-- [ ] **T013** Amend `prereq-patterns/pglite/description.md` per FR-012: add a section clarifying that the canonical bridge IS the live deployment for repo-wide `.pgdb/` use; the "copy the bridge into your feature working tree" guidance from feature 011 still applies for feature-private PGLite deployments only.
-- [ ] **T014** [P] Verify `dotnet build tools/d2net/D2Net.sln` succeeds (empty BridgeClient + PgdbMigrate skeletons must compile). Note any pre-existing warnings; do NOT fix unrelated issues.
+- [X] **T010** Copy `pglite_engine_kwargs.py` verbatim from `D:/BREENDEV/aigrid/AWS-Infra/src/opskit/_vendor/pglite_engine_kwargs.py` → `codeconv/src/codeconv/_vendor/pglite_engine_kwargs.py`. Preserve module docstring. Add `# Vendored from <upstream-path>; do not edit locally.` header.
+- [X] **T010a** [P] Inspect `tools/d2net/src/D2Net.Init/SchemaInitializer.cs` and `tools/d2net/src/D2Net.Init/Schema/` to determine which schema(s) D2NET currently uses against `.D2NET/pgdb/`. Document the actual schema name(s) in `data-model.md` under a new subsection "§ D2NET schemas". Read-only task — no code changes (FR-015 explicitly forbids D2NET schema rewrite). Per research R14.
+- [X] **T011** [P] Copy `pglite_compat_loaders.py` verbatim from `D:/BREENDEV/aigrid/AWS-Infra/src/opskit/_vendor/pglite_compat_loaders.py` → `codeconv/src/codeconv/_vendor/pglite_compat_loaders.py`. Same header convention.
+- [X] **T012** [P] Author `codeconv/src/codeconv/_vendor/__init__.py` (empty marker so the package imports cleanly). Same in `codeconv/src/codeconv/__init__.py`, `codeconv/src/codeconv/tools/__init__.py`.
+- [X] **T013** Amend `prereq-patterns/pglite/description.md` per FR-012: add a section clarifying that the canonical bridge IS the live deployment for repo-wide `.pgdb/` use; the "copy the bridge into your feature working tree" guidance from feature 011 still applies for feature-private PGLite deployments only.
+- [X] **T014** [P] Verify `dotnet build tools/d2net/D2Net.sln` succeeds (empty BridgeClient + PgdbMigrate skeletons must compile). Note any pre-existing warnings; do NOT fix unrelated issues.
 
 **Checkpoint**: Foundation ready. User-story phases can begin.
 

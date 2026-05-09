@@ -6,10 +6,10 @@ Schemas in `.pgdb/` after this feature lands:
 
 | Schema | Owner | Source of truth | Touched by this feature? |
 |---|---|---|---|
-| `public` | (PGLite default) | — | NO — FR-015 forbids feature-introduced tables here |
+| `public` | (PGLite default) | — | NO — FR-015 forbids _feature-012_ tables here, but D2NET's pre-existing tables live here (see § 7) |
 | `dbos` | DBOS runtime | DBOS migrations (vendored) | indirectly (DBOS startup creates them) |
 | `codeconv` | codeconv runner | Alembic migrations under `codeconv/db/migrations/` | YES (this feature defines them) |
-| _D2NET schemas_ | D2NET tools | unchanged | NO — FR-015 explicitly forbids rewrite |
+| `public` _(D2NET tables only)_ | D2NET tools | `tools/d2net/src/D2Net.Init/Schema/db-schema.sql` (unchanged) | NO — FR-015 explicitly forbids rewrite |
 
 ---
 
@@ -263,5 +263,25 @@ A row in state "in flight" (no `completed_at`) means a discover invocation was k
 
 - **Semantic enrichment fields** (`engineer_purpose`, `algorithm_summary`, etc.) — out of scope per FR-020 + FR-028. Any future enrichment tool may add columns to `dart_files` (or a sibling table) under that tool's own migration; not delivered here.
 - **Dart → C# translation artefacts** — out of scope per FR-028.
-- **D2NET schema definitions** — unchanged per FR-015. Documented separately if needed by `D2Net.PgdbMigrate`.
+- **D2NET schema definitions** — unchanged per FR-015. Documented in § 7 below for cross-reference.
 - **DBOS internal tables** — DBOS owns its `dbos` schema; not modeled here.
+
+---
+
+## 7. D2NET schemas (read-only audit, T010a)
+
+D2NET (`tools/d2net/src/D2Net.Init/`) currently uses the **`public`** schema exclusively. The DDL at `tools/d2net/src/D2Net.Init/Schema/db-schema.sql` declares five tables with no schema qualifier and no `SET search_path` — all CREATE statements land in PGLite's default `public` schema:
+
+| Table | Source-of-truth | Notes |
+|---|---|---|
+| `setting` | db-schema.sql §1 | flat key/value config (PRIMARY KEY `key`) |
+| `excluded_directories` | db-schema.sql §2 | one row per approved exclusion (PRIMARY KEY `path`) |
+| `dart_files` | db-schema.sql §3 | one row per .dart file under `<source_dir>` (PRIMARY KEY `id BIGSERIAL`, UNIQUE `full_path`) |
+| `phase_sequence` | db-schema.sql §4 | empty after Init (PRIMARY KEY `phase`) |
+| `phase_status` | db-schema.sql §5 | empty after Init (PRIMARY KEY `phase`, `last_updated TIMESTAMPTZ`) |
+
+`SchemaInitializer.cs` applies the SQL once on a fresh PGLite database; no schema-creation, no qualifier, no search_path mutation. FR-015 forbids feature 012 from rewriting any of this. `D2Net.PgdbMigrate` MUST treat these tables as opaque — `robocopy /MIR` (or `cp -r`) of the whole cluster directory preserves them exactly (R8); no logical re-import is performed.
+
+**Name collision note**: D2NET's `public.dart_files` and codeconv's `codeconv.dart_files` share a name but live in different schemas. Both can coexist in the same `.pgdb/` cluster without interference — fully-qualified references (`public.dart_files` vs `codeconv.dart_files`) disambiguate. Discover code MUST set `search_path` to `codeconv,public` (or use fully-qualified names) when writing/reading its inventory; failure to do so risks reading D2NET's `dart_files` instead.
+
+`D2Net.PgdbMigrate.Program.cs` (T037) reads source row counts from `public.{setting,excluded_directories,dart_files,phase_sequence,phase_status}` and target row counts from the same after the move, to satisfy SC-004's logical-equivalence check.
