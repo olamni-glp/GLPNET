@@ -518,5 +518,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/011-prereq-patterns-catalog/plan.md
+- specs/012-codeconv-runner/plan.md
 <!-- SPECKIT END -->

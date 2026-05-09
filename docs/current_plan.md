@@ -1,175 +1,113 @@
-# Current Plan: Subtyping Implementation
+# Current Plan: 012-codeconv-runner — speckit chain to /speckit-implement
 
-Started: 2026-02-21  
-Branch: `subtyping`  
-Spec: `docs/type system/subtyping.md`  
-Paper: Section 4.6, Definitions 4.5–4.9
+Started: 2026-05-09
+Branch: `012-codeconv-runner`
+Spec: `specs/012-codeconv-runner/spec.md` (clarified Session 2026-05-09)
 
 ## 🔴 Branch Instructions
 
-**Work on the existing `subtyping` branch.** Do NOT create a new `claude/...` branch.
+Work on the existing `012-codeconv-runner` branch. Do NOT create a new `claude/...` branch.
 
-```bash
-git checkout subtyping
-git pull origin subtyping
+```
+git checkout 012-codeconv-runner
+git pull origin 012-codeconv-runner
 ```
 
-All commits go on this branch. When done, the user will merge `subtyping` into `main`.
+All commits go on this branch. When done, Gabi merges into `main`.
 
 ## Steps
 
-- [x] 1. Create test programs (positive and negative)
-- [x] 2. Run baseline tests, commit
-- [x] 3. Create `subtyping.dart` module
-- [x] 4. Integrate into `well_typed_clause.dart`
-- [x] 5. Add tests to `run_all_tests.sh`
-- [x] 6. Run full test suite, verify green (326/326 pass)
-- [x] 7. Final commit (56bb7dc)
+- [x] 1. /speckit-plan → wrote `specs/012-codeconv-runner/plan.md`, `research.md`, `data-model.md`, `contracts/` (7 files), `quickstart.md`. Updated `CLAUDE.md` SPECKIT marker to point at the new plan.
+- [x] 2. /speckit-tasks → wrote `specs/012-codeconv-runner/tasks.md` (T001–T092, organised by 4 user stories US1–US4 plus shared phases).
+- [x] 3. /speckit-analyze → wrote `specs/012-codeconv-runner/analysis.md`. 6 top remediations identified.
+- [x] 4. Apply top remediations (in-document only) → applied R1 portalocker pin, R2 FR-027 .NET flag preservation in T038, R3 added T091 (.NET pooling grep), R4 added T092 (COPY FROM STDIN grep), R5 added T010a (D2NET schema discovery), R6 amended T057 with Alembic-then-DBOS order.
+- [ ] 5. /speckit-implement (in NEW session) ← CURRENT — this session ends here per Gabi's request.
 
 ## Context
 
-The type checker currently requires exact type duality for body-body variable pairs (writer X at type S, reader X? at type T?: S must equal T). The paper relaxes this to S <: T (subtyping). This blocks programs where a producer emits a subset of messages that a consumer accepts (e.g., read-only client connected to a full file-system monitor).
+Feature 012-codeconv-runner consolidates PGLite into a single repo-wide deployment at `.pgdb/` with OS-level cross-process locking; migrates `.D2NET/pgdb/` data into the unified location; converts D2NET .NET tools to bridge clients; ships `/codeconv-runner` (Python CLI on DBOS-over-PGLite) plus first registered tool `/codeconv-discover` (walks `glp_runtime_net/`, populates `codeconv` schema, writes `.codeconv/tombstones/`).
 
-## Step Details
+Spec was clarified in Session 2026-05-09 (16 questions answered). Plan + tasks + analysis are locked in.
 
-### Step 2: Baseline
+## How to resume in a fresh session
 
-```bash
-cd /Users/udi/Grassroots/GLP
-bash test/run_all_tests.sh
+1. New Claude Code session in this repo. CLAUDE.md mandatory reading auto-loads.
+2. Claude reads this `current_plan.md` per CLAUDE.md "Multi-Stage Task Persistence" rule.
+3. Read `specs/012-codeconv-runner/plan.md` (technical context) and `tasks.md` (T001–T092). Optionally read `analysis.md` for the remediation history.
+4. Type `/speckit-implement` to begin Phase 1 (Setup) of `tasks.md`.
+
+The `/speckit-implement` skill processes tasks in dependency order:
+Phase 1 (Setup) → Phase 2 (Foundational, blocks all stories) → Phase 3 (US1 = MVP precondition: bridge with cross-process exclusion) → Phase 4 (US2: D2NET migration) → Phase 5 (US3: codeconv runner) → Phase 6 (US4: discover tool) → Phase 7 (Polish + cross-cutting verification).
+
+## Files in scope (writing or modifying during /speckit-implement)
+
+NEW directories / files:
+- `codeconv/` — Python package (runner + first tool + tests + vendored libs).
+- `tools/d2net/src/D2Net.BridgeClient/` — shared lock+sidecar lib for .NET clients.
+- `tools/d2net/src/D2Net.PgdbMigrate/` — one-shot migration CLI.
+- `prereq-patterns/pglite/tests/` — bridge unit tests.
+- `.claude/skills/codeconv-runner/SKILL.md`, `.claude/skills/codeconv-discover/SKILL.md`, `.claude/skills/D2NET-pgdb-migrate/SKILL.md`.
+- `.codeconv/tombstones/.orphaned/` — checked-in (with `.gitkeep`).
+- `specs/012-codeconv-runner/scripts/` — SC-003 harness (Python + .NET).
+- `.pgdb/` — runtime data, gitignored; populated by bridge.
+
+MODIFIED:
+- `prereq-patterns/pglite/pglite_bridge.mjs` (add lock + sidecar + log rotation; preserve all FR-005 invariants).
+- `prereq-patterns/pglite/package.json` (add `proper-lockfile`).
+- `prereq-patterns/pglite/description.md` (FR-012 amendment).
+- `tools/d2net/src/D2Net.Init/PgBridgeProcess.cs` (delegate to BridgeClient; preserve FR-027 connection-string flags).
+- `tools/d2net/src/D2Net.Scaffold/` (verify whether it self-launches a bridge — if so, same change as Init).
+- `tools/d2net/D2Net.sln` (add new projects).
+- `.claude/skills/D2NET-init/SKILL.md`, `.claude/skills/D2NET-scaffold/SKILL.md` (point at unified bridge).
+- `.gitignore` (add `.pgdb/` and `.D2NET/pgdb.bak.*/`; do NOT ignore `.codeconv/tombstones/`).
+- `CLAUDE.md` SPECKIT marker (already done; T089 adds a brief migration note elsewhere).
+- `docs/known-issues.md` (T090).
+
+## Implementation cautions
+
+- **CLAUDE.md baseline-then-change-then-test discipline** applies. The bridge changes touch a live file used by feature 011's catalog. Run any existing tests + the existing bridge smoke (`prereq-patterns/pglite/`) before T024; commit a baseline; modify; re-run.
+- **No COPY FROM STDIN** against PGLite (FR-026). T092 verifies.
+- **No client-side prepared-statement caching** (FR-027). T091 verifies on .NET side; T054 enforces on Python side.
+- **D2NET schema unchanged** (FR-015). T010a documents what it currently is; do NOT rewrite.
+- **`proper-lockfile` Windows behaviour** is the validation criterion for research R1. If it does not honour kernel release on Windows for the chosen call shape, STOP and escalate to Gabi before lowering the lock guarantee.
+- **Spec-First Development**: spec + plan + tasks + contracts are the source of truth. Implementation MUST match. Any deviation → STOP and discuss.
+
+## Optional auto-commit hooks (not yet executed)
+
+The repo's `.specify/extensions.yml` defines optional `after_plan` / `after_tasks` / `after_analyze` hooks that run `speckit.git.commit`. These were NOT auto-executed during this session. Before `/speckit-implement` in the new session, the resuming session may run:
+
+```
+/speckit-git-commit
 ```
 
-All 317 existing tests must pass before any code changes. Commit baseline if clean.
+…to land the spec-kit artefacts as a baseline commit on `012-codeconv-runner`. (Optional but recommended — keeps the implementation diff scoped.)
 
-### Step 3: Create `subtyping.dart`
+## Files added or modified in this session (uncommitted)
 
-**File**: `glp_runtime/lib/analysis/type_checker/subtyping.dart`
-
-**Spec**: `docs/type system/subtyping.md`, Section 4 (Algorithm on the DFA)
-
-**Public API**:
-```dart
-/// Check if output type A is a subtype of output type B.
-/// Both stateA and stateB must be output types (isDual == false).
-/// Paper Reference: Definition 4.7 (Subtyping)
-bool isSubtype(DFAState stateA, DFAState stateB, ProgramDFA dfa);
+```
+modified:   CLAUDE.md  (SPECKIT marker → 012)
+modified:   docs/current_plan.md  (this file)
+new file:   specs/012-codeconv-runner/plan.md
+new file:   specs/012-codeconv-runner/research.md
+new file:   specs/012-codeconv-runner/data-model.md
+new file:   specs/012-codeconv-runner/quickstart.md
+new file:   specs/012-codeconv-runner/tasks.md
+new file:   specs/012-codeconv-runner/analysis.md
+new file:   specs/012-codeconv-runner/contracts/bridge_lifecycle.md
+new file:   specs/012-codeconv-runner/contracts/bridge_cli.md
+new file:   specs/012-codeconv-runner/contracts/codeconv_runner_cli.md
+new file:   specs/012-codeconv-runner/contracts/codeconv_tool_contract.md
+new file:   specs/012-codeconv-runner/contracts/codeconv_discover_cli.md
+new file:   specs/012-codeconv-runner/contracts/tombstone_format.md
+new file:   specs/012-codeconv-runner/contracts/d2net_pgdb_migration_cli.md
 ```
 
-**Implementation per spec section 4.1–4.5**:
+(Verify with `git status --short`.)
 
-1. Coinductive visited set: `Set<(DFAState, DFAState)>` (use a Set of string keys `"${a.name}:${b.name}"` for efficiency)
-2. Reflexivity: `stateA == stateB → true`
-3. Wildcard top: `stateB` is `_` → true; `stateA` is `_` and `stateB` is not `_` → false
-4. Primitive lattice (spec section 4.3):
-   - `Integer <: Number` ✓, `Real <: Number` ✓
-   - Any output type `<: _` ✓
-   - Otherwise primitives must be identical
-5. User-defined types: iterate transitions of automaton A; for each, find matching transition in automaton B. If no match → false. If match, check target compatibility (spec section 4.2):
-   - Both output → recurse covariantly
-   - Both dual → extract base types, recurse contravariantly (reversed)
-   - Mixed → false
-6. Handle `_FINAL_` state: treat as equivalent to `_` for subtyping purposes (it's a terminal acceptance state)
+## Resume one-liner
 
-**Unit test file**: `glp_runtime/test/analysis/type_checker/subtyping_test.dart`
-
-Test cases:
-- Reflexivity: Stream <: Stream
-- Wildcard top: Stream <: _
-- Wildcard not bottom: _ ≮: Stream (when Stream has structure)
-- Primitive lattice: Integer <: Number, Real <: Number, Integer ≮: String
-- Simple fewer alternatives: {a, b} <: {a, b, c}
-- Wrong direction: {a, b, c} ≮: {a, b}
-- Contravariance at mode inversion
-- Coinductive cycle: recursive types (Stream <: Stream via cycle)
-- Disjoint types: fail
-
-### Step 4: Integrate into `well_typed_clause.dart`
-
-**Spec**: `docs/type system/subtyping.md`, Section 5
-
-**Change**: In `_checkClauseDuality`, for body-body pairs, replace the exact duality check with a subtyping check.
-
-Current code (in `_checkClauseDuality`):
-```dart
-if (writerNormLoc == readerNormLoc) {
-  // Both in head OR both in body: require DUAL types
-  final (isCompat, reason) = _areDualTypesWithReason(writerInfo, readerInfo);
+```
+/speckit-implement
 ```
 
-Change to:
-```dart
-if (writerNormLoc == readerNormLoc) {
-  if (writerNormLoc == 'head') {
-    // Both in head: require exact DUAL types (unchanged)
-    final (isCompat, reason) = _areDualTypesWithReason(writerInfo, readerInfo);
-    ...
-  } else {
-    // Both in body: require subtyping (S <: T)
-    // Writer X has output type S. Reader X? has dual type T?.
-    // Need: S <: T (both output types).
-    final writerOutputState = writerInfo.typeState;  // S (output, not dual)
-    final readerDualState = readerInfo.typeState;     // T? (dual)
-    final readerOutputState = dfa.getState(readerDualState.baseName); // T (output)
-    final isSub = isSubtype(writerOutputState, readerOutputState, dfa);
-    if (!isSub) {
-      errors.add(ClauseDualityError(...));
-    }
-  }
-}
-```
-
-**IMPORTANT**: `_checkClauseDuality` currently does NOT receive the ProgramDFA. Its signature must be extended to accept it:
-```dart
-List<ClauseDualityError> _checkClauseDuality(
-  Map<String, VariableTypeInfo> variableTypes,
-  Map<String, String> variableLocations,
-  ProgramDFA dfa,   // NEW PARAMETER
-)
-```
-
-And the call site in `checkClause` must pass `dfa` through.
-
-### Step 5: Add tests to `run_all_tests.sh`
-
-**Positive tests** — add to `POSITIVE_FILES` array in Section B:
-```bash
-"$TC_DIR/positive/subtyping/basic_readop_fileop.glp"
-"$TC_DIR/positive/subtyping/constants_fewer_alternatives.glp"
-"$TC_DIR/positive/subtyping/contravariant_response_slot.glp"
-"$TC_DIR/positive/subtyping/direct_constant_subtype.glp"
-"$TC_DIR/positive/subtyping/struct_fewer_functors.glp"
-```
-
-**Negative tests** — add to `NEGATIVE_FILES` array in Section C:
-```bash
-"$TC_DIR/negative/subtyping/wrong_direction_fileop_readop.glp"
-"$TC_DIR/negative/subtyping/contravariant_wrong_direction.glp"
-"$TC_DIR/negative/subtyping/disjoint_types.glp"
-"$TC_DIR/negative/subtyping/arg_type_mismatch.glp"
-```
-
-### Step 6: Full test suite
-
-```bash
-cd /Users/udi/Grassroots/GLP
-bash test/run_all_tests.sh
-```
-
-**Expected**: All 317 existing tests still pass + 5 new positive + 4 new negative = 326 total.
-
-### Step 7: Commit and merge
-
-```bash
-git add -A
-git commit -m "Implement subtyping for body-body variable pairs (Definition 4.7)"
-```
-
-Then offer merge instructions to user.
-
-## Key Invariants
-
-- Head-head pairs: UNCHANGED (exact duality required)
-- Head-body pairs: UNCHANGED (same type required)
-- Body-body pairs: RELAXED from exact duality to subtyping
-- All 317 existing tests must continue to pass (subtyping is a relaxation, not a restriction)
-- No changes to DFA construction, moded term construction, or input coverage
+Each task in tasks.md lists exact file paths; the implementer follows them in order, marking each complete as it lands.
