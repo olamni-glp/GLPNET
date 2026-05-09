@@ -20,7 +20,7 @@ Composition with sibling patterns: this pattern coexists with [`dbos`](../dbos/d
 
 ## How a feature uses this pattern
 
-This pattern is `Status: draft` — no glpnet feature has yet adopted it. The full implementation surface (the application-factory, the SQLAlchemy model module, the Alembic env, the alembic.ini with the env-set-URL contract) is consolidated upstream in AIGRID's catalog; see [sources.md](./sources.md) for citations into the hatzinor ulpani-LMS reference. When the first glpnet feature adopts this pattern, that feature's PR is responsible for promoting `Status:` to `active`, fleshing out [applicability.md](./applicability.md) with substantive consumer-class content (e.g. fresh-Flask, migration-off-SQLite, migration-off-Postgres), and updating [../directory.md](../directory.md)'s suffix.
+This pattern is `Status: draft` — no glpnet feature has yet adopted it. The full implementation surface (the application-factory, the SQLAlchemy model module, the Alembic env, the alembic.ini with the env-set-URL contract) is consolidated in the curated upstream catalog; see [sources.md](./sources.md) for citations into the hatzinor ulpani-LMS reference. When the first glpnet feature adopts this pattern, that feature's PR is responsible for promoting `Status:` to `active`, fleshing out [applicability.md](./applicability.md) with substantive consumer-class content (e.g. fresh-Flask, migration-off-SQLite, migration-off-Postgres), and updating [../directory.md](../directory.md)'s suffix.
 
 ## Cross-cutting policies
 

@@ -20,7 +20,7 @@ Pre-flight: the `dbos` schema MUST exist in pglite before `get_dbos_app()` is ca
 
 ## How a feature uses this pattern
 
-This pattern is `Status: draft` — no glpnet feature has yet adopted it. The full installable surface (the DBOS-on-pglite wiring module, the durability-contract integration tests, the refusal-to-start-without-schema invariant) is consolidated upstream in AIGRID's catalog; see [sources.md](./sources.md) for the citations and pin information. When the first glpnet feature adopts this pattern, that feature's PR is responsible for promoting `Status:` to `active`, fleshing out [applicability.md](./applicability.md) with substantive consumer-class content for the adopting glpnet stack, and updating [../directory.md](../directory.md)'s suffix.
+This pattern is `Status: draft` — no glpnet feature has yet adopted it. The full installable surface (the DBOS-on-pglite wiring module, the durability-contract integration tests, the refusal-to-start-without-schema invariant) is consolidated in the curated upstream catalog; see [sources.md](./sources.md) for the citations and pin information. When the first glpnet feature adopts this pattern, that feature's PR is responsible for promoting `Status:` to `active`, fleshing out [applicability.md](./applicability.md) with substantive consumer-class content for the adopting glpnet stack, and updating [../directory.md](../directory.md)'s suffix.
 
 ## Cross-cutting policies
 

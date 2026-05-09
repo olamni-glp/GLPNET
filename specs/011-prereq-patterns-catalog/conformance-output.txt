@@ -1,0 +1,14 @@
+
+=== prereq-patterns catalog conformance check ===
+Repo root : D:\bstdev\research\glp\glpnet
+Catalog   : D:\bstdev\research\glp\glpnet\prereq-patterns
+Spec dir  : D:\bstdev\research\glp\glpnet\specs\011-prereq-patterns-catalog
+
+[PASS] C1: 8 pattern dirs; each has all 3 required files; no file reduced to H1 alone
+[PASS] C2: 8 patterns: description.md Status: line agrees with directory.md suffix
+[PASS] C3: 109 internal markdown links across 27 catalog files; all resolve inside glpnet
+[PASS] C4: 75 total grep hits; 75 in allowed contexts (sources.md or 'external sibling' notes); 0 live cross-references
+[PASS] C5: 2 governance file(s) checked; format-contract links land only in specs/011-prereq-patterns-catalog/contracts/
+[PASS] C6: pglite-merge-analysis.md: 34 rows classified across 2 tables; all classifications valid; Rationale non-empty; 'Unclassified: 0' present
+
+OVERALL: PASS - all checks (C1..C6) green.
