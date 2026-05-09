@@ -12,3 +12,6 @@ glp_runtime/build/
 
 # d2net-scaffold output (regenerable; do not commit)
 glp_runtime_net/
+
+# D2NET workspace data (per-machine PostgreSQL data dir + workspace settings)
+.D2NET/
