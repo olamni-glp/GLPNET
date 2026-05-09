@@ -198,6 +198,12 @@ Identical schema. Written when a file is orphaned (FR-025); restored to `.codeco
 
 ---
 
+## 4.5 `.pgdb.bridge.lock/` — sibling cross-process lock directory
+
+Created by `proper-lockfile` when the bridge acquires its OS-level lock. Placed SIBLING to `.pgdb/` (NOT inside it) because PGLite refuses to initialize a data-dir that has any non-PG file present at init time. Contents are an internal `proper-lockfile` directory marker; never inspected by clients. Kernel-released on bridge process exit. Gitignored.
+
+---
+
 ## 5. State transitions
 
 ### 5.1 `dart_files` row lifecycle

@@ -54,14 +54,14 @@ description: "Implementation tasks for 012-codeconv-runner — codeconv-runner h
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] **T020** [P] [US1] Write `prereq-patterns/pglite/tests/lock_single_writer.test.mjs` (`node --test`): spawns two bridges in parallel against a temp data-dir; expects exactly one `BRIDGE_READY`, the other exits 5 within 1 s. Maps to SC-001.
-- [ ] **T021** [P] [US1] Write `prereq-patterns/pglite/tests/sidecar_roundtrip.test.mjs`: spawns one bridge, reads `bridge.json`, opens TCP, sends `SELECT 1;`, expects `1`.
-- [ ] **T022** [P] [US1] Write `prereq-patterns/pglite/tests/post_kill_restart.test.mjs`: spawns bridge, force-kills (SIGKILL/Stop-Process), verifies a fresh start succeeds within 1 s with no manual lock cleanup. Maps to SC-002.
-- [ ] **T023** [P] [US1] Write `prereq-patterns/pglite/tests/log_rotation.test.mjs`: writes >5 MB of synthetic log content, verifies `bridge.log.1`, `.log.2`, `.log.3` rotation per FR-030 + R9.
+- [X] **T020** [P] [US1] Write `prereq-patterns/pglite/tests/lock_single_writer.test.mjs` (`node --test`): spawns two bridges in parallel against a temp data-dir; expects exactly one `BRIDGE_READY`, the other exits 5 within 1 s. Maps to SC-001.
+- [X] **T021** [P] [US1] Write `prereq-patterns/pglite/tests/sidecar_roundtrip.test.mjs`: spawns one bridge, reads `bridge.json`, opens TCP, sends `SELECT 1;`, expects `1`.
+- [X] **T022** [P] [US1] Write `prereq-patterns/pglite/tests/post_kill_restart.test.mjs`: spawns bridge, force-kills (SIGKILL/Stop-Process), verifies a fresh start succeeds within 1 s with no manual lock cleanup. Maps to SC-002.
+- [X] **T023** [P] [US1] Write `prereq-patterns/pglite/tests/log_rotation.test.mjs`: writes >5 MB of synthetic log content, verifies `bridge.log.1`, `.log.2`, `.log.3` rotation per FR-030 + R9.
 
 ### Implementation for User Story 1
 
-- [ ] **T024** [US1] Modify `prereq-patterns/pglite/pglite_bridge.mjs` per `contracts/bridge_lifecycle.md` and `contracts/bridge_cli.md`:
+- [X] **T024** [US1] Modify `prereq-patterns/pglite/pglite_bridge.mjs` per `contracts/bridge_lifecycle.md` and `contracts/bridge_cli.md`:
    - Import `proper-lockfile`.
    - Acquire `<data-dir>/.bridge.lock` BEFORE `PGlite.create()`. On failure: read `<data-dir>/bridge.json` if present, log `[bridge] BRIDGE_LOCK_HELD pid=<n> at <host>:<port>`, exit 5.
    - Default `--port 0` (ephemeral); log resolved port on `BRIDGE_READY`.
@@ -71,8 +71,8 @@ description: "Implementation tasks for 012-codeconv-runner — codeconv-runner h
    - On SIGTERM/SIGINT/beforeExit: `server.close()`, best-effort `unlink(bridge.json)`, exit 0.
    - Add `--no-lock` flag (skips lock; tests only).
    - Preserve all existing behaviour (`globalWorkChain`, `endsAtFlushBoundary`, synthetic ROLLBACK on startup, 0.2.x API surface). NO regression of FR-005 invariants.
-- [ ] **T025** [P] [US1] Run `node --test prereq-patterns/pglite/tests/` and confirm T020–T023 pass.
-- [ ] **T026** [P] [US1] Add `prereq-patterns/pglite/tests/concurrent_two_stack.test.mjs` smoke harness: launches bridge, fires 100 cycles of `psql`-based `SELECT 1` from a child process. Maps to SC-003 first half. (The full SC-003 needs Python + .NET clients; covered by integration test in Phase 7.)
+- [X] **T025** [P] [US1] Run `node --test prereq-patterns/pglite/tests/` and confirm T020–T023 pass.
+- [X] **T026** [P] [US1] Add `prereq-patterns/pglite/tests/concurrent_two_stack.test.mjs` smoke harness: launches bridge, fires 100 cycles of `psql`-based `SELECT 1` from a child process. Maps to SC-003 first half. (The full SC-003 needs Python + .NET clients; covered by integration test in Phase 7.)
 
 **Checkpoint**: US1 complete. Bridge enforces single-process invariant; SC-001 / SC-002 / SC-003 (bridge-side) green.
 

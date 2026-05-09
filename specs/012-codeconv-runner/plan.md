@@ -99,9 +99,11 @@ prereq-patterns/pglite/                   # Canonical bridge — modified in pla
 
 .pgdb/                                    # NEW (gitignored) — runtime data dir
 ├── (PGLite cluster files, populated at runtime)
-├── .bridge.lock                          # OS lock (proper-lockfile)
 ├── bridge.json                           # sidecar {port, pid, started_at, host}
 └── bridge.log                            # rotated bridge stdout/stderr (~5MB × 3)
+.pgdb.bridge.lock/                        # NEW (gitignored) — proper-lockfile dir
+                                          #   sibling to .pgdb/ (PGLite refuses non-PG
+                                          #   files inside its data dir at init time)
 
 .codeconv/                                # NEW (checked in: tombstones tree only)
 └── tombstones/

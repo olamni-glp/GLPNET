@@ -38,14 +38,14 @@ node prereq-patterns/pglite/pglite_bridge.mjs [flags]
 | 0 | Graceful shutdown (SIGTERM / SIGINT received cleanly) |
 | 1 | PGLite init failed |
 | 2 | Generic listen error |
-| 5 | Lock acquisition failed (another bridge holds `.bridge.lock`) OR explicit `--port` already in use |
+| 5 | Lock acquisition failed (another bridge holds `<data-dir>.bridge.lock`) OR explicit `--port` already in use |
 | 9 | Sidecar JSON write failed |
 
 ## Side-effects on file system
 
 When invoked successfully:
 
-1. Acquires `<data-dir>/.bridge.lock` (held for process lifetime; kernel-released on exit).
+1. Acquires `<data-dir>.bridge.lock` (sibling to data-dir, held for process lifetime; kernel-released on exit; see bridge_lifecycle.md "Note on the lock path" for why it is not inside the data-dir).
 2. Writes `<data-dir>/bridge.json` atomically (tmp + rename) before emitting `BRIDGE_READY`.
 3. With `--daemon`: writes `<data-dir>/bridge.log` (rotates `bridge.log.1`, `.log.2`, `.log.3` at ~5MB each, R9).
 4. Best-effort deletes `<data-dir>/bridge.json` on graceful shutdown.

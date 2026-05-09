@@ -16,6 +16,9 @@
 //     descendant of bridge-direct.mjs that PGLite's Python consumers
 //     (psycopg / SQLAlchemy / DBOS) needed to keep responses ordered across
 //     PGLite's single shared WASM session.
+//   - Repo-wide single-bridge invariant (cross-process file lock, sidecar
+//     JSON discovery, auto-spawn READY token, rotated --daemon log) comes
+//     from feature 012 (specs/012-codeconv-runner/contracts/bridge_*.md).
 //
 // Pinned to `@electric-sql/pglite@0.2.17` (see ./package.json). The 0.2.x
 // API surface is `PGlite.create()`, `pglite.exec()`, `pglite.execProtocolRaw()`.
@@ -27,12 +30,55 @@
 // specs/011-prereq-patterns-catalog/pglite-merge-analysis.md row A4.
 
 import { createServer } from 'node:net';
-import { existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { join, resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
+import lockfile from 'proper-lockfile';
+
+import { createRotatingStream } from './log_rotator.mjs';
 
 const args = parseArgs(process.argv);
 if (!existsSync(args.pgdir)) mkdirSync(args.pgdir, { recursive: true });
+
+const sidecarPath = join(args.pgdir, 'bridge.json');
+// Lock is placed SIBLING to the data dir (e.g. `.pgdb.bridge.lock/` next to
+// `.pgdb/`) rather than inside it: PGLite refuses to initialize a data-dir
+// that has any non-PG file present at init time, and proper-lockfile creates
+// its lock as a directory. See contracts/bridge_lifecycle.md "Lock semantics".
+const lockPath = `${args.pgdir}.bridge.lock`;
+
+// Acquire the cross-process bridge lock (FR-002, FR-003). On failure, emit
+// the contracted BRIDGE_LOCK_HELD line and exit 5. The lock is kernel-released
+// on process exit; we do NOT explicitly release it on graceful shutdown.
+let lockRelease = null;
+if (!args.noLock) {
+  try {
+    lockRelease = await lockfile.lock(args.pgdir, {
+      lockfilePath: lockPath,
+      retries: 0,
+      stale: 1000,
+      update: 500,
+      realpath: false,
+    });
+  } catch (e) {
+    let detail = 'pid=? (sidecar absent)';
+    try {
+      const existing = JSON.parse(readFileSync(sidecarPath, 'utf8'));
+      if (existing && typeof existing.pid === 'number') {
+        detail = `pid=${existing.pid} at ${existing.host}:${existing.port}`;
+      }
+    } catch { /* sidecar absent or malformed — leave default */ }
+    console.error(`[bridge] BRIDGE_LOCK_HELD ${detail}`);
+    process.exit(5);
+  }
+}
 
 let pglite;
 try {
@@ -179,32 +225,94 @@ server.on('error', (e) => {
   console.error(`[bridge] BRIDGE_ERROR listen ${e.message}`);
   process.exit(e && e.code === 'EADDRINUSE' ? 5 : 2);
 });
+
 server.listen(args.port, args.host, () => {
-  console.error(`[bridge] start transport=tcp listen=${args.host}:${args.port} data_dir=${args.pgdir}`);
-  // Stdout token for direct-spawn discovery (matches the glpnet bridge-direct
-  // sidecar contract). Sidecar daemons that prefer sidecar.json + TCP-probe
-  // discovery may ignore stdout entirely.
-  console.log(`BRIDGE_READY port=${args.port} pid=${process.pid}`);
+  const resolvedPort = server.address().port;
+
+  // Side-effect ordering per bridge_lifecycle.md "Bridge startup":
+  //   1. listen() resolves (above).
+  //   2. Atomic-write sidecar JSON.
+  //   3. Emit BRIDGE_READY token on stdout.
+  //   4. With --daemon: redirect console.* to size-rotated bridge.log.
+  try {
+    writeAtomicJson(sidecarPath, {
+      host: args.host,
+      port: resolvedPort,
+      pid: process.pid,
+      started_at: new Date().toISOString(),
+      data_dir: args.pgdir,
+      role: 'primary',
+      managed_by: args.daemon ? 'auto-spawn' : 'manual',
+    });
+  } catch (e) {
+    console.error(`[bridge] BRIDGE_ERROR sidecar_write_failed ${(e && e.message) || e}`);
+    process.exit(9);
+  }
+
+  console.error(`[bridge] start transport=tcp listen=${args.host}:${resolvedPort} data_dir=${args.pgdir}`);
+  console.log(`BRIDGE_READY port=${resolvedPort} pid=${process.pid}`);
+
+  if (args.daemon) {
+    redirectConsoleToRotatingLog();
+  }
 });
 
 if (!args.daemon) {
-  process.stdin.on('end', () => process.exit(0));
+  process.stdin.on('end', () => gracefulExit(0));
   process.stdin.resume();
 }
-process.on('SIGTERM', () => process.exit(0));
-process.on('SIGINT', () => process.exit(0));
+process.on('SIGTERM', () => gracefulExit(0));
+process.on('SIGINT', () => gracefulExit(0));
+process.on('beforeExit', () => { try { unlinkSync(sidecarPath); } catch { /* best effort */ } });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function writeAtomicJson(path, obj) {
+  const tmp = `${path}.tmp.${process.pid}`;
+  writeFileSync(tmp, JSON.stringify(obj, null, 2) + '\n', { encoding: 'utf8' });
+  renameSync(tmp, path);
+}
+
+function redirectConsoleToRotatingLog() {
+  // Inline 5MB×3 rotation per FR-030 + R9. We override console.log and
+  // console.error rather than re-pointing fd 1/2 because Node's stdout/
+  // stderr are not trivially re-pointable on Windows.
+  const log = createRotatingStream(join(args.pgdir, 'bridge.log'));
+  const fmt = (level) => (...parts) => {
+    const text = parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ');
+    const ts = new Date().toISOString();
+    log.write(`${ts} [${level}] ${text}\n`);
+  };
+  console.log = fmt('log');
+  console.error = fmt('err');
+  console.info = fmt('log');
+  console.warn = fmt('err');
+}
+
+function gracefulExit(code) {
+  try { server.close(); } catch { /* ok */ }
+  try { unlinkSync(sidecarPath); } catch { /* best effort */ }
+  // Lock release is kernel-managed on process exit; we deliberately do NOT
+  // call lockRelease() here — proper-lockfile's exit hook handles cleanup,
+  // and explicitly releasing race-conditions with new clients trying to
+  // acquire as we shut down.
+  process.exit(code);
+}
 
 function parseArgs(argv) {
-  const a = { pgdir: null, port: null, host: '127.0.0.1', daemon: false };
+  const a = { pgdir: null, port: 0, host: '127.0.0.1', daemon: false, noLock: false };
   for (let i = 2; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--data-dir') a.pgdir = resolve(argv[++i]);
     else if (v === '--port') a.port = parseInt(argv[++i], 10);
     else if (v === '--host') a.host = argv[++i];
     else if (v === '--daemon') a.daemon = true;
+    else if (v === '--no-lock') a.noLock = true;
     else if (v === '--transport') argv[++i]; // accepted, currently ignored
   }
   if (!a.pgdir) { console.error('[bridge] BRIDGE_ERROR missing --data-dir'); process.exit(1); }
-  if (!a.port) { console.error('[bridge] BRIDGE_ERROR missing --port'); process.exit(1); }
+  if (Number.isNaN(a.port) || a.port < 0) { console.error('[bridge] BRIDGE_ERROR invalid --port'); process.exit(1); }
   return a;
 }

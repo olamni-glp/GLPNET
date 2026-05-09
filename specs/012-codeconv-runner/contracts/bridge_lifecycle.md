@@ -7,10 +7,12 @@ This contract is shared by EVERY PGLite-using tool in the repo (Python `codeconv
 ## States
 
 A bridge for `.pgdb/` is in exactly one of:
-- **Absent** — no process is currently holding `.pgdb/.bridge.lock`.
+- **Absent** — no process is currently holding `.pgdb.bridge.lock`.
 - **Starting** — a process holds the lock but has not yet emitted `BRIDGE_READY`.
 - **Ready** — a process holds the lock, has written `.pgdb/bridge.json`, and has emitted `BRIDGE_READY` on its stdout.
 - **Stopping** — a process holds the lock and is mid-shutdown (after receiving SIGTERM/SIGINT).
+
+**Note on the lock path**: the lock is placed SIBLING to the data dir (`<data-dir>.bridge.lock`, i.e. `.pgdb.bridge.lock/` for the canonical case) rather than inside it. PGLite refuses to initialize a fresh data-dir that has any non-PG file present at init time, and `proper-lockfile` creates its lock as a directory; placing the lock outside `.pgdb/` is the simplest fix. Earlier draft wording placed the lock at `<data-dir>/.bridge.lock`; this contract supersedes that.
 
 State transitions are externally observable only as **Lock held + sidecar present + TCP responsive** (= Ready) versus **Lock not held** (= Absent or transient between processes).
 
@@ -21,7 +23,7 @@ EVERY client MUST follow this exact sequence:
 ```
 1. Resolve repo root (cwd or upward search to a marker — implementation choice).
 2. ENSURE_DIR(.pgdb/)
-3. lock_handle ← TRY_ACQUIRE_LOCK(.pgdb/.bridge.lock, retries=0)
+3. lock_handle ← TRY_ACQUIRE_LOCK(.pgdb.bridge.lock, retries=0)
 4. IF lock_handle.acquired:
      # Path A — bridge owner
      pipe ← SPAWN_DETACHED(node pglite_bridge.mjs --data-dir .pgdb --port 0 --daemon)
