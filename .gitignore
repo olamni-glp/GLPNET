@@ -8,6 +8,7 @@ glp_runtime/build/
 
 # Claude Code harness ephemerals
 .claude/scheduled_tasks.lock
+.claude/settings.local.json
 .claude/settings.local.json.mine
 
 # d2net-scaffold output (regenerable; do not commit)
