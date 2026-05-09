@@ -69,9 +69,9 @@ This is a documentation-catalog feature. Catalog content lives at the new top-le
 - [X] T018 [P] [US1] Author `prereq-patterns/pglite-backup-restore/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
 - [X] T019 [P] [US1] Author `prereq-patterns/blazor-spa-bg-api/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
 - [X] T020 [P] [US1] Author `prereq-patterns/background-task-manager/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
-- [ ] T021 [P] [US1] Author `prereq-patterns/local-secrets-store/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
-- [ ] T022 [P] [US1] Author `prereq-patterns/secure-signatures/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
-- [ ] T023 [US1] Verify each authored pattern dir contains exactly three files; none collapses to its H1 header; each `applicability.md` has at minimum one substantive `### <consumer-name>` H3 OR the FR-016 triviality line; each `sources.md` has the 4-column header (FR-004, FR-016, FR-017 — advance gate for SC-006)
+- [X] T021 [P] [US1] Author `prereq-patterns/local-secrets-store/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
+- [X] T022 [P] [US1] Author `prereq-patterns/secure-signatures/{description.md,applicability.md,sources.md}` — same rules; `Status: draft` (FR-003, FR-004, FR-012, FR-016, FR-017)
+- [X] T023 [US1] Verify each authored pattern dir contains exactly three files; none collapses to its H1 header; each `applicability.md` has at minimum one substantive `### <consumer-name>` H3 OR the FR-016 triviality line; each `sources.md` has the 4-column header (FR-004, FR-016, FR-017 — advance gate for SC-006)
 
 **Checkpoint**: All 7 non-pglite patterns + governance + directory.md exist. `directory.md` lists pglite first but `prereq-patterns/pglite/` is still empty until US2 completes — note this as expected interim state. US1's independent test on any non-pglite pattern works now.
 
