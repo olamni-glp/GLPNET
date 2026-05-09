@@ -119,7 +119,11 @@ public sealed class InitRunner
 
             using (bridge)
             {
-                var npgsqlString = DbConnectionStringBuilder.BuildNpgsql(tempBridgeOpts);
+                // Feature 012: bridge port is now ephemeral (assigned by the OS,
+                // returned via bridge.Port). Build the connection string against
+                // the actual port, NOT the requested opts.BridgePort.
+                var actualBridgeOpts = BridgeOptions.ForDataDir(Path.GetFullPath(layout.PgDir), bridge.Port);
+                var npgsqlString = DbConnectionStringBuilder.BuildNpgsql(actualBridgeOpts);
                 using var conn = new NpgsqlConnection(npgsqlString);
                 try { conn.Open(); }
                 catch (NpgsqlException ex)

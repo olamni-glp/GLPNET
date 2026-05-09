@@ -109,7 +109,13 @@ public sealed class ScaffoldRunner
         {
             using var bridge = (bridgeFactory ?? DefaultBridgeFactory)(bridgeOpts, _stderr);
 
-            var npgsqlString = DbConnectionStringBuilder.BuildNpgsql(bridgeOpts);
+            // Feature 012: the unified bridge listens on an ephemeral port. If
+            // bridge is a real PgBridgeProcess, prefer its actual port over the
+            // (now-meaningless) persisted port from settings. Test fakes that
+            // don't expose Port fall back to the requested opts.
+            var actualPort = (bridge as D2Net.Init.PgBridgeProcess)?.Port ?? bridgeOpts.Port;
+            var actualBridgeOpts = BridgeOptions.ForDataDir(bridgeOpts.DataDir, actualPort);
+            var npgsqlString = DbConnectionStringBuilder.BuildNpgsql(actualBridgeOpts);
             using var conn = new NpgsqlConnection(npgsqlString);
             try { conn.Open(); }
             catch (NpgsqlException ex)

@@ -11,9 +11,11 @@ public static class DbConnectionStringBuilder
 {
     public const string EngineName = "pglite";
 
+    // FR-027: Pooling=false on Npgsql; Pooling=false + UseDeclareFetch=0 on
+    // psqlODBC. Don't call NpgsqlCommand.Prepare() anywhere downstream.
     public static string BuildNpgsql(BridgeOptions o)
-        => $"Host={o.Host};Port={o.Port};Database={o.Database};Username={o.User};Password={o.Password};SSL Mode=Disable";
+        => $"Host={o.Host};Port={o.Port};Database={o.Database};Username={o.User};Password={o.Password};SSL Mode=Disable;Pooling=false";
 
     public static string BuildOdbc(BridgeOptions o)
-        => $"Driver={{PostgreSQL ODBC Driver(UNICODE)}};Server={o.Host};Port={o.Port};Database={o.Database};Uid={o.User};Pwd={o.Password};SSLmode=disable;";
+        => $"Driver={{PostgreSQL ODBC Driver(UNICODE)}};Server={o.Host};Port={o.Port};Database={o.Database};Uid={o.User};Pwd={o.Password};SSLmode=disable;Pooling=false;UseDeclareFetch=0;";
 }
