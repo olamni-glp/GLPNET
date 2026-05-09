@@ -21,11 +21,11 @@ description: "Implementation tasks for 012-codeconv-runner — codeconv-runner h
 
 **Purpose**: Bring the project skeletons into existence so subsequent phases can land code into them.
 
-- [ ] **T001** Create directory skeleton: `codeconv/src/codeconv/{tools,db,_vendor}/`, `codeconv/tests/`, `codeconv/db/migrations/`, `tools/d2net/src/{D2Net.BridgeClient,D2Net.PgdbMigrate}/`, `prereq-patterns/pglite/tests/`, `.codeconv/tombstones/.orphaned/.gitkeep`. Repo paths only — no code yet.
-- [ ] **T002** [P] Author `codeconv/pyproject.toml` declaring deps (`dbos`, `sqlalchemy>=2.0`, `psycopg[binary]>=3.1`, `typer`, `PyYAML`, `python-frontmatter`, `portalocker>=2.8`), the `codeconv` console script entry point, and pytest config.
-- [ ] **T003** [P] Add `proper-lockfile@^4.1.2` to `prereq-patterns/pglite/package.json` dependencies. Run `npm install` once, commit `package-lock.json`.
-- [ ] **T004** [P] Author `tools/d2net/src/D2Net.BridgeClient/D2Net.BridgeClient.csproj` (.NET 8 class library, no external deps). Add `tools/d2net/src/D2Net.PgdbMigrate/D2Net.PgdbMigrate.csproj` (executable, references BridgeClient). Add both to `tools/d2net/D2Net.sln`.
-- [ ] **T005** [P] Append to repo-root `.gitignore` per FR-029: `.pgdb/`, `.D2NET/pgdb.bak.*/`. Verify `.codeconv/tombstones/` and `.codeconv/tombstones/.orphaned/` are NOT ignored (must be checked in).
+- [X] **T001** Create directory skeleton: `codeconv/src/codeconv/{tools,db,_vendor}/`, `codeconv/tests/`, `codeconv/db/migrations/`, `tools/d2net/src/{D2Net.BridgeClient,D2Net.PgdbMigrate}/`, `prereq-patterns/pglite/tests/`, `.codeconv/tombstones/.orphaned/.gitkeep`. Repo paths only — no code yet.
+- [X] **T002** [P] Author `codeconv/pyproject.toml` declaring deps (`dbos`, `sqlalchemy>=2.0`, `psycopg[binary]>=3.1`, `typer`, `PyYAML`, `python-frontmatter`, `portalocker>=2.8`), the `codeconv` console script entry point, and pytest config.
+- [X] **T003** [P] Add `proper-lockfile@^4.1.2` to `prereq-patterns/pglite/package.json` dependencies. Run `npm install` once, commit `package-lock.json`.
+- [X] **T004** [P] Author `tools/d2net/src/D2Net.BridgeClient/D2Net.BridgeClient.csproj` (.NET 8 class library, no external deps). Add `tools/d2net/src/D2Net.PgdbMigrate/D2Net.PgdbMigrate.csproj` (executable, references BridgeClient). Add both to `tools/d2net/D2Net.sln`.
+- [X] **T005** [P] Append to repo-root `.gitignore` per FR-029: `.pgdb/`, `.D2NET/pgdb.bak.*/`. Verify `.codeconv/tombstones/` and `.codeconv/tombstones/.orphaned/` are NOT ignored (must be checked in).
 
 **Checkpoint**: Project skeletons exist; nothing runs yet.
 

@@ -5,9 +5,11 @@
   "description": "Postgres-wire bridge for PGLite, supporting Python (psycopg/SQLAlchemy/Alembic/DBOS) and .NET (Npgsql/psqlODBC) consumers. See ../pglite/description.md.",
   "type": "module",
   "scripts": {
-    "start": "node pglite_bridge.mjs"
+    "start": "node pglite_bridge.mjs",
+    "test": "node --test tests/"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.2.17"
+    "@electric-sql/pglite": "0.2.17",
+    "proper-lockfile": "^4.1.2"
   }
 }

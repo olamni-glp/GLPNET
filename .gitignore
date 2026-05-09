@@ -6,6 +6,18 @@ glp_runtime/build/
 **/bin/
 **/obj/
 
+# Node.js (prereq-patterns/pglite, etc.)
+**/node_modules/
+
+# Python (codeconv/)
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
 # Claude Code harness ephemerals
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
@@ -16,3 +28,10 @@ glp_runtime_net/
 
 # D2NET workspace data (per-machine PostgreSQL data dir + workspace settings)
 .D2NET/
+
+# Unified PGLite data dir (FR-029) — runtime cluster files, sidecar, lock, log
+.pgdb/
+
+# D2NET pgdb migration backups (FR-029) — kept on disk by D2Net.PgdbMigrate
+.D2NET/pgdb.bak.*/
+

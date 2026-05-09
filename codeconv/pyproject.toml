@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeconv"
+version = "0.1.0"
+description = "codeconv — DBOS-backed code-conversion runner over PGLite at .pgdb/"
+requires-python = ">=3.11"
+dependencies = [
+  "dbos",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.1",
+  "typer",
+  "PyYAML",
+  "python-frontmatter",
+  "portalocker>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7",
+  "pytest-mock",
+  "alembic>=1.13",
+]
+
+[project.scripts]
+codeconv = "codeconv.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "perf: opt-in performance tests; require --run-perf flag (SC-013)",
+]
