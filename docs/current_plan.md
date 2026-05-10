@@ -1,9 +1,9 @@
 # Current Plan: 012-codeconv-runner — `/speckit-implement` (mid-flight)
 
 **Branch**: `012-codeconv-runner` (pushed to origin)
-**Started**: 2026-05-09 (spec-kit chain) → continued through Phase 4
-**Last commit**: `c34f013a` — Phase 4 done & pushed
-**Resume point**: **DESIGN-DISCUSSION SIDECHAIN** — bridge daemon coordination protocol (problems A–E); Phase 5 paused.
+**Started**: 2026-05-09 (spec-kit chain) → continued through Phase 6
+**Last commit**: `f54c58e1` — Phase 6 done & pushed
+**Resume point**: Phase 7 (Polish T080–T092). T040 / T041 (Phase 4 carryover) still deferred.
 
 ## 🔴 Active sidechain: bridge daemon coordination — experimental implementation (2026-05-10)
 
@@ -44,12 +44,26 @@ Sequence:
 ## What's left
 
 - T040 / T041 (Phase 4 carryover) — D2NET tests sweep to use unified bridge. Deferred.
-- Phase 6 (US4 codeconv-discover) — T060–T076.
 - Phase 7 (Polish) — T080–T092.
+
+## Phase 6 completion notes (2026-05-10)
+
+DBOS-on-PGLite launch worked once four hooks were lined up; if Phase 7 polish revisits this, do not unwind them blindly:
+
+1. **DBOS DB name override** (engine.py) — DBOS defaults to `<dbname>_dbos_sys` separate database, which PGLite cannot create. Set `application_database_url=url` AND `system_database_url=url` both pointing at `postgres`, plus `dbos_system_schema='dbos'` for FR-015 isolation.
+2. **Pool sizing for DBOS engines** — `pglite_engine_kwargs` defaults to `pool_size=1`; that DEADLOCKS DBOS because `run_migrations` holds one connection across an inner `ensure_dbos_schema` call. Override to `pool_size=5, max_overflow=5` for both DBOS engines (plus `sys_db_pool_size=5`). Bridge `globalWorkChain` still serialises on the PGLite side; SQLAlchemy multi-connection only buys client concurrency.
+3. **uuid-ossp rewrite preserves semicolon** — the `_install_sqlalchemy_uuid_ossp_filter` substitutes `CREATE EXTENSION "uuid-ossp"` → `SELECT 1;` (NOT `SELECT 1`); without the trailing `;` the next statement in DBOS's multi-statement migration concatenates and PGLite hits a syntax error at line 5.
+4. **Disable LISTEN/NOTIFY in DBOS** — `use_listen_notify=False` in `DBOSConfig`. PGLite does not implement the NOTIFY half end-to-end; leaving DBOS to poll skips a class of mystery hangs.
+
+Effective workflow durability for `/codeconv-discover` is provided by per-file `(mtime, sha256)` idempotence short-circuit — NOT `@DBOS.workflow` / `@DBOS.step` wrapping. The behavioural contract (SC-009 / FR-017 "kill-and-resume yields no re-parse of completed files") is satisfied; literal DBOS-workflow wrapping is deferred polish (mentioned in workflow.py module docstring).
+
+PGLite specifics confirmed by probe:
+- `current_database()` → `'template1'` (PGLite ignores the requested db name and routes everything to template1; functionally fine, do not "fix").
+- `pg_try_advisory_lock(...)` works and returns BOOLEAN; the earlier "NoneType unpack" was a bug in our SQLAlchemy `before_cursor_execute` filter (must always return a tuple under `retval=True`).
 
 ## Next session
 
-Resume at Phase 6 (T060: discover walker tests).
+Resume at Phase 7 (T080 quickstart Flow A end-to-end) OR pick off T040/T041 (D2NET tests sweep) — both are independent.
 
 ## 🔴 Branch Instructions
 
@@ -69,9 +83,9 @@ All commits go on this branch. When done, Gabi merges into `main`.
 - [x] 3. /speckit-implement — **Phase 2 (Foundational)** T010–T014 (commit `570c9a8d`)
 - [x] 4. /speckit-implement — **Phase 3 (US1 bridge)** T020–T026 (commit `474c3aa6`); 6/6 node tests pass
 - [x] 5. /speckit-implement — **Phase 4 (US2 D2NET)** T030–T039, T042–T043 (commit `c34f013a`); 8/8 new tests green; T040/T041 deferred
-- [ ] 6. /speckit-implement — **Phase 5 (US3 codeconv runner)** T050–T059 ← **CURRENT**
-- [ ] 7. /speckit-implement — **Phase 6 (US4 codeconv-discover)** T060–T076
-- [ ] 8. /speckit-implement — **Phase 7 (Polish)** T080–T092
+- [x] 6. /speckit-implement — **Phase 5 (US3 codeconv runner)** T050–T059 (commit `05a65008`)
+- [x] 7. /speckit-implement — **Phase 6 (US4 codeconv-discover)** T060–T076 (commit `f54c58e1`); 36/39 tests pass (2 perf opt-in + 1 Windows-symlink skipped)
+- [ ] 8. /speckit-implement — **Phase 7 (Polish)** T080–T092 ← **CURRENT**
 
 ## What's done in this session
 
