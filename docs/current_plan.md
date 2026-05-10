@@ -1,8 +1,9 @@
-# Current Plan: 012-codeconv-runner — speckit chain to /speckit-implement
+# Current Plan: 012-codeconv-runner — `/speckit-implement` (mid-flight)
 
-Started: 2026-05-09
-Branch: `012-codeconv-runner`
-Spec: `specs/012-codeconv-runner/spec.md` (clarified Session 2026-05-09)
+**Branch**: `012-codeconv-runner` (pushed to origin)
+**Started**: 2026-05-09 (spec-kit chain) → continued through Phase 4
+**Last commit**: `c34f013a` — Phase 4 done & pushed
+**Resume point**: Phase 5 (US3 codeconv runner — Python package + DBOS + Alembic)
 
 ## 🔴 Branch Instructions
 
@@ -15,99 +16,85 @@ git pull origin 012-codeconv-runner
 
 All commits go on this branch. When done, Gabi merges into `main`.
 
-## Steps
+## Phases
 
-- [x] 1. /speckit-plan → wrote `specs/012-codeconv-runner/plan.md`, `research.md`, `data-model.md`, `contracts/` (7 files), `quickstart.md`. Updated `CLAUDE.md` SPECKIT marker to point at the new plan.
-- [x] 2. /speckit-tasks → wrote `specs/012-codeconv-runner/tasks.md` (T001–T092, organised by 4 user stories US1–US4 plus shared phases).
-- [x] 3. /speckit-analyze → wrote `specs/012-codeconv-runner/analysis.md`. 6 top remediations identified.
-- [x] 4. Apply top remediations (in-document only) → applied R1 portalocker pin, R2 FR-027 .NET flag preservation in T038, R3 added T091 (.NET pooling grep), R4 added T092 (COPY FROM STDIN grep), R5 added T010a (D2NET schema discovery), R6 amended T057 with Alembic-then-DBOS order.
-- [ ] 5. /speckit-implement (in NEW session) ← CURRENT — this session ends here per Gabi's request.
+- [x] 1. /speckit-plan, /speckit-tasks, /speckit-analyze, remediations applied (committed `bd4787ab`)
+- [x] 2. /speckit-implement — **Phase 1 (Setup)** T001–T005 (commit `49e16144`)
+- [x] 3. /speckit-implement — **Phase 2 (Foundational)** T010–T014 (commit `570c9a8d`)
+- [x] 4. /speckit-implement — **Phase 3 (US1 bridge)** T020–T026 (commit `474c3aa6`); 6/6 node tests pass
+- [x] 5. /speckit-implement — **Phase 4 (US2 D2NET)** T030–T039, T042–T043 (commit `c34f013a`); 8/8 new tests green; T040/T041 deferred
+- [ ] 6. /speckit-implement — **Phase 5 (US3 codeconv runner)** T050–T059 ← **CURRENT**
+- [ ] 7. /speckit-implement — **Phase 6 (US4 codeconv-discover)** T060–T076
+- [ ] 8. /speckit-implement — **Phase 7 (Polish)** T080–T092
 
-## Context
+## What's done in this session
 
-Feature 012-codeconv-runner consolidates PGLite into a single repo-wide deployment at `.pgdb/` with OS-level cross-process locking; migrates `.D2NET/pgdb/` data into the unified location; converts D2NET .NET tools to bridge clients; ships `/codeconv-runner` (Python CLI on DBOS-over-PGLite) plus first registered tool `/codeconv-discover` (walks `glp_runtime_net/`, populates `codeconv` schema, writes `.codeconv/tombstones/`).
+### New files / directories (committed)
 
-Spec was clarified in Session 2026-05-09 (16 questions answered). Plan + tasks + analysis are locked in.
+- `codeconv/` — Python package skeleton (pyproject.toml, `src/codeconv/__init__.py`, `tools/__init__.py`, `_vendor/{pglite_engine_kwargs,pglite_compat_loaders}.py` + `__init__.py`)
+- `tools/d2net/src/D2Net.BridgeClient/` — `BridgeClient.cs`, `BridgeEndpoint.cs`, `SidecarFile.cs`, csproj
+- `tools/d2net/src/D2Net.PgdbMigrate/` — `Program.cs` (state machine R8), csproj
+- `tools/d2net/tests/D2Net.BridgeClient.Tests/` — `AcquireOrDiscover.cs`, csproj (2/2 green)
+- `tools/d2net/tests/D2Net.PgdbMigrate.Tests/` — HappyPath, Idempotent, RefuseOnConflict, CrashRecovery, csproj (6/6 green)
+- `prereq-patterns/pglite/log_rotator.mjs` + `tests/_helpers.mjs` + 5 test files (6/6 green)
+- `.claude/skills/D2NET-pgdb-migrate/SKILL.md`
+- `.codeconv/tombstones/.gitkeep`, `.codeconv/tombstones/.orphaned/.gitkeep`
 
-## How to resume in a fresh session
+### Modified
 
-1. New Claude Code session in this repo. CLAUDE.md mandatory reading auto-loads.
-2. Claude reads this `current_plan.md` per CLAUDE.md "Multi-Stage Task Persistence" rule.
-3. Read `specs/012-codeconv-runner/plan.md` (technical context) and `tasks.md` (T001–T092). Optionally read `analysis.md` for the remediation history.
-4. Type `/speckit-implement` to begin Phase 1 (Setup) of `tasks.md`.
+- `prereq-patterns/pglite/pglite_bridge.mjs` — added proper-lockfile, sidecar JSON, READY token-after-listen, --daemon log rotation, `--no-lock` flag
+- `prereq-patterns/pglite/package.json` — added `proper-lockfile@^4.1.2`, `pg@^8` devDep, `--test-concurrency=1` test script
+- `tools/d2net/src/D2Net.Init/{PgBridgeProcess,WorkspaceLayout,InitRunner,OdbcConnectionStringBuilder}.cs`, `Schema/db-schema.sql`, csproj — shim to BridgeClient; PgDir → `<repo>/.pgdb`; FR-027 flags; idempotent schema apply
+- `tools/d2net/src/D2Net.Scaffold/ScaffoldRunner.cs` — connection string uses bridge's actual ephemeral port
+- `tools/d2net/D2Net.sln` — added BridgeClient, PgdbMigrate, and their test projects
+- `.claude/skills/D2NET-init/SKILL.md`, `.claude/skills/D2NET-scaffold/SKILL.md` — pgbridge/ subtree references removed; `--bridge-port` noted as no-op
+- `.gitignore` — `.pgdb/`, `.pgdb.bridge.lock/`, `.D2NET/pgdb.bak.*/`, Node/Python ignores
+- `specs/012-codeconv-runner/{contracts/bridge_lifecycle,contracts/bridge_cli,plan,data-model,tasks}.md` — sibling lock-path amendment + status
 
-The `/speckit-implement` skill processes tasks in dependency order:
-Phase 1 (Setup) → Phase 2 (Foundational, blocks all stories) → Phase 3 (US1 = MVP precondition: bridge with cross-process exclusion) → Phase 4 (US2: D2NET migration) → Phase 5 (US3: codeconv runner) → Phase 6 (US4: discover tool) → Phase 7 (Polish + cross-cutting verification).
+### Deleted
 
-## Files in scope (writing or modifying during /speckit-implement)
+- `tools/d2net/src/D2Net.Init/pgbridge/` — vendored bridge bundle (replaced by canonical `prereq-patterns/pglite/pglite_bridge.mjs`)
 
-NEW directories / files:
-- `codeconv/` — Python package (runner + first tool + tests + vendored libs).
-- `tools/d2net/src/D2Net.BridgeClient/` — shared lock+sidecar lib for .NET clients.
-- `tools/d2net/src/D2Net.PgdbMigrate/` — one-shot migration CLI.
-- `prereq-patterns/pglite/tests/` — bridge unit tests.
-- `.claude/skills/codeconv-runner/SKILL.md`, `.claude/skills/codeconv-discover/SKILL.md`, `.claude/skills/D2NET-pgdb-migrate/SKILL.md`.
-- `.codeconv/tombstones/.orphaned/` — checked-in (with `.gitkeep`).
-- `specs/012-codeconv-runner/scripts/` — SC-003 harness (Python + .NET).
-- `.pgdb/` — runtime data, gitignored; populated by bridge.
+## 🔴 Spec amendment under autonomy (REVIEW)
 
-MODIFIED:
-- `prereq-patterns/pglite/pglite_bridge.mjs` (add lock + sidecar + log rotation; preserve all FR-005 invariants).
-- `prereq-patterns/pglite/package.json` (add `proper-lockfile`).
-- `prereq-patterns/pglite/description.md` (FR-012 amendment).
-- `tools/d2net/src/D2Net.Init/PgBridgeProcess.cs` (delegate to BridgeClient; preserve FR-027 connection-string flags).
-- `tools/d2net/src/D2Net.Scaffold/` (verify whether it self-launches a bridge — if so, same change as Init).
-- `tools/d2net/D2Net.sln` (add new projects).
-- `.claude/skills/D2NET-init/SKILL.md`, `.claude/skills/D2NET-scaffold/SKILL.md` (point at unified bridge).
-- `.gitignore` (add `.pgdb/` and `.D2NET/pgdb.bak.*/`; do NOT ignore `.codeconv/tombstones/`).
-- `CLAUDE.md` SPECKIT marker (already done; T089 adds a brief migration note elsewhere).
-- `docs/known-issues.md` (T090).
+The bridge OS-level lock was moved from `<data-dir>/.bridge.lock` (inside `.pgdb/`) to `<data-dir>.bridge.lock` (sibling). PGLite refuses to initialize a fresh data-dir that has any non-PG file present. Updated all relevant contracts + plan + data-model + .gitignore.
 
-## Implementation cautions
+The "what" of the contract is preserved (single OS-level lock per repo, kernel-released, exit 5 on contention). Cross-language coordination still works via "create-or-fail" semantics (proper-lockfile mkdir + .NET FileStream FileShare.None + Python portalocker LOCK_EX|LOCK_NB).
 
-- **CLAUDE.md baseline-then-change-then-test discipline** applies. The bridge changes touch a live file used by feature 011's catalog. Run any existing tests + the existing bridge smoke (`prereq-patterns/pglite/`) before T024; commit a baseline; modify; re-run.
+Memory: `project_012_sibling_lock_path.md`.
+
+## Open issues
+
+- **T040 (existing D2NET tests)**: ~32 tests under `tools/d2net/tests/D2Net.{Init,Scaffold}.Tests/` assume per-invocation bridge against `.D2NET/pgdb/` with explicit ports. After WorkspaceLayout.PgDir → `.pgdb/` and PgBridgeProcess shim to BridgeClient (ephemeral port), most break. Sweep needed.
+- **T041 (full sln dotnet test)**: blocked on T040. New test projects only: 8/8 green.
+
+## Technical context for resume
+
+- **Repo root**: `D:\BSTDEV\research\GLP\GLPNET`
+- **PGLite cluster**: `<repo>/.pgdb/` (gitignored)
+- **Bridge lock**: `<repo>/.pgdb.bridge.lock/` (sibling, gitignored)
+- **Bridge sidecar**: `<repo>/.pgdb/bridge.json` (atomic write, written before `BRIDGE_READY` stdout token)
+- **Bridge log** (--daemon mode): `<repo>/.pgdb/bridge.log` size-rotated 5MB × 3
+- **Vendored Python loaders** (do not edit): `codeconv/src/codeconv/_vendor/pglite_engine_kwargs.py`, `pglite_compat_loaders.py`
+- **D2NET schemas**: D2NET tables (`setting`, `excluded_directories`, `dart_files`, `phase_sequence`, `phase_status`) live in `public`. Codeconv lives in `codeconv` schema. DBOS lives in `dbos` schema.
+- **Schema name collision warning**: `public.dart_files` (D2NET) vs `codeconv.dart_files` (this feature) — must qualify or set search_path.
+- **Bridge spawn invocation** (canonical): `node prereq-patterns/pglite/pglite_bridge.mjs --data-dir .pgdb --port 0 --daemon`
+- **Test concurrency**: `node --test --test-concurrency=1 tests/*.test.mjs` is required (parallel test runner causes resource contention with PGLite WASM).
+- **PGLite cold init ~7s on Windows**: bumps test timeouts to ≥30s (memory `project_pglite_cold_init_windows.md`).
+
+## Resume sequence
+
+1. Read this file.
+2. Read `specs/012-codeconv-runner/tasks.md` — task statuses with deferral notes are accurate.
+3. Read `specs/012-codeconv-runner/contracts/bridge_lifecycle.md` and `bridge_cli.md` for the amended lock-path semantics.
+4. Skim memories: `project_012_codeconv_runner_status.md`, `project_012_sibling_lock_path.md`, `project_pglite_cold_init_windows.md`, `reference_d2net_uses_public_schema.md`.
+5. Start Phase 5: implement `codeconv/src/codeconv/bridge_client.py` (Python port of the .NET `BridgeClient.cs`; `portalocker` instead of `FileStream`).
+6. Then `db/engine.py`, Alembic env, migration `0001`, CLI, tests, skill.
+
+## Implementation cautions (still apply)
+
+- **CLAUDE.md baseline-then-change-then-test**.
 - **No COPY FROM STDIN** against PGLite (FR-026). T092 verifies.
-- **No client-side prepared-statement caching** (FR-027). T091 verifies on .NET side; T054 enforces on Python side.
-- **D2NET schema unchanged** (FR-015). T010a documents what it currently is; do NOT rewrite.
-- **`proper-lockfile` Windows behaviour** is the validation criterion for research R1. If it does not honour kernel release on Windows for the chosen call shape, STOP and escalate to Gabi before lowering the lock guarantee.
-- **Spec-First Development**: spec + plan + tasks + contracts are the source of truth. Implementation MUST match. Any deviation → STOP and discuss.
-
-## Optional auto-commit hooks (not yet executed)
-
-The repo's `.specify/extensions.yml` defines optional `after_plan` / `after_tasks` / `after_analyze` hooks that run `speckit.git.commit`. These were NOT auto-executed during this session. Before `/speckit-implement` in the new session, the resuming session may run:
-
-```
-/speckit-git-commit
-```
-
-…to land the spec-kit artefacts as a baseline commit on `012-codeconv-runner`. (Optional but recommended — keeps the implementation diff scoped.)
-
-## Files added or modified in this session (uncommitted)
-
-```
-modified:   CLAUDE.md  (SPECKIT marker → 012)
-modified:   docs/current_plan.md  (this file)
-new file:   specs/012-codeconv-runner/plan.md
-new file:   specs/012-codeconv-runner/research.md
-new file:   specs/012-codeconv-runner/data-model.md
-new file:   specs/012-codeconv-runner/quickstart.md
-new file:   specs/012-codeconv-runner/tasks.md
-new file:   specs/012-codeconv-runner/analysis.md
-new file:   specs/012-codeconv-runner/contracts/bridge_lifecycle.md
-new file:   specs/012-codeconv-runner/contracts/bridge_cli.md
-new file:   specs/012-codeconv-runner/contracts/codeconv_runner_cli.md
-new file:   specs/012-codeconv-runner/contracts/codeconv_tool_contract.md
-new file:   specs/012-codeconv-runner/contracts/codeconv_discover_cli.md
-new file:   specs/012-codeconv-runner/contracts/tombstone_format.md
-new file:   specs/012-codeconv-runner/contracts/d2net_pgdb_migration_cli.md
-```
-
-(Verify with `git status --short`.)
-
-## Resume one-liner
-
-```
-/speckit-implement
-```
-
-Each task in tasks.md lists exact file paths; the implementer follows them in order, marking each complete as it lands.
+- **No client-side prepared-statement caching** (FR-027). T054 enforces on Python side.
+- **D2NET schema unchanged** (FR-015) — `public` schema is theirs; `DROP TABLE IF EXISTS … CASCADE` in db-schema.sql is added for re-init idempotence (does not cross to other schemas).
+- **Spec-First Development**: spec + plan + tasks + contracts are the source of truth. Any deviation → STOP and discuss.
