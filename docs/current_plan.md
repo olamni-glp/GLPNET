@@ -3,7 +3,53 @@
 **Branch**: `012-codeconv-runner` (pushed to origin)
 **Started**: 2026-05-09 (spec-kit chain) → continued through Phase 4
 **Last commit**: `c34f013a` — Phase 4 done & pushed
-**Resume point**: Phase 5 (US3 codeconv runner — Python package + DBOS + Alembic)
+**Resume point**: **DESIGN-DISCUSSION SIDECHAIN** — bridge daemon coordination protocol (problems A–E); Phase 5 paused.
+
+## 🔴 Active sidechain: bridge daemon coordination — experimental implementation (2026-05-10)
+
+Steps 1–3 of the bridge-coordination 7-step plan completed; Gabi observed that the individually-good external solutions are likely to deeply interfere when combined and **deferred the deep investigation to a separate future feature** (memory `project_bridge_daemon_coordination_deferred.md`, artefacts in `docs/research/bridge-daemon-coordination/`).
+
+He directed me to **experimentally implement my recommended set** so Phase 5 can proceed; full investigation comes later as a planned feature.
+
+Recommended set being implemented:
+- **A spawn race** = A3 postmaster.pid + A4 mkdir + A1 single-instance — bridge mkdir is the real mutex; client speculative-spawn + exit-5 classification + 250 ms / stale-lock retries
+- **B daemon liveness** = B3 k8s 3-probe split + B2 self-pet conditional on internal `SELECT 1` — bridge writes `heartbeat_at` / `heartbeat_seq` into sidecar after each successful self-ping
+- **C orphan detection** = C4 kernel-released fd-lock per consumer at unique path under `.pgdb/consumers/<pid>.lock`
+- **D orphan shutdown** = D2 30 s linger + D3 graceful drain; non-destructive FORCE shutdown via `.pgdb/.shutdown` marker
+- **E consumer startup** = E2 pg_ctl-style discover-or-spawn + E1 sidecar discovery; **register-before-connect**
+
+Phase 5 work in progress (NOT yet committed):
+- `codeconv/src/codeconv/bridge_client.py` — v2 (spawn-race + stale-lock retry); needs +heartbeat-verify +consumer-reg +force-shutdown
+- `codeconv/src/codeconv/db/{engine,migrations}/...` — written
+- `codeconv/src/codeconv/{runner,cli}.py` — written
+- `codeconv/src/codeconv/_vendor/dbos_pglite_patch.py` — written (note: contract amendment needed for import path)
+- `codeconv/tests/{conftest,test_bridge_client,test_engine,test_runner_registry}.py` — 7 unit tests pass, 5 e2e tests need re-run after bridge changes
+- `prereq-patterns/pglite/pglite_bridge.mjs` — needs +SQL-self-ping +consumer-poll +linger-shutdown +force-shutdown
+
+Sequence:
+1. ✅ Bridge: SQL self-ping heartbeat (5 s interval) writing to sidecar
+2. ✅ Bridge: poll `.pgdb.consumers/` (sibling) for live consumers via pid-existence; declare orphan when none
+3. ✅ Bridge: 30 s linger + graceful shutdown; `.pgdb.shutdown` marker triggers immediate graceful exit
+4. ✅ Client: consumer registration via pid-file at `.pgdb.consumers/<pid>.lock` (no portalocker — kernel-released-fd-lock approach abandoned for portability)
+5. ✅ Client: heartbeat-freshness check in liveness (HEARTBEAT_FRESHNESS_SECONDS = 30)
+6. ✅ Client: `request_force_shutdown(repo_root)` helper writes the shutdown marker
+7. ✅ Tests: 12/12 + 1 xfail green (76 s suite). xfail = test_iter_modules_finds_discover (Phase 6 T060)
+
+## 🔴 Discovery during implementation
+
+- Bridge daemon's lock-then-spawn flow in the original contract was provably broken (proper-lockfile mkdir vs FileShare.None file lock can't coordinate at same path; bridge has retries=0). Replaced with **spawn-and-classify-by-exit-code** plus **sidecar-poll readiness** (Node block-buffers piped stdout on Windows; BRIDGE_READY token via stdout was unreliable, took 30+ s to flush). Sidecar with heartbeat fields is now the canonical readiness signal.
+- Consumer registration moved from kernel-released fd-lock to pid-file with `process.kill(pid, 0)` liveness — simpler, portable, accepts pid-reuse risk (deferred investigation will revisit; with realistic N=2-5, reuse-within-seconds is unlikely).
+- Sibling paths used everywhere PGLite forbids non-PG files in its data dir: `.pgdb.bridge.lock/`, `.pgdb.consumers/`, `.pgdb.shutdown`.
+
+## What's left
+
+- T040 / T041 (Phase 4 carryover) — D2NET tests sweep to use unified bridge. Deferred.
+- Phase 6 (US4 codeconv-discover) — T060–T076.
+- Phase 7 (Polish) — T080–T092.
+
+## Next session
+
+Resume at Phase 6 (T060: discover walker tests).
 
 ## 🔴 Branch Instructions
 

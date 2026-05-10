@@ -35,6 +35,12 @@ glp_runtime_net/
 # Sibling cross-process lock dir for the unified bridge (proper-lockfile)
 .pgdb.bridge.lock/
 
+# Sibling per-process consumer registry for the unified bridge (orphan-detection)
+.pgdb.consumers/
+
+# Sibling shutdown marker for non-destructive force shutdown
+.pgdb.shutdown
+
 # D2NET pgdb migration backups (FR-029) — kept on disk by D2Net.PgdbMigrate
 .D2NET/pgdb.bak.*/
 

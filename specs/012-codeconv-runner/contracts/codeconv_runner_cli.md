@@ -97,8 +97,14 @@ url = f"postgresql+psycopg://postgres:postgres@{endpoint.host}:{endpoint.port}/p
 engine = create_engine(url, **pglite_engine_kwargs(application_name='codeconv'))
 apply_to_engine(engine)
 
-# Apply DBOS startup patch BEFORE dbos.launch()
-from codeconv._vendor.pglite_engine_kwargs import _apply_pglite_compat_patch  # exposed by upstream
+# Apply DBOS startup patch BEFORE dbos.launch().
+# Note: lives in codeconv._vendor.dbos_pglite_patch (not pglite_engine_kwargs).
+# The verbatim opskit copy of pglite_engine_kwargs.py does not expose this
+# function — it is the DBOS-side helper documented in
+# `prereq-patterns/dbos/sources.md` (originally from `ulpani_lms_dbos.py`).
+# Per the "do not edit vendored opskit copy" rule, we put it in a separate
+# vendored module rather than modify the upstream pglite_engine_kwargs.
+from codeconv._vendor.dbos_pglite_patch import _apply_pglite_compat_patch
 _apply_pglite_compat_patch()
 dbos = DBOS(config=DBOSConfig(database_url=url, db_engine_kwargs=pglite_engine_kwargs('codeconv'), schema='dbos'))
 dbos.launch()
