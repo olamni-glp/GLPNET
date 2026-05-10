@@ -84,15 +84,34 @@ def setup_dbos(
     from dbos import DBOS, DBOSConfig  # imported lazily; heavy
 
     url = build_url(endpoint)
+    # PGLite has only the ``postgres`` database; DBOS's default behaviour
+    # of creating a sibling ``<dbname>_dbos_sys`` database fails. Point
+    # both DBOS roles (system + application) at the same ``postgres`` DB,
+    # and isolate DBOS's tables in the ``dbos`` schema (FR-015).
+    #
+    # Pool sizing: ``pglite_engine_kwargs`` defaults to ``pool_size=1`` —
+    # safe for codeconv's own sequential migrations but DEADLOCKS DBOS,
+    # whose ``run_migrations`` holds one connection across an inner
+    # ``ensure_dbos_schema`` call that needs a second. Override to >= 5
+    # for both DBOS engines. The bridge's ``globalWorkChain`` still
+    # serialises queries on the PGLite side (FR-005 invariant preserved);
+    # SQLAlchemy multi-connection only buys concurrency at the client.
+    dbos_kwargs = pglite_engine_kwargs(application_name=application_name)
+    dbos_kwargs["pool_size"] = 5
+    dbos_kwargs["max_overflow"] = 5
     cfg_kwargs = dict(
+        name=application_name,
         database_url=url,
-        db_engine_kwargs=pglite_engine_kwargs(application_name=application_name),
+        application_database_url=url,
+        system_database_url=url,
+        sys_db_pool_size=5,
+        dbos_system_schema="dbos",
+        db_engine_kwargs=dbos_kwargs,
+        # PGLite does not support PostgreSQL's NOTIFY mechanism end-to-end;
+        # disable LISTEN/NOTIFY-based polling.
+        use_listen_notify=False,
     )
-    # ``schema`` is supported on DBOS >= 0.6; pass it iff DBOSConfig accepts.
-    try:
-        config = DBOSConfig(schema="dbos", **cfg_kwargs)
-    except TypeError:
-        config = DBOSConfig(**cfg_kwargs)
+    config = DBOSConfig(**cfg_kwargs)
     dbos = DBOS(config=config)
     dbos.launch()
 

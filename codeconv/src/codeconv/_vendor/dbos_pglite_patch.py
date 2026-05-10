@@ -104,7 +104,7 @@ def _install_alembic_source_rewrite_hook() -> None:
         if "/dbos/" in spath_norm and "migration" in spath_norm:
             try:
                 text = data.decode("utf-8")
-                rewritten = _UUID_OSSP_PATTERN.sub("SELECT 1", text)
+                rewritten = _UUID_OSSP_PATTERN.sub("SELECT 1;", text)
                 if rewritten != text:
                     return rewritten.encode("utf-8")
             except UnicodeDecodeError:
@@ -116,7 +116,7 @@ def _install_alembic_source_rewrite_hook() -> None:
 
 def _install_sqlalchemy_uuid_ossp_filter() -> None:
     """Install a global SQLAlchemy ``before_cursor_execute`` listener that
-    rewrites ``CREATE EXTENSION "uuid-ossp"`` to ``SELECT 1`` at the wire.
+    rewrites ``CREATE EXTENSION "uuid-ossp"`` to ``SELECT 1;`` at the wire.
 
     Engines created AFTER this function runs see the listener via the
     SQLAlchemy ``Engine`` superclass event registry. Idempotent — repeat
@@ -128,10 +128,13 @@ def _install_sqlalchemy_uuid_ossp_filter() -> None:
     def filter_uuid_ossp(  # type: ignore[no-untyped-def]
         conn, cursor, statement, parameters, context, executemany,
     ):
+        # ``retval=True`` requires a (statement, parameters) tuple on every
+        # invocation; returning None breaks SQLAlchemy's unpacking. So we
+        # always return a tuple — rewritten if the pattern matches, the
+        # original statement otherwise.
         if statement and _UUID_OSSP_PATTERN.search(statement):
-            stripped = _UUID_OSSP_PATTERN.sub("SELECT 1", statement)
-            return (stripped, parameters)
-        return None
+            return (_UUID_OSSP_PATTERN.sub("SELECT 1;", statement), parameters)
+        return (statement, parameters)
 
     event.listen(Engine, "before_cursor_execute", filter_uuid_ossp, retval=True)
 
