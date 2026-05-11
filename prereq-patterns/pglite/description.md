@@ -34,3 +34,14 @@ The pattern is the consolidation of these halves into one re-usable block. Imple
 5. Apply the consumer-specific client config from [applicability.md](./applicability.md) — there is a section per consumer with the exact knobs.
 
 The `prereq-patterns/` directory is documentation + index + a copyable bridge implementation — it is NOT a runtime library. Adapting the pattern means **copying** the cited files into your feature, not importing them from the catalog.
+
+## Repo-wide deployment (this repo: glpnet) — feature 012 update
+
+Beginning with feature `012-codeconv-runner` (FR-012), the canonical bridge files in this directory ARE ALSO the **live deployment** for repo-wide PGLite use. There is one bridge per repo, listening against the unified data directory at `<repo-root>/.pgdb/`, started on demand via cross-process file lock + auto-spawn (see `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`). All in-repo consumers (the Python `codeconv` runner, the .NET `D2Net.Init` / `D2Net.Scaffold` / `D2Net.PgdbMigrate` tools, plus any future D2NET or codeconv tool) connect to that single bridge.
+
+The "copy `pglite_bridge.mjs` and `package.json` into your feature working tree" guidance from feature 011 (above) still applies — but only for features that genuinely need a **feature-private PGLite deployment** (separate data dir, separate bridge process, isolated from the repo-wide one). For glpnet's repo-wide use, `node prereq-patterns/pglite/pglite_bridge.mjs --data-dir .pgdb --port 0 --daemon` is invoked directly; no copy is made.
+
+Two things follow from this dual role:
+
+- **Edits to `pglite_bridge.mjs` are now load-bearing for the running system.** Treat it like any other in-tree source file under change control — no "this is reference material, edit freely" assumption.
+- **The OS-level lock (`proper-lockfile` against `<data-dir>/.bridge.lock`), the sidecar discovery file (`<data-dir>/bridge.json`), the `BRIDGE_READY` token shape, and the rotated stderr log (`<data-dir>/bridge.log` + `.log.{1,2,3}`) are part of the contract** clients in this repo depend on. Any feature copying the bridge into a private working tree inherits these contracts — see `specs/012-codeconv-runner/contracts/bridge_lifecycle.md` and `bridge_cli.md` for the canonical wording.

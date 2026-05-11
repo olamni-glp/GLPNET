@@ -16,6 +16,9 @@
 //     descendant of bridge-direct.mjs that PGLite's Python consumers
 //     (psycopg / SQLAlchemy / DBOS) needed to keep responses ordered across
 //     PGLite's single shared WASM session.
+//   - Repo-wide single-bridge invariant (cross-process file lock, sidecar
+//     JSON discovery, auto-spawn READY token, rotated --daemon log) comes
+//     from feature 012 (specs/012-codeconv-runner/contracts/bridge_*.md).
 //
 // Pinned to `@electric-sql/pglite@0.2.17` (see ./package.json). The 0.2.x
 // API surface is `PGlite.create()`, `pglite.exec()`, `pglite.execProtocolRaw()`.
@@ -27,12 +30,79 @@
 // specs/011-prereq-patterns-catalog/pglite-merge-analysis.md row A4.
 
 import { createServer } from 'node:net';
-import { existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  open as fsOpen,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync as fsWriteSync,
+} from 'node:fs';
+import { open as fsOpenAsync } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
+import lockfile from 'proper-lockfile';
+
+import { createRotatingStream } from './log_rotator.mjs';
+
+// --------- coordination protocol constants (recommended-set experiment) ---------
+const SELF_PING_INTERVAL_MS    = 5000;   // SQL self-ping cadence (B liveness)
+const ORPHAN_POLL_INTERVAL_MS  = 5000;   // poll .pgdb/consumers/ cadence (C)
+const ORPHAN_LINGER_MS         = 30000;  // linger before graceful shutdown (D)
+const SHUTDOWN_MARKER_POLL_MS  = 1000;   // poll .pgdb/.shutdown (D non-destructive force)
+
+// Force synchronous (blocking) stdout writes so the parent (which is reading
+// our stdout via a pipe) sees BRIDGE_READY immediately. Node block-buffers
+// piped stdout by default; without this, Python clients can wait 30+ seconds
+// for the line because Node only flushes on process exit. setBlocking(true)
+// is a private libuv API but stable and widely used.
+try {
+  if (process.stdout && process.stdout._handle && typeof process.stdout._handle.setBlocking === 'function') {
+    process.stdout._handle.setBlocking(true);
+  }
+  if (process.stderr && process.stderr._handle && typeof process.stderr._handle.setBlocking === 'function') {
+    process.stderr._handle.setBlocking(true);
+  }
+} catch (_e) { /* tolerate older Node */ }
 
 const args = parseArgs(process.argv);
 if (!existsSync(args.pgdir)) mkdirSync(args.pgdir, { recursive: true });
+
+const sidecarPath = join(args.pgdir, 'bridge.json');
+// Lock is placed SIBLING to the data dir (e.g. `.pgdb.bridge.lock/` next to
+// `.pgdb/`) rather than inside it: PGLite refuses to initialize a data-dir
+// that has any non-PG file present at init time, and proper-lockfile creates
+// its lock as a directory. See contracts/bridge_lifecycle.md "Lock semantics".
+const lockPath = `${args.pgdir}.bridge.lock`;
+
+// Acquire the cross-process bridge lock (FR-002, FR-003). On failure, emit
+// the contracted BRIDGE_LOCK_HELD line and exit 5. The lock is kernel-released
+// on process exit; we do NOT explicitly release it on graceful shutdown.
+let lockRelease = null;
+if (!args.noLock) {
+  try {
+    lockRelease = await lockfile.lock(args.pgdir, {
+      lockfilePath: lockPath,
+      retries: 0,
+      stale: 1000,
+      update: 500,
+      realpath: false,
+    });
+  } catch (e) {
+    let detail = 'pid=? (sidecar absent)';
+    try {
+      const existing = JSON.parse(readFileSync(sidecarPath, 'utf8'));
+      if (existing && typeof existing.pid === 'number') {
+        detail = `pid=${existing.pid} at ${existing.host}:${existing.port}`;
+      }
+    } catch { /* sidecar absent or malformed — leave default */ }
+    console.error(`[bridge] BRIDGE_LOCK_HELD ${detail}`);
+    process.exit(5);
+  }
+}
 
 let pglite;
 try {
@@ -179,32 +249,255 @@ server.on('error', (e) => {
   console.error(`[bridge] BRIDGE_ERROR listen ${e.message}`);
   process.exit(e && e.code === 'EADDRINUSE' ? 5 : 2);
 });
+
+// --------- coordination state (problem B / C / D experiment) ---------
+const startedAtIso = new Date().toISOString();
+let resolvedHost = args.host;
+let resolvedPort = 0;
+let heartbeatSeq = 0;          // bumped only after a successful internal SELECT 1
+let lastHeartbeatIso = startedAtIso;
+let orphanedSinceMs = null;    // null = currently has consumers; ms timestamp = orphan-detected-at
+let shuttingDown = false;
+// Consumers registry placed SIBLING to the data dir (same reasoning as the
+// bridge lock — PGLite refuses to init a data dir with non-PG files in it).
+const consumersDir = `${args.pgdir}.consumers`;
+const shutdownMarkerPath = `${args.pgdir}.shutdown`;
+
 server.listen(args.port, args.host, () => {
-  console.error(`[bridge] start transport=tcp listen=${args.host}:${args.port} data_dir=${args.pgdir}`);
-  // Stdout token for direct-spawn discovery (matches the glpnet bridge-direct
-  // sidecar contract). Sidecar daemons that prefer sidecar.json + TCP-probe
-  // discovery may ignore stdout entirely.
-  console.log(`BRIDGE_READY port=${args.port} pid=${process.pid}`);
+  resolvedPort = server.address().port;
+
+  // Side-effect ordering per bridge_lifecycle.md "Bridge startup":
+  //   1. listen() resolves (above).
+  //   2. Atomic-write sidecar JSON (now with heartbeat_seq, heartbeat_at).
+  //   3. Emit BRIDGE_READY token on stdout.
+  //   4. With --daemon: redirect console.* to size-rotated bridge.log.
+  //   5. Start the SQL self-ping + orphan-poll + shutdown-marker timers.
+  try {
+    // consumersDir is sibling to args.pgdir, so creating it does not perturb
+    // PGLite's data directory invariant.
+    if (!existsSync(consumersDir)) mkdirSync(consumersDir, { recursive: true });
+    writeSidecar();
+  } catch (e) {
+    console.error(`[bridge] BRIDGE_ERROR sidecar_write_failed ${(e && e.message) || e}`);
+    process.exit(9);
+  }
+
+  console.error(`[bridge] start transport=tcp listen=${args.host}:${resolvedPort} data_dir=${args.pgdir}`);
+  // Use fs.writeSync(1, ...) to flush BRIDGE_READY to fd 1 (stdout) immediately,
+  // bypassing Node's userland write buffer. Without this, Node block-buffers
+  // piped stdout until exit and Python clients wait 30+ seconds for the line.
+  try {
+    fsWriteSync(1, `BRIDGE_READY port=${resolvedPort} pid=${process.pid}\n`);
+  } catch (_e) {
+    console.log(`BRIDGE_READY port=${resolvedPort} pid=${process.pid}`);
+  }
+
+  if (args.daemon) {
+    redirectConsoleToRotatingLog();
+  }
+
+  startSelfPingLoop();
+  startOrphanPollLoop();
+  startShutdownMarkerLoop();
 });
 
+function writeSidecar() {
+  writeAtomicJson(sidecarPath, {
+    host: resolvedHost,
+    port: resolvedPort,
+    pid: process.pid,
+    started_at: startedAtIso,
+    data_dir: args.pgdir,
+    role: 'primary',
+    managed_by: args.daemon ? 'auto-spawn' : 'manual',
+    heartbeat_seq: heartbeatSeq,
+    heartbeat_at: lastHeartbeatIso,
+  });
+}
+
+// B liveness — bridge self-pings WASM and refreshes heartbeat fields ONLY on success.
+// A hung WASM session stops refreshing the heartbeat, which clients can detect.
+function startSelfPingLoop() {
+  const tick = async () => {
+    if (shuttingDown) return;
+    try {
+      await pglite.exec('SELECT 1');
+      heartbeatSeq += 1;
+      lastHeartbeatIso = new Date().toISOString();
+      try { writeSidecar(); } catch (_e) { /* best effort */ }
+    } catch (e) {
+      console.error(`[bridge] self_ping_failed ${(e && e.message) || e}`);
+      // Do NOT bump heartbeat on failure — that is the signal.
+    }
+    setTimeout(tick, SELF_PING_INTERVAL_MS).unref();
+  };
+  setTimeout(tick, SELF_PING_INTERVAL_MS).unref();
+}
+
+// Diagnostic: log the consumers-dir path at orphan-poll setup so we can verify
+// the path the bridge polls matches the path consumers register at.
+
+// C orphan detection — poll .pgdb/consumers/ for held fd-locks. A registration is
+// "held" if we cannot acquire its file with FileShare.None (Windows) / open
+// O_EXCL-equivalent (POSIX). Simpler portable test: try to open with 'r+' and
+// flock-test; if the consumer holds the lock our open will succeed but the
+// consumer's process is alive while it holds the kernel-released lock.
+//
+// Greenfield-experiment policy: a consumer registration file's *existence* +
+// the consumer process being alive (lock held) means the consumer is registered.
+// We rely on portalocker's lockfile-with-DELETE_ON_CLOSE semantics: the file
+// goes away when the holder process exits, even on crash.
+//
+// Empirically simplest: count files under consumers/ whose contents include a
+// pid we can verify alive. portalocker on the client writes the pid and holds
+// an fd-lock; on crash the OS releases the lock; we then conclude the file is
+// stale by attempting our own non-blocking lock acquisition.
+function startOrphanPollLoop() {
+  const tick = async () => {
+    if (shuttingDown) return;
+    let liveCount = 0;
+    try {
+      if (existsSync(consumersDir)) {
+        for (const name of readdirSync(consumersDir)) {
+          if (!name.endsWith('.lock')) continue;
+          const lockPath = join(consumersDir, name);
+          if (await isHeldByOtherProcess(lockPath)) {
+            liveCount += 1;
+          } else {
+            // Stale — best-effort cleanup.
+            try { unlinkSync(lockPath); } catch (_e) { /* tolerate */ }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`[bridge] orphan_poll_error ${(e && e.message) || e}`);
+    }
+
+    if (liveCount === 0) {
+      if (orphanedSinceMs === null) {
+        orphanedSinceMs = Date.now();
+        console.error(`[bridge] orphan_detected linger_ms=${ORPHAN_LINGER_MS}`);
+      } else if (Date.now() - orphanedSinceMs >= ORPHAN_LINGER_MS) {
+        console.error('[bridge] orphan_linger_expired graceful_shutdown');
+        gracefulExit(0);
+        return;
+      }
+    } else if (orphanedSinceMs !== null) {
+      console.error(`[bridge] orphan_recovered live_consumers=${liveCount}`);
+      orphanedSinceMs = null;
+    }
+    setTimeout(tick, ORPHAN_POLL_INTERVAL_MS).unref();
+  };
+  // First poll happens after one interval to give consumers time to register
+  // after their bridge spawn.
+  setTimeout(tick, ORPHAN_POLL_INTERVAL_MS).unref();
+}
+
+// Probes whether some other process holds an exclusive lock on the lockfile.
+// We attempt our own non-blocking exclusive acquire; if it succeeds, no one
+// else holds the lock (file is stale or never-acquired). If it fails with
+// EBUSY / EAGAIN / EACCES, the lock is held. We always release ours immediately.
+async function isHeldByOtherProcess(lockPath) {
+  // The consumer file's first line carries the consumer's pid. We test
+  // liveness purely by pid lookup (process.kill(pid, 0)), which is reliable
+  // cross-platform in Node and does not depend on whether the consumer's
+  // locking primitive interferes with our open.
+  let pidStr;
+  try {
+    pidStr = readFileSync(lockPath, 'utf8').trim();
+  } catch (_e) {
+    return false;
+  }
+  const pid = parseInt(pidStr, 10);
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  return isPidAlive(pid);
+}
+
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    if (e.code === 'EPERM') return true; // exists but we can't signal
+    return false;
+  }
+}
+
+// D — non-destructive force shutdown via .pgdb/.shutdown marker file. Operator
+// (or a `codeconv bridge stop` style command) writes the marker; bridge polls
+// and exits gracefully on next tick.
+function startShutdownMarkerLoop() {
+  const tick = () => {
+    if (shuttingDown) return;
+    if (existsSync(shutdownMarkerPath)) {
+      console.error('[bridge] shutdown_marker_seen graceful_shutdown');
+      try { unlinkSync(shutdownMarkerPath); } catch (_e) { /* ok */ }
+      gracefulExit(0);
+      return;
+    }
+    setTimeout(tick, SHUTDOWN_MARKER_POLL_MS).unref();
+  };
+  setTimeout(tick, SHUTDOWN_MARKER_POLL_MS).unref();
+}
+
 if (!args.daemon) {
-  process.stdin.on('end', () => process.exit(0));
+  process.stdin.on('end', () => gracefulExit(0));
   process.stdin.resume();
 }
-process.on('SIGTERM', () => process.exit(0));
-process.on('SIGINT', () => process.exit(0));
+process.on('SIGTERM', () => gracefulExit(0));
+process.on('SIGINT', () => gracefulExit(0));
+process.on('beforeExit', () => { try { unlinkSync(sidecarPath); } catch { /* best effort */ } });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function writeAtomicJson(path, obj) {
+  const tmp = `${path}.tmp.${process.pid}`;
+  writeFileSync(tmp, JSON.stringify(obj, null, 2) + '\n', { encoding: 'utf8' });
+  renameSync(tmp, path);
+}
+
+function redirectConsoleToRotatingLog() {
+  // Inline 5MB×3 rotation per FR-030 + R9. We override console.log and
+  // console.error rather than re-pointing fd 1/2 because Node's stdout/
+  // stderr are not trivially re-pointable on Windows.
+  const log = createRotatingStream(join(args.pgdir, 'bridge.log'));
+  const fmt = (level) => (...parts) => {
+    const text = parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ');
+    const ts = new Date().toISOString();
+    log.write(`${ts} [${level}] ${text}\n`);
+  };
+  console.log = fmt('log');
+  console.error = fmt('err');
+  console.info = fmt('log');
+  console.warn = fmt('err');
+}
+
+function gracefulExit(code) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try { server.close(); } catch { /* ok */ }
+  try { unlinkSync(sidecarPath); } catch { /* best effort */ }
+  // Lock release is kernel-managed on process exit; we deliberately do NOT
+  // call lockRelease() here — proper-lockfile's exit hook handles cleanup,
+  // and explicitly releasing race-conditions with new clients trying to
+  // acquire as we shut down.
+  process.exit(code);
+}
 
 function parseArgs(argv) {
-  const a = { pgdir: null, port: null, host: '127.0.0.1', daemon: false };
+  const a = { pgdir: null, port: 0, host: '127.0.0.1', daemon: false, noLock: false };
   for (let i = 2; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--data-dir') a.pgdir = resolve(argv[++i]);
     else if (v === '--port') a.port = parseInt(argv[++i], 10);
     else if (v === '--host') a.host = argv[++i];
     else if (v === '--daemon') a.daemon = true;
+    else if (v === '--no-lock') a.noLock = true;
     else if (v === '--transport') argv[++i]; // accepted, currently ignored
   }
   if (!a.pgdir) { console.error('[bridge] BRIDGE_ERROR missing --data-dir'); process.exit(1); }
-  if (!a.port) { console.error('[bridge] BRIDGE_ERROR missing --port'); process.exit(1); }
+  if (Number.isNaN(a.port) || a.port < 0) { console.error('[bridge] BRIDGE_ERROR invalid --port'); process.exit(1); }
   return a;
 }

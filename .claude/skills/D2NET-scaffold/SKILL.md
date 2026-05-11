@@ -56,9 +56,9 @@ If neither Release nor Debug binary exists AND `dotnet --version` fails (no .NET
 
 ### Step 3 — Detect missing or stale binary (FR-006)
 
-If Step 2 selected the fallback path because **no binary exists**, the binary is **missing**. Otherwise check **staleness**: compute `mtime(binary)` and `max(mtime(.cs file under tools/d2net/src/D2Net.Scaffold))` excluding the `pgbridge/` subtree (R3 — `pgbridge/` is a runtime asset, not a build input).
+If Step 2 selected the fallback path because **no binary exists**, the binary is **missing**. Otherwise check **staleness**: compute `mtime(binary)` and `max(mtime(.cs file under tools/d2net/src/D2Net.Scaffold))`. (Feature 012 removed the bundled `pgbridge/` subtree; staleness check no longer needs to exclude it.)
 
-- If the binary is missing OR the binary's mtime is older than the newest `.cs` file under `tools/d2net/src/D2Net.Scaffold` (excluding `pgbridge/**`), emit ONE confirmation prompt:
+- If the binary is missing OR the binary's mtime is older than the newest `.cs` file under `tools/d2net/src/D2Net.Scaffold`, emit ONE confirmation prompt:
   - Missing: `d2net-scaffold binary is missing at <path> — build now? (yes/no)`
   - Stale: `d2net-scaffold binary may be stale (newest source is <path> modified <time>; binary built <time>) — rebuild now? (yes/no)`
 - Wait for an affirmative reply (`yes`, `y`, `confirmed`, `proceed`).

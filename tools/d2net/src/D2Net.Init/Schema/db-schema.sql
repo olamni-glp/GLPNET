@@ -5,6 +5,15 @@
 -- Note: the .NET caller wraps these CREATE statements in its own NpgsqlTransaction;
 -- the script itself contains no BEGIN/COMMIT.
 
+-- Feature 012: D2NET tables live in the SHARED public schema of the repo-wide
+-- .pgdb/ cluster (alongside dbos.* and codeconv.* in their own schemas).
+-- DROP IF EXISTS makes the script idempotent on re-init (--FORCE-DELETE-EXISTING).
+DROP TABLE IF EXISTS dart_files          CASCADE;
+DROP TABLE IF EXISTS phase_status        CASCADE;
+DROP TABLE IF EXISTS phase_sequence      CASCADE;
+DROP TABLE IF EXISTS excluded_directories CASCADE;
+DROP TABLE IF EXISTS setting             CASCADE;
+
 -- 1. setting (FR-012 of 002 + FR-009/FR-010 of 005): flat key/value configuration store.
 CREATE TABLE setting (
     key   TEXT PRIMARY KEY,

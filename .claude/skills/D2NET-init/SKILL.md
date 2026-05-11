@@ -54,9 +54,9 @@ If neither Release nor Debug binary exists AND `dotnet --version` fails (no .NET
 
 ### Step 3 — Detect missing or stale binary (FR-006)
 
-If Step 2 selected the fallback path because **no binary exists**, the binary is **missing**. Otherwise check **staleness**: compute `mtime(binary)` and `max(mtime(.cs file under tools/d2net/src/D2Net.Init))` excluding the `pgbridge/` subtree.
+If Step 2 selected the fallback path because **no binary exists**, the binary is **missing**. Otherwise check **staleness**: compute `mtime(binary)` and `max(mtime(.cs file under tools/d2net/src/D2Net.Init))`. (Feature 012 removed the bundled `pgbridge/` subtree — the unified bridge at `prereq-patterns/pglite/pglite_bridge.mjs` is now the source of truth, and any change to it does NOT trigger a d2net-init rebuild.)
 
-- If the binary is missing OR the binary's mtime is older than the newest `.cs` file under `tools/d2net/src/D2Net.Init` (excluding `pgbridge/**`), emit ONE confirmation prompt:
+- If the binary is missing OR the binary's mtime is older than the newest `.cs` file under `tools/d2net/src/D2Net.Init`, emit ONE confirmation prompt:
   - Missing: `d2net-init binary is missing at <path> — build now? (yes/no)`
   - Stale: `d2net-init binary may be stale (newest source is <path> modified <time>; binary built <time>) — rebuild now? (yes/no)`
 - Wait for an affirmative reply (`yes`, `y`, `confirmed`, `proceed`).
@@ -75,7 +75,7 @@ Branch on `$ARGUMENTS`:
 - **All tokens flag-style** (every token is `--<flag>` or a value following one) → treat as pass-through. Initial resolved flag set = the user's tokens verbatim. Proceed to Step 6 (destructive gate may still apply if `--FORCE --DELETE-EXISTING` is in the literal flags).
 - **Mixed** (some flag-style + some natural-language) → take the raw flags verbatim into the resolved flag set; derive only the un-supplied flags from the natural-language portion using the grammar below.
 - **Pure natural-language** → derive flags via the grammar:
-  - **Key-value pairs**: `source=X` → `--source X`; `extension=X` → `--target-extension X`; `target=X` → `--target X`; `bridge-port=N` → `--bridge-port N`. Note: there is no `exclude=` form. The user adds exclusions only via the literal `--exclude <path>` flag (repeatable); mixed inputs preserve raw `--exclude` flags verbatim.
+  - **Key-value pairs**: `source=X` → `--source X`; `extension=X` → `--target-extension X`; `target=X` → `--target X`; `bridge-port=N` → `--bridge-port N`. **Note (feature 012)**: `--bridge-port` is now a no-op — the unified PGLite bridge at `<repo>/.pgdb/` always uses an OS-allocated ephemeral port, with discovery via `<repo>/.pgdb/bridge.json` rather than caller-supplied port. The flag is still accepted for backwards-compat; its value is ignored. There is no `exclude=` form. The user adds exclusions only via the literal `--exclude <path>` flag (repeatable); mixed inputs preserve raw `--exclude` flags verbatim.
   - **Verbs and their resolved-flag mappings**:
     - `init` → init mode (no extra inspection flag; require source/extension/target via Step 5 or other tokens).
     - `list` → `--list`.
