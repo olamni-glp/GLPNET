@@ -79,3 +79,70 @@ def test_outside_caller_warns_no_edge(discover_repo: Path) -> None:
             f"outside file 'legacy.dart' must NOT appear as a caller edge; "
             f"got {callers!r}"
         )
+
+
+@needs_bridge
+def test_outside_caller_via_package_form_warns(discover_repo: Path) -> None:
+    """Feature 014 / FR-006: an outside-subtree file using
+    ``package:<self>/...`` to reach into the subtree must trigger the
+    same ``outside_caller`` warning as the relative-path form, and must
+    NOT record a caller edge."""
+    # Inside-subtree file with valid pubspec.
+    sub = discover_repo / "glp_runtime_net"
+    (sub / "lib").mkdir(parents=True)
+    (sub / "pubspec.yaml").write_text(
+        "name: glp_runtime\nversion: 1.0.0\n", encoding="utf-8"
+    )
+    (sub / "lib" / "heap.dart").write_text(
+        "/// Heap.\nclass Heap {}\n", encoding="utf-8"
+    )
+
+    # Outside-subtree file reaching in via package: form.
+    outside = discover_repo / "glp_runtime"
+    outside.mkdir()
+    (outside / "legacy.dart").write_text(
+        "import 'package:glp_runtime/heap.dart';\n"
+        "class Legacy {}\n",
+        encoding="utf-8",
+    )
+
+    proc = run_codeconv(discover_repo, "migrate")
+    assert proc.returncode == 0, proc.stderr
+
+    proc = run_codeconv(
+        discover_repo,
+        "discover",
+        "run",
+        "--root",
+        str(sub),
+        "--json",
+    )
+    assert proc.returncode == 0, proc.stderr
+    summary = json.loads(_extract_json(proc.stdout))
+    warnings_list = summary.get("warnings", [])
+    outside_warnings = [
+        w for w in warnings_list if w.get("kind") == "outside_caller"
+    ]
+    assert outside_warnings, (
+        "expected at least one 'outside_caller' warning from a package: "
+        "form import; got warnings = %r" % (warnings_list,)
+    )
+    w0 = outside_warnings[0]
+    assert "legacy.dart" in (w0.get("outside_file") or "")
+    assert "heap.dart" in (w0.get("inside_file") or "")
+
+    # No caller edge recorded.
+    import yaml
+
+    tomb = (
+        discover_repo / ".codeconv" / "tombstones" / "lib" / "heap.dart.md"
+    )
+    text = tomb.read_text(encoding="utf-8")
+    parts = text.split("---", 2)
+    fm = yaml.safe_load(parts[1])
+    callers = fm.get("callers") or []
+    for c in callers:
+        assert "legacy" not in c, (
+            f"outside file 'legacy.dart' must NOT appear as a caller edge; "
+            f"got {callers!r}"
+        )
