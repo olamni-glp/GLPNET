@@ -30,7 +30,12 @@ key_idea: 'Global Writers Table for madGLP
 dependencies: []
 callers:
 - lib/multiagent/global_send.dart
+- lib/multiagent/mad_context.dart
 - lib/multiagent/mad_helpers.dart
+- test/multiagent/global_send_test.dart
+- test/multiagent/global_writers_table_test.dart
+- test/multiagent/globalize_test.dart
+- test/multiagent/localize_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 7ebe135c209066d868a420d5df4f3fc0be289656a597faa3e0acb5f6d371b9f1
 ---

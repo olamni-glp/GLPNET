@@ -6,6 +6,7 @@ key_idea: ''
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/analysis/type_checker/type_checker.dart
+- lib/bytecode/runner.dart
 - lib/compiler/analyzer.dart
 - lib/compiler/ast.dart
 - lib/compiler/codegen.dart
@@ -14,7 +15,19 @@ dependencies:
 - lib/compiler/parser.dart
 - lib/compiler/result.dart
 - lib/compiler/token.dart
-callers: []
+callers:
+- lib/engine/glp_engine.dart
+- test/bytecode/arithmetic_test.dart
+- test/bytecode/inspect_bytecode_test.dart
+- test/compiler/project_linker_test.dart
+- test/compiler/reserved_constant_test.dart
+- test/dynamic_dispatch_test.dart
+- test/heap/arithmetic_pointer_test.dart
+- test/runtime/module_activation_test.dart
+- test/runtime/rpc_routing_test.dart
+- test/srsw_test.dart
+- test/test_agent_init_goal.dart
+- test/test_constant_compile.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 10d4b73927e02b8c20489098e6523a68c2ff456c036544f5f9852107c65ef194
 ---

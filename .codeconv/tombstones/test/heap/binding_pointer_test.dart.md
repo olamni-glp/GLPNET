@@ -31,7 +31,11 @@ key_idea: 'Tests for binding operations with Pointer Architecture Heap
   - WxW violation detection
 
   '
-dependencies: []
+dependencies:
+- lib/runtime/heap_fcp.dart
+- lib/runtime/machine_state.dart
+- lib/runtime/suspension.dart
+- lib/runtime/terms.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 60cea5fbe3415839b21caf214b4f3ca09470e8fb038192fc05274f68924360e7

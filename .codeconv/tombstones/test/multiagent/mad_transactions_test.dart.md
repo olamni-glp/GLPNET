@@ -19,7 +19,13 @@ key_idea: 'Tests for madGLP transaction handling
   See: madGLP-spec.md Sections 8.1-8.4
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/global_send.dart
+- lib/multiagent/mad_context.dart
+- lib/multiagent/mad_helpers.dart
+- lib/multiagent/message_queue.dart
+- lib/runtime/runtime.dart
+- lib/runtime/terms.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 6f95521ac3a698eebba120929ac864f47b7195345b088b7cf5c62a8df86a15a0

@@ -24,7 +24,14 @@ key_idea: 'Message Queue (M_p) for madGLP
 
   '
 dependencies: []
-callers: []
+callers:
+- lib/multiagent/agent_runtime.dart
+- lib/multiagent/isolate_manager.dart
+- lib/multiagent/mad_context.dart
+- lib/multiagent/payload_serializer.dart
+- test/multiagent/mad_cold_call_isolate_test.dart
+- test/multiagent/mad_scenarios_test.dart
+- test/multiagent/mad_transactions_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 619550d11a54842ba4948fd5cd8ac86d742fbaddf26fcd138ddc39c26da696d7
 ---

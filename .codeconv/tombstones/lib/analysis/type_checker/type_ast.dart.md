@@ -17,6 +17,13 @@ callers:
 - lib/compiler/compiler.dart
 - lib/compiler/parser.dart
 - lib/compiler/project_linker.dart
+- lib/engine/glp_engine.dart
+- lib/runtime/module_hierarchy.dart
+- test/analysis/type_checker/moded_head_test.dart
+- test/analysis/type_checker/well_typed_clause_test.dart
+- test/module/cssg_modules_test.dart
+- test/module/module_hierarchy_test.dart
+- test/module/module_syntax_v2_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: f80349aefb8cc777764548f29d5c6bc663809f9dfffde921c141ae2f7028d38a
 ---

@@ -12,6 +12,7 @@ callers:
 - lib/compiler/compiler.dart
 - lib/compiler/lexer.dart
 - lib/compiler/parser.dart
+- test/module/module_parser_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: e33eab8e2d1ea0859f8b2ef05c32d4897ef6d3e9070e543f9ef9b7de258541c6
 ---

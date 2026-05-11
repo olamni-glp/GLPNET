@@ -37,7 +37,9 @@ key_idea: 'Multi-agent GLP tests via IsolateManager
   Converted GLP programs: programs/typed_book/multiagent_tests/
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/boot_loader.dart
+- lib/multiagent/isolate_manager.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 859b800ec1e014185b1b52775980da78d2c260421f07700ff9ce1ad742d94aea

@@ -27,7 +27,9 @@ key_idea: 'Tests for Localize operation
   names, and creates table entries for _r names.
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/global_writers_table.dart
+- lib/multiagent/mad_helpers.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 18f65f67b39c84df4e9b09b357301bb42bfb69b6b2660592ef2a251ee8976ec7
