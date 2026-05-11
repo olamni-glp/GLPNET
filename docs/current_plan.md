@@ -1,9 +1,9 @@
 # Current Plan: 012-codeconv-runner — `/speckit-implement` (mid-flight)
 
 **Branch**: `012-codeconv-runner` (pushed to origin)
-**Started**: 2026-05-09 (spec-kit chain) → continued through Phase 6
-**Last commit**: `f54c58e1` — Phase 6 done & pushed
-**Resume point**: Phase 7 (Polish T080–T092). T040 / T041 (Phase 4 carryover) still deferred.
+**Started**: 2026-05-09 (spec-kit chain) → continued through Phase 7
+**Last commit**: `be13f556` — Phase 7 done & pushed
+**Resume point**: Feature 012 ready to ship to `main`. T040 / T041 (Phase 4 carryover) still deferred as an independent follow-up branch.
 
 ## 🔴 Active sidechain: bridge daemon coordination — experimental implementation (2026-05-10)
 
@@ -61,9 +61,26 @@ PGLite specifics confirmed by probe:
 - `current_database()` → `'template1'` (PGLite ignores the requested db name and routes everything to template1; functionally fine, do not "fix").
 - `pg_try_advisory_lock(...)` works and returns BOOLEAN; the earlier "NoneType unpack" was a bug in our SQLAlchemy `before_cursor_execute` filter (must always return a tuple under `retval=True`).
 
+## Phase 7 completion notes (2026-05-11)
+
+All Phase 7 tasks (T080–T092) complete. Coverage map in `specs/012-codeconv-runner/phase7_verification_report.md`.
+
+- New: `codeconv/tests/test_phase7_verifications.py` (3 tests: schema isolation T086, caller-graph scope T087, SC-003 full two-stack T084). All pass.
+- New: `specs/012-codeconv-runner/scripts/sc003_python_loop.py` + `Sc003NpgsqlLoop/` — the two-stack concurrent SC-003 driver. Pre-built once, can be re-run manually with `--port <BRIDGE_PORT> --cycles 100`.
+- T091 FR-027 grep: clean. All Npgsql connection strings flow through `DbConnectionStringBuilder.BuildNpgsql()` with `Pooling=false`; no `.Prepare()` invocations.
+- T092 FR-026 grep: clean. Zero `COPY ... FROM STDIN` matches in any introduced source; all hits are documentation.
+- T088 bridge log rotation: Phase 3 `log_rotation.test.mjs` re-verified (2/2 pass).
+- T089 CLAUDE.md updated with `.pgdb/`, `.codeconv/`, `prereq-patterns/pglite/`, `tools/d2net/...`, `glp_runtime_net/`, and a "Migration to unified bridge" paragraph.
+- T090 `docs/known-issues.md` Issue 7 documents the four DBOS-on-PGLite hooks (DB-name override / pool sizing / uuid-ossp semicolon / use_listen_notify=False) and the PGLite specifics (`current_database()` returns `template1`; `pg_try_advisory_lock` works).
+
 ## Next session
 
-Resume at Phase 7 (T080 quickstart Flow A end-to-end) OR pick off T040/T041 (D2NET tests sweep) — both are independent.
+Feature 012 is shippable. Open follow-ups:
+
+- **Merge 012-codeconv-runner → main** (the immediate next step).
+- **T040 / T041 sweep** of ~32 D2NET tests under `tools/d2net/tests/D2Net.{Init,Scaffold}.Tests/` to point at `.pgdb/` instead of `.D2NET/pgdb/`. Independent follow-up.
+- **DBOS-workflow wrapping** for discover (`@DBOS.workflow` / `@DBOS.step`) — currently the per-file `(mtime, sha256)` short-circuit satisfies the kill-and-resume behavioural contract. Strict FR-017 compliance is a separate polish.
+- **Bridge daemon coordination deep investigation** — deferred from 2026-05-10. Artifacts in `docs/research/bridge-daemon-coordination/`.
 
 ## 🔴 Branch Instructions
 
@@ -85,7 +102,7 @@ All commits go on this branch. When done, Gabi merges into `main`.
 - [x] 5. /speckit-implement — **Phase 4 (US2 D2NET)** T030–T039, T042–T043 (commit `c34f013a`); 8/8 new tests green; T040/T041 deferred
 - [x] 6. /speckit-implement — **Phase 5 (US3 codeconv runner)** T050–T059 (commit `05a65008`)
 - [x] 7. /speckit-implement — **Phase 6 (US4 codeconv-discover)** T060–T076 (commit `f54c58e1`); 36/39 tests pass (2 perf opt-in + 1 Windows-symlink skipped)
-- [ ] 8. /speckit-implement — **Phase 7 (Polish)** T080–T092 ← **CURRENT**
+- [x] 8. /speckit-implement — **Phase 7 (Polish)** T080–T092 (commit `be13f556`); 39/42 tests pass; see `specs/012-codeconv-runner/phase7_verification_report.md`
 
 ## What's done in this session
 
