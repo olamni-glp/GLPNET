@@ -169,3 +169,37 @@ Changed `globalize()` to pass `v.writerAddr` (the actual writer) to `addGlobaliz
 ### Note on onBind
 
 A previous fix also added an onBind callback in `send()` for globalize-reader entries, using `_sendWriteBack`. This was incorrect — for `_r(p, i)`, agent p creates an entry and WAITS. The `global_send` is spawned at q by `localize`, not at p. Agent p does not send anything for `_r` entries. The onBind and write-back have been removed.
+
+---
+
+## Issue 7: DBOS-on-PGLite launch — four required hooks
+
+**Status**: Mitigated (workarounds applied; revisit if DBOS upstream changes)
+**Discovered**: 2026-05-10 during 012-codeconv-runner Phase 6
+**Affects**: `codeconv migrate` (DBOS `dbos.launch()`) against the unified `.pgdb/` bridge
+
+### Summary
+
+A fresh DBOS launch against the PGLite bridge requires four non-default configuration choices. Removing any one of them produces a different failure mode (separate-DB connect failure, deadlock on advisory lock, SQL syntax error at line 5, or hang on LISTEN/NOTIFY). See `codeconv/src/codeconv/db/engine.py::setup_dbos` and `codeconv/src/codeconv/_vendor/dbos_pglite_patch.py`.
+
+### The four hooks
+
+1. **DB-name override**: `DBOSConfig(application_database_url=url, system_database_url=url, dbos_system_schema="dbos")`. DBOS defaults to a sibling `<dbname>_dbos_sys` database that PGLite cannot create; point both roles at `postgres` and isolate via the `dbos` schema (FR-015).
+2. **Pool sizing**: `db_engine_kwargs["pool_size"]=5, max_overflow=5` AND `sys_db_pool_size=5`. The vendored `pglite_engine_kwargs` defaults to `pool_size=1`, which deadlocks DBOS's `run_migrations` (holds one connection across an inner `ensure_dbos_schema` call). PGLite serialisation is preserved client-side because the bridge's `globalWorkChain` queues queries.
+3. **uuid-ossp rewrite preserves semicolon**: the SQLAlchemy `before_cursor_execute` filter substitutes `CREATE EXTENSION "uuid-ossp"` → `SELECT 1;` (with terminating `;`). Without the semicolon, the next CREATE TABLE concatenates in DBOS's multi-statement migration text and PGLite errors at line 5.
+4. **Disable LISTEN/NOTIFY**: `use_listen_notify=False` in `DBOSConfig`. PGLite does not implement `NOTIFY` end-to-end; leaving DBOS to poll triggers mystery hangs.
+
+### PGLite specifics worth knowing
+
+- `SELECT current_database()` returns `'template1'` regardless of the requested `dbname` in the connection URL. PGLite routes everything to template1. Functionally fine — do not "fix" by changing the URL.
+- `pg_try_advisory_lock(...)` works and returns BOOLEAN. The earlier "cannot unpack non-iterable NoneType object" trace was a bug in the SQLAlchemy `before_cursor_execute` filter (must always return a tuple under `retval=True`), not a PGLite limitation.
+
+### Where this is enforced
+
+- `codeconv/src/codeconv/db/engine.py::setup_dbos` — hooks 1, 2, 4.
+- `codeconv/src/codeconv/_vendor/dbos_pglite_patch.py::_install_sqlalchemy_uuid_ossp_filter` — hook 3.
+- `codeconv/tests/test_engine.py::test_apply_to_engine_installed` — end-to-end smoke (codeconv side).
+
+### Why this isn't fixed upstream
+
+PGLite is feature 011's pre-req pattern; we treat it as a black-box dependency. The five workarounds above live in `codeconv/_vendor/dbos_pglite_patch.py` and `codeconv/db/engine.py` so a future DBOS or PGLite upgrade that lifts these limitations can drop them without touching consumer code.

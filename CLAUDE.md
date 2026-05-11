@@ -389,14 +389,32 @@ D:\BSTDEV\RESEARCH\glp\glpnet\
 │   ├── bin/glp_repl.dart
 │   └── glp_repl.exe              # Windows pre-built REPL
 ├── glp_multiagent/               # Flutter multi-agent app
+├── glp_runtime_net/              # Dart subtree codeconv inventories (FR-018)
 ├── programs/                     # All `.glp` source (single source of truth)
 │   ├── self.glp                  # Root prelude
 │   ├── book/, tests/, lib/, archive/, misc/
-├── test/run_all_tests.sh         # Unified REPL test suite
-└── specs/006-d2net-init-skill/   # D2NET-init skill workstream
+├── prereq-patterns/pglite/       # Canonical PGLite bridge — source of truth
+│   ├── pglite_bridge.mjs         #   live deployment file (FR-012)
+│   ├── package.json              #   node deps (proper-lockfile, pg, pglite)
+│   └── tests/*.test.mjs          #   node --test cross-process lock tests
+├── tools/d2net/                  # .NET tools — clients of the unified bridge
+│   └── src/D2Net.{BridgeClient,PgdbMigrate,Init,Scaffold}/
+├── codeconv/                     # Python harness (DBOS-on-PGLite over .pgdb/)
+│   ├── pyproject.toml
+│   ├── src/codeconv/{cli,runner,bridge_client,db,tools/discover}/
+│   └── tests/                    # pytest — bridge + engine + discover
+├── .codeconv/tombstones/         # Inventoried .dart files (checked in, FR-029)
+├── .pgdb/                        # Unified PGLite cluster (gitignored)
+├── .pgdb.bridge.lock/            # Bridge OS lock (sibling to .pgdb/, gitignored)
+├── test/run_all_tests.sh         # Unified REPL test suite (GLP)
+└── specs/                        # Feature workstreams (012-codeconv-runner et al.)
 ```
 
 **GLP code location policy**: all `.glp` source lives under `programs/`. Paper repos (SGLP, CGLP, etc.) may reference paths but must not contain copies — single source of truth.
+
+### Migration to unified bridge (feature 012, 2026-05)
+
+The repo now has ONE PGLite deployment at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every PGLite consumer — Python `codeconv`, .NET `D2Net.Init` / `D2Net.Scaffold` / `D2Net.PgdbMigrate`, future tools — auto-spawns or discovers the bridge via the protocol in `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`. The bridge script `prereq-patterns/pglite/pglite_bridge.mjs` is the live deployment, not a template; do not copy it into a feature working tree (former behaviour from feature 011). D2NET's pre-existing per-workspace `.D2NET/pgdb/` directories are migrated to the unified location via `tools/d2net/src/D2Net.PgdbMigrate/` (one-shot, idempotent, FR-007/008/009). Schemas inside `.pgdb/`: `public` (D2NET, unchanged), `dbos` (DBOS runtime), `codeconv` (this feature's inventory).
 
 ---
 
