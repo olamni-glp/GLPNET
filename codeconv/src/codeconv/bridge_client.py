@@ -42,7 +42,7 @@ from typing import Optional
 import portalocker  # used only by `_try_acquire_lock` diagnostic helper
 
 
-READY_TIMEOUT_DEFAULT_SECONDS = 10.0
+READY_TIMEOUT_DEFAULT_SECONDS = 30.0  # cover PGLite cold-init (~7s on Windows) + Node startup
 SIDECAR_RETRY_DELAY_SECONDS = 0.25
 SIDECAR_FALLBACK_WAIT_SECONDS = 30.0  # cover PGLite cold-init (~7s on Windows)
 STALE_LOCK_WAIT_SECONDS = 2.0          # > proper-lockfile stale (1000ms) + update cycle
@@ -57,6 +57,71 @@ class BridgeRaceLost(RuntimeError):
     """Raised when the bridge process exited 5 (another bridge won) AND
     no sidecar appeared after the contractual retry. The caller may
     retry the whole operation."""
+
+
+class DataDirFilesystemError(RuntimeError):
+    """Raised when the resolved data-dir is on a filesystem PGLite cannot
+    use (exFAT, FAT32). See docs/known-issues.md Issue 8."""
+
+
+_SUPPORTED_WINDOWS_FILESYSTEMS = frozenset({"NTFS", "ReFS"})
+
+
+def _windows_filesystem_for(path: Path) -> Optional[str]:
+    """Return the filesystem-type string (e.g. ``"NTFS"``, ``"exFAT"``) of
+    the volume that hosts ``path``, or ``None`` if it cannot be determined.
+
+    Walks up from ``path`` until it finds an existing parent, then asks the
+    Win32 API for that volume's filesystem name. Returns ``None`` on
+    non-Windows or if any step fails — we treat "unknown" as "don't block"
+    (POSIX-class filesystems on Linux/Mac don't hit this issue).
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+
+        probe = path
+        while not probe.exists() and probe.parent != probe:
+            probe = probe.parent
+        if not probe.exists():
+            return None
+        drive = Path(probe.anchor or probe.drive + os.sep)
+        if str(drive) == "":
+            return None
+        buf = ctypes.create_unicode_buffer(256)
+        ok = ctypes.windll.kernel32.GetVolumeInformationW(
+            ctypes.c_wchar_p(str(drive)),
+            None, 0, None, None, None,
+            buf, 256,
+        )
+        if not ok:
+            return None
+        return buf.value or None
+    except Exception:
+        return None
+
+
+def _check_data_dir_filesystem(data_dir_path: Path) -> None:
+    """Hard-fail early if data_dir is on a PGLite-hostile filesystem.
+
+    See docs/known-issues.md Issue 8: PGLite's WASM build needs POSIX-style
+    atomic rename / advisory locks / mmap, which exFAT does not implement.
+    Without this guard, the bridge spawns successfully and then dies
+    mid-DBOS-migration with a misleading "server closed the connection
+    unexpectedly" error several seconds later.
+    """
+    fs_type = _windows_filesystem_for(data_dir_path)
+    if fs_type is None:
+        return
+    if fs_type in _SUPPORTED_WINDOWS_FILESYSTEMS:
+        return
+    raise DataDirFilesystemError(
+        f"data_dir {data_dir_path} is on a {fs_type} filesystem; "
+        f"PGLite requires NTFS or ReFS. "
+        f"Pass --data-dir <NTFS-path> (e.g. C:/pglite/research/<project>). "
+        f"See docs/known-issues.md Issue 8."
+    )
 
 
 @dataclass
@@ -127,6 +192,7 @@ def acquire_or_discover(
     data_dir_path = (
         Path(data_dir).resolve() if data_dir is not None else (repo_root / ".pgdb")
     )
+    _check_data_dir_filesystem(data_dir_path)
     sidecar_path = data_dir_path / "bridge.json"
     # Sibling, not inside data_dir, because PGLite refuses to init a data dir
     # that has non-PG files in it (same reasoning as the bridge lock path).
@@ -270,6 +336,7 @@ def request_force_shutdown(
     data_dir_path = (
         Path(data_dir).resolve() if data_dir is not None else (repo_root / ".pgdb")
     )
+    _check_data_dir_filesystem(data_dir_path)
     if not data_dir_path.is_dir():
         return False
     marker = data_dir_path / ".shutdown"

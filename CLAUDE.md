@@ -8,6 +8,16 @@
 - **Branching/versioning**: see `docs/BRANCHING.md` and `docs/VERSIONING.md` (CalVer `vYYYY.MM.DD[-N]` on `main`; feature branches `NNN-short-name`).
 - **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
+## 🔴 PGLite data-dir on this machine — ALWAYS pass `--data-dir`
+
+The repo lives on `D:\` which is **exFAT**. PGLite cannot operate on exFAT (see `docs/known-issues.md` Issue 8). Every `codeconv` invocation that talks to the bridge MUST use:
+
+```
+codeconv --data-dir C:/pglite/research/glpnet <subcommand> ...
+```
+
+`C:\pglite\research\glpnet\` is the canonical PGLite cluster location for this repo (NTFS, project-named under `C:\pglite\research\`). Do NOT use `<repo>/.pgdb/` (exFAT — bridge crashes mid-DBOS-migration), and do NOT use AppData. As of 2026-05-11 a CLI-level guard (`codeconv.bridge_client._check_data_dir_filesystem`) refuses to run against non-NTFS/ReFS data-dirs, exiting 64 with an actionable message — but pass `--data-dir` proactively, don't rely on the guard.
+
 ---
 
 ## 🔴 Start of Every Conversation — Mandatory Reading
@@ -536,5 +546,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/014-package-self-import-resolution/plan.md
+- specs/015-codeconv-depgraph/plan.md
 <!-- SPECKIT END -->
