@@ -25,7 +25,8 @@ Thin wrapper over the `codeconv` console script. Forwards all arguments verbatim
 
 ## Global flags
 
-- `--repo-root <path>` — locate `.pgdb/`, tools, and `.codeconv/` (default cwd).
+- `--repo-root <path>` — locate tools and `.codeconv/` (default cwd).
+- `--data-dir <path>` — override the PGLite cluster location (default `<repo-root>/.pgdb`). Use when the repo lives on a filesystem PGLite can't use (notably **exFAT** — atomic-rename / advisory-lock / mmap operations fail mid-DBOS-migration). Point this at a directory on an NTFS volume, e.g. `--data-dir $env:LOCALAPPDATA/codeconv-pgdb`. The bridge sidecar, OS lock (`<data-dir>.bridge.lock/`), consumer registrations (`<data-dir>.consumers/`), and force-shutdown marker all follow the override.
 - `--bridge-port <int>` — override sidecar discovery (debugging only).
 - `--quiet` — suppress non-error output.
 - `--json` — emit machine-readable summaries on subcommands that support it.

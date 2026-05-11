@@ -203,3 +203,40 @@ A fresh DBOS launch against the PGLite bridge requires four non-default configur
 ### Why this isn't fixed upstream
 
 PGLite is feature 011's pre-req pattern; we treat it as a black-box dependency. The five workarounds above live in `codeconv/_vendor/dbos_pglite_patch.py` and `codeconv/db/engine.py` so a future DBOS or PGLite upgrade that lifts these limitations can drop them without touching consumer code.
+
+---
+
+## Issue 8: PGLite cluster files cannot live on exFAT
+
+**Status**: Mitigated via `--data-dir` override (release `v2026.05.11-2`)
+**Discovered**: 2026-05-11 when the freshly-merged `codeconv` was first invoked against the live repo
+**Affects**: Any `codeconv` (or other unified-bridge consumer) invocation where the repo lives on an exFAT volume
+
+### Summary
+
+PGLite's WASM data files rely on POSIX-style file operations (atomic rename, advisory locks, certain mmap operations) that exFAT does not implement. When `.pgdb/` is created on exFAT, the bridge process crashes mid-DBOS-migration (typically around migration 4) — the client sees `psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly` on a downstream query, and the bridge log is empty because the bridge died before flushing.
+
+This is environment-dependent and does NOT show up in `pytest` runs, because pytest's `tmp_path` lives under `%TEMP%` on `C:` (NTFS). The bug surfaces only against the live repo on `D:\BSTDEV\research\GLP\GLPNET\` which is on a `Lexar`-labelled exFAT drive (`Get-Volume D` shows `FileSystem : exFAT`).
+
+### Fix
+
+Added a global `--data-dir <path>` flag to `codeconv` (cli.py / bridge_client.acquire_or_discover / workflow.run_discover). The flag decouples the PGLite cluster location from `--repo-root`. Point it at an NTFS directory:
+
+```powershell
+codeconv --data-dir $env:LOCALAPPDATA/codeconv-pgdb migrate
+codeconv --data-dir $env:LOCALAPPDATA/codeconv-pgdb discover run
+```
+
+Sidecar (`<data-dir>/bridge.json`), OS lock (`<data-dir>.bridge.lock/`), consumer registrations (`<data-dir>.consumers/`), and force-shutdown marker (`<data-dir>/.shutdown`) all follow the override automatically.
+
+### Detection
+
+```powershell
+Get-Volume <drive-letter> | Format-List FileSystem
+```
+
+If `FileSystem` is `exFAT`, `FAT32`, or anything other than `NTFS` / `ReFS`, you MUST use `--data-dir` to point the cluster at an NTFS path. The repo source files themselves are fine on exFAT.
+
+### Why this isn't a code fix
+
+PGLite is a WASM build of upstream PostgreSQL. It assumes a POSIX-class filesystem under the data directory. We cannot fix this in `codeconv` itself — only route around it. The flag and this doc-note are the mitigation.

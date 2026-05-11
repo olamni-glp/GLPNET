@@ -1,0 +1,52 @@
+---
+path: test/heap/circular_term_pointer_test.dart
+name: circular_term_pointer_test.dart
+purpose: 'Tests for circular term handling with Pointer Architecture Heap
+
+
+  Adapted from: test/circular_term_test.dart
+
+  For spec: docs/heap-pointer-architecture-spec.md v3.0
+
+
+  Circular terms can form through cross-goal communication when two goals
+
+  share variables and bind them in ways that create cycles. These tests
+
+  verify that the runtime handles such terms gracefully with the new
+
+  pointer-based heap architecture.
+
+  '
+key_idea: 'Tests for circular term handling with Pointer Architecture Heap
+
+
+  Adapted from: test/circular_term_test.dart
+
+  For spec: docs/heap-pointer-architecture-spec.md v3.0
+
+
+  Circular terms can form through cross-goal communication when two goals
+
+  share variables and bind them in ways that create cycles. These tests
+
+  verify that the runtime handles such terms gracefully with the new
+
+  pointer-based heap architecture.
+
+  '
+dependencies: []
+callers: []
+mtime: '2026-04-27T09:23:50.000Z'
+sha256: b239cd5fda24cb63efa4f4406ee8b94ad54679a79761f06f188268f7cbd60dff
+---
+
+Tests for circular term handling with Pointer Architecture Heap
+
+Adapted from: test/circular_term_test.dart
+For spec: docs/heap-pointer-architecture-spec.md v3.0
+
+Circular terms can form through cross-goal communication when two goals
+share variables and bind them in ways that create cycles. These tests
+verify that the runtime handles such terms gracefully with the new
+pointer-based heap architecture.
