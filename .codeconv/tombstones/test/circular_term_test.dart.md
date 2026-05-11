@@ -33,7 +33,11 @@ key_idea: 'Tests for circular term handling in GLP runtime.
   - copy_term/2 preserves cyclic structure in copies
 
   '
-dependencies: []
+dependencies:
+- lib/runtime/runtime.dart
+- lib/runtime/system_predicates.dart
+- lib/runtime/system_predicates_impl.dart
+- lib/runtime/terms.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 13325b134ab40b28f0b298af90405dcdd2f608c084cecd20446828be4f7b8db2

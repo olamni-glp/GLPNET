@@ -1,0 +1,18 @@
+{
+  "feature": "014-package-self-import-resolution",
+  "captured_at": "2026-05-11",
+  "source": "plan.md lines 8, 31; spec.md feature description (counts validated live 2026-05-11 against glp_runtime_net/)",
+  "subtree": "glp_runtime_net/",
+  "pubspec_name": "glp_runtime",
+  "before_feature_014": {
+    "files_inventoried": 128,
+    "imports_edges_in_dart_imports": 146,
+    "isolated_files_estimate": 70,
+    "isolated_percent": 55,
+    "notes": [
+      "146 edges and 70 isolated reflect feature-012's behaviour: every package:glp_runtime/... self-import is silently skipped.",
+      "Post-feature target (plan.md line 31): ~400-600 in-subtree edges, <20 isolated."
+    ]
+  },
+  "deferral_note": "Live `/codeconv-discover` baseline run is deferred to Phase 5 / T024 (Flow G step 1), where the post-feature numbers are also captured. The documented numbers in plan.md were obtained from the merged feature-012 surface on 2026-05-11 (per memory `project_014_self_import_status.md`)."
+}

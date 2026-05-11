@@ -18,6 +18,7 @@ key_idea: 'MT Type Checker: Verifies terms match their declared types
 
   '
 dependencies:
+- lib/compiler/ast.dart
 - lib/compiler/pmt/mode_table.dart
 - lib/compiler/pmt/type_table.dart
 callers:

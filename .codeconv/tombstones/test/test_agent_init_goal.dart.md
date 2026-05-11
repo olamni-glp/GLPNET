@@ -7,7 +7,14 @@ purpose: 'Test to debug agent_init goal setup - mimics Flutter app behavior
 key_idea: 'Test to debug agent_init goal setup - mimics Flutter app behavior
 
   '
-dependencies: []
+dependencies:
+- lib/bytecode/runner.dart
+- lib/compiler/compiler.dart
+- lib/runtime/external_io.dart
+- lib/runtime/machine_state.dart
+- lib/runtime/runtime.dart
+- lib/runtime/scheduler.dart
+- lib/runtime/terms.dart
 callers: []
 mtime: '2026-04-27T09:23:52.000Z'
 sha256: 7733bef617eea001d86bc8a9e045b14a83c5490d03ed9ba20318d1090b09d122

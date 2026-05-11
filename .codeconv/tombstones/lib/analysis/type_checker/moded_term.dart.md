@@ -9,6 +9,9 @@ callers:
 - lib/analysis/type_checker/moded_head.dart
 - lib/analysis/type_checker/well_typed_clause.dart
 - lib/analysis/type_checker/well_typed_term.dart
+- test/analysis/type_checker/moded_head_test.dart
+- test/analysis/type_checker/well_typed_clause_test.dart
+- test/analysis/type_checker/well_typed_term_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: e1f9f5809ff29101ca4c63e08173c7db6d02257c350d132b6e55e90c4f790fe2
 ---

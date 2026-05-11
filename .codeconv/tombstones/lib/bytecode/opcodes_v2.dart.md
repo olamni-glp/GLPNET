@@ -47,6 +47,7 @@ dependencies: []
 callers:
 - lib/bytecode/asm.dart
 - lib/bytecode/runner.dart
+- lib/compiler/codegen.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: c8549ccea9fbe836a1804e62b0164ac312889f3602144e9403938f9aaca206d6
 ---

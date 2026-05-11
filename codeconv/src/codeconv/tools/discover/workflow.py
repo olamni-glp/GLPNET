@@ -39,6 +39,7 @@ from codeconv.bridge_client import acquire_or_discover
 from codeconv.db.engine import build_engine
 
 from .parse import _IMPORT_RE, extract_imports, extract_leading_doc
+from .pubspec import read_package_name
 from .tombstone import (
     move_from_orphaned,
     move_to_orphaned,
@@ -86,6 +87,12 @@ def run_discover(
     started_at = _utc_now()
     run_id = str(uuid.uuid4())
 
+    # Feature 014 / FR-004: read pubspec.yaml once per run; cache the
+    # (name, warning) pair and thread it through the parser.
+    package_name, pubspec_warning = read_package_name(
+        subtree, repo_root=repo_root
+    )
+
     endpoint = acquire_or_discover(
         repo_root,
         ready_timeout=30.0,
@@ -119,6 +126,8 @@ def run_discover(
                 dry_run,
                 no_orphan_revival,
                 quiet,
+                package_name=package_name,
+                pubspec_warning=pubspec_warning,
             )
     finally:
         with engine.begin() as conn:
@@ -151,9 +160,17 @@ def _run_normal(
     dry_run: bool,
     no_orphan_revival: bool,
     quiet: bool,
+    *,
+    package_name: Optional[str] = None,
+    pubspec_warning: Optional[dict] = None,
 ) -> dict:
     t0 = time.monotonic()
     warnings_list: list[dict] = []
+
+    # Feature 014 / FR-005: emit the pubspec_missing warning exactly once
+    # per run, regardless of file count.
+    if pubspec_warning is not None:
+        warnings_list.append(pubspec_warning)
 
     files = list(walk_dart_files(subtree))
     files_total = len(files)
@@ -178,6 +195,7 @@ def _run_normal(
             tombstones_root,
             dry_run,
             warnings_list,
+            package_name=package_name,
         )
         if result == "processed":
             files_processed += 1
@@ -263,8 +281,12 @@ def _run_normal(
                 move_from_orphaned(tombstones_root, rel)
                 revived += 1
 
-        # Outside-subtree caller scan (FR-023).
-        warnings_list.extend(_scan_outside_callers(repo_root, subtree))
+        # Outside-subtree caller scan (FR-023 + Feature 014 / FR-006).
+        warnings_list.extend(
+            _scan_outside_callers(
+                repo_root, subtree, package_name=package_name
+            )
+        )
 
         # Backfill tombstone callers list now that the inverted graph is settled.
         _backfill_tombstone_callers(engine, tombstones_root)
@@ -306,6 +328,8 @@ def _process_one_file(
     tombstones_root: Path,
     dry_run: bool,
     warnings_list: list[dict],
+    *,
+    package_name: Optional[str] = None,
 ) -> str:
     try:
         st = abs_path.stat()
@@ -335,7 +359,7 @@ def _process_one_file(
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        imports_list = extract_imports(abs_path, subtree)
+        imports_list = extract_imports(abs_path, subtree, package_name)
     for w in caught:
         msg = str(w.message)
         if "duplicate import" in msg:
@@ -462,15 +486,28 @@ def _backfill_tombstone_callers(
         write_tombstone(tombstones_root, path, fields)
 
 
-def _scan_outside_callers(repo_root: Path, subtree: Path) -> list[dict]:
+def _scan_outside_callers(
+    repo_root: Path,
+    subtree: Path,
+    *,
+    package_name: Optional[str] = None,
+) -> list[dict]:
     """Scan the repo for ``.dart`` files OUTSIDE the subtree that import
     INTO it. Returns a list of warning dicts (FR-023). Edges are NEVER
     recorded in ``dart_callers`` for these matches.
+
+    Feature 014 / FR-006: when ``package_name`` is supplied, an outside
+    file importing ``package:<package_name>/...`` triggers the same
+    ``outside_caller`` warning as the relative-path form.
     """
     out: list[dict] = []
     if not repo_root.is_dir():
         return out
     subtree_real = subtree.resolve()
+    lib_real = (subtree_real / "lib").resolve()
+    self_prefix = (
+        f"package:{package_name}/" if package_name is not None else None
+    )
     for sibling in repo_root.iterdir():
         if not sibling.is_dir():
             continue
@@ -486,6 +523,44 @@ def _scan_outside_callers(repo_root: Path, subtree: Path) -> list[dict]:
                 continue
             for m in _IMPORT_RE.finditer(content):
                 target = m.group("target").strip()
+
+                # Feature 014 / FR-006: self-package rewrite parity with
+                # extract_imports. Must come BEFORE the external-skip.
+                if (
+                    self_prefix is not None
+                    and target.startswith(self_prefix)
+                    and len(target) > len(self_prefix)
+                ):
+                    rest = target[len(self_prefix):]
+                    try:
+                        resolved = (subtree_real / "lib" / rest).resolve()
+                    except (OSError, RuntimeError):
+                        continue
+                    try:
+                        resolved.relative_to(lib_real)
+                    except ValueError:
+                        continue
+                    try:
+                        inside_rel = resolved.relative_to(
+                            subtree_real
+                        ).as_posix()
+                    except ValueError:
+                        continue
+                    try:
+                        outside_rel = abs_path.resolve().relative_to(
+                            repo_root
+                        ).as_posix()
+                    except ValueError:
+                        outside_rel = str(abs_path)
+                    out.append(
+                        {
+                            "kind": "outside_caller",
+                            "outside_file": outside_rel,
+                            "inside_file": inside_rel,
+                        }
+                    )
+                    continue
+
                 if target.startswith(("package:", "dart:", "dart-ext:")):
                     continue
                 try:

@@ -3,7 +3,9 @@ path: test/conformance/fairness_26_test.dart
 name: fairness_26_test.dart
 purpose: ''
 key_idea: ''
-dependencies: []
+dependencies:
+- lib/runtime/machine_state.dart
+- lib/runtime/runtime.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: bb89ae3cfa3df92ffb3305f90fc80250bc658914cb53c211c49157ce5c469a6e

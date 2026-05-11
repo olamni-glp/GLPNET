@@ -28,7 +28,10 @@ key_idea: 'Minimal Variable Entry for multiagent runtime support
 dependencies:
 - lib/runtime/suspension.dart
 - lib/runtime/terms.dart
-callers: []
+callers:
+- lib/bytecode/runner.dart
+- lib/runtime/heap_fcp.dart
+- lib/runtime/suspend_ops.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 39633ffa950c42f693d1b6053f910084556d05aad2174a2fdc91850d5f3eff83
 ---

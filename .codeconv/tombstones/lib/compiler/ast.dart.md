@@ -26,9 +26,22 @@ callers:
 - lib/compiler/pmt/checker.dart
 - lib/compiler/pmt/mode_table.dart
 - lib/compiler/pmt/occurrence.dart
+- lib/compiler/pmt/type_checker.dart
 - lib/compiler/pmt/type_table.dart
 - lib/compiler/pmt/validator.dart
 - lib/compiler/project_linker.dart
+- lib/engine/glp_engine.dart
+- lib/multiagent/agent_runtime.dart
+- lib/runtime/module_hierarchy.dart
+- test/analysis/type_checker/moded_head_test.dart
+- test/analysis/type_checker/well_typed_clause_test.dart
+- test/compiler/partial_evaluator_test.dart
+- test/compiler/project_linker_test.dart
+- test/module/cssg_modules_test.dart
+- test/module/module_compiler_test.dart
+- test/module/module_hierarchy_test.dart
+- test/module/module_parser_test.dart
+- test/module/module_syntax_v2_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: a8a6493e11d47ec727c829d4d595f3b77f27ae5d7f95122c26a0090b3dec81d6
 ---

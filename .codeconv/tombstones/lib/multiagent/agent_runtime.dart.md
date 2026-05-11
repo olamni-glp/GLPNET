@@ -39,8 +39,22 @@ key_idea: 'AgentRuntime — encapsulates GLP agent runtime for UI integration.
   send_to_user → _output/1 kernel → outputCallback.
 
   '
-dependencies: []
-callers: []
+dependencies:
+- lib/bytecode/runner.dart
+- lib/compiler/ast.dart
+- lib/compiler/lexer.dart
+- lib/compiler/parser.dart
+- lib/engine/glp_engine.dart
+- lib/multiagent/mad_context.dart
+- lib/multiagent/message_queue.dart
+- lib/multiagent/payload_serializer.dart
+- lib/runtime/external_io.dart
+- lib/runtime/machine_state.dart
+- lib/runtime/runtime.dart
+- lib/runtime/scheduler.dart
+- lib/runtime/terms.dart
+callers:
+- test/debug_four_agents_modules.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 16fa2e171ac7e27ce67020b5a539c9e42355fb38c61a305c827133ddbf373b8f
 ---

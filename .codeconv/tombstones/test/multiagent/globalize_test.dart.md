@@ -27,7 +27,9 @@ key_idea: 'Tests for Globalize operation
   writers, and spawns global_send goals for readers.
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/global_writers_table.dart
+- lib/multiagent/mad_helpers.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 835b084ec2a497797993bffd3264943b83bceec139165e4852f959bda15fb3be

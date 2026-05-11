@@ -15,6 +15,7 @@ dependencies:
 - lib/compiler/ast.dart
 callers:
 - lib/analysis/type_checker/type_checker.dart
+- test/analysis/type_checker/well_typed_clause_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 66445ae92069c7cdf6bc5871f1666b696eabd8a80a08118cb5114b32fe6cc918
 ---

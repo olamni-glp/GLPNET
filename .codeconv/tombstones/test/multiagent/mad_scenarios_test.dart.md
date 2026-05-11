@@ -23,7 +23,13 @@ key_idea: 'End-to-End madGLP Scenario Tests
   See: madGLP-spec.md Sections 5.4, 10.1-10.3
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/global_send.dart
+- lib/multiagent/mad_context.dart
+- lib/multiagent/mad_helpers.dart
+- lib/multiagent/message_queue.dart
+- lib/runtime/runtime.dart
+- lib/runtime/terms.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 59bbfd23496686b05f542804fbe56eb5e7e02e8154753ead5456b7d2f71d61a1

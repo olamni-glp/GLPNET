@@ -35,9 +35,18 @@ key_idea: 'Module hierarchy: self.glp chain discovery and type scope assembly.
   Specification: docs/modules/glp-module-system-spec.md Sections 2-3
 
   '
-dependencies: []
+dependencies:
+- lib/analysis/type_checker/param_expansion.dart
+- lib/analysis/type_checker/type_ast.dart
+- lib/analysis/type_checker/type_environment_builder.dart
+- lib/compiler/ast.dart
+- lib/compiler/lexer.dart
+- lib/compiler/parser.dart
 callers:
 - lib/compiler/project_linker.dart
+- lib/engine/glp_engine.dart
+- test/module/cssg_modules_test.dart
+- test/module/module_hierarchy_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: db87dd95891c91cf5d37ba3d1e17349102b04226388a6a81e45f00fe59513298
 ---

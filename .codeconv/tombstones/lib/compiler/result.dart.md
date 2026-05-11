@@ -3,7 +3,8 @@ path: lib/compiler/result.dart
 name: result.dart
 purpose: ''
 key_idea: ''
-dependencies: []
+dependencies:
+- lib/bytecode/runner.dart
 callers:
 - lib/compiler/codegen.dart
 - lib/compiler/compiler.dart

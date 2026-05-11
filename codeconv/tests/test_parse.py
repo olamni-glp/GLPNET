@@ -145,3 +145,118 @@ def test_outside_subtree_imports_dropped(tmp_path: Path) -> None:
 
     edges = extract_imports(src, sub)
     assert edges == []
+
+
+# ---------------------------------------------------------------------------
+# Feature 014: self-package rewrite (T005-T010)
+# ---------------------------------------------------------------------------
+
+
+def test_resolves_self_package_imports(tmp_path: Path) -> None:
+    """package:<name>/<rest> rewrites to lib/<rest> when package_name is set."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    src.write_text(
+        "import 'package:glp_runtime/sub/b.dart';\n",
+        encoding="utf-8",
+    )
+    edges = extract_imports(src, sub, package_name="glp_runtime")
+    assert edges == ["lib/sub/b.dart"]
+
+
+def test_external_package_imports_still_skipped(tmp_path: Path) -> None:
+    """External package: targets (different name) and dart:/dart-ext: are
+    still skipped silently when package_name is set."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    src.write_text(
+        "import 'package:meta/meta.dart';\n"
+        "import 'package:json_annotation/json_annotation.dart';\n"
+        "import 'dart:io';\n"
+        "import 'dart-ext:vm/process';\n",
+        encoding="utf-8",
+    )
+    edges = extract_imports(src, sub, package_name="glp_runtime")
+    assert edges == []
+
+
+def test_self_package_when_package_name_none(tmp_path: Path) -> None:
+    """With package_name=None (feature-012 fallback), every package: target
+    is skipped — even one whose name 'looks like' the self package."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    src.write_text(
+        "import 'package:glp_runtime/sub/b.dart';\n",
+        encoding="utf-8",
+    )
+    edges = extract_imports(src, sub, package_name=None)
+    assert edges == []
+    # And the two-positional-arg form (existing callers) must also skip.
+    edges2 = extract_imports(src, sub)
+    assert edges2 == []
+
+
+def test_self_package_dedup_against_relative(tmp_path: Path) -> None:
+    """If a file imports the same target via both package: and relative
+    forms, the dedup set collapses them to one row and the FR-019
+    duplicate-import warning fires (FR-007)."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    # Both forms point at lib/sub/b.dart.
+    src.write_text(
+        "import 'package:glp_runtime/sub/b.dart';\n"
+        "import 'sub/b.dart';\n",
+        encoding="utf-8",
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        edges = extract_imports(src, sub, package_name="glp_runtime")
+    assert edges == ["lib/sub/b.dart"]
+    msgs = [str(w.message) for w in caught]
+    assert any("duplicate" in m.lower() for m in msgs), (
+        f"expected a duplicate-import warning when package: and relative "
+        f"forms collide; got {msgs}"
+    )
+
+
+def test_malformed_self_package_skipped(tmp_path: Path) -> None:
+    """`package:<name>/` (no rest) and `package:<name>` (no slash) are
+    BOTH silently skipped — they cannot be rewritten."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    src.write_text(
+        "import 'package:glp_runtime/';\n"
+        "import 'package:glp_runtime';\n",
+        encoding="utf-8",
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        edges = extract_imports(src, sub, package_name="glp_runtime")
+    assert edges == []
+    # And no warning is emitted for these malformed targets.
+    assert [str(w.message) for w in caught] == []
+
+
+def test_self_package_outside_lib_skipped(tmp_path: Path) -> None:
+    """A self-package target that resolves outside the package's lib/
+    root (e.g. via a `..` traversal in <rest>) is silently dropped — Dart
+    convention says package: paths are always under <package>/lib/."""
+    sub = _mk_subtree(tmp_path)
+    src = sub / "lib" / "main.dart"
+    # `..` escapes lib/ — resolves to <sub>/escape.dart which is inside
+    # the subtree but OUTSIDE lib/. Per the parser_contract this is
+    # treated as out-of-subtree-style and skipped silently.
+    (sub / "escape.dart").write_text("class E {}\n", encoding="utf-8")
+    src.write_text(
+        "import 'package:glp_runtime/../escape.dart';\n",
+        encoding="utf-8",
+    )
+    edges = extract_imports(src, sub, package_name="glp_runtime")
+    # The rewritten resolved path is <sub>/escape.dart, which is NOT under
+    # <sub>/lib/. Per the contract: "anchored at <subtree>/lib/<rest>".
+    # `..` traversal that escapes lib/ produces a path outside lib/ and
+    # therefore is silently skipped.
+    assert "lib/escape.dart" not in edges
+    # And the (only) edge candidate is escape.dart which is outside lib/,
+    # so the result is empty.
+    assert edges == []

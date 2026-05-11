@@ -23,7 +23,10 @@ key_idea: 'Tests for global_send goal mechanism
   remote agent when it becomes known (bound to a non-variable term).
 
   '
-dependencies: []
+dependencies:
+- lib/multiagent/global_send.dart
+- lib/multiagent/global_writers_table.dart
+- lib/multiagent/mad_helpers.dart
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: c998b41351407035919314db767e3b490b4b49953c66d2e0b0c06b56a306a1f6

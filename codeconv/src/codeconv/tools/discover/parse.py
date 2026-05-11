@@ -129,13 +129,27 @@ def _strip_leading_star(s: str) -> str:
     return s
 
 
-def extract_imports(file_path: Path, subtree_root: Path) -> List[str]:
+def extract_imports(
+    file_path: Path,
+    subtree_root: Path,
+    package_name: Optional[str] = None,
+) -> List[str]:
     """Return a deduplicated, lex-sorted list of in-subtree ``import``
     targets as POSIX paths relative to ``subtree_root``.
 
-    Targets starting with ``package:``, ``dart:``, ``dart-ext:`` are
-    skipped. Targets resolving outside ``subtree_root`` are dropped.
-    Duplicate directives in the same file emit a warning (FR-019).
+    Targets starting with ``package:<package_name>/`` are rewritten to
+    ``lib/<rest>`` and resolved against ``subtree_root`` per Dart's
+    ``package:`` convention (Feature 014 / FR-001..FR-003). Targets that
+    rewrite to a path outside ``<subtree>/lib/`` are silently skipped.
+
+    With ``package_name=None`` (the feature-012 fallback) every
+    ``package:`` target is skipped silently. ``dart:`` and ``dart-ext:``
+    targets are always skipped.
+
+    Targets resolving outside ``subtree_root`` are dropped. Duplicate
+    directives in the same file emit a warning (FR-019); the dedup set
+    collapses a self-package directive and an equivalent relative
+    directive into a single edge (FR-007).
     """
     try:
         text = file_path.read_text(encoding="utf-8", errors="replace")
@@ -147,9 +161,44 @@ def extract_imports(file_path: Path, subtree_root: Path) -> List[str]:
     out: list[str] = []
     file_dir = file_path.resolve().parent
     sub_real = subtree_root.resolve()
+    lib_real = (sub_real / "lib").resolve()
+    self_prefix = (
+        f"package:{package_name}/" if package_name is not None else None
+    )
 
     for m in _IMPORT_RE.finditer(text):
         target = m.group("target").strip()
+
+        # Feature 014: self-package rewrite. Must come BEFORE the
+        # external-skip branch so package:<self>/... is captured.
+        if (
+            self_prefix is not None
+            and target.startswith(self_prefix)
+            and len(target) > len(self_prefix)
+        ):
+            rest = target[len(self_prefix):]
+            try:
+                resolved = (sub_real / "lib" / rest).resolve()
+            except (OSError, RuntimeError):
+                continue
+            # Per Dart convention, package: paths anchor at <pkg>/lib/.
+            # A `..` traversal that escapes lib/ is treated as invalid
+            # and skipped silently.
+            try:
+                resolved.relative_to(lib_real)
+            except ValueError:
+                continue
+            try:
+                rel_posix = resolved.relative_to(sub_real).as_posix()
+            except ValueError:
+                continue
+            if rel_posix in seen:
+                duplicates.append(target)
+                continue
+            seen.add(rel_posix)
+            out.append(rel_posix)
+            continue
+
         if (
             target.startswith("package:")
             or target.startswith("dart:")

@@ -17,6 +17,16 @@ callers:
 - lib/compiler/partial_evaluator.dart
 - lib/compiler/pmt/validator.dart
 - lib/compiler/project_linker.dart
+- lib/engine/glp_engine.dart
+- lib/multiagent/agent_runtime.dart
+- lib/runtime/module_hierarchy.dart
+- test/compiler/partial_evaluator_test.dart
+- test/debug_negative.dart
+- test/module/cssg_modules_test.dart
+- test/module/module_compiler_test.dart
+- test/module/module_hierarchy_test.dart
+- test/module/module_parser_test.dart
+- test/module/module_syntax_v2_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: d5b6f4a7c81d0dcfd0fb32be8b28f7da3d3b77dc84571a10f063188114b2e9eb
 ---
