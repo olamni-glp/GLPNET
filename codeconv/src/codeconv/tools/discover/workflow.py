@@ -71,8 +71,13 @@ def run_discover(
     no_orphan_revival: bool = False,
     quiet: bool = True,
     bridge_script: Optional[Path] = None,
+    data_dir: Optional[Path] = None,
 ) -> dict:
-    """Acquire bridge → run discover workflow → return summary dict."""
+    """Acquire bridge → run discover workflow → return summary dict.
+
+    ``data_dir`` overrides the default ``<repo_root>/.pgdb`` cluster
+    location (for repos on PGLite-hostile filesystems like exFAT).
+    """
     repo_root = Path(repo_root).resolve()
     subtree = (root or (repo_root / "glp_runtime_net")).resolve()
     tombstones_root = repo_root / ".codeconv" / "tombstones"
@@ -85,6 +90,7 @@ def run_discover(
         repo_root,
         ready_timeout=30.0,
         bridge_script=bridge_script,
+        data_dir=data_dir,
     )
     engine = build_engine(endpoint)
 

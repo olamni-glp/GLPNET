@@ -1,0 +1,49 @@
+---
+path: test/circular_term_test.dart
+name: circular_term_test.dart
+purpose: 'Tests for circular term handling in GLP runtime.
+
+
+  Circular terms can form through cross-goal communication when two goals
+
+  share variables and bind them in ways that create cycles. These tests
+
+  verify that the runtime handles such terms gracefully:
+
+  - ground/1 guard terminates and correctly identifies ground circular terms
+
+  - =?= equality terminates and correctly compares circular terms
+
+  - copy_term/2 preserves cyclic structure in copies
+
+  '
+key_idea: 'Tests for circular term handling in GLP runtime.
+
+
+  Circular terms can form through cross-goal communication when two goals
+
+  share variables and bind them in ways that create cycles. These tests
+
+  verify that the runtime handles such terms gracefully:
+
+  - ground/1 guard terminates and correctly identifies ground circular terms
+
+  - =?= equality terminates and correctly compares circular terms
+
+  - copy_term/2 preserves cyclic structure in copies
+
+  '
+dependencies: []
+callers: []
+mtime: '2026-04-27T09:23:50.000Z'
+sha256: 13325b134ab40b28f0b298af90405dcdd2f608c084cecd20446828be4f7b8db2
+---
+
+Tests for circular term handling in GLP runtime.
+
+Circular terms can form through cross-goal communication when two goals
+share variables and bind them in ways that create cycles. These tests
+verify that the runtime handles such terms gracefully:
+- ground/1 guard terminates and correctly identifies ground circular terms
+- =?= equality terminates and correctly compares circular terms
+- copy_term/2 preserves cyclic structure in copies

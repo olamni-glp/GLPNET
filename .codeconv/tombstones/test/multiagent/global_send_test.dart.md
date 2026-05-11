@@ -1,0 +1,37 @@
+---
+path: test/multiagent/global_send_test.dart
+name: global_send_test.dart
+purpose: 'Tests for global_send goal mechanism
+
+
+  Derived from madGLP-spec.md Section 4: The global_send Predicate
+
+
+  The global_send mechanism watches a reader and sends its value to a
+
+  remote agent when it becomes known (bound to a non-variable term).
+
+  '
+key_idea: 'Tests for global_send goal mechanism
+
+
+  Derived from madGLP-spec.md Section 4: The global_send Predicate
+
+
+  The global_send mechanism watches a reader and sends its value to a
+
+  remote agent when it becomes known (bound to a non-variable term).
+
+  '
+dependencies: []
+callers: []
+mtime: '2026-04-27T09:23:50.000Z'
+sha256: c998b41351407035919314db767e3b490b4b49953c66d2e0b0c06b56a306a1f6
+---
+
+Tests for global_send goal mechanism
+
+Derived from madGLP-spec.md Section 4: The global_send Predicate
+
+The global_send mechanism watches a reader and sends its value to a
+remote agent when it becomes known (bound to a non-variable term).

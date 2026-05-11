@@ -47,7 +47,15 @@ def _global(
     repo_root: Optional[Path] = typer.Option(
         None,
         "--repo-root",
-        help="Locate .pgdb/, tools, and .codeconv/. Defaults to cwd.",
+        help="Locate tools and .codeconv/. Defaults to cwd.",
+    ),
+    data_dir: Optional[Path] = typer.Option(
+        None,
+        "--data-dir",
+        help=(
+            "Override PGLite cluster location (default: <repo-root>/.pgdb). "
+            "Use when the repo lives on a filesystem PGLite can't use (e.g. exFAT)."
+        ),
     ),
     bridge_port: Optional[int] = typer.Option(
         None,
@@ -71,6 +79,7 @@ def _global(
     """Stash global state on the Click ``ctx.obj`` so subcommands can read it."""
     ctx.ensure_object(dict)
     ctx.obj["repo_root"] = (repo_root or Path.cwd()).resolve()
+    ctx.obj["data_dir"] = data_dir.resolve() if data_dir is not None else None
     ctx.obj["bridge_port"] = bridge_port
     ctx.obj["quiet"] = quiet
     ctx.obj["json"] = json_out
@@ -122,6 +131,7 @@ def cmd_list(ctx: typer.Context) -> None:
 def cmd_doctor(ctx: typer.Context) -> None:
     """Diagnose bridge, sidecar, schemas, and DBOS state."""
     repo_root: Path = ctx.obj["repo_root"]
+    data_dir_override: Optional[Path] = ctx.obj.get("data_dir")
     quiet: bool = ctx.obj.get("quiet", False)
     json_mode: bool = ctx.obj.get("json", False)
 
@@ -130,21 +140,23 @@ def cmd_doctor(ctx: typer.Context) -> None:
         "checks": [],
         "ok": True,
     }
+    if data_dir_override is not None:
+        report["data_dir"] = str(data_dir_override)
 
     def add(name: str, ok: bool, detail: str = "") -> None:
         report["checks"].append({"name": name, "ok": ok, "detail": detail})
         if not ok:
             report["ok"] = False
 
-    # 1. .pgdb/ present.
-    data_dir = repo_root / ".pgdb"
+    # 1. data_dir present.
+    data_dir = data_dir_override or (repo_root / ".pgdb")
     add("data_dir_exists", data_dir.is_dir(), str(data_dir))
 
     # 2. Bridge reachable + sidecar shape valid.
     try:
         from codeconv.bridge_client import acquire_or_discover
 
-        endpoint = acquire_or_discover(repo_root)
+        endpoint = acquire_or_discover(repo_root, data_dir=data_dir_override)
         add("bridge_reachable", True, f"{endpoint.host}:{endpoint.port}")
     except Exception as exc:
         add("bridge_reachable", False, repr(exc))
@@ -212,6 +224,7 @@ def cmd_migrate(ctx: typer.Context) -> None:
     DBOS migrations idempotent).
     """
     repo_root: Path = ctx.obj["repo_root"]
+    data_dir_override: Optional[Path] = ctx.obj.get("data_dir")
     quiet: bool = ctx.obj.get("quiet", False)
 
     try:
@@ -222,7 +235,7 @@ def cmd_migrate(ctx: typer.Context) -> None:
         raise typer.Exit(_EXIT_INTERNAL)
 
     try:
-        endpoint = acquire_or_discover(repo_root)
+        endpoint = acquire_or_discover(repo_root, data_dir=data_dir_override)
     except Exception as exc:
         typer.echo(f"codeconv migrate: bridge unreachable: {exc}", err=True)
         raise typer.Exit(_EXIT_BRIDGE_UNREACHABLE)

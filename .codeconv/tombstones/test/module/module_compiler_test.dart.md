@@ -1,0 +1,11 @@
+---
+path: test/module/module_compiler_test.dart
+name: module_compiler_test.dart
+purpose: ''
+key_idea: ''
+dependencies: []
+callers: []
+mtime: '2026-04-27T09:23:50.000Z'
+sha256: 112ccd7b1688a462b205b63e4ad4082a0088432a2921539cee0597b8c8f7c2dd
+---
+

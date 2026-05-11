@@ -109,6 +109,7 @@ def acquire_or_discover(
     bridge_script: Optional[str | os.PathLike[str]] = None,
     node_executable: Optional[str] = None,
     register_consumer: bool = True,
+    data_dir: Optional[str | os.PathLike[str]] = None,
 ) -> BridgeEndpoint:
     """Acquire a connectable unified bridge endpoint.
 
@@ -116,16 +117,24 @@ def acquire_or_discover(
     2. Otherwise spawn the bridge speculatively; bridge mkdir is the real mutex.
     3. After acquiring, register THIS process as a consumer (E register-before-connect)
        unless ``register_consumer=False``.
+
+    ``data_dir`` overrides the default ``<repo_root>/.pgdb``. Used when the
+    repo lives on a filesystem PGLite can't use (e.g. exFAT — atomic rename
+    / advisory locks / mmap operations fail). Sidecar, lock, and consumers
+    directory are all derived from ``data_dir`` (siblings, by convention).
     """
     repo_root = Path(repo_root).resolve()
-    data_dir = repo_root / ".pgdb"
-    sidecar_path = data_dir / "bridge.json"
-    # Sibling, not inside .pgdb/, because PGLite refuses to init a data dir
+    data_dir_path = (
+        Path(data_dir).resolve() if data_dir is not None else (repo_root / ".pgdb")
+    )
+    sidecar_path = data_dir_path / "bridge.json"
+    # Sibling, not inside data_dir, because PGLite refuses to init a data dir
     # that has non-PG files in it (same reasoning as the bridge lock path).
-    consumers_dir = repo_root / ".pgdb.consumers"
+    consumers_dir = data_dir_path.parent / (data_dir_path.name + ".consumers")
 
-    data_dir.mkdir(parents=True, exist_ok=True)
+    data_dir_path.mkdir(parents=True, exist_ok=True)
     consumers_dir.mkdir(parents=True, exist_ok=True)
+    data_dir = data_dir_path  # used below in spawn / fast-path call sites
 
     # Fast path: bridge already up and reachable AND heartbeat fresh.
     fast = _try_consume_sidecar_with_heartbeat(sidecar_path, ping_timeout=0.5)
@@ -248,15 +257,22 @@ def _heartbeat_fresh(iso: str, max_age_s: float) -> bool:
     return -1.0 <= age <= max_age_s  # tolerate ~1s of clock skew
 
 
-def request_force_shutdown(repo_root: str | os.PathLike[str]) -> bool:
-    """D — non-destructive force-shutdown. Writes ``.pgdb/.shutdown`` marker;
-    bridge polls and exits gracefully on next tick. Returns True if the marker
-    was written."""
+def request_force_shutdown(
+    repo_root: str | os.PathLike[str],
+    *,
+    data_dir: Optional[str | os.PathLike[str]] = None,
+) -> bool:
+    """D — non-destructive force-shutdown. Writes ``<data_dir>/.shutdown``
+    marker; bridge polls and exits gracefully on next tick. Returns True if
+    the marker was written. ``data_dir`` override mirrors
+    :func:`acquire_or_discover`'s — for repos on PGLite-hostile filesystems."""
     repo_root = Path(repo_root).resolve()
-    data_dir = repo_root / ".pgdb"
-    if not data_dir.is_dir():
+    data_dir_path = (
+        Path(data_dir).resolve() if data_dir is not None else (repo_root / ".pgdb")
+    )
+    if not data_dir_path.is_dir():
         return False
-    marker = data_dir / ".shutdown"
+    marker = data_dir_path / ".shutdown"
     try:
         marker.write_text("requested\n", encoding="utf-8")
     except OSError:

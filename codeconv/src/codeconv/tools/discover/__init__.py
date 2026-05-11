@@ -58,6 +58,7 @@ def run(
 ) -> None:
     """Build / refresh the Dart inventory for ``glp_runtime_net/``."""
     repo_root = Path(ctx.obj["repo_root"]) if ctx.obj else Path.cwd()
+    data_dir_override = ctx.obj.get("data_dir") if ctx.obj else None
     # CLI top-level may have set ``--quiet`` / ``--json`` globally; honour either.
     if ctx.obj:
         quiet = quiet or bool(ctx.obj.get("quiet"))
@@ -69,6 +70,7 @@ def run(
         dry_run=dry_run,
         no_orphan_revival=no_orphan_revival,
         quiet=quiet,
+        data_dir=data_dir_override,
     )
     _emit_summary(summary, json_out=json_out, quiet=quiet)
 
