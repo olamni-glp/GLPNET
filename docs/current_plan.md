@@ -10,9 +10,9 @@ Branch: `016-codeconv-init-scaffold-langpair` | Base HEAD: `177a33f8`
 - [x] 3. Phase 3 US1 init (T013-T017) [+ US4 tests T027 written]
 - [x] 4. Phase 4 US2 scaffold (T018-T023) [spec-conflict reconciled: managed-target]
 - [x] 5. Phase 5 US3 registry extensibility (T024-T026) [15 pass, no bridge]
-- [ ] 6. Phase 6 US4 exclusions (T027-T029) <- CURRENT
-- [ ] 7. Phase 7 US5 pipeline regression (T030-T031)
-- [ ] 8. Phase 8 Polish + removal (T032-T037)
+- [x] 6. Phase 6 US4 exclusions (T027-T029) [impl+tests w/ US1; e2e-verified T017]
+- [x] 7. Phase 7 US5 pipeline regression (T030-T031) [init→depgraph→scaffold e2e green]
+- [ ] 8. Phase 8 Polish + removal (T032-T037) <- CURRENT
 
 ## Context
 Port D2NET Init+Scaffold into codeconv as `codeconv init`/`codeconv scaffold`
