@@ -44,6 +44,11 @@ _FIELD_ORDER: tuple[str, ...] = (
     "conversion_started_at",
     "conversion_completed_at",
     "target_path",
+    # --- feature 017 (codeconv-planagents) appended fields ---
+    "plan_started_at",
+    "plan_completed_at",
+    "plan_path",
+    "open_escalation_count",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -58,6 +63,25 @@ _FEATURE_015_KEYS: tuple[str, ...] = (
     "conversion_completed_at",
     "target_path",
 )
+
+# The feature-017 (codeconv-planagents) appended keys, as a set, for
+# round-trip preservation. Same discipline as ``_FEATURE_015_KEYS``: a
+# ``/codeconv-discover`` re-write (a feature-012 caller) MUST carry these
+# forward unchanged or a re-discover after ``planagents stamp-tombstones``
+# would silently erase plan state (FR-013 / data-model §2 round-trip).
+_FEATURE_017_KEYS: tuple[str, ...] = (
+    "plan_started_at",
+    "plan_completed_at",
+    "plan_path",
+    "open_escalation_count",
+)
+
+# Combined append-only preservation set: every key appended after the
+# original feature-012 eight. Used by ``_canonicalise`` and
+# ``merge_preserving_feature015`` so neither feature-015 nor feature-017
+# state is dropped when a tombstone is re-written by a caller that did
+# not author those keys.
+_PRESERVED_APPENDED_KEYS: tuple[str, ...] = _FEATURE_015_KEYS + _FEATURE_017_KEYS
 
 # YAML emitter settings pinned for diff stability.
 _YAML_DUMP_KWARGS: dict[str, Any] = dict(
@@ -174,10 +198,13 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     - Lists sorted lexically.
     - Path-like fields use forward slashes.
     - Feature 015 appended keys (``topo_level``, ``cycle_group_id``,
-      ``status``, ``conversion_started_at``, ``conversion_completed_at``)
-      are passed through only when present in the input; ``None`` is
-      preserved (emitted as YAML ``null``) per
-      ``specs/015-codeconv-depgraph/contracts/tombstone_format_delta.md``.
+      ``status``, ``conversion_started_at``, ``conversion_completed_at``,
+      ``target_path``) and feature 017 appended keys (``plan_started_at``,
+      ``plan_completed_at``, ``plan_path``, ``open_escalation_count``) are
+      passed through only when present in the input; ``None`` is preserved
+      (emitted as YAML ``null``) per
+      ``specs/015-codeconv-depgraph/contracts/tombstone_format_delta.md``
+      and ``specs/017-conversion-plan-agents/data-model.md`` §2.
     """
     out: dict[str, Any] = {}
     out["path"] = _to_posix(fields.get("path", ""))
@@ -188,9 +215,12 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     out["callers"] = sorted(_to_posix(p) for p in fields.get("callers") or [])
     out["mtime"] = str(fields.get("mtime", ""))
     out["sha256"] = str(fields.get("sha256", ""))
-    # Feature 015 — pass-through with null preservation (incl. target_path,
-    # the 6th key added per codex spec-review P1-e).
-    for key in _FEATURE_015_KEYS:
+    # Feature 015 + feature 017 — pass-through with null preservation
+    # (incl. target_path, the 6th feature-015 key per codex spec-review
+    # P1-e, and the four feature-017 plan-state keys). Emission order is
+    # still governed by _FIELD_ORDER, so this append-only set preserves
+    # byte-identical re-stamp (data-model §2 idempotence proof).
+    for key in _PRESERVED_APPENDED_KEYS:
         if key in fields:
             out[key] = fields[key]
     return out
@@ -200,17 +230,20 @@ def merge_preserving_feature015(
     new_fields: Mapping[str, Any],
     existing_tombstone: Path | None,
 ) -> dict[str, Any]:
-    """Return ``new_fields`` with the six feature-015 keys carried forward
-    from ``existing_tombstone`` when the caller (discover) did not supply
-    them.
+    """Return ``new_fields`` with the appended feature-015 + feature-017
+    keys carried forward from ``existing_tombstone`` when the caller
+    (discover) did not supply them.
 
     Fixes the discover key-stripping bug-risk: ``_process_one_file`` /
     ``_backfill_tombstone_callers`` rebuild an 8-key dict from freshly
     parsed ``.dart`` + DB edges; without this merge a ``/codeconv-discover``
-    run after ``stamp-tombstones`` would drop every feature-015 key
-    (depgraph + conversion state) from the tombstone, defeating the
-    round-trip. A key the caller explicitly provides wins; otherwise the
-    on-disk value is preserved verbatim (including YAML-``null``).
+    run after ``stamp-tombstones`` (feature 015) or after
+    ``planagents stamp-tombstones`` (feature 017) would drop every
+    appended key (depgraph + conversion + plan state) from the tombstone,
+    defeating the round-trip. A key the caller explicitly provides wins;
+    otherwise the on-disk value is preserved verbatim (including
+    YAML-``null``). Name kept for backward-compat with existing importers
+    (it now also preserves the four feature-017 plan-state keys).
     """
     merged = dict(new_fields)
     if existing_tombstone is None or not existing_tombstone.is_file():
@@ -219,7 +252,7 @@ def merge_preserving_feature015(
         prior = read_tombstone(existing_tombstone)
     except (OSError, ValueError):
         return merged
-    for key in _FEATURE_015_KEYS:
+    for key in _PRESERVED_APPENDED_KEYS:
         if key not in merged and key in prior:
             merged[key] = prior[key]
     return merged
