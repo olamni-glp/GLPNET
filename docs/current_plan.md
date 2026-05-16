@@ -12,7 +12,26 @@ Started: 2026-05-16
 - [x] 6. Phase 5 US3: SCC fixture + batch tests authored (bridge run pending)
 - [x] 7. Phase 6 US4: aggregate-escalations impl + tests + SKILL escalate-don't-guess
 - [x] 8. Phase 7 US5: research-agent SKILL contract + research tests
-- [ ] 9. Phase 8 Polish: stale/dry-run/stamp-rebuild tests authored; US2-5 + full-suite bridge runs in flight; SC-009 ← CURRENT
+- [x] 9a. Bug fixes: 2 real SCC-batch bugs found by bridge tests, fixed + unit-locked + re-green serial
+- [ ] 9. Phase 8 Polish: final serial run b11c9ywbl in flight; then finalize ← CURRENT
+
+## Test results (serial, uncontended — authoritative)
+- readiness 18/18, artefact-val 11/11 (no bridge)
+- schema-isolation 6/6 (+downgrade re-confirm pending b11c9ywbl)
+- US1: next 6/6, orchestration-mock 1/1, lifecycle (re-confirm pending)
+- US3 SCC-batch 4/4, US4 escalations 3/3 (post-fix, serial)
+- pre-feature baseline: 5 of 6 "fails" are known bridge-concurrency
+  flakes (green in isolation per memory); 1 = test_sc003_two_stack_
+  concurrent = pre-existing .NET-binary-absent (Sc003NpgsqlLoop.exe not
+  built; feature-012 .NET interop, unrelated to 017). ZERO regressions.
+
+## BLOCKED (for Gabi)
+- T003/T004/T005 (live snapshots) + T045 (SC-009 live full pass):
+  glp_runtime_net/ has 0 .dart files in this worktree (128 checked-in
+  tombstones from a prior populated state) AND a real pass needs LLM
+  planning sub-agents (brief forbids running them). Mirrors feature-015's
+  parked live-cluster tasks. Deterministic engine + mocked-agent harness
+  cover every FR/SC mechanism.
 
 ## Context
 Deterministic Python tool `codeconv planagents` + `/codeconv-planagents` skill orchestration

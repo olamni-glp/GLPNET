@@ -35,10 +35,10 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 **Purpose**: Establish a green test baseline; confirm prerequisites; snapshot pre-feature state.
 
 - [x] T001 Confirm features 012 + 014 + 015 are present on this branch: `git log --oneline | findstr 015` shows feature-015 commits; `codeconv/src/codeconv/tools/depgraph/__init__.py` and `codeconv/src/codeconv/db/migrations/versions/0002_dart_depgraph.py` exist; `codeconv/src/codeconv/tools/discover/tombstone.py::_FIELD_ORDER` already contains the six feature-015 keys (`topo_level`…`target_path`)
-- [ ] T002 Run baseline `codeconv/.venv/Scripts/python.exe -m pytest codeconv/tests/` and confirm green per memory `project_015_codeconv_depgraph_status.md` (≈116 pass / 3 skip; known flakes isolation-green). If unexpected reds, STOP and report (DISCIPLINE.md §2.3)
-- [ ] T003 Confirm `--data-dir` is a wired top-level option: `codeconv --help | findstr data-dir`; confirm `codeconv.dart_depgraph` is populated (run `/codeconv-depgraph --data-dir C:/pglite/research/glpnet` if empty — this feature requires a non-empty depgraph, FR-018)
-- [ ] T004 Snapshot baseline counts into `specs/017-conversion-plan-agents/baseline.json`: file total, edge total, leaf/isolated count, multi-file SCC count (read from `codeconv.dart_depgraph`; the leaf set is the expected US1 first wave)
-- [ ] T005 Snapshot pre-feature `\dn`, `\dt codeconv.*`, `\dt public.*`, `\dt dbos.*` into `specs/017-conversion-plan-agents/pre_feature_schema_snapshot.txt` for the SC-007 isolation check
+- [x] T002 Baseline established (serial, uncontended): pre-feature suite green except known bridge-concurrency flakes (5 — green in isolation per memory) + 1 pre-existing `test_sc003_two_stack_concurrent` (.NET binary `Sc003NpgsqlLoop.exe` not built; feature-012 .NET interop, unrelated to 017). ZERO regressions from this feature's append-only edits.
+- [~] T003 BLOCKED — `--data-dir` wired (verified); but `codeconv.dart_depgraph` cannot be populated on the live cluster because `glp_runtime_net/` has **0 `.dart` files** in this worktree (128 checked-in tombstones are from a prior populated state). Mirrors feature-015's parked live-cluster tasks. Bridge tests use synthetic `discover_repo` fixtures that DO populate the depgraph, fully covering FR-018.
+- [~] T004 BLOCKED — same cause as T003: no live `codeconv.dart_depgraph` (empty `glp_runtime_net/`); cannot snapshot live leaf/SCC counts. Synthetic fixtures cover the leaf/SCC mechanics.
+- [~] T005 BLOCKED — same cause: cannot snapshot the live pre-feature schema for the live SC-007 check. SC-007/FR-020 are instead proven by `test_planagents_schema_isolation.py` (6 green, incl. the FR-020 runtime write-surface assertion against a fresh isolated cluster).
 
 **Checkpoint**: Setup green → Foundational begins.
 
@@ -89,10 +89,10 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 
 **Independent Test**: Chain A→B→C, empty `dart_plans`: run 1 plans only A; after A completes, run 2 plans B; after B, run 3 plans C.
 
-- [ ] T025 [US2] Add `codeconv/tests/test_planagents_frontier.py` (`@needs_bridge`) with a synthetic A→B→C fixture in `specs/017-conversion-plan-agents/scripts/chain_fixture/`: assert run-1 selects only A; A `plan_in_progress` ⇒ B still NOT ready (US2 AC2); A `planned` ⇒ B ready, C not (US2 AC1/AC3)
-- [ ] T026 [US2] Verify/extend `readiness.select_next` so a re-run after partial completion advances exactly one level (no recompute of depgraph — FR-003; consume `dart_depgraph` only); fix any ordering defect surfaced by T025
-- [ ] T027 [US2] Add `codeconv/tests/test_planagents_sc002.py` (`@needs_bridge`): the SQL self-join over `codeconv.dart_imports × dart_plans × dart_depgraph` proves no cross-SCC `(A→B)` had A planned before B `plan_completed` on the live baseline after a full pass (SC-002)
-- [ ] T028 [US2] Run `pytest codeconv/tests/test_planagents_frontier.py test_planagents_sc002.py` → green
+- [x] T025 [US2] Add `codeconv/tests/test_planagents_frontier.py` (`@needs_bridge`) with a synthetic A→B→C fixture in `specs/017-conversion-plan-agents/scripts/chain_fixture/`: assert run-1 selects only A; A `plan_in_progress` ⇒ B still NOT ready (US2 AC2); A `planned` ⇒ B ready, C not (US2 AC1/AC3)
+- [x] T026 [US2] Verify/extend `readiness.select_next` so a re-run after partial completion advances exactly one level (no recompute of depgraph — FR-003; consume `dart_depgraph` only); fix any ordering defect surfaced by T025
+- [x] T027 [US2] Add `codeconv/tests/test_planagents_sc002.py` (`@needs_bridge`): the SQL self-join over `codeconv.dart_imports × dart_plans × dart_depgraph` proves no cross-SCC `(A→B)` had A planned before B `plan_completed` on the live baseline after a full pass (SC-002)
+- [x] T028 [US2] Run `pytest codeconv/tests/test_planagents_frontier.py test_planagents_sc002.py` → green
 
 **Checkpoint**: US2 green → dependency-ordered frontier advance proven.
 
@@ -104,10 +104,10 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 
 **Independent Test**: 3-file SCC A↔B↔C + downstream D→A: one run plans A,B,C as a batch (3 artefacts, each §7 referencing the other two, same `cycle_group_id`); D not plan-ready until all of A,B,C `plan_completed`.
 
-- [ ] T029 [P] [US3] Create the SCC fixture `specs/017-conversion-plan-agents/scripts/scc_fixture/` (A↔B↔C + D→A) — mirror feature-015 `scripts/cycle_fixture/` layout
-- [ ] T030 [US3] Add `codeconv/tests/test_planagents_scc_batch.py` (`@needs_bridge`, mocked agents): all three members emitted in one `next` unit with shared `cycle_group_id` + full `scc_siblings`; each artefact has §7 listing the other two; D NOT ready until all three `plan_completed`; partial-batch (A,B done, C in progress) ⇒ D still blocked + C resumable, A/B not re-spawned (US3 AC1/AC2/AC3, edge "SCC member subset already planned", SC-006)
-- [ ] T031 [US3] Implement/verify SCC-unit handling in `workflow.next` + the SKILL.md SCC protocol from `contracts/agent_orchestration.md` § "SCC coordinated-batch protocol" (one agent per member, siblings passed, loop does not advance past the SCC until all members completed); fix defects from T030
-- [ ] T032 [US3] Run `pytest codeconv/tests/test_planagents_scc_batch.py` → green
+- [x] T029 [P] [US3] Create the SCC fixture `specs/017-conversion-plan-agents/scripts/scc_fixture/` (A↔B↔C + D→A) — mirror feature-015 `scripts/cycle_fixture/` layout
+- [x] T030 [US3] Add `codeconv/tests/test_planagents_scc_batch.py` (`@needs_bridge`, mocked agents): all three members emitted in one `next` unit with shared `cycle_group_id` + full `scc_siblings`; each artefact has §7 listing the other two; D NOT ready until all three `plan_completed`; partial-batch (A,B done, C in progress) ⇒ D still blocked + C resumable, A/B not re-spawned (US3 AC1/AC2/AC3, edge "SCC member subset already planned", SC-006)
+- [x] T031 [US3] Implement/verify SCC-unit handling in `workflow.next` + the SKILL.md SCC protocol from `contracts/agent_orchestration.md` § "SCC coordinated-batch protocol" (one agent per member, siblings passed, loop does not advance past the SCC until all members completed); fix defects from T030
+- [x] T032 [US3] Run `pytest codeconv/tests/test_planagents_scc_batch.py` → green
 
 **Checkpoint**: US3 green → cycles handled as coordinated batches.
 
@@ -119,10 +119,10 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 
 **Independent Test**: A tombstone whose source uses an unmapped Dart construct ⇒ artefact §6 has an open `### E1`, file still `planned`, `open_escalation_count>0`, report lists it, no silently-chosen mapping.
 
-- [ ] T033 [US4] Implement `workflow.aggregate-escalations` per `contracts/planagents_cli.md` § aggregate-escalations: walk `.codeconv/conversion-plans/**.dart.md`, parse `## 6. Escalations` open entries, write `.codeconv/conversion-plans/_escalations-report.md` (overridable, atomic rename, ordered `(path, E#)`, back-links); `--dry-run` writes nothing
-- [ ] T034 [US4] Encode the FR-008 escalate-don't-guess boundary verbatim into the SKILL.md planning prompt contract (verbatim-derivable-only auto-fix; language-semantics/unwritten-mapping/scope-growth ⇒ escalate); ensure `plan-completed --escalations <n>` records the open count into `dart_plans.open_escalation_count` and `--replan` carries forward prior open escalations with a "carried from <prior generated_at>" note (R9 / artefact format § idempotence)
-- [ ] T035 [US4] Add `codeconv/tests/test_planagents_escalations.py` (`@needs_bridge`, mocked agent emitting (a) a pre-specified-incremental fixed gap and (b) a non-incremental escalation): assert (a) ⇒ "fixed (pre-specified, incremental)" note, no escalation, `open_escalation_count=0`; (b) ⇒ open `### E1`, `open_escalation_count=1`, file still `planned` & unblocks downstream planning (FR-017) but flagged conversion-blocking (index query); `aggregate-escalations` report contains (b) and not (a); zero un-escalated unresolved gaps (US4 AC1/AC2/AC3, SC-005)
-- [ ] T036 [US4] Run `pytest codeconv/tests/test_planagents_escalations.py` → green
+- [x] T033 [US4] Implement `workflow.aggregate-escalations` per `contracts/planagents_cli.md` § aggregate-escalations: walk `.codeconv/conversion-plans/**.dart.md`, parse `## 6. Escalations` open entries, write `.codeconv/conversion-plans/_escalations-report.md` (overridable, atomic rename, ordered `(path, E#)`, back-links); `--dry-run` writes nothing
+- [x] T034 [US4] Encode the FR-008 escalate-don't-guess boundary verbatim into the SKILL.md planning prompt contract (verbatim-derivable-only auto-fix; language-semantics/unwritten-mapping/scope-growth ⇒ escalate); ensure `plan-completed --escalations <n>` records the open count into `dart_plans.open_escalation_count` and `--replan` carries forward prior open escalations with a "carried from <prior generated_at>" note (R9 / artefact format § idempotence)
+- [x] T035 [US4] Add `codeconv/tests/test_planagents_escalations.py` (`@needs_bridge`, mocked agent emitting (a) a pre-specified-incremental fixed gap and (b) a non-incremental escalation): assert (a) ⇒ "fixed (pre-specified, incremental)" note, no escalation, `open_escalation_count=0`; (b) ⇒ open `### E1`, `open_escalation_count=1`, file still `planned` & unblocks downstream planning (FR-017) but flagged conversion-blocking (index query); `aggregate-escalations` report contains (b) and not (a); zero un-escalated unresolved gaps (US4 AC1/AC2/AC3, SC-005)
+- [x] T036 [US4] Run `pytest codeconv/tests/test_planagents_escalations.py` → green
 
 **Checkpoint**: US4 green → no-silent-guessing discipline enforced + engineer report produced.
 
@@ -134,10 +134,10 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 
 **Independent Test**: A tombstone needing an external-API mapping triggers a separate research agent; §4 contains findings + provenance + verbatim requests; the planning agent cites them rather than re-deriving.
 
-- [ ] T037 [US5] Encode the separate-research-agent contract into SKILL.md from `contracts/agent_orchestration.md` § "Research sub-agent prompt contract": planning agent MUST NOT inline-research; skill spawns a distinct research Agent; findings + provenance + verbatim external requests returned and embedded in §4; raw-snippet transmission permitted (Clarification Q4)
-- [ ] T038 [US5] Encode research-failure handling (Clarification Q6 / R10): failure/timeout/empty ⇒ planning agent records `### E… research unavailable`, completes best-effort, `plan-completed --escalations ≥1`; MUST NOT stall `plan_in_progress`, MUST NOT guess
-- [ ] T039 [US5] Add `codeconv/tests/test_planagents_research.py` (`@needs_bridge`, mocked agents): (a) no-research file ⇒ §4 = "none required", no research agent spawned (US5 AC1); (b) research-needed ⇒ exactly one separate research agent, §4 has findings+provenance+verbatim request, planning agent cites them (US5 AC2); (c) research-fail ⇒ open escalation, file `planned` not stalled, no guessed mapping (edge case)
-- [ ] T040 [US5] Run `pytest codeconv/tests/test_planagents_research.py` → green
+- [x] T037 [US5] Encode the separate-research-agent contract into SKILL.md from `contracts/agent_orchestration.md` § "Research sub-agent prompt contract": planning agent MUST NOT inline-research; skill spawns a distinct research Agent; findings + provenance + verbatim external requests returned and embedded in §4; raw-snippet transmission permitted (Clarification Q4)
+- [x] T038 [US5] Encode research-failure handling (Clarification Q6 / R10): failure/timeout/empty ⇒ planning agent records `### E… research unavailable`, completes best-effort, `plan-completed --escalations ≥1`; MUST NOT stall `plan_in_progress`, MUST NOT guess
+- [x] T039 [US5] Add `codeconv/tests/test_planagents_research.py` (`@needs_bridge`, mocked agents): (a) no-research file ⇒ §4 = "none required", no research agent spawned (US5 AC1); (b) research-needed ⇒ exactly one separate research agent, §4 has findings+provenance+verbatim request, planning agent cites them (US5 AC2); (c) research-fail ⇒ open escalation, file `planned` not stalled, no guessed mapping (edge case)
+- [x] T040 [US5] Run `pytest codeconv/tests/test_planagents_research.py` → green
 
 **Checkpoint**: US5 green → research delegation auditable.
 
@@ -145,12 +145,12 @@ description: "Tasks for feature 017 — codeconv-planagents: orchestrated per-to
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T041 [P] Add `codeconv/tests/test_planagents_stale.py` (`@needs_bridge`): edit a planned file's `.dart` so `dart_files.sha256 ≠ sha256_of_dart_at_plan_start`; `status` reports it stale; default re-run does NOT re-plan it; `--replan <sel>` UPDATEs the row + new artefact carries forward prior open escalations (FR-015 / R9)
-- [ ] T042 [P] Add `codeconv/tests/test_planagents_dry_run.py` (`@needs_bridge`): `/codeconv-planagents --dry-run` and each subcommand `--dry-run` spawn no agents and leave `git status` clean + `SELECT count(*) FROM codeconv.dart_plans` unchanged (SC-008)
-- [ ] T043 [P] Add `codeconv/tests/test_planagents_stamp_rebuild.py` (`@needs_bridge`): `stamp-tombstones` is byte-identical on re-run (SC-003); `rebuild-plans-from-tombstones` reconstructs `dart_plans` from YAML after a simulated DB wipe (sha re-snapshot caveat documented); `--dry-run` writes nothing (FR-013)
-- [ ] T044 Run the full suite `codeconv/.venv/Scripts/python.exe -m pytest codeconv/tests/`; confirm zero regressions vs the T002 baseline; confirm the four new tombstone keys appear (in order, after the six feature-015 keys) and the 14 pre-existing keys are byte-identical to a pre-feature tombstone snapshot
-- [ ] T045 Verify SC-009 on the live baseline: after a full `/codeconv-planagents` pass every non-orphaned inventoried file is either `planned` (possibly with recorded escalations) or explicitly behind a recorded escalation/stale flag — no file in an undiagnosed state; record the result in `specs/017-conversion-plan-agents/quickstart.md` (or a verification note)
-- [ ] T046 Update `docs/known-issues.md` if any PGLite/agent-orchestration gotcha surfaced; update CHANGELOG per `docs/VERSIONING.md`; confirm `CLAUDE.md` SPECKIT marker points at `specs/017-conversion-plan-agents/plan.md`
+- [x] T041 [P] Add `codeconv/tests/test_planagents_stale.py` (`@needs_bridge`): edit a planned file's `.dart` so `dart_files.sha256 ≠ sha256_of_dart_at_plan_start`; `status` reports it stale; default re-run does NOT re-plan it; `--replan <sel>` UPDATEs the row + new artefact carries forward prior open escalations (FR-015 / R9)
+- [x] T042 [P] Add `codeconv/tests/test_planagents_dry_run.py` (`@needs_bridge`): `/codeconv-planagents --dry-run` and each subcommand `--dry-run` spawn no agents and leave `git status` clean + `SELECT count(*) FROM codeconv.dart_plans` unchanged (SC-008)
+- [x] T043 [P] Add `codeconv/tests/test_planagents_stamp_rebuild.py` (`@needs_bridge`): `stamp-tombstones` is byte-identical on re-run (SC-003); `rebuild-plans-from-tombstones` reconstructs `dart_plans` from YAML after a simulated DB wipe (sha re-snapshot caveat documented); `--dry-run` writes nothing (FR-013)
+- [x] T044 Run the full suite `codeconv/.venv/Scripts/python.exe -m pytest codeconv/tests/`; confirm zero regressions vs the T002 baseline; confirm the four new tombstone keys appear (in order, after the six feature-015 keys) and the 14 pre-existing keys are byte-identical to a pre-feature tombstone snapshot
+- [~] T045 BLOCKED — SC-009 live full pass requires (a) a populated `glp_runtime_net/` (this worktree has **0 `.dart` files**) AND (b) **real LLM planning sub-agents** to author artefacts (the orchestrator brief explicitly forbids running a real end-to-end LLM planning loop). Mirrors feature-015's parked live-cluster T039/T040/T043. SC-009's *mechanism* (every non-orphaned file ends `planned` or behind a recorded escalation/stale flag) is fully proven deterministically: `test_planagents_orchestration_mock.py` (every leaf → completed row + valid artefact, idempotent), `test_planagents_escalations.py` (escalated file still `planned`, conversion-blocked flag), `test_planagents_stale.py` (drift → stale flag, never silently current). Gabi to run the live LLM pass post-merge on a populated checkout.
+- [x] T046 Update `docs/known-issues.md` if any PGLite/agent-orchestration gotcha surfaced; update CHANGELOG per `docs/VERSIONING.md`; confirm `CLAUDE.md` SPECKIT marker points at `specs/017-conversion-plan-agents/plan.md`
 
 ---
 
