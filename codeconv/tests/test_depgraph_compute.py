@@ -179,3 +179,74 @@ def test_compute_quiet_suppresses_per_file_logging(discover_repo: Path) -> None:
     assert proc.returncode == 0, proc.stderr
     # Quiet mode should NOT emit the "codeconv-depgraph" header.
     assert "codeconv-depgraph" not in proc.stdout, proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# T020 — US2 status lifecycle (pending → in_progress → converted → unblock)
+# ---------------------------------------------------------------------------
+
+
+def _status_map(repo_root: Path) -> dict:
+    payload = json.loads(
+        (repo_root / ".codeconv" / "depgraph.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return {f["path"]: f["status"] for f in payload["files"]}
+
+
+@needs_bridge
+def test_status_lifecycle_pending_inprogress_converted(
+    discover_repo: Path,
+) -> None:
+    """A→B→C chain: marking A through both phases drives A's status
+    pending/ready → in_progress → converted and unblocks B (US2 1–4)."""
+    sub = _mk_chain_subtree(discover_repo)  # c→b→a (a is the leaf)
+    _migrate_and_discover(discover_repo, sub)
+
+    assert (
+        run_codeconv(discover_repo, "depgraph", "compute").returncode == 0
+    )
+    st = _status_map(discover_repo)
+    assert st["lib/a.dart"] == "ready"  # leaf, no deps
+    assert st["lib/b.dart"] == "pending"  # dep a not converted
+    assert st["lib/c.dart"] == "pending"
+
+    run_codeconv(discover_repo, "depgraph", "mark-started", "lib/a.dart")
+    assert (
+        run_codeconv(discover_repo, "depgraph", "compute").returncode == 0
+    )
+    st = _status_map(discover_repo)
+    assert st["lib/a.dart"] == "in_progress"
+    assert st["lib/b.dart"] == "pending"  # in_progress dep does NOT unblock
+
+    run_codeconv(discover_repo, "depgraph", "mark-completed", "lib/a.dart")
+    assert (
+        run_codeconv(discover_repo, "depgraph", "compute").returncode == 0
+    )
+    st = _status_map(discover_repo)
+    assert st["lib/a.dart"] == "converted"
+    assert st["lib/b.dart"] == "ready"  # sole dep a now converted
+    assert st["lib/c.dart"] == "pending"  # b not converted yet
+
+
+@needs_bridge
+def test_inprogress_does_not_unblock_downstream(
+    discover_repo: Path,
+) -> None:
+    """A file mid-conversion (started, not completed) must NOT advance
+    its dependents to ready (US2 acceptance scenario 3)."""
+    sub = _mk_chain_subtree(discover_repo)
+    _migrate_and_discover(discover_repo, sub)
+    run_codeconv(discover_repo, "depgraph", "mark-started", "lib/a.dart")
+    assert (
+        run_codeconv(discover_repo, "depgraph", "compute").returncode == 0
+    )
+    st = _status_map(discover_repo)
+    assert st["lib/a.dart"] == "in_progress"
+    assert st["lib/b.dart"] == "pending"
+    assert "lib/b.dart" not in json.loads(
+        (discover_repo / ".codeconv" / "depgraph.json").read_text(
+            encoding="utf-8"
+        )
+    )["ready"]
