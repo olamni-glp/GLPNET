@@ -233,14 +233,21 @@ def _emit_summary(
 ) -> None:
     if json_summary:
         typer.echo(_json.dumps(summary, indent=2, sort_keys=True, default=str))
-        return
-    if quiet:
-        return
-    typer.echo(f"codeconv-depgraph [{header}]")
-    for key, value in summary.items():
-        if isinstance(value, (list, dict)):
-            continue
-        typer.echo(f"  {key:>32}  {value}")
+    elif not quiet:
+        typer.echo(f"codeconv-depgraph [{header}]")
+        for key, value in summary.items():
+            if isinstance(value, (list, dict)):
+                continue
+            typer.echo(f"  {key:>32}  {value}")
+    # Contract (depgraph_cli.md § compute step 3 / FR-010 + Amendment v2):
+    # the PROCESS exit code MUST reflect summary["exit_code"] in ALL modes —
+    # including --json. The JSON error object is still emitted on stdout
+    # above; the in-body "exit_code" field does NOT substitute for the
+    # process exit status. A prior bug returned process-exit 0 here with
+    # exit_code:2 only inside the JSON body (contract violation).
+    code = int(summary.get("exit_code", 0) or 0)
+    if code != 0:
+        raise typer.Exit(code)
 
 
 def register_workflows(dbos_app) -> None:

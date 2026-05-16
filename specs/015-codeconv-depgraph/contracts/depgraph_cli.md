@@ -47,7 +47,7 @@ These come from the `codeconv` console-script entry point (feature 012 FR-013) a
 
 1. Acquire-or-discover the bridge daemon (feature 012 `bridge_client.acquire_or_discover`).
 2. Read `codeconv.dart_files` (all paths) and `codeconv.dart_imports` (all edges).
-3. If `dart_files` is empty: print error `"No inventoried files. Run /codeconv-discover first."` to stderr; exit 2 (per FR-010).
+3. If `dart_files` is empty: exit 2 (per FR-010), UNCONDITIONALLY — including under `--json`. In human mode print the error `"No inventoried files. Run /codeconv-discover first."` to stderr. In `--json` mode emit the machine-readable error object `{"ok": false, "exit_code": 2, "error": "No inventoried files. Run /codeconv-discover first.", "files_total": 0}` on stdout AND set the PROCESS exit code to 2 (the `exit_code` field inside the JSON does NOT replace the process exit status — a prior bug returned process-exit 0 here; that is a contract violation).
 4. Read `codeconv.dart_conversions` (all rows; may be empty).
 5. Call `algorithm.compute(nodes, edges)` to get `DepgraphResult`.
 6. For each path: compute `status` from `(cycle_group_id, dependencies, dart_conversions)` per FR-006.
@@ -114,7 +114,7 @@ These come from the `codeconv` console-script entry point (feature 012 FR-013) a
 1. Acquire-or-discover the bridge.
 2. Read `dart_depgraph` (must be non-empty; if empty, print error "run compute first"; exit 2).
 3. Read `dart_conversions`.
-4. For each file: read existing `.codeconv/tombstones/<path>.md`; update the five new YAML keys (`topo_level`, `cycle_group_id`, `status`, `conversion_started_at`, `conversion_completed_at`) with the current values; write back.
+4. For each file: read existing `.codeconv/tombstones/<path>.md`; update the six new YAML keys (`topo_level`, `cycle_group_id`, `status`, `conversion_started_at`, `conversion_completed_at`, `target_path`) with the current values; write back. (`target_path` from `dart_conversions.target_path`; emitted YAML-null when the row exists but the column is NULL, absent when there is no `dart_conversions` row.)
 5. INSERT into `depgraph_runs` (mode='stamp-tombstones', ...).
 6. Exit 0.
 

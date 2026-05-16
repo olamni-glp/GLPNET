@@ -511,8 +511,14 @@ def run_mark_completed(
 
     if not no_tombstone_update:
         extras: dict[str, Any] = {"conversion_completed_at": completed_at_iso}
-        # Note: target_path is NOT in tombstone _FIELD_ORDER (out of scope per
-        # contracts/tombstone_format_delta.md). It lives in the DB only.
+        # target_path is the 6th feature-015 tombstone key (codex spec-review
+        # P1-e + Amendment v2): it MUST round-trip so
+        # `rebuild-conversions-from-tombstones` can restore it after a DB
+        # wipe. Written only when `--target` was supplied; omitted from
+        # `extras` when not, so the canonical merge leaves any prior value
+        # untouched (write-once per FR-006a).
+        if target is not None:
+            extras["target_path"] = target
         _update_tombstone(tombstones_root, path, extras)
 
     return {
@@ -563,18 +569,20 @@ def run_stamp_tombstones(
             }
         conv_rows = conn.execute(
             text(
-                "SELECT path, started_at, completed_at "
+                "SELECT path, started_at, completed_at, target_path "
                 "FROM codeconv.dart_conversions"
             )
         ).all()
 
-    conv_by_path: dict[str, tuple[Optional[datetime], Optional[datetime]]] = {
-        r[0]: (r[1], r[2]) for r in conv_rows
-    }
+    conv_by_path: dict[
+        str, tuple[Optional[datetime], Optional[datetime], Optional[str]]
+    ] = {r[0]: (r[1], r[2], r[3]) for r in conv_rows}
 
     files_stamped = 0
     for path, topo_level, cycle_group_id, status in depg_rows:
-        started, completed = conv_by_path.get(path, (None, None))
+        started, completed, tgt_path = conv_by_path.get(
+            path, (None, None, None)
+        )
         extras: dict[str, Any] = {}
         extras.update(
             update_depgraph_keys(
@@ -586,6 +594,10 @@ def run_stamp_tombstones(
         if path in conv_by_path:
             extras["conversion_started_at"] = _iso_or_none(started)
             extras["conversion_completed_at"] = _iso_or_none(completed)
+            # 6th key (Amendment v2): present-with-value when set,
+            # present-null when the conversion row exists but
+            # target_path IS NULL (never silently dropped).
+            extras["target_path"] = tgt_path
         else:
             # No row ⇒ keys absent from frontmatter (contract:
             # tombstone_format_delta.md § Null vs missing convention).
@@ -660,6 +672,11 @@ def run_rebuild_conversions_from_tombstones(
                 rows_skipped += 1
                 continue
             completed_at_yaml = fm.get("conversion_completed_at")
+            # 6th key round-trip (codex P1-e / buildkit P2#1): restore
+            # target_path from the tombstone. Absent OR YAML-null ⇒ NULL.
+            target_path_yaml = fm.get("target_path")
+            if target_path_yaml in ("", "null"):
+                target_path_yaml = None
             # Look up current dart_files.sha256 — round-trip caveat per
             # contracts/depgraph_cli.md § "sha256 round-trip caveat".
             with engine.connect() as conn:
@@ -679,11 +696,12 @@ def run_rebuild_conversions_from_tombstones(
                             "INSERT INTO codeconv.dart_conversions "
                             "  (path, started_at, completed_at, "
                             "   sha256_of_dart_at_start, target_path) "
-                            "VALUES (:p, :sa, :ca, :sha, NULL) "
+                            "VALUES (:p, :sa, :ca, :sha, :tp) "
                             "ON CONFLICT (path) DO UPDATE SET "
                             "  started_at = EXCLUDED.started_at, "
                             "  completed_at = EXCLUDED.completed_at, "
-                            "  sha256_of_dart_at_start = EXCLUDED.sha256_of_dart_at_start"
+                            "  sha256_of_dart_at_start = EXCLUDED.sha256_of_dart_at_start, "
+                            "  target_path = EXCLUDED.target_path"
                         ),
                         {
                             "p": file_rel,
@@ -692,6 +710,7 @@ def run_rebuild_conversions_from_tombstones(
                             if completed_at_yaml
                             else None,
                             "sha": sha256,
+                            "tp": target_path_yaml,
                         },
                     )
             rows_upserted += 1

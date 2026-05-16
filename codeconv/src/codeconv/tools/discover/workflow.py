@@ -41,9 +41,11 @@ from codeconv.db.engine import build_engine
 from .parse import _IMPORT_RE, extract_imports, extract_leading_doc
 from .pubspec import read_package_name
 from .tombstone import (
+    merge_preserving_feature015,
     move_from_orphaned,
     move_to_orphaned,
     read_tombstone,
+    tombstone_path,
     write_tombstone,
 )
 from .walker import walk_dart_files
@@ -430,6 +432,12 @@ def _process_one_file(
         "mtime": _format_mtime(mtime),
         "sha256": sha256,
     }
+    # Carry forward the six feature-015 keys if a prior tombstone (e.g. from
+    # `stamp-tombstones`) had them — discover must not erase depgraph /
+    # conversion state on re-write (round-trip preservation, Amendment v2).
+    fields = merge_preserving_feature015(
+        fields, tombstone_path(tombstones_root, rel_path)
+    )
     write_tombstone(tombstones_root, rel_path, fields)
 
     return "processed"
@@ -483,6 +491,9 @@ def _backfill_tombstone_callers(
             "mtime": _format_mtime(mtime) if isinstance(mtime, datetime) else str(mtime),
             "sha256": sha256,
         }
+        fields = merge_preserving_feature015(
+            fields, tombstone_path(tombstones_root, path)
+        )
         write_tombstone(tombstones_root, path, fields)
 
 
