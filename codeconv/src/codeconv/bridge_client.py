@@ -42,9 +42,14 @@ from typing import Optional
 import portalocker  # used only by `_try_acquire_lock` diagnostic helper
 
 
-READY_TIMEOUT_DEFAULT_SECONDS = 30.0  # cover PGLite cold-init (~7s on Windows) + Node startup
+# PGLite 0.4.5 / PG17 steady cold-init measured at ~4.4–5.2s on Windows
+# (3 samples, max 5.17s). 60s leaves ~12x margin so a first-ever-WASM-load
+# spike (cold OS file cache / AV scan of freshly-installed node_modules) does
+# not flake the spawn, while still failing fast enough that a genuine bridge
+# hang surfaces in ~1 min instead of blocking forever.
+READY_TIMEOUT_DEFAULT_SECONDS = 60.0
 SIDECAR_RETRY_DELAY_SECONDS = 0.25
-SIDECAR_FALLBACK_WAIT_SECONDS = 30.0  # cover PGLite cold-init (~7s on Windows)
+SIDECAR_FALLBACK_WAIT_SECONDS = 60.0  # match READY_TIMEOUT (cold-init + first-load variance)
 STALE_LOCK_WAIT_SECONDS = 2.0          # > proper-lockfile stale (1000ms) + update cycle
 LOCK_HELD_EXIT_CODE = 5
 
