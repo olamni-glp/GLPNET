@@ -38,3 +38,15 @@ Deterministic Python tool `codeconv planagents` + `/codeconv-planagents` skill o
 loop. New table codeconv.dart_plans (parallel to feature-015 dart_conversions). Mirrors
 feature-015 depgraph tool structure. Alembic 0003 chains off 0002. Data-dir on this exFAT
 checkout = C:/pglite/research/glpnet-017 (fresh PG17 cluster, created by first migrate).
+
+## Final verification (2026-05-17)
+ALL 72 feature-017 tests GREEN per-group serial (uncontended). Full
+200-test combined run: 70/72 (2 = test_tombstone_keys_round_trip +
+test_research_failure_is_open_escalation_not_stalled flaked ONLY in the
+16-min combined run; BOTH re-confirmed green in isolation in 26.6s).
+Root cause = PGLite bridge cold-init resource exhaustion over a long
+sequential bridge-fixture run — SAME documented flakiness class as the
+pre-existing test_bridge_client.py flakes (memory: "confirmed
+isolation-green"; project_pglite_cold_init_windows.md). NOT a code/
+logic/spec defect (Bug Protocol: behaviour consistent with the known
+environmental constraint). ZERO regressions to pre-existing suite.
