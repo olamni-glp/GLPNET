@@ -151,6 +151,44 @@ function buildReadyForQuery(txnStatus = 'I') {
   return buildBackendMessage('Z', Buffer.from(txnStatus, 'utf8'));
 }
 
+// PGLite 0.4.x emits a DOUBLED trailing ReadyForQuery on the error path
+// (response tags `… E Z Z`, verified by probe against
+// @electric-sql/pglite@0.4.5). Real Postgres sends exactly ONE
+// ReadyForQuery to terminate a query cycle. psycopg3 tolerates the
+// duplicate, but Npgsql / psqlODBC historically desync on a doubled Z
+// (the failure that drove the no-pg-gateway investigation). Collapse a
+// run of consecutive trailing ReadyForQuery frames to a single one so
+// every consumer sees correct wire framing. Only adjacent end-of-buffer
+// Z frames (the duplicate-terminator signature) are touched; a legitimate
+// multi-Sync response has data / CommandComplete BETWEEN its ReadyForQuery
+// frames and is left intact. On any malformed framing we return the bytes
+// unchanged — never corrupt a response we cannot fully parse.
+const TAG_READY_FOR_QUERY = 0x5A; // 'Z'
+
+function coalesceTrailingReadyForQuery(buf) {
+  const starts = [];
+  let off = 0;
+  while (off + 5 <= buf.length) {
+    const len = buf.readUInt32BE(off + 1);
+    const end = off + 1 + len;
+    if (len < 4 || end > buf.length) return buf; // malformed / truncated
+    starts.push(off);
+    off = end;
+  }
+  if (off !== buf.length || starts.length < 2) return buf;
+  let cut = buf.length;
+  let n = starts.length;
+  while (
+    n >= 2 &&
+    buf[starts[n - 1]] === TAG_READY_FOR_QUERY &&
+    buf[starts[n - 2]] === TAG_READY_FOR_QUERY
+  ) {
+    cut = starts[n - 1];
+    n -= 1;
+  }
+  return cut === buf.length ? buf : buf.subarray(0, cut);
+}
+
 // ---------------------------------------------------------------------------
 // Per-connection handler
 // ---------------------------------------------------------------------------
@@ -233,7 +271,7 @@ const server = createServer(async (socket) => {
       globalWorkChain = globalWorkChain.then(async () => {
         try {
           const response = await pglite.execProtocolRaw(batch);
-          socket.write(Buffer.from(response));
+          socket.write(coalesceTrailingReadyForQuery(Buffer.from(response)));
         } catch (e) {
           console.error(`[bridge] forward_error ${e.message}`);
           socket.destroy();
