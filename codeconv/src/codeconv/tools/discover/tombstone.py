@@ -25,6 +25,9 @@ import yaml
 
 
 # Field order pinned by ``contracts/tombstone_format.md`` § Diff stability.
+# Feature 015 (codeconv-depgraph) appends five keys at the end — the
+# position of every existing key is unchanged so feature-012/-014
+# idempotence tests continue to produce identical first-eight-key bytes.
 _FIELD_ORDER: tuple[str, ...] = (
     "path",
     "name",
@@ -34,6 +37,12 @@ _FIELD_ORDER: tuple[str, ...] = (
     "callers",
     "mtime",
     "sha256",
+    # --- feature 015 (codeconv-depgraph) appended fields ---
+    "topo_level",
+    "cycle_group_id",
+    "status",
+    "conversion_started_at",
+    "conversion_completed_at",
 )
 
 # YAML emitter settings pinned for diff stability.
@@ -150,6 +159,11 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     - Required keys present (with sensible defaults).
     - Lists sorted lexically.
     - Path-like fields use forward slashes.
+    - Feature 015 appended keys (``topo_level``, ``cycle_group_id``,
+      ``status``, ``conversion_started_at``, ``conversion_completed_at``)
+      are passed through only when present in the input; ``None`` is
+      preserved (emitted as YAML ``null``) per
+      ``specs/015-codeconv-depgraph/contracts/tombstone_format_delta.md``.
     """
     out: dict[str, Any] = {}
     out["path"] = _to_posix(fields.get("path", ""))
@@ -160,6 +174,16 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     out["callers"] = sorted(_to_posix(p) for p in fields.get("callers") or [])
     out["mtime"] = str(fields.get("mtime", ""))
     out["sha256"] = str(fields.get("sha256", ""))
+    # Feature 015 — pass-through with null preservation.
+    for key in (
+        "topo_level",
+        "cycle_group_id",
+        "status",
+        "conversion_started_at",
+        "conversion_completed_at",
+    ):
+        if key in fields:
+            out[key] = fields[key]
     return out
 
 
