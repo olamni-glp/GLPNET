@@ -16,7 +16,7 @@ Port the two load-bearing D2NET .NET tools (Init, Scaffold) into the existing `c
 **Target Platform**: Windows-first dev (exFAT D:, NTFS `C:/pglite/research/glpnet`); POSIX-compatible.
 **Project Type**: CLI tool subpackages inside an existing Python package (single project).
 **Performance Goals**: init + scaffold each ≤ existing discover budget on `glp_runtime_net/` (≤ 60 s fresh, ≤ 5 s idempotent re-run); no per-file network/db chattiness beyond one transaction per stage.
-**Constraints**: schema isolation to `codeconv` (FR-020); FR-026/FR-027 carry-forward (no `COPY ... FROM STDIN`, no client-side prepared-statement cache); staged/atomic target writes; idempotence; built on the unmerged feature-015 branch (tombstone `target_path` substrate).
+**Constraints**: schema isolation to `codeconv` (FR-020); feature-012/015 SQL-safety carry-forward (no `COPY ... FROM STDIN`, no client-side prepared-statement cache — NOT this feature's FR-026, which is the pipeline regression test); staged/atomic target writes; idempotence; built on the unmerged feature-015 branch (tombstone `target_path` substrate).
 **Scale/Scope**: `glp_runtime_net/` (~128 files / ~443 edges post-014); two new tools (~Init 3.4k LOC / Scaffold 1.4k LOC of .NET to re-express in Python, much shed via D3 delegation), one langpair plugin package, one migration, two skills.
 
 ## Constitution Check
