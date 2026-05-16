@@ -2,7 +2,7 @@ glp_runtime/glp_repl_new
 glp_runtime/build/
 .DS_Store
 
-# .NET build artefacts (under tools/d2net/ and elsewhere)
+# Build artefacts (bin/obj — generic; tools/d2net/ removed feature 016)
 **/bin/
 **/obj/
 
@@ -23,10 +23,15 @@ venv/
 .claude/settings.local.json
 .claude/settings.local.json.mine
 
-# d2net-scaffold output (regenerable; do not commit)
+# codeconv scaffold output (regenerable; do not commit)
 glp_runtime_net/
 
-# D2NET workspace data (per-machine PostgreSQL data dir + workspace settings)
+# codeconv scaffold staging dirs (atomic-move scratch; never committed)
+*.codeconv-scaffold-tmp/
+*.codeconv-scaffold-old/
+
+# Legacy D2NET workspace data (toolchain removed feature 016; left ignored
+# so any pre-existing on-disk .D2NET/ on operator machines is not surfaced)
 .D2NET/
 
 # Unified PGLite data dir (FR-029) — runtime cluster files, sidecar, log
@@ -41,6 +46,7 @@ glp_runtime_net/
 # Sibling shutdown marker for non-destructive force shutdown
 .pgdb.shutdown
 
-# D2NET pgdb migration backups (FR-029) — kept on disk by D2Net.PgdbMigrate
+# Legacy D2NET pgdb migration backups (D2Net.PgdbMigrate removed feature
+# 016; kept ignored so any historical on-disk backup is not surfaced)
 .D2NET/pgdb.bak.*/
 

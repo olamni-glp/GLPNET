@@ -407,12 +407,12 @@ D:\BSTDEV\RESEARCH\glp\glpnet\
 │   ├── pglite_bridge.mjs         #   live deployment file (FR-012)
 │   ├── package.json              #   node deps (proper-lockfile, pg, pglite)
 │   └── tests/*.test.mjs          #   node --test cross-process lock tests
-├── tools/d2net/                  # .NET tools — clients of the unified bridge
-│   └── src/D2Net.{BridgeClient,PgdbMigrate,Init,Scaffold}/
-├── codeconv/                     # Python harness (DBOS-on-PGLite over .pgdb/)
+├── codeconv/                     # Python harness (DBOS-on-PGLite over .pgdb/) — the ONE toolchain
 │   ├── pyproject.toml
-│   ├── src/codeconv/{cli,runner,bridge_client,db,tools/discover}/
-│   └── tests/                    # pytest — bridge + engine + discover
+│   ├── src/codeconv/{cli,runner,bridge_client,db}/
+│   ├── src/codeconv/langpairs/{__init__,base,dart_csharp}/   # pluggable source→target pairs (feature 016)
+│   ├── src/codeconv/tools/{discover,depgraph,init,scaffold}/ # auto-discovered tool subpackages
+│   └── tests/                    # pytest — bridge + engine + discover + depgraph + init + scaffold
 ├── .codeconv/tombstones/         # Inventoried .dart files (checked in, FR-029)
 ├── .pgdb/                        # Unified PGLite cluster (gitignored)
 ├── .pgdb.bridge.lock/            # Bridge OS lock (sibling to .pgdb/, gitignored)
@@ -424,7 +424,11 @@ D:\BSTDEV\RESEARCH\glp\glpnet\
 
 ### Migration to unified bridge (feature 012, 2026-05)
 
-The repo now has ONE PGLite deployment at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every PGLite consumer — Python `codeconv`, .NET `D2Net.Init` / `D2Net.Scaffold` / `D2Net.PgdbMigrate`, future tools — auto-spawns or discovers the bridge via the protocol in `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`. The bridge script `prereq-patterns/pglite/pglite_bridge.mjs` is the live deployment, not a template; do not copy it into a feature working tree (former behaviour from feature 011). D2NET's pre-existing per-workspace `.D2NET/pgdb/` directories are migrated to the unified location via `tools/d2net/src/D2Net.PgdbMigrate/` (one-shot, idempotent, FR-007/008/009). Schemas inside `.pgdb/`: `public` (D2NET, unchanged), `dbos` (DBOS runtime), `codeconv` (this feature's inventory).
+The repo now has ONE PGLite deployment at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every PGLite consumer — the Python `codeconv` tools (`discover`, `depgraph`, `init`, `scaffold`) and future tools — auto-spawns or discovers the bridge via the protocol in `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`. The bridge script `prereq-patterns/pglite/pglite_bridge.mjs` is the live deployment, not a template; do not copy it into a feature working tree (former behaviour from feature 011). Schemas inside `.pgdb/`: `public` (legacy D2NET tables, left in place, unconsulted), `dbos` (DBOS runtime), `codeconv` (the inventory + the de-branded workspace tables — `workspace_settings`, `excluded_directories`, `phase_sequence`, `phase_status` — added by feature 016 migration `0003`).
+
+### One toolchain (feature 016, 2026-05)
+
+The legacy D2NET .NET toolchain (`tools/d2net/` — `D2Net.Init`, `D2Net.Scaffold`, `D2Net.PgdbMigrate`, `D2Net.BridgeClient`, `D2Net.sln`) and the `D2NET-init` / `D2NET-scaffold` / `D2NET-pgdb-migrate` skills were **removed** (not forked — git history is the archive). Their load-bearing functionality is now `codeconv init` / `codeconv scaffold` (skills `/codeconv-init` / `/codeconv-scaffold`), behind a pluggable language-pair registry (`codeconv/src/codeconv/langpairs/`; production pair Dart→C#). `D2Net.BridgeClient` is retired — every tool reuses the shared `codeconv.bridge_client`. The one-shot legacy `.D2NET/pgdb/` → `.pgdb/` migration (formerly `D2Net.PgdbMigrate`) is historically complete and intentionally **not** ported (a no-op after first success; D1/D2). There is exactly one conversion toolchain — the `codeconv` CLI.
 
 ---
 
