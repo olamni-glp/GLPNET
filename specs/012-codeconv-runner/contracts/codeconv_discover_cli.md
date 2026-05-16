@@ -50,7 +50,19 @@ It MUST NOT process any `.dart` file outside `<root>` even if reachable through 
    - Write tombstone .codeconv/tombstones/<rel>.dart.md.
    - Bump files_processed.
 5. Reconciliation phase (single DBOS step):
-   - Recompute dart_callers from the now-complete dart_imports table (idempotent rewrite).
+   - REFERENTIAL COMPLETENESS (Amendment v3 — option A): drop any dart_imports
+     edge whose endpoint is not an inventoried dart_files path. This occurs when
+     an in-subtree import directive resolves (by path shape, R12) to a file that
+     does not exist on disk and was therefore never inventoried. Each dropped
+     edge is counted as a warning ("missing target: <to_path> referenced by
+     <from_path>"). This is the SAME accepted, warned divergence as the
+     `--from-tombstones` referential-completeness rule (§ Steps (`--from-tombstones`)
+     step 3) and the SC-007 caveat applies symmetrically. Rationale: feature 015's
+     `algorithm.compute` (`contracts/depgraph_algorithm.md` § Algorithm step 2,
+     test obligation 8) contractually raises `ValueError` on a dangling endpoint,
+     so a referentially-complete dart_imports is a normal-mode invariant, not
+     merely a from-tombstones one.
+   - Recompute dart_callers from the now-referentially-complete dart_imports table (idempotent rewrite).
    - Find files in dart_files that are no longer present on disk → orphan: move to dart_files_orphaned, move tombstone to .codeconv/tombstones/.orphaned/.
    - Find files in dart_files_orphaned that are present on disk again → revive (FR-025): move row back, move tombstone back, refresh mtime + sha256, recompute edges.
    - Detect imports BY files OUTSIDE the subtree pointing INTO the subtree (FR-023): emit warnings; do NOT record edges.

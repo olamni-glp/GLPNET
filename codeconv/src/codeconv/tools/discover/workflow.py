@@ -278,8 +278,59 @@ def _run_normal(
     orphaned = 0
     revived = 0
     if not dry_run:
-        # Reconciliation phase — recompute callers from imports table.
+        # Reconciliation phase.
         with engine.begin() as conn:
+            # Referential completeness (Amendment v3 / option A): an
+            # in-subtree import directive can resolve by path shape (R12)
+            # to a file that does not exist on disk and was therefore
+            # never inventoried into dart_files. Such an edge is dangling.
+            # feature-015 algorithm.compute contractually raises on a
+            # dangling endpoint, so a referentially-complete dart_imports
+            # is a normal-mode invariant — same accepted, warned
+            # divergence as the --from-tombstones rule (SC-007 caveat).
+            valid_paths = {
+                r[0]
+                for r in conn.execute(
+                    text("SELECT path FROM codeconv.dart_files")
+                ).all()
+            }
+            has_dangling = False
+            for from_path, to_path in conn.execute(
+                text(
+                    "SELECT from_path, to_path FROM codeconv.dart_imports"
+                )
+            ).all():
+                if to_path not in valid_paths:
+                    has_dangling = True
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": to_path,
+                            "referrer": from_path,
+                        }
+                    )
+                elif from_path not in valid_paths:
+                    has_dangling = True
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": from_path,
+                            "referrer": to_path,
+                        }
+                    )
+            if has_dangling:
+                conn.execute(
+                    text(
+                        "DELETE FROM codeconv.dart_imports i "
+                        "WHERE NOT EXISTS ("
+                        "  SELECT 1 FROM codeconv.dart_files f "
+                        "  WHERE f.path = i.to_path) "
+                        "   OR NOT EXISTS ("
+                        "  SELECT 1 FROM codeconv.dart_files f "
+                        "  WHERE f.path = i.from_path)"
+                    )
+                )
+            # Recompute callers from the now-referentially-complete imports.
             conn.execute(text("DELETE FROM codeconv.dart_callers"))
             conn.execute(
                 text(
