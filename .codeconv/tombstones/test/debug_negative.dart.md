@@ -5,6 +5,7 @@ purpose: ''
 key_idea: ''
 dependencies:
 - lib/analysis/type_checker/type_checker.dart
+- lib/analysis/type_checker/type_parser.dart
 - lib/compiler/lexer.dart
 - lib/compiler/parser.dart
 callers: []
