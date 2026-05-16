@@ -36,5 +36,8 @@ callers:
 - test/test_agent_init_goal.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: cd45d43c86ed4e7e5835cbc6feb537c42987fecdcbe7cc5fe097e126ee226d6e
+topo_level: 0
+cycle_group_id: 30
+status: ready
 ---
 

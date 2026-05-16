@@ -64,6 +64,9 @@ callers:
 - test/multiagent/ui_mediator_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 966bf3b7fa4deb9baca2696f2c221bad3eed61f189de1c7080d409fdcdb5a8df
+topo_level: 8
+cycle_group_id: 57
+status: pending
 ---
 
 GLP Engine - Embeddable GLP Execution Core

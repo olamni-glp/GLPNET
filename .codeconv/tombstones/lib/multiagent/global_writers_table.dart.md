@@ -38,6 +38,9 @@ callers:
 - test/multiagent/localize_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 7ebe135c209066d868a420d5df4f3fc0be289656a597faa3e0acb5f6d371b9f1
+topo_level: 0
+cycle_group_id: 25
+status: ready
 ---
 
 Global Writers Table for madGLP

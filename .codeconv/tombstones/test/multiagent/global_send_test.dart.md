@@ -30,6 +30,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: c998b41351407035919314db767e3b490b4b49953c66d2e0b0c06b56a306a1f6
+topo_level: 3
+cycle_group_id: 103
+status: pending
 ---
 
 Tests for global_send goal mechanism

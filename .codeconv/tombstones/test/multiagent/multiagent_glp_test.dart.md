@@ -43,6 +43,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 859b800ec1e014185b1b52775980da78d2c260421f07700ff9ce1ad742d94aea
+topo_level: 10
+cycle_group_id: 112
+status: pending
 ---
 
 Multi-agent GLP tests via IsolateManager

@@ -26,5 +26,8 @@ callers:
 - test/module/module_syntax_v2_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: f80349aefb8cc777764548f29d5c6bc663809f9dfffde921c141ae2f7028d38a
+topo_level: 0
+cycle_group_id: 1
+status: ready
 ---
 

@@ -49,6 +49,9 @@ callers:
 - test/module/module_hierarchy_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: db87dd95891c91cf5d37ba3d1e17349102b04226388a6a81e45f00fe59513298
+topo_level: 5
+cycle_group_id: 52
+status: pending
 ---
 
 Module hierarchy: self.glp chain discovery and type scope assembly.

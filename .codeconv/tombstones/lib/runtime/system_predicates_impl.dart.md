@@ -39,6 +39,9 @@ callers:
 - test/heap/circular_term_pointer_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: f375832b51bddc0746bf5c13c0702986723948125e255459e20f206af7f7f50e
+topo_level: 5
+cycle_group_id: 56
+status: pending
 ---
 
 Standard system predicate implementations for GLP

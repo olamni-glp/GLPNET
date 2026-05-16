@@ -50,6 +50,9 @@ callers:
 - lib/compiler/codegen.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: c8549ccea9fbe836a1804e62b0164ac312889f3602144e9403938f9aaca206d6
+topo_level: 0
+cycle_group_id: 21
+status: ready
 ---
 
 Phase 2: Unified Instruction Set

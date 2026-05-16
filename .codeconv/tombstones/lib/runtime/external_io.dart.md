@@ -27,6 +27,9 @@ callers:
 - test/test_channel_construction.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 7295d8789cac898386fecbab28013d922a922c8fe718a59c8c19c9fc979a4c14
+topo_level: 3
+cycle_group_id: 60
+status: pending
 ---
 
 External I/O for GLP - Phase 0 Implementation

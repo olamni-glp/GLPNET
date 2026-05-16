@@ -33,6 +33,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 835b084ec2a497797993bffd3264943b83bceec139165e4852f959bda15fb3be
+topo_level: 2
+cycle_group_id: 105
+status: pending
 ---
 
 Tests for Globalize operation

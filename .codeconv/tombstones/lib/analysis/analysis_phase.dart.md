@@ -7,5 +7,8 @@ dependencies: []
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: d322a2608cddcee827d4c360ba15b5ac5c7a8a2c5e43b2a690da8b2711e51d78
+topo_level: 0
+cycle_group_id: 0
+status: ready
 ---
 
