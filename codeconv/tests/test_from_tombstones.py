@@ -109,3 +109,135 @@ def test_from_tombstones_does_not_read_dart(discover_repo: Path) -> None:
         f"--from-tombstones must succeed without .dart sources; got "
         f"stderr={proc2.stderr!r} stdout={proc2.stdout!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Amendment v2 — preflight (exit 65, zero mutation) + Option B + dangling edge
+# ---------------------------------------------------------------------------
+
+
+def _raw_tombstone(
+    repo_root: Path,
+    rel_path: str,
+    *,
+    sha256: str | None,
+    dependencies: list[str] | None = None,
+) -> None:
+    tp = repo_root / ".codeconv" / "tombstones" / (rel_path + ".md")
+    tp.parent.mkdir(parents=True, exist_ok=True)
+    deps = "[]" if not dependencies else "[" + ", ".join(dependencies) + "]"
+    lines = [
+        "---",
+        f"path: {rel_path}",
+        f"name: {Path(rel_path).name}",
+        "purpose: ''",
+        "key_idea: ''",
+        f"dependencies: {deps}",
+        "callers: []",
+        "mtime: '2026-05-16T00:00:00.000Z'",
+    ]
+    if sha256 is not None:
+        lines.append(f"sha256: {sha256}")
+    lines += ["---", "", ""]
+    tp.write_text("\n".join(lines), encoding="utf-8")
+
+
+def test_from_tombstones_preflight_aborts_on_missing_required_field(
+    tmp_path: Path,
+) -> None:
+    """A tombstone missing the required ``sha256`` field aborts the run
+    with exit 65 BEFORE any bridge / DB touch (no bridge.json appears)."""
+    sub = tmp_path / "glp_runtime_net"
+    (sub / "lib").mkdir(parents=True)
+    _raw_tombstone(tmp_path, "lib/a.dart", sha256=None)
+
+    proc = run_codeconv(
+        tmp_path, "discover", "run", "--root", str(sub), "--from-tombstones"
+    )
+    assert proc.returncode == 65, (
+        f"missing required field must exit 65; got {proc.returncode} "
+        f"stderr={proc.stderr!r}"
+    )
+    assert "ABORT" in proc.stderr
+    # Preflight aborts before bridge acquisition — no cluster touched.
+    assert not (tmp_path / ".pgdb" / "bridge.json").exists()
+
+
+def test_from_tombstones_dry_run_drops_dangling_edge_and_warns(
+    tmp_path: Path,
+) -> None:
+    """A dependency on a path with no tombstone is dropped + warned, and
+    --dry-run reports it without acquiring the bridge."""
+    sub = tmp_path / "glp_runtime_net"
+    (sub / "lib").mkdir(parents=True)
+    _raw_tombstone(
+        tmp_path, "lib/a.dart", sha256="ab" * 32,
+        dependencies=["lib/ghost.dart"],
+    )
+
+    proc = run_codeconv(
+        tmp_path, "discover", "run", "--root", str(sub),
+        "--from-tombstones", "--dry-run", "--json",
+    )
+    assert proc.returncode == 0, proc.stderr
+    summary = json.loads(_extract_json(proc.stdout))
+    assert summary["imports"] == 0  # dangling edge dropped
+    assert any(
+        w["kind"] == "missing_tombstone"
+        and w["path"] == "lib/ghost.dart"
+        and w["referrer"] == "lib/a.dart"
+        for w in summary["warnings"]
+    )
+    assert not (tmp_path / ".pgdb" / "bridge.json").exists()
+
+
+@needs_bridge
+def test_from_tombstones_preserves_dart_conversions(
+    discover_repo: Path,
+) -> None:
+    """Option B: a --from-tombstones rebuild must NOT cascade-delete a
+    surviving file's dart_conversions row (the old blanket TRUNCATE did).
+
+    mark-started lib/a.dart → in_progress; after --from-tombstones the
+    file is still present so its conversion row survives → a subsequent
+    compute still reports status 'in_progress'.
+    """
+    sub = _mk_subtree(discover_repo)
+    assert run_codeconv(discover_repo, "migrate").returncode == 0
+
+    assert (
+        run_codeconv(
+            discover_repo, "discover", "run", "--root", str(sub), "--json"
+        ).returncode
+        == 0
+    )
+    assert (
+        run_codeconv(
+            discover_repo, "depgraph", "compute", "--json"
+        ).returncode
+        == 0
+    )
+    ms = run_codeconv(
+        discover_repo, "depgraph", "mark-started", "lib/a.dart"
+    )
+    assert ms.returncode == 0, ms.stderr
+
+    # The rebuild that used to wipe dart_files (and cascade conversions).
+    rt = run_codeconv(
+        discover_repo, "discover", "run", "--root", str(sub),
+        "--from-tombstones", "--json",
+    )
+    assert rt.returncode == 0, rt.stderr
+
+    comp = run_codeconv(discover_repo, "depgraph", "compute", "--json")
+    assert comp.returncode == 0, comp.stderr
+    # The per-file status lives in the .codeconv/depgraph.json artefact
+    # (the --json stdout is only the run summary).
+    artefact = discover_repo / ".codeconv" / "depgraph.json"
+    assert artefact.is_file(), "compute must write .codeconv/depgraph.json"
+    payload = json.loads(artefact.read_text(encoding="utf-8"))
+    files = {f["path"]: f for f in payload["files"]}
+    assert files["lib/a.dart"]["status"] == "in_progress", (
+        "dart_conversions row for lib/a.dart must survive the "
+        f"--from-tombstones rebuild (Option B); got {files['lib/a.dart']}"
+    )
