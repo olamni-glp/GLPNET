@@ -38,7 +38,7 @@ from sqlalchemy.engine import Engine
 from codeconv.bridge_client import acquire_or_discover
 from codeconv.db.engine import build_engine
 
-from .parse import _IMPORT_RE, extract_imports, extract_leading_doc
+from .parse import _IMPORT_RE
 from .pubspec import read_package_name
 from .tombstone import (
     merge_preserving_feature015,
@@ -52,6 +52,38 @@ from .walker import walk_dart_files
 
 
 _LOG = logging.getLogger("codeconv.discover")
+
+
+def _active_source_pair(engine: Optional[Any] = None) -> Any:
+    """Resolve the language pair whose source hooks discover must use.
+
+    Feature 016 / T011 + research R2/R3 (FR-004 carve-out): discover
+    sources its Dart-specifics from the selected language pair via
+    ``codeconv.langpairs`` instead of importing ``parse``/``pubspec``
+    directly, so a new pair slots in with zero discover edits (SC-003).
+
+    Per FR-004 / R3: discover tolerates an un-initialised workspace and
+    falls back to the default registered pair (``dart→csharp``) so
+    pre-016 ``/codeconv-discover`` usage is byte-identical; once a
+    workspace IS initialised it is bound to the workspace-recorded pair.
+    The resolved ``dart_csharp`` pair delegates to the exact same
+    ``parse``/``pubspec`` implementations, so behaviour for the default
+    Dart path is byte-identical (the feature-012/014/015 discover suites
+    are the regression oracle — FR-023/SC-005).
+    """
+    from codeconv import langpairs
+
+    if engine is not None:
+        try:
+            return langpairs.resolve_workspace_pair(
+                engine, require_workspace=False
+            )
+        except Exception:
+            # Defensive: an unreadable/missing workspace_settings (e.g.
+            # pre-0003 cluster) must not break discover — fall back to
+            # the registered default exactly as the no-workspace path.
+            pass
+    return langpairs.get("dart", "csharp")
 
 
 def register(dbos_app: Any) -> None:
@@ -110,8 +142,11 @@ def run_discover(
 
     # ---- verify-tombstones: NO bridge, read-only, reads .dart -----------
     if mode == "verify_tombstones":
+        # No bridge ⇒ no workspace read; FR-004 carve-out default pair.
         return _finalise(
-            _run_verify_tombstones(repo_root, subtree, tombstones_root)
+            _run_verify_tombstones(
+                repo_root, subtree, tombstones_root, _active_source_pair()
+            )
         )
 
     # ---- from-tombstones: PREFLIGHT before any bridge / DB --------------
@@ -155,16 +190,6 @@ def run_discover(
     started_at = _utc_now()
     run_id = str(uuid.uuid4())
 
-    package_name = None
-    pubspec_warning = None
-    if mode == "normal":
-        # Feature 014 / FR-004: read pubspec.yaml once per run; cache the
-        # (name, warning) pair and thread it through the parser. Only
-        # normal mode parses .dart, so this is normal-mode-only.
-        package_name, pubspec_warning = read_package_name(
-            subtree, repo_root=repo_root
-        )
-
     endpoint = acquire_or_discover(
         repo_root,
         ready_timeout=30.0,
@@ -172,6 +197,27 @@ def run_discover(
         data_dir=data_dir,
     )
     engine = build_engine(endpoint)
+
+    # Feature 016 / T011: resolve the active language pair once per run.
+    # Bound to the workspace-recorded pair when initialised; falls back to
+    # the registered default (dart→csharp) otherwise (FR-004 carve-out /
+    # R3). Discover sources its per-file source-parse hooks from this pair
+    # so a new pair slots in with zero discover edits (SC-003); the
+    # default Dart path is byte-identical (FR-023/SC-005).
+    source_pair = _active_source_pair(engine)
+
+    package_name = None
+    pubspec_warning = None
+    if mode == "normal":
+        # Feature 014 / FR-004: read pubspec.yaml once per run; cache the
+        # (name, warning) pair and thread it through the parser. Only
+        # normal mode parses .dart, so this is normal-mode-only. The
+        # warning's path field is repo-relative (feature-014 contract);
+        # this is the dart_csharp pubspec implementation called with the
+        # same args as pre-016 — byte-identical (regression oracle).
+        package_name, pubspec_warning = read_package_name(
+            subtree, repo_root=repo_root
+        )
 
     with engine.begin() as conn:
         conn.execute(
@@ -199,6 +245,7 @@ def run_discover(
                 dry_run,
                 no_orphan_revival,
                 quiet,
+                source_pair,
                 package_name=package_name,
                 pubspec_warning=pubspec_warning,
             )
@@ -228,6 +275,7 @@ def _run_normal(
     dry_run: bool,
     no_orphan_revival: bool,
     quiet: bool,
+    source_pair: Any,
     *,
     package_name: Optional[str] = None,
     pubspec_warning: Optional[dict] = None,
@@ -263,6 +311,7 @@ def _run_normal(
             tombstones_root,
             dry_run,
             warnings_list,
+            source_pair,
             package_name=package_name,
         )
         if result == "processed":
@@ -396,6 +445,7 @@ def _process_one_file(
     tombstones_root: Path,
     dry_run: bool,
     warnings_list: list[dict],
+    source_pair: Any,
     *,
     package_name: Optional[str] = None,
 ) -> str:
@@ -422,12 +472,17 @@ def _process_one_file(
     if dry_run:
         return "processed"
 
-    purpose = extract_leading_doc(abs_path)
+    # Feature 016 / T011: per-file source-parse via the resolved language
+    # pair's hooks (dart_csharp delegates to the same parse impl —
+    # byte-identical; FR-023/SC-005).
+    purpose = source_pair.extract_leading_doc(abs_path)
     key_idea = purpose
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        imports_list = extract_imports(abs_path, subtree, package_name)
+        imports_list = source_pair.extract_imports(
+            abs_path, subtree, package_name
+        )
     for w in caught:
         msg = str(w.message)
         if "duplicate import" in msg:
@@ -1007,6 +1062,7 @@ def _run_verify_tombstones(
     repo_root: Path,
     subtree: Path,
     tombstones_root: Path,
+    source_pair: Any,
 ) -> dict:
     """Read-only source-truth audit (contract § Steps (--verify-tombstones
     mode)). Reads ``.dart`` sources; NO DB writes, NO tombstone rewrites;
@@ -1098,7 +1154,7 @@ def _run_verify_tombstones(
     derived_sha: dict[str, str] = {}
     for rel, abs_path in present.items():
         derived_deps[rel] = sorted(
-            extract_imports(abs_path, subtree, package_name)
+            source_pair.extract_imports(abs_path, subtree, package_name)
         )
         try:
             derived_sha[rel] = hashlib.sha256(
