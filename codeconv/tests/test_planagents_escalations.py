@@ -219,7 +219,9 @@ def test_aggregate_report_contains_only_open_escalation(
     assert "construct X" in report
     assert "choose the C#/.NET equivalent" in report
     assert "lib/fixed.dart" not in report  # the fixed gap is NOT escalated
-    assert "lib/escal.dart#e1" in report  # back-link
+    # Back-link is to `<rel>.dart.md#e<n>` per
+    # conversion_plan_artefact_format.md § "Aggregated escalations report".
+    assert "lib/escal.dart.md#e1" in report  # back-link
 
 
 @needs_bridge
