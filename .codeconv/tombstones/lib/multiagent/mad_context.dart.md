@@ -41,6 +41,9 @@ callers:
 - test/multiagent/mad_transactions_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 2c0667ab13bae6919551df9dce3ba00ec6ac90d4037534aa7f62a39c486cca88
+topo_level: 4
+cycle_group_id: 37
+status: pending
 ---
 
 madGLP Agent Context

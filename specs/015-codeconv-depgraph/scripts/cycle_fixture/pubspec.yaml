@@ -1,0 +1,4 @@
+name: cycle_fixture
+description: Synthetic 3-file SCC (A->B->C->A) plus D->A — feature 015 US3 (T028).
+environment:
+  sdk: ">=3.0.0 <4.0.0"

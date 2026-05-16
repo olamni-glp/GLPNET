@@ -240,3 +240,23 @@ If `FileSystem` is `exFAT`, `FAT32`, or anything other than `NTFS` / `ReFS`, you
 ### Why this isn't a code fix
 
 PGLite is a WASM build of upstream PostgreSQL. It assumes a POSIX-class filesystem under the data directory. We cannot fix this in `codeconv` itself — only route around it. The flag and this doc-note are the mitigation.
+
+---
+
+## Issue 9: live shared cluster is PG16; 0.4.5 bridge is PG17 (not forward-compatible)
+
+**Status**: Worked around for feature 015 via a separate side cluster (option c); the shared-cluster migration is gated/pending
+**Discovered**: 2026-05-16 completing feature 015's live-cluster tasks (T039/T040/T043)
+**Affects**: Any live-cluster `codeconv` work on a branch whose bridge is PGLite ≥0.3.0
+
+### Summary
+
+The canonical shared cluster `C:/pglite/research/glpnet/` (`PG_VERSION`=16) was created by old PGLite 0.2.x. The PGLite-0.4.5 upgrade (aborted-txn fix) embeds PostgreSQL 17. PGLite data dirs are **not** forward-compatible (0.2.x=PG16, 0.3.0+=PG17). That cluster also holds D2NET's `public` schema, so an in-place dump/restore is a gated cross-tool op (runbook: `docs/pglite-0.4-cluster-migration-runbook.md`, requires Gabi's go + D2NET sign-off, not yet executed).
+
+### Workaround (used for feature 015)
+
+Stand up a separate fresh PG17 cluster at a side path (e.g. `C:/pglite/research/glpnet-015/`), `codeconv --data-dir <side> migrate` then `discover run`, and run all live tasks there. D2NET's shared cluster is left untouched until D2NET drives its own migration.
+
+### Doc staleness noticed (not yet fixed in spec/quickstart)
+
+`specs/015-codeconv-depgraph/quickstart.md` Flow H still uses `--data-dir .pgdb` and reads `.pgdb\bridge.json`; the bridge sidecar is codeconv-managed and ephemeral (no fixed `bridge.json` for arbitrary data-dirs — discover via `bridge_client.acquire_or_discover`). The cycle-fixture check references `$json.cycle_count` but the key is `$json.metadata.cycle_count`. These are doc bugs, not product bugs — the bridge/CLI are correct.

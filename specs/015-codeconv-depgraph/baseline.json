@@ -1,0 +1,15 @@
+{
+  "feature": "015-codeconv-depgraph",
+  "snapshot_at": "2026-05-11T13:21:33.980Z",
+  "data_dir": "C:\\pglite\\research\\glpnet",
+  "counts": {
+    "dart_files": 128,
+    "dart_imports": 443,
+    "isolated_files": 6
+  },
+  "expected_per_spec": {
+    "dart_files": 128,
+    "dart_imports": 443,
+    "isolated_files": 6
+  }
+}

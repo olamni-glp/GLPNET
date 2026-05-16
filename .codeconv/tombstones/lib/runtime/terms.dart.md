@@ -41,5 +41,8 @@ callers:
 - test/test_channel_construction.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: afe71bc74cd4474271002cce5b0665e0af46c36775f404102f6c3c7fe30e7a61
+topo_level: 0
+cycle_group_id: 23
+status: ready
 ---
 

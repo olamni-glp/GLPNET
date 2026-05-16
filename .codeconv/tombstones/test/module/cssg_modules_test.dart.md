@@ -15,6 +15,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: fece36ea3f927a1077c5c1a176b2281d71cc9049947063c871d6dbc53d423a05
+topo_level: 6
+cycle_group_id: 94
+status: pending
 ---
 
 Validation test: cssg_modules project against Phase 1-3 module system.

@@ -258,3 +258,26 @@ def test_sc003_two_stack_concurrent(discover_repo: Path) -> None:
     combined = (py_proc.stdout + py_proc.stderr + net_proc.stdout + net_proc.stderr).lower()
     assert "lost synchronization" not in combined
     assert "duplicateprepared" not in combined.replace(" ", "")
+
+
+# ---------------------------------------------------------------------------
+# T041 — FR-026 / FR-027 carry-forward for the feature-015 depgraph subtree
+# ---------------------------------------------------------------------------
+
+
+def test_depgraph_subtree_no_copy_or_prepared_cache() -> None:
+    """FR-026 (no ``COPY ... FROM STDIN``) + FR-027 (no client-side
+    prepared-statement cache) for the new depgraph tool. Pure source
+    scan — no bridge."""
+    subtree = REPO_ROOT / "codeconv" / "src" / "codeconv" / "tools" / "depgraph"
+    assert subtree.is_dir(), subtree
+    banned = ("COPY", "copy_expert", "prepared_statement_cache_size")
+    offenders: list[str] = []
+    for py in sorted(subtree.rglob("*.py")):
+        text = py.read_text(encoding="utf-8")
+        for needle in banned:
+            if needle in text:
+                offenders.append(f"{py.name}: {needle!r}")
+    assert not offenders, (
+        "FR-026/FR-027 violation in depgraph subtree: " + "; ".join(offenders)
+    )

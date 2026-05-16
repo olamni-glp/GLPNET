@@ -46,6 +46,9 @@ callers:
 - test/compiler/project_linker_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: b3d11b764d4963e6d78f28841aa9bafd9e3032ca39c0457a7340d56180957a52
+topo_level: 6
+cycle_group_id: 53
+status: pending
 ---
 
 Project linker: static linking of multi-module GLP projects.

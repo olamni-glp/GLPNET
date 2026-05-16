@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.engine import Engine
 
 from codeconv.bridge_client import acquire_or_discover
@@ -41,9 +41,11 @@ from codeconv.db.engine import build_engine
 from .parse import _IMPORT_RE, extract_imports, extract_leading_doc
 from .pubspec import read_package_name
 from .tombstone import (
+    merge_preserving_feature015,
     move_from_orphaned,
     move_to_orphaned,
     read_tombstone,
+    tombstone_path,
     write_tombstone,
 )
 from .walker import walk_dart_files
@@ -74,24 +76,99 @@ def run_discover(
     bridge_script: Optional[Path] = None,
     data_dir: Optional[Path] = None,
 ) -> dict:
-    """Acquire bridge → run discover workflow → return summary dict.
+    """Dispatch on ``mode`` → run discover workflow → return summary dict.
 
+    Per ``specs/012-codeconv-runner/contracts/codeconv_discover_cli.md``
+    (Amendment v2), mode dispatch happens BEFORE bridge acquisition:
+
+    - ``verify_tombstones``: read-only source-truth audit; the bridge is
+      NOT required and is never acquired.
+    - ``from_tombstones``: parse + structural-validate + referential-
+      completeness PREFLIGHT runs before any bridge / ``discover_runs`` /
+      DB touch, so a bad input leaves the inventory untouched (exit 65).
+    - ``normal``: unchanged feature-012/-014 behaviour.
+
+    Every returned summary carries an ``exit_code`` (0 on success);
     ``data_dir`` overrides the default ``<repo_root>/.pgdb`` cluster
     location (for repos on PGLite-hostile filesystems like exFAT).
     """
     repo_root = Path(repo_root).resolve()
     subtree = (root or (repo_root / "glp_runtime_net")).resolve()
     tombstones_root = repo_root / ".codeconv" / "tombstones"
-    tombstones_root.mkdir(parents=True, exist_ok=True)
+    # `--verify-tombstones` is strictly read-only (contract: NO DB writes,
+    # NO tombstone rewrites). Creating the tombstone dir in a clean
+    # checkout would be a filesystem write — only normal / from_tombstones
+    # (which may write/rebuild tombstones) create it.
+    if mode != "verify_tombstones":
+        tombstones_root.mkdir(parents=True, exist_ok=True)
+
+    def _finalise(summary: dict) -> dict:
+        summary["mode"] = mode
+        try:
+            summary["root"] = str(
+                subtree.relative_to(repo_root)
+            ).replace("\\", "/")
+        except ValueError:
+            summary["root"] = str(subtree)
+        summary.setdefault("exit_code", 0)
+        return summary
+
+    # ---- verify-tombstones: NO bridge, read-only, reads .dart -----------
+    if mode == "verify_tombstones":
+        return _finalise(
+            _run_verify_tombstones(repo_root, subtree, tombstones_root)
+        )
+
+    # ---- from-tombstones: PREFLIGHT before any bridge / DB --------------
+    preflight: Optional[dict] = None
+    if mode == "from_tombstones":
+        preflight = _preflight_from_tombstones(tombstones_root)
+        if preflight.get("abort"):
+            return _finalise(
+                {
+                    "files_walked": 0,
+                    "files_processed": 0,
+                    "files_skipped_idempotent": 0,
+                    "imports": 0,
+                    "callers": 0,
+                    "orphaned": 0,
+                    "revived": 0,
+                    "warnings": preflight["warnings"],
+                    "duration_seconds": preflight["duration_seconds"],
+                    "error": preflight.get("error"),
+                    "exit_code": 65,
+                }
+            )
+        if dry_run:
+            # --dry-run: do NOT touch DB / bridge; report would-be counts
+            # straight from the validated preflight.
+            return _finalise(
+                {
+                    "files_walked": len(preflight["files"]),
+                    "files_processed": len(preflight["files"]),
+                    "files_skipped_idempotent": 0,
+                    "imports": len(preflight["imports"]),
+                    "callers": len(preflight["callers"]),
+                    "orphaned": len(preflight["orphaned"]),
+                    "revived": 0,
+                    "warnings": preflight["warnings"],
+                    "duration_seconds": preflight["duration_seconds"],
+                    "exit_code": 0,
+                }
+            )
 
     started_at = _utc_now()
     run_id = str(uuid.uuid4())
 
-    # Feature 014 / FR-004: read pubspec.yaml once per run; cache the
-    # (name, warning) pair and thread it through the parser.
-    package_name, pubspec_warning = read_package_name(
-        subtree, repo_root=repo_root
-    )
+    package_name = None
+    pubspec_warning = None
+    if mode == "normal":
+        # Feature 014 / FR-004: read pubspec.yaml once per run; cache the
+        # (name, warning) pair and thread it through the parser. Only
+        # normal mode parses .dart, so this is normal-mode-only.
+        package_name, pubspec_warning = read_package_name(
+            subtree, repo_root=repo_root
+        )
 
     endpoint = acquire_or_discover(
         repo_root,
@@ -113,8 +190,9 @@ def run_discover(
 
     try:
         if mode == "from_tombstones":
+            assert preflight is not None  # validated above
             summary = _run_from_tombstones(
-                engine, run_id, tombstones_root, dry_run
+                engine, run_id, preflight, dry_run
             )
         else:
             summary = _run_normal(
@@ -138,12 +216,7 @@ def run_discover(
                 {"t": _utc_now(), "id": run_id},
             )
 
-    summary["mode"] = mode
-    try:
-        summary["root"] = str(subtree.relative_to(repo_root)).replace("\\", "/")
-    except ValueError:
-        summary["root"] = str(subtree)
-    return summary
+    return _finalise(summary)
 
 
 # ---------------------------------------------------------------------------
@@ -205,8 +278,49 @@ def _run_normal(
     orphaned = 0
     revived = 0
     if not dry_run:
-        # Reconciliation phase — recompute callers from imports table.
+        # Reconciliation phase.
         with engine.begin() as conn:
+            # Referential completeness (Amendment v3 / option A′): an
+            # in-subtree import directive can resolve by path shape (R12)
+            # to a file that does not (yet) exist on disk and was therefore
+            # never inventoried into dart_files. Such an edge is dangling.
+            # We WARN about it but do NOT delete it from dart_imports:
+            # dart_imports is a faithful, persistent record of the source's
+            # import directives. A destructive delete would lose the edge
+            # permanently across idempotent discover runs (an unchanged
+            # importer is sha-skipped, so a later-created target would never
+            # re-add the edge). The dangling endpoint is instead resolved
+            # non-destructively at read time by `depgraph compute` (which
+            # filters edges to inventoried nodes before algorithm.compute,
+            # self-healing once the target is inventoried).
+            valid_paths = {
+                r[0]
+                for r in conn.execute(
+                    text("SELECT path FROM codeconv.dart_files")
+                ).all()
+            }
+            for from_path, to_path in conn.execute(
+                text(
+                    "SELECT from_path, to_path FROM codeconv.dart_imports"
+                )
+            ).all():
+                if to_path not in valid_paths:
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": to_path,
+                            "referrer": from_path,
+                        }
+                    )
+                elif from_path not in valid_paths:
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": from_path,
+                            "referrer": to_path,
+                        }
+                    )
+            # Recompute callers as the faithful inverse of dart_imports.
             conn.execute(text("DELETE FROM codeconv.dart_callers"))
             conn.execute(
                 text(
@@ -430,6 +544,12 @@ def _process_one_file(
         "mtime": _format_mtime(mtime),
         "sha256": sha256,
     }
+    # Carry forward the six feature-015 keys if a prior tombstone (e.g. from
+    # `stamp-tombstones`) had them — discover must not erase depgraph /
+    # conversion state on re-write (round-trip preservation, Amendment v2).
+    fields = merge_preserving_feature015(
+        fields, tombstone_path(tombstones_root, rel_path)
+    )
     write_tombstone(tombstones_root, rel_path, fields)
 
     return "processed"
@@ -483,6 +603,9 @@ def _backfill_tombstone_callers(
             "mtime": _format_mtime(mtime) if isinstance(mtime, datetime) else str(mtime),
             "sha256": sha256,
         }
+        fields = merge_preserving_feature015(
+            fields, tombstone_path(tombstones_root, path)
+        )
         write_tombstone(tombstones_root, path, fields)
 
 
@@ -590,96 +713,309 @@ def _scan_outside_callers(
 # ---------------------------------------------------------------------------
 
 
-def _run_from_tombstones(
-    engine: Engine,
-    run_id: str,
-    tombstones_root: Path,
-    dry_run: bool,
-) -> dict:
+_REQUIRED_012_FIELDS: tuple[str, ...] = ("path", "sha256")
+
+# Feature-015 optional keys + their accepted Python types after YAML load.
+# (``None`` is always accepted — that is the legitimate YAML-null state.)
+_OPTIONAL_015_TYPES: dict[str, tuple[type, ...]] = {
+    "topo_level": (int,),
+    "cycle_group_id": (int,),
+    "status": (str,),
+    "conversion_started_at": (str,),
+    "conversion_completed_at": (str,),
+    "target_path": (str,),
+}
+_STATUS_VALUES = {"pending", "ready", "in_progress", "converted"}
+
+
+def _preflight_from_tombstones(tombstones_root: Path) -> dict:
+    """Parse + structural-validate + referential-completeness PREFLIGHT
+    for ``--from-tombstones`` (contract § Steps (--from-tombstones mode)
+    steps 1–3). Runs BEFORE any bridge / ``discover_runs`` / DB touch.
+
+    Returns either ``{"abort": True, "warnings": [...], "error": <str>,
+    "duration_seconds": ...}`` (caller maps to exit 65, zero mutation) or
+    a validated payload: ``files`` (list of dart_files row dicts),
+    ``imports`` / ``callers`` (referentially-complete edge tuples),
+    ``orphaned`` (dart_files_orphaned row dicts), plus ``warnings``.
+    """
     t0 = time.monotonic()
     warnings_list: list[dict] = []
+    bad_files: list[str] = []
+    raw: list[tuple[str, dict]] = []  # (rel_path, frontmatter)
 
     if not tombstones_root.is_dir():
         return {
-            "files_walked": 0,
-            "files_processed": 0,
-            "files_skipped_idempotent": 0,
-            "imports": 0,
-            "callers": 0,
-            "orphaned": 0,
-            "revived": 0,
+            "abort": False,
             "warnings": warnings_list,
             "duration_seconds": round(time.monotonic() - t0, 2),
+            "files": [],
+            "imports": [],
+            "callers": [],
+            "orphaned": [],
         }
 
-    if not dry_run:
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    "TRUNCATE codeconv.dart_files, "
-                    "         codeconv.dart_imports, "
-                    "         codeconv.dart_callers"
-                )
-            )
-
-    files_processed = 0
+    # ---- Step 1+2a: walk T (excl .orphaned/), parse, required-field gate
     for tomb_path in sorted(tombstones_root.rglob("*.dart.md")):
         rel_to_root = tomb_path.relative_to(tombstones_root)
         if ".orphaned" in rel_to_root.parts:
             continue
         try:
             fm = read_tombstone(tomb_path)
-        except Exception as exc:
-            warnings_list.append(
-                {
-                    "kind": "malformed_tombstone",
-                    "path": str(tomb_path),
-                    "error": str(exc),
-                }
+        except Exception as exc:  # unparseable → hard-fail
+            bad_files.append(f"{tomb_path} ({exc})")
+            continue
+        missing = []
+        for key in _REQUIRED_012_FIELDS:
+            val = fm.get(key)
+            if not isinstance(val, str) or not val.strip():
+                missing.append(key)
+        if missing:
+            bad_files.append(
+                f"{tomb_path} (missing/invalid required field(s): "
+                f"{', '.join(missing)})"
             )
             continue
+        raw.append((str(fm["path"]).replace("\\", "/"), fm))
 
-        if dry_run:
-            files_processed += 1
-            continue
+    if bad_files:
+        return {
+            "abort": True,
+            "warnings": warnings_list,
+            "error": (
+                "codeconv discover --from-tombstones: ABORT — "
+                f"{len(bad_files)} malformed / required-field-invalid "
+                "tombstone(s); inventory left untouched:\n  "
+                + "\n  ".join(bad_files)
+            ),
+            "duration_seconds": round(time.monotonic() - t0, 2),
+        }
 
-        rel_path = fm["path"]
-        with engine.begin() as conn:
+    # ---- Step 2b: optional feature-015 key type validation (warn-only) --
+    for rel_path, fm in raw:
+        for key, types in _OPTIONAL_015_TYPES.items():
+            if key not in fm:
+                continue
+            val = fm[key]
+            if val is None:
+                continue  # legitimate YAML-null
+            ok = isinstance(val, types)
+            if ok and key == "status" and val not in _STATUS_VALUES:
+                ok = False
+            if not ok:
+                warnings_list.append(
+                    {
+                        "kind": "type_invalid_015_field",
+                        "path": rel_path,
+                        "field": key,
+                    }
+                )
+
+    valid_paths = {rel_path for rel_path, _ in raw}
+
+    # ---- Step 3: referential completeness (drop+warn dangling edges) ----
+    files: list[dict] = []
+    imports: list[tuple[str, str]] = []
+    callers: list[tuple[str, str]] = []
+    for rel_path, fm in raw:
+        files.append(
+            {
+                "path": rel_path,
+                "name": fm.get("name") or Path(rel_path).name,
+                "purpose": fm.get("purpose") or "",
+                "key_idea": fm.get("key_idea") or "",
+                "mtime": fm.get("mtime") or _format_mtime(_utc_now()),
+                "sha256": fm["sha256"],
+            }
+        )
+        deps = fm.get("dependencies")
+        if deps is not None and not isinstance(deps, list):
+            warnings_list.append(
+                {"kind": "malformed_field", "path": rel_path, "field": "dependencies"}
+            )
+            deps = []
+        for dep in deps or []:
+            dep = str(dep).replace("\\", "/")
+            if dep not in valid_paths:
+                warnings_list.append(
+                    {
+                        "kind": "missing_tombstone",
+                        "path": dep,
+                        "referrer": rel_path,
+                    }
+                )
+                continue
+            imports.append((rel_path, dep))
+        clrs = fm.get("callers")
+        if clrs is not None and not isinstance(clrs, list):
+            warnings_list.append(
+                {"kind": "malformed_field", "path": rel_path, "field": "callers"}
+            )
+            clrs = []
+        for caller in clrs or []:
+            caller = str(caller).replace("\\", "/")
+            if caller not in valid_paths:
+                warnings_list.append(
+                    {
+                        "kind": "missing_tombstone",
+                        "path": caller,
+                        "referrer": rel_path,
+                    }
+                )
+                continue
+            callers.append((caller, rel_path))
+
+    # ---- Collect orphaned tombstones for the step-6 UPSERT --------------
+    orphaned: list[dict] = []
+    orphan_root = tombstones_root / ".orphaned"
+    if orphan_root.is_dir():
+        for tomb_path in sorted(orphan_root.rglob("*.dart.md")):
+            try:
+                fm = read_tombstone(tomb_path)
+            except Exception as exc:
+                warnings_list.append(
+                    {
+                        "kind": "malformed_orphan_tombstone",
+                        "path": str(tomb_path),
+                        "error": str(exc),
+                    }
+                )
+                continue
+            opath = fm.get("path")
+            if not isinstance(opath, str) or not opath.strip():
+                continue
+            orphaned.append(
+                {
+                    "path": opath.replace("\\", "/"),
+                    "name": fm.get("name") or Path(opath).name,
+                    "purpose": fm.get("purpose") or "",
+                    "key_idea": fm.get("key_idea") or "",
+                    "mtime": fm.get("mtime") or _format_mtime(_utc_now()),
+                    "sha256": fm.get("sha256") or "",
+                }
+            )
+
+    return {
+        "abort": False,
+        "warnings": warnings_list,
+        "duration_seconds": round(time.monotonic() - t0, 2),
+        "files": files,
+        "imports": imports,
+        "callers": callers,
+        "orphaned": orphaned,
+    }
+
+
+def _run_from_tombstones(
+    engine: Engine,
+    run_id: str,
+    preflight: dict,
+    dry_run: bool,
+) -> dict:
+    """Apply a validated ``--from-tombstones`` preflight payload to the
+    inventory in ONE transaction (contract § Steps step 5 — Option B).
+
+    dart_imports / dart_callers are TRUNCATEd then bulk-reinserted (no
+    inbound FK). dart_files is UPSERTed per surviving path then only the
+    paths absent from T are DELETEd — so feature-015's dart_conversions /
+    dart_depgraph (FK → dart_files ON DELETE CASCADE) are PRESERVED for
+    every surviving file. A path genuinely absent from T is a vanished
+    file; its DELETE cascades its conversion/depgraph row away.
+    """
+    t0 = time.monotonic()
+    warnings_list: list[dict] = list(preflight["warnings"])
+    files: list[dict] = preflight["files"]
+    imports: list[tuple[str, str]] = preflight["imports"]
+    callers: list[tuple[str, str]] = preflight["callers"]
+    orphaned: list[dict] = preflight["orphaned"]
+
+    if dry_run:
+        return {
+            "files_walked": len(files),
+            "files_processed": len(files),
+            "files_skipped_idempotent": 0,
+            "imports": len(imports),
+            "callers": len(callers),
+            "orphaned": len(orphaned),
+            "revived": 0,
+            "warnings": warnings_list,
+            "duration_seconds": round(time.monotonic() - t0, 2),
+        }
+
+    keep_paths = [f["path"] for f in files]
+
+    with engine.begin() as conn:  # ONE transaction (atomic-per-run)
+        # dart_imports / dart_callers: no inbound FK → safe to TRUNCATE.
+        conn.execute(
+            text(
+                "TRUNCATE codeconv.dart_imports, codeconv.dart_callers"
+            )
+        )
+        # dart_files: UPSERT each surviving path (NOT a blanket TRUNCATE,
+        # so dart_conversions / dart_depgraph survive via the FK).
+        for f in files:
             conn.execute(
                 text(
                     "INSERT INTO codeconv.dart_files "
                     "  (path, name, purpose, key_idea, mtime, sha256, discovered_at) "
                     "VALUES (:path, :name, :purpose, :key_idea, "
-                    "        :mtime, :sha256, NOW())"
+                    "        :mtime, :sha256, NOW()) "
+                    "ON CONFLICT (path) DO UPDATE SET "
+                    "  name = EXCLUDED.name, "
+                    "  purpose = EXCLUDED.purpose, "
+                    "  key_idea = EXCLUDED.key_idea, "
+                    "  mtime = EXCLUDED.mtime, "
+                    "  sha256 = EXCLUDED.sha256, "
+                    "  discovered_at = NOW()"
                 ),
-                {
-                    "path": rel_path,
-                    "name": fm.get("name", "") or Path(rel_path).name,
-                    "purpose": fm.get("purpose", "") or "",
-                    "key_idea": fm.get("key_idea", "") or "",
-                    "mtime": fm.get("mtime", "") or _format_mtime(_utc_now()),
-                    "sha256": fm.get("sha256", "") or "",
-                },
+                f,
             )
-            for to_path in fm.get("dependencies") or []:
-                conn.execute(
-                    text(
-                        "INSERT INTO codeconv.dart_imports (from_path, to_path) "
-                        "VALUES (:f, :t) "
-                        "ON CONFLICT (from_path, to_path) DO NOTHING"
-                    ),
-                    {"f": rel_path, "t": to_path},
-                )
-            for caller in fm.get("callers") or []:
-                conn.execute(
-                    text(
-                        "INSERT INTO codeconv.dart_callers (from_path, to_path) "
-                        "VALUES (:f, :t) "
-                        "ON CONFLICT (from_path, to_path) DO NOTHING"
-                    ),
-                    {"f": caller, "t": rel_path},
-                )
-        files_processed += 1
+        # DELETE only vanished paths → cascades their conversion/depgraph.
+        if keep_paths:
+            stmt = text(
+                "DELETE FROM codeconv.dart_files WHERE path NOT IN :keep"
+            ).bindparams(bindparam("keep", expanding=True))
+            conn.execute(stmt, {"keep": keep_paths})
+        else:
+            conn.execute(text("DELETE FROM codeconv.dart_files"))
+        # Reinsert the referentially-complete edge sets.
+        for f_path, t_path in imports:
+            conn.execute(
+                text(
+                    "INSERT INTO codeconv.dart_imports (from_path, to_path) "
+                    "VALUES (:f, :t) "
+                    "ON CONFLICT (from_path, to_path) DO NOTHING"
+                ),
+                {"f": f_path, "t": t_path},
+            )
+        for f_path, t_path in callers:
+            conn.execute(
+                text(
+                    "INSERT INTO codeconv.dart_callers (from_path, to_path) "
+                    "VALUES (:f, :t) "
+                    "ON CONFLICT (from_path, to_path) DO NOTHING"
+                ),
+                {"f": f_path, "t": t_path},
+            )
+        # Step 6: UPSERT .orphaned/ tombstones into dart_files_orphaned.
+        for o in orphaned:
+            conn.execute(
+                text(
+                    "INSERT INTO codeconv.dart_files_orphaned "
+                    "  (path, name, purpose, key_idea, mtime, sha256, "
+                    "   discovered_at, orphaned_at) "
+                    "VALUES (:path, :name, :purpose, :key_idea, "
+                    "        :mtime, :sha256, NOW(), NOW()) "
+                    "ON CONFLICT (path) DO UPDATE SET "
+                    "  name = EXCLUDED.name, "
+                    "  purpose = EXCLUDED.purpose, "
+                    "  key_idea = EXCLUDED.key_idea, "
+                    "  mtime = EXCLUDED.mtime, "
+                    "  sha256 = EXCLUDED.sha256, "
+                    "  orphaned_at = NOW()"
+                ),
+                o,
+            )
 
     with engine.begin() as conn:
         imports_count = (
@@ -696,16 +1032,201 @@ def _run_from_tombstones(
         )
 
     return {
-        "files_walked": files_processed,
-        "files_processed": files_processed,
+        "files_walked": len(files),
+        "files_processed": len(files),
         "files_skipped_idempotent": 0,
         "imports": int(imports_count),
         "callers": int(callers_count),
-        "orphaned": 0,
+        "orphaned": len(orphaned),
         "revived": 0,
         "warnings": warnings_list,
         "duration_seconds": round(time.monotonic() - t0, 2),
     }
+
+
+# ---------------------------------------------------------------------------
+# --verify-tombstones mode (read-only source-truth audit; NO bridge)
+# ---------------------------------------------------------------------------
+
+
+def _run_verify_tombstones(
+    repo_root: Path,
+    subtree: Path,
+    tombstones_root: Path,
+) -> dict:
+    """Read-only source-truth audit (contract § Steps (--verify-tombstones
+    mode)). Reads ``.dart`` sources; NO DB writes, NO tombstone rewrites;
+    bridge NOT acquired. Returns a discover-shaped summary with the four
+    verify counts + an ``exit_code`` (0 / 1 / 65).
+    """
+    t0 = time.monotonic()
+    warnings_list: list[dict] = []
+
+    def _summary(
+        *,
+        exit_code: int,
+        error: Optional[str] = None,
+        verified_clean: int = 0,
+        stale: int = 0,
+        missing_source: int = 0,
+        missing_tombstone: int = 0,
+        walked: int = 0,
+    ) -> dict:
+        out: dict = {
+            "files_walked": walked,
+            "files_processed": verified_clean,
+            "files_skipped_idempotent": 0,
+            "imports": 0,
+            "callers": 0,
+            "orphaned": 0,
+            "revived": 0,
+            "verified_clean": verified_clean,
+            "stale": stale,
+            "missing_source": missing_source,
+            "missing_tombstone": missing_tombstone,
+            "warnings": warnings_list,
+            "duration_seconds": round(time.monotonic() - t0, 2),
+            "exit_code": exit_code,
+        }
+        if error is not None:
+            out["error"] = error
+        return out
+
+    # ---- Step 1: walk T (excl .orphaned/) ------------------------------
+    tomb_set: list[tuple[Path, dict]] = []
+    bad_files: list[str] = []
+    if tombstones_root.is_dir():
+        for tomb_path in sorted(tombstones_root.rglob("*.dart.md")):
+            rel_to_root = tomb_path.relative_to(tombstones_root)
+            if ".orphaned" in rel_to_root.parts:
+                continue
+            try:
+                fm = read_tombstone(tomb_path)
+            except Exception as exc:
+                bad_files.append(f"{tomb_path} ({exc})")
+                continue
+            # Verify-mode is a source-truth audit: a format-invalid
+            # tombstone (missing/!type-valid REQUIRED 012 field — path
+            # AND sha256) aborts exit 65, same gate as the
+            # --from-tombstones preflight. sha256 is required for the
+            # recompute-and-compare; without it the file can't be
+            # audited and MUST NOT pass as a mere stale warning.
+            missing = [
+                k
+                for k in _REQUIRED_012_FIELDS
+                if not isinstance(fm.get(k), str) or not fm[k].strip()
+            ]
+            if missing:
+                bad_files.append(
+                    f"{tomb_path} (missing/invalid required field(s): "
+                    f"{', '.join(missing)})"
+                )
+                continue
+            tomb_set.append((tomb_path, fm))
+
+    # ---- Step 2: unparseable / format-invalid → abort exit 65 ----------
+    if bad_files:
+        return _summary(
+            exit_code=65,
+            error=(
+                "codeconv discover --verify-tombstones: ABORT — "
+                f"{len(bad_files)} malformed / unparseable tombstone(s):\n  "
+                + "\n  ".join(bad_files)
+            ),
+        )
+
+    # ---- Step 3: build whole-subtree import graph ONCE -----------------
+    package_name, _ = read_package_name(subtree, repo_root=repo_root)
+    present: dict[str, Path] = {}
+    for abs_path, rel in walk_dart_files(subtree):
+        present[rel.replace("\\", "/")] = abs_path
+
+    # Step 5: zero .dart sources under the subtree → exit 1.
+    if not present:
+        return _summary(
+            exit_code=1,
+            error=(
+                "codeconv discover --verify-tombstones: no .dart sources "
+                f"under {subtree} — source-truth verification needs sources "
+                "(exit 1; not 2)."
+            ),
+            walked=len(tomb_set),
+        )
+
+    derived_deps: dict[str, list[str]] = {}
+    derived_sha: dict[str, str] = {}
+    for rel, abs_path in present.items():
+        derived_deps[rel] = sorted(
+            extract_imports(abs_path, subtree, package_name)
+        )
+        try:
+            derived_sha[rel] = hashlib.sha256(
+                abs_path.read_bytes()
+            ).hexdigest()
+        except OSError:
+            derived_sha[rel] = ""
+    derived_callers: dict[str, list[str]] = {}
+    for frm, tos in derived_deps.items():
+        for to in tos:
+            derived_callers.setdefault(to, []).append(frm)
+    for k in derived_callers:
+        derived_callers[k] = sorted(set(derived_callers[k]))
+
+    tomb_paths = {
+        str(fm["path"]).replace("\\", "/") for _, fm in tomb_set
+    }
+
+    verified_clean = stale = missing_source = 0
+    for _tomb_path, fm in tomb_set:
+        rel_path = str(fm["path"]).replace("\\", "/")
+        if rel_path not in present:
+            warnings_list.append(
+                {"kind": "missing_source", "path": rel_path}
+            )
+            missing_source += 1
+            continue
+        diff_fields: list[str] = []
+        if str(fm.get("sha256") or "") != derived_sha.get(rel_path, ""):
+            diff_fields.append("sha256")
+        rec_deps = sorted(
+            str(d).replace("\\", "/") for d in (fm.get("dependencies") or [])
+        )
+        if rec_deps != derived_deps.get(rel_path, []):
+            diff_fields.append("dependencies")
+        rec_callers = sorted(
+            str(c).replace("\\", "/") for c in (fm.get("callers") or [])
+        )
+        if rec_callers != derived_callers.get(rel_path, []):
+            diff_fields.append("callers")
+        if diff_fields:
+            warnings_list.append(
+                {
+                    "kind": "stale_tombstone",
+                    "path": rel_path,
+                    "fields": diff_fields,
+                }
+            )
+            stale += 1
+        else:
+            verified_clean += 1
+
+    # ---- Step 4: .dart with no tombstone in T → missing_tombstone ------
+    missing_tombstone = 0
+    for rel in sorted(present):
+        if rel not in tomb_paths:
+            warnings_list.append(
+                {"kind": "missing_tombstone", "path": rel}
+            )
+            missing_tombstone += 1
+
+    return _summary(
+        exit_code=0,
+        verified_clean=verified_clean,
+        stale=stale,
+        missing_source=missing_source,
+        missing_tombstone=missing_tombstone,
+        walked=len(tomb_set),
+    )
 
 
 # ---------------------------------------------------------------------------

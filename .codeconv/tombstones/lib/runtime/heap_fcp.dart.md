@@ -48,6 +48,9 @@ callers:
 - test/test_channel_construction.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 18b5962454f8a7e7d8d1b48c9d711bfe92b3699180dcc4d9ac7a3288a26378f3
+topo_level: 2
+cycle_group_id: 32
+status: pending
 ---
 
 FCP Two-Cell Heap with Pointer Architecture

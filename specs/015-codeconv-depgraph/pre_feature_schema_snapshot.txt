@@ -1,0 +1,30 @@
+# pre-feature-015 schema snapshot — produced by snapshot_baseline.py
+
+## \dn (schemas, excluding pg_* / information_schema)
+- codeconv
+- dbos
+- public
+
+## \dt codeconv.*
+- codeconv.dart_callers
+- codeconv.dart_files
+- codeconv.dart_files_orphaned
+- codeconv.dart_imports
+- codeconv.discover_runs
+
+## \dt dbos.*
+- dbos.application_versions
+- dbos.dbos_migrations
+- dbos.event_dispatch_kv
+- dbos.notifications
+- dbos.operation_outputs
+- dbos.queues
+- dbos.streams
+- dbos.transaction_outputs
+- dbos.workflow_events
+- dbos.workflow_events_history
+- dbos.workflow_schedules
+- dbos.workflow_status
+
+## \dt public.*
+- public.alembic_version

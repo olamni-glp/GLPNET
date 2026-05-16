@@ -29,6 +29,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 574fc311c885281ba54ebf6d357e14982f727a622c7707e0a5e5a67aa61b1ed7
+topo_level: 3
+cycle_group_id: 90
+status: pending
 ---
 
 Tests for VarRef structure with Pointer Architecture

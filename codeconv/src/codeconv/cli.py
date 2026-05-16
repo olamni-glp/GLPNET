@@ -228,7 +228,10 @@ def cmd_migrate(ctx: typer.Context) -> None:
     quiet: bool = ctx.obj.get("quiet", False)
 
     try:
-        from codeconv.bridge_client import acquire_or_discover
+        from codeconv.bridge_client import (
+            DataDirFilesystemError,
+            acquire_or_discover,
+        )
         from codeconv.db.engine import build_url, setup_dbos
     except Exception as exc:
         typer.echo(f"codeconv migrate: import failed: {exc}", err=True)
@@ -236,6 +239,9 @@ def cmd_migrate(ctx: typer.Context) -> None:
 
     try:
         endpoint = acquire_or_discover(repo_root, data_dir=data_dir_override)
+    except DataDirFilesystemError as exc:
+        typer.echo(f"codeconv migrate: {exc}", err=True)
+        raise typer.Exit(_EXIT_USAGE)
     except Exception as exc:
         typer.echo(f"codeconv migrate: bridge unreachable: {exc}", err=True)
         raise typer.Exit(_EXIT_BRIDGE_UNREACHABLE)

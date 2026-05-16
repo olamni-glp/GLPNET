@@ -50,6 +50,9 @@ callers:
 - test/heap/circular_term_pointer_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: ec6e1f4d6555f57c8b7450418b64282524e86e8b2ba6d06323047da3c7a64b05
+topo_level: 4
+cycle_group_id: 37
+status: pending
 ---
 
 System predicate execution infrastructure for GLP

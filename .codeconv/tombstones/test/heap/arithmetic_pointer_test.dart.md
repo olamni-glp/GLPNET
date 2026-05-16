@@ -38,6 +38,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 3c0766cd3af29d5ad4f05a498adc3d91c60ee5dddd6562415d53c34402d01404
+topo_level: 8
+cycle_group_id: 86
+status: pending
 ---
 
 Tests for arithmetic body kernels with Pointer Architecture Heap

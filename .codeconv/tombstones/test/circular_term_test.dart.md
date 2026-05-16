@@ -41,6 +41,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 13325b134ab40b28f0b298af90405dcdd2f608c084cecd20446828be4f7b8db2
+topo_level: 6
+cycle_group_id: 75
+status: pending
 ---
 
 Tests for circular term handling in GLP runtime.

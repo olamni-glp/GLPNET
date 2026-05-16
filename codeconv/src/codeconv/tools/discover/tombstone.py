@@ -25,6 +25,9 @@ import yaml
 
 
 # Field order pinned by ``contracts/tombstone_format.md`` § Diff stability.
+# Feature 015 (codeconv-depgraph) appends six keys at the end — the
+# position of every existing key is unchanged so feature-012/-014
+# idempotence tests continue to produce identical first-eight-key bytes.
 _FIELD_ORDER: tuple[str, ...] = (
     "path",
     "name",
@@ -34,6 +37,26 @@ _FIELD_ORDER: tuple[str, ...] = (
     "callers",
     "mtime",
     "sha256",
+    # --- feature 015 (codeconv-depgraph) appended fields ---
+    "topo_level",
+    "cycle_group_id",
+    "status",
+    "conversion_started_at",
+    "conversion_completed_at",
+    "target_path",
+)
+
+# The feature-015 appended keys, as a set, for round-trip preservation.
+# `discover` (a feature-012 caller) MUST carry these forward unchanged when
+# it re-writes a tombstone it did not author, or a re-discover after
+# `stamp-tombstones` would silently erase depgraph + conversion state.
+_FEATURE_015_KEYS: tuple[str, ...] = (
+    "topo_level",
+    "cycle_group_id",
+    "status",
+    "conversion_started_at",
+    "conversion_completed_at",
+    "target_path",
 )
 
 # YAML emitter settings pinned for diff stability.
@@ -150,6 +173,11 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     - Required keys present (with sensible defaults).
     - Lists sorted lexically.
     - Path-like fields use forward slashes.
+    - Feature 015 appended keys (``topo_level``, ``cycle_group_id``,
+      ``status``, ``conversion_started_at``, ``conversion_completed_at``)
+      are passed through only when present in the input; ``None`` is
+      preserved (emitted as YAML ``null``) per
+      ``specs/015-codeconv-depgraph/contracts/tombstone_format_delta.md``.
     """
     out: dict[str, Any] = {}
     out["path"] = _to_posix(fields.get("path", ""))
@@ -160,7 +188,41 @@ def _canonicalise(fields: Mapping[str, Any]) -> dict[str, Any]:
     out["callers"] = sorted(_to_posix(p) for p in fields.get("callers") or [])
     out["mtime"] = str(fields.get("mtime", ""))
     out["sha256"] = str(fields.get("sha256", ""))
+    # Feature 015 — pass-through with null preservation (incl. target_path,
+    # the 6th key added per codex spec-review P1-e).
+    for key in _FEATURE_015_KEYS:
+        if key in fields:
+            out[key] = fields[key]
     return out
+
+
+def merge_preserving_feature015(
+    new_fields: Mapping[str, Any],
+    existing_tombstone: Path | None,
+) -> dict[str, Any]:
+    """Return ``new_fields`` with the six feature-015 keys carried forward
+    from ``existing_tombstone`` when the caller (discover) did not supply
+    them.
+
+    Fixes the discover key-stripping bug-risk: ``_process_one_file`` /
+    ``_backfill_tombstone_callers`` rebuild an 8-key dict from freshly
+    parsed ``.dart`` + DB edges; without this merge a ``/codeconv-discover``
+    run after ``stamp-tombstones`` would drop every feature-015 key
+    (depgraph + conversion state) from the tombstone, defeating the
+    round-trip. A key the caller explicitly provides wins; otherwise the
+    on-disk value is preserved verbatim (including YAML-``null``).
+    """
+    merged = dict(new_fields)
+    if existing_tombstone is None or not existing_tombstone.is_file():
+        return merged
+    try:
+        prior = read_tombstone(existing_tombstone)
+    except (OSError, ValueError):
+        return merged
+    for key in _FEATURE_015_KEYS:
+        if key not in merged and key in prior:
+            merged[key] = prior[key]
+    return merged
 
 
 def _to_posix(value: Any) -> str:
@@ -180,6 +242,7 @@ def _emit_yaml(fields: Mapping[str, Any]) -> str:
 
 
 __all__ = [
+    "merge_preserving_feature015",
     "move_from_orphaned",
     "move_to_orphaned",
     "orphan_path",

@@ -39,6 +39,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 60cea5fbe3415839b21caf214b4f3ca09470e8fb038192fc05274f68924360e7
+topo_level: 3
+cycle_group_id: 87
+status: pending
 ---
 
 Tests for binding operations with Pointer Architecture Heap
