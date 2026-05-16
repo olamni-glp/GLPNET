@@ -5,8 +5,8 @@ Branch: `016-codeconv-init-scaffold-langpair` | Base HEAD: `177a33f8`
 
 ## Steps
 - [x] 0. Read all design docs; create 016 venv; install codeconv editable
-- [ ] 1. Phase 1 Setup (T001-T004) <- CURRENT
-- [ ] 2. Phase 2 Foundational (T005-T012)
+- [x] 1. Phase 1 Setup (T001-T004)
+- [ ] 2. Phase 2 Foundational (T005-T012) <- CURRENT
 - [ ] 3. Phase 3 US1 init (T013-T017)
 - [ ] 4. Phase 4 US2 scaffold (T018-T023)
 - [ ] 5. Phase 5 US3 registry extensibility (T024-T026)

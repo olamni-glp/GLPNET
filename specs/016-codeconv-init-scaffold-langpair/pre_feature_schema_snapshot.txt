@@ -1,0 +1,62 @@
+# T004 — pre-016 schema snapshot (SC schema-isolation reference)
+
+Source of truth: authoritative Alembic migrations 0001 + 0002 (pre-016 HEAD)
+and data-model.md § 4. A live-cluster `\dt` capture is deferred to T012/T036
+(per the background-watchdog rule: no long/silent live-cluster spin-up at
+Phase-1 baseline; the live verification is done by T012/T036 against a fresh
+tmp PG17 cluster). This file pins the EXPECTED pre-016 set so T012 can assert
+that migration 0003 adds EXACTLY the four new codeconv tables and touches
+neither `public` nor `dbos`.
+
+## Schemas (\dn) — pre-016
+
+  codeconv   (created by migration 0001)
+  dbos       (created by DBOS launch — `codeconv migrate` step 2)
+  public     (default; D2NET legacy tables land here unqualified)
+
+## codeconv.* tables (\dt codeconv.*) — pre-016
+
+From 0001_codeconv_schema.py:
+  codeconv.dart_files
+  codeconv.dart_imports
+  codeconv.dart_callers
+  codeconv.dart_files_orphaned
+  codeconv.discover_runs
+
+From 0002_dart_depgraph.py:
+  codeconv.depgraph_runs
+  codeconv.dart_conversions
+  codeconv.dart_depgraph
+  (+ indexes dart_depgraph_ready_idx, dart_depgraph_path_topo_idx)
+
+TOTAL pre-016 codeconv tables: 8
+
+## public.* tables (\dt public.*) — pre-016
+
+Legacy D2NET (only if D2NET-init was ever run against this cluster; on a
+fresh codeconv tmp cluster `public` has ZERO tables). Per tools/d2net
+Schema/db-schema.sql the legacy set is:
+  public.setting
+  public.excluded_directories
+  public.dart_files
+  public.phase_sequence
+  public.phase_status
+  (+ public.scaffold_tracker, created by D2Net.Scaffold)
+
+NOTE: feature 016 does NOT consult, migrate, or drop any public.* object
+(D1/R6/FR-020). On the fresh PG17 tmp clusters the feature's tests use,
+`public` is empty pre- and post-016.
+
+## dbos.* tables — pre-016
+
+Owned by the DBOS runtime; opaque to this feature; unchanged by 0003.
+
+## Post-016 EXPECTED delta (what 0003 must add — verified by T012)
+
+  + codeconv.workspace_settings
+  + codeconv.excluded_directories
+  + codeconv.phase_sequence
+  + codeconv.phase_status
+
+EXACTLY these 4 new tables under `codeconv`; `\dn` unchanged; zero new
+objects in `public` or `dbos` (data-model.md § 6, SC schema isolation).
