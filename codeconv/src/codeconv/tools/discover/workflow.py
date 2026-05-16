@@ -95,7 +95,12 @@ def run_discover(
     repo_root = Path(repo_root).resolve()
     subtree = (root or (repo_root / "glp_runtime_net")).resolve()
     tombstones_root = repo_root / ".codeconv" / "tombstones"
-    tombstones_root.mkdir(parents=True, exist_ok=True)
+    # `--verify-tombstones` is strictly read-only (contract: NO DB writes,
+    # NO tombstone rewrites). Creating the tombstone dir in a clean
+    # checkout would be a filesystem write — only normal / from_tombstones
+    # (which may write/rebuild tombstones) create it.
+    if mode != "verify_tombstones":
+        tombstones_root.mkdir(parents=True, exist_ok=True)
 
     def _finalise(summary: dict) -> dict:
         summary["mode"] = mode
@@ -1059,9 +1064,22 @@ def _run_verify_tombstones(
             except Exception as exc:
                 bad_files.append(f"{tomb_path} ({exc})")
                 continue
-            opath = fm.get("path")
-            if not isinstance(opath, str) or not opath.strip():
-                bad_files.append(f"{tomb_path} (missing/invalid 'path')")
+            # Verify-mode is a source-truth audit: a format-invalid
+            # tombstone (missing/!type-valid REQUIRED 012 field — path
+            # AND sha256) aborts exit 65, same gate as the
+            # --from-tombstones preflight. sha256 is required for the
+            # recompute-and-compare; without it the file can't be
+            # audited and MUST NOT pass as a mere stale warning.
+            missing = [
+                k
+                for k in _REQUIRED_012_FIELDS
+                if not isinstance(fm.get(k), str) or not fm[k].strip()
+            ]
+            if missing:
+                bad_files.append(
+                    f"{tomb_path} (missing/invalid required field(s): "
+                    f"{', '.join(missing)})"
+                )
                 continue
             tomb_set.append((tomb_path, fm))
 
