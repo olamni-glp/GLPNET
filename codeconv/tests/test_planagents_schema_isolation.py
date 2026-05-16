@@ -192,6 +192,66 @@ def test_fk_cascade_on_dart_files_delete(discover_repo: Path) -> None:
     assert n == 0, "FK CASCADE failed: dart_plans row survived"
 
 
+@needs_bridge
+def test_downgrade_then_upgrade_idempotent(discover_repo: Path) -> None:
+    """T011 / planagents_schema.md § Migration shape: ``alembic
+    downgrade -1`` (drops dart_plans + planagents_runs) then ``upgrade
+    head`` restores the same schema state — no error, both tables back
+    under ``codeconv`` only."""
+    _migrate(discover_repo)
+    from alembic import command
+    from alembic.config import Config
+
+    import codeconv.cli as _cli
+    from codeconv.bridge_client import acquire_or_discover
+
+    endpoint = acquire_or_discover(discover_repo, ready_timeout=30.0)
+    here = Path(_cli.__file__).parent
+    cfg = Config(str(here / "db" / "alembic.ini"))
+    cfg.set_main_option(
+        "script_location", str((here / "db" / "migrations").resolve())
+    )
+    cfg.set_main_option(
+        "sqlalchemy.url",
+        f"postgresql+psycopg://postgres:postgres@"
+        f"{endpoint.host}:{endpoint.port}/postgres",
+    )
+
+    from sqlalchemy import text
+
+    # Downgrade one revision (0003 -> 0002): both tables vanish.
+    command.downgrade(cfg, "-1")
+    with _engine(discover_repo).connect() as conn:
+        for t in ("dart_plans", "planagents_runs"):
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM information_schema.tables "
+                        "WHERE table_schema='codeconv' AND table_name=:t"
+                    ),
+                    {"t": t},
+                ).scalar()
+                == 0
+            ), f"{t} should be gone after downgrade -1"
+
+    # Upgrade back to head: both tables restored, codeconv-only.
+    command.upgrade(cfg, "head")
+    with _engine(discover_repo).connect() as conn:
+        for t in ("dart_plans", "planagents_runs"):
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM information_schema.tables "
+                        "WHERE table_schema='codeconv' AND table_name=:t"
+                    ),
+                    {"t": t},
+                ).scalar()
+                == 1
+            ), f"{t} should be restored after upgrade head"
+    # Re-upgrade is a no-op (CREATE TABLE IF NOT EXISTS — idempotent).
+    command.upgrade(cfg, "head")
+
+
 def _protected_snapshot(repo_root: Path) -> dict:
     """Row-content snapshot of the 7 FR-020-protected tables."""
     from sqlalchemy import text

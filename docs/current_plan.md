@@ -4,15 +4,15 @@ Started: 2026-05-16
 
 ## Steps
 - [x] 0. Read all spec/plan/tasks/contracts + feature-015 reference code
-- [ ] 1. Phase 1 Setup: baseline pytest, snapshots ← CURRENT
-- [ ] 2. Phase 2 Foundational: 0003 migration, _FIELD_ORDER ext (done), subpackage skeleton, readiness.py
-- [ ] 3. Phase 2 tests: readiness unit tests, schema isolation test, run migration
-- [ ] 4. Phase 3 US1: workflow status/next/plan-started/plan-completed, tombstone_writer, artefact, SKILL.md, US1 tests
-- [ ] 5. Phase 4 US2: frontier tests + readiness verify
-- [ ] 6. Phase 5 US3: SCC fixture + batch tests + SKILL SCC protocol
-- [ ] 7. Phase 6 US4: aggregate-escalations + escalation tests + SKILL escalate-don't-guess
-- [ ] 8. Phase 7 US5: research-agent SKILL contract + research tests
-- [ ] 9. Phase 8 Polish: stale, dry-run, stamp/rebuild tests, full suite, SC-009, docs
+- [x] 1. Phase 1 Setup: venv+npm install, baseline running
+- [x] 2. Phase 2 Foundational: 0003 migration (applied PG17), _FIELD_ORDER+round-trip, subpackage, readiness.py
+- [x] 3. Phase 2 tests: readiness 17 green, schema-isolation 6 green (incl FR-020 C2), migration verified
+- [x] 4. Phase 3 US1: workflow/CLI/artefact/tombstone_writer/SKILL.md; US1 bridge 13 green + artefact-val 11 green
+- [x] 5. Phase 4 US2: frontier+SC-002 tests authored (bridge run pending)
+- [x] 6. Phase 5 US3: SCC fixture + batch tests authored (bridge run pending)
+- [x] 7. Phase 6 US4: aggregate-escalations impl + tests + SKILL escalate-don't-guess
+- [x] 8. Phase 7 US5: research-agent SKILL contract + research tests
+- [ ] 9. Phase 8 Polish: stale/dry-run/stamp-rebuild tests authored; US2-5 + full-suite bridge runs in flight; SC-009 ← CURRENT
 
 ## Context
 Deterministic Python tool `codeconv planagents` + `/codeconv-planagents` skill orchestration

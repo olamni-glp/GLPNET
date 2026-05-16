@@ -544,9 +544,11 @@ def _process_one_file(
         "mtime": _format_mtime(mtime),
         "sha256": sha256,
     }
-    # Carry forward the six feature-015 keys if a prior tombstone (e.g. from
-    # `stamp-tombstones`) had them — discover must not erase depgraph /
-    # conversion state on re-write (round-trip preservation, Amendment v2).
+    # Carry forward the appended feature-015 + feature-017 keys if a prior
+    # tombstone (e.g. from `depgraph stamp-tombstones` or `planagents
+    # stamp-tombstones`) had them — discover must not erase depgraph /
+    # conversion / plan state on re-write (round-trip preservation,
+    # Amendment v2 + feature-017 data-model §2).
     fields = merge_preserving_feature015(
         fields, tombstone_path(tombstones_root, rel_path)
     )
