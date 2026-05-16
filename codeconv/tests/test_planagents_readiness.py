@@ -224,6 +224,28 @@ def test_partial_scc_batch_resume_reselects_only_unstarted() -> None:
     assert "D.dart" not in flat
 
 
+def test_partial_scc_resume_when_all_rowed_members_completed() -> None:
+    """Regression (bridge test_d_blocked_until_all_three_completed): A
+    AND B both COMPLETED, C un-started ⇒ the interrupted batch must
+    still re-select C (resume) regardless of the rowed members being
+    completed; D stays blocked until C is also PLANNED. (The prior
+    `not _all_completed(has_row)` guard wrongly suppressed C here.)"""
+    nodes, cross = _scc_plus_downstream()
+    plans = {
+        "A.dart": PlanRow(completed=True),
+        "B.dart": PlanRow(completed=True),  # both completed this time
+        # C absent
+    }
+    units = select_next(nodes=nodes, cross_scc_deps=cross, plans=plans)
+    flat = [m for u in units for m in u.members]
+    assert flat == ["C.dart"], f"C must be resumable; got {flat}"
+    assert "D.dart" not in flat  # D blocked until C also PLANNED
+    # Once C is PLANNED too, D unblocks.
+    plans["C.dart"] = PlanRow(completed=True)
+    units = select_next(nodes=nodes, cross_scc_deps=cross, plans=plans)
+    assert [m for u in units for m in u.members] == ["D.dart"]
+
+
 def test_scc_unit_never_split_by_limit() -> None:
     """FR-021 / R3: an SCC unit is taken WHOLE even if it exceeds --limit."""
     nodes, cross = _scc_plus_downstream()

@@ -256,26 +256,28 @@ def select_next(
         if not ext_all_planned:
             continue
 
-        any_planned_or_done = any(
-            states[m] in (PLANNED,) for m in members
-        )
         unstarted = [m for m in members if m not in plans]
         has_row = [m for m in members if m in plans]
 
         if not has_row:
-            # Fully fresh, externally unblocked ⇒ emit the whole SCC.
+            # Fully fresh, externally unblocked ⇒ emit the whole SCC
+            # as one coordinated batch (FR-011 / R4).
             emit = list(members)
-        elif unstarted and not _all_completed(has_row, plans):
-            # Interrupted batch: re-select only the un-started members
-            # so the batch can be completed/resumed. Already-completed
-            # / in-progress members are NOT re-spawned (step 6).
+        elif unstarted:
+            # Interrupted batch (partial-batch resume,
+            # plan_readiness_algorithm.md § "SCC coordinated-batch rule"):
+            # SOME members have rows and OTHERS do not. The un-started
+            # members are selectable so the batch can be
+            # completed/resumed — UNCONDITIONALLY on whether the rowed
+            # members are completed or still in progress. Already-rowed
+            # members are NOT re-spawned (step 6 idempotent recovery);
+            # downstream stays blocked (classify gates it) until every
+            # member is PLANNED.
             emit = unstarted
         else:
-            # All members have rows (in progress or done): nothing new
-            # to spawn for this SCC — downstream stays gated by
-            # classify() until every member is PLANNED. (any_planned_or
-            # _done retained for clarity of the partial-batch contract.)
-            _ = any_planned_or_done
+            # Every member has a row (in progress and/or done): nothing
+            # new to spawn for this SCC — downstream stays gated by
+            # classify() until every member is PLANNED.
             continue
 
         if emit:
@@ -299,14 +301,6 @@ def select_next(
         out.append(u)
         count += len(u.members)
     return out
-
-
-def _all_completed(
-    members: list[str], plans: Mapping[str, PlanRow]
-) -> bool:
-    return all(
-        (plans.get(m) is not None and plans[m].completed) for m in members
-    )
 
 
 def remaining_ready_count(

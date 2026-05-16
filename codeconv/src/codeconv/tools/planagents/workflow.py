@@ -344,16 +344,28 @@ def _batch_json(
 
     Ordered by ``(topo_level ASC, path ASC)`` with SCC members
     contiguous + lexicographic; each row's keys alphabetical.
+
+    ``scc_siblings`` for a file is its TRUE SCC co-membership — every
+    OTHER file sharing this file's ``cycle_group_id`` in the canonical
+    depgraph — NOT derived from the emitted unit's size. A lone
+    resumed SCC member (others already planned) still lists its
+    siblings so its artefact carries §7 cross-references (FR-011 — no
+    SCC member can be converted in isolation; co-dependent decisions
+    must stay consistent across siblings even when planned in
+    different orchestrator passes). A singleton-SCC file has ``[]``.
     """
+    # cycle_group_id -> sorted member paths (true SCC membership).
+    members_by_cg: dict[int, list[str]] = {}
+    for p, n in nodes.items():
+        members_by_cg.setdefault(n.cycle_group_id, []).append(p)
+    for cg in members_by_cg:
+        members_by_cg[cg].sort()
+
     rows: list[dict[str, Any]] = []
     for u in units:
-        siblings_all = sorted(u.members)
         for m in sorted(u.members):
-            scc_siblings = (
-                [s for s in siblings_all if s != m]
-                if u.is_scc_batch
-                else []
-            )
+            cg = nodes[m].cycle_group_id
+            scc_siblings = [s for s in members_by_cg[cg] if s != m]
             rows.append(
                 {
                     "artefact": _artefact.artefact_rel_path(m),
