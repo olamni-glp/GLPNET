@@ -280,28 +280,31 @@ def _run_normal(
     if not dry_run:
         # Reconciliation phase.
         with engine.begin() as conn:
-            # Referential completeness (Amendment v3 / option A): an
+            # Referential completeness (Amendment v3 / option A′): an
             # in-subtree import directive can resolve by path shape (R12)
-            # to a file that does not exist on disk and was therefore
+            # to a file that does not (yet) exist on disk and was therefore
             # never inventoried into dart_files. Such an edge is dangling.
-            # feature-015 algorithm.compute contractually raises on a
-            # dangling endpoint, so a referentially-complete dart_imports
-            # is a normal-mode invariant — same accepted, warned
-            # divergence as the --from-tombstones rule (SC-007 caveat).
+            # We WARN about it but do NOT delete it from dart_imports:
+            # dart_imports is a faithful, persistent record of the source's
+            # import directives. A destructive delete would lose the edge
+            # permanently across idempotent discover runs (an unchanged
+            # importer is sha-skipped, so a later-created target would never
+            # re-add the edge). The dangling endpoint is instead resolved
+            # non-destructively at read time by `depgraph compute` (which
+            # filters edges to inventoried nodes before algorithm.compute,
+            # self-healing once the target is inventoried).
             valid_paths = {
                 r[0]
                 for r in conn.execute(
                     text("SELECT path FROM codeconv.dart_files")
                 ).all()
             }
-            has_dangling = False
             for from_path, to_path in conn.execute(
                 text(
                     "SELECT from_path, to_path FROM codeconv.dart_imports"
                 )
             ).all():
                 if to_path not in valid_paths:
-                    has_dangling = True
                     warnings_list.append(
                         {
                             "kind": "missing_target",
@@ -310,7 +313,6 @@ def _run_normal(
                         }
                     )
                 elif from_path not in valid_paths:
-                    has_dangling = True
                     warnings_list.append(
                         {
                             "kind": "missing_target",
@@ -318,19 +320,7 @@ def _run_normal(
                             "referrer": to_path,
                         }
                     )
-            if has_dangling:
-                conn.execute(
-                    text(
-                        "DELETE FROM codeconv.dart_imports i "
-                        "WHERE NOT EXISTS ("
-                        "  SELECT 1 FROM codeconv.dart_files f "
-                        "  WHERE f.path = i.to_path) "
-                        "   OR NOT EXISTS ("
-                        "  SELECT 1 FROM codeconv.dart_files f "
-                        "  WHERE f.path = i.from_path)"
-                    )
-                )
-            # Recompute callers from the now-referentially-complete imports.
+            # Recompute callers as the faithful inverse of dart_imports.
             conn.execute(text("DELETE FROM codeconv.dart_callers"))
             conn.execute(
                 text(

@@ -49,7 +49,22 @@ These come from the `codeconv` console-script entry point (feature 012 FR-013) a
 2. Read `codeconv.dart_files` (all paths) and `codeconv.dart_imports` (all edges).
 3. If `dart_files` is empty: exit 2 (per FR-010), UNCONDITIONALLY — including under `--json`. In human mode print the error `"No inventoried files. Run /codeconv-discover first."` to stderr. In `--json` mode emit the machine-readable error object `{"ok": false, "exit_code": 2, "error": "No inventoried files. Run /codeconv-discover first.", "files_total": 0}` on stdout AND set the PROCESS exit code to 2 (the `exit_code` field inside the JSON does NOT replace the process exit status — a prior bug returned process-exit 0 here; that is a contract violation).
 4. Read `codeconv.dart_conversions` (all rows; may be empty).
-5. Call `algorithm.compute(nodes, edges)` to get `DepgraphResult`.
+4a. REFERENTIAL COMPLETENESS (Amendment v3 — option A′): `dart_imports` is a
+    faithful record of the source's import directives and MAY contain a
+    dangling edge — one whose `from_path` or `to_path` is not in the
+    `dart_files` node set (an in-subtree import of a file that does not yet
+    exist; see `specs/012-codeconv-runner/contracts/codeconv_discover_cli.md`
+    § Steps (normal mode) step 5). `algorithm.compute` contractually raises
+    `ValueError` on a dangling endpoint (`contracts/depgraph_algorithm.md`
+    § Algorithm step 2, test obligation 8). Therefore compute MUST filter
+    `edges` to those whose BOTH endpoints are inventoried nodes BEFORE calling
+    `algorithm.compute`. The number filtered is reported as
+    `dangling_edges_dropped` in the summary and JSON `metadata`. This is
+    non-destructive (no DB mutation) and self-healing: once the missing target
+    is inventoried by a later discover, the edge re-enters the graph
+    automatically with no importer edit.
+5. Call `algorithm.compute(nodes, edges)` to get `DepgraphResult` (edges here
+   are the referentially-complete subset from step 4a).
 6. For each path: compute `status` from `(cycle_group_id, dependencies, dart_conversions)` per FR-006.
 7. If not `--dry-run`: open a transaction; INSERT into `codeconv.depgraph_runs` (mode='compute', started_at=NOW(), ...); `DELETE FROM codeconv.dart_depgraph`; bulk INSERT 128 rows; UPDATE `depgraph_runs` set completed_at=NOW() and metric columns; COMMIT.
 8. If not `--dry-run`: write `.codeconv/depgraph.json` (atomic via temp-file rename).
