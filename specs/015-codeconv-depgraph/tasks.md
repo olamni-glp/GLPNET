@@ -159,7 +159,7 @@ description: "Tasks for feature 015 — codeconv-depgraph: topologically sorted 
 - [x] T042 [P] Add `.codeconv/depgraph.json` to `.gitignore` per research R10 (one-line addition under the existing `.codeconv/` entries)
 - [x] T043 Refresh tombstones via the canonical recipe: (a) run `codeconv depgraph compute --data-dir .pgdb`; (b) run `codeconv depgraph stamp-tombstones --data-dir .pgdb`; (c) commit the `.codeconv/tombstones/` diff with message `"Stamp tombstones with depgraph + conversion state (feature 015)"`. This is the one-time refresh that lands the five new YAML keys in every existing tombstone
 - [x] T044 [P] Update `docs/known-issues.md` if any new edge case surfaced during T039–T043 (likely: none)
-- [ ] T045 Final full suite: `pytest codeconv/tests/ --test-concurrency=1`; record pass/skip count in PR description; if not at least the baseline + at least 35 new tests (8 algorithm + 4 compute + 2 idempotence + 12 mark + 6 cycle fixture + 5 stamp + 3 rebuild + the schema isolation suite), STOP and triage
+- [x] T045 Final full suite: `pytest codeconv/tests/ --test-concurrency=1`; record pass/skip count in PR description; if not at least the baseline + at least 35 new tests (8 algorithm + 4 compute + 2 idempotence + 12 mark + 6 cycle fixture + 5 stamp + 3 rebuild + the schema isolation suite), STOP and triage
 
 **Checkpoint**: All success criteria SC-001 through SC-008 verified; feature ready for `/speckit-implement` to merge into `main` per the CalVer release flow.
 
