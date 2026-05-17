@@ -28,8 +28,8 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 - [X] T003 Fix migration chain: in `codeconv/src/codeconv/db/migrations/versions/0003_dart_plans.py` change `revision "0003"→"0004"` and `down_revision "0002"→"0003"` only (filename unchanged), per `contracts/migration_linearization.md` — done; docstring header synced; offline-verified single head
 - [X] T004 Create `codeconv/src/codeconv/db/migrations/versions/0005_codeconv_builder.py` (`revision "0005"`, `down_revision "0004"`) with `CREATE TABLE IF NOT EXISTS` for `builder_runs`, `research_findings` (`construct_key` **UNIQUE** — cache invariant FR-012/FR-024; insert via `ON CONFLICT (construct_key) DO NOTHING`), `conversion_idioms`, `dart_convspecs` + partial index, per `contracts/builder_schema.md` and `data-model.md` §2; downgrade drops in reverse order — done; offline `ScriptDirectory` check: HEADS=['0005'], linear 0001→0002→0003→0004→0005
-- [ ] T005 [P] Test `codeconv/tests/test_migration_single_head.py` (@needs_bridge): fresh cluster → `alembic upgrade head` exit 0, exactly one head `0005`, linear history, re-run idempotent (FR-015/SC-004)
-- [ ] T006 [P] Test `codeconv/tests/test_schema_isolation.py` (@needs_bridge): after `0005` every new relation is in `codeconv` schema; zero Alembic-authored `public`/`dbos` objects
+- [X] T005 [P] Test `codeconv/tests/test_migration_single_head.py` (@needs_bridge): fresh cluster → `alembic upgrade head` exit 0, exactly one head `0005`, linear history, re-run idempotent (FR-015/SC-004)
+- [X] T006 [P] Test `codeconv/tests/test_schema_isolation.py` (@needs_bridge): after `0005` every new relation is in `codeconv` schema; zero Alembic-authored `public`/`dbos` objects
 - [X] T007 Create shared `codeconv/src/codeconv/workspace.py` — single read facade over `codeconv.workspace_settings`/`excluded_directories`/`phase_*` (016), delegating, NOT changing what tools read (FR-006/FR-022, D2) — done; mirrors init/workflow `_read_settings` SQL verbatim; read-only, no mutation
 - [X] T008 Create shared `codeconv/src/codeconv/status.py` — unified per-file state enum + escalation vocabulary `{not_started｜blocked_on_deps｜analysed｜specced｜scaffolded｜converted｜escalated｜complete}` as a pure projection helper (FR-017/FR-022), per `contracts/status_trace_contract.md` — done; pure `project_file_state(FileFacts)` encodes data-model §5; smoke 9/9
 - [X] T009 Create `codeconv/src/codeconv/durable/__init__.py` — DBOS workflow/step registry + deterministic workflow-id derivation (`builder:{ws}:{epoch}`, `file:{h}`, `scc:{h}`), per `contracts/dbos_workflow_model.md` §Taxonomy/R9
@@ -50,10 +50,10 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 **Goal**: single resumable `codeconv builder` over the 015 topo/SCC order.
 **Independent test**: kill mid-run, re-run, 0 completed files redone, final == uninterrupted.
 
-- [ ] T019 [US1] Create `codeconv/src/codeconv/tools/builder/__init__.py` — Typer `app` (`run｜resume｜status｜trace｜retry｜redrive｜aggregate-escalations`) + `register_workflows`, auto-discovered by runner (012 FR-006), per `contracts/builder_cli.md`
-- [ ] T020 [US1] Create `codeconv/src/codeconv/tools/builder/orchestrate.py` — deterministic frontier driver consuming feature-015 `dart_depgraph` read-only (MUST NOT recompute order/SCC/status), emitting next ready batch in topo+SCC order
-- [ ] T021 [US1] Create `codeconv/src/codeconv/tools/builder/workflow.py` — `register()` activates the outer/child workflows via `durable/` (no longer a no-op)
-- [ ] T022 [US1] Implement `builder run` / `builder resume` with deterministic workflow-id reuse (resume not restart) + `nothing-to-convert` clean exit code 0 (FR-004/FR-020) and `--restart-run` explicit non-default (R13)
+- [X] T019 [US1] Create `codeconv/src/codeconv/tools/builder/__init__.py` — Typer `app` (`run｜resume｜status｜trace｜retry｜redrive｜aggregate-escalations`) + `register_workflows`, auto-discovered by runner (012 FR-006), per `contracts/builder_cli.md`
+- [X] T020 [US1] Create `codeconv/src/codeconv/tools/builder/orchestrate.py` — deterministic frontier driver consuming feature-015 `dart_depgraph` read-only (MUST NOT recompute order/SCC/status), emitting next ready batch in topo+SCC order
+- [X] T021 [US1] Create `codeconv/src/codeconv/tools/builder/workflow.py` — `register()` activates the outer/child workflows via `durable/` (no longer a no-op)
+- [X] T022 [US1] Implement `builder run` / `builder resume` with deterministic workflow-id reuse (resume not restart) + `nothing-to-convert` clean exit code 0 (FR-004/FR-020) and `--restart-run` explicit non-default (R13)
 - [ ] T023 [P] [US1] Test `codeconv/tests/test_builder_frontier.py` (@needs_bridge): files processed in dep order; no file before its deps/SCC group (FR-002/SC-003)
 - [ ] T024 [P] [US1] Test `codeconv/tests/test_builder_resume.py` (@needs_bridge): kill mid-step → recovery skips completed steps, resumes at interrupted stage (FR-003)
 - [ ] T025 [P] [US1] Test `codeconv/tests/test_builder_idempotent_rerun.py` (@needs_bridge): resumed run state == uninterrupted run (SC-002)
