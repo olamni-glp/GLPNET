@@ -116,10 +116,10 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T050 Re-run full `pytest codeconv/tests/`; compare to T001 baseline — zero regressions (CLAUDE.md §Test Protocol)
-- [ ] T051 [P] Run `quickstart.md` acceptance smoke 1–7 end-to-end against a fresh PG17 cluster; record outcomes
-- [ ] T052 [P] Verify no Dart/.NET/Node/`glp_runtime/` file changed (scope guard, plan Structure Decision)
-- [ ] T053 Update memory `project_018_codeconv_builder_status.md` (status: plan+tasks done; D1=a, D2-hardened; next state) — no CLAUDE.md duplication
+- [X] T050 Re-run full `pytest codeconv/tests/`; compare to T001 baseline — zero regressions (CLAUDE.md §Test Protocol)
+- [X] T051 [P] Run `quickstart.md` acceptance smoke 1–7 end-to-end against a fresh PG17 cluster; record outcomes
+- [X] T052 [P] Verify no Dart/.NET/Node/`glp_runtime/` file changed (scope guard, plan Structure Decision)
+- [X] T053 Update memory `project_018_codeconv_builder_status.md` (status: plan+tasks done; D1=a, D2-hardened; next state) — no CLAUDE.md duplication
 
 ---
 
