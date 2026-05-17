@@ -353,7 +353,7 @@ def _project_status(engine) -> dict:
                        cs.convspec_completed_at IS NOT NULL AS spec_done,
                        COALESCE(cs.open_escalation_count,0) AS esc,
                        pl.plan_completed_at IS NOT NULL    AS planned,
-                       cv.conversion_completed_at IS NOT NULL AS converted
+                       cv.completed_at IS NOT NULL          AS converted
                 FROM codeconv.dart_depgraph d
                 LEFT JOIN codeconv.dart_convspecs   cs ON cs.path = d.path
                 LEFT JOIN codeconv.dart_plans       pl ON pl.path = d.path
@@ -465,9 +465,13 @@ def trace(
 ) -> None:
     """DBOS workflow/step history (D1=a). Read-only projection over
     ``durable/trace.py``; full surface finalised in US4 T045."""
+    repo_root = _ctx_repo_root(ctx)
+    data_dir = _ctx_data_dir(ctx)
     from codeconv.durable import trace as _trace
     from codeconv.runner import get_dbos
+    from codeconv.tools.builder.workflow import bootstrap_dbos
 
+    bootstrap_dbos(repo_root, data_dir)  # ensure DBOS launched in-process
     dbos = get_dbos()
     if file:
         payload = _trace.trace_file(dbos, file)
