@@ -54,11 +54,11 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [X] T020 [US1] Create `codeconv/src/codeconv/tools/builder/orchestrate.py` — deterministic frontier driver consuming feature-015 `dart_depgraph` read-only (MUST NOT recompute order/SCC/status), emitting next ready batch in topo+SCC order
 - [X] T021 [US1] Create `codeconv/src/codeconv/tools/builder/workflow.py` — `register()` activates the outer/child workflows via `durable/` (no longer a no-op)
 - [X] T022 [US1] Implement `builder run` / `builder resume` with deterministic workflow-id reuse (resume not restart) + `nothing-to-convert` clean exit code 0 (FR-004/FR-020) and `--restart-run` explicit non-default (R13)
-- [ ] T023 [P] [US1] Test `codeconv/tests/test_builder_frontier.py` (@needs_bridge): files processed in dep order; no file before its deps/SCC group (FR-002/SC-003)
+- [X] T023 [P] [US1] Test `codeconv/tests/test_builder_frontier.py` (@needs_bridge): files processed in dep order; no file before its deps/SCC group (FR-002/SC-003)
 - [ ] T024 [P] [US1] Test `codeconv/tests/test_builder_resume.py` (@needs_bridge): kill mid-step → recovery skips completed steps, resumes at interrupted stage (FR-003)
 - [ ] T025 [P] [US1] Test `codeconv/tests/test_builder_idempotent_rerun.py` (@needs_bridge): resumed run state == uninterrupted run (SC-002)
 - [ ] T026 [P] [US1] Test `codeconv/tests/test_builder_nothing_to_do.py` (@needs_bridge): empty/again-complete subtree exits "nothing to convert", code 0 (FR-020)
-- [ ] T027 [US1] Create `.claude/skills/codeconv-builder/SKILL.md` — venv/repo-root resolver + durable-orchestration loop + **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code, not a caught exception), per `contracts/builder_cli.md` (justified deviation, plan Complexity Tracking)
+- [X] T027 [US1] Create `.claude/skills/codeconv-builder/SKILL.md` — venv/repo-root resolver + durable-orchestration loop + **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code, not a caught exception), per `contracts/builder_cli.md` (justified deviation, plan Complexity Tracking)
 
 **Checkpoint**: US1 independently testable — durable pipeline resumes; convspec stage may still return `needs_agent_work` (US2 wires the agent).
 
