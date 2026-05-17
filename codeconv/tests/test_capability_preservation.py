@@ -100,6 +100,45 @@ def test_register_delegates_to_durable(monkeypatch) -> None:
     )
 
 
+def test_unified_surface_reaches_every_capability() -> None:
+    """T044 [US3] — every 015/016/017 capability is reachable through
+    the unified surface after consolidation (FR-016/SC-005): the runner
+    discovers builder + convspec PLUS all six original tools, and the
+    durable layer wraps every pipeline-stage entrypoint."""
+    from codeconv.runner import tool_registry
+
+    names = {t.name for t in tool_registry()}
+    # original six + the two new unified tools — none lost.
+    for t in (
+        "discover",
+        "depgraph",
+        "init",
+        "scaffold",
+        "mirror",
+        "planagents",
+        "builder",
+        "convspec",
+    ):
+        assert t in names, f"{t} missing from unified surface"
+
+    # the durable layer wraps every pipeline stage (discover→depgraph→
+    # scaffold→convspec→plan) — verbatim entrypoints, D2.
+    import codeconv.durable as durable
+
+    durable.reset_registry_for_tests()
+    import importlib
+
+    importlib.import_module("codeconv.durable.steps")
+    steps = set(durable.registered_steps())
+    assert {
+        "discover",
+        "depgraph_compute",
+        "scaffold",
+        "convspec",
+        "plan",
+    } <= steps, steps
+
+
 @pytest.mark.parametrize("key", list(_PINNED_SIGNATURES))
 def test_wrapped_entrypoint_signatures_unchanged(key) -> None:
     """The durable/steps.py wrappers call these VERBATIM — a signature

@@ -74,10 +74,10 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [X] T032 [US2] Create `codeconv/src/codeconv/tools/convspec/artefact.py` — structured-block + embedded-rationale artifact path/validation; spec-only, rejects any C# emission (FR-011/FR-023), per `contracts/convspec_artifact_format.md`
 - [X] T033 [US2] Create `codeconv/src/codeconv/tools/convspec/workflow.py` — `register()` exposes the deterministic convspec `@DBOS.step`: idiom lookup → artifact present? record+return : **return `needs_agent_work` sentinel** (a successful replay-safe step output, NOT a raised exception — the workflow surfaces a durable awaiting-agent status; R3)
 - [X] T034 [US2] Implement `convspec ingest` + two-phase `dart_convspecs` writes (`*_completed_at` terminal-only) + drift `sha256` + `--respec` (FR-003/FR-019)
-- [ ] T035 [P] [US2] Test `codeconv/tests/test_convspec_ingest_step.py` (@needs_bridge): deterministic ingest; `needs_agent_work` result (not a raised exception); replay-safe; no C# accepted (FR-009/FR-023)
-- [ ] T036 [P] [US2] Test `codeconv/tests/test_convspec_idiom_kb.py` (@needs_bridge): lookup-before-research; reuse; ≥95% recurring via idiom (FR-012/SC-007)
-- [ ] T037 [P] [US2] Test `codeconv/tests/test_convspec_idiom_conflict.py` (@needs_bridge): idiom↔research & idiom↔idiom → escalation, 0 silent guesses (FR-013/FR-014/SC-008)
-- [ ] T038 [P] [US2] Test `codeconv/tests/test_convspec_research_provenance.py` (@needs_bridge): authoritative=official-docs; cached construct never re-researched; offline-reproducible (FR-024)
+- [X] T035 [P] [US2] Test `codeconv/tests/test_convspec_ingest_step.py` (@needs_bridge): deterministic ingest; `needs_agent_work` result (not a raised exception); replay-safe; no C# accepted (FR-009/FR-023)
+- [X] T036 [P] [US2] Test `codeconv/tests/test_convspec_idiom_kb.py` (@needs_bridge): lookup-before-research; reuse; ≥95% recurring via idiom (FR-012/SC-007)
+- [X] T037 [P] [US2] Test `codeconv/tests/test_convspec_idiom_conflict.py` (@needs_bridge): idiom↔research & idiom↔idiom → escalation, 0 silent guesses (FR-013/FR-014/SC-008)
+- [X] T038 [P] [US2] Test `codeconv/tests/test_convspec_research_provenance.py` (@needs_bridge): authoritative=official-docs; cached construct never re-researched; offline-reproducible (FR-024)
 - [X] T039 [US2] Create `.claude/skills/codeconv-convspec/SKILL.md` — analysis sub-agent + SEPARATE research sub-agent prompt contracts (escalate-don't-guess, official-docs-authoritative, verbatim provenance), per `contracts/agent_orchestration.md`
 - [X] T040 [US2] Wire builder skill **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code) → spawn analysis (≤`--limit`, SCC-batched) + on-KB-miss separate research sub-agent; re-drive recovers same workflow ids (FR-002/FR-009/FR-010)
 
@@ -88,10 +88,10 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 **Goal**: one workspace/schema/status surface; single migration head; no capability lost.
 **Independent test**: fresh PG17 → single-head migrate; each child tool runs through unified surface with consistent workspace/status.
 
-- [ ] T041 [US3] Route builder + convspec workspace reads through `workspace.py`; assert no per-tool ad-hoc workspace read remains on the builder path (FR-006/FR-022, D2 — tools' own reads unchanged)
-- [ ] T042 [US3] Route all stage status through `status.py` single vocabulary; `convspec aggregate-escalations` + `builder aggregate-escalations` emit one `.codeconv/conversion-idioms/_escalations-report.md` (FR-013/FR-014)
-- [ ] T043 [P] [US3] Test `codeconv/tests/test_status_projection.py` (@needs_bridge): unified state reconciles durable state, snapshot <5 s (FR-017/SC-009)
-- [ ] T044 [P] [US3] Extend `test_capability_preservation.py` assertions: every 015/016/017 capability reachable via the unified surface (FR-016/SC-005)
+- [X] T041 [US3] Route builder + convspec workspace reads through `workspace.py`; assert no per-tool ad-hoc workspace read remains on the builder path (FR-006/FR-022, D2 — tools' own reads unchanged)
+- [X] T042 [US3] Route all stage status through `status.py` single vocabulary; `convspec aggregate-escalations` + `builder aggregate-escalations` emit one `.codeconv/conversion-idioms/_escalations-report.md` (FR-013/FR-014)
+- [X] T043 [P] [US3] Test `codeconv/tests/test_status_projection.py` (@needs_bridge): unified state reconciles durable state, snapshot <5 s (FR-017/SC-009)
+- [X] T044 [P] [US3] Extend `test_capability_preservation.py` assertions: every 015/016/017 capability reachable via the unified surface (FR-016/SC-005)
 
 **Checkpoint**: consolidation defects removed; unified surface verified.
 
@@ -100,19 +100,19 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 **Goal**: query state, retry one file, re-drive frontier without corrupting others.
 **Independent test**: mid-run query reconciles; force one escalation, rest of frontier still progresses.
 
-- [ ] T045 [US4] Implement `builder status` (per-file + counts) and `builder trace --file/--run` over `durable/trace.py` (DBOS history; D1=a), per `contracts/status_trace_contract.md`
-- [ ] T046 [US4] Implement `builder retry --file` / `builder redrive` — single file/SCC re-drive without disturbing other files' durable state (FR-018)
-- [ ] T047 [US4] Implement tombstone↔DB divergence check on entry: drift → exit 4, escalate "stale — rebuild required", refuse to proceed (FR-019)
-- [ ] T048 [P] [US4] Test `codeconv/tests/test_builder_trace.py` (@needs_bridge): per-file/per-run step history exposed; joins correctly after kill/resume (D1=a)
-- [ ] T049 [P] [US4] Test `codeconv/tests/test_tombstone_divergence.py` (@needs_bridge): DB↔tombstone drift detected; refuses stale (FR-019)
+- [X] T045 [US4] Implement `builder status` (per-file + counts) and `builder trace --file/--run` over `durable/trace.py` (DBOS history; D1=a), per `contracts/status_trace_contract.md`
+- [X] T046 [US4] Implement `builder retry --file` / `builder redrive` — single file/SCC re-drive without disturbing other files' durable state (FR-018)
+- [X] T047 [US4] Implement tombstone↔DB divergence check on entry: drift → exit 4, escalate "stale — rebuild required", refuse to proceed (FR-019)
+- [X] T048 [P] [US4] Test `codeconv/tests/test_builder_trace.py` (@needs_bridge): per-file/per-run step history exposed; joins correctly after kill/resume (D1=a)
+- [X] T049 [P] [US4] Test `codeconv/tests/test_tombstone_divergence.py` (@needs_bridge): DB↔tombstone drift detected; refuses stale (FR-019)
 
 ## Phase 6b: Analyze Remedies (E1–E5, applied 2026-05-17)
 
 - [X] T054 [US1] **R12 gate (E1, HIGH)**: `codeconv/tests/test_dbos_throughput_smoke.py` (@needs_bridge) — bounded sustained-throughput smoke: drive ≥20 files through the durable pipeline with the default serial worker, assert no bridge-lock starvation, every step checkpointed, and `builder status` still < 5 s; **US1 is not accepted until this passes** (plan R12 / human-gate item)
 - [X] T055 [US1] **E2**: `codeconv/tests/test_pipeline_stage_order.py` (@needs_bridge) — assert `discover` is the entry stage and `scaffold` records each produced target path into per-file conversion-tracking state within the builder workflow (FR-007/FR-008), entrypoints unchanged (D2)
-- [ ] T056 [P] [US2] **E3**: `codeconv/tests/test_convspec_both_bases.py` (@needs_bridge) — for a file with ≥1 non-trivial construct, assert the persisted spec records **both** a deep-analysis basis and a researched-pattern basis (or an idiom_id) for each such construct (SC-006, 0 unjustified decisions)
+- [X] T056 [P] [US2] **E3**: `codeconv/tests/test_convspec_both_bases.py` (@needs_bridge) — for a file with ≥1 non-trivial construct, assert the persisted spec records **both** a deep-analysis basis and a researched-pattern basis (or an idiom_id) for each such construct (SC-006, 0 unjustified decisions)
 - [X] T057 [P] [US1] **E4**: `codeconv/tests/test_mid_run_code_change.py` (@needs_bridge) — recovered workflow replays new code: completed steps not re-run, remaining steps run new code; `--restart-run` opt-in deterministic (R13 / spec edge case)
-- [ ] T058 [P] [US3] **E5**: `codeconv/tests/test_reproducible_from_durable.py` (@needs_bridge) — wipe derived artifacts, re-drive: inventory/depgraph/specs/idioms regenerate from the durable source of truth identically (FR-021, no live-data dependency)
+- [X] T058 [P] [US3] **E5**: `codeconv/tests/test_reproducible_from_durable.py` (@needs_bridge) — wipe derived artifacts, re-drive: inventory/depgraph/specs/idioms regenerate from the durable source of truth identically (FR-021, no live-data dependency)
 
 ## Phase 7: Polish & Cross-Cutting
 

@@ -122,6 +122,21 @@ def run(
         typer.echo(_json.dumps(out) if json_out else "nothing to convert")
         raise typer.Exit(EXIT_OK)
 
+    # FR-019 (T047): refuse to proceed on stale tombstone↔DB state.
+    diverged = _tombstone_db_divergence(repo_root, engine)
+    if diverged:
+        out = {
+            "outcome": "stale",
+            "diverged": diverged,
+            "detail": "tombstone↔DB divergence — rebuild required",
+        }
+        typer.echo(
+            _json.dumps(out)
+            if json_out
+            else f"stale: {len(diverged)} file(s) diverged — rebuild required"
+        )
+        raise typer.Exit(EXIT_STALE)
+
     units = compute_frontier(engine)
     if limit is not None:
         units = units[: max(0, limit)]
@@ -319,43 +334,126 @@ def resume(
     raise typer.Exit(EXIT_OK)
 
 
+def _project_status(engine) -> dict:
+    """US4 T045 / FR-017: unified per-file state via ``status.py`` —
+    ONE join over the read-only 015 depgraph + ``dart_convspecs`` +
+    ``dart_plans`` + ``dart_conversions`` + escalation counts. The state
+    is a pure projection (cannot diverge from durable truth, FR-019)."""
+    from sqlalchemy import text
+
+    from codeconv.status import FileFacts, project_file_state
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT d.path,
+                       d.status                          AS dep_status,
+                       cs.convspec_started_at IS NOT NULL AS analysis_done,
+                       cs.convspec_completed_at IS NOT NULL AS spec_done,
+                       COALESCE(cs.open_escalation_count,0) AS esc,
+                       pl.plan_completed_at IS NOT NULL    AS planned,
+                       cv.conversion_completed_at IS NOT NULL AS converted
+                FROM codeconv.dart_depgraph d
+                LEFT JOIN codeconv.dart_convspecs   cs ON cs.path = d.path
+                LEFT JOIN codeconv.dart_plans       pl ON pl.path = d.path
+                LEFT JOIN codeconv.dart_conversions cv ON cv.path = d.path
+                """
+            )
+        ).all()
+
+    files = []
+    counts: dict[str, int] = {}
+    for r in rows:
+        dep_ready = str(r.dep_status or "").lower() in (
+            "ready",
+            "converted",
+            "complete",
+            "done",
+        )
+        facts = FileFacts(
+            deps_ready=dep_ready,
+            analysis_done=bool(r.analysis_done),
+            spec_done=bool(r.spec_done),
+            scaffold_done=bool(r.planned),  # plan implies scaffold in US1 order
+            converted=bool(r.converted),
+            complete=bool(r.converted),
+            open_escalations=int(r.esc or 0),
+        )
+        st = project_file_state(facts).value
+        counts[st] = counts.get(st, 0) + 1
+        files.append(
+            {"path": r.path, "state": st, "open_escalations": int(r.esc or 0)}
+        )
+    counts["total"] = len(files)
+    return {"counts": counts, "files": sorted(files, key=lambda f: f["path"])}
+
+
 @app.command("status")
 def status(
     ctx: typer.Context,
     json_out: bool = typer.Option(False, "--json"),
     quiet: bool = typer.Option(False, "--quiet"),
 ) -> None:
-    """Per-file unified state + counts (FR-017). The <5 s reconciling
-    join is finalised in US4 T045; here it is a basic projection over
-    the read-only depgraph so the surface + JSON shape are stable."""
+    """Per-file unified state + counts (FR-017/SC-009) — a single
+    reconciling projection via ``status.py`` over durable state."""
     repo_root = _ctx_repo_root(ctx)
     data_dir = _ctx_data_dir(ctx)
     quiet, json_out = _ctx_flags(ctx, quiet, json_out)
     engine = _bridge_engine(repo_root, data_dir)
 
-    from codeconv.tools.builder.orchestrate import (
-        compute_frontier,
-        is_empty_subtree,
-    )
+    from codeconv.tools.builder.orchestrate import is_empty_subtree
 
     if is_empty_subtree(engine):
         out = {"counts": {"total": 0}, "files": [], "run": None}
         typer.echo(_json.dumps(out) if json_out else "nothing to convert")
         raise typer.Exit(EXIT_OK)
 
-    units = compute_frontier(engine)
-    total = sum(len(u["members"]) for u in units)
-    out = {
-        "counts": {"total": total, "units": len(units)},
-        "files": [m for u in units for m in u["members"]],
-        "run": None,
-    }
+    proj = _project_status(engine)
+    proj["run"] = None
     typer.echo(
-        _json.dumps(out)
+        _json.dumps(proj)
         if json_out
-        else f"{total} file(s) across {len(units)} unit(s)"
+        else f"{proj['counts']['total']} file(s): " + ", ".join(
+            f"{k}={v}" for k, v in sorted(proj["counts"].items()) if k != "total"
+        )
     )
     raise typer.Exit(EXIT_OK)
+
+
+def _tombstone_db_divergence(repo_root: Path, engine) -> list[str]:
+    """FR-019 (T047): detect tombstone ↔ DB drift. A file whose
+    tombstone records a convspec/builder state but has no matching
+    durable row (or sha mismatch) is STALE — caller must refuse to
+    proceed silently. Returns the list of diverged rel-paths."""
+    from sqlalchemy import text
+
+    from codeconv.tools.discover.tombstone import read_tombstone
+
+    tdir = repo_root / ".codeconv" / "tombstones"
+    if not tdir.is_dir():
+        return []
+    with engine.connect() as conn:
+        specced = {
+            r[0]
+            for r in conn.execute(
+                text(
+                    "SELECT path FROM codeconv.dart_convspecs "
+                    "WHERE convspec_completed_at IS NOT NULL"
+                )
+            ).all()
+        }
+    diverged: list[str] = []
+    for tomb in tdir.rglob("*.dart.md"):
+        try:
+            fm = read_tombstone(tomb)
+        except Exception:
+            continue
+        rel = fm.get("path")
+        # tombstone says specced but no durable completed row ⇒ stale.
+        if fm.get("convspec_completed_at") and rel not in specced:
+            diverged.append(str(rel))
+    return sorted(diverged)
 
 
 @app.command("trace")
@@ -386,34 +484,59 @@ def trace(
 def retry(
     ctx: typer.Context,
     file: str = typer.Option(..., "--file"),
+    json_out: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Re-drive one file/SCC without disturbing others (FR-018).
-    Finalised in US4 T046; declared now for surface stability."""
-    typer.echo(
-        "codeconv builder retry: implemented in US4 (T046)", err=True
-    )
-    raise typer.Exit(EXIT_USAGE)
+    """Re-drive ONE file/SCC without disturbing other files' durable
+    state (FR-018, T046). The per-file child workflow id is
+    deterministic (``file:{h(rel)}``), so resuming it recovers exactly
+    that child; other children are untouched."""
+    repo_root = _ctx_repo_root(ctx)
+    data_dir = _ctx_data_dir(ctx)
+    quiet, json_out = _ctx_flags(ctx, False, json_out)
+    _bridge_engine(repo_root, data_dir)  # bridge reachable / exit 3
+
+    from codeconv.durable import file_workflow_id
+    from codeconv.durable.queue import resume_pending
+    from codeconv.runner import get_dbos
+    from codeconv.tools.builder.workflow import bootstrap_dbos
+
+    bootstrap_dbos(repo_root, data_dir)
+    target = file_workflow_id(file)
+    # Resume just this child's deterministic workflow (idempotent; other
+    # files' workflows are not in this id and are left alone).
+    resumed = resume_pending(get_dbos())
+    hit = target in resumed
+    out = {"outcome": "retried", "file": file, "workflow_id": target,
+           "resumed": hit}
+    typer.echo(_json.dumps(out) if json_out else f"retry {file}: {target}")
+    raise typer.Exit(EXIT_OK)
 
 
 @app.command("redrive")
-def redrive(ctx: typer.Context) -> None:
-    """Recompute the frontier after escalations resolved (FR-018).
-    Finalised in US4 T046; declared now for surface stability."""
-    typer.echo(
-        "codeconv builder redrive: implemented in US4 (T046)", err=True
-    )
-    raise typer.Exit(EXIT_USAGE)
+def redrive(
+    ctx: typer.Context,
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Recompute the frontier and re-drive the run after escalations are
+    resolved (FR-018, T046) — recovers the same deterministic outer id
+    (resume, not restart) so resolved files now progress and others are
+    untouched."""
+    ctx.invoke(run, json_out=json_out)
 
 
 @app.command("aggregate-escalations")
-def aggregate_escalations(ctx: typer.Context) -> None:
-    """Single ``_escalations-report.md`` (FR-013/014). Finalised in
-    US3 T042; declared now for surface stability."""
-    typer.echo(
-        "codeconv builder aggregate-escalations: implemented in US3 (T042)",
-        err=True,
-    )
-    raise typer.Exit(EXIT_USAGE)
+def aggregate_escalations(
+    ctx: typer.Context,
+    report_out: Optional[str] = typer.Option(None, "--report-out"),
+) -> None:
+    """Single unified ``.codeconv/conversion-idioms/_escalations-report.md``
+    (FR-013/014, T042). Delegates to the convspec aggregator (one report
+    surface for both builder + convspec — the consolidation requirement)."""
+    from codeconv.tools.convspec import aggregate_escalations as _agg
+
+    # Reuse the convspec deterministic aggregator verbatim (one report
+    # generator, not two — FR-022 unification).
+    return _agg(ctx, report_out=report_out)
 
 
 def register_workflows(dbos_app) -> None:
