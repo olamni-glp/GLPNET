@@ -55,13 +55,17 @@ _SENTINEL = ".codeconv-scaffold-manifest"
 
 
 def register(dbos_app: Any) -> None:
-    """No-op stub for the feature-012 tool contract.
+    """Feature-018 T015: delegate to centralised durable activation.
 
-    Scaffold's DB writes are a single short transaction; nothing needs
-    DBOS-managed durability. The staged-write + atomic-move gives the
-    on-disk crash-safety (FR-017).
+    Was a feature-012 no-op stub. Now delegates to
+    :func:`codeconv.durable.activate` (idempotent). Wires the
+    builder-side durable layer ONLY; ``run_scaffold`` is unchanged
+    (D2 hard gate) — the staged-write + atomic-move on-disk crash-safety
+    is untouched.
     """
-    return None
+    from codeconv.durable import activate
+
+    activate(dbos_app)
 
 
 def _dir_nonempty(p: Path) -> bool:

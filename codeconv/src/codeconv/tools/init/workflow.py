@@ -48,13 +48,16 @@ _RESERVED_NAMES: frozenset[str] = frozenset(
 
 
 def register(dbos_app: Any) -> None:
-    """No-op stub for the feature-012 tool contract.
+    """Feature-018 T015: delegate to centralised durable activation.
 
-    ``init``'s writes are short-lived single transactions; nothing needs
-    DBOS-managed durability. Kept on the public surface so the contract
-    (``codeconv_tool_contract.md``) is satisfied.
+    Was a feature-012 no-op stub. Now delegates to
+    :func:`codeconv.durable.activate` (idempotent). Wires the
+    builder-side durable layer ONLY; ``run_init`` and the other init
+    entrypoints are unchanged (D2 hard gate).
     """
-    return None
+    from codeconv.durable import activate
+
+    activate(dbos_app)
 
 
 # ---------------------------------------------------------------------------

@@ -38,12 +38,16 @@ from .tombstone_writer import (
 
 
 def register(dbos_app: Any) -> None:
-    """No-op stub for the feature-012 tool contract.
+    """Feature-018 T015: delegate to centralised durable activation.
 
-    Depgraph's writes are short-lived single transactions; nothing needs
-    DBOS-managed durability today. Reserved for a future enhancement.
+    Was a feature-012 no-op stub. Now delegates to
+    :func:`codeconv.durable.activate` (idempotent). Wires the
+    builder-side durable layer ONLY; ``run_compute`` and the other
+    depgraph entrypoints are unchanged (D2 hard gate).
     """
-    return None
+    from codeconv.durable import activate
+
+    activate(dbos_app)
 
 
 # ---------------------------------------------------------------------------

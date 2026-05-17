@@ -106,9 +106,47 @@ def registered_steps() -> dict[str, Callable[..., Any]]:
 def reset_registry_for_tests() -> None:
     """Test helper — clears the step registry between tests."""
     _registered.clear()
+    global _activated
+    _activated = None
+
+
+# --------------------------------------------------------------------------
+# Activation entrypoint — the single delegation target for every tool's
+# register() (T015). Idempotent; binds steps + workflows ONCE per process
+# after the CLI has launched DBOS. Importing this does NOT change any
+# tool's run_* behaviour (D2 hard gate) — it only wires the builder-side
+# durable layer; the tools' own CLI paths still call run_* directly.
+# --------------------------------------------------------------------------
+
+_activated: Any = None
+
+
+def activate(dbos_app: Any) -> Any:
+    """Bind the durable step + workflow layer to the launched DBOS.
+
+    Called by every tool's ``register(dbos_app)`` (T015). The first call
+    imports :mod:`codeconv.durable.steps` (which registers the stage
+    wrappers), decorates them with ``dbos_app.step()``, then decorates
+    the outer/child bodies with ``dbos_app.workflow()``. Subsequent calls
+    return the cached binding (idempotent — DBOS dedups by qualified
+    name; six tools all delegating here is one activation, not six).
+    Returns ``{"steps": {...}, "workflows": {...}}`` for the builder
+    tool (T021) to drive.
+    """
+    global _activated
+    if _activated is not None:
+        return _activated
+    from codeconv.durable import steps as _steps  # registers wrappers
+    from codeconv.durable import workflows as _workflows
+
+    bound_steps = _steps.bind_dbos_steps(dbos_app)
+    bound_workflows = _workflows.bind_dbos_workflows(dbos_app, bound_steps)
+    _activated = {"steps": bound_steps, "workflows": bound_workflows}
+    return _activated
 
 
 __all__ = [
+    "activate",
     "file_workflow_id",
     "outer_workflow_id",
     "register_step",

@@ -41,12 +41,16 @@ _OLD_SUFFIX = ".codeconv-mirror-old"
 
 
 def register(dbos_app: Any) -> None:
-    """No-op stub for the feature-012 tool contract.
+    """Feature-018 T015: delegate to centralised durable activation.
 
-    `mirror` makes no durable DB writes; on-disk crash-safety is the
-    staged-write + atomic-move (FR-037).
+    Was a feature-012 no-op stub. Now delegates to
+    :func:`codeconv.durable.activate` (idempotent). Wires the
+    builder-side durable layer ONLY; ``run_mirror`` is unchanged
+    (D2 hard gate) — the staged-write + atomic-move is untouched.
     """
-    return None
+    from codeconv.durable import activate
+
+    activate(dbos_app)
 
 
 def _read_settings(engine: Any) -> dict[str, str]:

@@ -89,12 +89,15 @@ def _active_source_pair(engine: Optional[Any] = None) -> Any:
 def register(dbos_app: Any) -> None:
     """Register discover with DBOS at runner startup.
 
-    Currently a no-op — see module docstring on FR-017 deferral. Kept on
-    the public surface so the contract (``codeconv_tool_contract.md``)
-    is satisfied and a future polish phase can wire up the real DBOS
-    workflow without an API change.
+    Feature-018 T015: delegates to the centralised
+    :func:`codeconv.durable.activate` (idempotent — six tools all
+    delegate here = one activation). This wires the builder-side durable
+    step/workflow layer ONLY; ``run_discover``'s behaviour is unchanged
+    (D2 hard gate — the tool's own CLI path still calls it directly).
     """
-    return None
+    from codeconv.durable import activate
+
+    activate(dbos_app)
 
 
 def run_discover(
