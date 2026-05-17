@@ -68,6 +68,27 @@ def bootstrap_dbos(
     # returns the same bound handles.
     dbos = setup_dbos(endpoint, pre_launch=activate)
     set_dbos(dbos)
+
+    # R12 step-transaction fix (option #1): pre-warm the process-cached
+    # engine HERE — outside any DBOS step's transaction context — so the
+    # one-time SQLAlchemy dialect-init / psycopg pg_type introspection
+    # (which issues a ROLLBACK the single-writer PGLite bridge forbids
+    # mid-Transaction) completes now. Every later build_engine() call
+    # inside a DBOS step returns this same warmed engine, so no
+    # fresh-engine first-connect rollback ever lands inside a DBOS
+    # transaction. One throwaway round-trip; failure is non-fatal
+    # (the steps would surface any real bridge problem themselves).
+    try:
+        from sqlalchemy import text as _text
+
+        from codeconv.db.engine import build_engine
+
+        _eng = build_engine(endpoint)
+        with _eng.connect() as _c:
+            _c.execute(_text("SELECT 1"))
+    except Exception:
+        pass
+
     return activate(dbos)
 
 

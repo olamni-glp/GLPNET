@@ -36,8 +36,11 @@ from codeconv.durable import (
 # the OUTER workflow runs once; the per-unit child runs the remaining
 # per-file stages in this order. Kept as data so it is inspectable and
 # testable without DBOS.
-PER_UNIT_STAGES: tuple[str, ...] = ("scaffold", "plan")
+PER_UNIT_STAGES: tuple[str, ...] = ("scaffold", "convspec", "plan")
 GRAPH_ENTRY_STAGES: tuple[str, ...] = ("discover", "depgraph_compute")
+# Stages invoked once per FILE (need a rel-path arg); others run once
+# per unit (whole-tree, e.g. scaffold).
+_PER_FILE_STAGES: frozenset[str] = frozenset({"convspec", "plan"})
 
 
 def plan_units(
@@ -122,14 +125,28 @@ def child_unit_workflow(
         if step_fn is None:
             continue
         stage_out: dict[str, Any] = {}
-        for rel in members:
-            if stage == "plan":
+        if stage in _PER_FILE_STAGES:
+            for rel in members:
                 stage_out[rel] = step_fn(repo_root, rel, data_dir=data_dir)
-            else:
-                # whole-tree stages (scaffold) run once per unit, not
-                # per member; run on first member, reuse for the rest.
-                stage_out[rel] = step_fn(repo_root, data_dir=data_dir)
+        else:
+            # whole-tree stage (scaffold): one call per unit.
+            stage_out["_unit"] = step_fn(repo_root, data_dir=data_dir)
         results["stages"][stage] = stage_out
+        # Short-circuit: if any member's stage returned the deterministic
+        # needs_agent_work sentinel (convspec with no/invalid artifact),
+        # the unit is BLOCKED here — later stages (plan) MUST NOT run
+        # until the spec exists. Surface the sentinel; the skill spawns
+        # the agent and re-drives (DBOS recovers this child; completed
+        # steps skipped, this stage re-runs and now finds the artifact).
+        if any(
+            isinstance(v, dict) and v.get("needs_agent_work")
+            for v in stage_out.values()
+        ):
+            results["needs_agent_work"] = [
+                v for v in stage_out.values()
+                if isinstance(v, dict) and v.get("needs_agent_work")
+            ]
+            return results
     return results
 
 

@@ -28,6 +28,21 @@ from codeconv._vendor.dbos_pglite_patch import _apply_pglite_compat_patch
 from codeconv.bridge_client import BridgeEndpoint
 
 
+# Process-level engine cache (feature-018 option #1, R12 fix). Keyed by
+# (url, application_name). Cleared by ``reset_engine_cache_for_tests``.
+_ENGINE_CACHE: dict = {}
+
+
+def reset_engine_cache_for_tests() -> None:
+    """Dispose + drop cached engines (test isolation between bridges)."""
+    for eng in _ENGINE_CACHE.values():
+        try:
+            eng.dispose()
+        except Exception:
+            pass
+    _ENGINE_CACHE.clear()
+
+
 def build_url(endpoint: BridgeEndpoint) -> str:
     """Compose the psycopg-URL for the bridge endpoint."""
     return (
@@ -49,11 +64,26 @@ def build_engine(
     § psycopg type-loader patch).
     """
     url = build_url(endpoint)
+    # Feature-018 (option #1, R12 step-transaction fix): a process-level
+    # cache keyed by (url, application_name). SQLAlchemy engines are
+    # designed to be process-shared (they own a connection pool), so
+    # returning the SAME engine to every caller is behaviour-preserving
+    # for normal flows — AND it is the fix for the DBOS-step ↔ psycopg
+    # first-connect conflict: the dialect-init / pg_type introspection
+    # (which issues a ROLLBACK the single-writer PGLite bridge forbids
+    # mid-Transaction) now happens exactly ONCE per process — at the
+    # bootstrap pre-warm, OUTSIDE any DBOS step's transaction context —
+    # instead of on every fresh step-created engine inside it.
+    key = (url, application_name)
+    cached = _ENGINE_CACHE.get(key)
+    if cached is not None:
+        return cached
     engine = create_engine(
         url,
         **pglite_engine_kwargs(application_name=application_name),
     )
     apply_to_engine(engine)
+    _ENGINE_CACHE[key] = engine
     return engine
 
 
@@ -135,4 +165,9 @@ def setup_dbos(
     return dbos
 
 
-__all__ = ["build_engine", "build_url", "setup_dbos"]
+__all__ = [
+    "build_engine",
+    "build_url",
+    "reset_engine_cache_for_tests",
+    "setup_dbos",
+]

@@ -55,9 +55,9 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [X] T021 [US1] Create `codeconv/src/codeconv/tools/builder/workflow.py` — `register()` activates the outer/child workflows via `durable/` (no longer a no-op)
 - [X] T022 [US1] Implement `builder run` / `builder resume` with deterministic workflow-id reuse (resume not restart) + `nothing-to-convert` clean exit code 0 (FR-004/FR-020) and `--restart-run` explicit non-default (R13)
 - [X] T023 [P] [US1] Test `codeconv/tests/test_builder_frontier.py` (@needs_bridge): files processed in dep order; no file before its deps/SCC group (FR-002/SC-003)
-- [ ] T024 [P] [US1] Test `codeconv/tests/test_builder_resume.py` (@needs_bridge): kill mid-step → recovery skips completed steps, resumes at interrupted stage (FR-003)
-- [ ] T025 [P] [US1] Test `codeconv/tests/test_builder_idempotent_rerun.py` (@needs_bridge): resumed run state == uninterrupted run (SC-002)
-- [ ] T026 [P] [US1] Test `codeconv/tests/test_builder_nothing_to_do.py` (@needs_bridge): empty/again-complete subtree exits "nothing to convert", code 0 (FR-020)
+- [X] T024 [P] [US1] Test `codeconv/tests/test_builder_resume.py` (@needs_bridge): kill mid-step → recovery skips completed steps, resumes at interrupted stage (FR-003)
+- [X] T025 [P] [US1] Test `codeconv/tests/test_builder_idempotent_rerun.py` (@needs_bridge): resumed run state == uninterrupted run (SC-002)
+- [X] T026 [P] [US1] Test `codeconv/tests/test_builder_nothing_to_do.py` (@needs_bridge): empty/again-complete subtree exits "nothing to convert", code 0 (FR-020)
 - [X] T027 [US1] Create `.claude/skills/codeconv-builder/SKILL.md` — venv/repo-root resolver + durable-orchestration loop + **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code, not a caught exception), per `contracts/builder_cli.md` (justified deviation, plan Complexity Tracking)
 
 **Checkpoint**: US1 independently testable — durable pipeline resumes; convspec stage may still return `needs_agent_work` (US2 wires the agent).
@@ -67,13 +67,13 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 **Goal**: per-file deep analysis + official-docs research → structured+rationale spec; growing idiom KB.
 **Independent test**: file with `Stream`/async, no idiom → spec cites analysis + official-doc research, records idiom; 2nd file reuses idiom, not re-researched.
 
-- [ ] T028 [US2] Create `codeconv/src/codeconv/tools/convspec/__init__.py` — Typer `app` (`status｜next｜ingest｜record-idiom｜aggregate-escalations`) + `register_workflows`, auto-discovered
-- [ ] T029 [US2] Create `codeconv/src/codeconv/tools/convspec/readiness.py` — pure convspec-readiness predicate + SCC batch (parallels 017 readiness; no bridge)
-- [ ] T030 [P] [US2] Test `codeconv/tests/test_convspec_readiness.py` (pure): predicate + SCC batch correctness
-- [ ] T031 [US2] Create `codeconv/src/codeconv/tools/convspec/idioms.py` — KB lookup-before-research, record, idiom↔research & idiom↔idiom conflict detection, per `contracts/convspec_idiom_schema.md` (FR-012/013/014/024)
-- [ ] T032 [US2] Create `codeconv/src/codeconv/tools/convspec/artefact.py` — structured-block + embedded-rationale artifact path/validation; spec-only, rejects any C# emission (FR-011/FR-023), per `contracts/convspec_artifact_format.md`
-- [ ] T033 [US2] Create `codeconv/src/codeconv/tools/convspec/workflow.py` — `register()` exposes the deterministic convspec `@DBOS.step`: idiom lookup → artifact present? record+return : **return `needs_agent_work` sentinel** (a successful replay-safe step output, NOT a raised exception — the workflow surfaces a durable awaiting-agent status; R3)
-- [ ] T034 [US2] Implement `convspec ingest` + two-phase `dart_convspecs` writes (`*_completed_at` terminal-only) + drift `sha256` + `--respec` (FR-003/FR-019)
+- [X] T028 [US2] Create `codeconv/src/codeconv/tools/convspec/__init__.py` — Typer `app` (`status｜next｜ingest｜record-idiom｜aggregate-escalations`) + `register_workflows`, auto-discovered
+- [X] T029 [US2] Create `codeconv/src/codeconv/tools/convspec/readiness.py` — pure convspec-readiness predicate + SCC batch (parallels 017 readiness; no bridge)
+- [X] T030 [P] [US2] Test `codeconv/tests/test_convspec_readiness.py` (pure): predicate + SCC batch correctness
+- [X] T031 [US2] Create `codeconv/src/codeconv/tools/convspec/idioms.py` — KB lookup-before-research, record, idiom↔research & idiom↔idiom conflict detection, per `contracts/convspec_idiom_schema.md` (FR-012/013/014/024)
+- [X] T032 [US2] Create `codeconv/src/codeconv/tools/convspec/artefact.py` — structured-block + embedded-rationale artifact path/validation; spec-only, rejects any C# emission (FR-011/FR-023), per `contracts/convspec_artifact_format.md`
+- [X] T033 [US2] Create `codeconv/src/codeconv/tools/convspec/workflow.py` — `register()` exposes the deterministic convspec `@DBOS.step`: idiom lookup → artifact present? record+return : **return `needs_agent_work` sentinel** (a successful replay-safe step output, NOT a raised exception — the workflow surfaces a durable awaiting-agent status; R3)
+- [X] T034 [US2] Implement `convspec ingest` + two-phase `dart_convspecs` writes (`*_completed_at` terminal-only) + drift `sha256` + `--respec` (FR-003/FR-019)
 - [ ] T035 [P] [US2] Test `codeconv/tests/test_convspec_ingest_step.py` (@needs_bridge): deterministic ingest; `needs_agent_work` result (not a raised exception); replay-safe; no C# accepted (FR-009/FR-023)
 - [ ] T036 [P] [US2] Test `codeconv/tests/test_convspec_idiom_kb.py` (@needs_bridge): lookup-before-research; reuse; ≥95% recurring via idiom (FR-012/SC-007)
 - [ ] T037 [P] [US2] Test `codeconv/tests/test_convspec_idiom_conflict.py` (@needs_bridge): idiom↔research & idiom↔idiom → escalation, 0 silent guesses (FR-013/FR-014/SC-008)

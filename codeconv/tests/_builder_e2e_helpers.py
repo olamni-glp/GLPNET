@@ -24,7 +24,34 @@ def mk_nfile_subtree(repo_root: Path, n: int = 22) -> Path:
 
 
 def migrate_discover_depgraph(repo_root: Path, sub: Path) -> None:
+    """Full workspace setup for the durable builder pipeline, matching
+    quickstart Flow B: migrate → **init** (configures the workspace +
+    delegates discovery) → discover (idempotent) → depgraph compute.
+
+    ``init`` is REQUIRED: the builder's scaffold stage (``run_scaffold``)
+    refuses to run without an initialised workspace (FR-006) — omitting
+    it makes scaffold a silent no-op (no ``target_path``)."""
     assert run_codeconv(repo_root, "migrate", timeout=180.0).returncode == 0
+    assert (
+        run_codeconv(
+            repo_root,
+            "init",
+            "run",
+            "--source",
+            "glp_runtime_net",
+            "--target",
+            "out/csharp",
+            "--source-lang",
+            "dart",
+            "--target-lang",
+            "csharp",
+            "--accept-suggested-exclusions",
+            "--non-interactive",
+            "--json",
+            timeout=180.0,
+        ).returncode
+        == 0
+    )
     assert (
         run_codeconv(
             repo_root, "discover", "run", "--root", str(sub), "--json"

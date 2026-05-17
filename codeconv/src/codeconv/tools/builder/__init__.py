@@ -218,15 +218,21 @@ def run(
 
 
 def _git_head(repo_root: Path) -> Optional[str]:
-    """git HEAD at launch (R13 — a behaviour-changing edit mid-run is
-    visible in trace; the operator can then choose ``--restart-run``).
-    Best-effort: None if not a git repo / git unavailable."""
+    """git HEAD of the **codeconv tooling** at launch (R13 — a
+    behaviour-changing edit to the conversion code mid-run is visible in
+    trace; the operator can then choose ``--restart-run``).
+
+    Resolved from the codeconv *source* directory (this module's own
+    location, inside the GLPNET git repo) — NOT ``repo_root``, which is
+    the conversion workspace (often an isolated tmp dir that is not a git
+    repo). ``git rev-parse`` walks up to the enclosing ``.git``.
+    Best-effort: None if git unavailable / not in a repo."""
     import subprocess
 
     try:
         out = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=str(repo_root),
+            cwd=str(Path(__file__).resolve().parent),
             capture_output=True,
             text=True,
             timeout=10,

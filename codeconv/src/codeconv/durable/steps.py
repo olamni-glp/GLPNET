@@ -139,6 +139,29 @@ def step_scaffold(
     )
 
 
+@_dbos_step("convspec")
+def step_convspec(
+    repo_root: str,
+    path: str,
+    *,
+    data_dir: Optional[str] = None,
+) -> dict:
+    """Deterministic convspec stage (R3, replay-safe): idiom-KB lookup +
+    artifact ingest. Returns ``{"outcome":"specced",...}`` if a valid
+    agent-produced artifact is checked in, else the deterministic
+    ``{"needs_agent_work": True, ...}`` sentinel — NEVER raises (the
+    skill spawns the analysis/research sub-agents on that sentinel and
+    re-drives; on re-drive this step finds the artifact and completes).
+    Calls the convspec entrypoint verbatim (D2)."""
+    from codeconv.tools.convspec.workflow import run_convspec_ingest
+
+    return run_convspec_ingest(
+        Path(repo_root),
+        rel_path=path,
+        data_dir=Path(data_dir) if data_dir else None,
+    )
+
+
 @_dbos_step("plan")
 def step_plan(
     repo_root: str,
@@ -170,6 +193,7 @@ def step_plan(
 
 __all__ = [
     "bind_dbos_steps",
+    "step_convspec",
     "step_depgraph_compute",
     "step_discover",
     "step_plan",
