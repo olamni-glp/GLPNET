@@ -194,10 +194,19 @@ def test_fk_cascade_on_dart_files_delete(discover_repo: Path) -> None:
 
 @needs_bridge
 def test_downgrade_then_upgrade_idempotent(discover_repo: Path) -> None:
-    """T011 / planagents_schema.md § Migration shape: ``alembic
-    downgrade -1`` (drops dart_plans + planagents_runs) then ``upgrade
-    head`` restores the same schema state — no error, both tables back
-    under ``codeconv`` only."""
+    """T011 / planagents_schema.md § Migration shape: downgrading to
+    ``0003`` (drops dart_plans + planagents_runs) then ``upgrade head``
+    restores the same schema state — no error, both tables back under
+    ``codeconv`` only.
+
+    Feature-018 update: after the T003 migration linearization the
+    chain is ``0001→0002→0003(d2net)→0004(dart_plans)→0005(builder)``.
+    ``dart_plans``/``planagents_runs`` moved from rev ``0003`` to
+    ``0004``; a fresh head is ``0005``. So the equivalent of the old
+    ``downgrade -1`` is ``downgrade "0003"`` (runs ``0005.downgrade``
+    then ``0004.downgrade``) — which still drops exactly
+    ``dart_plans``+``planagents_runs`` (plus the 018 builder tables),
+    preserving this test's original intent under the corrected chain."""
     _migrate(discover_repo)
     from alembic import command
     from alembic.config import Config
@@ -219,8 +228,9 @@ def test_downgrade_then_upgrade_idempotent(discover_repo: Path) -> None:
 
     from sqlalchemy import text
 
-    # Downgrade one revision (0003 -> 0002): both tables vanish.
-    command.downgrade(cfg, "-1")
+    # Downgrade to 0003 (linear chain 0005→0004→0003): the 018 builder
+    # tables AND dart_plans/planagents_runs vanish.
+    command.downgrade(cfg, "0003")
     with _engine(discover_repo).connect() as conn:
         for t in ("dart_plans", "planagents_runs"):
             assert (
@@ -232,7 +242,7 @@ def test_downgrade_then_upgrade_idempotent(discover_repo: Path) -> None:
                     {"t": t},
                 ).scalar()
                 == 0
-            ), f"{t} should be gone after downgrade -1"
+            ), f"{t} should be gone after downgrade to 0003"
 
     # Upgrade back to head: both tables restored, codeconv-only.
     command.upgrade(cfg, "head")
