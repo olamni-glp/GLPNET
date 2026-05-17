@@ -28,11 +28,12 @@ dependencies:
 - lib/runtime/runtime.dart
 - lib/runtime/scheduler.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:36.096Z'
 sha256: f9c5c7d728fb53ad1b5d0bda9c918d9af1d7360ac7f3840334c05ee2906d12da
 topo_level: 8
 cycle_group_id: 77
 status: pending
+target_path: test/compiler/project_linker_test.cs
 ---
 
 Project linker tests: static linking of multi-module GLP projects.

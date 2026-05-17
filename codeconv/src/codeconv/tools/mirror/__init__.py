@@ -54,30 +54,21 @@ def _ctx_flags(
     return quiet, json_out
 
 
-@app.callback(invoke_without_command=True)
-def _default(ctx: typer.Context) -> None:
-    """When invoked with no subcommand, fall through to ``run``."""
-    if ctx.invoked_subcommand is None:
-        ctx.invoke(run)
+_REFRESH_OPT = typer.Option(
+    False,
+    "--refresh",
+    help="Re-run against an existing output tree (spec-001 FR-011: "
+    "rewrite preserved-source/non-source; preserve every companion + "
+    "tracker; stub newly-found source files). Destructive-adjacent; the "
+    "/codeconv-mirror skill drives the confirmation.",
+)
+_QUIET_OPT = typer.Option(False, "--quiet", help="Suppress output.")
+_JSON_OPT = typer.Option(False, "--json", help="Emit a JSON summary.")
 
 
-@app.command("run")
-def run(
-    ctx: typer.Context,
-    refresh: bool = typer.Option(
-        False,
-        "--refresh",
-        help="Re-run against an existing output tree (spec-001 FR-011: "
-        "rewrite .src/non-source; preserve every companion + tracker; "
-        "stub newly-found source files). Destructive-adjacent; the "
-        "/codeconv-mirror skill drives the confirmation.",
-    ),
-    quiet: bool = typer.Option(False, "--quiet", help="Suppress output."),
-    json_out: bool = typer.Option(
-        False, "--json", help="Emit a JSON summary."
-    ),
+def _do(
+    ctx: typer.Context, refresh: bool, quiet: bool, json_out: bool
 ) -> None:
-    """Produce the inventory subtree for the workspace's pair."""
     repo_root = _ctx_repo_root(ctx)
     data_dir = _ctx_data_dir(ctx)
     quiet, json_out = _ctx_flags(ctx, quiet, json_out)
@@ -88,6 +79,35 @@ def run(
         quiet=quiet,
     )
     _emit(summary, json_out=json_out, quiet=quiet, header="mirror")
+
+
+@app.callback(invoke_without_command=True)
+def _default(
+    ctx: typer.Context,
+    refresh: bool = _REFRESH_OPT,
+    quiet: bool = _QUIET_OPT,
+    json_out: bool = _JSON_OPT,
+) -> None:
+    """``codeconv mirror`` — produce the inventory subtree.
+
+    The same options are accepted here (group level) so the documented
+    shorthand ``codeconv mirror --refresh`` works without an explicit
+    ``run`` subcommand (codex review #2). ``codeconv mirror run [opts]``
+    still works via the :func:`run` subcommand below.
+    """
+    if ctx.invoked_subcommand is None:
+        _do(ctx, refresh, quiet, json_out)
+
+
+@app.command("run")
+def run(
+    ctx: typer.Context,
+    refresh: bool = _REFRESH_OPT,
+    quiet: bool = _QUIET_OPT,
+    json_out: bool = _JSON_OPT,
+) -> None:
+    """Produce the inventory subtree for the workspace's pair."""
+    _do(ctx, refresh, quiet, json_out)
 
 
 def _emit(

@@ -20,11 +20,12 @@ key_idea: 'Tests for ui_mediator.glp — ground-term mediator between agent/4 an
 dependencies:
 - lib/engine/glp_engine.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:36.482Z'
 sha256: ccd3b832f06620db74e8876962e3f8dfdd080591d2dd03e1fd0f16fe9c4281aa
 topo_level: 9
 cycle_group_id: 115
 status: pending
+target_path: test/multiagent/ui_mediator_test.cs
 ---
 
 Tests for ui_mediator.glp — ground-term mediator between agent/4 and Dart.

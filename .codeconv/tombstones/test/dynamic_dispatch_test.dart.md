@@ -15,11 +15,12 @@ dependencies:
 - lib/runtime/scheduler.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:35.906Z'
 sha256: ca1921987062da8ddae88f306a4001b46751dc870b0fcf0d2ad133a9c529d2a4
 topo_level: 9
 cycle_group_id: 83
 status: pending
+target_path: test/dynamic_dispatch_test.cs
 ---
 
 Dynamic Module Dispatch — Integration Tests

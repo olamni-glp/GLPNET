@@ -47,11 +47,14 @@ callers:
 - lib/engine/glp_engine.dart
 - test/module/cssg_modules_test.dart
 - test/module/module_hierarchy_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
+mtime: '2026-05-17T10:36:35.749Z'
 sha256: db87dd95891c91cf5d37ba3d1e17349102b04226388a6a81e45f00fe59513298
 topo_level: 5
 cycle_group_id: 52
 status: pending
+target_path: lib/runtime/module_hierarchy.cs
 ---
 
 Module hierarchy: self.glp chain discovery and type scope assembly.

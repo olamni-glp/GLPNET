@@ -24,10 +24,13 @@ callers:
 - test/module/cssg_modules_test.dart
 - test/module/module_hierarchy_test.dart
 - test/module/module_syntax_v2_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
+mtime: '2026-05-17T10:36:34.665Z'
 sha256: f80349aefb8cc777764548f29d5c6bc663809f9dfffde921c141ae2f7028d38a
 topo_level: 0
 cycle_group_id: 1
 status: ready
+target_path: lib/analysis/type_checker/type_ast.cs
 ---
 

@@ -27,10 +27,13 @@ callers:
 - test/module/module_hierarchy_test.dart
 - test/module/module_parser_test.dart
 - test/module/module_syntax_v2_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
+mtime: '2026-05-17T10:36:34.873Z'
 sha256: d5b6f4a7c81d0dcfd0fb32be8b28f7da3d3b77dc84571a10f063188114b2e9eb
 topo_level: 3
 cycle_group_id: 15
 status: pending
+target_path: lib/compiler/parser.cs
 ---
 

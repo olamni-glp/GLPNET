@@ -348,11 +348,40 @@ def run_init(
             "already_initialized": already_init,
         }
 
+    # Desired exclusion set (tool recs + manual) — computed BEFORE the
+    # idempotence check so a new --exclude is NOT a silent no-op
+    # (codex review #3).
+    tool_globs = list(pair.tool_exclusion_globs())
+    tool_excls = sorted({_glob_to_excl_path(g) for g in tool_globs})
+    manual_excls = sorted(
+        {
+            e.strip().replace("\\", "/").strip("/")
+            for e in exclude
+            if e and e.strip()
+        }
+    )
+    desired_excl = {(p, "tool") for p in tool_excls} | {
+        (p, "manual") for p in manual_excls
+    }
+
     # 4b. Idempotent: already initialised with unchanged inputs and not a
-    #     rebuild → no mutation, exit 0 (FR-010 / SC-002).
+    #     rebuild → no mutation, exit 0 (FR-010 / SC-002). "Unchanged"
+    #     MUST include the exclusion set + mirror_* overrides (codex
+    #     review #3) — comparing only `desired` (settings) silently drops
+    #     a new --exclude / --include-pruned / --mirror-exclude.
     if already_init and not rebuild:
-        unchanged = all(
-            existing.get(k) == v for k, v in desired.items()
+        with engine.connect() as conn:
+            existing_excl = {
+                (r[0], r[1])
+                for r in conn.execute(
+                    text(
+                        "SELECT path, kind FROM codeconv.excluded_directories"
+                    )
+                ).all()
+            }
+        unchanged = (
+            all(existing.get(k) == v for k, v in desired.items())
+            and existing_excl == desired_excl
         )
         if unchanged:
             return {
@@ -368,16 +397,8 @@ def run_init(
 
     # 5. One transaction: UPSERT workspace_settings; compute + UPSERT
     #    excluded_directories (tool recs + manual); seed phase tables.
-    tool_globs = list(pair.tool_exclusion_globs())
-    tool_excls = sorted({_glob_to_excl_path(g) for g in tool_globs})
-    manual_excls = sorted(
-        {
-            e.strip().replace("\\", "/").strip("/")
-            for e in exclude
-            if e and e.strip()
-        }
-    )
-
+    #    (tool_excls / manual_excls computed above for the idempotence
+    #    comparison — codex review #3.)
     with engine.begin() as conn:
         if rebuild:
             # Destructive re-init: clear the workspace tables (NOT the

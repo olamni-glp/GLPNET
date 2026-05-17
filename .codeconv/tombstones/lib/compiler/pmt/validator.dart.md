@@ -23,11 +23,12 @@ dependencies:
 - lib/compiler/pmt/type_checker.dart
 - lib/compiler/pmt/type_table.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:34.998Z'
 sha256: 448fc123513f79f1a1f9a0444d1c4525a10d38163a5471cdae5b41e0c9eba4e6
 topo_level: 5
 cycle_group_id: 51
 status: pending
+target_path: lib/compiler/pmt/validator.cs
 ---
 
 PMT Validator: High-level API for validating GLP programs against mode declarations
