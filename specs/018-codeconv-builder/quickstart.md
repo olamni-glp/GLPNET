@@ -76,3 +76,21 @@ Per CLAUDE.md Test Protocol — recorded before any Phase-2 change.
   groups** (the proven-working mode), not via one giant serial suite.
   The migration fix T003/T004 is itself a precondition for a clean full
   bridge baseline later (Phase-7 T050).
+
+## Harness fix (2026-05-17) — bridge-suite contention RESOLVED
+
+The pre-existing suite-level `@needs_bridge` contention was root-caused
+to `codeconv/tests/conftest.py::isolated_repo` having **no teardown**
+(`return tmp_path`), leaking each test's spawned bridge node process
+until accumulated orphans pushed PGLite cold-init past the 30 s
+`ready_timeout` → progressive `BridgeStartupTimeout` cascade. **Fix**:
+`isolated_repo` now `yield`s then calls the proven `kill_bridge(tmp_path)`
+(the same per-test teardown the working `discover_repo` fixture uses) +
+an operator progress-indicator hook (`[codeconv i/N] OUTCOME nodeid
+(Xs)` per test). **Independently verified by two parallel agents**: 30
+bridge-heavy tests run *together* → 30/30 pass, 0 `BridgeStartupTimeout`,
+0 orphan accumulation; isolated cold-init measured 5.2–6.2 s (5× margin).
+**Consequence**: the full `@needs_bridge` suite is now viable run
+together; bridge-dependent verification (T005/T006/T011–T018, US1–US4)
+is unblocked. This harness defect was pre-existing and orthogonal to
+018; the fix is additive test-infra only (no product/spec change).

@@ -36,12 +36,54 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
+    # Operator progress indicator (feature-018): record the collected
+    # total so each test can report "[i/N]". A long serial @needs_bridge
+    # run is otherwise silent for many minutes.
+    config._codeconv_total = len(items)  # type: ignore[attr-defined]
+    config._codeconv_done = 0  # type: ignore[attr-defined]
     if config.getoption("--run-perf"):
         return
     skip_perf = pytest.mark.skip(reason="opt-in via --run-perf")
     for item in items:
         if "perf" in item.keywords:
             item.add_marker(skip_perf)
+
+
+def pytest_runtest_logreport(report: pytest.TestReport) -> None:
+    """Emit one live, immediately-flushed progress line per test.
+
+    Operator-facing progress for long serial bridge runs: reports on the
+    ``call`` phase (or on a setup error/skip) with running ``[i/N]``
+    count, outcome, the node id, and elapsed seconds. Goes to stderr so
+    it interleaves with — but does not corrupt — pytest's own report.
+    """
+    # Only count a test once: the 'call' phase for run tests; the
+    # 'setup' phase when a test is skipped or errors before call.
+    if report.when == "call" or (
+        report.when == "setup" and report.outcome in ("skipped", "failed")
+    ):
+        global _CC_DONE, _CC_TOTAL
+        _CC_DONE += 1
+        outcome = report.outcome.upper()
+        dur = getattr(report, "duration", 0.0) or 0.0
+        line = (
+            f"[codeconv {_CC_DONE}/{_CC_TOTAL or '?'}] "
+            f"{outcome:7s} {report.nodeid} ({dur:.1f}s)"
+        )
+        print(line, file=sys.stderr, flush=True)
+
+
+def pytest_collection_finish(session: pytest.Session) -> None:
+    global _CC_TOTAL, _CC_DONE
+    _CC_TOTAL = len(session.items)
+    _CC_DONE = 0
+
+
+# Module-level progress counters (simple + robust across the single
+# serial session this suite is designed to run in — bridge tests are
+# never xdist-parallel: 012 single-writer lock + PGLite cold-init).
+_CC_TOTAL: int = 0
+_CC_DONE: int = 0
 
 
 def _node_available() -> bool:
@@ -69,8 +111,9 @@ needs_bridge = pytest.mark.skipif(
 
 
 @pytest.fixture
-def isolated_repo(tmp_path: Path, repo_root: Path) -> Path:
-    """A throwaway "repo root" with a fresh ``.pgdb/`` cluster.
+def isolated_repo(tmp_path: Path, repo_root: Path) -> Iterable[Path]:
+    """A throwaway "repo root" with a fresh ``.pgdb/`` cluster, with
+    **per-test bridge teardown** (the proven ``discover_repo`` pattern).
 
     The bridge script lives in the real repo (where node_modules is
     installed); we point ``acquire_or_discover`` at it via the
@@ -79,8 +122,24 @@ def isolated_repo(tmp_path: Path, repo_root: Path) -> Path:
 
     Tests should pass ``bridge_script=repo_root/'prereq-patterns'/'pglite'/'pglite_bridge.mjs'``
     when invoking ``acquire_or_discover``.
+
+    **Why the teardown (feature-018 harness fix).** Previously this
+    fixture was ``return tmp_path`` with no teardown, so every
+    ``@needs_bridge`` test that spawned a bridge here *leaked* the bridge
+    node process (holding PGLite/WASM memory + the proper-lockfile lock).
+    Across the serial suite the orphans accumulated until PGLite
+    cold-init for the next test exceeded the 30 s ``ready_timeout`` — the
+    progressive ``BridgeStartupTimeout`` cascade. Killing the spawned
+    bridge at test end (best-effort, via the proven :func:`kill_bridge`
+    helper — the same discipline ``discover_repo`` already uses) makes
+    each ``@needs_bridge`` test truly isolated, so the suite is stable
+    run together, not only one-at-a-time.
     """
-    return tmp_path
+    yield tmp_path
+    # Per-test isolation: kill any bridge this test spawned. Default
+    # data-dir is ``<tmp_path>/.pgdb``; an explicit ``data_dir=`` (rare)
+    # is a sibling cleaned up with the tmp dir. Best-effort + idempotent.
+    kill_bridge(tmp_path)
 
 
 def _free_port() -> int:
