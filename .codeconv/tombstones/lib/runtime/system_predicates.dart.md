@@ -48,11 +48,12 @@ callers:
 - lib/runtime/system_predicates_impl.dart
 - test/circular_term_test.dart
 - test/heap/circular_term_pointer_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:35.828Z'
 sha256: ec6e1f4d6555f57c8b7450418b64282524e86e8b2ba6d06323047da3c7a64b05
 topo_level: 4
 cycle_group_id: 37
 status: pending
+target_path: lib/runtime/system_predicates.cs
 ---
 
 System predicate execution infrastructure for GLP

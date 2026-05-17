@@ -42,11 +42,12 @@ dependencies:
 - lib/runtime/system_predicates_impl.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:36.175Z'
 sha256: b239cd5fda24cb63efa4f4406ee8b94ad54679a79761f06f188268f7cbd60dff
 topo_level: 6
 cycle_group_id: 88
 status: pending
+target_path: test/heap/circular_term_pointer_test.cs
 ---
 
 Tests for circular term handling with Pointer Architecture Heap

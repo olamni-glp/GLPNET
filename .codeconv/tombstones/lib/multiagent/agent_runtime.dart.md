@@ -55,11 +55,12 @@ dependencies:
 - lib/runtime/terms.dart
 callers:
 - test/debug_four_agents_modules.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:35.046Z'
 sha256: 16fa2e171ac7e27ce67020b5a539c9e42355fb38c61a305c827133ddbf373b8f
 topo_level: 9
 cycle_group_id: 61
 status: pending
+target_path: lib/multiagent/agent_runtime.cs
 ---
 
 AgentRuntime — encapsulates GLP agent runtime for UI integration.

@@ -16,11 +16,12 @@ dependencies:
 - lib/runtime/scheduler.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-04-27T09:23:52.000Z'
+mtime: '2026-05-17T10:36:35.952Z'
 sha256: 7733bef617eea001d86bc8a9e045b14a83c5490d03ed9ba20318d1090b09d122
 topo_level: 8
 cycle_group_id: 120
 status: pending
+target_path: test/test_agent_init_goal.cs
 ---
 
 Test to debug agent_init goal setup - mimics Flutter app behavior

@@ -25,6 +25,8 @@ key_idea: 'Boot Loader for maGLP Isolate Spawning
   '
 dependencies: []
 callers:
+- bin/glp_repl.dart
+- lib/multiagent/archive-irma-2026-01-30/isolate_manager.dart
 - lib/multiagent/isolate_manager.dart
 - test/multiagent/bonds_v2_isolate_test.dart
 - test/multiagent/boot_loader_test.dart
@@ -32,11 +34,12 @@ callers:
 - test/multiagent/isolate_manager_test.dart
 - test/multiagent/multiagent_glp_test.dart
 - test/multiagent/multiagent_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:35.056Z'
 sha256: 90d586b75da68e31051e94da4ad8577f0e93aeddcbc7fa2f0ac2ac2629a43a22
 topo_level: 0
 cycle_group_id: 62
 status: ready
+target_path: lib/multiagent/boot_loader.cs
 ---
 
 Boot Loader for maGLP Isolate Spawning

@@ -7,10 +7,11 @@ dependencies:
 - lib/bytecode/asm.dart
 - lib/lint/linter.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-17T10:36:36.220Z'
 sha256: 75029d51648451ea8ae4049fe8a1f3e64fc07635122432564fdc4c3c45ce99da
 topo_level: 6
 cycle_group_id: 92
 status: pending
+target_path: test/lint/linter_ok_test.cs
 ---
 

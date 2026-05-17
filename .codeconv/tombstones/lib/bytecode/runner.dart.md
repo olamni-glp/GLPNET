@@ -22,6 +22,23 @@ callers:
 - lib/engine/glp_engine.dart
 - lib/lint/linter.dart
 - lib/multiagent/agent_runtime.dart
+- lib/multiagent/archive-irma-2026-01-30/heap-tests/shared_variable_pointer_test.dart
+- lib/multiagent/archive-irma-2026-01-30/isolate_manager.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/bidirectional_exchange_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/bidirectional_stream_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/coop_stream_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/distribute_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/friend_introduction_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/isolate_play_alice_bob_charlie_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/play_alice_bob_charlie_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/reversed_flow_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/shared_variable_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/simple_imported_reader_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/social_agent_integration_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/three_agent_merge_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/three_agent_pipeline_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/trace_social_graph_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/two_hop_flow_test.dart
 - lib/multiagent/isolate_manager.dart
 - lib/runtime/body_kernels.dart
 - lib/runtime/glp_activation.dart
@@ -36,10 +53,20 @@ callers:
 - test/runtime/module_activation_test.dart
 - test/runtime/rpc_routing_test.dart
 - test/test_agent_init_goal.dart
-mtime: '2026-04-27T09:23:50.000Z'
+- test_archive/activate_kernel_test.dart
+- test_archive/actor_single_isolate_test.dart
+- test_archive/cssg_glp_dispatch_test.dart
+- test_archive/cssn_modules_test.dart
+- test_archive/debug_goal_args_test.dart
+- test_archive/direct_structterm_test.dart
+- test_archive/dump_bytecode_test.dart
+- test_archive/serve_test.dart
+- test_archive/social_graph_sim_modules_test.dart
+mtime: '2026-05-17T10:36:34.771Z'
 sha256: 7fdcc6faa358f2dacdfe6c63bf69d43b58bed08dc1f1ec6bfcefbf2d6aa4030a
 topo_level: 4
 cycle_group_id: 37
 status: pending
+target_path: lib/bytecode/runner.cs
 ---
 
