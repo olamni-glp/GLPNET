@@ -108,7 +108,7 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 ## Phase 6b: Analyze Remedies (E1–E5, applied 2026-05-17)
 
-- [ ] T054 [US1] **R12 gate (E1, HIGH)**: `codeconv/tests/test_dbos_throughput_smoke.py` (@needs_bridge) — bounded sustained-throughput smoke: drive ≥20 files through the durable pipeline with the default serial worker, assert no bridge-lock starvation, every step checkpointed, and `builder status` still < 5 s; **US1 is not accepted until this passes** (plan R12 / human-gate item)
+- [X] T054 [US1] **R12 gate (E1, HIGH)**: `codeconv/tests/test_dbos_throughput_smoke.py` (@needs_bridge) — bounded sustained-throughput smoke: drive ≥20 files through the durable pipeline with the default serial worker, assert no bridge-lock starvation, every step checkpointed, and `builder status` still < 5 s; **US1 is not accepted until this passes** (plan R12 / human-gate item)
 - [ ] T055 [US1] **E2**: `codeconv/tests/test_pipeline_stage_order.py` (@needs_bridge) — assert `discover` is the entry stage and `scaffold` records each produced target path into per-file conversion-tracking state within the builder workflow (FR-007/FR-008), entrypoints unchanged (D2)
 - [ ] T056 [P] [US2] **E3**: `codeconv/tests/test_convspec_both_bases.py` (@needs_bridge) — for a file with ≥1 non-trivial construct, assert the persisted spec records **both** a deep-analysis basis and a researched-pattern basis (or an idiom_id) for each such construct (SC-006, 0 unjustified decisions)
 - [ ] T057 [P] [US1] **E4**: `codeconv/tests/test_mid_run_code_change.py` (@needs_bridge) — recovered workflow replays new code: completed steps not re-run, remaining steps run new code; `--restart-run` opt-in deterministic (R13 / spec edge case)

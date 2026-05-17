@@ -170,10 +170,18 @@ def bind_dbos_workflows(dbos: Any, steps: dict[str, Callable[..., Any]]) -> dict
         def _launch(unit, repo_root, data_dir):
             from dbos import SetWorkflowID
 
+            # Deterministic child id ⇒ a re-run RECOVERS the same child
+            # (DBOS dedups); already-completed children return their
+            # checkpointed result without re-executing steps (FR-004/
+            # SC-002). Await each child before the next: serial drive
+            # through the 012 single-writer bridge (R12 concurrency=1) —
+            # the outer is itself one durable workflow, so this whole
+            # walk is replay-safe and resumes at the interrupted child.
             with SetWorkflowID(unit["id"]):
-                return dbos.start_workflow(
+                h = dbos.start_workflow(
                     child_wf, repo_root, unit["members"], data_dir
                 )
+            return h.get_result()
 
         return outer_builder_workflow(
             repo_root, units, data_dir=data_dir, launch_child=_launch

@@ -61,6 +61,7 @@ def setup_dbos(
     endpoint: BridgeEndpoint,
     *,
     application_name: str = "codeconv",
+    pre_launch: Optional[Any] = None,
 ) -> Any:
     """Initialise DBOS against the unified bridge.
 
@@ -113,6 +114,13 @@ def setup_dbos(
     )
     config = DBOSConfig(**cfg_kwargs)
     dbos = DBOS(config=config)
+    # Feature-018 (additive, D2-safe): a ``pre_launch`` hook runs AFTER
+    # construction but BEFORE ``launch()`` so durable workflows/steps are
+    # registered while DBOS can still wire them into the executor for
+    # recovery. ``migrate`` (and every pre-018 caller) passes nothing →
+    # identical behaviour. Failure here is fatal (no silent half-launch).
+    if pre_launch is not None:
+        pre_launch(dbos)
     dbos.launch()
 
     # 4. Patch DBOS-side engine AFTER launch (it doesn't exist before).
