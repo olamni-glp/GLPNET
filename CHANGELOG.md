@@ -4,6 +4,27 @@ All notable changes to GLPNET. Versions follow the CalVer convention defined in
 [`docs/VERSIONING.md`](docs/VERSIONING.md): tags are `vYYYY.MM.DD[-N]` where the
 optional `-N` suffix increments per same-day release.
 
+## [v2026.05.17] — 2026-05-17
+
+### Added
+
+- **codeconv conversion pipeline integrated into `main`.** Features 015
+  (depgraph + conversion-readiness oracle, non-destructive option-A'
+  referential completeness), 016 (`codeconv-init` / `codeconv-scaffold` /
+  `codeconv-mirror` Dart→C#/.NET pipeline behind a language-pair registry),
+  and 017 (`codeconv-planagents` — orchestrated per-tombstone conversion-plan
+  generation, Alembic `0003` plan schema) merged together. Feature branches
+  are no longer maintained as permanently separate spaces.
+
+### Changed
+
+- **PGLite cluster rebuilt on PostgreSQL 17.** The PG16→PG17 data migration
+  was closed (not performed): under codeconv all data is recreatable afresh,
+  so the stale PG16 canonical cluster `C:/pglite/research/glpnet/` was retired
+  to a gitignored `.dbsnapshots/` (fileset + integrity-checked snapshot
+  archive) and a fresh PGLite 0.4.5 / PG17 cluster created and migrated
+  (Alembic `0001`/`0002`/`0003` + DBOS). Bridge/sidecar suite green (8/8).
+
 ## [v2026.05.09] — 2026-05-09
 
 ### Added
