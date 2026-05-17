@@ -1,4 +1,4 @@
-# Instructions for Claude Code — glpnet
+# Instructions for Codex — glpnet
 
 ## Repo Identity
 
@@ -24,7 +24,7 @@ codeconv --data-dir C:/pglite/research/glpnet <subcommand> ...
 
 Complete these IN ORDER before any other action:
 
-1. **READ** this file (`CLAUDE.md`) to completion → acknowledge "I have read CLAUDE.md completely"
+1. **READ** this file (`AGENTS.md`) to completion → acknowledge "I have read AGENTS.md completely"
 2. **READ** `docs/DISCIPLINE.md` → acknowledge
 3. **READ** `docs/typed-glp-manual.md` → acknowledge
 4. **READ** `docs/glp-cheat-sheet.md` (compact GLP reference; GLP is **not** Prolog — study the wrong-vs-right examples) → acknowledge
@@ -141,11 +141,11 @@ For any GLP-program debugging session, read and follow `docs/Mandatory protocol 
 
 ## 🔴 Code Modification Protocol
 
-- **`.glp` files written by Gabi**: NEVER modify without prior discussion and explicit approval. `.glp` files Claude wrote in the current session can be modified freely.
+- **`.glp` files written by Gabi**: NEVER modify without prior discussion and explicit approval. `.glp` files Codex wrote in the current session can be modified freely.
 - **Dart files**: may be modified, but tell Gabi what is changing and why before or as you do it.
-- **Before running or tracing GLP code in the REPL**: show which file will be loaded, show the goal, wait for approval (or use pre-approved commands from `.claude/settings.local.json`).
-- **When Gabi pastes code/instructions from Claude Web**: review first; raise concerns; never blindly execute; do not exceed scope.
-- **Save Claude-Web-provided code exactly as given** — no modifications. Test immediately. If it fails: ask "revert, or consult Claude Web?".
+- **Before running or tracing GLP code in the REPL**: show which file will be loaded, show the goal, wait for approval (or use pre-approved commands from `.Codex/settings.local.json`).
+- **When Gabi pastes code/instructions from Codex Web**: review first; raise concerns; never blindly execute; do not exceed scope.
+- **Save Codex-Web-provided code exactly as given** — no modifications. Test immediately. If it fails: ask "revert, or consult Codex Web?".
 
 ### Language Authority
 
@@ -243,7 +243,7 @@ Windows pre-built executable: `glp_runtime/glp_repl.exe`.
 
 ### Commit scope and revert discipline
 
-Multiple Claude Code sessions may be working concurrently:
+Multiple Codex sessions may be working concurrently:
 
 1. **Commit only files you worked on this session.** No `git add -A` / `git add .`. Stage by name to avoid sweeping in another session's WIP.
 2. **Never revert, reset, or undo commits without Gabi's express permission.** No `git reset`, `git revert`, `git checkout -- <file>`, or `git restore` on files you didn't modify this session. Undoing your own current-session change is fine.
@@ -259,7 +259,7 @@ git commit -m "Fix Channel definition to match prelude"
 ### Branch rules
 
 - `main` is the source of truth — only Gabi merges into it.
-- Each Claude Code session works on its own branch (`claude/...-<session-id>` or feature branch like `006-d2net-init-skill`).
+- Each Codex session works on its own branch (`Codex/...-<session-id>` or feature branch like `006-d2net-init-skill`).
 - Each session can only push to its own branch (HTTP 403 otherwise) but can pull from any branch.
 
 ### Baseline checkpoint before risky work
@@ -344,7 +344,7 @@ Verify the build timestamp matches your changes. Logs go to a per-platform trace
 
 ## #remember Directive
 
-When Gabi says `#remember <something>`, add that information to this file so it persists across sessions. When you figure something out after multiple tries (paths, commands, environment quirks), add it here too — future sessions shouldn't repeat the trial-and-error. Pre-approved commands accumulated during a session go in `.claude/settings.local.json`.
+When Gabi says `#remember <something>`, add that information to this file so it persists across sessions. When you figure something out after multiple tries (paths, commands, environment quirks), add it here too — future sessions shouldn't repeat the trial-and-error. Pre-approved commands accumulated during a session go in `.Codex/settings.local.json`.
 
 ---
 
@@ -384,7 +384,7 @@ See `docs/known-issues.md` for the full list.
 
 ```
 D:\BSTDEV\RESEARCH\glp\glpnet\
-├── CLAUDE.md                     # ← This file
+├── AGENTS.md                     # ← This file
 ├── docs/                         # Specs, manuals, handovers, BRANCHING/VERSIONING
 │   ├── DISCIPLINE.md             # ← MANDATORY reading
 │   ├── typed-glp-manual.md       # ← MANDATORY reading
@@ -407,12 +407,12 @@ D:\BSTDEV\RESEARCH\glp\glpnet\
 │   ├── pglite_bridge.mjs         #   live deployment file (FR-012)
 │   ├── package.json              #   node deps (proper-lockfile, pg, pglite)
 │   └── tests/*.test.mjs          #   node --test cross-process lock tests
-├── codeconv/                     # Python harness (DBOS-on-PGLite over .pgdb/) — the ONE toolchain
+├── tools/d2net/                  # .NET tools — clients of the unified bridge
+│   └── src/D2Net.{BridgeClient,PgdbMigrate,Init,Scaffold}/
+├── codeconv/                     # Python harness (DBOS-on-PGLite over .pgdb/)
 │   ├── pyproject.toml
-│   ├── src/codeconv/{cli,runner,bridge_client,db}/
-│   ├── src/codeconv/langpairs/{__init__,base,dart_csharp}/   # pluggable source→target pairs (feature 016)
-│   ├── src/codeconv/tools/{discover,depgraph,init,scaffold}/ # auto-discovered tool subpackages
-│   └── tests/                    # pytest — bridge + engine + discover + depgraph + init + scaffold
+│   ├── src/codeconv/{cli,runner,bridge_client,db,tools/discover}/
+│   └── tests/                    # pytest — bridge + engine + discover
 ├── .codeconv/tombstones/         # Inventoried .dart files (checked in, FR-029)
 ├── .pgdb/                        # Unified PGLite cluster (gitignored)
 ├── .pgdb.bridge.lock/            # Bridge OS lock (sibling to .pgdb/, gitignored)
@@ -424,11 +424,7 @@ D:\BSTDEV\RESEARCH\glp\glpnet\
 
 ### Migration to unified bridge (feature 012, 2026-05)
 
-The repo now has ONE PGLite deployment at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every PGLite consumer — the Python `codeconv` tools (`discover`, `depgraph`, `init`, `scaffold`) and future tools — auto-spawns or discovers the bridge via the protocol in `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`. The bridge script `prereq-patterns/pglite/pglite_bridge.mjs` is the live deployment, not a template; do not copy it into a feature working tree (former behaviour from feature 011). Schemas inside `.pgdb/`: `public` (legacy D2NET tables, left in place, unconsulted), `dbos` (DBOS runtime), `codeconv` (the inventory + the de-branded workspace tables — `workspace_settings`, `excluded_directories`, `phase_sequence`, `phase_status` — added by feature 016 migration `0003`).
-
-### One toolchain (feature 016, 2026-05)
-
-The legacy D2NET .NET toolchain (`tools/d2net/` — `D2Net.Init`, `D2Net.Scaffold`, `D2Net.PgdbMigrate`, `D2Net.BridgeClient`, `D2Net.sln`) and the `D2NET-init` / `D2NET-scaffold` / `D2NET-pgdb-migrate` skills were **removed** (not forked — git history is the archive). Their load-bearing functionality is now `codeconv init` / `codeconv scaffold` (skills `/codeconv-init` / `/codeconv-scaffold`), behind a pluggable language-pair registry (`codeconv/src/codeconv/langpairs/`; production pair Dart→C#). `D2Net.BridgeClient` is retired — every tool reuses the shared `codeconv.bridge_client`. The one-shot legacy `.D2NET/pgdb/` → `.pgdb/` migration (formerly `D2Net.PgdbMigrate`) is historically complete and intentionally **not** ported (a no-op after first success; D1/D2). There is exactly one conversion toolchain — the `codeconv` CLI.
+The repo now has ONE PGLite deployment at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every PGLite consumer — Python `codeconv`, .NET `D2Net.Init` / `D2Net.Scaffold` / `D2Net.PgdbMigrate`, future tools — auto-spawns or discovers the bridge via the protocol in `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`. The bridge script `prereq-patterns/pglite/pglite_bridge.mjs` is the live deployment, not a template; do not copy it into a feature working tree (former behaviour from feature 011). D2NET's pre-existing per-workspace `.D2NET/pgdb/` directories are migrated to the unified location via `tools/d2net/src/D2Net.PgdbMigrate/` (one-shot, idempotent, FR-007/008/009). Schemas inside `.pgdb/`: `public` (D2NET, unchanged), `dbos` (DBOS runtime), `codeconv` (this feature's inventory).
 
 ---
 
@@ -447,7 +443,7 @@ Likely cause: [brief]
 
 Options:
 1. Revert (recommended if tests were green before)
-2. Consult Claude Web for design
+2. Consult Codex Web for design
 3. Minimal targeted fix (only if cause is clear)
 
 What would you like?
@@ -517,8 +513,8 @@ Expected: Unified 384/384, Book 84/141 (57 SRSW failures in book code), Dart 374
 cd /Users/udi/Grassroots/GLP
 git checkout main
 git pull origin main
-git fetch origin claude/<ACTUAL-BRANCH-NAME>
-git merge -m "Merge claude/<ACTUAL-BRANCH-NAME> into main" origin/claude/<ACTUAL-BRANCH-NAME>
+git fetch origin Codex/<ACTUAL-BRANCH-NAME>
+git merge -m "Merge Codex/<ACTUAL-BRANCH-NAME> into main" origin/Codex/<ACTUAL-BRANCH-NAME>
 git push origin main
 ```
 
