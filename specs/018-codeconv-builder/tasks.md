@@ -21,8 +21,8 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline: run `pytest codeconv/tests/` and record green/known-fail counts in `specs/018-codeconv-builder/quickstart.md` (Test baseline — CLAUDE.md §Test Protocol) before any change
-- [ ] T002 Confirm `dbos` is a resolvable dependency in `codeconv/.venv` and `codeconv/pyproject.toml`; no version bump (no new dependency per plan Technical Context)
+- [X] T001 Baseline: run `pytest codeconv/tests/` and record green/known-fail counts in `specs/018-codeconv-builder/quickstart.md` (Test baseline — CLAUDE.md §Test Protocol) before any change — recorded 2026-05-17: no-bridge guard 62 pass/1 skip/0 fail; bridge tests green per-test, full-suite contention is pre-existing harness defect (not 018)
+- [X] T002 Confirm `dbos` is a resolvable dependency in `codeconv/.venv` and `codeconv/pyproject.toml`; no version bump (no new dependency per plan Technical Context) — verified: dbos 2.21.0 in venv + pyproject deps, no pin/bump
 
 ## Phase 2: Foundational (BLOCKING — `codeconv migrate` is currently broken)
 

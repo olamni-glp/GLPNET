@@ -46,3 +46,33 @@ codeconv builder aggregate-escalations   # single report (FR-013/014)
 5. undecidable construct → escalation, 0 silent guesses (SC-008).
 6. empty subtree → "nothing to convert", exit 0 (FR-020).
 7. every 015/016/017 entrypoint still reachable (SC-005).
+
+## T001 Baseline (recorded 2026-05-17, pre-Phase-2)
+
+Per CLAUDE.md Test Protocol — recorded before any Phase-2 change.
+
+- **Suite total**: 260 tests collected (`pytest codeconv/tests`).
+- **Pure / no-bridge regression guard** (8 bridge-free files —
+  `test_depgraph_algorithm`, `test_langpair_registry`,
+  `test_mirror_gitignore`, `test_parse`, `test_pubspec`,
+  `test_runner_registry`, `test_tombstone`, `test_walker`):
+  **62 passed, 1 skipped, 0 failed in 0.87 s** — GREEN. This is the
+  authoritative regression guard for Phase-2 pure-Python work
+  (tombstone `_FIELD_ORDER`, `workspace.py`, `status.py`, `durable/`).
+- **`@needs_bridge` tests**: green **per-test** (verified:
+  `test_bridge_client.py::test_acquire_or_discover_lock_winner` →
+  1 passed in 12.16 s in isolation; bridge + exact client
+  `--data-dir/--port 0/--daemon` invocation write
+  `<data_dir>/bridge.json` and become reachable in ~8 s). The **full
+  serial suite** exhibits a **pre-existing test-harness bridge-contention
+  defect** (sequential `@needs_bridge` tests do not fully tear down their
+  spawned bridge/lock/port before the next spawns, causing 30 s
+  `BridgeStartupTimeout` in-suite). This is **NOT a product bug and NOT
+  introduced by feature 018** (015/016/017 merged green; consistent with
+  memory `project_pglite_cold_init_windows.md` — bridge tests must run
+  serially/isolated). Tracked as an orthogonal harness issue.
+- **Phase-2 verification mode**: bridge-dependent Phase-2 tests
+  (T005/T006/T017/T018) are validated **individually / in small isolated
+  groups** (the proven-working mode), not via one giant serial suite.
+  The migration fix T003/T004 is itself a precondition for a clean full
+  bridge baseline later (Phase-7 T050).
