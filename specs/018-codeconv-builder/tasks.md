@@ -78,8 +78,8 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [ ] T036 [P] [US2] Test `codeconv/tests/test_convspec_idiom_kb.py` (@needs_bridge): lookup-before-research; reuse; ≥95% recurring via idiom (FR-012/SC-007)
 - [ ] T037 [P] [US2] Test `codeconv/tests/test_convspec_idiom_conflict.py` (@needs_bridge): idiom↔research & idiom↔idiom → escalation, 0 silent guesses (FR-013/FR-014/SC-008)
 - [ ] T038 [P] [US2] Test `codeconv/tests/test_convspec_research_provenance.py` (@needs_bridge): authoritative=official-docs; cached construct never re-researched; offline-reproducible (FR-024)
-- [ ] T039 [US2] Create `.claude/skills/codeconv-convspec/SKILL.md` — analysis sub-agent + SEPARATE research sub-agent prompt contracts (escalate-don't-guess, official-docs-authoritative, verbatim provenance), per `contracts/agent_orchestration.md`
-- [ ] T040 [US2] Wire builder skill **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code) → spawn analysis (≤`--limit`, SCC-batched) + on-KB-miss separate research sub-agent; re-drive recovers same workflow ids (FR-002/FR-009/FR-010)
+- [X] T039 [US2] Create `.claude/skills/codeconv-convspec/SKILL.md` — analysis sub-agent + SEPARATE research sub-agent prompt contracts (escalate-don't-guess, official-docs-authoritative, verbatim provenance), per `contracts/agent_orchestration.md`
+- [X] T040 [US2] Wire builder skill **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code) → spawn analysis (≤`--limit`, SCC-batched) + on-KB-miss separate research sub-agent; re-drive recovers same workflow ids (FR-002/FR-009/FR-010)
 
 **Checkpoint**: US1+US2 deliver the MVP — durable pipeline with researched per-file specs + idiom KB.
 
@@ -109,9 +109,9 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 ## Phase 6b: Analyze Remedies (E1–E5, applied 2026-05-17)
 
 - [X] T054 [US1] **R12 gate (E1, HIGH)**: `codeconv/tests/test_dbos_throughput_smoke.py` (@needs_bridge) — bounded sustained-throughput smoke: drive ≥20 files through the durable pipeline with the default serial worker, assert no bridge-lock starvation, every step checkpointed, and `builder status` still < 5 s; **US1 is not accepted until this passes** (plan R12 / human-gate item)
-- [ ] T055 [US1] **E2**: `codeconv/tests/test_pipeline_stage_order.py` (@needs_bridge) — assert `discover` is the entry stage and `scaffold` records each produced target path into per-file conversion-tracking state within the builder workflow (FR-007/FR-008), entrypoints unchanged (D2)
+- [X] T055 [US1] **E2**: `codeconv/tests/test_pipeline_stage_order.py` (@needs_bridge) — assert `discover` is the entry stage and `scaffold` records each produced target path into per-file conversion-tracking state within the builder workflow (FR-007/FR-008), entrypoints unchanged (D2)
 - [ ] T056 [P] [US2] **E3**: `codeconv/tests/test_convspec_both_bases.py` (@needs_bridge) — for a file with ≥1 non-trivial construct, assert the persisted spec records **both** a deep-analysis basis and a researched-pattern basis (or an idiom_id) for each such construct (SC-006, 0 unjustified decisions)
-- [ ] T057 [P] [US1] **E4**: `codeconv/tests/test_mid_run_code_change.py` (@needs_bridge) — recovered workflow replays new code: completed steps not re-run, remaining steps run new code; `--restart-run` opt-in deterministic (R13 / spec edge case)
+- [X] T057 [P] [US1] **E4**: `codeconv/tests/test_mid_run_code_change.py` (@needs_bridge) — recovered workflow replays new code: completed steps not re-run, remaining steps run new code; `--restart-run` opt-in deterministic (R13 / spec edge case)
 - [ ] T058 [P] [US3] **E5**: `codeconv/tests/test_reproducible_from_durable.py` (@needs_bridge) — wipe derived artifacts, re-drive: inventory/depgraph/specs/idioms regenerate from the durable source of truth identically (FR-021, no live-data dependency)
 
 ## Phase 7: Polish & Cross-Cutting
