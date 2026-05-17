@@ -27,7 +27,7 @@ This feature introduces **one normative new table** in the existing `codeconv` s
 
 **Idempotence** (FR-014): `plan-started` on an existing not-completed row is a no-op + warning (idempotent recovery of a crashed agent — the file stays `plan_in_progress`, resumable). `plan-completed` on an already-completed row is a no-op + warning. `plan-completed` on a never-started row is an error (the orchestrator must record `plan-started` first — no auto-create).
 
-**Write protocol** (carry-forward feature-012 FR-026/-027): `INSERT … ON CONFLICT (path) DO UPDATE` per row; no `DELETE FROM dart_plans` bulk wipe (unlike feature-015's `dart_depgraph` atomic-per-run — `dart_plans` is an accumulating lifecycle table like `dart_conversions`, not a recomputed projection).
+**Write protocol** (carry-forward feature-012 FR-026/-027): per-operation, never a bulk wipe — no `DELETE FROM dart_plans` (unlike feature-015's `dart_depgraph` atomic-per-run; `dart_plans` is an accumulating lifecycle table like `dart_conversions`, not a recomputed projection). `plan-started` ⇒ `INSERT … ON CONFLICT (path) DO NOTHING` (then warn if the row pre-existed — idempotent crashed-agent recovery, FR-014; matches `contracts/planagents_schema.md` write protocol, T015, and §Idempotence above). `plan-completed` ⇒ `UPDATE … WHERE plan_completed_at IS NULL`. Only `--replan` and `rebuild-plans-from-tombstones` ⇒ `INSERT … ON CONFLICT (path) DO UPDATE` (R9 in-place supersede / DB-wipe recovery).
 
 ### 1.2 `codeconv.planagents_runs` — per-invocation traceability (optional; mirrors `depgraph_runs`)
 

@@ -129,7 +129,7 @@ All decisions below resolve the plan template's NEEDS CLARIFICATION items. The s
 | Language/Version | Python 3.11+ (feature-012 `pyproject.toml`); agent layer = Claude Code Agent tool (no SDK added) — R1 |
 | Primary Dependencies | stdlib + already-vendored `sqlalchemy`/`psycopg`/`PyYAML`; zero new deps — R8 |
 | Storage | PGLite via unified bridge; `codeconv` schema only; new `dart_plans` (+optional `planagents_runs`) — R8 |
-| Testing | `pytest`; pure `readiness.py` no-bridge; rest `@needs_bridge` + `--test-concurrency=1` — plan Technical Context |
+| Testing | `pytest` (serial by default); pure `readiness.py` no-bridge; rest `@needs_bridge`, bridge access serialised by the feature-012 OS lock (no `--test-concurrency` flag exists) — plan Technical Context |
 | Project Type | Python library + CLI + Claude Code skill orchestration layer — plan Technical Context |
 | Performance Goals | Python engine sub-second; end-to-end dominated by LLM agents (out of scope for hard SLA) — plan Technical Context |
 | Constraints | `--data-dir C:/pglite/research/glpnet` mandatory (exFAT); FR-026/-027 carry-forward — plan Technical Context |

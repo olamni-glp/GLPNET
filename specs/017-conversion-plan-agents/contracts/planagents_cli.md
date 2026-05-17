@@ -38,8 +38,9 @@ The subcommand list is fixed by FR-001/FR-005/FR-016/FR-013. No others in v1.
 
 1. Acquire-or-discover the bridge (feature-012 `bridge_client.acquire_or_discover`).
 2. If `codeconv.dart_depgraph` is empty/absent → **exit 2**, unconditionally (incl. under `--json`): human → stderr `"No depgraph. Run /codeconv-depgraph first."`; `--json` → stdout `{"ok":false,"exit_code":2,"error":"No depgraph. Run /codeconv-depgraph first."}` AND process exit 2 (the JSON field does NOT replace process exit — feature-015 contract carry-forward) (FR-018).
-3. Read depgraph + `dart_plans`; classify all non-orphaned nodes (`readiness.py`).
-4. Emit counts (`plan_pending`/`plan_ready`/`plan_in_progress`/`planned`, `open_escalations_total`). **Writes nothing.** Exit 0.
+3. Read depgraph + `dart_plans` + `dart_files.sha256`; classify all non-orphaned nodes (`readiness.py`).
+4. **Stale detection (FR-015 / quickstart §7)**: any `planned` row whose current `dart_files.sha256 ≠ sha256_of_dart_at_plan_start` is reported **stale** — a distinct flag overlaid on the `planned` class (the lifecycle state stays `planned`; stale is an advisory the source drifted since the plan), with the file paths listed so the user knows exactly what to pass to `--replan` (human → a `stale: <n>` line + the path list; `--json` → a `"stale": ["<path>", …]` array).
+5. Emit counts (`plan_pending`/`plan_ready`/`plan_in_progress`/`planned`, `stale`, `open_escalations_total`). **Writes nothing.** Exit 0.
 
 ### `next [--limit 7]`
 
@@ -68,10 +69,11 @@ The subcommand list is fixed by FR-001/FR-005/FR-016/FR-013. No others in v1.
 
 Keys inside each `batch[]` row are alphabetical; `batch` is ordered by `(topo_level ASC, path ASC)` with SCC members contiguous and lexicographic (FR-021).
 
-### `plan-started <path> [--sha256 <hex>]`
+### `plan-started <path> [--sha256 <hex>] [--replan]`
 
 1. Bridge. Validate `path ∈ codeconv.dart_files` (else stderr + exit 2). Reject orphaned `path` (exit 2).
-2. `INSERT … ON CONFLICT (path) DO NOTHING` with `plan_started_at=NOW()`, `sha256_of_dart_at_plan_start = <arg or dart_files.sha256>`, `plan_run_id=<this run>`. If row already existed: warn `"already started"` (in-progress) or `"already completed"` (idempotent) → exit 0.
+2. **Default** (no `--replan`): `INSERT … ON CONFLICT (path) DO NOTHING` with `plan_started_at=NOW()`, `sha256_of_dart_at_plan_start = <arg or dart_files.sha256>`, `plan_run_id=<this run>`. If row already existed: warn `"already started"` (in-progress) or `"already completed"` (idempotent) → exit 0.
+   **With `--replan`** (the mutation path for FR-015 stale replan / FR-019; pairs with `next --replan`): `INSERT … ON CONFLICT (path) DO UPDATE` — reset `plan_started_at=NOW()`, `sha256_of_dart_at_plan_start = <arg or current dart_files.sha256>`, `plan_completed_at = NULL`, `open_escalation_count = 0`, `plan_run_id=<this run>` (in-place row reset per data-model.md §lifecycle; prior open escalations are carried forward in the regenerated artefact with a "carried from <prior generated_at>" note — R9 / artefact-format §idempotence, never silently dropped).
 3. Optional `planagents_runs` insert. Stamp tombstone `plan_started_at` (unless `--no-tombstone-update`, testing only). Exit 0.
 
 ### `plan-completed <path> [--plan-path <p>] [--escalations <n>]`
@@ -85,7 +87,7 @@ Keys inside each `batch[]` row are alphabetical; `batch` is ordered by `(topo_le
 ### `aggregate-escalations [--report-out <p>]`
 
 1. Bridge (read `dart_plans` for `open_escalation_count`).
-2. Walk `.codeconv/conversion-plans/**.dart.md`; parse each artefact's `## Escalations` section; collect open entries.
+2. Walk `.codeconv/conversion-plans/**.dart.md`; parse each artefact's `## 6. Escalations` section (the exact heading mandated by `conversion_plan_artefact_format.md`); collect open entries.
 3. Write the aggregated report (default `.codeconv/conversion-plans/_escalations-report.md`, overridable) — atomic temp-file rename. Each entry: file(s), observed situation, why not pre-specified/incremental, decision required (FR-016).
 4. Exit 0. `--dry-run` ⇒ compute, write nothing.
 
@@ -99,7 +101,7 @@ Keys inside each `batch[]` row are alphabetical; `batch` is ordered by `(topo_le
 | Flag | Applies to | Effect |
 |---|---|---|
 | `--dry-run` | next/plan-*/aggregate/stamp/rebuild | Compute everything; write nothing to DB, tombstones, artefacts (SC-008). |
-| `--replan <selection>` | next | Force re-selection of the named/stale files even if `planned` (FR-015); UPDATEs the `dart_plans` row on the subsequent `plan-started` (schema contract). |
+| `--replan <selection>` | next, plan-started | `next --replan <selection>`: force re-selection of the named/stale files even if `planned` (FR-015), read-only. `plan-started --replan`: the actual mutation — `ON CONFLICT (path) DO UPDATE` resets the row (`plan_completed_at→NULL`, new sha/timestamp), so a stale/planned file can genuinely be replanned (without `--replan`, `plan-started` no-ops "already completed"). |
 | `--limit <n>` | next | Soft cap on tombstones returned (default 7; SCC units never split — `plan_readiness_algorithm.md` step 5). |
 | `--json-out <path>` | next | Override the JSON destination (else stdout). |
 | `--report-out <path>` | aggregate-escalations | Override the report path (default `.codeconv/conversion-plans/_escalations-report.md`). |
@@ -121,6 +123,11 @@ Keys inside each `batch[]` row are alphabetical; `batch` is ordered by `(topo_le
 loop:
   r := codeconv planagents next --limit 7 --json --data-dir C:/pglite/research/glpnet
   if r.batch is empty: report "nothing to plan"; STOP
+  if --dry-run:                       # FR-019 / SC-008 — MUST short-circuit here
+      report r.batch as "would plan" (paths, SCC units); spawn NO agents;
+      issue NO plan-started / plan-completed / aggregate; STOP
+      # `next` is read-only; everything past this point mutates state, so the
+      # dry-run branch precedes any dispatch — not merely relying on per-CLI --dry-run
   for each tombstone t in r.batch, with at most 7 Agent calls in flight:
       codeconv planagents plan-started t.path --data-dir …
       spawn planning sub-agent for t   (Agent tool; prompt per agent_orchestration.md)

@@ -41,11 +41,11 @@ If the research sub-agent fails, times out, or returns nothing usable: the plann
 - When `next` emits an SCC unit, the skill spawns one planning agent **per member**, each within the 7-cap, each told the full `scc_siblings` list.
 - Each member's artefact MUST contain §7 cross-referencing every sibling and flagging co-dependent decisions.
 - The skill calls `plan-completed` per member as each finishes; it does NOT advance the loop past the SCC until **every** member is `plan-completed` (downstream gating is enforced by `readiness.py`, but the skill must not race ahead and call `next` expecting downstream files before the batch closes — `next` would correctly exclude them, but the skill keeps the batch coherent).
-- Partial-batch resume: a re-invoked loop re-selects only the un-started members (FR-014 idempotent recovery; `plan_readiness_algorithm.md` partial-batch rule).
+- Partial-batch / crashed-agent resume: a re-invoked loop re-selects un-started SCC members **and** any singleton whose `dart_plans` row has `plan_completed_at IS NULL` from a prior interrupted run (FR-014 idempotent recovery; `plan_readiness_algorithm.md` resume rules, steps 2 & 6). `plan-started` on the re-selected row is the documented no-op + warning (data-model §Idempotence) — the agent is re-dispatched, the artefact regenerated.
 
 ## Concurrency-cap enforcement (SC-001 / R3) — dual
 
-1. **Python**: `next --limit 7` never returns an already-`plan_in_progress` tombstone (so a resumed loop cannot double-spawn an in-flight file).
+1. **Python + skill active-set**: within one orchestrator run the skill tracks its active batch and does not re-issue `next` for a file it is still planning, so an in-flight file is never double-spawned. `next` MAY return a `plan_in_progress` tombstone left by a *prior* interrupted run — that is the intended crashed-agent resume (`plan_readiness_algorithm.md` steps 2 & 6); within-run double-spawn prevention is the skill's active-set responsibility, **not** blanket exclusion of all `plan_in_progress` rows by `next`.
 2. **Skill**: at most 7 planning Agent calls concurrently; a new `next` is only issued when a slot frees. SCC units taken whole may transiently exceed the soft `--limit` count in the *returned list*, but the skill still throttles actual concurrent Agent calls to ≤7, draining the batch across iterations.
 
 Together these guarantee SC-001 ("at no point are more than 7 planning sub-agents active concurrently"), crash-safe across loop interruption/resume.

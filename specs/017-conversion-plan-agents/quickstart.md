@@ -7,7 +7,7 @@ Prerequisite flows (feature 012 Flow F / feature 015 Flow H): `/codeconv-discove
 ```
 python -m venv codeconv/.venv
 codeconv/.venv/Scripts/python.exe -m pip install -e codeconv[dev]
-codeconv/.venv/Scripts/python.exe -m codeconv runner migrate --data-dir C:/pglite/research/glpnet   # applies 0003_dart_plans
+codeconv/.venv/Scripts/codeconv.exe migrate --data-dir C:/pglite/research/glpnet   # applies 0003_dart_plans
 ```
 
 ## 1. See what is plan-ready (no agents, no writes)
