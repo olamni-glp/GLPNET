@@ -22,14 +22,22 @@ action**. No LLM/web/network call inside any step (R3). On recovery DBOS
 mid-file resumes at the interrupted *stage* (FR-003), and a resumed run is
 bit-identical to an uninterrupted one (FR-004/SC-002).
 
-## `NeedsAgentWork` protocol (convspec; R2/R3)
+## `needs_agent_work` protocol (convspec; R2/R3)
 
 `convspec` step body: idiom-KB lookup → if artifact present+valid, record &
-return; else `raise NeedsAgentWork(path)`. DBOS records the workflow as
-**pending** (not failed). The **skill** catches it, spawns the analysis
+return; else **return the deterministic typed result `needs_agent_work(path)`**
+— a *successful, replay-safe* step output, **never a raised exception**.
+(Raising inside an `@DBOS.step` is recorded by DBOS as a **failed**
+step/workflow, which is wrong for the normal first-time path and would break
+the MVP convspec flow before the agent can produce the artifact.) The
+**workflow** observes `needs_agent_work` and ends in the durable
+**awaiting-agent** status (recorded via `builder_runs`/durable status),
+surfaced by `builder run`'s exit code — not a Python exception. The **skill**
+detects awaiting-agent from `builder status`/exit code, spawns the analysis
 sub-agent (+ separate research sub-agent only on a KB miss), waits for the
 checked-in artifact, then re-drives `builder run` → DBOS recovers the same
-child workflow id and the step now completes deterministically.
+child workflow id and the step now finds the artifact and completes
+deterministically.
 
 ## Concurrency / recovery (R12; D2)
 

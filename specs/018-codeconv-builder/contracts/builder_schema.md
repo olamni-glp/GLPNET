@@ -14,8 +14,10 @@ order). Columns/PK/FK per [../data-model.md](../data-model.md) §2.
 - `conversion_idioms`: insert on first resolution of a `construct_key`;
   `status='conflicted'`/`'escalated'` on FR-014 conflict (never silent
   overwrite of `target_form`).
-- `research_findings`: insert-once per `construct_key`; never updated
-  (cache; FR-024). `is_authoritative=false` ⇒ caller MUST escalate.
+- `research_findings`: `construct_key` **UNIQUE**; insert-once via
+  `ON CONFLICT (construct_key) DO NOTHING`; never updated (cache;
+  FR-012/FR-024 — a construct is never re-researched, no duplicate/ambiguous
+  rows under parallel agents). `is_authoritative=false` ⇒ caller MUST escalate.
 - `builder_runs`: insert at outer-workflow start; UPDATE counts/outcome;
   `outer_workflow_id` UNIQUE so resume reuses the row.
 

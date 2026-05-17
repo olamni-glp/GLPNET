@@ -53,7 +53,7 @@ errors → `alembic upgrade head` (called by `codeconv migrate`) succeeds. See
 | Column | Type | Notes |
 |---|---|---|
 | `id` | bigserial PK | |
-| `construct_key` | text NOT NULL | join key with idioms |
+| `construct_key` | text NOT NULL UNIQUE | join key with idioms; one finding per construct (cache invariant, FR-012/FR-024) |
 | `query` | text NOT NULL | verbatim research request |
 | `authoritative_source` | text NOT NULL | official Dart/.NET doc citation/URL |
 | `corroborating_sources` | jsonb NOT NULL DEFAULT `'[]'` | non-authoritative, optional |

@@ -5,9 +5,11 @@
 
 Tests are generated: the spec defines per-story Independent Tests and
 `CLAUDE.md` mandates baseline-before / re-run-after. All paths absolute from
-repo root `D:\BSTDEV\research\GLP\GLPNET\`. `pytest codeconv/tests/` with
-`--data-dir C:/pglite/research/glpnet`; `@needs_bridge` tests serial (012 lock;
-PGLite cold-init ~7 s).
+repo root `D:\BSTDEV\research\GLP\GLPNET\`. Invoke as `pytest codeconv/tests/`
+— **no `--data-dir`** (not a pytest option; conftest registers only
+`--run-perf`. `@needs_bridge` tests resolve the cluster via `bridge_client`'s
+default `<repo>/.pgdb`, NTFS-valid on D:). `@needs_bridge` tests serial (012
+lock; PGLite cold-init ~7 s).
 
 **Governing constraint (D2, Gabi emphatic):** no task may rewrite or replace a
 proven 015/016/017 flow; existing tool entrypoints are called verbatim inside
@@ -17,13 +19,13 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline: run `pytest codeconv/tests/ --data-dir C:/pglite/research/glpnet` and record green/known-fail counts in `specs/018-codeconv-builder/quickstart.md` (Test baseline — CLAUDE.md §Test Protocol) before any change
+- [ ] T001 Baseline: run `pytest codeconv/tests/` and record green/known-fail counts in `specs/018-codeconv-builder/quickstart.md` (Test baseline — CLAUDE.md §Test Protocol) before any change
 - [ ] T002 Confirm `dbos` is a resolvable dependency in `codeconv/.venv` and `codeconv/pyproject.toml`; no version bump (no new dependency per plan Technical Context)
 
 ## Phase 2: Foundational (BLOCKING — `codeconv migrate` is currently broken)
 
 - [ ] T003 Fix migration chain: in `codeconv/src/codeconv/db/migrations/versions/0003_dart_plans.py` change `revision "0003"→"0004"` and `down_revision "0002"→"0003"` only (filename unchanged), per `contracts/migration_linearization.md`
-- [ ] T004 Create `codeconv/src/codeconv/db/migrations/versions/0005_codeconv_builder.py` (`revision "0005"`, `down_revision "0004"`) with `CREATE TABLE IF NOT EXISTS` for `builder_runs`, `research_findings`, `conversion_idioms`, `dart_convspecs` + partial index, per `contracts/builder_schema.md` and `data-model.md` §2; downgrade drops in reverse order
+- [ ] T004 Create `codeconv/src/codeconv/db/migrations/versions/0005_codeconv_builder.py` (`revision "0005"`, `down_revision "0004"`) with `CREATE TABLE IF NOT EXISTS` for `builder_runs`, `research_findings` (`construct_key` **UNIQUE** — cache invariant FR-012/FR-024; insert via `ON CONFLICT (construct_key) DO NOTHING`), `conversion_idioms`, `dart_convspecs` + partial index, per `contracts/builder_schema.md` and `data-model.md` §2; downgrade drops in reverse order
 - [ ] T005 [P] Test `codeconv/tests/test_migration_single_head.py` (@needs_bridge): fresh cluster → `alembic upgrade head` exit 0, exactly one head `0005`, linear history, re-run idempotent (FR-015/SC-004)
 - [ ] T006 [P] Test `codeconv/tests/test_schema_isolation.py` (@needs_bridge): after `0005` every new relation is in `codeconv` schema; zero Alembic-authored `public`/`dbos` objects
 - [ ] T007 Create shared `codeconv/src/codeconv/workspace.py` — single read facade over `codeconv.workspace_settings`/`excluded_directories`/`phase_*` (016), delegating, NOT changing what tools read (FR-006/FR-022, D2)
@@ -54,9 +56,9 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [ ] T024 [P] [US1] Test `codeconv/tests/test_builder_resume.py` (@needs_bridge): kill mid-step → recovery skips completed steps, resumes at interrupted stage (FR-003)
 - [ ] T025 [P] [US1] Test `codeconv/tests/test_builder_idempotent_rerun.py` (@needs_bridge): resumed run state == uninterrupted run (SC-002)
 - [ ] T026 [P] [US1] Test `codeconv/tests/test_builder_nothing_to_do.py` (@needs_bridge): empty/again-complete subtree exits "nothing to convert", code 0 (FR-020)
-- [ ] T027 [US1] Create `.claude/skills/codeconv-builder/SKILL.md` — venv/repo-root resolver + durable-orchestration loop + `NeedsAgentWork` handler, per `contracts/builder_cli.md` (justified deviation, plan Complexity Tracking)
+- [ ] T027 [US1] Create `.claude/skills/codeconv-builder/SKILL.md` — venv/repo-root resolver + durable-orchestration loop + **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code, not a caught exception), per `contracts/builder_cli.md` (justified deviation, plan Complexity Tracking)
 
-**Checkpoint**: US1 independently testable — durable pipeline resumes; convspec stage may still raise NeedsAgentWork (US2 wires the agent).
+**Checkpoint**: US1 independently testable — durable pipeline resumes; convspec stage may still return `needs_agent_work` (US2 wires the agent).
 
 ## Phase 4: User Story 2 — convspec deep analysis + research → researched spec (P1)
 
@@ -68,14 +70,14 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [ ] T030 [P] [US2] Test `codeconv/tests/test_convspec_readiness.py` (pure): predicate + SCC batch correctness
 - [ ] T031 [US2] Create `codeconv/src/codeconv/tools/convspec/idioms.py` — KB lookup-before-research, record, idiom↔research & idiom↔idiom conflict detection, per `contracts/convspec_idiom_schema.md` (FR-012/013/014/024)
 - [ ] T032 [US2] Create `codeconv/src/codeconv/tools/convspec/artefact.py` — structured-block + embedded-rationale artifact path/validation; spec-only, rejects any C# emission (FR-011/FR-023), per `contracts/convspec_artifact_format.md`
-- [ ] T033 [US2] Create `codeconv/src/codeconv/tools/convspec/workflow.py` — `register()` exposes the deterministic convspec `@DBOS.step`: idiom lookup → artifact present? record+return : `raise NeedsAgentWork` (replay-safe, R3)
+- [ ] T033 [US2] Create `codeconv/src/codeconv/tools/convspec/workflow.py` — `register()` exposes the deterministic convspec `@DBOS.step`: idiom lookup → artifact present? record+return : **return `needs_agent_work` sentinel** (a successful replay-safe step output, NOT a raised exception — the workflow surfaces a durable awaiting-agent status; R3)
 - [ ] T034 [US2] Implement `convspec ingest` + two-phase `dart_convspecs` writes (`*_completed_at` terminal-only) + drift `sha256` + `--respec` (FR-003/FR-019)
-- [ ] T035 [P] [US2] Test `codeconv/tests/test_convspec_ingest_step.py` (@needs_bridge): deterministic ingest; NeedsAgentWork signal; replay-safe; no C# accepted (FR-009/FR-023)
+- [ ] T035 [P] [US2] Test `codeconv/tests/test_convspec_ingest_step.py` (@needs_bridge): deterministic ingest; `needs_agent_work` result (not a raised exception); replay-safe; no C# accepted (FR-009/FR-023)
 - [ ] T036 [P] [US2] Test `codeconv/tests/test_convspec_idiom_kb.py` (@needs_bridge): lookup-before-research; reuse; ≥95% recurring via idiom (FR-012/SC-007)
 - [ ] T037 [P] [US2] Test `codeconv/tests/test_convspec_idiom_conflict.py` (@needs_bridge): idiom↔research & idiom↔idiom → escalation, 0 silent guesses (FR-013/FR-014/SC-008)
 - [ ] T038 [P] [US2] Test `codeconv/tests/test_convspec_research_provenance.py` (@needs_bridge): authoritative=official-docs; cached construct never re-researched; offline-reproducible (FR-024)
 - [ ] T039 [US2] Create `.claude/skills/codeconv-convspec/SKILL.md` — analysis sub-agent + SEPARATE research sub-agent prompt contracts (escalate-don't-guess, official-docs-authoritative, verbatim provenance), per `contracts/agent_orchestration.md`
-- [ ] T040 [US2] Wire builder skill `NeedsAgentWork` handler → spawn analysis (≤`--limit`, SCC-batched) + on-KB-miss separate research sub-agent; re-drive recovers same workflow ids (FR-002/FR-009/FR-010)
+- [ ] T040 [US2] Wire builder skill **awaiting-agent** handler (detects `needs_agent_work` via `builder status`/exit code) → spawn analysis (≤`--limit`, SCC-batched) + on-KB-miss separate research sub-agent; re-drive recovers same workflow ids (FR-002/FR-009/FR-010)
 
 **Checkpoint**: US1+US2 deliver the MVP — durable pipeline with researched per-file specs + idiom KB.
 
@@ -112,7 +114,7 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T050 Re-run full `pytest codeconv/tests/ --data-dir C:/pglite/research/glpnet`; compare to T001 baseline — zero regressions (CLAUDE.md §Test Protocol)
+- [ ] T050 Re-run full `pytest codeconv/tests/`; compare to T001 baseline — zero regressions (CLAUDE.md §Test Protocol)
 - [ ] T051 [P] Run `quickstart.md` acceptance smoke 1–7 end-to-end against a fresh PG17 cluster; record outcomes
 - [ ] T052 [P] Verify no Dart/.NET/Node/`glp_runtime/` file changed (scope guard, plan Structure Decision)
 - [ ] T053 Update memory `project_018_codeconv_builder_status.md` (status: plan+tasks done; D1=a, D2-hardened; next state) — no CLAUDE.md duplication
@@ -123,7 +125,7 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 
 - **Phase 2 (T003–T018) BLOCKS everything** — `codeconv migrate` is broken until T003/T004; durable scaffolding + shared model underpin all stories.
 - **US1 (P1)** depends only on Phase 2 → first independently testable increment.
-- **US2 (P1)** depends on Phase 2 + US1's builder/skill (T019/T027 for the NeedsAgentWork handler) → MVP = US1+US2.
+- **US2 (P1)** depends on Phase 2 + US1's builder/skill (T019/T027 for the awaiting-agent handler) → MVP = US1+US2.
 - **US3 (P2)** depends on Phase 2 + US1/US2 surfaces.
 - **US4 (P3)** depends on US1 (durable runs) + US3 (`status.py`).
 - Polish last.
