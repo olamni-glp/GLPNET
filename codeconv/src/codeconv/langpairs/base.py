@@ -90,6 +90,44 @@ class LangPair(Protocol):
         """
         ...
 
+    # --- mirror side (codeconv mirror — spec Amendment 1, FR-027..FR-041) ---
+    def mirror_prune_segments(self) -> tuple[str, ...]:
+        """Directory names pruned during the mirror walk.
+
+        ``dart_csharp``: ``(".dart_tool","build",".git",".idea",
+        ".vscode")`` — spec-``001`` FR-002, intentionally independent of
+        discover's ``_EXCLUDED_SEGMENTS``.
+        """
+        ...
+
+    def preserved_source_suffix(self) -> str:
+        """Suffix appended to a source file for its preserved copy.
+
+        ``dart_csharp``: ``".src"`` (``foo.dart`` -> ``foo.dart.src``).
+        """
+        ...
+
+    def companion_extensions(self) -> tuple[str, ...]:
+        """Companion-artifact extensions generated per source file.
+
+        ``dart_csharp``: the nine ``.cs .ana .tst .con .dep .cgn .iss
+        .sta .ver`` (order fixed for deterministic tracker records).
+        """
+        ...
+
+    def companion_stub_comment(
+        self, companion_ext: str, source_basename: str
+    ) -> str:
+        """Single-line stub body for a companion file (spec-``001``
+        FR-006). ``dart_csharp``: a ``// TODO:`` C-style line naming the
+        ext-category and the source file."""
+        ...
+
+    def tracker_filename(self) -> str:
+        """Root tracker filename. ``dart_csharp``: ``d2net-tracker.json``
+        (kept literal for spec-``001`` fidelity; pair-defined)."""
+        ...
+
 
 class UnknownLangPair(Exception):
     """Raised when a requested ``(source, target)`` pair is not registered.

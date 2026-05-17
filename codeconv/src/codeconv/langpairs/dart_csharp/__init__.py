@@ -19,7 +19,7 @@ from typing import Optional
 from codeconv.langpairs import register
 from codeconv.langpairs.base import LangPair
 
-from . import source_dart, target_csharp
+from . import mirror_dart, source_dart, target_csharp
 
 
 class DartCSharp(LangPair):
@@ -63,6 +63,26 @@ class DartCSharp(LangPair):
 
     def workdir_name(self, source_rel: str) -> Optional[str]:
         return target_csharp.workdir_name(source_rel)
+
+    # --- mirror side (spec Amendment 1) — byte-faithful delegates ---
+    def mirror_prune_segments(self) -> tuple[str, ...]:
+        return mirror_dart.mirror_prune_segments()
+
+    def preserved_source_suffix(self) -> str:
+        return mirror_dart.preserved_source_suffix()
+
+    def companion_extensions(self) -> tuple[str, ...]:
+        return mirror_dart.companion_extensions()
+
+    def companion_stub_comment(
+        self, companion_ext: str, source_basename: str
+    ) -> str:
+        return mirror_dart.companion_stub_comment(
+            companion_ext, source_basename
+        )
+
+    def tracker_filename(self) -> str:
+        return mirror_dart.tracker_filename()
 
 
 # Register at import (idempotent — see langpairs.register).

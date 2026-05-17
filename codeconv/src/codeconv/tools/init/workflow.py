@@ -210,9 +210,12 @@ def run_init(
     repo_root: Path,
     source: str = "glp_runtime_net",
     target: Optional[str] = None,
+    mirror_source: str = "glp_runtime",
     source_lang: str = "dart",
     target_lang: str = "csharp",
     exclude: Optional[list[str]] = None,
+    include_pruned: Optional[list[str]] = None,
+    mirror_exclude: Optional[list[str]] = None,
     accept_suggested_exclusions: bool = False,
     non_interactive: bool = False,
     rebuild: bool = False,
@@ -226,6 +229,15 @@ def run_init(
     """
     repo_root = Path(repo_root).resolve()
     exclude = list(exclude or [])
+    # spec Amendment 1 FR-042/FR-043 — mirror-scope overrides, persisted
+    # in workspace_settings and consumed ONLY by `codeconv mirror`
+    # (discover/scaffold unaffected — FR-023).
+    _force_include = sorted(
+        {s.strip() for s in (include_pruned or []) if s and s.strip()}
+    )
+    _mirror_excl = [
+        s.strip() for s in (mirror_exclude or []) if s and s.strip()
+    ]
 
     # 1. Resolve the pair against the registry — unregistered → exit 5,
     #    NO writes (FR-005). Done BEFORE the bridge so an unregistered
@@ -244,22 +256,39 @@ def run_init(
             ],
         }
 
-    # 2. Validate source/target — invalid → exit 2, NO partial state
-    #    (FR-012). Done BEFORE the bridge so invalid input never touches
-    #    the DB.
+    # 2. Validate source/target/mirror-source — invalid → exit 2, NO
+    #    partial state (FR-012, amended by spec Amendment 1). Done BEFORE
+    #    the bridge so invalid input never touches the DB.
+    #
+    #    FR-012 (amended): a well-formed in-repo `source` (the inventory
+    #    subtree / mirror OUTPUT, e.g. glp_runtime_net) that does NOT yet
+    #    exist is LEGAL — `codeconv mirror` produces it — so it is
+    #    validated with must_exist=False and the inventory delegation is
+    #    deferred (FR-009 amended) when it is absent. Out-of-repo /
+    #    reserved / malformed still rejected. `mirror_source` (the
+    #    source-language tree root, the mirror INPUT, e.g. glp_runtime)
+    #    is validated in-repo/not-reserved (FR-029); it normally exists.
     try:
-        source_abs = _validate_subpath(repo_root, source, must_exist=True)
+        source_abs = _validate_subpath(
+            repo_root, source, must_exist=False
+        )
         if target is None or not str(target).strip():
             raise _InvalidPath(
                 "--target is required for a usable workspace"
             )
         _validate_subpath(repo_root, target, must_exist=False)
+        mirror_source_abs = _validate_subpath(
+            repo_root, mirror_source, must_exist=False
+        )
     except _InvalidPath as exc:
         return {
             "ok": False,
             "exit_code": _EXIT_INVALID_PATH,
             "error": f"invalid path: {exc}",
         }
+    # FR-009 (amended): defer the inventory when the configured source
+    # subtree (the mirror OUTPUT) is not yet present.
+    source_exists = source_abs.is_dir()
 
     if non_interactive and not (accept_suggested_exclusions or exclude):
         return {
@@ -272,6 +301,7 @@ def run_init(
         }
 
     source_rel = source_abs.relative_to(repo_root).as_posix()
+    mirror_source_rel = mirror_source_abs.relative_to(repo_root).as_posix()
     target_rel = (
         (repo_root / target.strip().replace("\\", "/").strip("/"))
         .resolve()
@@ -294,6 +324,13 @@ def run_init(
         "target_lang": target_lang,
         "source_path": source_rel,
         "target_path": target_rel,
+        # spec Amendment 1 / FR-029: the mirror INPUT (source-language
+        # tree root). `codeconv mirror` reads this; `source_path` above
+        # is the mirror OUTPUT / inventory subtree.
+        "mirror_source_root": mirror_source_rel,
+        # FR-042/FR-043: mirror-scope overrides (consumed by mirror only).
+        "mirror_force_include": "\n".join(_force_include),
+        "mirror_exclude_patterns": "\n".join(_mirror_excl),
     }
 
     # 4a. Destructive re-init gate (FR-010): --rebuild requires the
@@ -397,10 +434,24 @@ def run_init(
                 {"p": phase},
             )
 
-    # 6. Delegate the inventory to discover (D3 / FR-009). Then prune to
+    # 6. Delegate the inventory to discover (D3 / FR-009) ONLY when the
+    #    configured source subtree exists. FR-009 (amended, spec
+    #    Amendment 1): when the source subtree (the mirror OUTPUT) is not
+    #    yet present, persist config + phase tracking (already done above),
+    #    DEFER the inventory, and warn — do NOT hard-fail. Then prune to
     #    the exclusion scope (FR-011) so the in-scope inventory matches.
-    disc = _delegate_discover(repo_root, source_abs, data_dir, quiet)
-    _apply_exclusion_scope(engine)
+    inventory_deferred = not source_exists
+    disc: dict = {}
+    deferred_warning: Optional[str] = None
+    if inventory_deferred:
+        deferred_warning = (
+            f"configured source {source_rel!r} is absent — inventory "
+            f"deferred; run `codeconv mirror` (produces it from "
+            f"{mirror_source_rel!r}) then `codeconv discover`"
+        )
+    else:
+        disc = _delegate_discover(repo_root, source_abs, data_dir, quiet)
+        _apply_exclusion_scope(engine)
 
     with engine.connect() as conn:
         files_in_scope = int(
@@ -419,10 +470,15 @@ def run_init(
         "target_lang": target_lang,
         "source_path": source_rel,
         "target_path": target_rel,
+        "mirror_source_root": mirror_source_rel,
+        "mirror_force_include": _force_include,
+        "mirror_exclude_patterns": _mirror_excl,
         "tool_exclusions": tool_excls,
         "manual_exclusions": manual_excls,
         "phases_seeded": [p for p, _ in _PHASE_SEQUENCE],
         "inventory_files": files_in_scope,
+        "inventory_deferred": inventory_deferred,
+        "warning": deferred_warning,
         "discover": {
             "files_walked": disc.get("files_walked"),
             "files_processed": disc.get("files_processed"),
@@ -601,8 +657,11 @@ def run_inspect(
     )
     engine = build_engine(endpoint)
     out: dict[str, Any] = {"ok": True, "exit_code": _EXIT_OK}
+    # _read_settings opens its own connection; on a pool_size=1 engine it
+    # must NOT run nested inside the connection held below, or the inner
+    # checkout deadlocks against the outer one until pool_timeout.
+    out["settings"] = _read_settings(engine)
     with engine.connect() as conn:
-        out["settings"] = _read_settings(engine)
         if exclusions or not current_phase:
             out["exclusions"] = [
                 {"path": r[0], "kind": r[1]}

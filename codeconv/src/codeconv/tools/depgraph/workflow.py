@@ -109,6 +109,22 @@ def run_compute(
     for path, started, completed in conv_rows:
         conv_by_path[path] = (started, completed)
 
+    # Feature-015 option-A' (non-destructive referential completeness):
+    # codeconv.dart_imports MAY contain dangling edges — an endpoint that
+    # is not an inventoried node (a mis-resolved relative import, or an
+    # out-of-subtree target). Per the feature-015 design these are kept
+    # in dart_imports and FILTERED here at compute (self-healing), NOT
+    # deleted. The SCC algorithm (algorithm.py) requires both endpoints
+    # in the node set and hard-raises otherwise; a faithful full mirror
+    # (codeconv mirror) surfaces such pre-existing dangling imports that
+    # the old curated glp_runtime_net happened not to have.
+    node_set = set(nodes)
+    _edges_total = len(edges)
+    edges = [
+        (u, v) for (u, v) in edges if u in node_set and v in node_set
+    ]
+    dangling_edges_filtered = _edges_total - len(edges)
+
     # 2. Run the algorithm.
     result = compute(nodes, edges)
 
@@ -248,6 +264,7 @@ def run_compute(
         "exit_code": 0,
         "files_total": len(file_rows),
         "edges_total": len(edges),
+        "dangling_edges_filtered": dangling_edges_filtered,
         "ready_count": ready_count,
         "in_progress_count": in_progress_count,
         "converted_count": converted_count,

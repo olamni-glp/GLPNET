@@ -86,3 +86,9 @@ codeconv/tests/
 ## Complexity Tracking
 
 No Constitution gate violations (constitution is an unfilled placeholder; project discipline is satisfied). The one notable structural addition — the `langpairs/` registry indirection — is the explicit, owner-mandated reason for the feature (D6) and is justified by FR-003/SC-003 (a new pair must slot in with zero stage-tool edits); a hard-coded Dart→C# port would be simpler but fails the feature's defining requirement.
+
+---
+
+## Amendment 1 (2026-05-17): `codeconv mirror` stage
+
+Adds the `mirror` stage (spec Amendment 1 / D7 / FR-027..FR-041): reproduces spec `001-d2net-scaffold` generically via the langpair registry, producing the inventory subtree (`glp_runtime_net/`) the rest of the pipeline consumes. Pipeline becomes `init -> mirror -> discover -> depgraph -> scaffold`; `init` FR-009/FR-012 amended for deferred-inventory when the configured source is absent. New tool subpackage `codeconv/src/codeconv/tools/mirror/`; five additive `LangPair` mirror hooks; `/codeconv-mirror` skill; contract `contracts/codeconv_mirror_cli.md`. Structurally consistent with US2 scaffold (staged write + atomic move); zero stage-tool edits to add a pair (SC-011 extends SC-003).

@@ -29,6 +29,13 @@ class LangPair(Protocol):
     def target_extension(self) -> str: ...                       # e.g. ".cs"
     def target_for(self, source_rel: str) -> str: ...            # source POSIX rel → target POSIX rel
     def workdir_name(self, source_rel: str) -> str | None: ...   # per-file working dir, or None
+    # --- mirror side (codeconv mirror — spec Amendment 1, FR-027..FR-041) ---
+    def mirror_prune_segments(self) -> tuple[str, ...]: ...        # dir names pruned by the mirror walk
+    def preserved_source_suffix(self) -> str: ...                  # appended to a source file's preserved copy
+    def companion_extensions(self) -> tuple[str, ...]: ...         # companion-artifact exts per source file
+    def companion_stub_comment(self, companion_ext: str,
+                               source_basename: str) -> str: ...   # single-line stub body
+    def tracker_filename(self) -> str: ...                         # root tracker filename
 ```
 
 Behavioural requirements:
@@ -37,6 +44,7 @@ Behavioural requirements:
 2. **`target_for`** maps a source-relative POSIX path to the target-relative POSIX path by swapping the source extension for `target_extension()` (and only that — directory structure is mirrored). For `dart_csharp`: `lib/runtime/heap_fcp.dart` → `lib/runtime/heap_fcp.cs`.
 3. **`workdir_name`** returns the per-source-file working-directory name (D2NET parity: `__<basename>` adjacent to each source file) or `None` if the pair has no working-dir convention. `dart_csharp` returns `__<basename-without-ext>`.
 4. **Pure & side-effect-free.** Hooks read the filesystem at most (no DB, no bridge, no network) so they are unit-testable without `@needs_bridge`.
+5. **Mirror hooks reproduce spec-`001-d2net-scaffold` per-pair.** For `dart_csharp` (spec-`001` fidelity): `mirror_prune_segments()` = `(".dart_tool","build","archive","backup",".git",".idea",".vscode")` (spec-`001` FR-002 base set extended with `archive`/`backup` per owner decision 2026-05-17 — the pair's STANDARD set; the effective set is adjusted by workspace force-includes / gitignore-style exclusions per FR-042/FR-043; intentionally independent of discover's `_EXCLUDED_SEGMENTS`); `preserved_source_suffix()` = `""` (spec Amendment 1 / FR-032 Option-1 deviation from spec-001 FR-004: the source is mirrored verbatim as `.dart` so codeconv `discover` — which detects Dart by the `.dart` extension — inventories it; a `.dart.src` rename would yield an empty inventory and a dead pipeline); `companion_extensions()` = `(".cs",".ana",".tst",".con",".dep",".cgn",".iss",".sta",".ver")` (FR-005, order fixed for deterministic tracker records); `companion_stub_comment(ext, base)` = a single C-style `// TODO:` line naming the ext-category and source basename (FR-006); `tracker_filename()` = `"d2net-tracker.json"` (FR-007 — kept literal for behavioural fidelity even though the toolchain is otherwise de-branded; pair-defined so other pairs differ). All five are pure (no fs/DB) and covered by `test_langpair_registry.py` exact-value asserts + negative controls (FR-039).
 
 ## Stage enforcement (FR-004 / FR-018 / SC-008)
 

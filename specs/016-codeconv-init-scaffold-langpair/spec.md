@@ -182,3 +182,98 @@ A CI/maintainer runs the complete conversion-readiness pipeline for the Dart→C
 - "Source/target language changeable" means: changeable by selecting a different *registered* pair at init time; it does not mean automatic transpilation of arbitrary languages.
 - The default discover subtree (`glp_runtime_net/`) and the existing exclusion conventions (`.dart_tool/`, `build/`, etc.) carry over as the Dart side of the Dart→C# plugin.
 - Existing codeconv top-level conventions (workspace root, data-dir override, quiet/json, exit-code semantics, schema isolation in `codeconv`) are inherited unchanged.
+
+---
+
+## Amendment 1 (2026-05-17): `codeconv mirror` stage — pluggable source-tree scaffold
+
+**Status**: Approved by project owner 2026-05-17 (this conversation). This amendment is additive and authoritative; it does **not** renumber or change the behaviour of FR-001…FR-026 except the two explicitly-amended requirements (FR-009, FR-012) quoted below.
+
+### Motivation & decision
+
+`codeconv scaffold` (US2 / FR-013…FR-018) mirrors the **inventory subtree** (`glp_runtime_net/`) into the C# **target tree** (`out/csharp`). Nothing in the codeconv toolchain *produces* `glp_runtime_net/` itself — that was the job of the now-removed D2NET `d2net-scaffold` (spec `001-d2net-scaffold`). `glp_runtime_net/` is gitignored regenerable output (`.gitignore:27` "d2net-scaffold output (regenerable; do not commit)"), so it is absent in every fresh checkout/worktree, which blocks the whole pipeline.
+
+- **D7 — Add a distinct `mirror` stage that reproduces `001-d2net-scaffold` exactly, generically, via the language-pair registry.** `codeconv mirror` walks the **source-language tree** (`glp_runtime/` for Dart→C#) and produces the inventory subtree (`glp_runtime_net/`) with the source-file preservation, companion-artifact stubs, and root tracker JSON defined by spec `001-d2net-scaffold`, with every language-specific value supplied by the chosen pair's plugin. The names `scaffold` / `/codeconv-scaffold` remain bound to US2 (the `glp_runtime_net → out/csharp` stage); the new stage is `codeconv mirror` / `/codeconv-mirror`. This is the single, permanent, language-extensible mechanism — the obsolete D2NET `d2net-scaffold` is **not** revived.
+
+### Stage ordering (amended pipeline)
+
+`init` → **`mirror`** → `discover` → `depgraph` → `scaffold`.
+
+`init` configures the workspace (pair + source/target paths + phase tracking) and is the **sole** authority for pair selection (D6/FR-004). `mirror` reads the bound pair from `codeconv.workspace_settings` (it is therefore **not** fs-only: it does one read-only bridge/DB lookup to obtain the pair). Because `mirror` produces the configured source subtree that `init`'s inventory delegation (FR-009) and `discover` consume, `init` must tolerate that subtree not yet existing — see the FR-009/FR-012 amendments.
+
+### Amended requirements
+
+**FR-009 (amended).** Original: *"The `init` tool MUST obtain the per-file inventory by delegating to the existing discover capability rather than re-implementing source-tree scanning (single inventory source of truth)."* Amended: the `init` tool MUST obtain the per-file inventory by delegating to discover **when the configured source subtree exists**. When the configured source subtree does **not** yet exist (it is produced by a later `mirror` run), `init` MUST persist the workspace configuration and phase tracking, **defer** the inventory, and emit an actionable warning (e.g. *"configured source `<path>` absent — run `codeconv mirror` then `codeconv discover`"*) — it MUST NOT hard-fail. Inventory remains a single source of truth (still produced only by discover, just deferred).
+
+**FR-012 (amended).** Original: *"The `init` tool MUST validate source/target locations (existence, in-repo, not a reserved name) and reject invalid input with actionable errors and no partial state."* Amended: `init` MUST still reject a source/target that is out-of-repo, a reserved name, or otherwise malformed, with an actionable error and no partial state. The single carve-out: a configured source path that is well-formed and in-repo but **does not yet exist** is NOT rejected — it is downgraded to the FR-009 deferred-inventory warning (the path is legal; it will be produced by `mirror`).
+
+### User Story 6 — Mirror the source-language tree into the inventory subtree (Priority: P1)
+
+With a workspace initialised for a pair (US1), the engineer runs one command that walks the pair's source-language tree and produces the inventory subtree: directory layout mirrored, non-source files byte-identical, every source file preserved with the pair's preserved-suffix, the pair's companion-artifact stubs generated per source file, and the pair's root tracker JSON written. After this, `discover` has a subtree to inventory and the rest of the pipeline proceeds.
+
+**Why this priority**: Without it the pipeline cannot start on any fresh checkout/worktree (the inventory subtree does not exist). It is the missing first stage that makes "regenerate per worktree" possible.
+
+**Independent Test**: On a worktree with `glp_runtime/` present and `glp_runtime_net/` absent, run `init` (Dart→C#) then `mirror`; verify the spec-`001` acceptance set holds (mirrored dirs, byte-identical non-source files, verbatim `.dart` copies — Option 1, see FR-032 — nine companion stubs per Dart file with the spec-`001` extensions, root `d2net-tracker.json` with one record per Dart file); a re-run refuses without `--refresh`; `--refresh` preserves companions and the tracker; a colliding companion name aborts pre-flight with no target writes.
+
+**Acceptance Scenarios**:
+
+1. **Given** an initialised Dart→C# workspace, `glp_runtime/` present, configured source `glp_runtime_net/` absent, **When** `mirror` runs, **Then** `glp_runtime_net/` is created per spec-`001` FR-002…FR-010 with the FR-032 Option-1 deviation (mirrored non-pruned dirs; non-source files byte-identical; each `*.dart` preserved **verbatim under its original `.dart` name**; nine companion stubs `.cs .ana .tst .con .dep .cgn .iss .sta .ver` each with a `// TODO:` line; root `d2net-tracker.json` with one record per Dart file, nine companions each status `todo`).
+2. **Given** `mirror` has run, **When** it is re-run without `--refresh`, **Then** it refuses (target exists) and changes nothing; **When** re-run with `--refresh`, **Then** `.dart.src`/non-source files are rewritten from current source, newly-found Dart files get fresh companion stubs, every pre-existing companion file and the tracker are left byte-identical (spec-`001` FR-011).
+3. **Given** a source folder where a generated companion name would collide with a pre-existing non-source file, **When** `mirror` runs, **Then** it reports all collisions, exits non-zero, and writes nothing to the target (spec-`001` FR-012).
+4. **Given** no initialised workspace (or a workspace whose pair is unset/unregistered), **When** `mirror` runs, **Then** it refuses with an actionable error ("run `codeconv init` first" / lists registered pairs) and writes nothing — pair selection is solely through `init` (D6/FR-004).
+5. **Given** the configured target is the same as or nested inside the source, **When** `mirror` runs, **Then** it refuses (spec-`001` FR-014).
+
+### New Functional Requirements (mirror)
+
+The `mirror` tool MUST reproduce spec-`001-d2net-scaffold` FR-002…FR-014 **verbatim in behaviour**, with every language-specific value obtained from the workspace-bound pair's plugin (no behaviour hard-coded in the stage tool):
+
+- **FR-027**: Provide a `mirror` tool (`codeconv mirror`, skill `/codeconv-mirror`) in the existing `codeconv` package, conforming to the feature-012 tool contract and inheriting top-level conventions, with command tree `codeconv mirror [run]`.
+- **FR-028**: `mirror` MUST resolve the language pair **solely** from `codeconv.workspace_settings` (set by `init`); if no workspace/pair is set it MUST refuse with "run `codeconv init` first", and if the recorded pair is unregistered it MUST refuse listing registered pairs (D6/FR-004/FR-005). It performs exactly one read-only bridge/DB lookup for this; it makes no `codeconv`-schema writes and does not touch phase tracking (phase tracking is workspace state owned by init/discover/scaffold).
+- **FR-029**: `mirror`'s **input** (source-language tree root) is the workspace setting **`mirror_source_root`** (recorded by `init` via `--mirror-source`, default `glp_runtime`); `mirror`'s **output root** is the workspace `source_path` (the inventory subtree, e.g. `glp_runtime_net` — unchanged spec-016 meaning, still what `discover`/`scaffold` consume). `mirror` MUST refuse if the output root is the same as or nested inside the input root (spec-`001` FR-014). `init` MUST record `mirror_source_root` into `codeconv.workspace_settings` and validate it is in-repo / not a reserved name (a not-yet-existing but well-formed in-repo `mirror_source_root` is legal — it normally *does* exist; FR-012's deferral applies to the configured `source_path`, the mirror *output*, not its input).
+- **FR-030**: `mirror` MUST traverse the source tree recursively in deterministic order, pruning directories whose name is in the **effective** mirror-prune set; pruned directories MUST NOT appear in the output and their contents MUST NOT be processed (spec-`001` FR-002). The effective set = the pair's standard set (Dart→C#: `.dart_tool`, `build`, `archive`, `backup`, `.git`, `.idea`, `.vscode` — `build`/`archive`/`backup` are pruned as standard per owner decision 2026-05-17, since the curated `glp_runtime_net` excluded `bin/archive` etc. and mirroring them carries dangling archive imports the feature-015 `depgraph` referential check rejects) **minus** any workspace force-includes and **plus** any workspace gitignore-style exclusions (FR-042/FR-043).
+- **FR-031**: Every non-source file MUST be copied to the mirrored relative path byte-for-byte identical (spec-`001` FR-003). A "source file" is one whose name ends with one of the pair's `source_extensions()`.
+- **FR-032**: Every source file MUST be preserved at the mirrored relative path with the pair's `preserved_source_suffix()` appended, byte-identical to the source. **Option 1 deviation from spec-`001` FR-004 (the single deliberate one):** spec-`001` renames `foo.dart`→`foo.dart.src`, but unlike standalone D2NET the codeconv pipeline runs `discover` *after* `mirror`, and `discover` detects Dart source by the `.dart` extension — a `.dart.src` file would be invisible to it (empty inventory → dead pipeline). So `dart_csharp.preserved_source_suffix()` is `""`: the source is mirrored verbatim under its original `.dart` name. The 9 companion stubs and the root tracker (FR-033/FR-034) are still produced — the full substantive spec-`001` behaviour. (A pair whose downstream consumer does not read the source extension MAY return a non-empty suffix; the hook stays pair-defined.)
+- **FR-033**: For every source file, `mirror` MUST create one companion stub per extension in the pair's `companion_extensions()` (Dart→C#: the nine `.cs .ana .tst .con .dep .cgn .iss .sta .ver`), named by replacing the trailing source extension, each containing the pair's single-line companion stub comment (Dart→C#: a `// TODO:` C-style line naming the file and category) (spec-`001` FR-005/FR-006).
+- **FR-034**: `mirror` MUST write a single root tracker file named by the pair's `tracker_filename()` (Dart→C#: `d2net-tracker.json`) at the output root containing an array with exactly one record per source file; each record identifies the source file by its output-root-relative preserved (`.src`) path and lists every companion (filename + status) with status drawn from the closed enumeration `{todo,in-progress,done,blocked}` initialised to `todo` (spec-`001` FR-007…FR-010).
+- **FR-035**: When the output root already exists, `mirror` MUST refuse by default (report, leave it untouched) and MUST support `--refresh` with spec-`001` FR-011 semantics: rewrite preserved-source and non-source files from current source; create companion stubs only for newly-discovered source files; leave every pre-existing companion file and the tracker file byte-identical; report newly-discovered source files in the summary.
+- **FR-036**: Before writing anything, `mirror` MUST run a pre-flight pass detecting every case where a companion file would collide with a pre-existing non-source file of the same name in the same folder; on any collision it MUST report the full list, exit non-zero, and leave the output tree entirely unwritten (spec-`001` FR-012).
+- **FR-037**: `mirror` MUST stage its writes (sibling staging dir, atomic move into place) so a failure leaves the live output tree untouched, and MUST emit a human-readable stdout summary (counts: dirs created, non-source copied, source preserved, companions generated, tracker records) and honour `--quiet`/`--json` (spec-`001` FR-013 + feature-016 staged-write/idempotence conventions).
+- **FR-038**: Adding mirror support for a new language pair MUST require editing only that pair's plugin package + the registry auto-import line — **zero** edits to any stage tool (extends SC-003 to the mirror stage).
+
+### Langpair plugin contract additions (mirror hooks)
+
+`contracts/langpair_plugin_contract.md` is extended with mirror-side hooks on `LangPair` (additive; existing hooks unchanged). All MUST be pure/side-effect-free (filesystem read at most), unit-testable without `@needs_bridge`:
+
+- `mirror_prune_segments() -> tuple[str, ...]` — the pair's **standard** directory names pruned during the mirror walk. Dart→C#: `(".dart_tool","build","archive","backup",".git",".idea",".vscode")` (spec-`001` FR-002 base set extended with `archive`/`backup` per owner decision 2026-05-17; `build` already in the base; intentionally independent of discover's walker `_EXCLUDED_SEGMENTS`). The *effective* prune set is this standard set adjusted by the workspace force-includes / gitignore-style exclusions of FR-042/FR-043.
+- `preserved_source_suffix() -> str` — appended to a source filename for its preserved copy. Dart→C#: `".src"`.
+- `companion_extensions() -> tuple[str, ...]` — companion-artifact extensions generated per source file. Dart→C#: `(".cs",".ana",".tst",".con",".dep",".cgn",".iss",".sta",".ver")`.
+- `companion_stub_comment(companion_ext: str, source_basename: str) -> str` — the single-line stub body for a companion. Dart→C#: `// TODO: <ext-category> — port from <source_basename>`.
+- `tracker_filename() -> str` — the root tracker filename. Dart→C#: `"d2net-tracker.json"` (kept literal for spec-`001` behavioural fidelity; pair-defined so other pairs differ).
+
+### Testing (mirror)
+
+- **FR-039**: Unit tests for the Dart→C# mirror hooks (exact-value asserts + negative controls), pure/no-bridge.
+- **FR-040**: Integration tests for `mirror`: fresh-run spec-`001` acceptance set on a synthetic source tree; idempotent refuse-existing; `--refresh` preserves companions+tracker and rewrites src/non-source; collision pre-flight abort (no writes); pair-unset/unregistered refusal; target-nested-in-source refusal.
+- **FR-041**: A full-chain regression `init → mirror → discover → depgraph → scaffold` on a synthetic subtree asserting cross-stage consistency, plus confirmation the pre-existing discover/depgraph/scaffold suites stay green (no regression to features 012/014/015 or US1–US5).
+
+### Success criteria (mirror)
+
+- **SC-009**: From a worktree with only `glp_runtime/`, `init` (Dart→C#) then `mirror` produces a `glp_runtime_net/` that satisfies every spec-`001` SC-001…SC-006 measurable outcome.
+- **SC-010**: Re-running `mirror` without `--refresh` is a zero-change refusal; `--refresh` leaves every companion file and the tracker byte-identical and brings `.src`/non-source files into agreement with the current source (spec-`001` SC-008/SC-009).
+- **SC-011**: Adding the mirror behaviour for a second (test-only) pair requires zero stage-tool edits (mirror extension of SC-003).
+- **SC-012**: After this amendment the documented regenerate-per-worktree pipeline (`init → mirror → discover → depgraph → scaffold`) runs end-to-end with no D2NET binary/skill referenced (extends SC-006).
+
+### Workspace scope overrides (owner decision 2026-05-17)
+
+`init` is the sole authority for the mirror's effective scope (consistent with D6 — pair/scope set once at init). Two override surfaces, persisted in `codeconv.workspace_settings`, consumed by `mirror` (not by `discover`/`scaffold`, so feature-012/014/015 behaviour is unchanged — FR-023):
+
+- **FR-042 (force-include override).** `init` MUST accept a repeatable `--include-pruned <dir>` that records workspace setting `mirror_force_include` (the set of standard-pruned directory **names** to NOT prune). `mirror`'s effective prune set = the pair's `mirror_prune_segments()` **minus** `mirror_force_include`. A name not in the standard set is a no-op (recorded; harmless). This lets an operator force-include a normally-excluded dir (e.g. `build`).
+- **FR-043 (gitignore-style mirror exclusions).** `init` MUST accept a repeatable `--mirror-exclude <pattern>` that records workspace setting `mirror_exclude_patterns` (newline-joined, order-preserved). `mirror` MUST skip any directory **or** file whose output-root-relative POSIX path matches any pattern, using **gitignore semantics**: `#`/blank ignored; trailing `/` = directory-only; leading `/` = anchored to the subtree root; `**` = any number of path segments; `*`/`?` = within-segment glob (no `/`); a pattern with no `/` matches at any depth by basename; later patterns override earlier (last-match wins, gitignore order). A directory match prunes its whole subtree. The matcher is a **small internal implementation** — no new third-party dependency (dependency authority; `pathspec` is not a codeconv dep). These patterns are mirror-scope only and are **distinct** from `excluded_directories` (the existing literal-dir exclusions consumed by `discover`/`init`), so `discover`/`scaffold`/feature-015 behaviour is untouched (FR-023).
+- **FR-044**: Unit tests for the internal gitignore matcher (anchored / unanchored / `**` / trailing-slash dir-only / `*`/`?` / last-match-wins, with negative controls) and integration tests for `init --include-pruned` (a standard-pruned dir reappears in the mirror) and `init --mirror-exclude` (an extra dir/pattern is pruned from the mirror), pure-unit where possible.
+
+- **SC-013**: `init --include-pruned build` makes `build/` appear in the mirrored subtree; without it `build/` is pruned (round-trip verifiable).
+- **SC-014**: `init --mirror-exclude '<pat>'` removes exactly the matching dirs/files from the mirrored subtree, with gitignore semantics, and changes nothing in `discover`/`scaffold`/depgraph behaviour vs. the no-pattern run except the excluded paths.
+
+### Issue resolution log
+
+- **Issue #1 (RESOLVED 2026-05-17)** — `depgraph compute` raised `ValueError: edge endpoint not in nodes` on the faithful full mirror. Root cause: the 016 `tools/depgraph/workflow.py` passed raw `dart_imports` edges to the SCC algorithm without the feature-015 **option-A'** self-healing filter (keep dangling edges in `dart_imports`, filter at compute). Restored the filter (`edges` restricted to those with both endpoints in the node set before `compute`; count surfaced as `dangling_edges_filtered`). Verified e2e: `depgraph` green, 35 dangling edges filtered, 178 files, 1 cycle. This restores intended feature-015 behaviour (no new semantics; FR-023 preserved — the curated `glp_runtime_net` simply never had dangling edges to exercise it).

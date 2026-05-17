@@ -68,6 +68,12 @@ def run(
     target: Optional[str] = typer.Option(
         None, "--target", help="Target tree root (repo-relative)."
     ),
+    mirror_source: str = typer.Option(
+        "glp_runtime",
+        "--mirror-source",
+        help="Source-language tree root the `codeconv mirror` stage "
+        "walks to PRODUCE --source (spec Amendment 1 / FR-029).",
+    ),
     source_lang: str = typer.Option(
         "dart", "--source-lang", help="Source language id."
     ),
@@ -76,6 +82,18 @@ def run(
     ),
     exclude: Optional[List[str]] = typer.Option(
         None, "--exclude", help="Manual directory exclusion (repeatable)."
+    ),
+    include_pruned: Optional[List[str]] = typer.Option(
+        None,
+        "--include-pruned",
+        help="Force-include a normally-pruned standard dir in the "
+        "`codeconv mirror` walk (repeatable; spec Amendment 1 / FR-042).",
+    ),
+    mirror_exclude: Optional[List[str]] = typer.Option(
+        None,
+        "--mirror-exclude",
+        help="Extra gitignore-style dir/pattern excluded from the "
+        "`codeconv mirror` walk (repeatable; spec Amendment 1 / FR-043).",
     ),
     accept_suggested_exclusions: bool = typer.Option(
         False,
@@ -111,9 +129,12 @@ def run(
         repo_root=repo_root,
         source=source,
         target=target,
+        mirror_source=mirror_source,
         source_lang=source_lang,
         target_lang=target_lang,
         exclude=list(exclude or []),
+        include_pruned=list(include_pruned or []),
+        mirror_exclude=list(mirror_exclude or []),
         accept_suggested_exclusions=accept_suggested_exclusions,
         non_interactive=non_interactive,
         rebuild=rebuild,

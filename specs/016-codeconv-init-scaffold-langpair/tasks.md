@@ -185,3 +185,15 @@ Work on `016-codeconv-init-scaffold-langpair` (branched off `015-codeconv-depgra
 ## Implementation Strategy
 
 MVP = Setup + Foundational + US1 (a configured, inventoried workspace). Then US2 (scaffold) completes the day-to-day replacement. US3 proves pluggability; US4 adds exclusion ergonomics; US5 is the cross-stage regression guard. Polish removes the .NET toolchain and finalises docs. PR = a small number of logical commits (foundational; US1; US2; US3; US4; US5; polish/removal), single PR onto `main`.
+
+---
+
+## Amendment 1 tasks (2026-05-17): `codeconv mirror` (spec FR-027..FR-041, D7)
+
+- TA01 [spec] Spec amendment + `contracts/codeconv_mirror_cli.md` + langpair contract mirror-hooks (DONE).
+- TA02 Add mirror hooks to `langpairs/base.py` protocol; implement in `langpairs/dart_csharp` (`mirror_dart.py`) + wire `DartCSharp`.
+- TA03 Implement `tools/mirror/{__init__.py,workflow.py}` (FR-027..FR-037; spec-001 FR-002..FR-014 generic).
+- TA04 Amend `tools/init/workflow.py` FR-009/FR-012 deferred-inventory when configured source absent.
+- TA05 `.claude/skills/codeconv-mirror/SKILL.md` (forward verbatim + --refresh gate).
+- TA06 Tests: unit mirror hooks (FR-039); integration mirror (FR-040); full-chain `init->mirror->discover->depgraph->scaffold` regression (FR-041).
+- TA07 E2E verify in GLPNET-016 against `C:/pglite/research/glpnet-016`; full pytest green.
