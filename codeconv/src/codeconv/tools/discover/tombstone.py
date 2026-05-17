@@ -49,6 +49,13 @@ _FIELD_ORDER: tuple[str, ...] = (
     "plan_completed_at",
     "plan_path",
     "open_escalation_count",
+    # --- feature 018 (codeconv-builder) appended fields ---
+    "convspec_started_at",
+    "convspec_completed_at",
+    "spec_path",
+    "convspec_open_escalation_count",
+    "builder_outer_workflow_id",
+    "builder_file_state",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -76,12 +83,30 @@ _FEATURE_017_KEYS: tuple[str, ...] = (
     "open_escalation_count",
 )
 
+# The feature-018 (codeconv-builder) appended keys, as a set, for
+# round-trip preservation. Same discipline as ``_FEATURE_015_KEYS`` /
+# ``_FEATURE_017_KEYS``: a ``/codeconv-discover`` re-write (a feature-012
+# caller) MUST carry these forward unchanged or a re-discover after the
+# builder/convspec stamps would silently erase convspec + builder state
+# (data-model §3 round-trip; FR-021 reproducibility). Artifact *content*
+# is NOT mirrored into YAML — only this state projection.
+_FEATURE_018_KEYS: tuple[str, ...] = (
+    "convspec_started_at",
+    "convspec_completed_at",
+    "spec_path",
+    "convspec_open_escalation_count",
+    "builder_outer_workflow_id",
+    "builder_file_state",
+)
+
 # Combined append-only preservation set: every key appended after the
 # original feature-012 eight. Used by ``_canonicalise`` and
-# ``merge_preserving_feature015`` so neither feature-015 nor feature-017
-# state is dropped when a tombstone is re-written by a caller that did
-# not author those keys.
-_PRESERVED_APPENDED_KEYS: tuple[str, ...] = _FEATURE_015_KEYS + _FEATURE_017_KEYS
+# ``merge_preserving_feature015`` so neither feature-015, feature-017,
+# nor feature-018 state is dropped when a tombstone is re-written by a
+# caller that did not author those keys.
+_PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
+    _FEATURE_015_KEYS + _FEATURE_017_KEYS + _FEATURE_018_KEYS
+)
 
 # YAML emitter settings pinned for diff stability.
 _YAML_DUMP_KWARGS: dict[str, Any] = dict(

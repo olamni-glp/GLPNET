@@ -39,7 +39,7 @@ DBOS steps; the durable layer is additive and isolated to `codeconv/src/codeconv
 - [ ] T013 Create `codeconv/src/codeconv/durable/queue.py` — DBOS `Queue` (default concurrency 1, serial through 012 bridge lock — R12, D2), startup `recover_pending_workflows` + explicit-resume helper
 - [ ] T014 Create `codeconv/src/codeconv/durable/trace.py` — read-only projection over `dbos.workflow_status`/`operation_outputs` joined via `builder_runs` (D1=a trace), per `contracts/status_trace_contract.md`
 - [ ] T015 Replace the no-op `register()` in `codeconv/src/codeconv/tools/{discover,depgraph,init,scaffold,mirror,planagents}/workflow.py` with delegation to `durable/` registration — behaviour of each entrypoint UNCHANGED (FR-016/SC-005, D2 hard gate)
-- [ ] T016 Extend `codeconv/src/codeconv/tools/discover/tombstone.py` `_FIELD_ORDER` append-only with `convspec_started_at｜convspec_completed_at｜spec_path｜convspec_open_escalation_count｜builder_outer_workflow_id｜builder_file_state` AFTER 017's keys (data-model §3)
+- [X] T016 Extend `codeconv/src/codeconv/tools/discover/tombstone.py` `_FIELD_ORDER` append-only with `convspec_started_at｜convspec_completed_at｜spec_path｜convspec_open_escalation_count｜builder_outer_workflow_id｜builder_file_state` AFTER 017's keys (data-model §3) — done; `_FEATURE_018_KEYS` added to `_PRESERVED_APPENDED_KEYS`; test_tombstone.py 4/4 green (append-only, no regression)
 - [ ] T017 [P] Test `codeconv/tests/test_tombstone_stamp_rebuild.py` (@needs_bridge): append-only `_FIELD_ORDER` stamp→rebuild→stamp is a fixed point (FR-021)
 - [ ] T018 [P] Test `codeconv/tests/test_capability_preservation.py` (@needs_bridge): every 015/016/017 tool entrypoint still reachable + unchanged behaviour after T015 (FR-016/SC-005)
 
