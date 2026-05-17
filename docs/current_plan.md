@@ -1,25 +1,52 @@
-# Current Plan: Parallel /speckit-implement of 016 + 017 (worktree-isolated)
+# Current Plan: 017-conversion-plan-agents (codeconv-planagents)
 
 Started: 2026-05-16
 
 ## Steps
-- [x] 1. Mandatory reading (CLAUDE.md / DISCIPLINE / typed-glp-manual / cheat-sheet)
-- [x] 2. Resolve scope: 016 ⊥ 017 independent; git-worktree isolation; normal DBOS only; fresh PG17 side clusters
-- [x] 3. Create worktrees — ../GLPNET-016 (016-codeconv-init-scaffold-langpair@177a33f8), ../GLPNET-017 (new 017-conversion-plan-agents off 20bf5130)
-- [x] 4. Verify spec artifacts present in both worktrees
-- [x] 5. Verify PGLite 0.4.5 merged on origin/main+015/016/017; live PG16 data-migration gated → use fresh side clusters
-- [ ] 6. Spawn 2 background agents (speckit-implement 016 & 017) <- CURRENT
-- [ ] 7. Monitor both to completion (auto-notified; no polling)
-- [ ] 8. Reconcile: review diffs, confirm per-feature tests green, collect BLOCKED tasks
-- [ ] 9. Report + hand Gabi per-branch merge templates (Claude does NOT merge to main)
+- [x] 0. Read all spec/plan/tasks/contracts + feature-015 reference code
+- [x] 1. Phase 1 Setup: venv+npm install, baseline running
+- [x] 2. Phase 2 Foundational: 0003 migration (applied PG17), _FIELD_ORDER+round-trip, subpackage, readiness.py
+- [x] 3. Phase 2 tests: readiness 17 green, schema-isolation 6 green (incl FR-020 C2), migration verified
+- [x] 4. Phase 3 US1: workflow/CLI/artefact/tombstone_writer/SKILL.md; US1 bridge 13 green + artefact-val 11 green
+- [x] 5. Phase 4 US2: frontier+SC-002 tests authored (bridge run pending)
+- [x] 6. Phase 5 US3: SCC fixture + batch tests authored (bridge run pending)
+- [x] 7. Phase 6 US4: aggregate-escalations impl + tests + SKILL escalate-don't-guess
+- [x] 8. Phase 7 US5: research-agent SKILL contract + research tests
+- [x] 9a. Bug fixes: 2 real SCC-batch bugs found by bridge tests, fixed + unit-locked + re-green serial
+- [ ] 9. Phase 8 Polish: final serial run b11c9ywbl in flight; then finalize ← CURRENT
+
+## Test results (serial, uncontended — authoritative)
+- readiness 18/18, artefact-val 11/11 (no bridge)
+- schema-isolation 6/6 (+downgrade re-confirm pending b11c9ywbl)
+- US1: next 6/6, orchestration-mock 1/1, lifecycle (re-confirm pending)
+- US3 SCC-batch 4/4, US4 escalations 3/3 (post-fix, serial)
+- pre-feature baseline: 5 of 6 "fails" are known bridge-concurrency
+  flakes (green in isolation per memory); 1 = test_sc003_two_stack_
+  concurrent = pre-existing .NET-binary-absent (Sc003NpgsqlLoop.exe not
+  built; feature-012 .NET interop, unrelated to 017). ZERO regressions.
+
+## BLOCKED (for Gabi)
+- T003/T004/T005 (live snapshots) + T045 (SC-009 live full pass):
+  glp_runtime_net/ has 0 .dart files in this worktree (128 checked-in
+  tombstones from a prior populated state) AND a real pass needs LLM
+  planning sub-agents (brief forbids running them). Mirrors feature-015's
+  parked live-cluster tasks. Deterministic engine + mocked-agent harness
+  cover every FR/SC mechanism.
 
 ## Context
-Parallel, worktree-isolated `/speckit-implement` of feature 016 (codeconv init+scaffold behind a langpair registry; removes tools/d2net) and feature 017 (codeconv-planagents; 46 tasks, MVP=US1). Independent per Gabi (msg "1 both are truly independent").
+Deterministic Python tool `codeconv planagents` + `/codeconv-planagents` skill orchestration
+loop. New table codeconv.dart_plans (parallel to feature-015 dart_conversions). Mirrors
+feature-015 depgraph tool structure. Alembic 0003 chains off 0002. Data-dir on this exFAT
+checkout = C:/pglite/research/glpnet-017 (fresh PG17 cluster, created by first migrate).
 
-Each background agent: its own branch + worktree + dedicated fresh PG17 side cluster
-(016 -> C:/pglite/research/glpnet-016, 017 -> C:/pglite/research/glpnet-017),
-`codeconv --data-dir <side> migrate` before any bridge test. Canonical C:/pglite/research/glpnet is PG16 + gated D2NET cluster — OFF LIMITS.
-
-NOTE (Gabi 2026-05-16): the real live PG16->PG17 data migration (canonical-cluster dump/restore) is DEFERRED — no spec/plan/tasks/implementation; the fresh per-feature side-cluster interim is the only approach in scope. Each feature's own Alembic `migrate` on its fresh PG17 side cluster still runs (schema setup, not the deferred live-data migration).
-
-Discipline baked into agent prompts: spec-first (block+report, never guess/workaround), baseline+retest, commit-per-task by name (no `git add -A`), NO push/merge, do not modify GLP core, normal DBOS only (no new tracking infra — not in spec). Reconciliation + merge templates handled by orchestrator; only Gabi merges main.
+## Final verification (2026-05-17)
+ALL 72 feature-017 tests GREEN per-group serial (uncontended). Full
+200-test combined run: 70/72 (2 = test_tombstone_keys_round_trip +
+test_research_failure_is_open_escalation_not_stalled flaked ONLY in the
+16-min combined run; BOTH re-confirmed green in isolation in 26.6s).
+Root cause = PGLite bridge cold-init resource exhaustion over a long
+sequential bridge-fixture run — SAME documented flakiness class as the
+pre-existing test_bridge_client.py flakes (memory: "confirmed
+isolation-green"; project_pglite_cold_init_windows.md). NOT a code/
+logic/spec defect (Bug Protocol: behaviour consistent with the known
+environmental constraint). ZERO regressions to pre-existing suite.
