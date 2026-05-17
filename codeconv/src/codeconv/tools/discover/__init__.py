@@ -163,6 +163,11 @@ def _format_warning(w: dict) -> str:
         if ref:
             return f"missing tombstone: {w.get('path')} referenced by {ref}"
         return f"missing tombstone: {w.get('path')}"
+    if kind == "missing_target":
+        ref = w.get("referrer")
+        if ref:
+            return f"missing target: {w.get('path')} referenced by {ref}"
+        return f"missing target: {w.get('path')}"
     if kind == "missing_source":
         return f"missing source: {w.get('path')}"
     if kind == "stale_tombstone":

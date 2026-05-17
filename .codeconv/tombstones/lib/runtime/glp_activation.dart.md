@@ -37,6 +37,9 @@ callers:
 - test/runtime/rpc_routing_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: ffba37a1c2ae6161898532e842040e38b1aaab8a818fe9c60bd4a001952688c4
+topo_level: 4
+cycle_group_id: 37
+status: pending
 ---
 
 GLP-level module activation.

@@ -170,6 +170,54 @@ def test_verify_malformed_tombstone_exits_65(tmp_path: Path) -> None:
     assert "ABORT" in proc.stderr
 
 
+def test_verify_missing_sha256_exits_65(tmp_path: Path) -> None:
+    """Codex P2 regression: a tombstone with a valid path but NO sha256
+    is format-invalid for the audit → abort exit 65 (NOT a stale warning
+    with exit 0)."""
+    sub = _sub(tmp_path)
+    (sub / "lib" / "a.dart").write_text("class A {}\n", encoding="utf-8")
+    troot = tmp_path / ".codeconv" / "tombstones" / "lib"
+    troot.mkdir(parents=True, exist_ok=True)
+    (troot / "a.dart.md").write_text(
+        "---\n"
+        "path: lib/a.dart\n"
+        "name: a.dart\n"
+        "dependencies: []\n"
+        "callers: []\n"
+        "mtime: '2026-05-16T00:00:00.000Z'\n"
+        "---\n\n",  # NB: no sha256 key
+        encoding="utf-8",
+    )
+    proc = run_codeconv(
+        tmp_path, "discover", "run", "--root", str(sub),
+        "--verify-tombstones",
+    )
+    assert proc.returncode == 65, (
+        f"missing sha256 must abort exit 65; got {proc.returncode} "
+        f"{proc.stdout}{proc.stderr}"
+    )
+    assert "ABORT" in proc.stderr
+
+
+def test_verify_does_not_create_tombstones_dir(tmp_path: Path) -> None:
+    """Codex P3 regression: verify mode is read-only — it must NOT create
+    `.codeconv/tombstones/` in a clean checkout."""
+    sub = _sub(tmp_path)
+    (sub / "lib" / "x.dart").write_text("class X {}\n", encoding="utf-8")
+    troot = tmp_path / ".codeconv" / "tombstones"
+    assert not troot.exists()
+    proc = run_codeconv(
+        tmp_path, "discover", "run", "--root", str(sub),
+        "--verify-tombstones", "--json",
+    )
+    assert proc.returncode == 0, proc.stderr
+    summary = json.loads(_extract_json(proc.stdout))
+    assert summary["missing_tombstone"] == 1
+    assert not troot.exists(), (
+        "verify mode must not create .codeconv/tombstones/ (read-only)"
+    )
+
+
 def test_verify_and_from_tombstones_mutually_exclusive(tmp_path: Path) -> None:
     sub = _sub(tmp_path)
     proc = run_codeconv(

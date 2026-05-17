@@ -127,7 +127,12 @@ def run_discover(
     repo_root = Path(repo_root).resolve()
     subtree = (root or (repo_root / "glp_runtime_net")).resolve()
     tombstones_root = repo_root / ".codeconv" / "tombstones"
-    tombstones_root.mkdir(parents=True, exist_ok=True)
+    # `--verify-tombstones` is strictly read-only (contract: NO DB writes,
+    # NO tombstone rewrites). Creating the tombstone dir in a clean
+    # checkout would be a filesystem write — only normal / from_tombstones
+    # (which may write/rebuild tombstones) create it.
+    if mode != "verify_tombstones":
+        tombstones_root.mkdir(parents=True, exist_ok=True)
 
     def _finalise(summary: dict) -> dict:
         summary["mode"] = mode
@@ -322,8 +327,49 @@ def _run_normal(
     orphaned = 0
     revived = 0
     if not dry_run:
-        # Reconciliation phase — recompute callers from imports table.
+        # Reconciliation phase.
         with engine.begin() as conn:
+            # Referential completeness (Amendment v3 / option A′): an
+            # in-subtree import directive can resolve by path shape (R12)
+            # to a file that does not (yet) exist on disk and was therefore
+            # never inventoried into dart_files. Such an edge is dangling.
+            # We WARN about it but do NOT delete it from dart_imports:
+            # dart_imports is a faithful, persistent record of the source's
+            # import directives. A destructive delete would lose the edge
+            # permanently across idempotent discover runs (an unchanged
+            # importer is sha-skipped, so a later-created target would never
+            # re-add the edge). The dangling endpoint is instead resolved
+            # non-destructively at read time by `depgraph compute` (which
+            # filters edges to inventoried nodes before algorithm.compute,
+            # self-healing once the target is inventoried).
+            valid_paths = {
+                r[0]
+                for r in conn.execute(
+                    text("SELECT path FROM codeconv.dart_files")
+                ).all()
+            }
+            for from_path, to_path in conn.execute(
+                text(
+                    "SELECT from_path, to_path FROM codeconv.dart_imports"
+                )
+            ).all():
+                if to_path not in valid_paths:
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": to_path,
+                            "referrer": from_path,
+                        }
+                    )
+                elif from_path not in valid_paths:
+                    warnings_list.append(
+                        {
+                            "kind": "missing_target",
+                            "path": from_path,
+                            "referrer": to_path,
+                        }
+                    )
+            # Recompute callers as the faithful inverse of dart_imports.
             conn.execute(text("DELETE FROM codeconv.dart_callers"))
             conn.execute(
                 text(
@@ -1115,9 +1161,22 @@ def _run_verify_tombstones(
             except Exception as exc:
                 bad_files.append(f"{tomb_path} ({exc})")
                 continue
-            opath = fm.get("path")
-            if not isinstance(opath, str) or not opath.strip():
-                bad_files.append(f"{tomb_path} (missing/invalid 'path')")
+            # Verify-mode is a source-truth audit: a format-invalid
+            # tombstone (missing/!type-valid REQUIRED 012 field — path
+            # AND sha256) aborts exit 65, same gate as the
+            # --from-tombstones preflight. sha256 is required for the
+            # recompute-and-compare; without it the file can't be
+            # audited and MUST NOT pass as a mere stale warning.
+            missing = [
+                k
+                for k in _REQUIRED_012_FIELDS
+                if not isinstance(fm.get(k), str) or not fm[k].strip()
+            ]
+            if missing:
+                bad_files.append(
+                    f"{tomb_path} (missing/invalid required field(s): "
+                    f"{', '.join(missing)})"
+                )
                 continue
             tomb_set.append((tomb_path, fm))
 

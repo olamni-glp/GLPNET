@@ -34,6 +34,9 @@ callers:
 - test/multiagent/multiagent_modules_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 90d586b75da68e31051e94da4ad8577f0e93aeddcbc7fa2f0ac2ac2629a43a22
+topo_level: 0
+cycle_group_id: 62
+status: ready
 ---
 
 Boot Loader for maGLP Isolate Spawning

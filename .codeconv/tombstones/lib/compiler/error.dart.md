@@ -22,6 +22,9 @@ callers:
 - test/module/module_syntax_v2_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 48c26f84e7f527b0ac9d6ecebc266bfea0cb49964bf50a7f1dbcfe2f424070a4
+topo_level: 0
+cycle_group_id: 3
+status: ready
 ---
 
 Error categories for compiler diagnostics

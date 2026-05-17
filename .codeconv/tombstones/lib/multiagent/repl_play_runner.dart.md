@@ -41,6 +41,9 @@ dependencies: []
 callers: []
 mtime: '2026-04-27T16:15:32.000Z'
 sha256: ebe529f88b605e1c33e3158837c2a5a09599572cfe7c195a3f5712e5846dc169
+topo_level: 0
+cycle_group_id: 64
+status: ready
 ---
 
 ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.

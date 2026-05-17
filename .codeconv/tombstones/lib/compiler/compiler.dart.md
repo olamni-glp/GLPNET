@@ -30,5 +30,8 @@ callers:
 - test/test_constant_compile.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 10d4b73927e02b8c20489098e6523a68c2ff456c036544f5f9852107c65ef194
+topo_level: 7
+cycle_group_id: 43
+status: pending
 ---
 

@@ -34,6 +34,9 @@ callers:
 - lib/runtime/suspend_ops.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 39633ffa950c42f693d1b6053f910084556d05aad2174a2fdc91850d5f3eff83
+topo_level: 1
+cycle_group_id: 24
+status: pending
 ---
 
 Minimal Variable Entry for multiagent runtime support

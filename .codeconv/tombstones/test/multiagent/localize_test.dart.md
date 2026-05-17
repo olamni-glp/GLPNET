@@ -33,6 +33,9 @@ dependencies:
 callers: []
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 18f65f67b39c84df4e9b09b357301bb42bfb69b6b2660592ef2a251ee8976ec7
+topo_level: 2
+cycle_group_id: 107
+status: pending
 ---
 
 Tests for Localize operation

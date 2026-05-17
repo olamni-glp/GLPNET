@@ -50,3 +50,8 @@ glp_runtime_net/
 # 016; kept ignored so any historical on-disk backup is not surfaced)
 .D2NET/pgdb.bak.*/
 
+# codeconv-depgraph local artefact (feature 015 / R10) — recomputable per
+# `codeconv depgraph compute`; NOT checked in (tombstones are the durable
+# round-trip source). Tombstones under .codeconv/tombstones/ stay tracked.
+.codeconv/depgraph.json
+

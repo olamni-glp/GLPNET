@@ -50,7 +50,26 @@ It MUST NOT process any `.dart` file outside `<root>` even if reachable through 
    - Write tombstone .codeconv/tombstones/<rel>.dart.md.
    - Bump files_processed.
 5. Reconciliation phase (single DBOS step):
-   - Recompute dart_callers from the now-complete dart_imports table (idempotent rewrite).
+   - REFERENTIAL COMPLETENESS (Amendment v3 — option A′, non-destructive): an
+     in-subtree import directive may resolve (by path shape, R12) to a file that
+     does not (yet) exist on disk and was therefore never inventoried. Such a
+     dart_imports edge is dangling. Discover EMITS a warning for it ("missing
+     target: <to_path> referenced by <from_path>") but MUST NOT delete it from
+     dart_imports. Rationale: dart_imports is a faithful, persistent record of
+     the source's import directives; the per-file idempotent short-circuit
+     sha-skips an unchanged importer, so a destructive delete would lose the
+     edge permanently when the target file is later created (the importer is
+     never re-parsed). The dangling endpoint is instead resolved
+     NON-DESTRUCTIVELY at read time by feature-015 `codeconv depgraph compute`
+     (see `specs/015-codeconv-depgraph/contracts/depgraph_cli.md` § compute) —
+     self-healing: the edge re-enters the graph automatically once its target
+     is inventoried, with no importer edit required. Contrast the
+     `--from-tombstones` rule (§ Steps (`--from-tombstones`) step 3), which DOES
+     drop dangling edges because that mode rebuilds dart_imports wholesale from
+     T (no idempotent-skip persistence to corrupt). SC-007 parity holds: a
+     normal-mode dart_imports legitimately may contain a dangling edge that the
+     from-tombstones rebuild drops — the documented, warned divergence.
+   - Recompute dart_callers as the faithful inverse of the full dart_imports table (idempotent rewrite).
    - Find files in dart_files that are no longer present on disk → orphan: move to dart_files_orphaned, move tombstone to .codeconv/tombstones/.orphaned/.
    - Find files in dart_files_orphaned that are present on disk again → revive (FR-025): move row back, move tombstone back, refresh mtime + sha256, recompute edges.
    - Detect imports BY files OUTSIDE the subtree pointing INTO the subtree (FR-023): emit warnings; do NOT record edges.

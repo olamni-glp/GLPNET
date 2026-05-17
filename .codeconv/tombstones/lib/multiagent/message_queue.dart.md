@@ -34,6 +34,9 @@ callers:
 - test/multiagent/mad_transactions_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 619550d11a54842ba4948fd5cd8ac86d742fbaddf26fcd138ddc39c26da696d7
+topo_level: 0
+cycle_group_id: 28
+status: ready
 ---
 
 Message Queue (M_p) for madGLP

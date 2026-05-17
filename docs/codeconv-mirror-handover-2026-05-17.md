@@ -41,9 +41,10 @@ the outer connection.
   hard-fail) when source absent; `run_inspect` pool-deadlock fix.
 - **Skill:** `.claude/skills/codeconv-mirror/SKILL.md`.
 - **Tests:** new `codeconv/tests/test_mirror_hooks.py`, `test_mirror.py`, `test_mirror_gitignore.py`.
-- **Issue #1 fix:** restored feature-015 option-A' dangling-edge filter in
-  `tools/depgraph/workflow.py` (filter `dart_imports` edges to inventoried nodes before
-  `compute`; surfaced as `dangling_edges_filtered`).
+- **Issue #1 fix:** the 016 branch base predated feature-015's option-A' filter; a
+  016-local re-add unblocked depgraph, then on reconciliation (`main`←015 already has it)
+  the re-add was dropped in favour of `main`'s feature-015 implementation
+  (`tools/depgraph/workflow.py`, key `dangling_edges_dropped`).
 - **Part B (FR-042/FR-043):** `init` `--include-pruned` (force-include a standard-pruned
   dir) + `--mirror-exclude` (gitignore-style, repeatable) → workspace settings
   `mirror_force_include` / `mirror_exclude_patterns`; `mirror` computes effective prune =
@@ -68,7 +69,7 @@ the SCC algorithm without the feature-015 **option-A'** self-healing filter (the
 approved two fixes, both applied: (1) extend the dart_csharp standard prune set with
 `archive`/`backup` (build already present); (2) restore the option-A' filter in
 `depgraph compute`. Verified e2e: `depgraph` exit 0, `files_total=178`,
-`dangling_edges_filtered=35`, `cycle_count=1`; full chain green. No open blockers.
+`dangling_edges_dropped=35`, `cycle_count=1`; full chain green. No open blockers.
 
 ## Open decision — commit/merge (Gabi only)
 
