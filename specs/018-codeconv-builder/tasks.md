@@ -7,9 +7,11 @@ Tests are generated: the spec defines per-story Independent Tests and
 `CLAUDE.md` mandates baseline-before / re-run-after. All paths absolute from
 repo root `D:\BSTDEV\research\GLP\GLPNET\`. Invoke as `pytest codeconv/tests/`
 — **no `--data-dir`** (not a pytest option; conftest registers only
-`--run-perf`. `@needs_bridge` tests resolve the cluster via `bridge_client`'s
-default `<repo>/.pgdb`, NTFS-valid on D:). `@needs_bridge` tests serial (012
-lock; PGLite cold-init ~7 s).
+`--run-perf`). `@needs_bridge` tests get a throwaway cluster under pytest's
+`tmp_path` via the `isolated_repo` fixture (OS temp dir — never `<repo>/.pgdb`,
+verified `codeconv/tests/conftest.py`), so CLAUDE.md's `--data-dir` *CLI*
+mandate is N/A to the pytest run; bridge tests serial (012 lock; PGLite
+cold-init ~7 s).
 
 **Governing constraint (D2, Gabi emphatic):** no task may rewrite or replace a
 proven 015/016/017 flow; existing tool entrypoints are called verbatim inside
