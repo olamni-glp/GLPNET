@@ -208,15 +208,15 @@ PGLite is feature 011's pre-req pattern; we treat it as a black-box dependency. 
 
 ## Issue 8: PGLite cluster files cannot live on exFAT
 
-**Status**: Mitigated via `--data-dir` override (release `v2026.05.11-2`)
-**Discovered**: 2026-05-11 when the freshly-merged `codeconv` was first invoked against the live repo
-**Affects**: Any `codeconv` (or other unified-bridge consumer) invocation where the repo lives on an exFAT volume
+**Status**: ⚠️ ENVIRONMENT PREMISE VOID as of 2026-05-17 — D: was re-verified **NTFS** (`Get-Volume D` → `FileSystem: NTFS`, label `GAVRI_VOL_D`; the prior `Lexar`/exFAT drive was physically replaced). On *this* machine the exFAT crash no longer applies and `<repo>/.pgdb/` passes the guard. The `--data-dir` mechanism below remains valid and is retained as the canonical-cluster convention (see CLAUDE.md) and for any genuinely-exFAT checkout. (Originally: Mitigated via `--data-dir` override, release `v2026.05.11-2`.)
+**Discovered**: 2026-05-11 when the freshly-merged `codeconv` was first invoked against the then-exFAT live repo
+**Affects**: Any `codeconv` (or other unified-bridge consumer) invocation where the repo genuinely lives on an exFAT volume (no longer the case for D: on this machine)
 
 ### Summary
 
 PGLite's WASM data files rely on POSIX-style file operations (atomic rename, advisory locks, certain mmap operations) that exFAT does not implement. When `.pgdb/` is created on exFAT, the bridge process crashes mid-DBOS-migration (typically around migration 4) — the client sees `psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly` on a downstream query, and the bridge log is empty because the bridge died before flushing.
 
-This is environment-dependent and does NOT show up in `pytest` runs, because pytest's `tmp_path` lives under `%TEMP%` on `C:` (NTFS). The bug surfaces only against the live repo on `D:\BSTDEV\research\GLP\GLPNET\` which is on a `Lexar`-labelled exFAT drive (`Get-Volume D` shows `FileSystem : exFAT`).
+This is environment-dependent and does NOT show up in `pytest` runs, because pytest's `tmp_path` lives under `%TEMP%` on `C:` (NTFS). It surfaced only while the live repo at `D:\BSTDEV\research\GLP\GLPNET\` sat on a `Lexar`-labelled exFAT drive. **That drive was replaced 2026-05-17; D: is now `GAVRI_VOL_D` / NTFS, so this no longer reproduces on this machine** — the text below is retained for the general exFAT case and the canonical-cluster convention.
 
 ### Fix
 
