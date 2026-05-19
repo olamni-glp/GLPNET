@@ -22,10 +22,15 @@ from ._builder_e2e_helpers import (
 
 def test_stage_order_constants_pure() -> None:
     """discover/depgraph are the graph-entry stages; scaffold precedes
-    plan in the per-unit order (FR-007/FR-008 ordering)."""
+    plan in the per-unit order (FR-007/FR-008). Amendment 2 / FR-044:
+    the per-unit work splits across the agent gate into PRE
+    (scaffold→convspec) and POST (convspec→plan); convspec is the gate
+    boundary present in both."""
     from codeconv.durable.workflows import (
         GRAPH_ENTRY_STAGES,
         PER_UNIT_STAGES,
+        POST_STAGES,
+        PRE_STAGES,
     )
 
     assert GRAPH_ENTRY_STAGES[0] == "discover", GRAPH_ENTRY_STAGES
@@ -33,6 +38,13 @@ def test_stage_order_constants_pure() -> None:
     assert list(PER_UNIT_STAGES).index("scaffold") < list(
         PER_UNIT_STAGES
     ).index("plan"), PER_UNIT_STAGES
+    # PRE ends, and POST begins, at the convspec agent-gate boundary.
+    assert PRE_STAGES == ("scaffold", "convspec"), PRE_STAGES
+    assert POST_STAGES == ("convspec", "plan"), POST_STAGES
+    assert PRE_STAGES[-1] == POST_STAGES[0] == "convspec"
+    # PRE then POST, deduped, == the logical full per-unit order.
+    merged = list(PRE_STAGES) + [s for s in POST_STAGES if s not in PRE_STAGES]
+    assert merged == list(PER_UNIT_STAGES), (merged, PER_UNIT_STAGES)
 
 
 @needs_bridge

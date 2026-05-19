@@ -13,6 +13,22 @@
 - Q: What form is the per-file conversion spec? → A: A structured machine-consumable artifact WITH embedded human-readable rationale/provenance (both).
 - Q: What is the DBOS durable unit of work? → A: Per-(file, stage) — each stage of each file is a durable step, resume at the interrupted stage; a cycle group is one unit.
 
+### Amendment 2 — Session 2026-05-19 (facet-3 remediation)
+
+Found by the genuine 128-file live pass: the single per-unit child
+workflow returned on the `needs_agent_work` sentinel ⇒ terminally
+`SUCCESS` ⇒ its checkpointed `convspec` step never re-ran, and a plain
+re-drive reused the awaiting-agent epoch ⇒ an agent-written spec could
+**never** be ingested (the agent loop only ever "passed" in mocked
+tests). Two prior facets of the same root were also fixed: (1)
+`outer_builder_workflow` discarded the per-unit result so the sentinel
+never reached `builder run` (it wrongly reported `completed` with zero
+specs — violating US2 Acceptance 1); (2) the `builder_runs.outcome`
+CHECK omitted `needs_agent_work` (migration **0006** widens it). The
+durable unit of work is **re-specified** by FR-044 below: per-unit work
+splits across the agent gate into a deterministic PRE workflow and a
+content-addressed POST workflow.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One durable command drives the whole conversion pipeline (Priority: P1)
@@ -281,6 +297,23 @@ rest of the frontier still progresses.
   concluded) in the per-file spec, and MUST be cached per construct in the
   idiom knowledge base so the same construct is not re-researched and the
   decision is reproducible offline after first research.
+- **FR-044** *(Amendment 2 — facet-3)*: The per-file/SCC durable unit
+  MUST be decomposed so the agent gate is **traversable by a plain
+  `builder run`** (no `--restart-run`): (a) a deterministic **PRE**
+  workflow (`scaffold`+`convspec`) that completes terminally and
+  idempotently and whose `needs_agent_work` is surfaced by the outer
+  aggregation; (b) an out-of-DBOS **agent gate**; (c) a **content-
+  addressed POST** workflow (`convspec`+`plan`) launched only once the
+  artifact(s) exist, keyed by the artifact digest so a re-spec is a
+  fresh deterministic ingest. A run that ended `needs_agent_work` is an
+  awaiting-agent terminal state: the next plain `builder run` MUST mint
+  a new epoch and re-evaluate the gate (recovering the deterministic PRE
+  wf, FR-003/FR-004), NOT recover the frozen awaiting run. Re-driving
+  after an agent writes a spec MUST ingest it and progress the file to
+  `specced→…→complete`. SCC = one indivisible unit in both PRE and POST
+  (POST requires *all* members' artifacts — FR-002). The fix is isolated
+  to `durable/workflows.py` + the `durable/__init__.py` id helpers;
+  `durable/steps.py` step bodies are reused verbatim (D2).
 
 ### Key Entities *(include if feature involves data)*
 

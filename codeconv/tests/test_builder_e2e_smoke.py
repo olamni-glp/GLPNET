@@ -6,6 +6,15 @@ gate exists to surface. 3-file chain; migrate→discover→depgraph→
 `builder run`. Asserts the run launches the durable workflow with NO
 DBOS/PGLite error and `builder status` works. (Scaled to ≥20 files in
 test_dbos_throughput_smoke.py once this passes.)
+
+It also pins, **end-to-end through the real bridge/run path**, the
+feature-018 ``needs_agent_work`` surfacing: with NO convspec artifacts
+staged the convspec step short-circuits, so the spec-true outcome is
+``needs_agent_work`` with a non-empty list (US2 Acceptance 1 — a run
+that persists zero specs is NOT ``completed``). This is the exact
+behaviour the ``outer_builder_workflow`` propagation defect (found by
+the 2026-05-19 genuine live pass) used to hide by reporting
+``completed``.
 """
 
 from __future__ import annotations
@@ -34,7 +43,11 @@ def test_builder_run_end_to_end_3file(discover_repo: Path) -> None:
         f"STDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
     )
     payload = json.loads(proc.stdout.strip().splitlines()[-1])
-    assert payload["outcome"] in ("launched", "completed"), payload
+    # No artifacts staged ⇒ every unit short-circuits at convspec ⇒ the
+    # outer workflow MUST observe needs_agent_work and surface it (the
+    # defect regression: pre-fix this wrongly reported "completed").
+    assert payload["outcome"] == "needs_agent_work", payload
+    assert payload["needs_agent_work"], payload
     assert payload["units"] >= 1, payload
 
     # status must reconcile + return promptly.

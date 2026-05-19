@@ -2,11 +2,14 @@
 
 The dual-``0003`` defect (016 vs 017) is resolved by feature-018
 T003/T004: ``0003_dart_plans`` re-id'd to ``0004``, new
-``0005_codeconv_builder`` chained on ``0004``. Asserts exactly one head
-``0005`` and the linear chain ``0001→0002→0003→0004→0005`` (offline,
-authoritative via Alembic ``ScriptDirectory``), and — gated by the
-bridge — that ``alembic upgrade head`` succeeds and is idempotent on a
-fresh cluster (re-run = no-op; all DDL ``IF NOT EXISTS``).
+``0005_codeconv_builder`` chained on ``0004``. ``0006`` (2026-05-19
+remediation) widens the ``builder_runs.outcome`` CHECK to allow
+``needs_agent_work`` — forward-only, single linear head preserved.
+Asserts exactly one head ``0006`` and the linear chain
+``0001→0002→0003→0004→0005→0006`` (offline, authoritative via Alembic
+``ScriptDirectory``), and — gated by the bridge — that ``alembic
+upgrade head`` succeeds and is idempotent on a fresh cluster (re-run =
+no-op; all DDL ``IF NOT EXISTS``).
 """
 
 from __future__ import annotations
@@ -31,18 +34,19 @@ def _script_dir():
 
 
 def test_exactly_one_head_offline() -> None:
-    """Authoritative, bridge-free: the script graph has ONE head 0005."""
+    """Authoritative, bridge-free: the script graph has ONE head 0006."""
     sd = _script_dir()
     heads = sd.get_heads()
-    assert heads == ["0005"], f"expected single head 0005, got {heads}"
+    assert heads == ["0006"], f"expected single head 0006, got {heads}"
 
 
 def test_linear_chain_offline() -> None:
-    """The chain is strictly linear 0001→0002→0003→0004→0005 (no
+    """The chain is strictly linear 0001→0002→0003→0004→0005→0006 (no
     branch/merge), so ``alembic upgrade head`` is unambiguous."""
     sd = _script_dir()
     chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
     assert chain == {
+        "0006": "0005",
         "0005": "0004",
         "0004": "0003",
         "0003": "0002",

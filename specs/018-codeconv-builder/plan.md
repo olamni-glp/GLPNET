@@ -160,6 +160,30 @@ codeconv/
 | **DBOS activation (D1=a): dormant `register()` no-ops → live `@DBOS.workflow`/`@DBOS.step`**, widening the runtime surface and adding DBOS-on-single-writer-PGLite to the critical path. | Explicit operator decision (D1=a, 2026-05-17): the spec's "DBOS" must mean real persistence / resumability / completability / recoverability **and** queryable workflow-trace analysis for debugging & planning — not the nominal two-phase-state model. FR-003/FR-004 resumability+idempotence and the new trace requirement cannot be met by the existing ad-hoc state alone (no step-replay skip, no recovery, no trace history). | (b) **Keep the two-phase state model, call it "DBOS"** — rejected by Gabi: nominal, no real recovery, no trace surface, fails the literal spec word. (c) **Hybrid b-now/a-later** — rejected by Gabi: defers the core value; the consolidation is the right time to activate. The vendored uuid-ossp patch + the working `setup_dbos` launch path mean activation reuses an already-proven launch; risk is scoped to R12 and is the designated top analyze/clarify item. |
 | **`/codeconv-builder` + `/codeconv-convspec` skills are NOT pure thin wrappers** — they carry a durable-orchestration loop and agent/research sub-agent prompt contracts (deviates from the `/codeconv-discover` / `/codeconv-depgraph` thin-wrapper convention; same class as feature-017). | Spec FR-009/FR-010 + the agent-driven clarification require spawning a convspec analysis sub-agent and a *separate* research sub-agent, and the builder must catch `NeedsAgentWork` and re-drive. Spawning Claude sub-agents is a Claude Code **harness** capability (the Agent tool); a pure Python CLI cannot do it without adding the Anthropic SDK + an API key + network + per-token cost + nondeterminism to a previously offline, deterministic, replay-safe tool — which would also poison DBOS step replay-safety. | (a) **Python spawns agents via SDK/API** — adds a secret, network, nondeterminism; breaks `@needs_bridge`-only isolation **and** DBOS step determinism (replay would re-call the model). (b) **`claude -p` headless shell-out per agent** — fragile nested harness, no clean concurrency primitive, no provenance, untestable. (c) **No sub-agents; single in-process call** — violates FR-009/FR-010 (deep analysis + *separate* research) and the spec quality bar. The chosen split keeps Python + every DBOS step deterministic and replay-safe (step body = deterministic ingest of a checked-in artifact) and pushes only irreducibly-LLM work into the skill/agent layer — exactly the feature-017 precedent. |
 
+### Amendment 2 (2026-05-19) — facet-3 remediation, re-opened defect
+
+The genuine 128-file live pass proved feature 018 was validated against
+a 3-faceted defect that made the convspec agent path structurally
+non-functional (mocked tests fed synthetic results a real run never
+produces): (1) `outer_builder_workflow` discarded per-unit results ⇒
+`needs_agent_work` never surfaced; (2) `builder_runs.outcome` CHECK
+lacked `needs_agent_work` (fixed: migration **0006**); (3) the per-unit
+child returned on the sentinel ⇒ terminally SUCCESS ⇒ checkpointed
+`convspec` never re-ran, and a plain re-drive reused the awaiting epoch
+⇒ an agent spec could never be ingested. **Resolution (FR-044, Gabi
+Option 4):** split the per-unit child into a deterministic PRE wf + an
+out-of-DBOS agent gate + a **content-addressed POST wf**; a
+`needs_agent_work` run mints a new epoch on plain re-drive. Constraint
+trade-off: nothing weakened globally — R3 (no raise), FR-003/FR-004
+(each sub-wf's steps skipped on resume; PRE recovered), SC-002
+(bit-identical within a sub-wf), R9-in-spirit (PRE deterministic; POST
+deterministic *given the artifact*) all preserved; the only new concept
+is content-addressing POST by the artifact digest, which is precisely
+the "re-drive finds the artifact and completes" the contract intended.
+Isolated to `durable/workflows.py` + `durable/__init__.py` id helpers;
+`durable/steps.py` reused verbatim (D2). Acceptance gate:
+`test_agent_gate_traversal.py` (real-bridge plain-re-drive ingest).
+
 ## Phase 0: Research outputs
 
 See [research.md](./research.md) for R1–R13:

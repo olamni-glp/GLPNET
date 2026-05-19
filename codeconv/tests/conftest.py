@@ -269,3 +269,37 @@ def discover_repo(tmp_path: Path):
         _link_prereq_patterns(tmp_path)
     yield tmp_path
     kill_bridge(tmp_path)
+
+
+def stage_convspec_artifacts(
+    repo_root: Path, source_subtree: Optional[Path] = None
+) -> list[str]:
+    """Write a minimal valid spec-only convspec artifact for every
+    ``.dart`` file in the inventory subtree, so the deterministic
+    convspec step finds it and returns ``specced`` (→ plan runs → the
+    unit completes).
+
+    Tests whose intent is resume / idempotence / stage-order /
+    throughput need the pipeline to reach ``completed``; per US2
+    Acceptance 1 the only spec-faithful route there is a *persisted*
+    per-file spec. Without a staged artifact a correct ``builder run``
+    reports ``needs_agent_work`` (the convspec short-circuit) — which is
+    exactly the behaviour the feature-018 ``outer_builder_workflow``
+    propagation defect used to hide. Returns the rel paths staged.
+    """
+    sub = source_subtree or (repo_root / "glp_runtime_net")
+    staged: list[str] = []
+    for src in sorted(sub.rglob("*.dart")):
+        rel = src.relative_to(sub).as_posix()
+        art = repo_root / ".codeconv" / "conversion-specs" / (rel + ".md")
+        art.parent.mkdir(parents=True, exist_ok=True)
+        art.write_text(
+            "# spec\n\n```yaml\nschema_version: 1\n"
+            f"source_path: {rel}\n"
+            "constructs:\n  - construct_key: trivial\n    trivial: true\n"
+            "conversion_units: []\nescalations: []\n```\n\n"
+            "Rationale: trivial.\n",
+            encoding="utf-8",
+        )
+        staged.append(rel)
+    return staged

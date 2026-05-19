@@ -16,8 +16,27 @@ Workflow-id grammar (R9 — deterministic so a re-run *recovers* the same
 workflow rather than starting a new one ⇒ FR-004 / SC-002):
 
 - outer builder : ``builder:{workspace_id}:{run_epoch}``
-- per-file child: ``file:{sha(rel_path)}``
-- per-SCC child : ``scc:{sha(sorted members)}``
+- per-file child: ``file:{sha(rel_path)}``      (logical unit identity)
+- per-SCC child : ``scc:{sha(sorted members)}`` (logical unit identity)
+
+Amendment 2 (facet-3 — agent-gate split, FR-044). The single per-unit
+child is decomposed into two distinct DBOS workflows so the agent gate
+is traversable (a child that returns on the ``needs_agent_work``
+sentinel is terminally SUCCESS and its checkpointed step never re-runs;
+the old "re-drive recovers the same child and the step now finds the
+artifact" was infeasible):
+
+- pre-agent  : ``file:pre:{sha(rel)}``  / ``scc:pre:{sha(members)}``
+- post-agent : ``file:post:{sha(rel)}:{art_digest}`` /
+  ``scc:post:{sha(members)}:{art_digest}``
+
+The post-agent id is **content-addressed** by the agent-written
+artifact (``art_digest`` = the same stable hash over the artifact
+text; for an SCC, over the sorted members' per-artifact digests). Thus
+the post wf does not exist until the spec does, a re-spec ⇒ a new id
+⇒ a fresh ingest, and resume within the same artifact recovers
+identically (SC-002). R3/FR-003/FR-004 preserved (pre id deterministic
+and recovered; each sub-wf's completed steps still skipped).
 
 The hash is SHA-256 (NOT Python ``hash()`` — that is per-process salted
 and would break cross-process determinism), hex, truncated to 16 chars
@@ -67,6 +86,51 @@ def scc_workflow_id(members: Iterable[str]) -> str:
     """
     norm_sorted = sorted(_norm_rel(m) for m in members)
     return f"scc:{_stable_hash(chr(10).join(norm_sorted))}"
+
+
+def artifact_digest(text: str) -> str:
+    """Stable content digest of an agent-written convspec artifact —
+    the post-agent workflow's content-address (Amendment 2 / FR-044).
+    Same SHA-256/16-hex rule as the id hashes so it is process- and
+    input-stable (T060 asserts)."""
+    return _stable_hash(text)
+
+
+def combined_artifact_digest(digests: Iterable[str]) -> str:
+    """Content-address for an SCC post-agent wf: a single digest over
+    the *sorted* member artifact digests (FR-002 — the SCC is one
+    indivisible unit; member discovery order must not change the id)."""
+    return _stable_hash(chr(10).join(sorted(digests)))
+
+
+def pre_file_workflow_id(rel_path: str) -> str:
+    """Pre-agent per-file wf id — deterministic, recovered on resume
+    (R9/FR-003/FR-004). Stages: scaffold + convspec(analysis/started).
+    Completes terminally; the ``needs_agent_work`` sentinel is surfaced
+    by the outer aggregation, not by leaving this wf non-terminal."""
+    return f"file:pre:{_stable_hash(_norm_rel(rel_path))}"
+
+
+def pre_scc_workflow_id(members: Iterable[str]) -> str:
+    """Pre-agent per-SCC wf id (one indivisible unit, FR-002)."""
+    norm_sorted = sorted(_norm_rel(m) for m in members)
+    return f"scc:pre:{_stable_hash(chr(10).join(norm_sorted))}"
+
+
+def post_file_workflow_id(rel_path: str, art_digest: str) -> str:
+    """Post-agent per-file wf id — content-addressed by the artifact
+    (Amendment 2 / FR-044). Launched by the outer ONLY once the
+    artifact exists; a re-spec ⇒ different ``art_digest`` ⇒ a fresh
+    deterministic wf that ingests the new spec and runs plan."""
+    return f"file:post:{_stable_hash(_norm_rel(rel_path))}:{art_digest}"
+
+
+def post_scc_workflow_id(members: Iterable[str], art_digest: str) -> str:
+    """Post-agent per-SCC wf id — content-addressed by the SCC's
+    combined artifact digest; launched only when EVERY member's
+    artifact exists (FR-002)."""
+    norm_sorted = sorted(_norm_rel(m) for m in members)
+    return f"scc:post:{_stable_hash(chr(10).join(norm_sorted))}:{art_digest}"
 
 
 def _norm_rel(rel_path: str) -> str:
@@ -147,8 +211,14 @@ def activate(dbos_app: Any) -> Any:
 
 __all__ = [
     "activate",
+    "artifact_digest",
+    "combined_artifact_digest",
     "file_workflow_id",
     "outer_workflow_id",
+    "post_file_workflow_id",
+    "post_scc_workflow_id",
+    "pre_file_workflow_id",
+    "pre_scc_workflow_id",
     "register_step",
     "registered_steps",
     "reset_registry_for_tests",

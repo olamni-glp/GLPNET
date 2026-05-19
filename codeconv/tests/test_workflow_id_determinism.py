@@ -12,8 +12,14 @@ import subprocess
 import sys
 
 from codeconv.durable import (
+    artifact_digest,
+    combined_artifact_digest,
     file_workflow_id,
     outer_workflow_id,
+    post_file_workflow_id,
+    post_scc_workflow_id,
+    pre_file_workflow_id,
+    pre_scc_workflow_id,
     scc_workflow_id,
 )
 
@@ -48,6 +54,44 @@ def test_scc_id_order_invariant():
     assert scc_workflow_id(["a/x.dart", "b/y.dart"]) != scc_workflow_id(m1)
     # an SCC of one member is NOT the same as that file's per-file id
     assert scc_workflow_id(["a/x.dart"]) != file_workflow_id("a/x.dart")
+
+
+def test_pre_post_ids_amendment2():
+    """T060 — Amendment 2 / FR-044 pre/post id grammar.
+
+    pre id is deterministic & content-FREE (recovered on resume, R9).
+    post id is content-ADDRESSED by the artifact digest: a re-spec ⇒ a
+    different id ⇒ a fresh ingest; same artifact ⇒ identical id
+    (replay-safe within one spec, SC-002). pre ≠ post ≠ legacy single id.
+    """
+    rel = "runtime/cell.dart"
+    # pre: deterministic, normalised, distinct from legacy + post.
+    assert pre_file_workflow_id(rel) == pre_file_workflow_id(rel)
+    assert pre_file_workflow_id(rel).startswith("file:pre:")
+    assert pre_file_workflow_id("runtime\\cell.dart/") == pre_file_workflow_id(
+        rel
+    )
+    assert pre_file_workflow_id(rel) != file_workflow_id(rel)
+
+    d1 = artifact_digest("# spec\nschema_version: 1\n")
+    d2 = artifact_digest("# spec\nschema_version: 1\nconstructs: []\n")
+    assert d1 == artifact_digest("# spec\nschema_version: 1\n")  # stable
+    assert d1 != d2
+    a = post_file_workflow_id(rel, d1)
+    assert a == post_file_workflow_id(rel, d1)  # same spec ⇒ same wf
+    assert a.startswith("file:post:") and a.endswith(d1)
+    assert post_file_workflow_id(rel, d2) != a  # re-spec ⇒ fresh wf
+    assert a != pre_file_workflow_id(rel) != file_workflow_id(rel)
+
+    # SCC: pre order-invariant; post combined-digest order-invariant.
+    m1 = ["b/y.dart", "a/x.dart"]
+    m2 = ["a/x.dart", "b/y.dart"]
+    assert pre_scc_workflow_id(m1) == pre_scc_workflow_id(m2)
+    assert pre_scc_workflow_id(m1).startswith("scc:pre:")
+    cd = combined_artifact_digest([d1, d2])
+    assert cd == combined_artifact_digest([d2, d1])  # order-invariant
+    assert post_scc_workflow_id(m1, cd) == post_scc_workflow_id(m2, cd)
+    assert post_scc_workflow_id(m1, cd).startswith("scc:post:")
 
 
 def test_ids_stable_across_processes():

@@ -283,16 +283,28 @@ def _resume_epoch(engine, ws_id: str) -> int:
     wrong: it excluded a *completed* run, so a plain re-run minted a
     fresh epoch and re-ran everything instead of recovering the same
     deterministic workflow (DBOS then replays, skipping completed steps
-    ⇒ idempotent, SC-002). A new epoch is minted ONLY when there is no
-    prior run, or explicitly via ``--restart-run`` (R13). Read-only over
-    ``codeconv.builder_runs`` (migration 0005)."""
+    ⇒ idempotent, SC-002).
+
+    Amendment 2 / FR-044 (facet-3): a prior run that ended
+    ``needs_agent_work`` is an **awaiting-agent** terminal state, NOT a
+    crash to resume — the agent has since written spec artifact(s) and
+    the per-unit artifact gate MUST be re-evaluated. Recovering that
+    frozen outer workflow would replay its pre-artifact result and the
+    gate (in the outer body) would never re-run, so an agent-written
+    spec could never be ingested by a *plain* ``builder run`` (the
+    skill loop never passes ``--restart-run``). Therefore mint a new
+    epoch when the most-recent run's outcome is ``needs_agent_work``.
+    A new epoch is otherwise minted only when there is no prior run, or
+    explicitly via ``--restart-run`` (R13). Read-only over
+    ``codeconv.builder_runs`` (migrations 0005/0006)."""
     from sqlalchemy import text
 
     try:
         with engine.connect() as conn:
             row = conn.execute(
                 text(
-                    "SELECT outer_workflow_id FROM codeconv.builder_runs "
+                    "SELECT outer_workflow_id, outcome "
+                    "FROM codeconv.builder_runs "
                     "WHERE workspace_id = :w "
                     "ORDER BY started_at DESC LIMIT 1"
                 ),
@@ -300,7 +312,7 @@ def _resume_epoch(engine, ws_id: str) -> int:
             ).first()
     except Exception:
         row = None
-    if row and row[0]:
+    if row and row[0] and row[1] != "needs_agent_work":
         try:
             return int(str(row[0]).rsplit(":", 1)[1])
         except (ValueError, IndexError):

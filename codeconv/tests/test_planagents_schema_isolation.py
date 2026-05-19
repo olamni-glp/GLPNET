@@ -199,12 +199,13 @@ def test_downgrade_then_upgrade_idempotent(discover_repo: Path) -> None:
     restores the same schema state — no error, both tables back under
     ``codeconv`` only.
 
-    Feature-018 update: after the T003 migration linearization the
-    chain is ``0001→0002→0003(d2net)→0004(dart_plans)→0005(builder)``.
+    Feature-018 update: after the T003 migration linearization (+ the
+    2026-05-19 ``0006`` remediation) the chain is
+    ``0001→0002→0003(d2net)→0004(dart_plans)→0005(builder)→0006``.
     ``dart_plans``/``planagents_runs`` moved from rev ``0003`` to
-    ``0004``; a fresh head is ``0005``. So the equivalent of the old
-    ``downgrade -1`` is ``downgrade "0003"`` (runs ``0005.downgrade``
-    then ``0004.downgrade``) — which still drops exactly
+    ``0004``; a fresh head is ``0006``. So the equivalent of the old
+    ``downgrade -1`` is ``downgrade "0003"`` (runs
+    ``0006→0005→0004 .downgrade``) — which still drops exactly
     ``dart_plans``+``planagents_runs`` (plus the 018 builder tables),
     preserving this test's original intent under the corrected chain."""
     _migrate(discover_repo)
