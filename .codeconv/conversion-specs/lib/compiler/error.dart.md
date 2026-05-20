@@ -334,29 +334,20 @@ conversion_units:
   - "public override string ToString() — preserves Dart's diagnostic-with-caret shape; replaces (not extends) Exception.ToString default; uses new string(' ', (int)(Column - 1)) + \"^\" for the pointer; uses Source.Split('\\n') for line slicing"
   - "doc-comments → /// <summary>...</summary> on enum and class"
   - "inline // comments on enum members preserved"
-escalations:
-  - kind: undecidable
-    construct_key: dart.exception_class.naming_suffix_convention
-    detail: >-
-      Microsoft Learn says "end the class name of the user-defined
-      exception with the word 'Exception'" (so `CompileException`), but
-      the Dart source explicitly chose the name `CompileError` (semantic:
-      "compile-time error" as a domain term distinct from runtime
-      exceptions). Spec default in this artifact = preserve source name
-      `CompileError`; downstream codegen MAY rename to `CompileException`
-      ONLY if Gabi explicitly prefers .NET-idiomatic suffix conformance
-      over source-name fidelity. This is recorded as an escalation
-      because the choice is a project-policy decision (source fidelity
-      vs .NET convention), not a technical determination from the docs
-      alone — both options are authoritative-supported and the file-
-      local docs do not adjudicate.
-    needs: >-
-      Project policy decision from Gabi: keep `CompileError` (current
-      spec default, source-faithful) or rename to `CompileException`
-      (.NET naming-convention idiomatic). Decision should be recorded as
-      a project-wide idiom because every Dart-named "*Error" exception
-      class faces the same question.
+escalations: []
 ```
+
+> **RESOLVED 2026-05-20 (Gabi):** keep the Dart source name `CompileError`
+> verbatim in the C# port. Project-wide policy: all Dart `*Error`
+> exception types retain their source names (CA1710 — "exception
+> identifiers should end in `Exception`" — is OFF by default in .NET 10;
+> codegen MUST emit `.editorconfig` `dotnet_code_quality.CA1710.severity
+> = none` to suppress the opt-in lint). Rationale: source fidelity to
+> the GLP author's deliberate name choice; consistency with 16 sibling
+> convspecs (codegen, analyzer, partial_evaluator, plus every test that
+> emits `Assert.Throws<CompileError>`); zero re-spec churn. Same policy
+> applies to every other Dart `*Error` type in the inventory (e.g.
+> `ArityMismatchError`, `RedefinitionError`, `WellTypedError`).
 
 ## Rationale and research provenance (per non-trivial construct)
 
