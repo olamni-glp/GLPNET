@@ -36,12 +36,16 @@ dependencies:
 - lib/compiler/pmt/mode_table.dart
 callers:
 - lib/compiler/pmt/checker.dart
-mtime: '2026-05-17T10:36:34.964Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: cb56e5b79b12f401309ef978dd33b1fdb7ccafd1cd7a202e52f2f797905df6d1
 topo_level: 3
 cycle_group_id: 47
 status: pending
 target_path: lib/compiler/pmt/occurrence.cs
+plan_started_at: '2026-05-20T01:06:47Z'
+plan_completed_at: '2026-05-20T01:06:47Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 PMT Occurrence Classifier: Classifies variable occurrences as reader or writer

@@ -31,7 +31,6 @@ dependencies:
 - lib/multiagent/global_writers_table.dart
 - lib/runtime/terms.dart
 callers:
-- lib/multiagent/archive-irma-2026-01-30/irma_context-phase4.dart
 - lib/multiagent/global_send.dart
 - lib/multiagent/mad_context.dart
 - lib/multiagent/payload_serializer.dart
@@ -41,12 +40,16 @@ callers:
 - test/multiagent/mad_cold_call_isolate_test.dart
 - test/multiagent/mad_scenarios_test.dart
 - test/multiagent/mad_transactions_test.dart
-mtime: '2026-05-17T10:36:35.107Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 04dbbb1bfb3128349506b658d9f81f4c51a4da86e877e7755344ecd020500645
 topo_level: 1
 cycle_group_id: 26
 status: pending
 target_path: lib/multiagent/mad_helpers.cs
+plan_started_at: '2026-05-19T23:36:18Z'
+plan_completed_at: '2026-05-19T23:36:18Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Helper types and operations for madGLP

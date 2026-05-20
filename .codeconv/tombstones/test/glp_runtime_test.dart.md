@@ -6,11 +6,15 @@ key_idea: ''
 dependencies:
 - lib/glp_runtime.dart
 callers: []
-mtime: '2026-05-17T10:36:35.919Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: e69ec0f7f9041d7bb48efd7c5f4ded57459daa5ddb952de7cf4e3beabb451887
 topo_level: 1
 cycle_group_id: 85
 status: pending
 target_path: test/glp_runtime_test.cs
+plan_started_at: '2026-05-19T23:41:30Z'
+plan_completed_at: '2026-05-19T23:41:30Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

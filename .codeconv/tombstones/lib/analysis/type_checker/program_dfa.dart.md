@@ -13,11 +13,15 @@ callers:
 - lib/analysis/type_checker/well_typed_term.dart
 - test/analysis/type_checker/well_typed_clause_test.dart
 - test/analysis/type_checker/well_typed_term_test.dart
-mtime: '2026-05-17T10:36:34.642Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: bf0151e2d78f26961d8153beede8211ba2f823b127de7ec7fd673299658a6057
 topo_level: 1
 cycle_group_id: 10
 status: pending
 target_path: lib/analysis/type_checker/program_dfa.cs
+plan_started_at: '2026-05-19T23:27:32Z'
+plan_completed_at: '2026-05-19T23:27:32Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

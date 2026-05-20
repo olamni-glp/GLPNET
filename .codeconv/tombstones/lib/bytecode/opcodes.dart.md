@@ -12,11 +12,15 @@ callers:
 - test/bytecode/fairness_scheduler_loop_test.dart
 - test/bytecode/utility_instructions_test.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-05-17T10:36:34.749Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 41a0a75b2c8fbb8b1009c868fc85301b0d4d3233350840485ca5c35d2cc9dabe
 topo_level: 0
 cycle_group_id: 20
 status: ready
 target_path: lib/bytecode/opcodes.cs
+plan_started_at: '2026-05-19T13:35:27Z'
+plan_completed_at: '2026-05-19T13:35:27Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

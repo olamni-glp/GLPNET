@@ -11,11 +11,15 @@ dependencies:
 callers:
 - lib/analysis/type_checker/well_typed_clause.dart
 - test/analysis/type_checker/moded_head_test.dart
-mtime: '2026-05-17T10:36:34.596Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 8e1cf1a9af1ccc77174921ef4c2df7845bce7406fc3930b69d791cd8f087d4e2
 topo_level: 2
 cycle_group_id: 7
 status: pending
 target_path: lib/analysis/type_checker/moded_head.cs
+plan_started_at: '2026-05-19T23:49:45Z'
+plan_completed_at: '2026-05-19T23:49:45Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

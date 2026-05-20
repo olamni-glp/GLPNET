@@ -42,14 +42,16 @@ callers:
 - test/module/module_hierarchy_test.dart
 - test/module/module_parser_test.dart
 - test/module/module_syntax_v2_test.dart
-- test_archive/cssn_modules_test.dart
-- test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-05-17T10:36:34.797Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: a8a6493e11d47ec727c829d4d595f3b77f27ae5d7f95122c26a0090b3dec81d6
 topo_level: 1
 cycle_group_id: 2
 status: pending
 target_path: lib/compiler/ast.cs
+plan_started_at: '2026-05-19T23:27:32Z'
+plan_completed_at: '2026-05-19T23:27:32Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Abstract Syntax Tree nodes for GLP

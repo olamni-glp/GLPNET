@@ -19,14 +19,15 @@ callers:
 - test/dynamic_dispatch_test.dart
 - test/module/cssg_modules_test.dart
 - test/module/module_hierarchy_test.dart
-- test_archive/cssg_glp_dispatch_test.dart
-- test_archive/cssn_modules_test.dart
-- test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-05-17T10:36:34.703Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: dfd2a18574bdee84c8b2875529f6401ebd0a5cb60c16c619db3a842b519793fa
 topo_level: 4
 cycle_group_id: 16
 status: pending
 target_path: lib/analysis/type_checker/type_environment_builder.cs
+plan_started_at: '2026-05-20T01:28:38Z'
+plan_completed_at: '2026-05-20T01:28:38Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

@@ -25,12 +25,16 @@ key_idea: 'Tests for madGLP error handling
   '
 dependencies: []
 callers: []
-mtime: '2026-05-17T10:36:36.420Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: ca5a6a1cb4d3979172f347c655657ba5cab213c030390ad80a23d58023c0e0b4
 topo_level: 0
 cycle_group_id: 109
 status: ready
 target_path: test/multiagent/mad_error_handling_test.cs
+plan_started_at: '2026-05-19T23:27:32Z'
+plan_completed_at: '2026-05-19T23:27:32Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Tests for madGLP error handling

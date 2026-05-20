@@ -21,13 +21,15 @@ callers:
 - test/debug_negative.dart
 - test/module/cssg_modules_test.dart
 - test/module/module_typecheck_test.dart
-- test_archive/cssn_modules_test.dart
-- test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-05-17T10:36:34.678Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 1a6728683d8d3b0f7ae0e912eb459829b529ddbd1444a687da1ebb9cd560d28a
 topo_level: 5
 cycle_group_id: 19
 status: pending
 target_path: lib/analysis/type_checker/type_checker.cs
+plan_started_at: '2026-05-20T01:51:32Z'
+plan_completed_at: '2026-05-20T01:51:32Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

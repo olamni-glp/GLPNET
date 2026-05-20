@@ -11,11 +11,15 @@ dependencies:
 - lib/compiler/parser.dart
 - lib/runtime/module_hierarchy.dart
 callers: []
-mtime: '2026-05-17T10:36:36.264Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 21a38c8225f5824cc125308c58c06dd808d7db35dfcb085086d0a265fba780aa
 topo_level: 6
 cycle_group_id: 96
 status: pending
 target_path: test/module/module_hierarchy_test.cs
+plan_started_at: '2026-05-20T02:53:47Z'
+plan_completed_at: '2026-05-20T02:53:47Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

@@ -25,7 +25,7 @@ dependencies:
 - lib/multiagent/boot_loader.dart
 - lib/multiagent/isolate_manager.dart
 callers: []
-mtime: '2026-05-17T10:36:36.463Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: b7dd09684ae1c0f399f6137c4dff0c3f37a624a83e6a703a16ad7161eb094b78
 topo_level: 10
 cycle_group_id: 113

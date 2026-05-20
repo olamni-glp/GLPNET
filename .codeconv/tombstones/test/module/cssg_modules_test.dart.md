@@ -13,12 +13,16 @@ dependencies:
 - lib/compiler/partial_evaluator.dart
 - lib/runtime/module_hierarchy.dart
 callers: []
-mtime: '2026-05-17T10:36:36.244Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: fece36ea3f927a1077c5c1a176b2281d71cc9049947063c871d6dbc53d423a05
 topo_level: 6
 cycle_group_id: 94
 status: pending
 target_path: test/module/cssg_modules_test.cs
+plan_started_at: '2026-05-20T02:53:47Z'
+plan_completed_at: '2026-05-20T02:53:47Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Validation test: cssg_modules project against Phase 1-3 module system.

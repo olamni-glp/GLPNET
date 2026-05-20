@@ -6,11 +6,15 @@ key_idea: ''
 dependencies:
 - lib/multiagent/boot_loader.dart
 callers: []
-mtime: '2026-05-17T10:36:36.328Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: fbe7c999ea5524d849532628fdf73dc76056f9c3a49930c86d0432d4fb50baff
 topo_level: 1
 cycle_group_id: 101
 status: pending
 target_path: test/multiagent/boot_loader_test.cs
+plan_started_at: '2026-05-19T23:41:30Z'
+plan_completed_at: '2026-05-19T23:41:30Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

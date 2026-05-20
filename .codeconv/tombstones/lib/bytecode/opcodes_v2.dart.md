@@ -48,12 +48,16 @@ callers:
 - lib/bytecode/asm.dart
 - lib/bytecode/runner.dart
 - lib/compiler/codegen.dart
-mtime: '2026-05-17T10:36:34.761Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: c8549ccea9fbe836a1804e62b0164ac312889f3602144e9403938f9aaca206d6
 topo_level: 0
 cycle_group_id: 21
 status: ready
 target_path: lib/bytecode/opcodes_v2.cs
+plan_started_at: '2026-05-19T22:04:27Z'
+plan_completed_at: '2026-05-19T22:04:27Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Phase 2: Unified Instruction Set

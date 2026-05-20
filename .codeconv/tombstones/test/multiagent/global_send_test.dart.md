@@ -28,12 +28,16 @@ dependencies:
 - lib/multiagent/global_writers_table.dart
 - lib/multiagent/mad_helpers.dart
 callers: []
-mtime: '2026-05-17T10:36:36.350Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: c998b41351407035919314db767e3b490b4b49953c66d2e0b0c06b56a306a1f6
 topo_level: 3
 cycle_group_id: 103
 status: pending
 target_path: test/multiagent/global_send_test.cs
+plan_started_at: '2026-05-20T01:28:37Z'
+plan_completed_at: '2026-05-20T01:28:38Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Tests for global_send goal mechanism

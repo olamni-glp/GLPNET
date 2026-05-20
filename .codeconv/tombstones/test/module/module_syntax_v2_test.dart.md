@@ -10,11 +10,15 @@ dependencies:
 - lib/compiler/lexer.dart
 - lib/compiler/parser.dart
 callers: []
-mtime: '2026-05-17T10:36:36.282Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: fb04dca7a515ac9c443e9a2a0e24262ce22a82dfee26382aae9b5131e153363a
 topo_level: 4
 cycle_group_id: 98
 status: pending
 target_path: test/module/module_syntax_v2_test.cs
+plan_started_at: '2026-05-20T01:51:32Z'
+plan_completed_at: '2026-05-20T01:51:32Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

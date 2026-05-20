@@ -16,11 +16,15 @@ dependencies:
 callers:
 - lib/compiler/compiler.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-05-17T10:36:34.809Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: fdeeb685673893129e721409ea2b4ceb0e6f356d406efd526ae32d4cae64d3fd
 topo_level: 6
 cycle_group_id: 42
 status: pending
 target_path: lib/compiler/codegen.cs
+plan_started_at: '2026-05-20T02:36:51Z'
+plan_completed_at: '2026-05-20T02:36:51Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

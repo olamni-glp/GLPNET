@@ -11,12 +11,16 @@ dependencies: []
 callers:
 - lib/compiler/pmt/checker.dart
 - lib/compiler/pmt/validator.dart
-mtime: '2026-05-17T10:36:34.942Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 37c3d4a451199f6d875bcfbadc4d5b9b5bd80ed139d6d833de4e479dac9e3339
 topo_level: 0
 cycle_group_id: 45
 status: ready
 target_path: lib/compiler/pmt/errors.cs
+plan_started_at: '2026-05-19T22:04:28Z'
+plan_completed_at: '2026-05-19T22:04:28Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 PMT Error: Represents a mode/SRSW violation detected during PMT checking

@@ -16,11 +16,15 @@ dependencies:
 callers:
 - lib/analysis/type_checker/type_checker.dart
 - test/analysis/type_checker/well_typed_clause_test.dart
-mtime: '2026-05-17T10:36:34.714Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 66445ae92069c7cdf6bc5871f1666b696eabd8a80a08118cb5114b32fe6cc918
 topo_level: 3
 cycle_group_id: 18
 status: pending
 target_path: lib/analysis/type_checker/well_typed_clause.cs
+plan_started_at: '2026-05-20T00:53:42Z'
+plan_completed_at: '2026-05-20T00:53:42Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

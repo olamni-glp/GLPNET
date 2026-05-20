@@ -42,12 +42,16 @@ dependencies:
 - lib/runtime/suspension.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:36.187Z'
+mtime: '2026-04-27T09:23:50.000Z'
 sha256: 8f0020be2a925a63f498abf316c3e5ea71c60b9a6e5ef23bbffbc1615d4b2a95
 topo_level: 5
 cycle_group_id: 89
 status: pending
 target_path: test/heap/suspension_pointer_test.cs
+plan_started_at: '2026-05-20T02:25:35Z'
+plan_completed_at: '2026-05-20T02:25:35Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Tests for suspension and reactivation with Pointer Architecture Heap
