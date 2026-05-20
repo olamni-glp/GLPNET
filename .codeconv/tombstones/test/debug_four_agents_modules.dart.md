@@ -26,6 +26,10 @@ topo_level: 10
 cycle_group_id: 81
 status: pending
 target_path: test/debug_four_agents_modules.cs
+plan_started_at: '2026-05-20T09:54:40Z'
+plan_completed_at: '2026-05-20T09:54:41Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Diagnostic: Four agents (Alice, Bob, Carol, Dave) with project modules.

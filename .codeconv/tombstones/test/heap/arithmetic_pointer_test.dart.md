@@ -42,6 +42,10 @@ topo_level: 8
 cycle_group_id: 86
 status: pending
 target_path: test/heap/arithmetic_pointer_test.cs
+plan_started_at: '2026-05-20T09:26:43Z'
+plan_completed_at: '2026-05-20T09:26:43Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Tests for arithmetic body kernels with Pointer Architecture Heap

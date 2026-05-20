@@ -17,6 +17,10 @@ topo_level: 9
 cycle_group_id: 84
 status: pending
 target_path: test/engine/glp_engine_test.cs
+plan_started_at: '2026-05-20T09:54:40Z'
+plan_completed_at: '2026-05-20T09:54:40Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Tests for GlpEngine - the unified GLP execution core

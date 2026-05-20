@@ -13,5 +13,9 @@ topo_level: 8
 cycle_group_id: 78
 status: pending
 target_path: test/compiler/reserved_constant_test.cs
+plan_started_at: '2026-05-20T09:26:43Z'
+plan_completed_at: '2026-05-20T09:26:43Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

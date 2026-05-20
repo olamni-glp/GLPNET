@@ -13,5 +13,9 @@ topo_level: 10
 cycle_group_id: 106
 status: pending
 target_path: test/multiagent/isolate_manager_test.cs
+plan_started_at: '2026-05-20T10:06:26Z'
+plan_completed_at: '2026-05-20T10:06:26Z'
+plan_path: null
+open_escalation_count: 0
 ---
 

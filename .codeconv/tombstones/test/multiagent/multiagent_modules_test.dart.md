@@ -31,6 +31,10 @@ topo_level: 10
 cycle_group_id: 113
 status: pending
 target_path: test/multiagent/multiagent_modules_test.cs
+plan_started_at: '2026-05-20T10:06:27Z'
+plan_completed_at: '2026-05-20T10:06:27Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Multi-isolate test using project-compiled modules.

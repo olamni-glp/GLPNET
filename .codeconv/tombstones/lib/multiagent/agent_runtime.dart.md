@@ -61,6 +61,10 @@ topo_level: 9
 cycle_group_id: 61
 status: pending
 target_path: lib/multiagent/agent_runtime.cs
+plan_started_at: '2026-05-20T09:42:28Z'
+plan_completed_at: '2026-05-20T09:42:28Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 AgentRuntime — encapsulates GLP agent runtime for UI integration.

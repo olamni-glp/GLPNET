@@ -68,6 +68,10 @@ topo_level: 8
 cycle_group_id: 57
 status: pending
 target_path: lib/engine/glp_engine.cs
+plan_started_at: '2026-05-20T09:26:43Z'
+plan_completed_at: '2026-05-20T09:26:43Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 GLP Engine - Embeddable GLP Execution Core

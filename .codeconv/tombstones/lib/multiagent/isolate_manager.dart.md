@@ -54,6 +54,10 @@ topo_level: 9
 cycle_group_id: 63
 status: pending
 target_path: lib/multiagent/isolate_manager.cs
+plan_started_at: '2026-05-20T09:42:29Z'
+plan_completed_at: '2026-05-20T09:42:29Z'
+plan_path: null
+open_escalation_count: 0
 ---
 
 Isolate Manager for madGLP
