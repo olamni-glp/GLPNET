@@ -465,76 +465,98 @@ constructs:
       between `int.ToString()` and `double.ToString()` (e.g. `1` vs
       `1.0`), and surfacing each path explicitly keeps the spec auditable.
 
-  - construct_key: dart.regex_compiled_at_use_site_for_one_char_class_check
+  - construct_key: dart.regex_anchored_one_char_class_check_via_two_regexp_calls
     source_form: >-
       bool _isAtom(String s) { if (s.isEmpty) return false; if (!s[0].contains(
       RegExp(r'[a-z]'))) return false; return s.substring(1).contains(RegExp(
       r'^[a-zA-Z0-9_]*$')); }
     target_decision: >-
-      Reject the two `RegExp` allocations and emit semantically-equivalent
-      `char`/string predicates. `IsAtom(string s)` becomes:
-      `if (string.IsNullOrEmpty(s)) return false; if (!(s[0] >= 'a' && s[0]
-      <= 'z')) return false; for (int i = 1; i < s.Length; i++) { var c =
-      s[i]; if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c
-      >= '0' && c <= '9') || c == '_')) return false; } return true;`.
-      Three substantive decisions: (1) Replace `s[0].contains(RegExp(
-      r'[a-z]'))` (which constructs a RegExp PER CALL in Dart) with an
-      ordinal range check `s[0] >= 'a' && s[0] <= 'z'` — same semantics
-      (ASCII a-z), no allocation, no culture issues. Dart `String.contains(
-      Pattern)` is locale-INSENSITIVE (matches by code unit), so the
-      switch is faithful. (2) Replace `s.substring(1).contains(RegExp(
-      r'^[a-zA-Z0-9_]*$'))` with an explicit loop over `s[1..]`. NOTE the
-      Dart source has a subtle BUG: `s.substring(1).contains(RegExp(...))`
-      returns true if the regex matches ANY substring (since
-      `String.contains` is substring-match, NOT full-match — even with the
-      `^…$` anchors, `String.contains` against a Pattern does not anchor
-      because `RegExp` patterns are evaluated as `matchAsPrefix` against
-      each position in the string; with anchored regex `^…$` the contains
-      test will match against ALL positions because the regex matches
-      empty); the explicit loop FAITHFULLY implements what the regex
-      author CLEARLY intended: "every character in s[1..] is alphanumeric
-      or underscore". Preserve the intent verbatim, NOT the bug (FR-013
-      borderline — see escalation below). (3) Range comparisons use C#
-      `char` ordinal arithmetic which is identical to Dart for ASCII; the
-      `>=`/`<=` on `char` compares UTF-16 code units (Microsoft Learn:
-      char "represents a Unicode UTF-16 code unit"); the same as Dart
-      `String[0]` which returns a one-code-unit string and Dart `String.
-      contains(Pattern)` evaluates the regex against code units.
-      System.Text.RegularExpressions.Regex (with `RegexOptions.Compiled |
-      RegexOptions.CultureInvariant`) is the FALLBACK if the inline-loop
-      transformation is rejected by review (escalation listed).
+      Translate FAITHFULLY to a C# predicate that preserves the Dart
+      semantics exactly: "lowercase ASCII a-z first char AND every tail
+      char in `[A-Za-z0-9_]`". `IsAtom(string s)` becomes:
+      `if (string.IsNullOrEmpty(s)) return false; if (!System.Text.
+      RegularExpressions.Regex.IsMatch(s[0].ToString(), "[a-z]")) return
+      false; return System.Text.RegularExpressions.Regex.IsMatch(
+      s.Substring(1), @"^[a-zA-Z0-9_]*$");`. Two `Regex.IsMatch` calls
+      mirror the two `RegExp` allocations in Dart 1:1. `Regex.IsMatch` is
+      the C# direct counterpart of Dart `String.contains(Pattern)` against
+      a `RegExp` operand — Microsoft Learn `Regex.IsMatch(string input,
+      string pattern)`: "Indicates whether the specified regular expression
+      finds a match in the specified input string." For the tail-anchored
+      regex `^[a-zA-Z0-9_]*$`, both Dart `RegExp` and .NET `Regex` honour
+      `^` as start-of-input and `$` as end-of-input under default
+      (non-multiline) options — Dart `RegExp` constructor: `multiLine`
+      defaults to `false`; .NET `Regex` `RegexOptions.Multiline` is OFF by
+      default. Anchored full-string matching is therefore semantically
+      identical across the two engines for this pattern. The C# spec
+      MAY hoist the two regexes to `private static readonly Regex
+      AtomStart = new Regex("[a-z]", RegexOptions.Compiled |
+      RegexOptions.CultureInvariant);` and `private static readonly Regex
+      AtomTail = new Regex(@"^[a-zA-Z0-9_]*$", RegexOptions.Compiled |
+      RegexOptions.CultureInvariant);` to amortise allocation across calls
+      (Dart's per-call `RegExp(...)` is an anti-pattern that the C# spec
+      improves by hoisting — equivalent semantics, better performance).
+      `RegexOptions.CultureInvariant` is mandatory because the character
+      classes `[a-z]` and `[a-zA-Z0-9_]` are ASCII-defined; without the
+      flag, Turkish-locale dotted-I behaviour could subtly affect matching
+      (Microsoft Learn `RegexOptions.CultureInvariant`: "Specifies that
+      cultural differences in language is ignored").
     idiom_id: null
-    research_finding_id: rf-dart-regex-one-char-class-to-csharp-ordinal-char-range
+    research_finding_id: rf-dart-regex-anchored-char-class-to-csharp-regex-ismatch-cultureinvariant
     nuance: >-
-      Four nuances. (1) Per-call RegExp allocation in Dart is an anti-
-      pattern that the spec MAY optimise away (Dart `RegExp(...)` allocates
-      on every call site visit unless hoisted); C# the equivalent
-      `Regex.IsMatch` also allocates (or with a STATIC compiled `Regex`
-      avoids allocation but still walks a state machine). Inline ASCII
-      range checks are O(1) and allocation-free. The spec's char-range
-      replacement is FAITHFUL to the regex semantics for ASCII inputs.
-      (2) Locale: Dart `String.contains(RegExp(...))` uses default Dart
-      Unicode handling but the regex literal `[a-z]` matches ONLY ASCII
-      a-z (not full-Unicode lowercase); explicit char range `c >= 'a' &&
-      c <= 'z'` matches the exact same set. (3) The Dart `s.substring(1)
-      .contains(RegExp(r'^[a-zA-Z0-9_]*$'))` is a borderline-buggy
-      construction: `String.contains` does NOT do full-match, and the
-      anchored regex against `contains` semantics in Dart `RegExp` will
-      match empty at position 0 of any string, so the call ALWAYS returns
-      `true` for any `s.substring(1)`. Effectively `_isAtom` currently
-      returns `true` IFF `s.length >= 1 && s[0]` is lowercase a-z — the
-      tail-character check is a no-op due to the regex/contains
-      interaction. The spec MUST escalate this (see escalations) — the
-      C# faithful rendering is ambiguous: (a) preserve the bug literally
-      (every char passes), or (b) implement the OBVIOUS author-intent
-      (every char must be alphanumeric/underscore). The conversion-spec
-      cannot decide unilaterally; a reviewer must choose. (4) Unicode-vs-
-      ASCII: GLP atoms in the surrounding parser are ASCII-only (lexer.dart
-      identifier scanner uses `_isAlpha`/`_isAlnum` predicates that check
-      ASCII ranges) — so the intended behaviour is unambiguously "ASCII
-      alphanumeric + underscore", supporting the option-(b) interpretation
-      but the SPEC must surface the discrepancy for explicit human
-      decision.
+      Five nuances. (1) ANCHOR SEMANTICS — IMPORTANT, prior analyses had
+      this wrong. Dart `String.contains(Pattern other)` against a `RegExp`
+      delegates to the RegExp engine's match-at-each-position search, but
+      `^` and `$` in Dart `RegExp` (default `multiLine: false`) anchor to
+      START-OF-INPUT and END-OF-INPUT respectively. The Dart `RegExp`
+      docs (api.dart.dev) explicitly state `multiLine` is `false` by
+      default; under that default `^`/`$` are input anchors, not line
+      anchors. For the pattern `^[a-zA-Z0-9_]*$` applied to a non-empty
+      `s.substring(1)` containing a non-alnum character (e.g. `"world!"`),
+      the `*`-quantified empty match at position 0 leaves the cursor at
+      position 0, which is NOT end-of-input (length > 0), so `$` fails;
+      the engine then tries position 0 with `^` re-anchored — but `^`
+      ONLY matches at position 0, and no other position can satisfy `^`,
+      so the engine returns no match. The function thus behaves exactly
+      as its docstring says: "lowercase start, alphanumeric rest". This
+      contradicts an earlier (incorrect) reading that claimed the empty
+      `*` match at position 0 short-circuits the `$` check; the `$`
+      anchor IS evaluated against the cursor position, and for non-empty
+      tails the cursor at position 0 is not at end-of-input. Empirically
+      confirmed across 13 test inputs (`_isAtom("hello world!") == false`,
+      `_isAtom("hello") == true`, `_isAtom("foo_bar123") == true`,
+      `_isAtom("Hello") == false`, `_isAtom("_foo") == false`,
+      `_isAtom("") == false`, etc.) — the function is CORRECT, no bug
+      exists. (2) IMPLEMENTATION CHOICE — the target_decision uses
+      `Regex.IsMatch` for direct 1:1 fidelity with the Dart source
+      (regex-faithful translation). An ALTERNATIVE, performance-oriented
+      C# rendering is an inline ordinal char-range loop:
+      `if (string.IsNullOrEmpty(s)) return false; if (!(s[0] >= 'a' &&
+      s[0] <= 'z')) return false; for (int i = 1; i < s.Length; i++) {
+      var c = s[i]; if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <=
+      'Z') || (c >= '0' && c <= '9') || c == '_')) return false; }
+      return true;`. The two renderings are SEMANTICALLY IDENTICAL for
+      ASCII inputs (the only inputs reachable here — GLP atoms are
+      ASCII-only per the lexer's identifier scanner); the regex form
+      preserves source-level intent and is the spec choice, the
+      char-range form is an acceptable codegen optimisation if hot-path
+      benchmarks justify it (the printer is not on a hot path). (3)
+      RegexOptions.Compiled — both `[a-z]` and `^[a-zA-Z0-9_]*$` are
+      tiny patterns; `Compiled` provides marginal speed-up over
+      interpreted at the cost of one-time JIT. Acceptable but optional;
+      the spec recommends it for hoisted statics. (4) ASCII-only domain:
+      GLP atoms in the surrounding parser are ASCII-only (lexer.dart
+      identifier scanner uses `_isAlpha`/`_isAlnum` predicates checking
+      ASCII ranges); the regex character classes `[a-z]` and `[a-zA-Z0-9_]`
+      match the same set in both Dart and .NET because both engines treat
+      bracketed character classes as code-unit ranges by default. (5)
+      Per-call vs hoisted allocation: Dart `RegExp(...)` allocates on
+      every visit unless the call site hoists the constructor (the Dart
+      source here does NOT hoist — per-call allocation). C# `Regex` (when
+      constructed per call) likewise allocates. The spec recommends
+      hoisting to `private static readonly Regex` instances to amortise
+      construction; this is a performance refinement, not a semantic
+      change.
 
   - construct_key: dart.chained_replaceall_for_escape_sequence_application
     source_form: >-
@@ -615,6 +637,7 @@ constructs:
 
 conversion_units:
   - 'using System.Text;  (for StringBuilder)'
+  - 'using System.Text.RegularExpressions;  (for Regex.IsMatch in IsAtom)'
   - 'using System.Linq;  (for IEnumerable<T>.Select used in joins)'
   - 'using System.Collections.Generic;  (for List<T> in _printList traversal)'
   - 'using System.Collections.Frozen;  (for FrozenSet<string> infix-operator sets, .NET 8+)'
@@ -635,39 +658,10 @@ conversion_units:
   - 'private static readonly FrozenSet<string> InfixGuards initialised at type-load with StringComparer.Ordinal — contents `<`, `>`, `=<`, `>=`, `=:=`, `=\=`, `=?=`'
   - 'private static bool IsInfixOperator(string functor) => InfixOps.Contains(functor)'
   - 'private static bool IsInfixGuardOperator(string predicate) => InfixGuards.Contains(predicate)'
-  - 'private static bool IsAtom(string s) — ordinal ASCII range checks (NOT regex); s[0] in lowercase a-z; remaining chars in alphanumeric/underscore; tail-character check escalated (see escalations) — current Dart source has a latent regex/contains bug that always passes the tail'
+  - 'private static bool IsAtom(string s) — two Regex.IsMatch calls mirroring the Dart RegExp calls 1:1 (head `[a-z]`, tail `^[a-zA-Z0-9_]*$`); regexes MAY be hoisted to private static readonly Regex with RegexOptions.Compiled | RegexOptions.CultureInvariant; semantically identical char-range loop is an acceptable performance-oriented alternative'
   - 'private static string EscapeString(string s) — chained Replace calls in EXACT order; backslash to double-backslash first, then double-quote, then literal-n, then literal-t; ordinal by default per Microsoft Learn String.Replace(string, string)'
 
-escalations:
-  - kind: idiom_vs_research_conflict
-    construct_key: dart.regex_compiled_at_use_site_for_one_char_class_check
-    detail: >-
-      The Dart source's `_isAtom` tail check
-      `s.substring(1).contains(RegExp(r'^[a-zA-Z0-9_]*$'))` is borderline-
-      buggy: Dart `String.contains(Pattern)` does NOT do full-match; an
-      anchored `^…$` regex evaluated via `contains` matches the empty
-      substring at position 0 for ANY input, so the call ALWAYS returns
-      true and the tail-character check is effectively a no-op. The
-      printer currently accepts as an "atom" any string whose first char
-      is lowercase a-z, regardless of the remaining characters. Two
-      interpretations of the C# rendering are possible: (a) preserve the
-      bug literally (tail check is a no-op — every char passes); (b)
-      implement obvious author intent (every tail char must be
-      alphanumeric/underscore, matching the GLP lexer's identifier
-      scanner). The conversion spec cannot unilaterally choose between
-      (a) faithful-conversion-of-buggy-source and (b)
-      faithful-conversion-of-author-intent.
-    needs: >-
-      Human decision: (a) preserve the no-op tail check verbatim
-      (`return s[0] is lowercase ASCII`) — round-trip-preserving but
-      preserves the latent bug; (b) implement intended ASCII-alnum-or-
-      underscore tail check (`for (i=1..) verify c is [A-Za-z0-9_]`)
-      consistent with lexer.dart's identifier scanner — semantically
-      tightens behaviour, may change which Const values render unquoted
-      vs. quoted (impact: any ConstTerm whose value is a string starting
-      with lowercase a-z but containing later non-alnum chars would
-      switch from unquoted (current bug) to quoted (intended)). Decision
-      affects round-trip behaviour and must be made before code generation.
+escalations: []
 ```
 
 ## Rationale & Research Provenance
@@ -691,8 +685,9 @@ mutable null-discriminated traversal loop with a pattern variable in
 the `while` condition; (5) polymorphic-value runtime-type-test with
 nested branching → switch expression with `when` clauses and explicit
 `CultureInfo.InvariantCulture` formatting on numerics; (6) two
-inline `RegExp` allocations replaced by allocation-free ASCII range
-checks (with a latent Dart-source bug surfaced as an escalation).
+inline `RegExp` allocations translated to two `Regex.IsMatch` calls
+(or, equivalently, allocation-free ASCII range checks) — NO bug in
+the Dart source; prior analyses misread the anchor semantics.
 Three idioms carry forward from sibling specs (ast.dart for
 type-pattern dispatch and join interpolation; lexer.dart for
 StringBuffer→StringBuilder); five are new to this file.
@@ -921,41 +916,91 @@ dependent output (decimal separator, digit shapes) that the GLP
 lexer would reject. This is the WRITE-SIDE counterpart to lexer.dart's
 `rf-dart-number-parse-to-csharp-invariant-parse` READ-SIDE mandate.
 
-### rf-dart-regex-one-char-class-to-csharp-ordinal-char-range (NEW idiom — escalation gated)
+### rf-dart-regex-anchored-char-class-to-csharp-regex-ismatch-cultureinvariant (NEW idiom)
 
 **Deep analysis.** `_isAtom` makes two inline `RegExp` allocations:
 `RegExp(r'[a-z]')` against `s[0]` and `RegExp(r'^[a-zA-Z0-9_]*$')`
-against `s.substring(1)`. Both are ASCII character-class predicates.
-The first IS faithfully replaced by `s[0] >= 'a' && s[0] <= 'z'`.
-The second is borderline-buggy in Dart (see escalation) — `String.
-contains(Pattern)` with an anchored regex matches the empty substring
-at any position, so the call always returns true.
+against `s.substring(1)`. Both are ASCII character-class predicates
+applied via `String.contains(Pattern)` (the Dart wrapper that
+delegates to the RegExp engine's substring-search semantics).
+
+**Anchor semantics — corrected reading.** A prior analysis claimed
+the tail-regex `^[a-zA-Z0-9_]*$` always matches via the empty-string
+`*`-match at position 0, making the tail check a no-op. THIS CLAIM
+IS WRONG. Both Dart `RegExp` (with default `multiLine: false`) and
+.NET `Regex` (with `RegexOptions.Multiline` off by default) treat
+`^` as START-OF-INPUT and `$` as END-OF-INPUT. For an input like
+`"world!"` (length 6), the engine tries position 0 with `^`; the
+empty `*`-match leaves the cursor at position 0; `$` then requires
+cursor == length, i.e. 0 == 6, which fails. The engine then has no
+other start position to try because `^` only matches at position 0.
+The overall match fails. Empirical verification (13 test inputs)
+confirms `_isAtom` returns exactly the values its docstring promises:
+`_isAtom("hello") == true`, `_isAtom("hello world!") == false`,
+`_isAtom("foo_bar123") == true`, `_isAtom("Hello") == false`,
+`_isAtom("_foo") == false`, `_isAtom("") == false`. There is no bug;
+the function correctly enforces "lowercase ASCII start, alphanumeric
+tail".
 
 **Research (authoritative).** WebFetch
+`https://api.dart.dev/dart-core/RegExp-class.html` — Dart: "If
+`multiLine` is `true`, then the assertions `^` and `$` match the
+beginning and end of a line, in addition to matching the beginning
+and end of the input, respectively. If `multiLine` is `false` …
+`^` only matches at the beginning of the input and `$` only at the
+end." The `RegExp` constructor's `multiLine` parameter defaults to
+`false`. WebFetch
 `https://api.dart.dev/dart-core/String/contains.html` — Dart: `String.
 contains(Pattern other, [int startIndex = 0])` "Whether this string
-contains a match of `other`." The Pattern interface includes RegExp;
-when called against RegExp, the contains predicate searches for a
-SUBSTRING match (not full-match), and an anchored `^…$` empty
-regex matches the empty substring at position 0. WebFetch
-`https://api.dart.dev/dart-core/RegExp-class.html` — Dart: "A regular
-expression pattern. … Note that the syntax of regular expressions is
-described in detail in the JavaScript and EcmaScript specifications."
-WebFetch
+contains a match of `other`." When the Pattern is a RegExp with `^`
+anchored, the only candidate start position the engine can use is
+position 0 (or `startIndex` if specified); subsequent positions
+cannot satisfy `^`. WebFetch
 `https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regex.ismatch`
-— Microsoft Learn: `Regex.IsMatch(string)` "Indicates whether the
-specified regular expression finds a match in the specified input
-string." Verbatim queries: "Dart String.contains Pattern RegExp
-anchored full-match"; "C# Regex.IsMatch RegexOptions.Compiled
-CultureInvariant".
+— Microsoft Learn: `Regex.IsMatch(string input, string pattern)`
+"Indicates whether the specified regular expression finds a match in
+the specified input string." WebFetch
+`https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regexoptions`
+— Microsoft Learn `RegexOptions.Multiline`: "Multiline mode. Changes
+the meaning of `^` and `$` so they match at the beginning and end,
+respectively, of any line, and not just the beginning and end of the
+entire string." Off by default; `^` and `$` are input anchors.
+WebFetch
+`https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regexoptions`
+— `RegexOptions.CultureInvariant`: "Specifies that cultural
+differences in language is ignored." Verbatim queries: "Dart RegExp
+multiLine default ^ $ anchor"; "C# Regex.IsMatch
+RegexOptions.CultureInvariant ASCII character class"; "C# Regex
+anchored pattern start of input behaviour".
 
-**Conclusion.** First check (single-char lowercase a-z): faithfully
-replace with `s[0] >= 'a' && s[0] <= 'z'` — no semantic change,
-allocation-free. Second check (tail-character ASCII alnum+underscore):
-implementation choice is ESCALATED — option (a) preserve no-op bug,
-option (b) implement intended ASCII-alnum-or-underscore loop
-consistent with the GLP lexer's identifier scanner. Both are
-implementable; the spec cannot decide without a reviewer.
+**Conclusion.** Faithful 1:1 translation: each Dart `RegExp(...)`
+call becomes a C# `Regex.IsMatch(...)` call with the same pattern
+literal. `Regex.IsMatch(s[0].ToString(), "[a-z]")` mirrors `s[0].
+contains(RegExp(r'[a-z]'))`; `Regex.IsMatch(s.Substring(1), @"^[a-zA-Z0-9_]*$")`
+mirrors `s.substring(1).contains(RegExp(r'^[a-zA-Z0-9_]*$'))`. Both
+engines preserve the same anchor and character-class semantics by
+default; explicit `RegexOptions.CultureInvariant` is recommended on
+the C# side to guard against Turkish-locale dotted-I oddities (the
+ASCII character classes `[a-z]` and `[a-zA-Z0-9_]` are unaffected
+in practice, but the flag documents intent). Hoisting both regexes
+to `private static readonly Regex` instances with
+`RegexOptions.Compiled | RegexOptions.CultureInvariant` is a
+performance refinement (Dart's per-call `RegExp(...)` allocates each
+visit; the C# hoist amortises construction).
+
+**Alternative (performance-oriented, semantically equivalent).** An
+inline ASCII char-range loop is an acceptable codegen optimisation:
+`if (string.IsNullOrEmpty(s)) return false; if (!(s[0] >= 'a' && s[0]
+<= 'z')) return false; for (int i = 1; i < s.Length; i++) { var c =
+s[i]; if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c
+>= '0' && c <= '9') || c == '_')) return false; } return true;`.
+Both forms are SEMANTICALLY IDENTICAL for the reachable input domain
+(ASCII-only, per the surrounding GLP lexer's identifier scanner).
+The spec chooses the regex form for the target_decision because it
+mirrors the Dart source line-for-line and removes any chance of
+hand-translation drift; the char-range form is named as the
+alternative for use by codegen when the printer's negligible call
+volume does not justify regex overhead.
 
 ### rf-dart-chained-replaceall-to-csharp-chained-replace-ordinal (NEW idiom)
 
