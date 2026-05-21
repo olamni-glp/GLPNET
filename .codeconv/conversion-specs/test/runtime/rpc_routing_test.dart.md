@@ -979,58 +979,23 @@ conversion_units:
   - "cu-13: nested-construction new ReplModuleContext(moduleName - ..., imports - new Dictionary<int, ReplModuleTarget> { { 1, new ReplModuleTarget(...) } }) at every caller-goal setup (tests 1, 2, 3, 5)"
   - "cu-14: lazy-registration if (!rt.Runners.ContainsKey(...)) rt.Runners[...] = new BytecodeRunner(...); OR rt.Runners.TryAdd(...); — preferred form is TryAdd"
   - "cu-15: for (final act in activations) { rt.gq.enqueue(act); } → foreach (var act in activations) { rt.Gq.Enqueue(act); } in test 5"
-escalations:
-  - kind: undecidable
-    construct_key: dart.test.rpc_routing.glp_channels_reference_identity_under_inherited_threading_model
-    detail: >-
-      The `expect(rt.glpChannels['target_b'], same(channel))`
-      assertion (tests 1 + 4) requires that the converted
-      `GlpRuntime.GlpChannels` dictionary preserves REFERENCE
-      IDENTITY of stored `GlpChannelHandle` instances — the same
-      object reference returned by `activateModule(...)` must be
-      observable on subsequent `rt.GlpChannels[name]` reads. This
-      identity invariant is TRIVIALLY satisfied under the
-      recommended single-owning-context option (option A) in the
-      heap_fcp.dart.md escalations[0] threading-model decision,
-      and remains satisfied under option B (external locking
-      around mutations). HOWEVER, under option C (replace mutable
-      internals with concurrent primitives — `ConcurrentDictionary`,
-      etc.), the identity invariant remains technically preserved
-      by .NET's `ConcurrentDictionary<TKey, TValue>` indexer
-      (returns the stored reference), so the test would still
-      pass. The ACTUAL undecidable here is sub-secondary: if a
-      future cross-context boundary requires marshalling/cloning
-      handles (e.g. an actor-mailbox model that copies messages
-      across mailbox boundaries), the reference-identity contract
-      could be violated. THIS spec defers the ruling to the
-      heap_fcp.dart.md escalations[0] resolution AND notes that
-      `Assert.Same(channel, rt.GlpChannels["target_b"])` is
-      correct under EVERY currently-documented option, so the
-      conversion is safe to proceed under the recommended (option
-      A) reading.
-    needs: >-
-      heap_fcp.dart threading-model ruling (escalations[0] in
-      `.codeconv/conversion-specs/lib/runtime/heap_fcp.dart.md`).
-      Specifically: confirm that the chosen .NET hosting model
-      preserves reference identity of `GlpChannelHandle` objects
-      stored in `GlpRuntime.GlpChannels` across all read paths
-      observable from a single test method. The recommended
-      option (A: single-owning-context via the isolate-manager
-      port) satisfies this trivially; option B (external locking)
-      satisfies it; option C (concurrent primitives) satisfies
-      it iff `GlpChannels` is `Dictionary<...>` or
-      `ConcurrentDictionary<...>` (both preserve reference
-      identity on indexer read). Any future actor-mailbox model
-      that copies/marshals handles across mailbox boundaries
-      would VIOLATE the contract — in that case the
-      `Assert.Same` assertion in tests 1 and 4 would need
-      replacement (e.g. with a value-equality assertion on a
-      stable identifier field of `GlpChannelHandle` — a refactor
-      that crosses into glp_activation.dart.md's spec). Per
-      FR-013 + the scheduler.dart.md precedent, this file
-      INHERITS the parent ruling and does NOT independently
-      pick a model.
+escalations: []
 ```
+
+> **RESOLVED 2026-05-21 (Gabi, auto-resolution under #4 + #5).** The
+> parent rulings — heap_fcp.dart single-owning-context (#4) +
+> isolate_manager.dart `Channel<IsolateMessage>` actor mailbox (#5) —
+> both preserve reference identity of `GlpChannelHandle` instances
+> stored in `GlpRuntime.GlpChannels`. The dictionary stays a plain
+> `Dictionary<string, GlpChannelHandle>` (single-owning-context, no
+> `ConcurrentDictionary`), and the `Channel<IsolateMessage>` actor
+> mailbox passes `IsolateMessage` references in-process without
+> marshalling. The `expect(rt.glpChannels['target_b'], same(channel))`
+> assertion in tests 1 + 4 maps to `Assert.Same(channel,
+> rt.GlpChannels["target_b"])` and passes verbatim. No code or codegen
+> consequence; this sub-escalation was contingent on a future
+> hypothetical model (handle-marshalling actor mailbox) that is
+> explicitly NOT what #5 chose. Safe to proceed.
 
 ## Rationale and research provenance
 

@@ -141,93 +141,66 @@ conversion_units:
   - "  - private void _Log(string msg) — gated on _traceConfig.Mad"
   - "private static <SHAPE-DEFERRED> _AgentIsolateEntry(AgentConfig config, ...) — the per-agent execution-context entry; STRUCTURE PRESERVED across all four options (engine init → enableMadGLP → load sources → serializer-entry init → ctx.OnMessageReady lambda → goal lookup → goal-args build → enqueue main goal → scheduler init → trace sinks → signal Ready → event loop dispatch on Start/NetworkMsg/UIEvent → drain+flush per message)"
 
-escalations:
-  - kind: undecidable
-    construct_key: "dart.dart_isolate_api_to_csharp_execution_context_choice"
-    detail: |
-      The Dart `dart:isolate` library APIs used by this file — `Isolate.spawn`,
-      `SendPort`, `ReceivePort`, `ReceivePort.listen`, `ReceivePort.close`,
-      `await for (var msg in receivePort)` — are the in-process inter-isolate
-      message-passing primitives that have NO single canonical .NET counterpart.
-      Four documented .NET options exist:
-
-      1. **Thread-per-agent + BlockingCollection<T>**: each agent is a dedicated
-         OS Thread (`System.Threading.Thread`) running a synchronous
-         `foreach (var msg in selfQueue.GetConsumingEnumerable()) { ... }` loop.
-         `SendPort` → `BlockingCollection<IsolateMessage>` reference.
-         `ReceivePort` → `BlockingCollection<IsolateMessage>` (same instance, the
-         producer-consumer queue). Closest to Dart isolates' "OS thread per
-         actor" implementation; heaviest resource cost per agent; simplest
-         single-thread-affinity guarantee. Microsoft Learn references:
-         BlockingCollection<T>, Thread.
-
-      2. **Single-thread TaskScheduler (ConcurrentExclusiveSchedulerPair)**:
-         each agent has its own `ConcurrentExclusiveSchedulerPair` whose
-         `ExclusiveScheduler` runs only one task at a time. Messages are
-         delivered by `Task.Factory.StartNew(() => HandleMessage(msg), ...,
-         exclusiveScheduler)`. `SendPort` → a method-group / `Action<IsolateMessage>`
-         that wraps the StartNew call. `ReceivePort` → not a distinct primitive;
-         the scheduler itself is the queueing mechanism. Lighter than Thread-per-
-         agent for many agents; sharing the underlying ThreadPool. Microsoft
-         Learn references: ConcurrentExclusiveSchedulerPair, TaskScheduler.
-
-      3. **Channel<T> actor mailbox (System.Threading.Channels)**: each agent
-         has a `Channel<IsolateMessage>` (typically Unbounded) as its mailbox;
-         a single consumer Task runs `await foreach (var msg in
-         channel.Reader.ReadAllAsync()) { ... }`. `SendPort` →
-         `ChannelWriter<IsolateMessage>`. `ReceivePort` →
-         `ChannelReader<IsolateMessage>` (paired). Most aligned with the modern
-         .NET actor/mailbox pattern and with the Dart isolate model's
-         "asynchronous message stream" semantics (`await for (var msg in
-         receivePort)` maps directly to `await foreach (var msg in
-         reader.ReadAllAsync())`). Microsoft Learn references: Channel<T>,
-         ChannelWriter<T>, ChannelReader<T>.
-
-      4. **SynchronizationContext-based dispatcher**: each agent has a custom
-         SynchronizationContext that posts callbacks to a dedicated dispatcher
-         thread. `SendPort` → `Action<IsolateMessage>` wrapping
-         `context.Post(...)`. `ReceivePort` → not loop-based; the context's
-         dispatcher invokes handlers. Less faithful than Options 1–3 for the
-         agent-isolation model (SynchronizationContext was designed for UI-
-         thread affinity, not isolated execution contexts).
-
-      The decision impacts: (a) the C# types of `Ready.SendPort`,
-      `AgentConfig.MainPort`, `AgentConfig.UiPort`, `IsolateManager._agentPorts`
-      values, `IsolateManager._mainPort`; (b) the signature of
-      `_AgentIsolateEntry` (sync vs async, parameter shapes); (c) the body of
-      `Boot` (per-directive spawn syntax); (d) the body of `Start`, `Shutdown`,
-      `InjectUIEvent`, `_RouteNetworkMessage` (Send-API syntax); (e) the body of
-      the agent event loop (`foreach` vs `await foreach` vs dispatcher).
-
-      The decision INHERITS from the escalated `lib/runtime/heap_fcp.dart`
-      threading-model ruling (the agent's runtime heap + scheduler co-own the
-      agent's execution context). Per the sibling convspec series'
-      single-owning-thread invariant (recorded canonically once in
-      `global_writers_table.dart.md` and reused in `global_send.dart.md`,
-      `mad_context.dart.md`, `message_queue.dart.md`, `payload_serializer.dart.md`),
-      the .NET port of `isolate_manager.dart` MUST guarantee that every method
-      on `MadContext` and on all per-agent state runs on the agent's owning
-      execution context. ALL FOUR options can satisfy this invariant; the
-      selection is a project-wide architectural call.
-
-      Per FR-013 ("escalate, don't guess"), this artifact does NOT pick one of
-      the four. Once the heap_fcp ruling is in place, this convspec will be
-      re-opened (`--respec` on sha256 drift, FR-019) and the chosen option will
-      be encoded into every deferred construct above.
-    needs: |
-      (1) The escalated `lib/runtime/heap_fcp.dart` threading-model ruling
-      (single-owning-context vs ConcurrentDictionary/Interlocked) — the
-      isolate-manager API choice INHERITS from that ruling; (2) Gabi's
-      project-wide architectural call between the four .NET options for
-      `dart:isolate` translation: (a) Thread-per-agent + BlockingCollection,
-      (b) single-thread TaskScheduler, (c) Channel<T> actor mailbox, (d)
-      SynchronizationContext-based dispatcher. Recommended starting point for
-      the discussion: Option 3 (Channel<T>) is the most documented .NET
-      counterpart of the Dart isolate-mailbox model, but the call depends on
-      desired agent count, OS-thread budget, and whether the agent's GLP
-      runtime is structured to cooperate with async-await (Option 3) or to
-      execute purely synchronously (Option 1).
+escalations: []
 ```
+
+> **RESOLVED 2026-05-21 (Gabi) — Option C: `Channel<IsolateMessage>`
+> actor mailbox + one owning Task per agent.** Per the heap_fcp
+> single-owning-context ruling (#4 closed 2026-05-21), each agent runs as
+> a single `Task.Run(() => _AgentEntry(cfg, channelReader))` consuming a
+> per-agent `Channel.CreateUnbounded<IsolateMessage>()` via
+> `await foreach (var msg in reader.ReadAllAsync()) { ... }`.
+>
+> **One-for-one Dart → C# mapping** (load-bearing, recorded for codegen):
+> - `Isolate.spawn(entry, cfg)` → `Channel.CreateUnbounded<IsolateMessage>()`
+>   + `Task.Run(() => _AgentEntry(cfg, channel.Reader))`.
+> - `SendPort.send(msg)` → `writer.TryWrite(msg)` (synchronous,
+>   fire-and-forget; matches Dart `port.send` semantics on Unbounded).
+> - `ReceivePort` → `ChannelReader<IsolateMessage>` (paired with the writer
+>   the spawn returns).
+> - `await for (var msg in receivePort)` → `await foreach (var msg in
+>   reader.ReadAllAsync())` — same construct shape, same semantics.
+> - `_mainPort.close()` / `receivePort.close()` → `writer.Complete()` —
+>   the await-foreach loop ends naturally; preserves Dart's
+>   no-`Isolate.kill` shutdown contract verbatim.
+> - `Completer<void>` → `TaskCompletionSource` (parameterless overload
+>   returning `Task`); canonical at
+>   `rf-dart-completer-to-csharp-taskcompletionsource`.
+>
+> **Composition with heap_fcp #4 single-owning-context:** the consumer
+> Task IS the agent's owning execution context; the heap is accessed only
+> from inside the `await foreach` loop body. NO `lock`, NO `Interlocked`,
+> NO `ConcurrentDictionary` inside per-agent state — the Channel is the
+> only cross-context synchronisation primitive.
+>
+> **Rationale:**
+> (1) `Channel<T>` is the Microsoft-Learn-documented .NET actor-mailbox
+> primitive (https://learn.microsoft.com/dotnet/core/extensions/channels)
+> — direct semantic parity with Dart isolate ports.
+> (2) Scales to thousands of agents without an OS-thread-per-agent budget
+> (vs Option A); each agent is a single shared-ThreadPool Task.
+> (3) `Writer.Complete()` ↔ `ReceivePort.close()` is a one-for-one
+> shutdown mapping that preserves the Dart no-`Isolate.kill` contract.
+> (4) Rejected Option A (Thread-per-agent + BlockingCollection):
+> strongest physical thread-pinning, but OS-thread budget proportional to
+> agent count + slightly extended shutdown contract; reserved for
+> FFI/stack-affinity scenarios that are not in scope.
+> (5) Rejected Option B (ConcurrentExclusiveSchedulerPair):
+> serialisation-only, not a mailbox; every send wraps as a Task
+> allocation; less efficient than Channel `TryWrite`.
+> (6) Rejected Option D (SynchronizationContext): documented for
+> UI-thread affinity, not headless actors (Microsoft Learn) —
+> non-idiomatic for this use case.
+>
+> **Reference-identity sub-question** (escalation #6 in
+> `rpc_routing_test.dart`) auto-resolves under Channel<T>:
+> `IsolateMessage` and `GlpChannelHandle` are in-process .NET references,
+> never marshalled across boundaries, so `same(channel)` ↔
+> `Assert.Same(channel, dict[key])` preserves identity.
+>
+> The original four-option escalation block (with full Microsoft-Learn
+> citations for each option) is preserved in git history at commit
+> `497428c8` and parents.
 
 ## Rationale and research provenance (per non-trivial construct)
 
