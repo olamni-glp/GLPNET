@@ -1417,56 +1417,41 @@ conversion_units:
   - "  - SuspensionListNode? GetSuspensions / void AddSuspension — legacy wrappers (preserved per source comment)"
   - "  - int StoreTermOnHeap(Term term) — recursive per-variant dispatch: VarRef (no-op), ConstTerm/MutualRefTerm/ModuleTerm (allocate ValueTag), StructTerm (recurse on args then allocate ValueTag with VarRef args), default → throw ArgumentException"
 
-escalations:
-  - kind: undecidable
-    construct_key: dart.heap_fcp.concurrency_model_thread_safety_for_multiagent_hosting
-    detail: >-
-      Dart `HeapFCP` is owned by exactly one isolate (Dart's single-
-      threaded event-loop model — see Dart concurrency docs:
-      https://dart.dev/language/concurrency). The source has NO
-      `lock`, NO `Interlocked`, NO `volatile`, NO `async` — every
-      mutation (`Hp++`, `Cells.Add`, `cell.Content = ...`,
-      `_bindCallbacks[w] = cb`) is non-atomic by Dart's single-
-      threaded contract. The .NET re-host's threading model for the
-      multiagent runtime is NOT decided in THIS file — the per-
-      MadContext / per-agent isolation pattern is defined in
-      `lib/multiagent/global_writers_table.dart.md` and
-      `lib/multiagent/variable_table.dart.md`, which delegate the
-      concrete mechanism (actor-mailbox / pinned-thread / single-
-      threaded-scheduler) to the future `isolate_manager` port. As
-      long as each `HeapFCP` is owned by exactly one OS thread or
-      Task scheduler (per the isolate-manager contract), the plain
-      mutable C# implementation in this spec is CORRECT and SAFE.
-      However, IF a future hosting decision shares a single
-      `HeapFCP` across multiple threads, the entire mutation surface
-      becomes a data-race source — `Hp++` (read-modify-write on a
-      shared int), `Cells.Add` (List<T> is NOT thread-safe per
-      Microsoft Learn), `cell.Content = X` (writes to a heap-shared
-      object), and `_bindCallbacks` mutations all require either
-      external synchronisation, `Interlocked.Increment(ref _hp)`,
-      or replacement with `ConcurrentDictionary` / `ConcurrentBag`
-      / explicit `lock` regions — none of which are in scope for
-      THIS file's spec.
-    needs: >-
-      An authoritative decision on the .NET hosting concurrency
-      model for HeapFCP. Options (each with a downstream spec
-      change): (A) preserve Dart's single-owner-thread invariant
-      via the multiagent isolate-manager port (RECOMMENDED — the
-      current spec is correct under this assumption); (B) introduce
-      external `lock` synchronisation around every HeapFCP mutation
-      (would require an additional `private readonly object _lock`
-      field and lock acquisitions wrapping every public method);
-      (C) replace mutable internals with concurrent primitives
-      (`Interlocked.Increment` for Hp, `ConcurrentDictionary` for
-      `_bindCallbacks`, `List<HeapCell>` replaced by a `ConcurrentBag`
-      or a custom growable list — would change snapshot/iteration
-      semantics and require re-verification of every method
-      against the new memory model). Note: this escalation is NOT
-      about the cell/term/suspension types (which are correctly
-      reference types per the per-construct decisions above); it
-      is specifically about the `HeapFCP` owner's threading
-      contract.
+escalations: []
 ```
+
+> **RESOLVED 2026-05-21 (Gabi) — Option A: preserve single-owning-context.**
+> The .NET port preserves Dart's single-owner-thread invariant: every
+> `HeapFCP` instance is accessed by exactly one execution context (one
+> `Thread` / one `TaskScheduler` / one `SynchronizationContext` / the
+> consumer Task of a single `Channel<T>` actor mailbox — the concrete
+> binding is owned by `isolate_manager.dart`'s ruling, see escalation
+> #5). Fields stay PLAIN (`int Hp;`, `List<HeapCell> Cells;`, plain
+> `Dictionary<int, Action<Term>> _bindCallbacks;`) — NO `lock`, NO
+> `Interlocked`, NO `ConcurrentDictionary`, NO `volatile`. Rationale
+> (load-bearing, recorded for downstream codegen):
+> (1) Faithfulness — Dart `HeapFCP` has zero concurrency primitives by
+>     language invariant; FCP itself is a single-thread emulator per
+>     `docs/heap/heap-pointer-architecture-spec.md`.
+> (2) The hot path `DerefAddr` (O(N_args × N_clauses) per goal) runs
+>     lock-free; `ConcurrentDictionary` would impose per-cell memory-
+>     barrier overhead.
+> (3) Multi-step read-modify-write sequences (`derefAddr` chain-follow,
+>     `bindWriterToReader` cross-cell suspension forwarding,
+>     `_forwardSuspensions` third-cell mutation) are compound operations
+>     — concurrent collections make EACH op atomic but NOT the SEQUENCE,
+>     so Option C cannot make the heap safe without a global lock that
+>     would erase the performance argument.
+> (4) Seven dependent multiagent specs (`scheduler`, `body_kernels`,
+>     `system_predicates_impl`, `mad_context`, `agent_runtime`,
+>     `isolate_manager`, `global_writers_table`) already pre-committed
+>     in their nuance sections to the single-owning-thread invariant —
+>     this ruling makes those nuance promises load-bearing rather than
+>     conditional.
+> Downstream constraint: the C# port MUST NOT introduce
+> `lock`/`SemaphoreSlim`/`Monitor`/`ConcurrentDictionary`/`Interlocked`
+> inside any HeapFCP method. Atomicity is enforced at the agent-mailbox
+> boundary (the `isolate_manager.dart` port owns that boundary).
 
 ## Rationale and research provenance (per non-trivial construct)
 
