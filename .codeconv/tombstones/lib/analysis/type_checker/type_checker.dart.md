@@ -21,6 +21,8 @@ callers:
 - test/debug_negative.dart
 - test/module/cssg_modules_test.dart
 - test/module/module_typecheck_test.dart
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 1a6728683d8d3b0f7ae0e912eb459829b529ddbd1444a687da1ebb9cd560d28a
 topo_level: 5

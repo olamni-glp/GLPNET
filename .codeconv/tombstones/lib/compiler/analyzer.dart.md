@@ -8,12 +8,13 @@ dependencies:
 - lib/compiler/ast.dart
 - lib/compiler/error.dart
 - lib/compiler/partial_evaluator.dart
+- lib/compiler/unify_result.dart
 callers:
 - lib/compiler/codegen.dart
 - lib/compiler/compiler.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
-sha256: 559d1511e6ef8f9abed46d775d76af8656d702d4b75775ea32d90d9e6166ec5d
+mtime: '2026-05-20T18:17:32.675Z'
+sha256: 531b9f57edc68a07f95f78381c3c38b6953c8506cc799a21dfec8bc73dca32d7
 topo_level: 5
 cycle_group_id: 40
 status: pending

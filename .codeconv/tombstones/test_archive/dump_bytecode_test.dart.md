@@ -11,7 +11,7 @@ dependencies:
 - lib/bytecode/runner.dart
 - lib/compiler/compiler.dart
 callers: []
-mtime: '2026-05-17T10:36:36.812Z'
+mtime: '2026-05-21T12:38:16.818Z'
 sha256: 103e7b112e77e4386e31f16fb788f1a10269977da0f8cb374c143d97a4d8e078
 target_path: test_archive/dump_bytecode_test.cs
 ---

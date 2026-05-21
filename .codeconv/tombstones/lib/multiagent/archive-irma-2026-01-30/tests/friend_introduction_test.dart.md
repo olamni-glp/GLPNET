@@ -15,7 +15,7 @@ dependencies:
 - lib/runtime/scheduler.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:35.388Z'
+mtime: '2026-05-21T12:38:14.318Z'
 sha256: ed1e0cb245426624ddfac156faf8d77d120fe3d5b00bf573e873cb8d0508fc83
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/friend_introduction_test.cs
 ---

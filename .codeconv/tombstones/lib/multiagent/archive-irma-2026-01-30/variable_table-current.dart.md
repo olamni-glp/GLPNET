@@ -7,7 +7,7 @@ dependencies:
 - lib/multiagent/runtime/suspension.dart
 - lib/multiagent/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:35.288Z'
+mtime: '2026-05-21T12:38:14.050Z'
 sha256: b52af792cae28dc7656836e7eebd77831e788ac6f6f961efca94d3ff0f238102
 target_path: lib/multiagent/archive-irma-2026-01-30/variable_table-current.cs
 ---

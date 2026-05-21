@@ -9,16 +9,21 @@ dependencies:
 - lib/compiler/error.dart
 - lib/compiler/lexer.dart
 - lib/compiler/parser.dart
+- lib/compiler/unify_result.dart
 callers:
 - lib/compiler/analyzer.dart
+- lib/compiler/compiler.dart
 - lib/compiler/project_linker.dart
 - lib/engine/glp_engine.dart
 - test/compiler/partial_evaluator_test.dart
 - test/compiler/project_linker_test.dart
 - test/dynamic_dispatch_test.dart
 - test/module/cssg_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
-sha256: 87f231d5a2b7206e646e6bc24882cf12da986e315413bfacd38742c42bcb9673
+- test_archive/cssg_glp_dispatch_test.dart
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
+mtime: '2026-05-20T18:17:32.744Z'
+sha256: 8ac90433fa30c517b59e6f21f1860214b4493128880376e072467c37f92385ab
 topo_level: 4
 cycle_group_id: 39
 status: pending

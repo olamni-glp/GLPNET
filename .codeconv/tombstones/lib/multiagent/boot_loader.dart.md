@@ -25,6 +25,8 @@ key_idea: 'Boot Loader for maGLP Isolate Spawning
   '
 dependencies: []
 callers:
+- bin/glp_repl.dart
+- lib/multiagent/archive-irma-2026-01-30/isolate_manager.dart
 - lib/multiagent/isolate_manager.dart
 - test/multiagent/bonds_v2_isolate_test.dart
 - test/multiagent/boot_loader_test.dart

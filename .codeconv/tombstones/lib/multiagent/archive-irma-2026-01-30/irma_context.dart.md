@@ -49,7 +49,7 @@ dependencies:
 callers:
 - lib/multiagent/archive-irma-2026-01-30/irma_agent.dart
 - lib/multiagent/archive-irma-2026-01-30/mad_agent.dart
-mtime: '2026-05-17T10:36:35.228Z'
+mtime: '2026-05-21T12:38:13.913Z'
 sha256: e4276d9672760688ceaea82fe840494edcccf6c27f17f1c192edeb095cf07736
 target_path: lib/multiagent/archive-irma-2026-01-30/irma_context.cs
 ---

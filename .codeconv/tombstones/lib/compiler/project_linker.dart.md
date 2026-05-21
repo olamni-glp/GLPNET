@@ -44,6 +44,8 @@ dependencies:
 callers:
 - lib/engine/glp_engine.dart
 - test/compiler/project_linker_test.dart
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: b3d11b764d4963e6d78f28841aa9bafd9e3032ca39c0457a7340d56180957a52
 topo_level: 6

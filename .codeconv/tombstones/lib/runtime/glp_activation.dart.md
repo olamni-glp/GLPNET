@@ -35,6 +35,9 @@ callers:
 - test/dynamic_dispatch_test.dart
 - test/runtime/module_activation_test.dart
 - test/runtime/rpc_routing_test.dart
+- test_archive/cssg_glp_dispatch_test.dart
+- test_archive/cssn_modules_test.dart
+- test_archive/social_graph_sim_modules_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: ffba37a1c2ae6161898532e842040e38b1aaab8a818fe9c60bd4a001952688c4
 topo_level: 4

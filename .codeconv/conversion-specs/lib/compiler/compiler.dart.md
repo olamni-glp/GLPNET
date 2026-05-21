@@ -8,18 +8,23 @@
 ```yaml
 schema_version: 1
 source_path: lib/compiler/compiler.dart
-source_sha256: 10d4b73927e02b8c20489098e6523a68c2ff456c036544f5f9852107c65ef194
+source_sha256: 1b65ae574b5c4d866bf91680efdd48fd3a59072b31f44da7f2a3e19cd6ddc310
 target_code_unit: lib/compiler/compiler.cs
 constructs:
   - construct_key: dart.module.relative_imports_with_one_package_import_and_three_reexports
     source_form: >-
-      Eight import directives (seven relative — `lexer.dart`, `parser.dart`,
-      `analyzer.dart`, `codegen.dart`, `error.dart`, `token.dart`,
-      `result.dart`, plus a relative `ast.dart` with a `show` allow-list of
-      AST node types, and a relative cross-subdirectory
+      Nine import directives (eight relative — `lexer.dart`, `parser.dart`,
+      `analyzer.dart`, `codegen.dart`, `partial_evaluator.dart` (added
+      2026-05-20 as part of escalation #3 Option-(b): the strict
+      analyzer-internal `PartialEvaluator` was renamed to
+      `DefinedGuardEvaluator` and `compiler.dart` was switched to import
+      the lenient `PartialEvaluator` from `partial_evaluator.dart`
+      directly), `error.dart`, `token.dart`, `result.dart`, plus a
+      relative `ast.dart` with a `show` allow-list of AST node types,
+      and a relative cross-subdirectory
       `../analysis/type_checker/type_ast.dart show ProcDecl` and
-      `../analysis/type_checker/type_checker.dart show checkModule`), plus
-      one `package:`-prefixed import
+      `../analysis/type_checker/type_checker.dart show checkModule`),
+      plus one `package:`-prefixed import
       `import 'package:glp_runtime/bytecode/runner.dart' show BytecodeProgram;`
       that targets the same Dart package (`glp_runtime`) the file lives in.
       Followed by three `export` directives: a re-export of `BytecodeProgram`

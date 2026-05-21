@@ -11,7 +11,7 @@ dependencies:
 - lib/runtime/runtime.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:35.451Z'
+mtime: '2026-05-21T12:38:14.465Z'
 sha256: 85d2594c2f18a6810f71ecb6533ad092f19761ec3b7c2cfef29c55b227114e11
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/isolate_friend_introduction_test.cs
 ---

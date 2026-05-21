@@ -35,6 +35,8 @@ dependencies:
 - lib/runtime/suspension.dart
 - lib/runtime/terms.dart
 callers:
+- lib/multiagent/archive-irma-2026-01-30/heap-tests/pointer_architecture_test.dart
+- lib/multiagent/archive-irma-2026-01-30/heap-tests/shared_variable_pointer_test.dart
 - lib/runtime/commit.dart
 - lib/runtime/external_io.dart
 - lib/runtime/glp_activation.dart
@@ -46,6 +48,7 @@ callers:
 - test/heap/suspension_pointer_test.dart
 - test/heap/varref_pointer_test.dart
 - test/test_channel_construction.dart
+- test_archive/serve_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 18b5962454f8a7e7d8d1b48c9d711bfe92b3699180dcc4d9ac7a3288a26378f3
 topo_level: 2

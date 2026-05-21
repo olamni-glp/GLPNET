@@ -43,6 +43,7 @@ dependencies:
 - lib/runtime/scheduler.dart
 - lib/runtime/terms.dart
 callers:
+- bin/glp_repl.dart
 - test/multiagent/bonds_v2_isolate_test.dart
 - test/multiagent/cssn_v2_isolate_test.dart
 - test/multiagent/isolate_manager_test.dart

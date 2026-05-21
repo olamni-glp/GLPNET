@@ -20,16 +20,19 @@
 ```yaml
 schema_version: 1
 source_path: lib/compiler/partial_evaluator.dart
-source_sha256: 87f231d5a2b7206e646e6bc24882cf12da986e315413bfacd38742c42bcb9673
+source_sha256: 8ac90433fa30c517b59e6f21f1860214b4493128880376e072467c37f92385ab
 target_code_unit: lib/compiler/partial_evaluator.cs
 constructs:
   - construct_key: dart.module.relative_imports_plus_show_filter_for_prelude_builtins
     source_form: >-
       "import 'ast.dart'; import 'error.dart'; import 'lexer.dart';
-      import 'parser.dart'; import '../analysis/type_checker/prelude.dart'
-      show builtinProcedures;" — four whole-library imports of sibling
-      compiler-package files plus one selective `show`-filtered import
-      of a single static const from the type-checker prelude.
+      import 'parser.dart'; import 'unify_result.dart';
+      import '../analysis/type_checker/prelude.dart'
+      show builtinProcedures;" — five whole-library imports of sibling
+      compiler-package files (including the new `unify_result.dart`
+      that holds the lifted `UnifyResult` ADT, escalation #3 resolution
+      2026-05-20) plus one selective `show`-filtered import of a single
+      static const from the type-checker prelude.
     target_decision: >-
       Map all five Dart imports to C# namespace `using` directives in
       the same compilation unit. ast.dart/error.dart/lexer.dart/
@@ -247,78 +250,6 @@ constructs:
       codegen reviewer prefers verbatim triplication, the helper can
       be inlined at three call sites without semantic loss — flag
       both possibilities for the code-generation stage.
-
-  - construct_key: dart.sealed_class.three_arm_unification_result_with_per_arm_payload
-    source_form: >-
-      "sealed class UnifyResult {}
-       class UnifySuccess extends UnifyResult { final Map<String, Term>
-         substitution; UnifySuccess(this.substitution); }
-       class UnifyFail extends UnifyResult { final String reason;
-         UnifyFail(this.reason); }
-       class UnifySuspend extends UnifyResult { final Set<String>
-         unboundReaders; UnifySuspend(this.unboundReaders); }" —
-      Dart-3 `sealed` discriminated-union with three subclass arms,
-      each carrying a typed payload. Consumed in two places via
-      `switch (result) { case UnifyFail(...): ... case UnifySuspend(
-      ...): ... case UnifySuccess(:final substitution): ... }`
-      EXHAUSTIVE pattern-matching (no default arm) — Dart 3 verifies
-      the switch IS exhaustive at compile time because the base is
-      `sealed`.
-    target_decision: >-
-      Convert to a CLOSED hierarchy with the same closure semantics
-      via the AST-leaf pattern from ast.dart (rf-dart-abstract-marker-
-      base-to-csharp-abstract-sealed-leaves, cached): emit an
-      `public abstract class UnifyResult` (closure expressed via
-      sealing the LEAVES) — `public sealed class UnifySuccess :
-      UnifyResult { public IReadOnlyDictionary<string, Term>
-      Substitution { get; } public UnifySuccess(
-      IReadOnlyDictionary<string, Term> substitution) { Substitution
-      = substitution; } }`, `public sealed class UnifyFail :
-      UnifyResult { public string Reason { get; } public UnifyFail(
-      string reason) { Reason = reason; } }`, `public sealed class
-      UnifySuspend : UnifyResult { public IReadOnlySet<string>
-      UnboundReaders { get; } public UnifySuspend(IReadOnlySet<string>
-      unboundReaders) { UnboundReaders = unboundReaders; } }`. The
-      Dart `sealed` keyword has NO direct C# equivalent at the
-      ABSTRACT-BASE level (Microsoft Learn: "It's an error to use the
-      abstract modifier with a sealed class" — already cited in
-      ast.dart spec); closure is encoded by (a) sealing every leaf
-      (b) emitting exhaustive `switch` expressions with a `_ => throw
-      new InvalidOperationException(...)` default arm in consumers.
-      Dart 3 pattern-matching `case UnifySuccess(:final
-      substitution)` becomes C# 8+ `UnifySuccess success =>
-      ...success.Substitution...` (declaration pattern with
-      property-access on the bound variable). Dart `Map<String, Term>`
-      ⇒ `IReadOnlyDictionary<string, Term>` (cache-once, never-mutate
-      after construction); Dart `Set<String>` ⇒ `IReadOnlySet<string>`
-      (Microsoft Learn: "The IReadOnlySet<T> interface ... was
-      introduced in .NET 5").
-    idiom_id: null
-    research_finding_id: rf-dart-abstract-marker-base-to-csharp-abstract-sealed-leaves
-    nuance: >-
-      Four intertwined nuances. (1) `sealed`-vs-`abstract`-collision:
-      Dart 3 `sealed` on a base + concrete leaves is the official way
-      to declare a closed discriminated union (Dart official:
-      "sealed gives the compiler enough information to enforce
-      exhaustive switching"). C# has NO single keyword for this —
-      reuse the ast.dart cached idiom (abstract base + sealed leaves
-      + exhaustive switch with throwing default). (2) Exhaustiveness-
-      verification gap: Dart 3 STATICALLY verifies the consumer's
-      switch covers every subclass; C# 11+ pattern-match switches do
-      NOT verify exhaustiveness across user-declared class
-      hierarchies (only across enum/value types). The throwing-default
-      arm preserves the RUNTIME contract (an unknown arm explodes
-      loudly, just as a non-exhaustive Dart switch would refuse to
-      compile). (3) Payload-mutability: every payload (the
-      substitution Map, the reason String, the unboundReaders Set)
-      is captured once at construction and never mutated — making
-      them `IReadOnly*` interfaces preserves this invariant while
-      preventing accidental mutation downstream. (4) Identity-vs-
-      value: `UnifyResult` instances are reference types in both
-      languages; equality is reference identity (no `==` override in
-      Dart, no `Equals`/`==` override in C#). The result is short-
-      lived (constructed, switched on once, discarded) so identity-
-      equality is appropriate; no record-struct hazard.
 
   - construct_key: dart.classfield.int_counter_for_fresh_variable_names_with_prefix_PE
     source_form: >-
@@ -1425,7 +1356,6 @@ constructs:
       this table). Preserved verbatim.
 conversion_units:
   - "internal static class PreludeUnitClauses (mutable source field, cached map field, SetPreludeUnitClauseSource, GetPreludeUnitClauses)"
-  - "abstract class UnifyResult + sealed leaves UnifySuccess / UnifyFail / UnifySuspend (IReadOnly payloads)"
   - "class PartialEvaluator (instance: long _varCounter, public Stage-1 TransformDefinedGuards, public Stage-2 UnfoldReduceCalls)"
   - "private helper IsUnitClauseShape (lifted from three duplicate sites)"
   - "private static CollectUnitClauses / CollectAllProcedures / CollectReduceFacts"

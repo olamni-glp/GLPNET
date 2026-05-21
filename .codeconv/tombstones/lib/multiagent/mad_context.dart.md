@@ -35,6 +35,7 @@ dependencies:
 callers:
 - lib/engine/glp_engine.dart
 - lib/multiagent/agent_runtime.dart
+- lib/multiagent/archive-irma-2026-01-30/heap-tests/shared_variable_pointer_test.dart
 - lib/runtime/body_kernels.dart
 - test/multiagent/mad_cold_call_isolate_test.dart
 - test/multiagent/mad_scenarios_test.dart

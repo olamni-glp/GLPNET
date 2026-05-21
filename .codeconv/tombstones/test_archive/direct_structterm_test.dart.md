@@ -19,7 +19,7 @@ dependencies:
 - lib/runtime/scheduler.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:36.784Z'
+mtime: '2026-05-21T12:38:16.775Z'
 sha256: 558e3c20314afc7ccd55efda86a7af71874819f07e296b5f27724af4077e18d5
 target_path: test_archive/direct_structterm_test.cs
 ---

@@ -4,49 +4,61 @@
 > Spec-only (FR-023): describes the Dart→C# conversion; contains NO
 > compilable C#. A later codegen stage consumes the structured block.
 >
-> File is the GLP semantic analyzer — 1466 lines, two top-level classes
+> File is the GLP semantic analyzer — 1454 lines, two top-level classes
 > per major concern: `VariableInfo` (per-variable bookkeeping),
 > `VariableTable` (per-clause SRSW table + grounded/type-grounded sets),
 > three "annotated AST" wrappers (`AnnotatedProgram` /
 > `AnnotatedProcedure` / `AnnotatedClause`), the coordinator class
 > `Analyzer` (the public 4-step pipeline: SRSW-validate → partial-eval →
-> reduce-gen → register-assign), AND a second `PartialEvaluator` class
-> that owns compile-time GLP three-valued unification for *defined
-> guard* unfolding (a sibling but DISTINCT class from the one in
-> partial_evaluator.dart — the analyzer-internal copy operates on
-> guards, the sibling one operates on `reduce/2` facts; both files
-> independently define the same `sealed UnifyResult` ADT). Heavy reuse
-> from ast.dart, error.dart, parser.dart, and partial_evaluator.dart
-> prior specs: ~70 % of constructs map onto already-cached research
-> findings + already-recorded idiomatic decisions. New idioms here are
-> small: a Dart-only "guard-name dispatch table" (a string-keyed cascade
-> over `guard.predicate`) and the SRSW counter aggregation pattern.
+> reduce-gen → register-assign), AND a second compile-time partial-
+> evaluator class — now called **`DefinedGuardEvaluator`** — that owns
+> compile-time GLP three-valued unification for *defined guard*
+> unfolding. `DefinedGuardEvaluator` is the STRICT variant (throws
+> `CompileError` on suspend/fail because defined guards must be fully
+> reducible at compile time); the LENIENT variant lives in
+> `partial_evaluator.dart` and is still called `PartialEvaluator`
+> (returns failure via the `UnifyResult` ADT for reduce/2 unfolding).
+> The `UnifyResult` sealed ADT was lifted out of both files into a
+> SHARED sibling file `lib/compiler/unify_result.dart`; both this file
+> and `partial_evaluator.dart` now import it. This refactor resolved
+> two previously-recorded escalations (duplicate `UnifyResult` ADT and
+> duplicate `PartialEvaluator` class name). Heavy reuse from ast.dart,
+> error.dart, parser.dart, and partial_evaluator.dart prior specs:
+> ~70 % of constructs map onto already-cached research findings +
+> already-recorded idiomatic decisions. New idioms here are small: a
+> Dart-only "guard-name dispatch table" (a string-keyed cascade over
+> `guard.predicate`) and the SRSW counter aggregation pattern.
 
 ```yaml
 schema_version: 1
 source_path: lib/compiler/analyzer.dart
-source_sha256: 559d1511e6ef8f9abed46d775d76af8656d702d4b75775ea32d90d9e6166ec5d
+source_sha256: 531b9f57edc68a07f95f78381c3c38b6953c8506cc799a21dfec8bc73dca32d7
 target_code_unit: lib/compiler/analyzer.cs
 constructs:
-  - construct_key: dart.module.relative_imports_three_sibling_plus_one_cross_package
+  - construct_key: dart.module.relative_imports_four_sibling_plus_one_cross_package
     source_form: >-
       "import 'ast.dart'; import 'error.dart';
       import 'partial_evaluator.dart' show getPreludeUnitClauses;
-      import '../analysis/type_checker/type_ast.dart';" — three same-folder
-      whole-library imports of sibling compiler files plus one selective
-      `show`-filtered import of a single function from the sibling
-      partial_evaluator file, plus one cross-package whole-library import
-      of the type-checker's type_ast.
+      import 'unify_result.dart';
+      import '../analysis/type_checker/type_ast.dart';" — four same-folder
+      whole-library / selective imports of sibling compiler files plus one
+      cross-package whole-library import of the type-checker's type_ast.
+      `ast.dart`, `error.dart`, `unify_result.dart` are full whole-library
+      imports; `partial_evaluator.dart` is `show`-filtered to a single
+      function `getPreludeUnitClauses` (the lenient `PartialEvaluator`
+      class in that file is deliberately NOT imported here — this file
+      has its own `DefinedGuardEvaluator`).
     target_decision: >-
-      Three sibling imports (`ast.dart`, `error.dart`, `partial_evaluator.dart`)
-      collapse to ZERO `using` directives because the C# port places all
-      lib/compiler/* files into a SINGLE namespace (e.g.
-      `Glp.Runtime.Compiler`) — Microsoft Learn: "All types in the same
-      namespace are accessible without a `using` directive". The
-      `show getPreludeUnitClauses` filter is functionally vacuous in C#
-      because the surrounding-namespace rule already restricts what is
-      visible; if `getPreludeUnitClauses` is hoisted to a static method on
-      a `PartialEvaluatorPrelude` static class (per
+      The four sibling imports (`ast.dart`, `error.dart`,
+      `partial_evaluator.dart`, `unify_result.dart`) collapse to ZERO
+      `using` directives because the C# port places all lib/compiler/*
+      files into a SINGLE namespace (e.g. `Glp.Runtime.Compiler`) —
+      Microsoft Learn: "All types in the same namespace are accessible
+      without a `using` directive". The `show getPreludeUnitClauses`
+      filter is functionally vacuous in C# because the surrounding-
+      namespace rule already restricts what is visible; if
+      `getPreludeUnitClauses` is hoisted to a static method on a
+      `PartialEvaluatorPrelude` static class (per
       csharp-static-class-no-toplevel-members), the call site reads
       `PartialEvaluatorPrelude.GetPreludeUnitClauses()` — no narrowing
       using-directive needed. The cross-package import
@@ -60,17 +72,21 @@ constructs:
     nuance: >-
       Reuse-only — the surface shape is identical to the import sections
       already specced in error.dart / partial_evaluator.dart / parser.dart.
-      One nuance specific to this file: the `show getPreludeUnitClauses`
-      filter is the ONLY visibility-narrowing import; partial_evaluator.dart
-      exposes other top-level names (the `PartialEvaluator` class itself,
-      `Program` re-exports, etc.) that this file deliberately does not
-      consume. Under the C# same-namespace rule those names are visible
-      regardless — a faithfulness gap that is observationally invisible
-      (the consuming code does not reference them) but worth recording for
-      review: if a future analyzer change accidentally referred to a name
-      that was previously hidden by `show`, the C# port would silently
-      compile while Dart would have flagged it. The risk is low and
-      monitored by code-review, not the conversion.
+      Two nuances specific to this file: (1) the new `unify_result.dart`
+      import resulted from lifting the shared `UnifyResult` ADT out of
+      both analyzer.dart and partial_evaluator.dart into a single shared
+      sibling file; under the C# same-namespace rule the `using` for it
+      collapses just like the other siblings. (2) the `show
+      getPreludeUnitClauses` filter is the ONLY visibility-narrowing
+      import; partial_evaluator.dart exposes other top-level names
+      (notably the lenient `PartialEvaluator` class) that this file
+      deliberately does not consume. Under the C# same-namespace rule
+      those names are visible regardless — a faithfulness gap that is
+      observationally invisible (the consuming code does not reference
+      them) but worth recording: if a future analyzer change accidentally
+      referred to a name that was previously hidden by `show`, the C#
+      port would silently compile while Dart would have flagged it. The
+      risk is low and monitored by code-review, not the conversion.
 
   - construct_key: dart.data_class.variable_info_mutable_counters_with_late_register
     source_form: >-
@@ -482,10 +498,10 @@ constructs:
       `_isConstantType(typeName)` (Dart) becomes
       `IsConstantType(typeName)` (C#) — same call shape.
 
-  - construct_key: dart.class.analyzer_coordinator_with_partial_evaluator_field_and_proc_decl_map_and_mode
+  - construct_key: dart.class.analyzer_coordinator_with_defined_guard_evaluator_field_and_proc_decl_map_and_mode
     source_form: >-
       "class Analyzer {
-        final PartialEvaluator _partialEvaluator = PartialEvaluator();
+        final DefinedGuardEvaluator _definedGuardEvaluator = DefinedGuardEvaluator();
         Map<String, ProcDecl> _procDecls = {};
         CompileMode _compileMode = CompileMode.user;
         Analyzer();
@@ -493,14 +509,18 @@ constructs:
           List<ProcDecl>? procDeclarations, CompileMode compileMode = CompileMode.user,
           bool skipGlobalSRSW = false}) { ... 4-step pipeline ... }
         ...many private helpers... }" — the analyzer entry point. Owns ONE
-      `PartialEvaluator` instance constructed eagerly (a `final` field),
-      and TWO mutable state fields (`_procDecls`, `_compileMode`) that are
-      reset every call to `analyze`. The public method takes four named-
-      optional parameters and returns the annotated AST.
+      `DefinedGuardEvaluator` instance constructed eagerly (a `final` field;
+      renamed from `_partialEvaluator` / `PartialEvaluator()` after the
+      duplicate-class-name refactor — the analyzer-internal STRICT variant
+      is now `DefinedGuardEvaluator` to disambiguate from the LENIENT
+      `PartialEvaluator` in partial_evaluator.dart), and TWO mutable state
+      fields (`_procDecls`, `_compileMode`) that are reset every call to
+      `analyze`. The public method takes four named-optional parameters
+      and returns the annotated AST.
     target_decision: >-
       `public sealed class Analyzer` with three private fields:
-      `private readonly PartialEvaluator _partialEvaluator = new();` (the
-      `readonly` is preserved from Dart `final`; Microsoft Learn
+      `private readonly DefinedGuardEvaluator _definedGuardEvaluator = new();`
+      (the `readonly` is preserved from Dart `final`; Microsoft Learn
       `readonly` field: "can only be assigned during declaration or in
       the constructor"), `private Dictionary<string, ProcDecl> _procDecls
       = new(StringComparer.Ordinal);`, and `private CompileMode _compileMode
@@ -525,8 +545,8 @@ constructs:
       Four intertwined nuances. (1) The `Analyzer` instance is REUSABLE —
       `analyze()` resets `_procDecls` and `_compileMode` at the top of
       every call; the C# port MUST preserve the reset (do NOT make the
-      fields `readonly` — only `_partialEvaluator` is genuinely
-      ctor-fixed). (2) `PartialEvaluator()` is constructed eagerly at
+      fields `readonly` — only `_definedGuardEvaluator` is genuinely
+      ctor-fixed). (2) `DefinedGuardEvaluator()` is constructed eagerly at
       field-init time in Dart; the equivalent C# default-ctor invocation
       `new()` at field-init runs BEFORE any user ctor body (Microsoft
       Learn "Field initialization occurs before constructor execution") —
@@ -538,7 +558,14 @@ constructs:
       `_compileMode = compileMode;` write must occur BEFORE step 1 (SRSW
       validation) — `_compileMode` is read deep in `_analyzeTerm`
       validating reserved constants; the ordering is load-bearing and
-      the C# port MUST preserve method-statement order.
+      the C# port MUST preserve method-statement order. NOTE: the field
+      name and dependency type both renamed from `_partialEvaluator` /
+      `PartialEvaluator` after the duplicate-class-name refactor that
+      resolved two prior escalations — the strict evaluator here is
+      semantically distinct (throws on suspend/fail) from the lenient
+      `PartialEvaluator` in partial_evaluator.dart (returns failure via
+      `UnifyResult`); the rename is a Dart-source rename that the C# port
+      mirrors literally.
 
   - construct_key: dart.method.analyze_four_step_pipeline_with_skip_flag_and_throwing_aggregator
     source_form: >-
@@ -560,7 +587,7 @@ constructs:
           }
         }
         // STEP 2: partial-eval defined guards
-        final transformed = _partialEvaluator.transformDefinedGuards(program);
+        final transformed = _definedGuardEvaluator.transformDefinedGuards(program);
         // STEP 3: optionally generate reduce/2 clauses
         final withReduce = generateReduce ? _generateReduceClauses(transformed) : transformed;
         // STEP 4: register-assign per procedure (skip SRSW; already validated)
@@ -572,6 +599,8 @@ constructs:
         return AnnotatedProgram(withReduce, annotatedProcs);
       }" — the 4-step coordinator. Uses Dart record-style destructuring
       `final (annotatedProc, _) = ...` to ignore the second tuple field.
+      Step 2 now dispatches through the renamed `_definedGuardEvaluator`
+      field.
     target_decision: >-
       The C# port emits the body as four numbered comment-banner regions
       preserving the same step order. (1) The aggregation loop becomes
@@ -592,6 +621,9 @@ constructs:
       IReadOnlyList<string>)` (a ValueTuple). Reuse rf-dart-record-named-
       fields-to-csharp-value-tuple-named-fields from occurrence.dart for
       the tuple shape (though here the tuple is POSITIONAL not named).
+      Step 2's call becomes `var transformed = _definedGuardEvaluator
+      .TransformDefinedGuards(program);` — the renamed field/class is
+      mirrored verbatim from the Dart source.
     idiom_id: null
     research_finding_id: rf-dart-record-named-fields-to-csharp-value-tuple-named-fields
     nuance: >-
@@ -604,14 +636,15 @@ constructs:
       the partial-evaluated one) because partial eval removes defined
       guards, and guard readers must be counted for SRSW pairing. This
       ordering is load-bearing — the C# port MUST run SRSW BEFORE calling
-      `_partialEvaluator.TransformDefinedGuards`. (3) Step 2's
-      `transformDefinedGuards` may THROW if a guard cannot be reduced
-      (suspend) or always fails — the C# port lets that exception
-      propagate. (4) Step 3 is optional via `generateReduce`; the ternary
-      `condition ? a : b` maps directly. (5) Step 4 deliberately passes
-      `skipSRSW: true` because step 1 already validated; without this,
-      auto-generated reduce/2 clauses (which use a forwarding pattern)
-      would re-trigger SRSW errors.
+      `_definedGuardEvaluator.TransformDefinedGuards`. (3) Step 2's
+      `transformDefinedGuards` may THROW `CompileError` if a guard cannot
+      be reduced (suspend) or always fails — this is the STRICT-evaluator
+      contract; the C# port lets that exception propagate. (4) Step 3 is
+      optional via `generateReduce`; the ternary `condition ? a : b` maps
+      directly. (5) Step 4 deliberately passes `skipSRSW: true` because
+      step 1 already validated; without this, auto-generated reduce/2
+      clauses (which use a forwarding pattern) would re-trigger SRSW
+      errors.
 
   - construct_key: dart.method.collect_srsw_violations_for_procedure_per_clause_walk_with_optional_section_analysis
     source_form: >-
@@ -1211,61 +1244,9 @@ constructs:
       guards. The C# port preserves the nullable-string-then-set-lookup
       chain.
 
-  - construct_key: dart.sealed_class.unify_result_three_arms_with_per_arm_payload
+  - construct_key: dart.class.analyzer_internal_defined_guard_evaluator_class_with_guard_unfolding
     source_form: >-
-      "sealed class UnifyResult {}
-      class UnifySuccess extends UnifyResult { final Map<String, Term> substitution;
-        UnifySuccess(this.substitution); }
-      class UnifyFail extends UnifyResult { final String reason;
-        UnifyFail(this.reason); }
-      class UnifySuspend extends UnifyResult { final Set<String> unboundReaders;
-        UnifySuspend(this.unboundReaders); }" — a sealed three-arm ADT
-      identical in structure to the `UnifyResult` defined in
-      partial_evaluator.dart (the OTHER file). Three subclasses
-      respectively carry a substitution map, a failure reason string, and
-      a set of unbound-reader names. Used by the analyzer's own
-      `PartialEvaluator` instance (defined below in this file) for
-      defined-guard unfolding.
-    target_decision: >-
-      Identical to partial_evaluator.dart's spec (cf.
-      dart.sealed_class.three_arm_unification_result_with_per_arm_payload):
-      C# `public abstract class UnifyResult { protected UnifyResult() { } }`
-      + three sealed subclasses `public sealed class UnifySuccess :
-      UnifyResult { public IReadOnlyDictionary<string, Term> Substitution
-      { get; } public UnifySuccess(IReadOnlyDictionary<string, Term>
-      substitution) { Substitution = substitution; } }`, `UnifyFail`
-      (string Reason), `UnifySuspend` (IReadOnlySet<string>
-      UnboundReaders). NOTE the duplication with partial_evaluator.dart:
-      both files independently declare `UnifyResult` / `UnifySuccess` /
-      `UnifyFail` / `UnifySuspend`. The C# port has TWO OPTIONS, both
-      ESCALATED: (a) keep them as two separate types in the same
-      namespace ⇒ NAME CLASH — both cannot coexist. (b) lift to a single
-      shared definition in a common subpackage. (c) rename one set with
-      a suffix (e.g. `AnalyzerUnifyResult` vs `PartialEvaluatorUnifyResult`).
-      This is a TRUE undecidable point about the .NET port — see
-      `escalations:` block below. Reuse cached
-      rf-dart-abstract-marker-base-to-csharp-abstract-sealed-leaves.
-    idiom_id: null
-    research_finding_id: rf-dart-abstract-marker-base-to-csharp-abstract-sealed-leaves
-    nuance: >-
-      Three intertwined nuances. (1) Dart `sealed class UnifyResult {}`
-      is a Dart 3+ language feature meaning "the only subtypes are those
-      declared in the same library file" — Dart official docs explicit.
-      In Dart, the two `UnifyResult`s in analyzer.dart and
-      partial_evaluator.dart are DIFFERENT TYPES (each library's sealed
-      class is library-local). In C# there is no library-local-sealed
-      mechanism; types in the same namespace are visible globally — so
-      the duplicate declarations CANNOT coexist in the same C#
-      namespace. (2) The `Map<String, Term>` ⇒ `IReadOnlyDictionary<
-      string, Term>` and `Set<String>` ⇒ `IReadOnlySet<string>` tightening
-      is identical to partial_evaluator.dart's mapping; reuse verbatim.
-      (3) The three subclasses' constructors are positional-arg (no
-      named-default), so the C# ctors are simple positional —
-      no nuance there.
-
-  - construct_key: dart.class.analyzer_internal_partial_evaluator_class_with_guard_unfolding
-    source_form: >-
-      "class PartialEvaluator {
+      "class DefinedGuardEvaluator {
         int _varCounter = 0;
         Program transformDefinedGuards(Program program) { ... }
         Map<String, List<Term>> _collectUnitClauses(Program program) { ... }
@@ -1284,21 +1265,28 @@ constructs:
         Atom _applySubstitutionToAtom(Atom atom, Map<String, Term> subst) { ... }
         Guard _applySubstitutionToGuard(Guard guard, Map<String, Term> subst) { ... }
         Goal _applySubstitutionToGoal(Goal goal, Map<String, Term> subst) { ... }
-      }" — a SECOND PartialEvaluator class declared inside analyzer.dart,
-      structurally near-identical to the PartialEvaluator in
-      partial_evaluator.dart but operating on DEFINED GUARDS (single-
-      clause unit predicates) rather than reduce/2 facts. Same compile-
-      time GLP three-valued unification, same renaming-of-unit-vars,
-      same fixpoint guard-reduction loop, same recursive substitution
-      machinery — but the THROW behaviour on suspend/fail differs (this
-      version throws CompileError; the other one returns failure as part
-      of the result).
+      }" — the STRICT compile-time guard evaluator (renamed from
+      `PartialEvaluator` to `DefinedGuardEvaluator` to disambiguate from
+      the LENIENT class of the same shape in partial_evaluator.dart).
+      Operates on DEFINED GUARDS (single-clause unit predicates).
+      Performs compile-time GLP three-valued unification, renaming of
+      unit-clause variables, a fixpoint guard-reduction loop, and
+      recursive substitution machinery. THROW behaviour on suspend/fail
+      is the distinctive feature: `_transformClause` throws CompileError
+      (the lenient sibling in partial_evaluator.dart returns failure as
+      part of the `UnifyResult` ADT). Uses the SHARED `UnifyResult`
+      sealed ADT (lifted to `lib/compiler/unify_result.dart` after the
+      duplicate-class-name refactor — same ADT instance type as
+      `partial_evaluator.dart`'s `PartialEvaluator` consumes).
     target_decision: >-
-      DELEGATE the construct-by-construct mapping for this entire
-      `PartialEvaluator` class to the cached idioms / construct-keys
-      established by partial_evaluator.dart.md — namely, every helper
-      method below has a 1:1 counterpart already specced in
-      partial_evaluator.dart.md, and the codegen stage can REUSE those
+      Emit a `public sealed class DefinedGuardEvaluator` in the
+      `Glp.Runtime.Compiler` namespace (no name clash — the lenient class
+      remains `PartialEvaluator`; the two names are distinct in C# as
+      they are in the refactored Dart source). DELEGATE the
+      construct-by-construct mapping for every helper method to the
+      cached idioms / construct-keys established by
+      partial_evaluator.dart.md — each helper has a 1:1 counterpart
+      already specced there, and the codegen stage REUSES those
       decisions:
         * `_varCounter` int field → cf. dart.classfield.int_counter_for_fresh_variable_names_with_prefix_PE
         * `transformDefinedGuards` → cf. dart.method.transform_program_via_per_procedure_per_clause_loop_returning_new_immutable_program
@@ -1314,113 +1302,59 @@ constructs:
         * `_isAnonymous` → cf. dart.method.is_underscore_test_unioning_two_dart_runtime_types
         * `_resolveSubstitution` / `_resolveTerm` → cf. dart.method.resolve_substitution_flatten_chains_with_cycle_protection
         * `_applySubstitution` / `_applySubstitutionToAtom` / `_applySubstitutionToGuard` / `_applySubstitutionToGoal` → cf. dart.method.apply_substitution_to_term_atom_guard_goal_with_remoteGoal_spawnGoal_preservation
-      The C# port emits a class `internal sealed class
-      PartialEvaluator` (file-private to lib/compiler/analyzer.cs — see
-      escalations on the name clash with the same-named class in
-      partial_evaluator.dart). Each helper follows the cached spec
-      verbatim.
+      The `UnifyResult` ADT (sealed `UnifyResult` + `UnifySuccess` /
+      `UnifyFail` / `UnifySuspend`) is NOT specced here — it lives in
+      `unify_result.dart` and the spec is in
+      `.codeconv/conversion-specs/lib/compiler/unify_result.dart.md`
+      (planned as a separate convspec). The C# port references the same
+      shared type from both `DefinedGuardEvaluator` and the lenient
+      `PartialEvaluator`. Reuse cached
+      rf-dart-coordinator-class-with-final-deps-to-csharp-class-with-readonly-fields
+      for the class shape; reuse the per-helper cached findings listed
+      above.
     idiom_id: null
     research_finding_id: rf-dart-coordinator-class-with-final-deps-to-csharp-class-with-readonly-fields
     nuance: >-
-      Four intertwined nuances. (1) NAME CLASH with the PartialEvaluator
-      class in partial_evaluator.dart — see escalations. Dart libraries
-      are file-scoped (each file is its own library by default); two
-      same-named classes in two `.dart` files are independent types. C#
-      namespaces are NOT file-scoped — two classes with the same name in
-      the same namespace collide at link time. RESOLVING this requires
-      a human decision (rename one, lift to a shared subpackage, or
-      compose). (2) The throw-vs-return behaviour difference between the
-      two PartialEvaluator classes is documented in the source: the
-      analyzer's PartialEvaluator THROWS CompileError on suspend/fail
-      (lines 994-1013) because a defined-guard that cannot reduce at
-      compile time IS a compile error; the partial_evaluator.dart one
-      returns the failure as part of the `UnifyResult` ADT because
-      reduce/2 unfolding is OPTIONAL (failure means "leave the goal
-      alone"). The C# port MUST preserve this throw-vs-return
-      distinction. (3) The compile-time unification semantics are
-      IDENTICAL between the two files (writer-vs-writer alias, writer-
-      vs-const bind, reader-vs-any add to suspension, structure recurses,
-      list recurses, underscore always succeeds) — so the cached
-      decisions apply. (4) The `_varCounter` fresh-variable naming uses
-      prefix `PE_` (NOT `_` — would be confused with anonymous); the
-      C# port preserves the literal `"PE_"` string.
+      Five intertwined nuances. (1) RENAME and DEDUPLICATION resolved
+      previously-recorded escalations: the Dart source was refactored
+      so the strict-and-throwing variant is `DefinedGuardEvaluator`
+      (this file) and the lenient-and-returning variant remains
+      `PartialEvaluator` (in partial_evaluator.dart); both consume a
+      SHARED `UnifyResult` ADT imported from `unify_result.dart`. In the
+      C# port both classes coexist in the same `Glp.Runtime.Compiler`
+      namespace with distinct names — no clash. (2) The throw-vs-return
+      behaviour difference between the two evaluator classes is
+      load-bearing: `DefinedGuardEvaluator._transformClause` THROWS
+      `CompileError` on `UnifyFail` and `UnifySuspend` (defined guards
+      that cannot reduce at compile time ARE compile errors); the
+      lenient `PartialEvaluator` (reduce/2 unfolding) consumes the same
+      `UnifyResult` arms but treats failure as "leave the goal alone".
+      The C# port MUST preserve this throw-vs-return distinction even
+      though both classes consume the same shared ADT type. (3) The
+      compile-time unification semantics are IDENTICAL between the two
+      files (writer-vs-writer alias, writer-vs-const bind, reader-vs-any
+      add to suspension, structure recurses, list recurses, underscore
+      always succeeds) — so the cached decisions apply verbatim to both
+      C# classes. (4) The `_varCounter` fresh-variable naming uses
+      prefix `PE_` (NOT `_` — would be confused with anonymous); the C#
+      port preserves the literal `"PE_"` string for source-level
+      identity with the lenient sibling. (5) Per-pipeline-call decision:
+      `Compiler.compile` (per the user's Option (b) change) now also
+      imports `partial_evaluator.dart`, meaning a free `PartialEvaluator()`
+      call site in `compiler.dart` resolves to the LENIENT variant; the
+      analyzer's own internal field is the STRICT `DefinedGuardEvaluator`
+      — the C# port mirrors the same disambiguation at call sites
+      (different class names, no ambiguity).
 
 conversion_units:
   - analyzer.cs (top-level — host the public Analyzer class plus the
     file-private VariableInfo, VariableTable, AnnotatedProgram,
-    AnnotatedProcedure, AnnotatedClause, and the analyzer-internal
-    PartialEvaluator + UnifyResult ADT)
+    AnnotatedProcedure, AnnotatedClause, and the file-internal
+    DefinedGuardEvaluator. The shared `UnifyResult` ADT lives in a
+    separate conversion unit unify_result.cs, consumed by both this
+    file and partial_evaluator.cs.)
 
-escalations:
-  - kind: undecidable
-    construct_key: dart.sealed_class.unify_result_three_arms_with_per_arm_payload
-    detail: >-
-      `UnifyResult` (and its three subclasses `UnifySuccess` / `UnifyFail`
-      / `UnifySuspend`) is declared INDEPENDENTLY in both
-      lib/compiler/analyzer.dart AND lib/compiler/partial_evaluator.dart.
-      In Dart each file is its own library; two `sealed class UnifyResult
-      {}` declarations in different files are distinct types. The C#
-      port places both files in the same `Glp.Runtime.Compiler` namespace
-      (per the same-namespace-for-sibling-files rule established by
-      ast.dart and partial_evaluator.dart specs), where two same-named
-      `UnifyResult` types CANNOT coexist (CS0101 "The namespace already
-      contains a definition for ...").
-    needs: >-
-      A human decision among three options, each with consequences:
-      (a) RENAME one set — e.g. analyzer's becomes `AnalyzerUnifyResult`
-      / `AnalyzerUnifySuccess` / etc., partial_evaluator's stays
-      `UnifyResult` (or vice-versa). Disadvantage: identifier drift from
-      the Dart source; advantage: simple, mechanical.
-      (b) LIFT to a single shared definition (e.g. promote
-      `UnifyResult` to a common location like `lib/compiler/internal/
-      unification.dart`-equivalent in C#) — the two PartialEvaluator
-      classes would share the type. Disadvantage: changes the
-      organisation of the C# project relative to the Dart layout;
-      advantage: eliminates duplication semantically too (the two ADTs
-      are observationally identical).
-      (c) PLACE each PartialEvaluator class in a NESTED type that
-      privately owns its own `UnifyResult` (e.g. `internal sealed class
-      PartialEvaluator { internal abstract class UnifyResult { ... } }`)
-      — both can coexist as `PartialEvaluator.UnifyResult` and
-      `AnalyzerPartialEvaluator.UnifyResult`. Disadvantage: changes
-      access patterns; advantage: faithfully preserves the Dart library-
-      scoped sealed semantics.
-      The Dart-language-authoritative answer is that the two sealed
-      classes are intentionally library-scoped (per Dart docs:
-      "Modifiers like sealed [...] can be used to constrain which
-      libraries can extend [...] a class"), but C# has no precise
-      equivalent. Per FR-013 / SC-008 the conversion does NOT silently
-      pick — escalate to a human gate (FR-024: official Dart docs
-      authoritative on the Dart side; Microsoft Learn confirms C# has no
-      library-local sealing) before codegen proceeds.
-
-  - kind: undecidable
-    construct_key: dart.class.analyzer_internal_partial_evaluator_class_with_guard_unfolding
-    detail: >-
-      Same NAME CLASH as above but for the `PartialEvaluator` class
-      itself — declared in BOTH analyzer.dart and partial_evaluator.dart
-      as a top-level class. In the analyzer file it transforms DEFINED
-      GUARDS (throws CompileError on suspend/fail); in
-      partial_evaluator.dart it unfolds REDUCE/2 CALLS (returns failure
-      via the UnifyResult ADT). The two classes share ~80 % of their
-      private helper methods (renaming, unification, substitution
-      machinery) but differ in their public entry-points and in their
-      error-handling stance.
-    needs: >-
-      The same human decision as the UnifyResult clash, but for the
-      class itself. Recommended option (per the duplication ratio): LIFT
-      the shared helpers (renaming, GLP-compile-time unification, term
-      substitution) to a single `internal static class
-      PartialEvaluatorCore` (or an `internal abstract class
-      PartialEvaluatorBase`) and have TWO thin subclasses — one for
-      guard-unfolding (throws), one for reduce/2-unfolding (returns) —
-      each parameterising the entry-point behaviour. This refactor goes
-      BEYOND a pure spec-only port (the Dart source has the duplication;
-      a faithful port would too). The alternatives (rename one, nest
-      both, accept the duplication via separate nested types) each have
-      consequences for downstream codegen and for the maintainability
-      of the Dart→C# round trip. ESCALATE — this is a project-level
-      architecture call.
+escalations: []
 ```
 
 ## Embedded rationale + provenance
@@ -1428,10 +1362,14 @@ escalations:
 ### Imports and module shape
 The analyzer's imports map to the established same-namespace-collapse
 rule (rf-dart-relative-import-to-csharp-using-or-same-namespace); no new
-research needed. The only delta from partial_evaluator.dart / error.dart
-is the `show getPreludeUnitClauses` filter, which is observationally
-vacuous in C# once the namespace rule is applied. See partial_evaluator.
-dart.md for the full provenance of this idiom.
+research needed. The new `unify_result.dart` sibling import is a
+direct consequence of the refactor that lifted the shared `UnifyResult`
+ADT out of analyzer.dart and partial_evaluator.dart into a single
+shared file (resolving two prior escalations). The `show
+getPreludeUnitClauses` filter on `partial_evaluator.dart` is
+observationally vacuous in C# once the same-namespace rule is applied.
+See partial_evaluator.dart.md and unify_result.dart.md (planned) for
+the full provenance of the related idioms.
 
 ### VariableInfo + VariableTable
 This is the canonical "mutable per-clause analysis state" pattern.
@@ -1477,12 +1415,20 @@ access".
 
 ### Analyzer class — 4-step pipeline + dispatch helpers
 The public `Analyze` method runs (1) SRSW validation, (2) defined-guard
-partial-eval, (3) optional reduce/2 generation, (4) per-procedure
-register-assignment. The step ordering is load-bearing — partial-eval
-removes defined guards, which means SRSW must precede it (otherwise
-guard readers would be uncounted for pairing). The C# port MUST preserve
-the order verbatim. Microsoft Learn on `List<T>.AddRange` /
-`string.Join` / `Enumerable.Select` covers the LINQ pieces.
+partial-eval via the renamed `_definedGuardEvaluator` field, (3)
+optional reduce/2 generation, (4) per-procedure register-assignment.
+The step ordering is load-bearing — partial-eval removes defined
+guards, which means SRSW must precede it (otherwise guard readers would
+be uncounted for pairing). The C# port MUST preserve the order
+verbatim. Microsoft Learn on `List<T>.AddRange` / `string.Join` /
+`Enumerable.Select` covers the LINQ pieces.
+
+The `_partialEvaluator` field rename to `_definedGuardEvaluator` (and
+the class rename `PartialEvaluator` → `DefinedGuardEvaluator`) is a
+Dart-source refactor that the C# port mirrors literally. It carries no
+semantic change inside this file: the analyzer continues to construct
+its own strict evaluator instance eagerly at field-init time, and the
+4-step pipeline continues to invoke `TransformDefinedGuards` at step 2.
 
 ### `_analyzeGuard` — the long dispatch cascade
 A long cascade of `if (predicate == X && arity == N)` branches that
@@ -1510,19 +1456,35 @@ the reserved-underscore-prefix rule (`CompileMode.user` only). The
 into C# `value is string s && s.StartsWith('_')` (Microsoft Learn
 declaration pattern).
 
-### `UnifyResult` ADT and analyzer-internal `PartialEvaluator`
-HEAVY REUSE from partial_evaluator.dart.md — the two files have
-structurally near-identical types and helpers; this spec delegates the
-construct-by-construct decisions to the cached construct keys, and
-ESCALATES the namespace-level name clash to the human decision gate.
-Microsoft Learn confirms C# has no library-local sealing — Dart's
-`sealed class` library-scoped semantics do not have a direct C# port.
+### `DefinedGuardEvaluator` and the shared `UnifyResult` ADT
+HEAVY REUSE from partial_evaluator.dart.md — the two evaluator classes
+have structurally near-identical helpers; this spec delegates the
+construct-by-construct decisions for every helper to the cached
+construct keys in partial_evaluator.dart.md. The `UnifyResult` sealed
+ADT is NOT specced in this artifact — it was lifted (per the
+duplicate-class-name refactor) into the shared sibling file
+`lib/compiler/unify_result.dart`, and its own convspec artifact
+(unify_result.dart.md) is planned separately. Both `DefinedGuardEvaluator`
+(strict, here) and the lenient `PartialEvaluator` (in
+partial_evaluator.dart) reference the same shared C# type — no name
+clash, no duplicate definitions. The throw-vs-return distinction
+between the two evaluators is preserved by their class-level behaviour,
+not by their (shared) result type.
 
-### Escalations recorded
-Two escalations recorded (both `kind: undecidable`) for the duplicate
-`UnifyResult` ADT and the duplicate `PartialEvaluator` class. Per
-FR-013 / SC-008 these are NOT silently resolved; the human gate
-chooses among rename / lift-to-shared / nested-private options before
-codegen proceeds. The conversion is therefore BLOCKED for this file
-until the gate decides (FR-013: `open_escalation_count > 0` ⇒ not
-ready for codegen).
+### Escalations resolved
+Both previously-recorded escalations are RESOLVED by a Dart-source
+refactor (Gabi-approved): (a) the duplicate `UnifyResult` ADT — lifted
+to a single shared `unify_result.dart` consumed by both files; (b) the
+duplicate `PartialEvaluator` class name — the analyzer-internal strict
+variant was renamed to `DefinedGuardEvaluator`, leaving
+`partial_evaluator.dart`'s lenient variant as the sole `PartialEvaluator`.
+The C# port mirrors the rename literally; no name clash remains. Per
+the user's accompanying Option (b) decision, `compiler.dart` now imports
+`partial_evaluator.dart` directly so that free `PartialEvaluator()` call
+sites in the main compile pipeline resolve to the lenient version — a
+documented semantic change (defined guards that don't reduce now return
+failure rather than throwing `CompileError` *at that call site only*),
+but it does NOT affect this file: the analyzer continues to use its own
+strict `DefinedGuardEvaluator` at step 2 of the 4-step pipeline. The
+conversion is therefore NOT blocked for this file (`escalations: []`,
+`open_escalation_count = 0`).

@@ -29,6 +29,7 @@ key_idea: 'Global Writers Table for madGLP
   '
 dependencies: []
 callers:
+- lib/multiagent/archive-irma-2026-01-30/irma_context-phase4.dart
 - lib/multiagent/global_send.dart
 - lib/multiagent/mad_context.dart
 - lib/multiagent/mad_helpers.dart

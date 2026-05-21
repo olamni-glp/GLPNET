@@ -21,7 +21,7 @@ dependencies:
 - lib/multiagent/variable_table.dart
 - lib/runtime/terms.dart
 callers: []
-mtime: '2026-05-17T10:36:35.604Z'
+mtime: '2026-05-21T12:38:14.817Z'
 sha256: 241c568e8b41ea5c1911dab1bd9282556a8cfa2934ce47824c4dd098fd5bff25
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/variable_table_test.cs
 ---

@@ -2,6 +2,7 @@ import 'lexer.dart';
 import 'parser.dart';
 import 'analyzer.dart';
 import 'codegen.dart';
+import 'partial_evaluator.dart';
 import 'error.dart';
 import 'token.dart';
 import 'result.dart';

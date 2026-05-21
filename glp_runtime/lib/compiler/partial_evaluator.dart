@@ -8,6 +8,7 @@ import 'ast.dart';
 import 'error.dart';
 import 'lexer.dart';
 import 'parser.dart';
+import 'unify_result.dart';
 import '../analysis/type_checker/prelude.dart' show builtinProcedures;
 
 // ============================================================================
@@ -68,24 +69,6 @@ Map<String, List<Term>> getPreludeUnitClauses() {
 // ============================================================================
 // UNIFICATION RESULTS
 // ============================================================================
-
-/// Result of compile-time GLP unification for partial evaluation
-sealed class UnifyResult {}
-
-class UnifySuccess extends UnifyResult {
-  final Map<String, Term> substitution;
-  UnifySuccess(this.substitution);
-}
-
-class UnifyFail extends UnifyResult {
-  final String reason;
-  UnifyFail(this.reason);
-}
-
-class UnifySuspend extends UnifyResult {
-  final Set<String> unboundReaders;
-  UnifySuspend(this.unboundReaders);
-}
 
 // ============================================================================
 // PARTIAL EVALUATOR

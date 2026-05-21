@@ -27,6 +27,7 @@ dependencies:
 - lib/multiagent/global_writers_table.dart
 - lib/multiagent/mad_helpers.dart
 callers:
+- lib/multiagent/archive-irma-2026-01-30/irma_context-phase4.dart
 - lib/multiagent/mad_context.dart
 - test/multiagent/global_send_test.dart
 - test/multiagent/mad_cold_call_isolate_test.dart

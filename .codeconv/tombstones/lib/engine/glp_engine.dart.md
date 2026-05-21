@@ -56,6 +56,7 @@ dependencies:
 - lib/runtime/system_predicates_impl.dart
 - lib/runtime/terms.dart
 callers:
+- bin/glp_repl.dart
 - lib/multiagent/agent_runtime.dart
 - lib/multiagent/isolate_manager.dart
 - test/dynamic_dispatch_test.dart

@@ -17,6 +17,9 @@ key_idea: 'Shared Suspension Records (FCP Design)
   '
 dependencies: []
 callers:
+- lib/multiagent/archive-irma-2026-01-30/heap-tests/pointer_architecture_test.dart
+- lib/multiagent/archive-irma-2026-01-30/irma_context-phase4.dart
+- lib/multiagent/archive-irma-2026-01-30/irma_context.dart
 - lib/multiagent/variable_table.dart
 - lib/runtime/commit.dart
 - lib/runtime/heap_fcp.dart

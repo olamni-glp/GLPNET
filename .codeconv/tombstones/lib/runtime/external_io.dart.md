@@ -23,8 +23,12 @@ dependencies:
 - lib/runtime/terms.dart
 callers:
 - lib/multiagent/agent_runtime.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/social_agent_integration_test.dart
+- lib/multiagent/archive-irma-2026-01-30/tests/trace_social_graph_test.dart
 - test/test_agent_init_goal.dart
 - test/test_channel_construction.dart
+- test_archive/actor_single_isolate_test.dart
+- test_archive/debug_goal_args_test.dart
 mtime: '2026-04-27T09:23:50.000Z'
 sha256: 7295d8789cac898386fecbab28013d922a922c8fe718a59c8c19c9fc979a4c14
 topo_level: 3

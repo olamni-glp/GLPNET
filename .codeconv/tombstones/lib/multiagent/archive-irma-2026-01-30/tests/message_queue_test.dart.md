@@ -20,7 +20,7 @@ key_idea: 'Unit tests for MessageQueue (M_p)
 dependencies:
 - lib/multiagent/message_queue.dart
 callers: []
-mtime: '2026-05-17T10:36:35.474Z'
+mtime: '2026-05-21T12:38:14.527Z'
 sha256: 61264e5648d69e42c085295816d00ad8f876c58010671902cd6844ccf0097e7c
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/message_queue_test.cs
 ---

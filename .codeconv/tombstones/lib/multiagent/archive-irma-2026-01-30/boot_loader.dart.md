@@ -25,7 +25,7 @@ key_idea: 'Boot Loader for maGLP Isolate Spawning
   '
 dependencies: []
 callers: []
-mtime: '2026-05-17T10:36:35.168Z'
+mtime: '2026-05-21T12:38:13.803Z'
 sha256: 10f02653029d86ea58336d4664b16c7a646df1d99d1523523d9ca6b99cf4eafb
 target_path: lib/multiagent/archive-irma-2026-01-30/boot_loader.cs
 ---
