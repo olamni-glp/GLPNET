@@ -62,3 +62,6 @@ glp_runtime_net/
 # round-trip source). Tombstones under .codeconv/tombstones/ stay tracked.
 .codeconv/depgraph.json
 
+
+# buildkit upgrade/migration local backups (opaque state; not versioned)
+.buildkit-upgrade-backup/

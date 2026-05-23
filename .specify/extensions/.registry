@@ -9,11 +9,11 @@
       "priority": 10,
       "registered_commands": {
         "claude": [
-          "speckit.git.feature",
-          "speckit.git.validate",
-          "speckit.git.remote",
-          "speckit.git.initialize",
-          "speckit.git.commit"
+          "buildkit.git.feature",
+          "buildkit.git.validate",
+          "buildkit.git.remote",
+          "buildkit.git.initialize",
+          "buildkit.git.commit"
         ]
       },
       "registered_skills": [],
