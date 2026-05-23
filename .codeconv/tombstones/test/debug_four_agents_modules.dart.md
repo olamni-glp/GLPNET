@@ -26,9 +26,9 @@ topo_level: 10
 cycle_group_id: 81
 status: pending
 target_path: test/debug_four_agents_modules.cs
-plan_started_at: '2026-05-20T09:54:40Z'
-plan_completed_at: '2026-05-20T09:54:41Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:49:37Z'
+plan_completed_at: '2026-05-21T16:54:20Z'
+plan_path: .codeconv/conversion-plans/test/debug_four_agents_modules.dart.md
 open_escalation_count: 0
 ---
 

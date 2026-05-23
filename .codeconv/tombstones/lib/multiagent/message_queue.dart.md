@@ -66,9 +66,9 @@ topo_level: 0
 cycle_group_id: 28
 status: ready
 target_path: lib/multiagent/message_queue.cs
-plan_started_at: '2026-05-19T23:04:36Z'
-plan_completed_at: '2026-05-19T23:04:36Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:35:54Z'
+plan_completed_at: '2026-05-21T14:41:05Z'
+plan_path: .codeconv/conversion-plans/lib/multiagent/message_queue.dart.md
 open_escalation_count: 0
 ---
 

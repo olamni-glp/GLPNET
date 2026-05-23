@@ -34,9 +34,9 @@ topo_level: 8
 cycle_group_id: 77
 status: pending
 target_path: test/compiler/project_linker_test.cs
-plan_started_at: '2026-05-20T03:20:28Z'
-plan_completed_at: '2026-05-20T03:20:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:38:52Z'
+plan_completed_at: '2026-05-21T16:43:42Z'
+plan_path: .codeconv/conversion-plans/test/compiler/project_linker_test.dart.md
 open_escalation_count: 0
 ---
 

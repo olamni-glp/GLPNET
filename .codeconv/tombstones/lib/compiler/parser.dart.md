@@ -35,9 +35,9 @@ topo_level: 3
 cycle_group_id: 15
 status: pending
 target_path: lib/compiler/parser.cs
-plan_started_at: '2026-05-20T01:06:47Z'
-plan_completed_at: '2026-05-20T01:06:47Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:24:18Z'
+plan_completed_at: '2026-05-21T16:00:09Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/parser.dart.md
 open_escalation_count: 0
 ---
 

@@ -44,9 +44,9 @@ topo_level: 4
 cycle_group_id: 37
 status: pending
 target_path: lib/runtime/glp_activation.cs
-plan_started_at: '2026-05-20T01:42:13Z'
-plan_completed_at: '2026-05-20T01:42:13Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:06:17Z'
+plan_completed_at: '2026-05-21T16:12:52Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/glp_activation.dart.md
 open_escalation_count: 0
 ---
 

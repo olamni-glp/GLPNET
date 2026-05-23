@@ -32,9 +32,9 @@ topo_level: 0
 cycle_group_id: 22
 status: ready
 target_path: lib/runtime/suspension.cs
-plan_started_at: '2026-05-19T23:11:35Z'
-plan_completed_at: '2026-05-19T23:11:35Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:41:29Z'
+plan_completed_at: '2026-05-21T14:45:18Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/suspension.dart.md
 open_escalation_count: 0
 ---
 

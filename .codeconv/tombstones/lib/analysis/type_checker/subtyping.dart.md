@@ -13,9 +13,9 @@ topo_level: 2
 cycle_group_id: 11
 status: pending
 target_path: lib/analysis/type_checker/subtyping.cs
-plan_started_at: '2026-05-19T23:49:46Z'
-plan_completed_at: '2026-05-19T23:49:46Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:58:31Z'
+plan_completed_at: '2026-05-21T15:09:13Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/subtyping.dart.md
 open_escalation_count: 0
 ---
 

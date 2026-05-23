@@ -13,9 +13,9 @@ topo_level: 5
 cycle_group_id: 79
 status: pending
 target_path: test/conformance/fairness_26_test.cs
-plan_started_at: '2026-05-20T02:12:48Z'
-plan_completed_at: '2026-05-20T02:12:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:24:08Z'
+plan_completed_at: '2026-05-21T16:28:38Z'
+plan_path: .codeconv/conversion-plans/test/conformance/fairness_26_test.dart.md
 open_escalation_count: 0
 ---
 

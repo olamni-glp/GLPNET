@@ -17,9 +17,9 @@ topo_level: 5
 cycle_group_id: 80
 status: pending
 target_path: test/conformance/restart_clause1_test.cs
-plan_started_at: '2026-05-20T02:25:35Z'
-plan_completed_at: '2026-05-20T02:25:35Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:24:09Z'
+plan_completed_at: '2026-05-21T16:28:39Z'
+plan_path: .codeconv/conversion-plans/test/conformance/restart_clause1_test.dart.md
 open_escalation_count: 0
 ---
 

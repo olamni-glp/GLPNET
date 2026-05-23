@@ -22,9 +22,9 @@ topo_level: 8
 cycle_group_id: 120
 status: pending
 target_path: test/test_agent_init_goal.cs
-plan_started_at: '2026-05-20T09:42:28Z'
-plan_completed_at: '2026-05-20T09:42:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:44:00Z'
+plan_completed_at: '2026-05-21T16:49:17Z'
+plan_path: .codeconv/conversion-plans/test/test_agent_init_goal.dart.md
 open_escalation_count: 0
 ---
 

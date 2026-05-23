@@ -48,9 +48,9 @@ topo_level: 6
 cycle_group_id: 88
 status: pending
 target_path: test/heap/circular_term_pointer_test.cs
-plan_started_at: '2026-05-20T02:43:36Z'
-plan_completed_at: '2026-05-20T02:43:36Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:28:59Z'
+plan_completed_at: '2026-05-21T16:33:27Z'
+plan_path: .codeconv/conversion-plans/test/heap/circular_term_pointer_test.dart.md
 open_escalation_count: 0
 ---
 

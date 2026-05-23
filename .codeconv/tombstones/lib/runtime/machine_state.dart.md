@@ -71,9 +71,9 @@ topo_level: 0
 cycle_group_id: 30
 status: ready
 target_path: lib/runtime/machine_state.cs
-plan_started_at: '2026-05-19T23:11:34Z'
-plan_completed_at: '2026-05-19T23:11:34Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:41:28Z'
+plan_completed_at: '2026-05-21T14:45:16Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/machine_state.dart.md
 open_escalation_count: 0
 ---
 

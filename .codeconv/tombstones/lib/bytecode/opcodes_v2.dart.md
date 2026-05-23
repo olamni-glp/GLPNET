@@ -54,9 +54,9 @@ topo_level: 0
 cycle_group_id: 21
 status: ready
 target_path: lib/bytecode/opcodes_v2.cs
-plan_started_at: '2026-05-19T22:04:27Z'
-plan_completed_at: '2026-05-19T22:04:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:23:22Z'
+plan_completed_at: '2026-05-21T14:34:26Z'
+plan_path: .codeconv/conversion-plans/lib/bytecode/opcodes_v2.dart.md
 open_escalation_count: 0
 ---
 

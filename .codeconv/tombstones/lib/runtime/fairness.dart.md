@@ -13,9 +13,9 @@ topo_level: 1
 cycle_group_id: 34
 status: pending
 target_path: lib/runtime/fairness.cs
-plan_started_at: '2026-05-19T23:36:18Z'
-plan_completed_at: '2026-05-19T23:36:18Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:50:46Z'
+plan_completed_at: '2026-05-21T14:56:18Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/fairness.dart.md
 open_escalation_count: 0
 ---
 

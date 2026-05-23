@@ -11,9 +11,9 @@ topo_level: 0
 cycle_group_id: 0
 status: ready
 target_path: lib/analysis/analysis_phase.cs
-plan_started_at: '2026-05-19T13:35:26Z'
-plan_completed_at: '2026-05-19T13:35:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:23:16Z'
+plan_completed_at: '2026-05-21T14:34:25Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/analysis_phase.dart.md
 open_escalation_count: 0
 ---
 

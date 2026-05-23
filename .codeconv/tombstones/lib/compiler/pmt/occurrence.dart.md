@@ -42,9 +42,9 @@ topo_level: 3
 cycle_group_id: 47
 status: pending
 target_path: lib/compiler/pmt/occurrence.cs
-plan_started_at: '2026-05-20T01:06:47Z'
-plan_completed_at: '2026-05-20T01:06:47Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:24:20Z'
+plan_completed_at: '2026-05-21T16:00:10Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/pmt/occurrence.dart.md
 open_escalation_count: 0
 ---
 

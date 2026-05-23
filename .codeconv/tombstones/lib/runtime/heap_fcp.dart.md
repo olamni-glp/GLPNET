@@ -55,9 +55,9 @@ topo_level: 2
 cycle_group_id: 32
 status: pending
 target_path: lib/runtime/heap_fcp.cs
-plan_started_at: '2026-05-20T00:53:41Z'
-plan_completed_at: '2026-05-20T00:53:41Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:18:03Z'
+plan_completed_at: '2026-05-21T15:24:01Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/heap_fcp.dart.md
 open_escalation_count: 0
 ---
 

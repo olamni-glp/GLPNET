@@ -35,9 +35,9 @@ topo_level: 3
 cycle_group_id: 60
 status: pending
 target_path: lib/runtime/external_io.cs
-plan_started_at: '2026-05-20T01:06:48Z'
-plan_completed_at: '2026-05-20T01:06:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:24:23Z'
+plan_completed_at: '2026-05-21T16:00:14Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/external_io.dart.md
 open_escalation_count: 0
 ---
 

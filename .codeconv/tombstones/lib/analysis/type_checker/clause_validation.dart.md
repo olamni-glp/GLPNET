@@ -14,9 +14,9 @@ topo_level: 2
 cycle_group_id: 4
 status: pending
 target_path: lib/analysis/type_checker/clause_validation.cs
-plan_started_at: '2026-05-19T23:41:30Z'
-plan_completed_at: '2026-05-19T23:41:31Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:50:55Z'
+plan_completed_at: '2026-05-21T14:56:23Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/clause_validation.dart.md
 open_escalation_count: 0
 ---
 

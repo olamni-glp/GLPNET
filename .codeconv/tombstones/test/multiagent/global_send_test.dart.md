@@ -34,9 +34,9 @@ topo_level: 3
 cycle_group_id: 103
 status: pending
 target_path: test/multiagent/global_send_test.cs
-plan_started_at: '2026-05-20T01:28:37Z'
-plan_completed_at: '2026-05-20T01:28:38Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:00:32Z'
+plan_completed_at: '2026-05-21T16:05:47Z'
+plan_path: .codeconv/conversion-plans/test/multiagent/global_send_test.dart.md
 open_escalation_count: 0
 ---
 

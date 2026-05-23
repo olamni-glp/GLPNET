@@ -61,9 +61,9 @@ topo_level: 9
 cycle_group_id: 61
 status: pending
 target_path: lib/multiagent/agent_runtime.cs
-plan_started_at: '2026-05-20T09:42:28Z'
-plan_completed_at: '2026-05-20T09:42:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:44:01Z'
+plan_completed_at: '2026-05-21T16:49:19Z'
+plan_path: .codeconv/conversion-plans/lib/multiagent/agent_runtime.dart.md
 open_escalation_count: 0
 ---
 

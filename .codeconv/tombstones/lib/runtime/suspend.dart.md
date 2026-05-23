@@ -13,9 +13,9 @@ topo_level: 2
 cycle_group_id: 67
 status: pending
 target_path: lib/runtime/suspend.cs
-plan_started_at: '2026-05-20T00:53:41Z'
-plan_completed_at: '2026-05-20T00:53:41Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:18:04Z'
+plan_completed_at: '2026-05-21T15:24:03Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/suspend.dart.md
 open_escalation_count: 0
 ---
 

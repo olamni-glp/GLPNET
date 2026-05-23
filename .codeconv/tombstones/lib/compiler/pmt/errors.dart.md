@@ -17,9 +17,9 @@ topo_level: 0
 cycle_group_id: 45
 status: ready
 target_path: lib/compiler/pmt/errors.cs
-plan_started_at: '2026-05-19T22:04:28Z'
-plan_completed_at: '2026-05-19T22:04:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:35:42Z'
+plan_completed_at: '2026-05-21T14:40:59Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/pmt/errors.dart.md
 open_escalation_count: 0
 ---
 

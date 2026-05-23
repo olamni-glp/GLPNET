@@ -19,9 +19,9 @@ topo_level: 0
 cycle_group_id: 5
 status: ready
 target_path: lib/analysis/type_checker/mode.cs
-plan_started_at: '2026-05-19T13:35:27Z'
-plan_completed_at: '2026-05-19T13:35:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:23:17Z'
+plan_completed_at: '2026-05-21T14:34:31Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/mode.dart.md
 open_escalation_count: 0
 ---
 

@@ -54,9 +54,9 @@ topo_level: 4
 cycle_group_id: 37
 status: pending
 target_path: lib/runtime/system_predicates.cs
-plan_started_at: '2026-05-20T01:42:13Z'
-plan_completed_at: '2026-05-20T01:42:13Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:06:19Z'
+plan_completed_at: '2026-05-21T16:12:54Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/system_predicates.dart.md
 open_escalation_count: 0
 ---
 

@@ -40,9 +40,9 @@ topo_level: 0
 cycle_group_id: 62
 status: ready
 target_path: lib/multiagent/boot_loader.cs
-plan_started_at: '2026-05-19T23:04:35Z'
-plan_completed_at: '2026-05-19T23:04:35Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:35:51Z'
+plan_completed_at: '2026-05-21T14:40:56Z'
+plan_path: .codeconv/conversion-plans/lib/multiagent/boot_loader.dart.md
 open_escalation_count: 0
 ---
 

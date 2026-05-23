@@ -17,9 +17,9 @@ topo_level: 6
 cycle_group_id: 96
 status: pending
 target_path: test/module/module_hierarchy_test.cs
-plan_started_at: '2026-05-20T02:53:47Z'
-plan_completed_at: '2026-05-20T02:53:47Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:33:44Z'
+plan_completed_at: '2026-05-21T16:38:35Z'
+plan_path: .codeconv/conversion-plans/test/module/module_hierarchy_test.dart.md
 open_escalation_count: 0
 ---
 

@@ -60,9 +60,9 @@ topo_level: 2
 cycle_group_id: 29
 status: pending
 target_path: lib/multiagent/payload_serializer.cs
-plan_started_at: '2026-05-19T23:59:09Z'
-plan_completed_at: '2026-05-19T23:59:09Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:18:02Z'
+plan_completed_at: '2026-05-21T15:24:00Z'
+plan_path: .codeconv/conversion-plans/lib/multiagent/payload_serializer.dart.md
 open_escalation_count: 0
 ---
 

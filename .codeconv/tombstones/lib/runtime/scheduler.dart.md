@@ -53,9 +53,9 @@ topo_level: 5
 cycle_group_id: 55
 status: pending
 target_path: lib/runtime/scheduler.cs
-plan_started_at: '2026-05-20T02:25:35Z'
-plan_completed_at: '2026-05-20T02:25:35Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:17:57Z'
+plan_completed_at: '2026-05-21T16:23:55Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/scheduler.dart.md
 open_escalation_count: 0
 ---
 

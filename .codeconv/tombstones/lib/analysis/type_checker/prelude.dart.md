@@ -15,9 +15,9 @@ topo_level: 0
 cycle_group_id: 9
 status: ready
 target_path: lib/analysis/type_checker/prelude.cs
-plan_started_at: '2026-05-19T13:35:27Z'
-plan_completed_at: '2026-05-19T13:35:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:23:19Z'
+plan_completed_at: '2026-05-21T14:34:30Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/prelude.dart.md
 open_escalation_count: 0
 ---
 

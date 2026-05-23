@@ -63,9 +63,9 @@ topo_level: 7
 cycle_group_id: 43
 status: pending
 target_path: lib/compiler/compiler.cs
-plan_started_at: '2026-05-20T02:53:48Z'
-plan_completed_at: '2026-05-20T02:53:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:33:45Z'
+plan_completed_at: '2026-05-21T16:38:37Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/compiler.dart.md
 open_escalation_count: 0
 ---
 

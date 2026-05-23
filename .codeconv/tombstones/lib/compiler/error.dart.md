@@ -26,9 +26,9 @@ topo_level: 0
 cycle_group_id: 3
 status: ready
 target_path: lib/compiler/error.cs
-plan_started_at: '2026-05-19T22:04:27Z'
-plan_completed_at: '2026-05-19T22:04:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:19:43Z'
+plan_completed_at: '2026-05-21T14:22:56Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/error.dart.md
 open_escalation_count: 0
 ---
 

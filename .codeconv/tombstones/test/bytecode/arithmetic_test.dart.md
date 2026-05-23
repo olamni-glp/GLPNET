@@ -18,9 +18,9 @@ topo_level: 8
 cycle_group_id: 71
 status: pending
 target_path: test/bytecode/arithmetic_test.cs
-plan_started_at: '2026-05-20T03:20:28Z'
-plan_completed_at: '2026-05-20T03:20:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:38:50Z'
+plan_completed_at: '2026-05-21T16:43:40Z'
+plan_path: .codeconv/conversion-plans/test/bytecode/arithmetic_test.dart.md
 open_escalation_count: 0
 ---
 

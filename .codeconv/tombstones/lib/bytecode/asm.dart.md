@@ -19,9 +19,9 @@ topo_level: 5
 cycle_group_id: 38
 status: pending
 target_path: lib/bytecode/asm.cs
-plan_started_at: '2026-05-20T02:02:29Z'
-plan_completed_at: '2026-05-20T02:02:29Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:13:12Z'
+plan_completed_at: '2026-05-21T16:17:40Z'
+plan_path: .codeconv/conversion-plans/lib/bytecode/asm.dart.md
 open_escalation_count: 0
 ---
 

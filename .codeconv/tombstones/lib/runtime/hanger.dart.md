@@ -13,9 +13,9 @@ topo_level: 1
 cycle_group_id: 66
 status: pending
 target_path: lib/runtime/hanger.cs
-plan_started_at: '2026-05-19T23:41:30Z'
-plan_completed_at: '2026-05-19T23:41:30Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:50:48Z'
+plan_completed_at: '2026-05-21T14:56:19Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/hanger.dart.md
 open_escalation_count: 0
 ---
 

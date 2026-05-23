@@ -50,9 +50,9 @@ topo_level: 1
 cycle_group_id: 104
 status: pending
 target_path: test/multiagent/global_writers_table_test.cs
-plan_started_at: '2026-05-19T23:41:30Z'
-plan_completed_at: '2026-05-19T23:41:30Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:50:53Z'
+plan_completed_at: '2026-05-21T14:56:22Z'
+plan_path: .codeconv/conversion-plans/test/multiagent/global_writers_table_test.dart.md
 open_escalation_count: 0
 ---
 

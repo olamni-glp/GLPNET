@@ -17,9 +17,9 @@ topo_level: 7
 cycle_group_id: 95
 status: pending
 target_path: test/module/module_compiler_test.cs
-plan_started_at: '2026-05-20T03:20:27Z'
-plan_completed_at: '2026-05-20T03:20:27Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:38:48Z'
+plan_completed_at: '2026-05-21T16:43:38Z'
+plan_path: .codeconv/conversion-plans/test/module/module_compiler_test.dart.md
 open_escalation_count: 0
 ---
 

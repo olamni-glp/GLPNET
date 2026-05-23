@@ -45,9 +45,9 @@ topo_level: 6
 cycle_group_id: 75
 status: pending
 target_path: test/circular_term_test.cs
-plan_started_at: '2026-05-20T02:43:36Z'
-plan_completed_at: '2026-05-20T02:43:36Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:28:58Z'
+plan_completed_at: '2026-05-21T16:33:25Z'
+plan_path: .codeconv/conversion-plans/test/circular_term_test.dart.md
 open_escalation_count: 0
 ---
 

@@ -68,9 +68,9 @@ topo_level: 4
 cycle_group_id: 37
 status: pending
 target_path: lib/bytecode/runner.cs
-plan_started_at: '2026-05-20T01:42:12Z'
-plan_completed_at: '2026-05-20T01:42:12Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:06:13Z'
+plan_completed_at: '2026-05-21T16:12:49Z'
+plan_path: .codeconv/conversion-plans/lib/bytecode/runner.dart.md
 open_escalation_count: 0
 ---
 

@@ -69,9 +69,9 @@ topo_level: 8
 cycle_group_id: 57
 status: pending
 target_path: lib/engine/glp_engine.cs
-plan_started_at: '2026-05-20T09:26:43Z'
-plan_completed_at: '2026-05-20T09:26:43Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:38:49Z'
+plan_completed_at: '2026-05-21T16:43:39Z'
+plan_path: .codeconv/conversion-plans/lib/engine/glp_engine.dart.md
 open_escalation_count: 0
 ---
 

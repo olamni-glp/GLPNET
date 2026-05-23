@@ -40,9 +40,9 @@ topo_level: 2
 cycle_group_id: 46
 status: pending
 target_path: lib/compiler/pmt/mode_table.cs
-plan_started_at: '2026-05-19T23:59:08Z'
-plan_completed_at: '2026-05-19T23:59:08Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:58:36Z'
+plan_completed_at: '2026-05-21T15:09:17Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/pmt/mode_table.dart.md
 open_escalation_count: 0
 ---
 

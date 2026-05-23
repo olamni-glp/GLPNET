@@ -43,9 +43,9 @@ topo_level: 0
 cycle_group_id: 25
 status: ready
 target_path: lib/multiagent/global_writers_table.cs
-plan_started_at: '2026-05-19T23:04:35Z'
-plan_completed_at: '2026-05-19T23:04:35Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:35:52Z'
+plan_completed_at: '2026-05-21T14:41:06Z'
+plan_path: .codeconv/conversion-plans/lib/multiagent/global_writers_table.dart.md
 open_escalation_count: 0
 ---
 

@@ -18,9 +18,9 @@ topo_level: 8
 cycle_group_id: 117
 status: pending
 target_path: test/runtime/rpc_routing_test.cs
-plan_started_at: '2026-05-20T09:26:43Z'
-plan_completed_at: '2026-05-20T09:26:43Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:43:57Z'
+plan_completed_at: '2026-05-21T16:49:15Z'
+plan_path: .codeconv/conversion-plans/test/runtime/rpc_routing_test.dart.md
 open_escalation_count: 0
 ---
 

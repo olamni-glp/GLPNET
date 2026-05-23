@@ -19,9 +19,9 @@ topo_level: 0
 cycle_group_id: 54
 status: ready
 target_path: lib/engine/claude_adapter.cs
-plan_started_at: '2026-05-19T22:04:28Z'
-plan_completed_at: '2026-05-19T22:04:28Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:35:46Z'
+plan_completed_at: '2026-05-21T14:41:03Z'
+plan_path: .codeconv/conversion-plans/lib/engine/claude_adapter.dart.md
 open_escalation_count: 0
 ---
 

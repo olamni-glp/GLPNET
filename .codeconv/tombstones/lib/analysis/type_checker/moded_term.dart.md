@@ -18,9 +18,9 @@ topo_level: 1
 cycle_group_id: 6
 status: pending
 target_path: lib/analysis/type_checker/moded_term.cs
-plan_started_at: '2026-05-19T23:27:32Z'
-plan_completed_at: '2026-05-19T23:27:32Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:45:37Z'
+plan_completed_at: '2026-05-21T14:50:22Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/moded_term.dart.md
 open_escalation_count: 0
 ---
 

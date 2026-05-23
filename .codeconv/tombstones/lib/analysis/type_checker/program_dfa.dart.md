@@ -19,9 +19,9 @@ topo_level: 1
 cycle_group_id: 10
 status: pending
 target_path: lib/analysis/type_checker/program_dfa.cs
-plan_started_at: '2026-05-19T23:27:32Z'
-plan_completed_at: '2026-05-19T23:27:32Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:45:39Z'
+plan_completed_at: '2026-05-21T14:50:24Z'
+plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/program_dfa.dart.md
 open_escalation_count: 0
 ---
 

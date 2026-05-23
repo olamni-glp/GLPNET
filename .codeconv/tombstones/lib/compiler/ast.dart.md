@@ -51,9 +51,9 @@ topo_level: 1
 cycle_group_id: 2
 status: pending
 target_path: lib/compiler/ast.cs
-plan_started_at: '2026-05-19T23:27:32Z'
-plan_completed_at: '2026-05-19T23:27:32Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:45:40Z'
+plan_completed_at: '2026-05-21T14:50:25Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/ast.dart.md
 open_escalation_count: 0
 ---
 

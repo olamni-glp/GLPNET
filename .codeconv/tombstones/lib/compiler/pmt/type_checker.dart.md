@@ -29,9 +29,9 @@ topo_level: 3
 cycle_group_id: 50
 status: pending
 target_path: lib/compiler/pmt/type_checker.cs
-plan_started_at: '2026-05-20T01:06:48Z'
-plan_completed_at: '2026-05-20T01:06:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T15:24:21Z'
+plan_completed_at: '2026-05-21T16:00:11Z'
+plan_path: .codeconv/conversion-plans/lib/compiler/pmt/type_checker.dart.md
 open_escalation_count: 0
 ---
 

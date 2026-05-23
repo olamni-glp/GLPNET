@@ -16,9 +16,9 @@ topo_level: 5
 cycle_group_id: 76
 status: pending
 target_path: test/compiler/partial_evaluator_test.cs
-plan_started_at: '2026-05-20T02:12:48Z'
-plan_completed_at: '2026-05-20T02:12:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:24:07Z'
+plan_completed_at: '2026-05-21T16:28:37Z'
+plan_path: .codeconv/conversion-plans/test/compiler/partial_evaluator_test.dart.md
 open_escalation_count: 0
 ---
 

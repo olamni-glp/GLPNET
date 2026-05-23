@@ -33,9 +33,9 @@ topo_level: 5
 cycle_group_id: 111
 status: pending
 target_path: test/multiagent/mad_transactions_test.cs
-plan_started_at: '2026-05-20T02:36:51Z'
-plan_completed_at: '2026-05-20T02:36:51Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:24:12Z'
+plan_completed_at: '2026-05-21T16:28:43Z'
+plan_path: .codeconv/conversion-plans/test/multiagent/mad_transactions_test.dart.md
 open_escalation_count: 0
 ---
 

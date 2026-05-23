@@ -33,9 +33,9 @@ topo_level: 3
 cycle_group_id: 90
 status: pending
 target_path: test/heap/varref_pointer_test.cs
-plan_started_at: '2026-05-20T01:15:19Z'
-plan_completed_at: '2026-05-20T01:15:19Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:00:31Z'
+plan_completed_at: '2026-05-21T16:05:46Z'
+plan_path: .codeconv/conversion-plans/test/heap/varref_pointer_test.dart.md
 open_escalation_count: 0
 ---
 

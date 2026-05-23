@@ -55,9 +55,9 @@ topo_level: 5
 cycle_group_id: 52
 status: pending
 target_path: lib/runtime/module_hierarchy.cs
-plan_started_at: '2026-05-20T02:12:48Z'
-plan_completed_at: '2026-05-20T02:12:48Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:17:56Z'
+plan_completed_at: '2026-05-21T16:23:54Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/module_hierarchy.dart.md
 open_escalation_count: 0
 ---
 

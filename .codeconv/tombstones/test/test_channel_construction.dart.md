@@ -14,9 +14,9 @@ topo_level: 4
 cycle_group_id: 121
 status: pending
 target_path: test/test_channel_construction.cs
-plan_started_at: '2026-05-20T01:51:32Z'
-plan_completed_at: '2026-05-20T01:51:32Z'
-plan_path: null
+plan_started_at: '2026-05-21T16:13:10Z'
+plan_completed_at: '2026-05-21T16:17:39Z'
+plan_path: .codeconv/conversion-plans/test/test_channel_construction.dart.md
 open_escalation_count: 0
 ---
 

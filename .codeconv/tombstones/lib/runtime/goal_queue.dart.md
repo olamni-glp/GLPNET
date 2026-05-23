@@ -11,9 +11,9 @@ topo_level: 0
 cycle_group_id: 65
 status: ready
 target_path: lib/runtime/goal_queue.cs
-plan_started_at: '2026-05-19T23:11:34Z'
-plan_completed_at: '2026-05-19T23:11:34Z'
-plan_path: null
+plan_started_at: '2026-05-21T14:41:27Z'
+plan_completed_at: '2026-05-21T14:45:13Z'
+plan_path: .codeconv/conversion-plans/lib/runtime/goal_queue.dart.md
 open_escalation_count: 0
 ---
 
