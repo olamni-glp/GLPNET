@@ -215,6 +215,34 @@ constructs:
       `Dictionary` semantics (shared, in-place mutation) are intentional and
       preserved — this is NOT a value/immutable type and must not be modelled
       as a record. Direct collection mapping; no external research required.
+  - construct_key: dart.method.getx_rename_avoiding_object_gettype_shadow
+    source_form: >-
+      TypeDef? getType(String name) => types[name];
+    target_decision: >-
+      Rename the read accessor to `public TypeDef? LookupType(string name)`
+      (NOT `GetType`). C# `object` already exposes a parameterless
+      `Type GetType()`; a `GetType(string)` overload would technically compile
+      (overloaded on arity) but permanently shadows `object.GetType()` on the
+      typed receiver and obscures runtime-type introspection at every call
+      site (`env.GetType()` would force `((object)env).GetType()`). Project-wide
+      rule applied (Gabi 2026-05-23, idiom KB): any Dart `getX(...)` whose
+      PascalCase `GetX` collides with a framework member is renamed
+      `LookupX`/`FindX`, never shadowed. Therefore `getType` → `LookupType`,
+      and every caller `env.getType(...)` → `env.LookupType(...)`. The sibling
+      read accessor `getProcedure` does NOT collide with any `object`/BCL
+      member, so it stays `GetProcedure` (only the genuine collision is
+      renamed — the rule is collision-triggered, not a blanket rename).
+    idiom_id: null
+    research_finding_id: rf-dart-getx-rename-avoiding-object-member-shadow
+    nuance: >-
+      Member-shadowing nuance unique to the C# target: Dart has no universal
+      `Object.getType`, so `getType` is unambiguous in the source; in C# the
+      inherited `object.GetType()` turns a `GetType(string)` rename into a
+      shadowing overload that breaks runtime-type introspection on the typed
+      receiver. Renaming to `LookupType` removes the collision with ZERO
+      behavioural change (same dictionary lookup, same `TypeDef?` nullable
+      return). This resolves 018 plan escalation type_ast.dart#E1 and is the
+      first-seen instance of the project-wide getX-collision idiom.
 conversion_units:
   - enum TypeClassification { Output, Input, Interactive }
   - abstract class TypeExpr (Line/Column read-only props, protected ctor)
@@ -228,7 +256,7 @@ conversion_units:
   - TypeExpr instance members IsInputMode / TypeName / IsPrimitive via type-pattern switch (replaces extension ProcArgTypeExpr)
   - class TypeDef (Name, TypeParams, Alternatives, Line, Column; IsParameterized; Classification getter; static ContainsComplement recursion; ToString())
   - class ProcDecl (Name, ArgTypes, TypeParams, Line, Column, IsBuiltin, Exported, Imported, ModulePath; IsParameterized; Arity; Key; QualifiedKey; IsInputArg; GetTypeName; QualifiedName; ToString())
-  - class TypeEnvironment (mutable Dictionary fields; ctor + static Empty(); Merge; GetType; GetProcedure; HasType; HasProcedure; AddType; AddProcedure; ToString via StringBuilder)
+  - class TypeEnvironment (mutable Dictionary fields; ctor + static Empty(); Merge; LookupType (renamed from getType to avoid object.GetType shadow); GetProcedure; HasType; HasProcedure; AddType; AddProcedure; ToString via StringBuilder)
 escalations: []
 ```
 
@@ -404,6 +432,35 @@ entries (right-bias preserved). The mutable `addType`/`addProcedure` path means
 therefore a `class`, never a `record`. The read/write key asymmetry
 (`getProcedure` keys `name/arity`; `addProcedure` keys `qualifiedKey`) is
 preserved verbatim, not normalised.
+
+### rf-dart-getx-rename-avoiding-object-member-shadow
+
+**Deep analysis.** `TypeEnvironment.getType(String name) => types[name]` is a
+plain nullable dictionary read. Its mechanical PascalCase rename `GetType`
+collides with the universally-inherited `object.GetType()`. C# overloads on
+arity, so `GetType(string)` would compile, but it shadows the parameterless
+`object.GetType()` on the statically-typed `TypeEnvironment` receiver —
+`env.GetType()` would no longer reach `System.Object.GetType()` without an
+`((object)env)` upcast, silently degrading runtime-type introspection at every
+call site of an `env` value.
+
+**Research (authoritative).** Microsoft Learn —
+`https://learn.microsoft.com/en-us/dotnet/api/system.object.gettype` — documents
+`Object.GetType()` as a non-virtual member present on every type, returning the
+exact runtime `Type`. Microsoft Learn member-lookup/shadowing guidance
+(`...language-reference/keywords/new-modifier`) confirms a derived same-named
+member hides the base member on the derived static type. Verbatim query: "C#
+object.GetType inherited member hide overload shadow". Authoritative; this is a
+language-guaranteed collision, not a heuristic.
+
+**Conclusion.** Rename `getType` → `LookupType` (the established name for a
+dictionary/registry read), update all `env.getType(...)` callers to
+`LookupType`. Recorded as the **first-seen** instance of the project-wide idiom
+*"Dart `getX` whose PascalCase `GetX` collides with a framework member →
+`LookupX`/`FindX`, never shadow"* (conversion_idioms KB, Gabi 2026-05-23). The
+collision-free sibling `getProcedure` is intentionally left as `GetProcedure`
+(the rule fires only on a real collision). Zero behavioural change. Resolves
+018 plan escalation type_ast.dart#E1.
 
 ### Trivial constructs
 

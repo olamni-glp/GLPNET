@@ -32,9 +32,9 @@ topo_level: 0
 cycle_group_id: 1
 status: ready
 target_path: lib/analysis/type_checker/type_ast.cs
-plan_started_at: '2026-05-21T14:23:20Z'
-plan_completed_at: '2026-05-21T14:34:29Z'
+plan_started_at: '2026-05-23T09:31:48Z'
+plan_completed_at: '2026-05-23T09:31:49Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/type_ast.dart.md
-open_escalation_count: 1
+open_escalation_count: 0
 ---
 

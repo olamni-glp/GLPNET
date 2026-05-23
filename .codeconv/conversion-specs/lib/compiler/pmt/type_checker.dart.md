@@ -379,7 +379,7 @@ constructs:
       Emit a C# branch under `if (term is ListTerm listTerm) { ... }` that
       preserves the FIVE distinct sub-paths verbatim. (a) Early-return
       empty-list: `if (listTerm.IsNil) return errors;`. (b) Type-resolved
-      branch: `var typeDef = _typeTable.GetType(expectedType); if (typeDef
+      branch: `var typeDef = _typeTable.LookupType(expectedType); if (typeDef
       is not null) { ... } else if (typeParams.Count > 0 && listTerm.Head
       is not null) { errors.AddRange(CheckTerm(listTerm.Head, typeParams
       [0], Array.Empty<string>())); }`. (c) Inside the type-resolved
@@ -541,7 +541,7 @@ constructs:
       int, double, or atom name`); the safer-and-broader form covers
       every .NET numeric. (2) Built-in atom/string types: `if (typeName
       is "Atom" or "String") return term.Value is string;`. (3)
-      User-defined-type fast-path: `var typeDef = _typeTable.GetType(
+      User-defined-type fast-path: `var typeDef = _typeTable.LookupType(
       typeName); if (typeDef is null) return true;` (the `null` return
       means "unknown type — allow", a load-bearing permissive default;
       see nuance). (4) AtomConstructor match — direct then transitive
@@ -554,7 +554,7 @@ constructs:
       atomCtor && atomCtor.Name == termValue) return true; }` (early-
       exit on first match). Then `foreach (var ctor in typeDef.Constructors)
       { if (ctor is AtomConstructor atomCtor && _IsCapitalized(atomCtor
-      .Name)) { var refTypeDef = _typeTable.GetType(atomCtor.Name); if
+      .Name)) { var refTypeDef = _typeTable.LookupType(atomCtor.Name); if
       (refTypeDef is not null && _TypeContainsAtom(refTypeDef,
       termValue)) return true; } } return false;`.
     idiom_id: null
@@ -628,7 +628,7 @@ constructs:
       callee only iterates — `Array.Empty<string>()` is the cached
       no-allocation singleton; matches the empty-list-of-strings
       pattern in the `checkTerm.ListTerm` branch above). The `var
-      typeDef = _typeTable.GetType(typeName); if (typeDef is null)
+      typeDef = _typeTable.LookupType(typeName); if (typeDef is null)
       return true;` permissive-default is preserved verbatim (same
       semantic as `IsValidConstant`'s line 198 — line 228 here is
       structurally parallel). The type-parameter-substitution map is
@@ -741,13 +741,13 @@ constructs:
       (TypeDefinition typeDef, string atomName) { foreach (var ctor in
       typeDef.Constructors) { if (ctor is AtomConstructor atomCtor) {
       if (atomCtor.Name == atomName) return true; if (_IsCapitalized(
-      atomCtor.Name)) { var refType = _typeTable.GetType(atomCtor.Name);
+      atomCtor.Name)) { var refType = _typeTable.LookupType(atomCtor.Name);
       if (refType is not null && _TypeContainsAtom(refType, atomName))
       return true; } } } return false; }`. Direct foreach + declaration-
       pattern + recursive descent — same pattern as `IsValidConstant`'s
       second loop. RECURSION-TERMINATION: the recursion descends via
       `_TypeContainsAtom(refType, atomName)`, with `refType` looked up
-      via `_typeTable.GetType(atomCtor.Name)`. The recursion is NOT
+      via `_typeTable.LookupType(atomCtor.Name)`. The recursion is NOT
       bounded by the code itself — if the type table contained a
       cycle (`A := B; B := A`), this would stack-overflow in both
       Dart and C#. The Dart source has no cycle-detection; the C# port
@@ -779,7 +779,7 @@ constructs:
       '(...)'); } } return result; }
     target_decision: >-
       Emit `public List<string> GetValidConstructors(string typeName) {
-      var result = new List<string>(); var typeDef = _typeTable.GetType(
+      var result = new List<string>(); var typeDef = _typeTable.LookupType(
       typeName); if (typeDef is null) return result; foreach (var ctor
       in typeDef.Constructors) { switch (ctor) { case AtomConstructor
       atomCtor: result.Add(atomCtor.Name); break; case StructConstructor
@@ -830,7 +830,7 @@ conversion_units:
   - "method IsValidConstant(ConstTerm term, string typeName) -> bool (four-phase: built-in numeric via disjunctive type pattern (double or float or int or long or short or byte or decimal); built-in atom/string; unknown-type permissive-return-true; AtomConstructor direct match then capitalised-name type-reference chase via _IsCapitalized + recursive _TypeContainsAtom)"
   - "method IsValidStructConstructor(StructTerm term, string typeName, IReadOnlyList<string>? typeParams = null) -> bool (optional parameter with null default + Array.Empty<string>() coalesce; permissive-return-true for unknown type; StringComparer.Ordinal typeParamSubst; pass-1 direct StructConstructor.Functor match; pass-2 capitalised-name chase with TryGetValue-recursive-substitute and modeTable.GetDeclarationByTypeName lookup)"
   - "method _IsCapitalized(string name) -> bool (private; uses char.IsUpper for Unicode-category-aware uppercase-letter test)"
-  - "method _TypeContainsAtom(TypeDefinition typeDef, string atomName) -> bool (private recursive; foreach + AtomConstructor declaration-pattern + capitalised-name recursive descent via _typeTable.GetType + _IsCapitalized)"
+  - "method _TypeContainsAtom(TypeDefinition typeDef, string atomName) -> bool (private recursive; foreach + AtomConstructor declaration-pattern + capitalised-name recursive descent via _typeTable.LookupType + _IsCapitalized)"
   - "method GetValidConstructors(string typeName) -> List<string> (foreach + switch (ctor) over AtomConstructor/StructConstructor/ListConstructor/TupleConstructor type patterns; no default arm to preserve silent-skip; observable error-formatting tokens verbatim)"
 escalations: []
 ```

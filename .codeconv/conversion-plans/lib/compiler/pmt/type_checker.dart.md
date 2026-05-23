@@ -217,7 +217,7 @@ public List<TypeError> CheckTerm(Term term, string expectedType, IReadOnlyList<s
     if (term is ListTerm listTerm)
     {
         if (listTerm.IsNil) return errors;
-        var typeDef = _typeTable.GetType(expectedType);
+        var typeDef = _typeTable.LookupType(expectedType);
         if (typeDef is not null)
         {
             bool hasListCtor = typeDef.Constructors.Any(c => c is ListConstructor);
@@ -311,7 +311,7 @@ public bool IsValidConstant(ConstTerm term, string typeName)
         return term.Value is double or float or int or long or short or byte or decimal;
     if (typeName is "Atom" or "String")
         return term.Value is string;
-    var typeDef = _typeTable.GetType(typeName);
+    var typeDef = _typeTable.LookupType(typeName);
     if (typeDef is null) return true;
     var termValue = term.Value?.ToString() ?? "";
     foreach (var ctor in typeDef.Constructors)
@@ -323,7 +323,7 @@ public bool IsValidConstant(ConstTerm term, string typeName)
     {
         if (ctor is AtomConstructor atomCtor && _IsCapitalized(atomCtor.Name))
         {
-            var refTypeDef = _typeTable.GetType(atomCtor.Name);
+            var refTypeDef = _typeTable.LookupType(atomCtor.Name);
             if (refTypeDef is not null && _TypeContainsAtom(refTypeDef, termValue))
                 return true;
         }
@@ -352,7 +352,7 @@ public bool IsValidConstant(ConstTerm term, string typeName)
 public bool IsValidStructConstructor(StructTerm term, string typeName, IReadOnlyList<string>? typeParams = null)
 {
     var effectiveParams = typeParams ?? Array.Empty<string>();
-    var typeDef = _typeTable.GetType(typeName);
+    var typeDef = _typeTable.LookupType(typeName);
     if (typeDef is null) return true;
     var typeParamSubst = new Dictionary<string, string>(StringComparer.Ordinal);
     for (int i = 0; i < typeDef.TypeParams.Count && i < effectiveParams.Count; i++)
@@ -428,7 +428,7 @@ private bool _TypeContainsAtom(TypeDefinition typeDef, string atomName)
             if (atomCtor.Name == atomName) return true;
             if (_IsCapitalized(atomCtor.Name))
             {
-                var refType = _typeTable.GetType(atomCtor.Name);
+                var refType = _typeTable.LookupType(atomCtor.Name);
                 if (refType is not null && _TypeContainsAtom(refType, atomName))
                     return true;
             }
@@ -450,7 +450,7 @@ convspec Notes "Recursion termination caveat"). Codegen may annotate with
 public List<string> GetValidConstructors(string typeName)
 {
     var result = new List<string>();
-    var typeDef = _typeTable.GetType(typeName);
+    var typeDef = _typeTable.LookupType(typeName);
     if (typeDef is null) return result;
     foreach (var ctor in typeDef.Constructors)
     {

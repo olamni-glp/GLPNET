@@ -6,6 +6,10 @@ glp_runtime/build/
 **/bin/
 **/obj/
 
+# Keep the .codeconv/ inventory tree (FR-029 checked-in) under bin/ subdirs
+!.codeconv/**/bin/
+!.codeconv/**/bin/**
+
 # Node.js (prereq-patterns/pglite, etc.)
 **/node_modules/
 

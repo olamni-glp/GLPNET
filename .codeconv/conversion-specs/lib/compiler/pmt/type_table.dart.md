@@ -170,24 +170,29 @@ constructs:
       for key if found in the dictionary; otherwise, the default value for
       the type"). Both forms yield `null` on a miss for the reference type
       `TypeDefinition`, matching Dart `_types[name]` exactly. Name SHADOWING
-      caveat: `GetType` shadows `object.GetType()` (the runtime-type
-      reflection method). The spec MUST keep the Dart name `GetType`
-      verbatim (per FR-024 / 023 — preserve the source surface) and accept
-      the resulting compiler warning CS0108 by either adding the `new`
-      modifier (`public new TypeDefinition? GetType(string name)`) OR
-      renaming at codegen time. The spec prescribes the `new` modifier:
-      no rename, with `new` to explicitly acknowledge intentional hiding
-      (Microsoft Learn, `new` modifier: "explicitly hides a member that is
-      inherited from a base class").
+      resolution: `GetType` would shadow `object.GetType()` (the runtime-type
+      reflection method). Per the project-wide idiom (Gabi 2026-05-23, KB
+      construct "Dart getX whose PascalCase GetX collides with a framework
+      member → LookupX/FindX, never shadow"), this read accessor is RENAMED to
+      `public TypeDefinition? LookupType(string name)` — NOT kept as `GetType`
+      with a `new` modifier. The earlier `new`-modifier decision is SUPERSEDED:
+      deliberately hiding `object.GetType()` still obscures runtime-type
+      introspection on every `TypeTable` receiver, and the identical collision
+      in the sibling `type_ast.dart` (`TypeEnvironment.getType`) is resolved
+      the same way to `LookupType`, keeping the two definition sites
+      consistent. All callers `typeTable.getType(...)` →
+      `_typeTable.LookupType(...)`.
     idiom_id: null
-    research_finding_id: rf-dart-map-lookup-to-csharp-trygetvalue
+    research_finding_id: rf-dart-getx-rename-avoiding-object-member-shadow
     nuance: >-
       The load-bearing nuance is exactly the Dart-vs-C# map-miss semantic
       divergence (Dart: returns null; C#: throws on the indexer). Plus the
       `object.GetType` shadowing hazard, which has no Dart counterpart: every
-      C# reference type inherits `Type GetType()` from `object`, so a
-      same-name instance method requires `new` to compile cleanly and to
-      document the deliberate hide. Nullability: Dart `TypeDefinition?` →
+      C# reference type inherits `Type GetType()` from `object`. Rather than
+      hiding it with `new` (the superseded decision), the collision is removed
+      at the source of the name by renaming `getType`→`LookupType` — zero
+      behavioural change (same nullable dictionary read) and no shadow of
+      runtime-type introspection. Nullability: Dart `TypeDefinition?` →
       C# `TypeDefinition?` under enabled NRT — the spec assumes
       `TypeDefinition` is a reference type (consistent with the
       sibling `type_ast.dart` AST conversion where types map to classes,
@@ -407,7 +412,7 @@ conversion_units:
   - "class TypeTable (non-sealed reference type; private readonly Dictionary<string,TypeDefinition> _types built with StringComparer.Ordinal; default ctor implicit/explicit)"
   - "void AddDefinition(TypeDefinition def) — TryGetValue branch; merge rebuilds TypeDefinition with existing.TypeParams/Line/Column and concatenated constructor list (Concat(...).ToList()); else upserts via indexer assignment"
   - "void AddConstructor(string typeName, TypeConstructor ctor, IReadOnlyList<string>? typeParams=null, int line=0, int col=0) — optional parameters with same defaults; TryGetValue branch; merge appends single ctor via .Append(ctor).ToList(); else constructs TypeDefinition with (typeParams ?? new List<string>()), [ctor], line, col"
-  - "TypeDefinition? GetType(string name) — public new TypeDefinition? GetType(string name) (new modifier to shadow object.GetType()); returns _types.GetValueOrDefault(name)"
+  - "TypeDefinition? LookupType(string name) — public TypeDefinition? LookupType(string name) (renamed from getType per project-wide getX→LookupX idiom to avoid object.GetType() shadow); returns _types.GetValueOrDefault(name); all callers typeTable.getType(...) → _typeTable.LookupType(...)"
   - "bool HasType(string name) => _types.ContainsKey(name) — expression-bodied"
   - "IEnumerable<string> TypeNames => _types.Keys (get-only live-view property)"
   - "IEnumerable<TypeDefinition> Definitions => _types.Values (get-only live-view property)"
@@ -479,12 +484,31 @@ escalations: []
 - **Conclusion.** `TryGetValue(out var existing)` followed by an `is not
   null` branch reproduces Dart's `final existing = m[k]; if (existing !=
   null)` exactly; the alternative `GetValueOrDefault(key)` is used in the
-  expression-bodied `GetType` for compactness — both forms return `null` on
+  expression-bodied `LookupType` for compactness — both forms return `null` on
   a miss for reference types like `TypeDefinition`. The C# `object.GetType()`
-  shadowing hazard is handled with the `new` modifier (Microsoft Learn, `new`
-  modifier in member declaration: "explicitly hides a member that is inherited
-  from a base class"); the spec preserves the Dart name verbatim and accepts
-  the principled hide.
+  shadowing hazard is handled NOT by hiding with `new`, but by RENAMING the
+  read accessor `getType`→`LookupType` per the project-wide idiom — see
+  `rf-dart-getx-rename-avoiding-object-member-shadow` below.
+
+### rf-dart-getx-rename-avoiding-object-member-shadow — getType→LookupType
+
+- **Deep analysis.** `TypeTable.getType(String) => _types[name]` is a nullable
+  dictionary read whose mechanical PascalCase rename `GetType` collides with
+  the universally-inherited `object.GetType()`. Six callers in
+  `pmt/type_checker.dart` (`typeTable.getType(...)`) depend on it.
+- **Authoritative .NET.** Microsoft Learn
+  `https://learn.microsoft.com/en-us/dotnet/api/system.object.gettype` —
+  `Object.GetType()` is a non-virtual member on every type returning the exact
+  runtime `Type`; a same-named `GetType(string)` overload compiles (arity
+  overload) but shadows the parameterless reflection call on the typed
+  receiver, forcing `((object)tt).GetType()` everywhere.
+- **Conclusion.** Rename `getType`→`LookupType`, callers
+  `typeTable.getType(...)`→`_typeTable.LookupType(...)`. This is the same
+  resolution applied to the sibling collision `TypeEnvironment.getType` in
+  `type_ast.dart`, governed by the project-wide conversion-idiom (Gabi
+  2026-05-23). Zero behavioural change; the prior `new`-modifier hide is
+  SUPERSEDED. Resolves 018 plan escalation type_ast.dart#E1's project-wide
+  recurrence question for this second definition site.
 
 ### rf-dart-named-default-param-to-csharp-optional-arg — addConstructor's named tail
 

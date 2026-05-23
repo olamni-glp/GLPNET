@@ -292,7 +292,7 @@ Final emitted file structure (conversion_units cu-1 … cu-12 from convspec):
 - T15 — Verify ARG-ORDER FLIP applied at every `Assert.Equal(...)` call site
   (5 int-equality + 5 string-equality). DONE.
 - T16 — Verify member-name PascalCasing at `Alternatives`, `Count`, `Exported`,
-  `HasType`, `HasProcedure`, `GetType`, `GetProcedure`, `FullName`. DONE.
+  `HasType`, `HasProcedure`, `LookupType`, `GetProcedure`, `FullName`. DONE.
 
 ## 4. Research Findings
 
@@ -335,7 +335,7 @@ error-handling/finally). No additional research is needed at the plan stage.
   `dart.package_test.expect_equals_implicit_int` and
   `dart.package_test.expect_equals_implicit_string`.
 - Member PascalCasing (`Alternatives`, `Count`, `Exported`, `HasType`,
-  `HasProcedure`, `GetType`, `GetProcedure`, `FullName`) — fixed — derived from
+  `HasProcedure`, `LookupType`, `GetProcedure`, `FullName`) — fixed — derived from
   cited cross-convspec `type_ast.dart.md` (TypeEnvironment + TypeDef shape) +
   the Microsoft `DirectoryInfo` BCL property names.
 - Named-argument call-site form preserved — fixed — derived from convspec
