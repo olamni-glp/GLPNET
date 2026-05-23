@@ -130,7 +130,7 @@ Codegen tracks per-file state so a run can be interrupted and resumed without re
 
 ## Assumptions
 
-- **Architecture (proposed default, to confirm in clarify)**: (C) hybrid — a separate offline optimization process evolves the codegen instructions; the production code-generation path is harness-driven and deterministic/replay-safe, consuming only the optimized instructions. This preserves the cross-pipeline rule that the durable pipeline stays deterministic and replay-safe with no in-package model client on the production path.
+- **Architecture (confirmed — Clarifications 2026-05-23)**: (C) hybrid — a separate offline optimization process evolves the codegen instructions; the production code-generation path is harness-driven and deterministic/replay-safe, consuming only the optimized instructions. This preserves the cross-pipeline rule that the durable pipeline stays deterministic and replay-safe with no in-package model client on the production path.
 - Inputs are ready and ratified: 130 conversion plans, 130 convspecs, the conversion-idiom KB, all with zero open escalations; the `out/csharp/{lib,test}` scaffold tree exists (from the scaffold stage).
 - Upstream stages (discover/depgraph/init/scaffold/mirror/convspec/planagents) are consumed read-only and are not re-run by this feature.
 - The target framework and build/test toolchain used for the feedback signal are already available in the environment.
