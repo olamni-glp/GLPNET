@@ -6,7 +6,7 @@ Auto-discovered tool (012 FR-006). Owns ALL deterministic codegen state. No LM/n
 |---|---|---|
 | `status` (default) | codegen-readiness counts (`not_started｜built｜converted｜escalated｜stale`) + `promoted`/escalation totals. Read-only. | — |
 | `next [--limit 7]` | Next codegen-ready batch as JSON (deps codegen-complete; SCC=one unit). Read-only, deterministic. | — |
-| `ingest <path> [--respec]` | Deterministically validate the produced `.cs`, run the build (and test, Inc-2) gate, two-phase `dart_codegen` write. Returns `built｜needs_agent_work｜escalated`. `--respec` re-opens on sha drift (FR-019/FR-008). | `dart_codegen` |
+| `ingest <path> [--respec] [--increment 1\|2] [--batch-id <id>]` | Deterministically validate the produced `.cs`, run the build (and test, Inc-2) gate, two-phase `dart_codegen` write. Returns `built｜needs_agent_work｜escalated`. `--respec` re-opens on sha drift (FR-019/FR-008). `--batch-id` tags the file into a promotion batch **at ingest** so the promotion gate sees EVERY batch member (built + unbuilt), not only the reviewed sample. | `dart_codegen` |
 | `record-review <batch_id> --file <p> --score <1-5> [--note <text>]` | Record a sampled human review. | `dart_codegen` |
 | `promote-batch <batch_id>` | Apply the promotion gate (100% build + human median ≥4/5); set `promoted` on pass, else report blockers. | `dart_codegen` |
 | `aggregate-escalations [--report-out p]` | Write `.codeconv/conversion-code/_escalations-report.md` (FR-009). | report file |

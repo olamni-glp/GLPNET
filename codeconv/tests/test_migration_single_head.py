@@ -34,18 +34,24 @@ def _script_dir():
 
 
 def test_exactly_one_head_offline() -> None:
-    """Authoritative, bridge-free: the script graph has ONE head 0006."""
+    """Authoritative, bridge-free: the script graph has ONE head.
+
+    Feature 019 appends ``0007_codegen`` (revision 0007, down_revision
+    0006), so the single head advanced 0006 → 0007. The single-head +
+    linear-chain invariant is unchanged. (test_migration_0007_single_head
+    is the feature-019 owner of the 0007 assertions.)"""
     sd = _script_dir()
     heads = sd.get_heads()
-    assert heads == ["0006"], f"expected single head 0006, got {heads}"
+    assert heads == ["0007"], f"expected single head 0007, got {heads}"
 
 
 def test_linear_chain_offline() -> None:
-    """The chain is strictly linear 0001→0002→0003→0004→0005→0006 (no
-    branch/merge), so ``alembic upgrade head`` is unambiguous."""
+    """The chain is strictly linear 0001→…→0007 (no branch/merge), so
+    ``alembic upgrade head`` is unambiguous."""
     sd = _script_dir()
     chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
     assert chain == {
+        "0007": "0006",
         "0006": "0005",
         "0005": "0004",
         "0004": "0003",

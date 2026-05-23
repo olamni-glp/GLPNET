@@ -1,6 +1,26 @@
-# Contract — DBOS `codegen` stage (durable, replay-safe)
+# Contract — DBOS `codegen` step (durable, replay-safe)
 
-Adds a `codegen` stage AFTER `plan` in the 018 per-file/per-SCC child workflow.
+> **Amendment (decision B, 2026-05-23, Gabi-approved).** codegen is a
+> **separately-driven** durable phase, **not** auto-chained into the
+> builder's default per-unit sequence. The `codegen` DBOS step IS
+> registered (`codeconv.durable.steps.step_codegen` — replay-safe,
+> available for explicit/future chaining), but is intentionally absent
+> from `durable.workflows.PER_UNIT_STAGES`/`POST_STAGES` so a `builder
+> run` keeps its clean "completed-at-plan" semantics. Codegen is driven
+> by `/codeconv-codegen` (`codeconv codegen ingest`), which calls the
+> SAME deterministic, replay-safe `run_codegen_step` core. Rationale:
+> codegen is a heavy generative + build + human-review step, distinct
+> from the lightweight analysis/plan pipeline; auto-chaining it would
+> make every `builder run` report `needs_agent_work` (no `.cs` yet) and
+> conflate two qualitatively different phases. The original "stage AFTER
+> plan in the child workflow" wording below is superseded by this
+> amendment; the *step body, invariants, and ordering of readiness*
+> below remain authoritative.
+
+The deterministic, replay-safe step body below is driven per-file by the
+codegen tool / `/codeconv-codegen`; codegen-readiness still follows
+`plan` in dependency terms (a file is codegen-ready only once its deps
+are codegen-complete).
 
 ## Step body (deterministic, replay-safe — R3)
 `run_codegen_step(repo_root, data_dir, rel_path, respec=False)`:

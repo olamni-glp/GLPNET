@@ -23,6 +23,16 @@ dev = [
   "pytest-mock",
   "alembic>=1.13",
 ]
+# Feature 019 (codeconv-codegen) — OFFLINE GEPA/DSPy optimizer ONLY.
+# These are imported exclusively by `codeconv.tools.codegen_opt` (the
+# offline, non-durable optimizer); the deterministic production path
+# (`tools/codegen`, `durable/`) never imports them (R3/R10 replay-safety).
+opt = [
+  "dspy>=3.2",
+  "gepa",
+  "litellm",
+  "openai>=1.40",
+]
 
 [project.scripts]
 codeconv = "codeconv.cli:app"

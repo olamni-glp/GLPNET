@@ -53,6 +53,16 @@ GRAPH_ENTRY_STAGES: tuple[str, ...] = ("discover", "depgraph_compute")
 # per unit (whole-tree, e.g. scaffold).
 _PER_FILE_STAGES: frozenset[str] = frozenset({"convspec", "plan"})
 
+# Feature 019 (decision B, 2026-05-23): codegen is a SEPARATELY-DRIVEN
+# durable phase, NOT auto-chained into the builder's default per-unit
+# sequence. The ``codegen`` DBOS step IS registered (codeconv.durable.
+# steps.step_codegen — replay-safe, available for explicit/future
+# chaining) but is intentionally absent from PER_UNIT_STAGES/POST_STAGES
+# so a ``builder run`` keeps its clean "completed-at-plan" semantics.
+# Codegen is driven via ``/codeconv-codegen`` (build + human-review
+# gate). See specs/019-codeconv-codegen/contracts/dbos_codegen_stage.md
+# § Placement (amended).
+
 
 def plan_units(
     topo_order: Sequence[str],

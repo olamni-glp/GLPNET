@@ -62,6 +62,13 @@ glp_runtime_net/
 # round-trip source). Tombstones under .codeconv/tombstones/ stay tracked.
 .codeconv/depgraph.json
 
+# codeconv-codegen (feature 019 / R11, resolved 2026-05-23):
+#   - out/csharp/  → COMMITTED (reviewable, build-gated product; NOT ignored).
+#   - .codeconv/conversion-code/  → COMMITTED (escalations report + reviews log).
+#   - .codeconv/codegen-prompt/optimized.md  → COMMITTED (optimizer→prod handoff).
+# Only the optimizer's scratch candidate is ignored (regenerable, pre-promotion):
+.codeconv/codegen-prompt/.candidate.md
+
 
 # buildkit upgrade/migration local backups (opaque state; not versioned)
 .buildkit-upgrade-backup/

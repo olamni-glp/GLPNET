@@ -38,6 +38,11 @@ def test_stage_order_constants_pure() -> None:
     assert list(PER_UNIT_STAGES).index("scaffold") < list(
         PER_UNIT_STAGES
     ).index("plan"), PER_UNIT_STAGES
+    # Feature 019 (decision B): codegen is a separately-driven durable
+    # phase, NOT in the builder's per-unit/POST sequence — so the builder
+    # keeps its "completed-at-plan" semantics. (The codegen DBOS step is
+    # still registered; see test_codegen_capability.)
+    assert "codegen" not in PER_UNIT_STAGES, PER_UNIT_STAGES
     # PRE ends, and POST begins, at the convspec agent-gate boundary.
     assert PRE_STAGES == ("scaffold", "convspec"), PRE_STAGES
     assert POST_STAGES == ("convspec", "plan"), POST_STAGES

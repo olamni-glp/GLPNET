@@ -56,6 +56,12 @@ _FIELD_ORDER: tuple[str, ...] = (
     "convspec_open_escalation_count",
     "builder_outer_workflow_id",
     "builder_file_state",
+    # --- feature 019 (codeconv-codegen) appended fields ---
+    "codegen_started_at",
+    "codegen_completed_at",
+    "target_cs_path",
+    "build_status",
+    "codegen_open_escalation_count",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -99,13 +105,28 @@ _FEATURE_018_KEYS: tuple[str, ...] = (
     "builder_file_state",
 )
 
+# The feature-019 (codeconv-codegen) appended keys, as a set, for
+# round-trip preservation. Same discipline as the earlier feature key
+# sets: a ``/codeconv-discover`` re-write (a feature-012 caller) MUST
+# carry these forward unchanged or a re-discover after the codegen
+# stamp would silently erase codegen state (data-model round-trip;
+# contract codegen_schema.md § "Tombstone keys (append-only)"). Only
+# the state projection is mirrored into YAML — never the .cs content.
+_FEATURE_019_KEYS: tuple[str, ...] = (
+    "codegen_started_at",
+    "codegen_completed_at",
+    "target_cs_path",
+    "build_status",
+    "codegen_open_escalation_count",
+)
+
 # Combined append-only preservation set: every key appended after the
 # original feature-012 eight. Used by ``_canonicalise`` and
-# ``merge_preserving_feature015`` so neither feature-015, feature-017,
-# nor feature-018 state is dropped when a tombstone is re-written by a
-# caller that did not author those keys.
+# ``merge_preserving_feature015`` so no feature-015/-017/-018/-019 state
+# is dropped when a tombstone is re-written by a caller that did not
+# author those keys.
 _PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
-    _FEATURE_015_KEYS + _FEATURE_017_KEYS + _FEATURE_018_KEYS
+    _FEATURE_015_KEYS + _FEATURE_017_KEYS + _FEATURE_018_KEYS + _FEATURE_019_KEYS
 )
 
 # YAML emitter settings pinned for diff stability.

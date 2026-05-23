@@ -191,8 +191,32 @@ def step_plan(
     return {"plan_started": started, "plan_completed": completed}
 
 
+@_dbos_step("codegen")
+def step_codegen(
+    repo_root: str,
+    path: str,
+    *,
+    data_dir: Optional[str] = None,
+) -> dict:
+    """Deterministic codegen stage (R3, replay-safe; feature 019) AFTER
+    ``plan``. Calls ``codegen.run_codegen_step`` verbatim (D2): two-phase
+    ``dart_codegen`` write + real-C# validate + build gate. Returns the
+    typed outcome dict — ``{"outcome":"needs_agent_work",...}`` when the
+    produced ``.cs`` is absent/invalid or the build fails (the skill
+    spawns the codegen sub-agent on that sentinel and re-drives; on
+    re-drive the artifact is present → build gate → ``built``);
+    ``escalated`` when an open escalation artifact exists; ``built`` on a
+    passing build. NEVER raises on the normal paths and makes NO LM/web
+    call (the agent work lives in the skill). Verified signature:
+    ``run_codegen_step(repo_root, data_dir, rel_path, respec=False)``."""
+    from codeconv.tools.codegen.workflow import run_codegen_step
+
+    return run_codegen_step(repo_root, data_dir=data_dir, rel_path=path)
+
+
 __all__ = [
     "bind_dbos_steps",
+    "step_codegen",
     "step_convspec",
     "step_depgraph_compute",
     "step_discover",
