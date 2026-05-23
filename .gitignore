@@ -65,3 +65,7 @@ glp_runtime_net/
 
 # buildkit upgrade/migration local backups (opaque state; not versioned)
 .buildkit-upgrade-backup/
+
+# buildkit pipeline pgdb (PGLite+DBOS local cluster; regenerable state, not versioned)
+pgdb/
+pgdb.consumers/
