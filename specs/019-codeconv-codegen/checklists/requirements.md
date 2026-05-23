@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- **3 intentional [NEEDS CLARIFICATION] markers remain (FR-005, FR-006, FR-012)** — these are the highest-impact open decisions (architecture confirmation, metric/human-review gate, test-scope/metric timing) deliberately deferred to `/speckit-clarify`, which is the planned next step. Pre-drafted answers exist (the (C)-hybrid + composite-metric set). The remaining open items the user flagged (LM backend/budget cap, codegen schema/builder fit) are addressed as assumptions/FR-013 here and will also be confirmed in clarify.
-- All other checklist items pass. The single failing item ("No [NEEDS CLARIFICATION] markers remain") is expected at the specify→clarify boundary and is resolved by running `/speckit-clarify` next.
+- **All checklist items pass.** The 5 clarifications were resolved in `/speckit-clarify` (Session 2026-05-23): (C) hybrid architecture confirmed (FR-005); composite metric + human-review cadence + promotion gate fixed (FR-006); test-scope/metric staging fixed (FR-012); LM backend + GEPA budget cap fixed (Clarifications + FR-004/FR-005); codegen schema + durable-builder fit fixed (FR-013). Zero `[NEEDS CLARIFICATION]` markers remain.
 - Some domain-specific terms (C#/.NET, build/test) are inherent to the feature's purpose (it converts to C#) and are used as user-facing outcomes, not as implementation prescriptions.
+- Ready for `/speckit-plan`.
