@@ -552,5 +552,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/018-codeconv-builder/plan.md
+- specs/019-codeconv-codegen/plan.md
 <!-- BUILDKIT END -->
