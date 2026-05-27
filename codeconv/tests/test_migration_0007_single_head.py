@@ -31,34 +31,24 @@ def _script_dir():
     return ScriptDirectory.from_config(cfg)
 
 
-def test_exactly_one_head_offline() -> None:
-    """Authoritative, bridge-free: the script graph has ONE head 0007."""
+def test_0007_is_interior_not_head_offline() -> None:
+    """Bridge-free: after feature 020 appended ``0008``, ``0007`` is an
+    INTERIOR node — present in the graph but no longer a head. (The
+    authoritative single-head assertion now lives in
+    ``test_migration_single_head`` / ``test_migration_0008_single_head``.)"""
     sd = _script_dir()
-    heads = sd.get_heads()
-    assert heads == ["0007"], f"expected single head 0007, got {heads}"
-
-
-def test_linear_chain_through_0007_offline() -> None:
-    """The chain stays strictly linear 0001→…→0007 (no branch/merge),
-    so ``alembic upgrade head`` is unambiguous."""
-    sd = _script_dir()
-    chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
-    assert chain == {
-        "0007": "0006",
-        "0006": "0005",
-        "0005": "0004",
-        "0004": "0003",
-        "0003": "0002",
-        "0002": "0001",
-        "0001": None,
-    }, chain
+    assert "0007" not in sd.get_heads(), sd.get_heads()
+    assert "0007" in {r.revision for r in sd.walk_revisions()}
 
 
 def test_0007_revision_metadata_offline() -> None:
-    """``0007`` revises ``0006`` (the documented down_revision)."""
+    """``0007`` revises ``0006`` (the documented down_revision) and is
+    itself revised by ``0008`` — the linkage feature 019 introduced is
+    intact under the 020 append."""
     sd = _script_dir()
     rev = sd.get_revision("0007")
     assert rev.down_revision == "0006", rev.down_revision
+    assert sd.get_revision("0008").down_revision == "0007"
 
 
 @needs_bridge

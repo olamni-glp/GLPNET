@@ -1,0 +1,69 @@
+# Subsystem classification + corpus split — feature 020 (codeconv-equiv).
+#
+# Authoritative, checked-in, versioned (data-model.md § Subsystem manifest;
+# contracts/subsystem_curriculum.md; R8/R9). Validated by
+# tools/equiv/manifest.py against codeconv.dart_depgraph (read-only).
+#
+# path_prefixes overlap BY DESIGN and resolve by longest-prefix-wins:
+#   lib/runtime/heap_fcp  (heap)  is nested inside  lib/runtime/  (runtime-core)
+# so a heap_fcp file classifies to `heap`, every other lib/runtime/ file to
+# `runtime-core`. Prefixes are matched against the inventory path format
+# (`lib/<area>/...`, as recorded in .codeconv/tombstones/).
+version: 1
+
+subsystems:
+  # Strict subsystems first, in curriculum/dependency order (heap → bytecode
+  # → compiler → runtime-core); multiagent (dynamic) LAST.
+  heap:
+    tier: strict
+    # Contract scope: lib/runtime/heap_fcp* (the FCP heap core).
+    path_prefixes:
+      - "lib/runtime/heap_fcp"
+  bytecode:
+    tier: strict
+    path_prefixes:
+      - "lib/bytecode/"
+  compiler:
+    tier: strict
+    # Compiler proper + the static-analysis tower (type-checker, partial
+    # evaluator, SRSW/PMT, lint) — all emit / shape the bytecode spine.
+    path_prefixes:
+      - "lib/compiler/"
+      - "lib/analysis/"
+      - "lib/lint/"
+  runtime-core:
+    tier: strict
+    # Single-computation runtime: everything under lib/runtime/ EXCEPT the
+    # heap_fcp core (longest-prefix gives those to `heap`), plus the engine
+    # and the top-level runtime entrypoint.
+    path_prefixes:
+      - "lib/runtime/"
+      - "lib/engine/"
+      - "lib/glp_runtime.dart"
+  multiagent:
+    tier: dynamic
+    path_prefixes:
+      - "lib/multiagent/"
+
+corpus:
+  # Trace-compared suites (total-order on strict, partial-order on dynamic).
+  trace:
+    suites: ["unified", "book"]   # 384 + 141
+  # Outcome-only (no interleaving diff; escrow-timer suspension is a valid status).
+  outcome:
+    suites: ["bonds"]
+  # Ported C# unit tests give the back-test signal (high-band eligibility).
+  back_test:
+    unit_tests_ported: true
+
+split:
+  # Deterministic, recorded PER SOURCE — no run-to-run wobble (R9).
+  ratio: { train: 0.70, held_out: 0.30 }
+  # Deterministic assignment scheme materialized into `assignments` below by
+  # the reviewed corpus/dataset step (corpus.py T016 / dataset.py T032), which
+  # enumerates the trace suites. Until materialized, `assignments` is empty and
+  # manifest.validate(glp_sources=...) reports the gap (correct: not yet done).
+  # Scheme (stable, content-free): held-out iff
+  #   int(sha256(source_path).hexdigest()[:8], 16) % 100 < 30  else train
+  scheme: "sha256(source_path)[:8] %% 100 < 30 => held-out, else train"
+  assignments: {}
