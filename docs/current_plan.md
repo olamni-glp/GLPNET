@@ -14,10 +14,10 @@ Handoff: `specs/020-trace-equivalence-fidelity/HANDOFF-implement.md`
 
 ## POSITION (update on every phase boundary)
 
-- **Current phase**: Phase 3 — US1 oracle MVP (T013–T022). Entering after Foundational checkpoint GREEN.
-- **Current task**: T013/T014/T015 (pure `normalize.py`/`relation.py`/`bytecode_diff.py`, parallelizable) ← CURRENT. Phases 1–2 DONE.
-- **Last green baseline**: T001 done 2026-05-27 — full suite 401 passed / 3 skipped / 11 bridge-spawn-timeout "failures", ALL reproduced GREEN in isolation (see flakiness note). Accepted as green.
-- **Last checkpoint commit**: — (none this session; baseline is HEAD `67c8124c`)
+- **Current phase**: Phase 3 — US1 oracle MVP (T013–T022). Pure oracle core landed.
+- **Current task**: T016 (`corpus.py`) ← CURRENT. T013/T014/T015 (pure `normalize.py`/`relation.py`/`bytecode_diff.py`) DONE + SC-005 tests T020/T021 DONE (the Phase-3 restart-green bar). Remaining Phase 3: T016 corpus, T017 C# instrumentation (`@needs_runtime`), T018 capture, T019 compare/bytecode-diff CLI, T022 e2e (`@needs_runtime`). Phases 1–2 DONE.
+- **Last green baseline**: T001 done 2026-05-27 — full suite 401 passed / 3 skipped / 11 bridge-spawn-timeout "failures", ALL reproduced GREEN in isolation (see flakiness note). Accepted as green. NOTE 2026-05-27: `-m "not needs_bridge and not needs_runtime"` does NOT shrink the suite much — most codegen/convspec tests use the bridge WITHOUT the `needs_bridge` marker (~7–9 s each, 439 total). For a truly fast pure run, name the pure test files explicitly (`test_equiv_*`, `test_fidelity_metric`, `test_trace_normalize`). A full-suite collision with concurrent sessions hung a run at 23:39→23:50 (killed); 1–131/439 were green with no regression before kill.
+- **Last checkpoint commit**: `9710ce10` (2026-05-27) — Setup + Foundational (T001–T012), 14 pure tests green. NOT pushed (Gabi's call). T013–T015+T020–T021 checkpoint commit follows.
 - **Last GEPA artifact written**: — (none; US3 not reached)
 
 ### Phase 1 Setup status — DONE
@@ -63,8 +63,8 @@ only Gabi merges). The commit is what makes the restart trivial.
       Restart-green: 019 baseline green (modulo bridge flakiness) + `tools/equiv` auto-discovered + collect-only clean.
 - [X] **Phase 2 Foundational** (T005–T012) — DONE 2026-05-27. migration `0008` (single head off `0007`), `trace.py`, `fidelity.py`, `manifest.py`, `subsystems.yml`, tombstone keys.
       Restart-green: 14 pure tests GREEN (T012 tier boundaries + offline single-head/chain). Manifest validated vs real inventory (0 ties/0 unclassified). Bridge-gated migrate-idempotency (T006/0008) deferred to full checkpoint run. **Runtime-free.**
-- [ ] **Phase 3 US1 oracle (MVP)** (T013–T022) — `normalize.py`/`relation.py`/`bytecode_diff.py`/`corpus.py`, C# REPL trace instrumentation, `equiv capture|compare|bytecode-diff` (standalone, NO DBOS).
-      Restart-green: T020 (no false divergence) + T021 (no false equivalence). T022/T017 are `@needs_runtime` (need a runnable C# REPL — see B1 below).
+- [~] **Phase 3 US1 oracle (MVP)** (T013–T022) — IN PROGRESS. DONE: T013 `normalize.py` (first-occ heap→logical relabel + writer-MGU causal edges; canonical wire-format `parse_dart`/`parse_csharp`), T014 `relation.py` (OUTCOME / STRICT total-order / DYNAMIC partial-order via causal-canonical-key iso), T015 `bytecode_diff.py`, T020 + T021 SC-005 batteries (+ T013 parser tests). **Restart-green ACHIEVED: T020 (no false divergence, incl. heap-relabel + independent-goal reorder) + T021 (no false equivalence, incl. eager-writer-bind) — 21/21 pure green.** REMAINING: T016 `corpus.py`, T017 C# instrumentation (`@needs_runtime`), T018 `capture`, T019 `compare`/`bytecode-diff` CLI (standalone, NO DBOS), T022 e2e (`@needs_runtime`).
+      Finding (no escalation; R10/B1): live Dart `:trace` is reduction-level only — fine-grained UNIFY/WRITER_BIND/REACTIVATE/BYTECODE_OP events live in `:debug` per-op prints; `parse_dart` live-text wiring consumes both, finalized at T017/T022 against real captures.
 - [ ] **Phase 4 US2 strict tier** (T023–T029) — `readiness.py`, durable `equiv` step wrapping US1 compare, stage wiring, `equiv next|status|ingest|retry|aggregate-escalations`, `/codeconv-equiv` skill.
       Restart-green: T029 strict-tier gate (`@needs_runtime`).
 - [ ] **Phase 5 US3 real GEPA (OFFLINE)** (T030–T038) — rewire `codegen_opt` to `dspy.GEPA`, metric→`fidelity.py`, datasets, per-subsystem prompts + `_base.md`, `/codeconv-codegen-opt` extension.
