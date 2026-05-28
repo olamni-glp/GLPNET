@@ -26,5 +26,9 @@ plan_started_at: '2026-05-21T15:24:17Z'
 plan_completed_at: '2026-05-21T16:00:08Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/well_typed_clause.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:56:48Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/well_typed_clause.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
