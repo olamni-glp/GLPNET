@@ -30,6 +30,10 @@ plan_started_at: '2026-05-21T14:19:43Z'
 plan_completed_at: '2026-05-21T14:22:56Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/error.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:54:11Z'
+target_cs_path: out/csharp/lib/compiler/error.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Error categories for compiler diagnostics

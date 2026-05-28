@@ -22,5 +22,9 @@ plan_started_at: '2026-05-21T14:23:21Z'
 plan_completed_at: '2026-05-21T14:34:27Z'
 plan_path: .codeconv/conversion-plans/lib/bytecode/opcodes.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:54:05Z'
+target_cs_path: out/csharp/lib/bytecode/opcodes.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

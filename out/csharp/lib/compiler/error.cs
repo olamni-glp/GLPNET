@@ -1,50 +1,61 @@
-/// Error categories for compiler diagnostics
-enum ErrorCategory {
-  lexical,    // Invalid characters, unterminated strings
-  syntax,     // Malformed clauses, missing delimiters
-  semantic,   // SRSW violations, undefined variables
-  codegen,    // Internal compiler errors during bytecode generation
+namespace GlpRuntime.Compiler;
+
+/// <summary>Error categories for compiler diagnostics</summary>
+public enum ErrorCategory
+{
+    Lexical,    // Invalid characters, unterminated strings
+    Syntax,     // Malformed clauses, missing delimiters
+    Semantic,   // SRSW violations, undefined variables
+    Codegen,    // Internal compiler errors during bytecode generation
 }
 
-/// Compilation error with source location
-class CompileError implements Exception {
-  final String message;
-  final int line;
-  final int column;
-  final String? source;
-  final ErrorCategory? category;
+/// <summary>Compilation error with source location</summary>
+public class CompileError : Exception
+{
+    public long Line { get; }
+    public long Column { get; }
+    public string? Source { get; }
+    public ErrorCategory? Category { get; }
 
-  CompileError(
-    this.message,
-    this.line,
-    this.column,
-    {this.source, String? phase}
-  ) : category = phase != null ? _categoryFromPhase(phase) : null;
-
-  static ErrorCategory? _categoryFromPhase(String phase) {
-    switch (phase) {
-      case 'lexer': return ErrorCategory.lexical;
-      case 'parser': return ErrorCategory.syntax;
-      case 'analyzer': return ErrorCategory.semantic;
-      case 'codegen': return ErrorCategory.codegen;
-      default: return null;
-    }
-  }
-
-  @override
-  String toString() {
-    final categoryName = category != null ? '[${category.toString().split('.').last}] ' : '';
-    final loc = 'Line $line, Column $column';
-
-    if (source != null) {
-      final lines = source!.split('\n');
-      if (line > 0 && line <= lines.length) {
-        final sourceLine = lines[line - 1];
-        final pointer = ' ' * (column - 1) + '^';
-        return '$categoryName$message\n$loc:\n$sourceLine\n$pointer';
-      }
+    public CompileError(
+        string message,
+        long line,
+        long column,
+        string? source = null,
+        string? phase = null) : base(message)
+    {
+        Line = line;
+        Column = column;
+        Source = source;
+        Category = phase != null ? CategoryFromPhase(phase) : null;
     }
 
-    return '$categoryName$message at $loc';
-  }
+    private static ErrorCategory? CategoryFromPhase(string phase) =>
+        phase switch
+        {
+            "lexer"    => ErrorCategory.Lexical,
+            "parser"   => ErrorCategory.Syntax,
+            "analyzer" => ErrorCategory.Semantic,
+            "codegen"  => ErrorCategory.Codegen,
+            _          => null,
+        };
+
+    public override string ToString()
+    {
+        var categoryName = Category != null ? $"[{Category}] " : "";
+        var loc = $"Line {Line}, Column {Column}";
+
+        if (Source != null)
+        {
+            var lines = Source.Split('\n');
+            if (Line > 0 && Line <= lines.Length)
+            {
+                var sourceLine = lines[Line - 1];
+                var pointer = new string(' ', (int)(Column - 1)) + "^";
+                return $"{categoryName}{Message}\n{loc}:\n{sourceLine}\n{pointer}";
+            }
+        }
+
+        return $"{categoryName}{Message} at {loc}";
+    }
 }

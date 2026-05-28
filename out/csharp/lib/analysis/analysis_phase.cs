@@ -1,209 +1,252 @@
-// lib/analysis/analysis_phase.dart
+// lib/analysis/analysis_phase.cs
 //
 // Interface for analysis phases that can run independently or as part of compilation.
 // Phases include: Type Checking, SRSW Checking, Defined Guards expansion.
+// Converted from lib/analysis/analysis_phase.dart (source_sha256: d322a2608cddcee827d4c360ba15b5ac5c7a8a2c5e43b2a690da8b2711e51d78)
 
-/// Base class for analysis errors
-class AnalysisError {
-  final String phase;
-  final String message;
-  final int line;
-  final int column;
-  final String? context;
-  
-  AnalysisError({
-    required this.phase,
-    required this.message,
-    required this.line,
-    required this.column,
-    this.context,
-  });
-  
-  @override
-  String toString() {
-    final loc = 'line $line, column $column';
-    final ctx = context != null ? '\n    $context' : '';
-    return '[$phase] $message at $loc$ctx';
-  }
-  
-  /// Error severity
-  bool get isError => true;
+#nullable enable
+
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace GlpRuntime.Analysis;
+
+/// <summary>Interface for analysis phases.</summary>
+public interface IAnalysisPhase
+{
+    /// <summary>Name of this phase (for error reporting).</summary>
+    string Name { get; }
+
+    /// <summary>Run this analysis phase on the AST. Returns list of errors/warnings found.</summary>
+    List<AnalysisError> Analyze(dynamic ast, AnalysisContext ctx);
 }
 
-/// Analysis warning (non-fatal)
-class AnalysisWarning extends AnalysisError {
-  AnalysisWarning({
-    required super.phase,
-    required super.message,
-    required super.line,
-    required super.column,
-    super.context,
-  });
-  
-  @override
-  bool get isError => false;
+/// <summary>Base class for analysis errors.</summary>
+public class AnalysisError
+{
+    public string Phase { get; }
+    public string Message { get; }
+    public int Line { get; }
+    public int Column { get; }
+    public string? Context { get; }
+
+    public AnalysisError(string phase, string message, int line, int column, string? context = null)
+    {
+        Phase = phase;
+        Message = message;
+        Line = line;
+        Column = column;
+        Context = context;
+    }
+
+    public override string ToString()
+    {
+        var loc = $"line {Line}, column {Column}";
+        var ctx = Context != null ? $"\n    {Context}" : "";
+        return $"[{Phase}] {Message} at {loc}{ctx}";
+    }
+
+    /// <summary>Error severity.</summary>
+    public virtual bool IsError => true;
 }
 
-/// Shared context passed between analysis phases
-class AnalysisContext {
-  /// Type environment (populated by type parsing)
-  dynamic typeEnvironment;
-  
-  /// Variable information (populated by SRSW analysis)
-  Map<String, dynamic> variableInfo = {};
-  
-  /// Expanded guards (populated by defined guards phase)
-  Map<String, dynamic> expandedGuards = {};
-  
-  /// Any additional phase-specific data
-  final Map<String, dynamic> data = {};
+/// <summary>Analysis warning (non-fatal).</summary>
+public class AnalysisWarning : AnalysisError
+{
+    public AnalysisWarning(string phase, string message, int line, int column, string? context = null)
+        : base(phase, message, line, column, context)
+    {
+    }
+
+    public override bool IsError => false;
 }
 
-/// Result of running analysis
-class AnalysisResult {
-  final List<AnalysisError> errors;
-  final AnalysisContext context;
-  
-  AnalysisResult(this.errors, this.context);
-  
-  /// True if no errors (warnings are OK)
-  bool get success => errors.where((e) => e.isError).isEmpty;
-  
-  /// Just the actual errors (not warnings)
-  List<AnalysisError> get actualErrors => errors.where((e) => e.isError).toList();
-  
-  /// Just the warnings
-  List<AnalysisError> get warnings => errors.where((e) => !e.isError).toList();
-  
-  @override
-  String toString() {
-    if (errors.isEmpty) {
-      return 'Analysis successful (no errors or warnings)';
-    }
-    final sb = StringBuffer();
-    final errs = actualErrors;
-    final warns = warnings;
-    if (errs.isNotEmpty) {
-      sb.writeln('Errors (${errs.length}):');
-      for (final e in errs) {
-        sb.writeln('  $e');
-      }
-    }
-    if (warns.isNotEmpty) {
-      sb.writeln('Warnings (${warns.length}):');
-      for (final w in warns) {
-        sb.writeln('  $w');
-      }
-    }
-    return sb.toString();
-  }
+/// <summary>Shared context passed between analysis phases.</summary>
+public class AnalysisContext
+{
+    /// <summary>Type environment (populated by type parsing).</summary>
+    public dynamic TypeEnvironment { get; set; } = null!;
+
+    /// <summary>Variable information (populated by SRSW analysis).</summary>
+    public Dictionary<string, dynamic> VariableInfo { get; set; } = new();
+
+    /// <summary>Expanded guards (populated by defined guards phase).</summary>
+    public Dictionary<string, dynamic> ExpandedGuards { get; set; } = new();
+
+    /// <summary>Any additional phase-specific data. Reference is final; contents are mutable.</summary>
+    public Dictionary<string, dynamic> Data { get; } = new();
 }
 
-/// Interface for analysis phases
-abstract class AnalysisPhase {
-  /// Name of this phase (for error reporting)
-  String get name;
-  
-  /// Run this analysis phase on the AST
-  /// Returns list of errors/warnings found
-  List<AnalysisError> analyze(dynamic ast, AnalysisContext ctx);
+/// <summary>Result of running analysis.</summary>
+public class AnalysisResult
+{
+    public List<AnalysisError> Errors { get; }
+    public AnalysisContext Context { get; }
+
+    public AnalysisResult(List<AnalysisError> errors, AnalysisContext context)
+    {
+        Errors = errors;
+        Context = context;
+    }
+
+    /// <summary>True if no errors (warnings are OK).</summary>
+    public bool Success => !Errors.Any(e => e.IsError);
+
+    /// <summary>Just the actual errors (not warnings). Materialised eagerly per call.</summary>
+    public List<AnalysisError> ActualErrors => Errors.Where(e => e.IsError).ToList();
+
+    /// <summary>Just the warnings. Materialised eagerly per call.</summary>
+    public List<AnalysisError> Warnings => Errors.Where(e => !e.IsError).ToList();
+
+    public override string ToString()
+    {
+        if (Errors.Count == 0)
+        {
+            return "Analysis successful (no errors or warnings)";
+        }
+
+        var sb = new StringBuilder();
+        var errs = ActualErrors;
+        var warns = Warnings;
+
+        if (errs.Count > 0)
+        {
+            sb.AppendLine($"Errors ({errs.Count}):");
+            foreach (var e in errs)
+            {
+                sb.AppendLine($"  {e}");
+            }
+        }
+
+        if (warns.Count > 0)
+        {
+            sb.AppendLine($"Warnings ({warns.Count}):");
+            foreach (var w in warns)
+            {
+                sb.AppendLine($"  {w}");
+            }
+        }
+
+        return sb.ToString();
+    }
 }
 
-/// Runs multiple analysis phases
-class AnalysisRunner {
-  final List<AnalysisPhase> phases;
-  
-  AnalysisRunner(this.phases);
-  
-  /// Run all phases on the AST
-  /// If stopOnError is true, stops at first phase with errors
-  AnalysisResult run(dynamic ast, {bool stopOnError = false}) {
-    final ctx = AnalysisContext();
-    final allErrors = <AnalysisError>[];
-    
-    for (final phase in phases) {
-      final errors = phase.analyze(ast, ctx);
-      allErrors.addAll(errors);
-      
-      if (stopOnError && errors.any((e) => e.isError)) {
-        break;
-      }
+/// <summary>Runs multiple analysis phases.</summary>
+public class AnalysisRunner
+{
+    public List<IAnalysisPhase> Phases { get; }
+
+    public AnalysisRunner(List<IAnalysisPhase> phases)
+    {
+        Phases = phases;
     }
-    
-    return AnalysisResult(allErrors, ctx);
-  }
-  
-  /// Run only specific phases by name
-  AnalysisResult runPhases(dynamic ast, List<String> phaseNames) {
-    final ctx = AnalysisContext();
-    final allErrors = <AnalysisError>[];
-    
-    for (final phase in phases) {
-      if (phaseNames.contains(phase.name)) {
-        final errors = phase.analyze(ast, ctx);
-        allErrors.addAll(errors);
-      }
+
+    /// <summary>
+    /// Run all phases on the AST.
+    /// If stopOnError is true, stops at first phase with errors.
+    /// </summary>
+    public AnalysisResult Run(dynamic ast, bool stopOnError = false)
+    {
+        var ctx = new AnalysisContext();
+        var allErrors = new List<AnalysisError>();
+
+        foreach (var phase in Phases)
+        {
+            List<AnalysisError> errors = phase.Analyze(ast, ctx);
+            allErrors.AddRange(errors);
+
+            if (stopOnError && errors.Any(e => e.IsError))
+            {
+                break;
+            }
+        }
+
+        return new AnalysisResult(allErrors, ctx);
     }
-    
-    return AnalysisResult(allErrors, ctx);
-  }
+
+    /// <summary>Run only specific phases by name.</summary>
+    public AnalysisResult RunPhases(dynamic ast, List<string> phaseNames)
+    {
+        var ctx = new AnalysisContext();
+        var allErrors = new List<AnalysisError>();
+
+        foreach (var phase in Phases)
+        {
+            if (phaseNames.Contains(phase.Name))
+            {
+                List<AnalysisError> errors = phase.Analyze(ast, ctx);
+                allErrors.AddRange(errors);
+            }
+        }
+
+        return new AnalysisResult(allErrors, ctx);
+    }
 }
 
 // =============================================================================
 // Standard analysis phases
 // =============================================================================
 
-/// Type checking phase
-class TypeCheckPhase implements AnalysisPhase {
-  final String? sourceCode;  // Optional source for type parsing
+/// <summary>Type checking phase.</summary>
+public class TypeCheckPhase : IAnalysisPhase
+{
+    /// <summary>Optional source for type parsing.</summary>
+    public string? SourceCode { get; }
 
-  TypeCheckPhase({this.sourceCode});
+    public TypeCheckPhase(string? sourceCode = null)
+    {
+        SourceCode = sourceCode;
+    }
 
-  @override
-  String get name => 'type';
+    public string Name => "type";
 
-  @override
-  List<AnalysisError> analyze(dynamic ast, AnalysisContext ctx) {
-    // Import the type checker components
-    // This is a placeholder - actual implementation requires imports
+    public List<AnalysisError> Analyze(dynamic ast, AnalysisContext ctx)
+    {
+        // Import the type checker components
+        // This is a placeholder - actual implementation requires imports
 
-    // For now, return empty list
-    // Full implementation in separate integration file
-    return [];
-  }
+        // For now, return empty list
+        // Full implementation in separate integration file
+        return new List<AnalysisError>();
+    }
 }
 
-/// SRSW checking phase
-class SRSWCheckPhase implements AnalysisPhase {
-  @override
-  String get name => 'srsw';
-  
-  @override
-  List<AnalysisError> analyze(dynamic ast, AnalysisContext ctx) {
-    // Implementation would wrap existing SRSW checker
-    // For now, placeholder
-    return [];
-  }
+/// <summary>SRSW checking phase.</summary>
+public class SRSWCheckPhase : IAnalysisPhase
+{
+    public string Name => "srsw";
+
+    public List<AnalysisError> Analyze(dynamic ast, AnalysisContext ctx)
+    {
+        // Implementation would wrap existing SRSW checker
+        // For now, placeholder
+        return new List<AnalysisError>();
+    }
 }
 
-/// Defined guards expansion phase
-class DefinedGuardsPhase implements AnalysisPhase {
-  @override
-  String get name => 'guards';
-  
-  @override
-  List<AnalysisError> analyze(dynamic ast, AnalysisContext ctx) {
-    // Implementation would expand defined guards
-    // For now, placeholder
-    return [];
-  }
+/// <summary>Defined guards expansion phase.</summary>
+public class DefinedGuardsPhase : IAnalysisPhase
+{
+    public string Name => "guards";
+
+    public List<AnalysisError> Analyze(dynamic ast, AnalysisContext ctx)
+    {
+        // Implementation would expand defined guards
+        // For now, placeholder
+        return new List<AnalysisError>();
+    }
 }
 
-/// Create the standard analysis runner with all phases
-AnalysisRunner createStandardRunner() {
-  return AnalysisRunner([
-    TypeCheckPhase(),
-    SRSWCheckPhase(),
-    DefinedGuardsPhase(),
-  ]);
+/// <summary>Factory for creating standard analysis runners.</summary>
+public static class AnalysisPhaseFactory
+{
+    /// <summary>Create the standard analysis runner with all phases.</summary>
+    public static AnalysisRunner CreateStandardRunner() =>
+        new AnalysisRunner(new List<IAnalysisPhase>
+        {
+            new TypeCheckPhase(),
+            new SRSWCheckPhase(),
+            new DefinedGuardsPhase(),
+        });
 }

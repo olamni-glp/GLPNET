@@ -36,5 +36,9 @@ plan_started_at: '2026-05-23T09:31:48Z'
 plan_completed_at: '2026-05-23T09:31:49Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/type_ast.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:54:01Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/type_ast.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

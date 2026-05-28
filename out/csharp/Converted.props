@@ -11,5 +11,12 @@
 <Project>
   <ItemGroup>
     <!-- codeconv-codegen append point — keep one entry per line, sorted. -->
+    <Compile Include="lib/analysis/analysis_phase.cs" />
+    <Compile Include="lib/analysis/type_checker/mode.cs" />
+    <Compile Include="lib/analysis/type_checker/prelude.cs" />
+    <Compile Include="lib/analysis/type_checker/type_ast.cs" />
+    <Compile Include="lib/bytecode/opcodes.cs" />
+    <Compile Include="lib/bytecode/opcodes_v2.cs" />
+    <Compile Include="lib/compiler/error.cs" />
   </ItemGroup>
 </Project>
