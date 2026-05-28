@@ -57,5 +57,9 @@ plan_started_at: '2026-05-21T16:17:57Z'
 plan_completed_at: '2026-05-21T16:23:55Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/scheduler.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:09:13Z'
+target_cs_path: out/csharp/lib/runtime/scheduler.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

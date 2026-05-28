@@ -1,93 +1,123 @@
-// ignore_for_file: non_constant_identifier_names
-import 'opcodes.dart';
-import 'opcodes_v2.dart' as opv2;
-import 'runner.dart';
+// Bytecode assembler facade — dual naming surface (camelCase + UPPERCASE aliases).
+// Converted from lib/bytecode/asm.dart.
+// SCREAMING_CASE method names are intentional (mirrors Dart source 1-to-1 for
+// assembly-style test readability); IDE1006 is off by default and not suppressed.
 
-class BC {
-  // lowerCamelCase helpers
-  static Label l(String name) => Label(name);
-  static ClauseTry try_() => ClauseTry();
-  static GuardNeedReader r(int readerId) => GuardNeedReader(readerId);
-  static HeadBindWriter w(int writerId) => HeadBindWriter(writerId);
-  static Commit commit() => Commit();
+using GlpRuntime.Bytecode;
+using V2 = GlpRuntime.Bytecode.V2;
 
-  // New spec-compliant control flow instructions
-  static ClauseNext clauseNext(String label) => ClauseNext(label);
-  static TryNextClause tryNextClause() => TryNextClause();
-  static NoMoreClauses noMoreClauses() => NoMoreClauses();
+namespace GlpRuntime.Bytecode;
 
-  // Legacy (deprecated)
-  @deprecated
-  static UnionSiAndGoto u(String label) => UnionSiAndGoto(label);
-  @deprecated
-  static ResetAndGoto next(String label) => ResetAndGoto(label);
+/// <summary>
+/// Pure namespace-of-helpers: static factory methods for every GLP bytecode opcode.
+/// Two parallel naming surfaces are exposed: lowerCamelCase short forms and UPPERCASE
+/// aliases that forward to them. Both surfaces are load-bearing for compiler/codegen
+/// and test files — do not prune either.
+/// </summary>
+public static class BC
+{
+    // lowerCamelCase helpers
 
-  static SuspendEnd susp() => SuspendEnd();
-  static Proceed proceed() => Proceed();
-  static BodySetConst bconst(int writerId, Object? v) => BodySetConst(writerId, v);
-  static BodySetStructConstArgs bstructC(int writerId, String f, List<Object?> constArgs)
-    => BodySetStructConstArgs(writerId, f, constArgs);
-  static HeadStructure headStruct(String functor, int arity, int argSlot)
-    => HeadStructure(functor, arity, argSlot);
-  static opv2.HeadVariable headWriter(int varIndex) => opv2.HeadVariable(varIndex, isReader: false);
-  static opv2.HeadVariable headReader(int varIndex) => opv2.HeadVariable(varIndex, isReader: true);
-  static UnifyConstant unifyConst(Object? value) => UnifyConstant(value);
-  static UnifyVoid unifyVoid({int count = 1}) => UnifyVoid(count: count);
-  static HeadConstant headConst(Object? value, int argSlot) => HeadConstant(value, argSlot);
-  static GetVariable getVar(int varIndex, int argSlot) => GetVariable(varIndex, argSlot);
-  static GetValue getVal(int varIndex, int argSlot) => GetValue(varIndex, argSlot);
-  static PutConstant putConst(Object? value, int argSlot) => PutConstant(value, argSlot);
-  static PutStructure putStructure(String functor, int arity, int argSlot) => PutStructure(functor, arity, argSlot);
-  static SetConstant setConst(Object? value) => SetConstant(value);
-  static Otherwise otherwise() => Otherwise();
-  static opv2.Unknown unknown(int varIndex) => opv2.Unknown(varIndex);
-  static Spawn spawn(String label, int arity) => Spawn(label, arity);
-  static Requeue requeue(String label, int arity) => Requeue(label, arity);
+    public static Label l(string name) => new Label(name);
+    // Dart `try_` (trailing-underscore keyword escape) → C# `@try` (leading-@ keyword escape)
+    public static ClauseTry @try() => new ClauseTry();
+    public static GuardNeedReader r(long readerId) => new GuardNeedReader(readerId);
+    public static HeadBindWriter w(long writerId) => new HeadBindWriter(writerId);
+    public static Commit commit() => new Commit();
 
-  // Guard instructions
-  static Guard guard(String label, int arity) => Guard(label, arity);
-  static Ground ground(int varIndex) => Ground(varIndex);
-  static Known known(int varIndex) => Known(varIndex);
+    // New spec-compliant control flow instructions
 
-  // List-specific instructions
-  static HeadNil headNil(int argSlot) => HeadNil(argSlot);
-  static HeadList headList(int argSlot) => HeadList(argSlot);
-  static PutNil putNil(int argSlot) => PutNil(argSlot);
-  static PutList putList(int argSlot) => PutList(argSlot);
+    public static ClauseNext clauseNext(string label) => new ClauseNext(label);
+    public static TryNextClause tryNextClause() => new TryNextClause();
+    public static NoMoreClauses noMoreClauses() => new NoMoreClauses();
 
-  // Environment frame instructions
-  static Allocate allocate(int slots) => Allocate(slots);
-  static Deallocate deallocate() => Deallocate();
+    // Legacy (deprecated)
 
-  // Utility instructions
-  static Nop nop() => Nop();
-  static Halt halt() => Halt();
+    [System.Obsolete]
+    public static UnionSiAndGoto u(string label) => new UnionSiAndGoto(label);
+    [System.Obsolete]
+    public static ResetAndGoto next(string label) => new ResetAndGoto(label);
 
-  // UPPERCASE aliases
-  static Label L(String name) => l(name);
-  static ClauseTry TRY() => try_();
-  static GuardNeedReader R(int readerId) => r(readerId);
-  static HeadBindWriter W(int writerId) => w(writerId);
-  static Commit COMMIT() => commit();
+    public static SuspendEnd susp() => new SuspendEnd();
+    public static Proceed proceed() => new Proceed();
+    public static BodySetConst bconst(long writerId, object? v) => new BodySetConst(writerId, v);
+    public static BodySetStructConstArgs bstructC(long writerId, string f, List<object?> constArgs)
+        => new BodySetStructConstArgs(writerId, f, constArgs);
+    public static HeadStructure headStruct(string functor, long arity, long argSlot)
+        => new HeadStructure(functor, arity, argSlot);
+    public static V2.HeadVariable headWriter(long varIndex)
+        => new V2.HeadVariable(varIndex, isReader: false);
+    public static V2.HeadVariable headReader(long varIndex)
+        => new V2.HeadVariable(varIndex, isReader: true);
+    public static UnifyConstant unifyConst(object? value) => new UnifyConstant(value);
+    public static UnifyVoid unifyVoid(long count = 1) => new UnifyVoid(count: count);
+    public static HeadConstant headConst(object? value, long argSlot)
+        => new HeadConstant(value, argSlot);
+    public static GetVariable getVar(long varIndex, long argSlot)
+        => new GetVariable(varIndex, argSlot);
+    public static GetValue getVal(long varIndex, long argSlot)
+        => new GetValue(varIndex, argSlot);
+    public static PutConstant putConst(object? value, long argSlot)
+        => new PutConstant(value, argSlot);
+    public static PutStructure putStructure(string functor, long arity, long argSlot)
+        => new PutStructure(functor, arity, argSlot);
+    public static SetConstant setConst(object? value) => new SetConstant(value);
+    public static Otherwise otherwise() => new Otherwise();
+    public static V2.Unknown unknown(long varIndex) => new V2.Unknown(varIndex);
+    public static Spawn spawn(string label, long arity) => new Spawn(label, arity);
+    public static Requeue requeue(string label, long arity) => new Requeue(label, arity);
 
-  // New spec-compliant control flow (UPPERCASE)
-  static ClauseNext CLAUSE_NEXT(String label) => clauseNext(label);
-  static TryNextClause TRY_NEXT_CLAUSE() => tryNextClause();
-  static NoMoreClauses NO_MORE_CLAUSES() => noMoreClauses();
+    // Guard instructions
 
-  // Legacy (deprecated)
-  @deprecated
-  static UnionSiAndGoto U(String label) => u(label);
-  @deprecated
-  static ResetAndGoto NEXT(String label) => next(label);
+    public static Guard guard(string label, long arity) => new Guard(label, arity);
+    public static Ground ground(long varIndex) => new Ground(varIndex);
+    public static Known known(long varIndex) => new Known(varIndex);
 
-  static SuspendEnd SUSP() => susp();
-  static Proceed PROCEED() => proceed();
-  static Otherwise OTHERWISE() => otherwise();
-  static opv2.Unknown UNKNOWN(int varIndex) => unknown(varIndex);
-  static BodySetConst BCONST(int writerId, Object? v) => bconst(writerId, v);
-  static BodySetStructConstArgs BSTRUCTC(int writerId, String f, List<Object?> constArgs)
-    => bstructC(writerId, f, constArgs);
+    // List-specific instructions
 
-  static BytecodeProgram prog(List<Op> ops) => BytecodeProgram(ops);
+    public static HeadNil headNil(long argSlot) => new HeadNil(argSlot);
+    public static HeadList headList(long argSlot) => new HeadList(argSlot);
+    public static PutNil putNil(long argSlot) => new PutNil(argSlot);
+    public static PutList putList(long argSlot) => new PutList(argSlot);
+
+    // Environment frame instructions
+
+    public static Allocate allocate(long slots) => new Allocate(slots);
+    public static Deallocate deallocate() => new Deallocate();
+
+    // Utility instructions
+
+    public static Nop nop() => new Nop();
+    public static Halt halt() => new Halt();
+
+    public static BytecodeProgram prog(List<IOp> ops) => new BytecodeProgram(ops);
+
+    // UPPERCASE aliases
+
+    public static Label L(string name) => l(name);
+    public static ClauseTry TRY() => @try();
+    public static GuardNeedReader R(long readerId) => r(readerId);
+    public static HeadBindWriter W(long writerId) => w(writerId);
+    public static Commit COMMIT() => commit();
+
+    // New spec-compliant control flow (UPPERCASE)
+
+    public static ClauseNext CLAUSE_NEXT(string label) => clauseNext(label);
+    public static TryNextClause TRY_NEXT_CLAUSE() => tryNextClause();
+    public static NoMoreClauses NO_MORE_CLAUSES() => noMoreClauses();
+
+    // Legacy (deprecated)
+
+    [System.Obsolete]
+    public static UnionSiAndGoto U(string label) => u(label);
+    [System.Obsolete]
+    public static ResetAndGoto NEXT(string label) => next(label);
+
+    public static SuspendEnd SUSP() => susp();
+    public static Proceed PROCEED() => proceed();
+    public static Otherwise OTHERWISE() => otherwise();
+    public static V2.Unknown UNKNOWN(long varIndex) => unknown(varIndex);
+    public static BodySetConst BCONST(long writerId, object? v) => bconst(writerId, v);
+    public static BodySetStructConstArgs BSTRUCTC(long writerId, string f, List<object?> constArgs)
+        => bstructC(writerId, f, constArgs);
 }

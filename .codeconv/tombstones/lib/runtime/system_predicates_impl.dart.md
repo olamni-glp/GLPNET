@@ -47,6 +47,10 @@ plan_started_at: '2026-05-21T16:17:58Z'
 plan_completed_at: '2026-05-21T16:23:56Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/system_predicates_impl.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:02:13Z'
+target_cs_path: out/csharp/lib/runtime/system_predicates_impl.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Standard system predicate implementations for GLP

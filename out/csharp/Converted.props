@@ -26,6 +26,7 @@
     <Compile Include="lib/analysis/type_checker/type_environment_builder.cs" />
     <Compile Include="lib/analysis/type_checker/well_typed_clause.cs" />
     <Compile Include="lib/analysis/type_checker/well_typed_term.cs" />
+    <Compile Include="lib/bytecode/asm.cs" />
     <Compile Include="lib/bytecode/opcodes.cs" />
     <Compile Include="lib/bytecode/opcodes_v2.cs" />
     <Compile Include="lib/bytecode/runner.cs" />
@@ -45,10 +46,12 @@
     <Compile Include="lib/compiler/pmt/type_table.cs" />
     <Compile Include="lib/compiler/pmt/validator.cs" />
     <Compile Include="lib/compiler/project_linker.cs" />
+    <Compile Include="lib/compiler/result.cs" />
     <Compile Include="lib/compiler/token.cs" />
     <Compile Include="lib/compiler/unify_result.cs" />
     <Compile Include="lib/engine/claude_adapter.cs" />
     <Compile Include="lib/glp_runtime.cs" />
+    <Compile Include="lib/lint/linter.cs" />
     <Compile Include="lib/multiagent/boot_loader.cs" />
     <Compile Include="lib/multiagent/global_send.cs" />
     <Compile Include="lib/multiagent/global_writers_table.cs" />
@@ -70,10 +73,12 @@
     <Compile Include="lib/runtime/machine_state.cs" />
     <Compile Include="lib/runtime/module_hierarchy.cs" />
     <Compile Include="lib/runtime/runtime.cs" />
+    <Compile Include="lib/runtime/scheduler.cs" />
     <Compile Include="lib/runtime/suspend.cs" />
     <Compile Include="lib/runtime/suspend_ops.cs" />
     <Compile Include="lib/runtime/suspension.cs" />
     <Compile Include="lib/runtime/system_predicates.cs" />
+    <Compile Include="lib/runtime/system_predicates_impl.cs" />
     <Compile Include="lib/runtime/terms.cs" />
   </ItemGroup>
 </Project>
