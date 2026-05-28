@@ -22,7 +22,7 @@ using GlpRuntime.Multiagent;
 /// (heap-pointer-architecture-spec.md v3.0 uses these exact strings).
 /// Default int underlying type; NOT [Flags] — these are mutually exclusive discriminators.
 /// </remarks>
-public enum CellTag { WrtTag, RoTag, ValueTag }
+public enum HeapCellTag { WrtTag, RoTag, ValueTag }
 
 /// <summary>
 /// Heap cell — contains either Pointer, SuspensionListNode, Term, VariableEntry, or WriterContent.
@@ -43,16 +43,16 @@ public class HeapCell
     public object? Content { get; set; }
 
     /// <summary>Mutable discriminator tag.</summary>
-    public CellTag Tag { get; set; }
+    public HeapCellTag Tag { get; set; }
 
-    public HeapCell(object? content, CellTag tag)
+    public HeapCell(object? content, HeapCellTag tag)
     {
         Content = content;
         Tag = tag;
     }
 
     /// <summary>True when this cell holds a bound-to-ground value (ValueTag).</summary>
-    public bool HasValue => Tag == CellTag.ValueTag;
+    public bool HasValue => Tag == HeapCellTag.ValueTag;
 
     /// <summary>True when this cell holds a WriterContent with a non-null suspension chain.</summary>
     public bool HasSuspensions => Content is WriterContent wc && wc.Suspensions != null;
@@ -179,10 +179,10 @@ public class HeapFCP
         Hp += 2;
 
         // Writer cell: points TO reader (FCP pattern)
-        Cells.Add(new HeapCell(new Pointer(readerAddr), CellTag.WrtTag));
+        Cells.Add(new HeapCell(new Pointer(readerAddr), HeapCellTag.WrtTag));
 
         // Reader cell: points TO writer
-        Cells.Add(new HeapCell(new Pointer(writerAddr), CellTag.RoTag));
+        Cells.Add(new HeapCell(new Pointer(writerAddr), HeapCellTag.RoTag));
 
         return (writerAddr, readerAddr);
     }
@@ -197,7 +197,7 @@ public class HeapFCP
     public int AllocateImportedReader()
     {
         int readerAddr = Hp++;
-        Cells.Add(new HeapCell(null, CellTag.RoTag));
+        Cells.Add(new HeapCell(null, HeapCellTag.RoTag));
         return readerAddr;
     }
 
@@ -211,7 +211,7 @@ public class HeapFCP
     public int AllocateImportedWriter()
     {
         int writerAddr = Hp++;
-        Cells.Add(new HeapCell(null, CellTag.WrtTag));
+        Cells.Add(new HeapCell(null, HeapCellTag.WrtTag));
         return writerAddr;
     }
 
@@ -221,15 +221,15 @@ public class HeapFCP
 
     /// <summary>Check if address is a writer cell.</summary>
     public bool IsWriter(int addr) =>
-        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == CellTag.WrtTag;
+        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == HeapCellTag.WrtTag;
 
     /// <summary>Check if address is a reader cell.</summary>
     public bool IsReader(int addr) =>
-        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == CellTag.RoTag;
+        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == HeapCellTag.RoTag;
 
     /// <summary>Check if address is a value cell (bound to ground).</summary>
     public bool IsValue(int addr) =>
-        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == CellTag.ValueTag;
+        addr >= 0 && addr < Cells.Count && Cells[addr].Tag == HeapCellTag.ValueTag;
 
     // ==========================================================================
     // Pointer Navigation (Section 7 of spec)
@@ -294,7 +294,7 @@ public class HeapFCP
     public int? TryWriterForReader(int readerAddr)
     {
         var cell = Cells[readerAddr];
-        if (cell.Tag != CellTag.RoTag)
+        if (cell.Tag != HeapCellTag.RoTag)
         {
             return null;
         }
@@ -316,7 +316,7 @@ public class HeapFCP
     public int? ReaderForWriter(int writerAddr)
     {
         var cell = Cells[writerAddr];
-        if (cell.Tag != CellTag.WrtTag)
+        if (cell.Tag != HeapCellTag.WrtTag)
         {
             return null;
         }
@@ -326,7 +326,7 @@ public class HeapFCP
         {
             int target = ptr1.TargetAddr;
             // Verify it's the paired reader (points back to this writer) — BIDIRECTIONAL CHECK
-            if (target < Cells.Count && Cells[target].Tag == CellTag.RoTag &&
+            if (target < Cells.Count && Cells[target].Tag == HeapCellTag.RoTag &&
                 Cells[target].Content is Pointer readerPtr && readerPtr.TargetAddr == writerAddr)
             {
                 return target; // Confirmed bidirectional - this is the paired reader
@@ -386,7 +386,7 @@ public class HeapFCP
     {
         int current = startAddr;
         var visited = new HashSet<int>();
-        CellTag? previousTag = null; // Track previous tag for WxW detection
+        HeapCellTag? previousTag = null; // Track previous tag for WxW detection
 
         while (true)
         {
@@ -400,7 +400,7 @@ public class HeapFCP
 
             // Per spec Section 4.5: WxW detection during deref
             // If we followed a pointer from a writer and landed on another writer, that's a violation
-            if (previousTag == CellTag.WrtTag && cell.Tag == CellTag.WrtTag)
+            if (previousTag == HeapCellTag.WrtTag && cell.Tag == HeapCellTag.WrtTag)
             {
                 throw new InvalidOperationException(
                     $"SRSW violation: writer at {visited.ElementAt(visited.Count - 2)} points to writer at {current}");
@@ -408,7 +408,7 @@ public class HeapFCP
 
             switch (cell.Tag)
             {
-                case CellTag.RoTag:
+                case HeapCellTag.RoTag:
                     // Reader cell
                     if (cell.Content is VariableEntry entryRo)
                     {
@@ -428,7 +428,7 @@ public class HeapFCP
                     }
                     throw new InvalidOperationException($"Reader cell at {current} has invalid content: {cell.Content}");
 
-                case CellTag.WrtTag:
+                case HeapCellTag.WrtTag:
                     // Writer cell
                     if (cell.Content is VariableEntry entryWrt)
                     {
@@ -450,7 +450,7 @@ public class HeapFCP
                     {
                         int target = ptrWrt.TargetAddr;
                         // Check if pointer is to paired reader (unbound) or to bound value
-                        if (target < Cells.Count && Cells[target].Tag == CellTag.RoTag)
+                        if (target < Cells.Count && Cells[target].Tag == HeapCellTag.RoTag)
                         {
                             if (Cells[target].Content is Pointer readerContent && readerContent.TargetAddr == current)
                             {
@@ -466,12 +466,12 @@ public class HeapFCP
                     }
                     throw new InvalidOperationException($"Writer cell at {current} has invalid content: {cell.Content}");
 
-                case CellTag.ValueTag:
+                case HeapCellTag.ValueTag:
                     // Bound to ground value
                     return (Term)cell.Content!;
 
                 default:
-                    throw new InvalidOperationException($"Unknown CellTag: {cell.Tag}");
+                    throw new InvalidOperationException($"Unknown HeapCellTag: {cell.Tag}");
             }
         }
     }
@@ -505,7 +505,7 @@ public class HeapFCP
     public List<GoalRef> BindWriterWithCallbackControl(int writerAddr, Term value, bool fireCallback)
     {
         var cell = Cells[writerAddr];
-        if (cell.Tag != CellTag.WrtTag)
+        if (cell.Tag != HeapCellTag.WrtTag)
         {
             throw new InvalidOperationException(
                 $"bindWriter called on non-writer cell at {writerAddr} (tag: {cell.Tag})");
@@ -521,7 +521,7 @@ public class HeapFCP
 
         // Bind to value (in-place mutation — BOTH fields on same HeapCell instance)
         cell.Content = value;
-        cell.Tag = CellTag.ValueTag;
+        cell.Tag = HeapCellTag.ValueTag;
 
         // Notify external observer if registered
         if (fireCallback)
@@ -560,14 +560,14 @@ public class HeapFCP
     public List<GoalRef> BindWriterToReader(int writerAddr, int readerAddr)
     {
         var writerCell = Cells[writerAddr];
-        if (writerCell.Tag != CellTag.WrtTag)
+        if (writerCell.Tag != HeapCellTag.WrtTag)
         {
             throw new InvalidOperationException(
                 $"bindWriterToReader called on non-writer at {writerAddr}");
         }
 
         var readerCell = Cells[readerAddr];
-        if (readerCell.Tag != CellTag.RoTag)
+        if (readerCell.Tag != HeapCellTag.RoTag)
         {
             throw new InvalidOperationException(
                 $"bindWriterToReader target is not a reader at {readerAddr}");
@@ -622,7 +622,7 @@ public class HeapFCP
     public void SuspendOnWriter(int writerAddr, SuspensionRecord record)
     {
         var cell = Cells[writerAddr];
-        if (cell.Tag != CellTag.WrtTag)
+        if (cell.Tag != HeapCellTag.WrtTag)
         {
             throw new InvalidOperationException($"suspendOnWriter called on non-writer at {writerAddr}");
         }
@@ -670,7 +670,7 @@ public class HeapFCP
             return;
         }
 
-        if (cell.Tag != CellTag.RoTag || cell.Content is not Pointer ptr)
+        if (cell.Tag != HeapCellTag.RoTag || cell.Content is not Pointer ptr)
         {
             throw new InvalidOperationException(
                 $"suspendOnReader called on invalid reader at {readerAddr}");
@@ -818,9 +818,9 @@ public class HeapFCP
     /// <para>
     /// Heap structure transformation:
     /// <list type="bullet">
-    /// <item>BEFORE (unbound imported reader): cells[readerAddr] = HeapCell(VariableEntry(...), CellTag.RoTag)</item>
-    /// <item>AFTER (bound imported reader): cells[readerAddr] = HeapCell(Pointer(valueCellAddr), CellTag.RoTag)</item>
-    /// <item>AFTER (value cell): cells[valueCellAddr] = HeapCell(value, CellTag.ValueTag)</item>
+    /// <item>BEFORE (unbound imported reader): cells[readerAddr] = HeapCell(VariableEntry(...), HeapCellTag.RoTag)</item>
+    /// <item>AFTER (bound imported reader): cells[readerAddr] = HeapCell(Pointer(valueCellAddr), HeapCellTag.RoTag)</item>
+    /// <item>AFTER (value cell): cells[valueCellAddr] = HeapCell(value, HeapCellTag.ValueTag)</item>
     /// </list>
     /// </para>
     /// <para>
@@ -838,7 +838,7 @@ public class HeapFCP
     public List<GoalRef> BindImportedReader(int readerAddr, Term value, VariableEntry entry)
     {
         var cell = Cells[readerAddr];
-        if (cell.Tag != CellTag.RoTag)
+        if (cell.Tag != HeapCellTag.RoTag)
         {
             throw new InvalidOperationException(
                 $"bindImportedReader called on non-reader cell at {readerAddr} (tag: {cell.Tag})");
@@ -860,7 +860,7 @@ public class HeapFCP
         // Allocate a value cell for the term and point reader to it
         // IMPORTANT: Hp++ immediately followed by Cells.Add — HP-cells-length sync invariant
         int valueCellAddr = Hp++;
-        Cells.Add(new HeapCell(value, CellTag.ValueTag));
+        Cells.Add(new HeapCell(value, HeapCellTag.ValueTag));
         cell.Content = new Pointer(valueCellAddr);
 
         return activations;
@@ -927,17 +927,17 @@ public class HeapFCP
     public bool IsReaderBound(int readerAddr)
     {
         var cell = Cells[readerAddr];
-        if (cell.Tag != CellTag.RoTag) return false;
+        if (cell.Tag != HeapCellTag.RoTag) return false;
 
         if (cell.Content is Pointer ptr)
         {
             var targetCell = Cells[ptr.TargetAddr];
-            if (targetCell.Tag == CellTag.WrtTag)
+            if (targetCell.Tag == HeapCellTag.WrtTag)
             {
                 // Local reader - check if writer is fully bound
                 return IsFullyBound(ptr.TargetAddr);
             }
-            else if (targetCell.Tag == CellTag.ValueTag)
+            else if (targetCell.Tag == HeapCellTag.ValueTag)
             {
                 // Imported reader, bound via BindImportedReader
                 return true;
@@ -953,17 +953,17 @@ public class HeapFCP
     public Term? GetReaderValue(int readerAddr)
     {
         var cell = Cells[readerAddr];
-        if (cell.Tag != CellTag.RoTag) return null;
+        if (cell.Tag != HeapCellTag.RoTag) return null;
 
         if (cell.Content is Pointer ptr)
         {
             var targetCell = Cells[ptr.TargetAddr];
-            if (targetCell.Tag == CellTag.WrtTag)
+            if (targetCell.Tag == HeapCellTag.WrtTag)
             {
                 // Local reader - get writer value
                 return GetValue(ptr.TargetAddr);
             }
-            else if (targetCell.Tag == CellTag.ValueTag)
+            else if (targetCell.Tag == HeapCellTag.ValueTag)
             {
                 // Imported reader, bound via BindImportedReader - value is in the cell
                 return (Term)targetCell.Content!;
@@ -1010,7 +1010,7 @@ public class HeapFCP
     public bool IsImportedReader(int readerAddr)
     {
         var cell = Cells[readerAddr];
-        if (cell.Tag != CellTag.RoTag) return false;
+        if (cell.Tag != HeapCellTag.RoTag) return false;
 
         if (cell.Content is VariableEntry)
         {
@@ -1022,7 +1022,7 @@ public class HeapFCP
             // Could be local reader (points to writer) or bound imported reader (points to ValueTag)
             var targetCell = Cells[ptr.TargetAddr];
             // If target is ValueTag, it was bound via BindImportedReader
-            return targetCell.Tag == CellTag.ValueTag;
+            return targetCell.Tag == HeapCellTag.ValueTag;
         }
         return false;
     }
@@ -1095,7 +1095,7 @@ public class HeapFCP
         {
             // Allocate a ValueTag cell containing the constant
             int addr = Hp++;
-            Cells.Add(new HeapCell(constTerm, CellTag.ValueTag));
+            Cells.Add(new HeapCell(constTerm, HeapCellTag.ValueTag));
             return addr;
         }
 
@@ -1110,7 +1110,7 @@ public class HeapFCP
             }
             // Allocate a ValueTag cell containing the StructTerm with VarRef args
             int addr = Hp++;
-            Cells.Add(new HeapCell(new StructTerm(structTerm.Functor, heapArgs), CellTag.ValueTag));
+            Cells.Add(new HeapCell(new StructTerm(structTerm.Functor, heapArgs), HeapCellTag.ValueTag));
             return addr;
         }
 
@@ -1118,7 +1118,7 @@ public class HeapFCP
         {
             // MutualRefTerm contains a writer address for circular structures
             int addr = Hp++;
-            Cells.Add(new HeapCell(mutualRefTerm, CellTag.ValueTag));
+            Cells.Add(new HeapCell(mutualRefTerm, HeapCellTag.ValueTag));
             return addr;
         }
 
@@ -1126,7 +1126,7 @@ public class HeapFCP
         {
             // ModuleTerm wraps a compiled module binary — stored as opaque value
             int addr = Hp++;
-            Cells.Add(new HeapCell(moduleTerm, CellTag.ValueTag));
+            Cells.Add(new HeapCell(moduleTerm, HeapCellTag.ValueTag));
             return addr;
         }
 

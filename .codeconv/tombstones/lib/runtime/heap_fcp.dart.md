@@ -59,7 +59,10 @@ plan_started_at: '2026-05-21T15:18:03Z'
 plan_completed_at: '2026-05-21T15:24:01Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/heap_fcp.dart.md
 open_escalation_count: 0
-codegen_started_at: '2026-05-28T09:42:07Z'
+codegen_completed_at: '2026-05-28T11:48:53Z'
+target_cs_path: out/csharp/lib/runtime/heap_fcp.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 FCP Two-Cell Heap with Pointer Architecture
