@@ -13,6 +13,7 @@
     <!-- codeconv-codegen append point — keep one entry per line, sorted. -->
     <Compile Include="lib/analysis/analysis_phase.cs" />
     <Compile Include="lib/analysis/type_checker/mode.cs" />
+    <Compile Include="lib/analysis/type_checker/moded_term.cs" />
     <Compile Include="lib/analysis/type_checker/prelude.cs" />
     <Compile Include="lib/analysis/type_checker/type_ast.cs" />
     <Compile Include="lib/bytecode/opcodes.cs" />
@@ -25,5 +26,10 @@
     <Compile Include="lib/multiagent/boot_loader.cs" />
     <Compile Include="lib/multiagent/global_writers_table.cs" />
     <Compile Include="lib/multiagent/message_queue.cs" />
+    <Compile Include="lib/multiagent/repl_play_runner.cs" />
+    <Compile Include="lib/runtime/cells.cs" />
+    <Compile Include="lib/runtime/machine_state.cs" />
+    <Compile Include="lib/runtime/suspension.cs" />
+    <Compile Include="lib/runtime/terms.cs" />
   </ItemGroup>
 </Project>

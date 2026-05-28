@@ -15,5 +15,6 @@ plan_started_at: '2026-05-21T14:41:27Z'
 plan_completed_at: '2026-05-21T14:45:13Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/goal_queue.dart.md
 open_escalation_count: 0
+codegen_started_at: '2026-05-28T09:10:21Z'
 ---
 
