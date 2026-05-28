@@ -35,6 +35,7 @@ from codeconv.bridge_client import acquire_or_discover
 from codeconv.db.engine import build_engine
 
 from . import artefact as _artefact
+from . import buildprops as _buildprops
 from . import escalations as _esc
 from .buildgate import BUILD_FAIL, BUILD_PASS, NOT_BUILT, BuildResult, run_build, run_test
 from .readiness import (
@@ -569,12 +570,23 @@ def run_codegen_ingest(
             "validation_errors": val_errors,
         }
 
+    # --- Compile-list maintenance (Converted.props). -----------------
+    # The .csproj sets ``EnableDefaultCompileItems=false`` so files only
+    # compile when explicitly listed; the include MUST be in place before
+    # the build runs, else the gate trivially passes on an excluded file.
+    # On fail we revert the include so it cannot poison subsequent files.
+    props_path = _buildprops.converted_props_path(repo_root, root)
+    include_rel = _buildprops.include_relpath(cs_rel, root)
+    _buildprops.update(props_path, add=include_rel)
+
     # --- Build gate (the hard gate). ---------------------------------
     project = _resolve_build_project(repo_root, cs_path, root)
     # Increment 2 runs `dotnet test` (build + execute → test_pass_rate);
     # Increment 1 runs `dotnet build` only. ``build_fn`` overrides both.
     builder = build_fn or (run_test if increment >= 2 else run_build)
     result = builder(project)
+    if result.status != BUILD_PASS:
+        _buildprops.update(props_path, remove=include_rel)
 
     with engine.begin() as conn:
         conn.execute(
