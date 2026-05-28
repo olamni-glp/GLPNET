@@ -1,0 +1,15 @@
+<!--
+  Codegen-managed compile list (feature 020, imported by glp_runtime_net.csproj).
+
+  Each accepted Dart→C# conversion appends one <Compile Include="..."/> here,
+  scoping the library build to files that passed the codeconv-codegen
+  build-gate. Append-only; codegen never removes entries (a divergent
+  re-conversion overwrites the .cs in place, the include stays).
+
+  Initial state: EMPTY — the bulk codegen drive has not started.
+-->
+<Project>
+  <ItemGroup>
+    <!-- codeconv-codegen append point — keep one entry per line, sorted. -->
+  </ItemGroup>
+</Project>

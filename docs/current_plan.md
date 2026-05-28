@@ -14,11 +14,12 @@ Handoff: `specs/020-trace-equivalence-fidelity/HANDOFF-implement.md`
 
 ## POSITION (update on every phase boundary)
 
-- **Current phase**: Phase 3 — US1 oracle MVP (T013–T022). Pure oracle core landed.
-- **Current task**: T016 (`corpus.py`) ← CURRENT. T013/T014/T015 (pure `normalize.py`/`relation.py`/`bytecode_diff.py`) DONE + SC-005 tests T020/T021 DONE (the Phase-3 restart-green bar). Remaining Phase 3: T016 corpus, T017 C# instrumentation (`@needs_runtime`), T018 capture, T019 compare/bytecode-diff CLI, T022 e2e (`@needs_runtime`). Phases 1–2 DONE.
-- **Last green baseline**: T001 done 2026-05-27 — full suite 401 passed / 3 skipped / 11 bridge-spawn-timeout "failures", ALL reproduced GREEN in isolation (see flakiness note). Accepted as green. NOTE 2026-05-27: `-m "not needs_bridge and not needs_runtime"` does NOT shrink the suite much — most codegen/convspec tests use the bridge WITHOUT the `needs_bridge` marker (~7–9 s each, 439 total). For a truly fast pure run, name the pure test files explicitly (`test_equiv_*`, `test_fidelity_metric`, `test_trace_normalize`). A full-suite collision with concurrent sessions hung a run at 23:39→23:50 (killed); 1–131/439 were green with no regression before kill.
-- **Last checkpoint commit**: `9710ce10` (2026-05-27) — Setup + Foundational (T001–T012), 14 pure tests green. NOT pushed (Gabi's call). T013–T015+T020–T021 checkpoint commit follows.
+- **Current phase**: Phase 4 — US2 strict tier (T023–T029). Step-side plumbing landed; bulk codegen is the gated long-pole.
+- **Current task**: **NEXT SESSION = A (bulk codegen drive via `/codeconv-codegen`)** — see "Safe restart for A (bulk codegen)" at the bottom of this ledger. After bulk codegen produces a runnable C# REPL: T017 (live trace instrumentation), T022 (`@needs_runtime` e2e), then T026–T029 (CLI next/status/ingest/retry/escalations + `/codeconv-equiv` skill + strict-tier gate test). T025 (durable-stage wiring) DONE this session.
+- **Last green baseline**: 46/46 pure equiv tests + 15/15 isolated planagents (warm bridge) green 2026-05-28. The full suite still has the pre-existing `@needs_bridge` skipif-not-a-marker flakiness — see Bridge-test flakiness section. NOTE: `-m "not needs_bridge"` filtering does NOT exclude these (skipif decorator ≠ pytest marker); for a fast pure run, name the pure test files explicitly.
+- **Last checkpoint commits** (chain, 2026-05-28): `824b8d46` T016 corpus.py + reviewed `.codeconv/equiv-manifest/corpus.yml` (256 sources; book 141 exact) + materialized split into subsystems.yml · `2ae54423` T018/T019 capture/compare/bytecode-diff CLI (standalone deterministic verdict over recorded artifacts; **DB writes deferred to durable step** — Gabi decision b) + shared `codeconv.db.engine.connect` (Gabi decision a) · `58bfbf99` T023/T024 readiness + durable-step PURE core (`compute_step_result`) · **this turn**: T025 (wire `step_equiv` into `durable/steps.py` + `durable/workflows.py`) + C# REPL infrastructure (`out/csharp/glp_runtime_net.csproj`/`.sln` + `Converted.props` + `glp_repl/{glp_repl.csproj,Program.cs}` placeholder). **NOT yet committed this turn — commit ID will follow.** All commits on branch `020-trace-equivalence-fidelity`; NOT pushed (Gabi's call).
 - **Last GEPA artifact written**: — (none; US3 not reached)
+- **C# REPL state**: `out/csharp/` has 177 feature-016 scaffold stubs (Dart content under `.cs`); 0 codegen rows; 20 ready; 75 files in scope. `glp_runtime_net.sln` builds GREEN with `dotnet build` (lib compiles to empty assembly via `EnableDefaultCompileItems=false` + empty `Converted.props`; `glp_repl` exe builds via the placeholder `Program.cs`). Bulk codegen via `/codeconv-codegen` is what populates `Converted.props` and the actual library.
 
 ### Phase 1 Setup status — DONE
 - [X] T001 — baseline accepted green (see above).
@@ -63,9 +64,9 @@ only Gabi merges). The commit is what makes the restart trivial.
       Restart-green: 019 baseline green (modulo bridge flakiness) + `tools/equiv` auto-discovered + collect-only clean.
 - [X] **Phase 2 Foundational** (T005–T012) — DONE 2026-05-27. migration `0008` (single head off `0007`), `trace.py`, `fidelity.py`, `manifest.py`, `subsystems.yml`, tombstone keys.
       Restart-green: 14 pure tests GREEN (T012 tier boundaries + offline single-head/chain). Manifest validated vs real inventory (0 ties/0 unclassified). Bridge-gated migrate-idempotency (T006/0008) deferred to full checkpoint run. **Runtime-free.**
-- [~] **Phase 3 US1 oracle (MVP)** (T013–T022) — IN PROGRESS. DONE: T013 `normalize.py` (first-occ heap→logical relabel + writer-MGU causal edges; canonical wire-format `parse_dart`/`parse_csharp`), T014 `relation.py` (OUTCOME / STRICT total-order / DYNAMIC partial-order via causal-canonical-key iso), T015 `bytecode_diff.py`, T020 + T021 SC-005 batteries (+ T013 parser tests). **Restart-green ACHIEVED: T020 (no false divergence, incl. heap-relabel + independent-goal reorder) + T021 (no false equivalence, incl. eager-writer-bind) — 21/21 pure green.** REMAINING: T016 `corpus.py`, T017 C# instrumentation (`@needs_runtime`), T018 `capture`, T019 `compare`/`bytecode-diff` CLI (standalone, NO DBOS), T022 e2e (`@needs_runtime`).
+- [~] **Phase 3 US1 oracle (MVP)** (T013–T022) — DONE except runtime-gated tail. T013/T014/T015 (pure normalize/relation/bytecode_diff) + T016 (corpus.py + reviewed corpus.yml) + T018 (capture orchestration; live-spawn backend gated on T017) + T019 (compare/bytecode-diff standalone deterministic, NO DB write — Gabi decision b) + T020/T021 (SC-005 batteries). 46/46 pure equiv tests green. REMAINING (runtime-gated, blocked on bulk codegen → runnable C# REPL): T017 live C# REPL trace instrumentation (`@needs_runtime`), T022 e2e (`@needs_runtime`).
       Finding (no escalation; R10/B1): live Dart `:trace` is reduction-level only — fine-grained UNIFY/WRITER_BIND/REACTIVATE/BYTECODE_OP events live in `:debug` per-op prints; `parse_dart` live-text wiring consumes both, finalized at T017/T022 against real captures.
-- [ ] **Phase 4 US2 strict tier** (T023–T029) — `readiness.py`, durable `equiv` step wrapping US1 compare, stage wiring, `equiv next|status|ingest|retry|aggregate-escalations`, `/codeconv-equiv` skill.
+- [~] **Phase 4 US2 strict tier** (T023–T029) — STEP-SIDE PLUMBING LANDED. T023 `readiness.py` (PURE, four-state classify + curriculum order) + T024 durable equiv-step PURE core (`workflow.compute_step_result` + `step_equiv` bridge wrapper) + T025 (this session: registered `step_equiv` in `durable/steps.py`, placement note in `durable/workflows.py`; equiv mirrors codegen's separately-driven pattern — registered but NOT in `PER_UNIT_STAGES`, driven by `/codeconv-equiv`). REMAINING: T026 (`equiv next/status/ingest/retry` CLI), T027 (`equiv aggregate-escalations`), T028 (`/codeconv-equiv` skill), T029 (`@needs_runtime` strict-tier gate test). Most need the runnable C# REPL → bulk codegen first.
       Restart-green: T029 strict-tier gate (`@needs_runtime`).
 - [ ] **Phase 5 US3 real GEPA (OFFLINE)** (T030–T038) — rewire `codegen_opt` to `dspy.GEPA`, metric→`fidelity.py`, datasets, per-subsystem prompts + `_base.md`, `/codeconv-codegen-opt` extension.
       Restart-green: T037 (mocked-LM ≥ baseline + budget cap) + T038 (no-LM-import on production path). **See GEPA restart notes below.**
@@ -138,6 +139,78 @@ timeout is NOT a regression — re-run that test alone to confirm green before t
 A real regression is an assertion on data (row contents, diff, tombstone), not a spawn timeout.
 The full suite takes ~1 h wall-clock; for fast iteration use pure-subset runs
 (`-m "not needs_bridge and not needs_runtime"`) and reserve the full bridge run for phase checkpoints.
+
+---
+
+## Safe restart for A (bulk codegen drive) — 2026-05-28
+
+**This is the next session's job.** Gabi's plan: B (infra) DONE this session → C (T025
+durable wiring) DONE this session → **A (bulk codegen) in a NEW dedicated session**.
+
+### Mission
+Convert the 75 in-scope Dart files under `glp_runtime/lib/...` to C# under `out/csharp/lib/...`
+via the `/codeconv-codegen` agent loop, in dependency order, until the strict-tier subsystems
+(`heap` / `bytecode` / `compiler` / `runtime-core`) compile as a coherent library and a
+runnable `glp_repl` executable can be built. This unblocks T017 (live trace instrumentation)
+and T022 (e2e). The conversion is LLM-driven, build-gated, escalate-don't-guess (019 design).
+
+### Starting state (committed; verify on entry)
+- `out/csharp/glp_runtime_net.sln` + `glp_runtime_net.csproj` + `Converted.props` + `glp_repl/{glp_repl.csproj,Program.cs}` ALL build green (`dotnet build out/csharp/glp_runtime_net.sln` → 0 errors, ~6 s).
+- 177 feature-016 scaffold stubs (Dart content under `.cs`) under `out/csharp/lib/`,
+  EXCLUDED from compilation by `EnableDefaultCompileItems=false` + empty `Converted.props`.
+- `codeconv codegen status` (`--data-dir C:/pglite/research/glpnet`): `files_total=75,
+  codegen_ready=20, not_started=75, optimized_prompt=false, prompt_warning="no optimized
+  prompt; using baseline"`. The 20 ready files (topo_level=0) are the leaves — start there.
+- Per-subsystem optimized prompts (T036) NOT authored → baseline prompt is the active one.
+  This is acceptable for the first pass (the bulk drive); GEPA refinement (US3) is later.
+
+### What's needed before the first `/codeconv-codegen` invocation
+1. **Append hook in `codeconv/src/codeconv/tools/codegen/workflow.py`** — on a successful
+   build-gate accept, append `<Compile Include="lib/<rel>.cs" />` to `out/csharp/Converted.props`
+   (idempotent — don't dup). Roughly 10–15 lines of code. The build-gate must run AFTER the
+   include is in place, else the gate trivially passes on an unincluded file. Order:
+   write `.cs` → append to `Converted.props` → `run_build` → on fail, optionally revert the
+   append (or leave + let the next attempt overwrite). Keep the revert simple.
+2. **Verify**: with `Converted.props` listing the first file, `dotnet build out/csharp/glp_runtime_net.sln`
+   must still pass (catches a workflow misuse before bulk).
+
+### Bulk drive loop (per file)
+1. `codeconv --data-dir C:/pglite/research/glpnet codegen next --json` → pick one ready file.
+2. Invoke `/codeconv-codegen` for that file. The skill orchestrates: read the plan + convspec +
+   the Dart source, write `out/csharp/<rel>.cs`, run the build-gate (`dotnet build` via the
+   new Converted.props), accept on pass / escalate on fail (escalation artifact under
+   `.codeconv/codegen-escalations/<rel>.dart.md`).
+3. On accept → `dart_codegen.codegen_completed_at` is set → the file unblocks its downstream.
+4. Loop to next ready. Re-check `codegen status` periodically to confirm progress + green.
+
+### Build-time test (cheap; run every ~5–10 files accepted)
+- `dotnet build out/csharp/glp_runtime_net.sln --nologo -v quiet` → must stay GREEN.
+- A red build is a regression in the LAST converted file → escalate (the build-gate should
+  have caught it; if it slipped through, there's a workflow bug — STOP & report).
+
+### Stopping conditions for the session
+- All 75 files converted + library + REPL placeholder build green → ready for **T017**
+  (replace `glp_repl/Program.cs` with the converted REPL + add `:trace` instrumentation
+  per `contracts/trace_normalization.md`).
+- Context pressure → checkpoint commit ("bulk codegen: N/75 files converted; build green"),
+  update POSITION above, signal Gabi for the NEXT bulk session.
+
+### Hard discipline (re-read first on entry)
+- **Spec-first** (CLAUDE.md): conversion idioms come from `.codeconv/conversion-plans/<rel>.dart.md`
+  + `.codeconv/conversion-specs/<rel>.dart.md` (017/018 artifacts) + `conversion_idioms` KB. The
+  agent DOES NOT INVENT — it follows the plan/spec; ambiguities STOP and ask.
+- **No LM call from `tools/codegen` / `tools/equiv` / `durable/`** (SC-008). The agent (Claude)
+  IS the LM here; `tools/codegen` itself stays LM-free — the agent runs OUTSIDE the tool.
+- **No `git add -A`**. Stage by name. Commit boundaries: every accepted file OR every N files
+  (e.g., N=10) with a one-line checkpoint message.
+- **`--data-dir C:/pglite/research/glpnet`** on every bridge-touching call (CLAUDE.md mandate).
+
+### Why NOT this session
+This is a long, LM-heavy, file-by-file synthesis loop. Doing it here would burn the context
+window on a small number of files. The dedicated session starts fresh, with this ledger as
+its restart map, and runs as long as it can. Signal Gabi when ready to start that session.
+
+---
 
 ## Context
 

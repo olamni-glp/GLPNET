@@ -214,12 +214,47 @@ def step_codegen(
     return run_codegen_step(repo_root, data_dir=data_dir, rel_path=path)
 
 
+@_dbos_step("equiv")
+def step_equiv(
+    repo_root: str,
+    tombstone_key: str,
+    source_path: str,
+    *,
+    data_dir: Optional[str] = None,
+) -> dict:
+    """Differential trace-equivalence stage (feature 020, T024) AFTER
+    ``codegen``. Calls ``tools.equiv.workflow.step_equiv`` verbatim (D2):
+    deterministic verdict ingest of recorded golden+candidate traces +
+    two-phase ``dart_equivalence`` write. Returns a typed outcome dict —
+    ``{"kind":"needs_agent_work",...}`` when the recorded traces are
+    absent (the ``/codeconv-equiv`` skill spawns ``capture``, dual-REPL,
+    and re-drives; on re-drive ``compute_step_result`` finds the traces
+    → applies the pure ``relation.py`` → ``compared``);
+    ``{"kind":"compared", "verdict":"equivalent|divergent", ...}`` on a
+    successful comparison; ``{"kind":"bad_data",...}`` on misconfig
+    (unknown source / unclassifiable key). Replay-safe (R12): the body is
+    a deterministic function of recorded inputs + the idempotent
+    ``upsert_compared`` (``ON CONFLICT`` ``OR``-merges build/trace flags),
+    so a replayed step writes the same row. NEVER raises on verdict
+    outcomes (``divergent`` / ``needs_agent_work`` are normal results)."""
+    from codeconv.tools.equiv.workflow import step_equiv as _eq_step
+    from pathlib import Path as _P
+
+    return _eq_step(
+        repo_root=_P(repo_root),
+        data_dir=_P(data_dir) if data_dir else None,
+        tombstone_key=tombstone_key,
+        source_path=source_path,
+    )
+
+
 __all__ = [
     "bind_dbos_steps",
     "step_codegen",
     "step_convspec",
     "step_depgraph_compute",
     "step_discover",
+    "step_equiv",
     "step_plan",
     "step_scaffold",
 ]
