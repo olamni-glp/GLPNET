@@ -17,5 +17,9 @@ plan_started_at: '2026-05-21T14:58:31Z'
 plan_completed_at: '2026-05-21T15:09:13Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/subtyping.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:24:56Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/subtyping.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

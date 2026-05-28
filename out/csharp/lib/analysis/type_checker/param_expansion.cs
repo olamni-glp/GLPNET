@@ -1,4 +1,4 @@
-// lib/analysis/type_checker/param_expansion.dart
+// lib/analysis/type_checker/param_expansion.cs
 //
 // Expand parameterized types to monomorphic equivalents.
 // Runs after parsing and before type automaton construction.
@@ -6,471 +6,546 @@
 // Spec: docs/type system/typed-program.md, section "Parameterized Types"
 // Paper: Section 8, Definition 8.1
 
-import '../../compiler/ast.dart' as ast;
-import 'type_ast.dart';
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using GlpRuntime.Compiler;
 
-/// Expand all parameterized types in a module to monomorphic equivalents.
-/// Returns a new Module with only monomorphic type definitions and
-/// procedure declarations. The original Module is not modified.
-///
-/// If the module has no parameterized types, returns it unchanged.
-ast.Module expandParameterizedTypes(ast.Module module, {
-    Set<String> knownTypeNames = const {},
-    Map<String, TypeDef> externalTemplates = const {},
-}) {
-  // Step 1: Separate templates from monomorphic types
-  final templates = <String, TypeDef>{};
-  final monoTypeDefs = <TypeDef>[];
+namespace GlpRuntime.Analysis.TypeChecker
+{
+    /// <summary>
+    /// Mono-morphises parameterised type templates in a GLP Module AST.
+    /// Pure static helper — no mutable shared state.
+    /// </summary>
+    public static class ParamExpansion
+    {
+        /// <summary>
+        /// Expand all parameterized types in a module to monomorphic equivalents.
+        /// Returns a new Module with only monomorphic type definitions and
+        /// procedure declarations. The original Module is not modified.
+        ///
+        /// If the module has no parameterized types, returns it unchanged.
+        /// </summary>
+        public static Module ExpandParameterizedTypes(
+            Module module,
+            IReadOnlySet<string>? knownTypeNames = null,
+            IReadOnlyDictionary<string, TypeDef>? externalTemplates = null)
+        {
+            knownTypeNames ??= ImmutableHashSet<string>.Empty;
+            externalTemplates ??= ImmutableDictionary<string, TypeDef>.Empty;
 
-  for (final td in module.typeDefs) {
-    if (td.isParameterized) {
-      templates[td.name] = td;
-    } else {
-      monoTypeDefs.add(td);
-    }
-  }
+            // Step 1: Separate templates from monomorphic types
+            var templates = new Dictionary<string, TypeDef>(StringComparer.Ordinal);
+            var monoTypeDefs = new List<TypeDef>();
 
-  // Merge external templates (from prelude/ancestor scopes).
-  // Local templates take precedence over external ones.
-  for (final entry in externalTemplates.entries) {
-    templates.putIfAbsent(entry.key, () => entry.value);
-  }
+            foreach (var td in module.TypeDefs)
+            {
+                if (td.IsParameterized)
+                    templates[td.Name] = td;
+                else
+                    monoTypeDefs.Add(td);
+            }
 
-  // Note: don't return early if templates is empty — proc decls may reference
-  // prelude templates (e.g., Stream(X)) and still need type param detection.
+            // Merge external templates (from prelude/ancestor scopes).
+            // Local templates take precedence over external ones.
+            foreach (var entry in externalTemplates)
+                templates.TryAdd(entry.Key, entry.Value);
 
-  // Known monomorphic type names: used to collapse all-wildcard expansions
-  // (e.g., Stream(_) → Stream) when a monomorphic version exists.
-  final monoNames = <String>{
-    ...monoTypeDefs.map((td) => td.name),
-    ...knownTypeNames,
-  };
+            // Note: don't return early if templates is empty — proc decls may reference
+            // prelude templates (e.g., Stream(X)) and still need type param detection.
 
-  // Step 2: Collect all instantiations from type defs and proc decls
-  final instantiations = <String, List<TypeExpr>>{}; // expanded name -> type args
+            // Known monomorphic type names: used to collapse all-wildcard expansions
+            // (e.g., Stream(_) → Stream) when a monomorphic version exists.
+            var monoNames = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var td in monoTypeDefs)
+                monoNames.Add(td.Name);
+            monoNames.UnionWith(knownTypeNames);
 
-  // Scan monomorphic type def bodies
-  for (final td in monoTypeDefs) {
-    for (final alt in td.alternatives) {
-      _collectInstantiations(alt, templates, instantiations);
-    }
-  }
+            // Step 2: Collect all instantiations from type defs and proc decls
+            var instantiations = new Dictionary<string, IReadOnlyList<TypeExpr>>(StringComparer.Ordinal); // expanded name -> type args
 
-  // Scan procedure declarations.
-  // For parameterized proc decls (those with bare type params), skip
-  // instantiations that contain type parameter names — those are templates,
-  // not concrete instantiations.
-  for (final pd in module.procDeclarations) {
-    final procTypeParams = _detectProcTypeParams(pd, templates, monoTypeDefs, knownTypeNames);
-    if (procTypeParams.isEmpty) {
-      // Non-parameterized proc decl: collect all instantiations normally
-      for (final arg in pd.argTypes) {
-        _collectInstantiations(arg, templates, instantiations);
-      }
-    } else {
-      // Parameterized proc decl: only collect instantiations with concrete args
-      for (final arg in pd.argTypes) {
-        _collectInstantiationsInTemplate(arg, templates, instantiations, procTypeParams);
-      }
-    }
-  }
+            // Scan monomorphic type def bodies
+            foreach (var td in monoTypeDefs)
+                foreach (var alt in td.Alternatives)
+                    CollectInstantiations(alt, templates, instantiations);
 
-  // Scan template bodies for cross-references
-  for (final td in templates.values) {
-    for (final alt in td.alternatives) {
-      _collectInstantiationsInTemplate(alt, templates, instantiations, td.typeParams);
-    }
-  }
+            // Scan procedure declarations.
+            // For parameterized proc decls (those with bare type params), skip
+            // instantiations that contain type parameter names — those are templates,
+            // not concrete instantiations.
+            foreach (var pd in module.ProcDeclarations)
+            {
+                var procTypeParams = DetectProcTypeParams(pd, templates, monoTypeDefs, knownTypeNames);
+                if (procTypeParams.Count == 0)
+                {
+                    // Non-parameterized proc decl: collect all instantiations normally
+                    foreach (var arg in pd.ArgTypes)
+                        CollectInstantiations(arg, templates, instantiations);
+                }
+                else
+                {
+                    // Parameterized proc decl: only collect instantiations with concrete args
+                    foreach (var arg in pd.ArgTypes)
+                        CollectInstantiationsInTemplate(arg, templates, instantiations, procTypeParams);
+                }
+            }
 
-  // Step 3: Expand each instantiation using a worklist
-  final expandedDefs = <TypeDef>[];
-  final expanded = <String>{};
+            // Scan template bodies for cross-references
+            foreach (var td in templates.Values)
+                foreach (var alt in td.Alternatives)
+                    CollectInstantiationsInTemplate(alt, templates, instantiations, td.TypeParams);
 
-  while (instantiations.length > expanded.length) {
-    for (final entry in Map.of(instantiations).entries) {
-      if (expanded.contains(entry.key)) continue;
-      final expandedName = entry.key;
-      final typeArgs = entry.value;
-      final templateName = _templateNameFromExpanded(expandedName);
-      final template = templates[templateName];
-      if (template == null) {
-        // Referenced template not found — skip (will be caught by type checker)
-        expanded.add(expandedName);
-        continue;
-      }
-      // Check arity
-      if (template.typeParams.length != typeArgs.length) {
-        expanded.add(expandedName);
-        continue;
-      }
-      // Substitute parameters
-      final substitution = Map<String, TypeExpr>.fromIterables(template.typeParams, typeArgs);
-      final newAlts = template.alternatives
-          .map((alt) => _substituteTypeExpr(alt, substitution, templates, instantiations, monoNames: monoNames))
-          .toList();
-      final processedAlts = newAlts
-          .map((alt) => _replaceParamRefs(alt, templates, monoNames: monoNames))
-          .toList();
-      expandedDefs.add(TypeDef(expandedName, processedAlts, template.line, template.column));
-      expanded.add(expandedName);
-    }
-  }
+            // Step 3: Expand each instantiation using a worklist
+            var expandedDefs = new List<TypeDef>();
+            var expanded = new HashSet<string>(StringComparer.Ordinal);
 
-  // Step 4: Replace references in monomorphic type defs
-  final replacedTypeDefs = monoTypeDefs.map((td) {
-    final newAlts = td.alternatives
-        .map((alt) => _replaceParamRefs(alt, templates, monoNames: monoNames))
-        .toList();
-    return TypeDef(td.name, newAlts, td.line, td.column);
-  }).toList();
+            while (instantiations.Count > expanded.Count)
+            {
+                foreach (var entry in instantiations.ToList())
+                {
+                    if (expanded.Contains(entry.Key)) continue;
+                    var expandedName = entry.Key;
+                    var typeArgs = entry.Value;
+                    var templateName = TemplateNameFromExpanded(expandedName);
+                    if (!templates.TryGetValue(templateName, out var template))
+                    {
+                        // Referenced template not found — skip (will be caught by type checker)
+                        expanded.Add(expandedName);
+                        continue;
+                    }
+                    // Check arity
+                    if (template.TypeParams.Count != typeArgs.Count)
+                    {
+                        expanded.Add(expandedName);
+                        continue;
+                    }
+                    // Substitute parameters
+                    var substitution = template.TypeParams
+                        .Zip(typeArgs, (k, v) => new KeyValuePair<string, TypeExpr>(k, v))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+                    var newAlts = template.Alternatives
+                        .Select(alt => SubstituteTypeExpr(alt, substitution, templates, instantiations, monoNames: monoNames))
+                        .ToList();
+                    var processedAlts = newAlts
+                        .Select(alt => ReplaceParamRefs(alt, templates, monoNames: monoNames))
+                        .ToList();
+                    expandedDefs.Add(new TypeDef(expandedName, processedAlts, template.Line, template.Column));
+                    expanded.Add(expandedName);
+                }
+            }
 
-  // Step 5: Replace references in procedure declarations.
-  // Parameterized proc decls: generate wildcard-instantiated concrete version
-  // (for checking own clauses) AND preserve the parameterized template
-  // (for call-site inference in Case B).
-  final replacedProcDecls = <ProcDecl>[];
-  final paramProcDeclTemplates = <ProcDecl>[];
+            // Step 4: Replace references in monomorphic type defs
+            var replacedTypeDefs = monoTypeDefs
+                .Select(td =>
+                {
+                    var newAlts = td.Alternatives
+                        .Select(alt => ReplaceParamRefs(alt, templates, monoNames: monoNames))
+                        .ToList();
+                    return new TypeDef(td.Name, newAlts, td.Line, td.Column);
+                })
+                .ToList();
 
-  for (final pd in module.procDeclarations) {
-    final procTypeParams = _detectProcTypeParams(pd, templates, monoTypeDefs, knownTypeNames);
-    if (procTypeParams.isNotEmpty) {
-      // Preserve parameterized template for call-site inference
-      final paramTemplate = ProcDecl(pd.name, pd.argTypes, pd.line, pd.column,
-          typeParams: procTypeParams,
-          exported: pd.exported, imported: pd.imported, modulePath: pd.modulePath);
-      paramProcDeclTemplates.add(paramTemplate);
+            // Step 5: Replace references in procedure declarations.
+            // Parameterized proc decls: generate wildcard-instantiated concrete version
+            // (for checking own clauses) AND preserve the parameterized template
+            // (for call-site inference in Case B).
+            var replacedProcDecls = new List<ProcDecl>();
+            var paramProcDeclTemplates = new List<ProcDecl>();
 
-      // Generate wildcard-instantiated concrete version:
-      // Substitute each type param with PrimitiveModeAlt(false) (i.e., _)
-      final wildcardSubst = <String, TypeExpr>{
-        for (final tp in procTypeParams)
-          tp: PrimitiveModeAlt(false, 0, 0),
-      };
-      final wildcardArgTypes = pd.argTypes.map((arg) {
-        final substituted = _substituteTypeExpr(arg, wildcardSubst, templates, instantiations, monoNames: monoNames);
-        return _replaceParamRefs(substituted, templates, monoNames: monoNames);
-      }).toList();
+            foreach (var pd in module.ProcDeclarations)
+            {
+                var procTypeParams = DetectProcTypeParams(pd, templates, monoTypeDefs, knownTypeNames);
+                if (procTypeParams.Count > 0)
+                {
+                    // Preserve parameterized template for call-site inference
+                    var paramTemplate = new ProcDecl(pd.Name, pd.ArgTypes, pd.Line, pd.Column,
+                        typeParams: procTypeParams,
+                        exported: pd.Exported, imported: pd.Imported, modulePath: pd.ModulePath);
+                    paramProcDeclTemplates.Add(paramTemplate);
 
-      replacedProcDecls.add(ProcDecl(pd.name, wildcardArgTypes, pd.line, pd.column,
-          exported: pd.exported, imported: pd.imported, modulePath: pd.modulePath));
-    } else {
-      // Non-parameterized: expand as before
-      final newArgTypes = pd.argTypes
-          .map((arg) => _replaceParamRefs(arg, templates, monoNames: monoNames))
-          .toList();
-      replacedProcDecls.add(ProcDecl(pd.name, newArgTypes, pd.line, pd.column,
-          exported: pd.exported, imported: pd.imported, modulePath: pd.modulePath));
-    }
-  }
+                    // Generate wildcard-instantiated concrete version:
+                    // Substitute each type param with PrimitiveModeAlt(false) (i.e., _)
+                    var wildcardSubst = new Dictionary<string, TypeExpr>(StringComparer.Ordinal);
+                    foreach (var tp in procTypeParams)
+                        wildcardSubst[tp] = new PrimitiveModeAlt(false, 0, 0);
 
-  // Expand any new instantiations generated by wildcard substitution
-  while (instantiations.length > expanded.length) {
-    for (final entry in Map.of(instantiations).entries) {
-      if (expanded.contains(entry.key)) continue;
-      final expandedName = entry.key;
-      final typeArgs = entry.value;
-      final templateName = _templateNameFromExpanded(expandedName);
-      final template = templates[templateName];
-      if (template == null) {
-        expanded.add(expandedName);
-        continue;
-      }
-      if (template.typeParams.length != typeArgs.length) {
-        expanded.add(expandedName);
-        continue;
-      }
-      final substitution = Map<String, TypeExpr>.fromIterables(template.typeParams, typeArgs);
-      final newAlts = template.alternatives
-          .map((alt) => _substituteTypeExpr(alt, substitution, templates, instantiations, monoNames: monoNames))
-          .toList();
-      final processedAlts = newAlts
-          .map((alt) => _replaceParamRefs(alt, templates, monoNames: monoNames))
-          .toList();
-      expandedDefs.add(TypeDef(expandedName, processedAlts, template.line, template.column));
-      expanded.add(expandedName);
-    }
-  }
+                    var wildcardArgTypes = pd.ArgTypes
+                        .Select(arg =>
+                        {
+                            var substituted = SubstituteTypeExpr(arg, wildcardSubst, templates, instantiations, monoNames: monoNames);
+                            return ReplaceParamRefs(substituted, templates, monoNames: monoNames);
+                        })
+                        .ToList();
 
-  return ast.Module(
-    declaration: module.declaration,
-    typeDefs: [...replacedTypeDefs, ...expandedDefs],
-    procDeclarations: replacedProcDecls,
-    paramProcDecls: paramProcDeclTemplates,
-    procedures: module.procedures,
-    compileMode: module.compileMode,
-    line: module.line,
-    column: module.column,
-  );
-}
+                    replacedProcDecls.Add(new ProcDecl(pd.Name, wildcardArgTypes, pd.Line, pd.Column,
+                        exported: pd.Exported, imported: pd.Imported, modulePath: pd.ModulePath));
+                }
+                else
+                {
+                    // Non-parameterized: expand as before
+                    var newArgTypes = pd.ArgTypes
+                        .Select(arg => ReplaceParamRefs(arg, templates, monoNames: monoNames))
+                        .ToList();
+                    replacedProcDecls.Add(new ProcDecl(pd.Name, newArgTypes, pd.Line, pd.Column,
+                        exported: pd.Exported, imported: pd.Imported, modulePath: pd.ModulePath));
+                }
+            }
 
-/// Detect type parameters in a procedure declaration.
-/// A type parameter is a name that:
-///  1. Appears as a bare typeArg inside a TypeRef with typeArgs (e.g., X in Stream(X))
-///  2. Is not a known defined type
-/// Bare top-level unknown types (e.g., MyUndefinedType) are NOT type params —
-/// they are only type params if the same name also appears inside a typeArg.
-List<String> _detectProcTypeParams(ProcDecl pd, Map<String, TypeDef> templates,
-    List<TypeDef> monoTypeDefs, Set<String> externalKnownTypes) {
-  final knownTypes = <String>{
-    ...templates.keys,
-    ...monoTypeDefs.map((td) => td.name),
-    ...TypeRef.builtins,
-    ...externalKnownTypes,
-    'Constant', // also a known type
-  };
-  // Pass 1: collect names that appear as typeArgs of any TypeRef with typeArgs.
-  // These are the "inner" type parameter candidates.
-  final innerCandidates = <String>{};
-  for (final arg in pd.argTypes) {
-    _collectInnerTypeParamCandidates(arg, knownTypes, innerCandidates);
-  }
-  return innerCandidates.toList();
-}
+            // Expand any new instantiations generated by wildcard substitution
+            while (instantiations.Count > expanded.Count)
+            {
+                foreach (var entry in instantiations.ToList())
+                {
+                    if (expanded.Contains(entry.Key)) continue;
+                    var expandedName = entry.Key;
+                    var typeArgs = entry.Value;
+                    var templateName = TemplateNameFromExpanded(expandedName);
+                    if (!templates.TryGetValue(templateName, out var template))
+                    {
+                        expanded.Add(expandedName);
+                        continue;
+                    }
+                    if (template.TypeParams.Count != typeArgs.Count)
+                    {
+                        expanded.Add(expandedName);
+                        continue;
+                    }
+                    var substitution = template.TypeParams
+                        .Zip(typeArgs, (k, v) => new KeyValuePair<string, TypeExpr>(k, v))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+                    var newAlts = template.Alternatives
+                        .Select(alt => SubstituteTypeExpr(alt, substitution, templates, instantiations, monoNames: monoNames))
+                        .ToList();
+                    var processedAlts = newAlts
+                        .Select(alt => ReplaceParamRefs(alt, templates, monoNames: monoNames))
+                        .ToList();
+                    expandedDefs.Add(new TypeDef(expandedName, processedAlts, template.Line, template.Column));
+                    expanded.Add(expandedName);
+                }
+            }
 
-/// Collect type parameter names from inside parameterized type refs.
-/// A candidate is a bare TypeRef name that appears as a typeArg of any
-/// TypeRef with typeArgs, and is not a known type.
-void _collectInnerTypeParamCandidates(TypeExpr expr,
-    Set<String> knownTypes, Set<String> candidates) {
-  if (expr is TypeRef) {
-    if (expr.typeArgs.isNotEmpty) {
-      // Check each typeArg for bare unknown names
-      for (final arg in expr.typeArgs) {
-        if (arg is TypeRef && arg.typeArgs.isEmpty && !knownTypes.contains(arg.name)) {
-          candidates.add(arg.name);
+            return new Module(
+                declaration: module.Declaration,
+                typeDefs: replacedTypeDefs.Concat(expandedDefs).ToList(),
+                procDeclarations: replacedProcDecls,
+                paramProcDecls: paramProcDeclTemplates,
+                procedures: module.Procedures,
+                compileMode: module.CompileMode,
+                line: module.Line,
+                column: module.Column);
         }
-        // Recurse into nested type args
-        _collectInnerTypeParamCandidates(arg, knownTypes, candidates);
-      }
-    }
-    return;
-  }
-  // Recurse into structural types
-  if (expr is StructAlt) {
-    for (final arg in expr.args) {
-      _collectInnerTypeParamCandidates(arg, knownTypes, candidates);
-    }
-  }
-  if (expr is ListConsAlt) {
-    _collectInnerTypeParamCandidates(expr.head, knownTypes, candidates);
-    _collectInnerTypeParamCandidates(expr.tail, knownTypes, candidates);
-  }
-  if (expr is DiffListAlt) {
-    _collectInnerTypeParamCandidates(expr.content, knownTypes, candidates);
-    _collectInnerTypeParamCandidates(expr.hole, knownTypes, candidates);
-  }
-}
 
-/// Generate expanded name: Stream + [Integer] -> "Stream<Integer>"
-/// For nested parameterized refs, recursively uses expanded notation.
-String _expandedName(String templateName, List<TypeExpr> typeArgs) {
-  return '$templateName<${typeArgs.map(_typeExprToCanonical).join(',')}>';
-}
+        /// <summary>
+        /// Detect type parameters in a procedure declaration.
+        /// A type parameter is a name that:
+        ///  1. Appears as a bare typeArg inside a TypeRef with typeArgs (e.g., X in Stream(X))
+        ///  2. Is not a known defined type
+        /// Bare top-level unknown types (e.g., MyUndefinedType) are NOT type params —
+        /// they are only type params if the same name also appears inside a typeArg.
+        /// </summary>
+        private static List<string> DetectProcTypeParams(ProcDecl pd,
+            IDictionary<string, TypeDef> templates,
+            IList<TypeDef> monoTypeDefs,
+            IReadOnlySet<string> externalKnownTypes)
+        {
+            var knownTypes = new HashSet<string>(StringComparer.Ordinal);
+            knownTypes.UnionWith(templates.Keys);
+            knownTypes.UnionWith(monoTypeDefs.Select(td => td.Name));
+            knownTypes.UnionWith(TypeRef.Builtins);
+            knownTypes.UnionWith(externalKnownTypes);
+            knownTypes.Add("Constant"); // also a known type
 
-/// Convert a TypeExpr to its canonical string for expanded-name purposes.
-/// Nested parameterized TypeRefs use angle-bracket notation recursively.
-String _typeExprToCanonical(TypeExpr expr) {
-  if (expr is TypeRef) {
-    if (expr.typeArgs.isNotEmpty) {
-      // Nested parameterized ref: recursively expand
-      return '${expr.name}<${expr.typeArgs.map(_typeExprToCanonical).join(',')}>${expr.isInput ? '?' : ''}';
-    }
-    return expr.toString(); // simple ref: "Integer", "Msg?", etc.
-  }
-  return expr.toString();
-}
-
-/// Extract template name from expanded name: "Stream<Integer>" -> "Stream"
-String _templateNameFromExpanded(String expandedName) {
-  final idx = expandedName.indexOf('<');
-  if (idx < 0) return expandedName;
-  return expandedName.substring(0, idx);
-}
-
-/// Check if a TypeRef references a template with matching arity.
-/// Returns true only if the name is a template AND the type arg count matches.
-bool _isTemplateRef(TypeRef expr, Map<String, TypeDef> templates) {
-  if (expr.typeArgs.isEmpty) return false;
-  final template = templates[expr.name];
-  if (template == null) return false;
-  return expr.typeArgs.length == template.typeParams.length;
-}
-
-/// Collect parameterized type references from a TypeExpr
-void _collectInstantiations(TypeExpr expr, Map<String, TypeDef> templates,
-    Map<String, List<TypeExpr>> instantiations) {
-  if (expr is TypeRef) {
-    if (_isTemplateRef(expr, templates)) {
-      final name = _expandedName(expr.name, expr.typeArgs);
-      instantiations.putIfAbsent(name, () => expr.typeArgs);
-      // Recurse into type args (for nested parameterized types)
-      for (final arg in expr.typeArgs) {
-        _collectInstantiations(arg, templates, instantiations);
-      }
-    }
-    // Also recurse into typeArgs even if not a template (might contain nested refs)
-    for (final arg in expr.typeArgs) {
-      _collectInstantiations(arg, templates, instantiations);
-    }
-    return;
-  }
-  if (expr is StructAlt) {
-    for (final arg in expr.args) {
-      _collectInstantiations(arg, templates, instantiations);
-    }
-  }
-  if (expr is ListConsAlt) {
-    _collectInstantiations(expr.head, templates, instantiations);
-    _collectInstantiations(expr.tail, templates, instantiations);
-  }
-  if (expr is DiffListAlt) {
-    _collectInstantiations(expr.content, templates, instantiations);
-    _collectInstantiations(expr.hole, templates, instantiations);
-  }
-}
-
-/// Collect instantiations from template bodies, skipping type parameter names.
-/// For example, in `Stream(X) ::= [] ; [X | Stream(X)]`, `Stream(X)` in the body
-/// is a recursive self-reference with parameter X, not an instantiation to collect.
-/// But `Pair(Integer, String)` in a template body IS an instantiation.
-void _collectInstantiationsInTemplate(TypeExpr expr, Map<String, TypeDef> templates,
-    Map<String, List<TypeExpr>> instantiations, List<String> templateParams) {
-  if (expr is TypeRef) {
-    if (_isTemplateRef(expr, templates)) {
-      // Check if all args are just bare type parameters — if so, it's a recursive
-      // self-reference, not an instantiation to collect separately.
-      final allParamRefs = expr.typeArgs.every((arg) =>
-          arg is TypeRef && arg.typeArgs.isEmpty && templateParams.contains(arg.name));
-      if (!allParamRefs) {
-        // Contains concrete types — collect any nested instantiations
-        // Use template-aware version to preserve param awareness through nesting
-        for (final arg in expr.typeArgs) {
-          _collectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
+            // Pass 1: collect names that appear as typeArgs of any TypeRef with typeArgs.
+            // These are the "inner" type parameter candidates.
+            var innerCandidates = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var arg in pd.ArgTypes)
+                CollectInnerTypeParamCandidates(arg, knownTypes, innerCandidates);
+            return innerCandidates.ToList();
         }
-      }
-    }
-    for (final arg in expr.typeArgs) {
-      _collectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
-    }
-    return;
-  }
-  if (expr is StructAlt) {
-    for (final arg in expr.args) {
-      _collectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
-    }
-  }
-  if (expr is ListConsAlt) {
-    _collectInstantiationsInTemplate(expr.head, templates, instantiations, templateParams);
-    _collectInstantiationsInTemplate(expr.tail, templates, instantiations, templateParams);
-  }
-  if (expr is DiffListAlt) {
-    _collectInstantiationsInTemplate(expr.content, templates, instantiations, templateParams);
-    _collectInstantiationsInTemplate(expr.hole, templates, instantiations, templateParams);
-  }
-}
 
-/// Substitute type parameters in a TypeExpr.
-/// [monoNames]: set of known monomorphic type names. When all substituted args
-/// are wildcards AND the base name is in monoNames, use the base name directly.
-TypeExpr _substituteTypeExpr(TypeExpr expr, Map<String, TypeExpr> substitution,
-    Map<String, TypeDef> templates, Map<String, List<TypeExpr>> instantiations,
-    {Set<String> monoNames = const {}}) {
-  if (expr is TypeRef) {
-    // If this is a type parameter, substitute it
-    if (substitution.containsKey(expr.name) && expr.typeArgs.isEmpty) {
-      final replacement = substitution[expr.name]!;
-      // Apply isInput from the original reference
-      if (expr.isInput && replacement is TypeRef) {
-        return TypeRef(replacement.name, replacement.line, replacement.column,
-            isInput: true, typeArgs: replacement.typeArgs);
-      }
-      if (expr.isInput && replacement is PrimitiveModeAlt) {
-        return PrimitiveModeAlt(true, replacement.line, replacement.column);
-      }
-      return replacement;
-    }
-    // If this is a parameterized reference to a template with matching arity, record and replace
-    if (_isTemplateRef(expr, templates)) {
-      final substArgs = expr.typeArgs
-          .map((a) => _substituteTypeExpr(a, substitution, templates, instantiations, monoNames: monoNames))
-          .toList();
-      // If all substituted args are wildcards (_) AND a monomorphic type with
-      // the base name exists, use the base name directly.
-      // Stream(_) ≡ Stream when a monomorphic Stream type exists.
-      final allWildcards = substArgs.every((a) => a is PrimitiveModeAlt);
-      if (allWildcards && monoNames.contains(expr.name)) {
-        return TypeRef(expr.name, expr.line, expr.column, isInput: expr.isInput);
-      }
-      final expandedName = _expandedName(expr.name, substArgs);
-      instantiations.putIfAbsent(expandedName, () => substArgs);
-      return TypeRef(expandedName, expr.line, expr.column, isInput: expr.isInput);
-    }
-    return expr;
-  }
-  if (expr is StructAlt) {
-    return StructAlt(expr.functor,
-        expr.args.map((a) => _substituteTypeExpr(a, substitution, templates, instantiations, monoNames: monoNames)).toList(),
-        expr.line, expr.column);
-  }
-  if (expr is ListConsAlt) {
-    return ListConsAlt(
-        _substituteTypeExpr(expr.head, substitution, templates, instantiations, monoNames: monoNames),
-        _substituteTypeExpr(expr.tail, substitution, templates, instantiations, monoNames: monoNames),
-        expr.line, expr.column);
-  }
-  if (expr is DiffListAlt) {
-    return DiffListAlt(
-        _substituteTypeExpr(expr.content, substitution, templates, instantiations, monoNames: monoNames),
-        _substituteTypeExpr(expr.hole, substitution, templates, instantiations, monoNames: monoNames),
-        expr.line, expr.column);
-  }
-  // PrimitiveModeAlt, ConstantAlt, ListNilAlt — no substitution needed
-  return expr;
-}
+        /// <summary>
+        /// Collect type parameter names from inside parameterized type refs.
+        /// A candidate is a bare TypeRef name that appears as a typeArg of any
+        /// TypeRef with typeArgs, and is not a known type.
+        /// </summary>
+        private static void CollectInnerTypeParamCandidates(TypeExpr expr,
+            ISet<string> knownTypes, ISet<string> candidates)
+        {
+            switch (expr)
+            {
+                case TypeRef r:
+                    if (r.TypeArgs.Count > 0)
+                    {
+                        // Check each typeArg for bare unknown names
+                        foreach (var arg in r.TypeArgs)
+                        {
+                            if (arg is TypeRef inner && inner.TypeArgs.Count == 0 && !knownTypes.Contains(inner.Name))
+                                candidates.Add(inner.Name);
+                            // Recurse into nested type args
+                            CollectInnerTypeParamCandidates(arg, knownTypes, candidates);
+                        }
+                    }
+                    break;
+                // Recurse into structural types
+                case StructAlt s:
+                    foreach (var arg in s.Args)
+                        CollectInnerTypeParamCandidates(arg, knownTypes, candidates);
+                    break;
+                case ListConsAlt c:
+                    CollectInnerTypeParamCandidates(c.Head, knownTypes, candidates);
+                    CollectInnerTypeParamCandidates(c.Tail, knownTypes, candidates);
+                    break;
+                case DiffListAlt d:
+                    CollectInnerTypeParamCandidates(d.Content, knownTypes, candidates);
+                    CollectInnerTypeParamCandidates(d.Hole, knownTypes, candidates);
+                    break;
+                default:
+                    break;
+            }
+        }
 
-/// Replace parameterized type refs with expanded names (for non-template types and proc decls).
-/// [monoNames]: when all args are wildcards AND base name is in monoNames, use base name.
-TypeExpr _replaceParamRefs(TypeExpr expr, Map<String, TypeDef> templates,
-    {Set<String> monoNames = const {}}) {
-  if (expr is TypeRef) {
-    if (_isTemplateRef(expr, templates)) {
-      // Replace args recursively first
-      final replacedArgs = expr.typeArgs
-          .map((a) => _replaceParamRefs(a, templates, monoNames: monoNames))
-          .toList();
-      // If all args are wildcards (_) AND base name exists as monomorphic, use base name.
-      final allWildcards = replacedArgs.every((a) => a is PrimitiveModeAlt);
-      if (allWildcards && monoNames.contains(expr.name)) {
-        return TypeRef(expr.name, expr.line, expr.column, isInput: expr.isInput);
-      }
-      final expandedName = _expandedName(expr.name, replacedArgs);
-      return TypeRef(expandedName, expr.line, expr.column, isInput: expr.isInput);
+        /// <summary>
+        /// Generate expanded name: Stream + [Integer] -> "Stream&lt;Integer&gt;"
+        /// For nested parameterized refs, recursively uses expanded notation.
+        /// </summary>
+        private static string ExpandedName(string templateName, IReadOnlyList<TypeExpr> typeArgs) =>
+            $"{templateName}<{string.Join(",", typeArgs.Select(TypeExprToCanonical))}>";
+
+        /// <summary>
+        /// Convert a TypeExpr to its canonical string for expanded-name purposes.
+        /// Nested parameterized TypeRefs use angle-bracket notation recursively.
+        /// </summary>
+        private static string TypeExprToCanonical(TypeExpr expr) =>
+            expr switch
+            {
+                TypeRef { TypeArgs: { Count: > 0 } } r =>
+                    $"{r.Name}<{string.Join(",", r.TypeArgs.Select(TypeExprToCanonical))}>{(r.IsInput ? "?" : "")}",
+                _ => expr.ToString() ?? string.Empty
+            };
+
+        /// <summary>
+        /// Extract template name from expanded name: "Stream&lt;Integer&gt;" -> "Stream"
+        /// </summary>
+        private static string TemplateNameFromExpanded(string expandedName)
+        {
+            // ORDINAL via char-overload of IndexOf
+            var idx = expandedName.IndexOf('<');
+            return idx < 0 ? expandedName : expandedName.Substring(0, idx);
+        }
+
+        /// <summary>
+        /// Check if a TypeRef references a template with matching arity.
+        /// Returns true only if the name is a template AND the type arg count matches.
+        /// </summary>
+        private static bool IsTemplateRef(TypeRef expr, IDictionary<string, TypeDef> templates)
+        {
+            if (expr.TypeArgs.Count == 0) return false;
+            if (!templates.TryGetValue(expr.Name, out var template)) return false;
+            return expr.TypeArgs.Count == template.TypeParams.Count;
+        }
+
+        /// <summary>
+        /// Collect parameterized type references from a TypeExpr.
+        /// </summary>
+        private static void CollectInstantiations(TypeExpr expr,
+            IDictionary<string, TypeDef> templates,
+            IDictionary<string, IReadOnlyList<TypeExpr>> instantiations)
+        {
+            switch (expr)
+            {
+                case TypeRef r:
+                    if (IsTemplateRef(r, templates))
+                    {
+                        var name = ExpandedName(r.Name, r.TypeArgs);
+                        instantiations.TryAdd(name, r.TypeArgs);
+                        // Recurse into type args (for nested parameterized types)
+                        foreach (var arg in r.TypeArgs)
+                            CollectInstantiations(arg, templates, instantiations);
+                    }
+                    // Also recurse into typeArgs even if not a template (might contain nested refs)
+                    foreach (var arg in r.TypeArgs)
+                        CollectInstantiations(arg, templates, instantiations);
+                    break;
+                case StructAlt s:
+                    foreach (var arg in s.Args)
+                        CollectInstantiations(arg, templates, instantiations);
+                    break;
+                case ListConsAlt c:
+                    CollectInstantiations(c.Head, templates, instantiations);
+                    CollectInstantiations(c.Tail, templates, instantiations);
+                    break;
+                case DiffListAlt d:
+                    CollectInstantiations(d.Content, templates, instantiations);
+                    CollectInstantiations(d.Hole, templates, instantiations);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Collect instantiations from template bodies, skipping type parameter names.
+        /// For example, in Stream(X) ::= [] ; [X | Stream(X)], Stream(X) in the body
+        /// is a recursive self-reference with parameter X, not an instantiation to collect.
+        /// But Pair(Integer, String) in a template body IS an instantiation.
+        /// </summary>
+        private static void CollectInstantiationsInTemplate(TypeExpr expr,
+            IDictionary<string, TypeDef> templates,
+            IDictionary<string, IReadOnlyList<TypeExpr>> instantiations,
+            IReadOnlyList<string> templateParams)
+        {
+            switch (expr)
+            {
+                case TypeRef r:
+                    if (IsTemplateRef(r, templates))
+                    {
+                        // Check if all args are just bare type parameters — if so, it's a recursive
+                        // self-reference, not an instantiation to collect separately.
+                        var allParamRefs = r.TypeArgs.All(arg =>
+                            arg is TypeRef a && a.TypeArgs.Count == 0 && templateParams.Contains(a.Name));
+                        if (!allParamRefs)
+                        {
+                            // Contains concrete types — collect any nested instantiations
+                            // Use template-aware version to preserve param awareness through nesting
+                            foreach (var arg in r.TypeArgs)
+                                CollectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
+                        }
+                    }
+                    foreach (var arg in r.TypeArgs)
+                        CollectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
+                    break;
+                case StructAlt s:
+                    foreach (var arg in s.Args)
+                        CollectInstantiationsInTemplate(arg, templates, instantiations, templateParams);
+                    break;
+                case ListConsAlt c:
+                    CollectInstantiationsInTemplate(c.Head, templates, instantiations, templateParams);
+                    CollectInstantiationsInTemplate(c.Tail, templates, instantiations, templateParams);
+                    break;
+                case DiffListAlt d:
+                    CollectInstantiationsInTemplate(d.Content, templates, instantiations, templateParams);
+                    CollectInstantiationsInTemplate(d.Hole, templates, instantiations, templateParams);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Substitute type parameters in a TypeExpr.
+        /// monoNames: set of known monomorphic type names. When all substituted args
+        /// are wildcards AND the base name is in monoNames, use the base name directly.
+        /// </summary>
+        private static TypeExpr SubstituteTypeExpr(TypeExpr expr,
+            IDictionary<string, TypeExpr> substitution,
+            IDictionary<string, TypeDef> templates,
+            IDictionary<string, IReadOnlyList<TypeExpr>> instantiations,
+            IReadOnlySet<string>? monoNames = null)
+        {
+            monoNames ??= ImmutableHashSet<string>.Empty;
+            switch (expr)
+            {
+                case TypeRef r:
+                    // If this is a type parameter, substitute it
+                    if (substitution.TryGetValue(r.Name, out var replacement) && r.TypeArgs.Count == 0)
+                    {
+                        // Apply isInput from the original reference
+                        if (r.IsInput && replacement is TypeRef rep)
+                            return new TypeRef(rep.Name, rep.Line, rep.Column,
+                                isInput: true, typeArgs: rep.TypeArgs);
+                        if (r.IsInput && replacement is PrimitiveModeAlt prim)
+                            return new PrimitiveModeAlt(true, prim.Line, prim.Column);
+                        return replacement;
+                    }
+                    // If this is a parameterized reference to a template with matching arity, record and replace
+                    if (IsTemplateRef(r, templates))
+                    {
+                        var substArgs = r.TypeArgs
+                            .Select(a => SubstituteTypeExpr(a, substitution, templates, instantiations, monoNames: monoNames))
+                            .ToList();
+                        // If all substituted args are wildcards (_) AND a monomorphic type with
+                        // the base name exists, use the base name directly.
+                        // Stream(_) ≡ Stream when a monomorphic Stream type exists.
+                        var allWildcards = substArgs.All(a => a is PrimitiveModeAlt);
+                        if (allWildcards && monoNames.Contains(r.Name))
+                            return new TypeRef(r.Name, r.Line, r.Column, isInput: r.IsInput);
+                        var expandedName = ExpandedName(r.Name, substArgs);
+                        instantiations.TryAdd(expandedName, substArgs);
+                        return new TypeRef(expandedName, r.Line, r.Column, isInput: r.IsInput);
+                    }
+                    return expr;
+                case StructAlt s:
+                    return new StructAlt(s.Functor,
+                        s.Args.Select(a => SubstituteTypeExpr(a, substitution, templates, instantiations, monoNames: monoNames)).ToList(),
+                        s.Line, s.Column);
+                case ListConsAlt c:
+                    return new ListConsAlt(
+                        SubstituteTypeExpr(c.Head, substitution, templates, instantiations, monoNames: monoNames),
+                        SubstituteTypeExpr(c.Tail, substitution, templates, instantiations, monoNames: monoNames),
+                        c.Line, c.Column);
+                case DiffListAlt d:
+                    return new DiffListAlt(
+                        SubstituteTypeExpr(d.Content, substitution, templates, instantiations, monoNames: monoNames),
+                        SubstituteTypeExpr(d.Hole, substitution, templates, instantiations, monoNames: monoNames),
+                        d.Line, d.Column);
+                default:
+                    // PrimitiveModeAlt, ConstantAlt, ListNilAlt — no substitution needed
+                    return expr;
+            }
+        }
+
+        /// <summary>
+        /// Replace parameterized type refs with expanded names (for non-template types and proc decls).
+        /// monoNames: when all args are wildcards AND base name is in monoNames, use base name.
+        /// </summary>
+        private static TypeExpr ReplaceParamRefs(TypeExpr expr,
+            IDictionary<string, TypeDef> templates,
+            IReadOnlySet<string>? monoNames = null)
+        {
+            monoNames ??= ImmutableHashSet<string>.Empty;
+            switch (expr)
+            {
+                case TypeRef r:
+                    if (IsTemplateRef(r, templates))
+                    {
+                        // Replace args recursively first
+                        var replacedArgs = r.TypeArgs
+                            .Select(a => ReplaceParamRefs(a, templates, monoNames: monoNames))
+                            .ToList();
+                        // If all args are wildcards (_) AND base name exists as monomorphic, use base name.
+                        var allWildcards = replacedArgs.All(a => a is PrimitiveModeAlt);
+                        if (allWildcards && monoNames.Contains(r.Name))
+                            return new TypeRef(r.Name, r.Line, r.Column, isInput: r.IsInput);
+                        var expandedName = ExpandedName(r.Name, replacedArgs);
+                        return new TypeRef(expandedName, r.Line, r.Column, isInput: r.IsInput);
+                    }
+                    // Recurse into typeArgs even if not a template ref
+                    if (r.TypeArgs.Count > 0)
+                    {
+                        var replacedArgs = r.TypeArgs
+                            .Select(a => ReplaceParamRefs(a, templates, monoNames: monoNames))
+                            .ToList();
+                        return new TypeRef(r.Name, r.Line, r.Column, isInput: r.IsInput, typeArgs: replacedArgs);
+                    }
+                    return expr;
+                case StructAlt s:
+                    return new StructAlt(s.Functor,
+                        s.Args.Select(a => ReplaceParamRefs(a, templates, monoNames: monoNames)).ToList(),
+                        s.Line, s.Column);
+                case ListConsAlt c:
+                    return new ListConsAlt(
+                        ReplaceParamRefs(c.Head, templates, monoNames: monoNames),
+                        ReplaceParamRefs(c.Tail, templates, monoNames: monoNames),
+                        c.Line, c.Column);
+                case DiffListAlt d:
+                    return new DiffListAlt(
+                        ReplaceParamRefs(d.Content, templates, monoNames: monoNames),
+                        ReplaceParamRefs(d.Hole, templates, monoNames: monoNames),
+                        d.Line, d.Column);
+                default:
+                    return expr;
+            }
+        }
     }
-    // Recurse into typeArgs even if not a template ref
-    if (expr.typeArgs.isNotEmpty) {
-      final replacedArgs = expr.typeArgs
-          .map((a) => _replaceParamRefs(a, templates, monoNames: monoNames))
-          .toList();
-      return TypeRef(expr.name, expr.line, expr.column, isInput: expr.isInput, typeArgs: replacedArgs);
-    }
-    return expr;
-  }
-  if (expr is StructAlt) {
-    return StructAlt(expr.functor,
-        expr.args.map((a) => _replaceParamRefs(a, templates, monoNames: monoNames)).toList(),
-        expr.line, expr.column);
-  }
-  if (expr is ListConsAlt) {
-    return ListConsAlt(
-        _replaceParamRefs(expr.head, templates, monoNames: monoNames),
-        _replaceParamRefs(expr.tail, templates, monoNames: monoNames),
-        expr.line, expr.column);
-  }
-  if (expr is DiffListAlt) {
-    return DiffListAlt(
-        _replaceParamRefs(expr.content, templates, monoNames: monoNames),
-        _replaceParamRefs(expr.hole, templates, monoNames: monoNames),
-        expr.line, expr.column);
-  }
-  return expr;
 }

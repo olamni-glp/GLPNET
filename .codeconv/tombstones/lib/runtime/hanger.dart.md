@@ -17,5 +17,9 @@ plan_started_at: '2026-05-21T14:50:48Z'
 plan_completed_at: '2026-05-21T14:56:19Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/hanger.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:22:17Z'
+target_cs_path: out/csharp/lib/runtime/hanger.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
