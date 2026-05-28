@@ -41,6 +41,10 @@ public sealed class BytecodeProgram
         => throw new NotImplementedException(_RunnerStub.Deferred);
 
     public BytecodeProgram() { }
+
+    /// <summary>Merge another program's labels and instructions into this one. Deferred — runner.dart not yet converted.</summary>
+    public BytecodeProgram Merge(BytecodeProgram other)
+        => throw new NotImplementedException(_RunnerStub.Deferred);
 }
 
 // ── CallEnv ────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@
 <Project>
   <ItemGroup>
     <!-- codeconv-codegen append point — keep one entry per line, sorted. -->
+    <Compile Include="bin/glp_repl.cs" />
     <Compile Include="lib/analysis/analysis_phase.cs" />
     <Compile Include="lib/analysis/type_checker/clause_validation.cs" />
     <Compile Include="lib/analysis/type_checker/mode.cs" />
@@ -32,6 +33,8 @@
     <Compile Include="lib/bytecode/runner.cs" />
     <Compile Include="lib/compiler/analyzer.cs" />
     <Compile Include="lib/compiler/ast.cs" />
+    <Compile Include="lib/compiler/codegen.cs" />
+    <Compile Include="lib/compiler/compiler.cs" />
     <Compile Include="lib/compiler/error.cs" />
     <Compile Include="lib/compiler/glp_printer.cs" />
     <Compile Include="lib/compiler/lexer.cs" />
@@ -50,11 +53,14 @@
     <Compile Include="lib/compiler/token.cs" />
     <Compile Include="lib/compiler/unify_result.cs" />
     <Compile Include="lib/engine/claude_adapter.cs" />
+    <Compile Include="lib/engine/glp_engine.cs" />
     <Compile Include="lib/glp_runtime.cs" />
     <Compile Include="lib/lint/linter.cs" />
+    <Compile Include="lib/multiagent/agent_runtime.cs" />
     <Compile Include="lib/multiagent/boot_loader.cs" />
     <Compile Include="lib/multiagent/global_send.cs" />
     <Compile Include="lib/multiagent/global_writers_table.cs" />
+    <Compile Include="lib/multiagent/isolate_manager.cs" />
     <Compile Include="lib/multiagent/mad_context.cs" />
     <Compile Include="lib/multiagent/mad_helpers.cs" />
     <Compile Include="lib/multiagent/message_queue.cs" />

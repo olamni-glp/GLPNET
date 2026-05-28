@@ -10,6 +10,14 @@ glp_runtime/build/
 !.codeconv/**/bin/
 !.codeconv/**/bin/**
 
+# Allow codeconv-produced .cs at out/csharp/bin/ (Dart `bin/` → C# `bin/` source
+# convention from the dart_csharp langpair). dotnet's Debug/Release output is
+# still ignored by the patterns below.
+!out/csharp/bin/
+out/csharp/bin/Debug/
+out/csharp/bin/Release/
+out/csharp/bin/obj/
+
 # Node.js (prereq-patterns/pglite, etc.)
 **/node_modules/
 

@@ -65,6 +65,10 @@ plan_started_at: '2026-05-21T16:44:01Z'
 plan_completed_at: '2026-05-21T16:49:19Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/agent_runtime.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:42:28Z'
+target_cs_path: out/csharp/lib/multiagent/agent_runtime.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 AgentRuntime — encapsulates GLP agent runtime for UI integration.

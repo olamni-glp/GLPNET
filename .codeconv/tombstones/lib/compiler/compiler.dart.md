@@ -67,5 +67,9 @@ plan_started_at: '2026-05-21T16:33:45Z'
 plan_completed_at: '2026-05-21T16:38:37Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/compiler.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:19:43Z'
+target_cs_path: out/csharp/lib/compiler/compiler.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

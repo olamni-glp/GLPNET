@@ -59,6 +59,10 @@ plan_started_at: '2026-05-21T16:44:02Z'
 plan_completed_at: '2026-05-21T16:49:20Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/isolate_manager.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:42:22Z'
+target_cs_path: out/csharp/lib/multiagent/isolate_manager.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Isolate Manager for madGLP

@@ -73,6 +73,10 @@ plan_started_at: '2026-05-21T16:38:49Z'
 plan_completed_at: '2026-05-21T16:43:39Z'
 plan_path: .codeconv/conversion-plans/lib/engine/glp_engine.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:32:58Z'
+target_cs_path: out/csharp/lib/engine/glp_engine.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 GLP Engine - Embeddable GLP Execution Core

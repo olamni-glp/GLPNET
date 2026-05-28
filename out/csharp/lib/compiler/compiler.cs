@@ -1,158 +1,168 @@
-import 'lexer.dart';
-import 'parser.dart';
-import 'analyzer.dart';
-import 'codegen.dart';
-import 'error.dart';
-import 'token.dart';
-import 'result.dart';
-import 'ast.dart' show Program, Procedure, Clause, Atom, Goal, Guard, Term, VarTerm, StructTerm, UnderscoreTerm, CompileMode;
-import '../analysis/type_checker/type_ast.dart' show ProcDecl;
-import 'package:glp_runtime/bytecode/runner.dart' show BytecodeProgram;
-import '../analysis/type_checker/type_checker.dart' show checkModule;
+// lib/compiler/compiler.cs
+//
+// GLP compiler facade — threads source through the six-phase pipeline.
+// Converted from Dart source: lib/compiler/compiler.dart
+// source_sha256: 1b65ae574b5c4d866bf91680efdd48fd3a59072b31f44da7f2a3e19cd6ddc310
 
-// Re-export for users of this module
-export 'package:glp_runtime/bytecode/runner.dart' show BytecodeProgram;
-export 'result.dart' show CompilationResult;
-export 'compiler.dart' show CompileOptions;
+using GlpRuntime.Analysis.TypeChecker;
+using GlpRuntime.Bytecode;
 
-/// Compilation options
-class CompileOptions {
-  /// Enable type checking
-  final bool typeCheck;
+namespace GlpRuntime.Compiler;
 
-  /// Abort compilation on type errors (only applies if typeCheck is true)
-  final bool strictTypes;
+/// <summary>Compilation options</summary>
+public class CompileOptions
+{
+    /// <summary>Enable type checking</summary>
+    public bool TypeCheck { get; }
 
-  const CompileOptions({
-    this.typeCheck = false,
-    this.strictTypes = false,
-  });
+    /// <summary>Abort compilation on type errors (only applies if <see cref="TypeCheck"/> is true)</summary>
+    public bool StrictTypes { get; }
+
+    public CompileOptions(bool typeCheck = false, bool strictTypes = false)
+    {
+        TypeCheck   = typeCheck;
+        StrictTypes = strictTypes;
+    }
 }
 
-/// Main GLP compiler
-class GlpCompiler {
-  final Lexer Function(String) _createLexer;
-  final Parser Function(List<Token>) _createParser;
-  final Analyzer Function() _createAnalyzer;
-  final CodeGenerator Function() _createCodegen;
+/// <summary>Main GLP compiler</summary>
+public sealed class GlpCompiler
+{
+    private readonly Func<string, Lexer>                  _createLexer;
+    private readonly Func<IReadOnlyList<Token>, Parser>   _createParser;
+    private readonly Func<Analyzer>                       _createAnalyzer;
+    private readonly Func<CodeGenerator>                  _createCodegen;
 
-  GlpCompiler({
-    Lexer Function(String)? createLexer,
-    Parser Function(List<Token>)? createParser,
-    Analyzer Function()? createAnalyzer,
-    CodeGenerator Function()? createCodegen,
-  })  : _createLexer = createLexer ?? ((source) => Lexer(source)),
-        _createParser = createParser ?? ((tokens) => Parser(tokens)),
-        _createAnalyzer = createAnalyzer ?? (() => Analyzer()),
-        _createCodegen = createCodegen ?? (() => CodeGenerator());
-
-  /// Compile GLP source to bytecode program
-  BytecodeProgram compile(String source, [CompileOptions? options]) {
-    final result = compileWithMetadata(source, options);
-    return result.program;
-  }
-
-  /// Compile GLP source to bytecode program with variable metadata
-  CompilationResult compileWithMetadata(String source, [CompileOptions? options]) {
-    final opts = options ?? const CompileOptions();
-    try {
-      // Phase 1: Lexical analysis
-      // Note: Main lexer now handles type declarations (::= and procedure)
-      final lexer = _createLexer(source);
-      final tokens = lexer.tokenize();
-
-      // Phase 2: Syntax analysis (use parseModule to get module info)
-      final parser = _createParser(tokens);
-      final module = parser.parseModule();
-
-      // Convert Module to Program for analyzer
-      final ast = Program(module.procedures, module.line, module.column);
-
-      // Phase 2.4: Apply partial evaluation (defined guard expansion) BEFORE type checking
-      // This transforms clauses to unfold unit clause guards, which affects coverage checking
-      final partialEvaluator = PartialEvaluator();
-      final transformedAst = partialEvaluator.transformDefinedGuards(ast);
-
-      // Phase 2.5: Type checking (optional)
-      if (opts.typeCheck) {
-        try {
-          // Use checkModule with transformed procedures
-          // This ensures type checking sees the expanded guards
-          final typeResult = checkModule(module, transformedProcedures: transformedAst.procedures);
-
-          // Report type errors and warnings
-          if (typeResult.errors.isNotEmpty) {
-            for (final error in typeResult.errors) {
-              print('[TYPE ERROR] ${error.message} at line ${error.line}');
-            }
-            if (opts.strictTypes) {
-              throw CompileError(
-                'Type checking failed with ${typeResult.errors.length} error(s)',
-                typeResult.errors.first.line,
-                typeResult.errors.first.column,
-              );
-            }
-          }
-
-          if (typeResult.warnings.isNotEmpty) {
-            for (final warning in typeResult.warnings) {
-              print('[TYPE WARNING] ${warning.message} at line ${warning.line}');
-            }
-          }
-        } catch (e) {
-          if (opts.strictTypes) {
-            rethrow;
-          }
-          // In non-strict mode, just print the error and continue
-          print('[TYPE CHECK] Failed: $e');
-        }
-      }
-
-      // Generate reduce/2 for all files except system-mode code (stdlib)
-      final generateReduce = module.compileMode != CompileMode.system;
-
-      // Phase 3: Semantic analysis (with reduce generation flag and proc declarations)
-      // Pass proc declarations for type-based SRSW relaxation
-      final analyzer = _createAnalyzer();
-      final annotatedAst = analyzer.analyze(
-        ast,
-        generateReduce: generateReduce,
-        procDeclarations: module.procDeclarations,
-        compileMode: module.compileMode,
-      );
-
-      // Phase 4: Code generation
-      final codegen = _createCodegen();
-      final result = codegen.generateWithMetadata(annotatedAst);
-
-      return result;
-    } on CompileError catch (e) {
-      // Rethrow with source context
-      throw CompileError(e.message, e.line, e.column, source: source, phase: e.category?.toString().split('.').last);
+    public GlpCompiler(
+        Func<string, Lexer>?                createLexer    = null,
+        Func<IReadOnlyList<Token>, Parser>? createParser   = null,
+        Func<Analyzer>?                     createAnalyzer = null,
+        Func<CodeGenerator>?                createCodegen  = null)
+    {
+        _createLexer    = createLexer    ?? (source => new Lexer(source));
+        _createParser   = createParser   ?? (tokens => new Parser(tokens));
+        _createAnalyzer = createAnalyzer ?? (() => new Analyzer());
+        _createCodegen  = createCodegen  ?? (() => new CodeGenerator());
     }
-  }
 
-  /// Compile a Program AST directly to bytecode.
-  ///
-  /// Used by the project linker for statically linked programs.
-  /// Skips lexing, parsing, type checking, and _select generation.
-  ///
-  /// [procDeclarations] should contain renamed declarations (e.g., from
-  /// [linkProject]) for SRSW type-based relaxation.
-  BytecodeProgram compileProgram(Program ast, {List<ProcDecl>? procDeclarations}) {
-    final analyzer = _createAnalyzer();
-    final annotated = analyzer.analyze(
-      ast,
-      generateReduce: true,
-      compileMode: CompileMode.system,
-      procDeclarations: procDeclarations ?? [],
-      skipGlobalSRSW: true,  // Linked programs: modules already type-checked individually
-    );
+    /// <summary>Compile GLP source to bytecode program</summary>
+    public BytecodeProgram Compile(string source, CompileOptions? options = null)
+    {
+        var result = CompileWithMetadata(source, options);
+        return result.Program;
+    }
 
-    final codegen = _createCodegen();
-    return codegen.generateWithMetadata(annotated).program;
-  }
+    /// <summary>Compile GLP source to bytecode program with variable metadata</summary>
+    public CompilationResult CompileWithMetadata(string source, CompileOptions? options = null)
+    {
+        var opts = options ?? new CompileOptions();
+        try
+        {
+            // Phase 1: Lexical analysis
+            // Note: Main lexer now handles type declarations (::= and procedure)
+            var lexer  = _createLexer(source);
+            var tokens = lexer.Tokenize();
 
-  /// Generate _select/1 dispatch table from exported procedure declarations.
-  ///
+            // Phase 2: Syntax analysis (use parseModule to get module info)
+            var parser = _createParser(tokens);
+            var module = parser.ParseModule();
+
+            // Convert Module to Program for analyzer
+            var ast = new Program(module.Procedures, module.Line, module.Column);
+
+            // Phase 2.4: Apply partial evaluation (defined guard expansion) BEFORE type checking
+            // This transforms clauses to unfold unit clause guards, which affects coverage checking
+            var partialEvaluator = new PartialEvaluator();
+            var transformedAst   = partialEvaluator.TransformDefinedGuards(ast);
+
+            // Phase 2.5: Type checking (optional)
+            if (opts.TypeCheck)
+            {
+                try
+                {
+                    // Use checkModule with transformed procedures
+                    // This ensures type checking sees the expanded guards
+                    var typeResult = TypeCheckerDriver.CheckModule(module, transformedProcedures: transformedAst.Procedures);
+
+                    // Report type errors and warnings
+                    if (typeResult.Errors.Count > 0)
+                    {
+                        foreach (var error in typeResult.Errors)
+                            Console.WriteLine($"[TYPE ERROR] {error.Message} at line {error.Line}");
+                        if (opts.StrictTypes)
+                            throw new CompileError(
+                                $"Type checking failed with {typeResult.Errors.Count} error(s)",
+                                (long)typeResult.Errors[0].Line,
+                                (long)typeResult.Errors[0].Column);
+                    }
+
+                    if (typeResult.Warnings.Count > 0)
+                    {
+                        foreach (var warning in typeResult.Warnings)
+                            Console.WriteLine($"[TYPE WARNING] {warning.Message} at line {warning.Line}");
+                    }
+                }
+                catch (Exception) when (opts.StrictTypes)
+                {
+                    throw;
+                }
+                catch (Exception e) when (!opts.StrictTypes)
+                {
+                    // In non-strict mode, just print the error and continue
+                    Console.WriteLine($"[TYPE CHECK] Failed: {e}");
+                }
+            }
+
+            // Generate reduce/2 for all files except system-mode code (stdlib)
+            var generateReduce = module.CompileMode != CompileMode.System;
+
+            // Phase 3: Semantic analysis (with reduce generation flag and proc declarations)
+            // Pass proc declarations for type-based SRSW relaxation
+            var analyzer     = _createAnalyzer();
+            var annotatedAst = analyzer.Analyze(
+                ast,
+                generateReduce:   generateReduce,
+                procDeclarations: module.ProcDeclarations,
+                compileMode:      module.CompileMode);
+
+            // Phase 4: Code generation
+            var codegen = _createCodegen();
+            var result  = codegen.GenerateWithMetadata(annotatedAst);
+
+            return result;
+        }
+        catch (CompileError e)
+        {
+            // Rethrow with source context
+            throw new CompileError(e.Message, e.Line, e.Column, source: source, phase: e.Category?.ToString());
+        }
+    }
+
+    /// <summary>
+    /// Compile a Program AST directly to bytecode.
+    /// <para>Used by the project linker for statically linked programs.</para>
+    /// <para>Skips lexing, parsing, type checking, and _select generation.</para>
+    /// <para><paramref name="procDeclarations"/> should contain renamed declarations
+    /// (e.g., from linkProject) for SRSW type-based relaxation.</para>
+    /// </summary>
+    public BytecodeProgram CompileProgram(Program ast, IReadOnlyList<ProcDecl>? procDeclarations = null)
+    {
+        // Used by the project linker for statically linked programs.
+        // Skips lexing, parsing, type checking, and _select generation.
+        var analyzer = _createAnalyzer();
+        var annotated = analyzer.Analyze(
+            ast,
+            generateReduce:   true,
+            compileMode:      CompileMode.System,
+            procDeclarations: procDeclarations ?? Array.Empty<ProcDecl>(),
+            skipGlobalSRSW:   true);  // Linked programs: modules already type-checked individually
+
+        var codegen = _createCodegen();
+        return codegen.GenerateWithMetadata(annotated).Program;
+    }
+
+    // <remarks>
+    // TODO: Generate _select/1 dispatch table from exported procedure declarations.
+    // (Source file truncated mid-class — method not present in original Dart source.)
+    // </remarks>
 }
