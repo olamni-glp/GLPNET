@@ -1,307 +1,367 @@
 /// Boot Loader for maGLP Isolate Spawning
 ///
-/// Parses GLP files with `boot/0` clauses containing `@` spawn directives.
+/// Parses GLP files with <c>boot/0</c> clauses containing <c>@</c> spawn directives.
 /// Extracts spawn configuration without modifying the GLP parser.
 ///
 /// See: docs/ma/isolate-boot-spec.md (v0.4)
 
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+
+namespace GlpRuntime.Multiagent;
+
+/// <summary>
 /// A single spawn directive extracted from the boot clause.
+/// </summary>
+/// <remarks>
+/// Represents <c>goalFunctor(agentId, ...)@agentId</c>
 ///
-/// Represents `goalFunctor(agentId, ...)@agentId`
-///
-/// For `parent_init(alice, carol, 4, _)@alice`:
-///   agentId = 'alice', goalFunctor = 'parent_init', goalArity = 4,
-///   constantArgs = ['carol', '4']
+/// For <c>parent_init(alice, carol, 4, _)@alice</c>:
+///   agentId = "alice", goalFunctor = "parent_init", goalArity = 4,
+///   constantArgs = ["carol", "4"]
 ///
 /// The isolate entry point always passes: arg0 = agentId (constant),
 /// args 1..n-2 = constantArgs, arg n-1 = netInReader.
-class SpawnDirective {
-  /// The agent identifier (e.g., 'alice', 'bob')
-  final String agentId;
+/// </remarks>
+public class SpawnDirective
+{
+    /// <summary>The agent identifier (e.g., "alice", "bob")</summary>
+    public string AgentId { get; }
 
-  /// The goal functor to spawn (e.g., 'agent_init', 'parent_init')
-  final String goalFunctor;
+    /// <summary>The goal functor to spawn (e.g., "agent_init", "parent_init")</summary>
+    public string GoalFunctor { get; }
 
-  /// The arity of the goal (e.g., 2 for agent_init/2, 4 for parent_init/4)
-  final int goalArity;
+    /// <summary>The arity of the goal (e.g., 2 for agent_init/2, 4 for parent_init/4)</summary>
+    public long GoalArity { get; }
 
-  /// Constant arguments between agentId and the final netIn variable.
-  /// For `parent_init(alice, carol, 4, _)@alice`: ['carol', '4']
-  /// For `agent_init(alice, _)@alice`: [] (empty)
-  final List<String> constantArgs;
+    /// <summary>
+    /// Constant arguments between agentId and the final netIn variable.
+    /// For <c>parent_init(alice, carol, 4, _)@alice</c>: ["carol", "4"]
+    /// For <c>agent_init(alice, _)@alice</c>: [] (empty)
+    /// </summary>
+    public IReadOnlyList<string> ConstantArgs { get; }
 
-  SpawnDirective({
-    required this.agentId,
-    required this.goalFunctor,
-    required this.goalArity,
-    this.constantArgs = const [],
-  });
+    public SpawnDirective(
+        string agentId,
+        string goalFunctor,
+        long goalArity,
+        IReadOnlyList<string>? constantArgs = null)
+    {
+        AgentId = agentId;
+        GoalFunctor = goalFunctor;
+        GoalArity = goalArity;
+        ConstantArgs = constantArgs ?? Array.Empty<string>();
+    }
 
-  @override
-  String toString() => 'SpawnDirective($goalFunctor/$goalArity($agentId, ...)@$agentId)';
+    public override string ToString() =>
+        $"SpawnDirective({GoalFunctor}/{GoalArity}({AgentId}, ...)@{AgentId})";
 }
 
-/// Configuration extracted from a GLP boot file.
-class BootConfig {
-  /// The spawn directives from the boot clause
-  final List<SpawnDirective> directives;
+/// <summary>Configuration extracted from a GLP boot file.</summary>
+public class BootConfig
+{
+    /// <summary>The spawn directives from the boot clause</summary>
+    public IReadOnlyList<SpawnDirective> Directives { get; }
 
-  /// The full source code (original, including boot clause)
-  final String fullSource;
+    /// <summary>The full source code (original, including boot clause)</summary>
+    public string FullSource { get; }
 
-  /// Source code with boot clause stripped (for GLP compilation)
-  /// The boot clause contains @ which the GLP parser doesn't understand.
-  final String source;
+    /// <summary>
+    /// Source code with boot clause stripped (for GLP compilation).
+    /// The boot clause contains @ which the GLP parser doesn't understand.
+    /// </summary>
+    public string Source { get; }
 
-  /// Optional shared source files to load before the boot file
-  /// (e.g., social_agent.glp containing agent/4, actors, helpers).
-  /// Each entry is loaded separately to preserve per-file -mode() directives.
-  List<String>? sharedSources;
+    /// <summary>
+    /// Optional shared source files to load before the boot file
+    /// (e.g., social_agent.glp containing agent/4, actors, helpers).
+    /// Each entry is loaded separately to preserve per-file -mode() directives.
+    /// </summary>
+    public List<string>? SharedSources { get; set; }
 
-  /// Optional project directory for static linking.
-  /// When set, each isolate loads the project via loadProject() instead of
-  /// loading individual shared sources. The boot source is loaded on top.
-  String? projectDir;
+    /// <summary>
+    /// Optional project directory for static linking.
+    /// When set, each isolate loads the project via loadProject() instead of
+    /// loading individual shared sources. The boot source is loaded on top.
+    /// </summary>
+    public string? ProjectDir { get; set; }
 
-  /// Absolute path to programs/self.glp
-  String rootSelfGlpPath;
+    /// <summary>Absolute path to programs/self.glp</summary>
+    public string RootSelfGlpPath { get; set; }
 
-  BootConfig({
-    required this.directives,
-    required this.fullSource,
-    required this.source,
-    this.sharedSources,
-    this.projectDir,
-    this.rootSelfGlpPath = '',
-  });
+    public BootConfig(
+        IReadOnlyList<SpawnDirective> directives,
+        string fullSource,
+        string source,
+        List<string>? sharedSources = null,
+        string? projectDir = null,
+        string rootSelfGlpPath = "")
+    {
+        Directives = directives;
+        FullSource = fullSource;
+        Source = source;
+        SharedSources = sharedSources;
+        ProjectDir = projectDir;
+        RootSelfGlpPath = rootSelfGlpPath;
+    }
 }
 
+/// <summary>
 /// Loader for GLP files with isolate boot clauses.
-///
+/// </summary>
+/// <remarks>
 /// Parses the boot clause to extract spawn directives, then provides
 /// the source for compilation.
-class BootLoader {
-  /// Load a GLP file and extract boot configuration.
-  ///
-  /// Throws [BootLoaderException] if:
-  /// - File doesn't start with `procedure boot.`
-  /// - Boot clause is malformed
-  /// - Agent IDs don't match between goal and @target
-  /// - Duplicate agent IDs
-  BootConfig load(String source) {
-    final directives = _parseBootClause(source);
-    final compilableSource = _stripBootClause(source);
-    return BootConfig(
-      directives: directives,
-      fullSource: source,
-      source: compilableSource,
-    );
-  }
-
-  /// Load from file path (convenience method)
-  BootConfig loadFile(String filePath) {
-    final file = _readFile(filePath);
-    return load(file);
-  }
-
-  /// Parse the boot clause and extract spawn directives.
-  List<SpawnDirective> _parseBootClause(String source) {
-    // Remove comments for parsing
-    final noComments = _removeComments(source);
-
-    // Check for procedure boot declaration
-    if (!_hasProcedureBoot(noComments)) {
-      throw BootLoaderException('First procedure must be boot/0. '
-          'Expected "procedure boot." declaration.');
+/// </remarks>
+public class BootLoader
+{
+    /// <summary>
+    /// Load a GLP file and extract boot configuration.
+    /// </summary>
+    /// <remarks>
+    /// Throws <see cref="BootLoaderException"/> if:
+    /// <list type="bullet">
+    /// <item><description>File doesn't start with <c>procedure boot.</c></description></item>
+    /// <item><description>Boot clause is malformed</description></item>
+    /// <item><description>Agent IDs don't match between goal and @target</description></item>
+    /// <item><description>Duplicate agent IDs</description></item>
+    /// </list>
+    /// </remarks>
+    public BootConfig Load(string source)
+    {
+        var directives = ParseBootClause(source);
+        var compilableSource = StripBootClause(source);
+        return new BootConfig(
+            directives: directives,
+            fullSource: source,
+            source: compilableSource
+        );
     }
 
-    // Find boot clause
-    final bootClause = _extractBootClause(noComments);
-    if (bootClause == null) {
-      throw BootLoaderException('Could not find boot clause. '
-          'Expected "boot :- ... ."');
+    /// <summary>Load from file path (convenience method)</summary>
+    public BootConfig LoadFile(string filePath)
+    {
+        var file = ReadFile(filePath);
+        return Load(file);
     }
 
-    // Parse spawn directives from boot clause body
-    final directives = _parseSpawnDirectives(bootClause);
-    if (directives.isEmpty) {
-      throw BootLoaderException('Boot clause contains no spawn directives. '
-          'Expected "goal(agent, _)@agent"');
-    }
+    /// <summary>Parse the boot clause and extract spawn directives.</summary>
+    private IReadOnlyList<SpawnDirective> ParseBootClause(string source)
+    {
+        // Remove comments for parsing
+        var noComments = RemoveComments(source);
 
-    // Validate no duplicate agent IDs
-    final agentIds = <String>{};
-    for (final d in directives) {
-      if (agentIds.contains(d.agentId)) {
-        throw BootLoaderException('Duplicate agent ID: ${d.agentId}');
-      }
-      agentIds.add(d.agentId);
-    }
-
-    return directives;
-  }
-
-  /// Remove GLP comments (lines starting with %%)
-  String _removeComments(String source) {
-    return source
-        .split('\n')
-        .where((line) => !line.trimLeft().startsWith('%'))
-        .join('\n');
-  }
-
-  /// Check if source has "procedure boot." declaration
-  bool _hasProcedureBoot(String source) {
-    // Match "procedure boot." with flexible whitespace
-    final pattern = RegExp(r'procedure\s+boot\s*\.', multiLine: true);
-    return pattern.hasMatch(source);
-  }
-
-  /// Extract the boot clause body (between "boot :-" and ".")
-  String? _extractBootClause(String source) {
-    // Match "boot :- ... ." capturing the body
-    // This handles multi-line boot clauses
-    final pattern = RegExp(
-      r'boot\s*:-\s*(.*?)\.\s*(?=\n|procedure|$)',
-      multiLine: true,
-      dotAll: true,
-    );
-    final match = pattern.firstMatch(source);
-    return match?.group(1)?.trim();
-  }
-
-  /// Parse spawn directives from boot clause body.
-  ///
-  /// Looks for patterns like:
-  /// `functor(agentId, ...)@agentId`
-  ///
-  /// The first argument must be the agent ID (an atom).
-  /// Remaining arguments can be arbitrary terms (e.g., ch(_?,_)).
-  /// The @target must match the first argument.
-  List<SpawnDirective> _parseSpawnDirectives(String clauseBody) {
-    final directives = <SpawnDirective>[];
-
-    // Strategy: find each @target, then work backwards to find the matching
-    // goal(agentId, ...) by balancing parentheses.
-    final atPattern = RegExp(r'@\s*(\w+)');
-
-    for (final atMatch in atPattern.allMatches(clauseBody)) {
-      final targetAgentId = atMatch.group(1)!;
-      final beforeAt = clauseBody.substring(0, atMatch.start).trimRight();
-
-      // The character before @ should be ')' (end of goal arguments)
-      if (beforeAt.isEmpty || beforeAt[beforeAt.length - 1] != ')') {
-        continue; // Not a goal@target pattern
-      }
-
-      // Walk backwards from ')' to find matching '('
-      var depth = 0;
-      var parenStart = -1;
-      for (var i = beforeAt.length - 1; i >= 0; i--) {
-        if (beforeAt[i] == ')') depth++;
-        if (beforeAt[i] == '(') depth--;
-        if (depth == 0) {
-          parenStart = i;
-          break;
+        // Check for procedure boot declaration
+        if (!HasProcedureBoot(noComments))
+        {
+            throw new BootLoaderException("First procedure must be boot/0. " +
+                "Expected \"procedure boot.\" declaration.");
         }
-      }
 
-      if (parenStart < 0) continue;
+        // Find boot clause
+        var bootClause = ExtractBootClause(noComments);
+        if (bootClause == null)
+        {
+            throw new BootLoaderException("Could not find boot clause. " +
+                "Expected \"boot :- ... .\"");
+        }
 
-      // Extract functor name before '('
-      final beforeParen = beforeAt.substring(0, parenStart).trimRight();
-      final functorMatch = RegExp(r'(\w+)$').firstMatch(beforeParen);
-      if (functorMatch == null) continue;
-      final functor = functorMatch.group(1)!;
+        // Parse spawn directives from boot clause body
+        var directives = ParseSpawnDirectives(bootClause);
+        if (directives.Count == 0)
+        {
+            throw new BootLoaderException("Boot clause contains no spawn directives. " +
+                "Expected \"goal(agent, _)@agent\"");
+        }
 
-      // Extract all arguments from inside the parentheses, splitting at depth-0 commas.
-      final argsStr = beforeAt.substring(parenStart + 1, beforeAt.length - 1);
-      final allArgs = _splitArgs(argsStr);
+        // Validate no duplicate agent IDs
+        var agentIds = new HashSet<string>();
+        foreach (var d in directives)
+        {
+            if (agentIds.Contains(d.AgentId))
+            {
+                throw new BootLoaderException($"Duplicate agent ID: {d.AgentId}");
+            }
+            agentIds.Add(d.AgentId);
+        }
 
-      if (allArgs.isEmpty) continue;
-
-      // First arg is the agent ID (must be a simple atom)
-      final goalAgentId = allArgs[0].trim();
-      if (!RegExp(r'^\w+$').hasMatch(goalAgentId)) {
-        throw BootLoaderException(
-            'First argument of spawn goal must be an agent ID (atom), '
-            'got "$goalAgentId"');
-      }
-
-      // Validate agent IDs match
-      if (goalAgentId != targetAgentId) {
-        throw BootLoaderException(
-            'Agent ID mismatch: goal has "$goalAgentId" but @target is "$targetAgentId". '
-            'They must match.');
-      }
-
-      // Middle args (between agentId and last arg which is netIn) are constants.
-      // For parent_init(alice, carol, 4, _)@alice: constantArgs = ['carol', '4']
-      // For agent_init(alice, _)@alice: constantArgs = []
-      final constantArgs = <String>[];
-      for (var i = 1; i < allArgs.length - 1; i++) {
-        constantArgs.add(allArgs[i].trim());
-      }
-
-      directives.add(SpawnDirective(
-        agentId: goalAgentId,
-        goalFunctor: functor,
-        goalArity: allArgs.length,
-        constantArgs: constantArgs,
-      ));
+        return directives;
     }
 
-    return directives;
-  }
-
-  /// Split argument string at depth-0 commas, respecting nested parens/brackets.
-  List<String> _splitArgs(String argsStr) {
-    final args = <String>[];
-    var depth = 0;
-    var start = 0;
-    for (var i = 0; i < argsStr.length; i++) {
-      if (argsStr[i] == '(' || argsStr[i] == '[') depth++;
-      if (argsStr[i] == ')' || argsStr[i] == ']') depth--;
-      if (argsStr[i] == ',' && depth == 0) {
-        args.add(argsStr.substring(start, i));
-        start = i + 1;
-      }
+    /// <summary>Remove GLP comments (lines starting with %)</summary>
+    private string RemoveComments(string source)
+    {
+        return string.Join("\n", source.Split('\n').Where(line => !line.TrimStart().StartsWith("%")));
     }
-    args.add(argsStr.substring(start));
-    return args;
-  }
 
-  /// Strip the boot clause and procedure declaration from source.
-  /// Returns source that can be compiled by the GLP compiler.
-  String _stripBootClause(String source) {
-    // Remove "procedure boot." line
-    var result = source.replaceFirst(
-      RegExp(r'procedure\s+boot\s*\.\s*\n?', multiLine: true),
-      '',
-    );
+    /// <summary>Check if source has "procedure boot." declaration</summary>
+    private bool HasProcedureBoot(string source)
+    {
+        // Match "procedure boot." with flexible whitespace
+        var pattern = new Regex(@"procedure\s+boot\s*\.", RegexOptions.Multiline);
+        return pattern.IsMatch(source);
+    }
 
-    // Remove "boot :- ... ." clause (possibly multi-line)
-    // Match from "boot :-" to the closing "." before next procedure or end
-    result = result.replaceFirst(
-      RegExp(r'boot\s*:-\s*.*?\.\s*\n?', multiLine: true, dotAll: true),
-      '',
-    );
+    /// <summary>Extract the boot clause body (between "boot :-" and ".")</summary>
+    private string? ExtractBootClause(string source)
+    {
+        // Match "boot :- ... ." capturing the body
+        // This handles multi-line boot clauses
+        var pattern = new Regex(
+            @"boot\s*:-\s*(.*?)\.\s*(?=\n|procedure|$)",
+            RegexOptions.Multiline | RegexOptions.Singleline
+        );
+        var match = pattern.Match(source);
+        if (!match.Success) return null;
+        return match.Groups[1].Value.Trim();
+    }
 
-    return result.trim() + '\n';
-  }
+    /// <summary>
+    /// Parse spawn directives from boot clause body.
+    /// </summary>
+    /// <remarks>
+    /// Looks for patterns like:
+    /// <c>functor(agentId, ...)@agentId</c>
+    ///
+    /// The first argument must be the agent ID (an atom).
+    /// Remaining arguments can be arbitrary terms (e.g., ch(_?,_)).
+    /// The @target must match the first argument.
+    /// </remarks>
+    private IReadOnlyList<SpawnDirective> ParseSpawnDirectives(string clauseBody)
+    {
+        var directives = new List<SpawnDirective>();
 
-  /// Read file contents (platform-specific)
-  String _readFile(String filePath) {
-    // This will be implemented differently for different platforms
-    // For now, we assume dart:io is available
-    throw UnimplementedError('Use load(source) directly or implement file reading');
-  }
+        // Strategy: find each @target, then work backwards to find the matching
+        // goal(agentId, ...) by balancing parentheses.
+        var atPattern = new Regex(@"@\s*(\w+)");
+
+        foreach (Match atMatch in atPattern.Matches(clauseBody))
+        {
+            var targetAgentId = atMatch.Groups[1].Value;
+            var beforeAt = clauseBody.Substring(0, atMatch.Index).TrimEnd();
+
+            // The character before @ should be ')' (end of goal arguments)
+            if (beforeAt.Length == 0 || beforeAt[beforeAt.Length - 1] != ')')
+            {
+                continue; // Not a goal@target pattern
+            }
+
+            // Walk backwards from ')' to find matching '('
+            var depth = 0;
+            var parenStart = -1;
+            for (var i = beforeAt.Length - 1; i >= 0; i--)
+            {
+                if (beforeAt[i] == ')') depth++;
+                if (beforeAt[i] == '(') depth--;
+                if (depth == 0)
+                {
+                    parenStart = i;
+                    break;
+                }
+            }
+
+            if (parenStart < 0) continue;
+
+            // Extract functor name before '('
+            var beforeParen = beforeAt.Substring(0, parenStart).TrimEnd();
+            var functorMatch = new Regex(@"(\w+)$").Match(beforeParen);
+            if (!functorMatch.Success) continue;
+            var functor = functorMatch.Groups[1].Value;
+
+            // Extract all arguments from inside the parentheses, splitting at depth-0 commas.
+            var argsStr = beforeAt.Substring(parenStart + 1, (beforeAt.Length - 1) - (parenStart + 1));
+            var allArgs = SplitArgs(argsStr);
+
+            if (allArgs.Count == 0) continue;
+
+            // First arg is the agent ID (must be a simple atom)
+            var goalAgentId = allArgs[0].Trim();
+            if (!new Regex(@"^\w+$").IsMatch(goalAgentId))
+            {
+                throw new BootLoaderException(
+                    "First argument of spawn goal must be an agent ID (atom), " +
+                    $"got \"{goalAgentId}\"");
+            }
+
+            // Validate agent IDs match
+            if (goalAgentId != targetAgentId)
+            {
+                throw new BootLoaderException(
+                    $"Agent ID mismatch: goal has \"{goalAgentId}\" but @target is \"{targetAgentId}\". " +
+                    "They must match.");
+            }
+
+            // Middle args (between agentId and last arg which is netIn) are constants.
+            // For parent_init(alice, carol, 4, _)@alice: constantArgs = ["carol", "4"]
+            // For agent_init(alice, _)@alice: constantArgs = []
+            var constantArgs = new List<string>();
+            for (var i = 1; i < allArgs.Count - 1; i++)
+            {
+                constantArgs.Add(allArgs[i].Trim());
+            }
+
+            directives.Add(new SpawnDirective(
+                agentId: goalAgentId,
+                goalFunctor: functor,
+                goalArity: allArgs.Count,
+                constantArgs: constantArgs
+            ));
+        }
+
+        return directives;
+    }
+
+    /// <summary>Split argument string at depth-0 commas, respecting nested parens/brackets.</summary>
+    private IReadOnlyList<string> SplitArgs(string argsStr)
+    {
+        var args = new List<string>();
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < argsStr.Length; i++)
+        {
+            if (argsStr[i] == '(' || argsStr[i] == '[') depth++;
+            if (argsStr[i] == ')' || argsStr[i] == ']') depth--;
+            if (argsStr[i] == ',' && depth == 0)
+            {
+                args.Add(argsStr.Substring(start, i - start));
+                start = i + 1;
+            }
+        }
+        args.Add(argsStr.Substring(start));
+        return args;
+    }
+
+    /// <summary>
+    /// Strip the boot clause and procedure declaration from source.
+    /// Returns source that can be compiled by the GLP compiler.
+    /// </summary>
+    private string StripBootClause(string source)
+    {
+        // Remove "procedure boot." line
+        var result = new Regex(@"procedure\s+boot\s*\.\s*\n?", RegexOptions.Multiline)
+            .Replace(source, "", 1);
+
+        // Remove "boot :- ... ." clause (possibly multi-line)
+        // Match from "boot :-" to the closing "." before next procedure or end
+        result = new Regex(@"boot\s*:-\s*.*?\.\s*\n?", RegexOptions.Multiline | RegexOptions.Singleline)
+            .Replace(result, "", 1);
+
+        return result.Trim() + "\n";
+    }
+
+    /// <summary>Read file contents (platform-specific)</summary>
+    private string ReadFile(string filePath)
+    {
+        // This will be implemented differently for different platforms
+        // For now, we assume platform-specific implementation is required
+        throw new NotImplementedException("Use Load(source) directly or implement file reading");
+    }
 }
 
-/// Exception thrown by BootLoader for parse errors.
-class BootLoaderException implements Exception {
-  final String message;
-  BootLoaderException(this.message);
+/// <summary>Exception thrown by BootLoader for parse errors.</summary>
+public class BootLoaderException : Exception
+{
+    public BootLoaderException(string message) : base(message) { }
 
-  @override
-  String toString() => 'BootLoaderException: $message';
+    public override string ToString() => $"BootLoaderException: {Message}";
 }

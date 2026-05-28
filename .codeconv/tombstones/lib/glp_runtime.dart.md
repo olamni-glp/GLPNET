@@ -16,5 +16,9 @@ plan_started_at: '2026-05-21T14:35:48Z'
 plan_completed_at: '2026-05-21T14:40:58Z'
 plan_path: .codeconv/conversion-plans/lib/glp_runtime.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:01:47Z'
+target_cs_path: out/csharp/lib/glp_runtime.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

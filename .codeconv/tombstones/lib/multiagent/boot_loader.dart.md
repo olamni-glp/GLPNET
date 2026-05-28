@@ -44,6 +44,10 @@ plan_started_at: '2026-05-21T14:35:51Z'
 plan_completed_at: '2026-05-21T14:40:56Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/boot_loader.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:01:52Z'
+target_cs_path: out/csharp/lib/multiagent/boot_loader.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Boot Loader for maGLP Isolate Spawning

@@ -18,5 +18,12 @@
     <Compile Include="lib/bytecode/opcodes.cs" />
     <Compile Include="lib/bytecode/opcodes_v2.cs" />
     <Compile Include="lib/compiler/error.cs" />
+    <Compile Include="lib/compiler/pmt/errors.cs" />
+    <Compile Include="lib/compiler/token.cs" />
+    <Compile Include="lib/engine/claude_adapter.cs" />
+    <Compile Include="lib/glp_runtime.cs" />
+    <Compile Include="lib/multiagent/boot_loader.cs" />
+    <Compile Include="lib/multiagent/global_writers_table.cs" />
+    <Compile Include="lib/multiagent/message_queue.cs" />
   </ItemGroup>
 </Project>

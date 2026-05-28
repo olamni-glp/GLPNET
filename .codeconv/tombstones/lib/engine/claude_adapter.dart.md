@@ -23,6 +23,10 @@ plan_started_at: '2026-05-21T14:35:46Z'
 plan_completed_at: '2026-05-21T14:41:03Z'
 plan_path: .codeconv/conversion-plans/lib/engine/claude_adapter.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:01:43Z'
+target_cs_path: out/csharp/lib/engine/claude_adapter.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Adapter skeleton: will bridge GLP's argument-indexed ops to Claude's VM.
