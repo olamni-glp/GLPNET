@@ -48,6 +48,10 @@ plan_started_at: '2026-05-21T16:06:17Z'
 plan_completed_at: '2026-05-21T16:12:52Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/glp_activation.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T12:39:14Z'
+target_cs_path: out/csharp/lib/runtime/glp_activation.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 GLP-level module activation.
