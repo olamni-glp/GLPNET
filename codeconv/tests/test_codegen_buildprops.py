@@ -113,6 +113,35 @@ def test_update_preserves_anchor_comment(tmp_path: Path) -> None:
     assert "codeconv-codegen append point" in text
 
 
+def test_update_ignores_example_include_inside_header_comment(tmp_path: Path) -> None:
+    # Regression for the bulk-codegen first-batch bug: the production
+    # Converted.props header comment contains an example ``<Compile
+    # Include="..."/>`` line. An earlier version of ``update`` scanned the
+    # whole file and treated the example's ``...`` as a real existing
+    # entry, re-inserting it into the ItemGroup body on every rewrite —
+    # then ``dotnet build`` crashed trying to GitInfo a path of "...".
+    p = tmp_path / "Converted.props"
+    p.write_text(
+        "<!--\n"
+        '  Each conversion appends one <Compile Include="..."/> here.\n'
+        "-->\n"
+        "<Project>\n"
+        "  <ItemGroup>\n"
+        f"    {buildprops._ANCHOR}\n"  # type: ignore[attr-defined]
+        "  </ItemGroup>\n"
+        "</Project>\n",
+        encoding="utf-8",
+    )
+    assert buildprops.update(p, add="lib/a.cs") is True
+    text = p.read_text(encoding="utf-8")
+    # Body has the real entry only — no "..." entry leaked from the comment.
+    assert '<Compile Include="lib/a.cs" />' in text
+    # The literal ellipsis Include must not appear in the ItemGroup body
+    # (it remains only inside the header comment).
+    body = text.split("<ItemGroup>")[1].split("</ItemGroup>")[0]
+    assert 'Include="..."' not in body
+
+
 def test_update_returns_false_on_malformed_props(tmp_path: Path) -> None:
     p = tmp_path / "Converted.props"
     # No <ItemGroup> at all — malformed; update declines to touch it.

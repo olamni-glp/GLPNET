@@ -24,6 +24,7 @@ _ANCHOR = (
 )
 _INCLUDE = re.compile(r'<Compile\s+Include="([^"]+)"\s*/?\s*>')
 _ITEMGROUP = re.compile(r"(<ItemGroup>)(.*?)(</ItemGroup>)", re.DOTALL)
+_XML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def converted_props_path(repo_root: Path, target_root: str) -> Path:
@@ -60,7 +61,9 @@ def update(
     if not props_path.is_file():
         return False
     text = props_path.read_text(encoding="utf-8")
-    existing = set(_INCLUDE.findall(text))
+    # Strip XML comments before scanning so example ``<Compile Include="..."/>``
+    # snippets inside header/anchor commentary do not look like real entries.
+    existing = set(_INCLUDE.findall(_XML_COMMENT.sub("", text)))
     new = set(existing)
     if add is not None:
         new.add(add)
