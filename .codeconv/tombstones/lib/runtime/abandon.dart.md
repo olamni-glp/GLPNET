@@ -17,5 +17,9 @@ plan_started_at: '2026-05-21T14:50:44Z'
 plan_completed_at: '2026-05-21T14:56:16Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/abandon.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:18:21Z'
+target_cs_path: out/csharp/lib/runtime/abandon.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

@@ -1,11 +1,13 @@
-import 'machine_state.dart';
+using System.Collections.Generic;
 
-class AbandonOps {
-  /// FCP-exact design: Abandon operation not yet implemented
-  /// TODO: Implement FCP-compatible abandon semantics
-  static List<GoalRef> abandonWriter({
-    required int writerId,
-  }) {
-    throw UnimplementedError('Abandon operation not implemented in FCP design');
-  }
+namespace GlpRuntime.Runtime;
+
+public static class AbandonOps
+{
+    /// <summary>FCP-exact design: Abandon operation not yet implemented.</summary>
+    /// <remarks>TODO: Implement FCP-compatible abandon semantics.</remarks>
+    public static IList<GoalRef> AbandonWriter(long writerId)
+    {
+        throw new NotImplementedException("Abandon operation not implemented in FCP design");
+    }
 }

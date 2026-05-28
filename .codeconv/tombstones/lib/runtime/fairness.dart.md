@@ -17,5 +17,9 @@ plan_started_at: '2026-05-21T14:50:46Z'
 plan_completed_at: '2026-05-21T14:56:18Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/fairness.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:18:26Z'
+target_cs_path: out/csharp/lib/runtime/fairness.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

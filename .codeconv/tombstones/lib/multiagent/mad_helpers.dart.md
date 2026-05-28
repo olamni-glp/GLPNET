@@ -51,6 +51,10 @@ plan_started_at: '2026-05-21T14:45:43Z'
 plan_completed_at: '2026-05-21T14:50:28Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/mad_helpers.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:18:12Z'
+target_cs_path: out/csharp/lib/multiagent/mad_helpers.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Helper types and operations for madGLP

@@ -66,6 +66,10 @@ plan_started_at: '2026-05-21T14:45:44Z'
 plan_completed_at: '2026-05-21T14:50:30Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/variable_table.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:18:16Z'
+target_cs_path: out/csharp/lib/multiagent/variable_table.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Minimal Variable Entry for multiagent runtime support

@@ -35,5 +35,9 @@ plan_started_at: '2026-05-21T14:45:41Z'
 plan_completed_at: '2026-05-21T14:50:27Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/lexer.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:18:07Z'
+target_cs_path: out/csharp/lib/compiler/lexer.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

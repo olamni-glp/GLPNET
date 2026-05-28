@@ -23,5 +23,9 @@ plan_started_at: '2026-05-21T14:45:39Z'
 plan_completed_at: '2026-05-21T14:50:24Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/program_dfa.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:17:57Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/program_dfa.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
