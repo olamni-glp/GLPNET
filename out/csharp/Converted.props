@@ -37,6 +37,7 @@
     <Compile Include="lib/compiler/partial_evaluator.cs" />
     <Compile Include="lib/compiler/pmt/errors.cs" />
     <Compile Include="lib/compiler/pmt/type_table.cs" />
+    <Compile Include="lib/compiler/project_linker.cs" />
     <Compile Include="lib/compiler/token.cs" />
     <Compile Include="lib/compiler/unify_result.cs" />
     <Compile Include="lib/engine/claude_adapter.cs" />
