@@ -1,0 +1,7 @@
+### E1: ModeDeclaration (and ModedArg) not defined in ast.cs
+
+- **Kind**: dependency_missing
+- **File(s)**: out/csharp/lib/compiler/ast.cs (missing definition); out/csharp/lib/compiler/pmt/mode_table.cs (consumer, blocked)
+- **Detail**: `mode_table.cs` references `ModeDeclaration` and its members `Signature`, `Args` (`IReadOnlyList<ModedArg>`), `TypeName`, and `ModedArg.IsReader` in 8 places. The convspec for `mode_table.dart` states these types are supplied by `import '../ast.dart'` and their C# shape is "fixed by the ast.dart conversion spec". However, `ast.cs` contains no `ModeDeclaration` or `ModedArg` class, and the `ast.dart.md` convspec has no entry for either type. The Dart source `glp_runtime/lib/compiler/ast.dart` likewise does not define `ModeDeclaration` — the definition lives only in the sibling GLP repo (not present in glpnet's `glp_runtime` copy), so the type's C# shape cannot be derived from this repo's Dart sources alone.
+- **Needs**: `ModeDeclaration` and `ModedArg` must be defined (likely in `out/csharp/lib/compiler/ast.cs` or a new `out/csharp/lib/compiler/pmt/mode_declaration.cs`) with at minimum: `string Signature`, `IReadOnlyList<ModedArg> Args`, `string TypeName` on `ModeDeclaration`; and `bool IsReader` on `ModedArg`. The exact shape (class vs record, constructor parameters, additional members) requires either reading the sibling GLP repo's Dart source or an authoritative decision from the convspec owner.
+- **Status**: open

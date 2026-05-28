@@ -44,6 +44,7 @@ plan_started_at: '2026-05-21T14:58:36Z'
 plan_completed_at: '2026-05-21T15:09:17Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/pmt/mode_table.dart.md
 open_escalation_count: 0
+codegen_started_at: '2026-05-28T09:42:59Z'
 ---
 
 PMT Mode Table: Stores mode declarations for type checking

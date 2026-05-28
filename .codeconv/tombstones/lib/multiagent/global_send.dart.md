@@ -43,6 +43,10 @@ plan_started_at: '2026-05-21T15:18:01Z'
 plan_completed_at: '2026-05-21T15:23:59Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/global_send.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:37:29Z'
+target_cs_path: out/csharp/lib/multiagent/global_send.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Global Send mechanism for madGLP

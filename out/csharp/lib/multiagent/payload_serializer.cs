@@ -1,773 +1,749 @@
-/// Payload Serialization for irmaGLP
-/// 
-/// Serializes terms and messages to bytes for inter-agent transport.
-/// Uses global variable IDs (creator:localId) for cross-agent routing.
-/// 
-/// Specification: /docs/ma/irmaGLP-spec.md Section 6 and 8.3
-library;
+// Payload Serialization for irmaGLP
+//
+// Serializes terms and messages to bytes for inter-agent transport.
+// Uses global variable IDs (creator:localId) for cross-agent routing.
+//
+// Specification: /docs/ma/irmaGLP-spec.md Section 6 and 8.3
 
-import 'dart:convert';
-import 'dart:typed_data';
-import 'package:glp_runtime/runtime/terms.dart';
-import 'package:glp_runtime/multiagent/message_queue.dart';
-import 'package:glp_runtime/multiagent/mad_helpers.dart';
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using GlpRuntime.Runtime;
 
-/// Global Variable ID encoding
-class GlobalVarId {
-  final String creator;
-  final int localId;
-  
-  GlobalVarId(this.creator, this.localId);
-  
-  /// Encode to string format: creator:localId
-  String encode() {
-    return '$creator:$localId';
-  }
-  
-  /// Decode from string format: creator:localId
-  static GlobalVarId decode(String encoded) {
-    final parts = encoded.split(':');
-    if (parts.length != 2) {
-      throw FormatException('Invalid global variable ID format: $encoded');
+namespace GlpRuntime.Multiagent;
+
+/// <summary>
+/// Global Variable ID encoding: creator:localId pair with by-value equality.
+/// </summary>
+public sealed class GlobalVarId : IEquatable<GlobalVarId>
+{
+    public string Creator { get; }
+    public int LocalId { get; }
+
+    public GlobalVarId(string creator, int localId)
+    {
+        Creator = creator;
+        LocalId = localId;
     }
-    final localId = int.tryParse(parts[1]);
-    if (localId == null) {
-      throw FormatException('Invalid local ID in global variable ID: $encoded');
+
+    /// <summary>Encode to wire string: creator:localId</summary>
+    public string Encode() => $"{Creator}:{LocalId}";
+
+    /// <summary>Decode from wire string: creator:localId</summary>
+    public static GlobalVarId Decode(string encoded)
+    {
+        var parts = encoded.Split(':');
+        if (parts.Length != 2)
+            throw new FormatException($"Invalid global variable ID format: {encoded}");
+        if (!int.TryParse(parts[1], out var localId))
+            throw new FormatException($"Invalid local ID in global variable ID: {encoded}");
+        return new GlobalVarId(parts[0], localId);
     }
-    return GlobalVarId(parts[0], localId);
-  }
-  
-  @override
-  bool operator ==(Object other) {
-    return other is GlobalVarId && 
-           other.creator == creator && 
-           other.localId == localId;
-  }
-  
-  @override
-  int get hashCode => Object.hash(creator, localId);
-  
-  @override
-  String toString() => encode();
+
+    public override bool Equals(object? other) =>
+        other is GlobalVarId g && g.Creator == Creator && g.LocalId == LocalId;
+
+    public bool Equals(GlobalVarId? other) =>
+        other is not null && other.Creator == Creator && other.LocalId == LocalId;
+
+    public override int GetHashCode() => HashCode.Combine(Creator, LocalId);
+
+    public static bool operator ==(GlobalVarId? left, GlobalVarId? right)
+    {
+        if (left is null) return right is null;
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(GlobalVarId? left, GlobalVarId? right) => !(left == right);
+
+    public override string ToString() => Encode();
 }
 
-/// Payload serializer for terms and messages
-class PayloadSerializer {
-  final String agentId;
-  
-  PayloadSerializer(this.agentId);
-  
-  /// Type tags for serialization
-  static const int _tagConstant = 1;
-  static const int _tagVariable = 2;
-  static const int _tagStruct = 3;
-  static const int _tagList = 4;
-  
-  // ============================================================================
-  // High-level message serialization
-  // ============================================================================
-  
-  /// Serialize an OutboundMessage to bytes for transport
-  Uint8List serializeMessage(OutboundMessage message) {
-    final builder = BytesBuilder();
-    
-    // Type tag
-    builder.addByte(message.type.index);
-    
-    // Destination
-    final destBytes = utf8.encode(message.destination);
-    builder.add(_encodeLength(destBytes.length));
-    builder.add(destBytes);
-    
-    // Payload
-    builder.add(_encodeLength(message.payload.length));
-    builder.add(message.payload);
-    
-    return builder.toBytes();
-  }
-  
-  /// Deserialize bytes to OutboundMessage
-  OutboundMessage deserializeMessage(Uint8List bytes) {
-    int offset = 0;
-    
-    // Type
-    final typeIndex = bytes[offset];
-    offset++;
-    final type = MessageType.values[typeIndex];
-    
-    // Destination
-    final (destLength, destLengthSize) = _decodeLength(bytes, offset);
-    offset += destLengthSize;
-    final destBytes = bytes.sublist(offset, offset + destLength);
-    offset += destLength;
-    final destination = utf8.decode(destBytes);
-    
-    // Payload
-    final (payloadLength, payloadLengthSize) = _decodeLength(bytes, offset);
-    offset += payloadLengthSize;
-    final payload = bytes.sublist(offset, offset + payloadLength);
-    
-    return OutboundMessage(
-      destination: destination,
-      type: type,
-      payload: payload,
-    );
-  }
-  
-  // ============================================================================
-  // Assignment message payload
-  // ============================================================================
-  
-  /// Create assignment payload: varId + serialized term
-  ///
-  /// [isReader] callback to check if addr is a reader (use heap.isReader).
-  /// [lookupVariable] optional callback to get (creator, creatorLocalId, isReader)
-  ///   for imported variables.
-  List<int> createAssignmentPayloadV2(
-    int varId,
-    Term value,
-    bool Function(int addr) isReader,
-    {({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable}
-  ) {
-    final builder = BytesBuilder();
+/// <summary>
+/// Helper type promoted from Dart anonymous record
+/// <c>({String creator, int creatorLocalId, bool isReader})</c>
+/// used as the return type of the <c>lookupVariable</c> callback.
+/// </summary>
+public readonly record struct VariableLookup(string Creator, int CreatorLocalId, bool IsReader);
 
-    // Variable ID (as global ID)
-    final globalId = GlobalVarId(agentId, varId);
-    final idBytes = utf8.encode(globalId.encode());
-    builder.add(_encodeLength(idBytes.length));
-    builder.add(idBytes);
+/// <summary>
+/// Payload serializer for terms and messages.
+/// </summary>
+public sealed class PayloadSerializer
+{
+    public string AgentId { get; }
 
-    // Serialized term using V2 serialization (no address arithmetic)
-    final termBytes = serializeTermWithCallbacks(value, agentId, isReader, lookupVariable: lookupVariable);
-    builder.add(termBytes);
-
-    return builder.toBytes();
-  }
-
-  /// Parse assignment payload to (globalVarId, value)
-  ///
-  /// Returns the full GlobalVarId (creator + localId) so the receiver
-  /// can translate to their local varId via V_p lookup.
-  ///
-  /// [allocateImportedVar] - Callback to allocate imported variable cell.
-  ///   Takes isReader flag and returns the cell address (varId).
-  /// [onVariableImported] - Optional callback invoked after allocating each variable.
-  ///   Used by MadContext to create and attach VariableEntry to the cell.
-  (GlobalVarId, Term) deserializeAssignmentPayload(
-    List<int> payload,
-    int Function(bool isReader) allocateImportedVar,
-    {void Function(int localAddr, bool isReader, GlobalVarId globalId, int? pairedReaderCreatorLocalId)? onVariableImported}
-  ) {
-    int offset = 0;
-
-    // Parse global variable ID
-    final (idLength, idLengthSize) = _decodeLength(payload, offset);
-    offset += idLengthSize;
-    final idBytes = payload.sublist(offset, offset + idLength);
-    offset += idLength;
-    final globalId = GlobalVarId.decode(utf8.decode(idBytes));
-
-    // Parse term using V2 deserialization with proper allocation
-    final varMapping = <String, int>{};
-    final (term, _) = _deserializeTermWithMappingV2(
-      payload, offset, varMapping, allocateImportedVar, onVariableImported);
-
-    return (globalId, term);
-  }
-  
-  // ============================================================================
-  // Global send message payload (madGLP)
-  // ============================================================================
-
-  /// Create global_send payload: GlobalName + serialized term
-  ///
-  /// Used by madGLP global_send goals to send assignment messages.
-  /// The GlobalName identifies the link (_w(p,i) or _r(p,i)).
-  ///
-  /// Format:
-  /// - type: 1 byte (0=writer, 1=reader)
-  /// - agent: length-prefixed string
-  /// - index: variable-length int
-  /// - term: serialized term
-  ///
-  /// [isReader] callback to check if addr is a reader (use heap.isReader).
-  /// [lookupVariable] optional callback to get (creator, creatorLocalId, isReader)
-  ///   for imported variables.
-  List<int> createGlobalSendPayload(
-    GlobalName globalName,
-    Term value,
-    bool Function(int addr) isReader,
-    {({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable}
-  ) {
-    final builder = BytesBuilder();
-
-    // GlobalName type (0=writer, 1=reader)
-    builder.addByte(globalName.isWriter ? 0 : 1);
-
-    // GlobalName agent
-    final agentBytes = utf8.encode(globalName.agent);
-    builder.add(_encodeLength(agentBytes.length));
-    builder.add(agentBytes);
-
-    // GlobalName index
-    builder.add(_encodeLength(globalName.index));
-
-    // Serialized term
-    final termBytes = serializeTermWithCallbacks(value, agentId, isReader, lookupVariable: lookupVariable);
-    builder.add(termBytes);
-
-    return builder.toBytes();
-  }
-
-  /// Create serializer payload: wraps content in list cell [T | _w(q,0)]
-  ///
-  /// Used for cold-call messages to the index-0 serializer.
-  /// The message format is: _w(destAgent, 0) := [content | _w(destAgent, 0)]
-  ///
-  /// Spec Section 4.1: "This sends the assignment `_w(q,0) := [T↑ | _w(q,0)]`,
-  /// wrapping the content in a list cell and reusing the serializer writer in the tail."
-  ///
-  /// Format:
-  /// - type: 1 byte (0=writer for serializer address)
-  /// - agent: length-prefixed string (destination agent)
-  /// - index: 0 (serializer index)
-  /// - term: serialized list cell [content | serializer_ref]
-  List<int> createSerializerPayload(
-    GlobalName serializerName,
-    Term content,
-    bool Function(int addr) isReader,
-    {({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable}
-  ) {
-    assert(serializerName.isWriter && serializerName.index == 0,
-           'Serializer payload requires _w(agent, 0) global name');
-
-    final builder = BytesBuilder();
-
-    // GlobalName type (0=writer for serializer)
-    builder.addByte(0);
-
-    // GlobalName agent
-    final agentBytes = utf8.encode(serializerName.agent);
-    builder.add(_encodeLength(agentBytes.length));
-    builder.add(agentBytes);
-
-    // GlobalName index (0 for serializer)
-    builder.add(_encodeLength(0));
-
-    // Create list cell [content | serializer_ref]
-    // The tail is a special marker that the receiver interprets as _w(q,0) reuse
-    // We encode this as a struct '.' with two args: content and a special serializer ref
-    final listCell = _buildSerializerListCell(content, serializerName);
-    final termBytes = serializeTermWithCallbacks(listCell, agentId, isReader, lookupVariable: lookupVariable);
-    builder.add(termBytes);
-
-    return builder.toBytes();
-  }
-
-  /// Build the list cell [content | _w(q,0)] for serializer messages
-  ///
-  /// The tail is encoded as a ConstTerm marker that the receiver recognizes
-  /// as the serializer reuse indicator.
-  Term _buildSerializerListCell(Term content, GlobalName serializerName) {
-    // Represent the serializer tail as a special constant marker
-    // Format: '#serializer:agent:0' - receiver will recognize and handle
-    final serializerMarker = ConstTerm('#serializer:${serializerName.agent}:0');
-    return StructTerm('.', [content, serializerMarker]);
-  }
-
-  /// Parse global_send payload to (GlobalName, Term)
-  ///
-  /// [allocateImportedVar] - Callback to allocate imported variable cell.
-  /// [onVariableImported] - Optional callback for variable entry creation.
-  (GlobalName, Term) deserializeGlobalSendPayload(
-    List<int> payload,
-    int Function(bool isReader) allocateImportedVar,
-    {void Function(int localAddr, bool isReader, GlobalVarId globalId, int? pairedReaderCreatorLocalId)? onVariableImported}
-  ) {
-    int offset = 0;
-
-    // GlobalName type
-    final isWriter = payload[offset] == 0;
-    offset++;
-
-    // GlobalName agent
-    final (agentLength, agentLengthSize) = _decodeLength(payload, offset);
-    offset += agentLengthSize;
-    final agentBytes = payload.sublist(offset, offset + agentLength);
-    offset += agentLength;
-    final agent = utf8.decode(agentBytes);
-
-    // GlobalName index
-    final (index, indexSize) = _decodeLength(payload, offset);
-    offset += indexSize;
-
-    // Create GlobalName
-    final globalName = isWriter
-        ? GlobalName.writer(agent, index)
-        : GlobalName.reader(agent, index);
-
-    // Parse term
-    final varMapping = <String, int>{};
-    final remainingPayload = payload.sublist(offset);
-    final (term, _) = _deserializeTermWithMappingV2(
-      remainingPayload, 0, varMapping, allocateImportedVar, onVariableImported);
-
-    return (globalName, term);
-  }
-
-  // ============================================================================
-  // Read request message payload
-  // ============================================================================
-  
-  /// Create read request payload: varId + requester
-  List<int> createReadRequestPayload(int varId, String requester) {
-    final builder = BytesBuilder();
-    
-    // Variable ID (as global ID)
-    final globalId = GlobalVarId(agentId, varId);
-    final idBytes = utf8.encode(globalId.encode());
-    builder.add(_encodeLength(idBytes.length));
-    builder.add(idBytes);
-    
-    // Requester
-    final reqBytes = utf8.encode(requester);
-    builder.add(_encodeLength(reqBytes.length));
-    builder.add(reqBytes);
-    
-    return builder.toBytes();
-  }
-  
-  /// Parse read request payload to varId (requester is in message header)
-  int deserializeReadRequestPayload(List<int> payload) {
-    int offset = 0;
-    
-    // Parse global variable ID
-    final (idLength, idLengthSize) = _decodeLength(payload, offset);
-    offset += idLengthSize;
-    final idBytes = payload.sublist(offset, offset + idLength);
-    final globalId = GlobalVarId.decode(utf8.decode(idBytes));
-    
-    return globalId.localId;
-  }
-  
-  // ============================================================================
-  // Abandon message payload
-  // ============================================================================
-  
-  /// Create abandon payload: varId (the writer being abandoned)
-  List<int> createAbandonPayload(int writerId) {
-    final builder = BytesBuilder();
-    
-    // Writer ID (as global ID)
-    final globalId = GlobalVarId(agentId, writerId);
-    final idBytes = utf8.encode(globalId.encode());
-    builder.add(_encodeLength(idBytes.length));
-    builder.add(idBytes);
-    
-    return builder.toBytes();
-  }
-  
-  /// Parse abandon payload to varId
-  int deserializeAbandonPayload(List<int> payload) {
-    int offset = 0;
-    
-    // Parse global variable ID
-    final (idLength, idLengthSize) = _decodeLength(payload, offset);
-    offset += idLengthSize;
-    final idBytes = payload.sublist(offset, offset + idLength);
-    final globalId = GlobalVarId.decode(utf8.decode(idBytes));
-    
-    return globalId.localId;
-  }
-  
-  // ============================================================================
-  // Term serialization
-  // ============================================================================
-  
-  /// Serialize a term to bytes
-  ///
-  /// [agentId] is the default creator for local variables.
-  /// [isReader] callback to check if addr is a reader (use heap.isReader).
-  /// [lookupVariable] optional callback to get (creator, creatorLocalId, isReader)
-  ///   for imported variables. If null or returns null, uses agentId and addr.
-  ///
-  /// Per irmaGLP-spec.md Section 8.1: For imported variables, use the original
-  /// creator's ID, not the local agent's ID.
-  List<int> serializeTermWithCallbacks(
-    Term term,
-    String agentId,
-    bool Function(int addr) isReader,
-    {({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable}
-  ) {
-    final builder = BytesBuilder();
-    _serializeTermRecursiveV2(term, agentId, builder, isReader, lookupVariable);
-    return builder.toBytes();
-  }
-
-  void _serializeTermRecursiveV2(
-    Term term,
-    String agentId,
-    BytesBuilder builder,
-    bool Function(int addr) isReaderFn,
-    ({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable,
-  ) {
-    if (term is ConstTerm) {
-      builder.addByte(_tagConstant);
-      _serializeConstant(term.value, builder);
-    } else if (term is VarRef) {
-      builder.addByte(_tagVariable);
-
-      // Per irmaGLP-spec.md Section 3.2.1: use heap to check isReader
-      final addr = term.addr;
-      final isReaderVar = isReaderFn(addr);
-
-      // Per Section 8.1: For imported variables, use original creator's ID
-      String creator;
-      int creatorLocalId;
-      if (lookupVariable != null) {
-        final info = lookupVariable(addr);
-        creator = info.creator;
-        creatorLocalId = info.creatorLocalId;
-      } else {
-        creator = agentId;
-        creatorLocalId = addr;
-      }
-
-      final globalId = GlobalVarId(creator, creatorLocalId);
-      final encoded = utf8.encode(globalId.encode());
-      builder.add(_encodeLength(encoded.length));
-      builder.add(encoded);
-      // Store isReader flag
-      builder.addByte(isReaderVar ? 1 : 0);
-
-      // For writers, also serialize the paired reader's creatorLocalId
-      // Per spec Section 5.3: assignments are addressed to the reader (W?:=T)
-      if (!isReaderVar) {
-        // For local variables, paired reader is at writer+1
-        // For imported variables, we'd need to look it up (but we're exporting
-        // local variables here, so writer+1 is correct)
-        final pairedReaderLocalId = creatorLocalId + 1;
-        builder.add(_encodeLength(pairedReaderLocalId));
-      }
-    } else if (term is StructTerm) {
-      builder.addByte(_tagStruct);
-      // Encode functor
-      final functorBytes = utf8.encode(term.functor);
-      builder.add(_encodeLength(functorBytes.length));
-      builder.add(functorBytes);
-      // Encode arity
-      builder.add(_encodeLength(term.args.length));
-      // Encode args
-      for (final arg in term.args) {
-        _serializeTermRecursiveV2(arg, agentId, builder, isReaderFn, lookupVariable);
-      }
-    } else {
-      throw UnsupportedError('Cannot serialize term type: ${term.runtimeType}');
+    public PayloadSerializer(string agentId)
+    {
+        AgentId = agentId;
     }
-  }
 
-  void _serializeConstant(dynamic value, BytesBuilder builder) {
-    if (value == 'nil') {
-      // Nil (empty list) - represented as ConstTerm('nil') in GLP
-      builder.addByte(0);
-    } else if (value is int) {
-      builder.addByte(1);
-      builder.add(_encodeInt64(value));
-    } else if (value is double) {
-      builder.addByte(2);
-      builder.add(_encodeFloat64(value));
-    } else if (value is String) {
-      builder.addByte(3);
-      final bytes = utf8.encode(value);
-      builder.add(_encodeLength(bytes.length));
-      builder.add(bytes);
-    } else if (value is bool) {
-      builder.addByte(4);
-      builder.addByte(value ? 1 : 0);
-    } else {
-      throw UnsupportedError('Cannot serialize constant type: ${value.runtimeType}');
+    // Type tags for serialization (single-octet wire values)
+    private const byte TagConstant = 1;
+    private const byte TagVariable = 2;
+    private const byte TagStruct = 3;
+    private const byte TagList = 4;
+
+    // ============================================================================
+    // High-level message serialization
+    // ============================================================================
+
+    /// <summary>Serialize an OutboundMessage to bytes for transport.</summary>
+    public byte[] SerializeMessage(OutboundMessage message)
+    {
+        using var ms = new MemoryStream();
+
+        // Type tag — enum ordinal as single byte
+        ms.WriteByte((byte)message.Type);
+
+        // Destination: varlen-prefixed UTF-8 string
+        var destBytes = Encoding.UTF8.GetBytes(message.Destination);
+        var destLen = EncodeLength(destBytes.Length);
+        ms.Write(destLen, 0, destLen.Length);
+        ms.Write(destBytes, 0, destBytes.Length);
+
+        // Payload: varlen-prefixed raw bytes
+        var payloadArr = message.Payload.ToArray();
+        var payloadLen = EncodeLength(payloadArr.Length);
+        ms.Write(payloadLen, 0, payloadLen.Length);
+        ms.Write(payloadArr, 0, payloadArr.Length);
+
+        return ms.ToArray();
     }
-  }
-  // ============================================================================
-  // Agent message payload (term serialization for agent-to-agent messages)
-  // ============================================================================
 
-  /// Create agent message payload: just the serialized term
-  ///
-  /// [isReader] callback to check if addr is a reader (use heap.isReader).
-  /// [lookupVariable] optional callback to get (creator, creatorLocalId, isReader)
-  ///   for imported variables.
-  List<int> createAgentMessagePayload(
-    Term term,
-    bool Function(int addr) isReader,
-    {({String creator, int creatorLocalId, bool isReader}) Function(int addr)? lookupVariable}
-  ) {
-    return serializeTermWithCallbacks(term, agentId, isReader, lookupVariable: lookupVariable);
-  }
+    /// <summary>Deserialize bytes to OutboundMessage.</summary>
+    public OutboundMessage DeserializeMessage(byte[] bytes)
+    {
+        int offset = 0;
 
-  /// Serialize a ground term (no variables) as an agent message payload.
-  ///
-  /// Use this for UI event injection where the term contains no VarRefs.
-  /// Throws if the term contains VarRefs.
-  List<int> serializeAgentMessage(Term term) {
-    return serializeTermWithCallbacks(
-      term,
-      agentId,
-      (_) => throw StateError('Ground term expected, but VarRef found'),
-    );
-  }
-  
-  /// Result of deserializing an agent message payload
-  ///
-  /// Contains the deserialized term and a mapping from local varIds to their
-  /// original global IDs (creator:creatorLocalId).
-  ///
-  /// [allocateImportedVar] - Callback to allocate a single cell for imported variable.
-  ///   Takes isReader flag and returns the cell address (varId).
-  ///   For readers: calls heap.allocateImportedReader()
-  ///   For writers: calls heap.allocateImportedWriter()
-  ///
-  /// [onVariableImported] - Optional callback invoked after allocating each variable.
-  ///   Used by MadContext to create and attach VariableEntry to the cell.
-  ///   Parameters: (localAddr, isReader, globalId, pairedReaderCreatorLocalId)
-  ///   For writers, pairedReaderCreatorLocalId contains the reader's ID for assignments.
-  static (Term, Map<int, GlobalVarId>) deserializeAgentMessagePayloadWithMapping(
-    List<int> payload,
-    int Function(bool isReader) allocateImportedVar,
-    {void Function(int localAddr, bool isReader, GlobalVarId globalId, int? pairedReaderCreatorLocalId)? onVariableImported}
-  ) {
-    // Map from global var ID string -> local varId
-    final globalToLocal = <String, int>{};
-    
-    final serializer = PayloadSerializer('');
-    final (term, _) = serializer._deserializeTermWithMappingV2(
-      payload, 0, globalToLocal, allocateImportedVar, onVariableImported);
-    
-    // Invert to get local -> global mapping
-    final localToGlobal = <int, GlobalVarId>{};
-    for (final entry in globalToLocal.entries) {
-      localToGlobal[entry.value] = GlobalVarId.decode(entry.key);
+        // Type
+        byte typeIndex = bytes[offset++];
+        if (!Enum.IsDefined(typeof(MessageType), (int)typeIndex))
+            throw new FormatException($"Unknown message type: {typeIndex}");
+        var type = (MessageType)typeIndex;
+
+        // Destination
+        var (destLength, destLengthSize) = DecodeLength(bytes.AsSpan(), offset);
+        offset += destLengthSize;
+        var destination = Encoding.UTF8.GetString(bytes, offset, destLength);
+        offset += destLength;
+
+        // Payload
+        var (payloadLength, payloadLengthSize) = DecodeLength(bytes.AsSpan(), offset);
+        offset += payloadLengthSize;
+        var payload = new List<byte>(bytes.AsSpan(offset, payloadLength).ToArray());
+
+        return new OutboundMessage(destination, type, payload);
     }
-    
-    return (term, localToGlobal);
-  }
-  
-  /// Deserialize agent message payload with fresh variable allocation
-  ///
-  /// This is used when receiving a term from another agent. Remote variables
-  /// are mapped to fresh local variables using the provided allocator.
-  ///
-  /// [payload] - The serialized term bytes
-  /// [allocateImportedVar] - Callback to allocate imported variable cell.
-  ///   Takes isReader flag and returns the cell address (varId).
-  /// [onVariableImported] - Optional callback invoked after allocating each variable.
-  Term deserializeAgentMessagePayload(
-    List<int> payload,
-    int Function(bool isReader) allocateImportedVar,
-    {void Function(int localAddr, bool isReader, GlobalVarId globalId, int? pairedReaderCreatorLocalId)? onVariableImported}
-  ) {
-    // Map from global var ID string -> local varId
-    final varMapping = <String, int>{};
-    
-    final (term, _) = _deserializeTermWithMappingV2(
-      payload, 0, varMapping, allocateImportedVar, onVariableImported);
-    return term;
-  }
-  
-  /// Deserialize term with variable remapping for cross-agent terms (V2 - isReader aware)
-  ///
-  /// This version uses isReader-aware allocation for imported variables,
-  /// allocating single cells instead of full pairs.
-  ///
-  /// [onVariableImported] callback receives:
-  /// - localAddr: the allocated local heap address
-  /// - isReader: whether this is a reader variable
-  /// - globalId: the original creator's global ID
-  /// - pairedReaderCreatorLocalId: for writers, the paired reader's creatorLocalId
-  ///   (used when sending assignments per spec Section 5.3)
-  (Term, int) _deserializeTermWithMappingV2(
-    List<int> bytes,
-    int offset,
-    Map<String, int> varMapping,
-    int Function(bool isReader) allocateImportedVar,
-    void Function(int localAddr, bool isReader, GlobalVarId globalId, int? pairedReaderCreatorLocalId)? onVariableImported,
-  ) {
-    final startOffset = offset;
-    
-    if (offset >= bytes.length) {
-      throw FormatException('Unexpected end of input');
-    }
-    
-    final tag = bytes[offset];
-    offset++;
-    
-    switch (tag) {
-      case _tagConstant:
-        final (value, constSize) = _deserializeConstant(bytes, offset);
-        return (ConstTerm(value), 1 + constSize);
-        
-      case _tagVariable:
-        // Decode global ID length
-        final (idLength, lengthSize) = _decodeLength(bytes, offset);
-        offset += lengthSize;
 
-        // Decode global ID string (e.g., "bob:1117")
-        final idBytes = bytes.sublist(offset, offset + idLength);
+    // ============================================================================
+    // Assignment message payload
+    // ============================================================================
+
+    /// <summary>Create assignment payload: varId + serialized term.</summary>
+    public byte[] CreateAssignmentPayloadV2(
+        int varId,
+        Term value,
+        Func<int, bool> isReader,
+        Func<int, VariableLookup>? lookupVariable = null)
+    {
+        using var ms = new MemoryStream();
+
+        // Variable ID as global ID
+        var globalId = new GlobalVarId(AgentId, varId);
+        var idBytes = Encoding.UTF8.GetBytes(globalId.Encode());
+        var idLen = EncodeLength(idBytes.Length);
+        ms.Write(idLen, 0, idLen.Length);
+        ms.Write(idBytes, 0, idBytes.Length);
+
+        // Serialized term
+        var termBytes = SerializeTermWithCallbacks(value, AgentId, isReader, lookupVariable);
+        ms.Write(termBytes, 0, termBytes.Length);
+
+        return ms.ToArray();
+    }
+
+    /// <summary>Parse assignment payload to (globalVarId, value).</summary>
+    public (GlobalVarId GlobalId, Term Term) DeserializeAssignmentPayload(
+        byte[] payload,
+        Func<bool, int> allocateImportedVar,
+        Action<int, bool, GlobalVarId, int?>? onVariableImported = null)
+    {
+        int offset = 0;
+
+        var (idLength, idLengthSize) = DecodeLength(payload.AsSpan(), offset);
+        offset += idLengthSize;
+        var globalIdStr = Encoding.UTF8.GetString(payload, offset, idLength);
         offset += idLength;
-        final globalIdStr = utf8.decode(idBytes);
-        final globalId = GlobalVarId.decode(globalIdStr);
+        var globalId = GlobalVarId.Decode(globalIdStr);
 
-        // Decode isReader flag
-        final isReader = bytes[offset] == 1;
+        var varMapping = new Dictionary<string, int>();
+        var (term, _) = DeserializeTermWithMappingV2(payload, offset, varMapping, allocateImportedVar, onVariableImported);
+
+        return (globalId, term);
+    }
+
+    // ============================================================================
+    // Global send message payload (madGLP)
+    // ============================================================================
+
+    /// <summary>Create global_send payload: GlobalName + serialized term.</summary>
+    public byte[] CreateGlobalSendPayload(
+        GlobalName globalName,
+        Term value,
+        Func<int, bool> isReader,
+        Func<int, VariableLookup>? lookupVariable = null)
+    {
+        using var ms = new MemoryStream();
+
+        // GlobalName type (0=writer, 1=reader)
+        ms.WriteByte(globalName.IsWriter ? (byte)0 : (byte)1);
+
+        // GlobalName agent: varlen-prefixed UTF-8
+        var agentBytes = Encoding.UTF8.GetBytes(globalName.Agent);
+        var agentLen = EncodeLength(agentBytes.Length);
+        ms.Write(agentLen, 0, agentLen.Length);
+        ms.Write(agentBytes, 0, agentBytes.Length);
+
+        // GlobalName index: varlen int
+        var indexLen = EncodeLength(globalName.Index);
+        ms.Write(indexLen, 0, indexLen.Length);
+
+        // Serialized term
+        var termBytes = SerializeTermWithCallbacks(value, AgentId, isReader, lookupVariable);
+        ms.Write(termBytes, 0, termBytes.Length);
+
+        return ms.ToArray();
+    }
+
+    /// <summary>Create serializer payload: wraps content in list cell [T | _w(q,0)].</summary>
+    public byte[] CreateSerializerPayload(
+        GlobalName serializerName,
+        Term content,
+        Func<int, bool> isReader,
+        Func<int, VariableLookup>? lookupVariable = null)
+    {
+        Debug.Assert(serializerName.IsWriter && serializerName.Index == 0,
+            "Serializer payload requires _w(agent, 0) global name");
+
+        using var ms = new MemoryStream();
+
+        // GlobalName type (0=writer for serializer)
+        ms.WriteByte((byte)0);
+
+        // GlobalName agent: varlen-prefixed UTF-8
+        var agentBytes = Encoding.UTF8.GetBytes(serializerName.Agent);
+        var agentLen = EncodeLength(agentBytes.Length);
+        ms.Write(agentLen, 0, agentLen.Length);
+        ms.Write(agentBytes, 0, agentBytes.Length);
+
+        // GlobalName index = 0 for serializer
+        var indexLen = EncodeLength(0);
+        ms.Write(indexLen, 0, indexLen.Length);
+
+        // List cell [content | serializer_ref]
+        var listCell = BuildSerializerListCell(content, serializerName);
+        var termBytes = SerializeTermWithCallbacks(listCell, AgentId, isReader, lookupVariable);
+        ms.Write(termBytes, 0, termBytes.Length);
+
+        return ms.ToArray();
+    }
+
+    /// <summary>Build the list cell [content | _w(q,0)] for serializer messages.</summary>
+    private Term BuildSerializerListCell(Term content, GlobalName serializerName)
+    {
+        var serializerMarker = new ConstTerm($"#serializer:{serializerName.Agent}:0");
+        return new StructTerm(".", new Term[] { content, serializerMarker });
+    }
+
+    /// <summary>Parse global_send payload to (GlobalName, Term).</summary>
+    public (GlobalName GlobalName, Term Term) DeserializeGlobalSendPayload(
+        byte[] payload,
+        Func<bool, int> allocateImportedVar,
+        Action<int, bool, GlobalVarId, int?>? onVariableImported = null)
+    {
+        int offset = 0;
+
+        var isWriter = payload[offset] == 0;
         offset++;
 
-        // For writers, decode the paired reader's creatorLocalId
-        int? pairedReaderCreatorLocalId;
-        if (!isReader) {
-          final (pairedReaderId, pairedReaderIdSize) = _decodeLength(bytes, offset);
-          offset += pairedReaderIdSize;
-          pairedReaderCreatorLocalId = pairedReaderId;
-        }
+        var (agentLength, agentLengthSize) = DecodeLength(payload.AsSpan(), offset);
+        offset += agentLengthSize;
+        var agent = Encoding.UTF8.GetString(payload, offset, agentLength);
+        offset += agentLength;
 
-        // Map to local variable (allocate fresh if first time seeing this global ID)
-        int localVarId;
-        if (varMapping.containsKey(globalIdStr)) {
-          localVarId = varMapping[globalIdStr]!;
-        } else {
-          // Allocate appropriate cell type based on isReader
-          // allocateImportedVar returns the correct address for the cell
-          localVarId = allocateImportedVar(isReader);
-          varMapping[globalIdStr] = localVarId;
+        var (index, indexSize) = DecodeLength(payload.AsSpan(), offset);
+        offset += indexSize;
 
-          // Notify caller to create VariableEntry and attach to cell
-          onVariableImported?.call(localVarId, isReader, globalId, pairedReaderCreatorLocalId);
-        }
+        var globalName = isWriter
+            ? GlobalName.Writer(agent, index)
+            : GlobalName.Reader(agent, index);
 
-        // localVarId is already the correct heap address
-        return (VarRef(localVarId), offset - startOffset);
-        
-      case _tagStruct:
-        // Decode functor length
-        final (functorLength, functorLengthSize) = _decodeLength(bytes, offset);
-        offset += functorLengthSize;
-        
-        // Decode functor string
-        final functorBytes = bytes.sublist(offset, offset + functorLength);
-        offset += functorLength;
-        final functor = utf8.decode(functorBytes);
-        
-        // Decode arity
-        final (arity, aritySize) = _decodeLength(bytes, offset);
-        offset += aritySize;
-        
-        // Decode args with same mapping
-        final args = <Term>[];
-        for (int i = 0; i < arity; i++) {
-          final (arg, argSize) = _deserializeTermWithMappingV2(
-            bytes, offset, varMapping, allocateImportedVar, onVariableImported);
-          args.add(arg);
-          offset += argSize;
-        }
-        
-        return (StructTerm(functor, args), offset - startOffset);
-        
-      default:
-        throw FormatException('Unknown term tag: $tag');
+        var remainingPayload = payload.AsSpan(offset).ToArray();
+        var varMapping = new Dictionary<string, int>();
+        var (term, _) = DeserializeTermWithMappingV2(remainingPayload, 0, varMapping, allocateImportedVar, onVariableImported);
+
+        return (globalName, term);
     }
-  }
 
-  (dynamic, int) _deserializeConstant(List<int> bytes, int offset) {
-    final startOffset = offset;
-    
-    if (offset >= bytes.length) {
-      throw FormatException('Unexpected end of input in constant');
+    // ============================================================================
+    // Read request message payload
+    // ============================================================================
+
+    /// <summary>Create read request payload: varId + requester.</summary>
+    public byte[] CreateReadRequestPayload(int varId, string requester)
+    {
+        using var ms = new MemoryStream();
+
+        // Variable ID as global ID
+        var globalId = new GlobalVarId(AgentId, varId);
+        var idBytes = Encoding.UTF8.GetBytes(globalId.Encode());
+        var idLen = EncodeLength(idBytes.Length);
+        ms.Write(idLen, 0, idLen.Length);
+        ms.Write(idBytes, 0, idBytes.Length);
+
+        // Requester
+        var reqBytes = Encoding.UTF8.GetBytes(requester);
+        var reqLen = EncodeLength(reqBytes.Length);
+        ms.Write(reqLen, 0, reqLen.Length);
+        ms.Write(reqBytes, 0, reqBytes.Length);
+
+        return ms.ToArray();
     }
-    
-    final typeTag = bytes[offset];
-    offset++;
-    
-    switch (typeTag) {
-      case 0: // nil - return the string 'nil' to match ConstTerm('nil')
-        return ('nil', offset - startOffset);
-      case 1: // int
-        final value = _decodeInt64(bytes, offset);
-        offset += 8;
-        return (value, offset - startOffset);
-      case 2: // double
-        final value = _decodeFloat64(bytes, offset);
-        offset += 8;
-        return (value, offset - startOffset);
-      case 3: // string
-        final (length, lengthSize) = _decodeLength(bytes, offset);
-        offset += lengthSize;
-        final strBytes = bytes.sublist(offset, offset + length);
-        offset += length;
-        final value = utf8.decode(strBytes);
-        return (value, offset - startOffset);
-      case 4: // bool
-        final value = bytes[offset] == 1;
+
+    /// <summary>Parse read request payload to varId (requester is in message header).</summary>
+    public int DeserializeReadRequestPayload(byte[] payload)
+    {
+        int offset = 0;
+
+        var (idLength, idLengthSize) = DecodeLength(payload.AsSpan(), offset);
+        offset += idLengthSize;
+        var globalIdStr = Encoding.UTF8.GetString(payload, offset, idLength);
+        var globalId = GlobalVarId.Decode(globalIdStr);
+
+        return globalId.LocalId;
+    }
+
+    // ============================================================================
+    // Abandon message payload
+    // ============================================================================
+
+    /// <summary>Create abandon payload: writerId.</summary>
+    public byte[] CreateAbandonPayload(int writerId)
+    {
+        using var ms = new MemoryStream();
+
+        var globalId = new GlobalVarId(AgentId, writerId);
+        var idBytes = Encoding.UTF8.GetBytes(globalId.Encode());
+        var idLen = EncodeLength(idBytes.Length);
+        ms.Write(idLen, 0, idLen.Length);
+        ms.Write(idBytes, 0, idBytes.Length);
+
+        return ms.ToArray();
+    }
+
+    /// <summary>Parse abandon payload to varId.</summary>
+    public int DeserializeAbandonPayload(byte[] payload)
+    {
+        int offset = 0;
+
+        var (idLength, idLengthSize) = DecodeLength(payload.AsSpan(), offset);
+        offset += idLengthSize;
+        var globalIdStr = Encoding.UTF8.GetString(payload, offset, idLength);
+        var globalId = GlobalVarId.Decode(globalIdStr);
+
+        return globalId.LocalId;
+    }
+
+    // ============================================================================
+    // Term serialization
+    // ============================================================================
+
+    /// <summary>Serialize a term to bytes.</summary>
+    public byte[] SerializeTermWithCallbacks(
+        Term term,
+        string agentId,
+        Func<int, bool> isReader,
+        Func<int, VariableLookup>? lookupVariable = null)
+    {
+        using var ms = new MemoryStream();
+        SerializeTermRecursiveV2(term, agentId, ms, isReader, lookupVariable);
+        return ms.ToArray();
+    }
+
+    private void SerializeTermRecursiveV2(
+        Term term,
+        string agentId,
+        MemoryStream ms,
+        Func<int, bool> isReaderFn,
+        Func<int, VariableLookup>? lookupVariable)
+    {
+        switch (term)
+        {
+            case ConstTerm c:
+                ms.WriteByte(TagConstant);
+                SerializeConstant(c.Value, ms);
+                break;
+
+            case VarRef v:
+            {
+                ms.WriteByte(TagVariable);
+
+                var addr = v.Addr;
+                var isReaderVar = isReaderFn(addr);
+
+                string creator;
+                int creatorLocalId;
+                if (lookupVariable != null)
+                {
+                    var info = lookupVariable(addr);
+                    creator = info.Creator;
+                    creatorLocalId = info.CreatorLocalId;
+                }
+                else
+                {
+                    creator = agentId;
+                    creatorLocalId = addr;
+                }
+
+                var globalId = new GlobalVarId(creator, creatorLocalId);
+                var encoded = Encoding.UTF8.GetBytes(globalId.Encode());
+                var encLen = EncodeLength(encoded.Length);
+                ms.Write(encLen, 0, encLen.Length);
+                ms.Write(encoded, 0, encoded.Length);
+                ms.WriteByte(isReaderVar ? (byte)1 : (byte)0);
+
+                // For writers, also encode the paired reader's creatorLocalId
+                if (!isReaderVar)
+                {
+                    var pairedReaderLocalId = creatorLocalId + 1;
+                    var pairedLen = EncodeLength(pairedReaderLocalId);
+                    ms.Write(pairedLen, 0, pairedLen.Length);
+                }
+                break;
+            }
+
+            case StructTerm s:
+            {
+                ms.WriteByte(TagStruct);
+
+                var functorBytes = Encoding.UTF8.GetBytes(s.Functor);
+                var functorLen = EncodeLength(functorBytes.Length);
+                ms.Write(functorLen, 0, functorLen.Length);
+                ms.Write(functorBytes, 0, functorBytes.Length);
+
+                var arityLen = EncodeLength(s.Args.Count);
+                ms.Write(arityLen, 0, arityLen.Length);
+
+                foreach (var arg in s.Args)
+                    SerializeTermRecursiveV2(arg, agentId, ms, isReaderFn, lookupVariable);
+                break;
+            }
+
+            default:
+                throw new NotSupportedException($"Cannot serialize term type: {term.GetType()}");
+        }
+    }
+
+    private static void SerializeConstant(object? value, MemoryStream ms)
+    {
+        switch (value)
+        {
+            case "nil":
+                ms.WriteByte(0);
+                break;
+            case int i:
+                ms.WriteByte(1);
+                var intBuf = EncodeInt64((long)i);
+                ms.Write(intBuf, 0, intBuf.Length);
+                break;
+            case long l:
+                ms.WriteByte(1);
+                var longBuf = EncodeInt64(l);
+                ms.Write(longBuf, 0, longBuf.Length);
+                break;
+            case double d:
+                ms.WriteByte(2);
+                var dblBuf = EncodeFloat64(d);
+                ms.Write(dblBuf, 0, dblBuf.Length);
+                break;
+            case string s:
+                ms.WriteByte(3);
+                var sb = Encoding.UTF8.GetBytes(s);
+                var sbLen = EncodeLength(sb.Length);
+                ms.Write(sbLen, 0, sbLen.Length);
+                ms.Write(sb, 0, sb.Length);
+                break;
+            case bool b:
+                ms.WriteByte(4);
+                ms.WriteByte(b ? (byte)1 : (byte)0);
+                break;
+            default:
+                throw new NotSupportedException($"Cannot serialize constant type: {value?.GetType()}");
+        }
+    }
+
+    // ============================================================================
+    // Agent message payload
+    // ============================================================================
+
+    /// <summary>Create agent message payload: just the serialized term.</summary>
+    public byte[] CreateAgentMessagePayload(
+        Term term,
+        Func<int, bool> isReader,
+        Func<int, VariableLookup>? lookupVariable = null)
+    {
+        return SerializeTermWithCallbacks(term, AgentId, isReader, lookupVariable);
+    }
+
+    /// <summary>
+    /// Serialize a ground term (no variables) as an agent message payload.
+    /// Throws <see cref="InvalidOperationException"/> if a VarRef is encountered.
+    /// </summary>
+    public byte[] SerializeAgentMessage(Term term)
+    {
+        return SerializeTermWithCallbacks(
+            term,
+            AgentId,
+            _ => throw new InvalidOperationException("Ground term expected, but VarRef found"));
+    }
+
+    /// <summary>
+    /// Deserialize agent message payload with variable remapping and mapping output.
+    /// </summary>
+    public static (Term Term, Dictionary<int, GlobalVarId> Mapping) DeserializeAgentMessagePayloadWithMapping(
+        byte[] payload,
+        Func<bool, int> allocateImportedVar,
+        Action<int, bool, GlobalVarId, int?>? onVariableImported = null)
+    {
+        var globalToLocal = new Dictionary<string, int>();
+
+        // Note: agentId is unused during deserialisation; empty string is a sentinel matching the Dart source.
+        var tempSerializer = new PayloadSerializer("");
+        var (term, _) = tempSerializer.DeserializeTermWithMappingV2(
+            payload, 0, globalToLocal, allocateImportedVar, onVariableImported);
+
+        var localToGlobal = new Dictionary<int, GlobalVarId>();
+        foreach (var kvp in globalToLocal)
+            localToGlobal[kvp.Value] = GlobalVarId.Decode(kvp.Key);
+
+        return (term, localToGlobal);
+    }
+
+    /// <summary>Deserialize agent message payload with fresh variable allocation.</summary>
+    public Term DeserializeAgentMessagePayload(
+        byte[] payload,
+        Func<bool, int> allocateImportedVar,
+        Action<int, bool, GlobalVarId, int?>? onVariableImported = null)
+    {
+        var varMapping = new Dictionary<string, int>();
+        var (term, _) = DeserializeTermWithMappingV2(
+            payload, 0, varMapping, allocateImportedVar, onVariableImported);
+        return term;
+    }
+
+    /// <summary>Deserialize term with variable remapping (V2, isReader-aware).</summary>
+    private (Term Term, int BytesConsumed) DeserializeTermWithMappingV2(
+        byte[] bytes,
+        int offset,
+        Dictionary<string, int> varMapping,
+        Func<bool, int> allocateImportedVar,
+        Action<int, bool, GlobalVarId, int?>? onVariableImported)
+    {
+        var startOffset = offset;
+
+        if (offset >= bytes.Length)
+            throw new FormatException("Unexpected end of input");
+
+        var tag = bytes[offset];
         offset++;
-        return (value, offset - startOffset);
-      default:
-        throw FormatException('Unknown constant type tag: $typeTag');
+
+        switch (tag)
+        {
+            case TagConstant:
+            {
+                var (value, constSize) = DeserializeConstant(bytes, offset);
+                return (new ConstTerm(value), 1 + constSize);
+            }
+
+            case TagVariable:
+            {
+                var (idLength, lengthSize) = DecodeLength(bytes.AsSpan(), offset);
+                offset += lengthSize;
+
+                var globalIdStr = Encoding.UTF8.GetString(bytes, offset, idLength);
+                offset += idLength;
+                var globalId = GlobalVarId.Decode(globalIdStr);
+
+                var isReader = bytes[offset] == 1;
+                offset++;
+
+                int? pairedReaderCreatorLocalId = null;
+                if (!isReader)
+                {
+                    var (pairedReaderId, pairedReaderIdSize) = DecodeLength(bytes.AsSpan(), offset);
+                    offset += pairedReaderIdSize;
+                    pairedReaderCreatorLocalId = pairedReaderId;
+                }
+
+                int localVarId;
+                if (varMapping.TryGetValue(globalIdStr, out var existing))
+                {
+                    localVarId = existing;
+                }
+                else
+                {
+                    localVarId = allocateImportedVar(isReader);
+                    varMapping[globalIdStr] = localVarId;
+                    onVariableImported?.Invoke(localVarId, isReader, globalId, pairedReaderCreatorLocalId);
+                }
+
+                return (new VarRef(localVarId), offset - startOffset);
+            }
+
+            case TagStruct:
+            {
+                var (functorLength, functorLengthSize) = DecodeLength(bytes.AsSpan(), offset);
+                offset += functorLengthSize;
+
+                var functor = Encoding.UTF8.GetString(bytes, offset, functorLength);
+                offset += functorLength;
+
+                var (arity, aritySize) = DecodeLength(bytes.AsSpan(), offset);
+                offset += aritySize;
+
+                var args = new List<Term>(arity);
+                for (int i = 0; i < arity; i++)
+                {
+                    var (arg, argSize) = DeserializeTermWithMappingV2(
+                        bytes, offset, varMapping, allocateImportedVar, onVariableImported);
+                    args.Add(arg);
+                    offset += argSize;
+                }
+
+                return (new StructTerm(functor, args), offset - startOffset);
+            }
+
+            default:
+                throw new FormatException($"Unknown term tag: {tag}");
+        }
     }
-  }
-  
-  // ============================================================================
-  // Encoding/decoding helpers
-  // ============================================================================
-  
-  List<int> _encodeLength(int length) {
-    // Use variable-length encoding
-    if (length < 128) {
-      return [length];
-    } else if (length < 16384) {
-      return [0x80 | (length >> 8), length & 0xFF];
-    } else {
-      return [
-        0xC0 | (length >> 24),
-        (length >> 16) & 0xFF,
-        (length >> 8) & 0xFF,
-        length & 0xFF,
-      ];
+
+    private static (object? Value, int BytesConsumed) DeserializeConstant(byte[] bytes, int offset)
+    {
+        var startOffset = offset;
+
+        if (offset >= bytes.Length)
+            throw new FormatException("Unexpected end of input in constant");
+
+        var typeTag = bytes[offset];
+        offset++;
+
+        switch (typeTag)
+        {
+            case 0: // nil
+                return ("nil", offset - startOffset);
+
+            case 1: // int (stored as big-endian int64)
+            {
+                var value = DecodeInt64(bytes.AsSpan(), offset);
+                offset += 8;
+                return (value, offset - startOffset);
+            }
+
+            case 2: // double (stored as big-endian float64)
+            {
+                var value = DecodeFloat64(bytes.AsSpan(), offset);
+                offset += 8;
+                return (value, offset - startOffset);
+            }
+
+            case 3: // string
+            {
+                var (length, lengthSize) = DecodeLength(bytes.AsSpan(), offset);
+                offset += lengthSize;
+                var value = Encoding.UTF8.GetString(bytes, offset, length);
+                offset += length;
+                return (value, offset - startOffset);
+            }
+
+            case 4: // bool
+            {
+                var value = bytes[offset] == 1;
+                offset++;
+                return (value, offset - startOffset);
+            }
+
+            default:
+                throw new FormatException($"Unknown constant type tag: {typeTag}");
+        }
     }
-  }
-  
-  (int, int) _decodeLength(List<int> bytes, int offset) {
-    final first = bytes[offset];
-    if (first < 0x80) {
-      return (first, 1);
-    } else if (first < 0xC0) {
-      final length = ((first & 0x3F) << 8) | bytes[offset + 1];
-      return (length, 2);
-    } else {
-      final length = ((first & 0x3F) << 24) | 
-                    (bytes[offset + 1] << 16) |
-                    (bytes[offset + 2] << 8) |
-                    bytes[offset + 3];
-      return (length, 4);
+
+    // ============================================================================
+    // Encoding/decoding helpers
+    // ============================================================================
+
+    /// <summary>
+    /// Variable-length length encoding: 1/2/4-byte tagged-prefix scheme.
+    /// NOT LEB128 — preserves Dart wire format exactly.
+    /// </summary>
+    private static byte[] EncodeLength(int length)
+    {
+        if (length < 128)
+            return new byte[] { (byte)length };
+        else if (length < 16384)
+            return new byte[] { (byte)(0x80 | (length >> 8)), (byte)(length & 0xFF) };
+        else
+            return new byte[]
+            {
+                (byte)(0xC0 | (length >> 24)),
+                (byte)((length >> 16) & 0xFF),
+                (byte)((length >> 8) & 0xFF),
+                (byte)(length & 0xFF)
+            };
     }
-  }
-  
-  List<int> _encodeInt64(int value) {
-    final data = ByteData(8);
-    data.setInt64(0, value, Endian.big);
-    return data.buffer.asUint8List();
-  }
-  
-  int _decodeInt64(List<int> bytes, int offset) {
-    final data = ByteData.sublistView(Uint8List.fromList(bytes), offset, offset + 8);
-    return data.getInt64(0, Endian.big);
-  }
-  
-  List<int> _encodeFloat64(double value) {
-    final data = ByteData(8);
-    data.setFloat64(0, value, Endian.big);
-    return data.buffer.asUint8List();
-  }
-  
-  double _decodeFloat64(List<int> bytes, int offset) {
-    final data = ByteData.sublistView(Uint8List.fromList(bytes), offset, offset + 8);
-    return data.getFloat64(0, Endian.big);
-  }
+
+    /// <summary>Decode variable-length length. Returns (Value, BytesConsumed).</summary>
+    private static (int Value, int BytesConsumed) DecodeLength(ReadOnlySpan<byte> bytes, int offset)
+    {
+        var first = bytes[offset];
+        if (first < 0x80)
+            return (first, 1);
+        else if (first < 0xC0)
+            return (((first & 0x3F) << 8) | bytes[offset + 1], 2);
+        else
+            return (
+                ((first & 0x3F) << 24) |
+                (bytes[offset + 1] << 16) |
+                (bytes[offset + 2] << 8) |
+                bytes[offset + 3],
+                4);
+    }
+
+    /// <summary>Encode int64 as 8 big-endian bytes.</summary>
+    private static byte[] EncodeInt64(long value)
+    {
+        var buf = new byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(buf, value);
+        return buf;
+    }
+
+    /// <summary>Decode 8 big-endian bytes to int64.</summary>
+    private static long DecodeInt64(ReadOnlySpan<byte> bytes, int offset) =>
+        BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(offset, 8));
+
+    /// <summary>Encode double as 8 big-endian bytes.</summary>
+    private static byte[] EncodeFloat64(double value)
+    {
+        var buf = new byte[8];
+        BinaryPrimitives.WriteDoubleBigEndian(buf, value);
+        return buf;
+    }
+
+    /// <summary>Decode 8 big-endian bytes to double.</summary>
+    private static double DecodeFloat64(ReadOnlySpan<byte> bytes, int offset) =>
+        BinaryPrimitives.ReadDoubleBigEndian(bytes.Slice(offset, 8));
 }
