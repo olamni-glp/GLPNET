@@ -43,6 +43,7 @@
     <Compile Include="lib/compiler/pmt/occurrence.cs" />
     <Compile Include="lib/compiler/pmt/type_checker.cs" />
     <Compile Include="lib/compiler/pmt/type_table.cs" />
+    <Compile Include="lib/compiler/pmt/validator.cs" />
     <Compile Include="lib/compiler/project_linker.cs" />
     <Compile Include="lib/compiler/token.cs" />
     <Compile Include="lib/compiler/unify_result.cs" />

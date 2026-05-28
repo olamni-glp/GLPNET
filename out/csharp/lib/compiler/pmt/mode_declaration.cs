@@ -1,4 +1,22 @@
+using GlpRuntime.Compiler;
+
 namespace GlpRuntime.Compiler.Pmt;
+
+/// <summary>
+/// Extension surface exposing PMT mode declarations on a <see cref="Module"/>.
+/// </summary>
+/// <remarks>
+/// Both Dart (`ast.dart`) and the converted C# (`ast.cs`) lack a `modeDeclarations`/`ModeDeclarations`
+/// member on `Module`, but `pmt/validator.dart` reads `ast.modeDeclarations`. The canonical
+/// definition lives in the sibling GLP repo. This stub returns an empty list so the PMT
+/// validation pipeline links — a real implementation should derive declarations from
+/// `Module.ProcDeclarations` / `Module.ParamProcDecls` once the convspec for that derivation is ratified.
+/// </remarks>
+public static class ModuleModeDeclarationsExtensions
+{
+    public static IReadOnlyList<ModeDeclaration> ModeDeclarations(this Module module)
+        => System.Array.Empty<ModeDeclaration>();
+}
 
 /// <summary>
 /// One argument of a PMT mode declaration. <see cref="IsReader"/> is true iff
