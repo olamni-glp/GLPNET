@@ -1,1054 +1,785 @@
-// GLP Partial Evaluator
+// lib/compiler/partial_evaluator.cs
 //
-// Performs source-to-source transformation:
-//   Stage 1: Unfold defined guards (unit clauses in guard position)
-//   Stage 2: Unfold reduce/2 calls in body against reduce/2 facts
+// GLP Partial Evaluator — source-to-source AST transformer.
+// Converted from Dart source: lib/compiler/partial_evaluator.dart
+// source_sha256: 8ac90433fa30c517b59e6f21f1860214b4493128880376e072467c37f92385ab
+//
+// Stage 1: Unfold defined guards (unit clauses in guard position).
+// Stage 2: Unfold reduce/2 calls in clause bodies against reduce/2 facts.
 
-import 'ast.dart';
-import 'error.dart';
-import 'lexer.dart';
-import 'parser.dart';
-import '../analysis/type_checker/prelude.dart' show builtinProcedures;
+using static GlpRuntime.Analysis.TypeChecker.Prelude;
+
+namespace GlpRuntime.Compiler;
 
 // ============================================================================
 // PRELUDE UNIT CLAUSES
 // ============================================================================
 
-/// Source for prelude unit clauses (set by engine from programs/self.glp).
-String? _preludeUnitClauseSource;
+/// <summary>
+/// Hosts the mutable prelude-unit-clause source and its memoised parsed form.
+/// Wraps two Dart top-level globals plus a setter and a lazy getter
+/// (C# forbids free top-level mutable fields and free functions).
+/// </summary>
+internal static class PreludeUnitClauses
+{
+    private static string? _preludeUnitClauseSource = null;
+    private static Dictionary<string, IReadOnlyList<Term>>? _cachedPreludeUnitClauses = null;
 
-/// Set the source from which prelude unit clauses are extracted.
-/// Call this once during engine initialization with the content of programs/self.glp.
-void setPreludeUnitClauseSource(String source) {
-  _preludeUnitClauseSource = source;
-  _cachedPreludeUnitClauses = null; // invalidate cache
-}
-
-/// Cached prelude unit clauses (parsed once per process lifetime).
-Map<String, List<Term>>? _cachedPreludeUnitClauses;
-
-/// Parse the prelude source and extract unit clauses (defined guards).
-/// Result is cached — parsing happens only on first call.
-/// Returns a map from "name/arity" to the head arguments of the unit clause.
-Map<String, List<Term>> getPreludeUnitClauses() {
-  if (_cachedPreludeUnitClauses != null) return _cachedPreludeUnitClauses!;
-
-  final source = _preludeUnitClauseSource ?? '';
-  if (source.isEmpty) {
-    _cachedPreludeUnitClauses = {};
-    return _cachedPreludeUnitClauses!;
-  }
-
-  final lexer = Lexer(source);
-  final tokens = lexer.tokenize();
-  final parser = Parser(tokens);
-  final module = parser.parseModule();
-
-  final Map<String, List<Term>> unitClauses = {};
-  for (final proc in module.procedures) {
-    if (proc.clauses.length != 1) continue;
-    final clause = proc.clauses.first;
-    if (clause.guards != null && clause.guards!.isNotEmpty) continue;
-    if (clause.body != null && clause.body!.isNotEmpty) {
-      if (clause.body!.length == 1 &&
-          clause.body![0].functor == 'true' &&
-          clause.body![0].args.isEmpty) {
-        // Body is just `true`
-      } else {
-        continue;
-      }
+    /// <summary>
+    /// Set the source from which prelude unit clauses are extracted.
+    /// Invalidates the cache so the next call to GetPreludeUnitClauses re-parses.
+    /// </summary>
+    public static void SetPreludeUnitClauseSource(string source)
+    {
+        _preludeUnitClauseSource = source;
+        _cachedPreludeUnitClauses = null;
     }
-    unitClauses['${proc.name}/${proc.arity}'] = clause.head.args;
-  }
 
-  _cachedPreludeUnitClauses = unitClauses;
-  return _cachedPreludeUnitClauses!;
-}
+    /// <summary>
+    /// Parse the prelude source and return unit clauses, memoised.
+    /// Returns a map from "name/arity" to the head arguments of each unit clause.
+    /// NOT a Lazy&lt;T&gt; because the cache must be invalidatable by the setter.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<Term>> GetPreludeUnitClauses()
+    {
+        if (_cachedPreludeUnitClauses is not null) return _cachedPreludeUnitClauses;
 
-// ============================================================================
-// UNIFICATION RESULTS
-// ============================================================================
+        var source = _preludeUnitClauseSource ?? string.Empty;
+        if (source.Length == 0)
+        {
+            _cachedPreludeUnitClauses = new Dictionary<string, IReadOnlyList<Term>>(StringComparer.Ordinal);
+            return _cachedPreludeUnitClauses;
+        }
 
-/// Result of compile-time GLP unification for partial evaluation
-sealed class UnifyResult {}
+        var lexer  = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser(tokens);
+        var module = parser.ParseModule();
 
-class UnifySuccess extends UnifyResult {
-  final Map<String, Term> substitution;
-  UnifySuccess(this.substitution);
-}
+        var unitClauses = new Dictionary<string, IReadOnlyList<Term>>(StringComparer.Ordinal);
+        foreach (var proc in module.Procedures)
+        {
+            if (proc.Clauses.Count != 1) continue;
+            var clause = proc.Clauses[0];
+            if (!PartialEvaluator.IsUnitClauseShape(clause)) continue;
+            unitClauses[$"{proc.Name}/{proc.Arity}"] = clause.Head.Args;
+        }
 
-class UnifyFail extends UnifyResult {
-  final String reason;
-  UnifyFail(this.reason);
-}
-
-class UnifySuspend extends UnifyResult {
-  final Set<String> unboundReaders;
-  UnifySuspend(this.unboundReaders);
+        _cachedPreludeUnitClauses = unitClauses;
+        return _cachedPreludeUnitClauses;
+    }
 }
 
 // ============================================================================
 // PARTIAL EVALUATOR
 // ============================================================================
 
-/// Partial evaluator for GLP programs
-class PartialEvaluator {
-  int _varCounter = 0;
+/// <summary>Partial evaluator for GLP programs.</summary>
+public class PartialEvaluator
+{
+    private long _varCounter = 0;
 
-  /// Stage 1: Transform all defined guards in a program.
-  /// Call this before SRSW analysis.
-  Program transformDefinedGuards(Program program) {
-    // Merge prelude unit clauses with user unit clauses.
-    // User definitions override prelude (spread order: prelude first, user second).
-    final unitClauses = {...getPreludeUnitClauses(), ..._collectUnitClauses(program)};
-    final allProcedures = _collectAllProcedures(program);
+    // ========================================================================
+    // Public entry points
+    // ========================================================================
 
-    List<Procedure> transformedProcedures = [];
+    /// <summary>
+    /// Stage 1: Transform all defined guards in a program.
+    /// Call this before SRSW analysis.
+    /// </summary>
+    public Program TransformDefinedGuards(Program program)
+    {
+        // Merge prelude unit clauses with user unit clauses.
+        // Second foreach overrides on key collision (user defs override prelude).
+        var unitClauses = new Dictionary<string, IReadOnlyList<Term>>(StringComparer.Ordinal);
+        foreach (var kv in PreludeUnitClauses.GetPreludeUnitClauses()) unitClauses[kv.Key] = kv.Value;
+        foreach (var kv in CollectUnitClauses(program))                 unitClauses[kv.Key] = kv.Value;
 
-    for (final procedure in program.procedures) {
-      List<Clause> transformedClauses = [];
-
-      for (final clause in procedure.clauses) {
-        final transformed = _transformClause(clause, unitClauses, allProcedures);
-        transformedClauses.add(transformed);
-      }
-
-      transformedProcedures.add(Procedure(
-        procedure.name,
-        procedure.arity,
-        transformedClauses,
-        procedure.line,
-        procedure.column,
-      ));
-    }
-
-    return Program(transformedProcedures, program.line, program.column);
-  }
-
-  /// Collect all procedures from program.
-  /// Returns set of "name/arity" for all defined procedures.
-  Set<String> _collectAllProcedures(Program program) {
-    final Set<String> procedures = {};
-    for (final proc in program.procedures) {
-      procedures.add('${proc.name}/${proc.arity}');
-    }
-    return procedures;
-  }
-
-  /// Stage 2: Unfold reduce/2 calls in clause bodies
-  ///
-  /// For each clause with body containing reduce(A?, B):
-  ///   For each reduce/2 fact in the program:
-  ///     Try to unify A with the fact's first argument
-  ///     If success: create new clause with B bound and reduce call removed
-  Program unfoldReduceCalls(Program program) {
-    // 1. Collect all reduce/2 facts (unit clauses for reduce/2)
-    final reduceFacts = _collectReduceFacts(program);
-
-    if (reduceFacts.isEmpty) {
-      return program; // No reduce facts, nothing to unfold
-    }
-
-    List<Procedure> transformedProcedures = [];
-
-    for (final procedure in program.procedures) {
-      List<Clause> transformedClauses = [];
-
-      for (final clause in procedure.clauses) {
-        final expanded = _unfoldReduceInClause(clause, reduceFacts);
-        transformedClauses.addAll(expanded);
-      }
-
-      transformedProcedures.add(Procedure(
-        procedure.name,
-        procedure.arity,
-        transformedClauses,
-        procedure.line,
-        procedure.column,
-      ));
-    }
-
-    return Program(transformedProcedures, program.line, program.column);
-  }
-
-  /// Collect reduce/2 facts from the program
-  /// A reduce fact is a unit clause: reduce(Pattern, Replacement).
-  List<Clause> _collectReduceFacts(Program program) {
-    final List<Clause> facts = [];
-
-    for (final proc in program.procedures) {
-      if (proc.name != 'reduce' || proc.arity != 2) continue;
-
-      for (final clause in proc.clauses) {
-        // Must have no guards
-        if (clause.guards != null && clause.guards!.isNotEmpty) continue;
-
-        // Must have no body, or body is just `true`
-        if (clause.body != null && clause.body!.isNotEmpty) {
-          if (clause.body!.length == 1 &&
-              clause.body![0].functor == 'true' &&
-              clause.body![0].args.isEmpty) {
-            // Body is just `true`, this is a fact
-          } else {
-            continue; // Has real body goals
-          }
+        var allProcedures        = CollectAllProcedures(program);
+        var transformedProcedures = new List<Procedure>(program.Procedures.Count);
+        foreach (var procedure in program.Procedures)
+        {
+            var transformedClauses = new List<Clause>(procedure.Clauses.Count);
+            foreach (var clause in procedure.Clauses)
+                transformedClauses.Add(TransformClause(clause, unitClauses, allProcedures));
+            transformedProcedures.Add(new Procedure(procedure.Name, procedure.Arity, transformedClauses, procedure.Line, procedure.Column));
         }
-
-        facts.add(clause);
-      }
+        return new Program(transformedProcedures, program.Line, program.Column);
     }
 
-    return facts;
-  }
+    /// <summary>
+    /// Stage 2: Unfold reduce/2 calls in clause bodies.
+    /// Short-circuits (identity-return) when there are no reduce facts.
+    /// </summary>
+    public Program UnfoldReduceCalls(Program program)
+    {
+        var reduceFacts = CollectReduceFacts(program);
+        if (reduceFacts.Count == 0) return program;   // identity-return — preserve reference identity
 
-  /// Unfold reduce/2 calls in a clause
-  /// Returns a list of clauses (may be 1 if no unfolding, or multiple if expanded)
-  List<Clause> _unfoldReduceInClause(Clause clause, List<Clause> reduceFacts) {
-    if (clause.body == null || clause.body!.isEmpty) {
-      return [clause]; // No body, nothing to unfold
+        var transformedProcedures = new List<Procedure>(program.Procedures.Count);
+        foreach (var procedure in program.Procedures)
+        {
+            var transformedClauses = new List<Clause>();
+            foreach (var clause in procedure.Clauses)
+                transformedClauses.AddRange(UnfoldReduceInClause(clause, reduceFacts));
+            transformedProcedures.Add(new Procedure(procedure.Name, procedure.Arity, transformedClauses, procedure.Line, procedure.Column));
+        }
+        return new Program(transformedProcedures, program.Line, program.Column);
     }
 
-    // Find reduce/2 calls in the body
-    int reduceIndex = -1;
-    Goal? reduceCall;
-    for (int i = 0; i < clause.body!.length; i++) {
-      final goal = clause.body![i];
-      if (goal.functor == 'reduce' && goal.args.length == 2) {
-        reduceIndex = i;
-        reduceCall = goal;
-        break; // Process first reduce call found
-      }
+    // ========================================================================
+    // Private helpers — collection
+    // ========================================================================
+
+    /// <summary>
+    /// Lifted helper: true iff the clause is a unit-clause shape
+    /// (no guards AND body is null, empty, or the singleton "true/0").
+    /// The "exactly one clause" predicate stays at each call site.
+    /// </summary>
+    internal static bool IsUnitClauseShape(Clause clause) =>
+        (clause.Guards is null || clause.Guards.Count == 0) &&
+        (clause.Body is null
+         || clause.Body.Count == 0
+         || (clause.Body.Count == 1 && clause.Body[0].Functor == "true" && clause.Body[0].Args.Count == 0));
+
+    private static Dictionary<string, IReadOnlyList<Term>> CollectUnitClauses(Program program)
+    {
+        var result = new Dictionary<string, IReadOnlyList<Term>>(StringComparer.Ordinal);
+        foreach (var proc in program.Procedures)
+        {
+            if (proc.Clauses.Count != 1) continue;
+            var clause = proc.Clauses[0];
+            if (!IsUnitClauseShape(clause)) continue;
+            result[$"{proc.Name}/{proc.Arity}"] = clause.Head.Args;
+        }
+        return result;
     }
 
-    if (reduceCall == null) {
-      return [clause]; // No reduce calls
+    private static HashSet<string> CollectAllProcedures(Program program)
+    {
+        var procedures = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var proc in program.Procedures) procedures.Add($"{proc.Name}/{proc.Arity}");
+        return procedures;
     }
 
-    // Try to unfold against each reduce fact
-    List<Clause> expanded = [];
-
-    for (final fact in reduceFacts) {
-      // Rename variables in fact to fresh names
-      final renamedFact = _renameClauseVars(fact);
-
-      // Get the pattern and replacement from the fact
-      final factPattern = renamedFact.head.args[0];
-      final factReplacement = renamedFact.head.args[1];
-
-      // Get the call's pattern and result variable
-      final callPattern = reduceCall.args[0]; // A?
-      final callResult = reduceCall.args[1];  // B
-
-      // Try to unify callPattern with factPattern
-      final result = _glpUnifyForPE([callPattern], [factPattern]);
-
-      switch (result) {
-        case UnifyFail():
-          // This fact doesn't match, try next
-          continue;
-
-        case UnifySuspend():
-          // Can't reduce at compile time, keep original
-          // But still try other facts
-          continue;
-
-        case UnifySuccess(:final substitution):
-          // Unification succeeded! Create expanded clause
-
-          // Also unify callResult with factReplacement
-          final resultUnify = _glpUnifyForPE([callResult], [factReplacement]);
-
-          Map<String, Term> fullSubst = {...substitution};
-          if (resultUnify is UnifySuccess) {
-            fullSubst.addAll(resultUnify.substitution);
-          }
-
-          // Apply substitution to head
-          var newHead = _applySubstitutionToAtom(clause.head, fullSubst);
-
-          // Apply substitution to guards
-          List<Guard>? newGuards;
-          if (clause.guards != null && clause.guards!.isNotEmpty) {
-            newGuards = clause.guards!
-                .map((g) => _applySubstitutionToGuard(g, fullSubst))
-                .toList();
-          }
-
-          // Build new body: replace reduce call with the bound result
-          // The reduce(A?, B) call is removed; B is now bound via substitution
-          List<Goal> newBody = [];
-          for (int i = 0; i < clause.body!.length; i++) {
-            if (i == reduceIndex) {
-              // Skip the reduce call - it's been resolved
-              // If factReplacement is a goal (not just `true`), we might need to add it
-              // But typically reduce facts bind B to a goal that run/1 will execute
-              continue;
+    private static List<Clause> CollectReduceFacts(Program program)
+    {
+        var facts = new List<Clause>();
+        foreach (var proc in program.Procedures)
+        {
+            if (proc.Name != "reduce" || proc.Arity != 2) continue;
+            foreach (var clause in proc.Clauses)
+            {
+                if (!IsUnitClauseShape(clause)) continue;
+                facts.Add(clause);
             }
-            newBody.add(_applySubstitutionToGoal(clause.body![i], fullSubst));
-          }
-
-          // If body is empty, make it null or [true]
-          if (newBody.isEmpty) {
-            newBody = [Goal('true', [], clause.line, clause.column)];
-          }
-
-          // Simplify guards - remove redundant ones
-          final simplifiedGuards = _simplifyGuards(newGuards, newHead);
-
-          expanded.add(Clause(
-            newHead,
-            guards: simplifiedGuards,
-            body: newBody,
-            line: clause.line,
-            column: clause.column,
-          ));
-      }
-    }
-
-    // If no expansions succeeded, keep original clause
-    if (expanded.isEmpty) {
-      return [clause];
-    }
-
-    return expanded;
-  }
-
-  /// Rename all variables in a clause to fresh names
-  Clause _renameClauseVars(Clause clause) {
-    // Collect all variable names
-    final varNames = <String>{};
-    _collectVarNamesFromAtom(clause.head, varNames);
-    if (clause.guards != null) {
-      for (final guard in clause.guards!) {
-        for (final arg in guard.args) {
-          _collectVarNames(arg, varNames);
         }
-      }
+        return facts;
     }
-    if (clause.body != null) {
-      for (final goal in clause.body!) {
-        for (final arg in goal.args) {
-          _collectVarNames(arg, varNames);
+
+    // ========================================================================
+    // Stage-1 fixpoint transformer
+    // ========================================================================
+
+    private Clause TransformClause(
+        Clause clause,
+        IReadOnlyDictionary<string, IReadOnlyList<Term>> unitClauses,
+        IReadOnlySet<string> allProcedures)
+    {
+        if (clause.Guards is null || clause.Guards.Count == 0) return clause;
+
+        var currentHead   = clause.Head;
+        var currentGuards = new List<Guard>(clause.Guards);
+        var currentBody   = clause.Body is not null ? new List<Goal>(clause.Body) : null;
+        bool changed      = true;
+
+        while (changed)
+        {
+            changed = false;
+            var remainingGuards = new List<Guard>();
+
+            for (int i = 0; i < currentGuards.Count; i++)
+            {
+                var guard = currentGuards[i];
+                var key   = $"{guard.Predicate}/{guard.Args.Count}";
+
+                if (unitClauses.TryGetValue(key, out var unitArgs))
+                {
+                    if (guard.Negated)
+                        throw new CompileError(
+                            $"Defined guard \"{guard.Predicate}\" cannot be negated",
+                            guard.Line, guard.Column, phase: "analyzer");
+
+                    var renamedArgs = RenameUnitClauseVars(unitArgs);
+                    var result      = GlpUnifyForPE(guard.Args, renamedArgs);
+
+                    switch (result)
+                    {
+                        case UnifyFail fail:
+                            throw new CompileError(
+                                $"Defined guard \"{guard.Predicate}({string.Join(", ", guard.Args)})\" can never succeed.\n" +
+                                $"  Unit clause: {guard.Predicate}({string.Join(", ", unitArgs)})\n" +
+                                $"  Reason: {fail.Reason}\n" +
+                                "  This clause is unreachable.",
+                                guard.Line, guard.Column, phase: "analyzer");
+
+                        case UnifySuspend suspend:
+                            throw new CompileError(
+                                $"Cannot reduce defined guard \"{guard.Predicate}({string.Join(", ", guard.Args)})\" at compile time.\n" +
+                                $"  Unit clause: {guard.Predicate}({string.Join(", ", unitArgs)})\n" +
+                                $"  Unbound readers: {string.Join(", ", suspend.UnboundReaders.Select(r => r + "?"))}\n" +
+                                "  Defined guards must be fully reducible at compile time.",
+                                guard.Line, guard.Column, phase: "analyzer");
+
+                        case UnifySuccess success:
+                            currentHead = ApplySubstitutionToAtom(currentHead, success.Substitution);
+                            var restGuards = currentGuards.GetRange(i + 1, currentGuards.Count - i - 1)
+                                .Select(g => ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                            remainingGuards = remainingGuards
+                                .Select(g => ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                            if (currentBody is not null)
+                                currentBody = currentBody
+                                    .Select(g => ApplySubstitutionToGoal(g, success.Substitution)).ToList();
+                            currentGuards = new List<Guard>(remainingGuards.Count + restGuards.Count);
+                            currentGuards.AddRange(remainingGuards);
+                            currentGuards.AddRange(restGuards);
+                            changed = true;
+                            break;
+
+                        default:
+                            throw new InvalidOperationException("UnifyResult: unreachable subtype.");
+                    }
+                    if (changed) break;
+                }
+                else if (BuiltinProcedures.Contains(key))
+                {
+                    remainingGuards.Add(guard);
+                }
+                else if (allProcedures.Contains(key))
+                {
+                    throw new CompileError(
+                        $"Cannot call \"{guard.Predicate}/{guard.Args.Count}\" in guard position.\n" +
+                        "  Only builtin guards and single-unit-clause procedures can appear in guards.\n" +
+                        $"  The procedure \"{guard.Predicate}\" has multiple clauses or non-unit clauses.",
+                        guard.Line, guard.Column, phase: "partial_evaluator");
+                }
+                else
+                {
+                    remainingGuards.Add(guard);
+                }
+            }
+            if (!changed) currentGuards = remainingGuards;
         }
-      }
+
+        return new Clause(
+            currentHead,
+            guards: currentGuards.Count == 0 ? null : currentGuards,
+            body:   currentBody,
+            line:   clause.Line,
+            column: clause.Column);
     }
 
-    // Build renaming map (skip underscores)
-    final Map<String, String> renaming = {};
-    for (final name in varNames) {
-      if (name != '_') {
-        renaming[name] = 'PE${_varCounter++}';
-      }
-    }
+    // ========================================================================
+    // Stage-2 single-clause unfolder
+    // ========================================================================
 
-    // Apply renaming
-    final newHead = _applyRenamingToAtom(clause.head, renaming);
+    private List<Clause> UnfoldReduceInClause(Clause clause, IReadOnlyList<Clause> reduceFacts)
+    {
+        if (clause.Body is null || clause.Body.Count == 0) return new List<Clause> { clause };
 
-    List<Guard>? newGuards;
-    if (clause.guards != null) {
-      newGuards = clause.guards!.map((g) => Guard(
-        g.predicate,
-        g.args.map((a) => _applyRenaming(a, renaming)).toList(),
-        g.line,
-        g.column,
-        negated: g.negated,
-      )).toList();
-    }
-
-    List<Goal>? newBody;
-    if (clause.body != null) {
-      newBody = clause.body!.map((g) => Goal(
-        g.functor,
-        g.args.map((a) => _applyRenaming(a, renaming)).toList(),
-        g.line,
-        g.column,
-      )).toList();
-    }
-
-    return Clause(newHead, guards: newGuards, body: newBody, line: clause.line, column: clause.column);
-  }
-
-  void _collectVarNamesFromAtom(Atom atom, Set<String> names) {
-    for (final arg in atom.args) {
-      _collectVarNames(arg, names);
-    }
-  }
-
-  Atom _applyRenamingToAtom(Atom atom, Map<String, String> renaming) {
-    return Atom(
-      atom.functor,
-      atom.args.map((a) => _applyRenaming(a, renaming)).toList(),
-      atom.line,
-      atom.column,
-    );
-  }
-
-  /// Collect unit clauses from program.
-  /// Returns map from "name/arity" to list of head arguments.
-  /// A unit clause has exactly one clause, no guards, and no body (or body is just `true`).
-  Map<String, List<Term>> _collectUnitClauses(Program program) {
-    final Map<String, List<Term>> unitClauses = {};
-
-    for (final proc in program.procedures) {
-      // Must have exactly one clause
-      if (proc.clauses.length != 1) continue;
-
-      final clause = proc.clauses.first;
-
-      // Must have no guards
-      if (clause.guards != null && clause.guards!.isNotEmpty) continue;
-
-      // Must have no body, or body is empty, or body is just `true`
-      if (clause.body != null && clause.body!.isNotEmpty) {
-        // Check if body is just `true`
-        if (clause.body!.length == 1 &&
-            clause.body![0].functor == 'true' &&
-            clause.body![0].args.isEmpty) {
-          // Body is just `true`, this is a unit clause
-        } else {
-          continue; // Has real body goals
+        int    reduceIndex = -1;
+        Goal?  reduceCall  = null;
+        for (int i = 0; i < clause.Body.Count; i++)
+        {
+            var goal = clause.Body[i];
+            if (goal.Functor == "reduce" && goal.Args.Count == 2)
+            {
+                reduceIndex = i;
+                reduceCall  = goal;
+                break;
+            }
         }
-      }
+        if (reduceCall is null) return new List<Clause> { clause };
 
-      // This is a unit clause
-      final key = '${proc.name}/${proc.arity}';
-      unitClauses[key] = clause.head.args;
-    }
+        var expanded = new List<Clause>();
+        foreach (var fact in reduceFacts)
+        {
+            var renamedFact      = RenameClauseVars(fact);
+            var factPattern      = renamedFact.Head.Args[0];
+            var factReplacement  = renamedFact.Head.Args[1];
+            var callPattern      = reduceCall.Args[0];
+            var callResult       = reduceCall.Args[1];
 
-    return unitClauses;
-  }
+            var result = GlpUnifyForPE(new[] { callPattern }, new[] { factPattern });
+            switch (result)
+            {
+                case UnifyFail:
+                case UnifySuspend:
+                    continue;
 
-  /// Transform a clause by reducing defined guards.
-  /// Returns transformed clause.
-  /// Throws CompileError if:
-  ///   - Guard cannot be reduced (suspend) or always fails
-  ///   - Guard calls a non-unit-clause procedure (multiple clauses or has guards/body)
-  Clause _transformClause(
-    Clause clause,
-    Map<String, List<Term>> unitClauses,
-    Set<String> allProcedures,
-  ) {
-    if (clause.guards == null || clause.guards!.isEmpty) {
-      return clause; // No guards, nothing to transform
-    }
+                case UnifySuccess success:
+                {
+                    var resultUnify = GlpUnifyForPE(new[] { callResult }, new[] { factReplacement });
+                    var fullSubst   = new Dictionary<string, Term>(success.Substitution, StringComparer.Ordinal);
+                    if (resultUnify is UnifySuccess rs)
+                        foreach (var kv in rs.Substitution) fullSubst[kv.Key] = kv.Value;
 
-    var currentHead = clause.head;
-    var currentGuards = List<Guard>.from(clause.guards!);
-    var currentBody = clause.body != null ? List<Goal>.from(clause.body!) : null;
-    bool changed = true;
+                    var newHead = ApplySubstitutionToAtom(clause.Head, fullSubst);
 
-    // Fixpoint iteration - keep processing until no more defined guards
-    while (changed) {
-      changed = false;
-      List<Guard> remainingGuards = [];
+                    List<Guard>? newGuards = null;
+                    if (clause.Guards is not null && clause.Guards.Count > 0)
+                        newGuards = clause.Guards.Select(g => ApplySubstitutionToGuard(g, fullSubst)).ToList();
 
-      for (int i = 0; i < currentGuards.length; i++) {
-        final guard = currentGuards[i];
-        final key = '${guard.predicate}/${guard.args.length}';
+                    var newBody = new List<Goal>();
+                    for (int i = 0; i < clause.Body.Count; i++)
+                    {
+                        if (i == reduceIndex) continue;
+                        newBody.Add(ApplySubstitutionToGoal(clause.Body[i], fullSubst));
+                    }
+                    if (newBody.Count == 0)
+                        newBody = new List<Goal> { new Goal("true", new List<Term>(), clause.Line, clause.Column) };
 
-        if (unitClauses.containsKey(key)) {
-          // This is a defined guard - reduce it
-          if (guard.negated) {
-            throw CompileError(
-              'Defined guard "${guard.predicate}" cannot be negated',
-              guard.line,
-              guard.column,
-              phase: 'analyzer'
-            );
-          }
+                    var simplifiedGuards = SimplifyGuards(newGuards, newHead);
+                    expanded.Add(new Clause(newHead, guards: simplifiedGuards, body: newBody, line: clause.Line, column: clause.Column));
+                    break;
+                }
 
-          // Rename unit clause variables to fresh names
-          final renamedArgs = _renameUnitClauseVars(unitClauses[key]!);
-
-          // Unify guard arguments with unit clause arguments
-          final result = _glpUnifyForPE(guard.args, renamedArgs);
-
-          switch (result) {
-            case UnifyFail(:final reason):
-              throw CompileError(
-                'Defined guard "${guard.predicate}(${guard.args.join(", ")})" can never succeed.\n'
-                '  Unit clause: ${guard.predicate}(${unitClauses[key]!.join(", ")})\n'
-                '  Reason: $reason\n'
-                '  This clause is unreachable.',
-                guard.line,
-                guard.column,
-                phase: 'analyzer'
-              );
-
-            case UnifySuspend(:final unboundReaders):
-              throw CompileError(
-                'Cannot reduce defined guard "${guard.predicate}(${guard.args.join(", ")})" at compile time.\n'
-                '  Unit clause: ${guard.predicate}(${unitClauses[key]!.join(", ")})\n'
-                '  Unbound readers: ${unboundReaders.map((r) => "$r?").join(", ")}\n'
-                '  Defined guards must be fully reducible at compile time.',
-                guard.line,
-                guard.column,
-                phase: 'analyzer'
-              );
-
-            case UnifySuccess(:final substitution):
-              // Apply substitution to head
-              currentHead = _applySubstitutionToAtom(currentHead, substitution);
-
-              // Apply substitution to remaining guards (not yet processed)
-              final restGuards = currentGuards.sublist(i + 1)
-                  .map((g) => _applySubstitutionToGuard(g, substitution))
-                  .toList();
-
-              // Apply to already-collected remaining guards
-              remainingGuards = remainingGuards
-                  .map((g) => _applySubstitutionToGuard(g, substitution))
-                  .toList();
-
-              // Apply substitution to body
-              if (currentBody != null) {
-                currentBody = currentBody
-                    .map((g) => _applySubstitutionToGoal(g, substitution))
-                    .toList();
-              }
-
-              // Update guards list and restart
-              currentGuards = [...remainingGuards, ...restGuards];
-              changed = true;
-              break; // restart the while loop
-          }
-
-          if (changed) break; // restart outer loop
-        } else {
-          // Not a unit clause - check if it's a builtin or an error
-          if (builtinProcedures.contains(key)) {
-            // Builtin guard (like integer/1, ground/1) - keep it
-            remainingGuards.add(guard);
-          } else if (allProcedures.contains(key)) {
-            // Procedure exists but is NOT a single unit clause
-            // This is an error - can't call non-unit-clause procedures in guards
-            throw CompileError(
-              'Cannot call "${guard.predicate}/${guard.args.length}" in guard position.\n'
-              '  Only builtin guards and single-unit-clause procedures can appear in guards.\n'
-              '  The procedure "${guard.predicate}" has multiple clauses or non-unit clauses.',
-              guard.line,
-              guard.column,
-              phase: 'partial_evaluator'
-            );
-          } else {
-            // Unknown guard - could be undefined, let later phases handle it
-            // For now, keep it (type checker will catch undefined procedures)
-            remainingGuards.add(guard);
-          }
+                default:
+                    throw new InvalidOperationException("UnifyResult: unreachable subtype.");
+            }
         }
-      }
-
-      if (!changed) {
-        // No more defined guards to reduce
-        currentGuards = remainingGuards;
-      }
+        if (expanded.Count == 0) return new List<Clause> { clause };
+        return expanded;
     }
 
-    return Clause(
-      currentHead,
-      guards: currentGuards.isEmpty ? null : currentGuards,
-      body: currentBody,
-      line: clause.line,
-      column: clause.column,
-    );
-  }
+    // ========================================================================
+    // Variable renaming
+    // ========================================================================
 
-  /// Rename variables in unit clause arguments to fresh names.
-  /// IMPORTANT: Underscores (_) are NOT renamed - they stay as underscores.
-  List<Term> _renameUnitClauseVars(List<Term> args) {
-    // First, collect all variable names in the unit clause
-    final varNames = <String>{};
-    for (final arg in args) {
-      _collectVarNames(arg, varNames);
+    private Clause RenameClauseVars(Clause clause)
+    {
+        var varNames = new HashSet<string>(StringComparer.Ordinal);
+        CollectVarNamesFromAtom(clause.Head, varNames);
+        if (clause.Guards is not null)
+            foreach (var guard in clause.Guards)
+                foreach (var arg in guard.Args) CollectVarNames(arg, varNames);
+        if (clause.Body is not null)
+            foreach (var goal in clause.Body)
+                foreach (var arg in goal.Args) CollectVarNames(arg, varNames);
+
+        var renaming = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var name in varNames)
+            if (name != "_") renaming[name] = $"PE{_varCounter++}";
+
+        var newHead   = ApplyRenamingToAtom(clause.Head, renaming);
+        List<Guard>? newGuards = clause.Guards?.Select(g =>
+            new Guard(g.Predicate, g.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column, negated: g.Negated)).ToList();
+        List<Goal>? newBody = clause.Body?.Select(g =>
+            new Goal(g.Functor, g.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column)).ToList();
+
+        return new Clause(newHead, guards: newGuards, body: newBody, line: clause.Line, column: clause.Column);
     }
 
-    // Build renaming map (skip underscores)
-    final Map<String, String> renaming = {};
-    for (final name in varNames) {
-      if (name != '_') {
-        renaming[name] = 'PE${_varCounter++}';
-      }
+    private List<Term> RenameUnitClauseVars(IReadOnlyList<Term> args)
+    {
+        var varNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var arg in args) CollectVarNames(arg, varNames);
+        var renaming = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var name in varNames)
+            if (name != "_") renaming[name] = $"PE{_varCounter++}";
+        return args.Select(arg => ApplyRenaming(arg, renaming)).ToList();
     }
 
-    // Apply renaming to all args
-    return args.map((arg) => _applyRenaming(arg, renaming)).toList();
-  }
+    // ========================================================================
+    // Variable name collection
+    // ========================================================================
 
-  /// Collect all variable names in a term
-  void _collectVarNames(Term term, Set<String> names) {
-    if (term is VarTerm) {
-      names.add(term.name);
-    } else if (term is StructTerm) {
-      for (final arg in term.args) {
-        _collectVarNames(arg, names);
-      }
-    } else if (term is ListTerm) {
-      if (term.head != null) _collectVarNames(term.head!, names);
-      if (term.tail != null) _collectVarNames(term.tail!, names);
-    }
-  }
-
-  /// Apply variable renaming to a term recursively
-  Term _applyRenaming(Term term, Map<String, String> renaming) {
-    if (term is VarTerm) {
-      if (term.name == '_') {
-        // Underscore stays as underscore
-        return UnderscoreTerm(term.line, term.column);
-      }
-      if (renaming.containsKey(term.name)) {
-        return VarTerm(renaming[term.name]!, term.isReader, term.line, term.column);
-      }
-      return term;
-    } else if (term is StructTerm) {
-      return StructTerm(
-        term.functor,
-        term.args.map((a) => _applyRenaming(a, renaming)).toList(),
-        term.line,
-        term.column,
-      );
-    } else if (term is ListTerm) {
-      return ListTerm(
-        term.head != null ? _applyRenaming(term.head!, renaming) : null,
-        term.tail != null ? _applyRenaming(term.tail!, renaming) : null,
-        term.line,
-        term.column,
-      );
-    } else if (term is UnderscoreTerm) {
-      return term;
-    } else {
-      return term; // ConstTerm unchanged
-    }
-  }
-
-  /// GLP unification for partial evaluation.
-  /// callArgs: arguments from the guard call
-  /// unitArgs: arguments from the unit clause (already renamed)
-  UnifyResult _glpUnifyForPE(List<Term> callArgs, List<Term> unitArgs) {
-    if (callArgs.length != unitArgs.length) {
-      return UnifyFail('Arity mismatch: ${callArgs.length} vs ${unitArgs.length}');
-    }
-
-    Map<String, Term> substitution = {};
-    Set<String> suspensionSet = {};
-
-    // Phase 1: Collection - process each argument pair
-    for (int i = 0; i < callArgs.length; i++) {
-      final result = _unifyTerms(callArgs[i], unitArgs[i], substitution, suspensionSet);
-      if (result != null) {
-        return result; // Failure
-      }
-    }
-
-    // Phase 2: Resolution - check if suspended readers are resolved
-    Set<String> unresolvedReaders = {};
-    for (final readerName in suspensionSet) {
-      // Reader X? suspends if X is not in substitution domain
-      if (!substitution.containsKey(readerName)) {
-        unresolvedReaders.add(readerName);
-      }
-    }
-
-    if (unresolvedReaders.isNotEmpty) {
-      return UnifySuspend(unresolvedReaders);
-    }
-
-    // Resolve substitution chains
-    final resolved = _resolveSubstitution(substitution);
-    return UnifySuccess(resolved);
-  }
-
-  /// Set subst[key] = value, propagating to any existing alias.
-  /// If subst[key] was previously a VarTerm (alias), also bind that variable.
-  void _substSet(Map<String, Term> subst, String key, Term value) {
-    if (subst.containsKey(key)) {
-      final old = subst[key]!;
-      if (old is VarTerm && !old.isReader && value is! VarTerm) {
-        // key was aliased to old.name; now key maps to a concrete value.
-        // Propagate: also bind old.name to the concrete value.
-        if (!subst.containsKey(old.name)) {
-          subst[old.name] = value;
+    private static void CollectVarNames(Term term, HashSet<string> names)
+    {
+        switch (term)
+        {
+            case VarTerm varTerm:
+                names.Add(varTerm.Name);
+                break;
+            case StructTerm s:
+                foreach (var arg in s.Args) CollectVarNames(arg, names);
+                break;
+            case ListTerm l:
+                if (l.Head is not null) CollectVarNames(l.Head, names);
+                if (l.Tail is not null) CollectVarNames(l.Tail, names);
+                break;
+            // ConstTerm / UnderscoreTerm: silent no-op — no default arm (matches Dart no-else)
         }
-      }
-    }
-    subst[key] = value;
-  }
-
-  /// Unify two terms, updating substitution and suspension set.
-  /// Returns UnifyFail on structural mismatch, null on success.
-  UnifyResult? _unifyTerms(
-    Term callArg,
-    Term unitArg,
-    Map<String, Term> subst,
-    Set<String> suspSet
-  ) {
-    // Handle underscore on either side - always succeeds, no binding
-    if (_isUnderscore(callArg) || _isUnderscore(unitArg)) {
-      return null; // success, continue
     }
 
-    // Case: call arg is writer (VarTerm, not reader)
-    if (callArg is VarTerm && !callArg.isReader) {
-      if (unitArg is VarTerm && !unitArg.isReader) {
-        // Writer vs Writer: alias unit writer to call writer
-        subst[unitArg.name] = callArg;
-      } else if (unitArg is VarTerm && unitArg.isReader) {
-        // Writer vs Reader in unit clause - unusual but handle it
-        // The reader refers to a writer that should be aliased
-        subst[unitArg.name] = callArg;
-      } else {
-        // Writer vs constant/structure: bind call writer to unit arg
-        subst[callArg.name] = unitArg;
-      }
-      return null;
+    private static void CollectVarNamesFromAtom(Atom atom, HashSet<string> names)
+    {
+        foreach (var arg in atom.Args) CollectVarNames(arg, names);
     }
 
-    // Case: call arg is reader
-    if (callArg is VarTerm && callArg.isReader) {
-      final writerName = callArg.name; // X? refers to writer X
+    // ========================================================================
+    // Renaming application
+    // ========================================================================
 
-      if (unitArg is VarTerm && !unitArg.isReader) {
-        // Reader vs Writer: alias unit writer to call writer
-        subst[unitArg.name] = VarTerm(writerName, false, callArg.line, callArg.column);
-      } else if (unitArg is VarTerm && unitArg.isReader) {
-        // Reader vs Reader: both suspend on same thing, alias
-        subst[unitArg.name] = VarTerm(writerName, false, callArg.line, callArg.column);
-        suspSet.add(writerName);
-      } else {
-        // Reader vs constant/structure: add to suspension set
-        // Record what it should match - bind the writer to the unit arg
-        suspSet.add(writerName);
-        if (subst.containsKey(writerName)) {
-          // Check structural compatibility
-          final existing = subst[writerName]!;
-          final compatResult = _checkCompatible(existing, unitArg, subst, suspSet);
-          if (compatResult != null) return compatResult;
-        } else {
-          subst[writerName] = unitArg;
+    private static Term ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming)
+    {
+        switch (term)
+        {
+            case VarTerm varTerm when varTerm.Name == "_":
+                // Underscore demotion (load-bearing): VarTerm("_") → fresh UnderscoreTerm
+                return new UnderscoreTerm(varTerm.Line, varTerm.Column);
+            case VarTerm varTerm when renaming.TryGetValue(varTerm.Name, out var newName):
+                // Reader-status preservation: renamed VarTerm keeps its IsReader flag
+                return new VarTerm(newName, varTerm.IsReader, varTerm.Line, varTerm.Column);
+            case VarTerm:
+                return term;
+            case StructTerm s:
+                return new StructTerm(s.Functor, s.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), s.Line, s.Column);
+            case ListTerm l:
+                return new ListTerm(
+                    l.Head is not null ? ApplyRenaming(l.Head, renaming) : null,
+                    l.Tail is not null ? ApplyRenaming(l.Tail, renaming) : null,
+                    l.Line, l.Column);
+            case UnderscoreTerm:
+                return term;
+            default:
+                return term;   // ConstTerm passthrough
         }
-      }
-      return null;
     }
 
-    // Case: call arg is constant
-    if (callArg is ConstTerm) {
-      if (unitArg is ConstTerm) {
-        if (callArg.value == unitArg.value) {
-          return null; // match
-        } else {
-          return UnifyFail('Constant mismatch: ${callArg.value} vs ${unitArg.value}');
+    private static Atom ApplyRenamingToAtom(Atom atom, IReadOnlyDictionary<string, string> renaming) =>
+        new Atom(atom.Functor, atom.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), atom.Line, atom.Column);
+
+    // ========================================================================
+    // GLP three-valued compile-time unification
+    // ========================================================================
+
+    private UnifyResult GlpUnifyForPE(IReadOnlyList<Term> callArgs, IReadOnlyList<Term> unitArgs)
+    {
+        if (callArgs.Count != unitArgs.Count)
+            return new UnifyFail($"Arity mismatch: {callArgs.Count} vs {unitArgs.Count}");
+
+        var substitution  = new Dictionary<string, Term>(StringComparer.Ordinal);
+        var suspensionSet = new HashSet<string>(StringComparer.Ordinal);
+
+        // Phase 1: Collection
+        for (int i = 0; i < callArgs.Count; i++)
+        {
+            var result = UnifyTerms(callArgs[i], unitArgs[i], substitution, suspensionSet);
+            if (result is not null) return result;
         }
-      } else if (unitArg is VarTerm && !unitArg.isReader) {
-        // Constant vs Writer: bind unit writer to constant
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else if (unitArg is VarTerm && unitArg.isReader) {
-        // Constant vs Reader in unit clause - unusual
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else {
-        return UnifyFail('Constant ${callArg.value} cannot match structure $unitArg');
-      }
+
+        // Phase 2: Resolution
+        var unresolvedReaders = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var readerName in suspensionSet)
+            if (!substitution.ContainsKey(readerName)) unresolvedReaders.Add(readerName);
+        if (unresolvedReaders.Count > 0) return new UnifySuspend(unresolvedReaders);
+
+        return new UnifySuccess(ResolveSubstitution(substitution));
     }
 
-    // Case: call arg is structure
-    if (callArg is StructTerm) {
-      if (unitArg is StructTerm) {
-        if (callArg.functor != unitArg.functor || callArg.args.length != unitArg.args.length) {
-          return UnifyFail('Functor mismatch: ${callArg.functor}/${callArg.args.length} vs ${unitArg.functor}/${unitArg.args.length}');
+    /// <summary>
+    /// Pairwise term unification.
+    /// Returns null on success (null-as-success convention); non-null on failure.
+    /// </summary>
+    private UnifyResult? UnifyTerms(
+        Term callArg, Term unitArg,
+        Dictionary<string, Term> subst, HashSet<string> suspSet)
+    {
+        // (a) Underscore on either side: success, no binding
+        if (IsUnderscore(callArg) || IsUnderscore(unitArg)) return null;
+
+        // (b) Call arg is writer
+        if (callArg is VarTerm callVar && !callVar.IsReader)
+        {
+            if      (unitArg is VarTerm unitVar && !unitVar.IsReader) subst[unitVar.Name] = callVar;
+            else if (unitArg is VarTerm unitR   &&  unitR.IsReader)   subst[unitR.Name]   = callVar;
+            else                                                       subst[callVar.Name] = unitArg;
+            return null;
         }
-        // Recurse on arguments
-        for (int i = 0; i < callArg.args.length; i++) {
-          final result = _unifyTerms(callArg.args[i], unitArg.args[i], subst, suspSet);
-          if (result != null) return result;
+
+        // (c) Call arg is reader
+        if (callArg is VarTerm callReader && callReader.IsReader)
+        {
+            var writerName = callReader.Name;
+            if (unitArg is VarTerm uW && !uW.IsReader)
+            {
+                subst[uW.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
+            }
+            else if (unitArg is VarTerm uR && uR.IsReader)
+            {
+                subst[uR.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
+                suspSet.Add(writerName);
+            }
+            else
+            {
+                suspSet.Add(writerName);
+                if (subst.TryGetValue(writerName, out var existing))
+                {
+                    var compat = CheckCompatible(existing, unitArg, subst, suspSet);
+                    if (compat is not null) return compat;
+                }
+                else
+                {
+                    subst[writerName] = unitArg;
+                }
+            }
+            return null;
         }
-        return null;
-      } else if (unitArg is VarTerm && !unitArg.isReader) {
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else if (unitArg is VarTerm && unitArg.isReader) {
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else {
-        return UnifyFail('Structure ${callArg.functor} cannot match $unitArg');
-      }
+
+        // (d) Call arg is constant
+        if (callArg is ConstTerm callConst)
+        {
+            if (unitArg is ConstTerm unitConst)
+                return object.Equals(callConst.Value, unitConst.Value)
+                    ? null
+                    : new UnifyFail($"Constant mismatch: {callConst.Value} vs {unitConst.Value}");
+            if (unitArg is VarTerm unitW && !unitW.IsReader) { SubstSet(subst, unitW.Name, callArg); return null; }
+            if (unitArg is VarTerm unitR &&  unitR.IsReader) { SubstSet(subst, unitR.Name, callArg); return null; }
+            return new UnifyFail($"Constant {callConst.Value} cannot match structure {unitArg}");
+        }
+
+        // (e) Call arg is structure
+        if (callArg is StructTerm callStruct)
+        {
+            if (unitArg is StructTerm unitStruct)
+            {
+                if (callStruct.Functor != unitStruct.Functor || callStruct.Args.Count != unitStruct.Args.Count)
+                    return new UnifyFail($"Functor mismatch: {callStruct.Functor}/{callStruct.Args.Count} vs {unitStruct.Functor}/{unitStruct.Args.Count}");
+                for (int i = 0; i < callStruct.Args.Count; i++)
+                {
+                    var r = UnifyTerms(callStruct.Args[i], unitStruct.Args[i], subst, suspSet);
+                    if (r is not null) return r;
+                }
+                return null;
+            }
+            if (unitArg is VarTerm uW2 && !uW2.IsReader) { SubstSet(subst, uW2.Name, callArg); return null; }
+            if (unitArg is VarTerm uR2 &&  uR2.IsReader) { SubstSet(subst, uR2.Name, callArg); return null; }
+            return new UnifyFail($"Structure {callStruct.Functor} cannot match {unitArg}");
+        }
+
+        // (f) Call arg is list
+        if (callArg is ListTerm callList)
+        {
+            if (unitArg is ListTerm unitList)
+            {
+                if (callList.IsNil && unitList.IsNil) return null;
+                if (callList.IsNil != unitList.IsNil) return new UnifyFail("List structure mismatch: nil vs non-nil");
+                if (callList.Head is not null && unitList.Head is not null)
+                {
+                    var r = UnifyTerms(callList.Head, unitList.Head, subst, suspSet);
+                    if (r is not null) return r;
+                }
+                if (callList.Tail is not null && unitList.Tail is not null)
+                {
+                    var r = UnifyTerms(callList.Tail, unitList.Tail, subst, suspSet);
+                    if (r is not null) return r;
+                }
+                return null;
+            }
+            if (unitArg is VarTerm uW3 && !uW3.IsReader) { SubstSet(subst, uW3.Name, callArg); return null; }
+            if (unitArg is VarTerm uR3 &&  uR3.IsReader) { SubstSet(subst, uR3.Name, callArg); return null; }
+            return new UnifyFail($"List cannot match {unitArg}");
+        }
+
+        return new UnifyFail($"Unhandled case: {callArg.GetType().Name} vs {unitArg.GetType().Name}");
     }
 
-    // Case: call arg is list
-    if (callArg is ListTerm) {
-      if (unitArg is ListTerm) {
-        // Both nil
-        if (callArg.isNil && unitArg.isNil) {
-          return null;
+    /// <summary>
+    /// Substitution setter with alias-chain propagation.
+    /// When subst[key] was aliased to a writer Y and the new value is concrete,
+    /// also propagate: subst[Y] = value (so ResolveSubstitution can find Y's binding).
+    /// </summary>
+    private static void SubstSet(Dictionary<string, Term> subst, string key, Term value)
+    {
+        if (subst.TryGetValue(key, out var old)
+            && old is VarTerm oldVar && !oldVar.IsReader
+            && value is not VarTerm)
+        {
+            if (!subst.ContainsKey(oldVar.Name)) subst[oldVar.Name] = value;
         }
-        // One nil, one not
-        if (callArg.isNil != unitArg.isNil) {
-          return UnifyFail('List structure mismatch: nil vs non-nil');
-        }
-        // Both non-nil - recurse on head and tail
-        if (callArg.head != null && unitArg.head != null) {
-          final headResult = _unifyTerms(callArg.head!, unitArg.head!, subst, suspSet);
-          if (headResult != null) return headResult;
-        }
-        if (callArg.tail != null && unitArg.tail != null) {
-          final tailResult = _unifyTerms(callArg.tail!, unitArg.tail!, subst, suspSet);
-          if (tailResult != null) return tailResult;
-        }
-        return null;
-      } else if (unitArg is VarTerm && !unitArg.isReader) {
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else if (unitArg is VarTerm && unitArg.isReader) {
-        _substSet(subst, unitArg.name, callArg);
-        return null;
-      } else {
-        return UnifyFail('List cannot match $unitArg');
-      }
+        subst[key] = value;
     }
 
-    return UnifyFail('Unhandled case: ${callArg.runtimeType} vs ${unitArg.runtimeType}');
-  }
-
-  /// Check if two terms are structurally compatible
-  UnifyResult? _checkCompatible(
-    Term existing,
-    Term newTerm,
-    Map<String, Term> subst,
-    Set<String> suspSet
-  ) {
-    // Simple structural check
-    if (existing is ConstTerm && newTerm is ConstTerm) {
-      if (existing.value != newTerm.value) {
-        return UnifyFail('Incompatible bindings: ${existing.value} vs ${newTerm.value}');
-      }
-      return null;
-    }
-    if (existing is StructTerm && newTerm is StructTerm) {
-      if (existing.functor != newTerm.functor || existing.args.length != newTerm.args.length) {
-        return UnifyFail('Incompatible structures: ${existing.functor} vs ${newTerm.functor}');
-      }
-      // Could recurse here for deeper check, but for now accept
-      return null;
-    }
-    // For now, accept other combinations (variables get resolved later)
-    return null;
-  }
-
-  bool _isUnderscore(Term term) {
-    return term is UnderscoreTerm || (term is VarTerm && term.name == '_');
-  }
-
-  /// Resolve substitution chains.
-  /// If σ = {X → Y, Y → f(Z)}, result is {X → f(Z), Y → f(Z)}
-  Map<String, Term> _resolveSubstitution(Map<String, Term> subst) {
-    Map<String, Term> resolved = {};
-    for (final entry in subst.entries) {
-      resolved[entry.key] = _resolveTerm(entry.value, subst, {});
-    }
-    return resolved;
-  }
-
-  /// Resolve a term by following variable chains
-  Term _resolveTerm(Term term, Map<String, Term> subst, Set<String> visited) {
-    if (term is VarTerm) {
-      if (visited.contains(term.name)) {
-        // Cycle - return as is
-        return term;
-      }
-      if (subst.containsKey(term.name)) {
-        visited.add(term.name);
-        final resolved = _resolveTerm(subst[term.name]!, subst, visited);
-        // Preserve reader status if resolving to another variable
-        if (term.isReader && resolved is VarTerm && !resolved.isReader) {
-          return VarTerm(resolved.name, true, resolved.line, resolved.column);
+    /// <summary>
+    /// Loose structural compatibility check between an existing and a proposed binding.
+    /// Deliberately under-specified (returns null/accept for most cases); preserved verbatim.
+    /// </summary>
+    private UnifyResult? CheckCompatible(
+        Term existing, Term newTerm,
+        Dictionary<string, Term> subst, HashSet<string> suspSet)
+    {
+        if (existing is ConstTerm e && newTerm is ConstTerm n)
+        {
+            if (!object.Equals(e.Value, n.Value))
+                return new UnifyFail($"Incompatible bindings: {e.Value} vs {n.Value}");
+            return null;
         }
+        if (existing is StructTerm es && newTerm is StructTerm ns)
+        {
+            if (es.Functor != ns.Functor || es.Args.Count != ns.Args.Count)
+                return new UnifyFail($"Incompatible structures: {es.Functor} vs {ns.Functor}");
+            return null;
+        }
+        return null;   // loose-accept for variable cases (deeper check deferred)
+    }
+
+    /// <summary>True when term is UnderscoreTerm OR VarTerm with Name "_".</summary>
+    private static bool IsUnderscore(Term term) =>
+        term is UnderscoreTerm
+        || (term is VarTerm varTerm && varTerm.Name == "_");
+
+    // ========================================================================
+    // Substitution resolution (chain flattening + cycle protection)
+    // ========================================================================
+
+    private static Dictionary<string, Term> ResolveSubstitution(Dictionary<string, Term> subst)
+    {
+        var resolved = new Dictionary<string, Term>(StringComparer.Ordinal);
+        foreach (var entry in subst)
+            resolved[entry.Key] = ResolveTerm(entry.Value, subst, new HashSet<string>(StringComparer.Ordinal));
         return resolved;
-      }
-      return term;
     }
-    if (term is StructTerm) {
-      return StructTerm(
-        term.functor,
-        term.args.map((a) => _resolveTerm(a, subst, {...visited})).toList(),
-        term.line,
-        term.column,
-      );
-    }
-    if (term is ListTerm) {
-      if (term.isNil) return term;
-      return ListTerm(
-        term.head != null ? _resolveTerm(term.head!, subst, {...visited}) : null,
-        term.tail != null ? _resolveTerm(term.tail!, subst, {...visited}) : null,
-        term.line,
-        term.column,
-      );
-    }
-    return term; // Constants, underscores, etc.
-  }
 
-  /// Apply substitution to a term
-  Term _applySubstitution(Term term, Map<String, Term> subst) {
-    if (term is VarTerm) {
-      if (term.name == '_') return term; // underscore unchanged
-      final varName = term.name;
-      if (subst.containsKey(varName)) {
-        final replacement = subst[varName]!;
-        // If original was reader and replacement is a writer var, make it reader
-        if (term.isReader && replacement is VarTerm && !replacement.isReader) {
-          return VarTerm(replacement.name, true, replacement.line, replacement.column);
+    private static Term ResolveTerm(Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> visited)
+    {
+        if (term is VarTerm varTerm)
+        {
+            if (visited.Contains(varTerm.Name)) return term;   // cycle — return as-is
+            if (subst.TryGetValue(varTerm.Name, out var bound))
+            {
+                visited.Add(varTerm.Name);
+                var resolved = ResolveTerm(bound, subst, visited);
+                // Reader-status preservation: reader var resolving to writer var returns reader var
+                if (varTerm.IsReader && resolved is VarTerm rv && !rv.IsReader)
+                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
+                return resolved;
+            }
+            return term;
         }
-        return _applySubstitution(replacement, subst);
-      }
-      return term;
-    }
-    if (term is StructTerm) {
-      return StructTerm(
-        term.functor,
-        term.args.map((a) => _applySubstitution(a, subst)).toList(),
-        term.line,
-        term.column,
-      );
-    }
-    if (term is ListTerm) {
-      if (term.isNil) return term;
-      return ListTerm(
-        term.head != null ? _applySubstitution(term.head!, subst) : null,
-        term.tail != null ? _applySubstitution(term.tail!, subst) : null,
-        term.line,
-        term.column,
-      );
-    }
-    if (term is UnderscoreTerm) {
-      return term;
-    }
-    return term; // ConstTerm unchanged
-  }
-
-  /// Apply substitution to an Atom (head)
-  Atom _applySubstitutionToAtom(Atom atom, Map<String, Term> subst) {
-    return Atom(
-      atom.functor,
-      atom.args.map((a) => _applySubstitution(a, subst)).toList(),
-      atom.line,
-      atom.column,
-    );
-  }
-
-  /// Apply substitution to a Guard
-  Guard _applySubstitutionToGuard(Guard guard, Map<String, Term> subst) {
-    return Guard(
-      guard.predicate,
-      guard.args.map((a) => _applySubstitution(a, subst)).toList(),
-      guard.line,
-      guard.column,
-      negated: guard.negated,
-    );
-  }
-
-  /// Apply substitution to a Goal, preserving RemoteGoal and SpawnGoal types.
-  Goal _applySubstitutionToGoal(Goal goal, Map<String, Term> subst) {
-    // Preserve RemoteGoal (M # proc(...))
-    if (goal is RemoteGoal) {
-      final newModule = _applySubstitution(goal.module, subst);
-      final newInnerGoal = _applySubstitutionToGoal(goal.goal, subst);
-      return RemoteGoal(newModule, newInnerGoal, goal.line, goal.column);
-    }
-    // Preserve SpawnGoal (Goal@Agent)
-    if (goal is SpawnGoal) {
-      final newInnerGoal = _applySubstitutionToGoal(goal.innerGoal, subst);
-      return SpawnGoal(newInnerGoal, goal.agentId, goal.line, goal.column);
-    }
-    return Goal(
-      goal.functor,
-      goal.args.map((a) => _applySubstitution(a, subst)).toList(),
-      goal.line,
-      goal.column,
-    );
-  }
-
-  /// Simplify guards by removing redundant ones after specialization.
-  /// A guard is redundant if it always succeeds given the head pattern.
-  List<Guard>? _simplifyGuards(List<Guard>? guards, Atom head) {
-    if (guards == null || guards.isEmpty) return null;
-
-    final simplified = <Guard>[];
-
-    for (final guard in guards) {
-      if (_isRedundantGuard(guard, head)) {
-        // Skip this guard - it's always true
-        continue;
-      }
-      simplified.add(guard);
-    }
-
-    return simplified.isEmpty ? null : simplified;
-  }
-
-  /// Check if a guard is redundant (always succeeds) given the head.
-  bool _isRedundantGuard(Guard guard, Atom head) {
-    // Type guards with concrete argument are redundant
-    if (guard.args.length == 1) {
-      final arg = guard.args[0];
-      final concreteArg = _getConcreteArg(arg);
-
-      if (concreteArg != null) {
-        switch (guard.predicate) {
-          case 'tuple':
-          case 'compound':
-            // tuple(structure) always succeeds
-            return concreteArg is StructTerm;
-          case 'list':
-          case 'is_list':
-            // list([...]) always succeeds
-            return concreteArg is ListTerm;
-          case 'integer':
-            return concreteArg is ConstTerm && concreteArg.value is int;
-          case 'number':
-            return concreteArg is ConstTerm &&
-                (concreteArg.value is int || concreteArg.value is double);
-          case 'atom':
-            return concreteArg is ConstTerm && concreteArg.value is String;
-          case 'ground':
-            // If argument is fully concrete (no variables), ground succeeds
-            return _isGround(concreteArg);
-          case 'no_readers':
-            // If argument is fully concrete (no readers), no_readers succeeds
-            // At compile time, a concrete term has no variables (hence no readers)
-            return _isGround(concreteArg);
+        if (term is StructTerm s)
+            return new StructTerm(s.Functor,
+                s.Args.Select(a => ResolveTerm(a, subst, new HashSet<string>(visited, StringComparer.Ordinal))).ToList(),
+                s.Line, s.Column);
+        if (term is ListTerm l)
+        {
+            if (l.IsNil) return l;
+            return new ListTerm(
+                l.Head is not null ? ResolveTerm(l.Head, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
+                l.Tail is not null ? ResolveTerm(l.Tail, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
+                l.Line, l.Column);
         }
-      }
+        return term;   // ConstTerm / UnderscoreTerm unchanged
     }
 
-    return false;
-  }
+    // ========================================================================
+    // Substitution application family
+    // ========================================================================
 
-  /// Get the concrete (non-variable) form of a term.
-  /// Returns null if the term contains unbound variables.
-  Term? _getConcreteArg(Term term) {
-    if (term is VarTerm) {
-      // A reader reference - try to find what it refers to
-      // For now, if it's a reader, we can't determine concreteness
-      return null;
+    private static Term ApplySubstitution(Term term, IReadOnlyDictionary<string, Term> subst)
+    {
+        if (term is VarTerm varTerm)
+        {
+            if (varTerm.Name == "_") return term;   // underscore unchanged
+            if (subst.TryGetValue(varTerm.Name, out var replacement))
+            {
+                if (varTerm.IsReader && replacement is VarTerm rv && !rv.IsReader)
+                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
+                return ApplySubstitution(replacement, subst);   // transitive-closure
+            }
+            return term;
+        }
+        if (term is StructTerm s)
+            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst)).ToList(), s.Line, s.Column);
+        if (term is ListTerm l)
+        {
+            if (l.IsNil) return l;
+            return new ListTerm(
+                l.Head is not null ? ApplySubstitution(l.Head, subst) : null,
+                l.Tail is not null ? ApplySubstitution(l.Tail, subst) : null,
+                l.Line, l.Column);
+        }
+        if (term is UnderscoreTerm) return term;
+        return term;   // ConstTerm passthrough
     }
-    if (term is ConstTerm || term is StructTerm || term is ListTerm) {
-      return term;
-    }
-    return null;
-  }
 
-  /// Check if a term is ground (contains no variables).
-  bool _isGround(Term term) {
-    if (term is VarTerm) return false;
-    if (term is UnderscoreTerm) return true;
-    if (term is ConstTerm) return true;
-    if (term is StructTerm) {
-      return term.args.every(_isGround);
+    private static Atom ApplySubstitutionToAtom(Atom atom, IReadOnlyDictionary<string, Term> subst) =>
+        new Atom(atom.Functor, atom.Args.Select(a => ApplySubstitution(a, subst)).ToList(), atom.Line, atom.Column);
+
+    private static Guard ApplySubstitutionToGuard(Guard guard, IReadOnlyDictionary<string, Term> subst) =>
+        new Guard(guard.Predicate, guard.Args.Select(a => ApplySubstitution(a, subst)).ToList(), guard.Line, guard.Column, negated: guard.Negated);
+
+    private static Goal ApplySubstitutionToGoal(Goal goal, IReadOnlyDictionary<string, Term> subst)
+    {
+        // Preserve RemoteGoal wrapper (M # proc(...))
+        if (goal is RemoteGoal rg)
+        {
+            var newModule = ApplySubstitution(rg.Module, subst);
+            var newInner  = ApplySubstitutionToGoal(rg.Goal, subst);
+            return new RemoteGoal(newModule, newInner, rg.Line, rg.Column);
+        }
+        // Preserve SpawnGoal wrapper (Goal@Agent)
+        if (goal is SpawnGoal sg)
+        {
+            var newInner = ApplySubstitutionToGoal(sg.InnerGoal, subst);
+            return new SpawnGoal(newInner, sg.AgentId, sg.Line, sg.Column);
+        }
+        return new Goal(goal.Functor, goal.Args.Select(a => ApplySubstitution(a, subst)).ToList(), goal.Line, goal.Column);
     }
-    if (term is ListTerm) {
-      if (term.isNil) return true;
-      final headGround = term.head == null || _isGround(term.head!);
-      final tailGround = term.tail == null || _isGround(term.tail!);
-      return headGround && tailGround;
+
+    // ========================================================================
+    // Guard simplification (post-specialisation redundancy table)
+    // ========================================================================
+
+    private static List<Guard>? SimplifyGuards(List<Guard>? guards, Atom head)
+    {
+        if (guards is null || guards.Count == 0) return null;
+        var simplified = new List<Guard>();
+        foreach (var guard in guards)
+        {
+            if (IsRedundantGuard(guard, head)) continue;
+            simplified.Add(guard);
+        }
+        return simplified.Count == 0 ? null : simplified;
     }
-    return false;
-  }
+
+    private static bool IsRedundantGuard(Guard guard, Atom head)
+    {
+        if (guard.Args.Count != 1) return false;
+        var concreteArg = GetConcreteArg(guard.Args[0]);
+        if (concreteArg is null) return false;
+        return guard.Predicate switch
+        {
+            "tuple"    or "compound"   => concreteArg is StructTerm,
+            "list"     or "is_list"    => concreteArg is ListTerm,
+            "integer"                  => concreteArg is ConstTerm ic && ic.Value is int or long,
+            "number"                   => concreteArg is ConstTerm nc && (nc.Value is int or long or double or float),
+            "atom"                     => concreteArg is ConstTerm ac && ac.Value is string,
+            "ground"   or "no_readers" => IsGround(concreteArg),
+            _                          => false,
+        };
+    }
+
+    private static Term? GetConcreteArg(Term term)
+    {
+        if (term is VarTerm) return null;
+        if (term is ConstTerm or StructTerm or ListTerm) return term;
+        return null;
+    }
+
+    private static bool IsGround(Term term)
+    {
+        if (term is VarTerm)        return false;
+        if (term is UnderscoreTerm) return true;
+        if (term is ConstTerm)      return true;
+        if (term is StructTerm s)   return s.Args.All(IsGround);
+        if (term is ListTerm l)
+        {
+            if (l.IsNil) return true;
+            var headG = l.Head is null || IsGround(l.Head);
+            var tailG = l.Tail is null || IsGround(l.Tail);
+            return headG && tailG;
+        }
+        return false;
+    }
 }
