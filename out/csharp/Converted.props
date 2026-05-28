@@ -38,6 +38,8 @@
     <Compile Include="lib/compiler/pmt/errors.cs" />
     <Compile Include="lib/compiler/pmt/mode_declaration.cs" />
     <Compile Include="lib/compiler/pmt/mode_table.cs" />
+    <Compile Include="lib/compiler/pmt/occurrence.cs" />
+    <Compile Include="lib/compiler/pmt/type_checker.cs" />
     <Compile Include="lib/compiler/pmt/type_table.cs" />
     <Compile Include="lib/compiler/project_linker.cs" />
     <Compile Include="lib/compiler/token.cs" />
@@ -54,12 +56,15 @@
     <Compile Include="lib/multiagent/variable_table.cs" />
     <Compile Include="lib/runtime/abandon.cs" />
     <Compile Include="lib/runtime/cells.cs" />
+    <Compile Include="lib/runtime/commit.cs" />
+    <Compile Include="lib/runtime/external_io.cs" />
     <Compile Include="lib/runtime/fairness.cs" />
     <Compile Include="lib/runtime/hanger.cs" />
     <Compile Include="lib/runtime/heap_fcp.cs" />
     <Compile Include="lib/runtime/machine_state.cs" />
     <Compile Include="lib/runtime/module_hierarchy.cs" />
     <Compile Include="lib/runtime/suspend.cs" />
+    <Compile Include="lib/runtime/suspend_ops.cs" />
     <Compile Include="lib/runtime/suspension.cs" />
     <Compile Include="lib/runtime/terms.cs" />
   </ItemGroup>

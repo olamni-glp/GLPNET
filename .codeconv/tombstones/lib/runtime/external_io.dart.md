@@ -39,6 +39,10 @@ plan_started_at: '2026-05-21T15:24:23Z'
 plan_completed_at: '2026-05-21T16:00:14Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/external_io.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T11:54:56Z'
+target_cs_path: out/csharp/lib/runtime/external_io.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 External I/O for GLP - Phase 0 Implementation

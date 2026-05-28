@@ -1,316 +1,394 @@
-/// MT Type Checker: Verifies terms match their declared types
-///
-/// Checks that constants, structs, and list elements conform to
-/// the type definitions in the module.
+// lib/compiler/pmt/type_checker.cs
+//
+// MT Type Checker: Verifies terms match their declared types.
+// Checks that constants, structs, and list elements conform to
+// the type definitions in the module.
+//
+// Converted from Dart source: lib/compiler/pmt/type_checker.dart
+// source_sha256: ec1d9f359ba877391bcc2acf4b8a4b99f7a37b8ae05d778864d89fb9940d5c95
 
-import 'package:glp_runtime/compiler/ast.dart';
-import 'type_table.dart';
-import 'mode_table.dart';
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using GlpRuntime.Analysis.TypeChecker;
+using GlpRuntime.Compiler;
 
-/// Type checking error
-class TypeError {
-  final String message;
-  final int line;
-  final int column;
-  final String? suggestion;
+namespace GlpRuntime.Compiler.Pmt;
 
-  TypeError(this.message, this.line, this.column, {this.suggestion});
+// ---------------------------------------------------------------------------
+// TypeError — sealed reference class, no IEquatable (Dart source has no ==)
+// ---------------------------------------------------------------------------
 
-  @override
-  String toString() {
-    var result = '[type] $message at Line $line, Column $column';
-    if (suggestion != null) {
-      result += '\n  Suggestion: $suggestion';
+/// <summary>
+/// Type checking error. Three non-nullable positional properties plus one
+/// nullable Suggestion. No IEquatable override — Dart source did not
+/// hand-write == / hashCode, so C# preserves default reference equality.
+/// </summary>
+public sealed class TypeError
+{
+    public string Message { get; }
+    public int Line { get; }
+    public int Column { get; }
+    public string? Suggestion { get; }
+
+    public TypeError(string message, int line, int column, string? suggestion = null)
+    {
+        Message    = message;
+        Line       = line;
+        Column     = column;
+        Suggestion = suggestion;
     }
-    return result;
-  }
+
+    public override string ToString()
+    {
+        var result = $"[type] {Message} at Line {Line}, Column {Column}";
+        if (Suggestion is not null)
+            result += "\n  Suggestion: " + Suggestion;
+        return result;
+    }
 }
 
-/// Type checker for Moded Type definitions
-class TypeChecker {
-  final TypeTable typeTable;
-  final ModeTable modeTable;
+// ---------------------------------------------------------------------------
+// TypeChecker — coordinator class, not sealed, two private readonly deps
+// ---------------------------------------------------------------------------
 
-  TypeChecker(this.typeTable, this.modeTable);
+/// <summary>Type checker for Moded Type definitions.</summary>
+public class TypeChecker
+{
+    private readonly TypeTable _typeTable;
+    private readonly ModeTable _modeTable;
 
-  /// Check all clauses in a module
-  List<TypeError> checkModule(Module module) {
-    final errors = <TypeError>[];
-
-    for (final proc in module.procedures) {
-      final modeDecl = modeTable.getDeclaration(proc.name, proc.arity);
-      if (modeDecl == null) continue; // No declaration, skip type checking
-
-      for (final clause in proc.clauses) {
-        errors.addAll(checkClause(clause, modeDecl));
-      }
+    public TypeChecker(TypeTable typeTable, ModeTable modeTable)
+    {
+        _typeTable = typeTable;
+        _modeTable = modeTable;
     }
 
-    return errors;
-  }
+    // -----------------------------------------------------------------------
+    // CheckModule
+    // -----------------------------------------------------------------------
 
-  /// Check a single clause against its mode declaration
-  List<TypeError> checkClause(Clause clause, ModeDeclaration modeDecl) {
-    final errors = <TypeError>[];
-
-    // Check head arguments
-    for (int i = 0; i < clause.head.args.length && i < modeDecl.args.length; i++) {
-      final arg = clause.head.args[i];
-      final declaredType = modeDecl.args[i].typeName;
-      final typeParams = modeDecl.args[i].typeParams;
-      errors.addAll(checkTerm(arg, declaredType, typeParams));
-    }
-
-    // Check body goals
-    if (clause.body != null) {
-      for (final goal in clause.body!) {
-        final goalDecl = modeTable.getDeclaration(goal.functor, goal.arity);
-        if (goalDecl == null) continue;
-
-        for (int i = 0; i < goal.args.length && i < goalDecl.args.length; i++) {
-          final arg = goal.args[i];
-          final declaredType = goalDecl.args[i].typeName;
-          final typeParams = goalDecl.args[i].typeParams;
-          errors.addAll(checkTerm(arg, declaredType, typeParams));
+    /// <summary>Check all clauses in a module.</summary>
+    public List<TypeError> CheckModule(Module module)
+    {
+        var errors = new List<TypeError>();
+        foreach (var proc in module.Procedures)
+        {
+            var modeDecl = _modeTable.GetDeclaration(proc.Name, proc.Arity);
+            if (modeDecl is null) continue; // No declaration, skip type checking
+            foreach (var clause in proc.Clauses)
+            {
+                errors.AddRange(CheckClause(clause, modeDecl));
+            }
         }
-      }
-    }
-
-    return errors;
-  }
-
-  /// Check a term against an expected type
-  List<TypeError> checkTerm(Term term, String expectedType, List<String> typeParams) {
-    final errors = <TypeError>[];
-
-    // Variables are not checked - their types are inferred
-    if (term is VarTerm) {
-      return errors;
-    }
-
-    // Underscore matches any type
-    if (term is UnderscoreTerm) {
-      return errors;
-    }
-
-    // Constants must be valid constructors of the type
-    if (term is ConstTerm) {
-      if (!isValidConstant(term, expectedType)) {
-        final validConstructors = getValidConstructors(expectedType);
-        errors.add(TypeError(
-          "'${term.value}' is not a valid '$expectedType'",
-          term.line,
-          term.column,
-          suggestion: validConstructors.isNotEmpty
-              ? "Valid constructors: ${validConstructors.join(', ')}"
-              : null,
-        ));
-      }
-      return errors;
-    }
-
-    // List terms
-    if (term is ListTerm) {
-      // Empty list is valid for any list type
-      if (term.isNil) {
         return errors;
-      }
+    }
 
-      // Check if expectedType has list constructors
-      final typeDef = typeTable.getType(expectedType);
-      if (typeDef != null) {
-        final hasListCtor = typeDef.constructors.any((c) => c is ListConstructor);
-        if (!hasListCtor && expectedType != 'List') {
-          errors.add(TypeError(
-            "List term not valid for type '$expectedType'",
-            term.line,
-            term.column,
-          ));
-          return errors;
+    // -----------------------------------------------------------------------
+    // CheckClause
+    // -----------------------------------------------------------------------
+
+    /// <summary>Check a single clause against its mode declaration.</summary>
+    public List<TypeError> CheckClause(Clause clause, ModeDeclaration modeDecl)
+    {
+        var errors = new List<TypeError>();
+
+        // Check head arguments
+        for (int i = 0; i < clause.Head.Args.Count && i < modeDecl.Args.Count; i++)
+        {
+            var arg          = clause.Head.Args[i];
+            var declaredType = modeDecl.Args[i].TypeName;
+            var typeParams   = modeDecl.Args[i].TypeParams;
+            errors.AddRange(CheckTerm(arg, declaredType, typeParams));
         }
+
+        // Check body goals
+        if (clause.Body is not null)
+        {
+            foreach (var goal in clause.Body)
+            {
+                var goalDecl = _modeTable.GetDeclaration(goal.Functor, goal.Arity);
+                if (goalDecl is null) continue;
+
+                for (int i = 0; i < goal.Args.Count && i < goalDecl.Args.Count; i++)
+                {
+                    var arg          = goal.Args[i];
+                    var declaredType = goalDecl.Args[i].TypeName;
+                    var typeParams   = goalDecl.Args[i].TypeParams;
+                    errors.AddRange(CheckTerm(arg, declaredType, typeParams));
+                }
+            }
+        }
+
+        return errors;
+    }
+
+    // -----------------------------------------------------------------------
+    // CheckTerm
+    // -----------------------------------------------------------------------
+
+    /// <summary>Check a term against an expected type.</summary>
+    public List<TypeError> CheckTerm(Term term, string expectedType, IReadOnlyList<string> typeParams)
+    {
+        var errors = new List<TypeError>();
+
+        // Variables are not checked — their types are inferred
+        if (term is VarTerm) return errors;
+
+        // Underscore matches any type
+        if (term is UnderscoreTerm) return errors;
+
+        // Constants must be valid constructors of the type
+        if (term is ConstTerm constTerm)
+        {
+            if (!IsValidConstant(constTerm, expectedType))
+            {
+                var validConstructors = GetValidConstructors(expectedType);
+                errors.Add(new TypeError(
+                    $"'{constTerm.Value}' is not a valid '{expectedType}'",
+                    constTerm.Line,
+                    constTerm.Column,
+                    suggestion: validConstructors.Count > 0
+                        ? $"Valid constructors: {string.Join(", ", validConstructors)}"
+                        : null));
+            }
+            return errors;
+        }
+
+        // List terms
+        if (term is ListTerm listTerm)
+        {
+            // Empty list is valid for any list type
+            if (listTerm.IsNil) return errors;
+
+            // Check if expectedType has list constructors
+            var typeDef = _typeTable.LookupType(expectedType);
+            if (typeDef is not null)
+            {
+                bool hasListCtor = typeDef.Alternatives.Any(c => c is ListNilAlt || c is ListConsAlt);
+                if (!hasListCtor && expectedType != "List")
+                {
+                    errors.Add(new TypeError(
+                        $"List term not valid for type '{expectedType}'",
+                        listTerm.Line,
+                        listTerm.Column));
+                    return errors;
+                }
+
+                // Build type parameter substitution map
+                // e.g., List(A) with typeParams=["BinaryDigit"] -> {A: BinaryDigit}
+                var typeParamSubst = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 0; i < typeDef.TypeParams.Count && i < typeParams.Count; i++)
+                {
+                    typeParamSubst[typeDef.TypeParams[i]] = typeParams[i];
+                }
+
+                // Find non-nil list constructor (ListConsAlt) to get element type
+                var listCons = typeDef.Alternatives
+                    .OfType<ListConsAlt>()
+                    .FirstOrDefault();
+                if (listCons is not null && listTerm.Head is not null)
+                {
+                    // TypeExpr.TypeName returns the name if the head is a TypeRef, else null
+                    var paramTypeName = listCons.Head.TypeName;
+                    if (paramTypeName is not null)
+                    {
+                        var elementType = typeParamSubst.TryGetValue(paramTypeName, out var substituted)
+                            ? substituted
+                            : paramTypeName;
+                        if (elementType != "_")
+                        {
+                            errors.AddRange(CheckTerm(listTerm.Head, elementType, Array.Empty<string>()));
+                        }
+                    }
+                }
+            }
+            else if (typeParams.Count > 0 && listTerm.Head is not null)
+            {
+                // Type not defined but we have type params — use first as element type
+                errors.AddRange(CheckTerm(listTerm.Head, typeParams[0], Array.Empty<string>()));
+            }
+
+            // Check tail recursively
+            if (listTerm.Tail is not null)
+            {
+                errors.AddRange(CheckTerm(listTerm.Tail, expectedType, typeParams));
+            }
+
+            return errors;
+        }
+
+        // Struct terms
+        if (term is StructTerm structTerm)
+        {
+            if (!IsValidStructConstructor(structTerm, expectedType, typeParams))
+            {
+                var validConstructors = GetValidConstructors(expectedType);
+                errors.Add(new TypeError(
+                    $"'{structTerm.Functor}(...)' is not a valid '{expectedType}'",
+                    structTerm.Line,
+                    structTerm.Column,
+                    suggestion: validConstructors.Count > 0
+                        ? $"Valid constructors: {string.Join(", ", validConstructors)}"
+                        : null));
+            }
+            return errors;
+        }
+
+        return errors;
+    }
+
+    // -----------------------------------------------------------------------
+    // IsValidConstant
+    // -----------------------------------------------------------------------
+
+    /// <summary>Check if a constant is a valid constructor for a type.</summary>
+    public bool IsValidConstant(ConstTerm term, string typeName)
+    {
+        // Built-in numeric types
+        if (typeName is "Num" or "Number" or "Int" or "Integer")
+            return term.Value is double or float or int or long or short or byte or decimal;
+
+        // Built-in atom/string types
+        if (typeName is "Atom" or "String")
+            return term.Value is string;
+
+        // User-defined types
+        var typeDef = _typeTable.LookupType(typeName);
+        if (typeDef is null) return true; // Type not defined — allow (might be built-in or external)
+
+        var termValue = term.Value?.ToString() ?? "";
+
+        // Check if constant matches any ConstantAlt (atom constructor)
+        foreach (var alt in typeDef.Alternatives)
+        {
+            if (alt is ConstantAlt constAlt && constAlt.Value?.ToString() == termValue)
+                return true;
+        }
+
+        // Check if type references another type (ConstantAlt whose value is a capitalised name)
+        // e.g., Gates ::= And ; Or ; Not  — And/Or/Not are type references
+        foreach (var alt in typeDef.Alternatives)
+        {
+            if (alt is ConstantAlt constAlt && constAlt.Value is string refName && _IsCapitalized(refName))
+            {
+                var refTypeDef = _typeTable.LookupType(refName);
+                if (refTypeDef is not null && _TypeContainsAtom(refTypeDef, termValue))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // IsValidStructConstructor
+    // -----------------------------------------------------------------------
+
+    /// <summary>Check if a struct term is valid for a type.</summary>
+    public bool IsValidStructConstructor(StructTerm term, string typeName, IReadOnlyList<string>? typeParams = null)
+    {
+        var effectiveParams = typeParams ?? Array.Empty<string>();
+        var typeDef = _typeTable.LookupType(typeName);
+        if (typeDef is null) return true; // Unknown type — allow
 
         // Build type parameter substitution map
-        // e.g., List(A) with typeParams=["BinaryDigit"] -> {A: BinaryDigit}
-        final typeParamSubst = <String, String>{};
-        for (int i = 0; i < typeDef.typeParams.length && i < typeParams.length; i++) {
-          typeParamSubst[typeDef.typeParams[i]] = typeParams[i];
+        var typeParamSubst = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (int i = 0; i < typeDef.TypeParams.Count && i < effectiveParams.Count; i++)
+        {
+            typeParamSubst[typeDef.TypeParams[i]] = effectiveParams[i];
         }
 
-        // Find non-nil list constructor to get element type
-        final listCtor = typeDef.constructors
-            .whereType<ListConstructor>()
-            .where((c) => !c.isNil)
-            .firstOrNull;
-        if (listCtor != null && listCtor.head != null && term.head != null) {
-          final paramTypeName = listCtor.head!.typeName;
-          // Substitute type parameter if applicable
-          final elementType = typeParamSubst[paramTypeName] ?? paramTypeName;
-          if (elementType != '_') {
-            errors.addAll(checkTerm(term.head!, elementType, []));
-          }
-        }
-      } else if (typeParams.isNotEmpty && term.head != null) {
-        // Type not defined but we have type params - use first as element type
-        errors.addAll(checkTerm(term.head!, typeParams[0], []));
-      }
-
-      // Check tail recursively
-      if (term.tail != null) {
-        errors.addAll(checkTerm(term.tail!, expectedType, typeParams));
-      }
-
-      return errors;
-    }
-
-    // Struct terms
-    if (term is StructTerm) {
-      if (!isValidStructConstructor(term, expectedType, typeParams)) {
-        final validConstructors = getValidConstructors(expectedType);
-        errors.add(TypeError(
-          "'${term.functor}(...)' is not a valid '$expectedType'",
-          term.line,
-          term.column,
-          suggestion: validConstructors.isNotEmpty
-              ? "Valid constructors: ${validConstructors.join(', ')}"
-              : null,
-        ));
-      }
-      return errors;
-    }
-
-    return errors;
-  }
-
-  /// Check if a constant is a valid constructor for a type
-  bool isValidConstant(ConstTerm term, String typeName) {
-    // Built-in types
-    if (typeName == 'Num' || typeName == 'Number' || typeName == 'Int' || typeName == 'Integer') {
-      return term.value is num;
-    }
-    if (typeName == 'Atom' || typeName == 'String') {
-      return term.value is String;
-    }
-
-    // User-defined types
-    final typeDef = typeTable.getType(typeName);
-    if (typeDef == null) {
-      // Type not defined - allow (might be built-in or external)
-      return true;
-    }
-
-    final termValue = term.value.toString();
-
-    // Check if constant matches any atom constructor
-    for (final ctor in typeDef.constructors) {
-      if (ctor is AtomConstructor && ctor.name == termValue) {
-        return true;
-      }
-    }
-
-    // Check if type references another type (capitalized AtomConstructor)
-    // e.g., Gates := And | Or | Not - And, Or, Not are type references
-    for (final ctor in typeDef.constructors) {
-      if (ctor is AtomConstructor && _isCapitalized(ctor.name)) {
-        // This is a type reference - check if that type contains the constant
-        final refTypeDef = typeTable.getType(ctor.name);
-        if (refTypeDef != null && _typeContainsAtom(refTypeDef, termValue)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  /// Check if a struct term is valid for a type
-  bool isValidStructConstructor(StructTerm term, String typeName, [List<String> typeParams = const []]) {
-    final typeDef = typeTable.getType(typeName);
-    if (typeDef == null) {
-      return true; // Unknown type - allow
-    }
-
-    // Build type parameter substitution map
-    final typeParamSubst = <String, String>{};
-    for (int i = 0; i < typeDef.typeParams.length && i < typeParams.length; i++) {
-      typeParamSubst[typeDef.typeParams[i]] = typeParams[i];
-    }
-
-    // Check direct struct constructors
-    for (final ctor in typeDef.constructors) {
-      if (ctor is StructConstructor && ctor.functor == term.functor) {
-        return true;
-      }
-    }
-
-    // Check type references (capitalized AtomConstructors)
-    // e.g., Gates := And | Or | Not
-    // If term.functor is 'and', check if And's mode declaration matches
-    for (final ctor in typeDef.constructors) {
-      if (ctor is AtomConstructor && _isCapitalized(ctor.name)) {
-        final ctorName = ctor.name;
-
-        // Check if this is a type parameter that should be substituted
-        if (typeParamSubst.containsKey(ctorName)) {
-          final substitutedType = typeParamSubst[ctorName]!;
-          // Recursively check if term is valid for the substituted type
-          if (isValidStructConstructor(term, substitutedType)) {
-            return true;
-          }
+        // Pass 1: direct StructAlt functor match
+        foreach (var alt in typeDef.Alternatives)
+        {
+            if (alt is StructAlt structAlt && structAlt.Functor == term.Functor)
+                return true;
         }
 
-        // This is a type reference - check if its mode declaration has this predicate
-        final modeDecl = modeTable.getDeclarationByTypeName(ctorName);
-        if (modeDecl != null && modeDecl.predicate == term.functor) {
-          return true;
+        // Pass 2: capitalised ConstantAlt type references
+        foreach (var alt in typeDef.Alternatives)
+        {
+            if (alt is ConstantAlt constAlt && constAlt.Value is string ctorName && _IsCapitalized(ctorName))
+            {
+                // Check if this is a type parameter that should be substituted
+                if (typeParamSubst.TryGetValue(ctorName, out var substitutedType))
+                {
+                    // acyclic-TypeTable invariant
+                    if (IsValidStructConstructor(term, substitutedType))
+                        return true;
+                }
+
+                // This is a type reference — check if its mode declaration has this predicate
+                var modeDecl = _modeTable.GetDeclarationByTypeName(ctorName);
+                if (modeDecl is not null && modeDecl.Predicate == term.Functor)
+                    return true;
+            }
         }
-      }
+
+        return false;
     }
 
-    return false;
-  }
+    // -----------------------------------------------------------------------
+    // Private helpers
+    // -----------------------------------------------------------------------
 
-  bool _isCapitalized(String name) {
-    if (name.isEmpty) return false;
-    final first = name[0];
-    return first == first.toUpperCase() && first != first.toLowerCase();
-  }
-
-  bool _typeContainsAtom(TypeDefinition typeDef, String atomName) {
-    for (final ctor in typeDef.constructors) {
-      if (ctor is AtomConstructor) {
-        if (ctor.name == atomName) {
-          return true;
-        }
-        // If this is a type reference, recurse
-        if (_isCapitalized(ctor.name)) {
-          final refType = typeTable.getType(ctor.name);
-          if (refType != null && _typeContainsAtom(refType, atomName)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  /// Get list of valid constructors for error messages
-  List<String> getValidConstructors(String typeName) {
-    final result = <String>[];
-    final typeDef = typeTable.getType(typeName);
-    if (typeDef == null) return result;
-
-    for (final ctor in typeDef.constructors) {
-      if (ctor is AtomConstructor) {
-        result.add(ctor.name);
-      } else if (ctor is StructConstructor) {
-        result.add('${ctor.functor}(...)');
-      } else if (ctor is ListConstructor) {
-        result.add(ctor.isNil ? '[]' : '[...|...]');
-      } else if (ctor is TupleConstructor) {
-        result.add('(...)');
-      }
+    private bool _IsCapitalized(string name)
+    {
+        if (name.Length == 0) return false;
+        var first = name[0];
+        return char.IsUpper(first);
     }
 
-    return result;
-  }
+    private bool _TypeContainsAtom(TypeDef typeDef, string atomName)
+    {
+        // no cycle detection; depends on TypeTable being acyclic, an invariant of the parser
+        foreach (var alt in typeDef.Alternatives)
+        {
+            if (alt is ConstantAlt constAlt)
+            {
+                var name = constAlt.Value?.ToString() ?? "";
+                if (name == atomName) return true;
+                if (_IsCapitalized(name))
+                {
+                    var refType = _typeTable.LookupType(name);
+                    if (refType is not null && _TypeContainsAtom(refType, atomName))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Get list of valid constructor display strings for error messages.</summary>
+    public List<string> GetValidConstructors(string typeName)
+    {
+        var result  = new List<string>();
+        var typeDef = _typeTable.LookupType(typeName);
+        if (typeDef is null) return result;
+
+        foreach (var alt in typeDef.Alternatives)
+        {
+            switch (alt)
+            {
+                case ConstantAlt constAlt:
+                    result.Add(constAlt.Value?.ToString() ?? "");
+                    break;
+                case StructAlt structAlt:
+                    result.Add($"{structAlt.Functor}(...)");
+                    break;
+                case ListNilAlt:
+                    result.Add("[]");
+                    break;
+                case ListConsAlt:
+                    result.Add("[...|...]");
+                    break;
+                // DiffListAlt, PrimitiveModeAlt, TypeRef: silently skipped
+                // (no equivalent in Dart's TupleConstructor path either;
+                //  E3 escalation resolution: treat non-PMT-checkable alts as not enumerable)
+            }
+        }
+
+        return result;
+    }
 }

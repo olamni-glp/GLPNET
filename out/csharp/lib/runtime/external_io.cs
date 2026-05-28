@@ -1,331 +1,430 @@
+/// <summary>
 /// External I/O for GLP - Phase 0 Implementation
+/// <para>
 /// Provides mechanism for Dart to inject input and observe output from GLP streams.
-///
 /// Based on docs/glp-io-spec.md
-library;
+/// </para>
+/// <para>
+/// Per heap-pointer-architecture-spec.md Section 1.1, CGLP paper Definition 5.5,
+/// and bytecode spec Sections 8.1-8.2.
+/// </para>
+/// </summary>
+namespace GlpRuntime.Runtime;
 
-import 'terms.dart';
-import 'heap_fcp.dart';
-import 'machine_state.dart'; // For GoalRef
+using System;
+using System.Collections.Generic;
 
+/// <summary>
 /// An External Channel is a bidirectional connection between Dart and GLP.
-///
+/// <para>
 /// Each channel has:
 /// - Input stream: Dart injects terms, GLP reads them
 /// - Output stream: GLP writes terms, Dart observes them
-///
+/// </para>
+/// <para>
 /// Per heap-pointer-architecture-spec.md Section 1.1:
-/// "Heap navigation follows pointers explicitly rather than computing addresses
-/// via arithmetic. There is no implicit relationship between adjacent heap addresses."
-///
-/// Therefore we store BOTH writer and reader addresses explicitly.
-class ExternalChannel {
-  final String name;  // 'user' or 'net'
+/// both writer and reader addresses are stored explicitly — no address arithmetic.
+/// </para>
+/// </summary>
+public class ExternalChannel
+{
+    /// <summary>Channel name — 'user' or 'net'.</summary>
+    public string Name { get; }
 
-  // Input: Dart → GLP
-  // Dart holds the writer (to inject terms), GLP receives the reader
-  final int inputWriterAddr;
-  final int inputReaderAddr;
+    /// <summary>Input writer address: Dart holds the writer (to inject terms), GLP receives the reader.</summary>
+    public long InputWriterAddr { get; }
 
-  // Output: GLP → Dart
-  // GLP holds the writer (to produce terms), Dart holds the reader (to observe)
-  final int outputWriterAddr;
-  final int outputReaderAddr;
+    /// <summary>Input reader address.</summary>
+    public long InputReaderAddr { get; }
 
-  ExternalChannel({
-    required this.name,
-    required this.inputWriterAddr,
-    required this.inputReaderAddr,
-    required this.outputWriterAddr,
-    required this.outputReaderAddr,
-  });
+    /// <summary>Output writer address: GLP holds the writer (to produce terms), Dart holds the reader.</summary>
+    public long OutputWriterAddr { get; }
 
-  @override
-  String toString() => 'ExternalChannel($name, in=($inputWriterAddr,$inputReaderAddr), out=($outputWriterAddr,$outputReaderAddr))';
+    /// <summary>Output reader address.</summary>
+    public long OutputReaderAddr { get; }
+
+    public ExternalChannel(string name, long inputWriterAddr, long inputReaderAddr, long outputWriterAddr, long outputReaderAddr)
+    {
+        Name = name;
+        InputWriterAddr = inputWriterAddr;
+        InputReaderAddr = inputReaderAddr;
+        OutputWriterAddr = outputWriterAddr;
+        OutputReaderAddr = outputReaderAddr;
+    }
+
+    public override string ToString() =>
+        $"ExternalChannel({Name}, in=({InputWriterAddr},{InputReaderAddr}), out=({OutputWriterAddr},{OutputReaderAddr}))";
 }
 
-/// Factory function to create an ExternalChannel with fresh variables
-ExternalChannel createExternalChannel(HeapFCP heap, String name) {
-  // Create input stream variable (Dart=writer, GLP=reader)
-  // allocateVariable returns (writerAddr, readerAddr) tuple
-  final (inputWriterAddr, inputReaderAddr) = heap.allocateVariable();
+/// <summary>
+/// Hosting static class for file-level factory functions (Dart top-level functions → C# static methods).
+/// </summary>
+public static class ExternalIO
+{
+    /// <summary>
+    /// Factory: create an ExternalChannel with fresh heap variables for both streams.
+    /// </summary>
+    public static ExternalChannel CreateExternalChannel(HeapFCP heap, string name)
+    {
+        // Create input stream variable (Dart=writer, GLP=reader)
+        var (inputWriterAddr, inputReaderAddr) = heap.AllocateVariable();
 
-  // Create output stream variable (GLP=writer, Dart=reader)
-  final (outputWriterAddr, outputReaderAddr) = heap.allocateVariable();
+        // Create output stream variable (GLP=writer, Dart=reader)
+        var (outputWriterAddr, outputReaderAddr) = heap.AllocateVariable();
 
-  return ExternalChannel(
-    name: name,
-    inputWriterAddr: inputWriterAddr,
-    inputReaderAddr: inputReaderAddr,
-    outputWriterAddr: outputWriterAddr,
-    outputReaderAddr: outputReaderAddr,
-  );
+        return new ExternalChannel(
+            name: name,
+            inputWriterAddr: inputWriterAddr,
+            inputReaderAddr: inputReaderAddr,
+            outputWriterAddr: outputWriterAddr,
+            outputReaderAddr: outputReaderAddr);
+    }
+
+    /// <summary>
+    /// Build ch(In, Out) term for GLP.
+    /// <para>
+    /// Per bytecode spec Section 8.1-8.2 and CGLP paper Definition 5.5:
+    /// ch(Reader, Writer) — InputReader in writer-mode HEAD position,
+    /// OutputWriter in reader-mode HEAD position.
+    /// </para>
+    /// </summary>
+    public static Term BuildChannelTerm(ExternalChannel channel)
+    {
+        return new StructTerm("ch", new List<Term>
+        {
+            new VarRef((int)channel.InputReaderAddr),   // In  - READER
+            new VarRef((int)channel.OutputWriterAddr),  // Out - WRITER
+        });
+    }
 }
 
-/// Build ch(In, Out) term for GLP
-///
-/// GLP HEAD pattern: agent_init(Id, ch(UserIn, UserOut?), ...)
-/// - UserIn (writer mode in HEAD) expects a READER to store
-/// - UserOut? (reader mode in HEAD) expects a WRITER to bind
-///
-/// Per bytecode spec Section 8.1-8.2:
-/// - Writer-mode HEAD position + unbound writer arg → WxW violation (FAIL)
-/// - Writer-mode HEAD position + reader arg → stores reader in clause var (OK)
-/// - Reader-mode HEAD position + writer arg → binds writer to HEAD's reader (OK)
-///
-/// Therefore: ch(Reader, Writer), NOT ch(Writer, Reader)
-///
-/// Per CGLP paper Definition 5.5: initial goal is agent(p, ch(_?, _), ch(_?, _))
-/// where _? is reader and _ is writer.
-Term buildChannelTerm(ExternalChannel channel) {
-  // Use explicit reader/writer addresses - NO address arithmetic
-  // Per heap-pointer-architecture-spec.md: "There is no implicit relationship
-  // between adjacent heap addresses"
-  return StructTerm('ch', [
-    VarRef(channel.inputReaderAddr),   // In - READER (for writer-mode HEAD position)
-    VarRef(channel.outputWriterAddr),  // Out - WRITER (for reader-mode HEAD position)
-  ]);
-}
-
+/// <summary>
 /// Injects terms into a GLP input stream.
-///
+/// <para>
 /// Dart holds the writer end of the input stream.
-/// Each inject() call extends the stream: [term | newTail]
-class InputInjector {
-  final HeapFCP heap;
-  final String channelName;
-  int _currentWriterId;
+/// Each Inject() call extends the stream: [term | newTail].
+/// </para>
+/// </summary>
+public class InputInjector
+{
+    /// <summary>The heap this injector writes into.</summary>
+    public HeapFCP Heap { get; }
 
-  InputInjector(this.heap, this.channelName, int initialWriterId)
-      : _currentWriterId = initialWriterId;
+    /// <summary>Channel name (for debugging).</summary>
+    public string ChannelName { get; }
 
-  /// Current writer variable ID (for debugging)
-  int get currentWriterId => _currentWriterId;
+    private long _currentWriterId;
 
-  /// Inject a term into the input stream.
-  ///
-  /// Binds current writer to [term | newTail], advances writer to newTail.
-  /// Returns list of goals that were woken up by the injection (should be enqueued).
-  List<GoalRef> inject(Term term) {
-    // Allocate fresh variable for tail (returns (writerAddr, readerAddr))
-    final (tailWriterAddr, _) = heap.allocateVariable();
+    public InputInjector(HeapFCP heap, string channelName, long initialWriterId)
+    {
+        Heap = heap;
+        ChannelName = channelName;
+        _currentWriterId = initialWriterId;
+    }
 
-    // Build list cell: [term | tail] using '.' functor (GLP cons convention)
-    // Tail is a writer (per FCP pattern, use readerForWriter() if reader needed)
-    final listCell = StructTerm('.', [term, VarRef(tailWriterAddr)]);
+    /// <summary>Current writer variable ID (for debugging).</summary>
+    public long CurrentWriterId => _currentWriterId;
 
-    // Bind current writer to list cell - this may wake suspended goals
-    final activations = heap.bindVariable(_currentWriterId, listCell);
+    /// <summary>
+    /// Inject a term into the input stream.
+    /// <para>
+    /// Binds current writer to [term | newTail], advances writer to newTail.
+    /// Returns list of goals woken up by the injection (should be enqueued).
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<GoalRef> Inject(Term term)
+    {
+        // Allocate fresh variable for tail — discard reader address
+        var (tailWriterAddr, _) = Heap.AllocateVariable();
 
-    // Advance writer to tail for next injection
-    _currentWriterId = tailWriterAddr;
+        // Build list cell: [term | tail] using '.' functor (GLP cons convention)
+        var listCell = new StructTerm(".", new List<Term> { term, new VarRef((int)tailWriterAddr) });
 
-    return activations;
-  }
+        // Bind current writer to list cell — may wake suspended goals
+        var activations = Heap.BindVariable((int)_currentWriterId, listCell);
 
-  /// Close the input stream (no more input).
-  ///
-  /// Binds current writer to empty list (nil).
-  /// Returns list of goals that were woken up (should be enqueued).
-  List<GoalRef> close() {
-    return heap.bindVariable(_currentWriterId, ConstTerm('nil'));
-  }
+        // Advance writer to tail for next injection
+        _currentWriterId = tailWriterAddr;
+
+        return activations;
+    }
+
+    /// <summary>
+    /// Close the input stream (no more input).
+    /// <para>Binds current writer to nil. Returns woken goals.</para>
+    /// </summary>
+    public IReadOnlyList<GoalRef> Close() =>
+        Heap.BindVariable((int)_currentWriterId, new ConstTerm("nil"));
 }
 
+/// <summary>
 /// Observes terms written to a GLP output stream.
-///
+/// <para>
 /// Dart holds the reader end of the output stream.
 /// When GLP binds the writer to [term | newTail], the callback fires.
-class OutputObserver {
-  final HeapFCP heap;
-  final String channelName;
-  final void Function(Term) onTerm;
-  final void Function() onClose;
-  int _currentReaderId;
-  bool _closed = false;
+/// </para>
+/// <para>
+/// Dispose() is intentionally NOT part of IDisposable — the Dart source
+/// declares no disposal interface; cleanup is caller-driven via AgentIOContext.
+/// </para>
+/// </summary>
+public class OutputObserver
+{
+    /// <summary>The heap this observer reads from.</summary>
+    public HeapFCP Heap { get; }
 
-  OutputObserver(
-    this.heap,
-    this.channelName,
-    int initialReaderId,
-    this.onTerm,
-    this.onClose,
-  ) : _currentReaderId = initialReaderId {
-    _observeNext();
-  }
+    /// <summary>Channel name (for debugging).</summary>
+    public string ChannelName { get; }
 
-  /// Current reader variable ID (for debugging)
-  int get currentReaderId => _currentReaderId;
+    /// <summary>
+    /// Callback invoked for each observed term.
+    /// Non-nullable (Dart source: <c>void Function(Term) onTerm</c> — no '?').
+    /// </summary>
+    public Action<Term> OnTerm { get; }
 
-  /// Whether the stream has been closed
-  bool get isClosed => _closed;
+    /// <summary>
+    /// Callback invoked when stream is closed.
+    /// Non-nullable (Dart source: <c>void Function() onClose</c> — no '?').
+    /// </summary>
+    public Action OnClose { get; }
 
-  void _observeNext() {
-    if (_closed) return;
+    private long _currentReaderId;
+    private bool _closed = false;
 
-    // Convert reader to writer per spec Section 7.1
-    // onBind() expects writer address because bindings happen at the writer
-    final writerAddr = heap.tryWriterForReader(_currentReaderId);
-    if (writerAddr == null) {
-      // Imported reader - no local writer to observe
-      // This shouldn't happen for output streams, but handle gracefully
-      return;
+    public OutputObserver(HeapFCP heap, string channelName, long initialReaderId, Action<Term> onTerm, Action onClose)
+    {
+        Heap = heap;
+        ChannelName = channelName;
+        _currentReaderId = initialReaderId;
+        OnTerm = onTerm;
+        OnClose = onClose;
+        _ObserveNext();
     }
 
-    // Register callback for when writer is bound
-    heap.onBind(writerAddr, (Term value) {
-      if (_closed) return;
+    /// <summary>Current reader variable ID (for debugging).</summary>
+    public long CurrentReaderId => _currentReaderId;
 
-      if (value is StructTerm && value.functor == '.') {
-        // Got [Head | Tail] - cons cell
-        final head = value.args[0];
-        final tail = value.args[1];
+    /// <summary>Whether the stream has been closed.</summary>
+    public bool IsClosed => _closed;
 
-        // Notify observer of term
-        onTerm(head);
+    private void _ObserveNext()
+    {
+        if (_closed) return;
 
-        // Continue observing tail
-        if (tail is VarRef) {
-          _currentReaderId = tail.addr;
-          _observeNext();
-        } else if (tail is ConstTerm && tail.value == 'nil') {
-          // Stream closed with []
-          _closed = true;
-          onClose();
-        } else if (tail is StructTerm && tail.functor == '.') {
-          // Nested cons - process recursively
-          _processNestedCons(tail);
+        // Convert reader to writer per spec Section 7.1
+        long? writerAddr = Heap.TryWriterForReader((int)_currentReaderId);
+        if (writerAddr == null)
+        {
+            // Imported reader — no local writer to observe; handle gracefully
+            return;
         }
-      } else if (value is ConstTerm && value.value == 'nil') {
-        // Empty list - stream closed
-        _closed = true;
-        onClose();
-      }
-    });
-  }
 
-  /// Process nested cons cells (when multiple terms bound at once)
-  void _processNestedCons(StructTerm cons) {
-    var current = cons;
-    while (true) {
-      final head = current.args[0];
-      final tail = current.args[1];
+        // Register callback for when writer is bound
+        Heap.OnBind((int)writerAddr.Value, (Term value) =>
+        {
+            if (_closed) return;
 
-      onTerm(head);
+            if (value is StructTerm st && st.Functor == ".")
+            {
+                // Got [Head | Tail] — cons cell
+                var head = st.Args[0];
+                var tail = st.Args[1];
 
-      if (tail is VarRef) {
-        _currentReaderId = tail.addr;
-        _observeNext();
-        break;
-      } else if (tail is ConstTerm && tail.value == 'nil') {
-        _closed = true;
-        onClose();
-        break;
-      } else if (tail is StructTerm && tail.functor == '.') {
-        current = tail;
-      } else {
-        // Unexpected tail type
-        break;
-      }
+                // Notify observer of term
+                OnTerm(head);
+
+                // Continue observing tail
+                if (tail is VarRef vr)
+                {
+                    _currentReaderId = vr.Addr;
+                    _ObserveNext();
+                }
+                else if (tail is ConstTerm ct && ct.Value is "nil")
+                {
+                    // Stream closed with []
+                    _closed = true;
+                    OnClose();
+                }
+                else if (tail is StructTerm sn && sn.Functor == ".")
+                {
+                    // Nested cons — process iteratively
+                    _ProcessNestedCons(sn);
+                }
+            }
+            else if (value is ConstTerm ct2 && ct2.Value is "nil")
+            {
+                // Empty list — stream closed
+                _closed = true;
+                OnClose();
+            }
+        });
     }
-  }
 
-  /// Stop observing (cleanup)
-  void dispose() {
-    _closed = true;
-    // Convert reader to writer for callback removal (callbacks are keyed by writer)
-    final writerAddr = heap.tryWriterForReader(_currentReaderId);
-    if (writerAddr != null) {
-      heap.removeBindCallback(writerAddr);
+    /// <summary>Process nested cons cells (when multiple terms are bound at once).</summary>
+    private void _ProcessNestedCons(StructTerm cons)
+    {
+        var current = cons;
+        while (true)
+        {
+            var head = current.Args[0];
+            var tail = current.Args[1];
+
+            OnTerm(head);
+
+            if (tail is VarRef vr)
+            {
+                _currentReaderId = vr.Addr;
+                _ObserveNext();
+                break;
+            }
+            else if (tail is ConstTerm ct && ct.Value is "nil")
+            {
+                _closed = true;
+                OnClose();
+                break;
+            }
+            else if (tail is StructTerm sn && sn.Functor == ".")
+            {
+                current = sn;
+            }
+            else
+            {
+                // Unexpected tail type
+                break;
+            }
+        }
     }
-  }
+
+    /// <summary>Stop observing (cleanup). Sets closed flag and removes registered callback.</summary>
+    public void Dispose()
+    {
+        _closed = true;
+        long? writerAddr = Heap.TryWriterForReader((int)_currentReaderId);
+        if (writerAddr != null)
+        {
+            Heap.RemoveBindCallback((int)writerAddr.Value);
+        }
+    }
 }
 
+/// <summary>
 /// Context for an agent with both user and network channels.
-///
-/// Provides convenient access to all I/O components.
-class AgentIOContext {
-  final String agentId;
-  final HeapFCP heap;
+/// <para>Provides convenient access to all I/O components.</para>
+/// </summary>
+public class AgentIOContext
+{
+    /// <summary>Agent identifier.</summary>
+    public string AgentId { get; }
 
-  // User channel (UI)
-  final ExternalChannel userChannel;
-  final InputInjector userInput;
-  late final OutputObserver userOutput;
+    /// <summary>The shared heap.</summary>
+    public HeapFCP Heap { get; }
 
-  // Network channel
-  final ExternalChannel netChannel;
-  final InputInjector netInput;
-  late final OutputObserver netOutput;
+    // User channel (UI)
+    /// <summary>User-facing external channel descriptor.</summary>
+    public ExternalChannel UserChannel { get; }
 
-  // Collected output for testing
-  final List<Term> userOutputTerms = [];
-  final List<Term> netOutputTerms = [];
-  bool userOutputClosed = false;
-  bool netOutputClosed = false;
+    /// <summary>Injector for user input stream.</summary>
+    public InputInjector UserInput { get; }
 
-  AgentIOContext._({
-    required this.agentId,
-    required this.heap,
-    required this.userChannel,
-    required this.userInput,
-    required this.netChannel,
-    required this.netInput,
-  });
+    /// <summary>
+    /// Observer for user output stream.
+    /// <c>late final</c> analogue: assigned exactly once in Create() before the instance escapes.
+    /// </summary>
+    public OutputObserver UserOutput { get; private set; } = null!;
 
-  /// Create an AgentIOContext with both channels set up.
-  ///
-  /// The output observers collect terms into lists for easy testing.
-  factory AgentIOContext.create(HeapFCP heap, String agentId) {
-    // Create channels
-    final userChannel = createExternalChannel(heap, 'user');
-    final netChannel = createExternalChannel(heap, 'net');
+    // Network channel
+    /// <summary>Network-facing external channel descriptor.</summary>
+    public ExternalChannel NetChannel { get; }
 
-    // Create input injectors (Dart holds writer, injects via writer address)
-    final userInput = InputInjector(heap, 'user', userChannel.inputWriterAddr);
-    final netInput = InputInjector(heap, 'net', netChannel.inputWriterAddr);
+    /// <summary>Injector for net input stream.</summary>
+    public InputInjector NetInput { get; }
 
-    final context = AgentIOContext._(
-      agentId: agentId,
-      heap: heap,
-      userChannel: userChannel,
-      userInput: userInput,
-      netChannel: netChannel,
-      netInput: netInput,
-    );
+    /// <summary>
+    /// Observer for net output stream.
+    /// <c>late final</c> analogue: assigned exactly once in Create() before the instance escapes.
+    /// </summary>
+    public OutputObserver NetOutput { get; private set; } = null!;
 
-    // Create output observers that collect terms (Dart observes via reader address)
-    context.userOutput = OutputObserver(
-      heap,
-      'user',
-      userChannel.outputReaderAddr,
-      (term) => context.userOutputTerms.add(term),
-      () => context.userOutputClosed = true,
-    );
+    // Collected output for testing
+    private readonly List<Term> _userOutputTerms = new List<Term>();
+    private readonly List<Term> _netOutputTerms = new List<Term>();
 
-    context.netOutput = OutputObserver(
-      heap,
-      'net',
-      netChannel.outputReaderAddr,
-      (term) => context.netOutputTerms.add(term),
-      () => context.netOutputClosed = true,
-    );
+    /// <summary>Terms collected from the user output stream (read-only view).</summary>
+    public IReadOnlyList<Term> UserOutputTerms => _userOutputTerms;
 
-    return context;
-  }
+    /// <summary>Terms collected from the net output stream (read-only view).</summary>
+    public IReadOnlyList<Term> NetOutputTerms => _netOutputTerms;
 
-  /// Build the ch(UserIn, UserOut) term for GLP
-  Term get userChannelTerm => buildChannelTerm(userChannel);
+    /// <summary>True when the user output stream has been closed.</summary>
+    public bool UserOutputClosed { get; set; } = false;
 
-  /// Build the ch(NetIn, NetOut) term for GLP
-  Term get netChannelTerm => buildChannelTerm(netChannel);
+    /// <summary>True when the net output stream has been closed.</summary>
+    public bool NetOutputClosed { get; set; } = false;
 
-  /// Dispose all observers
-  void dispose() {
-    userOutput.dispose();
-    netOutput.dispose();
-  }
+    /// <summary>
+    /// Private constructor (corresponds to Dart <c>AgentIOContext._({ required ... })</c>).
+    /// Only invoked by the in-class Create factory.
+    /// </summary>
+    private AgentIOContext(string agentId, HeapFCP heap, ExternalChannel userChannel, InputInjector userInput, ExternalChannel netChannel, InputInjector netInput)
+    {
+        AgentId = agentId;
+        Heap = heap;
+        UserChannel = userChannel;
+        UserInput = userInput;
+        NetChannel = netChannel;
+        NetInput = netInput;
+    }
 
-  @override
-  String toString() => 'AgentIOContext($agentId)';
+    /// <summary>
+    /// Create an AgentIOContext with both channels set up.
+    /// <para>
+    /// The output observers collect terms into lists for easy testing.
+    /// </para>
+    /// </summary>
+    public static AgentIOContext Create(HeapFCP heap, string agentId)
+    {
+        // Create channels
+        var userChannel = ExternalIO.CreateExternalChannel(heap, "user");
+        var netChannel = ExternalIO.CreateExternalChannel(heap, "net");
+
+        // Create input injectors (Dart holds writer, injects via writer address)
+        var userInput = new InputInjector(heap, "user", userChannel.InputWriterAddr);
+        var netInput = new InputInjector(heap, "net", netChannel.InputWriterAddr);
+
+        var context = new AgentIOContext(agentId, heap, userChannel, userInput, netChannel, netInput);
+
+        // Create output observers that collect terms (Dart observes via reader address).
+        // The callbacks close over context — this is why OutputObserver cannot be
+        // constructed before context exists (the late final pattern).
+        context.UserOutput = new OutputObserver(
+            heap,
+            "user",
+            userChannel.OutputReaderAddr,
+            (term) => context._userOutputTerms.Add(term),
+            () => context.UserOutputClosed = true);
+
+        context.NetOutput = new OutputObserver(
+            heap,
+            "net",
+            netChannel.OutputReaderAddr,
+            (term) => context._netOutputTerms.Add(term),
+            () => context.NetOutputClosed = true);
+
+        return context;
+    }
+
+    /// <summary>Build the ch(UserIn, UserOut) term for GLP.</summary>
+    public Term UserChannelTerm => ExternalIO.BuildChannelTerm(UserChannel);
+
+    /// <summary>Build the ch(NetIn, NetOut) term for GLP.</summary>
+    public Term NetChannelTerm => ExternalIO.BuildChannelTerm(NetChannel);
+
+    /// <summary>Dispose all observers.</summary>
+    public void Dispose()
+    {
+        UserOutput.Dispose();
+        NetOutput.Dispose();
+    }
+
+    public override string ToString() => $"AgentIOContext({AgentId})";
 }
