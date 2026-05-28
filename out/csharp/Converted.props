@@ -21,12 +21,14 @@
     <Compile Include="lib/analysis/type_checker/program_dfa.cs" />
     <Compile Include="lib/analysis/type_checker/subtyping.cs" />
     <Compile Include="lib/analysis/type_checker/type_ast.cs" />
+    <Compile Include="lib/analysis/type_checker/type_checker.cs" />
     <Compile Include="lib/analysis/type_checker/type_conversion.cs" />
     <Compile Include="lib/analysis/type_checker/type_environment_builder.cs" />
     <Compile Include="lib/analysis/type_checker/well_typed_clause.cs" />
     <Compile Include="lib/analysis/type_checker/well_typed_term.cs" />
     <Compile Include="lib/bytecode/opcodes.cs" />
     <Compile Include="lib/bytecode/opcodes_v2.cs" />
+    <Compile Include="lib/compiler/analyzer.cs" />
     <Compile Include="lib/compiler/ast.cs" />
     <Compile Include="lib/compiler/error.cs" />
     <Compile Include="lib/compiler/glp_printer.cs" />
@@ -52,6 +54,7 @@
     <Compile Include="lib/runtime/fairness.cs" />
     <Compile Include="lib/runtime/hanger.cs" />
     <Compile Include="lib/runtime/machine_state.cs" />
+    <Compile Include="lib/runtime/module_hierarchy.cs" />
     <Compile Include="lib/runtime/suspend.cs" />
     <Compile Include="lib/runtime/suspension.cs" />
     <Compile Include="lib/runtime/terms.cs" />

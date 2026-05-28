@@ -59,6 +59,10 @@ plan_started_at: '2026-05-21T16:17:56Z'
 plan_completed_at: '2026-05-21T16:23:54Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/module_hierarchy.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T10:19:33Z'
+target_cs_path: out/csharp/lib/runtime/module_hierarchy.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Module hierarchy: self.glp chain discovery and type scope assembly.
