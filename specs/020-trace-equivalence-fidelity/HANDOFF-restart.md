@@ -65,8 +65,30 @@ swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) un
   3. **OUT binding shape is shallow** (`Zs=./2(var,var)` not the full `./2(const(a),...)`): `ShapeOf`
      does not deref VarRefs through the heap. Fine for status; for outcome-mode binding fidelity, OUT
      should pass a recursively-deref'd term. Easy refinement, deferred.
-- **REMAINING**: T022 e2e (needs the spine-comparability decision #1) → T031 fidelity-metric swap +
-  GEPA re-run → T026–T029 equiv CLI/skill/gate.
+- **REMAINING**: T022 e2e → T031 fidelity-metric swap + GEPA re-run → T026–T029 equiv CLI/skill/gate.
+
+### T022 scoping (2026-06-03, in progress) — `parse_dart` finalization + normalization
+`verdict.compare_recorded` calls `parse_dart(golden_text)` + `parse_csharp(candidate_text)` →
+`relation.compare`. `parse_csharp` is DONE (C# emits canonical EV/OUT). `parse_dart` still expects
+canonical format — it must be FINALIZED to adapt the Dart `:trace`+`:debug` text:
+- BYTECODE_OP from `[DEBUG] PC X: <Op>` lines — COLLAPSE consecutive same-(pc,op) sub-lines into ONE
+  event; include the SAME 13-op allow-set as the C# (+ Commit, which Dart prints only on a proceeding
+  commit — already symmetric with the C# OpAt); SKIP GetValue (C# excludes it).
+- WRITER_BIND from the `  Wx → shape` lines under a COMMIT print; CANONICALIZE the Dart term display
+  (`./2(Var@10, Var@12)`) to the C# address-free shape (`./2(var,var)` / `const(a)`).
+- SUSPEND from `NoMoreClauses - SUSPENDING on readers: [..]`; UNIFY synthesized (success@COMMIT,
+  suspend@SUSPENDING) to mirror the C#; OUT from the `Var = val` + `→ status` lines.
+- 🔴 **Normalization decision (touches contract "compared fields")**: the `goal` field in
+  SUSPEND/REACTIVATE is NOT recoverable from the Dart text (no numeric goal id) and the two REPLs use
+  different id schemes — so `goal` must DROP OUT of the compared model (compare SUSPEND by `reader`
+  only). relation.STRICT (`_event_eq`, full payload) + DYNAMIC (`_payload_no_vars` keeps `goal`) BOTH
+  currently compare `goal`. Plan: drop `goal` from the emitted/compared payload on BOTH sides
+  (C# `equiv_trace` + `parse_dart`), OR add it to the dropped set. Recommend dropping `goal`.
+- append is `tier: strict` (corpus.yml) → STRICT = full-event-list positional equality, so the
+  synthesized UNIFY + WRITER_BIND events must align positionally with the C#. Build `parse_dart`
+  against the real captured append pair (Dart `:trace`+`:debug` text + the C# canonical EV/OUT) as the
+  first e2e fixture; the live-spawn capture backend (T018, now unblocked by T017) + bonds outcome-mode
+  follow.
 
 ## 1. Verified-green anchor (re-verify BEFORE touching anything)
 
