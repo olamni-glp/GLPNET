@@ -1,0 +1,76 @@
+╔════════════════════════════════════════╗
+║  GLP REPL - With Type Checking         ║
+╚════════════════════════════════════════╝
+
+Build: 063717c7 feat(020-trace-equiv): T022 - relabel goal ids in separate g-namespace (GoalId sentinel) instead of dropping goal; SUSPEND/REACTIVATE goal stays a (relabeled) fidelity signal. 34 equiv pure tests green
+Compiled: 2026-02-01 (GlpEngine refactor)
+Working directory: D:\BSTDEV\research\GLP\GLPNET
+
+Input: filename.glp to load, or goal to execute
+Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
+
+Loaded root self.glp
+
+GLP> Trace enabled
+GLP> Debug output enabled
+GLP> ✓ Loaded: ./programs/typed_book/recursive/list_processing/append.glp
+GLP> [DEBUG] PC 1: ClauseTry - Starting new clause
+[DEBUG] PC 2: GetVariable varIndex=0, argSlot=0, isReader=false
+[DEBUG] PC 2: GetVariable arg=Var@2 (VarRef)
+[DEBUG] PC 2: GetVariable existing clauseVars[0]=null (null)
+[DEBUG] PC 3: HeadStructure argSlot=1, isClauseVar=false, functor=./2
+[DEBUG] PC 3: HeadStructure arg = Var@1 (VarRef)
+[DEBUG _finalUnboundVar] @1 -> derefResult=Var@0
+[DEBUG _finalUnboundVar] Final var: 0 (writer), returning reader: 1
+[DEBUG] PC 4: UnifyVariable varIndex=1, isReader=false, mode=UnifyMode.read, currentStructure=null
+[DEBUG] PC 5: UnifyVariable varIndex=2, isReader=false, mode=UnifyMode.read, currentStructure=null
+[DEBUG] PC 6: Ground varIndex=0, clauseVars value=Var@2 (VarRef)
+[DEBUG] PC 16: ClauseTry - Starting new clause
+[DEBUG _finalUnboundVar] @1 -> derefResult=Var@0
+[DEBUG _finalUnboundVar] Final var: 0 (writer), returning reader: 1
+[DEBUG] PC 22: NoMoreClauses - U={1}
+[DEBUG] NoMoreClauses - SUSPENDING on readers: [1]
+serve(Module(append), X1?) → suspended
+[DEBUG] PC 1: ClauseTry - Starting new clause
+[DEBUG] PC 8: ClauseTry - Starting new clause
+[DEBUG] PC 9: HeadStructure argSlot=0, isClauseVar=false, functor=./2
+[DEBUG] PC 9: HeadStructure arg = Var@4 (VarRef)
+[DEBUG] PC 10: UnifyVariable varIndex=0, isReader=false, mode=UnifyMode.read, currentStructure=StructTerm
+[DEBUG] PC 11: UnifyVariable varIndex=1, isReader=false, mode=UnifyMode.read, currentStructure=StructTerm
+[DEBUG] PC 12: GetVariable varIndex=2, argSlot=1, isReader=false
+[DEBUG] PC 12: GetVariable arg=Var@6 (VarRef)
+[DEBUG] PC 12: GetVariable existing clauseVars[2]=null (null)
+[DEBUG] PC 12: GetVariable reader R6, bound=true
+[DEBUG] PC 12: GetVariable writer value=.(Const(c),Const(nil))
+[DEBUG] PC 12: GetVariable storing clauseVars[2] = .(Const(c),Const(nil))
+[DEBUG] PC 12: GetVariable SUCCESS, continuing to PC 13
+[DEBUG] PC 13: HeadStructure argSlot=2, isClauseVar=false, functor=./2
+[DEBUG] PC 13: HeadStructure arg = Var@7 (VarRef)
+[DEBUG] PC 13: HeadStructure - arg is WRITER W7, bound=false
+[DEBUG] PC 13: HeadStructure - WRITE mode for unbound writer W7, creating ./2
+[DEBUG] PC 13: HeadStructure - created tentative struct, advancing to PC 14
+[DEBUG] PC 14: UnifyVariable varIndex=0, isReader=true, mode=UnifyMode.write, currentStructure=_TentativeStruct
+[DEBUG] PC 15: UnifyVariable varIndex=3, isReader=true, mode=UnifyMode.write, currentStructure=_TentativeStruct
+[DEBUG] PC 16: COMMIT - σ̂w contains 2 bindings:
+  W7 → ./2(Var@10, Var@12)
+  W9 → Const(a)
+[DEBUG] PC 16: COMMIT - Applying 2 bindings to heap...
+[DEBUG] PC 16: COMMIT - Applied successfully, reactivating 0 goal(s)
+append([a], [c], [a | X3?]) :- append([], [c], X2)
+[DEBUG] PC 1: ClauseTry - Starting new clause
+[DEBUG] PC 3: GetVariable varIndex=0, argSlot=1, isReader=false
+[DEBUG] PC 3: GetVariable arg=Var@16 (VarRef)
+[DEBUG] PC 3: GetVariable existing clauseVars[0]=null (null)
+[DEBUG] PC 3: GetVariable reader R16, bound=true
+[DEBUG] PC 3: GetVariable writer value=.(Const(c),Const(nil))
+[DEBUG] PC 3: GetVariable storing clauseVars[0] = .(Const(c),Const(nil))
+[DEBUG] PC 3: GetVariable SUCCESS, continuing to PC 4
+[DEBUG] PC 5: COMMIT - σ̂w contains 1 bindings:
+  W11 → .(Const(c),Const(nil))
+[DEBUG] PC 5: COMMIT - Applying 1 bindings to heap...
+[DEBUG] PC 5: COMMIT - Applied successfully, reactivating 0 goal(s)
+append([], [c], [c]) :- true
+Zs = [a, c]
+→ succeeds
+
+GLP> Goodbye!
