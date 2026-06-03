@@ -20,7 +20,7 @@ key_idea: 'Diagnostic: Four agents (Alice, Bob, Carol, Dave) with project module
 dependencies:
 - lib/multiagent/agent_runtime.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.264Z'
 sha256: dec856d5b7a059a974c1fa9df57847e4b65dd6cf2a51e2e4f4eba8da78e0db7a
 topo_level: 10
 cycle_group_id: 81

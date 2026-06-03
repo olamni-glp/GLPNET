@@ -34,7 +34,7 @@ callers:
 - test/multiagent/isolate_manager_test.dart
 - test/multiagent/multiagent_glp_test.dart
 - test/multiagent/multiagent_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.611Z'
 sha256: 90d586b75da68e31051e94da4ad8577f0e93aeddcbc7fa2f0ac2ac2629a43a22
 topo_level: 0
 cycle_group_id: 62
@@ -44,6 +44,10 @@ plan_started_at: '2026-05-21T14:35:51Z'
 plan_completed_at: '2026-05-21T14:40:56Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/boot_loader.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:01:52Z'
+target_cs_path: out/csharp/lib/multiagent/boot_loader.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Boot Loader for maGLP Isolate Spawning

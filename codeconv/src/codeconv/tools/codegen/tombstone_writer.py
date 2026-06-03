@@ -85,6 +85,21 @@ def codegen_completed_keys(
     }
 
 
+def codegen_no_emit_keys(*, reason: Optional[str] = None) -> dict[str, Any]:
+    """Keys written by ``mark-no-emit`` (Stage 4).
+
+    Writes ``codegen_no_emit: true`` and — when supplied — the free-text
+    ``codegen_no_emit_reason``. When ``reason`` is None the reason key is
+    OMITTED (not emitted as null), so a tombstone marked without a reason
+    stays byte-minimal. These keys are append-only (after the feature-020
+    equiv keys) and carried forward verbatim by every non-no-emit writer.
+    """
+    out: dict[str, Any] = {"codegen_no_emit": True}
+    if reason is not None:
+        out["codegen_no_emit_reason"] = reason
+    return out
+
+
 def stamp_keys(
     *,
     codegen_started_at: Optional[str],
@@ -173,6 +188,7 @@ def read_codegen_keys(tombstones_root: Path, rel_path: str) -> dict[str, Any]:
 
 __all__ = [
     "codegen_completed_keys",
+    "codegen_no_emit_keys",
     "codegen_started_keys",
     "read_codegen_keys",
     "stamp_keys",

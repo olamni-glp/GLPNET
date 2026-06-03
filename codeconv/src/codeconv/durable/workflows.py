@@ -62,6 +62,18 @@ _PER_FILE_STAGES: frozenset[str] = frozenset({"convspec", "plan"})
 # Codegen is driven via ``/codeconv-codegen`` (build + human-review
 # gate). See specs/019-codeconv-codegen/contracts/dbos_codegen_stage.md
 # § Placement (amended).
+#
+# Feature 020 (T024/T025): the ``equiv`` stage is sequenced AFTER
+# ``codegen`` in the logical pipeline (a converted file must EXIST and
+# BUILD before its trace-equivalence is measurable). It mirrors codegen's
+# separately-driven placement — the ``equiv`` DBOS step IS registered
+# (codeconv.durable.steps.step_equiv — replay-safe deterministic ingest
+# of recorded traces, R12) and is intentionally ABSENT from
+# PER_UNIT_STAGES/POST_STAGES so a ``builder run`` does not auto-spawn
+# REPLs. The frontier is driven via ``/codeconv-equiv`` (the agent layer
+# owns the nondeterministic capture — dual-REPL spawn — and re-invokes
+# the step on the typed ``needs_agent_work`` sentinel). See
+# specs/020-trace-equivalence-fidelity/contracts/dbos_equiv_stage.md.
 
 
 def plan_units(

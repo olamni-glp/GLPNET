@@ -1,0 +1,90 @@
+<!--
+  Codegen-managed compile list (feature 020, imported by glp_runtime_net.csproj).
+
+  Each accepted Dart→C# conversion appends one <Compile Include="..."/> here,
+  scoping the library build to files that passed the codeconv-codegen
+  build-gate. Append-only; codegen never removes entries (a divergent
+  re-conversion overwrites the .cs in place, the include stays).
+
+  Initial state: EMPTY — the bulk codegen drive has not started.
+-->
+<Project>
+  <ItemGroup>
+    <!-- codeconv-codegen append point — keep one entry per line, sorted. -->
+    <Compile Include="bin/glp_repl.cs" />
+    <Compile Include="lib/analysis/analysis_phase.cs" />
+    <Compile Include="lib/analysis/type_checker/clause_validation.cs" />
+    <Compile Include="lib/analysis/type_checker/mode.cs" />
+    <Compile Include="lib/analysis/type_checker/moded_head.cs" />
+    <Compile Include="lib/analysis/type_checker/moded_term.cs" />
+    <Compile Include="lib/analysis/type_checker/param_expansion.cs" />
+    <Compile Include="lib/analysis/type_checker/prelude.cs" />
+    <Compile Include="lib/analysis/type_checker/program_dfa.cs" />
+    <Compile Include="lib/analysis/type_checker/subtyping.cs" />
+    <Compile Include="lib/analysis/type_checker/type_ast.cs" />
+    <Compile Include="lib/analysis/type_checker/type_checker.cs" />
+    <Compile Include="lib/analysis/type_checker/type_conversion.cs" />
+    <Compile Include="lib/analysis/type_checker/type_environment_builder.cs" />
+    <Compile Include="lib/analysis/type_checker/well_typed_clause.cs" />
+    <Compile Include="lib/analysis/type_checker/well_typed_term.cs" />
+    <Compile Include="lib/bytecode/asm.cs" />
+    <Compile Include="lib/bytecode/opcodes.cs" />
+    <Compile Include="lib/bytecode/opcodes_v2.cs" />
+    <Compile Include="lib/bytecode/runner.cs" />
+    <Compile Include="lib/compiler/analyzer.cs" />
+    <Compile Include="lib/compiler/ast.cs" />
+    <Compile Include="lib/compiler/codegen.cs" />
+    <Compile Include="lib/compiler/compiler.cs" />
+    <Compile Include="lib/compiler/error.cs" />
+    <Compile Include="lib/compiler/glp_printer.cs" />
+    <Compile Include="lib/compiler/lexer.cs" />
+    <Compile Include="lib/compiler/parser.cs" />
+    <Compile Include="lib/compiler/partial_evaluator.cs" />
+    <Compile Include="lib/compiler/pmt/checker.cs" />
+    <Compile Include="lib/compiler/pmt/errors.cs" />
+    <Compile Include="lib/compiler/pmt/mode_declaration.cs" />
+    <Compile Include="lib/compiler/pmt/mode_table.cs" />
+    <Compile Include="lib/compiler/pmt/occurrence.cs" />
+    <Compile Include="lib/compiler/pmt/type_checker.cs" />
+    <Compile Include="lib/compiler/pmt/type_table.cs" />
+    <Compile Include="lib/compiler/pmt/validator.cs" />
+    <Compile Include="lib/compiler/project_linker.cs" />
+    <Compile Include="lib/compiler/result.cs" />
+    <Compile Include="lib/compiler/token.cs" />
+    <Compile Include="lib/compiler/unify_result.cs" />
+    <Compile Include="lib/engine/claude_adapter.cs" />
+    <Compile Include="lib/engine/glp_engine.cs" />
+    <Compile Include="lib/glp_runtime.cs" />
+    <Compile Include="lib/lint/linter.cs" />
+    <Compile Include="lib/multiagent/agent_runtime.cs" />
+    <Compile Include="lib/multiagent/boot_loader.cs" />
+    <Compile Include="lib/multiagent/global_send.cs" />
+    <Compile Include="lib/multiagent/global_writers_table.cs" />
+    <Compile Include="lib/multiagent/isolate_manager.cs" />
+    <Compile Include="lib/multiagent/mad_context.cs" />
+    <Compile Include="lib/multiagent/mad_helpers.cs" />
+    <Compile Include="lib/multiagent/message_queue.cs" />
+    <Compile Include="lib/multiagent/payload_serializer.cs" />
+    <Compile Include="lib/multiagent/repl_play_runner.cs" />
+    <Compile Include="lib/multiagent/variable_table.cs" />
+    <Compile Include="lib/runtime/abandon.cs" />
+    <Compile Include="lib/runtime/body_kernels.cs" />
+    <Compile Include="lib/runtime/cells.cs" />
+    <Compile Include="lib/runtime/commit.cs" />
+    <Compile Include="lib/runtime/external_io.cs" />
+    <Compile Include="lib/runtime/fairness.cs" />
+    <Compile Include="lib/runtime/glp_activation.cs" />
+    <Compile Include="lib/runtime/hanger.cs" />
+    <Compile Include="lib/runtime/heap_fcp.cs" />
+    <Compile Include="lib/runtime/machine_state.cs" />
+    <Compile Include="lib/runtime/module_hierarchy.cs" />
+    <Compile Include="lib/runtime/runtime.cs" />
+    <Compile Include="lib/runtime/scheduler.cs" />
+    <Compile Include="lib/runtime/suspend.cs" />
+    <Compile Include="lib/runtime/suspend_ops.cs" />
+    <Compile Include="lib/runtime/suspension.cs" />
+    <Compile Include="lib/runtime/system_predicates.cs" />
+    <Compile Include="lib/runtime/system_predicates_impl.cs" />
+    <Compile Include="lib/runtime/terms.cs" />
+  </ItemGroup>
+</Project>

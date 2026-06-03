@@ -23,7 +23,7 @@ callers:
 - test/module/module_typecheck_test.dart
 - test_archive/cssn_modules_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:12.901Z'
 sha256: 1a6728683d8d3b0f7ae0e912eb459829b529ddbd1444a687da1ebb9cd560d28a
 topo_level: 5
 cycle_group_id: 19
@@ -33,5 +33,9 @@ plan_started_at: '2026-05-21T16:13:11Z'
 plan_completed_at: '2026-05-21T16:17:40Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/type_checker.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T10:19:17Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/type_checker.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

@@ -151,9 +151,93 @@ def dataset_hash(examples: list[Example]) -> str:
     return h.hexdigest()[:16]
 
 
+# --- Per-subsystem datasets (T032 / gepa_optimizer.md § Dataset split) ----
+#
+# The GEPA optimizer is per-subsystem (curriculum transfer, FR-011): each
+# subsystem's prompt is trained on its OWN sources, split train(~70%)/
+# held-out(~30%) deterministically. Classification reuses the authoritative
+# subsystem manifest (`tools/equiv/manifest.py`, longest-prefix-wins) — the
+# SAME classifier the equiv oracle uses, so codegen and equiv agree on which
+# subsystem owns a file. manifest.py is PURE (yaml only, no dspy/LM), so
+# importing it here adds no LM to the optimizer path and creates no cycle.
+
+SUBSYSTEMS_MANIFEST_PARTS = (".codeconv", "equiv-manifest", "subsystems.yml")
+DEFAULT_HELD_OUT_FRAC: float = 0.30
+
+
+def _load_manifest(repo_root: Path):
+    """Lazily load the subsystem manifest (pure; yaml only — no LM/bridge)."""
+    from codeconv.tools.equiv import manifest as _manifest  # lazy, pure
+
+    return _manifest.load(repo_root.joinpath(*SUBSYSTEMS_MANIFEST_PARTS))
+
+
+def classify_examples(
+    repo_root: Path,
+    examples: list[Example],
+    *,
+    manifest: object = None,
+) -> dict[str, list[Example]]:
+    """Group ``examples`` by subsystem (longest-prefix classify, manifest.py).
+
+    Returns ``{subsystem_name: [Example, ...]}``. Examples whose Dart path
+    matches no subsystem prefix are grouped under the empty key ``""`` so a
+    caller can surface them (they should be empty for an in-scope inventory).
+    Order within each group is the input order (build_examples sorts by path).
+    """
+    m = manifest if manifest is not None else _load_manifest(repo_root)
+    groups: dict[str, list[Example]] = {}
+    for ex in examples:
+        sub = m.subsystem_for(ex.rel_path) or ""
+        groups.setdefault(sub, []).append(ex)
+    return groups
+
+
+def build_subsystem_examples(
+    repo_root: Path, subsystem: str, *, manifest: object = None
+) -> list[Example]:
+    """All examples whose Dart file classifies to ``subsystem`` (T032)."""
+    groups = classify_examples(
+        repo_root, build_examples(repo_root), manifest=manifest
+    )
+    return groups.get(subsystem, [])
+
+
+def _is_held_out(rel_path: str, held_out_frac: float) -> bool:
+    """Deterministic, content-free held-out membership (manifest scheme).
+
+    Mirrors ``subsystems.yml``'s documented split scheme verbatim:
+    ``int(sha256(path)[:8], 16) %% 100 < frac·100 => held-out``. Stable
+    across runs and seeds (no wobble) — the split is auditable (R9).
+    """
+    h = int(hashlib.sha256(rel_path.encode("utf-8")).hexdigest()[:8], 16)
+    return (h % 100) < int(round(held_out_frac * 100))
+
+
+def subsystem_split(
+    examples: list[Example], *, held_out_frac: float = DEFAULT_HELD_OUT_FRAC
+) -> tuple[list[Example], list[Example]]:
+    """Deterministic per-subsystem ``(train, held_out)`` split by source path.
+
+    Ratio-based and content-free (unlike the global ``split``'s eval_size
+    cut): each example is independently assigned by the manifest's sha256
+    scheme, so the ~70/30 ratio is stable and reproducible. Both lists are
+    ordered by ``rel_path``. GEPA reflects on ``train``; SC-003 improvement
+    is measured on the fixed ``held_out`` (gepa_optimizer.md § Dataset split).
+    """
+    ordered = sorted(examples, key=lambda e: e.rel_path)
+    train = [e for e in ordered if not _is_held_out(e.rel_path, held_out_frac)]
+    held = [e for e in ordered if _is_held_out(e.rel_path, held_out_frac)]
+    return train, held
+
+
 __all__ = [
+    "DEFAULT_HELD_OUT_FRAC",
     "Example",
     "build_examples",
+    "build_subsystem_examples",
+    "classify_examples",
     "dataset_hash",
     "split",
+    "subsystem_split",
 ]

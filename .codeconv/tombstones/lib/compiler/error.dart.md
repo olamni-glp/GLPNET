@@ -20,7 +20,7 @@ callers:
 - test/compiler/partial_evaluator_test.dart
 - test/compiler/reserved_constant_test.dart
 - test/module/module_syntax_v2_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.198Z'
 sha256: 48c26f84e7f527b0ac9d6ecebc266bfea0cb49964bf50a7f1dbcfe2f424070a4
 topo_level: 0
 cycle_group_id: 3
@@ -30,6 +30,10 @@ plan_started_at: '2026-05-21T14:19:43Z'
 plan_completed_at: '2026-05-21T14:22:56Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/error.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:54:11Z'
+target_cs_path: out/csharp/lib/compiler/error.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Error categories for compiler diagnostics

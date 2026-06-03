@@ -1,0 +1,72 @@
+% ch-05-ex-05-typed-quicksort.glp
+%
+% This file presents the §5.6 typed quicksort — chapter 5's flagship Program —
+% from book p 51 (PDF p 63). Clause text byte-exact from the PDF; layout and
+% the qsort signature are amended (see notes below).
+%
+% Programs included (clause text byte-exact):
+%   §5.6 (book p 51): NumList ::= [] ; [Number | NumList].  — duplicated inline
+%   §5.6 (book p 51): procedure quicksort(NumList?, NumList).
+%   §5.6 (book p 51): procedure qsort(NumList?, NumList, NumList?).
+%   §5.6 (book p 51): procedure partition(NumList?, Number?, NumList, NumList).
+%   §5.6 (book p 51): six clauses — quicksort/2 entry, qsort/3 recursive + base,
+%                     partition/4 less-than + greater-or-equal + base.
+%
+% Two amendments versus the printed PDF:
+%   Signature — the PDF prints `procedure qsort(NumList?, NumList?, NumList).`,
+%               but the book's prose, the qsort body call, and the qsort clause
+%               heads all describe the modes as `(NumList?, NumList, NumList?)`
+%               (consume / produce / consume). The printed declaration is a
+%               typo; this file uses the prose-consistent corrected form.
+%   Layout    — the PDF stacks all three procedure declarations at the top of
+%               §5.6 with all six clauses below. The REPL parser requires each
+%               procedure's clauses to follow its declaration immediately, so
+%               this file interleaves declarations with their respective clauses.
+% Clause text remains byte-exact PDF; only the qsort signature and the layout
+% are amended. Pedagogical content (typed sort, mode declarations, recursion
+% across multiple typed predicates) is preserved exactly.
+
+%% NumList type, duplicated inline from ex-01 so the file is self-contained.
+NumList ::= [] ; [Number | NumList].
+
+%% quicksort/2 declaration: consume the unsorted list, produce the sorted list.
+procedure quicksort(NumList?, NumList).
+
+%% Entry clause: hand the input to qsort with an empty accumulator tail.
+quicksort(Unsorted, Sorted?) :- qsort(Unsorted?, Sorted, []).
+
+%% qsort/3 declaration. Corrected from the PDF's `(NumList?, NumList?, NumList)`
+%% to `(NumList?, NumList, NumList?)` — the form the prose, the body call, and
+%% the clause heads all describe.
+procedure qsort(NumList?, NumList, NumList?).
+
+%% qsort recursive: pivot on X (numeric guard), partition the rest, sort both
+%% halves through the accumulator. The accumulator-tail trick lets us avoid
+%% `append` — Sorted1 is the head of the larger-sublist's sorted form, and
+%% we wedge `[X|Sorted1]` between the smaller-sorted prefix and Sorted1.
+qsort([X|Unsorted], Sorted?, Rest) :-
+    number(X?) |
+    partition(Unsorted?, X?, Smaller, Larger),
+    qsort(Smaller?, Sorted, [X?|Sorted1?]),
+    qsort(Larger?, Sorted1, Rest?).
+
+%% qsort base: empty input means the sorted-out is just the accumulator tail.
+qsort([], Rest?, Rest).
+
+%% partition/4 declaration: consume the input list and pivot, produce two
+%% output lists (Smaller-than-pivot, Larger-or-equal-than-pivot).
+procedure partition(NumList?, Number?, NumList, NumList).
+
+%% partition: pivot A < head X — X joins the Larger output, recurse on the rest.
+partition([X|Xs], A, Smaller?, [X?|Larger?]) :-
+    A? < X? |
+    partition(Xs?, A?, Smaller, Larger).
+
+%% partition: pivot A >= head X — X joins the Smaller output, recurse.
+partition([X|Xs], A, [X?|Smaller?], Larger?) :-
+    A? >= X? |
+    partition(Xs?, A?, Smaller, Larger).
+
+%% partition base: empty input means both outputs are empty. The `number(A?)`
+%% guard sanity-checks the pivot at the leaf.
+partition([], A, [], []) :- number(A?) | true.

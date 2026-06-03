@@ -29,7 +29,7 @@ callers:
 - test/test_channel_construction.dart
 - test_archive/actor_single_isolate_test.dart
 - test_archive/debug_goal_args_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:14.918Z'
 sha256: 7295d8789cac898386fecbab28013d922a922c8fe718a59c8c19c9fc979a4c14
 topo_level: 3
 cycle_group_id: 60
@@ -39,6 +39,10 @@ plan_started_at: '2026-05-21T15:24:23Z'
 plan_completed_at: '2026-05-21T16:00:14Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/external_io.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T11:54:56Z'
+target_cs_path: out/csharp/lib/runtime/external_io.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 External I/O for GLP - Phase 0 Implementation

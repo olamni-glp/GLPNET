@@ -38,7 +38,7 @@ callers:
 - test_archive/cssg_glp_dispatch_test.dart
 - test_archive/cssn_modules_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:14.955Z'
 sha256: ffba37a1c2ae6161898532e842040e38b1aaab8a818fe9c60bd4a001952688c4
 topo_level: 4
 cycle_group_id: 37
@@ -48,6 +48,10 @@ plan_started_at: '2026-05-21T16:06:17Z'
 plan_completed_at: '2026-05-21T16:12:52Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/glp_activation.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T12:39:14Z'
+target_cs_path: out/csharp/lib/runtime/glp_activation.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 GLP-level module activation.

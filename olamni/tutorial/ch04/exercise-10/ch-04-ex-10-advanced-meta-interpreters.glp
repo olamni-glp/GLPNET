@@ -1,0 +1,43 @@
+% ch-04-ex-10-advanced-meta-interpreters.glp
+%
+% This file presents §4.4.3 fail-safe meta-interpreter from book pp 41–42
+% (PDF pp 53–54). §4.4.4 control + §4.4.5 tracing + replay are DEFERRED
+% per Clarifications Q10 (the same systematic book-internal SRSW issues
+% that triggered Q9 + ex-08's Q8 affect them too; amendment cost too high
+% for this branch). Learners can see book pp 42–43 for those Programs.
+%
+% Includes a duplicated reduce/2 from ex-09 per FR-010 self-containment
+% (the fail-safe MI's reduce clause needs to look up clauses).
+%
+% Q10 amendments parallel to Q9: M anonymised to `_` where unused;
+% constant(M?) guard added where M? multi-read.
+
+%% reduce/2 encoding (from ex-09; book p 41) — needed because the fail-safe MI's reduce-clause body calls `M # reduce(A?, B)`. Duplicated inline per FR-010. Includes the `reduce(A, failed(A?))` catch-all per book p 42.
+
+%% reduce clause 1 — encodes merge clause 1.
+reduce(merge([X|Xs], Ys, [X?|Zs?]), merge(Xs?, Ys?, Zs)).
+%% reduce clause 2 — encodes merge clause 2.
+reduce(merge(Xs, [Y|Ys], [Y?|Zs?]), merge(Xs?, Ys?, Zs)).
+%% reduce clause 3 — encodes merge base.
+reduce(merge([], [], []), true).
+%% reduce catch-all — wrap unmatched goals as failed (per book p 42 fail-safe-MI requirement).
+reduce(A, failed(A?)) :- otherwise | true.
+
+%% §4.4.3 (book pp 41–42): fail-safe meta-interpreter run/4.
+%% Reports failures using a short-circuit list. L is the in-stream of
+%% accumulated failures; R is the out-stream. AMENDED per Q10.
+
+%% halt — close circuit (in-list = out-list).
+run(_, true, L, L?).
+%% fork — split chain: spawn two runs threading the failure list through.
+run(M, (A,B), L, R?) :- constant(M?) |
+    run(M?, A?, L?, Mid),
+    run(M?, B?, Mid?, R).
+%% cross-module — switch modules.
+run(_, M1 # G, L, R?) :- run(M1?, G?, L?, R).
+%% report failure — prepend failed(A) to the failure list.
+run(_, failed(A), L, [failed(A?)|L?]).
+%% reduce — look up clause, continue with body; threads failure list.
+run(M, A, L, R?) :- tuple(A?), constant(M?) |
+    M # reduce(A?, B),
+    run(M?, B?, L?, R).

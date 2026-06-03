@@ -1,95 +1,166 @@
-/// Type table for Moded Type definitions
-///
-/// Stores user-defined type definitions parsed from GLP source.
+// lib/compiler/pmt/type_table.cs
+//
+// Type table for Moded Type definitions.
+// Stores user-defined type definitions parsed from GLP source.
+// Converted from Dart source: lib/compiler/pmt/type_table.dart
+// source_sha256: fecf3a38722602da8b1ac6e1a3459b739c37c0c02c91588b335e30ba0d6ce74a
 
-import '../ast.dart';
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using GlpRuntime.Analysis.TypeChecker;
+using GlpRuntime.Compiler;
 
-/// Table mapping type names to their definitions
-class TypeTable {
-  final Map<String, TypeDefinition> _types = {};
+namespace GlpRuntime.Compiler.Pmt;
 
-  TypeTable();
+/// <summary>Table mapping type names to their definitions.</summary>
+public class TypeTable
+{
+    // Dart `final Map<String, TypeDef> _types = {}` — reference-final, value-mutable.
+    // StringComparer.Ordinal: byte-exact matching, no culture-sensitive drift.
+    private readonly Dictionary<string, TypeDef> _types =
+        new(StringComparer.Ordinal);
 
-  /// Add a type definition to the table
-  /// If type already exists, merges constructors
-  void addDefinition(TypeDefinition def) {
-    final existing = _types[def.typeName];
-    if (existing != null) {
-      // Merge constructors
-      final mergedConstructors = [...existing.constructors, ...def.constructors];
-      _types[def.typeName] = TypeDefinition(
-        def.typeName,
-        existing.typeParams,  // Keep params from first definition
-        mergedConstructors,
-        existing.line,
-        existing.column,
-      );
-    } else {
-      _types[def.typeName] = def;
+    /// <summary>Initialises an empty TypeTable.</summary>
+    public TypeTable() { }
+
+    // -------------------------------------------------------------------------
+    // Mutation
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Add a type definition to the table.
+    /// If the type already exists, merges alternatives from <paramref name="def"/>
+    /// into the existing entry, preserving the first definition's TypeParams,
+    /// Line, and Column.
+    /// </summary>
+    public void AddDefinition(TypeDef def)
+    {
+        if (_types.TryGetValue(def.Name, out var existing))
+        {
+            // Merge: existing alternatives first, then def's alternatives.
+            var mergedAlternatives = existing.Alternatives.Concat(def.Alternatives).ToList();
+            _types[def.Name] = new TypeDef(
+                def.Name,
+                mergedAlternatives,
+                existing.Line,
+                existing.Column,
+                existing.TypeParams);   // Keep params from first definition
+        }
+        else
+        {
+            _types[def.Name] = def;
+        }
     }
-  }
 
-  /// Add a single constructor to an existing or new type
-  void addConstructor(String typeName, TypeConstructor ctor, {List<String>? typeParams, int line = 0, int col = 0}) {
-    final existing = _types[typeName];
-    if (existing != null) {
-      _types[typeName] = TypeDefinition(
-        typeName,
-        existing.typeParams,
-        [...existing.constructors, ctor],
-        existing.line,
-        existing.column,
-      );
-    } else {
-      _types[typeName] = TypeDefinition(
-        typeName,
-        typeParams ?? [],
-        [ctor],
-        line,
-        col,
-      );
+    /// <summary>
+    /// Add a single alternative to an existing or new type entry.
+    /// For an existing entry the alternative is appended, preserving the first
+    /// definition's TypeParams, Line, and Column.
+    /// For a new entry a fresh TypeDef is created with the supplied
+    /// <paramref name="typeParams"/>, <paramref name="line"/>, and
+    /// <paramref name="col"/>.
+    /// </summary>
+    public void AddConstructor(
+        string typeName,
+        TypeExpr ctor,
+        IReadOnlyList<string>? typeParams = null,
+        int line = 0,
+        int col = 0)
+    {
+        if (_types.TryGetValue(typeName, out var existing))
+        {
+            _types[typeName] = new TypeDef(
+                typeName,
+                existing.Alternatives.Append(ctor).ToList(),
+                existing.Line,
+                existing.Column,
+                existing.TypeParams);
+        }
+        else
+        {
+            _types[typeName] = new TypeDef(
+                typeName,
+                new List<TypeExpr> { ctor },
+                line,
+                col,
+                typeParams ?? new List<string>());
+        }
     }
-  }
 
-  /// Get a type definition by name
-  TypeDefinition? getType(String name) => _types[name];
+    // -------------------------------------------------------------------------
+    // Queries
+    // -------------------------------------------------------------------------
 
-  /// Check if a type exists
-  bool hasType(String name) => _types.containsKey(name);
+    /// <summary>
+    /// Look up a type definition by name.
+    /// Returns <see langword="null"/> if not found (mirrors Dart <c>Map[]</c>
+    /// null-on-miss semantics; avoids <c>KeyNotFoundException</c>).
+    /// Renamed from Dart <c>getType</c> to avoid shadowing
+    /// <c>object.GetType()</c>.
+    /// </summary>
+    public TypeDef? LookupType(string name) =>
+        _types.GetValueOrDefault(name);
 
-  /// Get all type names
-  Iterable<String> get typeNames => _types.keys;
+    /// <summary>Returns <see langword="true"/> if a type with <paramref name="name"/> exists.</summary>
+    public bool HasType(string name) => _types.ContainsKey(name);
 
-  /// Get all type definitions
-  Iterable<TypeDefinition> get definitions => _types.values;
+    // -------------------------------------------------------------------------
+    // Views (live — not snapshots)
+    // -------------------------------------------------------------------------
 
-  /// Number of types in the table
-  int get length => _types.length;
+    /// <summary>Live view of all type names in the table.</summary>
+    public IEnumerable<string> TypeNames => _types.Keys;
 
-  /// Check if table is empty
-  bool get isEmpty => _types.isEmpty;
+    /// <summary>Live view of all type definitions in the table.</summary>
+    public IEnumerable<TypeDef> Definitions => _types.Values;
 
-  /// Create a TypeTable from a list of TypeDefinitions
-  static TypeTable fromDefinitions(List<TypeDefinition> defs) {
-    final table = TypeTable();
-    for (final def in defs) {
-      table.addDefinition(def);
+    /// <summary>Number of type entries (O(1)).</summary>
+    public int Length => _types.Count;
+
+    /// <summary>Whether the table contains no entries.</summary>
+    public bool IsEmpty => _types.Count == 0;
+
+    // -------------------------------------------------------------------------
+    // Static factories
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Build a <see cref="TypeTable"/> by calling
+    /// <see cref="AddDefinition"/> for each element of <paramref name="defs"/>
+    /// in order.  Iteration order is preserved: first-occurrence wins for
+    /// TypeParams / Line / Column on duplicate type names.
+    /// </summary>
+    public static TypeTable FromDefinitions(IReadOnlyList<TypeDef> defs)
+    {
+        var table = new TypeTable();
+        foreach (var def in defs)
+            table.AddDefinition(def);
+        return table;
     }
-    return table;
-  }
 
-  /// Create a TypeTable from a Module's type definitions
-  static TypeTable fromModule(Module module) {
-    return fromDefinitions(module.typeDefinitions);
-  }
+    /// <summary>
+    /// Build a <see cref="TypeTable"/> from a module's type definitions.
+    /// Delegates to <see cref="FromDefinitions"/>.
+    /// </summary>
+    public static TypeTable FromModule(Module module) =>
+        FromDefinitions(module.TypeDefs);
 
-  @override
-  String toString() {
-    final buffer = StringBuffer('TypeTable(\n');
-    for (final def in _types.values) {
-      buffer.writeln('  $def');
+    // -------------------------------------------------------------------------
+    // Diagnostics
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Returns a multi-line string listing all type definitions.
+    /// Uses explicit <c>\n</c> (LF) to match Dart <c>StringBuffer.writeln</c>
+    /// behaviour across all host operating systems.
+    /// </summary>
+    public override string ToString()
+    {
+        var sb = new StringBuilder("TypeTable(\n");
+        foreach (var def in _types.Values)
+            sb.Append($"  {def}\n");
+        sb.Append(')');
+        return sb.ToString();
     }
-    buffer.write(')');
-    return buffer.toString();
-  }
 }

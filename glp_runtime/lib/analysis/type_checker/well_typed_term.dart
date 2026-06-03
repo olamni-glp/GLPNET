@@ -250,28 +250,28 @@ PathCheckResult checkPathAgainstAutomaton(
     final nextState = currentAutomaton.transition(state, label);
 
     if (nextState == null) {
-      // Case 3 (Type path shorter - wildcard in type): Per Definition 4.5 v0.7
-      // When at a wildcard state with no outgoing transition, check ONLY the
+      // Case 3 (Type path shorter - wildcard or Any in type): Per Definition 4.5 v0.7
+      // When at a wildcard or Any state with no outgoing transition, check ONLY the
       // structural mode at this position. The remainder of the term path beyond
-      // the wildcard is NOT examined - the wildcard accepts the entire subterm.
-      if (state.isWildcard) {
+      // the wildcard/Any is NOT examined - the universal type accepts the entire subterm.
+      if (state.isWildcard || state.isAnyType) {
         // The structural mode at position |y| is nextStep.mode (the mode at
         // the first position beyond where the type path can follow)
         final structuralModeAtWildcard = nextStep.mode;
         final expectedMode = state.isDual ? Mode.consume : Mode.produce;
-        
+
         if (structuralModeAtWildcard == expectedMode) {
-          // Mode matches - wildcard accepts entire subterm, path is consistent.
+          // Mode matches - wildcard/Any accepts entire subterm, path is consistent.
           // We don't record variable assignments here because the variables
           // inside the wildcard-accepted subterm are handled separately.
           return PathCheckResult.consistent();
         }
-        
-        // Mode mismatch at wildcard position
+
+        // Mode mismatch at wildcard/Any position
         return PathCheckResult.inconsistent(
-            'Mode mismatch at wildcard ${state.name}: expected ${expectedMode == Mode.consume ? "↓" : "↑"}, got ${structuralModeAtWildcard == Mode.consume ? "↓" : "↑"}');
+            'Mode mismatch at ${state.isAnyType ? "Any" : "wildcard"} ${state.name}: expected ${expectedMode == Mode.consume ? "↓" : "↑"}, got ${structuralModeAtWildcard == Mode.consume ? "↓" : "↑"}');
       }
-      
+
       return PathCheckResult.inconsistent(
           'No transition for $label from state ${state.name}');
     }

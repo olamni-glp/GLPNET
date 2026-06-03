@@ -22,7 +22,7 @@ callers:
 - test_archive/cssg_glp_dispatch_test.dart
 - test_archive/cssn_modules_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:12.940Z'
 sha256: dfd2a18574bdee84c8b2875529f6401ebd0a5cb60c16c619db3a842b519793fa
 topo_level: 4
 cycle_group_id: 16
@@ -32,5 +32,9 @@ plan_started_at: '2026-05-21T16:00:33Z'
 plan_completed_at: '2026-05-21T16:05:48Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/type_environment_builder.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T10:08:45Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/type_environment_builder.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

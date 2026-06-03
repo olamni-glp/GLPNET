@@ -1,337 +1,543 @@
-// lib/analysis/type_checker/type_ast.dart
+// lib/analysis/type_checker/type_ast.cs
 //
 // AST nodes for GLP type declarations following Yardeni-Shapiro.
 // Types are first-class syntactic elements parsed alongside clauses.
+// Converted from Dart source: lib/analysis/type_checker/type_ast.dart
+// source_sha256: f80349aefb8cc777764548f29d5c6bc663809f9dfffde921c141ae2f7028d38a
 
-/// Classification of types by mode structure
-/// Per spec (type-environment.md): Types are classified based on internal complementation
-enum TypeClassification {
-  output,      // No complementation in definition (pure output structure)
-  input,       // Complement of an output type (not directly defined)
-  interactive  // Contains internal complementation (_? or T? in alternatives)
+using System.Collections.Frozen;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+
+namespace GlpRuntime.Analysis.TypeChecker;
+
+// ---------------------------------------------------------------------------
+// T1 — Enum
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// Classification of types by mode structure.
+/// Per spec (type-environment.md): Types are classified based on internal complementation.
+/// </summary>
+public enum TypeClassification
+{
+    Output,      // No complementation in definition (pure output structure)
+    Input,       // Complement of an output type (not directly defined)
+    Interactive  // Contains internal complementation (_? or T? in alternatives)
 }
 
-/// Base class for type expressions
-abstract class TypeExpr {
-  final int line;
-  final int column;
+// ---------------------------------------------------------------------------
+// T2 + T3 — TypeExpr base class (including promoted extension members)
+// ---------------------------------------------------------------------------
 
-  TypeExpr(this.line, this.column);
-}
+/// <summary>Base class for type expressions.</summary>
+public abstract class TypeExpr
+{
+    /// <summary>Line number in source.</summary>
+    public int Line { get; }
 
-/// Extension to extract common properties from TypeExpr subclasses
-/// that can appear in procedure argument positions (TypeRef or PrimitiveModeAlt)
-extension ProcArgTypeExpr on TypeExpr {
-  /// Whether this type expression represents an input (consume) mode.
-  /// - TypeRef with isInput=true (T?) → true
-  /// - PrimitiveModeAlt with isInput=true (_?) → true
-  /// - Otherwise → false
-  bool get isInputMode {
-    if (this is TypeRef) return (this as TypeRef).isInput;
-    if (this is PrimitiveModeAlt) return (this as PrimitiveModeAlt).isInput;
-    return false;
-  }
+    /// <summary>Column number in source.</summary>
+    public int Column { get; }
 
-  /// The type name for named types, or null for primitives.
-  /// - TypeRef → the name
-  /// - PrimitiveModeAlt → null
-  String? get typeName {
-    if (this is TypeRef) return (this as TypeRef).name;
-    return null;
-  }
-
-  /// Whether this is a primitive type (_ or _?)
-  bool get isPrimitive => this is PrimitiveModeAlt;
-}
-
-/// Reference to a named type: Nat, List, Number, String, Any
-/// Optionally with input mode annotation (Type?)
-/// Optionally with type arguments for parameterized types: Stream(Integer)
-class TypeRef extends TypeExpr {
-  final String name;
-  final bool isInput;  // true if Type?, false if Type
-  final List<TypeExpr> typeArgs;  // e.g., [TypeRef('Integer')] for Stream(Integer), [] for simple refs
-
-  TypeRef(this.name, int line, int column, {this.isInput = false, this.typeArgs = const []})
-      : super(line, column);
-
-  bool get isParameterized => typeArgs.isNotEmpty;
-
-  /// Mode dual operator per Definition 5.1
-  /// Returns a new TypeRef with inverted mode
-  TypeRef dual() => TypeRef(name, line, column, isInput: !isInput, typeArgs: typeArgs);
-
-  @override
-  String toString() {
-    final argsStr = typeArgs.isNotEmpty ? '(${typeArgs.join(', ')})' : '';
-    return isInput ? '$name$argsStr?' : '$name$argsStr';
-  }
-
-  /// Primitive types (not defined via ::=, handled specially by compiler)
-  static const builtins = {'Integer', 'Real', 'Number', 'String'};
-
-  /// System types (defined via ::= but not redefinable by user)
-  static const systemTypes = {'Any', 'List'};
-
-  bool get isBuiltin => builtins.contains(name);
-
-  @override
-  bool operator ==(Object other) =>
-      other is TypeRef && other.name == name && other.isInput == isInput &&
-      _listEquals(other.typeArgs, typeArgs);
-
-  @override
-  int get hashCode => Object.hash(name, isInput, Object.hashAll(typeArgs));
-
-  static bool _listEquals(List<TypeExpr> a, List<TypeExpr> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
+    protected TypeExpr(int line, int column)
+    {
+        Line   = line;
+        Column = column;
     }
-    return true;
-  }
+
+    // -----------------------------------------------------------------------
+    // T3 — Promoted from Dart extension ProcArgTypeExpr on TypeExpr.
+    // Each Dart `if (this is T) return (this as T).m;` collapses to a single
+    // declaration-pattern arm `T t => t.m` in a switch expression.
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Whether this type expression represents an input (consume) mode.
+    /// TypeRef with IsInput=true → true; PrimitiveModeAlt with IsInput=true → true; otherwise false.
+    /// </summary>
+    public bool IsInputMode => this switch
+    {
+        TypeRef r          => r.IsInput,
+        PrimitiveModeAlt p => p.IsInput,
+        _                  => false
+    };
+
+    /// <summary>
+    /// The type name for named types, or null for primitives.
+    /// TypeRef → the Name; anything else → null.
+    /// </summary>
+    public string? TypeName => this switch
+    {
+        TypeRef r => r.Name,
+        _         => null
+    };
+
+    /// <summary>Whether this is a primitive type (_ or _?).</summary>
+    public bool IsPrimitive => this is PrimitiveModeAlt;
 }
 
-/// A constant alternative in a type: 0, [], foo
-class ConstantAlt extends TypeExpr {
-  final Object value;  // String (atom), int, or double
-  
-  ConstantAlt(this.value, int line, int column) : super(line, column);
-  
-  @override
-  String toString() => value.toString();
+// ---------------------------------------------------------------------------
+// T4 + T5 + T6 — TypeRef (structural equality, static sets, Dual)
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// Reference to a named type: Nat, List, Number, String, Any.
+/// Optionally with input mode annotation (Type?).
+/// Optionally with type arguments for parameterized types: Stream(Integer).
+/// </summary>
+public sealed class TypeRef : TypeExpr, IEquatable<TypeRef>
+{
+    // T5 — static const sets → static readonly FrozenSet with StringComparer.Ordinal.
+    // C# has no const collection; FrozenSet<string> with ordinal comparer reproduces
+    // Dart exact-string Set<String> semantics (no culture-sensitive drift).
+
+    /// <summary>Primitive types (not defined via ::=, handled specially by compiler).</summary>
+    public static readonly FrozenSet<string> Builtins =
+        new[] { "Integer", "Real", "Number", "String" }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <summary>System types (defined via ::= but not redefinable by user).</summary>
+    public static readonly FrozenSet<string> SystemTypes =
+        new[] { "Any", "List" }.ToFrozenSet(StringComparer.Ordinal);
+
+    public string Name { get; }
+    public bool IsInput { get; }                        // true if Type?, false if Type
+    public IReadOnlyList<TypeExpr> TypeArgs { get; }    // e.g. [TypeRef("Integer")] for Stream(Integer)
+
+    public TypeRef(string name, int line, int column,
+                   bool isInput = false,
+                   IReadOnlyList<TypeExpr>? typeArgs = null)
+        : base(line, column)
+    {
+        Name     = name;
+        IsInput  = isInput;
+        TypeArgs = typeArgs ?? Array.Empty<TypeExpr>();
+    }
+
+    /// <summary>Whether this is a parameterized type reference.</summary>
+    public bool IsParameterized => TypeArgs.Count > 0;
+
+    /// <summary>Whether this type name is a built-in primitive.</summary>
+    public bool IsBuiltin => Builtins.Contains(Name);
+
+    /// <summary>
+    /// Mode dual operator per Definition 5.1.
+    /// Returns a new TypeRef with inverted mode, SHARING the same TypeArgs reference
+    /// (shallow alias — matches Dart `dual()` which passes the same list reference).
+    /// </summary>
+    public TypeRef Dual() =>
+        new TypeRef(Name, Line, Column, isInput: !IsInput, typeArgs: TypeArgs);
+
+    public override string ToString()
+    {
+        string argsStr = TypeArgs.Count > 0 ? $"({string.Join(", ", TypeArgs)})" : "";
+        return IsInput ? $"{Name}{argsStr}?" : $"{Name}{argsStr}";
+    }
+
+    // T6 — Hand-written IEquatable<TypeRef> with SequenceEqual.
+    // A positional `record` is REJECTED: record equality on List<> compares by reference,
+    // silently breaking Stream(Integer) structural equality (see convspec nuance C4).
+
+    /// <summary>Structural equality: Name, IsInput, and element-wise TypeArgs.</summary>
+    public bool Equals(TypeRef? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return Name == other.Name
+            && IsInput == other.IsInput
+            && TypeArgs.SequenceEqual(other.TypeArgs);
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as TypeRef);
+
+    public override int GetHashCode()
+    {
+        var hc = new HashCode();
+        hc.Add(Name);
+        hc.Add(IsInput);
+        foreach (var arg in TypeArgs)
+            hc.Add(arg);
+        return hc.ToHashCode();
+    }
+
+    public static bool operator ==(TypeRef? left, TypeRef? right) =>
+        left is null ? right is null : left.Equals(right);
+
+    public static bool operator !=(TypeRef? left, TypeRef? right) =>
+        !(left == right);
 }
 
-/// A structure alternative: s(Nat), tree(Nat, Tree, Tree)
-class StructAlt extends TypeExpr {
-  final String functor;
-  final List<TypeExpr> args;
-  
-  StructAlt(this.functor, this.args, int line, int column) : super(line, column);
-  
-  int get arity => args.length;
-  
-  @override
-  String toString() => '$functor(${args.join(', ')})';
+// ---------------------------------------------------------------------------
+// T7 — Six non-equality leaf classes (reference identity, no Equals/GetHashCode override)
+// ---------------------------------------------------------------------------
+
+/// <summary>A constant alternative in a type: 0, [], foo.</summary>
+public sealed class ConstantAlt : TypeExpr
+{
+    /// <summary>String (atom), int, or double.</summary>
+    public object Value { get; }
+
+    public ConstantAlt(object value, int line, int column) : base(line, column)
+    {
+        Value = value;
+    }
+
+    public override string ToString() => Value.ToString() ?? "";
 }
 
-/// Empty list alternative: []
-class ListNilAlt extends TypeExpr {
-  ListNilAlt(int line, int column) : super(line, column);
-  
-  @override
-  String toString() => '[]';
+/// <summary>A structure alternative: s(Nat), tree(Nat, Tree, Tree).</summary>
+public sealed class StructAlt : TypeExpr
+{
+    public string Functor { get; }
+    public IReadOnlyList<TypeExpr> Args { get; }
+
+    public StructAlt(string functor, IReadOnlyList<TypeExpr> args, int line, int column)
+        : base(line, column)
+    {
+        Functor = functor;
+        Args    = args;
+    }
+
+    /// <summary>Arity of the structure.</summary>
+    public int Arity => Args.Count;
+
+    public override string ToString() => $"{Functor}({string.Join(", ", Args)})";
 }
 
-/// List cons alternative: [Head | Tail]
-class ListConsAlt extends TypeExpr {
-  final TypeExpr head;
-  final TypeExpr tail;
+/// <summary>Empty list alternative: [].</summary>
+public sealed class ListNilAlt : TypeExpr
+{
+    public ListNilAlt(int line, int column) : base(line, column) { }
 
-  ListConsAlt(this.head, this.tail, int line, int column) : super(line, column);
-
-  @override
-  String toString() => '[$head | $tail]';
+    public override string ToString() => "[]";
 }
 
-/// Primitive mode type alternative: _ (output) or _? (input)
+/// <summary>List cons alternative: [Head | Tail].</summary>
+public sealed class ListConsAlt : TypeExpr
+{
+    public TypeExpr Head { get; }
+    public TypeExpr Tail { get; }
+
+    public ListConsAlt(TypeExpr head, TypeExpr tail, int line, int column)
+        : base(line, column)
+    {
+        Head = head;
+        Tail = tail;
+    }
+
+    public override string ToString() => $"[{Head} | {Tail}]";
+}
+
+/// <summary>
+/// Primitive mode type alternative: _ (output) or _? (input).
 /// Used in type definitions like: Any ::= _ ; _?.
-class PrimitiveModeAlt extends TypeExpr {
-  final bool isInput;  // false = _ (output), true = _? (input)
+/// </summary>
+public sealed class PrimitiveModeAlt : TypeExpr
+{
+    /// <summary>false = _ (output), true = _? (input).</summary>
+    public bool IsInput { get; }
 
-  PrimitiveModeAlt(this.isInput, int line, int column) : super(line, column);
+    public PrimitiveModeAlt(bool isInput, int line, int column) : base(line, column)
+    {
+        IsInput = isInput;
+    }
 
-  @override
-  String toString() => isInput ? '_?' : '_';
+    public override string ToString() => IsInput ? "_?" : "_";
 }
 
-/// Difference list alternative: List \ List?
+/// <summary>
+/// Difference list alternative: List \ List?.
 /// Used for DiffList type: DiffList ::= List \ List?.
-class DiffListAlt extends TypeExpr {
-  final TypeExpr content;  // The content list
-  final TypeExpr hole;     // The hole/tail
+/// </summary>
+public sealed class DiffListAlt : TypeExpr
+{
+    /// <summary>The content list.</summary>
+    public TypeExpr Content { get; }
+    /// <summary>The hole/tail.</summary>
+    public TypeExpr Hole { get; }
 
-  DiffListAlt(this.content, this.hole, int line, int column) : super(line, column);
+    public DiffListAlt(TypeExpr content, TypeExpr hole, int line, int column)
+        : base(line, column)
+    {
+        Content = content;
+        Hole    = hole;
+    }
 
-  @override
-  String toString() => '$content \\ $hole';
+    public override string ToString() => $"{Content} \\ {Hole}";
 }
 
+// ---------------------------------------------------------------------------
+// T8 — TypeDef
+// ---------------------------------------------------------------------------
+
+/// <summary>
 /// A type definition: TypeName ::= alt1 ; alt2 ; ... .
-/// Parameterized types have non-empty typeParams: Stream(X) ::= [] ; [X | Stream(X)].
-class TypeDef {
-  final String name;
-  final List<String> typeParams;  // e.g., ['X'] for Stream(X), [] for monomorphic
-  final List<TypeExpr> alternatives;
-  final int line;
-  final int column;
+/// Parameterized types have non-empty TypeParams: Stream(X) ::= [] ; [X | Stream(X)].
+/// </summary>
+public sealed class TypeDef
+{
+    public string Name { get; }
+    /// <summary>e.g. ["X"] for Stream(X), empty for monomorphic.</summary>
+    public IReadOnlyList<string> TypeParams { get; }
+    public IReadOnlyList<TypeExpr> Alternatives { get; }
+    public int Line { get; }
+    public int Column { get; }
 
-  TypeDef(this.name, this.alternatives, this.line, this.column, {this.typeParams = const []});
-
-  bool get isParameterized => typeParams.isNotEmpty;
-
-  /// Classify this type based on mode structure
-  /// Per spec (type-environment.md v0.5):
-  /// - output: no complementation in any alternative
-  /// - interactive: contains internal complementation (_? or T?)
-  TypeClassification get classification {
-    for (final alt in alternatives) {
-      if (_containsComplement(alt)) {
-        return TypeClassification.interactive;
-      }
-    }
-    return TypeClassification.output;
-  }
-
-  /// Check if a type expression contains any complementation
-  static bool _containsComplement(TypeExpr expr) {
-    if (expr is TypeRef && expr.isInput) return true;
-    if (expr is PrimitiveModeAlt && expr.isInput) return true;
-
-    if (expr is ListConsAlt) {
-      return _containsComplement(expr.head) || _containsComplement(expr.tail);
-    }
-    if (expr is StructAlt) {
-      return expr.args.any(_containsComplement);
-    }
-    if (expr is DiffListAlt) {
-      return _containsComplement(expr.content) || _containsComplement(expr.hole);
+    public TypeDef(string name, IReadOnlyList<TypeExpr> alternatives, int line, int column,
+                   IReadOnlyList<string>? typeParams = null)
+    {
+        Name         = name;
+        Alternatives = alternatives;
+        Line         = line;
+        Column       = column;
+        TypeParams   = typeParams ?? Array.Empty<string>();
     }
 
-    return false;
-  }
+    /// <summary>Whether this is a parameterized type definition.</summary>
+    public bool IsParameterized => TypeParams.Count > 0;
 
-  @override
-  String toString() => '$name ::= ${alternatives.join(' ; ')}.';
+    /// <summary>
+    /// Classify this type based on mode structure.
+    /// Per spec (type-environment.md v0.5):
+    ///   output: no complementation in any alternative
+    ///   interactive: contains internal complementation (_? or T?)
+    /// </summary>
+    public TypeClassification Classification =>
+        Alternatives.Any(ContainsComplement)
+            ? TypeClassification.Interactive
+            : TypeClassification.Output;
+
+    /// <summary>Check if a type expression contains any complementation.</summary>
+    private static bool ContainsComplement(TypeExpr expr) => expr switch
+    {
+        TypeRef { IsInput: true }          => true,
+        PrimitiveModeAlt { IsInput: true } => true,
+        ListConsAlt c                      => ContainsComplement(c.Head) || ContainsComplement(c.Tail),
+        StructAlt s                        => s.Args.Any(ContainsComplement),
+        DiffListAlt d                      => ContainsComplement(d.Content) || ContainsComplement(d.Hole),
+        _                                  => false
+    };
+
+    public override string ToString() =>
+        $"{Name} ::= {string.Join(" ; ", Alternatives)}.";
 }
 
+// ---------------------------------------------------------------------------
+// T9 — ProcDecl
+// ---------------------------------------------------------------------------
+
+/// <summary>
 /// A procedure declaration: procedure name(Type1, Type2, ...).
 ///
-/// Argument types can be:
-/// - TypeRef: a named type reference (e.g., Nat, Stream?)
-/// - PrimitiveModeAlt: a primitive type directly (e.g., _, _?)
+/// Argument types can be TypeRef (a named type reference, e.g. Nat, Stream?)
+/// or PrimitiveModeAlt (a primitive type directly, e.g. _, _?).
 ///
-/// Parameterized procedure declarations have non-empty typeParams:
-///   procedure gethead(Stream(X)?, X).  → typeParams: ['X']
+/// Parameterized procedure declarations have non-empty TypeParams:
+///   procedure gethead(Stream(X)?, X).  → TypeParams: ["X"]
 /// These are templates instantiated per call site by the type checker.
-class ProcDecl {
-  final String name;
-  final List<TypeExpr> argTypes;  // TypeRef or PrimitiveModeAlt
-  final List<String> typeParams;  // e.g., ['X'] for parameterized proc decls, [] for monomorphic
-  final int line;
-  final int column;
-  final bool isBuiltin;  // True if implemented in Dart runtime (no GLP clauses)
-  final bool exported;   // True if declared with 'exported procedure'
-  final bool imported;   // True if declared with 'imported procedure'
-  final String? modulePath;  // For imported procedures: module path (e.g., 'social' or 'ui#actors'), null for ancestor scope
+/// </summary>
+public sealed class ProcDecl
+{
+    public string Name { get; }
+    /// <summary>TypeRef or PrimitiveModeAlt elements.</summary>
+    public IReadOnlyList<TypeExpr> ArgTypes { get; }
+    /// <summary>e.g. ["X"] for parameterized proc decls, empty for monomorphic.</summary>
+    public IReadOnlyList<string> TypeParams { get; }
+    public int Line { get; }
+    public int Column { get; }
+    /// <summary>True if implemented in the runtime (no GLP clauses).</summary>
+    public bool IsBuiltin { get; }
+    /// <summary>True if declared with 'exported procedure'.</summary>
+    public bool Exported { get; }
+    /// <summary>True if declared with 'imported procedure'.</summary>
+    public bool Imported { get; }
+    /// <summary>For imported procedures: module path (e.g. 'social' or 'ui#actors'), null for ancestor scope.</summary>
+    public string? ModulePath { get; }
 
-  ProcDecl(this.name, this.argTypes, this.line, this.column, {this.typeParams = const [], this.isBuiltin = false, this.exported = false, this.imported = false, this.modulePath});
+    public ProcDecl(
+        string name,
+        IReadOnlyList<TypeExpr> argTypes,
+        int line,
+        int column,
+        IReadOnlyList<string>? typeParams = null,
+        bool isBuiltin  = false,
+        bool exported   = false,
+        bool imported   = false,
+        string? modulePath = null)
+    {
+        Name       = name;
+        ArgTypes   = argTypes;
+        Line       = line;
+        Column     = column;
+        TypeParams = typeParams ?? Array.Empty<string>();
+        IsBuiltin  = isBuiltin;
+        Exported   = exported;
+        Imported   = imported;
+        ModulePath = modulePath;
+    }
 
-  bool get isParameterized => typeParams.isNotEmpty;
+    /// <summary>Whether this is a parameterized procedure declaration.</summary>
+    public bool IsParameterized => TypeParams.Count > 0;
 
-  int get arity => argTypes.length;
+    /// <summary>Arity (number of argument types).</summary>
+    public int Arity => ArgTypes.Count;
 
-  String get key => '$name/$arity';
+    /// <summary>Local key: "name/arity".</summary>
+    public string Key => $"{Name}/{Arity}";
 
-  /// Key for TypeEnvironment lookup, including module path for imported procedures.
-  /// - Local/exported: 'factorial/2'
-  /// - Imported with path: 'math#factorial/2'
-  /// - Imported from ancestor (no path): 'factorial/2'
-  String get qualifiedKey => '$qualifiedName/$arity';
+    /// <summary>
+    /// Key for TypeEnvironment lookup, including module path for imported procedures.
+    ///   Local/exported: 'factorial/2'
+    ///   Imported with path: 'math#factorial/2'
+    ///   Imported from ancestor (no path): 'factorial/2'
+    /// </summary>
+    public string QualifiedKey => $"{QualifiedName}/{Arity}";
 
-  /// Get the mode for argument at index i (true = input mode)
-  bool isInputArg(int i) {
-    final arg = argTypes[i];
-    if (arg is TypeRef) return arg.isInput;
-    if (arg is PrimitiveModeAlt) return arg.isInput;
-    return false;
-  }
+    /// <summary>Full qualified name (with module path for imported procedures).</summary>
+    public string QualifiedName =>
+        ModulePath is not null ? $"{ModulePath}#{Name}" : Name;
 
-  /// Get the base type name for argument at index i
-  /// Returns null for primitive types (_ or _?)
-  String? getTypeName(int i) {
-    final arg = argTypes[i];
-    if (arg is TypeRef) return arg.name;
-    return null;  // Primitive types have no name
-  }
+    /// <summary>The visibility prefix for this declaration.</summary>
+    private string VisibilityPrefix =>
+        Exported ? "exported " :
+        Imported ? "imported " :
+        "";
 
-  /// The visibility prefix for this declaration
-  String get _visibilityPrefix {
-    if (exported) return 'exported ';
-    if (imported) return 'imported ';
-    return '';
-  }
+    /// <summary>Get the mode for argument at index i (true = input mode).</summary>
+    public bool IsInputArg(int i) => ArgTypes[i] switch
+    {
+        TypeRef r          => r.IsInput,
+        PrimitiveModeAlt p => p.IsInput,
+        _                  => false
+    };
 
-  /// The full qualified name (with module path for imported procedures)
-  String get qualifiedName {
-    if (modulePath != null) return '$modulePath#$name';
-    return name;
-  }
+    /// <summary>
+    /// Get the base type name for argument at index i.
+    /// Returns null for primitive types (_ or _?).
+    /// </summary>
+    public string? GetTypeName(int i) =>
+        ArgTypes[i] is TypeRef r ? r.Name : null;
 
-  @override
-  String toString() => '${_visibilityPrefix}procedure $qualifiedName(${argTypes.join(', ')}).';
+    public override string ToString() =>
+        $"{VisibilityPrefix}procedure {QualifiedName}({string.Join(", ", ArgTypes)}).";
 }
 
-/// The type environment: all type definitions and procedure declarations in a module
-class TypeEnvironment {
-  final Map<String, TypeDef> types;
-  final Map<String, ProcDecl> procedures;  // keyed by "name/arity"
-  /// Parameterized procedure declaration templates, keyed by "name/arity".
-  /// Used for call-site type parameter inference (Case B).
-  final Map<String, ProcDecl> paramProcDecls;
-  /// Parameterized type templates from prelude/ancestors.
-  /// Passed to downstream expansions so they can expand references
-  /// to templates defined in ancestor scopes.
-  final Map<String, TypeDef> typeTemplates;
+// ---------------------------------------------------------------------------
+// T10 — TypeEnvironment
+// ---------------------------------------------------------------------------
 
-  TypeEnvironment(this.types, this.procedures, {
-      Map<String, ProcDecl>? paramProcDecls,
-      this.typeTemplates = const {},
-  }) : paramProcDecls = paramProcDecls ?? {};
+/// <summary>The type environment: all type definitions and procedure declarations in a module.</summary>
+public sealed class TypeEnvironment
+{
+    /// <summary>Type definitions, keyed by type name.</summary>
+    public Dictionary<string, TypeDef> Types { get; }
 
-  factory TypeEnvironment.empty() => TypeEnvironment({}, {});
+    /// <summary>Procedure declarations, keyed by "name/arity".</summary>
+    public Dictionary<string, ProcDecl> Procedures { get; }
 
-  /// Merge another environment into this one
-  TypeEnvironment merge(TypeEnvironment other) {
-    return TypeEnvironment(
-      {...types, ...other.types},
-      {...procedures, ...other.procedures},
-      paramProcDecls: {...paramProcDecls, ...other.paramProcDecls},
-      typeTemplates: {...typeTemplates, ...other.typeTemplates},
-    );
-  }
-  
-  /// Look up a type definition
-  TypeDef? getType(String name) => types[name];
-  
-  /// Look up a procedure declaration
-  ProcDecl? getProcedure(String name, int arity) => procedures['$name/$arity'];
-  
-  /// Check if a type name is defined (including built-ins)
-  bool hasType(String name) => types.containsKey(name) || TypeRef.builtins.contains(name);
+    /// <summary>
+    /// Parameterized procedure declaration templates, keyed by "name/arity".
+    /// Used for call-site type parameter inference (Case B).
+    /// </summary>
+    public Dictionary<string, ProcDecl> ParamProcDecls { get; }
 
-  /// Check if a procedure is defined
-  bool hasProcedure(String name, int arity) => procedures.containsKey('$name/$arity');
+    /// <summary>
+    /// Parameterized type templates from prelude/ancestors.
+    /// Read-only: the Dart source defaults this to const {} (immutable empty map).
+    /// </summary>
+    public IReadOnlyDictionary<string, TypeDef> TypeTemplates { get; }
 
-  /// Add a type definition to the environment
-  void addType(TypeDef typeDef) {
-    types[typeDef.name] = typeDef;
-  }
-
-  /// Add a procedure declaration to the environment
-  void addProcedure(ProcDecl procDecl) {
-    procedures[procDecl.qualifiedKey] = procDecl;
-  }
-
-  @override
-  String toString() {
-    final sb = StringBuffer();
-    for (final t in types.values) {
-      sb.writeln(t);
+    public TypeEnvironment(
+        Dictionary<string, TypeDef> types,
+        Dictionary<string, ProcDecl> procedures,
+        Dictionary<string, ProcDecl>? paramProcDecls = null,
+        IReadOnlyDictionary<string, TypeDef>? typeTemplates = null)
+    {
+        Types          = types;
+        Procedures     = procedures;
+        ParamProcDecls = paramProcDecls ?? new Dictionary<string, ProcDecl>();
+        // Dart `const {}` default is immutable; use ImmutableDictionary.Empty
+        // so we never share a mutable static default across instances.
+        TypeTemplates  = typeTemplates ?? ImmutableDictionary<string, TypeDef>.Empty;
     }
-    for (final p in procedures.values) {
-      sb.writeln(p);
+
+    /// <summary>
+    /// Static factory — equivalent to Dart `factory TypeEnvironment.empty()`.
+    /// C# has no `factory` keyword; a static method is the canonical equivalent.
+    /// </summary>
+    public static TypeEnvironment Empty() =>
+        new TypeEnvironment(new Dictionary<string, TypeDef>(), new Dictionary<string, ProcDecl>());
+
+    /// <summary>
+    /// Merge another environment into this one, returning a new environment.
+    /// Dart map-spread `{...a, ...b}` has last-wins / right-bias on duplicate keys;
+    /// reproduced via C# indexer upsert (dict[k] = v).
+    /// Dictionary.Add would throw on duplicates — rejected.
+    /// </summary>
+    public TypeEnvironment Merge(TypeEnvironment other)
+    {
+        var mergedTypes = new Dictionary<string, TypeDef>(Types);
+        foreach (var kv in other.Types)
+            mergedTypes[kv.Key] = kv.Value;
+
+        var mergedProcs = new Dictionary<string, ProcDecl>(Procedures);
+        foreach (var kv in other.Procedures)
+            mergedProcs[kv.Key] = kv.Value;
+
+        var mergedParam = new Dictionary<string, ProcDecl>(ParamProcDecls);
+        foreach (var kv in other.ParamProcDecls)
+            mergedParam[kv.Key] = kv.Value;
+
+        var mergedTemplates = new Dictionary<string, TypeDef>(TypeTemplates);
+        foreach (var kv in other.TypeTemplates)
+            mergedTemplates[kv.Key] = kv.Value;
+
+        return new TypeEnvironment(mergedTypes, mergedProcs, mergedParam, mergedTemplates);
     }
-    return sb.toString();
-  }
+
+    /// <summary>
+    /// Look up a type definition.
+    /// RENAMED from Dart getType → LookupType to avoid shadowing object.GetType()
+    /// (project-wide getX → LookupX idiom; convspec rf-dart-getx-rename-avoiding-object-member-shadow).
+    /// </summary>
+    public TypeDef? LookupType(string name) =>
+        Types.TryGetValue(name, out var t) ? t : null;
+
+    /// <summary>Look up a procedure declaration by name and arity.</summary>
+    public ProcDecl? GetProcedure(string name, int arity) =>
+        Procedures.TryGetValue($"{name}/{arity}", out var p) ? p : null;
+
+    /// <summary>Check if a type name is defined (including built-ins).</summary>
+    public bool HasType(string name) =>
+        Types.ContainsKey(name) || TypeRef.Builtins.Contains(name);
+
+    /// <summary>Check if a procedure is defined.</summary>
+    public bool HasProcedure(string name, int arity) =>
+        Procedures.ContainsKey($"{name}/{arity}");
+
+    /// <summary>Add a type definition to the environment (upsert by Name).</summary>
+    public void AddType(TypeDef typeDef)
+    {
+        Types[typeDef.Name] = typeDef;
+    }
+
+    /// <summary>
+    /// Add a procedure declaration to the environment.
+    /// Keys by QualifiedKey (may include module path) — asymmetric vs GetProcedure
+    /// which keys by "name/arity". Asymmetry preserved verbatim from Dart source.
+    /// </summary>
+    public void AddProcedure(ProcDecl procDecl)
+    {
+        Procedures[procDecl.QualifiedKey] = procDecl;
+    }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        foreach (var t in Types.Values)
+            sb.AppendLine(t.ToString());
+        foreach (var p in Procedures.Values)
+            sb.AppendLine(p.ToString());
+        return sb.ToString();
+    }
 }

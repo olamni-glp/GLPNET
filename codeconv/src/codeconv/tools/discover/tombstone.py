@@ -62,6 +62,17 @@ _FIELD_ORDER: tuple[str, ...] = (
     "target_cs_path",
     "build_status",
     "codegen_open_escalation_count",
+    # --- feature 020 (codeconv-equiv) appended fields ---
+    "equiv_subsystem",
+    "equiv_tier",
+    "equiv_verdict",
+    "equiv_fidelity",
+    "equiv_bytecode_diff_empty",
+    "equiv_stale",
+    "equiv_last_verified_at",
+    # --- feature 020 (Stage 4 — no_emit status) appended fields ---
+    "codegen_no_emit",
+    "codegen_no_emit_reason",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -120,13 +131,49 @@ _FEATURE_019_KEYS: tuple[str, ...] = (
     "codegen_open_escalation_count",
 )
 
+# The feature-020 (codeconv-equiv) appended keys, as a set, for round-trip
+# preservation. Same discipline as the earlier feature key sets: a
+# ``/codeconv-discover`` re-write (a feature-012 caller) MUST carry these
+# forward unchanged or a re-discover after the equiv stamp would silently
+# erase equivalence state (data-model.md § Tombstone _FIELD_ORDER extension).
+# ``equiv_fidelity`` is a cached denormalized snapshot of the computed-on-read
+# score (the authoritative scorer stays ``tools/equiv/fidelity.py``); the
+# stamped value is overwritten on each re-verify — NOT a competing truth.
+_FEATURE_020_KEYS: tuple[str, ...] = (
+    "equiv_subsystem",
+    "equiv_tier",
+    "equiv_verdict",
+    "equiv_fidelity",
+    "equiv_bytecode_diff_empty",
+    "equiv_stale",
+    "equiv_last_verified_at",
+)
+
+# The feature-020 Stage-4 ``no_emit`` appended keys, as a set, for
+# round-trip preservation. Same append-only discipline as the earlier
+# feature key sets: a ``/codeconv-discover`` re-write (a feature-012
+# caller) MUST carry these forward unchanged or a re-discover after a
+# ``codegen mark-no-emit`` stamp would silently erase the no_emit status.
+# ``codegen_no_emit`` is the boolean flag; ``codegen_no_emit_reason`` is
+# the optional free-text rationale. Appended AFTER the equiv keys so every
+# earlier key's emission position is unchanged (byte-identical re-stamp).
+_FEATURE_020_NO_EMIT_KEYS: tuple[str, ...] = (
+    "codegen_no_emit",
+    "codegen_no_emit_reason",
+)
+
 # Combined append-only preservation set: every key appended after the
 # original feature-012 eight. Used by ``_canonicalise`` and
-# ``merge_preserving_feature015`` so no feature-015/-017/-018/-019 state
+# ``merge_preserving_feature015`` so no feature-015/-017/-018/-019/-020 state
 # is dropped when a tombstone is re-written by a caller that did not
 # author those keys.
 _PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
-    _FEATURE_015_KEYS + _FEATURE_017_KEYS + _FEATURE_018_KEYS + _FEATURE_019_KEYS
+    _FEATURE_015_KEYS
+    + _FEATURE_017_KEYS
+    + _FEATURE_018_KEYS
+    + _FEATURE_019_KEYS
+    + _FEATURE_020_KEYS
+    + _FEATURE_020_NO_EMIT_KEYS
 )
 
 # YAML emitter settings pinned for diff stability.

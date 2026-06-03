@@ -1,9 +1,16 @@
-import 'package:glp_runtime/bytecode/runner.dart' show BytecodeProgram;
+using GlpRuntime.Bytecode;
 
-/// Result of compilation including bytecode and metadata
-class CompilationResult {
-  final BytecodeProgram program;
-  final Map<String, int> variableMap;  // Variable name -> register index
+namespace GlpRuntime.Compiler;
 
-  CompilationResult(this.program, this.variableMap);
+/// <summary>Result of compilation including bytecode and metadata</summary>
+public class CompilationResult
+{
+    public BytecodeProgram Program { get; }
+    public Dictionary<string, long> VariableMap { get; } // Variable name -> register index
+
+    public CompilationResult(BytecodeProgram program, Dictionary<string, long> variableMap)
+    {
+        Program = program;
+        VariableMap = variableMap;
+    }
 }

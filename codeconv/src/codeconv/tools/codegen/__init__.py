@@ -14,6 +14,7 @@ Subcommand surface (codegen_cli.md):
 - ``next [--limit 7]``
 - ``ingest <path> [--respec]``
 - ``retry <path>``
+- ``mark-no-emit <path> [--reason TEXT]`` (Stage 4 — no_emit status).
 - ``aggregate-escalations``
 - ``record-review`` / ``promote-batch`` (US3 — added in T032).
 
@@ -37,6 +38,7 @@ from .workflow import (
     register,
     run_aggregate_escalations,
     run_codegen_ingest,
+    run_mark_no_emit,
     run_next,
     run_retry,
     run_status,
@@ -201,6 +203,43 @@ def retry(
         no_tombstone_update=no_tombstone_update,
     )
     _emit_summary(summary, json_summary=json_summary, quiet=quiet, header="retry")
+
+
+@app.command("mark-no-emit")
+def mark_no_emit(
+    ctx: typer.Context,
+    path: str = typer.Argument(
+        ..., help="Subtree-relative POSIX path to a .dart file."
+    ),
+    reason: Optional[str] = typer.Option(
+        None, "--reason", help="Why this file is not emitted to C# (free text)."
+    ),
+    no_tombstone_update: bool = typer.Option(
+        False, "--no-tombstone-update", help="Skip tombstone YAML (testing)."
+    ),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress logging."),
+    json_summary: bool = typer.Option(
+        False, "--json", help="Emit JSON summary on stdout."
+    ),
+) -> None:
+    """Mark a file ``no_emit`` — intentionally NOT emitted to C# (Stage 4).
+
+    A first-class status orthogonal to escalated/built, for source files
+    with nothing to convert (e.g. a Dart ``export`` directive with no
+    types). Upserts ``no_emit=true, open_escalation_count=0`` (idempotent)
+    and stamps the ``codegen_no_emit`` tombstone key.
+    """
+    quiet, json_summary = _ctx_flags(ctx, quiet, json_summary)
+    summary = run_mark_no_emit(
+        repo_root=_ctx_repo_root(ctx),
+        data_dir=_ctx_data_dir(ctx),
+        path=path,
+        reason=reason,
+        no_tombstone_update=no_tombstone_update,
+    )
+    _emit_summary(
+        summary, json_summary=json_summary, quiet=quiet, header="mark-no-emit"
+    )
 
 
 @app.command("record-review")

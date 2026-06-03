@@ -23,7 +23,7 @@ dependencies:
 - lib/compiler/pmt/type_table.dart
 callers:
 - lib/compiler/pmt/validator.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.468Z'
 sha256: ec1d9f359ba877391bcc2acf4b8a4b99f7a37b8ae05d778864d89fb9940d5c95
 topo_level: 3
 cycle_group_id: 50
@@ -33,6 +33,10 @@ plan_started_at: '2026-05-21T15:24:21Z'
 plan_completed_at: '2026-05-21T16:00:11Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/pmt/type_checker.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T11:59:18Z'
+target_cs_path: out/csharp/lib/compiler/pmt/type_checker.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 MT Type Checker: Verifies terms match their declared types

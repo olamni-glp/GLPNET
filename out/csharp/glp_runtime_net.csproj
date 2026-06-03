@@ -1,0 +1,47 @@
+<!--
+  glp_runtime_net — the converted-C# GLP runtime library (feature 020).
+
+  Layered project so partial conversion still compiles:
+    * `EnableDefaultCompileItems=false` disables the default `**/*.cs` glob
+      — the 177 feature-016 scaffold stubs under this tree still carry their
+      mirrored Dart source verbatim and would not compile if globbed.
+    * `Converted.props` (imported below) holds the EXPLICIT `<Compile
+      Include="..."/>` list. It starts empty; the codegen workflow appends to
+      it as each file passes the build-gate (the `/codeconv-codegen` accept).
+    * Build-gating therefore scopes to files the codegen has accepted, not
+      to whatever stubs happen to live alongside them.
+
+  Target framework: net10.0 (consistent with the 019 codegen contract +
+  the dotnet 10 preview on PATH).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime</RootNamespace>
+    <AssemblyName>glp_runtime_net</AssemblyName>
+    <!--
+      The scaffold stubs under out/csharp/lib/ still carry mirrored Dart
+      source; disabling the default glob keeps them out of compilation
+      until the codegen workflow promotes them into Converted.props.
+    -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- The codegen-managed compile list (one <Compile Include="..." /> per
+       accepted file). Empty at the start of the bulk-codegen drive. -->
+  <Import Project="Converted.props" Condition="Exists('Converted.props')" />
+
+  <!-- Feature-020 trace-equivalence instrumentation: hand-written candidate-side
+       code (NOT a codegen-converted Dart file), so it is listed here explicitly
+       rather than in the codegen-managed Converted.props. Emits the canonical
+       EV/OUT wire format the differential oracle consumes (T017). -->
+  <ItemGroup>
+    <Compile Include="lib/runtime/equiv_trace.cs" />
+  </ItemGroup>
+
+</Project>

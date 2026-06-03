@@ -1,42 +1,54 @@
 /// Shared Suspension Records (FCP Design)
 /// One SuspensionRecord shared across multiple lists via wrapper nodes
 /// Activated once, then disarmed to prevent double-activation
-library;
+namespace GlpRuntime.Runtime;
 
-/// Shared suspension state (one per suspended goal)
-/// Multiple SuspensionListNodes can point to the same record
-class SuspensionRecord {
-  int? goalId;        // Process ID - nullable for disarming
-  final int resumePC; // Where to resume (kappa - procedure entry point)
+/// <summary>Shared suspension state (one per suspended goal).
+/// Multiple SuspensionListNodes can point to the same record.</summary>
+public class SuspensionRecord
+{
+    /// <summary>Process ID — nullable for disarming (disarm sentinel).</summary>
+    public int? GoalId { get; private set; }
 
-  SuspensionRecord(this.goalId, this.resumePC);
+    /// <summary>Where to resume (kappa — procedure entry point).</summary>
+    public int ResumePC { get; }
 
-  /// Disarm this record (prevent future activation)
-  void disarm() {
-    goalId = null;
-  }
+    public SuspensionRecord(int? goalId, int resumePC)
+    {
+        GoalId = goalId;
+        ResumePC = resumePC;
+    }
 
-  /// Check if this record is armed (can activate)
-  bool get armed => goalId != null;
+    /// <summary>Disarm this record (prevent future activation). Idempotent.</summary>
+    public void Disarm() { GoalId = null; }
 
-  @override
-  String toString() => 'SuspensionRecord(goal=$goalId, pc=$resumePC, armed=$armed)';
+    /// <summary>Check if this record is armed (can activate).</summary>
+    public bool Armed => GoalId != null;
+
+    public override string ToString() =>
+        $"SuspensionRecord(goal={GoalId?.ToString() ?? "null"}, pc={ResumePC}, armed={Armed})";
 }
 
-/// Wrapper node for linking shared records into suspension lists
-/// Each reader cell stores a SuspensionListNode with independent 'next' pointers
-/// Multiple nodes can point to the same SuspensionRecord (shared state)
-class SuspensionListNode {
-  final SuspensionRecord record;  // Points to shared record
-  SuspensionListNode? next;       // List chain (independent per reader)
+/// <summary>Wrapper node for linking shared records into suspension lists.
+/// Each reader cell stores a SuspensionListNode with independent next pointers.
+/// Multiple nodes can point to the same SuspensionRecord (shared state).</summary>
+public class SuspensionListNode
+{
+    /// <summary>Points to shared record (non-nullable; set once at construction).</summary>
+    public SuspensionRecord Record { get; }
 
-  SuspensionListNode(this.record);
+    /// <summary>List chain — independent per reader; mutable for post-construction re-linking.</summary>
+    public SuspensionListNode? Next { get; set; }
 
-  /// Delegate to shared record
-  bool get armed => record.armed;
-  int? get goalId => record.goalId;
-  int get resumePC => record.resumePC;
+    public SuspensionListNode(SuspensionRecord record)
+    {
+        Record = record;
+    }
 
-  @override
-  String toString() => 'SuspensionListNode(record=$record)';
+    /// <summary>Delegate to shared record (not cached — preserves disarm propagation).</summary>
+    public bool Armed => Record.Armed;
+    public int? GoalId => Record.GoalId;
+    public int ResumePC => Record.ResumePC;
+
+    public override string ToString() => $"SuspensionListNode(record={Record})";
 }

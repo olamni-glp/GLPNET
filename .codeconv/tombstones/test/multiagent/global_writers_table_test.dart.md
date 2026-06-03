@@ -44,7 +44,7 @@ key_idea: 'Tests for GlobalWritersTable
 dependencies:
 - lib/multiagent/global_writers_table.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:16.135Z'
 sha256: e94c973b8effdbc9fc3bc538634735c630dab2064acb5ec8dcd9f856a0c5e45e
 topo_level: 1
 cycle_group_id: 104

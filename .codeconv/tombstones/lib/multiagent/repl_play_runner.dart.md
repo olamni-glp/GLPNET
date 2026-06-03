@@ -39,7 +39,7 @@ key_idea: 'ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.
   '
 dependencies: []
 callers: []
-mtime: '2026-04-27T16:15:32.000Z'
+mtime: '2026-05-21T12:38:13.764Z'
 sha256: ebe529f88b605e1c33e3158837c2a5a09599572cfe7c195a3f5712e5846dc169
 topo_level: 0
 cycle_group_id: 64
@@ -49,6 +49,10 @@ plan_started_at: '2026-05-21T14:41:24Z'
 plan_completed_at: '2026-05-21T14:45:17Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/repl_play_runner.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:08:47Z'
+target_cs_path: out/csharp/lib/multiagent/repl_play_runner.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.
