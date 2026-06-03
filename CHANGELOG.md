@@ -89,6 +89,8 @@
 
 ## [Unreleased]
 
+## [v2026.06.03.2] - 2026-06-03
+
 # Changelog
 
 All notable changes to GLPNET. Versions follow the CalVer convention defined in
