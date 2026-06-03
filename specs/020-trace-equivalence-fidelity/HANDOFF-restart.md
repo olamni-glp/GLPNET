@@ -44,18 +44,21 @@ swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) un
   **Flag-gated by `GLP_EQUIV_TRACE`=<file>**; off → one cached-bool no-op, behaviour + perf
   unchanged (verified: append OFF = `[a,b,c,d]` succeeds; ON = correct output + a clean canonical
   trace file). Dart golden untouched (R10/HARD GATE 6).
-- **🔴 FINDINGS from the first real capture (decisions for T022 / before strict-tier comparison):**
-  1. **Dart `:debug` is a PARTIAL op-spine, C# emits the FULL spine.** On `append([a],[c],Zs)` the
-     C# emits every dispatched op (incl. `Label`/`HeadNil`/`Otherwise`/an extra `Commit`); Dart's
-     `:debug` is silent on `Label`/`HeadNil`/`Otherwise`. So a 1:1 `parse_dart`-from-`:debug` spine
-     comparison is NOT directly achievable — this is the contract's anticipated R10 spec-gap. NEEDS
-     A DECISION: define the spine as the Dart-observable op subset (filter both sides) vs compare at
-     reduction granularity vs other. Do NOT modify the Dart golden.
-  2. **Ground-guard soft-fail path differs (outcome-equivalent, spine-divergent).** Dart: `Ground(pc6)
-     → ClauseTry(pc16)` (guard soft-fails at the guard). C#: `Ground(pc6) → Commit(pc7) → ClauseTry(pc16)`
-     (Ground advances; the unresolved Si is caught at Commit). Same outcome (both suspend serve on
-     reader 1; final answer correct), but the strict spine differs by the extra `Commit`. A §4.A
-     risk-spot (`ExecGround`); candidate runner fidelity fix vs benign-representation — decide at T022.
+- **FINDINGS from the first real capture:**
+  1. **[RESOLVED — option-a, commit `593cb989`]** Dart `:debug` is a PARTIAL op-spine (silent on
+     `Label`/`HeadNil`/`Otherwise`, the body ops, and the conditionally-printed `GetValue`); the C#
+     emitted the FULL spine. Fixed by aligning the C# BYTECODE_OP emission to the 14 Dart-observable
+     ops via a `_spineOps` allow-list in `equiv_trace.cs` (`ClauseTry, Push, Pop, UnifyStructure,
+     HeadStructure, UnifyVariable, GetVariable, Commit, NoMoreClauses, Guard, Ground, NoReaders,
+     GroundEqual` — GetValue EXCLUDED: its Dart print fires only in the VarRef-alias sub-case,
+     runner.dart:2037). Verified: the append recursive + base clause spines now match the golden
+     EXACTLY. Dart prints `COMMIT`, C# emits `Commit` → parse_dart lowercases/maps at T022.
+  2. **[OPEN — the one isolated real divergence]** Ground-guard soft-fail path differs
+     (outcome-equivalent, spine-divergent). Dart: `Ground(pc6) → ClauseTry(pc16)` (guard soft-fails at
+     the guard). C#: `Ground(pc6) → Commit(pc7) → ClauseTry(pc16)` (Ground advances; the unresolved Si
+     is caught at Commit). Same outcome (both suspend serve on reader 1; final answer correct), but the
+     spine differs by one extra `Commit`. A §4.A risk-spot (`ExecGround`); candidate `runner.cs`
+     fidelity fix. After option-a this is the SOLE remaining append spine divergence.
   3. **OUT binding shape is shallow** (`Zs=./2(var,var)` not the full `./2(const(a),...)`): `ShapeOf`
      does not deref VarRefs through the heap. Fine for status; for outcome-mode binding fidelity, OUT
      should pass a recursively-deref'd term. Easy refinement, deferred.
