@@ -90,6 +90,38 @@ canonical format — it must be FINALIZED to adapt the Dart `:trace`+`:debug` te
   first e2e fixture; the live-spawn capture backend (T018, now unblocked by T017) + bonds outcome-mode
   follow.
 
+### T022 — DONE so far + TURNKEY `parse_dart` build spec (next increment)
+**DONE**: goal kept via `GoalId` relabeling (commit `063717c7`, separate `g`-namespace; 34 equiv pure
+tests green). Matched fixtures committed (`33c1e08b`): `codeconv/tests/fixtures/equiv/append_csharp.txt`
+(the C# canonical EV/OUT, 28 events + OUT) + `append_dart.txt` (the Dart `:trace`+`:debug`, 76 lines).
+`parse_csharp` already produces the right model from the C# fixture.
+
+**TODO — `parse_dart` (replace the stub that just calls `_parse(..., "dart")`)**: adapt the Dart text →
+the SAME model as the C# fixture. Line-by-line mapping (append fixture line → target event), VERIFIED:
+- `[DEBUG] PC <pc>: <Op> …` → ONE BYTECODE_OP per dispatch: COLLAPSE consecutive same-(pc,op) sublines
+  (GetVariable prints 3-7, HeadStructure 2-5). Use the SAME 13-op allow-set as the C# `_spineOps`;
+  SKIP `GetValue`; map `COMMIT`→`Commit`.
+- IGNORE: `[DEBUG _finalUnboundVar] …`, reduction lines `<head> :- <body>`, and the secondary COMMIT
+  lines `… COMMIT - Applying …` / `… COMMIT - Applied successfully, reactivating N goal(s)` (keep only
+  the FIRST `COMMIT - σ̂w contains N bindings:` line for the Commit op + read the `reactivating N` count).
+- COMMIT block: first `PC <pc>: COMMIT - σ̂w contains N bindings:` → BYTECODE_OP Commit, THEN UNIFY
+  success (vars = the `W#` writers in order), THEN one WRITER_BIND per `  W# → <shape>` subline, THEN
+  N REACTIVATE from `reactivating N goal(s)`. (Early-soft-fail commits print NO COMMIT line → none, matches C#.)
+- `[DEBUG] NoMoreClauses - SUSPENDING on readers: [r1, …]` → UNIFY suspend (vars=readers) + one SUSPEND
+  per reader; `goal` = the goal token from the FOLLOWING `<goal-display> → suspended` line (relabeled g_i).
+- OUT: the `Var = <value>` lines + the `→ succeeds|suspended|failed` line.
+- **Shape canonicalizer** `dart_display → C# ShapeOf form` (recursive): `Const(x)`→`const(x)` (incl
+  `Const(nil)`→`const(nil)`); `Var@n`→`var`; `./2(a,b)` AND `.(a,b)`→`./<arity>(<canon args>)`; **GLP list
+  syntax** `[a, c]`→nested `./2(const(a),./2(const(c),const(nil)))`, `[a | X?]`→`./2(const(a),var)`.
+- **C# OUT-shape deref fix (finding #3, REQUIRED for strict OUT match)**: the C# OUT binding shape is
+  shallow (`Zs=./2(var,var)`) because `ShapeOf` doesn't deref VarRefs through the heap; the Dart OUT
+  shows the full `[a, c]`. Fix the engine OUT emission to pass the RECURSIVELY-dereferenced term so the
+  C# shape becomes `./2(const(a),./2(const(c),const(nil)))`, matching the canonicalized Dart `[a, c]`.
+- Then `test_equiv_oracle_e2e.py`: `verdict.compare_recorded(read(append_dart), read(append_csharp),
+  compare_mode="trace", tier="strict")` → `.equivalent is True`. Add a bonds outcome-only case next.
+NOTE: rushing this ~250-line load-bearing adapter was deferred at the tail of the 2026-06-03 session
+(quality gate); the mapping above is exhaustive — build it directly against the two committed fixtures.
+
 ## 1. Verified-green anchor (re-verify BEFORE touching anything)
 
 At handoff, ALL of these were green — **RE-VERIFIED still green 2026-06-03 (fresh session):
