@@ -196,17 +196,15 @@ Do these in order; each is the gate for the next. Use the canonical cluster + th
 discipline in §5. The Stage-3 semantic-risk list (§4.A) is the FIRST thing T017/T022
 must exercise — that is the whole point of the trace-equivalence oracle.
 
-- **T017 — C# REPL trace instrumentation** (`@needs_runtime`). runner.cs now builds, so a
-  runnable REPL is possible. (i) Wire the converted `out/csharp/lib/bin/glp_repl.cs` (or
-  wherever the converted REPL entry sits — `grep -rl "static.*Main\|glp_repl" out/csharp`)
-  as the REAL `glp_repl` entry, replacing the placeholder `out/csharp/glp_repl/Program.cs`;
-  (ii) add structured trace hooks emitting the R1 event kinds (UNIFY outcome / SUSPEND /
-  REACTIVATE / WRITER_BIND / BYTECODE_OP) comparable to Dart `:trace`/`:debug`, **candidate
-  side only — the Dart golden is READ-ONLY**, per `contracts/trace_normalization.md`.
-- **T022 — e2e** (`@needs_runtime`): known-equivalent pair → exit 0 equivalent; a bonds
-  source → outcome-only verdict. `codeconv/tests/test_equiv_oracle_e2e.py`. THIS is where
-  the runner's semantic fidelity actually gets tested (build gate was compile-only).
-- **T031 — fidelity-metric swap**: rewrite `tools/codegen_opt/metric.py` so the GEPA metric
+- **T017 — C# REPL trace instrumentation — ✅ DONE** (commits `7c3def56`/`2cab78db`/`8e8dccf4`/
+  `593cb989`/`bfa32841`). Converted REPL wired; `EquivTrace` emits the 5 R1 kinds, candidate-side
+  only, flag-gated by `GLP_EQUIV_TRACE`. (See Progress blocks.)
+- **T022 — e2e — ✅ DONE 2026-06-04** (commits `cbd8c1fa`/`5ece03f5`/`e02fdd9f`). `parse_dart`
+  adapter + finding-#3 OUT deref + re-captured fixture; PURE `test_equiv_oracle_e2e.py` GREEN —
+  append C# candidate ≡ Dart golden, strict tier, 28/28 events + outcome, with negative controls.
+  (Bonds outcome-only case is a follow-on; needs its own captured fixture.)
+- **T031 — fidelity-metric swap** ← **IMMEDIATE NEXT. See the turnkey spec at the end of this doc.**
+  rewrite `tools/codegen_opt/metric.py` so the GEPA metric
   returns `dspy.Prediction(score=tools/equiv/fidelity.py score, feedback=DivergenceRecord-as-text)`
   — score IDENTICAL to the production gate (SC-004). Then **re-run the per-subsystem GEPA
   loops** (Stage-2 mechanism, §5) — now there is a real fidelity gradient ABOVE the build
@@ -313,3 +311,87 @@ git fetch origin 020-trace-equivalence-fidelity
 git merge -m "Merge 020-trace-equivalence-fidelity into main" origin/020-trace-equivalence-fidelity
 git push origin main
 ```
+
+## 7. T031 — TURNKEY fidelity-metric swap build spec (IMMEDIATE NEXT)
+
+**Goal (verbatim from `contracts/gepa_optimizer.md` § Module+metric + `contracts/fidelity_metric.md`
+§ GEPA wiring):** the GEPA metric must return `dspy.Prediction(score=<float>, feedback=<str>)` where
+`score = tools/equiv/fidelity.py:score(...)` — the SAME function the production gate uses (SC-004,
+asserted by import identity) — and `feedback` = the textual divergence (dotnet build error / failing
+back-test assertion / `DivergenceRecord` rendered as text). Then **re-run the per-subsystem GEPA loops**
+so there is a real fidelity gradient ABOVE the build ceiling (`0.5 + 0.5·frac`, monotonic in frac).
+
+### Verified current state (read before changing)
+- `tools/equiv/fidelity.py:score(FidelityInputs{builds, back_tested, trace_captured, in_scope_sources,
+  trace_equivalent_sources}) -> float` — DONE + tested (`test_fidelity_metric.py`, 0.0 floor / 0.25 flat
+  / 0.5+0.5·frac high band / 1.0 snap). This is the single scorer; T031 makes the GEPA metric CALL it.
+- `tools/codegen_opt/metric.py` — TODAY: build/test/human `composite_score` + `score_candidate`
+  (019 metric_contract.md). NO fidelity import, NO `dspy.Prediction`. **KEEP** `composite_score` +
+  `score_candidate` + the `codeconv codegen_opt score --file …` CLI (build-only pre-REPL fallback —
+  handoff/anti-drift D; `score_cmd` in `tools/codegen_opt/__init__.py` calls `composite_score`).
+- `tools/codegen_opt/optimize.py:score_instructions(...)` — the hand-rolled loop: per example →
+  `generate_fn(instructions, ex)` (Claude sub-agent, injected) → `validate_generated` → materialize
+  throwaway net10 proj → `build_fn` → `composite_score` → reflections from build errors. `run_optimize`
+  wraps it (seed → propose_fn rounds → best-so-far, HARD `BudgetCounter`). **This is where the swap lands.**
+- `tools/codegen_opt/program.py` — `dspy.Signature` (plan, convspec, dep_interfaces, idioms, subsystem)
+  → csharp; `build_program`/`program_instructions`. dspy imported lazily; NO API (Claude sub-agents).
+- CLI (`tools/codegen_opt/__init__.py`): `optimize|eval|export-prompt|show|dataset|score`. All present.
+- `tools/equiv/verdict.py:divergence_to_dict(DivergenceRecord)` + `relation.DivergenceRecord` — the
+  feedback source (render to text). `compare_recorded(...)` is the per-source verdict (T022, working).
+
+### The code change (part a — PURE, mock-testable NOW; do this first as a clean increment)
+1. In `metric.py` add a fidelity-based scorer that imports `from codeconv.tools.equiv.fidelity import
+   score as fidelity_score, FidelityInputs` (SC-004 import identity — do NOT re-implement the tiers) and
+   a function that, given a candidate's (builds, back_tested, trace_captured) + the per-in-scope-source
+   verdicts, builds `FidelityInputs(in_scope_sources=N, trace_equivalent_sources=#equivalent)` and returns
+   `(fidelity_score(inputs), feedback_text)`. `feedback_text` = build error if not builds; else the first
+   source's `DivergenceRecord` as text (reuse `verdict.divergence_to_dict` + a compact renderer); else
+   "all sources equivalent".
+2. Add the GEPA-facing metric callable returning `dspy.Prediction(score=…, feedback=…)` (dspy imported
+   lazily, mirroring `program.py:_require_dspy`; the metric module must stay importable WITHOUT dspy for
+   the registry/CLI path). The dspy.GEPA metric signature is `metric(gold, pred, trace=None,
+   pred_name=None, pred_trace=None) -> dspy.Prediction`.
+3. Wire `optimize.py:score_instructions` to use the fidelity path when oracle verdicts are available
+   (keep the build-only `composite_score` path as the pre-REPL fallback + behind the `score` CLI).
+4. Tests (mock the oracle/LM — no real REPL/GEPA in CI, per gepa_optimizer.md § Tests):
+   - SC-004 import identity: the GEPA metric's score == `tools/equiv/fidelity.py:score` on identical
+     inputs (same function object).
+   - GEPA metric returns a `dspy.Prediction` with `.score` (float in [0,1]) + `.feedback` (str) — gate
+     with a dspy-present marker or a thin shim so CI without dspy still collects.
+   - `test_no_lm_on_production_path` MUST still pass: `tools/equiv/`, `tools/codegen/`, `durable/` import
+     NO dspy/litellm/openai. `metric.py` is `codegen_opt` (offline) — fine; just keep the dspy import lazy.
+   - Reuse `tests/test_codegen_opt_metric_mocked.py` / `test_fidelity_metric.py` styles.
+
+### 🔴 The sequencing decision the re-run (part b) forces — DECIDE FIRST
+The fidelity metric needs **per-source trace-equivalence verdicts**, i.e. the oracle (capture BOTH REPLs
++ compare) must run per candidate per in-scope source. **The live-spawn capture backend (T018) is STILL A
+STUB** — `tools/equiv/__init__.py:_default_capture_backend` returns `needs_agent_work` (it never spawns a
+REPL). So the GEPA re-run cannot run end-to-end until a capture mechanism exists. Two paths (Gabi to weigh):
+- **(A, recommended) Implement T018 capture backend first**, THEN T031. T017 unblocked it: spawn the Dart
+  `glp_runtime/glp_repl.exe` (`:trace`+`:debug`) AND the built C# `out/csharp/glp_repl/bin/Debug/net10.0/
+  glp_repl.exe` (`GLP_EQUIV_TRACE=<file>`) per source, `normalize.parse_dart`/`parse_csharp`, `relation`.
+  This SHARED dependency also unblocks T026–T029 (equiv CLI/skill). The exact C# invocation is proven
+  (T022 capture): `printf 'load <src.glp>\n<goal>.\n:quit\n' | GLP_EQUIV_TRACE=<f> glp_repl.exe`, cwd =
+  repo root. Captures are nondeterministic ⇒ stay in the CLI/skill layer, NEVER in a DBOS step (R12).
+- **(B) Manual/recorded captures** for a tiny corpus (the way append was captured) feeding recorded
+  traces into the metric — fine to validate part (a), but does NOT scale to the GEPA re-run.
+
+### The re-run (part b — orchestration, §5 mechanism + the skill)
+Per subsystem, carry-forward seeded (`_base.md` → subsystem k → k+1): `codeconv codegen_opt dataset
+--subsystem S --json` → generator sub-agent(s) write candidate `.cs` to `.codeconv/codegen-prompt/
+.gepa-scratch/<S>/` (gitignored) → **score = fidelity via the runnable REPL** (oracle over the file's
+in-scope corpus sources) → reflector sub-agent on the DivergenceRecords → `codeconv codegen_opt
+export-prompt --subsystem S --instructions-file … --score …`. Skill:
+`.claude/skills/codeconv-codegen-opt/SKILL.md` § "Per-subsystem GEPA orchestration loop". Anti-drift D:
+build-only GEPA had NO gradient (bytecode at ceiling 1.0); T031's fidelity gradient is the whole point —
+the frozen `bytecode.md` (`optimizer: gepa-build-only`) gets overwritten by the fidelity re-run.
+
+### Anti-drift carried into T031
+- NO API (anti-drift E / [[project_gepa_no_api_claude_only]]): generate/reflect = Claude sub-agents; a
+  bare `optimize` with no injected callable exits 2 BY DESIGN. Keep `tools/equiv/`, `tools/codegen/`,
+  `durable/` import-free of dspy/litellm/openai (T038/`test_no_lm_on_production_path` guards it).
+- SC-004: ONE `fidelity.score` for gate AND metric — import it, do not fork the tiers.
+- If a source's divergence traces to a Dart golden that violates the GLP spec → CLAUDE.md Bug-Protocol
+  report (FR-017); do NOT alter C# to match a wrong oracle. Dart golden (`glp_runtime/`) is READ-ONLY.
+- `_dart_to_wire` follow-on (from T022): REACTIVATE goal-token fidelity for N>0 commits (bonds/dynamic)
+  is unresolved — append commits reactivate 0 goals. A multi-reactivation source will need it.
