@@ -13,9 +13,12 @@ Branch: `020-trace-equivalence-fidelity` · Anchor commit: **`79d9add5`**-and-la
 
 ## 0. One-line state
 
-Stages 1–4 of the `/codeconv-runner` 5-stage plan are **DONE + committed**. **Only
-Stage 5 remains** (T017 C# REPL trace instrumentation → T022 e2e → T031 fidelity-metric
-swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) unblocked it.
+Stages 1–4 **DONE+committed**. **Stage 5 (T017) is now COMPLETE+committed** (REPL wired +
+runs; first fidelity bug fixed; canonical trace emission + spine alignment; #2 resolved;
+goal kept via relabeling). **IMMEDIATE NEXT = T022 `parse_dart` build** — turnkey spec at the
+end of this doc ("T022 — DONE so far + TURNKEY `parse_dart` build spec"), build against the two
+committed fixtures `codeconv/tests/fixtures/equiv/append_{dart,csharp}.txt`. Then T031 fidelity-
+metric swap + GEPA re-run → T026–T029 equiv CLI/skill/gate. See the "Progress 2026-06-03" block below.
 
 ### Progress 2026-06-03 (Stage 5 session in progress)
 - **T017(i) DONE — commit `7c3def56`.** `out/csharp/glp_repl/Program.cs` placeholder replaced
