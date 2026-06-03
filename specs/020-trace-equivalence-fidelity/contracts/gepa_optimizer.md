@@ -1,6 +1,8 @@
 # Contract — Real `dspy.GEPA` per-subsystem optimizer (FR-010, FR-011, FR-012)
 
-`tools/codegen_opt/` — MODIFIED from 019's hand-rolled `dspy.Predict` reflective loop to real `dspy.GEPA`. **OFFLINE-only, non-durable, NOT auto-registered** as a durable step. The ONLY place in the repo importing `dspy`/`gepa`/`litellm`/`openai` + reading `OPENAI_API_KEY`.
+`tools/codegen_opt/` — MODIFIED from 019's hand-rolled `dspy.Predict` reflective loop to real `dspy.GEPA`. **OFFLINE-only, non-durable, NOT auto-registered** as a durable step.
+
+**🔴 LM = Claude, in-session, NO external API.** GEPA's generation and reflective instruction-proposal run as **Claude sub-agents** (the Agent tool, driven by the `/codeconv-codegen-opt` skill loop) — exactly how `/codeconv-codegen` already produces every `.cs`. There is **NO `OPENAI_API_KEY`, NO litellm, NO openai** anywhere on this path. `dspy.GEPA` is model-agnostic; "real GEPA" never required OpenAI. (The prior contract text mandating an OpenAI/litellm API + `OPENAI_API_KEY` was a defect and is **deleted**, not a constraint — ruled 2026-06-03.) `codeconv_opt` imports `dspy`/`gepa` (the signature/program + GEPA algorithm scaffold) only; the `generate_fn`/`propose_fn` seams are injected with Claude-backed callables and have no API default.
 
 ## Module + metric (FR-010)
 - `program.py`: a `dspy.Module` codegen signature `(plan, convspec, dep_interfaces, idiom_kb, subsystem) → C# source`. Same shape as 019; gains `subsystem` for prompt selection.
