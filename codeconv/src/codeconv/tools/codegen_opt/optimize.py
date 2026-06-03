@@ -48,12 +48,15 @@ from .dataset import (
     split,
     subsystem_split,
 )
-from .metric import composite_score
+from .metric import OracleOutcome, composite_score, fidelity_metric_result
 
 
 GenerateFn = Callable[[str, Example], str]
 BuildFn = Callable[[Path], BuildResult]
 ProposeFn = Callable[[str, list[str]], str]
+# T031: per-candidate trace-equivalence oracle. Injected (Claude-backed
+# capture + the pure relation); None ⇒ build-only `composite_score` fallback.
+OracleFn = Callable[[Example, str], OracleOutcome]
 
 
 @dataclass
@@ -121,17 +124,22 @@ def score_instructions(
     *,
     generate_fn: GenerateFn,
     build_fn: Optional[BuildFn] = None,
+    oracle_fn: Optional[OracleFn] = None,
     increment: int = 1,
     budget_counter: Optional["BudgetCounter"] = None,
 ) -> tuple[float, list[str]]:
-    """Mean composite score of ``instructions`` over ``examples``.
+    """Mean score of ``instructions`` over ``examples``.
 
     For each example: generate the C# (via the injected Claude-backed
-    ``generate_fn``), write it to a throwaway project, run the build gate,
-    and compute the composite score. Returns ``(mean_score, reflections)``
-    where reflections are the per-example feedback strings GEPA reflects
-    on. Honors the HARD budget cap: once ``budget_counter`` is exhausted,
-    remaining examples are skipped (best-so-far semantics).
+    ``generate_fn``), write it to a throwaway project, run the build gate.
+    When ``oracle_fn`` is injected (T031, post-REPL) the score is the SAME
+    tiered fidelity the production gate uses (build + per-source
+    trace-equivalence); otherwise it falls back to the build-only
+    ``composite_score`` (the pre-REPL path + the ``score`` CLI). Returns
+    ``(mean_score, reflections)`` where reflections are the per-example
+    feedback strings GEPA reflects on. Honors the HARD budget cap: once
+    ``budget_counter`` is exhausted, remaining examples are skipped
+    (best-so-far semantics).
     """
     gen = _require_fn(generate_fn, "generate_fn")
     builder = build_fn or (run_test if increment >= 2 else run_build)
@@ -145,7 +153,7 @@ def score_instructions(
             cs_text, expected_units=ex.expected_units
         )
         if val_errors:
-            scores.append(0.0)
+            scores.append(0.0)  # 0.0 floor under either path
             reflections.append(
                 f"{ex.rel_path}: not real C# / missing construct: "
                 + "; ".join(val_errors)
@@ -154,17 +162,38 @@ def score_instructions(
         with tempfile.TemporaryDirectory() as td:
             proj = _materialize_project(Path(td), cs_text)
             result = builder(proj)
+        builds = result.status == "pass"
+        build_feedback = "; ".join(
+            result.errors or ([result.reason] if result.reason else [])
+        )
+        if oracle_fn is not None:
+            # Fidelity path (T031): the SAME scorer as the production gate,
+            # fed per-source trace-equivalence verdicts from the oracle.
+            if builds:
+                oc = oracle_fn(ex, cs_text)
+                s, fb = fidelity_metric_result(
+                    builds=True,
+                    back_tested=oc.back_tested,
+                    trace_captured=oc.trace_captured,
+                    source_verdicts=oc.source_verdicts,
+                )
+            else:
+                s, fb = fidelity_metric_result(
+                    builds=False, back_tested=False, trace_captured=False,
+                    source_verdicts=(), build_feedback=build_feedback,
+                )
+            scores.append(s)
+            reflections.append(f"{ex.rel_path}: {fb}")
+            continue
+        # Build-only fallback (pre-REPL / the `score` CLI).
         s = composite_score(
-            build_passed=result.status == "pass",
+            build_passed=builds,
             test_pass_rate=result.test_pass_rate,
             increment=increment,
         )
         scores.append(s)
-        if result.status != "pass":
-            reflections.append(
-                f"{ex.rel_path}: build {result.status}: "
-                + "; ".join(result.errors or ([result.reason] if result.reason else []))
-            )
+        if not builds:
+            reflections.append(f"{ex.rel_path}: build {result.status}: " + build_feedback)
     mean = sum(scores) / len(scores) if scores else 0.0
     return mean, reflections
 
@@ -238,6 +267,7 @@ def run_optimize(
     held_out_frac: float = DEFAULT_HELD_OUT_FRAC,
     generate_fn: Optional[GenerateFn] = None,
     build_fn: Optional[BuildFn] = None,
+    oracle_fn: Optional[OracleFn] = None,
     propose_fn: Optional[ProposeFn] = None,
     max_rounds: int = 5,
 ) -> OptimizeResult:
@@ -271,8 +301,8 @@ def run_optimize(
     baseline = seed_instructions or BASELINE_INSTRUCTIONS
     base_score, base_refl = score_instructions(
         repo_root, baseline, eval_set,
-        generate_fn=gen, build_fn=build_fn, increment=increment,
-        budget_counter=counter,
+        generate_fn=gen, build_fn=build_fn, oracle_fn=oracle_fn,
+        increment=increment, budget_counter=counter,
     )
     best_instr, best_score = baseline, base_score
     all_refl = list(base_refl)
@@ -283,8 +313,8 @@ def run_optimize(
         candidate = prop(best_instr, all_refl)
         cand_score, cand_refl = score_instructions(
             repo_root, candidate, eval_set,
-            generate_fn=gen, build_fn=build_fn, increment=increment,
-            budget_counter=counter,
+            generate_fn=gen, build_fn=build_fn, oracle_fn=oracle_fn,
+            increment=increment, budget_counter=counter,
         )
         all_refl = cand_refl or all_refl
         if cand_score > best_score:
@@ -317,12 +347,14 @@ def evaluate(
     held_out_frac: float = DEFAULT_HELD_OUT_FRAC,
     generate_fn: Optional[GenerateFn] = None,
     build_fn: Optional[BuildFn] = None,
+    oracle_fn: Optional[OracleFn] = None,
 ) -> float:
     """Score an instruction set on the held-out eval set (the ``eval`` CLI).
 
     ``subsystem`` selects the per-subsystem held-out split; ``None`` uses
     the global eval_size-cut split (019). ``generate_fn`` is Claude-backed
-    and MUST be injected (no API default).
+    and MUST be injected (no API default). ``oracle_fn`` (T031) selects the
+    fidelity score when present; else build-only ``composite_score``.
     """
     repo_root = Path(repo_root)
     _examples, eval_set = _resolve_dataset(
@@ -332,7 +364,8 @@ def evaluate(
     gen = _require_fn(generate_fn, "generate_fn")
     score, _ = score_instructions(
         repo_root, instructions, eval_set,
-        generate_fn=gen, build_fn=build_fn, increment=increment,
+        generate_fn=gen, build_fn=build_fn, oracle_fn=oracle_fn,
+        increment=increment,
     )
     return score
 
@@ -343,6 +376,7 @@ __all__ = [
     "Example",
     "GenerateFn",
     "OptimizeResult",
+    "OracleFn",
     "ProposeFn",
     "evaluate",
     "run_optimize",
