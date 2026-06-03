@@ -12,7 +12,7 @@ callers:
 - lib/compiler/project_linker.dart
 - lib/engine/glp_engine.dart
 - lib/runtime/module_hierarchy.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:12.793Z'
 sha256: c716e6969f9947cf137f59e5a597ce359d062829a4a3c6f810b76d263c83a64c
 topo_level: 2
 cycle_group_id: 8

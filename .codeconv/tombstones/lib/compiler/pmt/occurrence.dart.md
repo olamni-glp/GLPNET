@@ -36,7 +36,7 @@ dependencies:
 - lib/compiler/pmt/mode_table.dart
 callers:
 - lib/compiler/pmt/checker.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.449Z'
 sha256: cb56e5b79b12f401309ef978dd33b1fdb7ccafd1cd7a202e52f2f797905df6d1
 topo_level: 3
 cycle_group_id: 47

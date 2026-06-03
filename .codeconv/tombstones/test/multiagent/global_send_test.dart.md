@@ -28,7 +28,7 @@ dependencies:
 - lib/multiagent/global_writers_table.dart
 - lib/multiagent/mad_helpers.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:16.110Z'
 sha256: c998b41351407035919314db767e3b490b4b49953c66d2e0b0c06b56a306a1f6
 topo_level: 3
 cycle_group_id: 103

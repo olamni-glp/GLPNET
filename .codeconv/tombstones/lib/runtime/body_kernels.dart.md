@@ -56,7 +56,7 @@ callers:
 - test/heap/arithmetic_pointer_test.dart
 - test_archive/activate_kernel_test.dart
 - test_archive/serve_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:14.858Z'
 sha256: 9d360613abdb60c46d883ad215633020e879fefa7f3d422f319dac02fb7063ba
 topo_level: 4
 cycle_group_id: 37

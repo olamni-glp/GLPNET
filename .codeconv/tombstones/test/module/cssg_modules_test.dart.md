@@ -13,7 +13,7 @@ dependencies:
 - lib/compiler/partial_evaluator.dart
 - lib/runtime/module_hierarchy.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.869Z'
 sha256: fece36ea3f927a1077c5c1a176b2281d71cc9049947063c871d6dbc53d423a05
 topo_level: 6
 cycle_group_id: 94

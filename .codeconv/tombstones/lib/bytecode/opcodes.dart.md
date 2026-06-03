@@ -12,7 +12,7 @@ callers:
 - test/bytecode/fairness_scheduler_loop_test.dart
 - test/bytecode/utility_instructions_test.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.031Z'
 sha256: 41a0a75b2c8fbb8b1009c868fc85301b0d4d3233350840485ca5c35d2cc9dabe
 topo_level: 0
 cycle_group_id: 20
@@ -22,7 +22,7 @@ plan_started_at: '2026-05-21T14:23:21Z'
 plan_completed_at: '2026-05-21T14:34:27Z'
 plan_path: .codeconv/conversion-plans/lib/bytecode/opcodes.dart.md
 open_escalation_count: 0
-codegen_completed_at: '2026-05-28T08:54:05Z'
+codegen_completed_at: '2026-06-03T01:24:40Z'
 target_cs_path: out/csharp/lib/bytecode/opcodes.cs
 build_status: pass
 codegen_open_escalation_count: 0

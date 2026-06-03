@@ -11,7 +11,7 @@ dependencies: []
 callers:
 - lib/bytecode/runner.dart
 - test/bytecode/utility_instructions_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:14.880Z'
 sha256: a796313daaa1098e3edc1234f0216057a77df01aa65130265d29856d6eaed866
 topo_level: 0
 cycle_group_id: 36

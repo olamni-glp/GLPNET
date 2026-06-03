@@ -12,7 +12,7 @@ callers:
 - test/analysis/type_checker/moded_head_test.dart
 - test/analysis/type_checker/well_typed_clause_test.dart
 - test/analysis/type_checker/well_typed_term_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:12.770Z'
 sha256: e1f9f5809ff29101ca4c63e08173c7db6d02257c350d132b6e55e90c4f790fe2
 topo_level: 1
 cycle_group_id: 6

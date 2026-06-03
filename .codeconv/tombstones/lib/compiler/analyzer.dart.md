@@ -13,7 +13,7 @@ callers:
 - lib/compiler/codegen.dart
 - lib/compiler/compiler.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-05-20T18:17:32.675Z'
+mtime: '2026-05-21T12:38:13.108Z'
 sha256: 531b9f57edc68a07f95f78381c3c38b6953c8506cc799a21dfec8bc73dca32d7
 topo_level: 5
 cycle_group_id: 40

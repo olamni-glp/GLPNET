@@ -16,7 +16,7 @@ dependencies:
 callers:
 - lib/compiler/compiler.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.152Z'
 sha256: fdeeb685673893129e721409ea2b4ceb0e6f356d406efd526ae32d4cae64d3fd
 topo_level: 6
 cycle_group_id: 42

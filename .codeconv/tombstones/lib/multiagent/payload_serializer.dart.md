@@ -54,7 +54,7 @@ callers:
 - lib/multiagent/archive-irma-2026-01-30/tests/two_hop_flow_test.dart
 - lib/multiagent/isolate_manager.dart
 - lib/multiagent/mad_context.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.745Z'
 sha256: 6291cb396efe81564618f2dd1e207ebda0a7fd3e01e918356a0e2f62282655e0
 topo_level: 2
 cycle_group_id: 29

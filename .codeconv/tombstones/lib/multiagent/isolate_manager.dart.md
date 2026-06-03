@@ -49,7 +49,7 @@ callers:
 - test/multiagent/isolate_manager_test.dart
 - test/multiagent/multiagent_glp_test.dart
 - test/multiagent/multiagent_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.672Z'
 sha256: 4343fad2624fea2621125d360568be4b203ab62d9bc1771bf649cb68ae575c9c
 topo_level: 9
 cycle_group_id: 63

@@ -45,7 +45,7 @@ callers:
 - test/module/module_syntax_v2_test.dart
 - test_archive/cssn_modules_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.130Z'
 sha256: a8a6493e11d47ec727c829d4d595f3b77f27ae5d7f95122c26a0090b3dec81d6
 topo_level: 1
 cycle_group_id: 2

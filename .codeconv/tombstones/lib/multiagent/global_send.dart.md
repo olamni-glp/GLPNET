@@ -33,7 +33,7 @@ callers:
 - test/multiagent/mad_cold_call_isolate_test.dart
 - test/multiagent/mad_scenarios_test.dart
 - test/multiagent/mad_transactions_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.630Z'
 sha256: 06d2ab558a9c447dacd6c6766f747bbcc2bb613d4de39bbadcab50089cb08bd1
 topo_level: 2
 cycle_group_id: 27
