@@ -34,10 +34,33 @@ swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) un
   ⚠️ **Carry-forward**: `scheduler.cs`'s convspec/plan was authored when runner.cs was a stub,
   so a naive re-codegen of scheduler.cs would REINTRODUCE this. Update its convspec/plan/prompt
   before any regen (follow-on, not yet done).
-- **REMAINING in T017**: part (ii) — the canonical EV/OUT trace emission (the 5 R1 event kinds)
-  in the converted runner, candidate-side, per `contracts/trace_normalization.md`. Design input
-  = the Dart golden's live `:trace`+`:debug` text on a real reduction (now possible — reductions
-  succeed). Then T022 e2e.
+- **T017(ii) DONE — commit `8e8dccf4`.** New hand-written `out/csharp/lib/runtime/equiv_trace.cs`
+  (`GlpRuntime.EquivTrace`, registered via an explicit `<Compile>` in the csproj — NOT
+  Converted.props) emits `normalize.py`'s canonical EV/OUT wire format at the runner seams:
+  BYTECODE_OP @ the dispatch loop (the spine), WRITER_BIND + UNIFY-success + REACTIVATE @
+  `ExecCommit` (post-`ApplySigmaHatFCP`), SUSPEND + UNIFY-suspend @ `ExecNoMoreClauses`/
+  `ExecSuspendEnd`, UNIFY-fail on definitive fail; OUT @ `glp_engine` RunGoalAsync + conjunction
+  (with `_StatusWord`: succeed|suspend|fail — note OUT uses "succeed" but UNIFY uses "success").
+  **Flag-gated by `GLP_EQUIV_TRACE`=<file>**; off → one cached-bool no-op, behaviour + perf
+  unchanged (verified: append OFF = `[a,b,c,d]` succeeds; ON = correct output + a clean canonical
+  trace file). Dart golden untouched (R10/HARD GATE 6).
+- **🔴 FINDINGS from the first real capture (decisions for T022 / before strict-tier comparison):**
+  1. **Dart `:debug` is a PARTIAL op-spine, C# emits the FULL spine.** On `append([a],[c],Zs)` the
+     C# emits every dispatched op (incl. `Label`/`HeadNil`/`Otherwise`/an extra `Commit`); Dart's
+     `:debug` is silent on `Label`/`HeadNil`/`Otherwise`. So a 1:1 `parse_dart`-from-`:debug` spine
+     comparison is NOT directly achievable — this is the contract's anticipated R10 spec-gap. NEEDS
+     A DECISION: define the spine as the Dart-observable op subset (filter both sides) vs compare at
+     reduction granularity vs other. Do NOT modify the Dart golden.
+  2. **Ground-guard soft-fail path differs (outcome-equivalent, spine-divergent).** Dart: `Ground(pc6)
+     → ClauseTry(pc16)` (guard soft-fails at the guard). C#: `Ground(pc6) → Commit(pc7) → ClauseTry(pc16)`
+     (Ground advances; the unresolved Si is caught at Commit). Same outcome (both suspend serve on
+     reader 1; final answer correct), but the strict spine differs by the extra `Commit`. A §4.A
+     risk-spot (`ExecGround`); candidate runner fidelity fix vs benign-representation — decide at T022.
+  3. **OUT binding shape is shallow** (`Zs=./2(var,var)` not the full `./2(const(a),...)`): `ShapeOf`
+     does not deref VarRefs through the heap. Fine for status; for outcome-mode binding fidelity, OUT
+     should pass a recursively-deref'd term. Easy refinement, deferred.
+- **REMAINING**: T022 e2e (needs the spine-comparability decision #1) → T031 fidelity-metric swap +
+  GEPA re-run → T026–T029 equiv CLI/skill/gate.
 
 ## 1. Verified-green anchor (re-verify BEFORE touching anything)
 
