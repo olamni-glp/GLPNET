@@ -89,6 +89,13 @@
 
 ## [Unreleased]
 
+## [v2026.06.03.3] - 2026-06-03
+
+### Changed
+- Merge pull request #17 from olamni-glp/main
+- Merge pull request #15 from olamni-glp/021-buildkit-gitflow-adoption
+- adapt glpnet branching/versioning to canonical buildkit GitFlow (feature->develop->release->main, CalVer vYYYY.MM.DD.N via buildkit release; CLAUDE.md branch rules + end-of-task ship)
+
 ## [v2026.06.03.2] - 2026-06-03
 
 # Changelog

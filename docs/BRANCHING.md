@@ -1,56 +1,53 @@
-# Branching workflow — GLPNET
+# Branching workflow — GLPNET (buildkit GitFlow)
 
-This is the same trunk-based-with-feature-branches workflow used in the
-sibling **GLP** repository. It is intentionally simpler than full GitFlow
-(no `develop`, `release/`, or `hotfix/` branches): one trunk, one branch
-per piece of work, and merge-to-trunk via PR.
+GLPNET adopts the **canonical buildkit GitFlow** (spec-016). This replaces the
+former trunk-only model — glpnet's branching + release now match buildkit's
+toolchain so `buildkit ship` / `buildkit release` drive the whole flow.
 
 ## Branches
 
 | Branch class | Naming | Purpose |
 |---|---|---|
-| Trunk | `main` | The single source of truth. Always green. Tagged for releases (see [VERSIONING.md](VERSIONING.md)). |
-| Feature | `NNN-short-name` | One branch per feature, where `NNN` is a 3-digit zero-padded sequence (`001-d2net-scaffold`, `002-...`). Created by `/speckit-specify`. |
-| Fix / Claude session | `claude/<short-description>-<id>` | One branch per Claude Code session that does fixes or non-feature work. Convention from GLP. |
+| Release trunk | `main` | Production. Every commit is a released, tagged state (see [VERSIONING.md](VERSIONING.md)). Written only by the release PR (`buildkit release`). |
+| Integration | `develop` | Where features land. Always green; the base for the next release. Features PR into `develop`. |
+| Feature | `NNN-short-name` | One branch per feature, `NNN` a 3-digit sequence (`020-trace-equivalence-fidelity`). Created off `develop`. |
+| Release | `release/v<calver>` | Cut from `develop` by `buildkit release`; bumps + stamps CHANGELOG, is tagged, merges to `main`, then back-merges to `develop`. Short-lived. |
+| Fix / session | `claude/<desc>-<id>` | A non-feature Claude-session branch off `develop`, merged like a feature. |
 
 ## Lifecycle of a feature
 
-1. **Create the branch** — `/speckit-specify` (or `git checkout -b NNN-short-name`)
-   off the latest `main`.
-2. **Iterate** with `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`,
-   `/speckit-analyze`, `/speckit-implement`. Commit freely on the feature branch.
-3. **Push the feature branch** to `origin`.
-4. **Open a PR** from the feature branch into `main`.
-5. **Merge** (typically squash-merge to keep `main` history clean — but a
-   merge commit is also acceptable when the feature has multiple meaningful
-   commits worth preserving).
-6. **Tag `main`** with the next CalVer tag — see [VERSIONING.md](VERSIONING.md).
-7. **Delete the merged feature branch** (locally and on remote) once the tag
-   is pushed.
+1. **Branch off `develop`** — `git checkout -b NNN-short-name develop` (or
+   `/buildkit-specify`). Commit freely.
+2. **Ship** — `buildkit ship` is the end-to-end conductor:
+   `commit → preflight → push → PR(feature→develop) → release → tag → back-merge`.
+   - Lower-level primitives compose it: `buildkit commit`, `buildkit push`.
+   - `buildkit release` is the standalone release half: cut `release/*` from
+     `develop`, bump, stamp CHANGELOG, **tag**, merge to `main`, back-merge to `develop`.
+3. The feature PR merges into `develop`; the release PR merges `release/*` into
+   `main` and tags it; a back-merge PR syncs `main → develop`.
+
+```
+feature (NNN-…) ──PR──▶ develop ──release/v<calver>──▶ main  (tag v<calver>)
+                            ▲                            │
+                            └──────── back-merge ────────┘
+```
+
+## buildkit preflight on glpnet
+
+`buildkit ship`'s preflight runs `pytest tests/`, which does not match glpnet's
+layout (tests live in `codeconv/tests/` + the bash REPL suite
+`test/run_all_tests.sh`). Run the suites yourself, then pass
+`buildkit ship --skip-preflight`. (Aligning buildkit's preflight to glpnet's
+test layout is a follow-up.)
 
 ## Multiple Claude sessions
 
-When several Claude Code sessions are working in the repo simultaneously:
-
-- Each session works on its own branch (feature branch or `claude/...` fix
-  branch).
-- Each session can pull from any branch.
-- Each session can push only to its own branch (the remote enforces this).
-- Only the user merges into `main`.
-
-This mirrors the multi-session protocol described in
-[CLAUDE.md](../CLAUDE.md) and is identical to how the GLP repo operates.
+- Each session works on its own feature / `claude/...` branch off `develop`.
+- A session pushes only to its own branch; the release flow (`main`, tags,
+  `release/*`) is driven by `buildkit release` / `buildkit ship`.
 
 ## Hotfixes
 
-There is no dedicated `hotfix/` branch. A hotfix is just a small `claude/...`
-or `NNN-fix-...` branch off `main`, merged the same way as a feature, and
-tagged with a same-day CalVer suffix (e.g. `v2026.04.30-2` if `v2026.04.30`
-was already cut earlier).
-
-## Why no `develop` branch
-
-GLP/GLPNET releases don't pile up changes in an integration branch — every
-merge to `main` is intended to be releasable on its own. A separate
-`develop` branch would add friction (extra PRs, extra rebase work) without
-catching anything that the green-`main` discipline doesn't already catch.
+A hotfix is a small `NNN-fix-…` / `claude/…` branch off `develop`, shipped the
+same way; same-day releases get the next `.N` CalVer suffix
+(`v2026.06.03.2` after `v2026.06.03.1`) — see [VERSIONING.md](VERSIONING.md).
