@@ -26,4 +26,4 @@ EV 24 BYTECODE_OP opcode=GetVariable pc=3
 EV 25 BYTECODE_OP opcode=Commit pc=5
 EV 26 UNIFY outcome=success vars=11
 EV 27 WRITER_BIND writer=11 shape=./2(const(c),const(nil))
-OUT succeed Zs=./2(var,var)
+OUT succeed Zs=./2(const(a),./2(const(c),const(nil)))

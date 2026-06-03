@@ -554,7 +554,7 @@ public sealed class GlpEngine
         }
 
         EquivTrace.Out(_StatusWord(result.Status),
-            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(b.Value))));
+            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(_ResolveDeepForTrace(b.Value)))));
 
         return new ExecutionResult(status: result.Status, bindings: bindings);
     }
@@ -567,6 +567,29 @@ public sealed class GlpEngine
         ExecutionStatus.Suspended => "suspend",
         _ => "fail",
     };
+
+    // feature-020 (finding #3): recursively dereference a query binding through
+    // the heap so EquivTrace.ShapeOf renders the FULL ground shape for the OUT
+    // record (e.g. ./2(const(a),./2(const(c),const(nil)))) — a single top-level
+    // Heap.Dereference leaves a struct's args as VarRefs, which ShapeOf would
+    // render as the shallow ./2(var,var), diverging from the Dart golden's fully
+    // resolved `Zs = [a, c]`. Candidate-side trace instrumentation ONLY: it does
+    // NOT change ExecutionResult.Bindings or any runner semantics, and is reached
+    // only when GLP_EQUIV_TRACE is set (the binding Select is enumerated lazily
+    // inside EquivTrace.Out, past its Ready() gate).
+    private RtTerm? _ResolveDeepForTrace(RtTerm? term, int depth = 0)
+    {
+        if (term == null || depth > 32) return term;
+        var d = _runtime.Heap.Dereference(term);
+        if (d is RtStructTerm s)
+        {
+            var args = new List<RtTerm>(s.Args.Count);
+            foreach (var a in s.Args)
+                args.Add(_ResolveDeepForTrace(a, depth + 1) ?? a);
+            return new RtStructTerm(s.Functor, args);
+        }
+        return d;
+    }
 
     private async Task<ExecutionResult> _RunConjunctionAsync(string trimmed)
     {
@@ -669,7 +692,7 @@ public sealed class GlpEngine
             : (anySuspended ? ExecutionStatus.Suspended : ExecutionStatus.Succeeded);
 
         EquivTrace.Out(_StatusWord(status),
-            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(b.Value))));
+            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(_ResolveDeepForTrace(b.Value)))));
 
         return new ExecutionResult(status: status, bindings: bindings);
     }
