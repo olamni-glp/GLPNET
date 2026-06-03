@@ -53,12 +53,15 @@ swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) un
      GroundEqual` — GetValue EXCLUDED: its Dart print fires only in the VarRef-alias sub-case,
      runner.dart:2037). Verified: the append recursive + base clause spines now match the golden
      EXACTLY. Dart prints `COMMIT`, C# emits `Commit` → parse_dart lowercases/maps at T022.
-  2. **[OPEN — the one isolated real divergence]** Ground-guard soft-fail path differs
-     (outcome-equivalent, spine-divergent). Dart: `Ground(pc6) → ClauseTry(pc16)` (guard soft-fails at
-     the guard). C#: `Ground(pc6) → Commit(pc7) → ClauseTry(pc16)` (Ground advances; the unresolved Si
-     is caught at Commit). Same outcome (both suspend serve on reader 1; final answer correct), but the
-     spine differs by one extra `Commit`. A §4.A risk-spot (`ExecGround`); candidate `runner.cs`
-     fidelity fix. After option-a this is the SOLE remaining append spine divergence.
+  2. **[RESOLVED — commit `bfa32841`; NOT a runner bug]** The "Ground→Commit" spine difference was
+     NOT a behavioural divergence: BOTH REPLs execute `Commit(pc7)` and take the `resolvedSi` early
+     soft-fail there; the Dart simply does not PRINT `COMMIT` on that path (its COMMIT print,
+     runner.dart:2400, is past the resolvedSi check). So `Commit` is conditionally observable (like
+     GetValue). Fixed by removing `Commit` from the dispatch-loop allow-list and emitting it via
+     `EquivTrace.OpAt("Commit", pc)` from inside `ExecCommit` ONLY past the resolvedSi check (the
+     commit-proceeds point). Verified: proceeding commits (append pc16/pc5) emit; the serve early-exit
+     commit (pc7) is suppressed → the full append spine now matches the Dart-observable spine EXACTLY
+     across all three goals. `ExecGround` is correct; no runner change was needed.
   3. **OUT binding shape is shallow** (`Zs=./2(var,var)` not the full `./2(const(a),...)`): `ShapeOf`
      does not deref VarRefs through the heap. Fine for status; for outcome-mode binding fidelity, OUT
      should pass a recursively-deref'd term. Easy refinement, deferred.
