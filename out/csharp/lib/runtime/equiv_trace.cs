@@ -70,15 +70,21 @@ public static class EquivTrace
     // divergence WITHIN this set (e.g. a guard taking a different soft-fail path)
     // still surfaces correctly.
     //
-    // GetValue is DELIBERATELY EXCLUDED: its Dart print fires only in one sub-case
-    // (runner.dart:2037, VarRef→reader alias) — not for ConstTerm/StructTerm args —
-    // so it is not reliably observable per-dispatch and would diverge whenever Dart
-    // takes a non-printing GetValue branch. Sub-case-accurate GetValue emission is a
-    // T022 refinement; excluding it minimizes false divergences for now.
+    // CONDITIONALLY-PRINTED ops are DELIBERATELY EXCLUDED from this dispatch-loop
+    // allow-list and emitted instead via OpAt() from inside their handler, at the
+    // exact point the Dart golden prints them, so the spine matches Dart's
+    // conditional observability:
+    //   * Commit  — Dart prints `[DEBUG] PC X: COMMIT` only when the commit actually
+    //     proceeds (runner.dart:2400), NOT on the resolvedSi early-soft-fail path
+    //     (both REPLs DO execute the Commit op there, but Dart stays silent). So
+    //     ExecCommit calls OpAt("Commit", …) past the resolvedSi check.
+    //   * GetValue — Dart prints only in one sub-case (runner.dart:2037, VarRef→reader
+    //     alias), not for ConstTerm/StructTerm args. Excluded entirely for now;
+    //     sub-case-accurate emission is a T022 refinement.
     private static readonly HashSet<string> _spineOps = new(StringComparer.Ordinal)
     {
         "ClauseTry", "Push", "Pop", "UnifyStructure", "HeadStructure",
-        "UnifyVariable", "GetVariable", "Commit",
+        "UnifyVariable", "GetVariable",
         "NoMoreClauses", "Guard", "Ground", "NoReaders", "GroundEqual",
     };
 
@@ -88,6 +94,16 @@ public static class EquivTrace
     {
         if (!Ready()) return;
         if (!_spineOps.Contains(opcode)) return;  // align to Dart :debug observability
+        Write($"EV {Next()} BYTECODE_OP opcode={San(opcode)} pc={pc}");
+    }
+
+    /// <summary>Emit a BYTECODE_OP for a conditionally-observable op, bypassing the
+    /// dispatch-loop allow-list. Called from inside the op handler at the exact point
+    /// the Dart golden prints its `[DEBUG] PC X: <Op>` line (e.g. ExecCommit past the
+    /// resolvedSi check), so the spine matches Dart's conditional observability.</summary>
+    public static void OpAt(string opcode, int pc)
+    {
+        if (!Ready()) return;
         Write($"EV {Next()} BYTECODE_OP opcode={San(opcode)} pc={pc}");
     }
 

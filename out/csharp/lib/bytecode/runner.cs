@@ -1022,10 +1022,14 @@ public sealed class BytecodeRunner
         // Apply σ̂w: bind writers to tentative values, then wake suspended goals.
         var acts = CommitOps.ApplySigmaHatFCP(cx.Rt.Heap, convertedSigmaHat);
 
-        // feature-020 equiv-trace: a reached Commit = successful two-phase HEAD
-        // unification; each σ̂w entry is a WRITER_BIND. No-op unless enabled.
+        // feature-020 equiv-trace: a PROCEEDING Commit (past the resolvedSi early
+        // soft-fail) = successful two-phase HEAD unification; each σ̂w entry is a
+        // WRITER_BIND. The Commit op itself is emitted HERE (not from the dispatch
+        // loop) to match Dart's conditional COMMIT print (runner.dart:2400) — Dart
+        // stays silent on the resolvedSi early-exit path. No-op unless enabled.
         if (EquivTrace.Enabled)
         {
+            EquivTrace.OpAt("Commit", pc);
             EquivTrace.Unify("success", convertedSigmaHat.Keys);
             foreach (var b in convertedSigmaHat)
                 EquivTrace.WriterBind(b.Key, b.Value);
