@@ -6,10 +6,43 @@ library;
 
 import 'dart:io';
 import 'package:glp_runtime/engine/glp_engine.dart';
-import 'package:glp_runtime/runtime/scheduler.dart';
-import 'package:glp_runtime/runtime/terms.dart' as rt;
 import 'package:glp_runtime/multiagent/boot_loader.dart';
 import 'package:glp_runtime/multiagent/isolate_manager.dart';
+import 'package:glp_runtime/runtime/scheduler.dart';
+import 'package:glp_runtime/runtime/terms.dart' as rt;
+
+/// Resolve the absolute path to programs/self.glp by walking up from
+/// Platform.script until a directory named `glp_runtime` is found, then
+/// taking its parent (which is the GLP repo root) and joining `programs/self.glp`.
+///
+/// This handles all known entry-point shapes:
+///   - JIT:    glp_runtime/bin/glp_repl.dart       (script's grandparent is repo root)
+///   - Kernel: glp_runtime/.dart_tool/repl.dill    (script's grandparent is repo root)
+///   - AOT:    glp_runtime/glp_repl.exe            (script's parent is repo root)
+///   - Any other location under glp_runtime/       (walks up until found)
+///
+/// Throws StateError if `glp_runtime` cannot be located in the script's ancestor
+/// chain — that indicates a serious deployment defect (executable copied outside
+/// the project tree).
+String _resolveRootSelfGlpPath() {
+  final scriptPath = Platform.script.toFilePath();
+  Directory dir = File(scriptPath).parent;
+  // Walk up to a stable terminating condition.
+  while (dir.path != dir.parent.path) {
+    final basename = dir.path.split(Platform.pathSeparator).where((s) => s.isNotEmpty).last;
+    if (basename == 'glp_runtime') {
+      final repoRoot = dir.parent;
+      return File('${repoRoot.path}${Platform.pathSeparator}programs${Platform.pathSeparator}self.glp')
+          .absolute.path;
+    }
+    dir = dir.parent;
+  }
+  throw StateError(
+      'GLP REPL could not locate the enclosing glp_runtime/ directory '
+      'starting from Platform.script = $scriptPath. The REPL must run from '
+      'within a checkout of the GLP repository (the .dart source, the .dill '
+      'snapshot, or the compiled .exe must all reside under glp_runtime/).');
+}
 
 void main() async {
   final gitCommit = await _getGitCommit();
@@ -29,12 +62,15 @@ void main() async {
   print('Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot');
   print('');
 
-  // Resolve programs/self.glp relative to this script's location.
-  // Platform.script points to glp_runtime/bin/glp_repl.dart.
-  // Two levels up (../../) reaches the GLP repo root; then programs/self.glp.
-  final rootSelfGlpPath = Platform.script.resolve('../../programs/self.glp').toFilePath();
+  // Resolve programs/self.glp by anchoring on the enclosing glp_runtime/ directory.
+  // This is entry-point-agnostic: works for the .dart source under bin/, the kernel
+  // snapshot under .dart_tool/, and the AOT-compiled .exe directly under glp_runtime/.
+  // The bug it fixes: a literal `../../programs/self.glp` overshoots by one directory
+  // when invoked through the AOT exe (which lives one level shallower than the source).
+  // See test/aot_self_glp_path_test.dart for the regression coverage.
+  final rootSelfGlpPath = _resolveRootSelfGlpPath();
   final engine = GlpEngine(rootSelfGlpPath: rootSelfGlpPath);
-  print('Loaded root self.glp');
+  print('Loaded root self.glp from: $rootSelfGlpPath');
   print('');
 
   while (true) {
@@ -121,6 +157,20 @@ void main() async {
       continue;
     }
 
+    if (trimmed.startsWith(':boot')) {
+      final parts = trimmed.split(RegExp(r'\s+'));
+      if (parts.length < 2) {
+        print('Usage: :boot <bootfile.glp> [timeoutSec]');
+        continue;
+      }
+      final bootPath = parts[1];
+      final timeoutSec = parts.length > 2
+          ? (int.tryParse(parts[2]) ?? 10)
+          : 10;
+      await _runBoot(bootPath, rootSelfGlpPath, timeoutSec);
+      continue;
+    }
+
     if (trimmed.startsWith(':bytecode') || trimmed.startsWith(':bc')) {
       if (engine.loadedPrograms.isEmpty) {
         print('No programs loaded');
@@ -134,19 +184,6 @@ void main() async {
           print('  ${i.toString().padLeft(4)}: ${prog.ops[i]}');
         }
       }
-      continue;
-    }
-
-    // :boot <bootfile.glp> [timeoutSec] — run multi-isolate play
-    if (trimmed.startsWith(':boot')) {
-      final parts = trimmed.split(RegExp(r'\s+'));
-      if (parts.length < 2) {
-        print('Usage: :boot <bootfile.glp> [timeoutSec]');
-        continue;
-      }
-      final bootPath = parts[1];
-      final timeoutSec = parts.length > 2 ? (int.tryParse(parts[2]) ?? 10) : 10;
-      await _runBoot(bootPath, rootSelfGlpPath, timeoutSec);
       continue;
     }
 
@@ -181,25 +218,37 @@ void main() async {
       String filename;
       if (trimmed.startsWith('load ')) {
         filename = trimmed.substring(5).trim();
-      } else if (!trimmed.contains(' ')) {
-        filename = trimmed;
       } else {
-        filename = '';
+        // Treat the whole input as the filename. This supports paths with
+        // spaces (e.g. "programs/book 2/...") and Windows drive letters.
+        filename = trimmed;
+      }
+      // Strip surrounding quotes if user wrapped the path
+      if ((filename.startsWith('"') && filename.endsWith('"')) ||
+          (filename.startsWith("'") && filename.endsWith("'"))) {
+        filename = filename.substring(1, filename.length - 1);
       }
       if (filename.isNotEmpty) {
         try {
           // Resolve path
           final File sourceFile;
-          if (filename.startsWith('/') ||
+          // Treat as absolute/relative path if it has a drive letter, leading
+          // slash/dot, or contains a path separator. Otherwise look under glp/.
+          final hasPathish = filename.startsWith('/') ||
               filename.startsWith('../') ||
-              filename.startsWith('./')) {
+              filename.startsWith('./') ||
+              filename.startsWith('\\') ||
+              filename.contains('/') ||
+              filename.contains('\\') ||
+              (filename.length >= 2 && filename[1] == ':');
+          if (hasPathish) {
             sourceFile = File(filename);
           } else {
             sourceFile = File('glp/$filename');
           }
 
           if (!sourceFile.existsSync()) {
-            print('Error: File not found: ${sourceFile.path}');
+            print('Error loading ${sourceFile.path}: File not found');
             continue;
           }
 
@@ -430,7 +479,8 @@ Future<void> _runBoot(
   config.projectDir = projectDir;
   config.rootSelfGlpPath = rootSelfGlpPath;
 
-  print('Booting ${config.directives.length} isolates from ${bootFile.path}');
+  print('Booting ${config.directives.length} isolates from '
+      '${bootFile.path}');
   print('  projectDir: $projectDir');
   print('  agents: ${config.directives.map((d) => d.agentId).join(', ')}');
 

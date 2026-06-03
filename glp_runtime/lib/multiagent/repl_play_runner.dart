@@ -53,30 +53,39 @@ class ReplPlayRunner {
   /// Which GLP files to load (relative to glp_runtime/).
   final List<String> glpFiles;
 
-  /// CSSG project (child-safe social graph, plays 1–7).
-  /// Uses the modules_v2 project which loads cleanly (typed_book/cssg has
-  /// an unresolved IntroChannel/FriendChannel typing issue).
+  /// CSSG GLP files (child-safe social graph, plays 1–7).
   static const cssgFiles = [
-    '../programs/cssg_modules_v2',
+    '../programs/typed_book/cssg/typed_social_agent.glp',
+    '../programs/typed_book/cssg/typed_ui_mediator.glp',
+    '../programs/typed_book/cssg/typed_ui_actors.glp',
+    '../programs/typed_book/cssg/play_ui_sim_boot.glp',
   ];
 
-  /// Bonds project (grassroots bonds, plays 1–11).
-  /// Uses bonds_v2 which loads cleanly (typed_book/bonds is missing
-  /// procedure declarations).
+  /// Bonds GLP files (grassroots bonds, plays 1–11).
   static const bondsFiles = [
-    '../programs/bonds_v2',
+    '../programs/typed_book/bonds/agent.glp',
+    '../programs/typed_book/bonds/mediator.glp',
+    '../programs/typed_book/bonds/actors.glp',
+    '../programs/typed_book/bonds/boot.glp',
   ];
 
-  /// Bonds GLP files for play 12 — same project, fplay12 is part of the boot.
+  /// Bonds GLP files for play 12 (adds play12 actor files).
   static const bondsPlay12Files = [
     ...bondsFiles,
+    '../programs/typed_book/bonds/play12/alice.glp',
+    '../programs/typed_book/bonds/play12/bob.glp',
+    '../programs/typed_book/bonds/play12/charlie.glp',
+    '../programs/typed_book/bonds/play12/diana.glp',
+    '../programs/typed_book/bonds/play12/eve.glp',
+    '../programs/typed_book/bonds/play12/frank.glp',
   ];
 
-  /// CSSN project (child-safe social networking, plays 1–10).
-  /// Uses cssn_modules_v2 which loads cleanly (typed_book/cssn has
-  /// undefined Channel and X type references).
+  /// CSSN GLP files (child-safe social networking, plays 1–10).
   static const cssnFiles = [
-    '../programs/cssn_modules_v2',
+    '../programs/typed_book/cssn/typed_social_agent.glp',
+    '../programs/typed_book/cssn/typed_ui_mediator.glp',
+    '../programs/typed_book/cssn/typed_ui_actors.glp',
+    '../programs/typed_book/cssn/play_ui_sim_boot.glp',
   ];
 
   /// CSSN v2 modules project (village scenario, fplay13).
@@ -97,41 +106,27 @@ class ReplPlayRunner {
   /// Run a simulated play (1, 2, or 3).
   Future<void> run(int playNumber) async {
     final runtimeDir = '$repoRoot/glp_runtime';
+    final dartExe = _findDart();
 
     onLog?.call('REPL: repoRoot=$repoRoot');
     onLog?.call('REPL: runtimeDir=$runtimeDir');
+    onLog?.call('REPL: dart=$dartExe');
 
+    // Verify paths before spawning
     if (!Directory(runtimeDir).existsSync()) {
       onError?.call('Directory not found: $runtimeDir');
       return;
     }
-
-    // Prefer AOT-compiled glp_repl.exe (no Dart SDK dependency, faster startup).
-    final compiledRepl = Platform.isWindows
-        ? '$runtimeDir/bin/glp_repl.exe'
-        : '$runtimeDir/bin/glp_repl';
     final replScript = '$runtimeDir/bin/glp_repl.dart';
-
-    String executable;
-    List<String> arguments;
-    if (File(compiledRepl).existsSync()) {
-      executable = compiledRepl;
-      arguments = const [];
-      onLog?.call('REPL: exe=$compiledRepl (AOT)');
-    } else if (File(replScript).existsSync()) {
-      executable = _findDart();
-      arguments = ['run', 'bin/glp_repl.dart'];
-      onLog?.call('REPL: dart=$executable (JIT via "dart run")');
-    } else {
-      onError?.call(
-          'No REPL found: neither $compiledRepl nor $replScript exists');
+    if (!File(replScript).existsSync()) {
+      onError?.call('REPL script not found: $replScript');
       return;
     }
 
     try {
       final process = await Process.start(
-        executable,
-        arguments,
+        dartExe,
+        ['run', 'bin/glp_repl.dart'],
         workingDirectory: runtimeDir,
         runInShell: Platform.isWindows,
       );
@@ -166,14 +161,13 @@ class ReplPlayRunner {
       _process = null;
       onLog?.call('REPL: exited with code $exitCode');
       onDone?.call(exitCode);
-    } on ProcessException catch (e) {
-      _process = null;
-      onError?.call(
-          'REPL: ProcessException starting [$executable ${arguments.join(' ')}] in $runtimeDir: ${e.message} (errorCode=${e.errorCode})');
     } catch (e) {
       _process = null;
+      final hint = e is ProcessException
+          ? ' [executable=${e.executable}, args=${e.arguments}, errorCode=${e.errorCode}]'
+          : '';
       onError?.call(
-          'REPL: failed to start [$executable ${arguments.join(' ')}] in $runtimeDir: $e');
+          'REPL: failed to start: dartExe=$dartExe runtimeDir=$runtimeDir error=$e$hint');
     }
   }
 
@@ -199,46 +193,38 @@ class ReplPlayRunner {
     onOutput?.call(PlayOutput(agentId, kind, content));
   }
 
-  /// Find the dart executable. Prefer the one next to the Flutter SDK,
+  /// Find the dart executable. Prefer the one next to a known Flutter SDK,
   /// fall back to PATH.
   String _findDart() {
-    if (Platform.isWindows) {
-      // Resolve dart.exe via PATH using `where`.
-      try {
-        final result = Process.runSync('where', ['dart.exe']);
-        if (result.exitCode == 0) {
-          final lines = (result.stdout as String)
-              .split(RegExp(r'\r?\n'))
-              .where((l) => l.trim().isNotEmpty)
-              .toList();
-          if (lines.isNotEmpty) return lines.first.trim();
-        }
-      } catch (_) {/* fall through */}
-      // Common Flutter SDK locations on Windows
-      final userProfile = Platform.environment['USERPROFILE'] ?? '';
-      final winCandidates = [
-        if (userProfile.isNotEmpty) '$userProfile\\flutter\\bin\\dart.exe',
-        if (userProfile.isNotEmpty)
-          '$userProfile\\development\\flutter\\bin\\dart.exe',
-        'C:\\flutter\\bin\\dart.exe',
-        'C:\\src\\flutter\\bin\\dart.exe',
-      ];
-      for (final path in winCandidates) {
-        if (File(path).existsSync()) return path;
-      }
-      return 'dart.exe';
-    }
-    // Check common macOS Flutter/Dart locations
-    final candidates = [
-      '/usr/local/bin/dart',
-      '${Platform.environment['HOME']}/flutter/bin/dart',
-      '${Platform.environment['HOME']}/development/flutter/bin/dart',
-      '${Platform.environment['HOME']}/.pub-cache/bin/dart',
+    final isWindows = Platform.isWindows;
+    final exe = isWindows ? 'dart.exe' : 'dart';
+    final home = Platform.environment['HOME'] ?? '';
+    final userProfile = Platform.environment['USERPROFILE'] ?? '';
+    final localAppData = Platform.environment['LOCALAPPDATA'] ?? '';
+    final candidates = <String>[
+      // macOS / Linux
+      '/usr/local/bin/$exe',
+      '$home/flutter/bin/cache/dart-sdk/bin/$exe',
+      '$home/development/flutter/bin/cache/dart-sdk/bin/$exe',
+      '$home/.pub-cache/bin/$exe',
+      // Windows — Flutter SDK dart.exe (preferred — direct, no shim)
+      'C:/src/flutter/bin/cache/dart-sdk/bin/$exe',
+      'C:/flutter/bin/cache/dart-sdk/bin/$exe',
+      'C:/tools/flutter/bin/cache/dart-sdk/bin/$exe',
+      '$userProfile/flutter/bin/cache/dart-sdk/bin/$exe',
+      '$userProfile/dev/flutter/bin/cache/dart-sdk/bin/$exe',
+      // Windows — Flutter dart.bat shim (works with runInShell:true)
+      if (isWindows) 'C:/src/flutter/bin/dart.bat',
+      if (isWindows) 'C:/flutter/bin/dart.bat',
+      if (isWindows) '$userProfile/flutter/bin/dart.bat',
+      // Windows — pub cache and WinGet-installed Dart SDK
+      if (isWindows) '$localAppData/Pub/Cache/bin/$exe',
+      '$userProfile/AppData/Local/Microsoft/WinGet/Packages/Google.DartSDK_Microsoft.Winget.Source_8wekyb3d8bbwe/dart-sdk/bin/$exe',
     ];
     for (final path in candidates) {
-      if (File(path).existsSync()) return path;
+      if (path.isNotEmpty && File(path).existsSync()) return path;
     }
     // Fall back to PATH (works from terminal, may not from app bundle)
-    return 'dart';
+    return exe;
   }
 }
