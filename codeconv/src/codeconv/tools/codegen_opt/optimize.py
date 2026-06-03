@@ -1,28 +1,34 @@
 """GEPA optimization driver + budget cap + instruction serialization.
 
 Implements ``specs/019-codeconv-codegen/contracts/codegen_opt_cli.md`` +
-``metric_contract.md`` § GEPA wiring. OFFLINE + non-durable: the ONLY
-place an LM client (litellm/OpenAI) lives.
+``metric_contract.md`` § GEPA wiring. OFFLINE + non-durable.
 
-Design seams (so the mocked-LM test T029 needs NO network):
+**LM steps run IN CLAUDE — never an external API.** Generation and the
+reflective instruction proposal are performed by Claude sub-agents (the
+Agent tool, driven by the ``/codeconv-codegen-opt`` skill loop), the same
+way ``/codeconv-codegen`` already produces every ``.cs``. There is **NO
+``OPENAI_API_KEY``, NO litellm, NO openai** anywhere on this path — that
+mandate (former contract text) is a deleted defect, not a constraint.
+
+Design seams (so a run needs NO network and the mocked-LM test needs no
+live SDK):
 - ``generate_fn(instructions, example) -> csharp_text`` produces a
-  candidate C# unit (default = the dspy program backed by a real LM).
+  candidate C# unit. It MUST be injected with a Claude-backed callable
+  (the skill provides one by spawning a codegen sub-agent per example);
+  there is no built-in default.
 - ``build_fn(project) -> BuildResult`` is the hard build gate (default =
-  ``buildgate.run_build``; ``run_test`` for Inc-2).
+  ``buildgate.run_build``; ``run_test`` for Inc-2) — deterministic, no LM.
 - ``propose_fn(instructions, reflections) -> new_instructions`` is GEPA's
-  reflective instruction mutation (default = ``dspy.GEPA`` driven; the
-  test injects a deterministic proposer).
+  reflective instruction mutation, also Claude-backed and injected.
 
 The **budget cap is HARD (SC-006)**: ``budget`` bounds the number of
 metric-calls (each may run a ``dotnet build``); the driver stops at the
 cap and returns the best-so-far instructions — a capped run still yields
-a usable instruction set. ``OPENAI_API_KEY`` is read ONLY here; absent ⇒
-an actionable error (never a guessed fallback).
+a usable instruction set.
 """
 
 from __future__ import annotations
 
-import os
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -33,7 +39,15 @@ from codeconv.tools.codegen import artefact as _cg_artefact
 from codeconv.tools.codegen.buildgate import BuildResult, run_build, run_test
 from codeconv.tools.codegen.prompt import BASELINE_INSTRUCTIONS
 
-from .dataset import Example, build_examples, dataset_hash, split
+from .dataset import (
+    DEFAULT_HELD_OUT_FRAC,
+    Example,
+    build_examples,
+    build_subsystem_examples,
+    dataset_hash,
+    split,
+    subsystem_split,
+)
 from .metric import composite_score
 
 
@@ -55,10 +69,11 @@ class OptimizeResult:
     model: str
     eval_size: int
     generated_at: str
+    subsystem: Optional[str] = None
     reflections: list[str] = field(default_factory=list)
 
     def provenance(self, optimizer: str = "gepa") -> dict[str, Any]:
-        return {
+        prov = {
             "schema_version": 1,
             "optimizer": optimizer,
             "metric_score": round(self.metric_score, 6),
@@ -70,41 +85,33 @@ class OptimizeResult:
             "budget_used": self.budget_used,
             "eval_size": self.eval_size,
         }
+        if self.subsystem:
+            prov["subsystem"] = self.subsystem
+        return prov
 
 
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def resolve_api_key() -> str:
-    """Read ``OPENAI_API_KEY`` (the ONLY place). Absent ⇒ actionable error."""
-    key = os.environ.get("OPENAI_API_KEY")
-    if not key:
+def _require_fn(fn: Optional[Callable], name: str) -> Callable:
+    """Require a Claude-backed LM callable — there is no API default.
+
+    GEPA's generation and reflective proposal run IN CLAUDE (sub-agents
+    via the Agent tool / the ``/codeconv-codegen-opt`` skill loop), never
+    via an external LM API. The callable MUST be injected by the caller;
+    a bare in-process run with no injected ``fn`` is a usage error (NOT a
+    silent OpenAI fallback).
+    """
+    if fn is None:
         raise RuntimeError(
-            "OPENAI_API_KEY is not set. The codegen optimizer is the only "
-            "component that calls an LM; export OPENAI_API_KEY before "
-            "running `codeconv codegen_opt optimize` (it is never read by "
-            "the production codegen path)."
+            f"{name} was not provided. The codegen optimizer runs its LM "
+            "steps in Claude (sub-agents) — there is NO external-API "
+            "default (no OPENAI_API_KEY / litellm / openai). Drive the "
+            "optimizer through the /codeconv-codegen-opt skill loop, which "
+            f"injects a Claude-backed {name}."
         )
-    return key
-
-
-def _default_generate_fn(model: str) -> GenerateFn:
-    """Build the real-LM generate function (dspy program over litellm)."""
-    from .program import build_program  # lazy: imports dspy
-
-    import dspy  # lazy
-
-    resolve_api_key()
-    lm = dspy.LM(model)
-    dspy.configure(lm=lm)
-
-    def _gen(instructions: str, ex: Example) -> str:
-        prog = build_program(instructions)
-        pred = prog(plan=ex.plan_text, convspec=ex.spec_text)
-        return getattr(pred, "csharp", "") or ""
-
-    return _gen
+    return fn
 
 
 def score_instructions(
@@ -119,20 +126,21 @@ def score_instructions(
 ) -> tuple[float, list[str]]:
     """Mean composite score of ``instructions`` over ``examples``.
 
-    For each example: generate the C#, write it to a throwaway project,
-    run the build gate, and compute the composite score. Returns
-    ``(mean_score, reflections)`` where reflections are the per-example
-    feedback strings GEPA reflects on. Honors the HARD budget cap: once
-    ``budget_counter`` is exhausted, remaining examples are skipped
-    (best-so-far semantics).
+    For each example: generate the C# (via the injected Claude-backed
+    ``generate_fn``), write it to a throwaway project, run the build gate,
+    and compute the composite score. Returns ``(mean_score, reflections)``
+    where reflections are the per-example feedback strings GEPA reflects
+    on. Honors the HARD budget cap: once ``budget_counter`` is exhausted,
+    remaining examples are skipped (best-so-far semantics).
     """
+    gen = _require_fn(generate_fn, "generate_fn")
     builder = build_fn or (run_test if increment >= 2 else run_build)
     scores: list[float] = []
     reflections: list[str] = []
     for ex in examples:
         if budget_counter is not None and not budget_counter.spend():
             break
-        cs_text = generate_fn(instructions, ex)
+        cs_text = gen(instructions, ex)
         val_errors = _cg_artefact.validate_generated(
             cs_text, expected_units=ex.expected_units
         )
@@ -192,14 +200,42 @@ class BudgetCounter:
         return True
 
 
+def _resolve_dataset(
+    repo_root: Path,
+    *,
+    subsystem: Optional[str],
+    eval_size: int,
+    seed: int,
+    held_out_frac: float,
+) -> tuple[list[Example], list[Example]]:
+    """Return ``(all_examples, eval_set)`` for a run.
+
+    Per-subsystem (``subsystem`` given): the subsystem's own examples,
+    split train(~70%)/held-out(~30%) by the deterministic manifest scheme
+    (gepa_optimizer.md § Dataset split). Global (``subsystem is None``):
+    the legacy eval_size-cut split over all examples (019 behaviour, used
+    by the mocked-LM test).
+    """
+    if subsystem:
+        examples = build_subsystem_examples(repo_root, subsystem)
+        _train, eval_set = subsystem_split(examples, held_out_frac=held_out_frac)
+        return examples, eval_set
+    examples = build_examples(repo_root)
+    _train, eval_set = split(examples, eval_size=eval_size, seed=seed)
+    return examples, eval_set
+
+
 def run_optimize(
     repo_root: Path,
     *,
+    subsystem: Optional[str] = None,
+    seed_instructions: Optional[str] = None,
     budget: int = 20,
-    model: str = "openai/gpt-5.1",
+    model: str = "claude-in-session",
     eval_size: int = 10,
     seed: int = 0,
     increment: int = 1,
+    held_out_frac: float = DEFAULT_HELD_OUT_FRAC,
     generate_fn: Optional[GenerateFn] = None,
     build_fn: Optional[BuildFn] = None,
     propose_fn: Optional[ProposeFn] = None,
@@ -207,21 +243,32 @@ def run_optimize(
 ) -> OptimizeResult:
     """Run a budget-capped GEPA optimization, returning the best result.
 
-    The loop: score the baseline, then repeatedly ask ``propose_fn`` for a
+    The loop: score the seed, then repeatedly ask ``propose_fn`` for a
     reflectively-improved instruction set, score it, and keep the best —
     until the HARD budget (metric-calls) is exhausted or ``max_rounds`` is
     reached. A capped run still returns a usable best-so-far (SC-006).
+
+    ``subsystem`` selects the per-subsystem dataset (FR-011) and is recorded
+    in provenance. ``seed_instructions`` is the carry-forward seed — the
+    prior subsystem's frozen prompt or the shared ``_base.md`` (curriculum
+    transfer, decision 6/8); defaults to ``BASELINE_INSTRUCTIONS``.
+
+    ``generate_fn`` and ``propose_fn`` are Claude-backed and MUST be
+    injected (the ``/codeconv-codegen-opt`` skill provides them by
+    spawning sub-agents). There is no external-API default.
     """
     repo_root = Path(repo_root)
-    examples = build_examples(repo_root)
-    _train, eval_set = split(examples, eval_size=eval_size, seed=seed)
+    examples, eval_set = _resolve_dataset(
+        repo_root, subsystem=subsystem, eval_size=eval_size,
+        seed=seed, held_out_frac=held_out_frac,
+    )
     dh = dataset_hash(examples)
 
-    gen = generate_fn or _default_generate_fn(model)
-    prop = propose_fn or _default_propose_fn(model)
+    gen = _require_fn(generate_fn, "generate_fn")
+    prop = _require_fn(propose_fn, "propose_fn")
     counter = BudgetCounter(budget)
 
-    baseline = BASELINE_INSTRUCTIONS
+    baseline = seed_instructions or BASELINE_INSTRUCTIONS
     base_score, base_refl = score_instructions(
         repo_root, baseline, eval_set,
         generate_fn=gen, build_fn=build_fn, increment=increment,
@@ -253,47 +300,36 @@ def run_optimize(
         model=model,
         eval_size=len(eval_set),
         generated_at=_utc_now_iso(),
+        subsystem=subsystem,
         reflections=all_refl,
     )
-
-
-def _default_propose_fn(model: str) -> ProposeFn:
-    """GEPA reflective proposer backed by dspy (lazy import)."""
-
-    def _propose(instructions: str, reflections: list[str]) -> str:
-        from .program import build_program  # lazy: imports dspy
-        import dspy  # lazy
-
-        # Use dspy.GEPA's reflective instruction proposal indirectly: ask
-        # the LM to rewrite the instructions given the failure reflections.
-        resolve_api_key()
-        dspy.configure(lm=dspy.LM(model))
-        reflect = dspy.Predict("instructions, feedback -> improved_instructions")
-        out = reflect(
-            instructions=instructions,
-            feedback="\n".join(reflections[-20:]) or "no failures observed",
-        )
-        return getattr(out, "improved_instructions", instructions) or instructions
-
-    return _propose
 
 
 def evaluate(
     repo_root: Path,
     instructions: str,
     *,
-    model: str = "openai/gpt-5.1",
+    subsystem: Optional[str] = None,
+    model: str = "claude-in-session",
     eval_size: int = 10,
     seed: int = 0,
     increment: int = 1,
+    held_out_frac: float = DEFAULT_HELD_OUT_FRAC,
     generate_fn: Optional[GenerateFn] = None,
     build_fn: Optional[BuildFn] = None,
 ) -> float:
-    """Score an instruction set on the held-out eval set (the ``eval`` CLI)."""
+    """Score an instruction set on the held-out eval set (the ``eval`` CLI).
+
+    ``subsystem`` selects the per-subsystem held-out split; ``None`` uses
+    the global eval_size-cut split (019). ``generate_fn`` is Claude-backed
+    and MUST be injected (no API default).
+    """
     repo_root = Path(repo_root)
-    examples = build_examples(repo_root)
-    _train, eval_set = split(examples, eval_size=eval_size, seed=seed)
-    gen = generate_fn or _default_generate_fn(model)
+    _examples, eval_set = _resolve_dataset(
+        repo_root, subsystem=subsystem, eval_size=eval_size,
+        seed=seed, held_out_frac=held_out_frac,
+    )
+    gen = _require_fn(generate_fn, "generate_fn")
     score, _ = score_instructions(
         repo_root, instructions, eval_set,
         generate_fn=gen, build_fn=build_fn, increment=increment,
@@ -309,7 +345,6 @@ __all__ = [
     "OptimizeResult",
     "ProposeFn",
     "evaluate",
-    "resolve_api_key",
     "run_optimize",
     "score_instructions",
 ]

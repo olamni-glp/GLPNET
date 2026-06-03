@@ -8,11 +8,13 @@ real C# source unit. GEPA optimizes this signature's *instructions*
 (the natural-language field describing the task) to maximize the
 composite metric on the held-out eval set.
 
-dspy/litellm are imported HERE (the offline optimizer package). This
-module is NEVER imported by ``tools/codegen`` / ``durable/`` / any DBOS
-step (R3/R10) — only by ``optimize.py`` / ``eval`` and their tests, and
-those imports are lazy from the package ``__init__`` so a bare
-``codeconv`` invocation never pays the dspy/litellm import cost.
+``dspy`` is imported HERE (the offline optimizer package) — the
+signature/program scaffold only; the LM that drives it is Claude
+sub-agents (no external API, no litellm/openai). This module is NEVER
+imported by ``tools/codegen`` / ``durable/`` / any DBOS step (R3/R10) —
+only by ``optimize.py`` / ``eval`` and their tests, and those imports are
+lazy from the package ``__init__`` so a bare ``codeconv`` invocation
+never pays the dspy import cost.
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ def _require_dspy() -> Any:
     except ImportError as exc:  # pragma: no cover - env guard
         raise RuntimeError(
             "codegen_opt requires the optimizer extra: "
-            "pip install -e 'codeconv[opt]' (dspy/gepa/litellm/openai)."
+            "pip install -e 'codeconv[opt]' (dspy/gepa — no openai/litellm "
+            "needed; the LM is Claude sub-agents)."
         ) from exc
 
 
@@ -56,6 +59,10 @@ def build_signature() -> Any:
             desc="public C# surfaces of already-generated dependencies"
         )
         idioms: str = dspy.InputField(desc="relevant conversion idioms (KB rows)")
+        subsystem: str = dspy.InputField(
+            desc="target subsystem (heap|bytecode|compiler|runtime-core|"
+            "multiagent) — selects the curriculum-tuned prompt"
+        )
         csharp: str = dspy.OutputField(
             desc="a single real, compilable C# source file (no fences/prose)"
         )
@@ -84,12 +91,14 @@ def build_program(instructions: str = BASELINE_INSTRUCTIONS) -> Any:
             convspec: str,
             dep_interfaces: str = "",
             idioms: str = "",
+            subsystem: str = "",
         ) -> Any:
             return self.generate(
                 plan=plan,
                 convspec=convspec,
                 dep_interfaces=dep_interfaces,
                 idioms=idioms,
+                subsystem=subsystem,
             )
 
     return CodegenProgram()
