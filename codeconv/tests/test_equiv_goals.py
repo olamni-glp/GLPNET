@@ -174,7 +174,7 @@ def test_goals_yaml_round_trip(tmp_path: Path) -> None:
 # ---- opt-in: real sibling-repo seed (skipped if absent) -------------------
 
 
-_TUTORIAL_ROOT = Path("D:/bstdev/research/glp/GLP/olamni/tutorial")
+_TUTORIAL_ROOT = Path(__file__).resolve().parents[2] / "olamni" / "tutorial"  # cloned-in
 
 
 @pytest.mark.skipif(

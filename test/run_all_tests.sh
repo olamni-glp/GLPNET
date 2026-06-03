@@ -20,17 +20,30 @@
 #   N - Bonds V2 Modules (project-directory loading, plays 1-12)
 #   O - Bonds V2 Multi-Isolate Tests (dart test, one isolate per agent)
 #   P - Module Boundary Enforcement Tests (exported vs private procedures)
+#   Q - AOT REPL exe regression smoke (root self.glp path resolution)
 
 set -e
 
 DART=${DART:-$(which dart 2>/dev/null || echo "/home/user/dart-sdk/bin/dart")}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GLP_DIR="$SCRIPT_DIR/.."
-GLP_RUNTIME="$GLP_DIR/glp_runtime"
-TYPED="$GLP_DIR/programs/tests/typed"
-BOOK="$GLP_DIR/programs/typed_book"
-TC_DIR="$GLP_RUNTIME/test/programs/typechecker"
-MODED="$GLP_RUNTIME/test/programs/moded_types"
+
+# to_repl_path: convert an MSYS / Git-Bash style absolute path (e.g. /d/foo
+# or /tmp/foo) to a form the Windows-native Dart REPL can open via File().
+# Identity on platforms without cygpath (Linux, macOS).
+to_repl_path() {
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$1"
+    else
+        printf "%s" "$1"
+    fi
+}
+
+GLP_DIR="$(to_repl_path "$SCRIPT_DIR/..")"
+GLP_RUNTIME="$(to_repl_path "$GLP_DIR/glp_runtime")"
+TYPED="$(to_repl_path "$GLP_DIR/programs/tests/typed")"
+BOOK="$(to_repl_path "$GLP_DIR/programs/typed_book")"
+TC_DIR="$(to_repl_path "$GLP_RUNTIME/test/programs/typechecker")"
+MODED="$(to_repl_path "$GLP_RUNTIME/test/programs/moded_types")"
 
 cd "$GLP_RUNTIME"
 
@@ -1092,8 +1105,10 @@ TMP_GUARD="${TMP_GUARD}.glp"
 cat > "$TMP_GUARD" << 'TMPEOF'
 bad_guard(X?) :- true | X = done.
 TMPEOF
+# Convert /tmp/... path to a form the Windows REPL can open
+TMP_GUARD_REPL="$(to_repl_path "$TMP_GUARD")"
 
-guard_out=$(echo -e "$TMP_GUARD\n:quit" | $DART run "$REPL" 2>&1)
+guard_out=$(echo -e "$TMP_GUARD_REPL\n:quit" | $DART run "$REPL" 2>&1)
 rm -f "$TMP_GUARD"
 
 if echo "$guard_out" | grep -q '"true" is not a guard'; then
@@ -1778,6 +1793,114 @@ HEREDOC
 check "public_proc(5,X) returns X=6" "X = 6" "$output"
 check_not "private_proc not callable from REPL" "X = 7" "$output"
 check "private_proc fails or not found" "not found\|failed\|Error" "$output"
+
+echo ""
+
+# =============================================================================
+# SECTION Q: AOT REPL EXE REGRESSION SMOKE
+# =============================================================================
+# Regression coverage for the ch02-era path-resolution bug where the AOT-
+# compiled REPL exe failed to load programs/self.glp because Platform.script
+# resolution overshoots when the .exe lives one directory shallower than the
+# .dart source. Delegated to test/run_aot_smoke.sh which builds a fresh exe
+# and asserts ex-02 + ex-03 produce their locked bindings.
+echo "=== Section Q: AOT REPL exe regression smoke ==="
+echo ""
+# Note: `|| true` and `set +e` guards needed because `grep -c` returns exit 1
+# when count is 0, which would trip the parent script's `set -e`.
+set +e
+AOT_SMOKE_RESULT=$(bash "$SCRIPT_DIR/run_aot_smoke.sh" 2>&1)
+AOT_SMOKE_EXIT=$?
+AOT_SMOKE_PASSED=$(echo "$AOT_SMOKE_RESULT" | grep -c "^  PASS:" || true)
+AOT_SMOKE_FAILED=$(echo "$AOT_SMOKE_RESULT" | grep -c "^  FAIL:" || true)
+AOT_SMOKE_PASSED=${AOT_SMOKE_PASSED:-0}
+AOT_SMOKE_FAILED=${AOT_SMOKE_FAILED:-0}
+set -e
+if [ "$AOT_SMOKE_EXIT" -eq 0 ]; then
+    echo "  PASS: All $AOT_SMOKE_PASSED AOT smoke checks passed"
+    PASS=$((PASS + AOT_SMOKE_PASSED))
+else
+    echo "  FAIL: $AOT_SMOKE_FAILED AOT smoke check(s) failed ($AOT_SMOKE_PASSED passed)"
+    echo "$AOT_SMOKE_RESULT" | tail -20
+    PASS=$((PASS + AOT_SMOKE_PASSED))
+    FAIL=$((FAIL + AOT_SMOKE_FAILED))
+fi
+echo ""
+
+# =============================================================================
+# SECTION R: CH07 CLUSTER PROJECTS (TUTORIAL-MIRROR TESTS)
+# =============================================================================
+#
+# **SUPERSEDED 2026-05-04** — This section was added by the prior ch07
+# implementation (commit 26e01792, 2026-05-02) and tests the now-stale
+# olamni/tutorial/ch07/{simple-multimodule,cssg-modules}/ subdirectory copies
+# of programs/cssg_modules/. The current ch07 (v2026.05.04) uses the canonical
+# project directly — no derivative copies. Section R's tests still pass (the
+# subdirs are preserved on disk per the no-removal directive) but their value
+# is purely historical: they test that the prior copies haven't drifted from
+# canonical, which doesn't constrain the current chapter's correctness.
+# Disposition pending: either delete these tests or repurpose them as direct
+# canonical-load smoke tests. See olamni/tutorial/ch07/ch07_tutorial.md for
+# the current chapter shape.
+#
+# Original prior-implementation comment block follows:
+#
+# Per spec FR-014 + Q-amendment Q-FR014a (Section letter R, NOT S):
+# R-1: Cluster A simple-multimodule project loads via REPL project-loading mode
+#      and runs each of plays 1-3 (per Q1+Q5+Q1a; cluster A's pruned boot.glp
+#      retains plays 1-3 + fplay 1-3).
+# R-2: Cluster B cssg-modules project files are byte-exact copies of canonical
+#      programs/cssg_modules/ (per FR-003 + Q-FR003a). After stripping the 6-line
+#      ch07 header from each tutorial-side file, diff against canonical MUST
+#      return zero differences. The 6-line header structure is the contract per
+#      specs/008-tutorial-ch07/contracts/glp-file-format.md.
+# Spec amendment to test-mirror-format.md: the original awk heuristic counted
+# ALL leading %% lines, which over-counted because canonical files also start
+# with %% comments. The fixed-line-count `tail -n +7` approach is the contract
+# in force; the header is exactly 6 lines for byte-exact files.
+echo "=== Section R: ch07 cluster projects ==="
+echo ""
+
+# R-1: Cluster A simple-multimodule load + plays 1-3
+echo "--- R-1: cluster A simple-multimodule load + plays ---"
+
+CLUSTER_A_DIR="$(to_repl_path "$GLP_DIR/olamni/tutorial/ch07/simple-multimodule")"
+
+output=$($DART run "$REPL" <<HEREDOC
+$CLUSTER_A_DIR
+:quit
+HEREDOC
+2>&1)
+check "cluster A loads via project mode" "Loaded project" "$output"
+
+for play in play1 play2 play3; do
+    output=$($DART run "$REPL" <<HEREDOC
+$CLUSTER_A_DIR
+:limit 1000000
+$play.
+:quit
+HEREDOC
+    2>&1)
+    check "cluster A $play succeeds or suspended" "succeeds\|suspended" "$output"
+done
+
+# R-2: Cluster B byte-equivalence diff (after stripping 6-line ch07 header)
+echo "--- R-2: cluster B byte-equivalence to canonical ---"
+
+CSSG_CANONICAL="$GLP_DIR/programs/cssg_modules"
+CLUSTER_B_DIR="$GLP_DIR/olamni/tutorial/ch07/cssg-modules"
+
+for f in self.glp agent.glp ui/mediator.glp ui/actors.glp boot.glp mad_boot.glp; do
+    CANONICAL="$CSSG_CANONICAL/$f"
+    TUTORIAL="$CLUSTER_B_DIR/$f"
+    # Strip the 6-line ch07 header per glp-file-format.md contract.
+    if diff <(tail -n +7 "$TUTORIAL") "$CANONICAL" > /dev/null 2>&1; then
+        check "byte-equivalent: $f" "ok" "ok"
+    else
+        DIFF_OUT=$(diff <(tail -n +7 "$TUTORIAL") "$CANONICAL" | head -5)
+        check "byte-equivalent: $f" "ok" "DRIFT in $f: $DIFF_OUT"
+    fi
+done
 
 echo ""
 

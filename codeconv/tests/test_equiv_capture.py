@@ -130,7 +130,7 @@ def test_tampered_candidate_spine_is_divergent() -> None:
 
 
 _REPO = Path(__file__).resolve().parents[2]
-_TUT = Path("D:/bstdev/research/glp/GLP/olamni/tutorial")
+_TUT = _REPO / "olamni" / "tutorial"  # cloned into glpnet (self-contained corpus)
 _LIVE_CFG = default_config(_REPO, _TUT)
 _LIVE_READY = (
     _LIVE_CFG.dart_repl.is_file()

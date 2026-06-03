@@ -5,8 +5,19 @@
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GLP_DIR="$SCRIPT_DIR/.."
-CSSG="$GLP_DIR/programs/cssg_modules"
+
+# to_repl_path: convert MSYS / Git-Bash absolute paths (e.g. /d/foo) to a
+# form the Windows-native Dart REPL can open. Identity on Linux/macOS.
+to_repl_path() {
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$1"
+    else
+        printf "%s" "$1"
+    fi
+}
+
+GLP_DIR="$(to_repl_path "$SCRIPT_DIR/..")"
+CSSG="$(to_repl_path "$GLP_DIR/programs/cssg_modules")"
 cd "$GLP_DIR/glp_runtime"
 
 DART=${DART:-$(which dart 2>/dev/null || echo "dart")}
