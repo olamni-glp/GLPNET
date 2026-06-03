@@ -38,8 +38,9 @@ gap to STOP & report, not a normalizer workaround.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
 from codeconv.tools.equiv.trace import Event, EventKind, Outcome, Status, Trace
 
@@ -323,13 +324,319 @@ def _parse_outcome(body: str) -> RawOutcome:
     return RawOutcome(status=status, bindings=bindings)
 
 
+# --------------------------------------------------------------------------- #
+# Dart :trace / :debug text adapter (R10, T022)
+# --------------------------------------------------------------------------- #
+# The Dart golden REPL emits human-oriented ``:trace`` + ``:debug`` text, NOT the
+# canonical EV/OUT wire format. parse_dart adapts that text to the SAME canonical
+# format parse_csharp consumes, then delegates to the shared ``_parse`` — so both
+# front-ends "produce the same model" (trace_normalization.md). The Dart golden is
+# NEVER modified (R10); all adaptation here is read-only.
+#
+# Mapping (verified line-by-line against tests/fixtures/equiv/append_dart.txt vs
+# append_csharp.txt):
+#   * ``[DEBUG] PC <pc>: <Op> …`` → ONE BYTECODE_OP per dispatch; consecutive
+#     same-(pc,op) sublines collapse to one; only the 12 dispatch-loop ops the
+#     Dart ``:debug`` prints unconditionally are kept (the C# ``_spineOps`` set in
+#     equiv_trace.cs); GetValue is skipped (the C# excludes it).
+#   * COMMIT block: the first ``COMMIT - σ̂w contains N bindings:`` line → BYTECODE_OP
+#     Commit (Dart prints COMMIT only on a proceeding commit — symmetric with the
+#     C# OpAt past the resolvedSi check), THEN UNIFY success (vars = the ``W#``
+#     writers in listed order), THEN one WRITER_BIND per ``  W# → <shape>`` subline,
+#     THEN N REACTIVATE from the ``reactivating N goal(s)`` line. The secondary
+#     ``Applying …`` / ``Applied …`` COMMIT lines are ignored.
+#   * ``NoMoreClauses - SUSPENDING on readers: [..]`` → UNIFY suspend (vars=readers)
+#     + one SUSPEND per reader; the SUSPEND goal is the token from the FOLLOWING
+#     ``<goal-display> → suspended`` line (relabeled g_i in the goal namespace).
+#   * OUT: the ``Var = <value>`` lines + the terminal ``→ succeeds|suspended|failed``.
+# Term displays are canonicalized to the C# ``ShapeOf`` form by ``_canonical_shape``.
+
+_PROMPT = "GLP> "
+_RE_PC_OP = re.compile(r"^\[DEBUG\]\s+PC\s+(?P<pc>\d+):\s+(?P<op>\S+)")
+_RE_SUSPENDING = re.compile(r"SUSPENDING on readers:\s*\[(?P<readers>[^\]]*)\]")
+_RE_WBIND = re.compile(r"^W(?P<w>\d+)\s*→\s*(?P<shape>.+?)\s*$")
+_RE_COMMIT_BINDS = re.compile(r"contains\s+(?P<n>\d+)\s+bindings")
+_RE_REACT = re.compile(r"reactivating\s+(?P<n>\d+)\s+goal")
+_RE_GOAL_SUSP = re.compile(r"^(?P<goal>.+?)\s*→\s*suspended\s*$")
+_RE_OUT_STATUS = re.compile(r"^→\s*(?P<status>succeeds|suspended|failed)\s*$")
+_RE_OUT_BIND = re.compile(r"^(?P<var>[A-Za-z_]\w*)\s*=\s*(?P<val>.+?)\s*$")
+
+# Dart `:debug` prints these op handlers' `[DEBUG] PC X: <Op>` line on EVERY
+# dispatch — exactly the C# dispatch-loop `_spineOps` (equiv_trace.cs). Commit is
+# emitted from the COMMIT block (conditionally observable); GetValue is excluded.
+_DART_SPINE_OPS = frozenset(
+    {
+        "ClauseTry", "Push", "Pop", "UnifyStructure", "HeadStructure",
+        "UnifyVariable", "GetVariable",
+        "NoMoreClauses", "Guard", "Ground", "NoReaders", "GroundEqual",
+    }
+)
+
+# Dart final-outcome word → canonical Status value (OUT uses `succeed`, distinct
+# from UNIFY's `success`).
+_DART_STATUS = {"succeeds": "succeed", "suspended": "suspend", "failed": "fail"}
+
+
+def _looks_like_dart_repl(text: str) -> bool:
+    """True for Dart ``:trace``/``:debug`` text; False for canonical EV/OUT wire
+    format. The Dart REPL always emits ``[DEBUG]`` lines, ``GLP>`` prompts, and
+    ``→`` outcome arrows; canonical shapes/goals never contain any of them."""
+    return "[DEBUG]" in text or _PROMPT in text or "→" in text
+
+
+def _strip_prompt(line: str) -> str:
+    while line.startswith(_PROMPT):
+        line = line[len(_PROMPT):]
+    return line
+
+
+def _san_goal(tok: str) -> str:
+    """Sanitize a goal display to one wire token (relabeled to g_i downstream, so
+    the exact value is irrelevant — only first-occurrence position matters)."""
+    return re.sub(r"\s+", "_", tok.strip()).replace("=", ":")
+
+
+def _split_addrs(value: str) -> list[str]:
+    return [tok.strip() for tok in value.split(",") if tok.strip()]
+
+
+# -- Term-display canonicalizer: Dart display → C# ShapeOf form (recursive) ---- #
+_CT_DELIMS = "(),|[]"
+
+
+def _canonical_shape(display: str) -> str:
+    node, _ = _ct_parse(display.strip(), 0)
+    return _ct_render(node)
+
+
+def _ct_skip_ws(s: str, i: int) -> int:
+    while i < len(s) and s[i].isspace():
+        i += 1
+    return i
+
+
+def _ct_parse(s: str, i: int):
+    i = _ct_skip_ws(s, i)
+    if i >= len(s):
+        return ("var",), i
+    if s[i] == "[":
+        return _ct_parse_list(s, i)
+    j = i
+    while j < len(s) and s[j] not in _CT_DELIMS and not s[j].isspace():
+        j += 1
+    head = s[i:j]
+    k = _ct_skip_ws(s, j)
+    if k < len(s) and s[k] == "(":
+        if head == "Const":
+            inner, nk = _ct_paren_atom(s, k)
+            return ("const", inner), nk
+        if head.startswith("Var"):  # defensive; clean `Var@n` has no following '('
+            return ("var",), j
+        args, nk = _ct_parse_args(s, k)
+        return ("struct", head.split("/")[0], args), nk
+    return _ct_atom_or_var(head), j
+
+
+def _ct_atom_or_var(tok: str):
+    tok = tok.strip()
+    if not tok:
+        return ("var",)
+    if tok[0].isupper() or "@" in tok or tok.endswith("?"):
+        return ("var",)
+    return ("const", tok)
+
+
+def _ct_paren_atom(s: str, k: int):
+    i = k + 1
+    depth = 1
+    start = i
+    while i < len(s) and depth > 0:
+        if s[i] == "(":
+            depth += 1
+        elif s[i] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+    return s[start:i].strip(), i + 1
+
+
+def _ct_parse_args(s: str, k: int):
+    i = _ct_skip_ws(s, k + 1)
+    args: list = []
+    if i < len(s) and s[i] == ")":
+        return args, i + 1
+    while True:
+        node, i = _ct_parse(s, i)
+        args.append(node)
+        i = _ct_skip_ws(s, i)
+        if i < len(s) and s[i] == ",":
+            i += 1
+            continue
+        if i < len(s) and s[i] == ")":
+            return args, i + 1
+        return args, i
+
+
+def _ct_parse_list(s: str, i: int):
+    i = _ct_skip_ws(s, i + 1)  # past '['
+    if i < len(s) and s[i] == "]":
+        return ("const", "nil"), i + 1
+    elems: list = []
+    tail = ("const", "nil")
+    while True:
+        node, i = _ct_parse(s, i)
+        elems.append(node)
+        i = _ct_skip_ws(s, i)
+        if i < len(s) and s[i] == ",":
+            i = _ct_skip_ws(s, i + 1)
+            continue
+        if i < len(s) and s[i] == "|":
+            tail, i = _ct_parse(s, i + 1)
+            i = _ct_skip_ws(s, i)
+            if i < len(s) and s[i] == "]":
+                i += 1
+            break
+        if i < len(s) and s[i] == "]":
+            i += 1
+            break
+        break
+    result = tail
+    for elem in reversed(elems):  # right-fold cons
+        result = ("struct", ".", [elem, result])
+    return result, i
+
+
+def _ct_render(node) -> str:
+    tag = node[0]
+    if tag == "const":
+        return f"const({node[1]})"
+    if tag == "var":
+        return "var"
+    _, functor, args = node
+    inner = ",".join(_ct_render(a) for a in args)
+    return f"{functor}/{len(args)}({inner})"
+
+
+def _find_suspend_goal(lines: list[str], start: int, n: int):
+    """The goal token from the first ``<goal> → suspended`` line at/after ``start``
+    (skipping interleaved ``[DEBUG]`` lines); ``(goal, next_index)`` or ``(None,
+    start)`` if the immediately-following content line is not a goal-suspended line."""
+    j = start
+    while j < n:
+        line = lines[j].strip()
+        if not line or line.startswith("[DEBUG"):
+            j += 1
+            continue
+        gm = _RE_GOAL_SUSP.match(line)
+        if gm:
+            return _san_goal(gm.group("goal")), j + 1
+        return None, start
+    return None, start
+
+
+def _dart_to_wire(text: str) -> str:
+    """Adapt Dart ``:trace``/``:debug`` text → canonical EV/OUT wire text."""
+    lines = [_strip_prompt(raw) for raw in text.splitlines()]
+    n = len(lines)
+    wire: list[str] = []
+    seq = 0
+
+    def emit(rec: str) -> None:
+        nonlocal seq
+        wire.append(f"EV {seq} {rec}")
+        seq += 1
+
+    out_bindings: list[tuple[str, str]] = []
+    out_status: Optional[str] = None
+    last_op: Optional[tuple[int, str]] = None
+    i = 0
+    while i < n:
+        line = lines[i].strip()
+        i += 1
+        if not line or line.startswith("[DEBUG _finalUnboundVar]") or " :- " in line:
+            continue
+
+        m = _RE_PC_OP.match(line)
+        if m:
+            pc = int(m.group("pc"))
+            op = m.group("op")
+            if op == "COMMIT":
+                if _RE_COMMIT_BINDS.search(line):  # the commit-start line
+                    emit(f"BYTECODE_OP opcode=Commit pc={pc}")
+                    binds: list[tuple[str, str]] = []
+                    while i < n:
+                        wm = _RE_WBIND.match(lines[i].strip())
+                        if not wm:
+                            break
+                        i += 1
+                        binds.append((wm.group("w"), _canonical_shape(wm.group("shape"))))
+                    emit("UNIFY outcome=success vars=" + ",".join(w for w, _ in binds))
+                    for writer, shape in binds:
+                        emit(f"WRITER_BIND writer={writer} shape={shape}")
+                    last_op = (pc, op)
+                    continue
+                rm = _RE_REACT.search(line)
+                if rm:
+                    for _k in range(int(rm.group("n"))):
+                        # Dart `reactivating N` carries no goal id; REACTIVATE
+                        # goal-token fidelity for N>0 (bonds/dynamic tier) is a
+                        # T022 follow-on — append's commits reactivate 0 goals.
+                        emit("REACTIVATE goal=reactivated")
+                    last_op = (pc, op)
+                    continue
+                last_op = (pc, op)  # secondary `Applying …` line — ignore
+                continue
+            if (pc, op) == last_op:  # collapse consecutive same-(pc,op) sublines
+                continue
+            last_op = (pc, op)
+            if op in _DART_SPINE_OPS:
+                emit(f"BYTECODE_OP opcode={op} pc={pc}")
+            continue
+
+        sm = _RE_SUSPENDING.search(line)
+        if sm:
+            readers = _split_addrs(sm.group("readers"))
+            emit("UNIFY outcome=suspend vars=" + ",".join(readers))
+            goal, ni = _find_suspend_goal(lines, i, n)
+            if goal is None:
+                goal = "suspended_goal"
+            else:
+                i = ni
+            for reader in readers:
+                emit(f"SUSPEND reader={reader} goal={goal}")
+            continue
+
+        om = _RE_OUT_STATUS.match(line)
+        if om:
+            out_status = _DART_STATUS[om.group("status")]
+            continue
+
+        if _RE_GOAL_SUSP.match(line):  # stray goal-suspended line (normally consumed)
+            continue
+
+        bm = _RE_OUT_BIND.match(line)
+        if bm:
+            out_bindings.append((bm.group("var"), _canonical_shape(bm.group("val"))))
+            continue
+        # everything else (banner, reductions, Goodbye, …) is benign noise
+
+    out_line = f"OUT {out_status or 'fail'}"
+    for var, shape in out_bindings:
+        out_line += f" {var}={shape}"
+    return "\n".join([*wire, out_line])
+
+
 def parse_dart(text: str) -> Trace:
     """Parse the Dart golden's trace into the canonical model.
 
-    Currently consumes the canonical wire format (above). Adapting the live
-    Dart ``:trace`` / ``:debug`` text to that format is the runtime-coupled
-    step finalized at T017/T022 (B1); per R10 the Dart golden is never modified.
+    Accepts EITHER the live Dart ``:trace``/``:debug`` text (adapted to the
+    canonical wire format by :func:`_dart_to_wire`, R10/T022) OR the canonical
+    EV/OUT wire format directly (the format the instrumented REPL emits and the
+    pure normalize tests use). Per R10 the Dart golden text is never modified.
     """
+    if _looks_like_dart_repl(text):
+        text = _dart_to_wire(text)
     return _parse(text, dialect="dart")
 
 
