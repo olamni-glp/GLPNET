@@ -524,6 +524,7 @@ public sealed class BytecodeRunner
 
             cx.Pc = pc;
             var op = ops[pc];
+            EquivTrace.Op(op.GetType().Name, pc);  // feature-020 spine (no-op unless GLP_EQUIV_TRACE)
             var step = Dispatch(cx, op);
 
             switch (step.Kind)
@@ -1021,8 +1022,18 @@ public sealed class BytecodeRunner
         // Apply σ̂w: bind writers to tentative values, then wake suspended goals.
         var acts = CommitOps.ApplySigmaHatFCP(cx.Rt.Heap, convertedSigmaHat);
 
+        // feature-020 equiv-trace: a reached Commit = successful two-phase HEAD
+        // unification; each σ̂w entry is a WRITER_BIND. No-op unless enabled.
+        if (EquivTrace.Enabled)
+        {
+            EquivTrace.Unify("success", convertedSigmaHat.Keys);
+            foreach (var b in convertedSigmaHat)
+                EquivTrace.WriterBind(b.Key, b.Value);
+        }
+
         foreach (var a in acts)
         {
+            EquivTrace.Reactivate(a.Id);  // feature-020 (no-op unless enabled)
             cx.Rt.Gq.Enqueue(a);
             cx.OnActivation?.Invoke(a);
         }
@@ -2616,12 +2627,19 @@ public sealed class BytecodeRunner
         // If U non-empty: suspend; otherwise: fail definitively
         if (cx.U.Count > 0)
         {
+            // feature-020 equiv-trace: the goal suspends on the readers in U.
+            if (EquivTrace.Enabled)
+            {
+                EquivTrace.Unify("suspend", cx.U);
+                foreach (var r in cx.U) EquivTrace.Suspend(r, cx.GoalId);
+            }
             cx.Rt.SuspendGoalFCP(goalId: cx.GoalId, kappa: cx.Kappa, readerVarIds: cx.U);
             cx.U.Clear();
             cx.InBody = false;
             return _Step.Stop(RunResult.Suspended);
         }
         // U is empty - all clauses failed definitively (no suspension)
+        EquivTrace.Unify("fail");  // feature-020 (no-op unless enabled)
         cx.InBody = false;
         // According to spec, failed goals should be added to F set.
         // For now, just terminate - the goal is done (failed).
@@ -3272,12 +3290,19 @@ public sealed class BytecodeRunner
         // Legacy SuspendEnd (use NoMoreClauses instead)
         if (cx.U.Count > 0)
         {
+            // feature-020 equiv-trace: mirror ExecNoMoreClauses suspend emission.
+            if (EquivTrace.Enabled)
+            {
+                EquivTrace.Unify("suspend", cx.U);
+                foreach (var r in cx.U) EquivTrace.Suspend(r, cx.GoalId);
+            }
             cx.Rt.SuspendGoalFCP(goalId: cx.GoalId, kappa: cx.Kappa, readerVarIds: cx.U);
             cx.U.Clear();
             cx.InBody = false;
             return _Step.Stop(RunResult.Suspended);
         }
         // U is empty - all clauses failed definitively (no suspension)
+        EquivTrace.Unify("fail");  // feature-020 (no-op unless enabled)
         cx.InBody = false;
         return _Step.Stop(RunResult.Terminated);
     }

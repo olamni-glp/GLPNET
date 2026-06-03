@@ -36,4 +36,12 @@
        accepted file). Empty at the start of the bulk-codegen drive. -->
   <Import Project="Converted.props" Condition="Exists('Converted.props')" />
 
+  <!-- Feature-020 trace-equivalence instrumentation: hand-written candidate-side
+       code (NOT a codegen-converted Dart file), so it is listed here explicitly
+       rather than in the codegen-managed Converted.props. Emits the canonical
+       EV/OUT wire format the differential oracle consumes (T017). -->
+  <ItemGroup>
+    <Compile Include="lib/runtime/equiv_trace.cs" />
+  </ItemGroup>
+
 </Project>

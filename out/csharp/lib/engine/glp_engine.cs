@@ -531,6 +531,7 @@ public sealed class GlpEngine
         scheduler.ResetDisplayNumbering();
         scheduler.SetQueryVarNames(queryVarWriters);
 
+        EquivTrace.Reset();  // feature-020: begin a fresh candidate trace for this goal
         _runtime.Gq.Enqueue(new GoalRef(_goalId, entryPC));
         _goalId++;
 
@@ -552,8 +553,20 @@ public sealed class GlpEngine
                 bindings[varName] = null;
         }
 
+        EquivTrace.Out(_StatusWord(result.Status),
+            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(b.Value))));
+
         return new ExecutionResult(status: result.Status, bindings: bindings);
     }
+
+    // feature-020: map ExecutionStatus → the OUT wire-format status word
+    // (normalize.Status: succeed|suspend|fail — note "succeed", not "success").
+    private static string _StatusWord(ExecutionStatus s) => s switch
+    {
+        ExecutionStatus.Succeeded => "succeed",
+        ExecutionStatus.Suspended => "suspend",
+        _ => "fail",
+    };
 
     private async Task<ExecutionResult> _RunConjunctionAsync(string trimmed)
     {
@@ -587,6 +600,8 @@ public sealed class GlpEngine
 
         var allSucceeded = true;
         var anySuspended = false;
+
+        EquivTrace.Reset();  // feature-020: begin a fresh candidate trace for this conjunction
 
         foreach (var goal in goals)
         {
@@ -652,6 +667,9 @@ public sealed class GlpEngine
         var status = !allSucceeded
             ? ExecutionStatus.Failed
             : (anySuspended ? ExecutionStatus.Suspended : ExecutionStatus.Succeeded);
+
+        EquivTrace.Out(_StatusWord(status),
+            bindings.Select(b => (b.Key, EquivTrace.ShapeOf(b.Value))));
 
         return new ExecutionResult(status: status, bindings: bindings);
     }
