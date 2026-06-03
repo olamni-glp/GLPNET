@@ -5,6 +5,39 @@ Branch: `020-trace-equivalence-fidelity`
 Source of truth for tasks: `specs/020-trace-equivalence-fidelity/tasks.md` (50 tasks, 8 phases)
 Handoff: `specs/020-trace-equivalence-fidelity/HANDOFF-implement.md`
 
+---
+
+## 🔴🔴 TOP-PRIORITY MANDATE (Gabi, 2026-06-03): Dart convergence glpnet ⇐ sibling GLP
+
+Bring glpnet `glp_runtime/` Dart to **100% byte-level convergence** with the sibling GLP
+repo `D:/bstdev/research/glp/GLP` (authoritative — all tutorials pass there; verified
+88/88 modulo fresh-var names + the sibling test suite). Static (byte-identical Dart) AND
+dynamic (tutorials + tests pass identically). **Commits + pushes at each checkpoint** for
+revert safety (mandated). This is a prerequisite for the oracle: glpnet's Dart REGRESSED
+(e.g. `append_and_sum` → failed in glpnet, `Sum=21` in sibling).
+
+**Drift (glp_runtime, sibling vs glpnet) — small, mostly glpnet-behind:**
+- lib/ 9 overwrite: `bytecode/runner.dart` (+is_list/+tuple), `compiler/{compiler,analyzer,
+  partial_evaluator}.dart`, `engine/glp_engine.dart`, `analysis/type_checker/{prelude,
+  program_dfa,well_typed_term}.dart`, `multiagent/repl_play_runner.dart` (glpnet `_v2`
+  workaround).
+- lib/ DELETE `compiler/unify_result.dart` (glpnet-only refactor; sibling lacks it; imported
+  by glpnet analyzer+partial_evaluator → sibling versions drop that import).
+- bin/ overwrite `glp_repl.dart` (sibling has `_resolveRootSelfGlpPath` + Windows/abs path
+  handling — fixes glpnet's `glp/`-prefix bug); ADD `bin/triage_loader.dart`.
+
+**Steps:** [x] verify sibling green · [ ] baseline+push · [ ] converge Dart + static diff=0
++ commit+push · [ ] rebuild glpnet exe + dynamic verify (88 tutorials == sibling) +
+commit+push · [ ] glpnet suite vs sibling (converge programs/test only if a dynamic gap
+needs it) · [ ] (rest of scope) C# re-catch-up vs corrected golden + GetVariable emission fix.
+
+**Downstream note:** runner.cs was converted from the OLD glpnet runner.dart → after
+convergence it lags the corrected golden; re-catch-up is the "rest of scope", not this task.
+Oracle work already committed (goals/capture/driver in codeconv/ + out/csharp/) is untouched
+by this convergence.
+
+---
+
 > ## 🔴 RESTART HERE (2026-06-03): read `specs/020-trace-equivalence-fidelity/HANDOFF-restart.md` FIRST.
 > Stages 1–4 of the `/codeconv-runner` 5-stage plan are DONE+committed; **only Stage 5 remains**
 > (T017 C# REPL trace → T022 e2e → T031 fidelity-metric swap+GEPA re-run → T026–T029). The handoff
