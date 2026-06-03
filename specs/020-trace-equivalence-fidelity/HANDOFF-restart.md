@@ -13,12 +13,37 @@ Branch: `020-trace-equivalence-fidelity` · Anchor commit: **`79d9add5`**-and-la
 
 ## 0. One-line state
 
-Stages 1–4 **DONE+committed**. **Stage 5 (T017) is now COMPLETE+committed** (REPL wired +
-runs; first fidelity bug fixed; canonical trace emission + spine alignment; #2 resolved;
-goal kept via relabeling). **IMMEDIATE NEXT = T022 `parse_dart` build** — turnkey spec at the
-end of this doc ("T022 — DONE so far + TURNKEY `parse_dart` build spec"), build against the two
-committed fixtures `codeconv/tests/fixtures/equiv/append_{dart,csharp}.txt`. Then T031 fidelity-
-metric swap + GEPA re-run → T026–T029 equiv CLI/skill/gate. See the "Progress 2026-06-03" block below.
+Stages 1–4 **DONE+committed**. **Stage 5 T017 + T022 are now COMPLETE+committed**: T017 (REPL
+wired + runs; first fidelity bug fixed; canonical trace emission + spine alignment; #2 resolved;
+goal kept via relabeling) AND **T022** (`parse_dart` adapter built; finding-#3 OUT deref fixed +
+fixture re-captured; e2e `test_equiv_oracle_e2e.py` GREEN — append C# candidate ≡ Dart golden,
+strict tier, 28/28 events + outcome). **IMMEDIATE NEXT = T031** (fidelity-metric swap +
+per-subsystem GEPA re-run) → then T026–T029 equiv CLI/skill/gate. See the "Progress 2026-06-04"
+and "Progress 2026-06-03" blocks below.
+
+### Progress 2026-06-04 (T022 session — COMPLETE)
+- **`parse_dart` adapter DONE — commit `cbd8c1fa`.** `normalize.parse_dart` now adapts Dart
+  `:trace`/`:debug` text → the canonical EV/OUT wire format (`_dart_to_wire`), then delegates to
+  the shared `_parse` — so both front-ends "produce the same model". Format-detected
+  (`_looks_like_dart_repl`: `[DEBUG]`/`GLP>`/`→`) so the canonical-wire `test_trace_normalize.py`
+  tests still pass. Op collapse (consecutive same-(pc,op)), 12-op spine allow-set (+Commit from the
+  COMMIT block, GetValue skipped), recursive shape canonicalizer (`Const(x)`→`const(x)`, `Var@n`→
+  `var`, `./2(..)`/`.(..)`/GLP-list-syntax `[a,c]`→`./2(const(a),./2(const(c),const(nil)))`).
+  Verified: 28/28 events match the C# fixture positionally; only OUT differed (→ finding #3).
+- **Finding #3 FIXED — commit `5ece03f5`.** Added `_ResolveDeepForTrace` in `glp_engine.cs` (both
+  OUT sites) — recursively derefs the query binding through the heap so `EquivTrace.ShapeOf` emits
+  the FULL ground shape, not the shallow `./2(var,var)`. Candidate-side only; reached only when
+  `GLP_EQUIV_TRACE` is set (lazy Select past Out's Ready() gate); no runner-semantics / Bindings
+  change. **Re-captured** `append_csharp.txt` via the built C# `glp_repl.exe` (`GLP_EQUIV_TRACE` +
+  `load append.glp` + `append([a],[c],Zs).`) → diff vs committed = ONLY the OUT line; OUT now
+  `Zs=./2(const(a),./2(const(c),const(nil)))`. sln still builds 0 err.
+- **e2e DONE — commit `e02fdd9f`.** New PURE `codeconv/tests/test_equiv_oracle_e2e.py` (reads the
+  two committed fixtures; no live REPL — capture already happened, R12): strict equivalence True +
+  divergence None; both front-ends → identical 28-event model; finding-#3 deref guard; 2 negative
+  controls (shallow OUT → OUTCOME divergence, tampered spine op → positional divergence). 6 green.
+- **Anchor re-verified GREEN after the work**: sln 0 err · frontier 75/74/1/0 unchanged · 52 pure
+  tests green (equiv + normalize + fidelity, incl. the 6 new e2e). REACTIVATE goal-token fidelity
+  for N>0 commits (bonds/dynamic) is a noted `_dart_to_wire` follow-on (append commits reactivate 0).
 
 ### Progress 2026-06-03 (Stage 5 session in progress)
 - **T017(i) DONE — commit `7c3def56`.** `out/csharp/glp_repl/Program.cs` placeholder replaced
