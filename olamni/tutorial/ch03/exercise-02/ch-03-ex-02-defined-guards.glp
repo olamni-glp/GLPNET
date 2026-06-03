@@ -1,0 +1,48 @@
+% ch-03-ex-02-defined-guards.glp
+%
+% This file extends the ex-01 §3.2 curriculum: ex-01 used built-in guards only
+% (`>` from producer/2, `ground` from consumer/3). ex-02 introduces DEFINED
+% guards from book §3.2 (p 22). A defined guard is a unit clause or short
+% procedure that the compiler unfolds at guard sites — extending the guard
+% vocabulary beyond the built-in set while remaining bound by SRSW
+% reader-position rules.
+%
+% channel/1 + process/2 byte-exact from "The Art of Grassroots Logic
+% Programming" (Shapiro, 2025), §3.2, p 22 (PDF p 34). Per `research.md`
+% R-008, handle/1 is defined locally as a minimal stub (the book leaves
+% handle/1 undefined as a placeholder for downstream processing); the local
+% stub preserves byte-exactness of process/2 and provides a tautological
+% body call so the goal `process(ch(a, b), Status).` succeeds with
+% `Status = ok` per the spec FR-009 + Clarifications Q2 locked binding.
+%
+% This file is STAND-ALONE per `research.md` R-009: no Program 3.1 / merge/3
+% duplication is required because the locked primary goal does not exercise
+% merge/3. Loading this file alone in a fresh REPL session is sufficient to
+% run the four-goal ex-02 trace (primary + 3 inspection goals).
+%
+% Compare with ex-03 (next exercise): ex-03 introduces the `~(...)` guard
+% negation form on `=?=`, which is a NEGATABLE built-in guard. Defined guards
+% (like channel/1 here) are NOT negatable per the §3.2 SRSW Rules table on
+% book p 24 — ex-03 demonstrates this distinction via lookup/3.
+
+%% Defined guard: channel-shaped term test (book p 22). Unit clause matching
+%% any term of shape `ch(_, _)`. The compiler unfolds this at any guard site
+%% that calls channel(X?), turning it into a structural pattern match.
+channel(ch(_, _)).
+
+%% process/2 first clause: defined-guard dispatch (book p 22). The guard
+%% `channel(X?)` succeeds when X is ch-shaped, binding the caller's Status
+%% writer to the literal `ok` (head pattern). Body call `handle(X?)` invokes
+%% the local handle/1 stub below.
+process(X, ok)    :- channel(X?) | handle(X?).
+%% process/2 second clause: otherwise fallback (book p 22). The built-in
+%% `otherwise` guard succeeds when all earlier clauses' guards have failed
+%% (not suspended). Binds Status to `error` and the body is just `true`.
+process(_, error) :- otherwise   | true.
+
+%% handle/1 local stub (per research.md R-008). The book uses `handle(X?)` in
+%% process/2's body as a placeholder for downstream processing; ch3 ex-02's
+%% pedagogy is the defined-guard machinery, not handle's behaviour, so a
+%% tautological unit clause is sufficient. handle(_) succeeds for any single
+%% argument, making process/2's first clause body trivially succeed.
+handle(_).

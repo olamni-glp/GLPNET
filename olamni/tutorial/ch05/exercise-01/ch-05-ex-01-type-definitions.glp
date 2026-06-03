@@ -1,0 +1,51 @@
+% ch-05-ex-01-type-definitions.glp
+%
+% This file presents the §5.1 type definitions from book p 47 (PDF p 59):
+% the Bit, Nat, and NumList types. All declarations byte-exact from the PDF.
+%
+% Programs included (byte-exact):
+%   §5.1.1 (book p 47): Bit ::= 0 ; 1.        — constant alternation
+%   §5.1.2 (book p 47): Nat ::= 0 ; s(Nat).   — recursive Peano natural numbers
+%   §5.1.3 (book p 47): NumList ::= [] ; [Number | NumList].  — typed list cons
+%
+% References Formal 5.1 (Type Definition Syntax, book p 48).
+%
+% Type definitions on their own are not callable — to give the learner goals
+% to run we add three minimal recogniser procedures (one per type) below the
+% type defs. The recognisers carry no algorithmic content; they exist so that
+% the .glp file is interactive at the REPL and so that the type-checker's
+% acceptance of a typed argument can be observed via real goals.
+
+%% Bit type: a value is either the constant 0 or the constant 1.
+Bit ::= 0 ; 1.
+
+%% Nat type: Peano natural numbers. Either 0, or s(N) where N is itself a Nat.
+%% This is recursive — the type refers to itself in its second alternative.
+Nat ::= 0 ; s(Nat).
+
+%% NumList type: typed list cons. Either the empty list [], or [Head | Tail]
+%% where Head is a Number (a built-in type) and Tail is again a NumList.
+NumList ::= [] ; [Number | NumList].
+
+%% --- TYPE RECOGNISERS (probe procedures so goals can be run on the types above) ---
+
+%% is_bit/1: succeeds when its argument is a Bit value.
+procedure is_bit(Bit?).
+%% Recognises the constant 0.
+is_bit(0).
+%% Recognises the constant 1.
+is_bit(1).
+
+%% is_nat/1: succeeds when its argument is a Nat value.
+procedure is_nat(Nat?).
+%% Base case: 0 is a Nat.
+is_nat(0).
+%% Recursive case: s(N) is a Nat if N is a Nat.
+is_nat(s(N)) :- is_nat(N?).
+
+%% is_numlist/1: succeeds when its argument is a NumList value.
+procedure is_numlist(NumList?).
+%% Base case: [] is a NumList.
+is_numlist([]).
+%% Recursive case: [N|Rest] is a NumList if N is a Number and Rest is a NumList.
+is_numlist([N|Rest]) :- number(N?) | is_numlist(Rest?).

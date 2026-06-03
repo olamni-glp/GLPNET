@@ -1,0 +1,67 @@
+% ch-04-ex-01-constants-and-gates.glp
+%
+% This file presents the §4.1 unit-clause and multi-clause Programs from
+% "The Art of Grassroots Logic Programming" (Shapiro, 2025), book pp 25–28
+% (PDF pp 37–40). All clauses byte-exact from the PDF.
+%
+% Programs included (byte-exact):
+%   §4.1 Unit Clauses (book p 25): p(a) — single unit clause demo
+%   §4.1 Multiple Clauses (book p 27): q(b), q(a) — multi-clause committed-choice
+%   §4.1 Logic Gates (book p 28): and/3, or/3, not/2, xor/3 (14 unit clauses)
+%
+% Out of scope for this file (mentioned in ex-01-tutorial.md):
+%   §4.1 Binary Unit Clauses (book p 27): p(a,b) — different arity from p(a) above
+%   §4.1 Shared Variables in Goals (book p 28): p(a,a) — alternative p/2 program
+% These standalone variants are excluded to avoid p-procedure clashes within a
+% single .glp file; see book pp 27–28 for the standalone presentations.
+%
+% No clauses with bodies; no guards; no recursion. ex-02 builds on the gates
+% defined here to construct compound circuits (nand, half_adder, full_adder).
+
+%% §4.1 Unit Clauses (book p 25). The simplest GLP program: a single fact.
+
+%% p of a — defines p/1 with a single solution.
+p(a).
+
+%% §4.1 Multiple Clauses (book p 27). When multiple clauses define a predicate,
+%% the first applicable clause is selected (committed choice).
+
+%% First clause for q/1 — q of b.
+q(b).
+%% Second clause for q/1 — q of a; used if the first fails.
+q(a).
+
+%% §4.1 Logic Gates (book p 28). Digital logic gates provide a natural example
+%% of dataflow computation. Each truth-table row is a unit clause.
+
+%% AND: 1 AND 1 = 1.
+and(1,1,1).
+%% AND: 1 AND 0 = 0.
+and(1,0,0).
+%% AND: 0 AND 1 = 0.
+and(0,1,0).
+%% AND: 0 AND 0 = 0.
+and(0,0,0).
+
+%% OR: 1 OR 1 = 1.
+or(1,1,1).
+%% OR: 1 OR 0 = 1.
+or(1,0,1).
+%% OR: 0 OR 1 = 1.
+or(0,1,1).
+%% OR: 0 OR 0 = 0.
+or(0,0,0).
+
+%% NOT: NOT 1 = 0.
+not(1,0).
+%% NOT: NOT 0 = 1.
+not(0,1).
+
+%% XOR: 1 XOR 1 = 0.
+xor(1,1,0).
+%% XOR: 1 XOR 0 = 1.
+xor(1,0,1).
+%% XOR: 0 XOR 1 = 1.
+xor(0,1,1).
+%% XOR: 0 XOR 0 = 0.
+xor(0,0,0).

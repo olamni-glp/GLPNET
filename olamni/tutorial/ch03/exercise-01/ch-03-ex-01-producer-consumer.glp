@@ -1,0 +1,23 @@
+% ch-03-ex-01-producer-consumer.glp
+%
+%% producer/2 byte-exact from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §4.2.1, p 31.
+%% consumer/3 byte-exact from same source, §4.2.2, p 31.
+%% Imported into ch03 to compose with Program 3.1 into a producer-merger-consumer pipeline that
+%% demonstrates SRSW reader/writer pairing across four roles using only built-in guards (`>` and `ground`).
+%% This is the only cross-chapter import permitted in ch03 per the spec's Out-of-Scope section.
+%% The `:=` body kernel inside producer/2's recursive clause and consumer/3's recursive clause is
+%% inherited byte-exact from the import per the spec FR-015 amendment (Clarifications Q1).
+%
+% Loaded together with ch-03-ex-01-glp-fair-stream-merger.glp in the same REPL
+% session. Composed primary demo goal:
+%   `producer(A, 5), producer(B, 3), merge(A?, B?, M), consumer(M?, 0, Sum).`
+% Locked binding: `Sum = 21` (countdown-5 sums to 15; countdown-3 sums to 6;
+% merged stream sums to 21). Per Formal 4.2 (book p 31), continuation calls
+% pass readers (`Xs?`, `Sum1?`) — not writers — to preserve SRSW.
+
+producer([], 0).                                                              %% producer base: when count is zero, the stream is empty; SRSW pair Stream/0
+producer([N?|Xs?], N) :- N? > 0 | N1 := N? - 1, producer(Xs, N1?).            %% producer recursive: emit N at head, recurse on tail with N-1; built-in guard `>` ensures positive count; `:=` decrement is body-kernel arithmetic inherited per FR-015
+consumer([], Sum, Sum?).                                                      %% consumer base: when stream is empty, accumulator becomes the result via writer/reader pair Sum/Sum?
+consumer([X|Xs], Sum, Result?) :- ground(X?) |                                %% consumer recursive: built-in guard `ground` waits until X is fully bound before computing
+    Sum1 := Sum? + X?,                                                        %%   compute new accumulator via `:=` (body-kernel arithmetic inherited per FR-015)
+    consumer(Xs?, Sum1?, Result).                                             %%   recurse on tail with new accumulator (Formal 4.2: continuation calls pass readers Xs?, Sum1?)

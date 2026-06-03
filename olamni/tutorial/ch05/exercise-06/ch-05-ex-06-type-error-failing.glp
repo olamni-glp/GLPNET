@@ -1,0 +1,27 @@
+% ch-05-ex-06-type-error-failing.glp
+%
+% ⚠ THIS FILE IS MEANT TO FAIL TO LOAD ⚠
+%
+% This file presents the §5.7.1 type-error illustration from book p 51,
+% byte-exact from the PDF. Loading it should PRODUCE A TYPE-ERROR — that
+% rejection is the point. The atoms `a, b, c` violate the declared `NumList`
+% element type (`Number`), and the type-checker says so.
+%
+% Programs included (byte-exact):
+%   §5.1.3 (book p 47): NumList ::= [] ; [Number | NumList].   — duplicated inline so the file is self-contained
+%   §5.7.1 (book p 51): procedure foo(NumList).
+%   §5.7.1 (book p 51): foo([a, b, c]).                        — the trigger
+%
+% See ch-05-ex-06-type-error-corrected.glp for a re-typed form that loads.
+
+%% NumList type, duplicated inline so the failure surfaces as a type-mismatch
+%% on the values rather than as an undefined-type error.
+NumList ::= [] ; [Number | NumList].
+
+%% Declare foo as accepting a NumList (typed list of Number).
+procedure foo(NumList).
+
+%% Fact `foo([a, b, c]).` — the atoms a, b, c are not Numbers, so this clause
+%% violates the declared type. The type-checker reports three Inconsistent
+%% path errors when the file is loaded.
+foo([a, b, c]).

@@ -1,0 +1,61 @@
+% ch-03-ex-03-guard-negation.glp
+%
+% This file completes the ex-01 / ex-02 / ex-03 §3.2 curriculum:
+%   ex-01 used built-in guards (`>` from producer/2, `ground` from consumer/3);
+%   ex-02 introduced defined guards (`channel/1` as a unit-clause type test
+%     used at process/2 clause 1's guard site);
+%   ex-03 introduces GUARD NEGATION via the `~(...)` form on a NEGATABLE
+%     built-in guard.
+%
+% Per book §3.2 (p 22) and the SRSW Rules for Defined Guards table on p 24,
+% the `~(...)` form is restricted to NEGATABLE built-in guards: `=?=` (the
+% ground-equality test) and the type guards. Arithmetic comparisons (<, >,
+% =<, >=, =:=) and `otherwise` are NOT negatable. Defined guards (e.g.,
+% ex-02's `channel/1`) are also NOT negatable — `~(channel(...))` would be
+% ill-formed.
+%
+% lookup/3 from "The Art of Grassroots Logic Programming" (Shapiro, 2025),
+% §3.2, p 22 (PDF p 34), AMENDED per Clarifications Q4 (2026-04-30 spec
+% amendment): clause 2's body recursive call passes `Key?` (reader) rather
+% than `Key` (writer per byte-exact PDF). Justification: the same book's
+% Formal 4.2 (p 31, "SRSW in Continuation Calls") explicitly states "The
+% recursive call passes readers Xs?, Sum1?—not writers." The byte-exact PDF
+% form `lookup(Key, Rest?, V)` makes Key appear as a writer in BOTH the head
+% AND the body recursive call — two writer occurrences of the same variable,
+% which conflicts with strict SRSW per Constitution Principle III + book
+% Formal 2.1 "No contraction." The amended form `lookup(Key?, Rest?, V)`
+% passes the reader paired with the head's writer, satisfying SRSW. The
+% amendment changes one character; pedagogical content (positive vs negated
+% `=?=` on the same operator) is preserved unchanged.
+%
+% Two clauses:
+%   - Clause 1 uses `=?=` in POSITIVE form: succeeds when Key matches the
+%     head's key, immediately binds V to the head's value via writer/reader
+%     pair V/V?, and the body is just `true`.
+%   - Clause 2 uses `~(=?=)` in NEGATED form: succeeds when Key does NOT
+%     match the head's key, and the body recurses on the tail Rest with
+%     `Key?` (the reader) per the Q4 amendment.
+%
+% This file is STAND-ALONE per `research.md` R-009: no Program 3.1 / merge/3
+% duplication and no ex-02 channel/process duplication is required because
+% the locked primary goal `lookup(b, [(a,1),(b,2),(c,3)], V).` does not
+% exercise them. Loading this file alone in a fresh REPL session is
+% sufficient to run the four-goal ex-03 trace.
+%
+% Locked primary demo goal: `lookup(b, [(a,1),(b,2),(c,3)], V).` → `V = 2`
+% per Clarifications Q3. The recursion descends via clause 2 past `(a,1)`
+% (negated guard succeeds because `b ≠ a`), then matches `(b,2)` via clause
+% 1 (positive guard succeeds because `b = b`), binding `V = 2`.
+
+%% lookup/3 first clause: positive equality test guard. The built-in `=?=`
+%% guard succeeds when Key is structurally equal to the head's K (both must
+%% be ground); on success, head's V is forwarded to the caller via writer/
+%% reader pair V/V?, and the body `true` immediately succeeds.
+lookup(Key, [(K,V)|_], V?) :- Key? =?= K? | true.
+%% lookup/3 second clause: NEGATED equality test guard. The `~(...)` form
+%% applied to `=?=` succeeds when Key does NOT match the head's K (or
+%% suspends if either is unbound). Recursion descends into the tail Rest
+%% with `Key?` (the reader paired with the head's writer Key, per Q4
+%% amendment + book Formal 4.2 SRSW-in-continuation-calls discipline),
+%% threading V through to bind whichever clause 1 eventually matches.
+lookup(Key, [(K,_)|Rest], V?) :- ~(Key? =?= K?) | lookup(Key?, Rest?, V).

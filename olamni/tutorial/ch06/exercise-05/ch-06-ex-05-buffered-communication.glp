@@ -1,0 +1,81 @@
+%% ch06 ex-05 — §6.5 Buffered Communication
+%% Source: ch04 §4.2.12 + §4.2.13, book pp 34–35, Programs bb/0 + consumer/1
+%%   + producer/2 (sliding-window buffer) and bb_test/0 + consumer/2 +
+%%   producer/2 (terminating variant).  producer/2 is shared (clause text
+%%   identical between §4.2.12 and §4.2.13).
+%% Synthesised from ch04 §4.2.12+§4.2.13 because the ch06 PDF chapter (book
+%%   p 53) is a stub — only the title, a one-line intro, and the five §6.x
+%%   section headings exist; no body text and no native Programs.
+%% Type definitions and `procedure` declarations are introduced fresh at
+%%   §6.5 per ch05 conventions; clauses below are byte-exact from ch04
+%%   §4.2.12+§4.2.13.
+
+%% Stream of numbers — the buffer alphabet.  Declared as a typed alphabet
+%%   for the §6.5 banner, even though the body procedures (bb, bb_test,
+%%   consumer/1, consumer/2, producer/2) cannot satisfy strict typed
+%%   mode-checking under the byte-exact ch04 source's stream-mode pattern
+%%   (see notes on each procedure below).
+NumStream ::= [] ; [Number | NumStream].
+
+%% bb/0: the §4.2.12 sliding-window buffer top-level.  Spawns consumer/1
+%%   and producer/2 sharing a 2-element pre-allocated buffer.  Does NOT
+%%   terminate (infinite stream); demonstrated only by bb_test/0 below.
+%%
+%% NOTE: bb/0 has NO procedure declaration because its body calls
+%%   consumer/1 and producer/2 which themselves cannot be typed (byte-
+%%   exact mode-pattern issue).  The type-checker requires every body-
+%%   call target to have a declaration; declaring bb but not consumer/
+%%   producer would error with "Undefined procedure: consumer/1".
+bb :- consumer([X1?, X2? | Xs]), producer(1, [X1, X2 | Xs?]).
+
+%% consumer/1: the §4.2.12 sliding-window consumer.  Reads three slots
+%%   (X1, X2, X3) from the input stream, then recurses on the tail.  The
+%%   `known(X1?)` guard ensures the consumer waits for the producer to
+%%   fill at least the head slot before processing.
+%%
+%% NOTE: consumer/1 has NO procedure declaration in this file because the
+%%   byte-exact ch04 §4.2.12 source uses a stream-mode pattern (`Xs?`
+%%   reader in the head's tail position paired with `Xs` writer in the
+%%   body's tail position) that does NOT satisfy the type-checker's strict
+%%   reader-at-↓ / writer-at-↑ convention.  The clauses load and run
+%%   correctly; only the typed declaration is omitted.  This is the same
+%%   pattern that `olamni/tutorial/ch04/exercise-06/ch-04-ex-06-buffered-
+%%   and-monitors.glp` uses (no procedure declarations on producer/consumer
+%%   clauses).
+consumer([X1, X2, X3 | Xs?]) :- known(X1?) | consumer([X2?, X3? | Xs]).
+
+%% producer/2: the shared producer.  Takes a starting number N and an
+%%   output stream slot pre-allocated by the buffer.  Writes N, increments,
+%%   recurses.  The `number(N?)` guard sanity-checks the input.
+%%
+%% NOTE: producer/2 has NO procedure declaration for the same reason as
+%%   consumer/1 — byte-exact source's stream-mode pattern doesn't satisfy
+%%   strict typed mode-checking.
+producer(N, [N? | Xs]) :- number(N?) | N1 := N? + 1, producer(N1?, Xs?).
+
+%% bb_test/0: the §4.2.13 terminating variant.  Like bb/0 but the consumer
+%%   carries a countdown N (here 10), so the buffer terminates after
+%%   consuming 10 elements.
+%%
+%% NOTE: bb_test/0 has NO procedure declaration for the same reason as
+%%   bb/0 (its body calls consumer/2 + producer/2).
+bb_test :- consumer([X1?, X2? | Xs], 10), producer(1, [X1, X2 | Xs?]).
+
+%% consumer/2: the §4.2.13 terminating consumer.  Same shape as consumer/1
+%%   but adds a countdown N — when N hits 0, the second clause matches
+%%   and the buffer terminates.
+%%
+%% NOTE: consumer/2 has NO procedure declaration for the same reason as
+%%   consumer/1 — byte-exact source's stream-mode pattern doesn't satisfy
+%%   strict typed mode-checking.
+
+%% consumer/2 recursive: countdown > 0 — process one slot, decrement,
+%%   recurse on the tail with the decremented countdown.
+consumer([X1, X2, X3 | Xs?], N) :-
+    known(X1?), N? > 0 |
+    N1 := N? - 1,
+    consumer([X2?, X3? | Xs], N1?).
+
+%% consumer/2 base: countdown reached 0 — terminate.  The `_` discards
+%%   whatever stream tail remains.
+consumer(_, 0).

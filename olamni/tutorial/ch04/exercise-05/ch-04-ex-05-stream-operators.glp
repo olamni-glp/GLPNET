@@ -1,0 +1,95 @@
+% ch-04-ex-05-stream-operators.glp
+%
+% This file presents §4.2's stream-operator Programs from book p 33–34
+% (PDF p 45–46). All clauses byte-exact from the PDF.
+%
+% Programs included:
+%   §4.2.8 (book p 33): distribute/3 — broadcast (replicate stream to two outputs)
+%   §4.2.9 (book p 33–34): distribute_indexed/3 — tagged routing via send(N,X) messages
+%   §4.2.10 (book p 34): observer/3 — non-consuming stream replication (same shape as
+%     distribute, but pedagogically observer is "spy" not "broadcast")
+%   §4.2.11 (book p 34): adder/4 — ripple-carry adder over bit streams
+%
+% Plus duplicated full_adder/5 + half_adder/4 + logic gates (and/3, or/3, not/2,
+% xor/3) from ex-02 per FR-010 self-containment, because adder/4 calls
+% full_adder which calls half_adder which calls gates. Without these inline,
+% ex-05 cannot be loaded standalone in a fresh REPL session.
+%
+% References Formal 4.3 (Which Guards Enable Multiple Reader Occurrences,
+% pp 35–36) — ground(X?) guards on distribute/3 + observer/3 permit
+% replicating X across both output streams.
+
+%% §4.2.8 (book p 33): distribute/3 — broadcast.
+
+%% Distribute recursive — replicate head X across both outputs; ground guard permits multi-reader X?.
+distribute([X|Xs], [X?|Ys?], [X?|Zs?]) :- ground(X?) | distribute(Xs?, Ys, Zs).
+%% Distribute base — empty input → empty outputs.
+distribute([], [], []).
+
+%% §4.2.9 (book p 33–34): distribute_indexed/3 — tagged routing.
+%% AMENDED per Clarifications Q5 (2026-04-30): book's "untouched output"
+%% variable (Out2 in clause 1, Out1 in clause 2) is a writer in both head
+%% and body — violates strict SRSW. Fix: change head's bare writer to `Var?`
+%% (head reader = produces to caller); keep body as bare writer (paired
+%% with head's reader, filled by recursion). Two-character `?` additions
+%% in head positions; pedagogical content (tagged stream routing) unchanged.
+
+%% distribute_indexed clause 1 — head tagged send(1,X): route X to first output Out1; Out2? in head produces to caller's writer, body's Out2 (writer) is filled by recursion.
+distribute_indexed([send(1,X)|In], [X?|Out1?], Out2?) :-
+    distribute_indexed(In?, Out1, Out2).
+%% distribute_indexed clause 2 — head tagged send(2,X): route X to second output Out2; Out1? in head produces to caller's writer, body's Out1 (writer) is filled by recursion.
+distribute_indexed([send(2,X)|In], Out1?, [X?|Out2?]) :-
+    distribute_indexed(In?, Out1, Out2).
+%% distribute_indexed base — empty input → empty outputs.
+distribute_indexed([], [], []).
+
+%% §4.2.10 (book p 34): observer/3 — non-consuming replication.
+
+%% Observer recursive — replicate head X across both outputs; same shape as distribute but the pedagogical role is "spy" (one output is the original consumer's stream, the other is the observer's audit copy).
+observer([X|Xs], [X?|Ys?], [X?|Zs?]) :- ground(X?) | observer(Xs?, Ys, Zs).
+%% Observer base — empty input → empty outputs.
+observer([], [], []).
+
+%% §4.2.11 (book p 34): adder/4 — ripple-carry adder over bit streams (LSB first).
+
+%% Adder base — both bit streams empty: emit Cin as the final carry-out.
+adder([],[],Cin,[Cin?]).
+%% Adder recursive — full-adder on heads, recurse on tails with Cout as next Cin.
+adder([A|As],[B|Bs],Cin,[S?|Ss?]) :-
+    full_adder(A?,B?,Cin?,S,Cout),
+    adder(As?,Bs?,Cout?,Ss).
+
+%% §4.1 logic gates — duplicated inline from ex-02 per FR-010.
+
+%% AND truth table.
+and(1,1,1).
+and(1,0,0).
+and(0,1,0).
+and(0,0,0).
+
+%% OR truth table.
+or(1,1,1).
+or(1,0,1).
+or(0,1,1).
+or(0,0,0).
+
+%% NOT truth table.
+not(1,0).
+not(0,1).
+
+%% XOR truth table.
+xor(1,1,0).
+xor(1,0,1).
+xor(0,1,1).
+xor(0,0,0).
+
+%% §4.1 half_adder/4 — duplicated inline from ex-02 per FR-010.
+half_adder(A,B,Sum?,Carry?) :-
+    ground(A?), ground(B?) |
+    xor(A?,B?,Sum), and(A?,B?,Carry).
+
+%% §4.1 full_adder/5 — duplicated inline from ex-02 per FR-010.
+full_adder(A,B,Cin,Sum?,Cout?) :-
+    half_adder(A?,B?,S1,C1),
+    half_adder(S1?,Cin?,Sum,C2),
+    or(C1?,C2?,Cout).

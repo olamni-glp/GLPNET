@@ -1,0 +1,92 @@
+% ch-04-ex-06-buffered-and-monitors.glp
+%
+% This file presents §4.2's buffered communication + objects/monitors Programs
+% from book pp 34–36 (PDF pp 46–48). All clauses byte-exact from the PDF.
+%
+% Programs included:
+%   §4.2.12 (book p 34): bb/0 — sliding-window buffer (indefinite stream;
+%     suspends as a top-level goal). Includes consumer/1 + producer/2.
+%   §4.2.13 (book pp 34–35): bb_test/0 — terminating buffer variant. Includes
+%     consumer/2 + producer/2 (producer/2 SAME as bb's).
+%   §4.2.14 (book p 35): counter/1 + counter_loop/2 — object/monitor pattern.
+%     Multi-clause dispatch on add/clear/read messages.
+%   §4.2.15 (book p 36): accumulator/1 + acc_loop/2 + test_acc/0 + client1/1
+%     + client2/1 — monitor with multiple clients via merge.
+%
+% Plus duplicated simple merge/3 from ex-04 per FR-010 self-containment
+% (test_acc calls merge/3 to combine client streams).
+%
+% References Formal 4.3 (Which Guards Enable Multiple Reader Occurrences,
+% pp 35–36) — known/1 enables multiple reads (in counter's read clause).
+
+%% §4.2.12 (book p 34): sliding-window buffer.
+
+%% bb top-level — connects consumer (3 pre-allocated slots) with producer (starts at 1).
+bb :- consumer([X1?, X2? | Xs]), producer(1, [X1, X2 | Xs?]).
+
+%% bb consumer/1 — slides window forward by 1: consume head, demand new tail element.
+consumer([X1, X2, X3 | Xs?]) :- known(X1?) | consumer([X2?, X3? | Xs]).
+
+%% bb producer/2 — generates incrementing integers; number/1 guard permits multi-reader N?.
+producer(N, [N? | Xs]) :- number(N?) | N1 := N? + 1, producer(N1?, Xs?).
+
+%% §4.2.13 (book pp 34–35): terminating buffer test.
+
+%% bb_test top-level — same as bb but consumer takes a counter (10 elements).
+bb_test :- consumer([X1?, X2? | Xs], 10), producer(1, [X1, X2 | Xs?]).
+
+%% bb_test consumer/2 — sliding window with countdown; terminates when N reaches 0.
+consumer([X1, X2, X3 | Xs?], N) :- known(X1?), N? > 0 |
+    N1 := N? - 1, consumer([X2?, X3? | Xs], N1?).
+%% bb_test consumer/2 base — termination when count is zero.
+consumer(_, 0).
+
+%% §4.2.14 (book p 35): counter object/monitor.
+
+%% counter entry — initialises counter_loop with count 0.
+counter(In) :- counter_loop(In?, 0).
+
+%% counter_loop — clear: reset to 0.
+counter_loop([clear|In], _) :- counter_loop(In?, 0).
+%% counter_loop — add: increment count via :=.
+counter_loop([add|In], C) :- C1 := C? + 1, counter_loop(In?, C1?).
+%% counter_loop — read(C?): expose current count C via writer/reader pair; number/1 guard permits multi-reader C? per Formal 4.3.
+counter_loop([read(C?)|In], C) :- number(C?) | counter_loop(In?, C?).
+%% counter_loop base — terminate when input stream is empty.
+counter_loop([], _).
+
+%% §4.2.15 (book p 36): accumulator monitor with multiple clients.
+
+%% accumulator entry — initialises acc_loop with sum 0.
+accumulator(In) :- acc_loop(In?, 0).
+
+%% acc_loop — add(N): increment sum by N; number/1 guard permits multi-reader N?.
+acc_loop([add(N)|In], Sum) :- number(N?) |
+    Sum1 := Sum? + N?, acc_loop(In?, Sum1?).
+%% acc_loop — read(Sum?): expose current sum.
+acc_loop([read(Sum?)|In], Sum) :- number(Sum?) | acc_loop(In?, Sum?).
+%% acc_loop base — terminate when input stream is empty.
+acc_loop([], _).
+
+%% test_acc — spawn merge + accumulator + 2 clients; demonstrates concurrent monitor access.
+test_acc :-
+    merge(Client1?, Client2?, In),
+    accumulator(In?),
+    client1(Client1),
+    client2(Client2).
+
+%% client1 — sends add(10), add(20), read(X), then closes; X is the sum after its messages.
+client1([add(10), add(20), read(X) | []]) :- number(X?) | true.
+%% client2 — sends add(5), read(Y), then closes; Y is the sum after its messages.
+client2([add(5), read(Y) | []]) :- number(Y?) | true.
+
+%% Simple merge/3 (book p 32) duplicated inline per FR-010 (test_acc calls merge/3).
+
+%% Output from first stream — head's X forwarded; recursive call swaps args.
+merge([X|Xs], Ys, [X?|Zs?]) :- merge(Ys?, Xs?, Zs).
+%% Output from second stream — head's Y forwarded.
+merge(Xs, [Y|Ys], [Y?|Zs?]) :- merge(Xs?, Ys?, Zs).
+%% First stream empty — copy remaining second stream.
+merge([], Ys, Ys?).
+%% Second stream empty — copy remaining first stream.
+merge(Xs, [], Xs?).

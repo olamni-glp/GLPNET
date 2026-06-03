@@ -1,0 +1,57 @@
+%% ch06 ex-02 — §6.2 Quicksort
+%% Source: ch05 §5.6, book p 51, Program 5.6 typed quicksort.
+%% Synthesised from ch05 §5.6 because the ch06 PDF chapter (book p 53) is a
+%%   stub — only the title, a one-line intro, and the five §6.x section
+%%   headings exist; no body text and no native Programs.
+%% Type definitions, procedure declarations, AND clauses are byte-exact from
+%%   ch05 §5.6 (including ch05 Q10 dual amendments — corrected qsort
+%%   declaration `(NumList?, NumList, NumList?)` + interleaved layout, both
+%%   required to load per ch05 Q11 empirical verification).  ex-02 is the
+%%   only ch06 exercise where declarations are also byte-exact from the
+%%   source (because the source chapter was already typed); the other four
+%%   exercises introduce declarations fresh under §6.x.
+
+%% NumList type, duplicated inline from ch05 ex-01 so the file is self-contained.
+NumList ::= [] ; [Number | NumList].
+
+%% quicksort/2 declaration: consume the unsorted list, produce the sorted list.
+procedure quicksort(NumList?, NumList).
+
+%% Entry clause: hand the input to qsort with an empty accumulator tail.
+quicksort(Unsorted, Sorted?) :- qsort(Unsorted?, Sorted, []).
+
+%% qsort/3 declaration. Corrected from the PDF's `(NumList?, NumList?, NumList)`
+%% to `(NumList?, NumList, NumList?)` — the form the prose, the body call, and
+%% the clause heads all describe.
+procedure qsort(NumList?, NumList, NumList?).
+
+%% qsort recursive: pivot on X (numeric guard), partition the rest, sort both
+%% halves through the accumulator. The accumulator-tail trick lets us avoid
+%% `append` — Sorted1 is the head of the larger-sublist's sorted form, and
+%% we wedge `[X|Sorted1]` between the smaller-sorted prefix and Sorted1.
+qsort([X|Unsorted], Sorted?, Rest) :-
+    number(X?) |
+    partition(Unsorted?, X?, Smaller, Larger),
+    qsort(Smaller?, Sorted, [X?|Sorted1?]),
+    qsort(Larger?, Sorted1, Rest?).
+
+%% qsort base: empty input means the sorted-out is just the accumulator tail.
+qsort([], Rest?, Rest).
+
+%% partition/4 declaration: consume the input list and pivot, produce two
+%% output lists (Smaller-than-pivot, Larger-or-equal-than-pivot).
+procedure partition(NumList?, Number?, NumList, NumList).
+
+%% partition: pivot A < head X — X joins the Larger output, recurse on the rest.
+partition([X|Xs], A, Smaller?, [X?|Larger?]) :-
+    A? < X? |
+    partition(Xs?, A?, Smaller, Larger).
+
+%% partition: pivot A >= head X — X joins the Smaller output, recurse.
+partition([X|Xs], A, [X?|Smaller?], Larger?) :-
+    A? >= X? |
+    partition(Xs?, A?, Smaller, Larger).
+
+%% partition base: empty input means both outputs are empty. The `number(A?)`
+%% guard sanity-checks the pivot at the leaf.
+partition([], A, [], []) :- number(A?) | true.

@@ -1,0 +1,9 @@
+%% ch-01-ex-01-fair-stream-merger.glp
+%% Program 1.1 from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §1.6, p 5.
+%% Demonstrates the SRSW discipline: each variable occurs exactly once as a writer
+%% and once as a reader; alternation produced by the argument swap in the recursive
+%% call ensures both input streams are treated equally (fair merge).
+
+merge([X|Xs],Ys,[X?|Zs?]) :- merge(Ys?,Xs?,Zs).  %% take from stream 1; swap to alternate
+merge(Xs,[Y|Ys],[Y?|Zs?]) :- merge(Xs?,Ys?,Zs).  %% take from stream 2; swap to alternate
+merge([],[],[]).                                 %% both streams empty: terminate

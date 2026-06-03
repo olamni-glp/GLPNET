@@ -1,0 +1,29 @@
+% ch-05-ex-02-built-in-types.glp
+%
+% This file presents the §5.2 universal List type from book p 48 (PDF p 60),
+% byte-exact from the PDF. The book's §5.2 prose introduces three built-in
+% types — Number, Any, Atom — that are pre-existing GLP primitives (no code
+% declaration needed). The List definition uses Any to make a universal list.
+%
+% Programs included (byte-exact):
+%   §5.2 (book p 48): List ::= [] ; [Any | List].  — universal list via built-in Any
+%
+% A minimal recogniser is_list/1 is added below the type def so the learner
+% can run goals against the universal-list type. Compare its acceptance with
+% ex-01's is_numlist/1 to see how Any (universal) differs from Number (typed).
+
+%% List type: a universal list. Either the empty list [], or [Head | Tail]
+%% where Head is of the built-in type Any (any term) and Tail is again a List.
+%% Compare with §5.1.3's NumList — only the element type changes (Number → Any).
+List ::= [] ; [Any | List].
+
+%% --- TYPE RECOGNISER (probe procedure so goals can be run on List) ---
+
+%% is_list/1: succeeds when its argument is a List value (universal — any term
+%% may be a list element).
+procedure is_list(List?).
+%% Base case: [] is a List.
+is_list([]).
+%% Recursive case: [_|Rest] is a List if Rest is a List. The head element
+%% is unconstrained because Any accepts any term.
+is_list([_|Rest]) :- is_list(Rest?).

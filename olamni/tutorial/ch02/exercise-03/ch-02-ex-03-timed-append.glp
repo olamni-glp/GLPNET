@@ -1,0 +1,44 @@
+% ch-02-ex-03-timed-append.glp
+%% GLP append/3 byte-exact from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §4.2, pp 31-32.
+%% Imported into ch02 to illustrate the SRSW transition described in §2.2 (Linear Logic, Formal 2.1).
+%% This is the only cross-chapter import permitted in ch02 per the spec's Out-of-Scope section.
+%%
+%% This file extends ex-02: same GLP append, plus timed_append/3 which demonstrates that the same
+%% SRSW discipline that governs lists and numbers also governs side-effecting body kernels.
+%% now/1 (system time, ms since epoch) and '_output'/1 (ground-term I/O) come from programs/self.glp,
+%% dispatching to the runtime's _now and _output body kernels respectively
+%% (see glp_runtime/lib/runtime/body_kernels.dart).
+%% Because GLP body goals are concurrent, ground/1 guards are used to sequence the
+%% write_through, the elapsed-time computation, and the _output emission.
+
+append([], Ys, Ys?).                                   %% base: writer Ys binds; reader Ys? forwards the second list verbatim
+append([X|Xs], Ys, [X?|Zs?]) :- append(Xs?, Ys?, Zs).  %% recursive: writers in head; readers in body — paired
+
+%% timed_append/3: capture start, run append, capture end, finalize via finalize/4.
+%% The local Zs1 is the producer-consumer channel between append (writer) and finalize (reader).
+timed_append(A, B, Zs?) :-
+    now(Start),
+    append(A?, B?, Zs1),
+    now(End),
+    finalize(Zs1?, Start?, End?, Zs).
+
+%% finalize/4: gated on Zs1 fully ground, copy it to the caller's Zs writer, compute elapsed,
+%% and emit via emit_elapsed/1. The ground(Zs1?) guard relaxes SRSW so Zs1 may have multiple
+%% body-readers (per Formal 2.1's !A "of-course" modality realised by ground guards).
+finalize(Zs1, Start, End, Zs?) :- ground(Zs1?) |
+    write_through(Zs1?, Zs),                           %% copy the appended list to the caller's writer
+    Elapsed := End? - Start?,                          %% elapsed ms via := (reused from ex-02's arithmetic)
+    emit_elapsed(Elapsed?).                            %% gated _output emission — see emit_elapsed/1 below
+
+%% emit_elapsed/1: gated on Elapsed fully ground (it will be once := completes),
+%% emits the result via '_output' as a structured ground term elapsed_ms(N).
+%% The ground guard is necessary because GLP body goals run concurrently — without it,
+%% '_output' could fire before := has written Elapsed, printing an unbound variable.
+emit_elapsed(Elapsed) :- ground(Elapsed?) |
+    '_output'(elapsed_ms(Elapsed?)).
+
+%% write_through/2: structurally copy a ground list into a fresh writer (kept local per
+%% FR-015's no-additional-imports rule). Two clauses — base + recursive — exercising
+%% the SRSW writer/reader pairing on cons cells.
+write_through([], []).
+write_through([X|Xs], [X?|Ys?]) :- write_through(Xs?, Ys).
