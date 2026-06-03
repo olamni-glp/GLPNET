@@ -13,9 +13,12 @@ from pathlib import Path
 import pytest
 
 from codeconv.tools.equiv.goals import (
+    GOALS_PARTS,
     GoalEntry,
     discover_tutorials,
+    load,
     parse_trace_goals,
+    to_yaml,
 )
 
 
@@ -140,6 +143,32 @@ def test_suspended_multi_binding() -> None:
 
 def test_no_goal_no_source_yields_nothing() -> None:
     assert parse_trace_goals("just prose, no fences\n", origin="x") == []
+
+
+# ---- goals.yml serde round-trip (incr 1b) ---------------------------------
+
+
+def test_goals_yaml_round_trip(tmp_path: Path) -> None:
+    entries = (
+        GoalEntry(
+            source="ch02/exercise-01/ch-02-ex-01-glp-append.glp",
+            goal="append([1,2,3], [a,b,c], Zs).",
+            expected_status="succeeds",
+            expected_bindings=(("Zs", "[1, 2, 3, a, b, c]"),),
+            origin="tutorial:ch02/exercise-01",
+        ),
+        GoalEntry(
+            source="ch03/exercise-01/ch-03-ex-01-producer-consumer.glp",
+            goal="run(Out, Rest).",
+            expected_status="suspended",
+            expected_bindings=(("Out", "[a, b]"), ("Rest", "<unbound>")),
+            origin="tutorial:ch03/exercise-01",
+        ),
+    )
+    p = tmp_path.joinpath(*GOALS_PARTS)
+    p.parent.mkdir(parents=True)
+    p.write_text(to_yaml(entries), encoding="utf-8")
+    assert load(tmp_path) == entries  # bracket/comma binding values survive quoting
 
 
 # ---- opt-in: real sibling-repo seed (skipped if absent) -------------------

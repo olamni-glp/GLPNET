@@ -1,0 +1,821 @@
+# Goal-bearing equivalence corpus — feature 020 (codeconv-equiv).
+#
+# Reviewed, checked-in (g1=c). Seeded once by goals.discover_tutorials
+# parsing the sibling GLP tutorial repl-trace.md captures
+# (D:/bstdev/research/glp/GLP/olamni/tutorial, ch01-06 approved).
+# Each (source, goal) is run IN PLACE under the tutorial root (no copy;
+# FR-006). expected_* is the human-approved OUTCOME the driver's own Dart
+# golden re-capture must reproduce (decision 2) — NOT the instruction
+# golden. Design: specs/020-.../design-comprehensive-equiv-driver.md.
+#
+# Regenerate (then review the diff) with:
+#   python -c "from codeconv.tools.equiv import goals; \
+#     goals.write_artifacts('.', 'D:/bstdev/research/glp/GLP/olamni/tutorial')"
+version: 1
+goals:
+- source: ch01/exercise-01/ch-01-ex-01-fair-stream-merger.glp
+  goal: merge([1,2,3,4],[a],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, 3, 4]'
+  origin: tutorial:ch01/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-01/ch-01-ex-01-fair-stream-merger.glp
+  goal: merge([1,2,3],[a,b],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, b, 3]'
+  origin: tutorial:ch01/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-01/ch-01-ex-01-fair-stream-merger.glp
+  goal: merge([],[],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[]'
+  origin: tutorial:ch01/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-01/ch-01-ex-01-fair-stream-merger.glp
+  goal: merge([],[a,b,c],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[a, b, c]'
+  origin: tutorial:ch01/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-02/ch-01-ex-02-fair-stream-merger.glp
+  goal: merge([1,2,3,4],[a],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, 3, 4]'
+  origin: tutorial:ch01/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-02/ch-01-ex-02-fair-stream-merger.glp
+  goal: merge([1,2,3],[a,b],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, b, 3]'
+  origin: tutorial:ch01/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-02/ch-01-ex-02-fair-stream-merger.glp
+  goal: merge([],[],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[]'
+  origin: tutorial:ch01/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-02/ch-01-ex-02-fair-stream-merger.glp
+  goal: merge([],[a,b,c],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[a, b, c]'
+  origin: tutorial:ch01/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-03/ch-01-ex-03-fair-stream-merger.glp
+  goal: merge([1,2,3,4],[a],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, 3, 4]'
+  origin: tutorial:ch01/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-03/ch-01-ex-03-fair-stream-merger.glp
+  goal: merge([1,2,3],[a,b],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, b, 3]'
+  origin: tutorial:ch01/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-03/ch-01-ex-03-fair-stream-merger.glp
+  goal: merge([],[],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[]'
+  origin: tutorial:ch01/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch01/exercise-03/ch-01-ex-03-fair-stream-merger.glp
+  goal: merge([],[a,b,c],Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[a, b, c]'
+  origin: tutorial:ch01/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-01/ch-02-ex-01-glp-append.glp
+  goal: append([1,2,3], [], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[1, 2, 3]'
+  origin: tutorial:ch02/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-01/ch-02-ex-01-glp-append.glp
+  goal: append([1,2,3], [a,b,c], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[1, 2, 3, a, b, c]'
+  origin: tutorial:ch02/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-01/ch-02-ex-01-glp-append.glp
+  goal: append([], [], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[]'
+  origin: tutorial:ch02/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-01/ch-02-ex-01-glp-append.glp
+  goal: append([], [a,b,c], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[a, b, c]'
+  origin: tutorial:ch02/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-02/ch-02-ex-02-append-and-sum.glp
+  goal: append_and_sum([1,2,3], [4,5,6], Sum).
+  expected_status: succeeds
+  expected_bindings:
+  - - Sum
+    - '21'
+  origin: tutorial:ch02/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-02/ch-02-ex-02-append-and-sum.glp
+  goal: append_and_sum([1,2,3], [], Sum).
+  expected_status: succeeds
+  expected_bindings:
+  - - Sum
+    - '6'
+  origin: tutorial:ch02/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-02/ch-02-ex-02-append-and-sum.glp
+  goal: append_and_sum([], [4,5,6], Sum).
+  expected_status: succeeds
+  expected_bindings:
+  - - Sum
+    - '15'
+  origin: tutorial:ch02/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-02/ch-02-ex-02-append-and-sum.glp
+  goal: append_and_sum([], [], Sum).
+  expected_status: succeeds
+  expected_bindings:
+  - - Sum
+    - '0'
+  origin: tutorial:ch02/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-03/ch-02-ex-03-timed-append.glp
+  goal: timed_append([1,2,3,4,5,6,7,8,9,10], [a,b,c,d,e,f,g,h,i,j], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, a, b, c, d, e, f, g, h, i, j]'
+  origin: tutorial:ch02/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-03/ch-02-ex-03-timed-append.glp
+  goal: timed_append([1,2,3], [a,b,c], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[1, 2, 3, a, b, c]'
+  origin: tutorial:ch02/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-03/ch-02-ex-03-timed-append.glp
+  goal: timed_append([1], [a], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[1, a]'
+  origin: tutorial:ch02/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch02/exercise-03/ch-02-ex-03-timed-append.glp
+  goal: timed_append([], [], Zs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Zs
+    - '[]'
+  origin: tutorial:ch02/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-02/ch-03-ex-02-defined-guards.glp
+  goal: process([1,2,3], Status).
+  expected_status: succeeds
+  expected_bindings:
+  - - Status
+    - error
+  origin: tutorial:ch03/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-02/ch-03-ex-02-defined-guards.glp
+  goal: process(ch([], []), Status).
+  expected_status: succeeds
+  expected_bindings:
+  - - Status
+    - ok
+  origin: tutorial:ch03/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-02/ch-03-ex-02-defined-guards.glp
+  goal: process(ch(a, b), Status).
+  expected_status: succeeds
+  expected_bindings:
+  - - Status
+    - ok
+  origin: tutorial:ch03/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-02/ch-03-ex-02-defined-guards.glp
+  goal: process(foo, Status).
+  expected_status: succeeds
+  expected_bindings:
+  - - Status
+    - error
+  origin: tutorial:ch03/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-03/ch-03-ex-03-guard-negation.glp
+  goal: lookup(a, [(a,1),(b,2),(c,3)], V).
+  expected_status: succeeds
+  expected_bindings:
+  - - V
+    - '1'
+  origin: tutorial:ch03/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-03/ch-03-ex-03-guard-negation.glp
+  goal: lookup(b, [(a,1),(b,2),(c,3)], V).
+  expected_status: succeeds
+  expected_bindings:
+  - - V
+    - '2'
+  origin: tutorial:ch03/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-03/ch-03-ex-03-guard-negation.glp
+  goal: lookup(c, [(a,1),(b,2),(c,3)], V).
+  expected_status: succeeds
+  expected_bindings:
+  - - V
+    - '3'
+  origin: tutorial:ch03/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch03/exercise-03/ch-03-ex-03-guard-negation.glp
+  goal: lookup(z, [(a,1),(b,2),(c,3)], V).
+  expected_status: failed
+  expected_bindings:
+  - - V
+    - <unbound>
+  origin: tutorial:ch03/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-01/ch-04-ex-01-constants-and-gates.glp
+  goal: and(1, 1, R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '1'
+  origin: tutorial:ch04/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-01/ch-04-ex-01-constants-and-gates.glp
+  goal: not(1, N).
+  expected_status: succeeds
+  expected_bindings:
+  - - N
+    - '0'
+  origin: tutorial:ch04/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-01/ch-04-ex-01-constants-and-gates.glp
+  goal: or(1, 0, X).
+  expected_status: succeeds
+  expected_bindings:
+  - - X
+    - '1'
+  origin: tutorial:ch04/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-01/ch-04-ex-01-constants-and-gates.glp
+  goal: xor(0, 0, Y).
+  expected_status: succeeds
+  expected_bindings:
+  - - Y
+    - '0'
+  origin: tutorial:ch04/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-02/ch-04-ex-02-compound-circuits.glp
+  goal: full_adder(1, 1, 0, S, C).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '0'
+  - - C
+    - '1'
+  origin: tutorial:ch04/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-02/ch-04-ex-02-compound-circuits.glp
+  goal: full_adder(1, 1, 1, S, C).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '1'
+  - - C
+    - '1'
+  origin: tutorial:ch04/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-02/ch-04-ex-02-compound-circuits.glp
+  goal: half_adder(1, 0, S, C).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '1'
+  - - C
+    - '0'
+  origin: tutorial:ch04/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-02/ch-04-ex-02-compound-circuits.glp
+  goal: nand(1, 1, X).
+  expected_status: succeeds
+  expected_bindings:
+  - - X
+    - '0'
+  origin: tutorial:ch04/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-03/ch-04-ex-03-producer-consumer-acc-reverse.glp
+  goal: reverse_acc([1,2,3], [], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[3, 2, 1]'
+  origin: tutorial:ch04/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-03/ch-04-ex-03-producer-consumer-naive-reverse.glp
+  goal: producer(A, 5), consumer(A?, 0, Sum).
+  expected_status: succeeds
+  expected_bindings:
+  - - A
+    - '[5, 4, 3, 2, 1]'
+  - - Sum
+    - '15'
+  origin: tutorial:ch04/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-03/ch-04-ex-03-producer-consumer-naive-reverse.glp
+  goal: producer(B, 3), consumer(B?, 0, R).
+  expected_status: succeeds
+  expected_bindings:
+  - - B
+    - '[3, 2, 1]'
+  - - R
+    - '6'
+  origin: tutorial:ch04/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-03/ch-04-ex-03-producer-consumer-naive-reverse.glp
+  goal: reverse([a,b,c], Ys).
+  expected_status: succeeds
+  expected_bindings:
+  - - Ys
+    - '[c, b, a]'
+  origin: tutorial:ch04/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-04/ch-04-ex-04-merge-variants.glp
+  goal: merge([1,2,3], [a,b], Xs).
+  expected_status: succeeds
+  expected_bindings:
+  - - Xs
+    - '[1, a, 2, b, 3]'
+  origin: tutorial:ch04/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-04/ch-04-ex-04-merge-variants.glp
+  goal: merge([1,2], [], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[1, 2]'
+  origin: tutorial:ch04/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-04/ch-04-ex-04-merge-variants.glp
+  goal: merge([], [a,b,c], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[a, b, c]'
+  origin: tutorial:ch04/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-04/ch-04-ex-04-merge-variants.glp
+  goal: merge_tree([[1,2],[3,4],[5,6]], Out).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[1, 5, 3, 6, 2, 4]'
+  origin: tutorial:ch04/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-05/ch-04-ex-05-stream-operators.glp
+  goal: adder([1,0,1], [1,1,0], 0, R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[0, 0, 0, 1]'
+  origin: tutorial:ch04/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-05/ch-04-ex-05-stream-operators.glp
+  goal: distribute([a,b,c], Out1, Out2).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out1
+    - '[a, b, c]'
+  - - Out2
+    - '[a, b, c]'
+  origin: tutorial:ch04/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-05/ch-04-ex-05-stream-operators.glp
+  goal: distribute_indexed([send(1,a), send(2,b), send(1,c)], Out1, Out2).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out1
+    - '[a, c]'
+  - - Out2
+    - '[b]'
+  origin: tutorial:ch04/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch04/exercise-05/ch-04-ex-05-stream-operators.glp
+  goal: observer([1,2,3], Out1, Out2).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out1
+    - '[1, 2, 3]'
+  - - Out2
+    - '[1, 2, 3]'
+  origin: tutorial:ch04/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-01/ch-05-ex-01-type-definitions.glp
+  goal: is_bit(0).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch05/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-01/ch-05-ex-01-type-definitions.glp
+  goal: is_nat(s(s(0))).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch05/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-01/ch-05-ex-01-type-definitions.glp
+  goal: is_numlist([1,2,3]).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch05/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-01/ch-05-ex-01-type-definitions.glp
+  goal: is_numlist([]).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch05/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-03/ch-05-ex-03-mode-checked-merge.glp
+  goal: merge([1,3],[2,4],M).
+  expected_status: succeeds
+  expected_bindings:
+  - - M
+    - '[1, 2, 3, 4]'
+  origin: tutorial:ch05/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-03/ch-05-ex-03-mode-checked-merge.glp
+  goal: merge([],[],M).
+  expected_status: succeeds
+  expected_bindings:
+  - - M
+    - '[]'
+  origin: tutorial:ch05/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-03/ch-05-ex-03-mode-checked-merge.glp
+  goal: merge([],[c,d],M).
+  expected_status: succeeds
+  expected_bindings:
+  - - M
+    - '[c, d]'
+  origin: tutorial:ch05/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-03/ch-05-ex-03-mode-checked-merge.glp
+  goal: merge([a,b],[],M).
+  expected_status: succeeds
+  expected_bindings:
+  - - M
+    - '[a, b]'
+  origin: tutorial:ch05/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-04/ch-05-ex-04-counter-response-slot.glp
+  goal: counter([],99).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch05/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-04/ch-05-ex-04-counter-response-slot.glp
+  goal: counter([clear,show(R)],7).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '7'
+  origin: tutorial:ch05/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-04/ch-05-ex-04-counter-response-slot.glp
+  goal: counter([show(R)],42).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '42'
+  origin: tutorial:ch05/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-04/ch-05-ex-04-counter-response-slot.glp
+  goal: counter([show(R1),show(R2)],3).
+  expected_status: succeeds
+  expected_bindings:
+  - - R1
+    - '3'
+  - - R2
+    - '3'
+  origin: tutorial:ch05/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-05/ch-05-ex-05-typed-quicksort.glp
+  goal: quicksort([3,1,4,1,5,9,2,6],S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[1, 1, 2, 3, 4, 5, 6, 9]'
+  origin: tutorial:ch05/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-05/ch-05-ex-05-typed-quicksort.glp
+  goal: quicksort([5,4,3,2,1],S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[1, 2, 3, 4, 5]'
+  origin: tutorial:ch05/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-05/ch-05-ex-05-typed-quicksort.glp
+  goal: quicksort([7],S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[7]'
+  origin: tutorial:ch05/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-05/ch-05-ex-05-typed-quicksort.glp
+  goal: quicksort([],S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[]'
+  origin: tutorial:ch05/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-06/ch-05-ex-06-type-error-corrected.glp
+  goal: foo(L).
+  expected_status: succeeds
+  expected_bindings:
+  - - L
+    - '[1, 2, 3]'
+  origin: tutorial:ch05/exercise-06
+  tier: strict
+  compare_mode: trace
+- source: ch05/exercise-07/ch-05-ex-07-mode-error-corrected.glp
+  goal: bar(5,R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '6'
+  origin: tutorial:ch05/exercise-07
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-01/ch-06-ex-01-difference-lists.glp
+  goal: flatten([1,2,3], Out).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[3, 2, 1]'
+  origin: tutorial:ch06/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-01/ch-06-ex-01-difference-lists.glp
+  goal: flatten([[1,2],[3,[4,5]]], Out).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[5, 4, 3, 2, 1]'
+  origin: tutorial:ch06/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-01/ch-06-ex-01-difference-lists.glp
+  goal: flatten([[1]], Out).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[1]'
+  origin: tutorial:ch06/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-01/ch-06-ex-01-difference-lists.glp
+  goal: flatten([], Out).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[]'
+  origin: tutorial:ch06/exercise-01
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-02/ch-06-ex-02-typed-quicksort.glp
+  goal: quicksort([3,1,2], S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[1, 2, 3]'
+  origin: tutorial:ch06/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-02/ch-06-ex-02-typed-quicksort.glp
+  goal: quicksort([3,1,4,1,5,9,2,6], S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[1, 1, 2, 3, 4, 5, 6, 9]'
+  origin: tutorial:ch06/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-02/ch-06-ex-02-typed-quicksort.glp
+  goal: quicksort([5], S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[5]'
+  origin: tutorial:ch06/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-02/ch-06-ex-02-typed-quicksort.glp
+  goal: quicksort([], S).
+  expected_status: succeeds
+  expected_bindings:
+  - - S
+    - '[]'
+  origin: tutorial:ch06/exercise-02
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-03/ch-06-ex-03-equators-emergency-brake.glp
+  goal: run(my_module, my_goal, [suspend, abort], [], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[my_goal]'
+  origin: tutorial:ch06/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-03/ch-06-ex-03-equators-emergency-brake.glp
+  goal: run(my_module, my_goal, [suspend, resume, suspend, abort], [], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[my_goal]'
+  origin: tutorial:ch06/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-03/ch-06-ex-03-equators-emergency-brake.glp
+  goal: 'run(my_module, sub # (g1, g2), [suspend, abort], [], R).'
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[g2, g1]'
+  origin: tutorial:ch06/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-03/ch-06-ex-03-equators-emergency-brake.glp
+  goal: run(my_module, true, [], [done], R).
+  expected_status: succeeds
+  expected_bindings:
+  - - R
+    - '[done]'
+  origin: tutorial:ch06/exercise-03
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-04/ch-06-ex-04-bidirectional-communication.glp
+  goal: make_pair(P1, P2).
+  expected_status: succeeds
+  expected_bindings:
+  - - P1
+    - ch(X12, X14)
+  - - P2
+    - ch(X14, X12)
+  origin: tutorial:ch06/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-04/ch-06-ex-04-bidirectional-communication.glp
+  goal: new_channel(C1, C2).
+  expected_status: succeeds
+  expected_bindings:
+  - - C1
+    - ch(X4, X6)
+  - - C2
+    - ch(X6, X4)
+  origin: tutorial:ch06/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-04/ch-06-ex-04-bidirectional-communication.glp
+  goal: receive(X, ch([world], R), Result).
+  expected_status: succeeds
+  expected_bindings:
+  - - X
+    - world
+  - - R
+    - <unbound>
+  - - Result
+    - ch([], X38)
+  origin: tutorial:ch06/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-04/ch-06-ex-04-bidirectional-communication.glp
+  goal: send(hello, ch([], Out), Result).
+  expected_status: succeeds
+  expected_bindings:
+  - - Out
+    - '[hello | X28]'
+  - - Result
+    - ch([], X28)
+  origin: tutorial:ch06/exercise-04
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-05/ch-06-ex-05-buffered-communication.glp
+  goal: consumer([1, 2, 3, 4, 5], 3).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch06/exercise-05
+  tier: strict
+  compare_mode: trace
+- source: ch06/exercise-05/ch-06-ex-05-buffered-communication.glp
+  goal: consumer(anything, 0).
+  expected_status: succeeds
+  expected_bindings: []
+  origin: tutorial:ch06/exercise-05
+  tier: strict
+  compare_mode: trace
