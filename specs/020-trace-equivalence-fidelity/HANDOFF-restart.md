@@ -19,8 +19,9 @@ swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) un
 
 ## 1. Verified-green anchor (re-verify BEFORE touching anything)
 
-At handoff, ALL of these were green. On restart, reproduce them to confirm no drift,
-then resume. Do NOT stack new work on a red baseline (CLAUDE.md Test Protocol).
+At handoff, ALL of these were green — **RE-VERIFIED still green 2026-06-03 (fresh session):
+build 0 err · pure subset 36/36 · frontier 74/1/0**. On restart, reproduce them to confirm
+no drift, then resume. Do NOT stack new work on a red baseline (CLAUDE.md Test Protocol).
 
 ```
 # (a) Full C# solution builds — runner.cs included (74 built + 1 no_emit).
@@ -32,9 +33,13 @@ cd D:\bstdev\research\glp\glpnet\codeconv
 .venv\Scripts\python.exe -m pytest -p no:randomly -p no:xdist -q -o addopts="" \
   tests/test_codegen_opt_subsystem.py tests/test_codegen_opt_metric_mocked.py \
   tests/test_codegen_prompt_artifact.py tests/test_fidelity_metric.py \
-  tests/test_codegen_no_emit.py tests/test_migration_0009_single_head.py   # → 40 passed
+  tests/test_codegen_no_emit.py tests/test_migration_0009_single_head.py   # → 36 passed
 
 # (c) Conversion frontier (bridge; canonical cluster).
+#     🔴 RUN FROM REPO ROOT (D:\...\glpnet), NOT from codeconv\ — codeconv\ has its own
+#     pyproject.toml, so repo-root detection stops there → bridge-script lookup fails
+#     (FileNotFoundError pglite_bridge.mjs). Do NOT reuse (b)'s `cd ...\codeconv`.
+cd D:\bstdev\research\glp\glpnet
 codeconv --data-dir C:/pglite/research/glpnet codegen status --json
 #   → files_total:75, built:74, no_emit:1, escalated:0, open_escalations_total:0
 ```
