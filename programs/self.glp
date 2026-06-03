@@ -30,7 +30,9 @@ procedure number(Number?).
 procedure string(String?).
 procedure constant(Constant?).
 procedure compound(_?).
+procedure tuple(_?).
 procedure list(_?).
+procedure is_list(_?).
 procedure module(_?).
 % Groundness guards
 procedure ground(_?).

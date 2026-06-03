@@ -24,12 +24,21 @@ FriendContent ::= response(Response)
                 ; text(Constant)
                 ; intro(Constant, IntroChannel)
                 ; child_intro(Constant, IntroChannel)
-                ; group_invite(GroupId, Channel)
-                ; group_invite_child(GroupId, Constant, Channel)
+                ; group_invite(GroupId, GroupChannel)
+                ; group_invite_child(GroupId, Constant, GroupChannel)
                 ; group_msg(GroupId, Constant, Constant).
 FriendMsg     ::= msg(Constant, Constant, FriendContent).
 FriendStream  ::= [] ; [FriendMsg | FriendStream].
 FriendChannel ::= ch(FriendStream, FriendStream?).
+
+%% Group channel (replaces generic Channel in group_invite/group_channel)
+GroupContent ::= group_msg(GroupId, Constant, Constant).
+GroupMsg     ::= msg(Constant, Constant, GroupContent)
+               ; ack(Constant)
+               ; nack
+               ; group_channel(GroupChannel).
+GroupStream  ::= [] ; [GroupMsg | GroupStream].
+GroupChannel ::= ch(GroupStream, GroupStream?).
 
 Response ::= accept(FriendChannel) ; no.
 Decision ::= yes ; no.
@@ -47,8 +56,8 @@ AgentContent ::= befriend(Constant, Response?)
                ; rejected
                ; rejected(Constant)
                ; received(Constant, Constant)
-               ; group_invite(GroupId, Channel)
-               ; group_invite_child(GroupId, Constant, Channel)
+               ; group_invite(GroupId, GroupChannel)
+               ; group_invite_child(GroupId, Constant, GroupChannel)
                ; group_joined(GroupId)
                ; group_joined_member(GroupId, Constant)
                ; group_left(GroupId)
@@ -125,7 +134,7 @@ UserChannel      ::= ch(UserCmdStream, UserNotifyStream?).
 
 %% --- Pending entries ---
 PendingValue ::= response(Response?) ; channel(IntroChannel)
-               ; group_channel(Channel) ; error.
+               ; group_channel(GroupChannel) ; error.
 PendingEntry ::= pending(ReqId, PendingValue).
 PendingList  ::= [] ; [PendingEntry | PendingList].
 
