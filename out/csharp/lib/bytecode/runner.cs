@@ -1,14 +1,15 @@
 // WAM/FCP bytecode interpreter — Dart→C# conversion of glp_runtime/lib/bytecode/runner.dart.
-// CHUNK 1 of 6 (escalation E1): complete COMPILING SKELETON.
+// Converted via the escalation-E1 6-chunk split (skeleton + HEAD + UNIFY/v2 + BODY-build
+// + clause-control/commit + concurrency/guards/helpers), feature 020, 2026-06-03. COMPLETE:
 //   - Support types (BytecodeProgram, CallEnv, EnvironmentFrame, _ParentContext,
-//     RunnerContext, _ArgInfo, _TentativeStruct, _ClauseVar, _ListStruct,
-//     _StructureState) are FULLY implemented.
-//   - The dispatch loop (RunStep → runWithStatus) is implemented: pc advance, mode,
-//     reduction countdown, terminate/suspend/yield are real.
-//   - Each opcode arm is a private Exec<OpName>(RunnerContext, <OpType>) method,
-//     STUBBED (throws NotImplementedException). Later chunks fill the bodies.
-//   - Private helpers (_evaluateGuard, _dereferenceWithTracking, _evaluateArithmetic,
-//     _termsEqual, _convertTentativeToStruct) are stubbed.
+//     RunnerContext, _ArgInfo, _TentativeStruct, _ClauseVar, _ListStruct, _StructureState).
+//   - Dispatch loop (RunStep → RunWithStatus): pc advance, WAM read/write mode, reduction
+//     countdown, terminate/suspend/yield; each opcode arm is a private Exec<OpName> method.
+//   - All 60 arms + helpers (_evaluateGuard, _dereferenceWithTracking, _evaluateArithmetic,
+//     _termsEqual, _convertTentativeToStruct) implemented; preserves two-phase HEAD/GUARD/BODY
+//     (σ̂w/Si/U), writer-MGU, FCP wake-on-binding, tail-call kappa, module-RPC GlpChannel send.
+//   - Build-verified (full sln green). Behavioural/trace fidelity is verified by feature-020
+//     US1/US2 trace-equivalence (T017/T022), not by the build gate alone.
 // source: glp_runtime/lib/bytecode/runner.dart (4863 lines)
 // Public signatures are preserved VERBATIM from the prior stub — downstream files
 // (scheduler, glp_engine, isolate_manager, agent_runtime, codegen, linter, glp_repl)
@@ -1058,7 +1059,66 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecDistribute(RunnerContext cx, Distribute op)
-        => throw new NotImplementedException("runner arm: Distribute");
+    {
+        // Static RPC to imported module at known index
+        // Following FCP: distribute # {Index, Goal}
+        // Routes RPC via GLP channels or REPL module context.
+        if (cx.InBody)
+        {
+            // Collect arguments from argSlots
+            var args = new List<Term>();
+            for (var i = 0; i < (int)op.Arity; i++)
+            {
+                cx.ArgSlots.TryGetValue(i, out var arg);
+                if (arg != null) args.Add(arg);
+            }
+
+            // Check if module context is available
+            if (cx.ModuleContext is ReplModuleContext replCtx)
+            {
+                // REPL mode: directly spawn goal in target module
+                ReplModuleTarget? target = replCtx.Imports.TryGetValue((int)op.ImportIndex, out var t) ? t : null;
+
+                if (target != null)
+                {
+                    // Check GLP channel first (Phase 5: RPC routing via GLP channels)
+                    if (cx.Rt.GlpChannels.TryGetValue(target.Name, out var glpChannel) && glpChannel != null)
+                    {
+                        // Route via GLP channel — build goal term, send on channel
+                        var goalTerm = new StructTerm(op.Functor, args);
+                        var activations = glpChannel.Send(goalTerm);
+                        foreach (var act in activations)
+                        {
+                            cx.Rt.EnqueueReactivatedGoal(act);
+                        }
+                        if (cx.DebugOutput)
+                        {
+                            Console.WriteLine($"[MODULE] Distribute (GLP channel): {replCtx.ModuleName} -> {target.Name} # {op.Functor}/{op.Arity}");
+                        }
+                    }
+                    else
+                    {
+                        // Module not activated — no GLP channel available
+                        Console.WriteLine($"ERROR: Distribute: module {target.Name} not activated (no GLP channel for {op.Functor}/{op.Arity})");
+                        return _Step.Stop(RunResult.Terminated);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"ERROR: Distribute: no target for import index {op.ImportIndex} ({op.Functor}/{op.Arity})");
+                    return _Step.Stop(RunResult.Terminated);
+                }
+            }
+            else
+            {
+                // No module context
+                Console.WriteLine($"ERROR: Distribute: no module context for import[{op.ImportIndex}] # {op.Functor}/{op.Arity}");
+                return _Step.Stop(RunResult.Terminated);
+            }
+            cx.ArgSlots.Clear();
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecGetValue(RunnerContext cx, GetValue op)
     {
@@ -1220,13 +1280,398 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecGround(RunnerContext cx, Ground op)
-        => throw new NotImplementedException("runner arm: Ground");
+    {
+        var pc = cx.Pc;
+        // ground(X): Succeeds if X is ground (contains no unbound variables)
+        // ~ground(X): Succeeds if X is NOT ground (contains unbound variables)
+        cx.ClauseVars.TryGetValue((int)op.VarIndex, out var value);
+        if (value == null)
+        {
+            // Variable doesn't exist - fail (even for negated)
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Collect unbound readers and check for unbound writers
+        // NOTE: Must check BOTH sigmaHat (tentative bindings) AND heap bindings
+        // CYCLE DETECTION: Track visited variable addresses to handle circular terms
+        var unboundReaders = new HashSet<int>();
+        var visited = new HashSet<int>(); // Track visited variable addresses for cycle detection
+        var hasUnboundWriter = false;
+
+        void CollectUnbound(object? term)
+        {
+            if (term is VarRef wterm && cx.Rt.Heap.IsWriter(wterm.Addr))
+            {
+                var writerAddr = wterm.Addr;
+                // Cycle detection: skip already-visited variables
+                if (visited.Contains(writerAddr)) return;
+                visited.Add(writerAddr);
+                // First check sigmaHat for tentative binding
+                if (cx.SigmaHat.TryGetValue(writerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectUnbound(sigmaBinding);
+                }
+                else if (!cx.Rt.Heap.IsFullyBound(writerAddr))
+                {
+                    hasUnboundWriter = true;
+                }
+                else
+                {
+                    CollectUnbound(cx.Rt.Heap.GetValue(writerAddr));
+                }
+            }
+            else if (term is VarRef rterm && cx.Rt.Heap.IsReader(rterm.Addr))
+            {
+                var readerAddr = rterm.Addr;
+                // Cycle detection: skip already-visited variables
+                if (visited.Contains(readerAddr)) return;
+                visited.Add(readerAddr);
+                // First check sigmaHat for tentative binding on the reader
+                if (cx.SigmaHat.TryGetValue(readerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectUnbound(sigmaBinding);
+                }
+                else
+                {
+                    // Use isReaderBound for imported reader support
+                    if (!cx.Rt.Heap.IsReaderBound(readerAddr))
+                    {
+                        unboundReaders.Add(readerAddr);
+                    }
+                    else
+                    {
+                        CollectUnbound(cx.Rt.Heap.GetReaderValue(readerAddr));
+                    }
+                }
+            }
+            else if (term is StructTerm st)
+            {
+                foreach (var arg in st.Args) CollectUnbound(arg);
+            }
+            else if (term is _TentativeStruct ts)
+            {
+                // Tentative structure from HEAD phase - check its args
+                foreach (var arg in ts.Args) CollectUnbound(arg);
+            }
+            // Constants contribute nothing
+        }
+
+        // Dereference the clause variable
+        if (value is int valueInt)
+        {
+            // Could be writer addr or reader addr - check sigmaHat first
+            if (cx.SigmaHat.TryGetValue(valueInt, out var sigmaBinding) && sigmaBinding != null)
+            {
+                CollectUnbound(sigmaBinding);
+            }
+            else if (cx.Rt.Heap.IsWriter(valueInt))
+            {
+                // It's a writer address
+                if (!cx.Rt.Heap.IsFullyBound(valueInt))
+                {
+                    hasUnboundWriter = true;
+                }
+                else
+                {
+                    CollectUnbound(cx.Rt.Heap.GetValue(valueInt));
+                }
+            }
+            else
+            {
+                // It's a reader address - use isReaderBound for imported reader support
+                if (!cx.Rt.Heap.IsReaderBound(valueInt))
+                {
+                    unboundReaders.Add(valueInt);
+                }
+                else
+                {
+                    CollectUnbound(cx.Rt.Heap.GetReaderValue(valueInt));
+                }
+            }
+        }
+        else
+        {
+            // It's a Term - analyze it
+            CollectUnbound(value);
+        }
+
+        // Decision logic (three-valued) with negation support:
+        if (op.Negated)
+        {
+            // ~ground(X) semantics
+            if (hasUnboundWriter)
+            {
+                // Contains unbound writer(s) → definitely not ground → SUCCEED
+                return _Step.Advance();
+            }
+            else if (unboundReaders.Count > 0)
+            {
+                // Contains unbound readers → might become ground → SUSPEND
+                return _Step.Jump(_suspendAndFailMulti(cx, unboundReaders, pc));
+            }
+            else
+            {
+                // No unbound variables → is ground → FAIL
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+        else
+        {
+            // ground(X) semantics (original)
+            if (hasUnboundWriter)
+            {
+                // Contains unbound writer(s) → FAIL (cannot become ground via SRSW)
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+            else if (unboundReaders.Count > 0)
+            {
+                // Contains unbound readers but no unbound writers → SUSPEND
+                return _Step.Jump(_suspendAndFailMulti(cx, unboundReaders, pc));
+            }
+            else
+            {
+                // No unbound variables → SUCCEED (is ground)
+                return _Step.Advance();
+            }
+        }
+    }
 
     private _Step ExecGroundEqual(RunnerContext cx, GroundEqual op)
-        => throw new NotImplementedException("runner arm: GroundEqual");
+    {
+        var pc = cx.Pc;
+        // Ground equality test: X =?= Y
+        // Succeeds if both arguments are ground and structurally equal.
+        cx.ClauseVars.TryGetValue((int)op.LeftVarIndex, out var leftValue);
+        cx.ClauseVars.TryGetValue((int)op.RightVarIndex, out var rightValue);
+
+        if (leftValue == null || rightValue == null)
+        {
+            // Variable doesn't exist - fail
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Collect unbound readers and check for unbound writers in both terms
+        var unboundReaders = new HashSet<int>();
+        var visited = new HashSet<int>(); // Cycle detection
+        var hasUnboundWriter = false;
+
+        void CollectUnbound(object? term)
+        {
+            if (term is VarRef wterm && cx.Rt.Heap.IsWriter(wterm.Addr))
+            {
+                var writerAddr = wterm.Addr;
+                if (visited.Contains(writerAddr)) return;
+                visited.Add(writerAddr);
+                // Check sigmaHat first for tentative binding
+                if (cx.SigmaHat.TryGetValue(writerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectUnbound(sigmaBinding);
+                }
+                else if (!cx.Rt.Heap.IsFullyBound(writerAddr))
+                {
+                    hasUnboundWriter = true;
+                }
+                else
+                {
+                    CollectUnbound(cx.Rt.Heap.GetValue(writerAddr));
+                }
+            }
+            else if (term is VarRef rterm && cx.Rt.Heap.IsReader(rterm.Addr))
+            {
+                var readerAddr = rterm.Addr;
+                if (visited.Contains(readerAddr)) return;
+                visited.Add(readerAddr);
+                // Check sigmaHat first
+                if (cx.SigmaHat.TryGetValue(readerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectUnbound(sigmaBinding);
+                }
+                else
+                {
+                    // Use isReaderBound for imported reader support
+                    if (!cx.Rt.Heap.IsReaderBound(readerAddr))
+                    {
+                        unboundReaders.Add(readerAddr);
+                    }
+                    else
+                    {
+                        CollectUnbound(cx.Rt.Heap.GetReaderValue(readerAddr));
+                    }
+                }
+            }
+            else if (term is StructTerm st)
+            {
+                foreach (var arg in st.Args) CollectUnbound(arg);
+            }
+            else if (term is _TentativeStruct ts)
+            {
+                foreach (var arg in ts.Args) CollectUnbound(arg);
+            }
+            else if (term is int termInt)
+            {
+                // Bare int could be writer addr or reader addr
+                if (visited.Contains(termInt)) return;
+                visited.Add(termInt);
+                if (cx.SigmaHat.TryGetValue(termInt, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectUnbound(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsWriter(termInt))
+                {
+                    // It's a writer address
+                    if (!cx.Rt.Heap.IsFullyBound(termInt))
+                    {
+                        hasUnboundWriter = true;
+                    }
+                    else
+                    {
+                        CollectUnbound(cx.Rt.Heap.GetValue(termInt));
+                    }
+                }
+                else
+                {
+                    // It's a reader address - use isReaderBound for imported reader support
+                    if (!cx.Rt.Heap.IsReaderBound(termInt))
+                    {
+                        unboundReaders.Add(termInt);
+                    }
+                    else
+                    {
+                        CollectUnbound(cx.Rt.Heap.GetReaderValue(termInt));
+                    }
+                }
+            }
+            // Constants contribute nothing
+        }
+
+        // Check left term
+        CollectUnbound(leftValue);
+        // Check right term
+        CollectUnbound(rightValue);
+
+        // Decision logic with negation support
+        if (hasUnboundWriter)
+        {
+            // Contains unbound writer(s) → FAIL (cannot determine equality)
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+        else if (unboundReaders.Count > 0)
+        {
+            // Contains unbound readers → SUSPEND
+            return _Step.Jump(_suspendAndFailMulti(cx, unboundReaders, pc));
+        }
+        else
+        {
+            // Both terms are ground - dereference fully and compare
+            var (leftDeref, _) = _dereferenceWithTracking(leftValue, cx);
+            var (rightDeref, _) = _dereferenceWithTracking(rightValue, cx);
+
+            var areEqual = _termsEqual(leftDeref, rightDeref, cx);
+
+            var success = areEqual;
+            if (op.Negated)
+            {
+                success = !success;
+            }
+
+            if (success)
+            {
+                return _Step.Advance();
+            }
+            else
+            {
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+    }
 
     private _Step ExecGuard(RunnerContext cx, Guard op)
-        => throw new NotImplementedException("runner arm: Guard");
+    {
+        var pc = cx.Pc;
+        // Execute guard predicate with three-valued semantics
+        // Guards can SUCCESS (continue), FAIL (try next clause), or SUSPEND (add to Si)
+        var predicateName = op.ProcedureLabel; // Actually the predicate name (e.g., '<', '>')
+        var arity = (int)op.Arity;
+
+        // Extract and dereference arguments from argument registers
+        var args = new List<object?>();
+        var unboundReaders = new HashSet<int>();
+
+        for (var i = 0; i < arity; i++)
+        {
+            object? argValue;
+
+            // Get argument from argSlots (heterogeneous term storage)
+            cx.ArgSlots.TryGetValue(i, out var arg);
+            if (arg != null)
+            {
+                argValue = arg; // Store Term directly (VarRef, ConstTerm, or StructTerm)
+            }
+            // Check clauseVars for HEAD variables
+            else if (cx.ClauseVars.ContainsKey(i))
+            {
+                argValue = cx.ClauseVars[i];
+            }
+            else
+            {
+                // No argument at this slot
+                argValue = null;
+            }
+
+            // Dereference to get actual values, tracking unbound readers
+            if (argValue != null)
+            {
+                var (derefValue, readers) = _dereferenceWithTracking(argValue, cx);
+                args.Add(derefValue);
+                unboundReaders.UnionWith(readers);
+            }
+            else
+            {
+                args.Add(null);
+            }
+        }
+
+        // If any arguments have unbound readers, suspend
+        // EXCEPTION: 'unknown' guard specifically tests for unbound - don't suspend
+        if (unboundReaders.Count > 0 && predicateName != "unknown")
+        {
+            return _Step.Jump(_suspendAndFailMulti(cx, unboundReaders, pc));
+        }
+
+        // All arguments are ground - evaluate the guard
+        var result = _evaluateGuard(predicateName, args, cx);
+
+        // Handle guard negation: invert success/fail (suspend unchanged)
+        if (op.Negated)
+        {
+            if (result == GuardResult.Pass)
+            {
+                result = GuardResult.Fail;
+            }
+            else if (result == GuardResult.Fail)
+            {
+                result = GuardResult.Pass;
+            }
+            // suspend stays suspend
+        }
+
+        if (result == GuardResult.Pass)
+        {
+            return _Step.Advance();
+        }
+        else
+        {
+            // FAIL - try next clause
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+    }
 
     private _Step ExecGuardFail(RunnerContext cx, GuardFail op)
         => _Step.Advance();
@@ -2015,7 +2460,152 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecKnown(RunnerContext cx, Known op)
-        => throw new NotImplementedException("runner arm: Known");
+    {
+        var pc = cx.Pc;
+        // known(X): Succeeds if X is not an unbound variable
+        // ~known(X): Succeeds if X IS an unbound variable (equivalent to unknown/1)
+        cx.ClauseVars.TryGetValue((int)op.VarIndex, out var value);
+        if (value == null)
+        {
+            // Variable doesn't exist - fail (even for negated)
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Check if value is known
+        // NOTE: Must check BOTH sigmaHat (tentative bindings) AND heap bindings
+        var isKnown = false;
+        int? unboundReader = null;
+        var isUnboundWriter = false;
+
+        if (value is int valueInt)
+        {
+            // Could be writer addr or reader addr - check sigmaHat first
+            if (cx.SigmaHat.ContainsKey(valueInt))
+            {
+                isKnown = true; // Has tentative binding
+            }
+            else if (cx.Rt.Heap.IsWriter(valueInt))
+            {
+                // It's a writer addr - check if bound
+                if (cx.Rt.Heap.IsFullyBound(valueInt))
+                {
+                    isKnown = true;
+                }
+                else
+                {
+                    isUnboundWriter = true;
+                }
+            }
+            else
+            {
+                // It's a reader addr - use isReaderBound for imported reader support
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(valueInt);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                {
+                    isKnown = true; // Writer has tentative binding
+                }
+                else if (cx.Rt.Heap.IsReaderBound(valueInt))
+                {
+                    isKnown = true;
+                }
+                else
+                {
+                    // Unbound reader - could become known later
+                    unboundReader = valueInt;
+                }
+            }
+        }
+        else if (value is VarRef wvalue && cx.Rt.Heap.IsWriter(wvalue.Addr))
+        {
+            // Writer - check sigmaHat first, then heap
+            if (cx.SigmaHat.ContainsKey(wvalue.Addr))
+            {
+                isKnown = true;
+            }
+            else if (cx.Rt.Heap.IsFullyBound(wvalue.Addr))
+            {
+                isKnown = true;
+            }
+            else
+            {
+                isUnboundWriter = true;
+            }
+        }
+        else if (value is VarRef rvalue && cx.Rt.Heap.IsReader(rvalue.Addr))
+        {
+            // Reader - check sigmaHat first, then heap
+            var readerAddr = rvalue.Addr;
+            if (cx.SigmaHat.ContainsKey(readerAddr))
+            {
+                isKnown = true;
+            }
+            else
+            {
+                // Use tryWriterForReader for imported reader support
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(readerAddr);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                {
+                    isKnown = true;
+                }
+                else if (cx.Rt.Heap.IsReaderBound(readerAddr))
+                {
+                    isKnown = true;
+                }
+                else
+                {
+                    unboundReader = readerAddr;
+                }
+            }
+        }
+        else
+        {
+            // Constant or structure - always known
+            isKnown = true;
+        }
+
+        // Decision logic with negation support
+        if (op.Negated)
+        {
+            // ~known(X) semantics
+            if (isUnboundWriter)
+            {
+                // Variable is unbound writer → definitely unknown → SUCCEED
+                return _Step.Advance();
+            }
+            else if (unboundReader != null)
+            {
+                // Variable is unbound reader → might become known → SUSPEND
+                return _Step.Jump(_suspendAndFail(cx, unboundReader.Value, pc));
+            }
+            else
+            {
+                // Variable is known → FAIL
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+        else
+        {
+            // known(X) semantics (original)
+            if (isKnown)
+            {
+                // Variable is known - succeed
+                return _Step.Advance();
+            }
+            else if (unboundReader != null)
+            {
+                // Variable is unbound reader - could become known later, add to Si
+                return _Step.Jump(_suspendAndFail(cx, unboundReader.Value, pc));
+            }
+            else
+            {
+                // Variable is unbound writer - fail
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+    }
 
     private _Step ExecLabel(RunnerContext cx, Label op)
         => _Step.Advance();
@@ -2039,7 +2629,150 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecNoReaders(RunnerContext cx, NoReaders op)
-        => throw new NotImplementedException("runner arm: NoReaders");
+    {
+        var pc = cx.Pc;
+        // no_readers(X): Succeeds if X contains no readers (only ground terms or writers)
+        // ~no_readers(X): Succeeds if X DOES contain readers
+        cx.ClauseVars.TryGetValue((int)op.VarIndex, out var value);
+
+        if (value == null)
+        {
+            // Variable doesn't exist - for no_readers, this means no readers → succeed
+            // For ~no_readers, no readers means fail
+            if (op.Negated)
+            {
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+            else
+            {
+                return _Step.Advance();
+            }
+        }
+
+        // Collect all readers in the term (we need to suspend on them)
+        // Unlike ground, we don't care about writers - writers are fine
+        var readers = new HashSet<int>();
+        var visited = new HashSet<int>();
+
+        void CollectReaders(object? term)
+        {
+            if (term is VarRef rterm && cx.Rt.Heap.IsReader(rterm.Addr))
+            {
+                var readerAddr = rterm.Addr;
+                if (visited.Contains(readerAddr)) return;
+                visited.Add(readerAddr);
+                // Check if reader is bound - if so, traverse its value
+                if (cx.SigmaHat.TryGetValue(readerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectReaders(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsReaderBound(readerAddr))
+                {
+                    CollectReaders(cx.Rt.Heap.GetReaderValue(readerAddr));
+                }
+                else
+                {
+                    // Unbound reader - add to suspension set
+                    readers.Add(readerAddr);
+                }
+            }
+            else if (term is VarRef wterm && cx.Rt.Heap.IsWriter(wterm.Addr))
+            {
+                // Writers are OK for no_readers - they can be sent to external systems
+                // But we need to traverse their bindings to check for readers inside
+                var writerAddr = wterm.Addr;
+                if (visited.Contains(writerAddr)) return;
+                visited.Add(writerAddr);
+                if (cx.SigmaHat.TryGetValue(writerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    CollectReaders(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsFullyBound(writerAddr))
+                {
+                    CollectReaders(cx.Rt.Heap.GetValue(writerAddr));
+                }
+                // Unbound writer is fine - no readers contributed
+            }
+            else if (term is StructTerm st)
+            {
+                foreach (var arg in st.Args) CollectReaders(arg);
+            }
+            else if (term is _TentativeStruct ts)
+            {
+                foreach (var arg in ts.Args) CollectReaders(arg);
+            }
+            // Constants contribute no readers
+        }
+
+        // Dereference the clause variable and collect readers
+        if (value is int valueInt)
+        {
+            if (cx.SigmaHat.TryGetValue(valueInt, out var sigmaBinding) && sigmaBinding != null)
+            {
+                CollectReaders(sigmaBinding);
+            }
+            else if (cx.Rt.Heap.IsWriter(valueInt))
+            {
+                if (cx.Rt.Heap.IsFullyBound(valueInt))
+                {
+                    CollectReaders(cx.Rt.Heap.GetValue(valueInt));
+                }
+                // Unbound writer is fine
+            }
+            else
+            {
+                // Reader address
+                if (visited.Contains(valueInt))
+                {
+                    // Already visited
+                }
+                else if (cx.Rt.Heap.IsReaderBound(valueInt))
+                {
+                    CollectReaders(cx.Rt.Heap.GetReaderValue(valueInt));
+                }
+                else
+                {
+                    readers.Add(valueInt);
+                }
+            }
+        }
+        else
+        {
+            CollectReaders(value);
+        }
+
+        // Decision logic:
+        if (op.Negated)
+        {
+            // ~no_readers(X) - succeeds if X HAS readers
+            if (readers.Count > 0)
+            {
+                // Has readers → SUCCEED
+                return _Step.Advance();
+            }
+            else
+            {
+                // No readers → fail
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+        else
+        {
+            // no_readers(X) semantics
+            if (readers.Count == 0)
+            {
+                // No readers found → SUCCEED
+                return _Step.Advance();
+            }
+            else
+            {
+                // Has readers → SUSPEND (never fails)
+                return _Step.Jump(_suspendAndFailMulti(cx, readers, pc));
+            }
+        }
+    }
 
     private _Step ExecNop(RunnerContext cx, Nop op)
         => _Step.Advance();
@@ -2227,7 +2960,73 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecRequeue(RunnerContext cx, Requeue op)
-        => throw new NotImplementedException("runner arm: Requeue");
+    {
+        if (cx.InBody)
+        {
+            // Tail call - reuse current goal, jump to procedure entry
+            // Get entry point for procedure
+            if (!_prog.Labels.TryGetValue(op.ProcedureLabel, out var entryPc))
+            {
+                Console.WriteLine($"ERROR: Requeue could not find procedure label: {op.ProcedureLabel}");
+                return _Step.Stop(RunResult.Terminated);
+            }
+
+            // Format requeued goal as GLP predicate with arguments
+            var fmtArgs = new List<string>();
+            for (var i = 0; i < 10; i++)
+            {
+                cx.ArgSlots.TryGetValue(i, out var term);
+                if (term != null)
+                {
+                    // Use custom formatter if provided, otherwise fall back to static formatter
+                    fmtArgs.Add(cx.TermFormatter != null
+                        ? cx.TermFormatter(term, true)
+                        : _formatTerm(cx.Rt, term));
+                }
+                else
+                {
+                    break;
+                }
+            }
+            var newHeadGoalStr = fmtArgs.Count == 0 ? op.ProcedureLabel : $"{op.ProcedureLabel}({string.Join(", ", fmtArgs)})";
+            cx.SpawnedGoals.Add(newHeadGoalStr);
+
+            // Print reduction trace before tail call
+            if (cx.OnReduction != null && cx.GoalHead != null)
+            {
+                var body = string.Join(", ", cx.SpawnedGoals);
+                cx.OnReduction(cx.GoalId, cx.ReformatHead(), body);
+            }
+
+            // Update environment with new heterogeneous arguments
+            cx.Env.Update(new Dictionary<int, Term>(cx.ArgSlots));
+
+            // Clear argument registers
+            cx.ArgSlots.Clear();
+
+            // Clear spawned goals and update head for next reduction
+            cx.SpawnedGoals.Clear();
+            cx.GoalHead = newHeadGoalStr; // New head for next iteration
+
+            // Reset clause state for new procedure
+            cx.SigmaHat.Clear();
+            // Si removed - U persists across clause attempts
+            cx.U.Clear();
+            cx.ClauseVars.Clear();
+            cx.InBody = false;
+            cx.Mode = UnifyMode.Read;
+            cx.S = 0;
+            cx.CurrentStructure = null;
+
+            // Update kappa to new procedure's entry point
+            // This ensures suspension/reactivation uses the correct procedure
+            cx.Kappa = entryPc;
+
+            // Jump to procedure entry
+            return _Step.Jump(entryPc);
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecRequireReaderArg(RunnerContext cx, RequireReaderArg op)
     {
@@ -2370,7 +3169,103 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecSpawn(RunnerContext cx, Spawn op)
-        => throw new NotImplementedException("runner arm: Spawn");
+    {
+        if (cx.InBody)
+        {
+            // Get entry point for procedure
+            var hasEntry = _prog.Labels.TryGetValue(op.ProcedureLabel, out var entryPc);
+
+            // If procedure not found in program, check if it's a body kernel
+            if (!hasEntry)
+            {
+                // Extract procedure name from label (may be "name" or "name/arity")
+                var labelParts = op.ProcedureLabel.Split('/');
+                var procName = labelParts[0];
+
+                // Look up body kernel
+                var kernel = cx.Rt.BodyKernels.Lookup(procName, op.Arity);
+                if (kernel != null)
+                {
+                    // Execute body kernel inline
+                    // Collect arguments from argSlots
+                    var kArgs = new List<object?>();
+                    for (var i = 0; i < (int)op.Arity; i++)
+                    {
+                        cx.ArgSlots.TryGetValue(i, out var slot);
+                        kArgs.Add(slot);
+                    }
+
+                    // Execute kernel
+                    var result = kernel(cx.Rt, kArgs);
+
+                    if (result == BodyKernelResult.Abort)
+                    {
+                        Console.WriteLine($"ERROR: Body kernel {procName}/{op.Arity} aborted");
+                        return _Step.Stop(RunResult.Terminated);
+                    }
+
+                    // Success - clear args and continue (no goal spawned)
+                    cx.ArgSlots.Clear();
+                    return _Step.Advance();
+                }
+
+                // Not a body kernel either - error
+                Console.WriteLine($"ERROR: Spawn could not find procedure label: {op.ProcedureLabel}");
+                return _Step.Stop(RunResult.Terminated);
+            }
+
+            // Spawn a new goal with heterogeneous argument Terms
+            // Per spec v2.16 section 1.1: Create CallEnv from argSlots
+            var newEnv = new CallEnv(new Dictionary<int, Term>(cx.ArgSlots));
+
+            // Create and enqueue new goal with unique ID
+            var newGoalId = cx.Rt.NextGoalId++;
+            var newGoalRef = new GoalRef(newGoalId, entryPc);
+
+            // Format spawned goal as GLP predicate with arguments
+            var fmtArgs = new List<string>();
+            for (var i = 0; i < 10; i++)
+            {
+                var term = newEnv.Arg(i);
+                if (term != null)
+                {
+                    // Use custom formatter if provided, otherwise fall back to static formatter
+                    fmtArgs.Add(cx.TermFormatter != null
+                        ? cx.TermFormatter(term, true)
+                        : _formatTerm(cx.Rt, term));
+                }
+                else
+                {
+                    break;
+                }
+            }
+            var goalStr = fmtArgs.Count == 0 ? op.ProcedureLabel : $"{op.ProcedureLabel}({string.Join(", ", fmtArgs)})";
+            cx.SpawnedGoals.Add(goalStr);
+
+            // Register environment with the runtime
+            cx.Rt.SetGoalEnv(newGoalId, newEnv);
+
+            // Inherit program from parent goal
+            var parentProgram = cx.Rt.GetGoalProgram(cx.GoalId);
+            if (parentProgram != null)
+            {
+                cx.Rt.SetGoalProgram(newGoalId, parentProgram);
+            }
+
+            // Enqueue the goal
+            cx.Rt.Gq.Enqueue(newGoalRef);
+
+            // Propagate infrastructure goal status to child goals
+            if (cx.Rt.InfrastructureGoalIds.Contains(cx.GoalId))
+            {
+                cx.Rt.InfrastructureGoalIds.Add(newGoalId);
+            }
+
+            // Clear argument registers for next spawn
+            cx.ArgSlots.Clear();
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecSuspendEnd(RunnerContext cx, SuspendEnd op)
     {
@@ -2399,7 +3294,72 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecTransmit(RunnerContext cx, Transmit op)
-        => throw new NotImplementedException("runner arm: Transmit");
+    {
+        // Dynamic RPC to module resolved at runtime
+        // Following FCP: transmit # {ModuleVar, Goal}
+        // Resolves module name from variable, looks up in registry,
+        // Routes via GLP channels to target module.
+        if (cx.InBody)
+        {
+            // Collect arguments from argSlots
+            var args = new List<Term>();
+            for (var i = 0; i < (int)op.Arity; i++)
+            {
+                cx.ArgSlots.TryGetValue(i, out var arg);
+                if (arg != null) args.Add(arg);
+            }
+
+            // Get module name from clause variable
+            cx.ClauseVars.TryGetValue((int)op.ModuleVarIndex, out var moduleVar);
+
+            // Resolve module name from variable
+            string? moduleName = null;
+            if (moduleVar is ConstTerm constModuleVar)
+            {
+                moduleName = constModuleVar.Value?.ToString();
+            }
+            else if (moduleVar is VarRef varRefModuleVar)
+            {
+                // Dereference variable to get bound value
+                var deref = cx.Rt.Heap.Dereference(varRefModuleVar);
+                if (deref is ConstTerm derefConst)
+                {
+                    moduleName = derefConst.Value?.ToString();
+                }
+            }
+
+            if (moduleName != null)
+            {
+                // Check GLP channel first (Phase 5: RPC routing via GLP channels)
+                if (cx.Rt.GlpChannels.TryGetValue(moduleName, out var glpChannel) && glpChannel != null)
+                {
+                    // Route via GLP channel — build goal term, send on channel
+                    var goalTerm = new StructTerm(op.Functor, args);
+                    var activations = glpChannel.Send(goalTerm);
+                    foreach (var act in activations)
+                    {
+                        cx.Rt.EnqueueReactivatedGoal(act);
+                    }
+                    if (cx.DebugOutput)
+                    {
+                        Console.WriteLine($"[MODULE] Transmit (GLP channel): -> {moduleName} # {op.Functor}/{op.Arity}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"ERROR: Transmit: module {moduleName} not activated (no GLP channel for {op.Functor}/{op.Arity})");
+                    return _Step.Stop(RunResult.Terminated);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"ERROR: Transmit: could not resolve module name from X{op.ModuleVarIndex} ({op.Functor}/{op.Arity})");
+                return _Step.Stop(RunResult.Terminated);
+            }
+            cx.ArgSlots.Clear();
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecTryNextClause(RunnerContext cx, TryNextClause op)
     {
@@ -3845,31 +4805,857 @@ public sealed class BytecodeRunner
         return _Step.Jump(_findNextClauseTry(pc));
     }
 
-    // ── Private helpers (STUBBED — filled by later chunks) ───────────────────
+    // ── Private helpers (filled — chunk 6) ───────────────────────────────────
 
     /// <summary>Dereference a term and track any unbound readers encountered (guard suspension detection).</summary>
     private static (object?, ISet<int>) _dereferenceWithTracking(object? term, RunnerContext cx)
-        => throw new NotImplementedException("runner helper: _dereferenceWithTracking");
+    {
+        var unboundReaders = new HashSet<int>();
+
+        object? Dereference(object? t)
+        {
+            // Resolve clauseVars first (same pattern as Execute fix)
+            if (t is VarRef tvr && cx.ClauseVars.ContainsKey(tvr.Addr))
+            {
+                // Resolve clause variable index to actual heap addr
+                var resolved = cx.ClauseVars[tvr.Addr];
+                if (resolved is int resolvedInt)
+                {
+                    t = new VarRef(resolvedInt);
+                }
+                else if (resolved != null)
+                {
+                    // Already resolved to a term
+                    return Dereference(resolved);
+                }
+            }
+
+            if (t is VarRef vr)
+            {
+                var addr = vr.Addr;
+                if (cx.Rt.Heap.IsReader(addr))
+                {
+                    // Reader - check if bound using abstraction methods for imported reader support
+                    var readerAddr = addr;
+
+                    // Check sigma-hat first for tentative bindings (before commit)
+                    var writerAddr = cx.Rt.Heap.TryWriterForReader(readerAddr);
+                    if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                    {
+                        return Dereference(cx.SigmaHat[writerAddr.Value]);
+                    }
+
+                    if (cx.Rt.Heap.IsReaderBound(readerAddr))
+                    {
+                        var boundValue = cx.Rt.Heap.GetReaderValue(readerAddr);
+                        // CRITICAL FIX: Recursively dereference the bound value
+                        return Dereference(boundValue);
+                    }
+                    else
+                    {
+                        // Unbound reader - track it
+                        unboundReaders.Add(readerAddr);
+                        return t;
+                    }
+                }
+                else
+                {
+                    // Writer variable
+                    var writerAddr = addr;
+
+                    // Check sigma-hat first (tentative bindings)
+                    if (cx.SigmaHat.ContainsKey(writerAddr))
+                    {
+                        return Dereference(cx.SigmaHat[writerAddr]);
+                    }
+
+                    // Check heap
+                    if (cx.Rt.Heap.IsFullyBound(writerAddr))
+                    {
+                        var boundValue = cx.Rt.Heap.GetValue(writerAddr);
+                        // CRITICAL FIX: Recursively dereference the bound value
+                        return Dereference(boundValue);
+                    }
+                    else
+                    {
+                        // Unbound writer - can't evaluate
+                        return t;
+                    }
+                }
+            }
+            else if (t is StructTerm)
+            {
+                // Return structure as-is (don't evaluate arithmetic here)
+                // Guards like =:= will evaluate explicitly using evaluateNumeric
+                return t;
+            }
+            else if (t is ConstTerm ct)
+            {
+                // CRITICAL FIX: Unwrap ConstTerm to get primitive value
+                return ct.Value;
+            }
+            else if (t is int ti)
+            {
+                // Bare int represents a variable addr - check sigmaHat first, then heap
+                if (cx.SigmaHat.ContainsKey(ti))
+                {
+                    return Dereference(cx.SigmaHat[ti]);
+                }
+                else if (cx.Rt.Heap.IsFullyBound(ti))
+                {
+                    var boundValue = cx.Rt.Heap.GetValue(ti);
+                    // Recursively dereference the bound value
+                    return Dereference(boundValue);
+                }
+                else
+                {
+                    // Unbound variable - return as VarRef for proper handling
+                    return new VarRef(ti);
+                }
+            }
+            else
+            {
+                return t;
+            }
+        }
+
+        var result = Dereference(term);
+        return (result, unboundReaders);
+    }
 
     /// <summary>Test if a functor is an arithmetic operator.</summary>
     private static bool _isArithmeticOp(string functor)
-        => throw new NotImplementedException("runner helper: _isArithmeticOp");
+    {
+        return functor is "+" or "-" or "*" or "/" or "mod" or "neg";
+    }
 
     /// <summary>Evaluate an arithmetic expression (already ground).</summary>
     private static double _evaluateArithmetic(string op, IReadOnlyList<object?> args)
-        => throw new NotImplementedException("runner helper: _evaluateArithmetic");
+    {
+        // Extract numeric values
+        double GetNum(object? v)
+        {
+            if (v is double dv) return dv;
+            if (v is int iv) return iv;
+            if (v is long lv) return lv;
+            if (v is ConstTerm cv)
+            {
+                if (cv.Value is double cdv) return cdv;
+                if (cv.Value is int civ) return civ;
+                if (cv.Value is long clv) return clv;
+            }
+            throw new InvalidOperationException($"Non-numeric value in arithmetic: {v}");
+        }
+
+        if (args.Count == 0)
+        {
+            throw new InvalidOperationException($"Arithmetic operator {op} requires arguments");
+        }
+
+        var a = GetNum(args[0]);
+
+        // Unary operators
+        if (op == "neg" || (op == "-" && args.Count == 1))
+        {
+            return -a;
+        }
+
+        // Binary operators
+        if (args.Count < 2)
+        {
+            throw new InvalidOperationException($"Binary operator {op} requires two arguments");
+        }
+        var b = GetNum(args[1]);
+
+        switch (op)
+        {
+            case "+": return a + b;
+            case "-": return a - b;
+            case "*": return a * b;
+            case "/": return a / b;
+            case "mod": return (long)a % (long)b;
+            default: throw new InvalidOperationException($"Unknown arithmetic operator: {op}");
+        }
+    }
 
     /// <summary>Evaluate a guard predicate with ground arguments.</summary>
     private static GuardResult _evaluateGuard(string predicateName, IReadOnlyList<object?> args, RunnerContext cx)
-        => throw new NotImplementedException("runner helper: _evaluateGuard");
+    {
+        // Extract values from any remaining ConstTerms
+        object? GetValue(object? v)
+        {
+            if (v is ConstTerm ct) return ct.Value;
+            return v;
+        }
+
+        // Evaluate arithmetic expressions to numeric values
+        // Supports: X, X + Y, X - Y, X * Y, X / Y, X // Y, X mod Y, -X
+        double? EvaluateNumeric(object? v)
+        {
+            if (v is double dv) return dv;
+            if (v is int iv) return iv;
+            if (v is long lv) return lv;
+            if (v is ConstTerm cnum)
+            {
+                if (cnum.Value is double cdv) return cdv;
+                if (cnum.Value is int civ) return civ;
+                if (cnum.Value is long clv) return clv;
+            }
+            // Handle VarRef - dereference to get actual value
+            if (v is VarRef vref)
+            {
+                if (cx.Rt.Heap.IsReader(vref.Addr))
+                {
+                    // Use isReaderBound/getReaderValue for imported reader support
+                    if (!cx.Rt.Heap.IsReaderBound(vref.Addr)) return null; // Unbound
+                    var deref = cx.Rt.Heap.GetReaderValue(vref.Addr);
+                    return EvaluateNumeric(deref);
+                }
+                else
+                {
+                    var deref = cx.Rt.Heap.GetValue(vref.Addr);
+                    if (deref == null) return null; // Unbound
+                    return EvaluateNumeric(deref);
+                }
+            }
+            if (v is StructTerm st)
+            {
+                // Evaluate arithmetic expression
+                switch (st.Functor)
+                {
+                    case "+":
+                        if (st.Args.Count != 2) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null) return null;
+                            return a + b;
+                        }
+                    case "-":
+                        if (st.Args.Count == 1)
+                        {
+                            // Unary minus
+                            var a = EvaluateNumeric(st.Args[0]);
+                            return a == null ? null : -a;
+                        }
+                        else if (st.Args.Count == 2)
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null) return null;
+                            return a - b;
+                        }
+                        return null;
+                    case "*":
+                        if (st.Args.Count != 2) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null) return null;
+                            return a * b;
+                        }
+                    case "/":
+                        if (st.Args.Count != 2) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null || b == 0) return null;
+                            return a / b;
+                        }
+                    case "//":
+                        if (st.Args.Count != 2) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null || b == 0) return null;
+                            return Math.Truncate(a.Value / b.Value);
+                        }
+                    case "mod":
+                        if (st.Args.Count != 2) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            var b = EvaluateNumeric(st.Args[1]);
+                            if (a == null || b == null || b == 0) return null;
+                            return (long)a.Value % (long)b.Value;
+                        }
+                    case "neg":
+                        if (st.Args.Count != 1) return null;
+                        {
+                            var a = EvaluateNumeric(st.Args[0]);
+                            return a == null ? null : -a;
+                        }
+                    default:
+                        return null; // Not an arithmetic functor
+                }
+            }
+            return null;
+        }
+
+        switch (predicateName)
+        {
+            // Comparison guards (with arithmetic expression support)
+            case "<":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a < b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case ">":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a > b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "=<":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a <= b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case ">=":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a >= b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "=:=":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a == b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "=\\=":
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var a = EvaluateNumeric(args[0]);
+                    var b = EvaluateNumeric(args[1]);
+                    if (a != null && b != null)
+                    {
+                        return a != b ? GuardResult.Pass : GuardResult.Fail;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            // Type guards
+            case "ground":
+                // Already checked for unbound readers in caller
+                return GuardResult.Pass;
+
+            case "known":
+                // Check if argument is not a variable
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var arg = args[0];
+                    if (arg is VarRef)
+                    {
+                        return GuardResult.Fail;
+                    }
+                    return GuardResult.Pass;
+                }
+
+            case "integer":
+                // Per spec 19.4.3: Test if Xi is an integer
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    return (val is int || val is long) ? GuardResult.Pass : GuardResult.Fail;
+                }
+
+            case "string":
+                // Succeeds if X is a string (lowercase identifier or quoted string)
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    // String: ConstTerm with String value (not 'nil' which represents [])
+                    if (val is ConstTerm cstr && cstr.Value is string cs && cs != "nil")
+                    {
+                        return GuardResult.Pass;
+                    }
+                    if (val is string s && s != "nil")
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "constant":
+                // Succeeds if X is a constant (a string, a number, or [])
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    // String or nil (which represents [])
+                    if (val is ConstTerm cc && cc.Value is string)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    if (val is string)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    // Number
+                    if (val is int || val is long || val is double)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    if (val is ConstTerm cn && (cn.Value is int || cn.Value is long || cn.Value is double))
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "number":
+                // Succeeds if X is a number
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    if (val is int || val is long || val is double) return GuardResult.Pass;
+                    if (val is ConstTerm cn && (cn.Value is int || cn.Value is long || cn.Value is double)) return GuardResult.Pass;
+                    return GuardResult.Fail;
+                }
+
+            case "list":
+                // Succeeds if X is a list ([] or [H|T])
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    // Empty list: ConstTerm('nil') / null, or raw String 'nil'
+                    if (val is ConstTerm cnil && (Equals(cnil.Value, "nil") || cnil.Value == null))
+                    {
+                        return GuardResult.Pass;
+                    }
+                    if (val is string ls && ls == "nil")
+                    {
+                        return GuardResult.Pass;
+                    }
+                    // Non-empty list / cons cell: StructTerm('.', ...)
+                    if (val is StructTerm lst && lst.Functor == ".")
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "compound":
+                // Succeeds if X is a compound term (structure with functor and arity > 0)
+                // Lists are compound since [X|Xs] = '.'(X, Xs)
+                // Does NOT imply groundness - may contain unbound subterms
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    if (val is StructTerm cst && cst.Args.Count > 0)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "module":
+                // Succeeds if X is a ModuleTerm (ground module reference)
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var mval = GetValue(args[0]);
+                    if (mval is ModuleTerm)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "is_mutual_ref":
+                // Succeeds if X is a MutualRefTerm (enables SRSW multiple reads)
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var val = GetValue(args[0]);
+                    if (val is MutualRefTerm)
+                    {
+                        return GuardResult.Pass;
+                    }
+                    return GuardResult.Fail;
+                }
+
+            case "unknown":
+                // Test if dereferencing leads to an unbound variable
+                // Per spec: "Succeeds if X is bound to an unbound variable"
+                // This means we follow the binding chain to its end
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    object? value = args[0];
+
+                    // Follow binding chain to end
+                    while (value is VarRef vvr)
+                    {
+                        var addr = vvr.Addr;
+                        if (cx.Rt.Heap.IsReader(addr))
+                        {
+                            // Use abstraction methods for imported reader support
+                            var writerAddr = cx.Rt.Heap.TryWriterForReader(addr);
+                            if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                            {
+                                value = cx.SigmaHat[writerAddr.Value];
+                                continue;
+                            }
+                            // Check heap using isReaderBound/getReaderValue
+                            if (cx.Rt.Heap.IsReaderBound(addr))
+                            {
+                                value = cx.Rt.Heap.GetReaderValue(addr);
+                                continue;
+                            }
+                            // Reached an unbound reader → SUCCESS
+                            return GuardResult.Pass;
+                        }
+                        else
+                        {
+                            // Writer - check σ̂w first, then heap
+                            if (cx.SigmaHat.ContainsKey(addr))
+                            {
+                                value = cx.SigmaHat[addr];
+                                continue;
+                            }
+                            if (cx.Rt.Heap.IsFullyBound(addr))
+                            {
+                                value = cx.Rt.Heap.GetValue(addr);
+                                continue;
+                            }
+                            // Reached an unbound writer → SUCCESS
+                            return GuardResult.Pass;
+                        }
+                    }
+                    // Dereferenced to a non-variable (ground term) → FAILURE
+                    return GuardResult.Fail;
+                }
+
+            // Control guards
+            case "otherwise":
+                // This is handled by the compiler - should not reach runtime
+                return GuardResult.Pass;
+
+            // Time guards
+            case "wait":
+                // wait(Duration) - Wait for Duration milliseconds using GLP suspension
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var duration = EvaluateNumeric(args[0]);
+                    if (duration == null) return GuardResult.Fail;
+                    if (duration <= 0) return GuardResult.Pass;
+
+                    // Check if this goal already has a pending wait
+                    var existingReader = cx.Rt.GetWaitReader(cx.GoalId);
+                    if (existingReader != null)
+                    {
+                        // Goal resumed after suspension - check if timer fired
+                        if (cx.Rt.Heap.IsFullyBound(existingReader.Value))
+                        {
+                            // Timer fired, reader is bound - clear state and succeed
+                            cx.Rt.ClearWaitState(cx.GoalId);
+                            return GuardResult.Pass;
+                        }
+                        else
+                        {
+                            // Timer hasn't fired yet - keep suspending on same reader
+                            cx.U.Add(existingReader.Value);
+                            return GuardResult.Fail;
+                        }
+                    }
+
+                    // First call - create fresh reader/writer pair for timer notification
+                    var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+
+                    // Store wait state for this goal
+                    cx.Rt.SetWaitReader(cx.GoalId, readerAddr);
+
+                    // Track pending timer
+                    cx.Rt.IncrementPendingTimers();
+
+                    // Start timer that binds writer when it fires
+                    _startGlpTimer((int)duration.Value, cx.Rt, writerAddr);
+
+                    // Add reader to suspension set U and fail → triggers normal suspension
+                    cx.U.Add(readerAddr);
+                    return GuardResult.Fail;
+                }
+
+            case "wait_until":
+                // wait_until(Timestamp) - Suspend until absolute time has passed
+                if (args.Count == 0) return GuardResult.Fail;
+                {
+                    var timestamp = EvaluateNumeric(args[0]);
+                    if (timestamp == null) return GuardResult.Fail;
+                    var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    if (now >= timestamp) return GuardResult.Pass;
+
+                    // Time hasn't arrived yet — use timer-based suspension (same as wait)
+                    var remaining = (int)(timestamp.Value - now);
+
+                    // Check if this goal already has a pending wait_until
+                    var existingReaderWU = cx.Rt.GetWaitReader(cx.GoalId);
+                    if (existingReaderWU != null)
+                    {
+                        if (cx.Rt.Heap.IsFullyBound(existingReaderWU.Value))
+                        {
+                            cx.Rt.ClearWaitState(cx.GoalId);
+                            return GuardResult.Pass;
+                        }
+                        else
+                        {
+                            cx.U.Add(existingReaderWU.Value);
+                            return GuardResult.Fail;
+                        }
+                    }
+
+                    // First call — create fresh reader/writer pair for timer notification
+                    var (writerAddrWU, readerAddrWU) = cx.Rt.Heap.AllocateVariable();
+                    cx.Rt.SetWaitReader(cx.GoalId, readerAddrWU);
+                    cx.Rt.IncrementPendingTimers();
+
+                    _startGlpTimer(remaining, cx.Rt, writerAddrWU);
+
+                    cx.U.Add(readerAddrWU);
+                    return GuardResult.Fail;
+                }
+
+            case "=?=":
+                // Ground equality test
+                if (args.Count < 2) return GuardResult.Fail;
+                {
+                    var left = args[0];
+                    var right = args[1];
+
+                    // Check for unbound writers (VarRef that reached here is unbound writer)
+                    // Unbound readers would have caused suspension in caller
+                    if (left is VarRef || right is VarRef)
+                    {
+                        return GuardResult.Fail; // Unbound writer → fail
+                    }
+
+                    // Both ground - check structural equality
+                    var result = _termsEqual(left, right, cx);
+                    return result ? GuardResult.Pass : GuardResult.Fail;
+                }
+
+            default:
+                Console.WriteLine($"[WARN] Unknown guard predicate: {predicateName}");
+                return GuardResult.Fail;
+        }
+    }
+
+    /// <summary>
+    /// Start a GLP suspension timer: after <paramref name="ms"/> milliseconds, bind the writer
+    /// and re-enqueue any reactivated goals. Mirrors the Dart dart:async Timer callback.
+    /// </summary>
+    private static void _startGlpTimer(int ms, GlpRuntimeEngine rt, int writerAddr)
+    {
+        System.Threading.Timer? timer = null;
+        timer = new System.Threading.Timer(_ =>
+        {
+            // Bind writer to 0 (any value works)
+            var reactivated = rt.Heap.BindWriterConst(writerAddr, 0);
+            // Enqueue reactivated goals and clean up suspended map
+            foreach (var goalRef in reactivated)
+            {
+                rt.EnqueueReactivatedGoal(goalRef);
+            }
+            // Decrement pending timer count
+            rt.DecrementPendingTimers();
+            timer?.Dispose();
+        }, null, ms < 0 ? 0 : ms, System.Threading.Timeout.Infinite);
+    }
 
     /// <summary>Check structural equality of two ground terms (with cycle detection).</summary>
     private static bool _termsEqual(object? a, object? b, RunnerContext cx, HashSet<(int, int)>? visited = null)
-        => throw new NotImplementedException("runner helper: _termsEqual");
+    {
+        visited ??= new HashSet<(int, int)>();
+
+        // Handle null
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+
+        // Unwrap ConstTerm
+        if (a is ConstTerm act) a = act.Value;
+        if (b is ConstTerm bct) b = bct.Value;
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+
+        // Dereference VarRefs with cycle detection
+        if (a is VarRef avr)
+        {
+            var aAddr = avr.Addr;
+            object? aDeref;
+            if (cx.Rt.Heap.IsReader(aAddr))
+            {
+                // Use abstraction methods for imported reader support
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(aAddr);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                {
+                    aDeref = cx.SigmaHat[writerAddr.Value];
+                }
+                else if (cx.Rt.Heap.IsReaderBound(aAddr))
+                {
+                    aDeref = cx.Rt.Heap.GetReaderValue(aAddr);
+                }
+                else
+                {
+                    return false; // Unbound - can't compare
+                }
+            }
+            else
+            {
+                if (cx.SigmaHat.ContainsKey(aAddr))
+                {
+                    aDeref = cx.SigmaHat[aAddr];
+                }
+                else if (cx.Rt.Heap.IsFullyBound(aAddr))
+                {
+                    aDeref = cx.Rt.Heap.GetValue(aAddr);
+                }
+                else
+                {
+                    return false; // Unbound writer
+                }
+            }
+
+            // If b is also a VarRef, check for cycle
+            if (b is VarRef bvr0)
+            {
+                var bAddr = bvr0.Addr;
+                var pair = (aAddr, bAddr);
+                if (visited.Contains(pair))
+                {
+                    return true; // Cycle detected at corresponding positions - equal
+                }
+                visited.Add(pair);
+            }
+
+            return _termsEqual(aDeref, b, cx, visited);
+        }
+        if (b is VarRef bvr)
+        {
+            var bAddr = bvr.Addr;
+            object? bDeref;
+            if (cx.Rt.Heap.IsReader(bAddr))
+            {
+                // Use abstraction methods for imported reader support
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(bAddr);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                {
+                    bDeref = cx.SigmaHat[writerAddr.Value];
+                }
+                else if (cx.Rt.Heap.IsReaderBound(bAddr))
+                {
+                    bDeref = cx.Rt.Heap.GetReaderValue(bAddr);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if (cx.SigmaHat.ContainsKey(bAddr))
+                {
+                    bDeref = cx.SigmaHat[bAddr];
+                }
+                else if (cx.Rt.Heap.IsFullyBound(bAddr))
+                {
+                    bDeref = cx.Rt.Heap.GetValue(bAddr);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return _termsEqual(a, bDeref, cx, visited);
+        }
+
+        // Simple values (numbers, strings)
+        if (_isNum(a) && _isNum(b)) return _numEquals(a, b);
+        if (a is string astr && b is string bstr) return astr == bstr;
+
+        // Structures
+        if (a is StructTerm asTerm && b is StructTerm bsTerm)
+        {
+            if (asTerm.Functor != bsTerm.Functor) return false;
+            if (asTerm.Args.Count != bsTerm.Args.Count) return false;
+            for (var i = 0; i < asTerm.Args.Count; i++)
+            {
+                if (!_termsEqual(asTerm.Args[i], bsTerm.Args[i], cx, visited)) return false;
+            }
+            return true;
+        }
+
+        // Default: use object equality
+        return Equals(a, b);
+    }
+
+    /// <summary>True if value is a GLP numeric (int/long/double).</summary>
+    private static bool _isNum(object? v) => v is int || v is long || v is double;
+
+    /// <summary>Numeric equality across int/long/double (Dart num == semantics).</summary>
+    private static bool _numEquals(object? a, object? b)
+    {
+        double Conv(object? v) => v is double d ? d : v is long l ? l : v is int i ? i : double.NaN;
+        return Conv(a) == Conv(b);
+    }
 
     /// <summary>Recursively convert a _TentativeStruct to a StructTerm.</summary>
     private static StructTerm _convertTentativeToStruct(_TentativeStruct tentative, RunnerContext cx)
-        => throw new NotImplementedException("runner helper: _convertTentativeToStruct");
+    {
+        var termArgs = new List<Term>();
+        foreach (var arg in tentative.Args)
+        {
+            if (arg is _TentativeStruct nested)
+            {
+                // Recursively convert nested tentative structures
+                termArgs.Add(_convertTentativeToStruct(nested, cx));
+            }
+            else if (arg is Term argTerm)
+            {
+                // Already a Term - use as-is
+                termArgs.Add(argTerm);
+            }
+            else if (arg == null)
+            {
+                // Null -> ConstTerm(null)
+                termArgs.Add(new ConstTerm(null));
+            }
+            else
+            {
+                // Raw value -> ConstTerm
+                termArgs.Add(new ConstTerm(arg));
+            }
+        }
+        return new StructTerm(tentative.Functor, termArgs);
+    }
 }
 
 // ── Tail helper classes (fully implemented — fill chunks depend on their fields) ──
