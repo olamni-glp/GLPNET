@@ -1,17 +1,35 @@
 ```yaml
+baseline_score: 1.0
+budget: 6
+budget_used: 1
+dataset_hash: bbb9bece11321f97
 generated_at: '2026-06-03T00:00:00Z'
-metric_score: null
+metric_score: 1.0
 model: claude-in-session
-optimizer: seed-authored
+optimizer: gepa-build-only
 provenance_note: >-
-  Authored seed for the `bytecode` subsystem, descended from _base.md. Idioms
-  recorded from the 2026-05-28 bulk drive (asm/opcodes/opcodes_v2 built) and
-  the runner.dart E1 escalation (.codeconv/conversion-code/lib/bytecode/
-  runner.dart.md). A GEPA run for this subsystem overwrites this file.
+  GEPA run 2026-06-03 (build-only metric — decision 1: GEPA wired before the
+  runnable C# REPL exists). Seed = the authored bulk-drive idioms (prose below,
+  UNCHANGED by this run). One fresh generation of the train file opcodes.dart
+  under this prompt (generator sub-agent, no peeking at the existing .cs) built
+  standalone at score 1.0; the existing baseline outputs (opcodes/opcodes_v2
+  isolated, asm with the opcodes dep) also build, so the build-only metric is
+  at its 1.0 ceiling for the bytecode leaves. There is NO build-gradient for
+  the reflector to climb, so the instructions are frozen unchanged from the
+  seed (honest outcome, not a fabricated edit). The runner held-out file is
+  excluded from the eval — it is the 4863-line E1 scope-exceeded escalation,
+  not a prompt-quality signal. Genuine GEPA-driven refinement of this prompt
+  awaits the trace-equivalence fidelity metric (T031, once the C# REPL is
+  runnable), which adds a gradient ABOVE the build ceiling.
+run_date: '2026-06-03'
 schema_version: 1
 seed_from: _base.md
 source: bulk-drive-idioms
 subsystem: bytecode
+train_eval:
+  generated: [opcodes.dart]
+  held_out_skipped: [runner.dart]
+  score: 1.0
 ```
 
 Convert one Dart source in `lib/bytecode/` to real, compilable C#/.NET 10.
