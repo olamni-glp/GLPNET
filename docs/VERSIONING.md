@@ -1,58 +1,47 @@
-# Versioning — GLPNET
+# Versioning — GLPNET (buildkit CalVer)
 
-This repository follows **CalVer** (Calendar Versioning), cloned from the
-sibling **GLP** repository's convention so the two move in lock-step on
-ergonomics.
+GLPNET follows **CalVer** (Calendar Versioning) as minted by the **canonical
+buildkit** toolchain (spec-016). Tags are cut by `buildkit release`, not by hand.
 
 ## Tag format
 
 ```
-vYYYY.MM.DD          first release of the day
-vYYYY.MM.DD-2        second release of the same day
-vYYYY.MM.DD-3        third release, etc.
+vYYYY.MM.DD.N
 ```
 
-- `YYYY` is the four-digit year (e.g. `2026`).
-- `MM` is the two-digit month (e.g. `04`).
-- `DD` is the two-digit day (e.g. `30`).
-- The optional `-N` suffix is a small integer that increments per same-day
-  release, starting at `-2` for the second release.
+- `YYYY` four-digit year, `MM` two-digit month, `DD` two-digit day.
+- `.N` is the per-day release counter, **always present**, starting at `.1`
+  for the first release of the day (`.2`, `.3`, … for subsequent same-day releases).
 
-Examples (taken from GLP's tag history):
+Examples:
 
 ```
-v2026.04.30
-v2026.04.29-2
-v2026.04.29
-v2026.04.28-2
-v2026.04.28
+v2026.06.03.1        first release on 2026-06-03
+v2026.06.03.2        second release the same day
 ```
+
+> Note: the older glpnet/GLP tags use a `vYYYY.MM.DD[-N]` dash form
+> (`v2026.05.17`, `v2026.05.17-2`, `v2026.05.23`). New releases use the buildkit
+> `.N` dot form; the historical dash tags are left in place.
 
 ## How tags are minted
 
-Tags are created **only on the `main` branch** and only after a feature branch
-has been merged. The flow is:
+Tags are minted by **`buildkit release`** (or the release half of
+`buildkit ship`), never by hand:
 
-1. Feature work happens on a `NNN-feature-name` branch (or `claude/...` for
-   fix branches).
-2. A PR merges the feature branch into `main`.
-3. After merge, switch to `main`, pull, and create the tag:
-   ```bash
-   git checkout main
-   git pull origin main
-   git tag -a vYYYY.MM.DD -m "Release vYYYY.MM.DD: <one-line summary>"
-   git push origin vYYYY.MM.DD
-   ```
-4. If a release was already cut earlier today, use `-2`, `-3`, etc.
+1. Feature work merges into `develop` (feature PR).
+2. `buildkit release` (run from `develop`) cuts `release/v<calver>`, bumps,
+   stamps `CHANGELOG`, **tags `v<calver>`**, opens the release PR
+   (`release/* → main`), merges it, and back-merges `main → develop`.
+3. `main` therefore only ever advances through a tagged release commit.
+
+See [BRANCHING.md](BRANCHING.md) for the full GitFlow.
 
 ## Why CalVer, not SemVer
 
 GLP and GLPNET are research/tooling repos rather than libraries with public
-API contracts. There is no meaningful "breaking change" surface to gate a
+API contracts — there is no meaningful "breaking change" surface to gate a
 SemVer major bump against, so a date-based tag is the lowest-friction way to
-mark "this is what shipped on day X" — which is what we actually want when
-referring back to a build.
-
-If GLPNET ever exposes a stable library API to other repos, that subproject
-can introduce its own SemVer tags scoped to that artefact (e.g.
-`d2net-scaffold-v1.0.0`) without disturbing the repo-level CalVer.
+mark "this is what shipped on day X". If a subproject ever exposes a stable
+library API, it can carry its own SemVer tags scoped to that artefact without
+disturbing the repo-level CalVer.
