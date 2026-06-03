@@ -462,19 +462,52 @@ public class Scheduler
             var goalStr = FormatGoal(act.Value.Id, procName, env);
             var isQueryWrapper = procName.StartsWith("query__", StringComparison.Ordinal);
 
-            // hadReduction is captured by the onReduction lambda in the full RunnerContext.
-            // The C# compiler generates a display class so mutations are visible to the outer
-            // scope after the lambda returns (Microsoft Learn "Lambda expressions").
+            // Track whether this goal reduced (committed a clause). Set true by the
+            // onReduction callback below; distinguishes terminated-with-reduction
+            // (success) from terminated-without-reduction (failure) — see the
+            // RunResult.Terminated arm. The C# compiler captures this local by
+            // reference in the lambda's display class, so the mutation is visible
+            // here after RunWithStatus returns. (Mirrors scheduler.dart; the wiring
+            // was stubbed out while runner.cs was a placeholder and is restored now
+            // that the full runner.cs invokes onReduction at its Commit arms.)
             var hadReduction = false;
 
-            // Build RunnerContext and dispatch one step.
-            // NOTE: runner.cs stub only exposes RunnerContext(rt, goalId, pc) and RunStep().
-            // The full named-arg constructor (kappa, env, goalHead, goalProcName, termFormatter,
-            // onReduction, …) and RunWithStatus() are deferred to runner.cs full codegen.
-            // The onReduction wiring (which sets hadReduction = true and removes from
-            // suspendedGoals) is preserved in comments for when runner.cs lands.
-            var cx = new RunnerContext(Rt, act.Value.Id, act.Value.Pc);
-            var result = runner.RunStep(cx, env ?? new CallEnv(), maxCycles - cycles);
+            var moduleContext = Rt.GetGoalModuleContext(act.Value.Id);
+
+            // Full RunnerContext mirroring scheduler.dart's named-arg form. The
+            // onReduction callback is REQUIRED: without it hadReduction stays false
+            // even when the goal reduces, misclassifying success as failure.
+            var cx = new RunnerContext(
+                rt:            Rt,
+                goalId:        act.Value.Id,
+                kappa:         act.Value.Pc,
+                env:           env,
+                goalHead:      goalStr,
+                goalProcName:  procName,
+                showBindings:  showBindings,
+                debugOutput:   debugOutput,
+                moduleContext: moduleContext,
+                termFormatter: (term, markReaders) => FormatTerm(term, markReaders),
+                onReduction:   (goalId, head, body) =>
+                {
+                    // Query-wrapper goals reduce silently (no user-visible trace).
+                    if (head.Contains("query__", StringComparison.Ordinal))
+                    {
+                        hadReduction = true;
+                        suspendedGoals.Remove(goalId);
+                        return;
+                    }
+                    // Print the reduction (head :- body) at Commit when tracing.
+                    if (debug)
+                    {
+                        var cleanHead = StripArityRegex.Replace(head, m => $"{m.Groups[1].Value}(");
+                        var cleanBody = StripArityRegex.Replace(body, m => $"{m.Groups[1].Value}(");
+                        Trace($"{cleanHead} :- {cleanBody}");
+                    }
+                    hadReduction = true;
+                    suspendedGoals.Remove(goalId);
+                });
+            var result = runner.RunWithStatus(cx);
 
             if (result == RunResult.Suspended)
             {
