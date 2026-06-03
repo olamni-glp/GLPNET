@@ -785,7 +785,26 @@ public sealed class BytecodeRunner
     // Each preserves the exact opcode type it handles; bodies move in verbatim later.
 
     private _Step ExecAllocate(RunnerContext cx, Allocate op)
-        => throw new NotImplementedException("runner arm: Allocate");
+    {
+        var pc = cx.Pc;
+        // allocate N: Create environment frame with N permanent variable slots
+        // WAM semantics: E' = newFrame(E, CP, N); CP = P+1
+        // Used by non-tail-recursive predicates to save local state
+        if (!cx.InBody)
+        {
+            throw new InvalidOperationException("Allocate must be in BODY phase (after commit)");
+        }
+
+        var newFrame = new EnvironmentFrame(
+            parent: cx.E,
+            continuationPointer: cx.CP ?? (pc + 1), // Save continuation (next instruction)
+            size: (int)op.Slots);
+
+        cx.E = newFrame;
+        cx.CP = pc + 1; // Update CP to point to next instruction
+
+        return _Step.Advance();
+    }
 
     private _Step ExecBodySetConst(RunnerContext cx, BodySetConst op)
     {
@@ -840,16 +859,203 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecClauseNext(RunnerContext cx, ClauseNext op)
-        => throw new NotImplementedException("runner arm: ClauseNext");
+    {
+        // clause_next: Unified instruction for moving to next clause (spec 2.2)
+        // Discard σ̂w, union Si into U, clear clause state, jump to next clause
+        cx.U.UnionWith(cx.Si);
+        cx.ClearClause();
+        return _Step.Jump(_prog.Labels[op.Label]);
+    }
 
     private _Step ExecClauseTry(RunnerContext cx, ClauseTry op)
-        => throw new NotImplementedException("runner arm: ClauseTry");
+    {
+        cx.ClearClause();
+        return _Step.Advance();
+    }
 
     private _Step ExecCommit(RunnerContext cx, Commit op)
-        => throw new NotImplementedException("runner arm: Commit");
+    {
+        var pc = cx.Pc;
+        // Phase 2: Resolve Si against σ̂w (two-phase HEAD unification)
+        var resolvedSi = new HashSet<int>();
+        foreach (var readerAddr in cx.Si)
+        {
+            // Use tryWriterForReader to handle imported readers gracefully
+            var writerAddr = cx.Rt.Heap.TryWriterForReader(readerAddr);
+            // Imported reader (null) or writer not in σ̂w -> unresolved
+            if (writerAddr == null || !cx.SigmaHat.ContainsKey(writerAddr.Value))
+            {
+                resolvedSi.Add(readerAddr);
+            }
+        }
+
+        if (resolvedSi.Count > 0)
+        {
+            cx.U.UnionWith(resolvedSi);
+            cx.Si.Clear();
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+        cx.Si.Clear();
+
+        // Commit only reached if HEAD and GUARD phases succeeded.
+        // Apply σ̂w to heap atomically.
+
+        // Convert tentative structures to real Terms before committing
+        var convertedSigmaHat = new Dictionary<int, object?>();
+        foreach (var entry in cx.SigmaHat)
+        {
+            var writerAddr = entry.Key;
+            var value = entry.Value;
+
+            if (value is _TentativeStruct tstruct)
+            {
+                // Convert tentative structure to StructTerm
+                var termArgs = new List<Term>();
+                foreach (var arg in tstruct.Args)
+                {
+                    if (arg is _ClauseVar clauseVar)
+                    {
+                        // Clause variable placeholder - need to resolve to actual writer/reader.
+                        // Check if already resolved in clauseVars.
+                        cx.ClauseVars.TryGetValue(clauseVar.VarIndex, out var resolved);
+                        if (resolved is VarRef resolvedRef)
+                        {
+                            // Already a VarRef - use it directly or extract reader if needed.
+                            var isResolvedWriter = cx.Rt.Heap.IsWriter(resolvedRef.Addr);
+                            if (clauseVar.IsWriter && isResolvedWriter)
+                            {
+                                // Writer placeholder, resolved to writer VarRef - use as-is.
+                                termArgs.Add(resolvedRef);
+                            }
+                            else if (clauseVar.IsWriter && !isResolvedWriter)
+                            {
+                                // Writer placeholder but resolved to reader? Get paired writer.
+                                // Use tryWriterForReader for imported reader support.
+                                var wid = cx.Rt.Heap.TryWriterForReader(resolvedRef.Addr);
+                                if (wid != null)
+                                {
+                                    termArgs.Add(new VarRef(wid.Value));
+                                }
+                                else
+                                {
+                                    // Imported reader - no local writer, use reader as-is.
+                                    termArgs.Add(resolvedRef);
+                                }
+                            }
+                            else if (!clauseVar.IsWriter && !isResolvedWriter)
+                            {
+                                // Reader placeholder, resolved to reader VarRef - use as-is.
+                                termArgs.Add(resolvedRef);
+                            }
+                            else // (!clauseVar.IsWriter && isResolvedWriter)
+                            {
+                                // Reader placeholder but resolved to writer? Use reader addr (writer + 1).
+                                termArgs.Add(new VarRef(resolvedRef.Addr + 1));
+                            }
+                        }
+                        else if (resolved is Term resolvedTerm)
+                        {
+                            // Already a term - use as-is.
+                            termArgs.Add(resolvedTerm);
+                        }
+                        else
+                        {
+                            // Not yet resolved - create fresh variable.
+                            var (freshWriterAddr, freshReaderAddr) = cx.Rt.Heap.AllocateVariable();
+                            // Store appropriate VarRef in clauseVars.
+                            cx.ClauseVars[clauseVar.VarIndex] = new VarRef(clauseVar.IsWriter ? freshWriterAddr : freshReaderAddr);
+                            if (clauseVar.IsWriter)
+                            {
+                                termArgs.Add(new VarRef(freshWriterAddr));
+                            }
+                            else
+                            {
+                                termArgs.Add(new VarRef(freshReaderAddr));
+                            }
+                        }
+                    }
+                    else if (arg is _TentativeStruct nestedTentative)
+                    {
+                        // Nested tentative structure - recursively convert.
+                        termArgs.Add(_convertTentativeToStruct(nestedTentative, cx));
+                    }
+                    else if (arg == null)
+                    {
+                        // Void/unbound - leave as null constant.
+                        termArgs.Add(new ConstTerm(null));
+                    }
+                    else if (arg is Term argTerm)
+                    {
+                        // Already a Term (ConstTerm, StructTerm, etc.) - use as-is.
+                        termArgs.Add(argTerm);
+                    }
+                    else
+                    {
+                        // Raw constant value - wrap in ConstTerm.
+                        termArgs.Add(new ConstTerm(arg));
+                    }
+                }
+                convertedSigmaHat[writerAddr] = new StructTerm(tstruct.Functor, termArgs);
+            }
+            else
+            {
+                // Direct value (constant)
+                convertedSigmaHat[writerAddr] = value;
+            }
+        }
+
+        // Enforce WxW: writer→writer bindings are prohibited.
+        foreach (var entry in convertedSigmaHat)
+        {
+            var writerAddr = entry.Key;
+            var value = entry.Value;
+            if (value is VarRef valueRef && cx.Rt.Heap.IsWriter(valueRef.Addr))
+            {
+                throw new InvalidOperationException(
+                    $"WxW violation in commit: W{writerAddr} → W{valueRef.Addr} (both unbound writers)");
+            }
+        }
+
+        // Apply σ̂w: bind writers to tentative values, then wake suspended goals.
+        var acts = CommitOps.ApplySigmaHatFCP(cx.Rt.Heap, convertedSigmaHat);
+
+        foreach (var a in acts)
+        {
+            cx.Rt.Gq.Enqueue(a);
+            cx.OnActivation?.Invoke(a);
+        }
+
+        cx.SigmaHat.Clear();
+        // Clear argument registers after commit (guards may have set them up).
+        cx.ArgSlots.Clear();
+        // Reset structure building state for BODY phase.
+        cx.CurrentStructure = null;
+        cx.S = 0;
+        cx.Mode = UnifyMode.Read;
+        cx.ParentStack.Clear();
+        cx.InBody = true;
+        return _Step.Advance();
+    }
 
     private _Step ExecDeallocate(RunnerContext cx, Deallocate op)
-        => throw new NotImplementedException("runner arm: Deallocate");
+    {
+        // deallocate: Remove current environment frame
+        // WAM semantics: CP = E.CP; E = E.parent; P = CP
+        // Restores previous environment and returns to saved continuation
+        if (cx.E == null)
+        {
+            throw new InvalidOperationException("Deallocate with no environment frame");
+        }
+
+        var frame = cx.E!;
+        cx.CP = frame.ContinuationPointer; // Restore continuation pointer
+        cx.E = frame.Parent;               // Restore previous environment
+
+        // Note: Unlike WAM, we don't jump to CP here - deallocate just pops the frame.
+        // The subsequent proceed or return instruction will handle the jump.
+        return _Step.Advance();
+    }
 
     private _Step ExecDistribute(RunnerContext cx, Distribute op)
         => throw new NotImplementedException("runner arm: Distribute");
@@ -1023,7 +1229,7 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Guard");
 
     private _Step ExecGuardFail(RunnerContext cx, GuardFail op)
-        => throw new NotImplementedException("runner arm: GuardFail");
+        => _Step.Advance();
 
     private _Step ExecGuardNeedReader(RunnerContext cx, GuardNeedReader op)
     {
@@ -1061,7 +1267,7 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecHalt(RunnerContext cx, Halt op)
-        => throw new NotImplementedException("runner arm: Halt");
+        => _Step.Stop(RunResult.Terminated);
 
     private _Step ExecHeadBindWriter(RunnerContext cx, HeadBindWriter op)
     {
@@ -1812,28 +2018,82 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Known");
 
     private _Step ExecLabel(RunnerContext cx, Label op)
-        => throw new NotImplementedException("runner arm: Label");
+        => _Step.Advance();
 
     private _Step ExecNoMoreClauses(RunnerContext cx, NoMoreClauses op)
-        => throw new NotImplementedException("runner arm: NoMoreClauses");
+    {
+        // no_more_clauses: All clauses exhausted (spec 2.5)
+        // If U non-empty: suspend; otherwise: fail definitively
+        if (cx.U.Count > 0)
+        {
+            cx.Rt.SuspendGoalFCP(goalId: cx.GoalId, kappa: cx.Kappa, readerVarIds: cx.U);
+            cx.U.Clear();
+            cx.InBody = false;
+            return _Step.Stop(RunResult.Suspended);
+        }
+        // U is empty - all clauses failed definitively (no suspension)
+        cx.InBody = false;
+        // According to spec, failed goals should be added to F set.
+        // For now, just terminate - the goal is done (failed).
+        return _Step.Stop(RunResult.Terminated);
+    }
 
     private _Step ExecNoReaders(RunnerContext cx, NoReaders op)
         => throw new NotImplementedException("runner arm: NoReaders");
 
     private _Step ExecNop(RunnerContext cx, Nop op)
-        => throw new NotImplementedException("runner arm: Nop");
+        => _Step.Advance();
 
     private _Step ExecOtherwise(RunnerContext cx, Otherwise op)
-        => throw new NotImplementedException("runner arm: Otherwise");
+    {
+        var pc = cx.Pc;
+        // Otherwise guard: succeeds if Si is empty (all previous clauses failed, not suspended).
+        // Otherwise succeeds only if all previous clauses definitively failed.
+        // If any clause suspended (U non-empty), then otherwise should also suspend.
+        if (cx.U.Count > 0)
+        {
+            // Previous clauses suspended, so this clause also suspends.
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+        // U and Si both empty - all previous clauses definitely failed, so succeed.
+        return _Step.Advance();
+    }
 
     private _Step ExecPop(RunnerContext cx, Pop op)
-        => throw new NotImplementedException("runner arm: Pop");
+    {
+        // Pop: Restore structure processing state (FCP AM semantics)
+        var state = (_StructureState)cx.ClauseVars[(int)op.RegIndex]!;
+
+        // FCP AM: Pop saves the built nested structure to register.
+        // This makes it available for subsequent UnifyWriter/UnifyVariable.
+        cx.ClauseVars[(int)op.RegIndex] = cx.CurrentStructure;
+
+        // Restore parent context
+        cx.S = state.S;
+        cx.Mode = state.Mode;
+        cx.CurrentStructure = state.CurrentStructure;
+        return _Step.Advance();
+    }
 
     private _Step ExecProceed(RunnerContext cx, Proceed op)
-        => throw new NotImplementedException("runner arm: Proceed");
+    {
+        // Call reduction callback if trace is on
+        if (cx.OnReduction != null && cx.GoalHead != null)
+        {
+            var body = cx.SpawnedGoals.Count == 0 ? "true" : string.Join(", ", cx.SpawnedGoals);
+            cx.OnReduction!(cx.GoalId, cx.ReformatHead(), body);
+        }
+        // Complete current procedure - terminate execution
+        return _Step.Stop(RunResult.Terminated);
+    }
 
     private _Step ExecPush(RunnerContext cx, Push op)
-        => throw new NotImplementedException("runner arm: Push");
+    {
+        // Push: Save structure processing state
+        cx.ClauseVars[(int)op.RegIndex] = new _StructureState(cx.S, cx.Mode, cx.CurrentStructure);
+        return _Step.Advance();
+    }
 
     private _Step ExecPutBoundConst(RunnerContext cx, PutBoundConst op)
     {
@@ -1990,7 +2250,10 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecResetAndGoto(RunnerContext cx, ResetAndGoto op)
-        => throw new NotImplementedException("runner arm: ResetAndGoto");
+    {
+        cx.ClearClause();
+        return _Step.Jump(_prog.Labels[op.Label]);
+    }
 
     private _Step ExecSetConstant(RunnerContext cx, SetConstant op)
     {
@@ -2110,16 +2373,42 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Spawn");
 
     private _Step ExecSuspendEnd(RunnerContext cx, SuspendEnd op)
-        => throw new NotImplementedException("runner arm: SuspendEnd");
+    {
+        // Legacy SuspendEnd (use NoMoreClauses instead)
+        if (cx.U.Count > 0)
+        {
+            cx.Rt.SuspendGoalFCP(goalId: cx.GoalId, kappa: cx.Kappa, readerVarIds: cx.U);
+            cx.U.Clear();
+            cx.InBody = false;
+            return _Step.Stop(RunResult.Suspended);
+        }
+        // U is empty - all clauses failed definitively (no suspension)
+        cx.InBody = false;
+        return _Step.Stop(RunResult.Terminated);
+    }
 
     private _Step ExecTailStep(RunnerContext cx, TailStep op)
-        => throw new NotImplementedException("runner arm: TailStep");
+    {
+        var shouldYield = cx.Rt.TailReduce(cx.GoalId);
+        if (shouldYield)
+        {
+            cx.Rt.Gq.Enqueue(new GoalRef(cx.GoalId, cx.Kappa));
+            return _Step.Stop(RunResult.Yielded);
+        }
+        return _Step.Jump(_prog.Labels[op.Label]);
+    }
 
     private _Step ExecTransmit(RunnerContext cx, Transmit op)
         => throw new NotImplementedException("runner arm: Transmit");
 
     private _Step ExecTryNextClause(RunnerContext cx, TryNextClause op)
-        => throw new NotImplementedException("runner arm: TryNextClause");
+    {
+        // try_next_clause: Soft-fail to next clause (spec 2.4)
+        // When HEAD/GUARD fails, discard σ̂w, union Si to U, jump to next ClauseTry
+        var pc = cx.Pc;
+        _softFailToNextClause(cx, pc);
+        return _Step.Jump(_findNextClauseTry(pc));
+    }
 
     private _Step ExecUnifyConstant(RunnerContext cx, UnifyConstant op)
     {
@@ -2404,7 +2693,12 @@ public sealed class BytecodeRunner
     }
 
     private _Step ExecUnionSiAndGoto(RunnerContext cx, UnionSiAndGoto op)
-        => throw new NotImplementedException("runner arm: UnionSiAndGoto");
+    {
+        // Legacy instruction (deprecated, use ClauseNext instead).
+        // Si removed - U updated directly by HEAD/GUARD opcodes.
+        cx.ClearClause();
+        return _Step.Jump(_prog.Labels[op.Label]);
+    }
 
     // ── v2 arms ──
 
