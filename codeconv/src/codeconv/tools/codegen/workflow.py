@@ -102,7 +102,9 @@ def _read_snapshot(
     Returns ``None`` iff ``codeconv.dart_depgraph`` is empty/absent (exit
     2). Orphaned files are excluded from the node set. A codegen row is
     ``completed`` iff ``codegen_completed_at IS NOT NULL`` (build-passing
-    accept — the only thing that unblocks downstream). ``include_tests``
+    accept) and ``no_emit`` iff it is intentionally not emitted (Stage 4);
+    EITHER unblocks downstream readiness (``CodegenRow.satisfied``).
+    ``include_tests``
     False (Increment 1) drops test-tree files from the frontier (T037);
     nothing depends on a test file, so dropping them is dependency-safe.
     """
@@ -125,7 +127,10 @@ def _read_snapshot(
             text("SELECT from_path, to_path FROM codeconv.dart_imports")
         ).all()
         cg_rows = conn.execute(
-            text("SELECT path, codegen_completed_at FROM codeconv.dart_codegen")
+            text(
+                "SELECT path, codegen_completed_at, no_emit "
+                "FROM codeconv.dart_codegen"
+            )
         ).all()
 
     nodes: dict[str, DepNode] = {}
@@ -149,8 +154,10 @@ def _read_snapshot(
     cross_frozen = {p: frozenset(s) for p, s in cross.items()}
 
     rows: dict[str, CodegenRow] = {}
-    for path, completed_at in cg_rows:
-        rows[path] = CodegenRow(completed=completed_at is not None)
+    for path, completed_at, no_emit in cg_rows:
+        rows[path] = CodegenRow(
+            completed=completed_at is not None, no_emit=bool(no_emit)
+        )
 
     return nodes, cross_frozen, rows
 
@@ -179,6 +186,34 @@ def _stale_paths(conn) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
+def _classify_codegen_row(
+    *,
+    no_emit: bool,
+    open_escalation_count: int,
+    completed_at: Any,
+    promoted: bool,
+) -> str:
+    """Classify one ``dart_codegen`` row into a lifecycle category.
+
+    Pure (no I/O). Returns one of ``no_emit｜escalated｜converted｜built｜
+    in_progress``. Precedence (Stage 4):
+
+    1. ``no_emit`` — a file intentionally NOT emitted to C# wins over
+       everything else, including an open escalation row. Checked FIRST.
+    2. ``escalated`` — ``open_escalation_count > 0`` (conversion-blocked).
+    3. ``converted`` — built (``completed_at`` set) AND ``promoted``.
+    4. ``built`` — built but not yet promoted.
+    5. ``in_progress`` — a row exists but is not yet built.
+    """
+    if no_emit:
+        return "no_emit"
+    if (open_escalation_count or 0) > 0:
+        return "escalated"
+    if completed_at is not None:
+        return "converted" if promoted else "built"
+    return "in_progress"
+
+
 def run_status(
     *,
     repo_root: Path,
@@ -191,8 +226,11 @@ def run_status(
     States (data-model § State transitions): ``not_started``,
     ``in_progress`` (row, not built, no escalation), ``built`` (built,
     not promoted), ``converted`` (built + promoted), ``escalated``
-    (open_escalation_count > 0), ``stale`` (sha drift). ``stale`` and
-    ``escalated`` are reported as overlays on the lifecycle counts.
+    (open_escalation_count > 0), ``no_emit`` (intentionally not emitted —
+    Stage 4; takes precedence over escalated), ``stale`` (sha drift).
+    ``stale`` is reported as an overlay on the lifecycle counts. A
+    ``no_emit`` file is counted only as ``no_emit`` (never also
+    escalated/built/converted/in_progress).
     """
     repo_root = Path(repo_root).resolve()
     engine = _engine(repo_root, data_dir)
@@ -214,7 +252,7 @@ def run_status(
         detail = conn.execute(
             text(
                 "SELECT path, codegen_completed_at, promoted, "
-                "open_escalation_count, build_status "
+                "open_escalation_count, build_status, no_emit "
                 "FROM codeconv.dart_codegen"
             )
         ).all()
@@ -232,19 +270,28 @@ def run_status(
         stale = _stale_paths(conn)
 
     by_path = {r[0]: r for r in detail}
-    not_started = built = converted = escalated = in_progress = 0
+    not_started = built = converted = escalated = in_progress = no_emit_count = 0
     for p in nodes:
         row = by_path.get(p)
         if row is None:
             not_started += 1
             continue
-        _p, completed_at, promoted, oec, _bs = row
-        if (oec or 0) > 0:
+        _p, completed_at, promoted, oec, _bs, no_emit = row
+        cat = _classify_codegen_row(
+            no_emit=bool(no_emit),
+            open_escalation_count=oec or 0,
+            completed_at=completed_at,
+            promoted=bool(promoted),
+        )
+        if cat == "no_emit":
+            no_emit_count += 1
+        elif cat == "escalated":
             escalated += 1
-        elif completed_at is not None:
-            converted += 1 if promoted else 0
-            built += 0 if promoted else 1
-        else:
+        elif cat == "converted":
+            converted += 1
+        elif cat == "built":
+            built += 1
+        else:  # in_progress
             in_progress += 1
 
     # Optimized-prompt presence (status warns when baseline is in use).
@@ -262,6 +309,7 @@ def run_status(
         "built": built,
         "converted": converted,
         "escalated": escalated,
+        "no_emit": no_emit_count,
         "promoted_total": int(promoted_total or 0),
         "open_escalations_total": int(open_total or 0),
         "stale": sorted(stale),
@@ -785,6 +833,101 @@ def run_retry(
 
 
 # ---------------------------------------------------------------------------
+# mark-no-emit  (Stage 4)
+# ---------------------------------------------------------------------------
+
+
+def run_mark_no_emit(
+    *,
+    repo_root: Path,
+    data_dir: Optional[Path] = None,
+    path: str,
+    reason: Optional[str] = None,
+    no_tombstone_update: bool = False,
+) -> dict:
+    """Mark ``path`` as ``no_emit`` (intentionally NOT emitted to C#).
+
+    A first-class status orthogonal to escalated/built (Stage 4) for a
+    source file with nothing to convert (e.g. a Dart ``export`` directive
+    with no types). Upserts the ``codeconv.dart_codegen`` row with
+    ``no_emit=true, open_escalation_count=0`` (idempotent; inserts the row
+    if absent — never DELETE, R9). A ``no_emit`` file is SATISFIED for
+    readiness and is NEVER counted as escalated (``no_emit`` wins). Writes
+    the ``codegen_no_emit`` tombstone key (+ optional reason) unless
+    ``no_tombstone_update``.
+
+    Row absent ⇒ inserted. ``path`` must be a real (non-orphaned)
+    inventory entry (exit 2 otherwise).
+    """
+    repo_root = Path(repo_root).resolve()
+    tombstones_root = repo_root / ".codeconv" / "tombstones"
+    engine = _engine(repo_root, data_dir)
+    run_id = str(uuid.uuid4())
+
+    with engine.connect() as conn:
+        f = conn.execute(
+            text("SELECT sha256 FROM codeconv.dart_files WHERE path = :p"),
+            {"p": path},
+        ).first()
+        orphan = conn.execute(
+            text("SELECT 1 FROM codeconv.dart_files_orphaned WHERE path = :p"),
+            {"p": path},
+        ).first()
+    if f is None:
+        return {
+            "ok": False,
+            "exit_code": 2,
+            "error": f"path {path!r} not in codeconv.dart_files",
+            "path": path,
+        }
+    if orphan is not None:
+        return {
+            "ok": False,
+            "exit_code": 2,
+            "error": f"path {path!r} is orphaned; not a conversion target",
+            "path": path,
+        }
+
+    with engine.begin() as conn:
+        # Upsert: insert the row if absent, else flip no_emit on in place
+        # (idempotent; never deletes — R9). open_escalation_count reset to
+        # 0 so a stale escalation does not linger (no_emit wins anyway).
+        conn.execute(
+            text(
+                "INSERT INTO codeconv.dart_codegen "
+                "(path, no_emit, open_escalation_count, codegen_run_id) "
+                "VALUES (:p, true, 0, :rid) "
+                "ON CONFLICT (path) DO UPDATE SET "
+                "  no_emit = true, "
+                "  open_escalation_count = 0, "
+                "  codegen_run_id = :rid"
+            ),
+            {"p": path, "rid": run_id},
+        )
+
+    if not no_tombstone_update:
+        from .tombstone_writer import (
+            codegen_no_emit_keys,
+            write_tombstone_with_codegen_keys,
+        )
+
+        write_tombstone_with_codegen_keys(
+            tombstones_root,
+            path,
+            codegen_no_emit_keys(reason=reason),
+        )
+
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "path": path,
+        "action": "marked_no_emit",
+        "reason": reason,
+        "run_id": run_id,
+    }
+
+
+# ---------------------------------------------------------------------------
 # aggregate-escalations  (T021)
 # ---------------------------------------------------------------------------
 
@@ -879,10 +1022,12 @@ def _iso_or_none(dt: Any) -> Optional[str]:
 
 
 __all__ = [
+    "_classify_codegen_row",
     "register",
     "run_aggregate_escalations",
     "run_codegen_ingest",
     "run_codegen_step",
+    "run_mark_no_emit",
     "run_next",
     "run_retry",
     "run_status",

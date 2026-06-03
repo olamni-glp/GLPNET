@@ -25,11 +25,16 @@ Four-state classification (exactly one per non-orphaned node):
                             the file's SCC has no external deps).
 - ``codegen_in_progress`` : a ``dart_codegen`` row exists with
                             ``codegen_completed_at IS NULL``.
-- ``codegen_done``        : a ``dart_codegen`` row exists with
-                            ``codegen_completed_at IS NOT NULL`` (built).
+- ``codegen_done``        : a ``dart_codegen`` row exists that is
+                            SATISFIED — ``codegen_completed_at IS NOT
+                            NULL`` (built) OR ``no_emit`` (intentionally
+                            not emitted to C#, Stage 4). Both unblock
+                            downstream codegen; a ``no_emit`` file is
+                            never ready/pending/in_progress.
 
 Intra-SCC edges are ignored for eligibility (mirrors feature-015 FR-006).
-An in-progress codegen does NOT unblock downstream files.
+An in-progress codegen does NOT unblock downstream files; a ``no_emit``
+file DOES (it has nothing to emit, so a dependent never waits on it).
 """
 
 from __future__ import annotations
@@ -59,10 +64,19 @@ class CodegenRow:
 
     Presence of an instance for a path means a row exists. ``completed``
     is True iff ``codegen_completed_at IS NOT NULL`` (a build-passing
-    accept — the only thing that unblocks downstream codegen).
+    accept). ``no_emit`` is True iff the file is intentionally NOT emitted
+    to C# (Stage 4). EITHER condition unblocks downstream codegen: a
+    ``no_emit`` file is SATISFIED — its downstreams treat it exactly like
+    a completed file, and it is itself never ``codegen_ready``/pending.
     """
 
     completed: bool
+    no_emit: bool = False
+
+    @property
+    def satisfied(self) -> bool:
+        """True iff this row unblocks downstream codegen (built OR no_emit)."""
+        return self.completed or self.no_emit
 
 
 @dataclass(frozen=True)
@@ -111,7 +125,9 @@ def classify(
 
     row = rows.get(path)
     if row is not None:
-        return CODEGEN_DONE if row.completed else CODEGEN_IN_PROGRESS
+        # no_emit OR completed ⇒ done (satisfied); a no_emit file is never
+        # in_progress/ready/pending (Stage 4 — it has nothing to emit).
+        return CODEGEN_DONE if row.satisfied else CODEGEN_IN_PROGRESS
 
     # No row ⇒ codegen_pending unless every SCC-external dependency is
     # codegen-complete. Downstream gating at SCC granularity: a file with
@@ -134,10 +150,14 @@ def classify(
 def _scc_fully_done(
     members: list[str], rows: Mapping[str, "CodegenRow"]
 ) -> bool:
-    """True iff every member of the SCC is codegen-complete."""
+    """True iff every member of the SCC is SATISFIED (built OR no_emit).
+
+    A ``no_emit`` member counts as satisfied for downstream readiness —
+    it has nothing to emit, so it never blocks a dependent (Stage 4).
+    """
     for m in members:
         r = rows.get(m)
-        if r is None or not r.completed:
+        if r is None or not r.satisfied:
             return False
     return True
 

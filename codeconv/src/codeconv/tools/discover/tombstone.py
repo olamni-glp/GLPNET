@@ -70,6 +70,9 @@ _FIELD_ORDER: tuple[str, ...] = (
     "equiv_bytecode_diff_empty",
     "equiv_stale",
     "equiv_last_verified_at",
+    # --- feature 020 (Stage 4 — no_emit status) appended fields ---
+    "codegen_no_emit",
+    "codegen_no_emit_reason",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -146,6 +149,19 @@ _FEATURE_020_KEYS: tuple[str, ...] = (
     "equiv_last_verified_at",
 )
 
+# The feature-020 Stage-4 ``no_emit`` appended keys, as a set, for
+# round-trip preservation. Same append-only discipline as the earlier
+# feature key sets: a ``/codeconv-discover`` re-write (a feature-012
+# caller) MUST carry these forward unchanged or a re-discover after a
+# ``codegen mark-no-emit`` stamp would silently erase the no_emit status.
+# ``codegen_no_emit`` is the boolean flag; ``codegen_no_emit_reason`` is
+# the optional free-text rationale. Appended AFTER the equiv keys so every
+# earlier key's emission position is unchanged (byte-identical re-stamp).
+_FEATURE_020_NO_EMIT_KEYS: tuple[str, ...] = (
+    "codegen_no_emit",
+    "codegen_no_emit_reason",
+)
+
 # Combined append-only preservation set: every key appended after the
 # original feature-012 eight. Used by ``_canonicalise`` and
 # ``merge_preserving_feature015`` so no feature-015/-017/-018/-019/-020 state
@@ -157,6 +173,7 @@ _PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
     + _FEATURE_018_KEYS
     + _FEATURE_019_KEYS
     + _FEATURE_020_KEYS
+    + _FEATURE_020_NO_EMIT_KEYS
 )
 
 # YAML emitter settings pinned for diff stability.
