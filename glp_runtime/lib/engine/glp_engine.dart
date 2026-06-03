@@ -191,17 +191,38 @@ class GlpEngine {
   }
 
   /// Load root self.glp (private — called by constructor).
+  ///
+  /// Constitution Principle II ("No Workarounds; Bugs Reported, Not Bypassed")
+  /// requires this function to fail loudly if self.glp is missing or fails to
+  /// compile. Silent skips have produced spec-conformance bugs in the past
+  /// (notably the AOT-exe path-resolution bug fixed in claude/fix-aot-self-glp-path)
+  /// because every spawn of a self.glp procedure (`:=/2`, `now/1`, `'_output'/1`,
+  /// `wait/1`, `dl_append/3`, `send/3`, `receive/3`, `mwm/2`, …) then fails with
+  /// the misleading message "Spawn could not find procedure label: …".
   void _loadRootSelf() {
     final file = File(_rootSelfGlpPath);
-    if (file.existsSync()) {
-      try {
-        final source = file.readAsStringSync();
-        final compiler = GlpCompiler();
-        final prog = compiler.compile(source);
-        _loadedPrograms['__root_self__'] = prog;
-      } catch (e) {
-        // Silently skip failed load
-      }
+    if (!file.existsSync()) {
+      throw StateError(
+          'GlpEngine: root self.glp not found at $_rootSelfGlpPath. The GLP '
+          'REPL/runtime requires programs/self.glp to be present — it provides '
+          ':= arithmetic, now/1, \'_output\'/1, comparison guards, and other '
+          'prelude procedures. Verify the rootSelfGlpPath argument passed to '
+          'GlpEngine and the path-resolution logic in your entry-point script.');
+    }
+    final String source;
+    try {
+      source = file.readAsStringSync();
+    } catch (e) {
+      throw StateError(
+          'GlpEngine: failed to read root self.glp at $_rootSelfGlpPath: $e');
+    }
+    try {
+      final compiler = GlpCompiler();
+      final prog = compiler.compile(source);
+      _loadedPrograms['__root_self__'] = prog;
+    } catch (e) {
+      throw StateError(
+          'GlpEngine: failed to compile root self.glp at $_rootSelfGlpPath: $e');
     }
   }
 

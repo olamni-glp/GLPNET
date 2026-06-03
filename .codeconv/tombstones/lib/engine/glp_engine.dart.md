@@ -63,7 +63,7 @@ callers:
 - test/engine/glp_engine_test.dart
 - test/multiagent/output_kernel_test.dart
 - test/multiagent/ui_mediator_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.549Z'
 sha256: 966bf3b7fa4deb9baca2696f2c221bad3eed61f189de1c7080d409fdcdb5a8df
 topo_level: 8
 cycle_group_id: 57
@@ -73,6 +73,10 @@ plan_started_at: '2026-05-21T16:38:49Z'
 plan_completed_at: '2026-05-21T16:43:39Z'
 plan_path: .codeconv/conversion-plans/lib/engine/glp_engine.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:32:58Z'
+target_cs_path: out/csharp/lib/engine/glp_engine.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 GLP Engine - Embeddable GLP Execution Core

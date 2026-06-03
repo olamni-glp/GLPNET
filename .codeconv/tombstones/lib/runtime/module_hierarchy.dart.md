@@ -49,7 +49,7 @@ callers:
 - test/module/module_hierarchy_test.dart
 - test_archive/cssn_modules_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.056Z'
 sha256: db87dd95891c91cf5d37ba3d1e17349102b04226388a6a81e45f00fe59513298
 topo_level: 5
 cycle_group_id: 52
@@ -59,6 +59,10 @@ plan_started_at: '2026-05-21T16:17:56Z'
 plan_completed_at: '2026-05-21T16:23:54Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/module_hierarchy.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T10:19:33Z'
+target_cs_path: out/csharp/lib/runtime/module_hierarchy.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Module hierarchy: self.glp chain discovery and type scope assembly.

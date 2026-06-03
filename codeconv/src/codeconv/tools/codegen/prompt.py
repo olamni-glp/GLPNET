@@ -27,6 +27,11 @@ import yaml
 
 
 OPTIMIZED_PROMPT_REL = ".codeconv/codegen-prompt/optimized.md"
+# Per-subsystem optimized prompts (feature 020): each descends from the
+# shared `_base.md` and is checked in as `<subsystem>.md`. Production codegen
+# selects them via `load(repo_root, subsystem)` (gepa_optimizer.md § FR-011).
+PROMPT_DIR_REL = ".codeconv/codegen-prompt"
+BASE_PROMPT_REL = ".codeconv/codegen-prompt/_base.md"
 SCHEMA_VERSION = 1
 
 # Baseline codegen instructions shipped with the tool. Used verbatim when
@@ -106,32 +111,51 @@ def parse(text: str) -> PromptArtifact:
 
 
 def optimized_prompt_path(repo_root: Path) -> Path:
-    """On-disk path of the optimized-prompt artifact."""
+    """On-disk path of the (legacy global) optimized-prompt artifact."""
     return Path(repo_root) / OPTIMIZED_PROMPT_REL
 
 
-def load(repo_root: Path) -> PromptArtifact:
-    """Load the optimized prompt, or the baseline if absent.
+def base_prompt_path(repo_root: Path) -> Path:
+    """On-disk path of the shared per-subsystem base prompt (`_base.md`)."""
+    return Path(repo_root) / BASE_PROMPT_REL
 
-    Production codegen sub-agent entry point. Returns a
-    :class:`PromptArtifact`; ``is_baseline=True`` (and empty provenance)
-    when no checked-in optimized artifact exists — the caller (``status``)
-    warns in that case.
+
+def subsystem_prompt_path(repo_root: Path, subsystem: str) -> Path:
+    """On-disk path of a subsystem's optimized prompt (`<subsystem>.md`)."""
+    return Path(repo_root) / PROMPT_DIR_REL / f"{subsystem}.md"
+
+
+def load(repo_root: Path, subsystem: Optional[str] = None) -> PromptArtifact:
+    """Load the production codegen prompt, falling back to the baseline.
+
+    Production codegen sub-agent entry point (T034; gepa_optimizer.md
+    § FR-011). The selection chain, first non-empty wins:
+
+      1. ``<subsystem>.md`` (when a subsystem is given) — its tuned prompt;
+      2. ``_base.md`` — the shared per-subsystem base (curriculum seed);
+      3. ``optimized.md`` — the legacy single global optimized prompt (019);
+      4. the shipped ``BASELINE_INSTRUCTIONS``.
+
+    Returns a :class:`PromptArtifact`; ``is_baseline=True`` (empty
+    provenance) only when NO checked-in artifact yields instructions — the
+    caller (``status``) warns in that case. PURE: text + path; no LM,
+    no bridge (asserted by ``test_no_lm_on_production_path``).
     """
-    path = optimized_prompt_path(repo_root)
-    if not path.is_file():
-        return PromptArtifact(
-            instructions=BASELINE_INSTRUCTIONS, provenance={}, is_baseline=True
-        )
-    art = parse(path.read_text(encoding="utf-8"))
-    # An optimized file with empty instructions falls back to baseline.
-    if not art.instructions.strip():
-        return PromptArtifact(
-            instructions=BASELINE_INSTRUCTIONS,
-            provenance=art.provenance,
-            is_baseline=True,
-        )
-    return art
+    chain: list[Path] = []
+    if subsystem:
+        chain.append(subsystem_prompt_path(repo_root, subsystem))
+    chain.append(base_prompt_path(repo_root))
+    chain.append(optimized_prompt_path(repo_root))
+    for path in chain:
+        if not path.is_file():
+            continue
+        art = parse(path.read_text(encoding="utf-8"))
+        if art.instructions.strip():
+            return art
+    # Nothing checked in (or all empty) ⇒ shipped baseline.
+    return PromptArtifact(
+        instructions=BASELINE_INSTRUCTIONS, provenance={}, is_baseline=True
+    )
 
 
 def write_optimized(
@@ -155,12 +179,16 @@ def write_optimized(
 
 __all__ = [
     "BASELINE_INSTRUCTIONS",
+    "BASE_PROMPT_REL",
     "OPTIMIZED_PROMPT_REL",
+    "PROMPT_DIR_REL",
     "SCHEMA_VERSION",
     "PromptArtifact",
+    "base_prompt_path",
     "load",
     "optimized_prompt_path",
     "parse",
     "serialize",
+    "subsystem_prompt_path",
     "write_optimized",
 ]

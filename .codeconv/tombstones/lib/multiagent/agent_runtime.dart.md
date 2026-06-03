@@ -55,7 +55,7 @@ dependencies:
 - lib/runtime/terms.dart
 callers:
 - test/debug_four_agents_modules.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.589Z'
 sha256: 16fa2e171ac7e27ce67020b5a539c9e42355fb38c61a305c827133ddbf373b8f
 topo_level: 9
 cycle_group_id: 61
@@ -65,6 +65,10 @@ plan_started_at: '2026-05-21T16:44:01Z'
 plan_completed_at: '2026-05-21T16:49:19Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/agent_runtime.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:42:28Z'
+target_cs_path: out/csharp/lib/multiagent/agent_runtime.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 AgentRuntime — encapsulates GLP agent runtime for UI integration.

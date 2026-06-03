@@ -16,7 +16,7 @@ dependencies:
 callers:
 - lib/compiler/compiler.dart
 - test/module/module_compiler_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.152Z'
 sha256: fdeeb685673893129e721409ea2b4ceb0e6f356d406efd526ae32d4cae64d3fd
 topo_level: 6
 cycle_group_id: 42
@@ -26,5 +26,9 @@ plan_started_at: '2026-05-21T16:28:54Z'
 plan_completed_at: '2026-05-21T16:33:21Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/codegen.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T13:15:54Z'
+target_cs_path: out/csharp/lib/compiler/codegen.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

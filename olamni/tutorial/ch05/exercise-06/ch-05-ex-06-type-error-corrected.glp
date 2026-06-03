@@ -1,0 +1,20 @@
+% ch-05-ex-06-type-error-corrected.glp
+%
+% Companion to ch-05-ex-06-type-error-failing.glp — this version replaces the
+% offending atoms `[a, b, c]` with valid Number values `[1, 2, 3]`. Same
+% NumList type, same procedure declaration; the values now satisfy the
+% declared type, so the type-checker accepts the file.
+%
+% Other valid corrections exist (e.g., re-typing `procedure foo(List).` so
+% atoms are accepted via the universal Any), but the simplest illustration is
+% to fix the values to match the declared type.
+
+%% NumList type, duplicated inline.
+NumList ::= [] ; [Number | NumList].
+
+%% Same procedure declaration as the failing form.
+procedure foo(NumList).
+
+%% Fact `foo([1, 2, 3]).` — the elements are Numbers, satisfying the declared
+%% NumList element type. The type-checker accepts the load.
+foo([1, 2, 3]).

@@ -65,7 +65,7 @@ callers:
 - test_archive/direct_structterm_test.dart
 - test_archive/serve_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.034Z'
 sha256: cd45d43c86ed4e7e5835cbc6feb537c42987fecdcbe7cc5fe097e126ee226d6e
 topo_level: 0
 cycle_group_id: 30
@@ -75,5 +75,9 @@ plan_started_at: '2026-05-21T14:41:28Z'
 plan_completed_at: '2026-05-21T14:45:16Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/machine_state.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:08:59Z'
+target_cs_path: out/csharp/lib/runtime/machine_state.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

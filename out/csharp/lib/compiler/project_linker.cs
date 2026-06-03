@@ -1,3 +1,4 @@
+/// <summary>
 /// Project linker: static linking of multi-module GLP projects.
 ///
 /// Given a project root directory, discovers all modules, type-checks each
@@ -6,475 +7,539 @@
 ///
 /// Specification: docs/modules/glp-project-compilation-spec.md
 /// Plan: docs/modules/project-compilation-implementation-plan.md
-library;
+/// </summary>
 
-import 'dart:io';
-import 'ast.dart';
-import 'lexer.dart';
-import 'parser.dart';
-import 'partial_evaluator.dart';
-import '../analysis/type_checker/type_ast.dart';
-import '../analysis/type_checker/param_expansion.dart';
-import '../analysis/type_checker/type_checker.dart';
-import '../runtime/module_hierarchy.dart';
-import '../analysis/type_checker/type_environment_builder.dart';
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using GlpRuntime.Analysis.TypeChecker;
+using GlpRuntime.Runtime;
+using Ast = GlpRuntime.Compiler;
 
-/// A discovered module in the project tree.
-class DiscoveredModule {
-  final String filePath;
-  final String moduleName;
-  final Module ast;
-  final TypeEnvironment ancestorScope;
-  final bool isSelfGlp;
+namespace GlpRuntime.Compiler;
 
-  DiscoveredModule({
-    required this.filePath,
-    required this.moduleName,
-    required this.ast,
-    required this.ancestorScope,
-    this.isSelfGlp = false,
-  });
+// ============================================================================
+// DiscoveredModule — immutable data carrier for a discovered project module.
+// Class (NOT record) because LinkProject uses ReferenceEquals(s, mod) for
+// identity-based self-skip in the ancestor self.glp walk.
+// ============================================================================
+
+/// <summary>A discovered module in the project tree.</summary>
+public sealed class DiscoveredModule
+{
+    public string FilePath { get; }
+    public string ModuleName { get; }
+    // Renamed from Dart field 'ast' to avoid collision with the Ast namespace alias.
+    public Ast.Module ModuleAst { get; }
+    public TypeEnvironment AncestorScope { get; }
+    public bool IsSelfGlp { get; }
+
+    public DiscoveredModule(
+        string filePath,
+        string moduleName,
+        Ast.Module ast,
+        TypeEnvironment ancestorScope,
+        bool isSelfGlp = false)
+    {
+        FilePath      = filePath;
+        ModuleName    = moduleName;
+        ModuleAst     = ast;
+        AncestorScope = ancestorScope;
+        IsSelfGlp     = isSelfGlp;
+    }
 }
 
-/// Result of linking a project.
-class LinkResult {
-  final Program program;
-  final List<ProcDecl> procDeclarations;
+// ============================================================================
+// LinkResult — two-field immutable carrier for the linked program.
+// ============================================================================
 
-  LinkResult(this.program, this.procDeclarations);
+/// <summary>Result of linking a project.</summary>
+public sealed class LinkResult
+{
+    public Program Program { get; }
+    public IReadOnlyList<ProcDecl> ProcDeclarations { get; }
+
+    public LinkResult(Program program, IReadOnlyList<ProcDecl> procDeclarations)
+    {
+        Program          = program;
+        ProcDeclarations = procDeclarations;
+    }
 }
 
-/// Walk the project directory tree and discover all modules.
-///
-/// For each `.glp` file (excluding `boot_direct.glp`):
-/// - Parse into Module AST
-/// - Extract module name (from `-module(M).` or filename; for `self.glp` without
-///   `-module()`, derives name from parent directory)
-/// - Build ancestor type scope chain
-///
-/// `self.glp` files contribute both types AND procedures to the ancestor scope.
-/// Their procedures are compiled to bytecode and renamed like any other module.
-List<DiscoveredModule> discoverProject(String rootDir,
-    {String? rootSelfGlpPath}) {
-  final root = Directory(rootDir);
-  if (!root.existsSync()) {
-    throw ArgumentError('Project root directory not found: $rootDir');
-  }
+// ============================================================================
+// ProjectLinker — hosts all top-level functions as public/private static methods.
+// ============================================================================
 
-  final modules = <DiscoveredModule>[];
+/// <summary>
+/// Static host for the three-stage GLP project linker.
+/// Dart top-level free functions migrate to C# static class methods per project convention.
+/// </summary>
+public static class ProjectLinker
+{
+    // ========================================================================
+    // Public entry points
+    // ========================================================================
 
-  // Recursively find all .glp files
-  final glpFiles = root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.glp'))
-      .toList();
+    /// <summary>
+    /// Walk the project directory tree and discover all modules.
+    ///
+    /// For each .glp file (excluding boot_direct.glp, mad_boot.glp, and files
+    /// under mad_boot/ subdirectories):
+    /// - Parse into Module AST
+    /// - Extract module name (from -module(M). directive, or filename; for self.glp
+    ///   without -module(), derives name from parent directory)
+    /// - Build ancestor type scope chain
+    ///
+    /// self.glp files contribute both types AND procedures to the ancestor scope.
+    /// Their procedures are compiled to bytecode and renamed like any other module.
+    /// </summary>
+    public static IReadOnlyList<DiscoveredModule> DiscoverProject(
+        string rootDir,
+        string? rootSelfGlpPath = null)
+    {
+        if (!Directory.Exists(rootDir))
+            throw new ArgumentException($"Project root directory not found: {rootDir}");
 
-  for (final file in glpFiles) {
-    final filename = file.path.split(Platform.pathSeparator).last;
+        var modules = new List<DiscoveredModule>();
 
-    // Skip boot_direct.glp (copy of boot.glp with direct calls, not a module)
-    if (filename == 'boot_direct.glp') continue;
+        // Recursively find all .glp files — collapses Dart's three-stage pipeline
+        // (listSync + whereType<File> + where endsWith) to a single BCL call.
+        var glpFiles = Directory.EnumerateFiles(rootDir, "*.glp", SearchOption.AllDirectories)
+                                .ToList();
 
-    // Skip mad_boot.glp and files in mad_boot/ directory
-    // (madGLP boot procedures, loaded on top of linked project)
-    if (filename == 'mad_boot.glp') continue;
-    if (file.parent.path.endsWith('${Platform.pathSeparator}mad_boot') ||
-        file.parent.path.endsWith('/mad_boot')) continue;
+        foreach (var filePath in glpFiles)
+        {
+            var filename = Path.GetFileName(filePath);
 
-    // Parse the module
-    final source = file.readAsStringSync();
-    final lexer = Lexer(source);
-    final tokens = lexer.tokenize();
-    final parser = Parser(tokens);
-    final module = parser.parseModule();
+            // Skip boot_direct.glp (copy of boot.glp with direct calls, not a module)
+            if (filename == "boot_direct.glp") continue;
 
-    // Extract module name: for self.glp without -module(), derive from parent dir
-    final moduleName = module.name ??
-        (filename == 'self.glp'
-            ? _moduleNameFromDirPath(file.parent.path)
-            : _moduleNameFromFilename(filename));
+            // Skip mad_boot.glp and files in mad_boot/ directory
+            // (madGLP boot procedures, loaded on top of linked project)
+            if (filename == "mad_boot.glp") continue;
 
-    // Build ancestor scope chain
-    final chain = discoverSelfChain(
-      targetFile: file.absolute.path,
-      rootDir: root.absolute.path,
-    );
-    final ancestorScope =
-        _buildAncestorScope(chain, rootSelfGlpPath: rootSelfGlpPath);
+            // Dual-separator check: preserve BOTH platform-separator suffix AND literal '/'
+            // suffix for cross-platform defensive behaviour (Dart source uses both).
+            var parent = Path.GetDirectoryName(filePath);
+            if (parent != null &&
+                (parent.EndsWith(Path.DirectorySeparatorChar + "mad_boot", StringComparison.Ordinal) ||
+                 parent.EndsWith("/mad_boot", StringComparison.Ordinal)))
+                continue;
 
-    modules.add(DiscoveredModule(
-      filePath: file.path,
-      moduleName: moduleName,
-      ast: module,
-      ancestorScope: ancestorScope,
-      isSelfGlp: filename == 'self.glp',
-    ));
-  }
+            // Parse the module
+            var source  = File.ReadAllText(filePath);
+            var lexer   = new Lexer(source);
+            var tokens  = lexer.Tokenize();
+            var parser  = new Parser(tokens);
+            var module  = parser.ParseModule();
 
-  return modules;
-}
+            // Extract module name: for self.glp without -module(), derive from parent dir
+            var moduleName = module.Name ??
+                (filename == "self.glp"
+                    ? ModuleNameFromDirPath(parent!)
+                    : ModuleNameFromFilename(filename));
 
-/// Type-check each module independently against its ancestor scope.
-///
-/// Throws on type errors with module name and error details.
-void typeCheckProject(List<DiscoveredModule> modules) {
-  for (final mod in modules) {
-    // Skip modules with no procedure declarations (untyped orchestration)
-    if (mod.ast.procDeclarations.isEmpty) continue;
+            // Build ancestor scope chain
+            var chain = ModuleHierarchy.DiscoverSelfChain(
+                targetFile: Path.GetFullPath(filePath),
+                rootDir:    Path.GetFullPath(rootDir));
+            var ancestorScope = BuildAncestorScope(chain, rootSelfGlpPath: rootSelfGlpPath);
 
-    // Only type-check modules that have non-imported declarations
-    final hasOwnDecls = mod.ast.procDeclarations.any((d) => !d.imported);
-    if (!hasOwnDecls) continue;
+            modules.Add(new DiscoveredModule(
+                filePath:      filePath,
+                moduleName:    moduleName,
+                ast:           module,
+                ancestorScope: ancestorScope,
+                isSelfGlp:     filename == "self.glp"));
+        }
 
-    // Run partial evaluation before type checking (same pipeline as compiler)
-    final program = Program(mod.ast.procedures, mod.ast.line, mod.ast.column);
-    final pe = PartialEvaluator();
-    final transformed = pe.transformDefinedGuards(program);
-
-    final result = checkModule(
-      mod.ast,
-      transformedProcedures: transformed.procedures,
-      ancestorScope: mod.ancestorScope,
-    );
-
-    if (!result.isWellTyped) {
-      final errors = result.errors
-          .map((e) => '  ${e.message} at line ${e.line}')
-          .join('\n');
-      throw Exception(
-          'Type checking failed for ${mod.moduleName} (${mod.filePath}):\n$errors');
-    }
-  }
-}
-
-/// Link all modules into a single flat Program.
-///
-/// Renames procedures (`p/n` → `M:p/n`), resolves all calls, and generates
-/// entry point aliases for the top module's procedures.
-///
-/// Returns a [LinkResult] with the linked program and renamed proc declarations
-/// (needed for SRSW type-based relaxation during compilation).
-LinkResult linkProject(List<DiscoveredModule> modules, String topModuleName) {
-  // Build procedure registry: module name → set of procedure signatures
-  final registry = <String, Set<String>>{};
-  for (final mod in modules) {
-    final sigs = <String>{};
-    for (final proc in mod.ast.procedures) {
-      sigs.add('${proc.name}/${proc.arity}');
-    }
-    registry[mod.moduleName] = sigs;
-  }
-
-  // Build ancestor self.glp procedure map for each module.
-  // Maps module name → { sig → ancestorModuleName } (inner-most ancestor wins).
-  final selfGlpModules = modules.where((m) => m.isSelfGlp).toList();
-  final ancestorSelfProcs = <String, Map<String, String>>{};
-
-  for (final mod in modules) {
-    final modDir = File(mod.filePath).parent.absolute.path;
-    final procs = <String, String>{}; // sig → ancestorModuleName
-
-    // Walk self.glp modules from inner-most to outer-most.
-    // Inner-most wins (first entry in putIfAbsent).
-    // Sort by path length descending (longer path = more nested = inner).
-    final ancestors = selfGlpModules
-        .where((s) {
-          if (identical(s, mod)) return false; // skip self
-          final selfDir = File(s.filePath).parent.absolute.path;
-          return modDir.startsWith(selfDir);
-        })
-        .toList()
-      ..sort((a, b) => b.filePath.length.compareTo(a.filePath.length));
-
-    for (final selfMod in ancestors) {
-      for (final proc in selfMod.ast.procedures) {
-        final sig = '${proc.name}/${proc.arity}';
-        procs.putIfAbsent(sig, () => selfMod.moduleName);
-      }
+        return modules;
     }
 
-    ancestorSelfProcs[mod.moduleName] = procs;
-  }
+    /// <summary>
+    /// Type-check each module independently against its ancestor scope.
+    ///
+    /// Throws on type errors with module name and error details.
+    /// </summary>
+    public static void TypeCheckProject(IReadOnlyList<DiscoveredModule> modules)
+    {
+        foreach (var mod in modules)
+        {
+            // Skip modules with no procedure declarations (untyped orchestration)
+            if (mod.ModuleAst.ProcDeclarations.Count == 0) continue;
 
-  final allProcedures = <Procedure>[];
+            // Only type-check modules that have non-imported declarations
+            var hasOwnDecls = mod.ModuleAst.ProcDeclarations.Any(d => !d.Imported);
+            if (!hasOwnDecls) continue;
 
-  // Process each module
-  for (final mod in modules) {
-    final localSigs = registry[mod.moduleName]!;
-    final modAncestorProcs = ancestorSelfProcs[mod.moduleName] ?? {};
+            // Run partial evaluation before type checking (same pipeline as compiler)
+            var program     = new Program(mod.ModuleAst.Procedures, mod.ModuleAst.Line, mod.ModuleAst.Column);
+            var pe          = new PartialEvaluator();
+            var transformed = pe.TransformDefinedGuards(program);
 
-    for (final proc in mod.ast.procedures) {
-      final renamedName = '${mod.moduleName}:${proc.name}';
-      final renamedClauses = <Clause>[];
+            var result = TypeCheckerDriver.CheckModule(
+                mod.ModuleAst,
+                transformedProcedures: transformed.Procedures,
+                ancestorScope:         mod.AncestorScope);
 
-      for (final clause in proc.clauses) {
-        // Rename clause head
-        final renamedHead = Atom(
-          '${mod.moduleName}:${clause.head.functor}',
-          clause.head.args,
-          clause.head.line,
-          clause.head.column,
-        );
-
-        // Resolve calls in body
-        final resolvedBody = clause.body
-            ?.map((g) =>
-                _resolveGoal(g, mod.moduleName, localSigs, modAncestorProcs))
-            .toList();
-
-        renamedClauses.add(Clause(
-          renamedHead,
-          guards: clause.guards,
-          body: resolvedBody,
-          line: clause.line,
-          column: clause.column,
-        ));
-      }
-
-      allProcedures.add(Procedure(
-        renamedName,
-        proc.arity,
-        renamedClauses,
-        proc.line,
-        proc.column,
-      ));
-    }
-  }
-
-  // Build a project-wide procedure declaration index for mode-aware aliases.
-  // Maps 'name/arity' → ProcDecl, collecting from all modules' non-imported decls.
-  final declIndex = <String, ProcDecl>{};
-  for (final mod in modules) {
-    for (final d in mod.ast.procDeclarations) {
-      if (d.imported) continue;
-      final sig = '${d.name}/${d.arity}';
-      // First declaration wins (could also prefer exported, but any is fine)
-      declIndex.putIfAbsent(sig, () => d);
-    }
-  }
-
-  // Generate entry point aliases.
-  // Top module: ALL procedures get aliases (for REPL invocation).
-  // Other modules: only EXPORTED procedures get aliases (for cross-module calls
-  // from code loaded on top, e.g., madGLP boot source calling agent/4).
-  final aliasedSigs = <String, String>{}; // sig → owning module (for conflict detection)
-  for (final mod in modules) {
-    final isTop = mod.moduleName == topModuleName;
-    for (final proc in mod.ast.procedures) {
-      final sig = '${proc.name}/${proc.arity}';
-
-      // Top module: alias all. Others: only exported.
-      if (!isTop) {
-        final isExported = mod.ast.procDeclarations
-            .any((d) => d.exported && d.name == proc.name && d.arity == proc.arity);
-        if (!isExported) continue;
-      }
-
-      // Skip if an alias already exists (top module wins)
-      if (aliasedSigs.containsKey(sig)) continue;
-
-      aliasedSigs[sig] = mod.moduleName;
-
-      // Look up ProcDecl for mode-aware alias generation.
-      // First check the owning module, then the project-wide index.
-      final decl = _findProcDecl(mod, proc.name, proc.arity)
-          ?? declIndex[sig];
-
-      final aliasClause = _makeAliasClause(
-        proc.name,
-        proc.arity,
-        '${mod.moduleName}:${proc.name}',
-        declaration: decl,
-      );
-      allProcedures.add(Procedure(
-        proc.name,
-        proc.arity,
-        [aliasClause],
-        0,
-        0,
-      ));
-    }
-  }
-
-  // Collect and rename proc declarations for SRSW relaxation
-  final allDecls = <ProcDecl>[];
-  for (final mod in modules) {
-    for (final decl in mod.ast.procDeclarations) {
-      if (decl.imported) continue; // Skip imported — they're in other modules
-      allDecls.add(ProcDecl(
-        '${mod.moduleName}:${decl.name}',
-        decl.argTypes,
-        decl.line,
-        decl.column,
-        isBuiltin: decl.isBuiltin,
-      ));
-    }
-  }
-
-  return LinkResult(Program(allProcedures, 0, 0), allDecls);
-}
-
-/// Resolve a single goal in a clause body.
-///
-/// Resolution order: local procedure → ancestor self.glp chain → prelude/stdlib.
-Goal _resolveGoal(Goal goal, String moduleName, Set<String> localSigs,
-    Map<String, String> ancestorSelfProcs) {
-  // RemoteGoal: M' # p(...) → M':p(...)
-  if (goal is RemoteGoal) {
-    final targetModule = goal.staticModuleName;
-    if (targetModule != null) {
-      // Static dispatch: replace with renamed goal
-      return Goal(
-        '$targetModule:${goal.goal.functor}',
-        goal.goal.args,
-        goal.line,
-        goal.column,
-      );
-    }
-    // Dynamic dispatch — can't resolve statically, leave as-is
-    return goal;
-  }
-
-  // SpawnGoal: resolve inner goal, keep wrapper
-  if (goal is SpawnGoal) {
-    final resolvedInner =
-        _resolveGoal(goal.innerGoal, moduleName, localSigs, ancestorSelfProcs);
-    if (!identical(resolvedInner, goal.innerGoal)) {
-      return SpawnGoal(resolvedInner, goal.agentId, goal.line, goal.column);
-    }
-    return goal;
-  }
-
-  // Regular goal: check if it matches a local procedure
-  final sig = '${goal.functor}/${goal.arity}';
-  if (localSigs.contains(sig)) {
-    return Goal(
-      '$moduleName:${goal.functor}',
-      goal.args,
-      goal.line,
-      goal.column,
-    );
-  }
-
-  // Check ancestor self.glp procedures
-  final ancestorModule = ancestorSelfProcs[sig];
-  if (ancestorModule != null) {
-    return Goal(
-      '$ancestorModule:${goal.functor}',
-      goal.args,
-      goal.line,
-      goal.column,
-    );
-  }
-
-  // Prelude/stdlib/body kernel — leave unchanged
-  return goal;
-}
-
-/// Find the ProcDecl for a procedure in a module (non-imported only).
-ProcDecl? _findProcDecl(DiscoveredModule mod, String name, int arity) {
-  for (final d in mod.ast.procDeclarations) {
-    if (!d.imported && d.name == name && d.arity == arity) return d;
-  }
-  return null;
-}
-
-/// Create an alias clause with mode-aware argument forwarding.
-///
-/// Given a procedure declaration, generates:
-///   p(V0, V1, V2) :- M:p(V0?, V1, V2).
-/// where input args (declared with ?) get reader annotation in the body,
-/// and output args (no ?) get writer annotation (pass-through).
-///
-/// Without a declaration, falls back to all-reader body args:
-///   p(V0, V1, V2) :- M:p(V0?, V1?, V2?).
-Clause _makeAliasClause(String name, int arity, String targetName,
-    {ProcDecl? declaration}) {
-  if (arity == 0) {
-    // Zero-arity: p :- M:p.
-    final head = Atom(name, [], 0, 0);
-    final body = [Goal(targetName, [], 0, 0)];
-    return Clause(head, body: body, line: 0, column: 0);
-  }
-
-  // Generate variable names (V prefix — underscore prefix causes issues in codegen)
-  final headArgs = List.generate(
-      arity, (i) => VarTerm('V$i', false, 0, 0) as Term);
-
-  // Body args: use mode from declaration if available.
-  // Input args (T?) → isReader: true  (forward the value as reader)
-  // Output args (T) → isReader: false (forward the writer so callee can write)
-  final bodyArgs = List.generate(arity, (i) {
-    final isInput = declaration != null && i < declaration.argTypes.length
-        ? declaration.isInputArg(i)
-        : true; // Fallback: assume input (reader) when no declaration
-    return VarTerm('V$i', isInput, 0, 0) as Term;
-  });
-
-  final head = Atom(name, headArgs, 0, 0);
-  final body = [Goal(targetName, bodyArgs, 0, 0)];
-  return Clause(head, body: body, line: 0, column: 0);
-}
-
-/// Extract module name from filename (without .glp extension).
-String _moduleNameFromFilename(String filename) {
-  if (filename.endsWith('.glp')) {
-    return filename.substring(0, filename.length - 4);
-  }
-  return filename;
-}
-
-/// Extract module name from directory path (last component).
-String _moduleNameFromDirPath(String dirPath) {
-  final parts = dirPath.split(Platform.pathSeparator);
-  return parts.last;
-}
-
-/// Build ancestor type scope from self.glp chain.
-///
-/// If [rootSelfGlpPath] is provided, it is prepended to the chain as the
-/// outermost ancestor (the root self.glp, e.g. programs/self.glp).
-///
-/// Uses the same expansion pattern as assembleTypeScope in module_hierarchy.dart:
-/// each self.glp's parameterized types are expanded before merging, and templates
-/// are tracked for downstream modules.
-TypeEnvironment _buildAncestorScope(List<String> chain,
-    {String? rootSelfGlpPath}) {
-  // Start from prelude (which includes root self.glp), matching
-  // the individual-load path in assembleTypeScope.
-  var env = buildPreludeEnvironment();
-
-  // Chain contains only project-local self.glp files.
-  // Root self.glp is already included in the prelude environment.
-  for (final selfGlpPath in chain) {
-    final source = File(selfGlpPath).readAsStringSync();
-    final lexer = Lexer(source);
-    final tokens = lexer.tokenize();
-    final parser = Parser(tokens);
-    final selfModule = parser.parseModule();
-
-    // Extract templates before expansion removes them.
-    final selfTemplates = <String, TypeDef>{};
-    for (final td in selfModule.typeDefs) {
-      if (td.isParameterized) {
-        selfTemplates[td.name] = td;
-      }
+            if (!result.IsWellTyped)
+            {
+                var errors = string.Join("\n", result.Errors.Select(e => $"  {e.Message} at line {e.Line}"));
+                throw new Exception($"Type checking failed for {mod.ModuleName} ({mod.FilePath}):\n{errors}");
+            }
+        }
     }
 
-    // Expand parameterized types before building scope.
-    final expandedSelfModule = expandParameterizedTypes(selfModule,
-        knownTypeNames: env.types.keys.toSet(),
-        externalTemplates: env.typeTemplates);
+    /// <summary>
+    /// Link all modules into a single flat Program.
+    ///
+    /// Renames procedures (p/n → M:p/n), resolves all calls, and generates
+    /// entry point aliases for the top module's procedures.
+    ///
+    /// Returns a LinkResult with the linked program and renamed proc declarations
+    /// (needed for SRSW type-based relaxation during compilation).
+    /// </summary>
+    public static LinkResult LinkProject(IReadOnlyList<DiscoveredModule> modules, string topModuleName)
+    {
+        // Phase 1: Build procedure registry: module name → set of procedure signatures.
+        var registry = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var mod in modules)
+        {
+            var sigs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var proc in mod.ModuleAst.Procedures)
+                sigs.Add($"{proc.Name}/{proc.Arity}");
+            registry[mod.ModuleName] = sigs;
+        }
 
-    // Build environment from this self.glp (shadowing allowed).
-    final selfEnv = buildScopeFromModule(expandedSelfModule);
+        // Phase 2: Build ancestor self.glp procedure map for each module.
+        // Maps module name → { sig → ancestorModuleName } (inner-most ancestor wins).
+        var selfGlpModules  = modules.Where(m => m.IsSelfGlp).ToList();
+        var ancestorSelfProcs = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
 
-    // Merge: later entries shadow earlier ones. Include templates for descendants.
-    env = env.merge(TypeEnvironment(selfEnv.types, selfEnv.procedures,
-        paramProcDecls: selfEnv.paramProcDecls,
-        typeTemplates: selfTemplates));
-  }
+        foreach (var mod in modules)
+        {
+            var modDir = Path.GetDirectoryName(Path.GetFullPath(mod.FilePath)) ?? string.Empty;
+            var procs  = new Dictionary<string, string>(StringComparer.Ordinal); // sig → ancestorModuleName
 
-  return env;
+            // Walk self.glp modules from inner-most to outer-most.
+            // Inner-most wins (first entry via TryAdd / ContainsKey-then-assign).
+            // Sort by path length descending (longer path = more nested = inner).
+            var ancestors = selfGlpModules
+                .Where(s => !ReferenceEquals(s, mod) &&
+                            modDir.StartsWith(
+                                Path.GetDirectoryName(Path.GetFullPath(s.FilePath)) ?? string.Empty,
+                                StringComparison.Ordinal))
+                .OrderByDescending(s => s.FilePath.Length)
+                .ToList();
+
+            foreach (var selfMod in ancestors)
+            {
+                foreach (var proc in selfMod.ModuleAst.Procedures)
+                {
+                    var sig = $"{proc.Name}/{proc.Arity}";
+                    // putIfAbsent semantics: insert only if absent (inner-most-wins).
+                    // NOT procs[sig] = ... which would overwrite and break the invariant.
+                    if (!procs.ContainsKey(sig)) procs[sig] = selfMod.ModuleName;
+                }
+            }
+
+            ancestorSelfProcs[mod.ModuleName] = procs;
+        }
+
+        // Phase 3: Per-module clause rewrite.
+        var allProcedures = new List<Procedure>();
+
+        foreach (var mod in modules)
+        {
+            var localSigs       = registry[mod.ModuleName];
+            var modAncestorProcs = ancestorSelfProcs.TryGetValue(mod.ModuleName, out var aps)
+                ? aps
+                : new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var proc in mod.ModuleAst.Procedures)
+            {
+                var renamedName    = $"{mod.ModuleName}:{proc.Name}";
+                var renamedClauses = new List<Clause>();
+
+                foreach (var clause in proc.Clauses)
+                {
+                    // Rename clause head
+                    var renamedHead = new Atom(
+                        $"{mod.ModuleName}:{clause.Head.Functor}",
+                        clause.Head.Args,    // args passed by reference (no copy)
+                        clause.Head.Line,
+                        clause.Head.Column);
+
+                    // Resolve calls in body (null-conditional preserves nullable body)
+                    IReadOnlyList<Goal>? resolvedBody =
+                        clause.Body?.Select(g => ResolveGoal(g, mod.ModuleName, localSigs, modAncestorProcs))
+                                    .ToList();
+
+                    renamedClauses.Add(new Clause(
+                        renamedHead,
+                        guards: clause.Guards,   // guards passed by reference (no copy)
+                        body:   resolvedBody,
+                        line:   clause.Line,
+                        column: clause.Column));
+                }
+
+                allProcedures.Add(new Procedure(renamedName, proc.Arity, renamedClauses, proc.Line, proc.Column));
+            }
+        }
+
+        // Phase 4: Build project-wide procedure declaration index for mode-aware aliases.
+        // Maps 'name/arity' → ProcDecl, collecting non-imported decls (first-wins).
+        var declIndex = new Dictionary<string, ProcDecl>(StringComparer.Ordinal);
+        foreach (var mod in modules)
+        {
+            foreach (var d in mod.ModuleAst.ProcDeclarations)
+            {
+                if (d.Imported) continue;
+                var sig = $"{d.Name}/{d.Arity}";
+                // putIfAbsent: first declaration wins.
+                if (!declIndex.ContainsKey(sig)) declIndex[sig] = d;
+            }
+        }
+
+        // Phase 5: Generate entry point aliases.
+        // Top module: ALL procedures get aliases (for REPL invocation).
+        // Other modules: only EXPORTED procedures get aliases.
+        var aliasedSigs = new Dictionary<string, string>(StringComparer.Ordinal); // sig → owning module
+
+        foreach (var mod in modules)
+        {
+            var isTop = mod.ModuleName == topModuleName;
+            foreach (var proc in mod.ModuleAst.Procedures)
+            {
+                var sig = $"{proc.Name}/{proc.Arity}";
+
+                // Top module: alias all. Others: only exported.
+                if (!isTop)
+                {
+                    var isExported = mod.ModuleAst.ProcDeclarations
+                        .Any(d => d.Exported && d.Name == proc.Name && d.Arity == proc.Arity);
+                    if (!isExported) continue;
+                }
+
+                // Skip if an alias already exists (top module wins).
+                if (aliasedSigs.ContainsKey(sig)) continue;
+
+                aliasedSigs[sig] = mod.ModuleName;
+
+                // Look up ProcDecl for mode-aware alias generation.
+                // First check the owning module, then the project-wide index.
+                var decl = FindProcDecl(mod, proc.Name, proc.Arity)
+                    ?? (declIndex.TryGetValue(sig, out var d2) ? d2 : null);
+
+                var aliasClause = MakeAliasClause(
+                    proc.Name,
+                    proc.Arity,
+                    $"{mod.ModuleName}:{proc.Name}",
+                    declaration: decl);
+
+                allProcedures.Add(new Procedure(
+                    proc.Name,
+                    proc.Arity,
+                    new List<Clause> { aliasClause },
+                    0, 0));
+            }
+        }
+
+        // Collect and rename proc declarations for SRSW relaxation.
+        var allDecls = new List<ProcDecl>();
+        foreach (var mod in modules)
+        {
+            foreach (var decl in mod.ModuleAst.ProcDeclarations)
+            {
+                if (decl.Imported) continue; // Skip imported — they're in other modules
+                allDecls.Add(new ProcDecl(
+                    $"{mod.ModuleName}:{decl.Name}",
+                    decl.ArgTypes,
+                    decl.Line,
+                    decl.Column,
+                    isBuiltin: decl.IsBuiltin));
+            }
+        }
+
+        return new LinkResult(new Program(allProcedures, 0, 0), allDecls);
+    }
+
+    // ========================================================================
+    // Private helpers
+    // ========================================================================
+
+    /// <summary>
+    /// Resolve a single goal in a clause body.
+    ///
+    /// Resolution order: local procedure → ancestor self.glp chain → prelude/stdlib.
+    /// Identity-preserving: returns the SAME goal instance when no rewrite applies.
+    /// </summary>
+    private static Goal ResolveGoal(
+        Goal goal,
+        string moduleName,
+        IReadOnlyCollection<string> localSigs,
+        IReadOnlyDictionary<string, string> ancestorSelfProcs)
+    {
+        // RemoteGoal: M' # p(...) → M':p(...)
+        if (goal is RemoteGoal rg)
+        {
+            var targetModule = rg.StaticModuleName;
+            if (targetModule != null)
+            {
+                // Static dispatch: replace with renamed goal.
+                // Dart field 'goal.goal.functor' → C# 'rg.Goal.Functor' (the inner Goal property).
+                return new Goal($"{targetModule}:{rg.Goal.Functor}", rg.Goal.Args, rg.Line, rg.Column);
+            }
+            // Dynamic dispatch — can't resolve statically, leave as-is.
+            return goal;
+        }
+
+        // SpawnGoal: resolve inner goal, keep wrapper.
+        if (goal is SpawnGoal sg)
+        {
+            var resolvedInner = ResolveGoal(sg.InnerGoal, moduleName, localSigs, ancestorSelfProcs);
+            // Allocate a new SpawnGoal ONLY if the inner goal was actually rewritten.
+            // ReferenceEquals = Dart's identical() — identity-preserving on no-op.
+            if (!ReferenceEquals(resolvedInner, sg.InnerGoal))
+                return new SpawnGoal(resolvedInner, sg.AgentId, sg.Line, sg.Column);
+            return goal;
+        }
+
+        // Regular goal: check if it matches a local procedure.
+        var sig = $"{goal.Functor}/{goal.Arity}";
+        if (localSigs.Contains(sig))
+            return new Goal($"{moduleName}:{goal.Functor}", goal.Args, goal.Line, goal.Column);
+
+        // Check ancestor self.glp procedures.
+        // TryGetValue = Dart Map[k] (returns null on absent); C# indexer throws on absent.
+        if (ancestorSelfProcs.TryGetValue(sig, out var ancestorModule))
+            return new Goal($"{ancestorModule}:{goal.Functor}", goal.Args, goal.Line, goal.Column);
+
+        // Prelude/stdlib/body kernel — leave unchanged.
+        return goal;
+    }
+
+    /// <summary>Find the ProcDecl for a procedure in a module (non-imported only).</summary>
+    private static ProcDecl? FindProcDecl(DiscoveredModule mod, string name, int arity)
+    {
+        foreach (var d in mod.ModuleAst.ProcDeclarations)
+        {
+            if (!d.Imported && d.Name == name && d.Arity == arity) return d;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Create an alias clause with mode-aware argument forwarding.
+    ///
+    /// Given a procedure declaration, generates:
+    ///   p(V0, V1, V2) :- M:p(V0?, V1, V2).
+    /// where input args (declared with ?) get reader annotation in the body,
+    /// and output args (no ?) get writer annotation (pass-through).
+    ///
+    /// Without a declaration, falls back to all-reader body args:
+    ///   p(V0, V1, V2) :- M:p(V0?, V1?, V2?).
+    /// </summary>
+    private static Clause MakeAliasClause(
+        string name,
+        int arity,
+        string targetName,
+        ProcDecl? declaration = null)
+    {
+        if (arity == 0)
+        {
+            // Zero-arity: p :- M:p.
+            var head0 = new Atom(name, Array.Empty<Term>(), 0, 0);
+            var body0 = new List<Goal> { new Goal(targetName, Array.Empty<Term>(), 0, 0) };
+            return new Clause(head0, guards: null, body: body0, line: 0, column: 0);
+        }
+
+        // Generate variable names (V prefix — underscore prefix causes issues in codegen).
+        // Term[] pre-allocation avoids Dart's List.generate; 'as Term' cast elided (element type declared upfront).
+        var headArgs = new Term[arity];
+        for (int i = 0; i < arity; i++)
+            headArgs[i] = new VarTerm($"V{i}", false, 0, 0);
+
+        // Body args: use mode from declaration if available.
+        // Input args (T?) → isReader: true  (forward the value as reader)
+        // Output args (T)  → isReader: false (forward the writer so callee can write)
+        var bodyArgs = new Term[arity];
+        for (int i = 0; i < arity; i++)
+        {
+            var isInput = declaration != null && i < declaration.ArgTypes.Count
+                ? declaration.IsInputArg(i)
+                : true; // Fallback: assume input (reader) when no declaration
+            bodyArgs[i] = new VarTerm($"V{i}", isInput, 0, 0);
+        }
+
+        var head = new Atom(name, headArgs, 0, 0);
+        var body = new List<Goal> { new Goal(targetName, bodyArgs, 0, 0) };
+        return new Clause(head, guards: null, body: body, line: 0, column: 0);
+    }
+
+    /// <summary>Extract module name from filename (without .glp extension).</summary>
+    private static string ModuleNameFromFilename(string filename)
+    {
+        if (filename.EndsWith(".glp", StringComparison.Ordinal))
+            return filename[..^4];
+        return filename;
+    }
+
+    /// <summary>Extract module name from directory path (last component).</summary>
+    private static string ModuleNameFromDirPath(string dirPath) => Path.GetFileName(dirPath);
+
+    /// <summary>
+    /// Build ancestor type scope from self.glp chain.
+    ///
+    /// If rootSelfGlpPath is provided, it is received but NOT consumed in the body
+    /// (the chain already includes root self.glp transitively via the prelude environment).
+    /// Parameter preserved for API stability.
+    ///
+    /// Structural subset of ModuleHierarchy.AssembleTypeScope: same per-self.glp loop body,
+    /// omits the final module-itself merge (that layer is applied by TypeCheckerDriver.CheckModule
+    /// at the TypeCheckProject call site via ancestorScope).
+    /// </summary>
+    private static TypeEnvironment BuildAncestorScope(
+        IReadOnlyList<string> chain,
+        string? rootSelfGlpPath = null) // rootSelfGlpPath intentionally unused: prelude covers root self.glp
+    {
+        // Start from prelude (which includes root self.glp), matching
+        // the individual-load path in AssembleTypeScope.
+        var env = TypeEnvironmentBuilder.BuildPreludeEnvironment();
+
+        // Chain contains only project-local self.glp files.
+        // Root self.glp is already included in the prelude environment.
+        foreach (var selfGlpPath in chain)
+        {
+            var source     = File.ReadAllText(selfGlpPath);
+            var lexer      = new Lexer(source);
+            var tokens     = lexer.Tokenize();
+            var parser     = new Parser(tokens);
+            var selfModule = parser.ParseModule();
+
+            // Extract templates before expansion removes them.
+            var selfTemplates = new Dictionary<string, TypeDef>(StringComparer.Ordinal);
+            foreach (var td in selfModule.TypeDefs)
+                if (td.IsParameterized) selfTemplates[td.Name] = td;
+
+            // Expand parameterized types before building scope.
+            var expandedSelfModule = ParamExpansion.ExpandParameterizedTypes(
+                selfModule,
+                knownTypeNames:    new HashSet<string>(env.Types.Keys, StringComparer.Ordinal),
+                externalTemplates: env.TypeTemplates);
+
+            // Build environment from this self.glp (shadowing allowed).
+            var selfEnv = ModuleHierarchy.BuildScopeFromModule(expandedSelfModule);
+
+            // Merge: later entries shadow earlier ones. Include templates for descendants.
+            env = env.Merge(new TypeEnvironment(
+                selfEnv.Types,
+                selfEnv.Procedures,
+                paramProcDecls: selfEnv.ParamProcDecls,
+                typeTemplates:  selfTemplates));
+        }
+
+        return env;
+    }
 }

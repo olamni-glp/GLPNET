@@ -73,7 +73,7 @@ callers:
 - test_archive/direct_structterm_test.dart
 - test_archive/serve_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.076Z'
 sha256: cb25bc0bcb2f6d07603fb9cba8c8b81802e016af0d8558cff28df8f8c3a470c3
 topo_level: 4
 cycle_group_id: 37
@@ -83,5 +83,9 @@ plan_started_at: '2026-05-21T16:06:18Z'
 plan_completed_at: '2026-05-21T16:12:53Z'
 plan_path: .codeconv/conversion-plans/lib/runtime/runtime.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T12:39:18Z'
+target_cs_path: out/csharp/lib/runtime/runtime.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

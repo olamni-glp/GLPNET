@@ -94,6 +94,41 @@ def _bridge_script_present() -> bool:
     return BRIDGE_SCRIPT.is_file()
 
 
+# Runtime REPLs (feature 020 @needs_runtime). The golden is the Dart REPL;
+# the candidate is the converted, trace-instrumented C# REPL under out/csharp.
+DART_REPL_EXE = REPO_ROOT / "glp_runtime" / "glp_repl.exe"
+DART_REPL_DART = REPO_ROOT / "glp_runtime" / "bin" / "glp_repl.dart"
+CSHARP_OUT = REPO_ROOT / "out" / "csharp"
+
+
+def _dart_repl_available() -> bool:
+    """Golden runtime: the prebuilt Windows REPL, or ``dart`` + the source."""
+    if DART_REPL_EXE.is_file():
+        return True
+    return shutil.which("dart") is not None and DART_REPL_DART.is_file()
+
+
+def _csharp_repl_available() -> bool:
+    """Candidate runtime: a built/instrumented converted C# REPL.
+
+    Honors an explicit override (``CODECONV_CSHARP_REPL`` → built
+    entrypoint); otherwise looks for a built ``glp_repl`` artifact under
+    ``out/csharp/``. Requires ``dotnet`` on PATH. Until US1/US2 builds the
+    converted REPL this returns False, so ``@needs_runtime`` e2e tests skip
+    (the B1 bootstrapping window — pure oracle modules are tested without it).
+    """
+    if shutil.which("dotnet") is None:
+        return False
+    override = os.environ.get("CODECONV_CSHARP_REPL")
+    if override:
+        return Path(override).exists()
+    if not CSHARP_OUT.is_dir():
+        return False
+    return any(CSHARP_OUT.glob("**/glp_repl*.dll")) or any(
+        CSHARP_OUT.glob("**/glp_repl*.exe")
+    )
+
+
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
     return REPO_ROOT
@@ -107,6 +142,15 @@ def bridge_script() -> Path:
 needs_bridge = pytest.mark.skipif(
     not (_node_available() and _bridge_script_present()),
     reason="requires node and prereq-patterns/pglite/pglite_bridge.mjs",
+)
+
+
+needs_runtime = pytest.mark.skipif(
+    not (_dart_repl_available() and _csharp_repl_available()),
+    reason=(
+        "requires the Dart golden REPL AND a built converted C# REPL "
+        "(set CODECONV_CSHARP_REPL or build out/csharp)"
+    ),
 )
 
 

@@ -1,0 +1,50 @@
+%% ch06 ex-01 — §6.1 Difference Lists
+%% Source: ch04 §4.3.7, book pp 38–39, Programs flatten/2 + flatten_acc/3.
+%% Synthesised from ch04 §4.3.7 because the ch06 PDF chapter (book p 53) is a
+%%   stub — only the title, a one-line intro, and the five §6.x section
+%%   headings exist; no body text and no native Programs.
+%% Type definitions and `procedure` declarations are introduced fresh at §6.1
+%%   per ch05 conventions; clauses below are byte-exact from ch04 §4.3.7.
+%% Per /speckit-clarify Q1 (option B): the flatten-with-accumulator pattern is
+%%   closer in pedagogical shape to the difference-list idiom (the accumulator
+%%   threading mirrors a `List \ List?` difference list) than ch04 §4.2.3 +
+%%   §4.2.4 reverse / reverse_acc, which is the alternative option A.
+
+%% A NestedList is either empty, or a cons with an arbitrary head (an atom
+%%   OR a sub-NestedList) and a NestedList tail.  The element type is `_`
+%%   (any term) per typed-glp-manual.md §18.3 exception: flatten consumes a
+%%   heterogeneous tree of atoms + sub-lists with no shared shape, so the
+%%   tight-typing discipline cannot express the element type without a
+%%   wrapper that would violate the byte-exact source mandate (FR-002).
+%%   The is_list/1 + ground/1 guards in flatten_acc's recursive list-head
+%%   clause discriminate atom-vs-sublist at run time.
+NestedList ::= [] ; [_ | NestedList].
+
+%% flatten/2 consumes a NestedList and produces a flat NestedList of atoms.
+%%   The accumulator threading is byte-exact from ch04 §4.3.7; the result is
+%%   built up in REVERSE order because each leaf is prepended via [X?|Acc?].
+procedure flatten(NestedList?, NestedList).
+
+%% Entry: hand the input to flatten_acc with an empty initial accumulator.
+flatten(Xs, Ys?) :- flatten_acc(Xs?, [], Ys).
+
+%% flatten_acc/3: arg 1 admits both a NestedList (top-level + nested-recursive
+%%   call) and a single atom (`flatten_acc(X?, Acc?, Acc1)` where X is the
+%%   ground-list head). Both forms are NestedList alternatives.
+procedure flatten_acc(NestedList?, NestedList?, NestedList).
+
+%% Base case: empty input — the accumulator IS the result so far.
+flatten_acc([], Acc, Acc?).
+
+%% Recursive list-head case: the head X is itself a ground list — recurse
+%%   into X to flatten it onto Acc, producing Acc1, then continue with Xs.
+flatten_acc([X|Xs], Acc, Ys?) :-
+    ground(X?), is_list(X?) |
+    flatten_acc(X?, Acc?, Acc1),
+    flatten_acc(Xs?, Acc1?, Ys).
+
+%% Recursive atom-head case (otherwise): X is not a ground list — prepend X
+%%   to the accumulator and continue with Xs.
+flatten_acc([X|Xs], Acc, Ys?) :-
+    otherwise |
+    flatten_acc(Xs?, [X?|Acc?], Ys).

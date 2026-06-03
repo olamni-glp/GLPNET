@@ -1,0 +1,51 @@
+% ch-04-ex-03-producer-consumer-naive-reverse.glp
+%
+% This file presents producer/2 + consumer/3 in their NATIVE chapter-4 home,
+% byte-exact from book p 31 (PDF p 43), §4.2.1 + §4.2.2 "Producers and Consumers".
+% These same procedures appear in ch03 ex-01 as a cross-chapter forward import
+% (see olamni/tutorial/ch03/exercise-01/ch-03-ex-01-producer-consumer.glp); the
+% byte-exact code corpus is identical, but the surrounding %% paraphrase context
+% differs: ch03's header cites the cross-chapter import provenance, this file's
+% header paraphrases the §4.2.1 + §4.2.2 native prose.
+%
+% Programs included (byte-exact):
+%   §4.2.1 (book p 31): producer/2 — countdown stream from N
+%   §4.2.2 (book p 31): consumer/3 — sums stream elements; uses Formal 4.2 SRSW-in-continuation-calls
+%   §4.2.3 (book pp 31-32): naive reverse/2 + append/3 (O(n²))
+%
+% This is the FIRST of two .glp files in ex-03 per Clarifications Q4 spec
+% amendment. The accumulator-based reverse/2 (book p 32) lives in the sibling
+% file ch-04-ex-03-producer-consumer-acc-reverse.glp; the GLP non-contiguous-
+% clauses constraint forces the split because both files define reverse/2.
+%
+% References Formal 4.2 (SRSW in Continuation Calls, book p 31).
+
+%% §4.2.1 (book p 31): producer that counts down from N.
+
+%% Producer base — when count is zero, the stream is the empty list.
+producer([], 0).
+%% Producer recursive — emit N at head, recurse on tail with N-1; built-in `>` guard ensures positive count; `:=` arithmetic body kernel decrements.
+producer([N?|Xs?], N) :- N? > 0 | N1 := N? - 1, producer(Xs, N1?).
+
+%% §4.2.2 (book p 31): consumer that sums stream elements.
+
+%% Consumer base — when stream is empty, accumulator becomes the result via writer/reader pair Sum/Sum?.
+consumer([], Sum, Sum?).
+%% Consumer recursive — `ground(X?)` waits until head is fully bound; accumulator updated via `:=`; recursive call passes readers Xs?, Sum1? per Formal 4.2.
+consumer([X|Xs], Sum, Result?) :- ground(X?) |
+    Sum1 := Sum? + X?,
+    consumer(Xs?, Sum1?, Result).
+
+%% §4.2.3 (book pp 31-32): naive reverse/2 + append/3 (O(n²)).
+
+%% Naive reverse base — empty list reverses to empty list.
+reverse([], []).
+%% Naive reverse recursive — recursively reverse the tail, then append the head as a singleton; O(n²) due to repeated appends.
+reverse([X|Xs], Ys?) :-
+    reverse(Xs?, Zs),
+    append(Zs?, [X?], Ys).
+
+%% Append base — appending an empty list yields the second list verbatim.
+append([], Ys, Ys?).
+%% Append recursive — emit head at output, recurse on tails.
+append([X|Xs], Ys, [X?|Zs?]) :- append(Xs?, Ys?, Zs).

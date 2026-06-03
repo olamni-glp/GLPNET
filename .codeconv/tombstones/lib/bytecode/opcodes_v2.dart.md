@@ -48,7 +48,7 @@ callers:
 - lib/bytecode/asm.dart
 - lib/bytecode/runner.dart
 - lib/compiler/codegen.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.057Z'
 sha256: c8549ccea9fbe836a1804e62b0164ac312889f3602144e9403938f9aaca206d6
 topo_level: 0
 cycle_group_id: 21
@@ -58,6 +58,10 @@ plan_started_at: '2026-05-21T14:23:22Z'
 plan_completed_at: '2026-05-21T14:34:26Z'
 plan_path: .codeconv/conversion-plans/lib/bytecode/opcodes_v2.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:56:14Z'
+target_cs_path: out/csharp/lib/bytecode/opcodes_v2.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Phase 2: Unified Instruction Set

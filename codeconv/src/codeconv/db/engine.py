@@ -17,6 +17,7 @@ helper functions returning the ready-to-use object.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import create_engine
@@ -25,7 +26,7 @@ from sqlalchemy.engine import Engine
 from codeconv._vendor.pglite_compat_loaders import apply_to_engine
 from codeconv._vendor.pglite_engine_kwargs import pglite_engine_kwargs
 from codeconv._vendor.dbos_pglite_patch import _apply_pglite_compat_patch
-from codeconv.bridge_client import BridgeEndpoint
+from codeconv.bridge_client import BridgeEndpoint, acquire_or_discover
 
 
 # Process-level engine cache (feature-018 option #1, R12 fix). Keyed by
@@ -41,6 +42,27 @@ def reset_engine_cache_for_tests() -> None:
         except Exception:
             pass
     _ENGINE_CACHE.clear()
+
+
+def connect(
+    repo_root: Path | str,
+    data_dir: Optional[Path] = None,
+    *,
+    ready_timeout: float = 60.0,
+    application_name: str = "codeconv",
+) -> Engine:
+    """Acquire-or-discover the unified bridge and build the cached engine.
+
+    The canonical bridge accessor (DISCIPLINE §1.3): new tools call this
+    instead of re-deriving the ``acquire_or_discover(...) -> build_engine(...)``
+    pair in a per-tool ``_engine`` copy. (The pre-existing per-tool copies in
+    ``tools/*/workflow.py`` are a separate, optional cleanup — migrating them is
+    not required to use this here.)
+    """
+    endpoint = acquire_or_discover(
+        Path(repo_root).resolve(), ready_timeout=ready_timeout, data_dir=data_dir
+    )
+    return build_engine(endpoint, application_name=application_name)
 
 
 def build_url(endpoint: BridgeEndpoint) -> str:

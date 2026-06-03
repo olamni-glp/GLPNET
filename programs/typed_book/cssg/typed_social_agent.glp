@@ -25,7 +25,9 @@
 %%   Channel ::= ch(Stream, Stream?).
 
 %% Friend messages (after connection established)
-FriendMsg     ::= msg(Constant, Constant, FriendContent).
+FriendMsg     ::= msg(Constant, Constant, FriendContent)
+                ; ack(Constant)
+                ; nack.
 FriendStream  ::= [] ; [FriendMsg | FriendStream].
 FriendChannel ::= ch(FriendStream, FriendStream?).
 
@@ -216,7 +218,7 @@ remove_output(_, [], []).
 %% Uses generic Channel because after the handshake the channel
 %% transitions from intro protocol to friend messaging protocol.
 
-procedure intro_await_peer(Constant?, Channel(X, Y)?, IntroResult).
+procedure intro_await_peer(Constant?, Channel(FriendStream, FriendStream)?, IntroResult).
 
 %% Peer sent ack: write intro_result with the live channel
 intro_await_peer(Other, ch([ack(_)|ChIn], ChOut?),

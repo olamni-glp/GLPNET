@@ -37,7 +37,7 @@ callers:
 - test/multiagent/global_writers_table_test.dart
 - test/multiagent/globalize_test.dart
 - test/multiagent/localize_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.650Z'
 sha256: 7ebe135c209066d868a420d5df4f3fc0be289656a597faa3e0acb5f6d371b9f1
 topo_level: 0
 cycle_group_id: 25
@@ -47,6 +47,10 @@ plan_started_at: '2026-05-21T14:35:52Z'
 plan_completed_at: '2026-05-21T14:41:06Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/global_writers_table.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:01:56Z'
+target_cs_path: out/csharp/lib/multiagent/global_writers_table.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Global Writers Table for madGLP

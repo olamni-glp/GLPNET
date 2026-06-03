@@ -12,7 +12,7 @@ dependencies:
 - lib/analysis/type_checker/well_typed_term.dart
 - lib/compiler/ast.dart
 callers: []
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:15.483Z'
 sha256: e31873cea8b664586eb0f7d6e5eb81aaedb3176fb7c579c20ad5ce40d22836c5
 topo_level: 4
 cycle_group_id: 69

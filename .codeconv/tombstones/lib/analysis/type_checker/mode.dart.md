@@ -13,7 +13,7 @@ callers:
 - test/analysis/type_checker/moded_head_test.dart
 - test/analysis/type_checker/well_typed_clause_test.dart
 - test/analysis/type_checker/well_typed_term_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:12.722Z'
 sha256: 48ca1f3517f5fd668631dff7c4b48b31567276ca330644b7c24892427aaa8e78
 topo_level: 0
 cycle_group_id: 5
@@ -23,5 +23,9 @@ plan_started_at: '2026-05-21T14:23:17Z'
 plan_completed_at: '2026-05-21T14:34:31Z'
 plan_path: .codeconv/conversion-plans/lib/analysis/type_checker/mode.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T08:53:55Z'
+target_cs_path: out/csharp/lib/analysis/type_checker/mode.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 

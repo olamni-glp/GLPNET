@@ -40,7 +40,7 @@ callers:
 - test/multiagent/mad_cold_call_isolate_test.dart
 - test/multiagent/mad_scenarios_test.dart
 - test/multiagent/mad_transactions_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.690Z'
 sha256: 2c0667ab13bae6919551df9dce3ba00ec6ac90d4037534aa7f62a39c486cca88
 topo_level: 4
 cycle_group_id: 37
@@ -50,6 +50,10 @@ plan_started_at: '2026-05-21T16:06:15Z'
 plan_completed_at: '2026-05-21T16:12:51Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/mad_context.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T12:39:06Z'
+target_cs_path: out/csharp/lib/multiagent/mad_context.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 madGLP Agent Context

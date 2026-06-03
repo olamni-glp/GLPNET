@@ -4455,6 +4455,7 @@ class BytecodeRunner {
         return GuardResult.failure;
 
       case 'list':
+      case 'is_list':
         // Succeeds if X is a list ([] or [H|T])
         if (args.isEmpty) return GuardResult.failure;
         final val = getValue(args[0]);
@@ -4472,10 +4473,12 @@ class BytecodeRunner {
         return GuardResult.failure;
 
       case 'compound':
+      case 'tuple':
         // Succeeds if X is a compound term (structure with functor and arity > 0)
         // Per guards-reference.md: "Test for compound term"
         // Lists are compound since [X|Xs] = '.'(X, Xs)
         // Does NOT imply groundness - may contain unbound subterms
+        // 'tuple' is a book-terminology synonym for 'compound' (per AoGLP 2025).
         if (args.isEmpty) return GuardResult.failure;
         final val = getValue(args[0]);
         if (val is StructTerm && val.args.isNotEmpty) {

@@ -57,6 +57,9 @@ class DFAState {
   /// True for `String` type state (either complement or not)
   bool get isStringType => baseName == 'String';
 
+  /// True for `Any` type state (universal — accepts any term)
+  bool get isAnyType => baseName == 'Any';
+
   /// True for `_FINAL_` (anonymous final for constant/literal matches)
   bool get isAnonymousFinal => baseName == '_FINAL_';
 
@@ -65,9 +68,9 @@ class DFAState {
   bool get isNumericType => isIntegerType || isRealType || isNumberType;
 
   // Fix 3.2: Computed properties for type classification
-  /// True for primitive types: _, Integer, Real, Number, String
+  /// True for primitive types: _, Integer, Real, Number, String, Any
   bool get isPrimitiveType =>
-      isWildcard || isIntegerType || isRealType || isNumberType || isStringType;
+      isWildcard || isIntegerType || isRealType || isNumberType || isStringType || isAnyType;
 
   /// True for user-defined types (not primitive, not procedure, not anonymous final)
   bool get isUserDefinedType =>
@@ -222,6 +225,8 @@ ProgramDFA buildProgramDFA(TypeEnvironment env) {
   states['Number?'] = DFAState('Number', isDual: true, isFinal: false);
   states['String'] = DFAState('String', isDual: false, isFinal: false);
   states['String?'] = DFAState('String', isDual: true, isFinal: false);
+  states['Any'] = DFAState('Any', isDual: false, isFinal: false);
+  states['Any?'] = DFAState('Any', isDual: true, isFinal: false);
   states['_FINAL_'] = DFAState('_FINAL_', isDual: false, isFinal: true);
 
   // Create automata for system types
@@ -235,6 +240,8 @@ ProgramDFA buildProgramDFA(TypeEnvironment env) {
   automata['Number?'] = _primitiveTypeAutomaton(states['Number?']!, states['_FINAL_']!);
   automata['String'] = _primitiveTypeAutomaton(states['String']!, states['_FINAL_']!);
   automata['String?'] = _primitiveTypeAutomaton(states['String?']!, states['_FINAL_']!);
+  automata['Any'] = _primitiveTypeAutomaton(states['Any']!, states['_FINAL_']!);
+  automata['Any?'] = _primitiveTypeAutomaton(states['Any?']!, states['_FINAL_']!);
 
   // Create states for ALL defined types FIRST
   // (Automata may reference other types, so all states must exist before building automata)
@@ -304,8 +311,8 @@ Automaton _buildTypeAutomaton(
   final acceptedPrimitives = <String>{};
 
   for (final alt in typeDef.alternatives) {
-    // Collect primitive type alternatives (Integer, Real, Number, String)
-    if (alt is TypeRef && {'Integer', 'Real', 'Number', 'String'}.contains(alt.name)) {
+    // Collect primitive type alternatives (Integer, Real, Number, String, Any)
+    if (alt is TypeRef && {'Integer', 'Real', 'Number', 'String', 'Any'}.contains(alt.name)) {
       acceptedPrimitives.add(alt.name);
     }
     _addTypeTransitions(
@@ -409,6 +416,9 @@ DFAState _resolveTypeExpr(
     }
     if (typeExpr.name == 'String') {
       return finalIsComplement ? states['String?']! : states['String']!;
+    }
+    if (typeExpr.name == 'Any') {
+      return finalIsComplement ? states['Any?']! : states['Any']!;
     }
 
     final targetName = typeExpr.name;
@@ -606,6 +616,11 @@ LeafConsistencyResult checkLeafConsistency(
     return LeafConsistencyResult.inconsistent('String type requires string literal');
   }
 
+  if (state.isAnyType) {
+    // Any accepts any constant leaf (universal acceptor)
+    return LeafConsistencyResult.consistent(dfa.states['_FINAL_']);
+  }
+
   // Case 2c: At wildcard state
   // Per spec v0.6: _ accepts any produced term (mode ↑), _? accepts any consumed term (mode ↓)
   if (state.isProducedWildcard) {
@@ -647,6 +662,10 @@ LeafConsistencyResult checkLeafConsistency(
           return LeafConsistencyResult.consistent(dfa.states['_FINAL_']);
         }
         if (leaf.isString && automaton.acceptedPrimitives.contains('String')) {
+          return LeafConsistencyResult.consistent(dfa.states['_FINAL_']);
+        }
+        // Any in acceptedPrimitives admits any constant leaf (universal acceptor)
+        if (automaton.acceptedPrimitives.contains('Any')) {
           return LeafConsistencyResult.consistent(dfa.states['_FINAL_']);
         }
       }

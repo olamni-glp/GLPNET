@@ -54,7 +54,7 @@ callers:
 - lib/multiagent/archive-irma-2026-01-30/tests/two_hop_flow_test.dart
 - lib/multiagent/isolate_manager.dart
 - lib/multiagent/mad_context.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.745Z'
 sha256: 6291cb396efe81564618f2dd1e207ebda0a7fd3e01e918356a0e2f62282655e0
 topo_level: 2
 cycle_group_id: 29
@@ -64,6 +64,10 @@ plan_started_at: '2026-05-21T15:18:02Z'
 plan_completed_at: '2026-05-21T15:24:00Z'
 plan_path: .codeconv/conversion-plans/lib/multiagent/payload_serializer.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T09:37:34Z'
+target_cs_path: out/csharp/lib/multiagent/payload_serializer.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 Payload Serialization for irmaGLP

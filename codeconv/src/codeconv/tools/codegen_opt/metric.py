@@ -25,9 +25,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Sequence
 
 from codeconv.tools.codegen.buildgate import BuildResult, run_build, run_test
+from codeconv.tools.equiv.fidelity import FidelityInputs, score as fidelity_score
+from codeconv.tools.equiv.relation import DivergenceRecord, Verdict
+from codeconv.tools.equiv.verdict import divergence_to_dict
 
 
 # Metric weights (Increment 2). Increment 1 uses the human term alone.
@@ -137,11 +140,177 @@ def score_candidate(
     )
 
 
+# --------------------------------------------------------------------------- #
+# T031 — fidelity-based GEPA metric (SC-004, contracts/gepa_optimizer.md       #
+# § Module+metric + contracts/fidelity_metric.md § GEPA wiring).               #
+#                                                                              #
+# The GEPA metric's SCALAR is `tools/equiv/fidelity.py:score` — the SAME       #
+# function object the production gate uses (imported, NOT re-implemented), so  #
+# the two agree by construction (SC-004, asserted by import identity). Its     #
+# FEEDBACK is the textual trace-divergence GEPA reflects on. This is the       #
+# genuine optimization gradient ABOVE the build-only ceiling: a                #
+# compiling-but-not-equivalent candidate sits in 0.25..<1.0 by `frac`          #
+# (trace-equivalent sources / in-scope sources), monotonically — the whole     #
+# point of the fidelity re-run (handoff anti-drift D). The build-only          #
+# `composite_score` above stays for the pre-REPL `score` CLI fallback.         #
+# --------------------------------------------------------------------------- #
+
+
+def render_divergence(div: DivergenceRecord) -> str:
+    """Compact one-line text of a DivergenceRecord (GEPA reflective signal).
+
+    Reuses ``verdict.divergence_to_dict`` (the SAME representation persisted as
+    ``dart_equivalence.divergence``) so the gate evidence and the GEPA feedback
+    are one thing rendered, not two."""
+    d = divergence_to_dict(div)
+    pc = d.get("spine_pc")
+    where = f"position {d['causal_position']}"
+    if pc is not None:
+        where += f", spine_pc {pc}"
+    return (
+        f"trace divergence at {d['event_kind']} ({where}): "
+        f"expected={d['expected']} actual={d['actual']}"
+    )
+
+
+@dataclass(frozen=True)
+class OracleOutcome:
+    """Per-candidate trace-equivalence evidence the oracle produces.
+
+    ``source_verdicts`` is one ``Verdict`` per in-scope corpus source (the
+    capture-both-REPLs + compare result). ``back_tested``/``trace_captured``
+    are set by the caller that ran the oracle (it knows whether back-tests
+    exist and whether capture succeeded) — they are NOT inferred here."""
+
+    back_tested: bool
+    trace_captured: bool
+    source_verdicts: tuple[Verdict, ...] = ()
+
+
+@dataclass(frozen=True)
+class CandidateEvaluation:
+    """Full per-candidate evaluation the GEPA metric scores: the build result
+    PLUS the oracle's trace evidence. ``make_gepa_metric``'s injected
+    ``evaluate_fn`` returns this; ``fidelity_metric_result`` scores it."""
+
+    builds: bool
+    back_tested: bool
+    trace_captured: bool
+    source_verdicts: tuple[Verdict, ...] = ()
+    build_feedback: str = ""
+
+
+def fidelity_metric_result(
+    *,
+    builds: bool,
+    back_tested: bool,
+    trace_captured: bool,
+    source_verdicts: Sequence[Verdict],
+    build_feedback: str = "",
+) -> tuple[float, str]:
+    """Fidelity score + reflective feedback for one candidate (T031).
+
+    The scalar is ``fidelity_score(FidelityInputs(...))`` — the production
+    gate's scorer, imported (SC-004), NEVER a re-implementation. The feedback:
+      - the build error, if it does not compile (score 0.0);
+      - else the first non-equivalent source's ``DivergenceRecord`` as text;
+      - else ``"all sources equivalent"`` (every in-scope source matched);
+      - else a compiles-no-evidence note (no captured trace evidence yet).
+    """
+    in_scope = len(source_verdicts)
+    equivalent = sum(1 for v in source_verdicts if v.equivalent)
+    s = fidelity_score(
+        FidelityInputs(
+            builds=builds,
+            back_tested=back_tested,
+            trace_captured=trace_captured,
+            in_scope_sources=in_scope,
+            trace_equivalent_sources=equivalent,
+        )
+    )
+    if not builds:
+        return s, (build_feedback.strip() or "Build failed.")
+    first_div = next(
+        (
+            v.divergence
+            for v in source_verdicts
+            if not v.equivalent and v.divergence is not None
+        ),
+        None,
+    )
+    if first_div is not None:
+        return s, render_divergence(first_div)
+    nonequiv = in_scope - equivalent
+    if nonequiv:  # non-equivalent but no divergence record attached (defensive)
+        return s, f"{nonequiv}/{in_scope} sources not trace-equivalent"
+    if not in_scope:
+        return s, "compiles; no in-scope trace-equivalence evidence yet"
+    if not (back_tested and trace_captured):
+        return s, "compiles; trace evidence incomplete (not back-tested/captured)"
+    return s, "all sources equivalent"
+
+
+def _require_dspy_for_metric() -> Any:
+    """Lazy dspy import (mirrors ``program.py:_require_dspy``). Keeps metric.py
+    importable without the optimizer extra — only ``make_gepa_metric`` needs it."""
+    try:
+        import dspy
+
+        return dspy
+    except ImportError as exc:  # pragma: no cover - env guard
+        raise RuntimeError(
+            "make_gepa_metric requires the optimizer extra: "
+            "pip install -e 'codeconv[opt]' (dspy/gepa — no openai/litellm; "
+            "the LM is Claude sub-agents)."
+        ) from exc
+
+
+def make_gepa_metric(
+    evaluate_fn: Callable[[Any, Any], CandidateEvaluation],
+) -> Callable[..., Any]:
+    """Build the ``dspy.GEPA``-facing metric callable.
+
+    ``dspy`` is imported LAZILY here (this module stays importable WITHOUT
+    dspy for the registry/CLI path). The returned callable matches the
+    dspy.GEPA metric signature — ``metric(gold, pred, trace=None,
+    pred_name=None, pred_trace=None) -> dspy.Prediction(score, feedback)``.
+    ``evaluate_fn`` performs the (build + oracle) evaluation of ``pred`` and
+    is INJECTED — a Claude sub-agent backend, never an external API (NO-API
+    hard rule, handoff anti-drift E)."""
+    dspy = _require_dspy_for_metric()
+
+    def metric(
+        gold: Any,
+        pred: Any,
+        trace: Any = None,
+        pred_name: Any = None,
+        pred_trace: Any = None,
+    ) -> Any:
+        ev = evaluate_fn(gold, pred)
+        score_value, feedback = fidelity_metric_result(
+            builds=ev.builds,
+            back_tested=ev.back_tested,
+            trace_captured=ev.trace_captured,
+            source_verdicts=ev.source_verdicts,
+            build_feedback=ev.build_feedback,
+        )
+        return dspy.Prediction(score=score_value, feedback=feedback)
+
+    return metric
+
+
 __all__ = [
     "W_HUMAN",
     "W_TESTS",
+    "CandidateEvaluation",
+    "FidelityInputs",
     "MetricResult",
+    "OracleOutcome",
     "composite_score",
+    "fidelity_metric_result",
+    "fidelity_score",
+    "make_gepa_metric",
     "norm_human",
+    "render_divergence",
     "score_candidate",
 ]

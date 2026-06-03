@@ -1,7 +1,6 @@
 import 'ast.dart';
 import 'error.dart';
 import 'partial_evaluator.dart' show getPreludeUnitClauses;
-import 'unify_result.dart';
 import '../analysis/type_checker/type_ast.dart';
 
 /// Variable information for semantic analysis
@@ -270,7 +269,7 @@ bool _isConstantType(String? typeName) {
 
 /// Semantic analyzer for GLP programs
 class Analyzer {
-  final DefinedGuardEvaluator _definedGuardEvaluator = DefinedGuardEvaluator();
+  final PartialEvaluator _partialEvaluator = PartialEvaluator();
 
   /// Procedure declarations for type-based SRSW relaxation (optional)
   Map<String, ProcDecl> _procDecls = {};
@@ -320,7 +319,7 @@ class Analyzer {
 
     // STEP 2: Transform defined guards via partial evaluation
     // After SRSW validation passes, we can safely transform defined guards.
-    final transformed = _definedGuardEvaluator.transformDefinedGuards(program);
+    final transformed = _partialEvaluator.transformDefinedGuards(program);
 
     // STEP 3: Auto-generate reduce/2 clauses for metainterpretation
     // Generated for all files by default, except those with -stdlib. declaration
@@ -861,13 +860,26 @@ class Analyzer {
 // PARTIAL EVALUATION FOR DEFINED GUARDS
 // ============================================================================
 
-/// Evaluator for defined guards — strict variant that throws on suspend/fail.
-///
-/// Distinct from `PartialEvaluator` in `partial_evaluator.dart` (the lenient
-/// variant used by the engine for reduce/2 unfolding). This one runs in the
-/// main compile pipeline and rejects programs whose defined guards do not
-/// reduce.
-class DefinedGuardEvaluator {
+/// Result of compile-time GLP unification for partial evaluation
+sealed class UnifyResult {}
+
+class UnifySuccess extends UnifyResult {
+  final Map<String, Term> substitution;
+  UnifySuccess(this.substitution);
+}
+
+class UnifyFail extends UnifyResult {
+  final String reason;
+  UnifyFail(this.reason);
+}
+
+class UnifySuspend extends UnifyResult {
+  final Set<String> unboundReaders;
+  UnifySuspend(this.unboundReaders);
+}
+
+/// Partial evaluator for defined guards
+class PartialEvaluator {
   int _varCounter = 0;
 
   /// Entry point: transform all defined guards in a program.

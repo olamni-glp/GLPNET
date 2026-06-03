@@ -1,0 +1,325 @@
+# Subsystem classification + corpus split — feature 020 (codeconv-equiv).
+#
+# Authoritative, checked-in, versioned (data-model.md § Subsystem manifest;
+# contracts/subsystem_curriculum.md; R8/R9). Validated by
+# tools/equiv/manifest.py against codeconv.dart_depgraph (read-only).
+#
+# path_prefixes overlap BY DESIGN and resolve by longest-prefix-wins:
+#   lib/runtime/heap_fcp  (heap)  is nested inside  lib/runtime/  (runtime-core)
+# so a heap_fcp file classifies to `heap`, every other lib/runtime/ file to
+# `runtime-core`. Prefixes are matched against the inventory path format
+# (`lib/<area>/...`, as recorded in .codeconv/tombstones/).
+version: 1
+
+subsystems:
+  # Strict subsystems first, in curriculum/dependency order (heap → bytecode
+  # → compiler → runtime-core); multiagent (dynamic) LAST.
+  heap:
+    tier: strict
+    # Contract scope: lib/runtime/heap_fcp* (the FCP heap core).
+    path_prefixes:
+      - "lib/runtime/heap_fcp"
+  bytecode:
+    tier: strict
+    path_prefixes:
+      - "lib/bytecode/"
+  compiler:
+    tier: strict
+    # Compiler proper + the static-analysis tower (type-checker, partial
+    # evaluator, SRSW/PMT, lint) — all emit / shape the bytecode spine.
+    path_prefixes:
+      - "lib/compiler/"
+      - "lib/analysis/"
+      - "lib/lint/"
+  runtime-core:
+    tier: strict
+    # Single-computation runtime: everything under lib/runtime/ EXCEPT the
+    # heap_fcp core (longest-prefix gives those to `heap`), plus the engine
+    # and the top-level runtime entrypoint.
+    path_prefixes:
+      - "lib/runtime/"
+      - "lib/engine/"
+      - "lib/glp_runtime.dart"
+  multiagent:
+    tier: dynamic
+    path_prefixes:
+      - "lib/multiagent/"
+
+corpus:
+  # Trace-compared suites (total-order on strict, partial-order on dynamic).
+  trace:
+    suites: ["unified", "book"]   # 384 + 141
+  # Outcome-only (no interleaving diff; escrow-timer suspension is a valid status).
+  outcome:
+    suites: ["bonds"]
+  # Ported C# unit tests give the back-test signal (high-band eligibility).
+  back_test:
+    unit_tests_ported: true
+
+split:
+  # Deterministic, recorded PER SOURCE — no run-to-run wobble (R9).
+  ratio: { train: 0.70, held_out: 0.30 }
+  # Deterministic assignment scheme materialized into `assignments` below by
+  # the reviewed corpus/dataset step (corpus.py T016 / dataset.py T032), which
+  # enumerates the trace suites. Until materialized, `assignments` is empty and
+  # manifest.validate(glp_sources=...) reports the gap (correct: not yet done).
+  # Scheme (stable, content-free): held-out iff
+  #   int(sha256(source_path).hexdigest()[:8], 16) % 100 < 30  else train
+  scheme: "sha256(source_path)[:8] %% 100 < 30 => held-out, else train"
+  assignments:
+    "programs/archive/book/constants/circuits.glp": train
+    "programs/archive/book/constants/gates.glp": train
+    "programs/archive/book/constants/gates_simple.glp": train
+    "programs/archive/book/constitutional_consensus/consensus.glp": train
+    "programs/archive/book/constitutional_consensus/play_agents.glp": held-out
+    "programs/archive/book/constitutional_consensus/play_high_throughput.glp": train
+    "programs/archive/book/constitutional_consensus/play_low_throughput.glp": held-out
+    "programs/archive/book/constitutional_consensus/test_blocklace.glp": held-out
+    "programs/archive/book/constitutional_consensus/test_waves.glp": train
+    "programs/archive/book/cryptocurrencies/gc.glp": train
+    "programs/archive/book/cryptocurrencies/play_mutual_credit.glp": train
+    "programs/archive/book/cryptocurrencies/play_payment.glp": train
+    "programs/archive/book/cryptocurrencies/play_redemption.glp": train
+    "programs/archive/book/cryptocurrencies/test_balance.glp": train
+    "programs/archive/book/cryptocurrencies/test_repayments.glp": train
+    "programs/archive/book/meta/debugging/runtime_control_meta.glp": train
+    "programs/archive/book/meta/enhanced/abortable_meta.glp": held-out
+    "programs/archive/book/meta/enhanced/control_meta.glp": train
+    "programs/archive/book/meta/enhanced/snapshot_meta.glp": train
+    "programs/archive/book/meta/enhanced/snapshot_meta_cp.glp": held-out
+    "programs/archive/book/meta/enhanced/termination_detection_meta.glp": train
+    "programs/archive/book/meta/enhanced/termination_meta.glp": train
+    "programs/archive/book/meta/enhanced/timestamped_tree_meta.glp": held-out
+    "programs/archive/book/meta/enhanced/tracing_meta.glp": train
+    "programs/archive/book/meta/plain/certainty_meta.glp": held-out
+    "programs/archive/book/meta/plain/failsafe_meta.glp": held-out
+    "programs/archive/book/meta/plain/plain_meta.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/ackermann.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/exp.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/factorial.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/fibonacci.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/gcd_integer.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/hanoi.glp": held-out
+    "programs/archive/book/recursive/arithmetic_trees/lesseq.glp": held-out
+    "programs/archive/book/recursive/arithmetic_trees/min.glp": held-out
+    "programs/archive/book/recursive/arithmetic_trees/natural_numbers.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/plus.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/primes.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/sum_list.glp": train
+    "programs/archive/book/recursive/arithmetic_trees/times.glp": train
+    "programs/archive/book/recursive/list_processing/append.glp": train
+    "programs/archive/book/recursive/list_processing/bubble_sort.glp": train
+    "programs/archive/book/recursive/list_processing/copy.glp": train
+    "programs/archive/book/recursive/list_processing/delete.glp": held-out
+    "programs/archive/book/recursive/list_processing/filter_even.glp": held-out
+    "programs/archive/book/recursive/list_processing/flatten.glp": held-out
+    "programs/archive/book/recursive/list_processing/inner_product.glp": train
+    "programs/archive/book/recursive/list_processing/inner_product_iter.glp": held-out
+    "programs/archive/book/recursive/list_processing/insertion_sort.glp": train
+    "programs/archive/book/recursive/list_processing/is_list.glp": train
+    "programs/archive/book/recursive/list_processing/length.glp": train
+    "programs/archive/book/recursive/list_processing/map_inc.glp": train
+    "programs/archive/book/recursive/list_processing/maxlist.glp": train
+    "programs/archive/book/recursive/list_processing/member.glp": held-out
+    "programs/archive/book/recursive/list_processing/merge_ordered.glp": train
+    "programs/archive/book/recursive/list_processing/merge_sort.glp": train
+    "programs/archive/book/recursive/list_processing/nth.glp": train
+    "programs/archive/book/recursive/list_processing/polygon_area.glp": held-out
+    "programs/archive/book/recursive/list_processing/prefix.glp": train
+    "programs/archive/book/recursive/list_processing/quicksort.glp": train
+    "programs/archive/book/recursive/list_processing/reverse.glp": train
+    "programs/archive/book/recursive/list_processing/translate.glp": train
+    "programs/archive/book/recursive/structure_processing/ancestor.glp": train
+    "programs/archive/book/recursive/structure_processing/binary_tree.glp": held-out
+    "programs/archive/book/recursive/structure_processing/distribute_nonground.glp": train
+    "programs/archive/book/recursive/structure_processing/heapify.glp": train
+    "programs/archive/book/recursive/structure_processing/list_to_bst.glp": held-out
+    "programs/archive/book/recursive/structure_processing/observe.glp": train
+    "programs/archive/book/recursive/structure_processing/observe_minimal.glp": train
+    "programs/archive/book/recursive/structure_processing/observe_play.glp": held-out
+    "programs/archive/book/recursive/structure_processing/substitute.glp": held-out
+    "programs/archive/book/recursive/structure_processing/traversals.glp": held-out
+    "programs/archive/book/recursive/structure_processing/tree_sum.glp": train
+    "programs/archive/book/social_graph/agent.glp": train
+    "programs/archive/book/social_graph/agent_full.glp": train
+    "programs/archive/book/social_graph/agent_simple.glp": train
+    "programs/archive/book/social_graph/attestation_guards.glp": train
+    "programs/archive/book/social_graph/channel.glp": train
+    "programs/archive/book/social_graph/cold_call.glp": train
+    "programs/archive/book/social_graph/friend_introduction.glp": held-out
+    "programs/archive/book/social_graph/network.glp": train
+    "programs/archive/book/social_graph/network2.glp": train
+    "programs/archive/book/social_graph/network3.glp": train
+    "programs/archive/book/social_graph/network4.glp": train
+    "programs/archive/book/social_graph/play_4agent.glp": train
+    "programs/archive/book/social_graph/play_4agents.glp": train
+    "programs/archive/book/social_graph/play_alice_bob.glp": train
+    "programs/archive/book/social_graph/play_cold_call.glp": held-out
+    "programs/archive/book/social_graph/play_introduction.glp": train
+    "programs/archive/book/social_graph/plays/play01_cold_call/alice.glp": train
+    "programs/archive/book/social_graph/plays/play01_cold_call/bob.glp": train
+    "programs/archive/book/social_graph/plays/play01_cold_call/main.glp": train
+    "programs/archive/book/social_graph/response_handling.glp": train
+    "programs/archive/book/social_graph/response_handling_unfolded.glp": train
+    "programs/archive/book/social_graph/stream_security.glp": train
+    "programs/archive/book/social_graph/streams.glp": held-out
+    "programs/archive/book/social_graph/test_4player.glp": train
+    "programs/archive/book/social_networks/broadcast.glp": train
+    "programs/archive/book/social_networks/direct_messaging.glp": held-out
+    "programs/archive/book/social_networks/dm_simple.glp": train
+    "programs/archive/book/social_networks/feed.glp": train
+    "programs/archive/book/social_networks/feed_server.glp": train
+    "programs/archive/book/social_networks/follower_mgmt.glp": held-out
+    "programs/archive/book/social_networks/group_formation.glp": train
+    "programs/archive/book/social_networks/group_messaging.glp": train
+    "programs/archive/book/social_networks/interlaced_streams.glp": train
+    "programs/archive/book/social_networks/play_child_safe.glp": train
+    "programs/archive/book/social_networks/play_dm.glp": held-out
+    "programs/archive/book/social_networks/play_feed.glp": held-out
+    "programs/archive/book/social_networks/play_group_interlaced.glp": train
+    "programs/archive/book/social_networks/play_group_manager.glp": train
+    "programs/archive/book/social_networks/replicate.glp": train
+    "programs/archive/book/social_networks/replicate2.glp": train
+    "programs/archive/book/social_networks/replicate3.glp": held-out
+    "programs/archive/book/streams/buffered_communication/bounded_buffer.glp": train
+    "programs/archive/book/streams/buffered_communication/switch2x2.glp": train
+    "programs/archive/book/streams/objects_monitors/counter.glp": train
+    "programs/archive/book/streams/objects_monitors/many_counters.glp": train
+    "programs/archive/book/streams/objects_monitors/monitor.glp": train
+    "programs/archive/book/streams/objects_monitors/monitor_test.glp": train
+    "programs/archive/book/streams/objects_monitors/network_switch.glp": train
+    "programs/archive/book/streams/objects_monitors/network_switch_3way.glp": train
+    "programs/archive/book/streams/objects_monitors/observed_monitor.glp": held-out
+    "programs/archive/book/streams/objects_monitors/play_absolute.glp": train
+    "programs/archive/book/streams/objects_monitors/plus_constraint.glp": train
+    "programs/archive/book/streams/objects_monitors/queue_manager.glp": train
+    "programs/archive/book/streams/producers_consumers/biased_merge.glp": held-out
+    "programs/archive/book/streams/producers_consumers/channels.glp": train
+    "programs/archive/book/streams/producers_consumers/cooperative_producers.glp": held-out
+    "programs/archive/book/streams/producers_consumers/distribute.glp": held-out
+    "programs/archive/book/streams/producers_consumers/distribute_binary.glp": train
+    "programs/archive/book/streams/producers_consumers/distribute_ground.glp": held-out
+    "programs/archive/book/streams/producers_consumers/distribute_indexed.glp": train
+    "programs/archive/book/streams/producers_consumers/dynamic_merger.glp": held-out
+    "programs/archive/book/streams/producers_consumers/fair_merge.glp": train
+    "programs/archive/book/streams/producers_consumers/merge_tree.glp": held-out
+    "programs/archive/book/streams/producers_consumers/mwm.glp": train
+    "programs/archive/book/streams/producers_consumers/observer.glp": train
+    "programs/archive/book/streams/producers_consumers/parallel_table.glp": train
+    "programs/archive/book/streams/producers_consumers/producer_consumer.glp": train
+    "programs/archive/book/streams/producers_consumers/producer_consumer_countdown.glp": train
+    "programs/bonds_v2": held-out
+    "programs/cssg_modules": train
+    "programs/cssg_modules_v2": held-out
+    "programs/cssn_modules": train
+    "programs/cssn_modules_v2": train
+    "programs/social_graph_simulated_ui_modules": held-out
+    "programs/tests/dynamic_dispatch": train
+    "programs/tests/typed/arith_comparison.glp": train
+    "programs/tests/typed/arith_guard_ground.glp": held-out
+    "programs/tests/typed/arithmetic_fixed.glp": train
+    "programs/tests/typed/assign_reader_test.glp": held-out
+    "programs/tests/typed/bb_diff.glp": train
+    "programs/tests/typed/circular_test.glp": held-out
+    "programs/tests/typed/constant_ground_test.glp": held-out
+    "programs/tests/typed/depth_test.glp": train
+    "programs/tests/typed/diff_list.glp": train
+    "programs/tests/typed/gethead_test.glp": train
+    "programs/tests/typed/guard_reader.glp": held-out
+    "programs/tests/typed/merge_standalone.glp": train
+    "programs/tests/typed/module_guard.glp": held-out
+    "programs/tests/typed/multiply.glp": train
+    "programs/tests/typed/no_guard.glp": train
+    "programs/tests/typed/nonground_list.glp": train
+    "programs/tests/typed/otherwise_guard.glp": train
+    "programs/tests/typed/p.glp": train
+    "programs/tests/typed/paa.glp": train
+    "programs/tests/typed/param_arity_mismatch.glp": train
+    "programs/tests/typed/param_bare_typevar.glp": train
+    "programs/tests/typed/param_channel.glp": train
+    "programs/tests/typed/param_procedure_inference.glp": train
+    "programs/tests/typed/param_stream_integer.glp": train
+    "programs/tests/typed/quoted_body_test.glp": train
+    "programs/tests/typed/quoted_functor_test.glp": train
+    "programs/tests/typed/reader_output.glp": held-out
+    "programs/tests/typed/run1.glp": train
+    "programs/tests/typed/struct_demo.glp": held-out
+    "programs/tests/typed/test_arithmetic_kernels.glp": train
+    "programs/tests/typed/test_befriend_intro_bug.glp": held-out
+    "programs/tests/typed/test_bob.glp": train
+    "programs/tests/typed/test_channel_guards.glp": train
+    "programs/tests/typed/test_defined_guards.glp": train
+    "programs/tests/typed/test_defined_guards_all.glp": train
+    "programs/tests/typed/test_ground_equal.glp": train
+    "programs/tests/typed/test_guard_negation.glp": train
+    "programs/tests/typed/test_guard_suspend.glp": train
+    "programs/tests/typed/test_guards_comprehensive.glp": train
+    "programs/tests/typed/test_module_boundary.glp": train
+    "programs/tests/typed/test_nested_suspend.glp": train
+    "programs/tests/typed/test_time.glp": train
+    "programs/tests/typed/two_struct_list.glp": train
+    "programs/tests/typed/with_guard.glp": held-out
+    "programs/typed_book/constants/circuits.glp": train
+    "programs/typed_book/constants/gates.glp": train
+    "programs/typed_book/constants/gates_simple.glp": held-out
+    "programs/typed_book/recursive/arithmetic_trees/ackermann.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/exp.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/factorial.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/fibonacci.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/gcd_integer.glp": held-out
+    "programs/typed_book/recursive/arithmetic_trees/hanoi.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/lesseq.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/min.glp": held-out
+    "programs/typed_book/recursive/arithmetic_trees/natural_numbers.glp": held-out
+    "programs/typed_book/recursive/arithmetic_trees/plus.glp": held-out
+    "programs/typed_book/recursive/arithmetic_trees/primes.glp": train
+    "programs/typed_book/recursive/arithmetic_trees/times.glp": train
+    "programs/typed_book/recursive/list_processing/append.glp": train
+    "programs/typed_book/recursive/list_processing/copy.glp": train
+    "programs/typed_book/recursive/list_processing/delete.glp": train
+    "programs/typed_book/recursive/list_processing/dl_append.glp": train
+    "programs/typed_book/recursive/list_processing/filter_even.glp": train
+    "programs/typed_book/recursive/list_processing/inner_product.glp": train
+    "programs/typed_book/recursive/list_processing/inner_product_iter.glp": held-out
+    "programs/typed_book/recursive/list_processing/insertion_sort.glp": held-out
+    "programs/typed_book/recursive/list_processing/length.glp": train
+    "programs/typed_book/recursive/list_processing/map_inc.glp": train
+    "programs/typed_book/recursive/list_processing/maxlist.glp": train
+    "programs/typed_book/recursive/list_processing/member.glp": held-out
+    "programs/typed_book/recursive/list_processing/merge_ordered.glp": held-out
+    "programs/typed_book/recursive/list_processing/merge_sort.glp": train
+    "programs/typed_book/recursive/list_processing/nth.glp": train
+    "programs/typed_book/recursive/list_processing/polygon_area.glp": train
+    "programs/typed_book/recursive/list_processing/quicksort.glp": held-out
+    "programs/typed_book/recursive/list_processing/reverse.glp": held-out
+    "programs/typed_book/recursive/list_processing/reverse_naive.glp": train
+    "programs/typed_book/recursive/list_processing/translate.glp": held-out
+    "programs/typed_book/recursive/list_processing/variants/quicksort_original.glp": train
+    "programs/typed_book/recursive/structure_processing/binary_tree.glp": train
+    "programs/typed_book/recursive/structure_processing/list_to_bst.glp": held-out
+    "programs/typed_book/recursive/structure_processing/substitute.glp": train
+    "programs/typed_book/recursive/structure_processing/traversals.glp": train
+    "programs/typed_book/recursive/structure_processing/tree_sum.glp": train
+    "programs/typed_book/social_graph/channel.glp": train
+    "programs/typed_book/social_graph/typed_social_agent.glp": train
+    "programs/typed_book/social_networks/broadcast.glp": train
+    "programs/typed_book/social_networks/replicate.glp": train
+    "programs/typed_book/social_networks/replicate2.glp": train
+    "programs/typed_book/social_networks/replicate3.glp": train
+    "programs/typed_book/streams/buffered_communication/hollow_integers.glp": train
+    "programs/typed_book/streams/producers_consumers/biased_merge.glp": train
+    "programs/typed_book/streams/producers_consumers/cooperative.glp": held-out
+    "programs/typed_book/streams/producers_consumers/distribute.glp": train
+    "programs/typed_book/streams/producers_consumers/distribute_binary.glp": held-out
+    "programs/typed_book/streams/producers_consumers/distribute_ground.glp": train
+    "programs/typed_book/streams/producers_consumers/distribute_indexed.glp": train
+    "programs/typed_book/streams/producers_consumers/fair_merge.glp": train
+    "programs/typed_book/streams/producers_consumers/merge_dynamic.glp": held-out
+    "programs/typed_book/streams/producers_consumers/merge_simple.glp": held-out
+    "programs/typed_book/streams/producers_consumers/merge_tree.glp": held-out
+    "programs/typed_book/streams/producers_consumers/mwm.glp": train
+    "programs/typed_book/streams/producers_consumers/producer_consumer.glp": train
+    "programs/typed_book/streams/producers_consumers/producer_consumer_countdown.glp": train
+    "programs/typed_book/test_bug.glp": train
+    "programs/typed_book/test_friend.glp": held-out
+    "programs/typed_book/test_lookup2.glp": held-out

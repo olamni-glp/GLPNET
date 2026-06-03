@@ -1,244 +1,348 @@
-/// ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.
-///
-/// Spawns the REPL as a subprocess, pipes load commands and a play goal,
-/// parses tagged output lines, and delivers them via callbacks.
-///
-/// Tagged output format from GLP: tagged(alice, cmd(connect(bob)))
-/// Parsed into: agentId="alice", kind="cmd", content="connect(bob)"
-///
-/// Narrative kinds (play 12): friend, say, act, event
-/// e.g. tagged(alice, friend(bob)) → agentId="alice", kind="friend", content="bob"
-library;
+// ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.
+//
+// Spawns the REPL as a subprocess, pipes load commands and a play goal,
+// parses tagged output lines, and delivers them via callbacks.
+//
+// Tagged output format from GLP: tagged(alice, cmd(connect(bob)))
+// Parsed into: agentId="alice", kind="cmd", content="connect(bob)"
+//
+// Narrative kinds (play 12): friend, say, act, event
+// e.g. tagged(alice, friend(bob)) → agentId="alice", kind="friend", content="bob"
 
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
 
-/// Parsed output line from a simulated play.
-class PlayOutput {
-  final String agentId; // e.g. "alice"
-  final String kind; // "cmd", "notify", "friend", "say", "act", or "event"
-  final String content; // e.g. "connect(bob)"
+namespace GlpRuntime.Multiagent;
 
-  PlayOutput(this.agentId, this.kind, this.content);
+/// <summary>Parsed output line from a simulated play.</summary>
+public class PlayOutput
+{
+    /// <summary>e.g. "alice"</summary>
+    public string AgentId { get; }
+
+    /// <summary>"cmd", "notify", "friend", "say", "act", or "event"</summary>
+    public string Kind { get; }
+
+    /// <summary>e.g. "connect(bob)"</summary>
+    public string Content { get; }
+
+    public PlayOutput(string agentId, string kind, string content)
+    {
+        AgentId = agentId;
+        Kind = kind;
+        Content = content;
+    }
 }
 
+/// <summary>
 /// Runs simulated dGLP plays via a REPL subprocess.
-///
+/// <para>
 /// Usage:
-///   final runner = ReplPlayRunner(repoRoot: '/Users/udi/Grassroots/GLP');
-///   runner.onOutput = (output) { /* route to UI panel */ };
-///   runner.onLog = (line) { /* trace log */ };
-///   runner.onError = (error) { /* display error */ };
-///   runner.onDone = (exitCode) { /* play finished */ };
-///   await runner.run(1); // runs fplay1
-///   runner.kill(); // abort if needed
-class ReplPlayRunner {
-  final String repoRoot;
+///   var runner = new ReplPlayRunner("/Users/udi/Grassroots/GLP");
+///   runner.OnOutput = (output) => { /* route to UI panel */ };
+///   runner.OnLog    = (line)   => { /* trace log */ };
+///   runner.OnError  = (error)  => { /* display error */ };
+///   runner.OnDone   = (exitCode) => { /* play finished */ };
+///   await runner.RunAsync(1); // runs fplay1
+///   runner.Kill(); // abort if needed
+/// </para>
+/// </summary>
+public class ReplPlayRunner
+{
+    private static readonly bool IsWindows =
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-  /// Called for each parsed tagged output line.
-  void Function(PlayOutput output)? onOutput;
+    // ── Static project-file seed lists ───────────────────────────────────
 
-  /// Called for non-tagged REPL output (banner, load messages, etc.).
-  void Function(String line)? onLog;
+    /// <summary>
+    /// CSSG project (child-safe social graph, plays 1–7).
+    /// Uses the modules_v2 project which loads cleanly (typed_book/cssg has
+    /// an unresolved IntroChannel/FriendChannel typing issue).
+    /// </summary>
+    public static readonly IReadOnlyList<string> CssgFiles = new[]
+    {
+        "../programs/cssg_modules_v2",
+    };
 
-  /// Called for stderr lines and exceptions.
-  void Function(String error)? onError;
+    /// <summary>
+    /// Bonds project (grassroots bonds, plays 1–11).
+    /// Uses bonds_v2 which loads cleanly (typed_book/bonds is missing
+    /// procedure declarations).
+    /// </summary>
+    public static readonly IReadOnlyList<string> BondsFiles = new[]
+    {
+        "../programs/bonds_v2",
+    };
 
-  /// Called when the REPL process exits.
-  void Function(int exitCode)? onDone;
+    /// <summary>Bonds GLP files for play 12 — same project, fplay12 is part of the boot.</summary>
+    public static readonly IReadOnlyList<string> BondsPlay12Files = new[]
+    {
+        "../programs/bonds_v2",
+    };
 
-  Process? _process;
+    /// <summary>
+    /// CSSN project (child-safe social networking, plays 1–10).
+    /// Uses cssn_modules_v2 which loads cleanly (typed_book/cssn has
+    /// undefined Channel and X type references).
+    /// </summary>
+    public static readonly IReadOnlyList<string> CssnFiles = new[]
+    {
+        "../programs/cssn_modules_v2",
+    };
 
-  /// Which GLP files to load (relative to glp_runtime/).
-  final List<String> glpFiles;
+    /// <summary>
+    /// CSSN v2 modules project (village scenario, fplay13).
+    /// Loaded as a project directory — the REPL treats the path as a project root.
+    /// </summary>
+    public static readonly IReadOnlyList<string> CssnVillageFiles = new[]
+    {
+        "../programs/cssn_modules_v2",
+    };
 
-  /// CSSG project (child-safe social graph, plays 1–7).
-  /// Uses the modules_v2 project which loads cleanly (typed_book/cssg has
-  /// an unresolved IntroChannel/FriendChannel typing issue).
-  static const cssgFiles = [
-    '../programs/cssg_modules_v2',
-  ];
+    // ── Precompiled regex ─────────────────────────────────────────────────
 
-  /// Bonds project (grassroots bonds, plays 1–11).
-  /// Uses bonds_v2 which loads cleanly (typed_book/bonds is missing
-  /// procedure declarations).
-  static const bondsFiles = [
-    '../programs/bonds_v2',
-  ];
+    /// <summary>
+    /// Regex for parsing tagged output lines.
+    /// Matches cmd, notify (protocol), and friend, say, act, event (narrative).
+    /// </summary>
+    private static readonly Regex TaggedRegex = new(
+        @"^tagged\((\w+), (cmd|notify|friend|say|act|event)\((.+)\)\)$",
+        RegexOptions.Compiled);
 
-  /// Bonds GLP files for play 12 — same project, fplay12 is part of the boot.
-  static const bondsPlay12Files = [
-    ...bondsFiles,
-  ];
+    // ── Instance state ────────────────────────────────────────────────────
 
-  /// CSSN project (child-safe social networking, plays 1–10).
-  /// Uses cssn_modules_v2 which loads cleanly (typed_book/cssn has
-  /// undefined Channel and X type references).
-  static const cssnFiles = [
-    '../programs/cssn_modules_v2',
-  ];
+    public string RepoRoot { get; }
 
-  /// CSSN v2 modules project (village scenario, fplay13).
-  /// Loaded as a project directory — the REPL treats the path as a project root.
-  static const cssnVillageFiles = [
-    '../programs/cssn_modules_v2',
-  ];
+    /// <summary>Which GLP files to load (relative to glp_runtime/).</summary>
+    public IReadOnlyList<string> GlpFiles { get; }
 
-  /// Regex for parsing tagged output lines.
-  /// Matches cmd, notify (protocol), and friend, say, act, event (narrative).
-  static final _taggedRegex =
-      RegExp(r'^tagged\((\w+), (cmd|notify|friend|say|act|event)\((.+)\)\)$');
+    /// <summary>Called for each parsed tagged output line.</summary>
+    public Action<PlayOutput>? OnOutput;
 
-  ReplPlayRunner({required this.repoRoot, this.glpFiles = cssgFiles});
+    /// <summary>Called for non-tagged REPL output (banner, load messages, etc.).</summary>
+    public Action<string>? OnLog;
 
-  bool get isRunning => _process != null;
+    /// <summary>Called for stderr lines and exceptions.</summary>
+    public Action<string>? OnError;
 
-  /// Run a simulated play (1, 2, or 3).
-  Future<void> run(int playNumber) async {
-    final runtimeDir = '$repoRoot/glp_runtime';
+    /// <summary>Called when the REPL process exits.</summary>
+    public Action<long>? OnDone;
 
-    onLog?.call('REPL: repoRoot=$repoRoot');
-    onLog?.call('REPL: runtimeDir=$runtimeDir');
+    private Process? _process;
 
-    if (!Directory(runtimeDir).existsSync()) {
-      onError?.call('Directory not found: $runtimeDir');
-      return;
+    // ── Constructor ───────────────────────────────────────────────────────
+
+    public ReplPlayRunner(string repoRoot, IReadOnlyList<string>? glpFiles = null)
+    {
+        RepoRoot = repoRoot;
+        GlpFiles = glpFiles ?? CssgFiles;
     }
 
-    // Prefer AOT-compiled glp_repl.exe (no Dart SDK dependency, faster startup).
-    final compiledRepl = Platform.isWindows
-        ? '$runtimeDir/bin/glp_repl.exe'
-        : '$runtimeDir/bin/glp_repl';
-    final replScript = '$runtimeDir/bin/glp_repl.dart';
+    public bool IsRunning => _process is not null;
 
-    String executable;
-    List<String> arguments;
-    if (File(compiledRepl).existsSync()) {
-      executable = compiledRepl;
-      arguments = const [];
-      onLog?.call('REPL: exe=$compiledRepl (AOT)');
-    } else if (File(replScript).existsSync()) {
-      executable = _findDart();
-      arguments = ['run', 'bin/glp_repl.dart'];
-      onLog?.call('REPL: dart=$executable (JIT via "dart run")');
-    } else {
-      onError?.call(
-          'No REPL found: neither $compiledRepl nor $replScript exists');
-      return;
-    }
+    // ── Public API ────────────────────────────────────────────────────────
 
-    try {
-      final process = await Process.start(
-        executable,
-        arguments,
-        workingDirectory: runtimeDir,
-        runInShell: Platform.isWindows,
-      );
-      _process = process;
-      onLog?.call('REPL: process started (pid=${process.pid})');
+    /// <summary>Run a simulated play (1, 2, or 3).</summary>
+    public async Task RunAsync(long playNumber)
+    {
+        var runtimeDir = $"{RepoRoot}/glp_runtime";
 
-      // Feed load commands + play goal + quit
-      final commands = [
-        for (final f in glpFiles) f,
-        'fplay$playNumber.',
-        ':quit',
-      ].join('\n');
-      process.stdin.writeln(commands);
-      await process.stdin.close();
+        OnLog?.Invoke($"REPL: repoRoot={RepoRoot}");
+        OnLog?.Invoke($"REPL: runtimeDir={runtimeDir}");
 
-      // Parse stdout
-      process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(_parseLine);
-
-      // Log stderr
-      process.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-        onError?.call('REPL stderr: $line');
-      });
-
-      // Wait for exit
-      final exitCode = await process.exitCode;
-      _process = null;
-      onLog?.call('REPL: exited with code $exitCode');
-      onDone?.call(exitCode);
-    } on ProcessException catch (e) {
-      _process = null;
-      onError?.call(
-          'REPL: ProcessException starting [$executable ${arguments.join(' ')}] in $runtimeDir: ${e.message} (errorCode=${e.errorCode})');
-    } catch (e) {
-      _process = null;
-      onError?.call(
-          'REPL: failed to start [$executable ${arguments.join(' ')}] in $runtimeDir: $e');
-    }
-  }
-
-  /// Kill the REPL subprocess if running.
-  void kill() {
-    _process?.kill();
-    _process = null;
-  }
-
-  /// Parse a single stdout line from the REPL.
-  /// The REPL may prefix the first output line with "GLP> ", so strip it.
-  void _parseLine(String line) {
-    final stripped = line.startsWith('GLP> ') ? line.substring(5) : line;
-    final match = _taggedRegex.firstMatch(stripped);
-    if (match == null) {
-      onLog?.call('REPL: $line');
-      return;
-    }
-
-    final agentId = match.group(1)!;
-    final kind = match.group(2)!;
-    final content = match.group(3)!;
-    onOutput?.call(PlayOutput(agentId, kind, content));
-  }
-
-  /// Find the dart executable. Prefer the one next to the Flutter SDK,
-  /// fall back to PATH.
-  String _findDart() {
-    if (Platform.isWindows) {
-      // Resolve dart.exe via PATH using `where`.
-      try {
-        final result = Process.runSync('where', ['dart.exe']);
-        if (result.exitCode == 0) {
-          final lines = (result.stdout as String)
-              .split(RegExp(r'\r?\n'))
-              .where((l) => l.trim().isNotEmpty)
-              .toList();
-          if (lines.isNotEmpty) return lines.first.trim();
+        if (!Directory.Exists(runtimeDir))
+        {
+            OnError?.Invoke($"Directory not found: {runtimeDir}");
+            return;
         }
-      } catch (_) {/* fall through */}
-      // Common Flutter SDK locations on Windows
-      final userProfile = Platform.environment['USERPROFILE'] ?? '';
-      final winCandidates = [
-        if (userProfile.isNotEmpty) '$userProfile\\flutter\\bin\\dart.exe',
-        if (userProfile.isNotEmpty)
-          '$userProfile\\development\\flutter\\bin\\dart.exe',
-        'C:\\flutter\\bin\\dart.exe',
-        'C:\\src\\flutter\\bin\\dart.exe',
-      ];
-      for (final path in winCandidates) {
-        if (File(path).existsSync()) return path;
-      }
-      return 'dart.exe';
+
+        // Prefer AOT-compiled glp_repl.exe (no Dart SDK dependency, faster startup).
+        var compiledRepl = IsWindows
+            ? $"{runtimeDir}/bin/glp_repl.exe"
+            : $"{runtimeDir}/bin/glp_repl";
+        var replScript = $"{runtimeDir}/bin/glp_repl.dart";
+
+        string executable;
+        string[] arguments;
+        if (File.Exists(compiledRepl))
+        {
+            executable = compiledRepl;
+            arguments = Array.Empty<string>();
+            OnLog?.Invoke($"REPL: exe={compiledRepl} (AOT)");
+        }
+        else if (File.Exists(replScript))
+        {
+            executable = FindDart();
+            arguments = new[] { "run", "bin/glp_repl.dart" };
+            OnLog?.Invoke($"REPL: dart={executable} (JIT via \"dart run\")");
+        }
+        else
+        {
+            OnError?.Invoke($"No REPL found: neither {compiledRepl} nor {replScript} exists");
+            return;
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = executable,
+                WorkingDirectory = runtimeDir,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            };
+            foreach (var a in arguments)
+                psi.ArgumentList.Add(a);
+
+            var process = Process.Start(psi)!;
+            _process = process;
+            OnLog?.Invoke($"REPL: process started (pid={process.Id})");
+
+            // Feed load commands + play goal + quit
+            var commands = string.Join("\n", GlpFiles.Append($"fplay{playNumber}.").Append(":quit"));
+            // WriteAsync + "\n" (NOT WriteLineAsync) to preserve LF-only byte stream the REPL parser expects.
+            await process.StandardInput.WriteAsync(commands + "\n").ConfigureAwait(false);
+            process.StandardInput.Close();
+
+            // Parse stdout — fire-and-forget ReadLineAsync loop (preserves Dart .listen semantics)
+            _ = Task.Run(async () =>
+            {
+                string? line;
+                while ((line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false)) is not null)
+                    ParseLine(line);
+            });
+
+            // Log stderr
+            _ = Task.Run(async () =>
+            {
+                string? line;
+                while ((line = await process.StandardError.ReadLineAsync().ConfigureAwait(false)) is not null)
+                    OnError?.Invoke($"REPL stderr: {line}");
+            });
+
+            // Wait for exit
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            long exitCode = process.ExitCode;
+            // Field reset BEFORE callbacks so re-entrant IsRunning probes observe idle.
+            _process = null;
+            OnLog?.Invoke($"REPL: exited with code {exitCode}");
+            OnDone?.Invoke(exitCode);
+        }
+        catch (Win32Exception e)
+        {
+            _process = null;
+            OnError?.Invoke(
+                $"REPL: Win32Exception starting [{executable} {string.Join(' ', arguments)}] in {runtimeDir}: {e.Message} (errorCode={e.NativeErrorCode})");
+        }
+        catch (Exception e)
+        {
+            _process = null;
+            OnError?.Invoke(
+                $"REPL: failed to start [{executable} {string.Join(' ', arguments)}] in {runtimeDir}: {e}");
+        }
     }
-    // Check common macOS Flutter/Dart locations
-    final candidates = [
-      '/usr/local/bin/dart',
-      '${Platform.environment['HOME']}/flutter/bin/dart',
-      '${Platform.environment['HOME']}/development/flutter/bin/dart',
-      '${Platform.environment['HOME']}/.pub-cache/bin/dart',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) return path;
+
+    /// <summary>Kill the REPL subprocess if running.</summary>
+    public void Kill()
+    {
+        _process?.Kill();
+        _process = null;
     }
-    // Fall back to PATH (works from terminal, may not from app bundle)
-    return 'dart';
-  }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parse a single stdout line from the REPL.
+    /// The REPL may prefix the first output line with "GLP> ", so strip it.
+    /// </summary>
+    private void ParseLine(string line)
+    {
+        var stripped = line.StartsWith("GLP> ") ? line.Substring(5) : line;
+        var match = TaggedRegex.Match(stripped);
+        if (!match.Success)
+        {
+            OnLog?.Invoke($"REPL: {line}");
+            return;
+        }
+
+        var agentId = match.Groups[1].Value;
+        var kind = match.Groups[2].Value;
+        var content = match.Groups[3].Value;
+        OnOutput?.Invoke(new PlayOutput(agentId, kind, content));
+    }
+
+    /// <summary>
+    /// Find the dart executable. Prefer the one next to the Flutter SDK,
+    /// fall back to PATH.
+    /// </summary>
+    private string FindDart()
+    {
+        if (IsWindows)
+        {
+            // Resolve dart.exe via PATH using `where`.
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "where",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                psi.ArgumentList.Add("dart.exe");
+                using var p = Process.Start(psi)!;
+                // Read stdout to end BEFORE WaitForExit to avoid deadlock on full pipe buffer.
+                string stdout = p.StandardOutput.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode == 0)
+                {
+                    var lines = stdout
+                        .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(l => l.Trim())
+                        .Where(l => l.Length > 0)
+                        .ToList();
+                    if (lines.Count > 0) return lines[0];
+                }
+            }
+            catch (Exception) { /* fall through */ }
+
+            // Common Flutter SDK locations on Windows
+            var userProfile = Environment.GetEnvironmentVariable("USERPROFILE") ?? "";
+            var winCandidates = new List<string>();
+            if (userProfile.Length > 0)
+                winCandidates.Add($"{userProfile}\\flutter\\bin\\dart.exe");
+            if (userProfile.Length > 0)
+                winCandidates.Add($"{userProfile}\\development\\flutter\\bin\\dart.exe");
+            winCandidates.Add(@"C:\flutter\bin\dart.exe");
+            winCandidates.Add(@"C:\src\flutter\bin\dart.exe");
+
+            foreach (var path in winCandidates)
+                if (File.Exists(path)) return path;
+
+            return "dart.exe";
+        }
+
+        // Check common macOS Flutter/Dart locations
+        var home = Environment.GetEnvironmentVariable("HOME") ?? "";
+        var candidates = new[]
+        {
+            "/usr/local/bin/dart",
+            $"{home}/flutter/bin/dart",
+            $"{home}/development/flutter/bin/dart",
+            $"{home}/.pub-cache/bin/dart",
+        };
+        foreach (var path in candidates)
+            if (File.Exists(path)) return path;
+
+        // Fall back to PATH (works from terminal, may not from app bundle)
+        return "dart";
+    }
 }

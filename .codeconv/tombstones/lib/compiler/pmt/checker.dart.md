@@ -42,7 +42,7 @@ dependencies:
 - lib/compiler/pmt/occurrence.dart
 callers:
 - lib/compiler/pmt/validator.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.393Z'
 sha256: 2cdf947748a1e9b0f92210357cda90b7f453ebb6b9111c75db0445a7ade131ef
 topo_level: 4
 cycle_group_id: 48
@@ -52,6 +52,10 @@ plan_started_at: '2026-05-21T16:13:07Z'
 plan_completed_at: '2026-05-21T16:17:35Z'
 plan_path: .codeconv/conversion-plans/lib/compiler/pmt/checker.dart.md
 open_escalation_count: 0
+codegen_completed_at: '2026-05-28T12:34:05Z'
+target_cs_path: out/csharp/lib/compiler/pmt/checker.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
 PMT SRSW Checker: Verifies Single-Reader/Single-Writer constraint

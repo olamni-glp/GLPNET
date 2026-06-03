@@ -10,6 +10,14 @@ glp_runtime/build/
 !.codeconv/**/bin/
 !.codeconv/**/bin/**
 
+# Allow codeconv-produced .cs at out/csharp/bin/ (Dart `bin/` → C# `bin/` source
+# convention from the dart_csharp langpair). dotnet's Debug/Release output is
+# still ignored by the patterns below.
+!out/csharp/bin/
+out/csharp/bin/Debug/
+out/csharp/bin/Release/
+out/csharp/bin/obj/
+
 # Node.js (prereq-patterns/pglite, etc.)
 **/node_modules/
 
@@ -66,8 +74,13 @@ glp_runtime_net/
 #   - out/csharp/  → COMMITTED (reviewable, build-gated product; NOT ignored).
 #   - .codeconv/conversion-code/  → COMMITTED (escalations report + reviews log).
 #   - .codeconv/codegen-prompt/optimized.md  → COMMITTED (optimizer→prod handoff).
-# Only the optimizer's scratch candidate is ignored (regenerable, pre-promotion):
-.codeconv/codegen-prompt/.candidate.md
+#   - .codeconv/codegen-prompt/{_base,<subsystem>}.md  → COMMITTED (feature 020
+#     per-subsystem GEPA prompts; the durable curriculum resume points).
+# Ignored (regenerable, pre-promotion / offline-only — feature 020):
+#   - the optimizer's scratch candidates (global + per-subsystem)
+#   - the GEPA generator's offline scratch .cs (never enters out/csharp)
+.codeconv/codegen-prompt/.candidate*.md
+.codeconv/codegen-prompt/.gepa-scratch/
 
 
 # buildkit upgrade/migration local backups (opaque state; not versioned)
