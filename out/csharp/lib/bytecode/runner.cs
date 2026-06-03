@@ -812,10 +812,163 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Distribute");
 
     private _Step ExecGetValue(RunnerContext cx, GetValue op)
-        => throw new NotImplementedException("runner arm: GetValue");
+    {
+        var pc = cx.Pc;
+        // Unify argument with clause variable (subsequent occurrence)
+        var arg = _getArg(cx, (int)op.ArgSlot);
+        if (arg == null)
+        {
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Get the previously stored value
+        cx.ClauseVars.TryGetValue((int)op.VarIndex, out var storedValue);
+        if (storedValue == null)
+        {
+            // Variable not initialized - error
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Unify argument with stored value
+        if (arg is VarRef wv && cx.Rt.Heap.IsWriter(wv.Addr))
+        {
+            // Argument is writer VarRef - bind it to stored value in σ̂w
+            if (storedValue is VarRef svw && cx.Rt.Heap.IsWriter(svw.Addr))
+            {
+                // storedValue is a writer VarRef - check they match
+                if (wv.Addr != svw.Addr)
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else if (storedValue is int sviw)
+            {
+                // Legacy: bare writer addr - check they match
+                if (wv.Addr != sviw)
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else if (storedValue is VarRef svr && cx.Rt.Heap.IsReader(svr.Addr))
+            {
+                // storedValue is a reader (e.g., Xs?) - bind writer to reader's value
+                var readerAddr = svr.Addr;
+                if (cx.Rt.Heap.IsReaderBound(readerAddr))
+                {
+                    // Reader is bound - bind arg writer to that value
+                    var readerValue = cx.Rt.Heap.GetReaderValue(readerAddr);
+                    cx.SigmaHat[wv.Addr] = readerValue;
+                }
+                else
+                {
+                    // Reader is unbound - add reader to Si (suspend)
+                    return _Step.Jump(_suspendAndFail(cx, readerAddr, pc));
+                }
+            }
+            else
+            {
+                // storedValue is a Term - bind writer to it
+                cx.SigmaHat[wv.Addr] = storedValue;
+            }
+        }
+        else if (arg is VarRef rv && cx.Rt.Heap.IsReader(rv.Addr))
+        {
+            // Argument is reader VarRef - verify it matches stored value
+            if (storedValue is VarRef svr2 && cx.Rt.Heap.IsReader(svr2.Addr))
+            {
+                // storedValue is also a reader - fail definitively
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+
+            var bound = cx.Rt.Heap.IsReaderBound(rv.Addr);
+            if (bound)
+            {
+                // Reader is bound - check value matches
+                var readerValue = cx.Rt.Heap.GetReaderValue(rv.Addr);
+                if (storedValue is Term svt)
+                {
+                    if (!Equals(readerValue, svt))
+                    {
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                }
+                else if (storedValue is int sviw2)
+                {
+                    // storedValue is a writer addr - check if they point to same writer
+                    var wid = cx.Rt.Heap.TryWriterForReader(rv.Addr);
+                    if (wid == null || wid.Value != sviw2)
+                    {
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                }
+            }
+            else if (storedValue is int sviw3)
+            {
+                // Reader unbound, storedValue is writer addr - check if they match
+                var wid = cx.Rt.Heap.TryWriterForReader(rv.Addr);
+                if (wid == null || wid.Value != sviw3)
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else
+            {
+                // Reader unbound, storedValue is a Term - add to Si
+                var suspendOnVar = _finalUnboundVar(cx, rv.Addr);
+                return _Step.Jump(_suspendAndFail(cx, suspendOnVar, pc));
+            }
+        }
+        else
+        {
+            // Ground term - TODO: handle ConstTerm/StructTerm
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecGetVariable(RunnerContext cx, GetVariable op)
-        => throw new NotImplementedException("runner arm: GetVariable");
+    {
+        var pc = cx.Pc;
+        // Load argument into clause variable (first occurrence)
+        var arg = _getArg(cx, (int)op.ArgSlot);
+        if (arg == null)
+        {
+            // No argument provided
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        // Store argument value in clauseVars
+        if (arg is VarRef wv && cx.Rt.Heap.IsWriter(wv.Addr))
+        {
+            cx.ClauseVars[(int)op.VarIndex] = wv.Addr;
+        }
+        else if (arg is VarRef rv && cx.Rt.Heap.IsReader(rv.Addr))
+        {
+            // Reader VarRef - store directly WITHOUT suspending.
+            cx.ClauseVars[(int)op.VarIndex] = arg;
+        }
+        else if (arg is ConstTerm || arg is StructTerm)
+        {
+            // Ground term - store directly
+            cx.ClauseVars[(int)op.VarIndex] = arg;
+        }
+        else
+        {
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecGround(RunnerContext cx, Ground op)
         => throw new NotImplementedException("runner arm: Ground");
@@ -1702,13 +1855,286 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: TryNextClause");
 
     private _Step ExecUnifyConstant(RunnerContext cx, UnifyConstant op)
-        => throw new NotImplementedException("runner arm: UnifyConstant");
+    {
+        var pc = cx.Pc;
+        // Match constant at current S position
+        if (cx.Mode == UnifyMode.Write)
+        {
+            // WRITE mode: Add constant to structure being built
+            if (cx.CurrentStructure is _TentativeStruct struct1)
+            {
+                struct1.Args[cx.S] = op.Value;
+                cx.S++; // Advance to next arg
+
+                // Check if structure is complete
+                if (cx.S >= struct1.Args.Count)
+                {
+                    // Structure complete - bind the target writer (stored at clauseVars[-1])
+                    if (cx.ClauseVars.TryGetValue(-1, out var t1) && t1 is int targetWriterId)
+                    {
+                        // Convert args to Terms
+                        var termArgs = new List<Term>();
+                        foreach (var arg in struct1.Args)
+                        {
+                            if (arg is Term at) termArgs.Add(at);
+                            else termArgs.Add(new ConstTerm(arg));
+                        }
+                        // Bind the writer to the completed structure
+                        cx.Rt.Heap.BindWriterStruct(targetWriterId, struct1.Functor, termArgs);
+
+                        // Reset structure building state
+                        cx.CurrentStructure = null;
+                        cx.Mode = UnifyMode.Read;
+                        cx.S = 0;
+                        cx.ClauseVars.Remove(-1);
+                    }
+                }
+            }
+            else if (cx.CurrentStructure is StructTerm struct2)
+            {
+                // Structure building (BODY or guard argument)
+                var sargs = MutableArgs(struct2);
+                // If value is already a Term (e.g., StructTerm), use it directly
+                // Otherwise wrap in ConstTerm
+                sargs[cx.S] = op.Value is Term ovt ? ovt : new ConstTerm(op.Value);
+                cx.S++; // Advance to next arg
+
+                // Check if structure is complete
+                if (cx.S >= sargs.Count)
+                {
+                    // Check if we're in guard argument building mode (pre-commit)
+                    if (cx.GuardArgSlot != null)
+                    {
+                        // Guard argument mode: store structure directly in argSlots
+                        cx.ArgSlots[cx.GuardArgSlot.Value] = struct2;
+                        cx.CurrentStructure = null;
+                        cx.Mode = UnifyMode.Read;
+                        cx.S = 0;
+                        cx.GuardArgSlot = null;
+                    }
+                    else
+                    {
+                        // BODY phase: bind the target writer (stored at clauseVars[-1])
+                        if (cx.ClauseVars.TryGetValue(-1, out var t2) && t2 is int targetWriterId)
+                        {
+                            // Bind the writer to the completed structure
+                            cx.Rt.Heap.BindWriterStruct(targetWriterId, struct2.Functor, sargs);
+
+                            // Put the structure reference into argSlots if we have a target slot
+                            if (cx.ClauseVars.TryGetValue(-2, out var ts) && ts is int targetSlot && targetSlot >= 0 && targetSlot < 10)
+                            {
+                                cx.ArgSlots[targetSlot] = new VarRef(cx.Rt.Heap.PairedReaderAddr(targetWriterId));
+                                cx.ClauseVars.Remove(-2);
+                            }
+
+                            // Reset structure building state
+                            cx.CurrentStructure = null;
+                            cx.Mode = UnifyMode.Read;
+                            cx.S = 0;
+                            cx.ClauseVars.Remove(-1);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // READ mode: Verify value at S position matches constant
+            if (cx.CurrentStructure is StructTerm struct3)
+            {
+                if (cx.S < struct3.Args.Count)
+                {
+                    var value = struct3.Args[cx.S];
+
+                    if (value is ConstTerm vc && Equals(vc.Value, op.Value))
+                    {
+                        // Constant matches - advance
+                        cx.S++;
+                    }
+                    else if (value is VarRef vw && cx.Rt.Heap.IsWriter(vw.Addr))
+                    {
+                        // Writer variable - bind to constant in σ̂w
+                        var wid = vw.Addr;
+                        if (cx.Rt.Heap.IsWriterBound(wid))
+                        {
+                            // Already bound - check if it matches
+                            var boundValue = cx.Rt.Heap.ValueOfWriter(wid);
+                            if (boundValue is ConstTerm bc && Equals(bc.Value, op.Value))
+                            {
+                                cx.S++; // Match successful
+                            }
+                            else
+                            {
+                                // Bound to different value - fail
+                                _softFailToNextClause(cx, pc);
+                                return _Step.Jump(_findNextClauseTry(pc));
+                            }
+                        }
+                        else
+                        {
+                            // Unbound writer - add tentative binding to σ̂w
+                            cx.SigmaHat[wid] = new ConstTerm(op.Value);
+                            cx.S++;
+                        }
+                    }
+                    else if (value is VarRef vr && cx.Rt.Heap.IsReader(vr.Addr))
+                    {
+                        // Reader variable - check if bound, else suspend
+                        var rid = vr.Addr;
+                        if (cx.Rt.Heap.IsReaderBound(rid))
+                        {
+                            // Reader is bound - check if it matches
+                            var boundValue = cx.Rt.Heap.GetReaderValue(rid);
+                            if (boundValue is ConstTerm bc && Equals(bc.Value, op.Value))
+                            {
+                                cx.S++; // Match successful
+                            }
+                            else
+                            {
+                                // Bound to different value - fail
+                                _softFailToNextClause(cx, pc);
+                                return _Step.Jump(_findNextClauseTry(pc));
+                            }
+                        }
+                        else
+                        {
+                            // Unbound reader - add to Si and continue (two-phase)
+                            cx.Si.Add(rid);
+                            cx.S++;
+                        }
+                    }
+                    else
+                    {
+                        // Mismatch - soft fail
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                }
+                else
+                {
+                    // Structure arity mismatch - soft fail
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else
+            {
+                // Not a structure - skip (HeadStructure may have added to Si for unbound reader)
+                return _Step.Advance();
+            }
+        }
+        return _Step.Advance();
+    }
+
+    /// <summary>
+    /// View a StructTerm's args as a mutable list. The interpreter builds StructTerm
+    /// instances with a backing List&lt;Term&gt; (PutStructure / guard-arg building), so the
+    /// WRITE-mode arms mutate args[S] in place — matching the Dart `struct.args[cx.S] = …`.
+    /// </summary>
+    private static List<Term> MutableArgs(StructTerm st) => (List<Term>)st.Args;
 
     private _Step ExecUnifyStructure(RunnerContext cx, UnifyStructure op)
-        => throw new NotImplementedException("runner arm: UnifyStructure");
+    {
+        var pc = cx.Pc;
+        // UnifyStructure: Process nested structure at S position
+        if (cx.Mode == UnifyMode.Read)
+        {
+            // READ mode: Match structure at args[S]
+            if (cx.CurrentStructure is StructTerm parent)
+            {
+                if (cx.S < parent.Args.Count)
+                {
+                    object? value = parent.Args[cx.S];
+
+                    // CRITICAL FIX: Dereference if it's a variable reference.
+                    if (value is VarRef vrf)
+                    {
+                        var addr = vrf.Addr;
+                        // Check sigma-hat first (tentative bindings)
+                        if (cx.SigmaHat.TryGetValue(addr, out var shVal))
+                        {
+                            value = shVal;
+                        }
+                        // Then check heap bindings
+                        else if (cx.Rt.Heap.IsBound(addr))
+                        {
+                            value = cx.Rt.Heap.GetValue(addr);
+                        }
+                    }
+
+                    if (value is StructTerm vst && vst.Functor == op.Functor && vst.Args.Count == op.Arity)
+                    {
+                        // Match! Enter this structure
+                        cx.CurrentStructure = value;
+                        cx.S = 0;
+                    }
+                    else if (value is VarRef vw && cx.Rt.Heap.IsWriter(vw.Addr))
+                    {
+                        // Mode conversion: unbound writer where structure expected.
+                        var nested = new _TentativeStruct(op.Functor, (int)op.Arity, NullArgs((int)op.Arity));
+
+                        // Record binding in σ̂w (writer will be bound to this structure at commit)
+                        cx.SigmaHat[vw.Addr] = nested;
+
+                        // Switch to WRITE mode
+                        cx.Mode = UnifyMode.Write;
+
+                        // Enter the nested structure
+                        cx.CurrentStructure = nested;
+                        cx.S = 0;
+                    }
+                    else if (value is VarRef vr && cx.Rt.Heap.IsReader(vr.Addr))
+                    {
+                        // Unbound reader where structure expected - suspend on unbound reader
+                        cx.U.Add(vr.Addr);
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                    else
+                    {
+                        // Mismatch - fail to next clause
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                }
+            }
+        }
+        else
+        {
+            // WRITE mode: Create nested structure at args[S]
+            if (cx.CurrentStructure is _TentativeStruct parent)
+            {
+                var nested = new _TentativeStruct(op.Functor, (int)op.Arity, NullArgs((int)op.Arity));
+                parent.Args[cx.S] = nested;
+                cx.CurrentStructure = nested;
+                cx.S = 0;
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecUnifyVoid(RunnerContext cx, UnifyVoid op)
-        => throw new NotImplementedException("runner arm: UnifyVoid");
+    {
+        // Skip/create void (anonymous) variables
+        if (cx.Mode == UnifyMode.Write)
+        {
+            // WRITE mode: Create fresh unbound variables
+            if (cx.CurrentStructure is _TentativeStruct struct1)
+            {
+                for (var i = 0; i < op.Count && cx.S < struct1.Args.Count; i++)
+                {
+                    struct1.Args[cx.S] = null; // Void/unbound
+                    cx.S++;
+                }
+            }
+        }
+        else
+        {
+            // READ mode: Skip over positions
+            cx.S += (int)op.Count;
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecUnionSiAndGoto(RunnerContext cx, UnionSiAndGoto op)
         => throw new NotImplementedException("runner arm: UnionSiAndGoto");
@@ -1716,25 +2142,1147 @@ public sealed class BytecodeRunner
     // ── v2 arms ──
 
     private _Step ExecV2GetValue(RunnerContext cx, V2.GetValue op)
-        => throw new NotImplementedException("runner arm: opv2.GetValue");
+    {
+        var pc = cx.Pc;
+        var varIndex = (int)op.VarIndex;
+        var argSlot = (int)op.ArgSlot;
+        var isReaderMode = op.IsReader;
+
+        var arg = _getArg(cx, argSlot);
+        if (arg == null)
+        {
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        cx.ClauseVars.TryGetValue(varIndex, out var storedValue);
+        if (storedValue == null)
+        {
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        if (!isReaderMode)
+        {
+            // GetWriterValue logic: Unify argument with clause WRITER variable
+            if (arg is VarRef aw && cx.Rt.Heap.IsWriter(aw.Addr))
+            {
+                var argBound = cx.Rt.Heap.IsWriterBound(aw.Addr);
+                if (argBound)
+                {
+                    var argValue = cx.Rt.Heap.ValueOfWriter(aw.Addr);
+                    if (storedValue is int swi)
+                    {
+                        var storedBound = cx.Rt.Heap.IsWriterBound(swi);
+                        if (storedBound)
+                        {
+                            var storedVal = cx.Rt.Heap.ValueOfWriter(swi);
+                            bool match;
+                            if (argValue is ConstTerm avc && storedVal is ConstTerm svc)
+                                match = Equals(avc.Value, svc.Value);
+                            else if (argValue is StructTerm avs && storedVal is StructTerm svs)
+                                match = avs.Functor == svs.Functor && avs.Args.Count == svs.Args.Count;
+                            else
+                                match = Equals(argValue, storedVal);
+                            if (!match)
+                            {
+                                _softFailToNextClause(cx, pc);
+                                return _Step.Jump(_findNextClauseTry(pc));
+                            }
+                        }
+                        else
+                        {
+                            cx.SigmaHat[swi] = argValue;
+                        }
+                    }
+                    else if (storedValue is Term svtm)
+                    {
+                        bool match;
+                        if (argValue is ConstTerm avc && svtm is ConstTerm svc)
+                            match = Equals(avc.Value, svc.Value);
+                        else if (argValue is StructTerm avs && svtm is StructTerm svs)
+                            match = avs.Functor == svs.Functor && avs.Args.Count == svs.Args.Count;
+                        else
+                            match = Equals(argValue, svtm);
+                        if (!match)
+                        {
+                            _softFailToNextClause(cx, pc);
+                            return _Step.Jump(_findNextClauseTry(pc));
+                        }
+                    }
+                }
+                else
+                {
+                    if (storedValue is int swi)
+                    {
+                        cx.SigmaHat.TryGetValue(swi, out var freshVarBinding);
+                        if (freshVarBinding != null)
+                        {
+                            cx.SigmaHat[aw.Addr] = freshVarBinding;
+                        }
+                        else if (aw.Addr != swi)
+                        {
+                            _softFailToNextClause(cx, pc);
+                            return _Step.Jump(_findNextClauseTry(pc));
+                        }
+                    }
+                    else if (storedValue is Term svtm)
+                    {
+                        cx.SigmaHat[aw.Addr] = svtm;
+                    }
+                }
+            }
+            else if (arg is VarRef ar && cx.Rt.Heap.IsReader(ar.Addr))
+            {
+                var rid = ar.Addr;
+                if (cx.Rt.Heap.IsReaderBound(rid))
+                {
+                    var readerValue = cx.Rt.Heap.GetReaderValue(rid);
+                    if (storedValue is int swi)
+                    {
+                        cx.SigmaHat[swi] = readerValue;
+                    }
+                    else if (!Equals(storedValue, readerValue))
+                    {
+                        _softFailToNextClause(cx, pc);
+                        return _Step.Jump(_findNextClauseTry(pc));
+                    }
+                }
+                else
+                {
+                    // Reader is unbound - alias storedValue to reader
+                    var wid = cx.Rt.Heap.TryWriterForReader(rid);
+                    if (storedValue is int swi)
+                    {
+                        if (wid != null)
+                        {
+                            cx.SigmaHat[swi] = new VarRef(cx.Rt.Heap.PairedReaderAddr(wid.Value));
+                        }
+                        else
+                        {
+                            // Imported reader - alias to reader directly
+                            cx.SigmaHat[swi] = new VarRef(rid);
+                        }
+                    }
+                }
+            }
+            else if (arg is ConstTerm ac)
+            {
+                if (storedValue is int swi)
+                {
+                    cx.SigmaHat[swi] = arg;
+                }
+                else if (storedValue is ConstTerm svc && !Equals(svc.Value, ac.Value))
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else if (arg is StructTerm asct)
+            {
+                if (storedValue is int swi)
+                {
+                    cx.SigmaHat[swi] = arg;
+                }
+                else if (storedValue is StructTerm svs && svs.Functor != asct.Functor)
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+        }
+        else
+        {
+            // GetReaderValue logic: Unify argument with clause READER variable
+            if (arg is VarRef aw && cx.Rt.Heap.IsWriter(aw.Addr))
+            {
+                // Goal has writer, head has reader - bind goal writer to stored value
+                if (storedValue is VarRef svr)
+                {
+                    cx.SigmaHat[aw.Addr] = svr;
+                }
+                else if (storedValue is int swi)
+                {
+                    if (cx.Rt.Heap.IsReaderBound(swi))
+                    {
+                        var readerValue = cx.Rt.Heap.GetReaderValue(swi);
+                        cx.SigmaHat[aw.Addr] = readerValue;
+                    }
+                    else
+                    {
+                        return _Step.Jump(_suspendAndFail(cx, swi, pc));
+                    }
+                }
+                else if (storedValue is Term svtm)
+                {
+                    cx.SigmaHat[aw.Addr] = svtm;
+                }
+            }
+            else if (arg is VarRef ar && cx.Rt.Heap.IsReader(ar.Addr))
+            {
+                var wid = cx.Rt.Heap.TryWriterForReader(ar.Addr);
+                // For imported readers (wid == null), compare reader addresses directly
+                var compareTo = wid ?? ar.Addr;
+                if (storedValue is int swi && compareTo != swi)
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else if (arg is ConstTerm || arg is StructTerm)
+            {
+                if (!Equals(storedValue, arg))
+                {
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2GetVariable(RunnerContext cx, V2.GetVariable op)
-        => throw new NotImplementedException("runner arm: opv2.GetVariable");
+    {
+        var pc = cx.Pc;
+        var varIndex = (int)op.VarIndex;
+        var argSlot = (int)op.ArgSlot;
+        var isReaderMode = op.IsReader;
+
+        var arg = _getArg(cx, argSlot);
+        if (arg == null)
+        {
+            _softFailToNextClause(cx, pc);
+            return _Step.Jump(_findNextClauseTry(pc));
+        }
+
+        if (!isReaderMode)
+        {
+            // GetWriterVariable logic: Load argument into clause WRITER variable
+            cx.ClauseVars.TryGetValue(varIndex, out var existing);
+
+            if (arg is VarRef aw && cx.Rt.Heap.IsWriter(aw.Addr))
+            {
+                if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr))
+                {
+                    // Both are writers - bind arg writer to existing writer's reader
+                    cx.SigmaHat[aw.Addr] = new VarRef(cx.Rt.Heap.PairedReaderAddr(ew.Addr));
+                }
+                else if (existing is int ei)
+                {
+                    // existing is bare writer addr - bind arg to reader of it
+                    cx.SigmaHat[aw.Addr] = new VarRef(cx.Rt.Heap.PairedReaderAddr(ei));
+                }
+                else
+                {
+                    // First occurrence: goal writer vs head writer
+                    if (cx.Rt.Heap.IsWriterBound(aw.Addr))
+                    {
+                        // Goal writer already bound - use its value
+                        var boundValue = cx.Rt.Heap.ValueOfWriter(aw.Addr);
+                        cx.ClauseVars[varIndex] = boundValue;
+                    }
+                    else
+                    {
+                        // Goal writer unbound - store writer ref, clause can bind it later
+                        cx.ClauseVars[varIndex] = arg;
+                    }
+                }
+            }
+            else if (arg is VarRef ar && cx.Rt.Heap.IsReader(ar.Addr))
+            {
+                if (cx.Rt.Heap.IsReaderBound(ar.Addr))
+                {
+                    var value = cx.Rt.Heap.GetReaderValue(ar.Addr);
+                    if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr))
+                    {
+                        cx.SigmaHat[ew.Addr] = value;
+                    }
+                    else if (existing is int ei)
+                    {
+                        cx.SigmaHat[ei] = value;
+                    }
+                    else
+                    {
+                        cx.ClauseVars[varIndex] = value;
+                    }
+                }
+                else
+                {
+                    // Reader is unbound - but clause expects a writer (isReaderMode=false)
+                    if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr))
+                    {
+                        cx.SigmaHat[ew.Addr] = arg;  // arg is the reader VarRef
+                    }
+                    else if (existing is int ei)
+                    {
+                        cx.SigmaHat[ei] = arg;
+                    }
+                    else
+                    {
+                        // First occurrence - store the reader reference
+                        cx.ClauseVars[varIndex] = arg;
+                    }
+                }
+            }
+            else if (arg is ConstTerm)
+            {
+                if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr)) cx.SigmaHat[ew.Addr] = arg;
+                else if (existing is int ei) cx.SigmaHat[ei] = arg;
+                else cx.ClauseVars[varIndex] = arg;
+            }
+            else if (arg is StructTerm)
+            {
+                if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr)) cx.SigmaHat[ew.Addr] = arg;
+                else if (existing is int ei) cx.SigmaHat[ei] = arg;
+                else cx.ClauseVars[varIndex] = arg;
+            }
+            else if (arg is Term)
+            {
+                // Handle other Term types (e.g., MutualRefTerm)
+                if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr)) cx.SigmaHat[ew.Addr] = arg;
+                else if (existing is int ei) cx.SigmaHat[ei] = arg;
+                else cx.ClauseVars[varIndex] = arg;
+            }
+        }
+        else
+        {
+            // GetReaderVariable logic: Load argument into clause READER variable
+            cx.ClauseVars.TryGetValue(varIndex, out var existing);
+
+            if (arg is VarRef aw && cx.Rt.Heap.IsWriter(aw.Addr))
+            {
+                // Goal writer → head reader (clause observes goal's variable)
+                if (existing != null)
+                {
+                    if (existing is VarRef ew && cx.Rt.Heap.IsWriter(ew.Addr))
+                    {
+                        // existing is a writer - bind to its reader
+                        cx.SigmaHat[aw.Addr] = new VarRef(cx.Rt.Heap.PairedReaderAddr(ew.Addr));
+                    }
+                    else if (existing is int ei)
+                    {
+                        // existing is bare writer addr - bind to reader of it
+                        cx.SigmaHat[aw.Addr] = new VarRef(cx.Rt.Heap.PairedReaderAddr(ei));
+                    }
+                    else
+                    {
+                        // existing is already a reader or a term - use as-is
+                        cx.SigmaHat[aw.Addr] = existing;
+                    }
+                }
+                else
+                {
+                    // First occurrence: head reader observes goal writer
+                    cx.ClauseVars[varIndex] = aw.Addr;
+                }
+            }
+            else if (arg is VarRef ar && cx.Rt.Heap.IsReader(ar.Addr))
+            {
+                // Spec §12.2 Case 2: Reader × Reader = FAIL
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+            else if (arg is ConstTerm)
+            {
+                if (existing == null) cx.ClauseVars[varIndex] = arg;
+            }
+            else if (arg is StructTerm)
+            {
+                if (existing == null) cx.ClauseVars[varIndex] = arg;
+            }
+            else if (arg is Term)
+            {
+                // Handle other Term types (e.g., MutualRefTerm)
+                if (existing == null) cx.ClauseVars[varIndex] = arg;
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2HeadVariable(RunnerContext cx, V2.HeadVariable op)
-        => throw new NotImplementedException("runner arm: opv2.HeadVariable");
+    {
+        var pc = cx.Pc;
+        if (cx.Mode == UnifyMode.Write)
+        {
+            // WRITE mode: Building a structure
+            if (cx.CurrentStructure is _TentativeStruct struc)
+            {
+                // Check if this clause variable already has a value
+                cx.ClauseVars.TryGetValue((int)op.VarIndex, out var existingValue);
+                if (existingValue != null)
+                {
+                    // Variable already bound
+                    if (op.IsReader && existingValue is int evw)
+                    {
+                        // Reader mode with variable address - use paired reader addr
+                        struc.Args[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(evw));
+                    }
+                    else
+                    {
+                        // Use value as is
+                        struc.Args[cx.S] = existingValue;
+                    }
+                }
+                else
+                {
+                    // New variable - create placeholder
+                    var placeholder = new _ClauseVar((int)op.VarIndex, isWriter: !op.IsReader);
+                    struc.Args[cx.S] = placeholder;
+                    cx.ClauseVars[(int)op.VarIndex] = placeholder;
+                }
+                cx.S++; // Advance to next arg
+            }
+        }
+        else
+        {
+            // READ mode: Extract value from structure at S position
+            if (cx.CurrentStructure is StructTerm struc)
+            {
+                if (cx.S < struc.Args.Count)
+                {
+                    var value = struc.Args[cx.S];
+
+                    // Check if variable already bound
+                    cx.ClauseVars.TryGetValue((int)op.VarIndex, out var existingValue);
+                    if (existingValue != null)
+                    {
+                        // Need to unify
+                        if (!Equals(existingValue, value))
+                        {
+                            _softFailToNextClause(cx, pc);
+                            return _Step.Jump(_findNextClauseTry(pc));
+                        }
+                    }
+                    else
+                    {
+                        // First occurrence - store it
+                        cx.ClauseVars[(int)op.VarIndex] = value;
+                    }
+                    cx.S++; // Advance to next arg
+                }
+                else
+                {
+                    // Structure arity mismatch - soft fail
+                    _softFailToNextClause(cx, pc);
+                    return _Step.Jump(_findNextClauseTry(pc));
+                }
+            }
+            else
+            {
+                // Not a structure - soft fail
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2PutVariable(RunnerContext cx, V2.PutVariable op)
-        => throw new NotImplementedException("runner arm: opv2.PutVariable");
+    {
+        var varIndex = (int)op.VarIndex;
+        var argSlot = (int)op.ArgSlot;
+        var isReaderMode = op.IsReader;
+
+        cx.ClauseVars.TryGetValue(varIndex, out var value);
+
+        if (value is VarRef vr)
+        {
+            // Already a VarRef - determine writer addr and store with appropriate mode
+            var addr = vr.Addr;
+            var isWriter = cx.Rt.Heap.IsWriter(addr);
+            var isReader = cx.Rt.Heap.IsReader(addr);
+
+            if (!isWriter && !isReader)
+            {
+                // Bound to ground value (ValueTag) - store on heap and pass VarRef
+                var groundValue = cx.Rt.Heap.GetValue(addr);
+                if (groundValue != null)
+                {
+                    var heapAddr = cx.Rt.Heap.StoreTermOnHeap(groundValue);
+                    cx.ArgSlots[argSlot] = new VarRef(heapAddr);
+                }
+                else
+                {
+                    cx.ArgSlots[argSlot] = vr;  // Fallback: already VarRef
+                }
+            }
+            else
+            {
+                // Writer or reader
+                if (isWriter)
+                {
+                    var writerAddr = addr;
+                    cx.ArgSlots[argSlot] = new VarRef(isReaderMode ? writerAddr + 1 : writerAddr);
+                }
+                else
+                {
+                    // Reader - try to get writer (will be null for imported readers)
+                    var writerAddr = cx.Rt.Heap.TryWriterForReader(addr);
+                    if (writerAddr != null)
+                    {
+                        cx.ArgSlots[argSlot] = new VarRef(isReaderMode ? writerAddr.Value + 1 : writerAddr.Value);
+                    }
+                    else
+                    {
+                        // Imported reader - no local writer; pass reader address directly
+                        cx.ArgSlots[argSlot] = new VarRef(addr);
+                    }
+                }
+            }
+        }
+        else if (value is int vi)
+        {
+            // Legacy: bare int ID (assumed to be writer addr)
+            cx.ArgSlots[argSlot] = new VarRef(isReaderMode ? vi + 1 : vi);
+        }
+        else if (value is _ClauseVar && !isReaderMode)
+        {
+            // Placeholder (PutWriter only) - allocate fresh variable
+            var (writerAddr, _) = cx.Rt.Heap.AllocateVariable();
+            cx.ArgSlots[argSlot] = new VarRef(writerAddr);
+            cx.ClauseVars[varIndex] = new VarRef(writerAddr);
+        }
+        else if (value is StructTerm vst && isReaderMode)
+        {
+            // Structure (PutReader only) - create fresh variable and bind it
+            var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+            cx.Rt.Heap.BindWriterStruct(writerAddr, vst.Functor, new List<Term>(vst.Args));
+            cx.ArgSlots[argSlot] = new VarRef(readerAddr);
+        }
+        else if (value is ConstTerm vct && isReaderMode)
+        {
+            // Constant (PutReader only) - create fresh variable and bind it
+            var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+            cx.Rt.Heap.BindWriterConst(writerAddr, vct.Value);
+            cx.ArgSlots[argSlot] = new VarRef(readerAddr);
+        }
+        else if (value == null)
+        {
+            // First occurrence - allocate fresh variable
+            var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+            cx.ClauseVars[varIndex] = new VarRef(writerAddr);
+            cx.ArgSlots[argSlot] = new VarRef(isReaderMode ? readerAddr : writerAddr);
+        }
+        else if (value is Term vtm && isReaderMode)
+        {
+            // Ground term (e.g., MutualRefTerm) - store on heap and pass VarRef
+            var heapAddr = cx.Rt.Heap.StoreTermOnHeap(vtm);
+            cx.ArgSlots[argSlot] = new VarRef(heapAddr);
+        }
+        else
+        {
+            // Unexpected value (Dart logged a WARNING and fell through). No-op.
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2SetVariable(RunnerContext cx, V2.SetVariable op)
-        => throw new NotImplementedException("runner arm: opv2.SetVariable");
+    {
+        var varIndex = (int)op.VarIndex;
+        var isReaderMode = op.IsReader;
+
+        if (cx.InBody && cx.Mode == UnifyMode.Write && cx.CurrentStructure is StructTerm struc)
+        {
+            // Check what value exists in clause variables
+            cx.ClauseVars.TryGetValue(varIndex, out var existingValue);
+            var sargs = MutableArgs(struc);
+
+            if (existingValue is VarRef evr)
+            {
+                var addr = evr.Addr;
+                if (isReaderMode && cx.Rt.Heap.IsWriter(addr))
+                {
+                    sargs[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(addr));
+                }
+                else if (!isReaderMode && cx.Rt.Heap.IsReader(addr))
+                {
+                    sargs[cx.S] = new VarRef(cx.Rt.Heap.TryWriterForReader(addr)!.Value);
+                }
+                else
+                {
+                    sargs[cx.S] = new VarRef(addr);
+                }
+            }
+            else if (existingValue is int evi)
+            {
+                // Legacy: bare writer addr
+                if (isReaderMode)
+                    sargs[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(evi));
+                else
+                    sargs[cx.S] = new VarRef(evi);
+            }
+            else if (existingValue is Term evt)
+            {
+                // Term (ConstTerm, StructTerm, etc.): embed directly in structure
+                sargs[cx.S] = evt;
+            }
+            else
+            {
+                // Uninitialized: allocate new variable
+                var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                cx.ClauseVars[varIndex] = new VarRef(writerAddr);
+                sargs[cx.S] = new VarRef(isReaderMode ? readerAddr : writerAddr);
+            }
+            cx.S++;
+
+            // Check if structure is complete
+            if (cx.S >= sargs.Count)
+            {
+                cx.ClauseVars.TryGetValue(-1, out var targetValue);
+                int? targetWriterAddr = targetValue is VarRef tvr ? tvr.Addr : (targetValue is int tvi ? tvi : (int?)null);
+
+                if (targetWriterAddr != null)
+                {
+                    var acts = cx.Rt.Heap.BindWriterStruct(targetWriterAddr.Value, struc.Functor, sargs);
+                    foreach (var a in acts)
+                    {
+                        cx.Rt.Gq.Enqueue(a);
+                        cx.OnActivation?.Invoke(a);
+                    }
+
+                    // SetWriter-specific: Store VarRef in argSlots ONLY if no parent
+                    if (!isReaderMode && cx.ParentStack.Count == 0)
+                    {
+                        if (cx.ClauseVars.TryGetValue(-2, out var ts) && ts is int targetSlot && targetSlot >= 0 && targetSlot < 10)
+                        {
+                            cx.ArgSlots[targetSlot] = new VarRef(cx.Rt.Heap.PairedReaderAddr(targetWriterAddr.Value));
+                            cx.ClauseVars.Remove(-2);
+                        }
+                    }
+                }
+
+                // Handle parent structure restoration - pop from stack
+                if (cx.ParentStack.Count > 0 && targetWriterAddr != null)
+                {
+                    var nestedWriterAddr = targetWriterAddr.Value;
+                    var parent = cx.ParentStack[cx.ParentStack.Count - 1];
+                    cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                    var parentWriterId = parent.WriterId;
+
+                    if (parent.Structure is StructTerm parentStruct)
+                    {
+                        MutableArgs(parentStruct)[parent.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(nestedWriterAddr));
+                    }
+
+                    cx.CurrentStructure = parent.Structure;
+                    cx.S = parent.S + 1;
+                    cx.Mode = parent.Mode;
+                    cx.ClauseVars[-1] = parentWriterId;
+
+                    // Check if parent is now complete - and recursively complete ancestors
+                    while (cx.CurrentStructure is StructTerm parentStruct2)
+                    {
+                        cx.ClauseVars.TryGetValue(-1, out var currentWriterAddr);
+                        int? currentWriterAddrInt = currentWriterAddr is VarRef cwr ? cwr.Addr : (currentWriterAddr is int cwi ? cwi : (int?)null);
+                        var pargs = MutableArgs(parentStruct2);
+
+                        if (cx.S >= pargs.Count && currentWriterAddrInt != null)
+                        {
+                            var acts = cx.Rt.Heap.BindWriterStruct(currentWriterAddrInt.Value, parentStruct2.Functor, pargs);
+                            foreach (var a in acts)
+                            {
+                                cx.Rt.Gq.Enqueue(a);
+                                cx.OnActivation?.Invoke(a);
+                            }
+
+                            if (cx.ParentStack.Count > 0)
+                            {
+                                var ancestor = cx.ParentStack[cx.ParentStack.Count - 1];
+                                cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                                if (ancestor.Structure is StructTerm ancestorStruct)
+                                {
+                                    // Use reader address (writer + 1) for structure args
+                                    MutableArgs(ancestorStruct)[ancestor.S] = new VarRef(currentWriterAddrInt.Value + 1);
+                                }
+                                cx.CurrentStructure = ancestor.Structure;
+                                cx.S = ancestor.S + 1;
+                                cx.Mode = ancestor.Mode;
+                                cx.ClauseVars[-1] = ancestor.WriterId;
+                            }
+                            else
+                            {
+                                // No more ancestors - store in argSlots and reset
+                                if (cx.ClauseVars.TryGetValue(-2, out var pts) && pts is int parentTargetSlot && parentTargetSlot >= 0 && parentTargetSlot < 10)
+                                {
+                                    // Use reader address (writer + 1) for argSlots
+                                    cx.ArgSlots[parentTargetSlot] = new VarRef(currentWriterAddrInt.Value + 1);
+                                    cx.ClauseVars.Remove(-2);
+                                }
+                                cx.CurrentStructure = null;
+                                cx.Mode = UnifyMode.Read;
+                                cx.S = 0;
+                                cx.ClauseVars.Remove(-1);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // Parent not complete yet, stop
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    cx.CurrentStructure = null;
+                    cx.Mode = UnifyMode.Read;
+                    cx.S = 0;
+                    cx.ClauseVars.Remove(-1);
+                }
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2UnifyVariable(RunnerContext cx, V2.UnifyVariable op)
-        => throw new NotImplementedException("runner arm: opv2.UnifyVariable");
+    {
+        var pc = cx.Pc;
+        var varIndex = (int)op.VarIndex;
+        var isReaderMode = op.IsReader;
+
+        if (cx.Mode == UnifyMode.Write)
+        {
+            // WRITE mode: Add variable to structure being built
+            if (cx.CurrentStructure is _TentativeStruct struc)
+            {
+                // HEAD phase tentative structure
+                cx.ClauseVars.TryGetValue(varIndex, out var clauseVarValue);
+
+                if (clauseVarValue is VarRef cvr)
+                {
+                    var addr = cvr.Addr;
+                    if (cx.Rt.Heap.IsValue(addr))
+                    {
+                        var groundValue = cx.Rt.Heap.GetValue(addr);
+                        if (groundValue != null)
+                        {
+                            if (isReaderMode)
+                            {
+                                var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                                cx.SigmaHat[writerAddr] = groundValue;
+                                struc.Args[cx.S] = new VarRef(readerAddr);
+                            }
+                            else
+                            {
+                                struc.Args[cx.S] = groundValue;
+                            }
+                        }
+                        else
+                        {
+                            struc.Args[cx.S] = clauseVarValue;
+                        }
+                    }
+                    else if (isReaderMode && cx.Rt.Heap.IsWriter(addr))
+                    {
+                        struc.Args[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(addr));
+                    }
+                    else if (!isReaderMode && cx.Rt.Heap.IsReader(addr))
+                    {
+                        struc.Args[cx.S] = new VarRef(cx.Rt.Heap.TryWriterForReader(addr)!.Value);
+                    }
+                    else
+                    {
+                        struc.Args[cx.S] = new VarRef(addr);
+                    }
+                }
+                else if (clauseVarValue is int cvi)
+                {
+                    if (isReaderMode)
+                        struc.Args[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(cvi));
+                    else
+                        struc.Args[cx.S] = new VarRef(cvi);
+                }
+                else if (clauseVarValue is Term cvt)
+                {
+                    if (isReaderMode)
+                    {
+                        var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                        cx.SigmaHat[writerAddr] = cvt;
+                        struc.Args[cx.S] = new VarRef(readerAddr);
+                    }
+                    else
+                    {
+                        struc.Args[cx.S] = cvt;
+                    }
+                }
+                else if (clauseVarValue is _TentativeStruct)
+                {
+                    struc.Args[cx.S] = clauseVarValue;
+                }
+                else if (clauseVarValue == null)
+                {
+                    var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                    cx.ClauseVars[varIndex] = new VarRef(writerAddr);
+                    struc.Args[cx.S] = new VarRef(isReaderMode ? readerAddr : writerAddr);
+                }
+                else
+                {
+                    struc.Args[cx.S] = new _ClauseVar(varIndex, isWriter: !isReaderMode);
+                }
+                cx.S++;
+            }
+            else if (cx.CurrentStructure is StructTerm structTerm)
+            {
+                // BODY phase structure building
+                var sargs = MutableArgs(structTerm);
+                cx.ClauseVars.TryGetValue(varIndex, out var clauseVarValue);
+
+                if (clauseVarValue is VarRef cvr)
+                {
+                    var addr = cvr.Addr;
+                    if (cx.Rt.Heap.IsValue(addr))
+                    {
+                        var groundValue = cx.Rt.Heap.GetValue(addr);
+                        if (groundValue != null)
+                        {
+                            if (isReaderMode)
+                            {
+                                var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                                cx.Rt.Heap.BindVariable(writerAddr, groundValue);
+                                sargs[cx.S] = new VarRef(readerAddr);
+                            }
+                            else
+                            {
+                                sargs[cx.S] = groundValue;
+                            }
+                        }
+                        else
+                        {
+                            sargs[cx.S] = cvr;
+                        }
+                    }
+                    else if (isReaderMode && cx.Rt.Heap.IsWriter(addr))
+                    {
+                        sargs[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(addr));
+                    }
+                    else if (!isReaderMode && cx.Rt.Heap.IsReader(addr))
+                    {
+                        sargs[cx.S] = new VarRef(cx.Rt.Heap.TryWriterForReader(addr)!.Value);
+                    }
+                    else
+                    {
+                        sargs[cx.S] = new VarRef(addr);
+                    }
+                }
+                else if (clauseVarValue is int cvi)
+                {
+                    if (isReaderMode)
+                        sargs[cx.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(cvi));
+                    else
+                        sargs[cx.S] = new VarRef(cvi);
+                }
+                else if (clauseVarValue is Term cvt)
+                {
+                    if (isReaderMode)
+                    {
+                        var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                        cx.Rt.Heap.BindVariable(writerAddr, cvt);
+                        sargs[cx.S] = new VarRef(readerAddr);
+                    }
+                    else
+                    {
+                        sargs[cx.S] = cvt;
+                    }
+                }
+                else if (clauseVarValue == null)
+                {
+                    var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+                    cx.ClauseVars[varIndex] = new VarRef(writerAddr);
+                    sargs[cx.S] = new VarRef(isReaderMode ? readerAddr : writerAddr);
+                }
+                cx.S++;
+
+                // Check if structure is complete
+                if (cx.S >= sargs.Count)
+                {
+                    if (cx.GuardArgSlot != null)
+                    {
+                        // Guard argument mode: store structure directly in argSlots
+                        cx.ArgSlots[cx.GuardArgSlot.Value] = structTerm;
+                        cx.CurrentStructure = null;
+                        cx.Mode = UnifyMode.Read;
+                        cx.S = 0;
+                        cx.GuardArgSlot = null;
+                    }
+                    else
+                    {
+                        // BODY phase: bind to heap writer
+                        cx.ClauseVars.TryGetValue(-1, out var targetValue);
+                        int? targetWriterAddr = targetValue is VarRef tvr ? tvr.Addr : (targetValue is int tvi ? tvi : (int?)null);
+
+                        if (targetWriterAddr != null)
+                        {
+                            var acts = cx.Rt.Heap.BindWriterStruct(targetWriterAddr.Value, structTerm.Functor, sargs);
+                            foreach (var a in acts)
+                            {
+                                cx.Rt.Gq.Enqueue(a);
+                                cx.OnActivation?.Invoke(a);
+                            }
+                        }
+
+                        // Handle parent structure restoration - pop from stack
+                        if (cx.ParentStack.Count > 0 && targetWriterAddr != null)
+                        {
+                            var nestedWriterAddr = targetWriterAddr.Value;
+                            var parent = cx.ParentStack[cx.ParentStack.Count - 1];
+                            cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                            var parentWriterId = parent.WriterId;
+
+                            if (parent.Structure is StructTerm parentStruct)
+                            {
+                                MutableArgs(parentStruct)[parent.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(nestedWriterAddr));
+                            }
+
+                            cx.CurrentStructure = parent.Structure;
+                            cx.S = parent.S + 1;
+                            cx.Mode = parent.Mode;
+                            cx.ClauseVars[-1] = parentWriterId;
+
+                            // Check if parent is now complete - and recursively complete ancestors
+                            while (cx.CurrentStructure is StructTerm parentStruct2)
+                            {
+                                cx.ClauseVars.TryGetValue(-1, out var currentWriterId);
+                                int? currentWriterAddrInt = currentWriterId is VarRef cvr2 ? cvr2.Addr : (currentWriterId is int cwi ? cwi : (int?)null);
+                                var pargs = MutableArgs(parentStruct2);
+
+                                if (cx.S >= pargs.Count && currentWriterAddrInt != null)
+                                {
+                                    var acts = cx.Rt.Heap.BindWriterStruct(currentWriterAddrInt.Value, parentStruct2.Functor, pargs);
+                                    foreach (var a in acts)
+                                    {
+                                        cx.Rt.Gq.Enqueue(a);
+                                        cx.OnActivation?.Invoke(a);
+                                    }
+
+                                    if (cx.ParentStack.Count > 0)
+                                    {
+                                        var ancestor = cx.ParentStack[cx.ParentStack.Count - 1];
+                                        cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                                        if (ancestor.Structure is StructTerm ancestorStruct)
+                                        {
+                                            MutableArgs(ancestorStruct)[ancestor.S] = new VarRef(cx.Rt.Heap.PairedReaderAddr(currentWriterAddrInt.Value));
+                                        }
+                                        cx.CurrentStructure = ancestor.Structure;
+                                        cx.S = ancestor.S + 1;
+                                        cx.Mode = ancestor.Mode;
+                                        cx.ClauseVars[-1] = ancestor.WriterId;
+                                    }
+                                    else
+                                    {
+                                        // No more ancestors - store in argSlots and reset
+                                        if (cx.ClauseVars.TryGetValue(-2, out var pts) && pts is int parentTargetSlot && parentTargetSlot >= 0 && parentTargetSlot < 10)
+                                        {
+                                            cx.ArgSlots[parentTargetSlot] = new VarRef(cx.Rt.Heap.PairedReaderAddr(currentWriterAddrInt.Value));
+                                            cx.ClauseVars.Remove(-2);
+                                        }
+                                        cx.CurrentStructure = null;
+                                        cx.Mode = UnifyMode.Read;
+                                        cx.S = 0;
+                                        cx.ClauseVars.Remove(-1);
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    // Parent not complete yet, stop
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // No parent - store in argSlots and reset
+                            if (cx.ClauseVars.TryGetValue(-2, out var ts) && ts is int targetSlot && targetSlot >= 0 && targetSlot < 10)
+                            {
+                                cx.ArgSlots[targetSlot] = new VarRef(cx.Rt.Heap.PairedReaderAddr(targetWriterAddr!.Value));
+                                cx.ClauseVars.Remove(-2);
+                            }
+                            cx.CurrentStructure = null;
+                            cx.Mode = UnifyMode.Read;
+                            cx.S = 0;
+                            cx.ClauseVars.Remove(-1);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // READ mode: Unify with value at S position
+            if (cx.CurrentStructure is StructTerm struc)
+            {
+                if (cx.S < struc.Args.Count)
+                {
+                    object? value = struc.Args[cx.S];
+
+                    // Per spec v2.16.3: Dereference VarRef pointing to value cell
+                    if (value is VarRef vvc && cx.Rt.Heap.IsValue(vvc.Addr))
+                    {
+                        value = cx.Rt.Heap.GetValue(vvc.Addr)!;
+                    }
+
+                    cx.ClauseVars.TryGetValue(varIndex, out var existingValue);
+
+                    if (isReaderMode)
+                    {
+                        // UnifyReader READ mode logic
+                        if (value is VarRef vr && cx.Rt.Heap.IsReader(vr.Addr))
+                        {
+                            // Reader × Reader = FAIL
+                            _softFailToNextClause(cx, pc);
+                            return _Step.Jump(_findNextClauseTry(pc));
+                        }
+                        else if (value is VarRef vw && cx.Rt.Heap.IsWriter(vw.Addr))
+                        {
+                            // Query has writer, clause expects reader
+                            if (existingValue != null)
+                            {
+                                if (existingValue is ConstTerm || existingValue is StructTerm)
+                                {
+                                    cx.SigmaHat[vw.Addr] = existingValue;
+                                }
+                                else if (existingValue is VarRef evr)
+                                {
+                                    var addr = evr.Addr;
+                                    var readerAddr = cx.Rt.Heap.IsWriter(addr) ? cx.Rt.Heap.PairedReaderAddr(addr) : addr;
+                                    cx.SigmaHat[vw.Addr] = new VarRef(readerAddr);
+                                }
+                                else if (existingValue is int evi)
+                                {
+                                    cx.SigmaHat[vw.Addr] = new VarRef(cx.Rt.Heap.PairedReaderAddr(evi));
+                                }
+                                cx.S++;
+                            }
+                            else
+                            {
+                                // First occurrence: head reader receives goal writer
+                                cx.ClauseVars[varIndex] = vw.Addr;
+                                cx.S++;
+                            }
+                        }
+                        else if (value is ConstTerm || value is StructTerm)
+                        {
+                            // Query has ground term, clause expects reader
+                            var (writerAddr, _) = cx.Rt.Heap.AllocateVariable();
+                            cx.SigmaHat[writerAddr] = (Term)value;
+                            cx.ClauseVars[varIndex] = writerAddr;
+                            cx.S++;
+                        }
+                        else
+                        {
+                            _softFailToNextClause(cx, pc);
+                            return _Step.Jump(_findNextClauseTry(pc));
+                        }
+                    }
+                    else
+                    {
+                        // UnifyWriter READ mode logic
+                        if (existingValue is int || (existingValue is VarRef evw && cx.Rt.Heap.IsWriter(evw.Addr)))
+                        {
+                            var clauseVarAddr = existingValue is int evi ? evi : ((VarRef)existingValue!).Addr;
+
+                            if (value is VarRef vw && cx.Rt.Heap.IsWriter(vw.Addr))
+                            {
+                                // Query has writer - check for WxW violation
+                                var clauseVarBound = cx.Rt.Heap.IsWriterBound(clauseVarAddr);
+                                var queryVarBound = cx.Rt.Heap.IsWriterBound(vw.Addr);
+                                if (!clauseVarBound && !queryVarBound)
+                                {
+                                    _softFailToNextClause(cx, pc);
+                                    return _Step.Jump(_findNextClauseTry(pc));
+                                }
+                                cx.SigmaHat[clauseVarAddr] = value;
+                                cx.S++;
+                            }
+                            else if (value is VarRef vr && cx.Rt.Heap.IsReader(vr.Addr))
+                            {
+                                cx.SigmaHat[clauseVarAddr] = value;
+                                cx.S++;
+                            }
+                            else if (value is ConstTerm || value is StructTerm)
+                            {
+                                cx.SigmaHat[clauseVarAddr] = value;
+                                cx.S++;
+                            }
+                            else
+                            {
+                                _softFailToNextClause(cx, pc);
+                                return _Step.Jump(_findNextClauseTry(pc));
+                            }
+                        }
+                        else if (existingValue != null)
+                        {
+                            // Clause variable already bound - advance
+                            cx.S++;
+                        }
+                        else
+                        {
+                            // First occurrence - store the value
+                            if (value is VarRef vw && cx.Rt.Heap.IsWriter(vw.Addr))
+                            {
+                                cx.ClauseVars[varIndex] = value;
+                                cx.S++;
+                            }
+                            else if (value is VarRef vr && cx.Rt.Heap.IsReader(vr.Addr))
+                            {
+                                var rid = vr.Addr;
+                                if (cx.Rt.Heap.IsReaderBound(rid))
+                                {
+                                    var readerValue = cx.Rt.Heap.GetReaderValue(rid);
+                                    cx.ClauseVars[varIndex] = readerValue;
+                                }
+                                else
+                                {
+                                    cx.ClauseVars[varIndex] = value;
+                                }
+                                cx.S++;
+                            }
+                            else if (value is ConstTerm || value is StructTerm)
+                            {
+                                cx.ClauseVars[varIndex] = value;
+                                cx.S++;
+                            }
+                            else
+                            {
+                                _softFailToNextClause(cx, pc);
+                                return _Step.Jump(_findNextClauseTry(pc));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecV2Unknown(RunnerContext cx, V2.Unknown op)
-        => throw new NotImplementedException("runner arm: opv2.Unknown");
+    {
+        var pc = cx.Pc;
+        // Unknown: test if variable is unbound (value unknown)
+        cx.ClauseVars.TryGetValue((int)op.VarIndex, out var term);
+        // Succeeds if variable is unbound (no value yet)
+        if (term is VarRef vr)
+        {
+            // Check if variable is unbound in σ̂w or heap
+            if (cx.SigmaHat.ContainsKey(vr.Addr))
+            {
+                // Has tentative binding - not unknown
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+            if (cx.Rt.Heap.IsBound(vr.Addr))
+            {
+                // Has heap binding - not unknown
+                _softFailToNextClause(cx, pc);
+                return _Step.Jump(_findNextClauseTry(pc));
+            }
+            // Unbound = unknown, succeed
+            return _Step.Advance();
+        }
+        // Non-variable is always known (bound to a value)
+        _softFailToNextClause(cx, pc);
+        return _Step.Jump(_findNextClauseTry(pc));
+    }
 
     // ── Private helpers (STUBBED — filled by later chunks) ───────────────────
 
