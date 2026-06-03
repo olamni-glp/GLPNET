@@ -156,14 +156,20 @@ class CaptureResult:
 
 
 def _resolve_source(config: ReplConfig, source: str) -> str:
-    """``source`` is tutorial-root-relative (run in place); pass through an
-    already-absolute path. POSIX so the REPL load line is clean."""
+    """The load path both REPLs accept, run in place (FR-006).
+
+    The capture runs each REPL with cwd = ``repo_root``, and the REPL file loader
+    resolves a path verbatim ONLY when it starts with ``/`` / ``./`` / ``../``;
+    anything else is rooted at a ``glp/`` workspace dir (glp_repl.dart:193-198),
+    so a Windows-absolute ``D:/…`` is mis-resolved. We therefore emit a
+    repo-root-relative POSIX path with an explicit ``./`` / ``../`` prefix — the
+    sibling tutorial corpus becomes ``../GLP/olamni/tutorial/…`` (no copy)."""
     p = Path(source)
-    if p.is_absolute():
-        abs_p = p
-    else:
-        abs_p = config.tutorial_root / source
-    return abs_p.as_posix()
+    abs_p = p if p.is_absolute() else (config.tutorial_root / source)
+    rel = os.path.relpath(abs_p, config.repo_root).replace("\\", "/")
+    if not (rel.startswith("../") or rel.startswith("./") or rel.startswith("/")):
+        rel = "./" + rel
+    return rel
 
 
 def capture_pair(
