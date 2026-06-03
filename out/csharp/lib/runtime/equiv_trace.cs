@@ -61,11 +61,33 @@ public static class EquivTrace
         lock (_lock) { _seq = 0; _buf.Clear(); }
     }
 
+    // The BYTECODE_OP spine is aligned to the Dart golden's `:debug` observability
+    // (option-a, decided 2026-06-03): the Dart runner (glp_runtime/lib/bytecode/
+    // runner.dart) prints a per-op `[DEBUG] PC <pc>: <Op>` line at the TOP of each
+    // of these handlers (unconditionally per dispatch). Emitting any others (Label,
+    // HeadNil, Otherwise, the Put*/Set*/Spawn/Proceed body ops, …) would manufacture
+    // FALSE divergences against the read-only golden (R10). A genuine behavioural
+    // divergence WITHIN this set (e.g. a guard taking a different soft-fail path)
+    // still surfaces correctly.
+    //
+    // GetValue is DELIBERATELY EXCLUDED: its Dart print fires only in one sub-case
+    // (runner.dart:2037, VarRef→reader alias) — not for ConstTerm/StructTerm args —
+    // so it is not reliably observable per-dispatch and would diverge whenever Dart
+    // takes a non-printing GetValue branch. Sub-case-accurate GetValue emission is a
+    // T022 refinement; excluding it minimizes false divergences for now.
+    private static readonly HashSet<string> _spineOps = new(StringComparer.Ordinal)
+    {
+        "ClauseTry", "Push", "Pop", "UnifyStructure", "HeadStructure",
+        "UnifyVariable", "GetVariable", "Commit",
+        "NoMoreClauses", "Guard", "Ground", "NoReaders", "GroundEqual",
+    };
+
     // ── The five R1 event kinds ──────────────────────────────────────────────
 
     public static void Op(string opcode, int pc)
     {
         if (!Ready()) return;
+        if (!_spineOps.Contains(opcode)) return;  // align to Dart :debug observability
         Write($"EV {Next()} BYTECODE_OP opcode={San(opcode)} pc={pc}");
     }
 
