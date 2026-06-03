@@ -62,7 +62,7 @@ callers:
 - test_archive/dump_bytecode_test.dart
 - test_archive/serve_test.dart
 - test_archive/social_graph_sim_modules_test.dart
-mtime: '2026-04-27T09:23:50.000Z'
+mtime: '2026-05-21T12:38:13.086Z'
 sha256: 7fdcc6faa358f2dacdfe6c63bf69d43b58bed08dc1f1ec6bfcefbf2d6aa4030a
 topo_level: 4
 cycle_group_id: 37
@@ -72,6 +72,9 @@ plan_started_at: '2026-05-21T16:06:13Z'
 plan_completed_at: '2026-05-21T16:12:49Z'
 plan_path: .codeconv/conversion-plans/lib/bytecode/runner.dart.md
 open_escalation_count: 0
-codegen_started_at: '2026-05-28T12:39:52Z'
+codegen_completed_at: '2026-06-03T10:43:31Z'
+target_cs_path: out/csharp/lib/bytecode/runner.cs
+build_status: pass
+codegen_open_escalation_count: 0
 ---
 
