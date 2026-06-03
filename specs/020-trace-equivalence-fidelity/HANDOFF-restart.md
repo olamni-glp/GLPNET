@@ -17,6 +17,28 @@ Stages 1–4 of the `/codeconv-runner` 5-stage plan are **DONE + committed**. **
 Stage 5 remains** (T017 C# REPL trace instrumentation → T022 e2e → T031 fidelity-metric
 swap + GEPA re-run → T026–T029 equiv CLI/skill/gate). Stage 3 (runner.cs) unblocked it.
 
+### Progress 2026-06-03 (Stage 5 session in progress)
+- **T017(i) DONE — commit `7c3def56`.** `out/csharp/glp_repl/Program.cs` placeholder replaced
+  by a thin delegating entrypoint → `glp_repl.exe` now RUNS the converted REPL
+  (`GlpRuntime.Repl.Program` in the library). The exe edit does NOT touch Converted.props /
+  the 75-file frontier. Self.glp loads; outcome reporting works.
+- **First runtime fidelity bug FOUND + FIXED — commit `2cab78db`.** The oracle premise paid
+  off on the first executing reduction: `append([a,b],[c,d],Zs)` gave wrong status on C#
+  (`[a|X11]`/failed) vs Dart `[a,b,c,d]`/succeeds. Root cause was NOT a runner.cs arithmetic
+  bug — it was a **stub-era gap in `scheduler.cs` `DrainWithStatus`**: `hadReduction` was
+  hardcoded `false` (the `onReduction` callback was stubbed out while runner.cs was a
+  placeholder), so every `RunResult.Terminated`-after-reduction (a SUCCESS) hit
+  `hasFailed=true`. Fix wires the full `RunnerContext(... onReduction ...)` ctor + calls
+  `RunWithStatus(cx)`, mirroring `scheduler.dart` lines 258-289. runner.cs reduction logic
+  was correct. Verified C# ≡ Dart golden on append/reverse/quicksort (succeeds, exact bindings).
+  ⚠️ **Carry-forward**: `scheduler.cs`'s convspec/plan was authored when runner.cs was a stub,
+  so a naive re-codegen of scheduler.cs would REINTRODUCE this. Update its convspec/plan/prompt
+  before any regen (follow-on, not yet done).
+- **REMAINING in T017**: part (ii) — the canonical EV/OUT trace emission (the 5 R1 event kinds)
+  in the converted runner, candidate-side, per `contracts/trace_normalization.md`. Design input
+  = the Dart golden's live `:trace`+`:debug` text on a real reduction (now possible — reductions
+  succeed). Then T022 e2e.
+
 ## 1. Verified-green anchor (re-verify BEFORE touching anything)
 
 At handoff, ALL of these were green — **RE-VERIFIED still green 2026-06-03 (fresh session):
