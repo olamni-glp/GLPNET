@@ -36,6 +36,63 @@ Handoff: `specs/020-trace-equivalence-fidelity/HANDOFF-implement.md`
 
 ---
 
+## 🟢 SESSION 2026-06-03 (GEPA wiring) — Stages 1+2 DONE; runner is the gate for the rest
+
+Driven via `/codeconv-runner` with the 5-stage plan (= the recovery "Revised next-step
+order" (c)→(g)). Delivered this session, committed on `020-trace-equivalence-fidelity`
+(NOT pushed; Gabi merges):
+
+- **Stage 1 — Claude-driven GEPA wiring (commit `72ca51d1`)**: T032/T033/T034/T035/T036
+  + optimize.py subsystem/seed. See the "Last GEPA artifact written" + "Stage 1 … DONE"
+  bullets in POSITION for the full breakdown. 24/24 targeted pure tests green.
+- **Stage 2 — GEPA run on `bytecode` (commit `9506ac81`)**: ran the real loop — a generator
+  sub-agent regenerated `opcodes.dart`→C# (no peeking) under the `bytecode.md` seed; the
+  Python `score` build-gate scored it **1.0**. Existing baseline outputs also build (1.0),
+  so the **build-only metric is at its ceiling** for the bytecode leaves → no build-gradient
+  → instructions frozen UNCHANGED, `bytecode.md` provenance flipped to `gepa-build-only`
+  (metric_score 1.0, dataset_hash bbb9bece11321f97). Honest finding, not a fabricated edit.
+  **Real prompt refinement needs the fidelity metric (T031), which needs a runnable REPL.**
+
+### NOT done this session (handed off — each is a dedicated unit):
+
+- **Stage 3 — runner.cs (the gate).** Convert `lib/bytecode/runner.dart` (4863 lines) per
+  its E1 escalation `.codeconv/conversion-code/lib/bytecode/runner.dart.md` in the recorded
+  **6-chunk split** (header+classes+enums → HEAD-phase arms ×2 → Unify arms →
+  Commit/ClauseControl/BODY → Spawn/Requeue/Distribute/Transmit/Guards/Helpers/_TentativeStruct),
+  appended via Edit, each cross-validated against two-phase HEAD/GUARD/BODY semantics
+  (σ̂w/Si/U), WAM read/write mode, FCP wake-on-binding, tail-call kappa, GlpChannel RPC.
+  **ALL-OR-NOTHING per session**: the current `runner.cs` STUB builds green; a partial
+  conversion breaks the sln. Do all 6 chunks in one session, then `codeconv codegen ingest
+  out/csharp/lib/bytecode/runner.cs --data-dir C:/pglite/research/glpnet` → build-gate the
+  full sln. Use the `bytecode.md` prompt (its runner section has the confirmed dep signatures).
+  This is the load-bearing blocker for Stage 5. Why not this session: explicitly a
+  multi-turn/dedicated-session task per E1 + the bulk-drive precedent.
+- **Stage 4 — goal_queue → first-class `no_emit`.** A codegen-tool enhancement: add a
+  `no_emit` status orthogonal to escalated/built (the E1 note's "future enhancement").
+  Likely a migration `0009` (single-head off `0008`) adding a `no_emit` bool to
+  `codeconv.dart_codegen`, `status()` counting it separately, `readiness.classify_all`
+  treating no_emit as satisfied (not ready/pending), a `codegen mark-no-emit` CLI, marking
+  `lib/runtime/goal_queue.dart`, a tombstone key, + tests. **Bridge-touching schema
+  migration on the canonical cluster — confirm with Gabi before running.** Non-urgent:
+  goal_queue is correct-by-design today (0 consumers, build green; it currently shows as
+  1 `escalated`/open-escalation — cosmetic).
+- **Stage 5 — BLOCKED ON STAGE 3.** T017 (C# REPL trace instrumentation) + T022 (e2e) need
+  a runnable converted REPL (⇒ runner.cs). Then T031 (swap the GEPA metric from build-only
+  to `tools/equiv/fidelity.py` — the SAME scorer as the production gate, SC-004; re-run the
+  per-subsystem GEPA loops to get a real fidelity gradient above the build ceiling), then
+  T026–T029 (`equiv next/status/ingest/retry` + `aggregate-escalations` + `/codeconv-equiv`
+  skill + `@needs_runtime` strict-tier gate test).
+
+### Stage-2 mechanism recap (for re-running the GEPA loop per subsystem):
+`codeconv codegen_opt dataset --subsystem S --json` → train/held-out · spawn generator
+sub-agent(s) per train file under the `<S>.md` (or `_base.md`) seed → write candidate `.cs`
+to `.codeconv/codegen-prompt/.gepa-scratch/<S>/` (gitignored) → `codeconv codegen_opt score
+--file <cand> [--dep <dep.cs> …] --json` → reflect (sub-agent) if a build fails → freeze via
+`export-prompt --subsystem S --instructions-file <best> --score … --dataset-hash …`. Skill:
+`.claude/skills/codeconv-codegen-opt/SKILL.md` § "Per-subsystem GEPA orchestration loop".
+
+---
+
 ## POSITION (update on every phase boundary)
 
 - **Current phase**: Phase 4 — US2 strict tier (T023–T029). Step-side plumbing landed; bulk codegen is the gated long-pole.
