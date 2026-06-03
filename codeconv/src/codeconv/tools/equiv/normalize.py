@@ -61,6 +61,27 @@ class Addr:
 
 
 @dataclass(frozen=True)
+class GoalId:
+    """A per-run goal identifier, relabeled to a logical goal token (``g0, g1,
+    …``) by :func:`normalize` in a namespace SEPARATE from heap addresses
+    (``v0, v1, …``).
+
+    Like :class:`Addr`, the raw value is per-run (the C# emits ``g<RunnerContext
+    id>``; the Dart golden's text names goals by display string) and must NOT be
+    compared across runs — only its first-occurrence position (structural
+    goal-correspondence) is. Relabeling goal ids (rather than dropping the
+    ``goal`` field) keeps SUSPEND/REACTIVATE goal-identity as a fidelity signal
+    while making the raw scheme-specific values irrelevant.
+    """
+
+    raw: str
+
+    @staticmethod
+    def of(value: Any) -> "GoalId":
+        return value if isinstance(value, GoalId) else GoalId(str(value))
+
+
+@dataclass(frozen=True)
 class RawEvent:
     """A pre-relabeling event: payload may carry :class:`Addr` sentinels.
 
@@ -93,30 +114,35 @@ class RawOutcome:
 # --------------------------------------------------------------------------- #
 # The pure core: relabel + derive causes
 # --------------------------------------------------------------------------- #
-def _collect_addrs(value: Any, into: dict[str, None]) -> None:
-    """Record first-occurrence of every :class:`Addr` reachable in ``value``.
+def _collect(value: Any, addrs: dict[str, None], goals: dict[str, None]) -> None:
+    """Record first-occurrence of every :class:`Addr` / :class:`GoalId` reachable.
 
-    ``into`` is an insertion-ordered dict used as an ordered set; the first time
-    a raw token is seen fixes its logical index.
+    ``addrs`` / ``goals`` are insertion-ordered dicts used as ordered sets (two
+    SEPARATE namespaces); the first time a raw token is seen fixes its logical
+    index in its namespace.
     """
     if isinstance(value, Addr):
-        into.setdefault(value.raw, None)
+        addrs.setdefault(value.raw, None)
+    elif isinstance(value, GoalId):
+        goals.setdefault(value.raw, None)
     elif isinstance(value, dict):
         for k in sorted(value):  # deterministic intra-payload scan order
-            _collect_addrs(value[k], into)
+            _collect(value[k], addrs, goals)
     elif isinstance(value, (list, tuple)):
         for item in value:
-            _collect_addrs(item, into)
+            _collect(item, addrs, goals)
 
 
-def _relabel(value: Any, labels: dict[str, str]) -> Any:
-    """Recursively rewrite every :class:`Addr` to its logical-var string."""
+def _relabel(value: Any, labels: dict[str, str], goal_labels: dict[str, str]) -> Any:
+    """Rewrite each :class:`Addr` → ``v_i`` and each :class:`GoalId` → ``g_i``."""
     if isinstance(value, Addr):
         return labels[value.raw]
+    if isinstance(value, GoalId):
+        return goal_labels[value.raw]
     if isinstance(value, dict):
-        return {k: _relabel(v, labels) for k, v in value.items()}
+        return {k: _relabel(v, labels, goal_labels) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
-        return tuple(_relabel(item, labels) for item in value)
+        return tuple(_relabel(item, labels, goal_labels) for item in value)
     return value
 
 
@@ -134,18 +160,21 @@ def normalize(
     """
     events = sorted(raw_events, key=lambda e: e.seq)
 
-    # Pass 1 — first-occurrence label map over the whole run.
+    # Pass 1 — first-occurrence label maps over the whole run (two namespaces:
+    # heap addresses -> v_i, goal ids -> g_i).
     seen: dict[str, None] = {}
+    goals_seen: dict[str, None] = {}
     for ev in events:
         for a in ev.reads:
             seen.setdefault(a.raw, None)
         for a in ev.writes:
             seen.setdefault(a.raw, None)
-        _collect_addrs(ev.payload, seen)
-    _collect_addrs(
-        [shape for _name, shape in raw_outcome.bindings], seen
+        _collect(ev.payload, seen, goals_seen)
+    _collect(
+        [shape for _name, shape in raw_outcome.bindings], seen, goals_seen
     )
     labels = {raw: f"v{i}" for i, raw in enumerate(seen)}
+    goal_labels = {raw: f"g{i}" for i, raw in enumerate(goals_seen)}
 
     # Pass 2 — relabel + derive causes (writer last-bind frontier).
     last_bind: dict[str, int] = {}
@@ -157,7 +186,7 @@ def normalize(
             Event(
                 seq=ev.seq,
                 kind=ev.kind,
-                payload=_relabel(ev.payload, labels),
+                payload=_relabel(ev.payload, labels, goal_labels),
                 causes=causes,
             )
         )
@@ -165,7 +194,8 @@ def normalize(
             last_bind[labels[a.raw]] = ev.seq
 
     bindings = tuple(
-        (name, _relabel(shape, labels)) for name, shape in raw_outcome.bindings
+        (name, _relabel(shape, labels, goal_labels))
+        for name, shape in raw_outcome.bindings
     )
     return Trace(events=tuple(out_events), outcome=Outcome(raw_outcome.status, bindings))
 
@@ -178,9 +208,10 @@ def normalize(
 #   EV <seq> <KIND> [reads=a,b] [writes=c] [<key>=<value> ...]
 #   OUT <status> [<var>=<shape> ...]
 #
-# Address-valued fields (wrapped as Addr, hence relabeled): ``reads``,
-# ``writes``, UNIFY ``vars``, SUSPEND ``reader``, REACTIVATE/WRITER_BIND
-# ``writer``. Plain fields (kept verbatim): UNIFY ``outcome``, ``goal``,
+# Address-valued fields (wrapped as Addr, relabeled v_i): ``reads``, ``writes``,
+# UNIFY ``vars``, SUSPEND ``reader``, REACTIVATE/WRITER_BIND ``writer``.
+# Goal-id fields (wrapped as GoalId, relabeled g_i in a separate namespace):
+# SUSPEND/REACTIVATE ``goal``. Plain fields (kept verbatim): UNIFY ``outcome``,
 # WRITER_BIND ``shape``, BYTECODE_OP ``opcode`` / ``pc``. Per-kind defaults
 # supply reads/writes when not given explicitly (writer-MGU).
 _ADDR_FIELDS = {
@@ -189,6 +220,11 @@ _ADDR_FIELDS = {
     EventKind.REACTIVATE: ("writer",),
     EventKind.WRITER_BIND: ("writer",),
     EventKind.BYTECODE_OP: (),
+}
+
+_GOAL_FIELDS = {
+    EventKind.SUSPEND: ("goal",),
+    EventKind.REACTIVATE: ("goal",),
 }
 
 
@@ -259,10 +295,13 @@ def _parse_event(body: str) -> RawEvent:
 
     payload: dict[str, Any] = {}
     addr_keys = _ADDR_FIELDS[kind]
+    goal_keys = _GOAL_FIELDS.get(kind, ())
     for key, value in fields.items():
         if key in addr_keys:
             addrs = [Addr(a) for a in _split_csv(value)]
             payload[key] = addrs if key == "vars" else (addrs[0] if addrs else None)
+        elif key in goal_keys:
+            payload[key] = GoalId(value)  # relabeled g_i (separate namespace)
         elif kind is EventKind.BYTECODE_OP and key == "pc":
             payload[key] = int(value)
         else:
