@@ -5,7 +5,7 @@
 - **Project**: glpnet — Windows-side workstreams (D2NET, PGLite, Flutter multiagent app) sharing the GLP language with the sibling Mac/Linux GLP repo.
 - **Working directory**: `D:\BSTDEV\RESEARCH\glp\glpnet`
 - **User**: Gabi (`vonwenm` / `mvonwen@gmail.com`)
-- **Branching/versioning**: see `docs/BRANCHING.md` and `docs/VERSIONING.md` (CalVer `vYYYY.MM.DD[-N]` on `main`; feature branches `NNN-short-name`).
+- **Branching/versioning**: **buildkit GitFlow** — see `docs/BRANCHING.md` and `docs/VERSIONING.md` (feature `NNN-short-name` → `develop` → `release/*` → `main`; CalVer tags `vYYYY.MM.DD.N` cut by `buildkit release`, never by hand).
 - **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
 ## 🔴 PGLite data-dir — use the canonical cluster `--data-dir C:/pglite/research/glpnet`
@@ -258,10 +258,11 @@ Multi-line `-m` arguments confuse the shell. Always:
 git commit -m "Fix Channel definition to match prelude"
 ```
 
-### Branch rules
+### Branch rules (buildkit GitFlow)
 
-- `main` is the source of truth — only Gabi merges into it.
-- Each Claude Code session works on its own branch (`claude/...-<session-id>` or feature branch like `006-d2net-init-skill`).
+- `main` is the **release trunk** — only the `buildkit release` PR (`release/* → main`) writes it; never hand-merge a feature into `main`.
+- `develop` is the **integration branch** — features PR into `develop`.
+- Each session works on its own feature branch (`NNN-short-name`) or `claude/...-<session-id>`, branched **off `develop`**.
 - Each session can only push to its own branch (HTTP 403 otherwise) but can pull from any branch.
 
 ### Baseline checkpoint before risky work
@@ -273,24 +274,25 @@ bash test/run_all_tests.sh
 git add -A && git commit -m "Checkpoint: before attempting X"
 ```
 
-### End-of-task: always offer fetch / merge / push
+### End-of-task: ship via buildkit
 
-When a task is committed and pushed, give Gabi the merge template with **the actual branch name substituted** and the `cd` step included:
+When a feature branch is ready, ship it through the buildkit GitFlow (NOT a hand
+merge to `main`). From the feature branch:
 
 ```
-cd D:\BSTDEV\RESEARCH\glp\glpnet
-git checkout main
-git pull origin main
-git fetch origin <ACTUAL-BRANCH-NAME>
-git merge -m "Merge <ACTUAL-BRANCH-NAME> into main" origin/<ACTUAL-BRANCH-NAME>
-git push origin main
+buildkit ship --skip-preflight
 ```
+
+`buildkit ship` is the conductor: `commit → preflight → push → PR(feature→develop)
+→ release → tag → back-merge`. Use `--skip-preflight` (its `pytest tests/` preflight
+does not match glpnet's `codeconv/tests/` + bash REPL suite — run the suites
+yourself first). `buildkit release` (run from `develop`) is the standalone release
+half. See `docs/BRANCHING.md`.
 
 Common issues:
-- *"not something we can merge"* → run the `git fetch` step first.
-- *"refusing to merge unrelated histories"* → add `--allow-unrelated-histories`.
-- Merge conflicts → resolve, `git add -A`, commit, push.
-- Divergent branches → `git pull origin main --no-rebase`.
+- *PR base "develop" missing* → `develop` must exist (`git push origin origin/main:refs/heads/develop` once).
+- *"no commits to seed CHANGELOG"* → release was cut from a stale `develop`; `git checkout develop && git pull`, then `buildkit release`.
+- Merge conflicts in a PR → resolve on the branch, push, re-run.
 
 For sibling-repo (Mac) merge paths, see appendix.
 
