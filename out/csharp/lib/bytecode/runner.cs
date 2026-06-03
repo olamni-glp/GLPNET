@@ -788,13 +788,56 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Allocate");
 
     private _Step ExecBodySetConst(RunnerContext cx, BodySetConst op)
-        => throw new NotImplementedException("runner arm: BodySetConst");
+    {
+        if (cx.InBody)
+        {
+            // bindWriterConst now returns activations (FCP: all bindings wake goals)
+            var acts = cx.Rt.Heap.BindWriterConst((int)op.WriterId, op.Value);
+            foreach (var a in acts)
+            {
+                cx.Rt.Gq.Enqueue(a);
+                cx.OnActivation?.Invoke(a);
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecBodySetConstArg(RunnerContext cx, BodySetConstArg op)
-        => throw new NotImplementedException("runner arm: BodySetConstArg");
+    {
+        var arg = cx.Env.Arg((int)op.Slot);
+        int? writerAddr = (arg is VarRef avr && cx.Rt.Heap.IsWriter(avr.Addr)) ? avr.Addr : (int?)null;
+        if (cx.InBody && writerAddr != null)
+        {
+            // bindWriterConst now returns activations (FCP: all bindings wake goals)
+            var acts = cx.Rt.Heap.BindWriterConst(writerAddr.Value, op.Value);
+            foreach (var a in acts)
+            {
+                cx.Rt.Gq.Enqueue(a);
+                cx.OnActivation?.Invoke(a);
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecBodySetStructConstArgs(RunnerContext cx, BodySetStructConstArgs op)
-        => throw new NotImplementedException("runner arm: BodySetStructConstArgs");
+    {
+        if (cx.InBody)
+        {
+            var args = new List<Term>(op.ConstArgs.Count);
+            foreach (var v in op.ConstArgs)
+            {
+                args.Add(v is Term vt ? vt : new ConstTerm(v));
+            }
+            // bindWriterStruct now returns activations (FCP: all bindings wake goals)
+            var acts = cx.Rt.Heap.BindWriterStruct((int)op.WriterId, op.Functor, args);
+            foreach (var a in acts)
+            {
+                cx.Rt.Gq.Enqueue(a);
+                cx.OnActivation?.Invoke(a);
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecClauseNext(RunnerContext cx, ClauseNext op)
         => throw new NotImplementedException("runner arm: ClauseNext");
@@ -1793,22 +1836,135 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: Push");
 
     private _Step ExecPutBoundConst(RunnerContext cx, PutBoundConst op)
-        => throw new NotImplementedException("runner arm: PutBoundConst");
+    {
+        // Put a variable bound to a constant value
+        // Used for passing constants as arguments in queries
+        var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+        cx.Rt.Heap.BindWriterConst(writerAddr, op.Value);
+        cx.ArgSlots[(int)op.ArgSlot] = new VarRef(readerAddr);
+        return _Step.Advance();
+    }
 
     private _Step ExecPutBoundNil(RunnerContext cx, PutBoundNil op)
-        => throw new NotImplementedException("runner arm: PutBoundNil");
+    {
+        // Put a variable bound to 'nil'
+        // Used for passing empty lists as arguments in queries
+        var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+        cx.Rt.Heap.BindWriterConst(writerAddr, "nil");
+        cx.ArgSlots[(int)op.ArgSlot] = new VarRef(readerAddr);
+        return _Step.Advance();
+    }
 
     private _Step ExecPutConstant(RunnerContext cx, PutConstant op)
-        => throw new NotImplementedException("runner arm: PutConstant");
+    {
+        // Create fresh variable, bind to constant, store reader VarRef in argSlot
+        // Per baseline behavior: constants are stored as VarRefs to bound variables
+        var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+        cx.Rt.Heap.BindWriterConst(writerAddr, op.Value);
+        cx.ArgSlots[(int)op.ArgSlot] = new VarRef(readerAddr);
+        return _Step.Advance();
+    }
 
     private _Step ExecPutList(RunnerContext cx, PutList op)
-        => throw new NotImplementedException("runner arm: PutList");
+    {
+        // Begin list construction in argument register
+        // Equivalent to PutStructure('[|]', 2, op.argSlot)
+        if (cx.InBody)
+        {
+            // Store target writer addr from environment
+            var arg = cx.Env.Arg((int)op.ArgSlot);
+            int? targetWriterAddr = (arg is VarRef avr && cx.Rt.Heap.IsWriter(avr.Addr)) ? avr.Addr : (int?)null;
+            if (targetWriterAddr == null)
+            {
+                // WARNING: PutList argSlot has no writer in environment
+                return _Step.Advance();
+            }
+
+            // Store the writer addr in context for later binding
+            cx.ClauseVars[-1] = targetWriterAddr.Value; // Use -1 as special marker for structure binding
+
+            // Create list structure [H|T] with placeholder args (will be filled by Set* instructions)
+            var structArgs = new List<Term>(2) { new ConstTerm(null), new ConstTerm(null) }; // Lists have arity 2
+            cx.CurrentStructure = new StructTerm("[|]", structArgs);
+            cx.S = 0; // Start at first argument position
+            cx.Mode = UnifyMode.Write;
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecPutNil(RunnerContext cx, PutNil op)
-        => throw new NotImplementedException("runner arm: PutNil");
+    {
+        if (cx.InBody)
+        {
+            // Place empty list [] in argument register
+            // Create a fresh variable bound to [] (same as PutConstant)
+            var (writerAddr, readerAddr) = cx.Rt.Heap.AllocateVariable();
+            cx.Rt.Heap.BindWriterConst(writerAddr, "nil"); // [] represented as 'nil'
+            cx.ArgSlots[(int)op.ArgSlot] = new VarRef(readerAddr);
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecPutStructure(RunnerContext cx, PutStructure op)
-        => throw new NotImplementedException("runner arm: PutStructure");
+    {
+        if (cx.InBody)
+        {
+            // BODY phase: Build StructTerm with heap allocation
+            // Per spec v2.16 section 7.1: Build StructTerm incrementally via set_* instructions
+            // Structure will be stored in argSlots when complete
+
+            // Create fresh variable for binding the structure
+            var (writerAddr, _) = cx.Rt.Heap.AllocateVariable();
+
+            // Handle nested structures - push parent context to stack
+            if (op.ArgSlot == -1 || cx.CurrentStructure != null)
+            {
+                cx.ClauseVars.TryGetValue(-1, out var parentWriterId);
+                cx.ParentStack.Add(new _ParentContext(
+                    structure: cx.CurrentStructure,
+                    s: cx.S,
+                    mode: cx.Mode,
+                    writerId: parentWriterId));
+            }
+
+            // Store writer address for structure binding
+            cx.ClauseVars[-1] = writerAddr;
+
+            // Store target argSlot for later (when structure is complete)
+            if (op.ArgSlot >= 0 && op.ArgSlot < 10)
+            {
+                cx.ClauseVars[-2] = (int)op.ArgSlot; // Temporary storage of target slot
+            }
+            else
+            {
+                cx.ClauseVars[(int)op.ArgSlot] = new VarRef(writerAddr);
+            }
+
+            // Create structure with placeholder args (filled by Set* instructions)
+            var structArgs = new List<Term>((int)op.Arity);
+            for (var i = 0; i < (int)op.Arity; i++) structArgs.Add(new ConstTerm(null));
+            cx.CurrentStructure = new StructTerm(op.Functor, structArgs);
+            cx.S = 0;
+            cx.Mode = UnifyMode.Write;
+        }
+        else
+        {
+            // PRE-COMMIT phase (guard argument building): Build StructTerm WITHOUT heap allocation
+            // The structure is temporary, just for passing to the guard predicate
+            // No writer variable binding needed - store directly in argSlots when complete
+
+            // Remember target argSlot for when structure is complete
+            cx.GuardArgSlot = (int)op.ArgSlot;
+
+            // Create structure with placeholder args (filled by UnifyVariable/UnifyConstant)
+            var structArgs = new List<Term>((int)op.Arity);
+            for (var i = 0; i < (int)op.Arity; i++) structArgs.Add(new ConstTerm(null));
+            cx.CurrentStructure = new StructTerm(op.Functor, structArgs);
+            cx.S = 0;
+            cx.Mode = UnifyMode.Write;
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecRequeue(RunnerContext cx, Requeue op)
         => throw new NotImplementedException("runner arm: Requeue");
@@ -1837,7 +1993,118 @@ public sealed class BytecodeRunner
         => throw new NotImplementedException("runner arm: ResetAndGoto");
 
     private _Step ExecSetConstant(RunnerContext cx, SetConstant op)
-        => throw new NotImplementedException("runner arm: SetConstant");
+    {
+        if (cx.InBody && cx.Mode == UnifyMode.Write && cx.CurrentStructure is StructTerm struc)
+        {
+            // Store ConstTerm in current structure at position S
+            var sargs = MutableArgs(struc);
+            sargs[cx.S] = new ConstTerm(op.Value);
+            cx.S++; // Move to next position
+
+            // Check if structure is complete (all arguments filled)
+            if (cx.S >= sargs.Count)
+            {
+                // Structure complete - bind the target writer (stored at clauseVars[-1])
+                cx.ClauseVars.TryGetValue(-1, out var targetWriterAddr);
+                // Extract int from VarRef if needed
+                int? targetWriterAddrInt = targetWriterAddr is VarRef twvr ? twvr.Addr : (targetWriterAddr is int twi ? twi : (int?)null);
+                if (targetWriterAddrInt != null)
+                {
+                    // Bind the writer to the completed structure (returns activations)
+                    var acts = cx.Rt.Heap.BindWriterStruct(targetWriterAddrInt.Value, struc.Functor, sargs);
+                    foreach (var a in acts)
+                    {
+                        cx.Rt.Gq.Enqueue(a);
+                        cx.OnActivation?.Invoke(a);
+                    }
+                }
+
+                // Handle parent structure restoration (nested structures) - pop from stack
+                if (cx.ParentStack.Count > 0 && targetWriterAddrInt != null)
+                {
+                    var nestedWriterAddr = targetWriterAddrInt.Value;
+                    var parent = cx.ParentStack[cx.ParentStack.Count - 1];
+                    cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                    var parentWriterAddr = parent.WriterId;
+
+                    if (parent.Structure is StructTerm parentStruct)
+                    {
+                        // Use reader address (writer + 1)
+                        MutableArgs(parentStruct)[parent.S] = new VarRef(nestedWriterAddr + 1);
+                    }
+
+                    cx.CurrentStructure = parent.Structure;
+                    cx.S = parent.S + 1;
+                    cx.Mode = parent.Mode;
+                    cx.ClauseVars[-1] = parentWriterAddr;
+
+                    // Check if parent is now complete - and recursively complete ancestors
+                    while (cx.CurrentStructure is StructTerm parentStruct2)
+                    {
+                        cx.ClauseVars.TryGetValue(-1, out var currentWriterAddr);
+                        int? currentWriterAddrInt = currentWriterAddr is VarRef cwvr ? cwvr.Addr : (currentWriterAddr is int cwi ? cwi : (int?)null);
+                        var pargs = MutableArgs(parentStruct2);
+
+                        if (cx.S >= pargs.Count && currentWriterAddrInt != null)
+                        {
+                            // bindWriterStruct returns activations directly
+                            var acts = cx.Rt.Heap.BindWriterStruct(currentWriterAddrInt.Value, parentStruct2.Functor, pargs);
+                            foreach (var a in acts)
+                            {
+                                cx.Rt.Gq.Enqueue(a);
+                                cx.OnActivation?.Invoke(a);
+                            }
+
+                            // Check for more ancestors
+                            if (cx.ParentStack.Count > 0)
+                            {
+                                var ancestor = cx.ParentStack[cx.ParentStack.Count - 1];
+                                cx.ParentStack.RemoveAt(cx.ParentStack.Count - 1);
+                                if (ancestor.Structure is StructTerm ancestorStruct)
+                                {
+                                    // Use reader address (writer + 1)
+                                    MutableArgs(ancestorStruct)[ancestor.S] = new VarRef(currentWriterAddrInt.Value + 1);
+                                }
+                                cx.CurrentStructure = ancestor.Structure;
+                                cx.S = ancestor.S + 1;
+                                cx.Mode = ancestor.Mode;
+                                cx.ClauseVars[-1] = ancestor.WriterId;
+                            }
+                            else
+                            {
+                                // No more ancestors - store in argSlots and reset
+                                if (cx.ClauseVars.TryGetValue(-2, out var pts) && pts is int parentTargetSlot && parentTargetSlot >= 0 && parentTargetSlot < 10)
+                                {
+                                    // Use reader address (writer + 1)
+                                    cx.ArgSlots[parentTargetSlot] = new VarRef(currentWriterAddrInt.Value + 1);
+                                    cx.ClauseVars.Remove(-2);
+                                }
+                                cx.CurrentStructure = null;
+                                cx.Mode = UnifyMode.Read;
+                                cx.S = 0;
+                                cx.ClauseVars.Remove(-1);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // Parent not complete yet, stop
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // No parent - reset structure building state
+                    cx.CurrentStructure = null;
+                    cx.Mode = UnifyMode.Read;
+                    cx.S = 0;
+                    cx.ClauseVars.Remove(-1); // Clear the marker
+                }
+            }
+        }
+        return _Step.Advance();
+    }
 
     private _Step ExecSpawn(RunnerContext cx, Spawn op)
         => throw new NotImplementedException("runner arm: Spawn");
