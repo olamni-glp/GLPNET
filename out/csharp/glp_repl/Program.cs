@@ -1,22 +1,22 @@
-// glp_repl placeholder entrypoint — feature 020 (T017 target).
+// glp_repl executable entrypoint — feature 020 (T017).
 //
-// While bulk Dart→C# codegen for the runtime is in flight (the
-// `/codeconv-codegen` drive seeded by feature 019), this stub keeps the
-// `glp_repl` executable project building so the build-gate plumbing is
-// real before any runtime code lands. T017 replaces this file with the
-// converted REPL + the structured `:trace` instrumentation the
-// differential equivalence oracle (feature 020) consumes — see
-// `specs/020-trace-equivalence-fidelity/contracts/trace_normalization.md`.
+// The REAL REPL is the converted `GlpRuntime.Repl.Program` (from
+// glp_runtime/bin/glp_repl.dart), compiled into the glp_runtime_net library
+// (out/csharp/bin/glp_repl.cs). This file is the executable's thin startup
+// shim: it delegates to that converted entrypoint so `glp_repl.exe` runs the
+// converted runtime instead of the former placeholder.
+//
+// The structured trace instrumentation the differential equivalence oracle
+// (feature 020) consumes is added candidate-side inside the converted runtime
+// (see specs/020-trace-equivalence-fidelity/contracts/trace_normalization.md);
+// the Dart golden under glp_runtime/ is never modified (R10 / HARD GATE 6).
 
-namespace GlpRuntime.Repl;
+using System.Threading.Tasks;
 
-internal static class Program
+namespace GlpRuntime.Repl.Host;
+
+internal static class EntryPoint
 {
-    private static int Main(string[] args)
-    {
-        System.Console.Error.WriteLine(
-            "glp_repl: placeholder — converted runtime not yet built. " +
-            "See specs/020-trace-equivalence-fidelity/ (T017 replaces this entrypoint).");
-        return 0;
-    }
+    // Task-returning async entry point; forwards argv to the converted REPL.
+    private static Task Main(string[] args) => GlpRuntime.Repl.Program.Main(args);
 }
