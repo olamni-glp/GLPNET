@@ -1,0 +1,43 @@
+% ch-05-ex-03-mode-checked-merge.glp
+%
+% This file presents the §5.3 procedure declaration syntax and the §5.4
+% worked-example typed merge/3 from book pp 48–49 (PDF pp 60–61). Clauses
+% byte-exact from the PDF.
+%
+% Programs included (byte-exact):
+%   §5.2 (book p 48): List ::= [] ; [Any | List].   — duplicated inline so the file is self-contained
+%   §5.3 (book p 48): procedure merge(List?, List?, List).  — moded declaration
+%   §5.4 (book p 49): merge/3 — three clauses (interleave-from-first, interleave-from-second, both-empty base)
+%
+% References Formal 5.2 (Mode Semantics, book p 49). The `%%` annotations on
+% each merge/3 clause walk through the head-mode reasoning the §5.4 prose
+% describes.
+%
+% A related un-typed merge/3 appears in chapter 4 ex-04 (book §4.2.5, p 32).
+% Same procedure name, different signature: ch04's version has no `procedure`
+% declaration and four clauses; ch05's typed version has one `procedure`
+% declaration and three clauses. The two are pedagogically distinct
+% presentations; this file's clauses are byte-exact from §5.4 PDF, NOT copies
+% of ch04's.
+
+%% Universal List type, duplicated inline from ex-02 so this file is self-contained.
+List ::= [] ; [Any | List].
+
+%% Procedure declaration: merge takes two consume-mode List inputs and produces
+%% a List output. The `?` marks each consume position; absence of `?` is produce.
+procedure merge(List?, List?, List).
+
+%% Clause 1 — interleave-from-first-stream. Head matches `[X|Xs]` on arg 1,
+%% passes Ys through unchanged on arg 2, and constructs `[X?|Zs?]` on arg 3.
+%% Mode check: writers X, Xs, Ys at the consume positions; produced reader
+%% holes X?, Zs? inside the constructed cons at arg 3. Body recurses with
+%% arguments swapped — the swap is what makes the merge fair.
+merge([X|Xs], Ys, [X?|Zs?]) :- merge(Ys?, Xs?, Zs).
+
+%% Clause 2 — interleave-from-second-stream. Symmetric to clause 1: matches on
+%% arg 2 instead of arg 1, otherwise identical pattern.
+merge(Xs, [Y|Ys], [Y?|Zs?]) :- merge(Xs?, Ys?, Zs).
+
+%% Clause 3 — both inputs exhausted, output is the empty list. Unit clause; no
+%% body. Termination case for the recursion.
+merge([], [], []).

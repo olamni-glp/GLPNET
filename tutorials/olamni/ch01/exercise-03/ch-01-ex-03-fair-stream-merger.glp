@@ -1,0 +1,12 @@
+%% ch-01-ex-03-fair-stream-merger.glp
+%% Program 1.1 from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §1.6, p 5,
+%% with variables RENAMED to single-letter mathematical identifiers:
+%%   X  -> A   Y  -> B   Zs -> Cs
+%%   Xs -> As  Ys -> Bs
+%% Pedagogical point (after ex-01 and ex-02): the SRSW reader/writer pairing
+%% determines behaviour, not the choice of identifier text. Goal bindings are
+%% identical to ex-01 and ex-02.
+
+merge([A|As],Bs,[A?|Cs?]) :- merge(Bs?,As?,Cs).  %% take from stream 1; swap to alternate
+merge(As,[B|Bs],[B?|Cs?]) :- merge(As?,Bs?,Cs).  %% take from stream 2; swap to alternate
+merge([],[],[]).                                 %% both streams empty: terminate

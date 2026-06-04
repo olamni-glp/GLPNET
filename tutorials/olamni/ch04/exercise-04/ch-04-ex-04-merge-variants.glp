@@ -1,0 +1,74 @@
+% ch-04-ex-04-merge-variants.glp
+%
+% This file presents the §4.2 merge-variant Programs from book pp 32–33
+% (PDF pp 44–45). All clauses byte-exact from the PDF.
+%
+% Programs included:
+%   §4.2.5 (book p 32): simple fair merge/3 — 4 clauses (two recursive +
+%     two early-exit base cases for empty streams). DIFFERENT from chapter 3's
+%     Program 3.1 (which is a 3-clause merge/3 with a single empty-empty base);
+%     this version handles each empty-stream-arrival as an early-exit, copying
+%     the remaining stream verbatim to the output.
+%   §4.2.6 (book p 33): dynamic merge — dmerge/3 + dmerger/3 — handles
+%     stream-of-streams with merge() messages. Uses tuple/1 and constant/1
+%     type guards plus ~(=?=) negation to dispatch on incoming tags.
+%   §4.2.7 (book p 33): static balanced merge tree — merge_tree/2 + merge_layer/2
+%     — pairwise reduction of a list of streams.
+%
+% No new body kernels introduced. The simple merge/3 + merge_layer/2 use
+% Program-3.1-style argument-swap recursion for fairness.
+
+%% §4.2.5 (book p 32): simple fair merge/3 — four clauses with early-exit base cases.
+
+%% Output from first stream — head's X forwarded; recursive call swaps args.
+merge([X|Xs], Ys, [X?|Zs?]) :- merge(Ys?, Xs?, Zs).
+%% Output from second stream — head's Y forwarded; recursive call preserves order.
+merge(Xs, [Y|Ys], [Y?|Zs?]) :- merge(Xs?, Ys?, Zs).
+%% First stream empty — copy remaining second stream Ys to output via writer/reader pair Ys/Ys?.
+merge([], Ys, Ys?).
+%% Second stream empty — copy remaining first stream Xs to output via writer/reader pair Xs/Xs?.
+merge(Xs, [], Xs?).
+
+%% §4.2.6 (book p 33): dynamic merge dmerge/3 + dmerger/3.
+
+%% dmerge clause 1 — first-stream merge() message: spawn dmerger to merge incoming Ws into the first stream.
+dmerge([merge(Ws)|Xs], Ys, Zs?) :-
+    dmerger(Ws?, Xs?, Xs1), dmerge(Xs1?, Ys?, Zs).
+%% dmerge clause 2 — second-stream merge() message: spawn dmerger to merge incoming Ws into the second stream.
+dmerge(Xs, [merge(Ws)|Ys], Zs?) :-
+    dmerger(Ws?, Ys?, Ys1), dmerge(Xs?, Ys1?, Zs).
+%% dmerge clause 3 — first-stream tuple element NOT merge() tagged: forward to output, recurse with arg-swap.
+dmerge([X|Xs], Ys, [X?|Zs?]) :-
+    tuple(X?), ~(X? =?= merge(_)) | dmerge(Ys?, Xs?, Zs).
+%% dmerge clause 4 — first-stream constant element: forward to output, recurse with arg-swap.
+dmerge([X|Xs], Ys, [X?|Zs?]) :-
+    constant(X?) | dmerge(Ys?, Xs?, Zs).
+%% dmerge clause 5 — second-stream tuple element NOT merge() tagged: forward, preserve order.
+dmerge(Xs, [Y|Ys], [Y?|Zs?]) :-
+    tuple(Y?), ~(Y? =?= merge(_)) | dmerge(Xs?, Ys?, Zs).
+%% dmerge clause 6 — second-stream constant element: forward, preserve order.
+dmerge(Xs, [Y|Ys], [Y?|Zs?]) :-
+    constant(Y?) | dmerge(Xs?, Ys?, Zs).
+%% dmerge clause 7 — both streams empty: terminate.
+dmerge([], [], []).
+
+%% dmerger entry — wraps dmerge with output writer/reader pair.
+dmerger(Ws, Xs, Out?) :- dmerge(Ws?, Xs?, Out).
+
+%% §4.2.7 (book p 33): static balanced merge tree — merge_tree/2 + merge_layer/2.
+
+%% merge_tree base — single-stream list reduces to that stream.
+merge_tree([Xs], Xs?).
+%% merge_tree recursive — reduce one layer (pairwise merging adjacent streams), then recurse on the layer.
+merge_tree([X,Y|Rest], Out?) :-
+    merge_layer([X?,Y?|Rest?], Layer),
+    merge_tree(Layer?, Out).
+
+%% merge_layer empty — no streams to merge.
+merge_layer([], []).
+%% merge_layer singleton — pass the lone stream through unchanged.
+merge_layer([Xs], [Xs?]).
+%% merge_layer pairwise — merge first two streams, recurse on rest.
+merge_layer([Xs,Ys|Rest], [Zs?|Layer?]) :-
+    merge(Xs?, Ys?, Zs),
+    merge_layer(Rest?, Layer).

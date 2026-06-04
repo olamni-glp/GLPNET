@@ -1,0 +1,23 @@
+% ch-05-ex-07-mode-error-failing.glp
+%
+% ⚠ THIS FILE IS MEANT TO FAIL TO LOAD ⚠
+%
+% This file presents the §5.7.2 mode-error illustration from book pp 51–52,
+% byte-exact from the PDF. Loading it should PRODUCE A MODE-ERROR — that
+% rejection is the point. Both arguments of `bar(X?, Y).` have inverted
+% reader/writer roles versus the procedure declaration, and the type-checker
+% says so.
+%
+% Programs included (byte-exact):
+%   §5.7.2 (book pp 51–52): procedure bar(Number?, Number).
+%   §5.7.2 (book pp 51–52): bar(X?, Y).                       — the trigger
+%
+% See ch-05-ex-07-mode-error-corrected.glp for the book-cited corrected form.
+
+%% Declaration: arg 1 consume (`Number?`), arg 2 produce (`Number`).
+procedure bar(Number?, Number).
+
+%% Fact `bar(X?, Y).` — X? is a reader at arg 1 (consume position expects a
+%% writer); Y is a writer at arg 2 (produce position expects a reader hole).
+%% Both modes are inverted. The type-checker rejects the load.
+bar(X?, Y).

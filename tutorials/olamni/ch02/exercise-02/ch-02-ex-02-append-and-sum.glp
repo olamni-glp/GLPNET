@@ -1,0 +1,24 @@
+% ch-02-ex-02-append-and-sum.glp
+%% GLP append/3 byte-exact from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §4.2, pp 31-32.
+%% Imported into ch02 to illustrate the SRSW transition described in §2.2 (Linear Logic, Formal 2.1).
+%% This is the only cross-chapter import permitted in ch02 per the spec's Out-of-Scope section.
+%%
+%% This file extends ex-01: same GLP append, plus sum/2 and append_and_sum/3 to demonstrate
+%% that SRSW lets a downstream consumer (sum) compute on a stream from a producer (append).
+%% The arithmetic operator := comes from programs/self.glp, dispatching to the runtime's
+%% _add body kernel (see glp_runtime/lib/runtime/body_kernels.dart). The intermediate
+%% appended list is local to the append_and_sum/3 clause body — one writer in the append
+%% sub-call, one reader in the sum sub-call — the canonical producer-consumer SRSW idiom
+%% from book p 31 (producer/consumer pattern).
+
+append([], Ys, Ys?).                                   %% base: writer Ys binds; reader Ys? forwards the second list verbatim
+append([X|Xs], Ys, [X?|Zs?]) :- append(Xs?, Ys?, Zs).  %% recursive: writers in head; readers in body — paired
+
+sum([], 0).                                            %% base: empty list has sum zero
+sum([X|Xs], Total?) :-                                 %% recursive: head writers X, Xs; reader Total? paired with body's Total writer
+    sum(Xs?, Subtotal),                                %%   read Xs? to recurse on the tail; Subtotal writer paired with later reader
+    Total := Subtotal? + X?.                           %%   Total := sum-of-tail + head — := dispatches to _add body kernel
+
+append_and_sum(A, B, Sum?) :-                          %% top-level: append A and B locally, sum the result, expose Sum
+    append(A?, B?, Zs),                                %%   appender writes the local Zs (single writer)
+    sum(Zs?, Sum).                                     %%   summer reads the local Zs? (single reader) — SRSW satisfied without guard relaxation

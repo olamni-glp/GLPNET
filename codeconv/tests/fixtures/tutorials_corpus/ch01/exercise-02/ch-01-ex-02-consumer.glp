@@ -1,0 +1,4 @@
+% ch-01-ex-02-consumer.glp
+%
+%% consumer/3 folds a stream to a total (fixture exemplar).
+consumer([], A, A).

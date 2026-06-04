@@ -1,0 +1,72 @@
+% ch-04-ex-02-compound-circuits.glp
+%
+% This file presents the §4.1 compound-circuit Programs from book pp 29–30
+% (PDF pp 41–42). All clauses byte-exact from the PDF.
+%
+% Programs included:
+%   §4.1 Clauses with Bodies (book p 29): nand/3 — first clause-with-body
+%   §4.1 Guards for Multiple Reader Occurrences (book p 29–30): half_adder/4
+%     — uses `ground` guards because A? and B? each appear twice in the body
+%   §4.1 Compound Circuits (book p 30): full_adder/5 — composes two
+%     half_adders + or; each reader appears only once in the body
+%
+% Plus the duplicated logic gates (and/3, or/3, not/2, xor/3) from ex-01,
+% included inline per FR-010 self-containment so this file is loadable in a
+% fresh REPL session without ex-01.
+%
+% References Formal 4.1 (Produces and Consumes Parameters, book p 29) and
+% Formal 4.3 (Which Guards Enable Multiple Reader Occurrences, book p 35–36).
+%
+% The pedagogical theme of this exercise is the composition of unit-clause
+% gates (from ex-01) into clauses-with-bodies that compute compound circuits.
+% The `ground` guard on multi-reader clauses (half_adder) is the key
+% language feature ex-01 didn't yet exercise.
+
+%% §4.1 Logic Gates (book p 28) — duplicated inline from ex-01 per FR-010.
+
+%% AND truth table.
+and(1,1,1).
+and(1,0,0).
+and(0,1,0).
+and(0,0,0).
+
+%% OR truth table.
+or(1,1,1).
+or(1,0,1).
+or(0,1,1).
+or(0,0,0).
+
+%% NOT truth table.
+not(1,0).
+not(0,1).
+
+%% XOR truth table.
+xor(1,1,0).
+xor(1,0,1).
+xor(0,1,1).
+xor(0,0,0).
+
+%% §4.1 Clauses with Bodies (book p 29). A NAND gate inverts the output of
+%% an AND gate. Per Formal 4.1: third parameter Z? is a reader in the head
+%% (writer Z in body produces the value); A and B are writers in the head
+%% (paired readers A?, B? in body consume the input values).
+nand(A,B,Z?) :- and(A?,B?,W), not(W?,Z).
+
+%% §4.1 Guards for Multiple Reader Occurrences (book p 29–30). The half_adder
+%% takes two input bits and produces a sum and carry. The `ground(A?)` and
+%% `ground(B?)` guards are necessary because A? and B? each appear twice in
+%% the body; the guards ensure both inputs are fully bound before the body
+%% executes (per Formal 4.3 — type-test guards permit multiple reader
+%% occurrences on a single clause).
+half_adder(A,B,Sum?,Carry?) :-
+    ground(A?), ground(B?) |
+    xor(A?,B?,Sum), and(A?,B?,Carry).
+
+%% §4.1 Compound Circuits (book p 30). The full_adder adds three bits (A, B,
+%% Cin) and produces a sum bit and a carry-out. Composes two half_adders +
+%% one or-gate. Each reader appears only once in the body, so no `ground`
+%% guards are needed (cf. half_adder above).
+full_adder(A,B,Cin,Sum?,Cout?) :-
+    half_adder(A?,B?,S1,C1),
+    half_adder(S1?,Cin?,Sum,C2),
+    or(C1?,C2?,Cout).

@@ -620,6 +620,32 @@ public sealed class BytecodeRunner
     // ── Loop-internal helpers (faithful translations — used by the arms) ─────
 
     /// <summary>
+    /// Numeric-aware equality for constant VALUES, converging HEAD/UNIFY constant
+    /// matching to Dart's <c>==</c> on <c>num</c> (cross-type: <c>0 == 0.0</c>).
+    /// The prior type-strict <c>object.Equals</c> made an arithmetic-produced
+    /// <c>double 0.0</c> fail to match an integer literal <c>0</c>, so recursive
+    /// base clauses (e.g. <c>producer([], 0)</c>) never committed and the writer
+    /// tail was left open → spurious <c>→ failed</c>. For non-numeric values this
+    /// falls back to <c>object.Equals</c>, so atoms/strings/<c>nil</c> compare
+    /// exactly as before (safe drop-in). Mirrors runner.dart's <c>value != op.value</c>.
+    /// </summary>
+    private static bool NumEquals(object? a, object? b)
+    {
+        if (a is null || b is null) return Equals(a, b);
+        bool aNum = a is long or int or double;
+        bool bNum = b is long or int or double;
+        if (aNum && bNum)
+        {
+            // One side double → promote both to double (Dart int==double semantics);
+            // both integral → exact 64-bit compare (no precision loss).
+            if (a is double || b is double)
+                return Convert.ToDouble(a) == Convert.ToDouble(b);
+            return Convert.ToInt64(a) == Convert.ToInt64(b);
+        }
+        return Equals(a, b);
+    }
+
+    /// <summary>
     /// Find next ClauseTry instruction after current PC. If no more ClauseTry, look for
     /// ClauseNext / SuspendEnd / NoMoreClauses to check for suspension/failure.
     /// </summary>
@@ -1810,7 +1836,7 @@ public sealed class BytecodeRunner
                         cx.SigmaHat[wRef.Addr] = new ConstTerm(op.Value);
                     }
                 }
-                else if (value is ConstTerm ct && !Equals(ct.Value, op.Value))
+                else if (value is ConstTerm ct && !NumEquals(ct.Value, op.Value))
                 {
                     _softFailToNextClause(cx, pc);
                     return _Step.Jump(_findNextClauseTry(pc));
@@ -1842,7 +1868,7 @@ public sealed class BytecodeRunner
             {
                 // Bound - check if value matches constant
                 var value = term;
-                if (value is ConstTerm ct && !Equals(ct.Value, op.Value))
+                if (value is ConstTerm ct && !NumEquals(ct.Value, op.Value))
                 {
                     // Value mismatch - soft fail to next clause
                     _softFailToNextClause(cx, pc);
@@ -3491,7 +3517,7 @@ public sealed class BytecodeRunner
                 {
                     var value = struct3.Args[cx.S];
 
-                    if (value is ConstTerm vc && Equals(vc.Value, op.Value))
+                    if (value is ConstTerm vc && NumEquals(vc.Value, op.Value))
                     {
                         // Constant matches - advance
                         cx.S++;
@@ -3504,7 +3530,7 @@ public sealed class BytecodeRunner
                         {
                             // Already bound - check if it matches
                             var boundValue = cx.Rt.Heap.ValueOfWriter(wid);
-                            if (boundValue is ConstTerm bc && Equals(bc.Value, op.Value))
+                            if (boundValue is ConstTerm bc && NumEquals(bc.Value, op.Value))
                             {
                                 cx.S++; // Match successful
                             }
@@ -3530,7 +3556,7 @@ public sealed class BytecodeRunner
                         {
                             // Reader is bound - check if it matches
                             var boundValue = cx.Rt.Heap.GetReaderValue(rid);
-                            if (boundValue is ConstTerm bc && Equals(bc.Value, op.Value))
+                            if (boundValue is ConstTerm bc && NumEquals(bc.Value, op.Value))
                             {
                                 cx.S++; // Match successful
                             }
@@ -3729,7 +3755,7 @@ public sealed class BytecodeRunner
                             var storedVal = cx.Rt.Heap.ValueOfWriter(swi);
                             bool match;
                             if (argValue is ConstTerm avc && storedVal is ConstTerm svc)
-                                match = Equals(avc.Value, svc.Value);
+                                match = NumEquals(avc.Value, svc.Value);
                             else if (argValue is StructTerm avs && storedVal is StructTerm svs)
                                 match = avs.Functor == svs.Functor && avs.Args.Count == svs.Args.Count;
                             else
@@ -3749,7 +3775,7 @@ public sealed class BytecodeRunner
                     {
                         bool match;
                         if (argValue is ConstTerm avc && svtm is ConstTerm svc)
-                            match = Equals(avc.Value, svc.Value);
+                            match = NumEquals(avc.Value, svc.Value);
                         else if (argValue is StructTerm avs && svtm is StructTerm svs)
                             match = avs.Functor == svs.Functor && avs.Args.Count == svs.Args.Count;
                         else
@@ -3822,7 +3848,7 @@ public sealed class BytecodeRunner
                 {
                     cx.SigmaHat[swi] = arg;
                 }
-                else if (storedValue is ConstTerm svc && !Equals(svc.Value, ac.Value))
+                else if (storedValue is ConstTerm svc && !NumEquals(svc.Value, ac.Value))
                 {
                     _softFailToNextClause(cx, pc);
                     return _Step.Jump(_findNextClauseTry(pc));
@@ -5274,6 +5300,7 @@ public sealed class BytecodeRunner
                 }
 
             case "list":
+            case "is_list":
                 // Succeeds if X is a list ([] or [H|T])
                 if (args.Count == 0) return GuardResult.Fail;
                 {
@@ -5296,9 +5323,11 @@ public sealed class BytecodeRunner
                 }
 
             case "compound":
+            case "tuple":
                 // Succeeds if X is a compound term (structure with functor and arity > 0)
                 // Lists are compound since [X|Xs] = '.'(X, Xs)
                 // Does NOT imply groundness - may contain unbound subterms
+                // 'tuple' is a book-terminology synonym for 'compound' (per AoGLP 2025).
                 if (args.Count == 0) return GuardResult.Fail;
                 {
                     var val = GetValue(args[0]);
