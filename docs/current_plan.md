@@ -19,10 +19,18 @@ ch04/08 stale golden (C# == live Dart) · ch05/06+07 residual printer bits (byte
 normalization + A5 follow-up. PENDING GABI: Part-1 int-preservation+H1 (latent fidelity; a=skip/defer
 to A5, recommended · b=do now); corpus-golden dispositions. A2b loud-fail / M2 ordering → A5.
 A5 convspec/codegen follow-up so regen doesn't reintroduce any of the above.
-**Track B — 023 (3-Hybrid):** B0 pytest baseline · B1 setup+foundational · B2 shape-classifier
-(handle: section-single, use-case-project, compound goals, multi-goal seq, var :limit, multi-file
-single-session, load-failure-as-golden; DEFER+flag: two-session, bytecode-dump golden, Flutter-only
-golden) · B3 US1 · B4 US2 · B5 US3/4/5 · B6 proposals/skill/polish.
+**Track B — 023 (3-Hybrid): CORE DONE + verified end-to-end on C#.** Modules added:
+`outcome.py` (glued-output + goal-echo parser, fresh-var norm, golden kinds), `resolve.py`
+(shape-classifier: SECTION_SINGLE/MULTI_COMPOSE/TWO_SESSION/USE_CASE_PROJECT/NOT_IMPLEMENTED;
+goals from guide, golden positional), `backends.py` (C# default + Dart, P1 policy), `explain.py`
+(verdicts), `propose.py` (incl. ch04/07 spec-flag + ch04/08 stale-golden, decision 2), `render_run.py`;
+`cli.py` wired preview/run/explain/propose (exit 6–11); no-bridge guard extended; SKILL.md added;
+`test_tutorials_run.py` 20 tests incl. gated real-backend (all green; full tutorials suite 65 pass/1 skip).
+VERIFIED e2e on C#: `explain ch01 01` (US1+US4 all ✓match), `run ch07 01` (US2 — project+fplay1
+→suspended, ✓match), `preview` both shapes, ch03 multi-compose composed goal.
+REMAINING: US5 backend-choice CLI polish (--backend dart fallback notice wired; needs test),
+exhaustive fixture corpus (T002) + parity test (T034) + polish (T035–T039); two-session/bytecode/
+flutter remain classified-and-deferred by design.
 
 Live granular progress tracked via the session task list. 020 ledger preserved below ⬇️.
 

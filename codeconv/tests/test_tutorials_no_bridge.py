@@ -49,7 +49,8 @@ def test_importing_list_path_loads_no_bridge_modules() -> None:
     """Importing every list-path module pulls in no bridge/DBOS/DB stack."""
     code = (
         "import importlib, sys\n"
-        "for m in ('corpus','describe','match','render','cli'):\n"
+        "for m in ('corpus','describe','match','render','cli',\n"
+        "          'resolve','backends','outcome','explain','propose'):\n"
         "    importlib.import_module('codeconv.tutorials.' + m)\n"
         "banned = sorted(\n"
         "    m for m in sys.modules\n"
