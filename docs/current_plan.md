@@ -8,11 +8,17 @@ mechanism. Approvals (2026-06-04): 1-A hybrid · 2 hand-edit out/csharp now + co
 follow-up · 3-Hybrid (classify ALL shapes; handle cheap + load-failure-golden now; defer hard
 shapes with explicit flags). This advances 020's own "C# re-catch-up vs corrected golden" scope.
 
-**Track A — C# convergence (BLOCKS 023 real-backend):** A1 fix glp_repl.cs prelude-path (port
-Dart `_resolveRootSelfGlpPath`, loud-fail, restore diagnostic) · A2 fix prelude.cs (add
-tuple/is_list + /1 keys to match prelude.dart) · A2b converge `_LoadRootSelf` loud-fail · A3
-rebuild + verify ch01+ch07 vs goldens · A4 systematic Dart↔C# audit (subagents) + per-golden
-verify ch01–07 · A5 convspec/codegen follow-up note.
+**Track A — C# convergence (DONE: mandated default runs full corpus; 32/38 MATCH, 0 runtime bugs,
+0 regressions per 2026-06-04 sweep).** Committed: A1 glp_repl.cs prelude-path resolver [c2737113] ·
+A2 prelude.cs tuple/is_list builtins [c2737113] · D3 Any type in program_dfa.cs [aa2e958f] · D5
+is_list/tuple guard aliases [0013d1c0] · D1+D2 NumEquals constant matching [2c5a2224] · 6a mode-word
+lowercase casing [7b7942de]. All 7 previously-failing examples now MATCH.
+Remaining non-MATCH (NOT runtime bugs): ch04/07 spec-violation (C# correct, stale golden) ·
+ch04/08 stale golden (C# == live Dart) · ch05/06+07 residual printer bits (bytecode-bool `False`,
+"Exception:" prefix) · ch02/01 SRSW ` at Line 0,Col 0` suffix gap. → corpus proposals + 023 compare-
+normalization + A5 follow-up. PENDING GABI: Part-1 int-preservation+H1 (latent fidelity; a=skip/defer
+to A5, recommended · b=do now); corpus-golden dispositions. A2b loud-fail / M2 ordering → A5.
+A5 convspec/codegen follow-up so regen doesn't reintroduce any of the above.
 **Track B — 023 (3-Hybrid):** B0 pytest baseline · B1 setup+foundational · B2 shape-classifier
 (handle: section-single, use-case-project, compound goals, multi-goal seq, var :limit, multi-file
 single-session, load-failure-as-golden; DEFER+flag: two-session, bytecode-dump golden, Flutter-only

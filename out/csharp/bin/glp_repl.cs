@@ -64,6 +64,23 @@ public static class Program
             "under a tree whose root contains programs/self.glp).");
     }
 
+    /// <summary>
+    /// Render a double the way Dart's <c>double.toString()</c> does: whole-valued
+    /// doubles get a trailing ".0" (3.0 → "3.0"); non-whole values use the shortest
+    /// round-trip form (3.14 → "3.14"). Invariant culture so the decimal separator is
+    /// always '.'. Exponent forms are left as the round-trip renders them.
+    /// </summary>
+    private static string FormatDartDouble(double d)
+    {
+        if (double.IsNaN(d)) return "NaN";
+        if (double.IsPositiveInfinity(d)) return "Infinity";
+        if (double.IsNegativeInfinity(d)) return "-Infinity";
+        var s = d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        if (s.IndexOf('.') < 0 && s.IndexOf('E') < 0 && s.IndexOf('e') < 0)
+            s += ".0";
+        return s;
+    }
+
     // ── Entry point ───────────────────────────────────────────────────────────
 
     public static async Task Main(string[] args)
@@ -413,6 +430,11 @@ public static class Program
             // C# requires explicit string check because ConstTerm.Value is object?.
             if (c.Value is null || (c.Value is string str && str == "nil"))
                 return "[]";
+            // Dart `num.toString()` renders a whole-valued double WITH a trailing ".0"
+            // (e.g. 3.0 → "3.0"); the default C# double.ToString() drops it ("3"),
+            // which diverged from the goldens once division/real arithmetic appears.
+            if (c.Value is double dval)
+                return FormatDartDouble(dval);
             return c.Value.ToString() ?? string.Empty;
         }
 
