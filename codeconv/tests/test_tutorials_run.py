@@ -195,6 +195,33 @@ def test_real_backend_ch01_matches_golden():
         [(v.goal, v.kind.value, v.explanation) for v in verdicts]
 
 
+def _gated_run_all_match(chapter, number, *, timeout=180):
+    import codeconv.tutorials.backends as be
+    ex_ = _resolve(chapter, number)
+    result = be.run_example(ex_, backend=be.BackendKind.CSHARP, repo_root=REPO_ROOT,
+                            sibling_glp_root=SIBLING_GLP, timeout=timeout)
+    assert not result.p1, result.p1_notice
+    verdicts = ex.explain_run(result.goal_outcomes, ex_.golden)
+    assert verdicts and all(v.kind == ex.VerdictKind.MATCH for v in verdicts), \
+        [(v.goal, v.kind.value, v.explanation) for v in verdicts]
+
+
+@pytest.mark.skipif(not CS_EXE, reason="C# REPL build absent")
+@pytest.mark.skipif(not (SIBLING_GLP / "olamni" / "tutorial" / "ch03").is_dir(),
+                    reason="sibling GLP corpus absent")
+def test_real_backend_ch03_multi_compose_matches_golden():
+    # Section multi-compose: two .glp loaded in ONE session + a composed goal.
+    _gated_run_all_match("ch03", "01")
+
+
+@pytest.mark.skipif(not CS_EXE, reason="C# REPL build absent")
+@pytest.mark.skipif(not (SIBLING_GLP / "programs" / "cssg_modules").is_dir(),
+                    reason="sibling cssg_modules project absent")
+def test_real_backend_ch07_use_case_matches_golden():
+    # US2 — the unification: the SAME run path executes the ch07 project + fplay1.
+    _gated_run_all_match("ch07", "01")
+
+
 # --------------------------------------------------------------------------- #
 # US5 — backend choice + C# P1 policy + flagged Dart fallback                  #
 # --------------------------------------------------------------------------- #
