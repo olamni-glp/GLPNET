@@ -5274,6 +5274,7 @@ public sealed class BytecodeRunner
                 }
 
             case "list":
+            case "is_list":
                 // Succeeds if X is a list ([] or [H|T])
                 if (args.Count == 0) return GuardResult.Fail;
                 {
@@ -5296,9 +5297,11 @@ public sealed class BytecodeRunner
                 }
 
             case "compound":
+            case "tuple":
                 // Succeeds if X is a compound term (structure with functor and arity > 0)
                 // Lists are compound since [X|Xs] = '.'(X, Xs)
                 // Does NOT imply groundness - may contain unbound subterms
+                // 'tuple' is a book-terminology synonym for 'compound' (per AoGLP 2025).
                 if (args.Count == 0) return GuardResult.Fail;
                 {
                     var val = GetValue(args[0]);
