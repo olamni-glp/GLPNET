@@ -256,11 +256,16 @@ def cmd_run(
     sibling_corpus: Optional[Path] = typer.Option(None, "--sibling-corpus"),
     sibling_glp_root: Optional[Path] = typer.Option(None, "--sibling-glp-root"),
     json_out: bool = typer.Option(False, "--json"),
+    dart_fallback: bool = typer.Option(False, "--dart-fallback",
+                                       help="On a C# P1, retry on Dart with a prominent P1 notice (FR-018)."),
+    skip_drift_check: bool = typer.Option(False, "--skip-drift-check",
+                                          help="Skip the vendored-vs-sibling drift guard (FR-012)."),
 ) -> None:
     """Load + run the example on the selected backend; report the actual outcome (FR-006/008)."""
     _run_or_explain(ctx, chapter, exercise, goal, backend, limit, timeout,
                     corpus, sibling_corpus, sibling_glp_root,
-                    json_out or _ctx_flag(ctx, "json"), explain=False)
+                    json_out or _ctx_flag(ctx, "json"), explain=False,
+                    dart_fallback=dart_fallback, skip_drift_check=skip_drift_check)
 
 
 @tutorials_app.command("explain")
@@ -276,15 +281,40 @@ def cmd_explain(
     sibling_corpus: Optional[Path] = typer.Option(None, "--sibling-corpus"),
     sibling_glp_root: Optional[Path] = typer.Option(None, "--sibling-glp-root"),
     json_out: bool = typer.Option(False, "--json"),
+    dart_fallback: bool = typer.Option(False, "--dart-fallback"),
+    skip_drift_check: bool = typer.Option(False, "--skip-drift-check"),
 ) -> None:
     """Run + compare to the golden + explain, referencing the tutorial .md (FR-009/010)."""
     _run_or_explain(ctx, chapter, exercise, goal, backend, limit, timeout,
                     corpus, sibling_corpus, sibling_glp_root,
-                    json_out or _ctx_flag(ctx, "json"), explain=True)
+                    json_out or _ctx_flag(ctx, "json"), explain=True,
+                    dart_fallback=dart_fallback, skip_drift_check=skip_drift_check)
+
+
+def _check_drift(repo_root: Path, sibling_corpus, quiet: bool) -> None:
+    """Drift guard (FR-012, exit 11): refuse to run a vendored example that no
+    longer matches the sibling it executes from. Best-effort — skips silently if
+    the sibling source is unreachable (cannot compare). Does NOT cover the ch07
+    ``programs/cssg_modules`` project (a recorded gap → a `propose` candidate)."""
+    from . import sync as _sync
+    src = Path(sibling_corpus) if sibling_corpus else _sync.DEFAULT_SOURCE
+    if not src.is_dir():
+        return  # cannot compare → don't block
+    try:
+        res = _sync.check(repo_root, source=src)
+    except Exception:
+        return
+    if not res.ok and res.sibling_drift:
+        typer.echo("error: vendored snapshot differs from the sibling it would execute "
+                   f"({len(res.sibling_drift)} file(s) drifted) — refusing to run a mismatched "
+                   "example. Re-vendor with `codeconv tutorials sync`, or pass --skip-drift-check.",
+                   err=True)
+        raise typer.Exit(_EXIT_DRIFT)
 
 
 def _run_or_explain(ctx, chapter, exercise, goal, backend, limit, timeout,
-                    corpus, sibling_corpus, sibling_glp_root, json_mode, *, explain: bool):
+                    corpus, sibling_corpus, sibling_glp_root, json_mode, *, explain: bool,
+                    dart_fallback: bool = False, skip_drift_check: bool = False):
     from . import backends as _be
     from . import explain as _ex
     from . import resolve as _rs
@@ -302,6 +332,21 @@ def _run_or_explain(ctx, chapter, exercise, goal, backend, limit, timeout,
                    "load target.", err=True)
         raise typer.Exit(_EXIT_NO_TARGET)
 
+    try:
+        bk = _be.BackendKind(backend)
+    except ValueError:
+        typer.echo(f"error: unknown backend '{backend}' (use cs|dart).", err=True)
+        raise typer.Exit(2)
+
+    # exec_path must exist on disk before a run (data-model validation, FR-016).
+    for t in example.load_targets:
+        if not Path(t.exec_path).exists():
+            typer.echo(f"error: load target does not exist on disk: {t.exec_path} "
+                       "(check --sibling-corpus / --sibling-glp-root).", err=True)
+            raise typer.Exit(_EXIT_NO_TARGET)
+    if not skip_drift_check:
+        _check_drift(repo_root, sibling_corpus, quiet)
+
     # User-supplied goals override the guide goals (FR-004).
     goals = None
     if goal:
@@ -312,14 +357,9 @@ def _run_or_explain(ctx, chapter, exercise, goal, backend, limit, timeout,
                    "supply one with --goal \"<text>\".", err=True)
         raise typer.Exit(_EXIT_NO_GOAL)
 
-    try:
-        bk = _be.BackendKind(backend)
-    except ValueError:
-        typer.echo(f"error: unknown backend '{backend}' (use cs|dart).", err=True)
-        raise typer.Exit(2)
-
     result = _be.run_example(example, backend=bk, repo_root=repo_root, sibling_glp_root=sib_root,
-                             goals=goals, limit_override=limit, timeout=timeout)
+                             goals=goals, limit_override=limit, timeout=timeout,
+                             allow_dart_fallback=dart_fallback)
 
     # Golden is positionally aligned to the GUIDE goals; user-supplied goals
     # have no golden to compare against.

@@ -193,3 +193,100 @@ def test_real_backend_ch01_matches_golden():
     verdicts = ex.explain_run(result.goal_outcomes, ex_.golden)
     assert verdicts and all(v.kind == ex.VerdictKind.MATCH for v in verdicts), \
         [(v.goal, v.kind.value, v.explanation) for v in verdicts]
+
+
+# --------------------------------------------------------------------------- #
+# US5 — backend choice + C# P1 policy + flagged Dart fallback                  #
+# --------------------------------------------------------------------------- #
+import sys
+import codeconv.tutorials.backends as be
+
+
+def test_resolve_backend_kinds():
+    cs = be.resolve_backend(be.BackendKind.CSHARP, repo_root=REPO_ROOT, sibling_glp_root=SIBLING_GLP)
+    assert cs.kind == be.BackendKind.CSHARP  # available iff build present
+    dart = be.resolve_backend(be.BackendKind.DART, repo_root=REPO_ROOT, sibling_glp_root=SIBLING_GLP)
+    assert dart.kind == be.BackendKind.DART
+
+
+def _fake_resolve_cs_down(monkeypatch, dart_ok=True):
+    def fake(kind, *, repo_root, sibling_glp_root):
+        if kind == be.BackendKind.CSHARP:
+            return be.Backend(kind, False, [], None, "simulated C# unavailable")
+        inv = [sys.executable, "-c", "print('GLP> Xs = [1]'); print('→ succeeds')"] if dart_ok else []
+        return be.Backend(kind, dart_ok, inv, None, None if dart_ok else "no dart")
+    monkeypatch.setattr(be, "resolve_backend", fake)
+
+
+def test_csharp_p1_is_loud_exit8(monkeypatch):
+    _fake_resolve_cs_down(monkeypatch, dart_ok=True)
+    res = CliRunner().invoke(app, ["tutorials", "run", "ch01", "01", "--skip-drift-check"])
+    assert res.exit_code == 8  # C# P1, no fallback requested → loud exit 8
+
+
+def test_dart_fallback_carries_p1_notice(monkeypatch):
+    _fake_resolve_cs_down(monkeypatch, dart_ok=True)
+    ex_ = _resolve("ch01", "01")
+    result = be.run_example(ex_, backend=be.BackendKind.CSHARP, repo_root=REPO_ROOT,
+                            sibling_glp_root=SIBLING_GLP, allow_dart_fallback=True)
+    assert result.backend_used == be.BackendKind.DART
+    assert result.p1 and result.p1_notice and "C# P1" in result.p1_notice  # never masked
+
+
+# --------------------------------------------------------------------------- #
+# Exit codes 6 / 11 (D10, FR-016)                                             #
+# --------------------------------------------------------------------------- #
+def test_exit6_missing_exec_path(tmp_path):
+    # Point the section exec root at an empty dir → the .glp won't exist → exit 6.
+    res = CliRunner().invoke(app, ["tutorials", "run", "ch01", "01",
+                                   "--sibling-corpus", str(tmp_path), "--skip-drift-check"])
+    assert res.exit_code == 6
+
+
+def test_exit11_drift_refused(monkeypatch):
+    from codeconv.tutorials import sync as _sync
+    monkeypatch.setattr(_sync, "check", lambda *a, **k: _sync.CheckResult(
+        ok=False, dest=REPO_ROOT, sibling_drift=["ch01/exercise-01/x.glp"]))
+    # exec_path must exist for the drift check to be reached → needs the sibling.
+    if not (SIBLING_GLP / "olamni" / "tutorial" / "ch01" / "exercise-01").is_dir():
+        pytest.skip("sibling GLP corpus absent")
+    res = CliRunner().invoke(app, ["tutorials", "run", "ch01", "01"])
+    assert res.exit_code == 11
+
+
+# --------------------------------------------------------------------------- #
+# JSON schema (D10) + skill≡CLI parity (FR-014)                               #
+# --------------------------------------------------------------------------- #
+def test_preview_json_schema():
+    import json
+    res = CliRunner().invoke(app, ["tutorials", "preview", "ch01", "01", "--json"])
+    assert res.exit_code == 0
+    m = json.loads(res.stdout)
+    assert m["chapter"] == "ch01" and m["shape"] == "section_single"
+    assert m["load_target"]["kind"] == "single_file"
+    assert m["goals"] and m["goals"][0]["expected"]["status"] == "succeeds"
+
+
+def test_propose_json_schema():
+    import json
+    res = CliRunner().invoke(app, ["tutorials", "propose", "--json"])
+    m = json.loads(res.stdout)
+    kinds = {p["kind"] for p in m["proposals"]}
+    assert {"drift_gap", "stale_artefact", "layout_normalise"} <= kinds
+
+
+def test_skill_cli_parity_preview(tmp_path):
+    """The skill forwards verbatim to the CLI → identical output. Compare a real
+    subprocess (the skill's actual invocation) to the in-process CliRunner."""
+    import json
+    import subprocess
+    py = REPO_ROOT / "codeconv" / ".venv" / "Scripts" / "python.exe"
+    if not py.is_file():
+        py = REPO_ROOT / "codeconv" / ".venv" / "bin" / "python"
+    if not py.is_file():
+        pytest.skip("codeconv venv absent")
+    proc = subprocess.run([str(py), "-m", "codeconv.cli", "tutorials", "preview", "ch01", "01", "--json"],
+                          capture_output=True, text=True, cwd=str(REPO_ROOT))
+    cli = CliRunner().invoke(app, ["tutorials", "preview", "ch01", "01", "--json"])
+    assert proc.returncode == cli.exit_code == 0
+    assert json.loads(proc.stdout) == json.loads(cli.stdout)

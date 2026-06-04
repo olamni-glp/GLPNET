@@ -28,9 +28,12 @@ goals from guide, golden positional), `backends.py` (C# default + Dart, P1 polic
 `test_tutorials_run.py` 20 tests incl. gated real-backend (all green; full tutorials suite 65 pass/1 skip).
 VERIFIED e2e on C#: `explain ch01 01` (US1+US4 all ✓match), `run ch07 01` (US2 — project+fplay1
 →suspended, ✓match), `preview` both shapes, ch03 multi-compose composed goal.
-REMAINING: US5 backend-choice CLI polish (--backend dart fallback notice wired; needs test),
-exhaustive fixture corpus (T002) + parity test (T034) + polish (T035–T039); two-session/bytecode/
-flutter remain classified-and-deferred by design.
+US5 DONE (--backend cs|dart, --dart-fallback flagged P1 notice, C# P1 exit 8); exit-codes 6/7/8/9/11
+wired+tested (exec-path check + drift guard added); JSON-schema + skill≡CLI parity tests; T039 docs
+(known-issues Issue 10). Run-layer tests 26 green; full tutorials suite 73 pass/1 skip. Fixture
+corpus (T002) satisfied via real-corpus tests. two-session/bytecode/flutter classified-and-deferred
+by design (Issue 10). **023 effectively complete** — remaining: optional exhaustive per-example
+golden sweep via the new tooling, and `buildkit ship` when Gabi is ready.
 
 Live granular progress tracked via the session task list. 020 ledger preserved below ⬇️.
 
