@@ -294,6 +294,23 @@ def _build_url_from_endpoint(endpoint: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Built-in bridge-free sub-apps
+# ---------------------------------------------------------------------------
+
+# `tutorials` is a PURE, bridge-free sub-app (feature 022, research D1): a
+# read-only GLP tutorial browser wired directly here — NOT through
+# `tool_registry()` — so `codeconv tutorials list` never acquires the bridge,
+# starts DBOS, or spawns the REPL (guarded by `test_tutorials_no_bridge.py`).
+from codeconv.tutorials.cli import tutorials_app  # noqa: E402
+
+app.add_typer(
+    tutorials_app,
+    name="tutorials",
+    help="Read-only GLP tutorial browser (bridge-free). See /glptutorial-list.",
+)
+
+
+# ---------------------------------------------------------------------------
 # Dynamic tool registration
 # ---------------------------------------------------------------------------
 

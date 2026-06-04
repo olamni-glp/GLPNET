@@ -1,0 +1,4 @@
+% ch-01-ex-02-producer.glp
+%
+%% producer/2 emits a counted stream (fixture exemplar).
+producer(0, []).

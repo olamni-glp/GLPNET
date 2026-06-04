@@ -1,0 +1,70 @@
+%% ch06 ex-04 — §6.4 Bidirectional Communication
+%% Source: ch03 §3.2, book p 23, Programs send/3 + receive/3 + new_channel/2
+%%   + relay/3 + make_pair/2 (channel-operation primitives + relay).
+%% Synthesised from ch03 §3.2 because the ch06 PDF chapter (book p 53) is a
+%%   stub — only the title, a one-line intro, and the five §6.x section
+%%   headings exist; no body text and no native Programs.
+%% Type definitions and `procedure` declarations are introduced fresh at
+%%   §6.4 per ch05 conventions; clauses below are byte-exact from ch03
+%%   §3.2.  Note: send/3, receive/3, and new_channel/2 are also defined
+%%   as parameterised procedures in `programs/self.glp` (the GLP root
+%%   prelude); declaring them locally here OVERRIDES the prelude definitions
+%%   for this file (per typed-glp-manual.md §8.1).  The clauses are
+%%   byte-identical to self.glp's; the local declarations make the §6.4
+%%   typing explicit.
+
+%% Stream type (local non-parameterised form): the prelude declares a
+%%   parameterised `Stream(X)` but ch05 §5.5's Channel form uses a bare
+%%   `Stream`, so we declare a local non-parameterised version with `_`
+%%   element type per typed-glp-manual.md §18.3 meta-interpreter exception
+%%   — channel ops manipulate streams of arbitrary element type.
+Stream ::= [] ; [_ | Stream].
+
+%% Channel type (ch05 §5.5 form): a channel is a pair of an input stream
+%%   and an output stream's reader.
+Channel ::= ch(Stream, Stream?).
+
+%% send/3: append a value X onto the channel's output stream, returning
+%%   the new channel state.  Single-unit-clause defined guard.
+procedure send(_?, Channel?, Channel).
+send(X, ch(In, [X?|Out?]), ch(In?, Out)).
+
+%% receive/3: read a value from the channel's input stream, returning
+%%   the new channel state.  Single-unit-clause defined guard.
+procedure receive(_, Channel?, Channel).
+receive(X?, ch([X|In], Out?), ch(In?, Out)).
+
+%% new_channel/2: allocate a cross-linked channel pair.  What's written
+%%   to one end is read from the other.  Single-unit-clause defined guard.
+procedure new_channel(Channel, Channel).
+new_channel(ch(Xs?, Ys), ch(Ys?, Xs)).
+
+%% relay/3: bridge a stream pair (input + output) to a channel — uses
+%%   send + receive in guard position so the partial evaluator unfolds
+%%   them at compile time.
+procedure relay(Stream?, Stream, Channel?).
+
+%% relay clause 1: input stream has a head — send it to the channel,
+%%   recurse on the tail with the updated channel state.
+relay([X|In], Out?, Ch) :- send(X?, Ch?, Ch1) | relay(In?, Out, Ch1?).
+
+%% relay clause 2: output stream has space — receive a value from the
+%%   channel into it, recurse on the tail with the updated channel state.
+%%   AMENDMENT: byte-exact ch03 §3.2 has `relay(In?, [X?|Out?], Ch) :- … |
+%%   relay(In, Out, Ch1?).` — `In?` (reader) in head + `In` (writer) in
+%%   body.  This SRSW pattern (reader→writer pair across head→body) means
+%%   the input stream is "produced by the recursive call" rather than
+%%   consumed from outside, which contradicts the procedure declaration's
+%%   arg 1 mode (consume).  Under tight typing the type-checker rejects.
+%%   Amendment: swap to `In` (writer) in head + `In?` (reader) in body —
+%%   matching clause 1's mode profile.  Algorithmic effect: In becomes
+%%   a pass-through writer threaded to the recursive call.
+relay(In, [X?|Out?], Ch) :- receive(X, Ch?, Ch1) | relay(In?, Out, Ch1?).
+
+%% relay clause 3: both streams empty — close the bridge.
+relay([], [], ch([], [])).
+
+%% make_pair/2: a thin wrapper over new_channel/2 that hands the caller
+%%   two readers (the head construction inverts the writer/reader pair).
+procedure make_pair(Channel, Channel).
+make_pair(C1?, C2?) :- new_channel(C1, C2) | true.

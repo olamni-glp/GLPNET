@@ -1,0 +1,23 @@
+% ch-03-ex-01-glp-fair-stream-merger.glp
+%
+% Program 3.1 (GLP Fair Stream Merger), byte-exact from "The Art of Grassroots
+% Logic Programming" (Shapiro, 2025), §3.1, book p 15 (PDF p 27). The chapter's
+% canonical example illustrating SRSW reader/writer pairs (Reader/Writer pair
+% invariant), the SO Invariant, GLP operational semantics (term matching
+% replaces unification; goals may suspend on unbound readers), GLP Safety, and
+% Monotonicity. Each clause's `?` annotations identify which positions are
+% readers (consume bound writers) and which are writers (produce bindings).
+% The two recursive clauses alternate fairly via the argument-swap trick in
+% the recursive call: clause 1 produces from the first stream's head and
+% recurses with the streams swapped; clause 2 produces from the second stream's
+% head and recurses with the streams in their original order.
+%
+% This file is loaded into ex-01's REPL session alongside
+% ch-03-ex-01-producer-consumer.glp to form a producer-merger-consumer
+% pipeline that demonstrates SRSW pairing across four roles in one composed
+% goal: `producer(A, 5), producer(B, 3), merge(A?, B?, M), consumer(M?, 0, Sum).`
+% with locked binding `Sum = 21`.
+
+merge([X|Xs],Ys,[X?|Zs?]) :- merge(Ys?,Xs?,Zs).  %% output from first stream — head's X is forwarded to the output cons cell; recursive call swaps args so the next round prefers the other stream
+merge(Xs,[Y|Ys],[Y?|Zs?]) :- merge(Xs?,Ys?,Zs).  %% output from second stream — head's Y is forwarded; recursive call preserves arg order (its symmetry partner is clause 1's swap)
+merge([],[],[]).                                 %% terminate on empty streams — base case; both streams exhausted, output cons-list is the empty list

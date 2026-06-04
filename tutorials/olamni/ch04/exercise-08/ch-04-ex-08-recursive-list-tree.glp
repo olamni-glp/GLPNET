@@ -1,0 +1,116 @@
+% ch-04-ex-08-recursive-list-tree.glp
+%
+% This file presents §4.3's recursive list/tree Programs from book pp 38–40
+% (PDF pp 50–52). All clauses byte-exact from the PDF.
+%
+% Programs included:
+%   §4.3.7 (book p 38): flatten/2 + flatten_acc/3 (4 clauses)
+%   §4.3.8 (book p 39): tree_sum/2 (2 clauses)
+%   §4.3.9 (book p 39): insertion_sort/2 + insert/3 (5 clauses)
+%   §4.3.10 (book pp 39–40): mergesort/2 + split2/5 + merge_sorted/3 (~10 clauses)
+%   §4.3.11 (book p 40): distribute_ng/3 + copy/3 + copy_list/3 (~7 clauses; uses =..)
+%   §4.3.12 (book p 40): substitute/4 + replace/4 (4 clauses)
+%
+% Per Q2 retraction (CLAUDE.md "Known REPL Limitations" stale): structs-in-lists
+% in REPL goals AND `=..` in clause bodies both work in the current REPL build.
+
+%% §4.3.7 (book p 38): flatten/2 + flatten_acc/3.
+
+%% flatten entry — initialise accumulator to empty list.
+flatten(Xs, Ys?) :- flatten_acc(Xs?, [], Ys).
+
+%% flatten_acc base — empty input: accumulator IS the result.
+flatten_acc([], Acc, Acc?).
+%% flatten_acc recursive (nested-list case) — head is a ground list: recursively flatten head, then tail with that accumulator.
+flatten_acc([X|Xs], Acc, Ys?) :-
+    ground(X?), is_list(X?) |
+    flatten_acc(X?, Acc?, Acc1),
+    flatten_acc(Xs?, Acc1?, Ys).
+%% flatten_acc recursive (non-list element) — head is a leaf: prepend to accumulator and continue.
+flatten_acc([X|Xs], Acc, Ys?) :-
+    otherwise |
+    flatten_acc(Xs?, [X?|Acc?], Ys).
+
+%% §4.3.8 (book p 39): tree_sum/2.
+
+%% tree_sum base — void node has sum 0.
+tree_sum(void, 0).
+%% tree_sum recursive — sum is value + left-subtree sum + right-subtree sum; two recursive calls spawn concurrently.
+tree_sum(tree(V, L, R), S?) :-
+    tree_sum(L?, SL),
+    tree_sum(R?, SR),
+    S := V? + SL? + SR?.
+
+%% §4.3.9 (book p 39): insertion_sort/2 + insert/3.
+
+%% insertion_sort base — empty list sorts to empty.
+insertion_sort([], []).
+%% insertion_sort recursive — sort tail, then insert head into sorted tail.
+insertion_sort([X|Xs], Sorted?) :-
+    insertion_sort(Xs?, SortedTail),
+    insert(X?, SortedTail?, Sorted).
+
+%% insert base — inserting into empty list = singleton.
+insert(X, [], [X?]).
+%% insert recursive — X < Y: prepend X to list.
+insert(X, [Y|Ys], [X?|[Y?|Ys?]]) :- X? < Y? | true.
+%% insert recursive — X >= Y: keep Y at head; insert X into tail.
+insert(X, [Y|Ys], [Y?|Zs?]) :- X? >= Y? | insert(X?, Ys?, Zs).
+
+%% §4.3.10 (book pp 39–40): mergesort/2 + split2/5 + merge_sorted/3.
+
+%% mergesort base — empty list.
+mergesort([], []).
+%% mergesort singleton — list of one element.
+mergesort([X], [X?]).
+%% mergesort recursive — split, sort both halves concurrently, merge sorted.
+mergesort([A,B|Xs], Sorted?) :-
+    split2(A?, B?, Xs?, Left, Right),
+    mergesort(Left?, SortedL),
+    mergesort(Right?, SortedR),
+    merge_sorted(SortedL?, SortedR?, Sorted).
+
+%% split2 base — empty input: A goes left, B goes right.
+split2(A, B, [], [A?], [B?]).
+%% split2 1-element — A and X go left, B goes right.
+split2(A, B, [X], [A?,X?], [B?]).
+%% split2 recursive — alternate elements between left and right.
+split2(A, B, [X,Y|Xs], [A?|Left?], [B?|Right?]) :-
+    split2(X?, Y?, Xs?, Left, Right).
+
+%% merge_sorted base — first list empty: result is second list.
+merge_sorted([], Ys, Ys?).
+%% merge_sorted base — second list empty: result is first list.
+merge_sorted(Xs, [], Xs?).
+%% merge_sorted recursive — X =< Y: take X.
+merge_sorted([X|Xs], [Y|Ys], [X?|Zs?]) :-
+    number(X?), number(Y?), X? =< Y? |
+    merge_sorted(Xs?, [Y?|Ys?], Zs).
+%% merge_sorted recursive — X > Y: take Y.
+merge_sorted([X|Xs], [Y|Ys], [Y?|Zs?]) :-
+    number(X?), number(Y?), X? > Y? |
+    merge_sorted([X?|Xs?], Ys?, Zs).
+
+%% §4.3.11 (book p 40): distribute_ng/3 + copy/3 + copy_list/3 — DEFERRED per
+%% Clarifications Q8. The book's printed Programs have multiple SRSW
+%% violations (output writers Y/Z appearing in both head and body across
+%% three clauses; reader F? appearing twice). Amendment cost is high and
+%% resulting code would diverge non-trivially from book p 40. Learners can
+%% see book p 40 directly; a separate book-wide audit (out of scope for
+%% this branch) would clean these up.
+
+%% §4.3.12 (book p 40): tree substitution.
+
+%% substitute base — void tree substitutes to void.
+substitute(_, _, void, void).
+%% substitute recursive — replace leaf, recurse on subtrees concurrently.
+substitute(X, Y, tree(Leaf, Left, Right), tree(Leaf1?, Left1?, Right1?)) :-
+    ground(X?), ground(Y?) |
+    replace(X?, Y?, Leaf?, Leaf1),
+    substitute(X?, Y?, Left?, Left1),
+    substitute(X?, Y?, Right?, Right1).
+
+%% replace clause 1 — X matches Z: substitute Y.
+replace(X, Y, Z, Y?) :- ground(X?), X? =?= Z? | true.
+%% replace clause 2 — X doesn't match Z: keep Z.
+replace(X, _, Z, Z?) :- ground(X?), ~(X? =?= Z?) | true.

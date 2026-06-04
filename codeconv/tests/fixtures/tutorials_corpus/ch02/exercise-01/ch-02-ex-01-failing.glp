@@ -1,0 +1,4 @@
+% ch-02-ex-01-failing.glp
+%
+%% The deliberately failing version (SRSW violation demo).
+bad(X, X).

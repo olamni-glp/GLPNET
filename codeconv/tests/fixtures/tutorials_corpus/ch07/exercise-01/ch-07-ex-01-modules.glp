@@ -1,0 +1,4 @@
+% ch-07-ex-01-modules.glp
+%
+%% Demonstrates a tiny module export.
+exported_thing(ok).
