@@ -1,0 +1,60 @@
+% ch-05-ex-04-counter-response-slot.glp
+%
+% This file presents the §5.5 typed counter with embedded response-slot mode
+% from book p 50 (PDF p 62). Clauses byte-exact from the PDF.
+%
+% Programs included (byte-exact):
+%   §5.5 (book p 50): CounterMsg ::= clear ; up ; down ; show(Number?). — type def with embedded `?`
+%   §5.5 (book p 50): CounterStream ::= [] ; [CounterMsg | CounterStream].
+%   §5.5 (book p 50): procedure counter(CounterStream?, Number?).
+%   §5.5 (book p 50): counter([show(State?)|S], State) :- number(State?) | counter(S?, State?).
+%
+% References Formal 5.3 (Mode Involution, book p 50): consume × consume = produce.
+%
+% A related un-typed counter/1 + counter_loop/2 appears in chapter 4 ex-06
+% (book §4.2.14) — different arity, different shape, different focus.
+%
+% Coverage stubs: book p 50 shows ONLY the show response-slot clause. The
+% type-checker requires exhaustive coverage of the CounterMsg alternatives
+% (clear/up/down/show) plus the empty-stream case, so this file adds four
+% minimal forwarding stubs below the byte-exact PDF clause. The stubs carry
+% no algorithmic content; they let the type-checker accept the file and let
+% the learner exercise stream paths other than the response-slot.
+
+%% CounterMsg type: four alternatives. The `show(Number?)` carries an embedded
+%% `?` — this is the response-slot pattern. When CounterMsg appears at consume
+%% mode (e.g., as an element of CounterStream?), Formal 5.3 flips the embedded
+%% `?` from consume to produce, turning the slot into a writer position the
+%% counter binds.
+CounterMsg ::= clear ; up ; down ; show(Number?).
+
+%% CounterStream: a typed list of CounterMsg — the mailbox the counter consumes.
+CounterStream ::= [] ; [CounterMsg | CounterStream].
+
+%% Procedure declaration: counter consumes a CounterStream and a Number? state.
+procedure counter(CounterStream?, Number?).
+
+%% The §5.5 byte-exact response-slot clause. When the next message is
+%% `show(State?)`, write the current state into the embedded reader and recurse
+%% with the same state. The `number(State?)` guard is multi-reader-permissive,
+%% authorising the multi-read of State (head + guard + body).
+counter([show(State?)|S], State) :-
+    number(State?) |
+    counter(S?, State?).
+
+%% --- COVERAGE STUBS for the other CounterMsg alternatives + empty-stream ---
+%% (Book p 50 omits these; the type-checker requires them for exhaustiveness.)
+
+%% Empty stream: no further messages, so the counter terminates. State is
+%% anonymous because the base case doesn't consult it.
+counter([], _).
+
+%% `clear` message: forward unchanged to the recursion (a "real" counter would
+%% reset State to 0 here; this minimal stub forwards as-is for exhaustiveness).
+counter([clear|S], State) :- counter(S?, State?).
+
+%% `up` message: forward unchanged (a "real" counter would increment State).
+counter([up|S], State) :- counter(S?, State?).
+
+%% `down` message: forward unchanged (a "real" counter would decrement State).
+counter([down|S], State) :- counter(S?, State?).

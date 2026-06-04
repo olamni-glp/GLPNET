@@ -89,6 +89,28 @@
 
 ## [Unreleased]
 
+## [v2026.06.04.1] - 2026-06-04
+
+### Added
+- US5 backend choice + dart fallback, exit-codes 6/11 (exec-path+drift), JSON/parity tests, docs
+- /glptutorial-run unified run-model (preview/run/explain/propose) + shape-classifier + skill
+- /glptutorial-list GLP tutorial browser (bridge-free codeconv tutorials list)
+
+### Fixed
+- converge C# arithmetic to Dart num (int-preservation) + Dart double printing; A5 convergence record
+- converge C# moded-path rendering to Dart lowercase mode words (AsModeString)
+- converge C# runner constant matching to Dart num== (NumEquals) — fixes recursive base-clause selection
+- converge C# runner guard dispatch — add is_list/tuple guard aliases per runner.dart
+- converge C# type DFA — add Any builtin type (states/automata/leaf arms) per program_dfa.dart
+- converge C# REPL to Dart — self.glp path resolver + tuple/is_list builtins
+
+### Changed
+- Merge pull request #20 from olamni-glp/023-glptutorial-run
+- add buildkit-ship + buildkit-release skill forwarders (CLI was installed; skills were missing)
+- gated real-backend coverage for ch03 multi-compose + ch07 use-case (US2)
+- plan, research, data-model, contracts, tasks for /glptutorial-run
+- Merge pull request #19 from olamni-glp/main
+
 ## [v2026.06.03.3] - 2026-06-03
 
 ### Changed

@@ -1,0 +1,16 @@
+% ch-02-ex-01-classical-append-LP-only.glp
+% Example 2.1 (Append) from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §2.1, p 10.
+% INTENTIONALLY ILL-FORMED FOR GLP — illustrates classical LP contraction.
+%
+% In classical Logic Programs (Definitions 2.2-2.4, pp 9-10) a variable may appear multiple
+% times across head and body and may be unified through standard most-general-unification
+% (Definition 2.5, p 11). GLP forbids this via SRSW: each variable has exactly one writer
+% and exactly one reader (Formal 2.1, p 14, "No contraction" row). Loading this file in
+% the GLP REPL triggers the SRSW analyser, which rejects the file at load time.
+%
+% That rejection IS the chapter's pedagogical demonstration; it is NOT a defect of this
+% tutorial. Compare with ch-02-ex-01-glp-append.glp to see the same predicate redefined
+% with the `?` reader annotations that satisfy SRSW.
+
+append([X|Xs], Ys, [X|Zs]) :- append(Xs, Ys, Zs).  %% classical recursive: X, Xs, Ys, Zs each occur 2+ times — contraction
+append([], Ys, Ys).                                 %% classical base: Ys occurs twice in head — pure structural identity in classical LP

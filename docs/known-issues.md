@@ -260,3 +260,36 @@ Stand up a separate fresh PG17 cluster at a side path (e.g. `C:/pglite/research/
 ### Doc staleness noticed (not yet fixed in spec/quickstart)
 
 `specs/015-codeconv-depgraph/quickstart.md` Flow H still uses `--data-dir .pgdb` and reads `.pgdb\bridge.json`; the bridge sidecar is codeconv-managed and ephemeral (no fixed `bridge.json` for arbitrary data-dirs — discover via `bridge_client.acquire_or_discover`). The cycle-fixture check references `$json.cycle_count` but the key is `$json.metadata.cycle_count`. These are doc bugs, not product bugs — the bridge/CLI are correct.
+
+---
+
+## Issue 10: `/glptutorial-run` — deferred run-shapes + corpus-golden issues (feature 023)
+
+**Status**: By design (3-Hybrid scope, Gabi-approved 2026-06-04). Tracked/surfaced, never silently mis-run.
+**Discovered**: 2026-06-04 building `codeconv tutorials {preview,run,explain,propose}`.
+**Affects**: A small minority of tutorial examples; the common shapes (section single/multi-compose, use-case project) run fully on the mandated C# backend.
+
+### Deferred run-shapes (classified-and-flagged, not executed by the run layer yet)
+The resolver classifies every example into a precise `Shape`; these three are recognised
+but deferred (`supported=False` with a reason, or degrade to a clear backend error):
+- **two-session** (e.g. ch04/03 — two files defining the same predicate that cannot
+  co-load): multi-script exercises load in one session; a genuine collision surfaces as a
+  backend load error (FR-017) and `propose` flags it.
+- **bytecode-dump golden** (ch05/06 Phase B `=== BYTECODE FOR …===`): outcome-only
+  comparison does not diff disassembly.
+- **Flutter-only golden** (ch07/06, ch07/12 `*-flutter-trace.md`, no REPL trace): reported
+  "not runnable via the REPL backend".
+
+### Corpus-golden issues (route via `codeconv tutorials propose`, not runtime fixes)
+- **ch04/07**: multi-clause `natural_number/1` used as a guard — spec-invalid (manual §8:
+  defined guards must be single-unit-clause). The runtime correctly rejects the load; the
+  golden's `✓ Loaded` is from a stale build → `propose` emits `LAYOUT_NORMALISE`.
+- **ch04/08**: flatten golden predates the C# `is_list` fix; live Dart/C# now yield
+  `F=[5,4,3,2,1]` → `propose` emits `STALE_ARTEFACT` (re-capture).
+- **ch07 `programs/cssg_modules` drift gap**: the live use-case substrate is not vendored,
+  so `sync --check` cannot guard it → `propose` emits `DRIFT_GAP`.
+
+### C# runtime convergence (prerequisite, done)
+The mandated C# REPL was repaired (7 Dart→C# conversion regressions) before this feature —
+final sweep 33/38 MATCH, 0 runtime bugs, 0 regressions. Full record + codegen/convspec
+follow-up: `docs/research/csharp-repl-convergence-fixes.md`.

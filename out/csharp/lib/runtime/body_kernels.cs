@@ -136,6 +136,59 @@ public static class BodyKernelsModule
         return null;
     }
 
+    /// <summary>
+    /// Numeric value preserving int-ness — boxed <c>long</c> when integral, <c>double</c>
+    /// otherwise — mirroring Dart's <c>num</c>. Used by the int-preserving arithmetic
+    /// kernels (+, -, *, neg, abs) so e.g. <c>3 - 1</c> stays integer <c>2</c> (matches
+    /// Dart). The widening <see cref="GetNum"/> stays for /, sqrt, sin, … which are
+    /// double in Dart too.
+    /// </summary>
+    private static object? GetNumeric(GlpRuntimeEngine rt, object? arg)
+    {
+        if (arg is double dn) return dn;
+        if (arg is long ln) return ln;
+        if (arg is int i32) return (long)i32;
+        if (arg is ConstTerm ct)
+        {
+            if (ct.Value is double cv) return cv;
+            if (ct.Value is long lv) return lv;
+            if (ct.Value is int iv) return (long)iv;
+        }
+        if (arg is VarRef vr) return GetNumeric(rt, rt.Heap.GetValue(vr.Addr));
+        if (arg is StructTerm st) return EvaluateArithmeticNum(rt, st);
+        return null;
+    }
+
+    private static bool BothLong(object a, object b) => a is long && b is long;
+    private static double ToD(object v) => v is double d ? d : (long)v;
+    private static object NumAdd(object a, object b) => BothLong(a, b) ? (object)((long)a + (long)b) : ToD(a) + ToD(b);
+    private static object NumSub(object a, object b) => BothLong(a, b) ? (object)((long)a - (long)b) : ToD(a) - ToD(b);
+    private static object NumMul(object a, object b) => BothLong(a, b) ? (object)((long)a * (long)b) : ToD(a) * ToD(b);
+    private static object NumMod(object a, object b) => BothLong(a, b) ? (object)((long)a % (long)b) : ToD(a) % ToD(b);
+    private static object NumNeg(object a) => a is long l ? (object)(-l) : -(double)a;
+    private static object NumAbs(object a) => a is long l ? (object)Math.Abs(l) : Math.Abs((double)a);
+
+    /// <summary>
+    /// Evaluate an arithmetic structure preserving int-ness (Dart <c>num</c> semantics:
+    /// +,-,*,//,mod,neg keep int when both operands integral; <c>/</c> is always double).
+    /// </summary>
+    private static object? EvaluateArithmeticNum(GlpRuntimeEngine rt, StructTerm st)
+    {
+        var a = st.Args.Select(x => GetNumeric(rt, x)).ToList();
+        if (a.Any(v => v == null)) return null;
+        switch (st.Functor)
+        {
+            case "+":   return NumAdd(a[0]!, a[1]!);
+            case "-":   return NumSub(a[0]!, a[1]!);
+            case "*":   return NumMul(a[0]!, a[1]!);
+            case "/":   return ToD(a[1]!) == 0 ? null : (object)(ToD(a[0]!) / ToD(a[1]!));
+            case "//":  return ToD(a[1]!) == 0 ? null : (object)(long)Math.Truncate(ToD(a[0]!) / ToD(a[1]!));
+            case "mod": return ToD(a[1]!) == 0 ? null : NumMod(a[0]!, a[1]!);
+            case "neg": return NumNeg(a[0]!);
+            default:    return null;
+        }
+    }
+
     /// <summary>Get integer value from argument (for int-only kernels: idiv, mod).</summary>
     private static long? GetLong(GlpRuntimeEngine rt, object? arg)
     {
@@ -275,14 +328,14 @@ public static class BodyKernelsModule
             Console.WriteLine($"[ABORT] add/3: expected 3 arguments, got {args.Count}");
             return BodyKernelResult.Abort;
         }
-        var x = GetNum(rt, args[0]);
-        var y = GetNum(rt, args[1]);
+        var x = GetNumeric(rt, args[0]);
+        var y = GetNumeric(rt, args[1]);
         if (x == null || y == null)
         {
             Console.WriteLine("[ABORT] add/3: operands must be numbers");
             return BodyKernelResult.Abort;
         }
-        return BindResult(rt, args[2], x.Value + y.Value);
+        return BindResult(rt, args[2], NumAdd(x, y));
     }
 
     public static BodyKernelResult SubKernel(GlpRuntimeEngine rt, IReadOnlyList<object?> args)
@@ -292,14 +345,14 @@ public static class BodyKernelsModule
             Console.WriteLine($"[ABORT] sub/3: expected 3 arguments, got {args.Count}");
             return BodyKernelResult.Abort;
         }
-        var x = GetNum(rt, args[0]);
-        var y = GetNum(rt, args[1]);
+        var x = GetNumeric(rt, args[0]);
+        var y = GetNumeric(rt, args[1]);
         if (x == null || y == null)
         {
             Console.WriteLine("[ABORT] sub/3: operands must be numbers");
             return BodyKernelResult.Abort;
         }
-        return BindResult(rt, args[2], x.Value - y.Value);
+        return BindResult(rt, args[2], NumSub(x, y));
     }
 
     public static BodyKernelResult MulKernel(GlpRuntimeEngine rt, IReadOnlyList<object?> args)
@@ -309,14 +362,14 @@ public static class BodyKernelsModule
             Console.WriteLine($"[ABORT] mul/3: expected 3 arguments, got {args.Count}");
             return BodyKernelResult.Abort;
         }
-        var x = GetNum(rt, args[0]);
-        var y = GetNum(rt, args[1]);
+        var x = GetNumeric(rt, args[0]);
+        var y = GetNumeric(rt, args[1]);
         if (x == null || y == null)
         {
             Console.WriteLine("[ABORT] mul/3: operands must be numbers");
             return BodyKernelResult.Abort;
         }
-        return BindResult(rt, args[2], x.Value * y.Value);
+        return BindResult(rt, args[2], NumMul(x, y));
     }
 
     public static BodyKernelResult DivKernel(GlpRuntimeEngine rt, IReadOnlyList<object?> args)
@@ -392,13 +445,13 @@ public static class BodyKernelsModule
             Console.WriteLine($"[ABORT] neg/2: expected 2 arguments, got {args.Count}");
             return BodyKernelResult.Abort;
         }
-        var x = GetNum(rt, args[0]);
+        var x = GetNumeric(rt, args[0]);
         if (x == null)
         {
             Console.WriteLine("[ABORT] neg/2: operand must be a number");
             return BodyKernelResult.Abort;
         }
-        return BindResult(rt, args[1], -x.Value);
+        return BindResult(rt, args[1], NumNeg(x));
     }
 
     // ============================================================================
@@ -408,9 +461,9 @@ public static class BodyKernelsModule
     public static BodyKernelResult AbsKernel(GlpRuntimeEngine rt, IReadOnlyList<object?> args)
     {
         if (args.Count != 2) return BodyKernelResult.Abort;
-        var x = GetNum(rt, args[0]);
+        var x = GetNumeric(rt, args[0]);
         if (x == null) return BodyKernelResult.Abort;
-        return BindResult(rt, args[1], Math.Abs(x.Value));
+        return BindResult(rt, args[1], NumAbs(x));
     }
 
     public static BodyKernelResult SqrtKernel(GlpRuntimeEngine rt, IReadOnlyList<object?> args)

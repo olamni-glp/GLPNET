@@ -80,15 +80,18 @@ public sealed class DFAState : IEquatable<DFAState>
     /// <summary>True for String type state (either complement or not)</summary>
     public bool IsStringType => BaseName == "String";
 
+    /// <summary>True for Any type state (universal — accepts any term)</summary>
+    public bool IsAnyType => BaseName == "Any";
+
     /// <summary>True for _FINAL_ (anonymous final for constant/literal matches)</summary>
     public bool IsAnonymousFinal => BaseName == "_FINAL_";
 
     /// <summary>True for numeric types: Integer, Real, Number</summary>
     public bool IsNumericType => IsIntegerType || IsRealType || IsNumberType;
 
-    /// <summary>True for primitive types: _, Integer, Real, Number, String</summary>
+    /// <summary>True for primitive types: _, Integer, Real, Number, String, Any</summary>
     public bool IsPrimitiveType =>
-        IsWildcard || IsIntegerType || IsRealType || IsNumberType || IsStringType;
+        IsWildcard || IsIntegerType || IsRealType || IsNumberType || IsStringType || IsAnyType;
 
     /// <summary>True for user-defined types (not primitive, not procedure, not anonymous final)</summary>
     public bool IsUserDefinedType => !IsPrimitiveType && !IsProcedure && !IsAnonymousFinal;
@@ -474,6 +477,8 @@ public static class ProgramDfaBuilder
         states["Number?"]  = new DFAState("Number",  isDual: true,  isFinal: false);
         states["String"]   = new DFAState("String",  isDual: false, isFinal: false);
         states["String?"]  = new DFAState("String",  isDual: true,  isFinal: false);
+        states["Any"]      = new DFAState("Any",     isDual: false, isFinal: false);
+        states["Any?"]     = new DFAState("Any",     isDual: true,  isFinal: false);
         states["_FINAL_"]  = new DFAState("_FINAL_", isDual: false, isFinal: true);
 
         // Phase 1 continued: Create automata for system types
@@ -487,6 +492,8 @@ public static class ProgramDfaBuilder
         automata["Number?"]  = PrimitiveTypeAutomaton(states["Number?"],  states["_FINAL_"]);
         automata["String"]   = PrimitiveTypeAutomaton(states["String"],   states["_FINAL_"]);
         automata["String?"]  = PrimitiveTypeAutomaton(states["String?"],  states["_FINAL_"]);
+        automata["Any"]      = PrimitiveTypeAutomaton(states["Any"],      states["_FINAL_"]);
+        automata["Any?"]     = PrimitiveTypeAutomaton(states["Any?"],     states["_FINAL_"]);
 
         // Phase 2: Create states for ALL defined types FIRST
         // (Automata may reference other types, so all states must exist before building automata)
@@ -553,8 +560,8 @@ public static class ProgramDfaBuilder
 
         foreach (var alt in typeDef.Alternatives)
         {
-            // Collect primitive type alternatives (Integer, Real, Number, String)
-            if (alt is TypeRef tr && TypeRef.Builtins.Contains(tr.Name))
+            // Collect primitive type alternatives (Integer, Real, Number, String, Any)
+            if (alt is TypeRef tr && (TypeRef.Builtins.Contains(tr.Name) || tr.Name == "Any"))
             {
                 acceptedPrimitives.Add(tr.Name);
             }
@@ -839,6 +846,13 @@ public static class ProgramDfaBuilder
             return LeafConsistencyResult.Inconsistent("String type requires string literal");
         }
 
+        if (state.IsAnyType)
+        {
+            // Any accepts any constant leaf (universal acceptor)
+            dfa.States.TryGetValue("_FINAL_", out var sf);
+            return LeafConsistencyResult.Consistent(sf);
+        }
+
         // Case 2c: At wildcard state
         // Per spec v0.6: _ accepts any produced term (mode ↑), _? accepts any consumed term (mode ↓)
         if (state.IsProducedWildcard)
@@ -883,6 +897,12 @@ public static class ProgramDfaBuilder
                         return LeafConsistencyResult.Consistent(sf);
                     }
                     if (leaf.IsString && automaton.AcceptedPrimitives.Contains("String"))
+                    {
+                        dfa.States.TryGetValue("_FINAL_", out var sf);
+                        return LeafConsistencyResult.Consistent(sf);
+                    }
+                    // Any in acceptedPrimitives admits any constant leaf (universal acceptor)
+                    if (automaton.AcceptedPrimitives.Contains("Any"))
                     {
                         dfa.States.TryGetValue("_FINAL_", out var sf);
                         return LeafConsistencyResult.Consistent(sf);

@@ -1,0 +1,109 @@
+%% ch06 ex-03 — §6.3 Equators: Emergency Brake
+%% Source: ch04 §4.4.4, book p 42, Programs run/5 + suspended_run/4 (control
+%%   meta-interpreter with suspend / resume / abort control stream).
+%% Synthesised from ch04 §4.4.4 because the ch06 PDF chapter (book p 53) is a
+%%   stub — only the title, a one-line intro, and the five §6.x section
+%%   headings exist; no body text and no native Programs.
+%% Per /speckit-clarify Q1: "Equators: Emergency Brake" is approximated by
+%%   the control-MI's `abort` message — the input prompt's analogue is
+%%   retained.  The control stream `[suspend, abort]` is the emergency-brake
+%%   demonstration: a running goal is suspended, then aborted, and the
+%%   suspended_run abort+dump clause returns the goal in the dump list.
+%% Type definitions and `procedure` declarations are introduced fresh at
+%%   §6.3 per ch05 conventions; clauses below are byte-exact from ch04
+%%   §4.4.4.  Module + Goal typing uses `_?` per typed-glp-manual.md §18.3
+%%   meta-interpreter exception (manipulates arbitrary terms — goals are
+%%   not a single-shape type).
+
+%% Control stream alphabet: the three messages the control MI listens for.
+ControlCmd ::= suspend ; resume ; abort.
+
+%% A list of control messages.
+ControlList ::= [] ; [ControlCmd | ControlList].
+
+
+%% A dump list — accumulates aborted goals on the abort+dump clause.  Element
+%%   type is `_` (any) per §18.3 — the abort clause prepends an arbitrary
+%%   Goal onto the dump list, and goals are not a single-shape type.
+DumpList ::= [] ; [_ | DumpList].
+
+%% reduce/2: imported declaration only.  The "object program" that run/5
+%%   meta-interprets is expected to provide reduce/2 clauses; we declare
+%%   the procedure here as imported so the cross-module call
+%%   `M # reduce(A?, B)` in the reduce clause type-checks.  Modules +
+%%   goals are typed `_?` per §18.3.  No object module is actually loaded
+%%   in this exercise — the demo uses `[suspend, abort]` to drive the MI
+%%   through suspended_run's abort+dump clause, which never invokes
+%%   reduce.
+imported procedure reduce(_?, _).
+
+%% run/5: the chapter's control meta-interpreter.  Args: Module, Goal,
+%%   ControlStream, DumpListIn, DumpListOut.  Module + Goal typed `_?`
+%%   because the MI manipulates arbitrary modules and arbitrary goals.
+procedure run(_?, _?, ControlList?, DumpList?, DumpList).
+
+%% halt clause: when the goal is `true`, halt — the dump-list-out IS the
+%%   dump-list-in.  Positions 1 (module) and 3 (control stream) are
+%%   anonymous — we don't care what they are.  The PDF source writes the
+%%   module slot as `M`; under typed semantics this would be an SRSW
+%%   writer-with-no-reader, so the typed presentation renames it to `_`
+%%   (the algorithmic behaviour is unchanged because M is unused in the
+%%   halt body).
+run(_, true, _, L, L?).
+
+%% fork clause: when the goal is a conjunction `(A,B)`, run A and B
+%%   sequentially through the dump list, sharing the control stream and
+%%   the module.  The `ground(M?)` and `ground(Cs?)` guards ensure both
+%%   are fully bound so multiple readers are SRSW-allowed (per typed-glp-
+%%   manual.md §3 "guard-based relaxation").  The PDF source has only
+%%   `ground(Cs?)`; the typed presentation adds `ground(M?)` for the
+%%   same reason — M? appears twice in the body.
+run(M, (A, B), Cs, L, R?) :-
+    ground(M?), ground(Cs?) |
+    run(M?, A?, Cs?, L?, Mid),
+    run(M?, B?, Cs?, Mid?, R).
+
+%% cross-module clause: when the goal is `M1 # G`, run G under module M1.
+%%   The outer module M is unused (the cross-module call replaces it with
+%%   M1); the PDF writes it as `M`, the typed presentation renames it to
+%%   `_` for the same SRSW reason as the halt clause.
+run(_, M1 # G, Cs, L, R?) :-
+    run(M1?, G?, Cs?, L?, R).
+
+%% suspend clause: when the control stream's head is `suspend`, hand
+%%   control to suspended_run/4 with the rest of the stream.
+run(M, A, [suspend|Cs], L, R?) :-
+    suspended_run(M?, A?, Cs?, L?, R).
+
+%% reduce clause: when the goal is a tuple (compound term) and no other
+%%   clause matched, reduce A by calling the object program's reduce/2,
+%%   then continue running the reduced goal B.  `ground(M?)` is added to
+%%   the guards (same reason as the fork clause) — M? appears twice in
+%%   the body (once in `M? # reduce(...)`, once in the recursive call).
+run(M, A, Cs, L, R?) :-
+    tuple(A?), ground(M?) |
+    M? # reduce(A?, B),
+    run(M?, B?, Cs?, L?, R).
+
+%% suspended_run/4: the MI in the suspended state.  Args: Module, Goal,
+%%   ControlStream, DumpListIn, DumpListOut.  Listens for resume / abort.
+%%   Position 3 is typed `_?` (per typed-glp-manual.md §18.3 meta-interpreter
+%%   exception) because the byte-exact ch04 §4.4.4 source defines only two
+%%   clauses (`[resume|Cs]` and `[abort|_]`) and intentionally has no
+%%   clause for `[]` or `[suspend|_]` — when those control messages arrive
+%%   while in the suspended state the algorithm SUSPENDS at the GLP
+%%   semantic level (no matching clause = wait for stream input).  Using
+%%   `_?` here lets the type-checker accept the partial coverage; without
+%%   it the type-checker's totality check (Definition 4.10 contravariance)
+%%   would reject the byte-exact source.
+procedure suspended_run(_?, _?, _?, DumpList?, DumpList).
+
+%% resume clause: when the control stream's head is `resume`, hand control
+%%   back to run/5 with the rest of the stream.
+suspended_run(M, A, [resume|Cs], L, R?) :-
+    run(M?, A?, Cs?, L?, R).
+
+%% abort+dump clause: when the control stream's head is `abort`, prepend
+%%   the goal to the dump list and stop.  The remainder of the control
+%%   stream is anonymous — we don't care what comes after abort.
+suspended_run(_, A, [abort|_], L, [A?|L?]).

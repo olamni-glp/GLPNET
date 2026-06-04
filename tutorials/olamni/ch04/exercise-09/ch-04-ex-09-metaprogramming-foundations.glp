@@ -1,0 +1,35 @@
+% ch-04-ex-09-metaprogramming-foundations.glp
+%
+% This file presents §4.4's metaprogramming-foundations Programs from book
+% pp 41 (PDF p 53). All clauses byte-exact from the PDF, with Q9 SRSW
+% amendments where book's printed form violates strict SRSW.
+%
+% Programs included:
+%   §4.4.1 (book p 41): reduce/2 — programs-as-data encoding of the merge program
+%   §4.4.2 (book p 41): run/2 — trust-mode meta-interpreter (4 clauses: halt, fork, cross-module, reduce)
+%
+% Q9 amendment: book's run/2 has M? appearing multiple times in body without
+% a multi-reader-permissive guard; added constant(M?) guard per Formal 4.3
+% (M is a module name — atom — so constant/1 permits multi-reader).
+
+%% §4.4.1 (book p 41): reduce/2 encoding of the merge program.
+
+%% reduce clause 1 — encodes merge clause 1 (output from first stream).
+reduce(merge([X|Xs], Ys, [X?|Zs?]), merge(Xs?, Ys?, Zs)).
+%% reduce clause 2 — encodes merge clause 2 (output from second stream).
+reduce(merge(Xs, [Y|Ys], [Y?|Zs?]), merge(Xs?, Ys?, Zs)).
+%% reduce clause 3 — encodes merge base (empty-empty).
+reduce(merge([], [], []), true).
+
+%% §4.4.2 (book p 41): trust-mode meta-interpreter run/2.
+%% AMENDED per Q9: added constant(M?) to guards where M? appears multiple
+%% times (M is a module name; constant/1 permits multi-reader).
+
+%% run halt — true terminates. M unused (anonymous per SRSW).
+run(_, true).
+%% run fork — conjunction spawns two processes; constant(M?) permits multi-reader M.
+run(M, (A,B)) :- constant(M?) | run(M?, A?), run(M?, B?).
+%% run cross-module — M1 # G switches modules. Outer M unused (anonymous).
+run(_, M1 # G) :- run(M1?, G?).
+%% run reduce — look up clause, continue with body; constant(M?) permits multi-reader.
+run(M, A) :- tuple(A?), constant(M?) | M # reduce(A?, B), run(M?, B?).

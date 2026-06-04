@@ -1,0 +1,11 @@
+%% ch-01-ex-02-fair-stream-merger.glp
+%% Program 1.1 from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §1.6, p 5,
+%% with variables RENAMED to semantic identifiers:
+%%   X  -> First       Y  -> Second      Zs -> Out
+%%   Xs -> RestFirst   Ys -> RestSecond
+%% Pedagogical point: GLP semantics depend on the SRSW reader/writer pairing,
+%% NOT on identifier text. The result of any goal here is identical to ex-01.
+
+merge([First|RestFirst],RestSecond,[First?|Out?]) :- merge(RestSecond?,RestFirst?,Out).  %% take from stream 1; swap to alternate
+merge(RestFirst,[Second|RestSecond],[Second?|Out?]) :- merge(RestFirst?,RestSecond?,Out).  %% take from stream 2; swap to alternate
+merge([],[],[]).                                                                          %% both streams empty: terminate

@@ -1,0 +1,4 @@
+% ch-02-ex-01-corrected.glp
+%
+%% The corrected version that type-checks cleanly.
+ok(X, X).

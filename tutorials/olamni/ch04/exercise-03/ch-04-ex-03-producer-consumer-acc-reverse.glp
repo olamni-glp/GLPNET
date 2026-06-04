@@ -1,0 +1,51 @@
+% ch-04-ex-03-producer-consumer-acc-reverse.glp
+%
+% This file presents producer/2 + consumer/3 (duplicated byte-exact from the
+% sibling naive-reverse file per FR-010 self-containment) plus the
+% accumulator-based reverse/2 + reverse_acc/3 from book p 32, §4.2.4. The
+% accumulator implementation runs in O(n) — linear, in contrast to the naive
+% O(n²) version in the sibling file.
+%
+% Per Clarifications Q4 (2026-04-30 spec amendment), ex-03 contains two .glp
+% files because both naive reverse/2 (book p 31) and accumulator reverse/2
+% (book p 32) define the same predicate name; the GLP non-contiguous-clauses
+% constraint forbids them in a single source file. The split mirrors the
+% ch02 ex-01 LP/GLP and ch03 ex-01 Program3.1+producer-consumer two-file
+% patterns established in earlier chapters.
+%
+% Programs included (byte-exact):
+%   §4.2.1 (book p 31): producer/2 — duplicated inline per FR-010
+%   §4.2.2 (book p 31): consumer/3 — duplicated inline per FR-010
+%   §4.2.4 (book p 32): accumulator reverse/2 + reverse_acc/3 (O(n) linear)
+%
+% Cross-chapter inversion: the producer/2 + consumer/3 clauses in this file
+% are byte-identical to ch03 ex-01's import (and to the sibling naive-reverse
+% file). Per FR-002 + SC-007, the identity contract is preserved.
+%
+% References Formal 4.2 (SRSW in Continuation Calls, book p 31).
+
+%% §4.2.1 (book p 31): producer that counts down from N. Duplicated per FR-010.
+
+%% Producer base — when count is zero, the stream is the empty list.
+producer([], 0).
+%% Producer recursive — emit N at head, recurse on tail with N-1.
+producer([N?|Xs?], N) :- N? > 0 | N1 := N? - 1, producer(Xs, N1?).
+
+%% §4.2.2 (book p 31): consumer that sums stream elements. Duplicated per FR-010.
+
+%% Consumer base — when stream is empty, accumulator becomes the result.
+consumer([], Sum, Sum?).
+%% Consumer recursive — `ground(X?)` waits for head to bind; accumulate; recurse via reader.
+consumer([X|Xs], Sum, Result?) :- ground(X?) |
+    Sum1 := Sum? + X?,
+    consumer(Xs?, Sum1?, Result).
+
+%% §4.2.4 (book p 32): accumulator-based reverse/2 + reverse_acc/3.
+
+%% Reverse-with-accumulator entry — initialises Acc to empty list, hands off to reverse_acc/3.
+reverse(Xs, Ys?) :- reverse_acc(Xs?, [], Ys).
+
+%% reverse_acc base — when input list is empty, accumulator IS the result via writer/reader pair Acc/Acc?.
+reverse_acc([], Acc, Acc?).
+%% reverse_acc recursive — prepend head to accumulator, recurse on tail; total work O(n).
+reverse_acc([X|Xs], Acc, Ys?) :- reverse_acc(Xs?, [X?|Acc?], Ys).

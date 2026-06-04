@@ -1,3 +1,44 @@
+# ⏩ ACTIVE 2026-06-04 — 023 /glptutorial-run + C# runtime convergence (Option C)
+
+Branch `023-glptutorial-run`. `/buildkit-implement` for 023 found the **mandated C# REPL**
+broken (cascade of Dart→C# conversion regressions). Gabi approved **Option C**: fix the C#
+runtime FIRST (hand-converge `out/csharp` to authoritative Dart source-of-truth, then a
+systematic subagent audit), then implement 023 with a shape-classification conformity
+mechanism. Approvals (2026-06-04): 1-A hybrid · 2 hand-edit out/csharp now + convspec/codegen
+follow-up · 3-Hybrid (classify ALL shapes; handle cheap + load-failure-golden now; defer hard
+shapes with explicit flags). This advances 020's own "C# re-catch-up vs corrected golden" scope.
+
+**Track A — C# convergence (DONE: mandated default runs full corpus; 32/38 MATCH, 0 runtime bugs,
+0 regressions per 2026-06-04 sweep).** Committed: A1 glp_repl.cs prelude-path resolver [c2737113] ·
+A2 prelude.cs tuple/is_list builtins [c2737113] · D3 Any type in program_dfa.cs [aa2e958f] · D5
+is_list/tuple guard aliases [0013d1c0] · D1+D2 NumEquals constant matching [2c5a2224] · 6a mode-word
+lowercase casing [7b7942de]. All 7 previously-failing examples now MATCH.
+Remaining non-MATCH (NOT runtime bugs): ch04/07 spec-violation (C# correct, stale golden) ·
+ch04/08 stale golden (C# == live Dart) · ch05/06+07 residual printer bits (bytecode-bool `False`,
+"Exception:" prefix) · ch02/01 SRSW ` at Line 0,Col 0` suffix gap. → corpus proposals + 023 compare-
+normalization + A5 follow-up. PENDING GABI: Part-1 int-preservation+H1 (latent fidelity; a=skip/defer
+to A5, recommended · b=do now); corpus-golden dispositions. A2b loud-fail / M2 ordering → A5.
+A5 convspec/codegen follow-up so regen doesn't reintroduce any of the above.
+**Track B — 023 (3-Hybrid): CORE DONE + verified end-to-end on C#.** Modules added:
+`outcome.py` (glued-output + goal-echo parser, fresh-var norm, golden kinds), `resolve.py`
+(shape-classifier: SECTION_SINGLE/MULTI_COMPOSE/TWO_SESSION/USE_CASE_PROJECT/NOT_IMPLEMENTED;
+goals from guide, golden positional), `backends.py` (C# default + Dart, P1 policy), `explain.py`
+(verdicts), `propose.py` (incl. ch04/07 spec-flag + ch04/08 stale-golden, decision 2), `render_run.py`;
+`cli.py` wired preview/run/explain/propose (exit 6–11); no-bridge guard extended; SKILL.md added;
+`test_tutorials_run.py` 20 tests incl. gated real-backend (all green; full tutorials suite 65 pass/1 skip).
+VERIFIED e2e on C#: `explain ch01 01` (US1+US4 all ✓match), `run ch07 01` (US2 — project+fplay1
+→suspended, ✓match), `preview` both shapes, ch03 multi-compose composed goal.
+US5 DONE (--backend cs|dart, --dart-fallback flagged P1 notice, C# P1 exit 8); exit-codes 6/7/8/9/11
+wired+tested (exec-path check + drift guard added); JSON-schema + skill≡CLI parity tests; T039 docs
+(known-issues Issue 10). Run-layer tests 26 green; full tutorials suite 73 pass/1 skip. Fixture
+corpus (T002) satisfied via real-corpus tests. two-session/bytecode/flutter classified-and-deferred
+by design (Issue 10). **023 effectively complete** — remaining: optional exhaustive per-example
+golden sweep via the new tooling, and `buildkit ship` when Gabi is ready.
+
+Live granular progress tracked via the session task list. 020 ledger preserved below ⬇️.
+
+---
+
 # Current Plan: 020 Trace-Equivalence Fidelity — Implementation (safe-restart ledger)
 
 Started: 2026-05-27

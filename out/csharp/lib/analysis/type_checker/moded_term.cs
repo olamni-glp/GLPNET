@@ -296,7 +296,10 @@ public sealed class ModedPath : IEquatable<ModedPath>
     public int Length => Steps.Count;
 
     public override string ToString()
-        => string.Join(" → ", Steps.Select(s => $"({s.Symbol}, {s.ArgIndex}, {s.Mode})"));
+        // Mode rendered via AsModeString() (lowercase "input"/"output") to mirror the
+        // Dart Mode.toString() override; the default C# enum ToString() is PascalCase
+        // ("Input"/"Output") which diverged from the goldens (e.g. ch05/ex07 mode-error).
+        => string.Join(" → ", Steps.Select(s => $"({s.Symbol}, {s.ArgIndex}, {s.Mode.AsModeString()})"));
 
     public bool Equals(ModedPath? other)
     {

@@ -1,0 +1,19 @@
+% ch-05-ex-07-mode-error-corrected.glp
+%
+% Companion to ch-05-ex-07-mode-error-failing.glp — this is the book-cited
+% corrected form `bar(X, Y?) :- Y := X? + 1.` from book p 52, byte-exact.
+%
+% Same procedure declaration `bar(Number?, Number)` as the failing form. The
+% clause is fixed: X is now a writer at the consume position; Y? is now a
+% reader (hole) at the produce position. The body computes `Y := X? + 1`.
+%
+% The body uses the `:=` arithmetic-assignment kernel. That kernel was
+% introduced in chapter 2 territory and is permitted here because it appears
+% in a byte-exact PDF clause.
+
+%% Same declaration as the failing form: arg 1 consume, arg 2 produce.
+procedure bar(Number?, Number).
+
+%% Corrected clause: writer X at the consume position, reader hole Y? at the
+%% produce position; body reads X? and writes Y, computing Y = X + 1.
+bar(X, Y?) :- Y := X? + 1.

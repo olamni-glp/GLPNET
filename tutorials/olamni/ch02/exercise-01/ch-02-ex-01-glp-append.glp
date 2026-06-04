@@ -1,0 +1,11 @@
+% ch-02-ex-01-glp-append.glp
+%% GLP append/3 byte-exact from "The Art of Grassroots Logic Programming" (Shapiro, 2025), §4.2, pp 31-32.
+%% Imported into ch02 to illustrate the SRSW transition described in §2.2 (Linear Logic, Formal 2.1).
+%% This is the only cross-chapter import permitted in ch02 per the spec's Out-of-Scope section.
+%%
+%% Compare with ch-02-ex-01-classical-append-LP-only.glp: same predicate name, same recursion shape,
+%% but the `?` reader annotations make each variable's writer and reader explicit, satisfying SRSW
+%% (Formal 2.1, p 14: each variable occurs exactly once as a writer and exactly once as a reader).
+
+append([], Ys, Ys?).                                   %% base: writer Ys (2nd arg) binds; reader Ys? (3rd arg) forwards the second list verbatim
+append([X|Xs], Ys, [X?|Zs?]) :- append(Xs?, Ys?, Zs).  %% recursive: writers X, Xs, Ys, Zs in head; readers X?, Xs?, Ys?, Zs? in body — paired

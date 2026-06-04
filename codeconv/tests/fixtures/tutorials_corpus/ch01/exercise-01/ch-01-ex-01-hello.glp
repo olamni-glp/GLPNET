@@ -1,0 +1,4 @@
+% ch-01-ex-01-hello.glp
+%
+%% A trivial hello-world exemplar for the fixture.
+hello(world).
