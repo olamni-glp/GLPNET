@@ -1,3 +1,27 @@
+# ⏩ ACTIVE 2026-06-04 — 023 /glptutorial-run + C# runtime convergence (Option C)
+
+Branch `023-glptutorial-run`. `/buildkit-implement` for 023 found the **mandated C# REPL**
+broken (cascade of Dart→C# conversion regressions). Gabi approved **Option C**: fix the C#
+runtime FIRST (hand-converge `out/csharp` to authoritative Dart source-of-truth, then a
+systematic subagent audit), then implement 023 with a shape-classification conformity
+mechanism. Approvals (2026-06-04): 1-A hybrid · 2 hand-edit out/csharp now + convspec/codegen
+follow-up · 3-Hybrid (classify ALL shapes; handle cheap + load-failure-golden now; defer hard
+shapes with explicit flags). This advances 020's own "C# re-catch-up vs corrected golden" scope.
+
+**Track A — C# convergence (BLOCKS 023 real-backend):** A1 fix glp_repl.cs prelude-path (port
+Dart `_resolveRootSelfGlpPath`, loud-fail, restore diagnostic) · A2 fix prelude.cs (add
+tuple/is_list + /1 keys to match prelude.dart) · A2b converge `_LoadRootSelf` loud-fail · A3
+rebuild + verify ch01+ch07 vs goldens · A4 systematic Dart↔C# audit (subagents) + per-golden
+verify ch01–07 · A5 convspec/codegen follow-up note.
+**Track B — 023 (3-Hybrid):** B0 pytest baseline · B1 setup+foundational · B2 shape-classifier
+(handle: section-single, use-case-project, compound goals, multi-goal seq, var :limit, multi-file
+single-session, load-failure-as-golden; DEFER+flag: two-session, bytecode-dump golden, Flutter-only
+golden) · B3 US1 · B4 US2 · B5 US3/4/5 · B6 proposals/skill/polish.
+
+Live granular progress tracked via the session task list. 020 ledger preserved below ⬇️.
+
+---
+
 # Current Plan: 020 Trace-Equivalence Fidelity — Implementation (safe-restart ledger)
 
 Started: 2026-05-27

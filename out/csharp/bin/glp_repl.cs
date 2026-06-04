@@ -34,6 +34,36 @@ public static class Program
     // Pre-compiled whitespace splitter (Dart `RegExp(r'\s+')`)
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Resolve the absolute path to programs/self.glp by walking up from
+    /// AppContext.BaseDirectory until an ancestor directory contains
+    /// programs/self.glp. This ports the Dart bin/glp_repl.dart
+    /// _resolveRootSelfGlpPath() intent, adapted to the C# deployment layout
+    /// (the exe lives under out/csharp/glp_repl/bin/&lt;cfg&gt;/&lt;tfm&gt;/, with no
+    /// glp_runtime/ ancestor; the prelude ships at the glpnet repo root's
+    /// programs/self.glp). The prior literal "../../programs/self.glp" overshot
+    /// and silently left the prelude type-environment EMPTY — every prelude type
+    /// (Constant, Stream, Channel, …) then failed with UnknownTypeError. We fail
+    /// loudly here rather than continue with an empty prelude (matches Dart's
+    /// StateError throw).
+    /// </summary>
+    private static string ResolveRootSelfGlpPath()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            var candidate = Path.Combine(dir.FullName, "programs", "self.glp");
+            if (File.Exists(candidate))
+                return Path.GetFullPath(candidate);
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException(
+            "GLP REPL could not locate programs/self.glp by walking up from " +
+            $"AppContext.BaseDirectory = {AppContext.BaseDirectory}. The REPL must run " +
+            "from within a checkout of the glpnet repository (the executable must reside " +
+            "under a tree whose root contains programs/self.glp).");
+    }
+
     // ── Entry point ───────────────────────────────────────────────────────────
 
     public static async Task Main(string[] args)
@@ -58,14 +88,13 @@ public static class Program
         Console.WriteLine("Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot");
         Console.WriteLine();
 
-        // Resolve programs/self.glp relative to the application's base directory.
-        // AppContext.BaseDirectory is the .NET equivalent of Platform.script's directory.
-        // Two levels up (../../) reaches the repo root; then programs/self.glp.
-        var rootSelfGlpPath = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "programs", "self.glp"));
+        // Resolve programs/self.glp by walking up from AppContext.BaseDirectory
+        // (see ResolveRootSelfGlpPath). Replaces a literal "../../programs/self.glp"
+        // that overshot the exe layout and left the prelude empty.
+        var rootSelfGlpPath = ResolveRootSelfGlpPath();
 
         var engine = new GlpEngine(rootSelfGlpPath);
-        Console.WriteLine("Loaded root self.glp");
+        Console.WriteLine($"Loaded root self.glp from: {rootSelfGlpPath}");
         Console.WriteLine();
 
         while (true)
