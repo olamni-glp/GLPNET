@@ -43,9 +43,9 @@ Invoke pytest from the codeconv venv, serial: `codeconv/.venv/Scripts/python.exe
 
 **Purpose**: package skeleton + CLI registration + data shapes
 
-- [ ] T001 Create the harness package skeleton `codeconv/src/codeconv/marathon/__init__.py` exporting an (initially empty) Typer `app` with help text, plus empty module files `store.py checkpoint.py gate.py cadence.py orchestrate.py verify_spike.py status.py gitblock.py trace.py escalation.py models.py`
-- [ ] T002 [P] Register the `marathon` Typer app statically in `codeconv/src/codeconv/cli.py` (mirror the bridge-free `tutorials` registration; do NOT route through the `tools/` auto-discovery registry per research.md D3)
-- [ ] T003 [P] Define row dataclasses in `codeconv/src/codeconv/marathon/models.py` for Marathon, StageBlock, Checkpoint, Approval, StatusReport, VerificationTrace, GitBlock, Escalation (fields per data-model.md)
+- [X] T001 Create the harness package skeleton `codeconv/src/codeconv/marathon/__init__.py` exporting an (initially empty) Typer `app` with help text, plus empty module files `store.py checkpoint.py gate.py cadence.py orchestrate.py verify_spike.py status.py gitblock.py trace.py escalation.py models.py`
+- [X] T002 [P] Register the `marathon` Typer app statically in `codeconv/src/codeconv/cli.py` (mirror the bridge-free `tutorials` registration; do NOT route through the `tools/` auto-discovery registry per research.md D3)
+- [X] T003 [P] Define row dataclasses in `codeconv/src/codeconv/marathon/models.py` for Marathon, StageBlock, Checkpoint, Approval, StatusReport, VerificationTrace, GitBlock, Escalation (fields per data-model.md)
 
 ---
 
@@ -55,14 +55,14 @@ Invoke pytest from the codeconv venv, serial: `codeconv/.venv/Scripts/python.exe
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create Alembic migration `codeconv/src/codeconv/db/migrations/versions/0010_marathon_schema.py` — `CREATE SCHEMA marathon` + all 8 tables (marathons, stage_blocks, checkpoints, approvals, status_reports, verification_traces, git_blocks, escalations) with constraints/indices per data-model.md; verify `codeconv --data-dir C:/pglite/research/glpnet migrate` applies it cleanly
-- [ ] T005 Wire the durable substrate in `codeconv/src/codeconv/marathon/store.py` by reusing `codeconv.bridge_client.acquire_or_discover`, `codeconv.db.engine` (build_url/setup_dbos), and `codeconv.durable` deterministic id-derivation — NO re-implementation of bridge/DBOS (research.md reuse map, FR-009/010)
-- [ ] T006 Implement primary-store primitives in `codeconv/src/codeconv/marathon/store.py`: `write_checkpoint` (append-only, allocate strictly-monotonic marathon-wide `sequence_no`) and `read_position` (max `sequence_no`) per contracts/checkpoint-store.md (I1–I4)
-- [ ] T007 [P] Implement the JSON-fallback mirror (writer/reader) under `.codeconv/marathon/<marathon_id>/` in `codeconv/src/codeconv/marathon/store.py`, each record carrying its `sequence_no` (data-model.md fallback layout; FR-020)
-- [ ] T008 [P] Implement stage→block cadence mapping in `codeconv/src/codeconv/marathon/cadence.py` (specify=1, clarify=1, plan+task+analyze=1, implement=N sessions, review=1) per FR-019/D9
-- [ ] T009 Implement `marathon start` in `codeconv/src/codeconv/marathon/__init__.py` — create/re-attach the marathon row and record the two standing preauthorizations (commit/push, Workflow opt-in); idempotent (FR-014/023, contracts/cli.md)
-- [ ] T010 [P] Implement `marathon doctor` in `codeconv/src/codeconv/marathon/__init__.py` — bridge reachability, active store (primary/fallback), last `sequence_no` per store, open escalations, budget headroom (contracts/cli.md)
-- [ ] T011 [P] Add marathon test fixtures to `codeconv/tests/conftest.py` reuse path (serial, `@needs_bridge`); provide a helper to spin up a throwaway marathon + tear it down per data-model schema
+- [X] T004 Create Alembic migration `codeconv/src/codeconv/db/migrations/versions/0010_marathon_schema.py` — `CREATE SCHEMA marathon` + all 8 tables (marathons, stage_blocks, checkpoints, approvals, status_reports, verification_traces, git_blocks, escalations) with constraints/indices per data-model.md; verify `codeconv --data-dir C:/pglite/research/glpnet migrate` applies it cleanly  ⟶ single-head 0010 verified offline; "applies cleanly" exercised by isolated-cluster fixtures (NOT run against the shared cluster unprompted — discipline)
+- [X] T005 Wire the durable substrate in `codeconv/src/codeconv/marathon/store.py` by reusing `codeconv.bridge_client.acquire_or_discover`, `codeconv.db.engine` (build_url/setup_dbos), and `codeconv.durable` deterministic id-derivation — NO re-implementation of bridge/DBOS (research.md reuse map, FR-009/010)
+- [X] T006 Implement primary-store primitives in `codeconv/src/codeconv/marathon/store.py`: `write_checkpoint` (append-only, allocate strictly-monotonic marathon-wide `sequence_no`) and `read_position` (max `sequence_no`) per contracts/checkpoint-store.md (I1–I4)
+- [X] T007 [P] Implement the JSON-fallback mirror (writer/reader) under `.codeconv/marathon/<marathon_id>/` in `codeconv/src/codeconv/marathon/store.py`, each record carrying its `sequence_no` (data-model.md fallback layout; FR-020)
+- [X] T008 [P] Implement stage→block cadence mapping in `codeconv/src/codeconv/marathon/cadence.py` (specify=1, clarify=1, plan+task+analyze=1, implement=N sessions, review=1) per FR-019/D9
+- [X] T009 Implement `marathon start` in `codeconv/src/codeconv/marathon/__init__.py` — create/re-attach the marathon row and record the two standing preauthorizations (commit/push, Workflow opt-in); idempotent (FR-014/023, contracts/cli.md)
+- [X] T010 [P] Implement `marathon doctor` in `codeconv/src/codeconv/marathon/__init__.py` — bridge reachability, active store (primary/fallback), last `sequence_no` per store, open escalations, budget headroom (contracts/cli.md)
+- [X] T011 [P] Add marathon test fixtures to `codeconv/tests/conftest.py` reuse path (serial, `@needs_bridge`); provide a helper to spin up a throwaway marathon + tear it down per data-model schema
 
 **Checkpoint**: durable store + schema + CLI skeleton ready — story work can begin
 

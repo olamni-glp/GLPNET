@@ -1,13 +1,13 @@
-"""Stage 4 — migration 0009 keeps the chain single-head & linear.
+"""Feature 024 — migration 0010 keeps the chain single-head & linear.
 
-Feature 020 Stage 4 (the first-class ``no_emit`` status) appends
-``0009_no_emit`` (revision ``0009``, down_revision ``0008``) carrying the
-additive ``codeconv.dart_codegen.no_emit`` column. The runner MUST report
-exactly one head (``0009``); no branch / multi-head. This mirrors
-``test_migration_0008_single_head.py`` extended one revision: the offline
+The marathon stage-harness appends ``0010_marathon_schema`` (revision
+``0010``, down_revision ``0009``) creating the ``marathon`` schema + its
+eight domain tables (data-model.md). The runner MUST report exactly one
+head (``0010``); no branch / multi-head. Mirrors
+``test_migration_0009_single_head.py`` extended one revision: the offline
 assertions are authoritative (Alembic ``ScriptDirectory``); the
 bridge-gated test confirms a live ``codeconv migrate`` reaches +
-idempotently re-applies head 0009.
+idempotently re-applies head 0010 (all DDL ``IF NOT EXISTS``).
 """
 
 from __future__ import annotations
@@ -32,13 +32,13 @@ def _script_dir():
 
 
 def test_exactly_one_head_offline() -> None:
-    """Authoritative, bridge-free: the script graph has ONE head 0009 (no branch)."""
+    """Authoritative, bridge-free: the script graph has ONE head 0010 (no branch)."""
     sd = _script_dir()
     heads = sd.get_heads()
     assert heads == ["0010"], f"expected single head 0010, got {heads}"
 
 
-def test_linear_chain_through_0009_offline() -> None:
+def test_linear_chain_through_0010_offline() -> None:
     """The chain stays strictly linear 0001→…→0010 (no branch/merge),
     so ``alembic upgrade head`` is unambiguous."""
     sd = _script_dir()
@@ -57,18 +57,18 @@ def test_linear_chain_through_0009_offline() -> None:
     }, chain
 
 
-def test_0009_revision_metadata_offline() -> None:
-    """``0009`` revises ``0008`` (the documented down_revision)."""
+def test_0010_revision_metadata_offline() -> None:
+    """``0010`` revises ``0009`` (the documented down_revision)."""
     sd = _script_dir()
-    rev = sd.get_revision("0009")
-    assert rev.down_revision == "0008", rev.down_revision
+    rev = sd.get_revision("0010")
+    assert rev.down_revision == "0009", rev.down_revision
 
 
 @needs_bridge
-def test_upgrade_head_reaches_0009_and_idempotent(discover_repo: Path) -> None:
-    """Fresh cluster: ``codeconv migrate`` exits 0 (reaches head 0009),
-    and a second run is a clean no-op (ADD COLUMN IF NOT EXISTS)."""
-    p1 = run_codeconv(discover_repo, "migrate", timeout=180.0)
+def test_upgrade_head_reaches_0010_and_idempotent(discover_repo: Path) -> None:
+    """Fresh cluster: ``codeconv migrate`` exits 0 (reaches head 0010),
+    and a second run is a clean no-op (CREATE SCHEMA/TABLE IF NOT EXISTS)."""
+    p1 = run_codeconv(discover_repo, "migrate", timeout=240.0)
     assert p1.returncode == 0, f"first migrate failed: {p1.stderr}"
-    p2 = run_codeconv(discover_repo, "migrate", timeout=180.0)
+    p2 = run_codeconv(discover_repo, "migrate", timeout=240.0)
     assert p2.returncode == 0, f"re-migrate not idempotent: {p2.stderr}"
