@@ -89,6 +89,27 @@
 
 ## [Unreleased]
 
+## [v2026.06.05.1] - 2026-06-05
+
+### Added
+- polish — auto-mode policy, stage-hook skill, docs, multi-session e2e (marathon complete)
+- US2 gate + US3 rerun + US5 status/budget + US6 gitblock + US7 trace
+- US4 verify-spike + US1 restart-safe resume MVP (resume/reconcile, gate reader, budget, trace)
+- marathon harness foundation — 0010 schema, dual store, cadence, start/doctor
+
+### Fixed
+- guard rerun_subagent against sibling-block units (FR-007) + regression test
+
+### Changed
+- Merge pull request #23 from olamni-glp/024-marathon-stage-harness
+- refine(codexreview): cycle 1/5 [diff/general]
+- plan + tasks + analyze for marathon-stage-harness (one logical block)
+- specify + clarify marathon-stage-harness spec
+- roadmap + buildkit pipeline state as the restart-resume source of truth; current_plan.md → thin pointer
+- add buildkit-roadmap skill forwarder
+- mark comparison guards implemented in glp-bytecode-v216 11.7 (was stale Planned)
+- Merge pull request #22 from olamni-glp/main
+
 ## [v2026.06.04.1] - 2026-06-04
 
 ### Added
