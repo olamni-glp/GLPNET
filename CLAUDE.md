@@ -43,7 +43,7 @@ After Gabi gives direction:
 
 ## 🔴 After Context Compaction
 
-When emerging from compaction (you see a session summary replacing the original conversation), do NOT silently continue. Stop, tell Gabi you have emerged from compaction, summarise where things stand, and ask how to proceed. Never assume the summary is complete or that prior agreements still hold.
+When emerging from compaction (you see a session summary replacing the original conversation), do NOT silently continue. Stop, tell Gabi you have emerged from compaction, summarise where things stand, and ask how to proceed. Never assume the summary is complete or that prior agreements still hold. To re-locate the work **objectively** (not from the possibly-stale summary), follow the Restart-Resume order in *Multi-Stage Task Persistence & Restart-Resume*: `buildkit-roadmap next` → in-progress? → pipeline/WIP position; recover from the last durable checkpoint and skip partial work.
 
 ---
 
@@ -298,25 +298,32 @@ For sibling-repo (Mac) merge paths, see appendix.
 
 ---
 
-## Multi-Stage Task Persistence
+## Multi-Stage Task Persistence & Restart-Resume
 
-When starting a 3+ step effort, write the plan to `docs/current_plan.md`:
+The **roadmap + the buildkit pipeline state are the source of truth** for where work
+stands — never a hand-maintained ledger or a hand-written restart prompt (those drift
+stale and send restarts into finished work). On restart (fresh session, post-compaction,
+or post-crash) locate yourself in this order:
 
-```markdown
-# Current Plan: <Task Name>
+1. **What feature / what stage?** → `buildkit-roadmap next` (or `status`): the active/next
+   roadmap feature, its state (captured/refined/promoted/specified), and the exact
+   `/buildkit-specify` command. The roadmap is authoritative for *what to work on*.
+2. **In progress?** → a feature with a spec dir (`.specify/feature.json` → `specs/<NNN>/`)
+   has entered the pipeline. The CLAUDE.md `<!-- BUILDKIT -->` block (auto-maintained)
+   points at it.
+3. **Where in the feature (WIP position)?** → the buildkit pipeline stage state
+   (DBOS + PGLite, per-feature) + the feature's `spec.md`/`plan.md`/`tasks.md`: which stage
+   (specify→clarify→plan→tasks→analyze→implement→review) and which tasks remain.
 
-Started: YYYY-MM-DD
-
-## Steps
-- [x] 1. Done step
-- [ ] 2. Current step ← CURRENT
-- [ ] 3. Next step
-
-## Context
-<brief description of what & why>
-```
-
-Update as you go. Delete when done. **At session start, check whether `docs/current_plan.md` exists** and, if so, resume from the current step.
+`docs/current_plan.md` is now only a **thin pointer** to the above, not a work ledger — do
+not resurrect the old "write the full plan here and resume from it" mechanism. The
+**marathon-stage-harness** (feature 024, **implemented** as `codeconv.marathon` — PGLite
+schema `marathon` via Alembic `0010` + JSON fallback) owns the durable cross-session
+checkpoint + compaction/crash-recovery protocol that makes steps 2–3 instant and reliable:
+detect a compaction/crash → recover from the last durable checkpoint → skip partial work,
+tidy up → continue. After the roadmap→pipeline→tasks order above, run
+`codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
+for the max-`sequence_no` checkpoint (never a summary). See `/marathon-stage-harness`.
 
 ---
 
@@ -554,5 +561,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/023-glptutorial-run/plan.md
+- specs/024-marathon-stage-harness/plan.md
 <!-- BUILDKIT END -->

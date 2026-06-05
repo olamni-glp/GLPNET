@@ -310,6 +310,23 @@ app.add_typer(
 )
 
 
+# `marathon` is the durable restart-safe stage harness (feature 024). Like
+# `tutorials`, it is registered statically here — NOT through
+# `tool_registry()` — so it does not appear as a Dart→C# conversion tool in
+# `codeconv list` (research.md D3). It reuses bridge_client/db.engine/durable
+# as libraries; bridge acquisition is deferred to the subcommands that need it.
+from codeconv.marathon import marathon_app  # noqa: E402
+
+app.add_typer(
+    marathon_app,
+    name="marathon",
+    help=(
+        "Durable, restart-safe stage harness (feature 024). "
+        "See /marathon-stage-harness."
+    ),
+)
+
+
 # ---------------------------------------------------------------------------
 # Dynamic tool registration
 # ---------------------------------------------------------------------------

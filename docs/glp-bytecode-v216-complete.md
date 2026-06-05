@@ -800,9 +800,9 @@ process(X) :- known(X?)   | ... handle bound case
 ### 11.6 (Reserved)
 *Section removed - previously documented if_reader which is now consolidated into unknown/1*
 
-### 11.7 Arithmetic Guards (Planned)
+### 11.7 Arithmetic Guards
 
-**Implementation Status**: Type guards implemented, comparison guards require parser extension
+**Implementation Status**: Type guards and comparison guards are both implemented.
 
 Type guards are three-valued and patient (unlike body kernels which are two-valued and abort on unbound inputs).
 
@@ -820,7 +820,7 @@ Type guards are three-valued and patient (unlike body kernels which are two-valu
 2. If X? is unbound reader → **SUSPEND** (add to U, immediately try next clause)
 3. Otherwise (unbound writer, bound to non-integer) → **FAIL**
 
-#### Planned: Comparison Guards
+#### ✅ Implemented: Comparison Guards
 **Operations**: `X < Y`, `X =< Y`, `X > Y`, `X >= Y`, `X =:= Y`, `X =\= Y`
 
 **Note**: Prolog uses `=<` (not `<=`) for "less than or equal"
@@ -830,14 +830,15 @@ Type guards are three-valued and patient (unlike body kernels which are two-valu
 2. Either X or Y is unbound reader → **SUSPEND** (add first unbound reader to U, immediately try next clause)
 3. Both bound to numbers AND condition false → **FAIL**
 
-**Parser Limitation**: Currently, the parser does NOT support infix operators in guard position. Comparison guards would require:
-- Adding comparison tokens (`LT`, `GT`, `LE`, `GE`, `ARITH_EQ`, `ARITH_NE`) to lexer
-- Updating parser to recognize these operators in guard context
-- Transforming infix to prefix predicates (e.g., `X < Y` → `<(X, Y)`)
+**Parser Support** (implemented): The parser recognizes infix comparison operators in guard position and transforms them to prefix predicates (e.g., `X < Y` → `<(X, Y)`):
+- Comparison tokens `LESS`, `GREATER`, `LESS_EQUAL`, `GREATER_EQUAL`, `ARITH_EQUAL`, `ARITH_NOT_EQUAL`, `GROUND_EQUAL` — `glp_runtime/lib/compiler/token.dart`
+- Infix recognition + infix→prefix transform — `glp_runtime/lib/compiler/parser.dart`
+- Guard validation — `glp_runtime/lib/compiler/analyzer.dart`, `glp_runtime/lib/compiler/pmt/checker.dart`
 
 **Currently Implemented Guards**:
 - ✅ `ground(X?)`, `known(X?)`, `unknown(X?)`, `otherwise`
 - ✅ `number(X?)`, `integer(X?)` - type tests
+- ✅ `<`, `=<`, `>`, `>=`, `=:=`, `=\=` - comparison guards (infix; see above)
 
 **Design Pattern**:
 ```glp
