@@ -43,15 +43,16 @@ def test_exactly_one_head_offline() -> None:
     is the Stage-4 owner of the 0009 assertions.)"""
     sd = _script_dir()
     heads = sd.get_heads()
-    assert heads == ["0009"], f"expected single head 0009, got {heads}"
+    assert heads == ["0010"], f"expected single head 0010, got {heads}"
 
 
 def test_linear_chain_offline() -> None:
-    """The chain is strictly linear 0001→…→0009 (no branch/merge), so
+    """The chain is strictly linear 0001→…→0010 (no branch/merge), so
     ``alembic upgrade head`` is unambiguous."""
     sd = _script_dir()
     chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
     assert chain == {
+        "0010": "0009",
         "0009": "0008",
         "0008": "0007",
         "0007": "0006",

@@ -89,3 +89,6 @@ glp_runtime_net/
 # buildkit pipeline pgdb (PGLite+DBOS local cluster; regenerable state, not versioned)
 pgdb/
 pgdb.consumers/
+
+# buildkit-codexreview advisory review artifacts (local-only; never pushed)
+reviews/

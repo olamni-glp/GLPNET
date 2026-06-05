@@ -347,3 +347,89 @@ def stage_convspec_artifacts(
         )
         staged.append(rel)
     return staged
+
+
+# ---------------------------------------------------------------------------
+# Marathon stage-harness fixtures (feature 024, T011)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def marathon_fallback_store(tmp_path: Path):
+    """A fallback-only ``MarathonStore`` (pure JSON, no bridge).
+
+    For the seq-allocation / read_position / reconcile / approval-gate /
+    trace unit tests that need no PGLite — fast, no ``@needs_bridge``.
+    """
+    from codeconv.marathon.store import MarathonStore
+
+    return MarathonStore(tmp_path, fallback_only=True)
+
+
+@pytest.fixture
+def marathon_bridge_repo(tmp_path: Path) -> Iterable[Path]:
+    """Isolated repo with ``prereq-patterns/`` wired + the ``marathon`` schema
+    migrated against a throwaway PGLite cluster; bridge torn down after.
+
+    Uses Alembic upgrade head only (the store needs the ``marathon`` schema,
+    not a DBOS launch — DBOS is the orchestrate layer's reuse), so this is
+    lighter than a full ``codeconv migrate``. ``@needs_bridge`` tests only.
+    """
+    from codeconv.bridge_client import acquire_or_discover
+    from codeconv.cli import _run_alembic_upgrade
+    from codeconv.db.engine import reset_engine_cache_for_tests
+
+    _link_prereq_patterns(tmp_path)
+    script = tmp_path / "prereq-patterns" / "pglite" / "pglite_bridge.mjs"
+    endpoint = acquire_or_discover(tmp_path, bridge_script=script)
+    _run_alembic_upgrade(endpoint=endpoint)
+    try:
+        yield tmp_path
+    finally:
+        reset_engine_cache_for_tests()
+        kill_bridge(tmp_path)
+
+
+def make_marathon(
+    store,
+    *,
+    slug: str = "testfeat",
+    branch: str = "000-testfeat",
+    budget: Optional[int] = None,
+    stage: str = "plan",
+    ordinal: int = 1,
+    auto: bool = False,
+):
+    """Create a marathon + one stage-block in ``store``; return (marathon,
+    block). The store may be primary-backed or fallback-only — both honor the
+    same dual-write interface."""
+    from codeconv.marathon.cadence import (
+        block_id,
+        block_kind_for_stage,
+        canonical_stage,
+    )
+    from codeconv.marathon.models import Marathon, StageBlock
+    from codeconv.marathon.store import marathon_id_for
+
+    mid = marathon_id_for(slug)
+    m = store.upsert_marathon(
+        Marathon(
+            id=mid,
+            feature_slug=slug,
+            feature_branch=branch,
+            budget_ceiling=budget,
+            auto_mode=auto,
+        )
+    )
+    bid = block_id(mid, stage, ordinal)
+    b = store.upsert_block(
+        StageBlock(
+            id=bid,
+            marathon_id=mid,
+            stage=canonical_stage(stage),
+            block_kind=block_kind_for_stage(stage),
+            ordinal=ordinal,
+            status="running",
+        )
+    )
+    return m, b
