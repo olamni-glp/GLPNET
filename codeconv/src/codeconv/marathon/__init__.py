@@ -66,6 +66,18 @@ def _ctx_flag(ctx: typer.Context, key: str) -> bool:
     return bool(obj.get(key)) if isinstance(obj, dict) else False
 
 
+def _resolve_marathon_id(store, feature: Optional[str]) -> Optional[str]:
+    """Resolve the target marathon id: from ``--feature`` when given, else the
+    sole known marathon (subcommands take ``[--feature]``; one marathon is the
+    feature's scope). ``None`` when absent/ambiguous → the caller errors."""
+    from .store import marathon_id_for
+
+    if feature:
+        return marathon_id_for(feature)
+    ids = store.list_marathon_ids()
+    return ids[0] if len(ids) == 1 else None
+
+
 def _emit(ctx: typer.Context, payload: dict, *, json_out: bool) -> None:
     """Print a result either as JSON (``--json``, global or local) or as a
     compact key=value human line."""
@@ -174,6 +186,117 @@ def cmd_doctor(
             report["budget_headroom"] = None
 
     _emit(ctx, report, json_out=json_out)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
+# verify-spike — FR-011 substrate verification (T015, runs FIRST per FR-011)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("verify-spike")
+def cmd_verify_spike(
+    ctx: typer.Context,
+    feature: Optional[str] = typer.Option(
+        None, "--feature", help="Feature slug (defaults to the sole marathon)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Run the FR-011 verification spike (cached-prefix resume + budget
+    observability) and record a ``verification_traces`` row (SC-008)."""
+    from .store import MarathonStore
+    from .verify_spike import run_spike
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    marathon_id = _resolve_marathon_id(store, feature)
+    if marathon_id is None:
+        typer.echo(
+            "marathon verify-spike: specify --feature (no sole marathon found)",
+            err=True,
+        )
+        raise typer.Exit(EXIT_USAGE)
+    m = store.read_marathon(marathon_id)
+    ceiling = m.budget_ceiling if m is not None else None
+    try:
+        res = run_spike(store, marathon_id, ceiling=ceiling)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"marathon verify-spike: {exc}", err=True)
+        raise typer.Exit(EXIT_INTERNAL)
+    _emit(ctx, res, json_out=json_out)
+    raise typer.Exit(EXIT_OK if res.get("cached_prefix_ok") else EXIT_INTERNAL)
+
+
+# ---------------------------------------------------------------------------
+# resume — objective restart-safe resume (T022, the US1 keystone)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("resume")
+def cmd_resume(
+    ctx: typer.Context,
+    feature: Optional[str] = typer.Option(
+        None, "--feature", help="Feature slug (defaults to the sole marathon)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Objectively locate the resume position from durable state and report it
+    (FR-002/003/005/020/021). Never reads a conversation summary. On store
+    divergence → exit 2 + escalation (D5)."""
+    from .checkpoint import resume as _resume
+    from .store import MarathonStore
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    marathon_id = _resolve_marathon_id(store, feature)
+    if marathon_id is None:
+        typer.echo("marathon resume: specify --feature (no sole marathon found)", err=True)
+        raise typer.Exit(EXIT_USAGE)
+
+    report = _resume(store, marathon_id)
+    payload = {"marathon_id": marathon_id, **report.as_dict()}
+    _emit(ctx, payload, json_out=json_out)
+    if report.diverged:
+        raise typer.Exit(EXIT_ESCALATION)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
+# reconcile — primary vs JSON fallback by sequence_no (T022)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("reconcile")
+def cmd_reconcile(
+    ctx: typer.Context,
+    feature: Optional[str] = typer.Option(
+        None, "--feature", help="Feature slug (defaults to the sole marathon)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Compare primary (PGLite) and JSON-fallback stores by ``sequence_no``.
+    Strictly-higher wins and fast-forwards the stale store; a true fork → exit
+    2 + escalation, never a silent pick (FR-020/021, D5, SC-007)."""
+    from .store import MarathonStore
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    marathon_id = _resolve_marathon_id(store, feature)
+    if marathon_id is None:
+        typer.echo(
+            "marathon reconcile: specify --feature (no sole marathon found)", err=True
+        )
+        raise typer.Exit(EXIT_USAGE)
+
+    rec = store.reconcile(marathon_id)
+    payload = {
+        "marathon_id": marathon_id,
+        "status": rec.status,
+        "primary_seq": rec.primary_seq,
+        "fallback_seq": rec.fallback_seq,
+        "winner": rec.winner,
+        "escalation_id": rec.escalation_id,
+    }
+    _emit(ctx, payload, json_out=json_out)
+    if rec.status == "fork":
+        raise typer.Exit(EXIT_ESCALATION)
     raise typer.Exit(EXIT_OK)
 
 

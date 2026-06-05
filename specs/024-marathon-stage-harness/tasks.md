@@ -79,13 +79,13 @@ step; spent/remaining observed throughout.
 
 ### Tests for User Story 4
 
-- [ ] T012 [P] [US4] Write `codeconv/tests/test_marathon_verify_spike.py` asserting cached-prefix resume (unchanged prefix → cached, resumes at first changed/new step) and that `budget.spent()/remaining()` are observable throughout; assert a `verification_traces` row `subject=workflow-spike` is recorded (SC-008) — confirm it FAILS first
+- [X] T012 [P] [US4] Write `codeconv/tests/test_marathon_verify_spike.py` asserting cached-prefix resume (unchanged prefix → cached, resumes at first changed/new step) and that `budget.spent()/remaining()` are observable throughout; assert a `verification_traces` row `subject=workflow-spike` is recorded (SC-008) — confirm it FAILS first
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Implement the Workflow-composition layer in `codeconv/src/codeconv/marathon/orchestrate.py`: run one stage-block as one Workflow run, capture `runId` as run-linkage, verify the Workflow opt-in preauthorization before launch, expose `budget.spent()/remaining()` to the harness (FR-009/010/023, contracts/workflow-composition.md)
-- [ ] T014 [US4] Implement the FR-011 spike in `codeconv/src/codeconv/marathon/verify_spike.py`: a small multi-step Workflow exercising `resumeFromRunId` cached-prefix + budget tracking; record the verification result durably via `store.write` to `verification_traces` (FR-011)
-- [ ] T015 [US4] Add the `marathon verify-spike` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T013 [US4] Implement the Workflow-composition layer in `codeconv/src/codeconv/marathon/orchestrate.py`: run one stage-block as one Workflow run, capture `runId` as run-linkage, verify the Workflow opt-in preauthorization before launch, expose `budget.spent()/remaining()` to the harness (FR-009/010/023, contracts/workflow-composition.md)  ⟶ Budget/optin/run-linkage; the literal Workflow-tool invocation is the skill layer (Gabi-confirmed)
+- [X] T014 [US4] Implement the FR-011 spike in `codeconv/src/codeconv/marathon/verify_spike.py`: a small multi-step Workflow exercising `resumeFromRunId` cached-prefix + budget tracking; record the verification result durably via `store.write` to `verification_traces` (FR-011)  ⟶ deterministic reference harness (Gabi-confirmed)
+- [X] T015 [US4] Add the `marathon verify-spike` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
 
 **Checkpoint**: substrate verified and recorded — US1 may now build cross-session resume on it
 
@@ -102,17 +102,17 @@ checkpoint, re-executes none of the completed units.
 
 ### Tests for User Story 1
 
-- [ ] T016 [P] [US1] Write `codeconv/tests/test_marathon_resume.py`: write N checkpoints, drop the process, restart → `read_position` returns the Nth and 0 completed units re-execute; position derived from durable state not a summary (SC-001/002, I3/I4/I8) — confirm it FAILS first
-- [ ] T017 [P] [US1] Write `codeconv/tests/test_marathon_store.py`: fallback episode fast-forwards on reconcile; a true fork escalates (exit 2, no silent pick); boundary interruption neither double-executes nor skips (SC-007, I5/I6/I7/I9) — confirm it FAILS first
+- [X] T016 [P] [US1] Write `codeconv/tests/test_marathon_resume.py`: write N checkpoints, drop the process, restart → `read_position` returns the Nth and 0 completed units re-execute; position derived from durable state not a summary (SC-001/002, I3/I4/I8) — confirm it FAILS first
+- [X] T017 [P] [US1] Write `codeconv/tests/test_marathon_store.py`: fallback episode fast-forwards on reconcile; a true fork escalates (exit 2, no silent pick); boundary interruption neither double-executes nor skips (SC-007, I5/I6/I7/I9) — confirm it FAILS first  ⟶ fast-forward + fork validated @needs_bridge against real PGLite
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement objective resume-locate in `codeconv/src/codeconv/marathon/checkpoint.py`: order roadmap (`buildkit-roadmap next`) → buildkit pipeline state → spec/plan/tasks, then max-`sequence_no` checkpoint; never read a conversation summary (FR-002/D4)
-- [ ] T019 [US1] Implement skip-completed resume in `codeconv/src/codeconv/marathon/checkpoint.py` (completed_units never re-executed; recorded decisions remain in effect) (FR-003/SC-002)
-- [ ] T020 [US1] Implement `reconcile()` in `codeconv/src/codeconv/marathon/store.py`: strictly-higher `sequence_no` wins + fast-forward stale store; true fork → write an `escalations` row (kind=`store_divergence`) and stop (FR-021/D5, contracts/checkpoint-store.md I6/I7)
-- [ ] T021 [US1] Implement fallback-mode detection + surfacing in `codeconv/src/codeconv/marathon/store.py` (`active_store()` returns `fallback` when the bridge is unreachable; resume capability preserved) (FR-020/SC-007)
-- [ ] T022 [US1] Add `marathon resume` and `marathon reconcile` subcommands in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
-- [ ] T023 [US1] Implement boundary-interruption safety in `codeconv/src/codeconv/marathon/checkpoint.py` (resume at a block boundary executes the boundary unit exactly once) (edge case, I9)
+- [X] T018 [US1] Implement objective resume-locate in `codeconv/src/codeconv/marathon/checkpoint.py`: order roadmap (`buildkit-roadmap next`) → buildkit pipeline state → spec/plan/tasks, then max-`sequence_no` checkpoint; never read a conversation summary (FR-002/D4)
+- [X] T019 [US1] Implement skip-completed resume in `codeconv/src/codeconv/marathon/checkpoint.py` (completed_units never re-executed; recorded decisions remain in effect) (FR-003/SC-002)
+- [X] T020 [US1] Implement `reconcile()` in `codeconv/src/codeconv/marathon/store.py`: strictly-higher `sequence_no` wins + fast-forward stale store; true fork → write an `escalations` row (kind=`store_divergence`) and stop (FR-021/D5, contracts/checkpoint-store.md I6/I7)  ⟶ implemented with Foundational; bridge-validated
+- [X] T021 [US1] Implement fallback-mode detection + surfacing in `codeconv/src/codeconv/marathon/store.py` (`active_store()` returns `fallback` when the bridge is unreachable; resume capability preserved) (FR-020/SC-007)
+- [X] T022 [US1] Add `marathon resume` and `marathon reconcile` subcommands in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T023 [US1] Implement boundary-interruption safety in `codeconv/src/codeconv/marathon/checkpoint.py` (resume at a block boundary executes the boundary unit exactly once) (edge case, I9)
 
 **Checkpoint**: US1 is the deliverable MVP — interrupt/resume works end-to-end and is independently testable
 

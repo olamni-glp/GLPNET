@@ -235,6 +235,19 @@ class MarathonStore:
                 return None
         return None
 
+    def list_marathon_ids(self) -> list[str]:
+        """All marathon ids known to this repo, discovered from the JSON mirror
+        (always written by ``upsert_marathon``, so this is bridge-free). Used
+        to resolve the sole marathon when a subcommand omits ``--feature``."""
+        base = self.repo_root / ".codeconv" / "marathon"
+        if not base.is_dir():
+            return []
+        return sorted(
+            p.name
+            for p in base.iterdir()
+            if p.is_dir() and (p / "marathon.json").is_file()
+        )
+
     def upsert_block(self, b: StageBlock) -> StageBlock:
         """Create or update a stage-block row (idempotent by id). Mirrors
         ``blocks/<safe block id>.json``."""
