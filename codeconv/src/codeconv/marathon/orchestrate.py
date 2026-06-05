@@ -164,7 +164,14 @@ def rerun_subagent(store: Any, block_id: str, subagent: Any) -> dict[str, Any]:
     from .store import marathon_id_of_block
 
     pos = store.read_position(marathon_id_of_block(block_id))
-    siblings = list(pos.completed_units) if pos is not None else []
+    # read_position returns the marathon-WIDE max-sequence checkpoint, which may
+    # belong to a sibling block. Mirror rerun_block's guard: only this block's
+    # own completed units are its siblings — never a different block's (FR-007).
+    siblings = (
+        list(pos.completed_units)
+        if pos is not None and pos.block_id == block_id
+        else []
+    )
     return {"to_run": [subagent], "untouched": siblings}
 
 

@@ -34,6 +34,62 @@ def test_per_subagent_rerun_isolates_the_failure(marathon_fallback_store) -> Non
     assert res["untouched"] == ["a", "b"]  # succeeded siblings untouched
 
 
+def test_per_subagent_rerun_ignores_a_sibling_blocks_units(
+    marathon_fallback_store,
+) -> None:
+    """Regression (FR-007/SC-003): rerun_subagent must mirror rerun_block's
+    block_id guard. read_position returns the marathon-WIDE latest checkpoint,
+    so when a sibling block checkpointed later, the failed subagent's block has
+    no known completed siblings here — ``untouched`` must be empty, NEVER the
+    sibling block's completed units."""
+    store = marathon_fallback_store
+    m, b1 = make_marathon(store, slug="rerunsubsib", stage="plan", ordinal=1)
+    # b1: a, b succeeded (seq 1).
+    store.write_checkpoint(
+        b1.id,
+        stage="plan",
+        wip_unit="c",
+        completed_units=["a", "b"],
+        remaining_units=["c"],
+        workflow_run_id=None,
+        budget_spent=1,
+    )
+    # A sibling block in the SAME marathon checkpoints LATER (higher seq), so
+    # read_position(marathon) now points at b2 — not b1.
+    from codeconv.marathon.cadence import (
+        block_id,
+        block_kind_for_stage,
+        canonical_stage,
+    )
+    from codeconv.marathon.models import StageBlock
+
+    b2 = store.upsert_block(
+        StageBlock(
+            id=block_id(m.id, "implement", 2),
+            marathon_id=m.id,
+            stage=canonical_stage("implement"),
+            block_kind=block_kind_for_stage("implement"),
+            ordinal=2,
+            status="running",
+        )
+    )
+    store.write_checkpoint(
+        b2.id,
+        stage="implement",
+        wip_unit=None,
+        completed_units=["x", "y"],
+        remaining_units=[],
+        workflow_run_id=None,
+        budget_spent=2,
+    )
+
+    from codeconv.marathon.orchestrate import rerun_subagent
+
+    res = rerun_subagent(store, b1.id, "c")
+    assert res["to_run"] == ["c"]
+    assert res["untouched"] == []  # must NOT leak b2's ["x", "y"]
+
+
 def test_per_stage_rerun_starts_from_last_checkpoint(marathon_fallback_store) -> None:
     """FR-006: a per-stage re-run restarts from the last checkpoint (not
     marathon start); completed units are skipped."""
