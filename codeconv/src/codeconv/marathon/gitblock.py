@@ -29,6 +29,8 @@ def _git(repo_root: Any, *args: str) -> subprocess.CompletedProcess:
         ["git", "-C", str(repo_root), *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
 
