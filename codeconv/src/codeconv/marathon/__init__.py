@@ -227,6 +227,48 @@ def cmd_verify_spike(
 
 
 # ---------------------------------------------------------------------------
+# gate — per-stage plan-approval gate (T027)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("gate")
+def cmd_gate(
+    ctx: typer.Context,
+    block: str = typer.Option(..., "--block", help="Stage-block id."),
+    approve: bool = typer.Option(False, "--approve", help="Record an approval."),
+    change: bool = typer.Option(False, "--change", help="Record a change (needs --plan)."),
+    plan: Optional[str] = typer.Option(None, "--plan", help="Plan ref (present/change)."),
+    by: Optional[str] = typer.Option(None, "--by", help="Decider, e.g. gabi."),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Present / record the per-stage approval decision (FR-004/005, D6). With
+    no flags, presents the plan + current state (no re-ask if already
+    approved — SC-004)."""
+    from .gate import present_gate, record_decision
+    from .store import MarathonStore
+
+    if approve and change:
+        typer.echo("marathon gate: --approve and --change are mutually exclusive", err=True)
+        raise typer.Exit(EXIT_USAGE)
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    if approve:
+        res = record_decision(store, block, outcome="approve", decided_by=by)
+    elif change:
+        if not plan:
+            typer.echo("marathon gate: --change requires --plan <ref>", err=True)
+            raise typer.Exit(EXIT_USAGE)
+        record_decision(store, block, outcome="change", decided_by=by, plan_ref=plan)
+        res = present_gate(store, block, plan_ref=plan)  # re-present the new plan
+        res["state"] = "changed"
+    else:
+        res = present_gate(store, block, plan_ref=plan or f"plan:{block}")
+
+    _emit(ctx, res, json_out=json_out)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
 # resume — objective restart-safe resume (T022, the US1 keystone)
 # ---------------------------------------------------------------------------
 
@@ -256,6 +298,133 @@ def cmd_resume(
     _emit(ctx, payload, json_out=json_out)
     if report.diverged:
         raise typer.Exit(EXIT_ESCALATION)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
+# status — standardized four-field report on the ~5-min cadence (T038)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("status")
+def cmd_status(
+    ctx: typer.Context,
+    feature: Optional[str] = typer.Option(
+        None, "--feature", help="Feature slug (defaults to the sole marathon)."
+    ),
+    emit: bool = typer.Option(
+        False, "--emit", help="Persist a status_reports row (cadence driver)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Show / emit the standardized four-field report — done / issues / tokens
+    (spent + remaining) / to-do (FR-013, D8, SC-005). ``--emit`` persists a
+    row; the ~5-min cadence driver (the skill) calls this at each checkpoint."""
+    from .status import build_status, emit_status, status_to_dict
+    from .store import MarathonStore
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    marathon_id = _resolve_marathon_id(store, feature)
+    if marathon_id is None:
+        typer.echo("marathon status: specify --feature (no sole marathon found)", err=True)
+        raise typer.Exit(EXIT_USAGE)
+
+    report = emit_status(store, marathon_id) if emit else build_status(store, marathon_id)
+    _emit(ctx, status_to_dict(report), json_out=json_out)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
+# rerun — per-stage / per-subagent re-run on failure (T033)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("rerun")
+def cmd_rerun(
+    ctx: typer.Context,
+    block: str = typer.Option(..., "--block", help="Stage-block id to re-run."),
+    subagent: Optional[str] = typer.Option(
+        None, "--subagent", help="Re-run only this subagent (isolated)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Re-run a failed stage from its last checkpoint (``--block``), or a single
+    failed subagent in isolation (``--block --subagent``). Succeeded units are
+    never redone; failure history is retained append-only (FR-006/007/008)."""
+    from .orchestrate import rerun_block, rerun_subagent
+    from .store import MarathonStore
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    if subagent is not None:
+        res = rerun_subagent(store, block, subagent)
+    else:
+        res = rerun_block(store, block)
+    res = {"block_id": block, **res}
+    _emit(ctx, res, json_out=json_out)
+    raise typer.Exit(EXIT_OK)
+
+
+# ---------------------------------------------------------------------------
+# trace — append-only verification-trace substrate (T045)
+# ---------------------------------------------------------------------------
+
+
+@marathon_app.command("trace")
+def cmd_trace(
+    ctx: typer.Context,
+    subject: str = typer.Option(..., "--subject", help="Stage/primitive name."),
+    input_: str = typer.Option(..., "--input", help="Experiment input as a JSON object."),
+    score: Optional[float] = typer.Option(None, "--score", help="Metric score."),
+    accept: bool = typer.Option(False, "--accept", help="Record an accept decision."),
+    reject: bool = typer.Option(False, "--reject", help="Record a reject decision."),
+    feature: Optional[str] = typer.Option(
+        None, "--feature", help="Feature slug (defaults to the sole marathon)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Emit the structured model."),
+) -> None:
+    """Append a verification-trace record (substrate only — no optimizer).
+    Preserves ``(subject, refine_seq)`` order; never overwrites earlier
+    iterations (FR-016/017)."""
+    import json as _json
+
+    from .store import MarathonStore
+    from .trace import write_trace
+
+    if accept == reject:
+        typer.echo("marathon trace: pass exactly one of --accept / --reject", err=True)
+        raise typer.Exit(EXIT_USAGE)
+    try:
+        experiment_input = _json.loads(input_)
+        if not isinstance(experiment_input, dict):
+            raise ValueError("--input must be a JSON object")
+    except ValueError as exc:
+        typer.echo(f"marathon trace: bad --input: {exc}", err=True)
+        raise typer.Exit(EXIT_USAGE)
+
+    store = MarathonStore(_repo_root(ctx), data_dir=_data_dir(ctx))
+    marathon_id = _resolve_marathon_id(store, feature)
+    if marathon_id is None:
+        typer.echo("marathon trace: specify --feature (no sole marathon found)", err=True)
+        raise typer.Exit(EXIT_USAGE)
+
+    t = write_trace(
+        store,
+        marathon_id,
+        subject=subject,
+        experiment_input=experiment_input,
+        metric_score=score,
+        decision="accept" if accept else "reject",
+    )
+    _emit(
+        ctx,
+        {
+            "id": t.id,
+            "subject": t.subject,
+            "refine_seq": t.refine_seq,
+            "decision": t.decision,
+        },
+        json_out=json_out,
+    )
     raise typer.Exit(EXIT_OK)
 
 

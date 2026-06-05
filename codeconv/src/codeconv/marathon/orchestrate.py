@@ -122,11 +122,139 @@ def record_run_linkage(store: Any, block: Any, run_id: str) -> Any:
     return block
 
 
+# --- re-run (US3: T029/T030/T032) ------------------------------------------
+
+
+def rerun_block(
+    store: Any, block_id: str, *, all_units: Optional[list[Any]] = None
+) -> dict[str, Any]:
+    """Per-stage re-run from the block's LAST checkpoint — NOT marathon start
+    (FR-006). Returns the units still to run (succeeded units skipped) and the
+    sequence to resume from.
+
+    When ``all_units`` is supplied, a unit whose *input changed* (different
+    content → different key) is treated as **new work** and re-included, even
+    if a stale completion of the old input exists (edge case / T032)."""
+    from .checkpoint import units_to_execute
+    from .store import marathon_id_of_block
+
+    pos = store.read_position(marathon_id_of_block(block_id))
+    if pos is None or pos.block_id != block_id:
+        # No checkpoint for this block yet → a full run.
+        return {"from_seq": 0, "to_run": all_units, "completed_units": []}
+    completed = pos.completed_units
+    to_run = (
+        units_to_execute(all_units, completed)
+        if all_units is not None
+        else list(pos.remaining_units)
+    )
+    return {
+        "from_seq": pos.sequence_no,
+        "to_run": to_run,
+        "completed_units": completed,
+    }
+
+
+def rerun_subagent(store: Any, block_id: str, subagent: Any) -> dict[str, Any]:
+    """Isolated per-subagent re-run: ONLY ``subagent`` re-executes; succeeded
+    siblings are untouched (FR-007/SC-003). The production re-run composes the
+    Workflow tool's ``resumeFromRunId`` cached-prefix at the skill layer (the
+    failed subagent is the changed step; siblings stay cached); here the
+    harness reports the isolated unit + the siblings it must not disturb."""
+    from .store import marathon_id_of_block
+
+    pos = store.read_position(marathon_id_of_block(block_id))
+    siblings = list(pos.completed_units) if pos is not None else []
+    return {"to_run": [subagent], "untouched": siblings}
+
+
+# --- budget ceiling enforcement (US5: T037) --------------------------------
+
+
+def advance_budget_or_halt(
+    store: Any,
+    marathon_id: str,
+    budget: "Budget",
+    tokens: int,
+    *,
+    block_id: str,
+    stage: str,
+    completed_units: list[Any],
+    remaining_units: list[Any],
+    workflow_run_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Attempt to spend ``tokens`` against the ceiling (FR-012/D7/SC-006).
+
+    If it would overrun, **do not overrun**: write a safe checkpoint (the
+    in-flight unit ends cleanly at the last safe state) and signal ``halted``
+    — never abandon a partial unit, never cross the ceiling (0 overruns). Else
+    advance the spend and persist it on the marathon."""
+    if budget.would_exceed(tokens):
+        store.write_checkpoint(
+            block_id,
+            stage=stage,
+            wip_unit=None,
+            completed_units=completed_units,
+            remaining_units=remaining_units,
+            workflow_run_id=workflow_run_id,
+            budget_spent=budget.spent(),
+        )
+        return {
+            "halted": True,
+            "spent": budget.spent(),
+            "remaining": budget.remaining(),
+        }
+    budget.add(tokens)
+    store.update_budget_spent(marathon_id, budget.spent())
+    return {"halted": False, "spent": budget.spent(), "remaining": budget.remaining()}
+
+
+# --- block completion → commit/push boundary (US6: T042) -------------------
+
+
+def finalize_block(
+    store: Any,
+    block_id: str,
+    *,
+    files: list[str],
+    message: str,
+    repo_root: Any,
+    completed_units: list[Any],
+    stage: str,
+    workflow_run_id: Optional[str] = None,
+    budget_spent: int = 0,
+) -> dict[str, Any]:
+    """Block completion (FR-019): the checkpoint boundary == the commit/push
+    boundary == this block. Write the FINAL checkpoint, then commit + push only
+    the block's files under the standing grant (a blocked push escalates, never
+    forces — gitblock.py)."""
+    from .gitblock import commit_block, push_block
+
+    cp = store.write_checkpoint(
+        block_id,
+        stage=stage,
+        wip_unit=None,
+        completed_units=completed_units,
+        remaining_units=[],
+        workflow_run_id=workflow_run_id,
+        budget_spent=budget_spent,
+    )
+    commit = commit_block(
+        store, block_id, files=files, message=message, repo_root=repo_root
+    )
+    push = push_block(store, block_id, repo_root=repo_root)
+    return {"checkpoint_seq": cp.sequence_no, "commit": commit, "push": push}
+
+
 __all__ = [
     "Budget",
     "BudgetCeilingReached",
     "WorkflowOptinNotGranted",
+    "advance_budget_or_halt",
+    "finalize_block",
     "record_run_linkage",
     "require_workflow_optin",
+    "rerun_block",
+    "rerun_subagent",
     "workflow_optin_ok",
 ]

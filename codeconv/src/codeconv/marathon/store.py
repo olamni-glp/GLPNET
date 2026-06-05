@@ -235,6 +235,28 @@ class MarathonStore:
                 return None
         return None
 
+    def update_budget_spent(self, marathon_id: str, spent: int) -> None:
+        """Persist the running token spend on the marathon (primary CHECK
+        guarantees ``spent <= ceiling`` — 0 overruns, SC-006). Mirrors
+        ``marathon.json``."""
+        engine = self._primary()
+        if engine is not None:
+            from sqlalchemy import text
+
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "UPDATE marathon.marathons SET budget_spent = :s WHERE id = :id"
+                    ),
+                    {"s": spent, "id": marathon_id},
+                )
+        m = self.read_marathon(marathon_id)
+        if m is not None:
+            m.budget_spent = spent
+            _atomic_write_json(
+                self._marathon_dir(marathon_id) / "marathon.json", _marathon_to_dict(m)
+            )
+
     def list_marathon_ids(self) -> list[str]:
         """All marathon ids known to this repo, discovered from the JSON mirror
         (always written by ``upsert_marathon``, so this is bridge-free). Used
@@ -517,6 +539,17 @@ class MarathonStore:
             cp.created_at = _now()
             self._append_fallback(cp)
         return cp
+
+    def checkpoints(self, marathon_id: str) -> list[Checkpoint]:
+        """The full append-only checkpoint history (union of both stores,
+        deduped by seq, ascending). Every attempt — failed or successful — is
+        retained (FR-008/I2)."""
+        merged: dict[int, Checkpoint] = {}
+        for cp in self._fallback_checkpoints(marathon_id):
+            merged[cp.sequence_no] = cp
+        for cp in self._primary_checkpoints(marathon_id):
+            merged.setdefault(cp.sequence_no, cp)
+        return [merged[s] for s in sorted(merged)]
 
     def read_position(self, marathon_id: str) -> Optional[Position]:
         """The objective resume position: the max(sequence_no) checkpoint

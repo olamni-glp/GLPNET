@@ -128,13 +128,13 @@ interrupt + resume → approval not re-requested.
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Write `codeconv/tests/test_marathon_gate.py`: gate blocks until approved; recorded approval re-requested 0 times across resumes; a `change` supersedes but retains the prior decision (SC-004, US2-AS3) — confirm it FAILS first
+- [X] T024 [P] [US2] Write `codeconv/tests/test_marathon_gate.py`: gate blocks until approved; recorded approval re-requested 0 times across resumes; a `change` supersedes but retains the prior decision (SC-004, US2-AS3) — confirm it FAILS first
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement the approval gate in `codeconv/src/codeconv/marathon/gate.py`: present plan, record approve/change as append-only `approvals` rows with `supersedes_id` chain (FR-004/D6)
-- [ ] T026 [US2] Wire resume to honor a recorded approval (short-circuit, no re-ask) in `codeconv/src/codeconv/marathon/gate.py` + `checkpoint.py` (FR-005/SC-004)
-- [ ] T027 [US2] Add the `marathon gate` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T025 [US2] Implement the approval gate in `codeconv/src/codeconv/marathon/gate.py`: present plan, record approve/change as append-only `approvals` rows with `supersedes_id` chain (FR-004/D6)
+- [X] T026 [US2] Wire resume to honor a recorded approval (short-circuit, no re-ask) in `codeconv/src/codeconv/marathon/gate.py` + `checkpoint.py` (FR-005/SC-004)  ⟶ `should_present_gate` + `resume.approval_state`
+- [X] T027 [US2] Add the `marathon gate` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
 
 **Checkpoint**: gate enforced and durable; US1+US2 work together
 
@@ -150,15 +150,15 @@ failed subagent re-executes; succeeded siblings untouched.
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Write `codeconv/tests/test_marathon_rerun.py`: per-subagent re-run re-executes only the failed subagent (0 siblings repeated); per-stage re-run restarts from last checkpoint not marathon start; failure history preserved alongside success; changed-input unit treated as new work (SC-003, FR-006/007/008, edge case) — confirm it FAILS first
+- [X] T028 [P] [US3] Write `codeconv/tests/test_marathon_rerun.py`: per-subagent re-run re-executes only the failed subagent (0 siblings repeated); per-stage re-run restarts from last checkpoint not marathon start; failure history preserved alongside success; changed-input unit treated as new work (SC-003, FR-006/007/008, edge case) — confirm it FAILS first
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Implement per-stage re-run from last checkpoint in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-006)
-- [ ] T030 [US3] Implement per-subagent isolated re-run by composing Workflow `resumeFromRunId` cached-prefix in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-007, contracts/workflow-composition.md)
-- [ ] T031 [US3] Preserve failure history append-only (failure rows retained beside the eventual success) in `codeconv/src/codeconv/marathon/store.py` (FR-008)
-- [ ] T032 [US3] Treat changed-input units as new work (no stale cache) in `codeconv/src/codeconv/marathon/orchestrate.py` (edge case)
-- [ ] T033 [US3] Add the `marathon rerun` subcommand (`--block`, optional `--subagent`) in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T029 [US3] Implement per-stage re-run from last checkpoint in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-006)
+- [X] T030 [US3] Implement per-subagent isolated re-run by composing Workflow `resumeFromRunId` cached-prefix in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-007, contracts/workflow-composition.md)
+- [X] T031 [US3] Preserve failure history append-only (failure rows retained beside the eventual success) in `codeconv/src/codeconv/marathon/store.py` (FR-008)  ⟶ `store.checkpoints()` over the append-only log
+- [X] T032 [US3] Treat changed-input units as new work (no stale cache) in `codeconv/src/codeconv/marathon/orchestrate.py` (edge case)
+- [X] T033 [US3] Add the `marathon rerun` subcommand (`--block`, optional `--subagent`) in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
 
 **Checkpoint**: targeted re-runs work; US1–US3 integrate
 
@@ -174,14 +174,14 @@ fields; set a low ceiling → work halts/escalates at the ceiling.
 
 ### Tests for User Story 5
 
-- [ ] T034 [P] [US5] Write `codeconv/tests/test_marathon_status.py`: a status report contains all four fields (done/issues/tokens spent+remaining/to-do) and appears at least once per cadence interval (SC-005) — confirm it FAILS first
-- [ ] T035 [P] [US5] Write `codeconv/tests/test_marathon_budget.py`: at the ceiling, work halts/escalates with 0 overrun; the in-flight unit ends at a safe checkpoint (SC-006, edge case) — confirm it FAILS first
+- [X] T034 [P] [US5] Write `codeconv/tests/test_marathon_status.py`: a status report contains all four fields (done/issues/tokens spent+remaining/to-do) and appears at least once per cadence interval (SC-005) — confirm it FAILS first
+- [X] T035 [P] [US5] Write `codeconv/tests/test_marathon_budget.py`: at the ceiling, work halts/escalates with 0 overrun; the in-flight unit ends at a safe checkpoint (SC-006, edge case) — confirm it FAILS first
 
 ### Implementation for User Story 5
 
-- [ ] T036 [US5] Implement the standardized 4-field status report + persistence in `codeconv/src/codeconv/marathon/status.py` (FR-013/D8)
-- [ ] T037 [US5] Implement budget tracking + ceiling halt/escalate (safe-checkpoint then stop, never overrun) in `codeconv/src/codeconv/marathon/orchestrate.py` reading `budget.spent()/remaining()` (FR-012/D7)
-- [ ] T038 [US5] Add the `marathon status [--emit]` subcommand + the ~5-min cadence driver in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T036 [US5] Implement the standardized 4-field status report + persistence in `codeconv/src/codeconv/marathon/status.py` (FR-013/D8)
+- [X] T037 [US5] Implement budget tracking + ceiling halt/escalate (safe-checkpoint then stop, never overrun) in `codeconv/src/codeconv/marathon/orchestrate.py` reading `budget.spent()/remaining()` (FR-012/D7)
+- [X] T038 [US5] Add the `marathon status [--emit]` subcommand + the ~5-min cadence driver in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)  ⟶ cadence driver = the skill calling `status --emit` per checkpoint (D8)
 
 **Checkpoint**: runs are legible + budget-bounded
 
@@ -197,13 +197,13 @@ a blocked push escalates instead of forcing.
 
 ### Tests for User Story 6
 
-- [ ] T039 [P] [US6] Write `codeconv/tests/test_marathon_gitblock.py`: commit stages only the block's files (no sweeping); a non-fast-forward push escalates (kind=`push_blocked`) and never force-pushes (SC-010, FR-015) — confirm it FAILS first
+- [X] T039 [P] [US6] Write `codeconv/tests/test_marathon_gitblock.py`: commit stages only the block's files (no sweeping); a non-fast-forward push escalates (kind=`push_blocked`) and never force-pushes (SC-010, FR-015) — confirm it FAILS first  ⟶ real git sandbox w/ divergent bare remote
 
 ### Implementation for User Story 6
 
-- [ ] T040 [US6] Implement preauthorized commit in `codeconv/src/codeconv/marathon/gitblock.py` staging exactly the block's files (no `git add -A`), never bypassing hooks (FR-014, CLAUDE.md commit discipline)
-- [ ] T041 [US6] Implement push with non-fast-forward/conflict detection → write an `escalations` row (kind=`push_blocked`) and stop; never force (FR-015/SC-010)
-- [ ] T042 [US6] Integrate gitblock at block completion (final checkpoint → commit+push) in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-019)
+- [X] T040 [US6] Implement preauthorized commit in `codeconv/src/codeconv/marathon/gitblock.py` staging exactly the block's files (no `git add -A`), never bypassing hooks (FR-014, CLAUDE.md commit discipline)
+- [X] T041 [US6] Implement push with non-fast-forward/conflict detection → write an `escalations` row (kind=`push_blocked`) and stop; never force (FR-015/SC-010)
+- [X] T042 [US6] Integrate gitblock at block completion (final checkpoint → commit+push) in `codeconv/src/codeconv/marathon/orchestrate.py` (FR-019)  ⟶ `orchestrate.finalize_block`
 
 **Checkpoint**: git-level durable checkpoints land per block
 
@@ -219,12 +219,12 @@ accept/reject, and ordered refine history — append-only; substrate only, no op
 
 ### Tests for User Story 7
 
-- [ ] T043 [P] [US7] Write `codeconv/tests/test_marathon_trace.py`: records persist across restart; multiple iterations preserve `(subject, refine_seq)` order with no overwrite; an external reader can reconstruct history without harness internals (US7-AS1/2/3) — confirm it FAILS first
+- [X] T043 [P] [US7] Write `codeconv/tests/test_marathon_trace.py`: records persist across restart; multiple iterations preserve `(subject, refine_seq)` order with no overwrite; an external reader can reconstruct history without harness internals (US7-AS1/2/3) — confirm it FAILS first
 
 ### Implementation for User Story 7
 
-- [ ] T044 [US7] Implement the append-only trace substrate in `codeconv/src/codeconv/marathon/trace.py` (experiment_input/metric_score/decision/refine_seq), substrate only — NO optimizer/loop (FR-016/017)
-- [ ] T045 [US7] Add the `marathon trace` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
+- [X] T044 [US7] Implement the append-only trace substrate in `codeconv/src/codeconv/marathon/trace.py` (experiment_input/metric_score/decision/refine_seq), substrate only — NO optimizer/loop (FR-016/017)  ⟶ implemented with US4 (write_trace/list_traces)
+- [X] T045 [US7] Add the `marathon trace` subcommand in `codeconv/src/codeconv/marathon/__init__.py` (contracts/cli.md)
 
 **Checkpoint**: trace substrate ready for a future external optimizer (out of scope)
 
