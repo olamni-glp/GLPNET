@@ -16,14 +16,16 @@
 
 ## Active now (2026-06-05)
 
-- **Roadmap feature**: `marathon-stage-harness` — state **promoted**, **not yet specified**
-  (no spec dir → not yet in the pipeline). It is the durable, restart-safe workflow backing
-  for long multi-stage features, and the hard prerequisite for the connectivity marathon.
+- **Roadmap feature**: `024-marathon-stage-harness` — **implemented** on branch
+  `024-marathon-stage-harness` (spec dir `specs/024-marathon-stage-harness/`). The durable,
+  restart-safe harness now lives in `codeconv.marathon` (PGLite schema `marathon` via Alembic
+  `0010` + JSON fallback). It is the durable checkpoint that makes the "where in the feature"
+  answer automatic.
+- **How to locate position now**: after the roadmap→pipeline→tasks order above, run
+  `codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
+  — the max(sequence_no) checkpoint, never a summary. See `/marathon-stage-harness`.
 - **Marathon it unblocks**: epic `distributed-glp-connectivity` → `multi-protocol-link-layer`
-  (state `captured`, `blocked-by: marathon-stage-harness`).
-- **Next action**: run
-  `/buildkit-specify "Marathon stage harness — durable, restart-safe workflow backing for long multi-stage features"`
-  (full brief: `python -m buildkit_cli.roadmap brief marathon-stage-harness`).
+  (state `captured`, `blocked-by: marathon-stage-harness`) — now drivable end-to-end by the harness.
 
 ## History (do not resume these — they are done/parked)
 

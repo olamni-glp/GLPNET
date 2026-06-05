@@ -20,8 +20,65 @@ layout-consistent extension).
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+
+# --- auto-mode policy: exactly two block-points (T046, FR-022/023, D11) -----
+
+
+@dataclass
+class AutoDecision:
+    """The outcome of consulting the auto-mode policy for one situation."""
+
+    proceed: bool
+    action: str
+    block_point: Optional[str] = None  # "gate" | "escalation" when not proceeding
+    escalation_kind: Optional[str] = None  # set when block_point == "escalation"
+
+
+# In auto-mode the harness is autonomous INSIDE an approved block and blocks
+# for Gabi at exactly two kinds of point: (a) the plan-approval gate, and
+# (b) escalations. Everything else proceeds. (contracts/escalation.md.)
+def auto_decision(
+    situation: str,
+    *,
+    retry_budget_remaining: bool = False,
+    approved: bool = False,
+) -> AutoDecision:
+    """Encode the contracts/escalation.md decision table. ``situation`` is one
+    of: ``subagent_failure``, ``push_fast_forward``, ``push_non_ff``,
+    ``reconcile_fast_forward``, ``reconcile_fork``, ``mutating_block``,
+    ``budget_ceiling``, ``stage_flagged``."""
+    if situation == "subagent_failure":
+        if retry_budget_remaining:
+            return AutoDecision(True, "rerun_from_checkpoint")
+        return AutoDecision(
+            False, "escalate", "escalation", "non_retryable_failure"
+        )
+    if situation == "push_fast_forward":
+        return AutoDecision(True, "commit_push_block")  # grant #1
+    if situation == "push_non_ff":
+        return AutoDecision(False, "escalate", "escalation", "push_blocked")
+    if situation == "reconcile_fast_forward":
+        return AutoDecision(True, "fast_forward_stale_store")
+    if situation == "reconcile_fork":
+        return AutoDecision(False, "escalate", "escalation", "store_divergence")
+    if situation == "mutating_block":
+        if approved:
+            return AutoDecision(True, "proceed")  # approval on record — no re-ask
+        return AutoDecision(False, "present_gate_and_wait", "gate")
+    if situation == "budget_ceiling":
+        return AutoDecision(False, "safe_checkpoint_then_halt", "escalation")
+    if situation == "stage_flagged":
+        return AutoDecision(False, "escalate", "escalation", "stage_flagged")
+    raise ValueError(f"unknown auto-mode situation {situation!r}")
+
+
+def is_block_point(decision: AutoDecision) -> bool:
+    """The two block-points are the only places the harness waits for Gabi."""
+    return not decision.proceed and decision.block_point in ("gate", "escalation")
 
 
 def write_escalation(
@@ -133,4 +190,23 @@ def open_escalations(store: Any, marathon_id: str) -> list[dict[str, Any]]:
     return out
 
 
-__all__ = ["open_escalations", "write_escalation"]
+def preauthorizations(marathon: Any) -> dict[str, bool]:
+    """The two — and only two — standing grants and their live state (D10).
+    Both are revoked together by ``preauth_revoked_at``."""
+    revoked = getattr(marathon, "preauth_revoked_at", None) is not None
+    return {
+        "commit_push": bool(getattr(marathon, "preauth_commit_push", False))
+        and not revoked,
+        "workflow_optin": bool(getattr(marathon, "preauth_workflow_optin", False))
+        and not revoked,
+    }
+
+
+__all__ = [
+    "AutoDecision",
+    "auto_decision",
+    "is_block_point",
+    "open_escalations",
+    "preauthorizations",
+    "write_escalation",
+]

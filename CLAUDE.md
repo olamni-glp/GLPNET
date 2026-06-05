@@ -317,10 +317,13 @@ or post-crash) locate yourself in this order:
 
 `docs/current_plan.md` is now only a **thin pointer** to the above, not a work ledger — do
 not resurrect the old "write the full plan here and resume from it" mechanism. The
-**marathon-stage-harness** (feature being built first) owns the durable cross-session
+**marathon-stage-harness** (feature 024, **implemented** as `codeconv.marathon` — PGLite
+schema `marathon` via Alembic `0010` + JSON fallback) owns the durable cross-session
 checkpoint + compaction/crash-recovery protocol that makes steps 2–3 instant and reliable:
 detect a compaction/crash → recover from the last durable checkpoint → skip partial work,
-tidy up → continue.
+tidy up → continue. After the roadmap→pipeline→tasks order above, run
+`codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
+for the max-`sequence_no` checkpoint (never a summary). See `/marathon-stage-harness`.
 
 ---
 
