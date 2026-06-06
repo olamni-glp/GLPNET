@@ -222,7 +222,7 @@ procedure main(AgentId?).
 %% CLIENT node boots  main(editor_client): connects, streams local edits out,
 %% reads the broadcast feed in (with a bounded receive window).
 main(Me) :-
-    Me? =?= editor_client |
+    Me? =?= "editor_client" |
     collab_link(L),
     client_connector(L?, Link, Faults),
     run_client(Link?, Faults?).
@@ -230,7 +230,7 @@ main(Me) :-
 %% SERVER node boots  main(editor_server): listens, reads the client's edit stream,
 %% pushes a broadcast feed out on the native B->A direction.
 main(Me) :-
-    Me? =?= editor_server |
+    Me? =?= "editor_server" |
     collab_link(L),
     server_listener(L?, Link, Faults),
     run_server(Link?, Faults?).
@@ -240,7 +240,7 @@ main(Me) :-
 %% Send three local edit ops out, then read the broadcast feed off In.
 %% Link is ch(In?, Out): Out = client->server edits; In = server->client broadcasts.
 procedure run_client(Link(_, _)?, FaultStream?).
-run_client(Link, _Faults) :-
+run_client(Link, _) :-
     local_edits(Edits),
     send_edits(Edits?, Link?, Link1),            %% stream edits out, then graceful close of Out
     recv_feed(Link1?).                            %% read broadcasts in
@@ -252,36 +252,38 @@ local_edits([ins(0, "h"), ins(1, "i"), del(0)]).
 %% Cons each ground edit onto Out (the self.glp send/3 shape), then end Out with []
 %% (graceful close of the outbound direction -> WS Close 1000 once both dirs end).
 procedure send_edits(Stream(Edit)?, Link(In, Edit)?, Link(In, Edit)).
-send_edits([E|Es], Link, LinkOut) :-
+send_edits([E|Es], Link, LinkOut?) :-
     ground(E?) |
     link_send(E?, Link?, Link1),
     send_edits(Es?, Link1?, LinkOut).
-send_edits([], Link, Link).                       %% no more edits; Out tail will be []d by host
+send_edits([], Link, Link?).                       %% no more edits; Out tail will be []d by host
 
 %% Read the inbound broadcast feed head-by-head; suspend on the unbound In head.
-procedure recv_feed(Link(Edit, _)?).
+procedure recv_feed(Link(Broadcast, _)?).
 recv_feed(Link) :-
     link_recv(B, Link?, Link1),                   %% SUSPEND until a broadcast arrives; bind B
     apply_broadcast(B?),
     recv_feed(Link1?).
+recv_feed(ch([], _)).                             %% EOS: server closed inbound feed; terminate (M5)
 
-procedure apply_broadcast(Edit?).
+procedure apply_broadcast(Broadcast?).
 apply_broadcast(B) :- ground(B?) | '_output'(B?).  %% observable: the applied broadcast
 
 %% ============================ SERVER SIDE ============================
 
 %% Read the client's edit stream in; push a bounded broadcast feed out on B->A.
 procedure run_server(Link(_, _)?, FaultStream?).
-run_server(Link, _Faults) :-
+run_server(Link, _) :-
     ingest_edits(Link?, Link1),                   %% drain client->server edits
     broadcast_feed(Link1?).                        %% push server->client feed
 
 %% Drain inbound edits head-by-head until the client closes Out ([] arrives).
 procedure ingest_edits(Link(Edit, Out)?, Link(Edit, Out)).
-ingest_edits(Link, LinkOut) :-
+ingest_edits(Link, LinkOut?) :-
     link_recv(E, Link?, Link1),                   %% SUSPEND until an edit arrives
     record_edit(E?),
     ingest_edits(Link1?, LinkOut).
+ingest_edits(ch([], _), ch([], [])).              %% EOS: client closed inbound; close pass-through (M5)
 
 procedure record_edit(Edit?).
 record_edit(E) :- ground(E?) | '_output'(E?).      %% observable: the recorded edit
@@ -299,7 +301,7 @@ procedure produce_bounded(Stream(Broadcast)?, Link(Credit, Broadcast)?).
 produce_bounded([Item|Items], ch([more|Credits], [Item?|Out?])) :-
     ground(Item?) |
     produce_bounded(Items?, ch(Credits?, Out)).
-produce_bounded([], ch(_Credits, [])).             %% source done -> close the Broadcast direction
+produce_bounded([], ch(_, [])).                    %% source done -> close the Broadcast direction
 
 procedure feed_items(Stream(Broadcast)).
 feed_items([ack(1), ack(2), ack(3)]).
@@ -318,23 +320,33 @@ feed_items([ack(1), ack(2), ack(3)]).
   payload = **2 reader uses, legal because `ground(E?)` certifies groundness** (guards.md
   §"Guards That Imply Groundness"; mirrors `link_send`'s own `ground(Msg?)` relaxation,
   link-primitives.md §2.5). `Es` reader → read once. `Link` reader → once (`link_send` in
-  arg); `Link1` writer → once (recursive call). `LinkOut` threaded write-through. Clause 2:
-  both `Link` occurrences are the same head var passed through (writer in head pos 3 = reader in
-  head pos 2 is the channel identity return — pure head threading, one in / one out). Clean.
-- `recv_feed/1`: `B` writer (`link_recv` output) → `B?` read once (`apply_broadcast`). `Link`
-  reader → once; `Link1` writer → once (recursion). Clean.
+  arg); `Link1` writer → once (recursive call). Output arg3 `LinkOut` is the **reader hole
+  `LinkOut?` in the head** + the writer `LinkOut` once in the recursive body (canonical-forms
+  card form 6: output produced by a body subgoal). Clause 2 (base): arg2 `Link` writer captures
+  the channel; arg3 is the **reader-hole pass-through `Link?`** (card form 6 base case
+  `send_edits([], Link, Link?)`; mirrors `merge([], Ys, Ys?)`). Clean.
+- `recv_feed/1` clause 1: `B` writer (`link_recv` output) → `B?` read once (`apply_broadcast`,
+  typed `Broadcast?` — the inbound stream carries server→client broadcasts, not `Edit`). `Link`
+  reader → once; `Link1` writer → once (recursion). Clause 2 (EOS base `recv_feed(ch([], _))`):
+  matches the closed inbound stream `[]`; `_` is the unread outbound slot. Terminates rather than
+  suspending forever (card form 3 consumer-close). Clean.
 - `apply_broadcast/1`, `record_edit/1`: `B`/`E` reader → 2 uses each under `ground/1`
-  (ground-implying relaxation). Clean.
-- `ingest_edits/2`: `E` writer (`link_recv` output) → `E?` once (`record_edit`). `Link`/`Link1`
-  thread once each. Clean.
+  (ground-implying relaxation). `apply_broadcast` arg is typed `Broadcast?`. Clean.
+- `ingest_edits/2` clause 1: `E` writer (`link_recv` output) → `E?` once (`record_edit`). `Link`
+  reader → once; `Link1` writer → once (recursion). Output arg2 `LinkOut` is the **reader hole
+  `LinkOut?` in the head** + the writer `LinkOut` once in the recursive body (card form 6).
+  Clause 2 (EOS base `ingest_edits(ch([], _), ch([], []))`): inbound `ch([], _)` matches the
+  closed inbound stream; arg2 **head-constructs the closed pass-through channel `ch([], [])`**
+  (card form 3/4 — head construction, never a body `=`). Clean.
 - `broadcast_feed/1`: `Items` writer (`feed_items`) → `Items?` once. `Link` reader → once.
   Clean.
 - `produce_bounded/2` clause 1: `Item` reader (head list cell) → 2 uses under `ground(Item?)`
   (relaxation). `Items` reader → once. `Credits` reader (head, reverse credit stream) → once
   (recursion). `Out` writer (head cons of forward stream) → once (recursion). The head
   constructs both the forward `[Item?|Out?]` output and consumes the reverse `[more|Credits]` —
-  **outputs in the head, never `=` in the body** (GLP-not-Prolog). Clause 2: `_Credits` anon
-  (no more credits read), forward `[]` constructed in head. Clean.
+  **outputs in the head, never `=` in the body** (GLP-not-Prolog). Clause 2: the ignored credit
+  slot is **bare `_`** (card form 7 — a named `_Credits` at an unused channel slot is rejected:
+  "[codegen] Undefined variable"); forward `[]` constructed in head. Clean.
 
 **Establish → repeat → close trace.** Client `client_connector` dials `wss://collab.example:443`
 (TLS handshake, then `101`); server `server_listener` accepts. Same ground `LinkId` ⇒ one
@@ -372,9 +384,16 @@ ground gate, the monitor-term guard reads) without needing a live socket.
 | A-WS-6 | `on_fault([tempFail(link_id("wss",ep("h",443),1), drop)\|_])` read with the §monitor watcher clauses | the `tempFail` clause fires; `handle_temp` runs | a fault is **ordinary data** read by an existing guard, never a 4th verdict (FR-043) |
 | A-WS-7 | `on_fault([closed(link_id("wss",ep("h",443),1), eos)\|_])` | the `closed` clause fires (terminal clean-close term) | clean close emits `closed(...)`, distinct from `tempFail`/`permFail` (DESIGN-DOSSIER §4) |
 
-`on_fault/1` watcher used by A-WS-6/7 (illustrative; ground monitor reads with existing guards):
+`on_fault/1` watcher used by A-WS-6/7 (illustrative; ground monitor reads with existing guards).
+`FaultStream = Stream(Fault)` where the authoritative `Fault` union (`link-primitives.md` §1) is
+`Fault ::= ok ; closed(LinkId, Reason) ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).` —
+`closed/2` is a `Fault` member, so the `closed(L, R)` clause below (and the `closed(LinkId, …)`
+monitor terms in §2.6 / IT-WS-5 / IT-WS-7) type-check against `Stream(Fault)`:
 
 ```prolog
+procedure handle_perm(LinkId?, Reason?).   %% illustrative external sink
+procedure handle_temp(LinkId?, Reason?).   %% illustrative external sink
+procedure handle_closed(LinkId?, Reason?). %% illustrative external sink
 procedure on_fault(FaultStream?).
 on_fault([permFail(L, R)|_]) :- ground(L?) | handle_perm(L?, R?).
 on_fault([tempFail(L, R)|_]) :- ground(L?) | handle_temp(L?, R?).

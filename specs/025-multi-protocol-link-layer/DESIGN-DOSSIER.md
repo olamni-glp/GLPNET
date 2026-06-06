@@ -69,22 +69,23 @@ Fault ::= ok ; closed(LinkId, Reason)                % closed = intentional (cle
 Key clauses (PROPOSED):
 
 ```prolog
-link_setup(LinkId, Role, ch(In?, Out), Faults) :-
-    ground(LinkId?), ground(Role?) | '_link_setup'(LinkId?, Role?, In, Out, Faults).
+link_setup(LinkId, Role, ch(In?, Out), Faults?) :-
+    ground(LinkId?), ground(Role?) | '_link_setup'(LinkId?, Role?, In, Out?, Faults).
 
-accept_link(LinkId, [request(LinkId2, FromPeer)|_], Link, Faults) :-
+accept_link(LinkId, [request(LinkId2, FromPeer)|_], ch(Link_In?, Link_Out), Faults?) :-
     ground(LinkId?), LinkId? =?= LinkId2? |
-    '_link_accept'(LinkId?, FromPeer?, Link_In, Link_Out, Faults),
-    Link = ch(Link_In?, Link_Out).
+    '_link_accept'(LinkId?, FromPeer?, Link_In, Link_Out?, Faults).
 
-link_send(Msg, ch(In?, [Msg?|Out?]), ch(In?, Out)) :- ground(Msg?) | true.   % channel face
+link_send(Msg, ch(In, [Msg?|Out?]), ch(In?, Out)) :- ground(Msg?) | true.    % channel face
 out_relay(Msg, LinkId, ToPeer) :-                                            % LinkId face
     ground(Msg?), ground(LinkId?), ground(ToPeer?) | '_link_send'(Msg?, LinkId?, ToPeer?).
 
 link_recv(Msg?, ch([Msg|In], Out?), ch(In?, Out)).
 
-link_monitor(LinkId, Faults) :- ground(LinkId?) | '_link_monitor'(LinkId?, Faults).
+link_monitor(LinkId, Faults?) :- ground(LinkId?) | '_link_monitor'(LinkId?, Faults).
 
+procedure link_close(LinkId?).
+procedure link_close(LinkId?, Reason?).
 link_close(LinkId) :- ground(LinkId?) | '_link_close'(LinkId?, abrupt).
 link_close(LinkId, Reason) :- ground(LinkId?), ground(Reason?) | '_link_close'(LinkId?, Reason?).
 ```
@@ -112,11 +113,12 @@ Credit ::= more.
 
 procedure produce(Stream(Item)?, Stream(Credit)?, Stream(Item)).
 produce([Item|Items], [more|Credits], [Item?|Data?]) :- produce(Items?, Credits?, Data).
-produce([], _Credits, []).                              % source done -> close data
+produce([], _, []).                                     % source done -> close data
 
 procedure consume(Stream(Item)?, Stream(Credit)).
 consume(Data, [more, more, more | Credits?]) :- drain(Data?, Credits).   % window of 3
 
+procedure use(Item?).                                   % illustrative external sink (app handler)
 procedure drain(Stream(Item)?, Stream(Credit)).
 drain([Item|Data], [more | Credits?]) :- use(Item?), drain(Data?, Credits).
 drain([], []).
@@ -198,13 +200,13 @@ main(Me) :- Me? =?= consumer |
     demo_link(L), server_listener(L?, Link, Faults), run_consumer(Link?, Faults?).
 
 procedure run_producer(Link(_,_)?, FaultStream?).
-run_producer(ch(_In, Out?), _Faults) :- produce([10, 20, 30], Out).
+run_producer(ch(_, Out?), _) :- produce([10, 20, 30], Out).
 procedure produce(Stream(Integer)?, Stream(Integer)).
 produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
 produce([], []).                                         % graceful close (outbound [])
 
 procedure run_consumer(Link(_,_)?, FaultStream?).
-run_consumer(ch(In, []), _Faults) :- consume(In?).
+run_consumer(ch(In, []), _) :- consume(In?).
 procedure consume(Stream(Integer)?).
 consume([V|In]) :- ground(V?) | use_value(V?), consume(In?).
 consume([]).                                             % close detected (inbound [])

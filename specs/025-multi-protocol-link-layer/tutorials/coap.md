@@ -223,10 +223,9 @@ of the unsplit program becomes a CoAP link.
 % One REPL, one heap, one shared stream variable. The split over CoAP must reproduce
 % this EXACT observable output (SC-001).
 procedure readings(Stream(Integer)).
-readings([21, 22, 23, []]).            % three sensor readings then end-of-stream marker
+readings([21, 22, 23]).                % three sensor readings; the [] tail terminates the stream
 
-procedure use_reading(Integer?).
-use_reading(V) :- ground(V?) | '_output'(V?).     % '_output'/1 = self.glp:73
+% use_reading/1 is declared+defined once, in §3.1 below (one module ⇒ no duplicate procedure).
 
 procedure consume_unsplit(Stream(Integer)?).
 consume_unsplit([V|Vs]) :- ground(V?) | use_reading(V?), consume_unsplit(Vs?).
@@ -252,23 +251,24 @@ sensor_link(link_id("coaps", ep("collector.local", 5684), 1)).
 % ---- one entry point; the ground AgentId selects the role (FR-011, the @/boot idiom) ----
 procedure main(AgentId?).
 
-% SENSOR node boots  main(sensor): connects (CoAP client), produces readings.
+% SENSOR node boots  main("sensor"): connects (CoAP client), produces readings.
+% Role literals are quoted Strings to match the AgentId ::= String alternative (L9).
 main(Me) :-
-    Me? =?= sensor |
+    Me? =?= "sensor" |
     sensor_link(L),
     client_connector(L?, Link, Faults),
     run_sensor(Link?, Faults?).
 
-% COLLECTOR node boots  main(collector): listens (CoAP server), consumes readings.
+% COLLECTOR node boots  main("collector"): listens (CoAP server), consumes readings.
 main(Me) :-
-    Me? =?= collector |
+    Me? =?= "collector" |
     sensor_link(L),
     server_listener(L?, Link, Faults),
     run_collector(Link?, Faults?).
 
 % ---- sensor side: ground-relay each reading over the link, then close gracefully ----
 procedure run_sensor(Link(_, _)?, FaultStream?).
-run_sensor(Link, _Faults) :-
+run_sensor(Link, _) :-
     sample_readings(Data),                 % Data: the readings (was the shared stream)
     send_all(Data?, Link?).
 
@@ -281,11 +281,11 @@ send_all([V|Vs], Link) :- ground(V?) |
     link_send(V?, Link?, Link1),           % cons ground V onto Out (head); host ships CON POST
     send_all(Vs?, Link1?).
 send_all([], Link) :-
-    link_send([], Link?, _Link1).          % graceful close: bind Out tail to [] (stream-end)
+    link_send([], Link?, _).          % graceful close: bind Out tail to [] (stream-end)
 
 % ---- collector side: receive each reading off the link, use it, until stream-end ----
 procedure run_collector(Link(_, _)?, FaultStream?).
-run_collector(Link, _Faults) :-
+run_collector(Link, _) :-
     recv_all(Link?).
 
 procedure recv_all(Link(_, _)?).
@@ -293,8 +293,12 @@ recv_all(Link) :-
     link_recv(V, Link?, Link1),            % SUSPEND until a frame arrives; bind V (FR-017)
     use_or_stop(V?, Link1?).
 
-procedure use_or_stop(Integer?, Link(_, _)?).
-use_or_stop([], _Link).                     % stream-end marker → done (graceful close detected)
+% A received item is either an Integer reading or the stream-end marker []; widen the
+% receive-side value domain to a union so the [] head match in clause 1 is well-typed (H17).
+Reading ::= Integer ; [].
+
+procedure use_or_stop(Reading?, Link(_, _)?).
+use_or_stop([], _).                     % stream-end marker → done (graceful close detected)
 use_or_stop(V, Link) :- ground(V?), ~(V? =?= []) |
     use_reading(V?), recv_all(Link?).       % print this reading, loop for the next
 
@@ -307,7 +311,8 @@ use_reading(V) :- ground(V?) | '_output'(V?).
   (ground-implying relaxation). `L` writer (`sensor_link`) → `L?` read once. `Link`/`Faults`
   writers (output args of `client_connector`/`server_listener`) → read once each in `run_*`. Clean.
 - `run_sensor/2`: `Data` writer (`sample_readings`) → `Data?` read once (`send_all`); `Link?` read
-  once; `_Faults` anonymous reader (unread fault stream — legal, FR-008 allows ignoring faults).
+  once; the ignored fault arg is bare `_` (a named singleton is rejected; an unread fault stream — legal; an anon reader `_?` would be
+  illegal, FR-008 allows ignoring faults).
 - `send_all/2` clause 1: `V` reader from head cons → `V?` in `ground/1` guard (1) + `link_send`
   payload (1) — **two reader uses permitted only because `ground(V?)` certifies groundness**
   (guards-reference §Ground-Guards SRSW relaxation). `Vs` reader from head → `Vs?` once in
@@ -340,7 +345,7 @@ Credit ::= more.
 procedure produce(Stream(Item)?, Stream(Credit)?, Stream(Item)).
 produce([Item|Items], [more|Credits], [Item?|Data?]) :-
     ground(Item?) | produce(Items?, Credits?, Data).
-produce([], _Credits, []).                 % source done → close data stream with []
+produce([], _, []).                 % source done → close data stream with []
 
 % consumer: grant an initial window of N=3, replenish one credit per item drained.
 procedure consume(Stream(Item)?, Stream(Credit)).
@@ -368,13 +373,13 @@ B→A direction; the data term is one CON POST on the A→B direction — the SA
 % registry → an established link indistinguishable from the listen/connect path (FR-002).
 
 procedure sensor_request(AgentId?).
-sensor_request(Me) :- Me? =?= sensor |
+sensor_request(Me) :- Me? =?= "sensor" |          % quoted String role literal (L9)
     sensor_link(L),
-    request_link(L?, collector, Link, Faults),   % send ground request(LinkId) token to peer
+    request_link(L?, "collector", Link, Faults), % send ground request(LinkId) token to peer
     run_sensor(Link?, Faults?).
 
 procedure collector_accept(AgentId?, Stream(request(LinkId, AgentId))?).
-collector_accept(Me, Requests) :- Me? =?= collector |
+collector_accept(Me, Requests) :- Me? =?= "collector" |
     sensor_link(L),
     accept_link(L?, Requests?, Link, Faults),     % match request(LinkId2, From) by L =?= LinkId2
     run_collector(Link?, Faults?).
@@ -391,6 +396,11 @@ the head `[request(LinkId2, From)|_]` reads `LinkId?` under `ground/1` then `Lin
 ```prolog
 % Read the per-link monitor stream with ordinary guards. Faults are ground terms over the
 % ok / closed / tempFail / permFail lattice (FR-043) — NEVER a 4th verdict, NEVER a logical Fail.
+% closed/2 IS a member of the Fault union (ruling 2026-06-06, clean-close term); FaultStream
+% = Stream(Fault). The contract Fault type (link-primitives §1) is reconciled to include it, so
+% the closed(L, R) match in watch/1 clause 4 is well-typed (M11).
+Fault ::= ok ; closed(LinkId, Reason) ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).
+
 procedure watch(FaultStream?).
 watch([ok|Rest])                 :- watch(Rest?).
 watch([tempFail(L, R)|Rest])     :- ground(L?) | note_temp(L?, R?), watch(Rest?).
@@ -474,7 +484,7 @@ bind-reactivation feasibility (SC-003) + graceful/abrupt close — the T4 one-pl
   Capture the unsplit baseline first: `Drive(single, go_unsplit, deadline)` → `Capture` → records
   stdout `21\n22\n23\n`. Then `OpenLink(sensor, collector, "coap", LinkOptions{InterHost=false, Tls=false})`
   (loopback/co-located ⇒ plain `"coap"` permitted, FR-029).
-- **Action.** `Drive(sensor, main(sensor), deadline)` and `Drive(collector, main(collector), deadline)`;
+- **Action.** `Drive(sensor, main("sensor"), deadline)` and `Drive(collector, main("collector"), deadline)`;
   run to quiescence. `Capture(collector)`; `AssertEquiv(merged, baseline, ByteIdentical)`.
 - **Expected observable.** Collector stdout is **byte-identical** to the unsplit baseline
   (`21\n22\n23\n`); both `Drive` results are `Done` (or `Suspended` then `Done` after the last
@@ -489,9 +499,9 @@ bind-reactivation feasibility (SC-003) + graceful/abrupt close — the T4 one-pl
 - **Setup.** `StartInstances(...)` as IT-COAP-1 but `OpenLink(..., "coaps", LinkOptions{InterHost=true, Tls=true})`
   on one accepted platform (Windows OR Android). Collector `server_listener` binds a real UDP/DTLS
   CoAP socket + observable resource; sensor `client_connector` knows the URI + registers OBSERVE.
-- **Action.** `Drive(collector, main(collector), deadline)` first → collector's `link_recv`
+- **Action.** `Drive(collector, main("collector"), deadline)` first → collector's `link_recv`
   **suspends** on the unbound `In` head (assert `DriveResult = Suspended`, distinct from
-  `Failed`/`Deadlock`). Then `Drive(sensor, main(sensor), deadline)` → sensor sends one CON POST
+  `Failed`/`Deadlock`). Then `Drive(sensor, main("sensor"), deadline)` → sensor sends one CON POST
   carrying reading `21`.
 - **Expected observable.** Exactly one writer→reader bind crosses the link; the previously-suspended
   `link_recv` **reactivates exactly once**; collector prints `21`. A duplicate CoAP retransmit of the

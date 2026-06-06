@@ -234,7 +234,7 @@ main(Me) :-
 
 % ---- producer side: ground-relay a stream of values, then graceful-close ([]) ----
 procedure run_producer(Link(_, _)?, FaultStream?).
-run_producer(ch(_In, Out), _Faults) :- produce([10, 20, 30], Out).
+run_producer(ch(_, Out?), _) :- produce([10, 20, 30], Out).
 
 procedure produce(Stream(Integer)?, Stream(Integer)).
 produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).   % cons ground V in HEAD
@@ -242,7 +242,7 @@ produce([], []).                                                 % graceful clos
 
 % ---- consumer side: receive head-by-head; [] = graceful close detected ----
 procedure run_consumer(Link(_, _)?, FaultStream?).
-run_consumer(ch(In, []), _Faults) :- consume(In?).              % we never send B->A here: Out := []
+run_consumer(ch(In, []), _) :- consume(In?).                    % we never send B->A here: [] head-constructs the closed outbound
 
 procedure consume(Stream(Integer)?).
 consume([V|In]) :- ground(V?) | use_value(V?), consume(In?).
@@ -256,12 +256,19 @@ use_value(V) :- ground(V?) | '_output'(V?).                     % '_output'/1 = 
 - `main/1` clauses: `Me` writer-in-head, read once in the `=?=` guard (ground-implying relaxation
   permits the single reader use). `L` writer (`demo_link`) -> `L?` read once. `Link`,`Faults`
   writers from the establishment call, each read once in `run_*`. Clean.
+- `run_producer(ch(_, Out?), _)`: producer that writes outbound + IGNORES inbound (canonical form:
+  `prod(ch(_, Out?), _) :- gen(Vals, Out).`). Inbound channel slot is bare `_` (ignored, no reader
+  needed); outbound is the **reader hole** `Out?` in the head + the single writer `Out` in the body
+  `produce(…, Out)` — one writer, one reader. The unused fault arg is bare `_` (a named `_Faults`
+  at an unused slot is rejected: "[codegen] Undefined variable: _Faults"). Clean.
 - `produce([V|Vs], [V?|Out?])`: `V?` appears in guard `ground(V?)` and head cons `[V?|…]` — legal
   because `ground/1` certifies groundness (guards-reference §Ground Guards SRSW relaxation). `Vs`
-  read once; `Out` written once in head, read once in the recursive call. Clean.
-- `produce([], [])`: facts; `Out` bound to `[]` in head (graceful close, no `=` in body). Clean.
-- `run_consumer(ch(In, []), …)`: `In` writer-in-head read once in `consume(In?)`; the channel's
-  `Out` is bound to `[]` in the head (this end sends nothing back — half-duplex use). Clean.
+  read once; `Out` is a reader hole in the head, written once in the recursive call. Clean.
+- `produce([], [])`: facts; `Out` head-constructs `[]` (graceful close, no `=` in body). Clean.
+- `run_consumer(ch(In, []), _)`: consumer that reads inbound + closes its outbound (canonical form:
+  `cons(ch(In, []), _) :- rd(In?).`). `In` is a **writer** capturing the inbound stream, read once
+  via `consume(In?)`; the outbound stream is head-constructed closed as `[]` (this end sends nothing
+  back — half-duplex use), which the REPL accepts. The unused fault arg is bare `_`. Clean.
 - `consume([V|In])`: `V?` in guard + `use_value(V?)` — `ground(V?)` relaxation; `In` read once.
   Clean. `consume([])`: fact. Clean.
 - `use_value(V)`: `V?` in guard + `'_output'(V?)` — `ground/1` relaxation. Clean.
@@ -298,7 +305,7 @@ Credit ::= more.
 procedure produce_bounded(Stream(Item)?, Stream(Credit)?, Stream(Item)).
 produce_bounded([Item|Items], [more|Credits], [Item?|Data?]) :-
     ground(Item?) | produce_bounded(Items?, Credits?, Data).
-produce_bounded([], _Credits, []).                              % source done -> graceful close
+produce_bounded([], _, []).                              % source done -> graceful close
 
 procedure consume_bounded(Stream(Item)?, Stream(Credit)).
 consume_bounded(Data, [more, more, more | Credits?]) :-         % open the window: 3 credits
@@ -330,14 +337,20 @@ watch([closed(L, R)|_])       :- ground(L?) | note_closed(L?, R?).      % gracef
 watch([tempFail(L, R)|Rest])  :- ground(L?) | note_temp(L?, R?), watch(Rest?).
 watch([permFail(L, R)|_])     :- ground(L?) | give_up(L?, R?).
 
+procedure note_closed(LinkId?, Reason?).
+procedure note_temp(LinkId?, Reason?).
 procedure give_up(LinkId?, Reason?).
-give_up(L, _R) :- ground(L?) | link_close(L?, abandoned).               % 9th primitive: abrupt teardown
+give_up(L, _) :- ground(L?) | link_close(L?, abandoned).               % 9th primitive: abrupt teardown
 ```
 
-**SRSW hand-check:** `watch` clauses each read the head term once; `L?` in guard + handler call
+**SRSW hand-check:** `run_consumer_monitored(ch(In, []), Faults)`: same consumer-close form as §3a
+(`In` **writer** captures inbound, read once via `consume(In?)`; outbound head-constructs `[]`), but
+here the fault arg is **named** `Faults` because it IS read once via `watch(Faults?)` — so it stays
+named, not bare `_`. Clean. `watch` clauses each read the head term once; `L?` in guard + handler call
 (`ground/1` relaxation). `Rest` read once where threaded. `give_up`: `L?` in guard + `link_close`
-(relaxation). Clean. `closed/2` is the clean-close terminal term (DESIGN §1, RULED 2026-06-06);
-`permFail/2` drives `link_close/2` for an explicit abrupt teardown.
+(relaxation). Clean. `closed/2` is a member of the `Fault` union (DESIGN §1, RULED 2026-06-06), so
+matching `closed(L, R)` over the `Stream(Fault)` monitor is well-typed; `permFail/2` drives
+`link_close/2` for an explicit abrupt teardown.
 
 ---
 

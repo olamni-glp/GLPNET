@@ -64,8 +64,12 @@ LinkRole ::= listener ; connector.
 
 % Fault lattice carried as ORDINARY BOUND GROUND TERMS on the monitor stream
 % (FR-043: never a 4th unification verdict, never a new guard outcome). FR-045.
-Fault ::= ok ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).
-Reason ::= String ; Compound.
+% closed/2 is a Fault member (Gabi ruling 2026-06-06): a clean/intentional close
+% emits a terminal closed(LinkId, Reason) term (Reason = eos for graceful), distinct
+% from tempFail/permFail.
+Fault ::= ok ; closed(LinkId, Reason)
+        ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).
+Reason ::= String ; _.
 
 % A live link end presented to GLP logic as a Channel so self.glp send/receive/mwm
 % compose ABOVE the seam (FR-006: no transport detail leaks into logic).
@@ -91,17 +95,17 @@ Mode notation: `X?` reader (input), `X` writer (output), `+`/`-`/`?` annotate in
 % PROPOSED. Establish-or-reuse a link by its ground LinkId, in a given role,
 % over the transport named inside LinkId's Scheme. Idempotent at link-identity (FR-007).
 % Role (listener|connector) is independent of who later writes (FR-004).
-procedure link_setup(LinkId?, LinkRole?, Link(_, _), FaultStream).
+procedure link_setup(LinkId?, LinkRole?, Link(_, _), FaultStream?).
 FaultStream ::= Stream(Fault).
 
-link_setup(LinkId, Role, ch(In?, Out), Faults) :-
+link_setup(LinkId, Role, ch(In?, Out), Faults?) :-
     ground(LinkId?), ground(Role?) |
-    '_link_setup'(LinkId?, Role?, In, Out, Faults).
+    '_link_setup'(LinkId?, Role?, In, Out?, Faults).
 ```
 
 - **Semantics.** Given a ground `LinkId` and a ground establishment `Role`, open (or, if already established under the same `LinkId`, REUSE) the underlying transport leaf, and hand back (a) a `Link` channel `ch(In?, Out)` whose `In` is the inbound ground-term stream and `Out` the outbound ground-term stream, and (b) a per-link `Faults` monitor stream. Re-invoking `link_setup` with the same ground `LinkId` returns the already-established link rather than a conflicting duplicate (FR-007 idempotent-at-identity); the underlying `'_link_setup'` consults a per-instance LinkId→handle registry keyed by the ground `LinkId`.
 - **Invariants touched & preserved.**
-  - *SRSW (FR-048):* `LinkId?`/`Role?` appear once each as readers under a `ground/1` guard (ground-implying ⇒ SRSW relaxation per guards-reference §"Ground Guards"); `In`, `Out`, `Faults` each occur once as writers in the head — fresh local pairs minted by `'_link_setup'`. No second reader/writer for any cell.
+  - *SRSW (FR-048):* `LinkId?`/`Role?` appear once each as readers under a `ground/1` guard (ground-implying ⇒ SRSW relaxation per guards-reference §"Ground Guards"). The three produced outputs follow the output-hole idiom (manual §19.4): `In` is a reader hole `In?` in the head paired with the body writer `In`; `Out` is the head writer (the caller fills it) paired with the body reader `Out?`; `Faults` is a reader hole `Faults?` in the head paired with the body writer `Faults`. Each cell has exactly one reader and one writer — fresh local pairs minted by `'_link_setup'`.
   - *Three-valued / suspend-not-fail (FR-017/FR-050):* an unbound `LinkId?` or `Role?` SUSPENDS on the `ground/1` gate (patient), never spuriously fails.
   - *Idempotency (FR-007/FR-052):* registry keyed by the never-reused ground `LinkId` makes re-setup a no-op-returning-the-same-handle; bind-once preserved because the `In`/`Out`/`Faults` writers are bound exactly once at first establishment.
   - *Bilateral (FR-005):* `'_link_setup'` opens exactly one transport leaf to exactly one peer; a broker, if the scheme needs one, is a relay UNDER this seam, never a logical hub.
@@ -114,8 +118,8 @@ link_setup(LinkId, Role, ch(In?, Out), Faults) :-
 ```prolog
 % PROPOSED. Establish a link by LISTENING (accepting an inbound transport connection).
 % Thin role-specialization of link_setup with Role = listener. (FR-002 path A, this end.)
-procedure server_listener(LinkId?, Link(_, _), FaultStream).
-server_listener(LinkId, Link, Faults) :-
+procedure server_listener(LinkId?, Link(_, _), FaultStream?).
+server_listener(LinkId, Link?, Faults?) :-
     ground(LinkId?) |
     link_setup(LinkId?, listener, Link, Faults).
 ```
@@ -132,8 +136,8 @@ server_listener(LinkId, Link, Faults) :-
 ```prolog
 % PROPOSED. Establish a link by CONNECTING (initiating the transport connection).
 % Thin role-specialization of link_setup with Role = connector. (FR-002 path A, other end.)
-procedure client_connector(LinkId?, Link(_, _), FaultStream).
-client_connector(LinkId, Link, Faults) :-
+procedure client_connector(LinkId?, Link(_, _), FaultStream?).
+client_connector(LinkId, Link?, Faults?) :-
     ground(LinkId?) |
     link_setup(LinkId?, connector, Link, Faults).
 ```
@@ -153,24 +157,22 @@ FR-002 mandates a SECOND establishment path — a `request-link` / `accept-link`
 % PROPOSED. Initiate an in-band link-request handshake to a peer over a rendezvous link.
 % Sends a ground request token carrying the desired LinkId; on the peer's accept,
 % both ends hold the equivalent established Link (FR-002).
-procedure request_link(LinkId?, AgentId?, Link(_, _), FaultStream).
-request_link(LinkId, ToPeer, Link, Faults) :-
+procedure request_link(LinkId?, AgentId?, Link(_, _), FaultStream?).
+request_link(LinkId, ToPeer, ch(Link_In?, Link_Out), Faults?) :-
     ground(LinkId?), ground(ToPeer?) |
-    '_link_request'(LinkId?, ToPeer?, Link_In, Link_Out, Faults),
-    Link = ch(Link_In?, Link_Out).
+    '_link_request'(LinkId?, ToPeer?, Link_In, Link_Out?, Faults).
 
 % PROPOSED. Accept an inbound link-request for a LinkId this end is willing to serve.
 % Reads a request token off RequestStream; on a match, establishes the equivalent Link.
-procedure accept_link(LinkId?, Stream(request(LinkId, AgentId))?, Link(_, _), FaultStream).
-accept_link(LinkId, [request(LinkId2, FromPeer)|_], Link, Faults) :-
+procedure accept_link(LinkId?, Stream(request(LinkId, AgentId))?, Link(_, _), FaultStream?).
+accept_link(LinkId, [request(LinkId2, FromPeer)|_], ch(Link_In?, Link_Out), Faults?) :-
     ground(LinkId?), LinkId? =?= LinkId2? |
-    '_link_accept'(LinkId?, FromPeer?, Link_In, Link_Out, Faults),
-    Link = ch(Link_In?, Link_Out).
+    '_link_accept'(LinkId?, FromPeer?, Link_In, Link_Out?, Faults).
 ```
 
 - **Semantics.** `request_link` sends a ground `request(LinkId)` token to `ToPeer` and parks until the peer accepts, then yields the established `Link` + `Faults`. `accept_link` consumes a `request(LinkId2, FromPeer)` token from its inbound `RequestStream`; when the requested `LinkId2` matches a `LinkId` this end will serve (tested by `=?=` over ground terms), it establishes the equivalent link. The two establishment paths (2.2/2.3 listen/connect, and 2.4 request/accept) MUST produce an indistinguishable established `Link` (FR-002) — both ultimately route through the same `'_link_setup'` registry, so downstream data/fault behavior is identical.
 - **Invariants touched & preserved.**
-  - *SRSW (FR-048):* `LinkId?` ground-guarded (relaxation permits its two reader occurrences in `accept_link`: once in `ground/1`, once in `=?=`); `LinkId2?`/`FromPeer?` read once from the head list cell. `Link_In`/`Link_Out`/`Faults` are fresh writers bound once. **Note:** this clause is the SRSW-correct rewrite of the decision doc's FLAGGED `out_relay` clause (which read `LinkId?` twice with no ground guard) — the fix is exactly the `ground(LinkId?)` gate (see §3).
+  - *SRSW (FR-048):* `LinkId?` ground-guarded (relaxation permits its two reader occurrences in `accept_link`: once in `ground/1`, once in `=?=`); `LinkId2?`/`FromPeer?` read once from the head list cell. The produced `Link` is **head-constructed** as `ch(Link_In?, Link_Out)` (no body `=`; outputs are built in clause heads — cheat-sheet Rule 1): `Link_In` = kernel writer + `Link_In?` reader-hole in the head `ch`; `Link_Out` = `Link_Out` writer in the head `ch` + kernel reader `Link_Out?`; `Faults` = head reader-hole `Faults?` + kernel writer. Each cell has exactly one reader and one writer. **Note:** this clause is the SRSW-correct rewrite of the decision doc's FLAGGED `out_relay` clause (which read `LinkId?` twice with no ground guard) — the fix is exactly the `ground(LinkId?)` gate (see §3).
   - *Three-valued (FR-017/FR-050):* an unbound `LinkId?`/`ToPeer?` SUSPENDS on `ground/1`; an unarrived `request` token leaves `accept_link` SUSPENDED on the stream head reader, never failed.
   - *`=?=` ask-semantics (FR-039):* `LinkId? =?= LinkId2?` succeeds on ground-equal, suspends on an unbound reader, fails on an unbound writer / ground-unequal — already-implemented behavior (`runner.dart:4669`), used here unchanged.
   - *Bilateral (FR-005):* one request ↔ one accept ↔ one link.
@@ -189,7 +191,7 @@ This is the corrected `out_relay` from the decision doc. It is the **ground-rela
 % LinkId is ground-guarded so its (single) reader use is legal under the relaxation,
 % and crucially the PAYLOAD is gated GROUND so no _w/_r placeholder ever crosses.
 procedure link_send(Term?, Link(In, Term)?, Link(In, Term)).
-link_send(Msg, ch(In?, [Msg?|Out?]), ch(In?, Out)) :-
+link_send(Msg, ch(In, [Msg?|Out?]), ch(In?, Out)) :-
     ground(Msg?) | true.
 ```
 
@@ -236,8 +238,8 @@ link_recv(Msg?, ch([Msg|In], Out?), ch(In?, Out)).
 % read with EXISTING guards (=?=, compound, etc.) — NOT a 4th unification verdict,
 % NOT a new guard outcome (FR-043). Independently observable from the data path (FR-008):
 % reading Faults does not touch In/Out, and vice versa.
-procedure link_monitor(LinkId?, FaultStream).
-link_monitor(LinkId, Faults) :-
+procedure link_monitor(LinkId?, FaultStream?).
+link_monitor(LinkId, Faults?) :-
     ground(LinkId?) |
     '_link_monitor'(LinkId?, Faults).
 ```
@@ -245,6 +247,8 @@ link_monitor(LinkId, Faults) :-
 - **Semantics.** Return the monitor stream `Faults` for the established `LinkId`. The transport leaf + reliability sublayer push `ok`, then on silence `tempFail(LinkId, Reason)` within a bounded interval, then on deliberate give-up `permFail(LinkId, Reason)` (FR-045/FR-046). A program reads it with ordinary guards, e.g.:
   ```prolog
   procedure on_fault(FaultStream?).
+  procedure handle_perm(LinkId?, Reason?).   % illustrative external sinks (host/app handlers)
+  procedure handle_temp(LinkId?, Reason?).
   on_fault([permFail(L, R)|_]) :- ground(L?) | handle_perm(L?, R?).
   on_fault([tempFail(L, R)|_]) :- ground(L?) | handle_temp(L?, R?).
   on_fault([ok|Rest])          :- on_fault(Rest?).
@@ -254,7 +258,7 @@ link_monitor(LinkId, Faults) :-
   - *No 4th verdict (FR-043):* faults are data on a stream — they never enter `_evaluateGuard`'s success/suspend/fail trichotomy.
   - *Independent observability (FR-008):* `Faults` is a separate stream from `In`/`Out`; `link_monitor` shares only the ground `LinkId` with the data primitives (registry lookup), no cell aliasing ⇒ no SRSW interference.
   - *Three-valued (FR-050):* disconnect → a bound `tempFail`/`permFail` TERM, never a logical fail; an unmonitored suspended goal is undisturbed.
-  - *SRSW (FR-048):* `LinkId?` ground-guarded (single relaxed reader use); `Faults` is a fresh writer.
+  - *SRSW (FR-048):* `LinkId?` ground-guarded (single relaxed reader use); `Faults` follows the output-hole idiom — reader hole `Faults?` in the head paired with the single body writer `Faults` from `'_link_monitor'` (manual §19.4).
 - **Language-authority status: NEW system-predicate** `'_link_monitor'/2` (host-implemented; emits the fault lattice terms). The lattice atoms `ok`/`tempFail/2`/`permFail/2` are ordinary GROUND terms — **NOT new language items** (no new guard, no new verdict), but the fault-term VOCABULARY (functors/arities) is an approval item (decision doc D-LA-3). Approve the predicate + the term vocabulary.
 - **Base tag:** `[base:monitor]`.
 
@@ -303,18 +307,18 @@ Per FR-011 and the RULED D-DEC-1, the split is ONE role-parameterized program se
 
 ```prolog
 % PROPOSED skeleton — one program, role chosen by ground AgentId (FR-011).
-procedure main(AgentId?, Stream(_)?).        % arg-0 ground AgentId, last arg NetIn
-main(Me, NetIn) :-
-    Me? =?= "producer" |
+procedure main(AgentId?, Stream(_)?).        % arg-0 ground AgentId, last arg NetIn (unread here)
+main(Me, _) :-
+    Me? =?= producer |
     client_connector(link_id("ws", ep("hostB", 9001), 1), Link, Faults),
     produce(Link?, Faults?).
-main(Me, NetIn) :-
-    Me? =?= "consumer" |
+main(Me, _) :-
+    Me? =?= consumer |
     server_listener(link_id("ws", ep("hostB", 9001), 1), Link, Faults),
     consume(Link?, Faults?).
 ```
 
-- `Me? =?= "producer"` is the branch-on-ground-AgentId selector (existing `=?=`, three-valued: ground-equal → that clause; unbound reader → suspend; mismatch → next clause). Establishment role (`client_connector` vs `server_listener`) is chosen here but is INDEPENDENT of data direction (FR-004) — the producer could equally be the listener.
+- `Me? =?= producer` is the branch-on-ground-AgentId selector (existing `=?=`, three-valued: ground-equal → that clause; unbound reader → suspend; mismatch → next clause; the bare atom `producer` is a `String` constant per the `AgentId ::= String` alternative). Establishment role (`client_connector` vs `server_listener`) is chosen here but is INDEPENDENT of data direction (FR-004) — the producer could equally be the listener.
 - This keeps the unsplit baseline and the split deployment provably the same source (what makes SC-001 byte-identical meaningful).
 
 ---

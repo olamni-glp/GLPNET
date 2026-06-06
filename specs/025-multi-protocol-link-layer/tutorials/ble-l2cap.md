@@ -217,7 +217,8 @@ new module, never in `self.glp` (the prelude is untouched, FR-067).
 
 % --- PROPOSED link-layer types (contracts/link-primitives.md §1) ---
 % LinkId ::= link_id(Scheme, Endpoint, Nonce).        (all ground)
-% Link(In, Out) ::= ch(In, Out?).                       (a link end as a Channel)
+% Link(In, Out) ::= Channel(Stream(In), Stream(Out)).   (a link end as a Channel;
+%                   = ch(Stream(In), Stream(Out)?) after the Channel mode-flip)
 % Fault ::= ok ; closed(LinkId, Reason)
 %         ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).
 % Credit ::= more.
@@ -264,10 +265,10 @@ carrying `Credit` terms). It SUSPENDS when no credit is left — pure suspend-on
 buffer object (DESIGN-DOSSIER §3). Graceful close = binding `Out` to `[]`.
 
 ```prolog
-procedure run_band(Link(Stream(Credit), Stream(Integer))?, FaultStream?).
+procedure run_band(Link(Credit, Integer)?, FaultStream?).
 % In  = inbound credit stream from the phone (the reverse/back-channel direction)
 % Out = outbound sensor-data stream to the phone
-run_band(ch(Credits?, Data), _Faults) :-
+run_band(ch(Credits, Data?), _) :-
     sensor_batch(Batch),
     produce(Batch?, Credits?, Data).
 
@@ -275,15 +276,17 @@ run_band(ch(Credits?, Data), _Faults) :-
 procedure produce(Stream(Integer)?, Stream(Credit)?, Stream(Integer)).
 produce([Item|Items], [more|Credits], [Item?|Data?]) :-
     ground(Item?) | produce(Items?, Credits?, Data).
-produce([], _Credits, []).                       % source done -> graceful close (Out = [])
+produce([], _, []).                       % source done -> graceful close (Out = [])
 ```
 
-SRSW hand-check (`run_band/2`): `Credits?` read once (head), `Data` written once (head),
-`Batch` fresh writer then read once. `produce/3` clause 1: `Item?` appears in guard
+SRSW hand-check (`run_band/2`): the consumed channel head is `ch(Credits, Data?)` (canonical
+`ch(In, Out?)`): writer `Credits` captures the inbound credit stream and is read once as
+`Credits?` in the body; reader-hole `Data?` is the outbound stream, written once as the writer
+`Data` in the body. `Batch` is a fresh writer then read once. `produce/3` clause 1: `Item?` appears in guard
 `ground(Item?)` and head cons `[Item?|Data?]` — legal ONLY because `ground/1` certifies
 groundness (ground-implying guard relaxes SRSW, guards-reference §"Ground Guards"); `Items`,
 `Credits`, `Data` thread once each; the `more` credit token is matched (read) once in the
-head. Clause 2: `_Credits` is anonymous (writer nobody reads, exempt). No double
+head. Clause 2: the ignored credit arg is bare `_` (a named singleton would be rejected by codegen). No double
 reader/writer. OK.
 
 Note the **ground gate** on `Item?` is the ground-relay discipline (FR-010): only ground
@@ -296,10 +299,10 @@ drains the data, topping up one credit per consumed item. It detects graceful cl
 data stream ends (`[]`).
 
 ```prolog
-procedure run_phone(Link(Stream(Integer), Stream(Credit))?, FaultStream?).
+procedure run_phone(Link(Integer, Credit)?, FaultStream?).
 % In  = inbound sensor-data stream from the wearable
 % Out = outbound credit stream to the wearable (the reverse/back-channel direction)
-run_phone(ch(Data?, Credits), _Faults) :-
+run_phone(ch(Data, Credits?), _) :-
     consume(Data?, Credits).
 
 % Window of 3 in flight: seed three credits, then one fresh credit per item drained.
@@ -314,9 +317,12 @@ procedure use_sample(Integer?).
 use_sample(V) :- ground(V?) | '_output'(V?).
 ```
 
-SRSW hand-check (`run_phone/2`): `Data?` read once, `Credits` written once. `consume/2`:
+SRSW hand-check (`run_phone/2`): the consumed channel head is `ch(Data, Credits?)` (canonical
+`ch(In, Out?)`): writer `Data` captures the inbound sensor-data stream and is read once as
+`Data?` in the body; reader-hole `Credits?` is the outbound credit stream, written once as the
+writer `Credits` in the body. `consume/2`:
 `Data` read once (passed to `drain`), the three-credit window + `Credits?` tail constructed
-in the head writer-position (one fresh reader `Credits?`). `drain/3` clause 1: `Item?` in
+in the head writer-position (one fresh reader `Credits?`). `drain/2` clause 1: `Item?` in
 `ground(Item?)`, `use_sample(Item?)`, and matched in head `[Item|Data]` — the head occurrence
 binds `Item` (writer-construction returning the element) and the two body reads are
 groundness-certified by `ground/1`; `Data`, `Credits` thread once each; `more` written once
@@ -371,7 +377,7 @@ runtime; B = positive type-check; C = negative type-check. They follow the
 | ID | Goal (illustrative) | Expected outcome (oracle) |
 |---|---|---|
 | A-BLE-1 | Load `ble_l2cap_wearable_sync.glp`; `main("band").` with a stub loopback CoC and a co-resident `main("phone").` | Both roles select; `'_output'` emits `72 73 75 74 80 78` in order; both quiesce **Done**; monitor ends with `closed(_, eos)`. |
-| A-BLE-2 | `produce([99|_], [], Out).` (no credit available) | **Suspended** on the `[more|Credits]` reader (head unification on empty credit stream) — NOT failed, NOT done. Asserts credit-gated suspend (FR-025). |
+| A-BLE-2 | `produce([99|_], Credits?, Out).` (credit stream unbound — no credit arrived yet) | **Suspended** on the unbound `[more\|Credits]` head reader (three-valued: an unbound reader at the credit slot ⇒ SUSPEND) — NOT failed, NOT done. Asserts credit-gated suspend (FR-025). |
 | A-BLE-3 | After A-BLE-2, bind one `more` onto the credit stream from a sibling goal | The suspended `produce` **reactivates exactly once**, emits one item, re-suspends. Asserts reactivate-once (FR-051). |
 | A-BLE-4 | `produce([], [more,more], Out).` | Succeeds with `Out = []` (graceful close); leftover credits ignored (`_Credits`). |
 | A-BLE-5 | `link_send(hr(72), ch(In?, [hr(72)?|Out?]), Result).` (ground payload) | Succeeds; `Result = ch(In?, Out)` — ground term consed onto Out (ground-relay, FR-010). |
@@ -385,8 +391,8 @@ runtime; B = positive type-check; C = negative type-check. They follow the
 
 | ID | Program shape | Expected |
 |---|---|---|
-| B-BLE-1 | `produce/3`, `consume/2`, `drain/3` with full `procedure` decls and the `ground/1` gates as in §3 | **Compiles** (SRSW satisfied via ground-implying guards; types consistent with `Stream(Integer)`/`Stream(Credit)`). |
-| B-BLE-2 | `run_band/2`/`run_phone/2` over `Link(Stream(Credit),Stream(Integer))` / `Link(Stream(Integer),Stream(Credit))` | **Compiles** — the `Link(In,Out)` channel type composes with `produce`/`consume` (FR-006: link is a Channel above the seam). |
+| B-BLE-1 | `produce/3`, `consume/2`, `drain/2` with full `procedure` decls and the `ground/1` gates as in §3 | **Compiles** (SRSW satisfied via ground-implying guards; types consistent with `Stream(Integer)`/`Stream(Credit)`). |
+| B-BLE-2 | `run_band/2`/`run_phone/2` over `Link(Credit,Integer)` / `Link(Integer,Credit)` (= `Channel(Stream(Credit),Stream(Integer))` / `Channel(Stream(Integer),Stream(Credit))` after the mode-flip) | **Compiles** — the `Link(In,Out)` channel type composes with `produce`/`consume` (FR-006: link is a Channel above the seam). |
 | B-BLE-3 | A clause reading a `ground/1`-grounded payload var **twice** (guard + head cons), as in `produce/3` clause 1 | **Compiles** — ground-implying guard relaxes SRSW (SC-006 positive). |
 
 ### Section C — negative type-check

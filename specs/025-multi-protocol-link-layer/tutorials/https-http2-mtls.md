@@ -270,19 +270,19 @@ Credit ::= more.
 ## 3.2 The role selector (one program, branch on ground AgentId — FR-011)
 
 ```prolog
-% arg-0 is the ground AgentId (the @/boot idiom). The fintech (org A) boots main(fintech);
-% the bank (org B) boots main(bank). Establishment role is INDEPENDENT of data direction
+% arg-0 is the ground AgentId (the @/boot idiom). The fintech (org A) boots main("fintech");
+% the bank (org B) boots main("bank"). Establishment role is INDEPENDENT of data direction
 % (FR-004): here the fintech connects+writes records, the bank listens+reads and grants credit.
 procedure main(AgentId?).
 
 main(Me) :-
-    Me? =?= fintech |
+    Me? =?= "fintech" |
     b2b_link(L),
     client_connector(L?, Link, Faults),          % establish: mTLS HTTP/2 client (connect)
     run_fintech(Link?, Faults?).
 
 main(Me) :-
-    Me? =?= bank |
+    Me? =?= "bank" |
     b2b_link(L),
     server_listener(L?, Link, Faults),           % establish: mTLS HTTP/2 server (listen+verify)
     run_bank(Link?, Faults?).
@@ -307,7 +307,7 @@ procedure run_bank(Link(Record, Credit)?, FaultStream?).
 % the residual tail Out? is a reader in the head, threaded once as the writer Out into the
 % body -- exactly the send/3 / receive/3 writer-in-head/reader-in-body threading discipline
 % (self.glp:94,97). One writer + one reader for each of In and Out. SRSW clean.
-run_bank(ch(In, [more, more, more | Out?]), _Faults) :-
+run_bank(ch(In, [more, more, more | Out?]), _) :-
     drain_records(In?, Out).
 
 procedure drain_records(Stream(Record)?, Stream(Credit)).
@@ -351,7 +351,7 @@ procedure run_fintech(Link(Credit, Record)?, FaultStream?).
 % Out = outbound record stream), then recurse on bare streams (the DESIGN-DOSSIER §5 /
 % example-http-link shape: work on the raw Out stream, not the channel record). This avoids
 % hand-decomposing both channel slots inside a recursive head.
-run_fintech(ch(Credits?, Out), _Faults) :-
+run_fintech(ch(Credits, Out?), _) :-
     produce_records([txn(1, 500), txn(2, 1200), txn(3, 750)], Credits?, Out).
 
 procedure produce_records(Stream(Record)?, Stream(Credit)?, Stream(Record)).
@@ -363,14 +363,17 @@ produce_records([R | Rs], [more | Credits], [R? | Out?]) :-
     produce_records(Rs?, Credits?, Out).
 % Source exhausted -> graceful close: bind the outbound stream tail to [] in the HEAD
 % (stream-end []); the bank's drain_records([], []) fires. No primitive needed.
-produce_records([], _Credits, []).
+produce_records([], _, []).
 ```
 
 SRSW hand-check:
-- `run_fintech/2`: head deconstructs the channel — `Credits?` reader in the head → read **once**
-  in the body (`produce_records` arg 2); `Out` writer in the head → threaded **once** into the
-  body (`produce_records` arg 3). `_Faults` anonymous. The record list is a ground literal.
-  Each of `Credits`/`Out` is one reader / one writer. Clean.
+- `run_fintech/2`: head deconstructs the channel — `Credits` is a **writer** in the head (the
+  reverse credit stream the ingress fills) → read **once** as `Credits?` in the body
+  (`produce_records` arg 2); the outbound slot's `Out?` is a **reader hole** in the head → threaded
+  **once** as the writer `Out` into the body (`produce_records` arg 3). This is the consumed-channel
+  head `ch(In, Out?)` per `Channel(In,Out) ::= ch(In, Out?)` — the same writer-in-head/reader-hole
+  threading discipline as the sibling `run_bank` and `self.glp:94,97`. `_Faults` anonymous. The
+  record list is a ground literal. Each of `Credits`/`Out` is one writer + one reader. Clean.
 - `produce_records/3` clause 1: `R` writer from the head list cell → `R?` read **twice** (in
   `ground/1` and in the head cons `[R? | Out?]`) — legal under the `ground(R?)` relaxation
   (ground-implying guard certifies groundness). `Rs` writer → `Rs?` read once. The credit head
@@ -504,7 +507,7 @@ close + the mTLS policy decision. Each = name + setup + action + expected OBSERV
 - **Setup.** Baseline: `Drive(unsplit, go_unsplit_b2b, d)`; `bc = Capture(unsplit)` (prints the
   three `txn(...)` lines). Then `A,B = StartInstances(b2b_https_stream, [(fintech,Dart),(bank,Dart)], seed)`.
 - **Action.** `link = OpenLink(A, B, "https", LinkOptions{InterHost=true, Tls=true, Window=3})`;
-  `Drive(A, main(fintech), d)`; `Drive(B, main(bank), d)`.
+  `Drive(A, main("fintech"), d)`; `Drive(B, main("bank"), d)`.
 - **Expected (observable).** `AssertEquiv(merge(Capture(A), Capture(B)), bc, ByteIdentical)` passes
   — the bank's stdout is byte-identical to the unsplit baseline (the three records, in order).
   **Then repeat** with `[(fintech,Dart),(bank,Csharp)]`: the merged transcript is byte-identical to
@@ -516,7 +519,7 @@ close + the mTLS policy decision. Each = name + setup + action + expected OBSERV
 ### I-https-02 — Suspend-not-fail / reactivate-exactly-once across the cut (SC-001 AS2, SC-009)
 
 - **Setup.** Same rig; drive the **bank** (consumer) **before** the fintech sends.
-- **Action.** `Drive(B, main(bank), d)` first (no record has arrived), then `Drive(A, main(fintech), d)`.
+- **Action.** `Drive(B, main("bank"), d)` first (no record has arrived), then `Drive(A, main("fintech"), d)`.
 - **Expected.** `DriveResult(B)` (before A) = **`Suspended`** (distinct from `Failed`/`Deadlock` —
   the bank's `drain_records` suspends on the unbound `In` head). After A sends, `Capture(B)` shows
   exactly the three records, each printed once (reactivated exactly once per record). No spurious
@@ -529,7 +532,7 @@ close + the mTLS policy decision. Each = name + setup + action + expected OBSERV
 - **Setup.** `A,B = StartInstances(..., [(fintech,*),(bank,*)], seed)` on at least one platform
   (Windows OR Android per FR-063). Minimal program: one record.
 - **Action.** `OpenLink(A, B, "https", {InterHost=true, Tls=true})` (real mTLS handshake);
-  `Drive(B, main(bank), d)` → suspends; `Drive(A, main(fintech), d)` → sends one `txn(1,500)`.
+  `Drive(B, main("bank"), d)` → suspends; `Drive(A, main("fintech"), d)` → sends one `txn(1,500)`.
 - **Expected.** The bank's previously-**suspended** reader **reactivates exactly once** and prints
   `txn(1,500)`; one writer→reader bind has crossed the real `https` link. The leaf is "shipped"
   only when this passes.
@@ -560,7 +563,7 @@ close + the mTLS policy decision. Each = name + setup + action + expected OBSERV
 
 - **Setup.** Fast fintech, stalled bank (`Inject(Delay)` on the B→A credit direction so credits
   arrive slowly); `Window=3`. A second independent `https` link runs a concurrent I-https-01.
-- **Action.** `Drive(A, main(fintech), d)` with the bank delayed.
+- **Action.** `Drive(A, main("fintech"), d)` with the bank delayed.
 - **Expected.** The fintech **SUSPENDS** with no more than `Window=3` records in flight (outbound
   queue bounded; producer suspends on the missing `more` credit — the logical-credit mechanism
   riding the reverse HTTP/2 direction, with WINDOW_UPDATE byte-credit below the seam). No OOM; the

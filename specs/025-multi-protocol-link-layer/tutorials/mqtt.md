@@ -267,7 +267,7 @@ main(Me) :-
 %% inbound_requests/1 is supplied by the boot harness (the gateway's RRequestStream face);
 %% shown here as a procedure so the clause type-checks. (Host ingress fills it.)
 procedure inbound_requests(Stream(request(LinkId, AgentId))).
-inbound_requests([request(link_id("mqtts", ep("gateway.local", 8883), 1), device) | _More]).
+inbound_requests([request(link_id("mqtts", ep("gateway.local", 8883), 1), device) | _]).
 ```
 
 SRSW/mode check (per `main` clause): `Me` writer-in-head → `Me?` read once in `=?=` guard
@@ -278,7 +278,7 @@ SRSW/mode check (per `main` clause): `Me` writer-in-head → `Me?` read once in 
 ```prolog
 %% ================= DEVICE side: stream telemetry out, read commands in =================
 procedure run_device(Link(_, _)?, FaultStream?).
-run_device(ch(CmdsIn?, TeleOut), _Faults) :-
+run_device(ch(CmdsIn, TeleOut?), _) :-
     telemetry_source(Samples),                        %% the readings to send (was a shared var)
     send_telemetry(Samples?, TeleOut),                %% cons ground samples onto Out, then []
     handle_commands(CmdsIn?).                          %% read gateway commands off In
@@ -293,8 +293,8 @@ send_telemetry([S|Ss], [S?|Out?]) :- ground(S?) | send_telemetry(Ss?, Out).
 send_telemetry([], []).                               %% Out := [] -> graceful close (eos)
 
 %% read commands until the gateway ends its command stream ([] = graceful close detected)
-procedure handle_commands(Stream(Command)?).
 Command ::= setRate(Integer) ; ping.
+procedure handle_commands(Stream(Command)?).
 handle_commands([Cmd|Cmds]) :- ground(Cmd?) | apply_command(Cmd?), handle_commands(Cmds?).
 handle_commands([]).                                  %% gateway closed the command stream
 
@@ -303,8 +303,9 @@ apply_command(setRate(R)) :- ground(R?) | '_output'(R?).      %% observable: the
 apply_command(ping)        :- '_output'(ping).               %% observable: a ping ack
 ```
 
-SRSW/mode check: `run_device` — `CmdsIn?`/`TeleOut` from the `ch(...)` head: `CmdsIn?` read once
-(`handle_commands`), `TeleOut` writer threaded once (`send_telemetry`). `Samples` writer
+SRSW/mode check: `run_device` — consumed-channel head `ch(CmdsIn, TeleOut?)` (form #4/#5): writer
+`CmdsIn` captures inbound, read once via `CmdsIn?` (`handle_commands`); reader hole `TeleOut?` pairs
+with the single body writer `TeleOut` threaded once (`send_telemetry`). `Samples` writer
 (`telemetry_source`) → `Samples?` read once. `send_telemetry([S|Ss], [S?|Out?])`: `S` head-reader
 gated `ground(S?)` then consed `[S?|...]` (two reader uses legal under ground-implying relaxation);
 `Ss` read once, `Out` threaded once. `handle_commands([Cmd|Cmds])`: `Cmd` gated `ground` then
@@ -314,7 +315,7 @@ once. All clean. Outputs constructed in HEADS (`[S?|Out?]`), never via `=` in a 
 ```prolog
 %% ================= GATEWAY side: issue commands out, drain telemetry under a window =================
 procedure run_gateway(Link(_, _)?, FaultStream?).
-run_gateway(ch(TeleIn?, CmdsOut), _Faults) :-
+run_gateway(ch(TeleIn, CmdsOut?), _) :-
     command_plan(Cmds),                               %% the commands to push to the device
     send_commands(Cmds?, CmdsOut),                    %% cons ground commands onto Out, then []
     drain_telemetry(TeleIn?, 3).                       %% bounded window of 3 (backpressure)
@@ -329,19 +330,21 @@ send_commands([], []).                                %% graceful close of the c
 %% drain telemetry one sample at a time; "window" is the credit budget (DESIGN-DOSSIER §3).
 %% Bounded pipe = forward data stream coupled to GLP suspension; no buffer object.
 procedure drain_telemetry(Stream(Integer)?, Integer?).
-drain_telemetry([S|In], N) :- N? > 0, N1 := N? - 1 | use_sample(S?), drain_telemetry(In?, N1?).
-drain_telemetry([], _N).                               %% device closed telemetry (eos)
+drain_telemetry([S|In], N) :- N? > 0 | N1 := N? - 1, use_sample(S?), drain_telemetry(In?, N1?).
+drain_telemetry([], _).                               %% device closed telemetry (eos)
 
 procedure use_sample(Integer?).
 use_sample(S) :- ground(S?) | '_output'(S?).          %% observable: each telemetry reading
 ```
 
-SRSW/mode check: `run_gateway` — `TeleIn?` read once (`drain_telemetry`), `CmdsOut` threaded once
-(`send_commands`). `Cmds` writer → `Cmds?` read once. `send_commands` mirrors `send_telemetry`
-(checked above). `drain_telemetry([S|In], N)`: `S` read once (`use_sample`, gated inside);
-`In` read once; `N` read twice but BOTH uses are inside the guard (`N? > 0` and `N1 := N? - 1`)
-where `>`/`:=` ground-imply `N` — legal under the relaxation; `N1` writer (`:=`) → `N1?` read once
-in the recursive call. `use_sample(S)`: `S` gated then read once. All clean.
+SRSW/mode check: `run_gateway` — consumed-channel head `ch(TeleIn, CmdsOut?)` (form #4/#5): writer
+`TeleIn` captures inbound, read once via `TeleIn?` (`drain_telemetry`); reader hole `CmdsOut?` pairs
+with the single body writer `CmdsOut` threaded once (`send_commands`). `Cmds` writer → `Cmds?` read
+once. `send_commands` mirrors `send_telemetry` (checked above). `drain_telemetry([S|In], N)`: `S` read
+once (`use_sample`, gated inside); `In` read once; `N` read twice — once in the guard (`N? > 0`,
+ground-implying) and once in the body kernel `N1 := N? - 1` (the `:=` is the first BODY goal, NOT in
+the guard zone), legal under the ground-implying relaxation; `N1` writer (`:=`) → `N1?` read once in
+the recursive call. `use_sample(S)`: `S` gated then read once. All clean.
 
 > **Faithfulness to GLP semantics.** Each instance keeps its OWN SRSW writer/reader pairs; the
 > device's `TeleOut` writer is local to the device, the gateway's `TeleIn` reader local to the
@@ -385,7 +388,8 @@ sits on.
   **suspends then reactivates once** (FR-037/SC-004). (Used when peers are sorted for
   leader-election / deterministic acceptor choice.)
 - **A-MQTT-6 (monitor lattice terms are ordinary data).** Goal: a watcher
-  `on_fault([permFail(L, R)|_]) :- ground(L?) | '_output'(permFail)` fed
+  `procedure on_fault(FaultStream?).`
+  `on_fault([permFail(L, _)|_]) :- ground(L?) | '_output'(permFail).` fed
   `[ok, tempFail(L0, silence), permFail(L0, give_up) | _]`. Expected: matches with ordinary
   guards, **succeeds**, `'_output'(permFail)` — confirming faults are data on a stream, NOT a
   fourth verdict (FR-043). Also feed `[closed(L0, eos)|_]` and assert the `closed/2` clean-close
@@ -398,8 +402,8 @@ sits on.
   positive: a var grounded by a ground-implying guard may be read multiply.
 - **B-MQTT-2 (`@<` ground-implying).** A clause that reads a compound peer-id var multiply after
   an `@<` guard on it **compiles** (SC-006 positive for the new guard family).
-- **B-MQTT-3 (Link/Channel typing).** The exemplar's `run_device(ch(CmdsIn?, TeleOut), _)` and
-  `run_gateway(ch(TeleIn?, CmdsOut), _)` type-check against `Link(In,Out) ::= ch(In, Out?)` with
+- **B-MQTT-3 (Link/Channel typing).** The exemplar's `run_device(ch(CmdsIn, TeleOut?), _)` and
+  `run_gateway(ch(TeleIn, CmdsOut?), _)` type-check against `Link(In,Out) ::= ch(In, Out?)` with
   the declared `Stream(Integer)` / `Stream(Command)` directions.
 
 ### Section C — negative type-check

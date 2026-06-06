@@ -66,14 +66,14 @@ main(Me) :-
 
 %% ---- producer side: compute the value, ground-relay it over the link ----
 procedure run_producer(Link(_, _)?, FaultStream?).
-run_producer(Link, _Faults) :-
+run_producer(Link, _) :-
     produce_value(V),                            %% V: the value (was the shared X)
-    link_send(V?, Link?, _Link1).                %% cons ground V onto Out; host ships it
+    link_send(V?, Link?, _).                %% cons ground V onto Out; host ships it
 
 %% ---- consumer side: receive one value off the link, use it ----
 procedure run_consumer(Link(_, _)?, FaultStream?).
-run_consumer(Link, _Faults) :-
-    link_recv(V, Link?, _Link1),                 %% SUSPEND until a frame arrives; bind V
+run_consumer(Link, _) :-
+    link_recv(V, Link?, _),                 %% SUSPEND until a frame arrives; bind V
     use_value(V?).                               %% prints 42 — identical to unsplit
 
 procedure produce_value(Integer).
@@ -84,11 +84,14 @@ use_value(V) :- ground(V?) | '_output'(V?).
 ```
 
 SRSW/mode check (per clause): `Me` writer-in-head → `Me?` reader-in-guard (1, ground-implying
-relaxation under `=?=`). `L` writer (`demo_link`) → `L?` reader (1). `Link`/`Faults` writers
-(from `client_connector`/`server_listener` output args) → read once each in `run_*`. In
-`run_producer`: `V` writer (`produce_value`) → `V?` reader (`link_send`, 1); `_Link1` anon
-writer (advanced channel discarded — single send). In `run_consumer`: `V` writer (`link_recv`
-output) → `V?` reader (`use_value`, 1). All clean.
+relaxation under `=?=`). `L` writer (`demo_link`) → `L?` reader (1). `Link`/`Faults` are produced
+by `client_connector`/`server_listener` (output-hole idiom: reader hole in the head of those
+clauses, writer in their body) and are read once each at the `main` call site; `run_producer`/
+`run_consumer` read `Link?` once and IGNORE the fault stream with a **bare `_`** (an unread
+position must be bare `_`, never a named `_Faults` — a named anon at an unused slot is rejected
+by codegen). In `run_producer`: `V` writer (`produce_value`) → `V?` reader (`link_send`, 1);
+`_Link1` anon writer (advanced channel discarded — single send). In `run_consumer`: `V` writer
+(`link_recv` output) → `V?` reader (`use_value`, 1). All clean.
 
 ---
 
@@ -131,7 +134,7 @@ booted `main(consumer)`, node A `main(producer)`.
 
 **(3) The send (ground-relay).**
 - Node A: `produce_value(V)` binds `V = 42` (the value that, unsplit, was the shared `X`).
-- `link_send(V?, Link?, _Link1)` matches `link_send(Msg, ch(In?, [Msg?|Out?]), ch(In?, Out)) :-
+- `link_send(V?, Link?, _Link1)` matches `link_send(Msg, ch(In, [Msg?|Out?]), ch(In?, Out)) :-
   ground(Msg?) | true`. The guard `ground(Msg?)` certifies `42` is ground — **no `_w`/`_r`
   placeholder, no embedded reader crosses the wire** (the ground-relay invariant, FR-010/FR-040).
   The **head** conses it: `Out = [42 | NewOut]` (pure head construction, no `=` in body).
@@ -155,7 +158,7 @@ booted `main(consumer)`, node A `main(producer)`.
 - `use_value(V?)` → `ground(V?)` passes → `'_output'(42)` prints **42** — byte-identical to the
   unsplit run (SC-001).
 
-**(5) Faults (if monitored).** Replace `_Faults` with a real reader and a watcher clause; a
+**(5) Faults (if monitored).** Replace the ignored `_` fault arg with a real reader and a watcher clause; a
 disconnect surfaces as ground terms `tempFail(LinkId, Reason)` then `permFail(LinkId, Reason)`
 on the monitor stream, read with ordinary guards — **never** a logical fail (FR-043/044/050).
 An unmonitored `link_recv` simply stays safely suspended across a disconnect.
