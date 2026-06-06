@@ -51,6 +51,15 @@ public class MadContext
     /// <summary>Payload serializer for message encoding.</summary>
     private readonly PayloadSerializer _serializer;
 
+    /// <summary>
+    /// FR-021/SC-008: indices/keys of writer/reader assignments already delivered.
+    /// A redelivered (recognized) assignment whose GlobalizeEntry/LocalizeEntry was
+    /// already consumed is a VERIFIED no-op rather than a crash. Isolate-local
+    /// per-instance state (see CONCURRENCY MODEL above — no concurrent access).
+    /// </summary>
+    private readonly HashSet<int> _deliveredWriterIndices = new();
+    private readonly HashSet<string> _deliveredReaderKeys = new();
+
     /// <summary>Optional callback for message delivery (set by coordinator).</summary>
     public MessageDeliveryCallback? OnMessageReady;
 
@@ -393,6 +402,14 @@ public class MadContext
         var entry = Wp.LookupByIndex(globalName.Index);
         if (entry == null)
         {
+            // FR-021/SC-008: a redelivered writer assignment whose entry was already
+            // consumed is a VERIFIED no-op (recognized duplicate), not a crash.
+            if (_deliveredWriterIndices.Contains(globalName.Index))
+            {
+                Trace($"[MAD {AgentId}] _handleWriterAssignment: verified duplicate for {globalName} — no-op (FR-021/SC-008)");
+                return;
+            }
+            // Genuinely-unknown index: surface (never swallow).
             throw new InvalidOperationException(
                 $"No GlobalizeEntry at index {globalName.Index} for {globalName}");
         }
@@ -429,6 +446,7 @@ public class MadContext
 
         // Remove the entry (transient — unlike the permanent serializer entry)
         Wp.RemoveGlobalizeEntry(globalName.Index);
+        _deliveredWriterIndices.Add(globalName.Index); // FR-021: mark delivered for dedup recognition
         Trace($"[MAD {AgentId}] _handleWriterAssignment: entry removed");
     }
 
@@ -443,6 +461,15 @@ public class MadContext
         var entry = Wp.FindByRemote(globalName.Agent, globalName.Index);
         if (entry == null)
         {
+            // FR-021/SC-008: a redelivered reader assignment whose entry was already
+            // consumed is a VERIFIED no-op (recognized duplicate), not a crash.
+            var dupKey = $"{globalName.Agent}:{globalName.Index}";
+            if (_deliveredReaderKeys.Contains(dupKey))
+            {
+                Trace($"[MAD {AgentId}] _handleReaderAssignment: verified duplicate for {globalName} — no-op (FR-021/SC-008)");
+                return;
+            }
+            // Genuinely-unknown (remoteAgent, remoteIndex): surface (never swallow).
             throw new InvalidOperationException(
                 $"No LocalizeEntry for {globalName}: expected entry with " +
                 $"(remoteAgent={globalName.Agent}, remoteIndex={globalName.Index})");
@@ -479,6 +506,7 @@ public class MadContext
 
         // Remove the entry (transient)
         Wp.RemoveLocalizeEntry(globalName.Agent, globalName.Index);
+        _deliveredReaderKeys.Add($"{globalName.Agent}:{globalName.Index}"); // FR-021: mark delivered
         Trace($"[MAD {AgentId}] _handleReaderAssignment: entry removed");
     }
 
