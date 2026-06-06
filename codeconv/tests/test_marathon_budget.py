@@ -86,3 +86,38 @@ def test_advance_within_budget_persists_spend(marathon_fallback_store) -> None:
     assert res["spent"] == 3_000
     # spend persisted on the marathon row
     assert store.read_marathon(m.id).budget_spent == 3_000
+    # within-budget advances write NO escalation (only a ceiling hit does).
+    from codeconv.marathon.escalation import open_escalations
+
+    assert open_escalations(store, m.id) == []
+
+
+def test_budget_halt_writes_durable_escalation(marathon_fallback_store) -> None:
+    """FR-022: a ceiling halt records a durable ``stage_flagged`` escalation
+    (reason=budget_ceiling) so ``doctor``/``status`` surface the halt — never a
+    silent stop in unattended auto-mode."""
+    store = marathon_fallback_store
+    m, b = make_marathon(store, slug="budgetesc", budget=2_500)
+
+    from codeconv.marathon.escalation import open_escalations
+    from codeconv.marathon.orchestrate import Budget, advance_budget_or_halt
+
+    budget = Budget(ceiling=2_500, spent=2_000)
+    res = advance_budget_or_halt(
+        store,
+        m.id,
+        budget,
+        1_000,  # would push to 3_000 > 2_500
+        block_id=b.id,
+        stage="implement",
+        completed_units=["u1"],
+        remaining_units=["u2"],
+    )
+    assert res["halted"] is True
+    assert res["escalation_id"] is not None
+
+    open_ = open_escalations(store, m.id)
+    assert len(open_) == 1
+    assert open_[0]["kind"] == "stage_flagged"
+    assert open_[0]["detail"]["reason"] == "budget_ceiling"
+    assert open_[0]["detail"]["ceiling"] == 2_500

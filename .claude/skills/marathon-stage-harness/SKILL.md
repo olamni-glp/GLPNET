@@ -46,20 +46,27 @@ drift.
 
 For each stage, in order:
 
-1. **Locate** — `marathon resume` (objective; never a summary).
+1. **Locate** — `marathon resume` (objective; never a summary). If the report
+   has `commit_push_pending: true` (a crash landed between a completed block's
+   final checkpoint and its commit/push), **re-drive the commit/push for that
+   block first** — never read `block_complete` as "nothing left to do".
 2. **Gate** — for a mutating block, `marathon gate --block <id>` presents the
    plan and blocks for approval; a recorded `approve` short-circuits on resume
    (no re-ask — SC-004). Record with `marathon gate --block <id> --approve --by gabi`.
 3. **Run** — execute the stage as **one** Workflow run (`Workflow({script})`);
    record its `runId` as run-linkage; `marathon` checkpoints accumulate as
-   sub-steps complete.
+   sub-steps complete. On a failed-subagent re-run, pass the `workflow_run_id`
+   that `marathon rerun` echoes as the Workflow `resumeFromRunId`, so only the
+   failed unit re-executes (succeeded siblings return cached — FR-007/FR-009).
 4. **Status** — `marathon status --emit` at each checkpoint (the ~5-min cadence
    driver): the standardized four fields — done / issues / tokens (spent +
    remaining) / to-do (SC-005).
 5. **Checkpoint + commit/push** — at block completion, the final checkpoint then
    the preauthorized commit/push of **only this block's files** (never
    `git add -A`, never force-push, never bypass hooks); a blocked push escalates
-   `push_blocked`.
+   `push_blocked`. On resume, honor `marathon resume`'s `commit_push_pending`
+   flag to re-drive a commit/push a crash interrupted after the final checkpoint
+   (FR-014/SC-010 crash window).
 6. **Boundary** — for `specify`, restart after the block (cadence).
 
 ## Auto-mode: exactly two block-points (FR-022 / D11)
@@ -86,7 +93,7 @@ Granted once at `marathon start`, both revocable: (1) **commit + push per block*
 | `marathon resume [--feature]` | Objective restart-safe resume from durable state. |
 | `marathon gate --block <id> [--approve｜--change --plan <ref>] [--by]` | Present/record the approval decision. |
 | `marathon status [--feature] [--emit]` | The standardized four-field report. |
-| `marathon rerun --block <id> [--subagent <label>]` | Per-stage / per-subagent re-run on failure. |
+| `marathon rerun --block <id> [--subagent <label>]` | Per-stage / per-subagent re-run on failure; echoes the block's `workflow_run_id` — pass it as the Workflow `resumeFromRunId` so succeeded siblings stay cached. |
 | `marathon reconcile [--feature]` | Reconcile primary vs JSON fallback by sequence_no. |
 | `marathon trace --subject <s> --input <json> [--score] (--accept｜--reject)` | Append a verification-trace record (substrate only). |
 | `marathon doctor [--feature]` | Bridge reachability, active store, last seq per store, open escalations, budget headroom. |
