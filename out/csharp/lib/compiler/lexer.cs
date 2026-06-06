@@ -70,7 +70,35 @@ public class Lexer
             case '~': return MakeToken(TokenType.TILDE, startLine, startColumn);
             case '#': return MakeToken(TokenType.HASH, startLine, startColumn);
             case '\\': return MakeToken(TokenType.BACKSLASH, startLine, startColumn);
-            case '@': return MakeToken(TokenType.AT, startLine, startColumn);
+            case '@':
+                // Standard-order term-comparison guards (T011/FR-037): @< @> @>= @=<.
+                // `@` followed by anything else stays a bare AT — the Goal@Agent
+                // isolate-spawn operator (Agent never starts with </>/=).
+                if (Match('<'))
+                {
+                    var lexAtLt = Source.Substring((int)(_current - 2), 2);
+                    return new Token(TokenType.AT_LESS, lexAtLt, startLine, startColumn);
+                }
+                if (Match('>'))
+                {
+                    if (Match('='))
+                    {
+                        var lexAtGe = Source.Substring((int)(_current - 3), 3);
+                        return new Token(TokenType.AT_GREATER_EQUAL, lexAtGe, startLine, startColumn);
+                    }
+                    var lexAtGt = Source.Substring((int)(_current - 2), 2);
+                    return new Token(TokenType.AT_GREATER, lexAtGt, startLine, startColumn);
+                }
+                if (Match('='))
+                {
+                    if (Match('<'))
+                    {
+                        var lexAtLe = Source.Substring((int)(_current - 3), 3);
+                        return new Token(TokenType.AT_LESS_EQUAL, lexAtLe, startLine, startColumn);
+                    }
+                    throw new CompileError("Expected \"<\" after \"@=\" (the @=< guard)", startLine, startColumn, phase: "lexer");
+                }
+                return MakeToken(TokenType.AT, startLine, startColumn);
 
             // Arithmetic operators
             case '+': return MakeToken(TokenType.PLUS, startLine, startColumn);

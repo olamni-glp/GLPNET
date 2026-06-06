@@ -53,6 +53,12 @@ procedure >=(Exp?, Exp?).
 procedure =:=(Exp?, Exp?).
 procedure =\=(Exp?, Exp?).
 
+% Standard-order term-comparison guards (Number < String < compound)
+procedure @<(_?, _?).
+procedure @>(_?, _?).
+procedure @=<(_?, _?).
+procedure @>=(_?, _?).
+
 % Equality guard
 procedure =?=(_?, _?).
 

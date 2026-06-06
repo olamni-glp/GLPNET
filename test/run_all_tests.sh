@@ -706,6 +706,33 @@ HEREDOC
 check_not "FR-033 atom rejects non-atoms (no succeed)" "succeeds" "$a24e"
 check_not "FR-033 atom rejects non-atoms (no suspend)" "suspended" "$a24e"
 
+# --- A24f: FR-037/SC-006 @< @> @=< @>= standard-order term comparison ---
+echo "--- A24f: FR-037 @< family (standard-order term comparison) ---"
+a24f=$($DART run "$REPL" <<HEREDOC
+$TYPED/order_guards.glp
+lt(1, 2, R1).
+le(1, foo, R2).
+lt(f(1), g(1,2), R3).
+lt(apple, banana, R4).
+le(5, 5, R5).
+lt(5, 5, R6).
+gt(banana, apple, R7).
+lt_strict(Wf?, 5, R8).
+order_pair(1, 2, R9).
+:quit
+HEREDOC
+2>&1)
+
+check "FR-037 @< numeric" "R1 = yes" "$a24f"
+check "FR-037 @=< cross-class Number<atom" "R2 = yes" "$a24f"
+check "FR-037 @< compound by arity" "R3 = yes" "$a24f"
+check "FR-037 @< string lexicographic" "R4 = yes" "$a24f"
+check "FR-037 @=< equal" "R5 = yes" "$a24f"
+check "FR-037 @< equal is false" "R6 = no" "$a24f"
+check "FR-037 @> reverse" "R7 = yes" "$a24f"
+check "FR-037 @< suspends on unbound operand" "suspended" "$a24f"
+check "FR-037 @< ground-implying (SC-006 multi-read compiles)" "R9 = pair(1, 2)" "$a24f"
+
 # --- A25: Quoted functor and body ---
 echo "--- A25: Quoted functor and body ---"
 a25=$($DART run "$REPL" <<HEREDOC

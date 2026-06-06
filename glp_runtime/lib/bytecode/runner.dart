@@ -4464,6 +4464,33 @@ class BytecodeRunner {
         }
         return GuardResult.failure;
 
+      // Standard-order term-comparison guards (T011/FR-037/SC-006, OQ-G1 RULED:
+      // Number < String < compound, then arity/functor/args; equality = =?=).
+      // Operands are already ground here — the generic gate suspends on an
+      // unbound reader (top-level OR nested-in-compound, after the T003 fix);
+      // an unbound writer falls through the comparator to FAIL. Non-negatable
+      // (OQ-G2): `~(@<)` is rejected by the SRSW analyzer.
+      case '@<':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) < 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@>':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) > 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@=<':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) <= 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@>=':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) >= 0
+            ? GuardResult.success
+            : GuardResult.failure;
+
       // Type guards
       case 'ground':
         // Already checked for unbound readers in caller
@@ -4864,6 +4891,117 @@ class BytecodeRunner {
 
     // Default: use Dart equality
     return a == b;
+  }
+
+  /// Standard-order rank of a ground leaf: Number(0) < String/atom(1) <
+  /// compound(2); any other ground leaf sorts last (3). (T011/FR-037, OQ-G1.)
+  static int _orderRank(Object? t) {
+    if (t is num) return 0;
+    if (t is String) return 1;
+    if (t is StructTerm) return 2;
+    return 3;
+  }
+
+  /// FR-037/SC-006 (OQ-G1 RULED): standard-order comparison of two GROUND terms,
+  /// returning -1 | 0 | 1. The total order is Number < String(atom) < compound;
+  /// within numbers by value, within strings by code-unit (code-point) order,
+  /// within compounds by arity, then functor name, then arguments left-to-right.
+  /// A result of 0 coincides with `=?=`. Mirrors `_termsEqual`'s VarRef-deref +
+  /// visited-set discipline (operands are ground — the generic gate suspends
+  /// otherwise — so every nested VarRef is bound; the visited set keeps a cyclic
+  /// term safe). MUST stay byte/behaviour-identical to the C# `_compareTerms`
+  /// (Dart↔C# wire stability, FR-060).
+  static int _compareTerms(Object? a, Object? b, RunnerContext cx,
+      [Set<(int, int)>? visited]) {
+    visited ??= <(int, int)>{};
+
+    // Unwrap ConstTerm to its primitive value.
+    if (a is ConstTerm) a = a.value;
+    if (b is ConstTerm) b = b.value;
+
+    // Dereference VarRefs (ground operands → bound), mirroring _termsEqual.
+    if (a is VarRef) {
+      final aAddr = a.addr;
+      Object? aDeref;
+      if (cx.rt.heap.isReader(aAddr)) {
+        final writerAddr = cx.rt.heap.tryWriterForReader(aAddr);
+        if (writerAddr != null && cx.sigmaHat.containsKey(writerAddr)) {
+          aDeref = cx.sigmaHat[writerAddr];
+        } else if (cx.rt.heap.isReaderBound(aAddr)) {
+          aDeref = cx.rt.heap.getReaderValue(aAddr);
+        } else {
+          return 0; // unbound (should not happen for a ground operand)
+        }
+      } else {
+        if (cx.sigmaHat.containsKey(aAddr)) {
+          aDeref = cx.sigmaHat[aAddr];
+        } else if (cx.rt.heap.isFullyBound(aAddr)) {
+          aDeref = cx.rt.heap.getValue(aAddr);
+        } else {
+          return 0;
+        }
+      }
+      if (b is VarRef) {
+        final pair = (aAddr, b.addr);
+        if (visited.contains(pair)) return 0; // cycle at corresponding positions
+        visited.add(pair);
+      }
+      return _compareTerms(aDeref, b, cx, visited);
+    }
+    if (b is VarRef) {
+      final bAddr = b.addr;
+      Object? bDeref;
+      if (cx.rt.heap.isReader(bAddr)) {
+        final writerAddr = cx.rt.heap.tryWriterForReader(bAddr);
+        if (writerAddr != null && cx.sigmaHat.containsKey(writerAddr)) {
+          bDeref = cx.sigmaHat[writerAddr];
+        } else if (cx.rt.heap.isReaderBound(bAddr)) {
+          bDeref = cx.rt.heap.getReaderValue(bAddr);
+        } else {
+          return 0;
+        }
+      } else {
+        if (cx.sigmaHat.containsKey(bAddr)) {
+          bDeref = cx.sigmaHat[bAddr];
+        } else if (cx.rt.heap.isFullyBound(bAddr)) {
+          bDeref = cx.rt.heap.getValue(bAddr);
+        } else {
+          return 0;
+        }
+      }
+      return _compareTerms(a, bDeref, cx, visited);
+    }
+
+    // Cross-class order: Number < String < compound (< other).
+    final ra = _orderRank(a);
+    final rb = _orderRank(b);
+    if (ra != rb) return ra < rb ? -1 : 1;
+
+    switch (ra) {
+      case 0: // numbers, by value
+        final na = a as num;
+        final nb = b as num;
+        return na < nb ? -1 : (na > nb ? 1 : 0);
+      case 1: // strings/atoms, code-unit (code-point) lexicographic
+        final cmp = (a as String).compareTo(b as String);
+        return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+      case 2: // compounds: arity, then functor, then args left-to-right
+        final sa = a as StructTerm;
+        final sb = b as StructTerm;
+        if (sa.args.length != sb.args.length) {
+          return sa.args.length < sb.args.length ? -1 : 1;
+        }
+        final fc = sa.functor.compareTo(sb.functor);
+        if (fc != 0) return fc < 0 ? -1 : 1;
+        for (int i = 0; i < sa.args.length; i++) {
+          final c = _compareTerms(sa.args[i], sb.args[i], cx, visited);
+          if (c != 0) return c;
+        }
+        return 0;
+      default: // deterministic fallback for any other ground leaf
+        final cmp = a.toString().compareTo(b.toString());
+        return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+    }
   }
 }
 

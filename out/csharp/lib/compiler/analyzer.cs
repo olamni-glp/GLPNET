@@ -345,7 +345,10 @@ public sealed class Analyzer
 
     private static readonly FrozenSet<string> NonNegatableGuards = new[]
     {
-        "<", ">", "=<", ">=", "=:=", "=\\=", "otherwise", "wait", "wait_until"
+        "<", ">", "=<", ">=", "=:=", "=\\=",
+        // Standard-order term comparison (T011/FR-037, OQ-G2 RULED non-negatable)
+        "@<", "@>", "@=<", "@>=",
+        "otherwise", "wait", "wait_until"
     }.ToFrozenSet(StringComparer.Ordinal);
 
     private static readonly FrozenSet<string> InvalidInGuardPosition = new[]
@@ -361,7 +364,9 @@ public sealed class Analyzer
 
     private static readonly FrozenSet<string> ComparisonOps = new[]
     {
-        "<", ">", "=<", ">=", "=:=", "=\\="
+        "<", ">", "=<", ">=", "=:=", "=\\=",
+        // @< family is ground-implying (order defined only over ground terms) — SC-006
+        "@<", "@>", "@=<", "@>="
     }.ToFrozenSet(StringComparer.Ordinal);
 
     // ────────────────────────────────────────────────────────────────────────

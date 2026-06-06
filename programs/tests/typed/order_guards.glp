@@ -1,0 +1,33 @@
+% order_guards.glp — T011 / FR-037 / SC-006 (OQ-G1/G2 RULED): standard-order
+% term-comparison guards @< @> @=< @>=.
+%
+% Total order over GROUND terms: Number < String(atom) < compound; within
+% numbers by value, within strings by code-point order, within compounds by
+% arity, then functor name, then arguments left-to-right. Equality coincides
+% with =?=. Both operands are readers (suspend patiently); non-negatable.
+
+exported procedure lt(_?, _?, _).
+lt(X, Y, yes) :- X? @< Y? | true.
+lt(_, _, no)  :- otherwise | true.
+
+exported procedure le(_?, _?, _).
+le(X, Y, yes) :- X? @=< Y? | true.
+le(_, _, no)  :- otherwise | true.
+
+exported procedure gt(_?, _?, _).
+gt(X, Y, yes) :- X? @> Y? | true.
+gt(_, _, no)  :- otherwise | true.
+
+exported procedure ge(_?, _?, _).
+ge(X, Y, yes) :- X? @>= Y? | true.
+ge(_, _, no)  :- otherwise | true.
+
+% Suspend case: single clause, no `otherwise` fallback — an unbound operand
+% makes @< SUSPEND (it must not fall through to a fail).
+exported procedure lt_strict(_?, _?, _).
+lt_strict(X, Y, yes) :- X? @< Y? | true.
+
+% Ground-implying (SC-006): @< grounds both operands, so a grounded var may be
+% read again in the head. This clause must COMPILE (like the arithmetic guards).
+exported procedure order_pair(_?, _?, _).
+order_pair(X, Y, pair(X?, Y?)) :- X? @< Y? | true.

@@ -57,6 +57,11 @@ const Set<String> predefinedProcedureNames = {
   '>=',
   '=:=',
   '=\\=',
+  // Standard-order term comparison (T011/FR-037, OQ-G1)
+  '@<',
+  '@>',
+  '@=<',
+  '@>=',
   // Equality (fundamental)
   '=?=',
   // Univ operations (fundamental)
@@ -107,6 +112,11 @@ const Set<String> builtinProcedures = {
   '>=/2',
   '=:=/2',
   '=\\=/2',
+  // Standard-order term comparison (T011/FR-037, OQ-G1)
+  '@</2',
+  '@>/2',
+  '@=</2',
+  '@>=/2',
   // Structural equality guard
   '=?=/2',
   // Univ operations
