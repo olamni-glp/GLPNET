@@ -28,6 +28,7 @@ Exp ::= Number ; +(Exp, Exp) ; -(Exp, Exp) ; *(Exp, Exp) ; /(Exp, Exp) ; //(Exp,
 procedure integer(Integer?).
 procedure number(Number?).
 procedure string(String?).
+procedure atom(String?).
 procedure constant(Constant?).
 procedure compound(_?).
 procedure tuple(_?).

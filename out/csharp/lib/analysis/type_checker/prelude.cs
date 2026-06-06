@@ -53,6 +53,7 @@ public static class Prelude
         "integer",
         "number",
         "string",
+        "atom", // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string`
         "constant",
         "compound",
         "tuple",
@@ -108,6 +109,7 @@ public static class Prelude
         "integer/1",
         "number/1",
         "string/1",
+        "atom/1", // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string/1`
         "constant/1",
         "compound/1",
         "tuple/1",

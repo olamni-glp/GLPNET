@@ -4484,6 +4484,15 @@ class BytecodeRunner {
         final val = getValue(args[0]);
         return (val is int) ? GuardResult.success : GuardResult.failure;
 
+      // FR-033/SC-005 (OQ-G3 RULED): `atom/1` is the paper-kernel name and an
+      // EXACT synonym of the runtime `string/1` test — a non-numeric atomic
+      // constant, excluding `[]`/`nil`. Stacked label so both share one body;
+      // closes the analyzer/PE↔runner divergence (analyzer already grounds
+      // `atom`, the PE folds it, but the runner previously had no arm → a
+      // wrongly-grounded input hit the `[WARN] Unknown guard predicate` default
+      // and FAILED at runtime). Suspension on an unbound reader is handled
+      // upstream by the generic gate (`atom` is not in the `unknown` exception).
+      case 'atom':
       case 'string':
         // Succeeds if X is a string (lowercase identifier or quoted string)
         if (args.isEmpty) return GuardResult.failure;

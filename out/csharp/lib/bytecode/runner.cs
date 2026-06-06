@@ -5335,6 +5335,10 @@ public sealed class BytecodeRunner
                     return (val is int || val is long) ? GuardResult.Pass : GuardResult.Fail;
                 }
 
+            // FR-033/SC-005 (OQ-G3 RULED): `atom/1` is the paper-kernel name and an
+            // EXACT synonym of the runtime `string/1` test — a non-numeric atomic
+            // constant, excluding `[]`/`nil`. Stacked label so both share one body.
+            case "atom":
             case "string":
                 // Succeeds if X is a string (lowercase identifier or quoted string)
                 if (args.Count == 0) return GuardResult.Fail;

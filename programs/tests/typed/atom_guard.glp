@@ -1,0 +1,17 @@
+% atom_guard.glp — FR-033 / SC-005 (OQ-G3): atom/1 is the paper-kernel guard,
+% an EXACT synonym of the runtime string/1 test (a non-numeric atomic constant,
+% excluding []/nil). Before the fix the analyzer accepted + grounded atom/1 and
+% the partial evaluator folded it, but the runner had no arm — so any input the
+% analyzer accepted FAILED at runtime via the "[WARN] Unknown guard predicate"
+% default. The runner arm makes runtime match the analyzer/PE.
+
+% Succeed iff the argument is a (non-numeric, non-[]) atom; suspend on an
+% unbound reader. Single clause — no fallback that would mask a runtime fail.
+exported procedure is_atom(_?, Constant).
+is_atom(X, yes) :- atom(X?) | true.
+
+% atom/1 is ground-implying: a var grounded by the guard may be read again in
+% the head (SRSW relaxation, like the arithmetic guards). This clause must
+% COMPILE — proof the analyzer marks atom as grounding.
+exported procedure echo_atom(_?, _).
+echo_atom(X, wrap(X?)) :- atom(X?) | true.

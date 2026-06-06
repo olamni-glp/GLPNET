@@ -678,6 +678,34 @@ HEREDOC
 
 check_not "FR-034 nested writer does not suspend" "suspended" "$a24c"
 
+# --- A24d: FR-033/SC-005 atom/1 guard (paper-kernel synonym of string/1) ---
+echo "--- A24d: FR-033 atom/1 guard ---"
+a24d=$($DART run "$REPL" <<HEREDOC
+$TYPED/atom_guard.glp
+is_atom(hello, R).
+is_atom(Yd?, R5).
+echo_atom(world, R6).
+:quit
+HEREDOC
+2>&1)
+
+check "FR-033 atom succeeds on atom" "succeeds" "$a24d"
+check "FR-033 atom suspends on unbound reader" "suspended" "$a24d"
+check "FR-033 atom is ground-implying (echo compiles+runs)" "R6 = wrap(world)" "$a24d"
+
+# A24e: atom/1 negatives — number / compound / [] must FAIL (not succeed, not suspend)
+a24e=$($DART run "$REPL" <<HEREDOC
+$TYPED/atom_guard.glp
+is_atom(42, Rn).
+is_atom(foo(1), Rc).
+is_atom([], Rb).
+:quit
+HEREDOC
+2>&1)
+
+check_not "FR-033 atom rejects non-atoms (no succeed)" "succeeds" "$a24e"
+check_not "FR-033 atom rejects non-atoms (no suspend)" "suspended" "$a24e"
+
 # --- A25: Quoted functor and body ---
 echo "--- A25: Quoted functor and body ---"
 a25=$($DART run "$REPL" <<HEREDOC
