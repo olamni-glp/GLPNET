@@ -42,6 +42,7 @@ class ResumeReport:
     store_origin: Optional[str] = None
     approval_state: Optional[str] = None
     block_complete: bool = False
+    commit_push_pending: bool = False
     sequence_no: int = 0
 
     def as_dict(self) -> dict[str, Any]:
@@ -59,6 +60,7 @@ class ResumeReport:
             "store_origin": self.store_origin,
             "approval_state": self.approval_state,
             "block_complete": self.block_complete,
+            "commit_push_pending": self.commit_push_pending,
             "sequence_no": self.sequence_no,
         }
 
@@ -83,6 +85,22 @@ def resume(store: Any, marathon_id: str) -> ResumeReport:
         return ResumeReport(found=False)  # cold start — nothing checkpointed
 
     block = store.read_block(pos.block_id)
+    block_complete = len(pos.remaining_units) == 0
+    # Crash-window guard (FR-014/SC-010): finalize_block writes the FINAL
+    # checkpoint (remaining=[]), THEN commits, THEN pushes. A crash between the
+    # checkpoint and the commit/push would leave block_complete=True with the
+    # block's git checkpoint silently lost — the next session would skip the
+    # commit. Cross-check the git_blocks record so the skill re-drives commit/
+    # push when it did not durably land.
+    commit_push_pending = False
+    if block_complete:
+        from .gitblock import read_git_block
+
+        gb = read_git_block(store, pos.block_id)
+        if gb is None:
+            commit_push_pending = True  # no commit at all (crash before commit)
+        elif not gb.get("pushed") and gb.get("escalation") is None:
+            commit_push_pending = True  # committed but unpushed & not escalated
     return ResumeReport(
         found=True,
         stage=pos.stage,
@@ -94,7 +112,8 @@ def resume(store: Any, marathon_id: str) -> ResumeReport:
         workflow_run_id=pos.workflow_run_id,
         store_origin=pos.store_origin,
         approval_state=approval_state(store, pos.block_id),
-        block_complete=len(pos.remaining_units) == 0,
+        block_complete=block_complete,
+        commit_push_pending=commit_push_pending,
         sequence_no=pos.sequence_no,
     )
 

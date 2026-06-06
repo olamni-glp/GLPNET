@@ -18,6 +18,16 @@ marathon's orchestrator. The production orchestration composes the real
 Claude Code Workflow tool at the buildkit-stage skill layer (model-driven),
 where FR-009's non-reinvention guard applies; this harness only verifies the
 contract that orchestration depends on.
+
+:func:`run_spike` is the deterministic reference check (unit-testable, no
+model in the loop). Its companion :func:`record_live_spike` records the SAME
+contract verified against the **real** Workflow tool: the model runs a small
+Workflow twice (run A, then run B re-invoked with ``resumeFromRunId`` and one
+changed middle step), observes which step indices returned cached vs re-ran
+and the per-step budget spend, and passes those observations here to be
+validated and recorded as a ``workflow-spike-live`` trace — closing the gap
+that the reference harness only *models* the tool (the FR-011 de-risking
+Gabi asked for: a verified restart method, not an assumed one).
 """
 
 from __future__ import annotations
@@ -131,4 +141,70 @@ def run_spike(
     }
 
 
-__all__ = ["run_spike"]
+def record_live_spike(
+    store: Any,
+    marathon_id: str,
+    *,
+    run_a_id: str,
+    run_b_id: str,
+    cached_prefix: list[int],
+    reexecuted: list[int],
+    budget_trace: list[Any],
+    steps_a: Optional[list[str]] = None,
+    steps_b: Optional[list[str]] = None,
+    ceiling: Optional[int] = None,
+) -> dict[str, Any]:
+    """Record a LIVE Workflow-tool resumability verification (FR-011/SC-008
+    against the *real* tool, not the reference harness).
+
+    The model runs the real Workflow twice — run A (all steps live) then run B
+    re-invoked with ``resumeFromRunId=run_a_id`` and one changed middle step —
+    and observes, from inside run B, which step indices returned **cached** (no
+    budget movement) vs **re-ran** (budget advanced), plus the cumulative
+    ``budget.spent()`` after each re-run step (``budget_trace`` =
+    ``[(index, spent_after), ...]``). Those observations are validated against
+    the SAME contract :func:`run_spike` checks — a contiguous cached prefix, a
+    cascade re-run from the first change, and observable monotonic spend — and
+    recorded durably as a ``workflow-spike-live`` trace.
+
+    Returns ``{live, cached_prefix_ok, budget_observed_ok,
+    first_reexecuted_step, recorded_trace_id}``."""
+    n_steps = len(steps_b) if steps_b else (len(cached_prefix) + len(reexecuted))
+    first_reexecuted_step = reexecuted[0] if reexecuted else None
+    cached_prefix_ok = (
+        first_reexecuted_step is not None
+        and sorted(cached_prefix) == list(range(first_reexecuted_step))
+        and all(i >= first_reexecuted_step for i in reexecuted)
+    )
+    budget_trace_t = [tuple(x) for x in budget_trace]
+    budget_observed_ok = _budget_observable(budget_trace_t, ceiling)
+    decision = "accept" if (cached_prefix_ok and budget_observed_ok) else "reject"
+
+    trace = write_trace(
+        store,
+        marathon_id,
+        subject="workflow-spike-live",
+        experiment_input={
+            "run_a_id": run_a_id,
+            "run_b_id": run_b_id,
+            "steps_a": steps_a,
+            "steps_b": steps_b,
+            "cached_prefix": list(cached_prefix),
+            "reexecuted": list(reexecuted),
+            "first_reexecuted_step": first_reexecuted_step,
+            "budget_trace": [list(x) for x in budget_trace_t],
+        },
+        metric_score=(len(cached_prefix) / n_steps) if n_steps else 0.0,
+        decision=decision,
+    )
+
+    return {
+        "live": True,
+        "cached_prefix_ok": cached_prefix_ok,
+        "budget_observed_ok": budget_observed_ok,
+        "first_reexecuted_step": first_reexecuted_step,
+        "recorded_trace_id": trace.id,
+    }
+
+
+__all__ = ["record_live_spike", "run_spike"]

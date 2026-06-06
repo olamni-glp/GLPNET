@@ -141,7 +141,12 @@ def rerun_block(
     pos = store.read_position(marathon_id_of_block(block_id))
     if pos is None or pos.block_id != block_id:
         # No checkpoint for this block yet → a full run.
-        return {"from_seq": 0, "to_run": all_units, "completed_units": []}
+        return {
+            "from_seq": 0,
+            "to_run": all_units,
+            "completed_units": [],
+            "workflow_run_id": None,
+        }
     completed = pos.completed_units
     to_run = (
         units_to_execute(all_units, completed)
@@ -152,6 +157,7 @@ def rerun_block(
         "from_seq": pos.sequence_no,
         "to_run": to_run,
         "completed_units": completed,
+        "workflow_run_id": pos.workflow_run_id,
     }
 
 
@@ -167,12 +173,14 @@ def rerun_subagent(store: Any, block_id: str, subagent: Any) -> dict[str, Any]:
     # read_position returns the marathon-WIDE max-sequence checkpoint, which may
     # belong to a sibling block. Mirror rerun_block's guard: only this block's
     # own completed units are its siblings — never a different block's (FR-007).
-    siblings = (
-        list(pos.completed_units)
-        if pos is not None and pos.block_id == block_id
-        else []
-    )
-    return {"to_run": [subagent], "untouched": siblings}
+    same_block = pos is not None and pos.block_id == block_id
+    siblings = list(pos.completed_units) if same_block else []
+    # Echo THIS block's Workflow runId so the skill can pass it as
+    # ``resumeFromRunId`` (the failed subagent is the changed step; siblings
+    # stay cached — FR-007/FR-009). Never a sibling block's runId, mirroring
+    # the ``untouched`` guard above.
+    run_id = pos.workflow_run_id if same_block else None
+    return {"to_run": [subagent], "untouched": siblings, "workflow_run_id": run_id}
 
 
 # --- budget ceiling enforcement (US5: T037) --------------------------------
@@ -194,8 +202,10 @@ def advance_budget_or_halt(
 
     If it would overrun, **do not overrun**: write a safe checkpoint (the
     in-flight unit ends cleanly at the last safe state) and signal ``halted``
-    — never abandon a partial unit, never cross the ceiling (0 overruns). Else
-    advance the spend and persist it on the marathon."""
+    — never abandon a partial unit, never cross the ceiling (0 overruns) — and
+    record a ``stage_flagged`` escalation so the halt is visible to
+    ``doctor``/``status`` (FR-022), not a silent stop. Else advance the spend
+    and persist it on the marathon."""
     if budget.would_exceed(tokens):
         store.write_checkpoint(
             block_id,
@@ -206,10 +216,31 @@ def advance_budget_or_halt(
             workflow_run_id=workflow_run_id,
             budget_spent=budget.spent(),
         )
+        # A ceiling hit is an FR-022 escalation block-point: record it durably
+        # so `marathon doctor`/`status` surface the halt to Gabi instead of the
+        # run stopping silently in unattended auto-mode (kind=stage_flagged —
+        # the data-model CHECK has no dedicated budget kind, and this needs no
+        # migration).
+        from .escalation import write_escalation
+
+        escalation_id = write_escalation(
+            store,
+            marathon_id,
+            kind="stage_flagged",
+            detail={
+                "reason": "budget_ceiling",
+                "stage": stage,
+                "spent": budget.spent(),
+                "ceiling": budget.ceiling,
+                "attempted": tokens,
+            },
+            block_id=block_id,
+        )
         return {
             "halted": True,
             "spent": budget.spent(),
             "remaining": budget.remaining(),
+            "escalation_id": escalation_id,
         }
     budget.add(tokens)
     store.update_budget_spent(marathon_id, budget.spent())
