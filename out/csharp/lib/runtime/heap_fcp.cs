@@ -889,6 +889,34 @@ public class HeapFCP
         return BindWriter(writerAddr, value);
     }
 
+    /// <summary>
+    /// FR-035/SC-009: dispatch a value-arrival bind to the correct heap path,
+    /// keeping BOTH variable representations (Preserve-Working-Code). A genuinely
+    /// writerless imported reader (<see cref="AllocateImportedReader"/>: a RoTag cell
+    /// whose content is a <see cref="VariableEntry"/>) keeps its suspended goals in
+    /// <c>VariableEntry.Suspensions</c>, drained ONLY by <see cref="BindImportedReader"/>;
+    /// a local writer binds via <see cref="BindVariable"/>. The madGLP assignment ingress
+    /// (<c>HandleMadAssignment</c>) MUST route value arrivals through this single seam so a
+    /// guard suspended on an imported reader reactivates exactly once when its value arrives
+    /// (FR-051), instead of staying permanently un-woken because BindVariable never touches
+    /// VariableEntry.Suspensions. Only an *unbound* imported reader (content is a
+    /// VariableEntry) is routed here; every other address takes the existing path.
+    /// </summary>
+    public List<GoalRef> BindAny(int addr, Term value)
+    {
+        if (addr >= 0 && addr < Cells.Count)
+        {
+            var cell = Cells[addr];
+            if (cell.Tag == HeapCellTag.RoTag && cell.Content is VariableEntry entry)
+            {
+                // Unbound imported reader → drain its VariableEntry.Suspensions.
+                return BindImportedReader(addr, value, entry);
+            }
+        }
+        // Local writer (or any non-imported-reader address) → existing path.
+        return BindVariable(addr, value);
+    }
+
     /// <summary>Bind variable to constant (compatibility wrapper).</summary>
     public List<GoalRef> BindVariableConst(int writerAddr, object? v) =>
         BindWriter(writerAddr, new ConstTerm(v));

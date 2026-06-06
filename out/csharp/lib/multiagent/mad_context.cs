@@ -376,7 +376,9 @@ public class MadContext
         var listCell = new StructTerm(".", new List<Term> { content, new VarRef(freshReader) });
 
         // Bind current writer to extend the stream: N_p := [content | N'_p?]
-        var activations = Runtime.Heap.BindVariable(currentWriter.Value, listCell);
+        // FR-035/SC-009: route through BindAny (single seam) so an imported-reader
+        // target drains VariableEntry.Suspensions; a local writer is unchanged.
+        var activations = Runtime.Heap.BindAny(currentWriter.Value, listCell);
         Trace($"[MAD {AgentId}] _handleSerializerAssignment: bound stream, {activations.Count} activations");
 
         // Update the serializer entry to point to the fresh writer
@@ -435,7 +437,9 @@ public class MadContext
         }
 
         // Bind the writer with localized value
-        var activations = Runtime.Heap.BindVariable(writerAddr, localizedValue);
+        // FR-035/SC-009: route through BindAny (single seam) — imported reader →
+        // BindImportedReader (drain suspensions); local writer → BindVariable.
+        var activations = Runtime.Heap.BindAny(writerAddr, localizedValue);
         Trace($"[MAD {AgentId}] _handleWriterAssignment: bound writer, {activations.Count} activations");
 
         // Reactivate suspended goals
@@ -495,7 +499,10 @@ public class MadContext
         }
 
         // Bind the writer with localized value
-        var activations = Runtime.Heap.BindVariable(entry.WriterAddr, localizedValue);
+        // FR-035/SC-009: route through BindAny (single seam) so a genuinely
+        // writerless imported reader reactivates its suspended goals (FR-051);
+        // the local-pair writer path is unchanged.
+        var activations = Runtime.Heap.BindAny(entry.WriterAddr, localizedValue);
         Trace($"[MAD {AgentId}] _handleReaderAssignment: bound writer, {activations.Count} activations");
 
         // Reactivate suspended goals

@@ -313,7 +313,9 @@ class MadContext {
     final listCell = StructTerm('.', [content, VarRef(freshReader)]);
 
     // Bind current writer to extend the stream: N_p := [content | N'_p?]
-    final activations = runtime.heap.bindVariable(currentWriter, listCell);
+    // FR-035/SC-009: route through bindAny (single seam) so an imported-reader
+    // target drains VariableEntry.suspensions; a local writer is unchanged.
+    final activations = runtime.heap.bindAny(currentWriter, listCell);
     _trace('[MAD $agentId] _handleSerializerAssignment: bound stream, ${activations.length} activations');
 
     // Update the serializer entry to point to the fresh writer
@@ -369,7 +371,9 @@ class MadContext {
     }
 
     // Bind the writer with localized value
-    final activations = runtime.heap.bindVariable(writerAddr, localizedValue);
+    // FR-035/SC-009: route through bindAny (single seam) — imported reader →
+    // bindImportedReader (drain suspensions); local writer → bindVariable.
+    final activations = runtime.heap.bindAny(writerAddr, localizedValue);
     _trace('[MAD $agentId] _handleWriterAssignment: bound writer, ${activations.length} activations');
 
     // Reactivate suspended goals
@@ -425,7 +429,10 @@ class MadContext {
     }
 
     // Bind the writer with localized value
-    final activations = runtime.heap.bindVariable(entry.writerAddr, localizedValue);
+    // FR-035/SC-009: route through bindAny (single seam) so a genuinely
+    // writerless imported reader reactivates its suspended goals (FR-051);
+    // the local-pair writer path is unchanged.
+    final activations = runtime.heap.bindAny(entry.writerAddr, localizedValue);
     _trace('[MAD $agentId] _handleReaderAssignment: bound writer, ${activations.length} activations');
 
     // Reactivate suspended goals
