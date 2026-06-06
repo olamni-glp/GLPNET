@@ -225,3 +225,19 @@ Any chosen B2/B3/G design must pass these (gating tests marked ⛔ currently fai
 | 17 | Efficient Logic Variables for Distributed Computing | Haridi, Van Roy, Brand, Mehl, Scheidhauer, Smolka / 1999 | earlier-cl-paper (Tier 3) | `…/corpus/17-efficient-logic-variables-distributed-computing.md` |
 
 *Corpus root: `D:/bstdev/research/glp/glpnet/docs/research/multi-protocol-link-layer/corpus/`. Tier-3 (FCP/Logix/Oz/ISO) is mechanism-inspiration only and never overrides Tier-1 local specs or Tier-2 GLP papers (SOURCE PRECEDENCE).*
+
+---
+
+## Decisions — RULED (Gabi, 2026-06-06)
+
+These supersede the recommendations above where they differ. They are the binding contract for the marathon.
+
+- **B3 build target — C# is the PRIORITY + REFERENCE implementation.** Author the base link primitives + guards in **C# first** (`out/csharp/`, the mandated-default REPL — verified real, building, REPL runs GLP, `payload_serializer.cs` byte-parity with Dart). Create the **Dart mirror only after the C# reference works fully**. This *inverts* the doc's "Dart source-of-truth → codeconv → C#" recommendation for this feature (Gabi's language-authority call). Hand-authored C# needs a codeconv-clobber-safe home (D-B3-4).
+- **D-B3-2 cross-runtime parity = YES.** A Dart instance MUST connect to a C# instance over one link. The serializer is already byte-parity; the gap is a real transport + an executed Dart↔C# round-trip test (neither exists yet).
+- **B2 — implement the BASE/current link primitives FIRST; do NOT block them.** glink (distributing the writer/reader variable) is a **higher-level construct built ON TOP of the base primitives, later**. The dependency runs base-primitives → glink, **never** the reverse. The hardening + bug-fixes (idempotent redelivery, per-link FIFO/dedup, serializer framing/version/CRC, imported-reader reactivation, compound-operand suspend) are part of building the primitives correctly — **not a gate that blocks starting**. (GRL-style ground-relay is the base discipline; glink is the later transparency layer.)
+- **Decomposition (D-DEC-1): one role-parameterized program** (branch-on-ground-`AgentId`) — approved.
+- **G — approve the declines AND keep comparison-guards.** Decline `==`/`\==`/`\=`/`reader/1`; `@<`/`@>` only if peer-ids need a non-numeric total order. **Do NOT cancel `comparison-guards` — implement it** (keep the feature; deliver the guard set). Fix `atom/1` (analyzer↔runner inconsistency) and the compound-operand-suspend + imported-reader-reactivation bugs. Keep `=\=` untouched.
+- **T1 (D-T1-1): OK** — broker = transport relay under a logically-bilateral link; preserve per-link FIFO + at-least-once.
+- **T2 — KEEP BLE BIS multi-reader in scope (do NOT drop it).** Model broadcast as N bilateral ground-copy links *and* keep true BIS multi-reader as a goal; the SRSW tension is an open co-design item, not a drop.
+- **Failure (D-F-1/2/3): OK** — faults as bound terms on a monitor stream (not a 4th verdict); `ok/tempFail/permFail`; epoch/fencing for split-brain.
+- **Language Authority:** the base link primitives + the approved guard set are approved-to-implement, with the concrete signatures/semantics co-designed at each stage gate; glink's higher-level primitives co-designed later.

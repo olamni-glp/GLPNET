@@ -19,16 +19,18 @@ Follow the Restart-Resume order; this prompt names *what* to build, the durable 
 - If `resume` reports `commit_push_pending: true`, re-drive that block's commit/push first.
 
 ## 2. The design contract (APPROVED — read, honor, do not re-litigate)
-The B2 / B3 / G design decisions were reviewed and approved by Gabi. They are the binding contract:
-- `docs/research/multi-protocol-link-layer/B2-B3-G-decision.md` — the decision doc (chosen options + operational test plan + decisions log).
+The B2 / B3 / G design decisions were reviewed and ruled by Gabi. They are the binding contract:
+- `docs/research/multi-protocol-link-layer/B2-B3-G-decision.md` — the decision doc. **The "## Decisions — RULED (Gabi, 2026-06-06)" section at the END is authoritative and supersedes the body recommendations where they differ — read it first.**
 - `docs/research/multi-protocol-link-layer/corpus/` — the provenanced source corpus.
 Apply **source precedence** on any conflict: local `docs/` GLP specs > Shapiro GLP / GLP-implementation / GLP-typing papers > his earlier concurrent-logic papers (FCP/CP/Logix).
 
-## 3. Hard constraints (non-negotiable)
-- **B2 framing:** the feature SPLITS a program at a shared writer/reader variable into 2→N separate instances connected by the new link primitives (the single-sequential-thread assumption is relaxed). Decomposition (two role-versions vs one role-parameterized program) per the **approved** B2 option.
-- **Language Authority (B1 condition):** every NEW link primitive / guard is **co-designed and approved WITH Gabi at its stage gate** — propose with rationale, WAIT for approval, then implement. Never invent unilaterally.
-- **G (guard constraints):** implement the **approved** full guard-constraint set; this **folds in and replaces** the standalone `comparison-guards` feature.
-- **B3 (build target):** author per the **approved** option (Dart source-of-truth ↔ codeconv-generated C# mandated-default REPL ↔ native transports).
+## 3. Hard constraints (non-negotiable — RULED)
+- **B2 framing:** the feature SPLITS a program at a shared writer/reader variable into 2→N separate instances connected by the new link primitives (the single-sequential-thread assumption is relaxed), decomposed as **one role-parameterized program** (branch-on-ground-`AgentId`). **Implement the BASE/current link primitives FIRST; do NOT block them.** glink (distributing the variable for full transparency) is a **higher-level construct built ON the base primitives, later** — dependency is base-primitives → glink, never the reverse. Hardening/bug-fixes are part of building the primitives correctly, not a gate before starting.
+- **B3 build target — C# is the PRIORITY + REFERENCE.** Author the base link primitives + guards in **C# first** (`out/csharp/`, the mandated-default REPL — already real/building, serializer byte-parity with Dart). Create the **Dart mirror only after the C# reference works fully**. Cross-runtime parity is REQUIRED: a Dart instance must connect to a C# instance over one link (serializer is byte-parity; a real transport + an executed Dart↔C# round-trip test are the gap). Hand-authored C# must live where a codeconv regen cannot clobber it.
+- **G (guard constraints):** implement the **approved** guard set; **do NOT cancel `comparison-guards` — implement it** (keep the feature). Fix `atom/1` (analyzer↔runner) and the compound-operand-suspend + imported-reader-reactivation bugs. **Decline** `==`/`\==`/`\=`/`reader/1`; add `@<`/`@>` only if peer-ids need a non-numeric total order. Keep `=\=` untouched.
+- **T1:** broker = transport relay under a logically-bilateral link (preserve per-link FIFO + at-least-once). **T2:** model broadcast as N bilateral ground-copy links **AND keep BLE BIS true multi-reader in scope** (do not drop; SRSW tension is an open co-design item).
+- **Failure:** faults as bound terms on a per-link monitor stream (NOT a 4th unification verdict); `ok/tempFail/permFail`; epoch/fencing for split-brain.
+- **Language Authority (B1 condition):** the base primitives + approved guard set are approved-to-implement, with concrete signatures/semantics co-designed WITH Gabi at each stage gate; glink's higher-level primitives co-designed later. Never invent unilaterally.
 - Preserve GLP semantics exactly: SRSW, writer-MGU (binds only writers), three-valued unification, suspend-on-reader. Spec-first; GLP-first (logic in GLP, host = thin I/O). Baseline tests before/after every change.
 
 ## 4. Start + drive the marathon
