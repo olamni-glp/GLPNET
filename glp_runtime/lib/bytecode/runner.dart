@@ -4177,8 +4177,17 @@ class BytecodeRunner {
           }
         }
       } else if (t is StructTerm) {
-        // Return structure as-is (don't evaluate arithmetic here)
-        // Guards like =:= will evaluate explicitly using evaluateNumeric
+        // FR-034/SC-009: a compound operand may hide a nested unbound reader
+        // (e.g. peer(Region, Id?) with Id? un-arrived from a remote bind).
+        // Recurse into the args so that reader is collected into
+        // `unboundReaders` → the generic guard gate SUSPENDS on it, instead of
+        // passing the struct through to be wrongly committed as a FAIL (a
+        // non-monotone wrong commit; _termsEqual returns false on the unbound
+        // inner reader). Mirrors the proven cycle-safe walker of the dedicated
+        // GroundEqual opcode (collectUnbound). The structure itself is still
+        // returned as-is — guards like =:= and the term comparators re-deref
+        // the args via their own visited-set machinery.
+        _collectUnboundReaders(t, cx, unboundReaders);
         return t;
       } else if (t is ConstTerm) {
         // CRITICAL FIX: Unwrap ConstTerm to get primitive value
@@ -4202,6 +4211,68 @@ class BytecodeRunner {
 
     final result = dereference(term);
     return (result, unboundReaders);
+  }
+
+  /// FR-034/SC-009: collect every unbound reader nested anywhere inside [term]
+  /// — compound args included — into [out]. Used by the generic guard path so a
+  /// nested un-arrived reader makes the guard SUSPEND (reactivate once on bind)
+  /// rather than wrongly commit a FAIL. A bound writer/reader recurses into its
+  /// value; an unbound reader is recorded; an unbound writer is left for the
+  /// comparator to FAIL on (verdict matrix: reader→suspend, writer→fail). The
+  /// address-keyed visited set guarantees termination on a cyclic compound
+  /// (FR-022 tie-in). Structural mirror of the dedicated GroundEqual opcode's
+  /// collectUnbound (the proven-correct dedicated path).
+  static void _collectUnboundReaders(
+      Object? term, RunnerContext cx, Set<int> out) {
+    final visited = <int>{};
+    void walk(Object? t) {
+      if (t is VarRef && cx.rt.heap.isWriter(t.addr)) {
+        final writerAddr = t.addr;
+        if (!visited.add(writerAddr)) return;
+        final sigmaBinding = cx.sigmaHat[writerAddr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (cx.rt.heap.isFullyBound(writerAddr)) {
+          walk(cx.rt.heap.getValue(writerAddr));
+        }
+        // Unbound writer: not a reader → not collected (comparator FAILs).
+      } else if (t is VarRef && cx.rt.heap.isReader(t.addr)) {
+        final readerAddr = t.addr;
+        if (!visited.add(readerAddr)) return;
+        final sigmaBinding = cx.sigmaHat[readerAddr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (!cx.rt.heap.isReaderBound(readerAddr)) {
+          out.add(readerAddr);
+        } else {
+          walk(cx.rt.heap.getReaderValue(readerAddr));
+        }
+      } else if (t is StructTerm) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is _TentativeStruct) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is int) {
+        if (!visited.add(t)) return;
+        final sigmaBinding = cx.sigmaHat[t];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (cx.rt.heap.isWriter(t)) {
+          if (cx.rt.heap.isFullyBound(t)) {
+            walk(cx.rt.heap.getValue(t));
+          }
+        } else if (!cx.rt.heap.isReaderBound(t)) {
+          out.add(t);
+        } else {
+          walk(cx.rt.heap.getReaderValue(t));
+        }
+      }
+      // Constants and other leaves contribute nothing.
+    }
+    walk(term);
   }
 
   /// Check if a functor is an arithmetic operator

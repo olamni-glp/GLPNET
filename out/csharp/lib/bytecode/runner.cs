@@ -4940,8 +4940,16 @@ public sealed class BytecodeRunner
             }
             else if (t is StructTerm)
             {
-                // Return structure as-is (don't evaluate arithmetic here)
-                // Guards like =:= will evaluate explicitly using evaluateNumeric
+                // FR-034/SC-009: a compound operand may hide a nested unbound reader
+                // (e.g. peer(Region, Id?) with Id? un-arrived from a remote bind).
+                // Recurse into the args so that reader is collected into
+                // `unboundReaders` → the generic guard gate SUSPENDS on it, instead of
+                // passing the struct through to be wrongly committed as a FAIL (a
+                // non-monotone wrong commit; _termsEqual returns false on the unbound
+                // inner reader). Mirrors the dedicated GroundEqual opcode's CollectUnbound.
+                // The structure itself is still returned as-is — guards like =:= and the
+                // term comparators re-deref the args via their own visited-set machinery.
+                _collectUnboundReaders(t, cx, unboundReaders);
                 return t;
             }
             else if (t is ConstTerm ct)
@@ -4976,6 +4984,87 @@ public sealed class BytecodeRunner
 
         var result = Dereference(term);
         return (result, unboundReaders);
+    }
+
+    /// <summary>
+    /// FR-034/SC-009: collect every unbound reader nested anywhere inside <paramref name="term"/>
+    /// — compound args included — into <paramref name="outSet"/>. Used by the generic guard path
+    /// so a nested un-arrived reader makes the guard SUSPEND (reactivate once on bind) rather than
+    /// wrongly commit a FAIL. A bound writer/reader recurses into its value; an unbound reader is
+    /// recorded; an unbound writer is left for the comparator to FAIL on (verdict matrix:
+    /// reader→suspend, writer→fail). The address-keyed visited set guarantees termination on a
+    /// cyclic compound. Structural mirror of the dedicated GroundEqual opcode's CollectUnbound.
+    /// </summary>
+    private static void _collectUnboundReaders(object? term, RunnerContext cx, ISet<int> outSet)
+    {
+        var visited = new HashSet<int>();
+        void Walk(object? t)
+        {
+            if (t is VarRef wterm && cx.Rt.Heap.IsWriter(wterm.Addr))
+            {
+                var writerAddr = wterm.Addr;
+                if (!visited.Add(writerAddr)) return;
+                if (cx.SigmaHat.TryGetValue(writerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsFullyBound(writerAddr))
+                {
+                    Walk(cx.Rt.Heap.GetValue(writerAddr));
+                }
+                // Unbound writer: not a reader → not collected (comparator FAILs).
+            }
+            else if (t is VarRef rterm && cx.Rt.Heap.IsReader(rterm.Addr))
+            {
+                var readerAddr = rterm.Addr;
+                if (!visited.Add(readerAddr)) return;
+                if (cx.SigmaHat.TryGetValue(readerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (!cx.Rt.Heap.IsReaderBound(readerAddr))
+                {
+                    outSet.Add(readerAddr);
+                }
+                else
+                {
+                    Walk(cx.Rt.Heap.GetReaderValue(readerAddr));
+                }
+            }
+            else if (t is StructTerm st)
+            {
+                foreach (var arg in st.Args) Walk(arg);
+            }
+            else if (t is _TentativeStruct ts)
+            {
+                foreach (var arg in ts.Args) Walk(arg);
+            }
+            else if (t is int ti)
+            {
+                if (!visited.Add(ti)) return;
+                if (cx.SigmaHat.TryGetValue(ti, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsWriter(ti))
+                {
+                    if (cx.Rt.Heap.IsFullyBound(ti))
+                    {
+                        Walk(cx.Rt.Heap.GetValue(ti));
+                    }
+                }
+                else if (!cx.Rt.Heap.IsReaderBound(ti))
+                {
+                    outSet.Add(ti);
+                }
+                else
+                {
+                    Walk(cx.Rt.Heap.GetReaderValue(ti));
+                }
+            }
+            // Constants and other leaves contribute nothing.
+        }
+        Walk(term);
     }
 
     /// <summary>Test if a functor is an arithmetic operator.</summary>

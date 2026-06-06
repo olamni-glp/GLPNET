@@ -655,6 +655,29 @@ check "level2 suspend" "suspended" "$a24"
 check "level3 suspend" "suspended" "$a24"
 check "guard ground suspend" "suspended" "$a24"
 
+# --- A24b: FR-034 compound-operand-suspend (nested unbound reader in a compound) ---
+echo "--- A24b: FR-034 compound-operand suspend ---"
+a24b=$($DART run "$REPL" <<HEREDOC
+$TYPED/compound_suspend.glp
+eq_compound(pair(a, X?), R).
+run_eq_wake.
+:quit
+HEREDOC
+2>&1)
+
+check "FR-034 compound nested-reader suspends" "suspended" "$a24b"
+check "FR-034 compound reader reactivates once" "succeeds" "$a24b"
+
+# A24c: negative control — a nested unbound WRITER is a definite FAIL, not a suspend
+a24c=$($DART run "$REPL" <<HEREDOC
+$TYPED/compound_suspend.glp
+eq_compound(pair(a, W), R2).
+:quit
+HEREDOC
+2>&1)
+
+check_not "FR-034 nested writer does not suspend" "suspended" "$a24c"
+
 # --- A25: Quoted functor and body ---
 echo "--- A25: Quoted functor and body ---"
 a25=$($DART run "$REPL" <<HEREDOC

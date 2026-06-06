@@ -1,0 +1,43 @@
+% compound_suspend.glp — FR-034 / SC-009: a guard whose operand is a COMPOUND
+% containing a nested unbound reader MUST SUSPEND (not FAIL).
+%
+% Before the fix, the generic-guard path (_dereferenceWithTracking) returned a
+% StructTerm operand as-is without recursing into its args, so a nested unbound
+% reader was never collected: the guard passed the top-level suspend gate, then
+% _termsEqual returned false on the unbound inner reader and the guard COMMITTED
+% A FAIL — a non-monotone wrong commit. The fix recurses into compound args
+% (reusing the same deref/collect machinery the dedicated GroundEqual opcode
+% already applies), so the nested reader is collected and the guard SUSPENDS,
+% reactivating once when the reader binds.
+%
+% The discriminating case is the term-equality guard `=?=` taken via the
+% GENERIC path (a compound literal on the right-hand side, so the dedicated
+% GroundEqual opcode — which never had the bug — is not used). NOTE: single
+% clause per procedure — no fallback [] clause that would mask the bug by
+% providing an alternative suspension path.
+
+% (1) SUSPEND case: C is bound (head) to a compound carrying a nested unbound
+% reader; `C? =?= pair(a, b)` must suspend, not commit a FAIL.
+exported procedure eq_compound(_?, Constant).
+eq_compound(C, yes) :- C? =?= pair(a, b) | true.
+
+% (2) REACTIVATION case: a sibling goal binds the nested reader to the matching
+% value; the suspended guard wakes exactly once and yields the ground verdict
+% (the whole goal succeeds).
+exported procedure run_eq_wake.
+run_eq_wake :- eq_compound(pair(a, X?), _), waker_b(X).
+
+exported procedure waker_b(_).
+waker_b(b).
+
+% (3) NEGATIVE control: a nested unbound WRITER is a definite FAIL (SRSW: no
+% paired reader can supply the value), proving the fix does not over-suspend.
+% Exercised by goal: eq_compound(pair(a, W), _).
+
+% (4) ground/1 over the same compound also suspends on the nested reader (the
+% already-correct path; kept as a companion sanity check).
+exported procedure check_ground(_?).
+check_ground(C) :- ground(C?) | done.
+
+exported procedure done.
+done.
