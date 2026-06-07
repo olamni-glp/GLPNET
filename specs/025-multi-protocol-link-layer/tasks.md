@@ -7,12 +7,14 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ---
 
-> **🔴 RESUME POINTER (2026-06-07, HEAD `9a8d124c`).** Phases 0–2 complete; T030
-> infra + the **Option-B inbound pump** done (`out/csharp` `IInboundPump` +
-> `engine.InboundPump` + driver loop; `csharp/glp_link` 62 xUnit green). **Next =
-> finish T030: the `'_link_setup'/5` kernel** (plan in the task notes below + design
-> doc `research/inbound-pump-and-isolate-manager.md`). **`marathon resume` is STALE
-> at T012 — ignore it; this file + `git log` are authoritative.**
+> **🔴 RESUME POINTER (2026-06-07).** Phases 0–2 complete; **T030 `'_link_setup'/5`
+> kernel DONE** (`csharp/glp_link/primitives/{LinkPump,LinkSetupKernel,LinkRuntime,LinkKernels}.cs`
+> + `LinkSetupKernelTests.cs`; **66 xUnit green**; Option-B pump live). **Next = T031
+> `'_link_send'/3`** (ground-relay sender face + `link_send/3`/`out_relay/3`), then
+> T032 `link_recv/3`, T036 `programs/lib/link.glp` wrappers, T040 producer/consumer
+> over loopback (the functional proof). T030 touched NO core (`out/csharp`/`programs/`),
+> so the REPL baseline is unaffected. **`marathon resume` is STALE at T012 — ignore
+> it; this file + `git log` are authoritative.**
 
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
@@ -41,7 +43,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ## Phase 3 — Base link primitives (C# reference)
 
-- [ ] **T030** `'_link_setup'/5` + `link_setup/4` + `server_listener/3` + `client_connector/3`; per-instance LinkId→handle registry (idempotent at identity). (FR-001/002/003/004/007) — **INFRA DONE** (`LinkTerms`/`TransportRegistry`/`LinkRegistry`/`LinkHandle`, 62 xUnit) + **Option-B pump enabler done** (`IInboundPump`+`engine.InboundPump`+driver loop). **KERNEL NEXT**: `LinkPump.cs` impl `IInboundPump`; kernel = establish via `TransportRegistry` → alloc In/Out/Faults cells → egress `Heap.OnBind(Out)`→ground-relay→`FrameCodec`→`SendWindow`→`SendBytesAsync` + ingress recv→reassemble→order→inbox → register handle → set `engine.InboundPump`; register kernels via `BodyKernelRegistry` injection seam. OQ-3: new `'_link_send'/3`, receiver no kernel. Open: FR-007 re-setup cell-aliasing.
+- [x] **T030** `'_link_setup'/5` kernel + per-instance LinkId→handle registry (idempotent at identity). (FR-001/002/003/004/007) — **KERNEL DONE** (66 xUnit green). `csharp/glp_link/primitives/`: `LinkPump.cs` (impl `IInboundPump`: thread-safe `inbox` + per-link bg recv loop + runner-thread `TryApplyNext` stream-extend, design-ref §1.6 B5/B6); `LinkSetupKernel.cs` (the `'_link_setup'(LinkId?, Role?, In, Out?, Faults)` body: parse ground LinkId/Role → `TransportRegistry.Select` → blocking listen/connect rendezvous → `LinkRegistry.GetOrEstablish` → wire In-writer/Out-reader/Faults-writer cursors → arm egress `Heap.OnBind(Out-writer)`→ground-relay `PayloadSerializer.SerializeAgentMessage` (throws on VarRef = ground gate)→`FrameCodec`+`Sequencer`→`SendBytesAsync`, re-arm on tail → `Pump.AddLink` ingress → `rt.InboundPump ??= pump`); `LinkRuntime.cs` (per-engine holder); `LinkKernels.cs` (registers `"_link_setup"`/5 on `engine.BodyKernels` via injection seam — NO out/csharp edit; dep flows glp_link→out/csharp). Test `LinkSetupKernelTests.cs`: setup-wiring, egress ground-frame-on-wire, ingress pump-extends-In, idempotent-at-identity (re-setup **surfaced** as Abort). **Use raw arg `VarRef.Addr` for Out? — `heap.Dereference` canonicalizes reader→writer (DerefAddr:422-427).** OQ-3: new `'_link_send'/3`, receiver no kernel. **Deferred-in-T030 (own tasks):** GLP wrappers `link_setup/4`/`server_listener/3`/`client_connector/3` → T036 `link.glp`; **SendWindow backpressure NOT gated** (credit-release rides inbound ack path → T031/T034; gating Acquire w/o Release would freeze the runner); FR-007 re-setup cell-aliasing (currently Abort).
 - [ ] **T031** `'_link_send'/3` + `link_send/3` (channel face) + `out_relay/3` (LinkId face); ground-relay (`ground(Msg?)` gate; no `_w`/`_r`/embedded reader on the wire); host egress drainer on `Out`. (FR-010/040)
 - [ ] **T032** `link_recv/3` + the per-link host ingress (fills `In`; routes through the T002 dedup gate; reactivate-exactly-once). (FR-017/051)
 - [ ] **T033** `'_link_request'/5` + `'_link_accept'/5` + `request_link/4` + `accept_link/4`; in-band request frame over the transport connect (OQ-A3); both paths converge on the T030 registry → equivalent link. (FR-002)
