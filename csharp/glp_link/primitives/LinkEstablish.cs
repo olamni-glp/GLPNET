@@ -69,12 +69,18 @@ public static class LinkEstablish
         // fault, so an unmonitored goal stays safely suspended (FR-044).
         LinkFaults.Register(handle, faultsVr.Addr);
 
+        // Distributed-GC hook (T024/T035, FR-024): on close/permFail the reclaimer removes
+        // this link's registry entry so the runtime returns to baseline. Other subsystems
+        // (send-registry goals, reply-table) register their own hooks here when they gain live
+        // per-link state; the base ground-relay path has only the registry entry today.
+        link.Reclaimer.Register(id, () => link.Links.Remove(id));
+
         // Egress: observe binds on the writer the program fills as `Out` (egress rides the
         // ordinary drain, no pump needed). Ingress: start the background receive loop.
         int? outWriterAddr = heap.TryWriterForReader(outVr.Addr);
         if (outWriterAddr is null)
             return Abort(who, "Out reader has no paired writer to drain");
-        ArmEgress(heap, handle, outWriterAddr.Value);
+        ArmEgress(rt, link, handle, outWriterAddr.Value);
         link.Pump.AddLink(handle);
         rt.InboundPump ??= link.Pump;
 
@@ -86,19 +92,22 @@ public static class LinkEstablish
     /// cons, ship the ground head (shared <see cref="LinkEgress.ShipGround"/>) and re-arm
     /// on the tail; an <c>Out = []</c> bind is the graceful stream-end close (FR-010).
     /// </summary>
-    public static void ArmEgress(HeapFCP heap, LinkHandle handle, int outWriterAddr)
+    public static void ArmEgress(GlpRuntimeEngine rt, LinkRuntime link, LinkHandle handle, int outWriterAddr)
     {
-        heap.OnBind(outWriterAddr, bound => OnOutboundBind(heap, handle, bound));
+        rt.Heap.OnBind(outWriterAddr, bound => OnOutboundBind(rt, link, handle, bound));
     }
 
-    private static void OnOutboundBind(HeapFCP heap, LinkHandle handle, Term bound)
+    private static void OnOutboundBind(GlpRuntimeEngine rt, LinkRuntime link, LinkHandle handle, Term bound)
     {
+        var heap = rt.Heap;
         var value = heap.Dereference(bound);
 
-        // `Out = []` → graceful stream-end close (the program closed its sender).
+        // `Out = []` → graceful stream-end close (the program closed its sender). Runs the
+        // SAME teardown as the abrupt '_link_close' kernel (T035) with reason `eos`: emit the
+        // terminal closed(LinkId, eos) on the monitor, end it, close transport, run GC (FR-024).
         if (value is ConstTerm c && Equals(c.Value, Nil))
         {
-            handle.Endpoint.CloseAsync().GetAwaiter().GetResult();
+            LinkTeardown.Teardown(rt, link, handle, LinkTerms.GracefulReason);
             return;
         }
 
@@ -126,7 +135,7 @@ public static class LinkEstablish
                 ? heap.TryWriterForReader(tailVr.Addr)
                 : (heap.IsWriter(tailVr.Addr) ? tailVr.Addr : null);
             if (tailWriter is int tw)
-                ArmEgress(heap, handle, tw);
+                ArmEgress(rt, link, handle, tw);
         }
     }
 

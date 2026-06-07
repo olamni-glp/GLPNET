@@ -24,6 +24,7 @@ namespace GlpRuntime.Link.Primitives;
 public static class LinkFaults
 {
     private const string ListCons = ".";
+    private const string Nil = "nil";
 
     /// <summary>
     /// Register <paramref name="faultWriterAddr"/> as a live monitor cursor for
@@ -56,5 +57,18 @@ public static class LinkFaults
     {
         for (int i = 0; i < handle.MonitorCursors.Count; i++)
             Extend(heap, engine, handle.MonitorCursors, i, term);
+    }
+
+    /// <summary>
+    /// End EVERY monitor stream of <paramref name="handle"/> with <c>[]</c> (nil): bind each
+    /// live cursor to the empty list so a watcher sees end-of-stream and reduces its <c>[]</c>
+    /// clause. Used after a terminal <c>closed(LinkId,Reason)</c> on close (T035): a close is
+    /// terminal, so the monitor stream is closed too. Runner thread only.
+    /// </summary>
+    public static void EndAll(HeapFCP heap, GlpRuntimeEngine engine, LinkHandle handle)
+    {
+        foreach (var cursor in handle.MonitorCursors)
+            foreach (var act in heap.BindVariable(cursor, new ConstTerm(Nil)))
+                engine.EnqueueReactivatedGoal(act);
     }
 }

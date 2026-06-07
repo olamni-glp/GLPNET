@@ -1,3 +1,4 @@
+using GlpRuntime.Link.Reliability;
 using GlpRuntime.Link.Seam;
 using GlpRuntime.Runtime;
 
@@ -25,6 +26,15 @@ public sealed class LinkRuntime
 
     /// <summary>Idempotent-at-identity LinkId→handle registry (FR-007).</summary>
     public LinkRegistry Links { get; } = new();
+
+    /// <summary>
+    /// Distributed-GC coordinator (T024, FR-024). Each established link registers its
+    /// reclamation hooks here (the registry entry today; send-registry goals + reply-table
+    /// entries as those subsystems gain live per-link state); <c>'_link_close'</c> and the
+    /// graceful stream-end <c>[]</c> close run them via <c>LinkClose.Teardown</c> so the
+    /// runtime returns to its pre-link baseline (T035). One per instance; not thread-safe.
+    /// </summary>
+    public LinkReclaimer Reclaimer { get; } = new();
 
     /// <summary>The one inbound pump this engine's run-to-quiescence driver services (Option B).</summary>
     public LinkPump Pump { get; }

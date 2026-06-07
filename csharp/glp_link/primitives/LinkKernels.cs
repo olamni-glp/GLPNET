@@ -45,6 +45,12 @@ public static class LinkKernels
     /// <summary>The kernel arity of <c>'_link_monitor'/2</c>.</summary>
     public const long LinkMonitorArity = 2;
 
+    /// <summary>The registered (quote-stripped) name of the link-close kernel (T035).</summary>
+    public const string LinkCloseName = "_link_close";
+
+    /// <summary>The kernel arity of <c>'_link_close'/2</c>.</summary>
+    public const long LinkCloseArity = 2;
+
     /// <summary>
     /// Build a <see cref="LinkRuntime"/> for <paramref name="engine"/> and register
     /// the link body kernels on it. Register transports into the returned runtime's
@@ -75,5 +81,7 @@ public static class LinkKernels
             (rt, args) => LinkAcceptKernel.LinkAccept(rt, args, link));
         registry.Register(LinkMonitorName, LinkMonitorArity,
             (rt, args) => LinkMonitorKernel.LinkMonitor(rt, args, link));
+        registry.Register(LinkCloseName, LinkCloseArity,
+            (rt, args) => LinkCloseKernel.LinkClose(rt, args, link));
     }
 }

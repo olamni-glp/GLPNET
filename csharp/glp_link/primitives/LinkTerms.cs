@@ -24,6 +24,7 @@ public static class LinkTerms
     private const string EndpointFunctor = "ep";
     private const string RequestFunctor = "request";
     public const string GracefulReason = "eos";
+    public const string AbruptReason = "abrupt";
 
     // ---- parse: term → host value ----
 
@@ -60,6 +61,13 @@ public static class LinkTerms
             _ => throw new ArgumentException($"Nonce must be Integer or String, got {v?.GetType().Name ?? "null"}"),
         };
     }
+
+    /// <summary>
+    /// Parse the ground close <c>Reason</c> (<c>Reason ::= String</c>): the atom <c>abrupt</c>
+    /// from <c>link_close/1</c>, or a user reason from <c>link_close/2</c>. The wrapper
+    /// grounds it, so a non-constant reaching here is a caller bug (it throws).
+    /// </summary>
+    public static string ParseReason(Term term) => ConstString(term, "Reason");
 
     /// <summary>Parse the ground establishment role atom (<c>listener</c>/<c>connector</c>).</summary>
     public static LinkRole ParseRole(Term term)
