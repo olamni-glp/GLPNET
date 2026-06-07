@@ -63,6 +63,12 @@ public static class LinkEstablish
         handle.OutReaderAddr = outVr.Addr;
         handle.FaultsWriterAddr = faultsVr.Addr;
 
+        // Register the establishment `Faults` stream as a live monitor cursor (T034): a
+        // transport fault fans out to it as well as to any later `link_monitor` stream
+        // (FR-008). No `ok` is pushed here — the cell stays lazily unbound until a real
+        // fault, so an unmonitored goal stays safely suspended (FR-044).
+        LinkFaults.Register(handle, faultsVr.Addr);
+
         // Egress: observe binds on the writer the program fills as `Out` (egress rides the
         // ordinary drain, no pump needed). Ingress: start the background receive loop.
         int? outWriterAddr = heap.TryWriterForReader(outVr.Addr);

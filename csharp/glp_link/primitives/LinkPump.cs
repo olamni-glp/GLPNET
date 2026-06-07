@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using GlpRuntime.Link.Reliability;
+using GlpRuntime.Link.Seam;
 using GlpRuntime.Multiagent;
 using GlpRuntime.Runtime;
 
@@ -24,8 +25,12 @@ namespace GlpRuntime.Link.Primitives;
 /// </remarks>
 public sealed class LinkPump : IInboundPump, IDisposable
 {
-    /// <summary>One decoded inbound event awaiting application on the runner thread.</summary>
-    private readonly record struct InboundItem(LinkHandle Handle, Term? Value, bool Close);
+    /// <summary>
+    /// One decoded inbound event awaiting application on the runner thread: an inbound
+    /// data term (<c>In</c>-stream extension), a graceful close, or a fault term to fan
+    /// out to the link's monitor cursors (<see cref="Fault"/>, T034).
+    /// </summary>
+    private readonly record struct InboundItem(LinkHandle Handle, Term? Value, bool Close, bool Fault);
 
     private readonly GlpRuntimeEngine _engine;
     private readonly BlockingCollection<InboundItem> _inbox = new(new ConcurrentQueue<InboundItem>());
@@ -47,7 +52,31 @@ public sealed class LinkPump : IInboundPump, IDisposable
         if (handle.InWriterAddr is null)
             throw new InvalidOperationException("AddLink before the In-stream ingress cursor was wired");
         Interlocked.Increment(ref _liveLinks);
+        // Out-of-band transport faults (FR-008): refine the seam signal to its GLP
+        // lattice term and enqueue it for runner-thread fan-out onto the monitor
+        // cursors. The handler runs on the transport's thread but only touches the
+        // thread-safe inbox — never the heap (T034).
+        handle.Endpoint.OnFault += signal => EnqueueFault(handle, signal);
         _recvLoops.Add(Task.Run(() => RecvLoopAsync(handle, _cts.Token)));
+    }
+
+    /// <summary>
+    /// Refine an out-of-band seam fault to its GLP lattice term and enqueue it for
+    /// runner-thread delivery (T034). Builds the term off the heap (a <see cref="Term"/>
+    /// is pure data) and only touches the thread-safe inbox; a fault arriving after the
+    /// pump is disposed is dropped (the link is being torn down anyway).
+    /// </summary>
+    private void EnqueueFault(LinkHandle handle, LinkFaultSignal signal)
+    {
+        var term = LinkTerms.FromSignal(signal);
+        try
+        {
+            _inbox.Add(new InboundItem(handle, term, Close: false, Fault: true), _cts.Token);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Pump disposed / inbox completed mid-teardown — nothing left to deliver to.
+        }
     }
 
     /// <inheritdoc/>
@@ -61,6 +90,17 @@ public sealed class LinkPump : IInboundPump, IDisposable
             return false;
 
         var heap = _engine.Heap;
+
+        if (item.Fault)
+        {
+            // Fan the refined fault term out to every monitor cursor of this link — the
+            // establishment `Faults` stream and each `link_monitor` stream (FR-008). A
+            // fault is delivered as a bound term, never a verdict (FR-043) and never a
+            // logical Fail (FR-044).
+            LinkFaults.DeliverFault(heap, _engine, item.Handle, item.Value!);
+            return true;
+        }
+
         int cursor = item.Handle.InWriterAddr!.Value;
 
         if (item.Close)
@@ -102,7 +142,7 @@ public sealed class LinkPump : IInboundPump, IDisposable
                 byte[]? frame = await handle.Endpoint.RecvBytesAsync(ct).ConfigureAwait(false);
                 if (frame is null)
                 {
-                    _inbox.Add(new InboundItem(handle, null, Close: true), ct);
+                    _inbox.Add(new InboundItem(handle, null, Close: true, Fault: false), ct);
                     return;
                 }
 
@@ -117,7 +157,7 @@ public sealed class LinkPump : IInboundPump, IDisposable
                         ordered,
                         allocateImportedVar: _ => throw new InvalidOperationException(
                             "ground-relay base received a non-ground payload (embedded variable)"));
-                    _inbox.Add(new InboundItem(handle, term, Close: false), ct);
+                    _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
                 }
             }
         }

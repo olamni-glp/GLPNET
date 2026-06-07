@@ -40,6 +40,16 @@ public sealed class LinkHandle
     /// <summary>The writer the host extends with fault terms (the program reads <c>Faults</c>).</summary>
     public int? FaultsWriterAddr { get; set; }
 
+    /// <summary>
+    /// The live per-link MONITOR cursors (feature 025, T034): one writer cell per
+    /// independent fault observer. A fault is fanned out to every cursor — the
+    /// <c>Faults</c> stream minted at establishment AND every later <c>link_monitor</c>
+    /// stream — so faults are independently observable from the data path and from each
+    /// other (FR-008). Each entry advances to a fresh writer as its stream is extended;
+    /// mutated only on the runner thread (the kernel and the pump's apply step).
+    /// </summary>
+    public List<int> MonitorCursors { get; } = new();
+
     public LinkHandle(LinkId id, ILinkEndpoint endpoint, LinkOptions options)
     {
         Id = id;
