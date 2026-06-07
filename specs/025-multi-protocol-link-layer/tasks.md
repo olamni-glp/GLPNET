@@ -7,6 +7,13 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ---
 
+> **🔴 RESUME POINTER (2026-06-07, HEAD `9a8d124c`).** Phases 0–2 complete; T030
+> infra + the **Option-B inbound pump** done (`out/csharp` `IInboundPump` +
+> `engine.InboundPump` + driver loop; `csharp/glp_link` 62 xUnit green). **Next =
+> finish T030: the `'_link_setup'/5` kernel** (plan in the task notes below + design
+> doc `research/inbound-pump-and-isolate-manager.md`). **`marathon resume` is STALE
+> at T012 — ignore it; this file + `git log` are authoritative.**
+
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
 - [x] **T001** Record green baseline: `bash test/run_all_tests.sh`; capture counts. (SC-017) — **524/525** (1 known pre-existing AOT-smoke failure; matches T011/T012 baseline). Established green baseline for Phase 2.
@@ -34,7 +41,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ## Phase 3 — Base link primitives (C# reference)
 
-- [ ] **T030** `'_link_setup'/5` + `link_setup/4` + `server_listener/3` + `client_connector/3`; per-instance LinkId→handle registry (idempotent at identity). (FR-001/002/003/004/007)
+- [ ] **T030** `'_link_setup'/5` + `link_setup/4` + `server_listener/3` + `client_connector/3`; per-instance LinkId→handle registry (idempotent at identity). (FR-001/002/003/004/007) — **INFRA DONE** (`LinkTerms`/`TransportRegistry`/`LinkRegistry`/`LinkHandle`, 62 xUnit) + **Option-B pump enabler done** (`IInboundPump`+`engine.InboundPump`+driver loop). **KERNEL NEXT**: `LinkPump.cs` impl `IInboundPump`; kernel = establish via `TransportRegistry` → alloc In/Out/Faults cells → egress `Heap.OnBind(Out)`→ground-relay→`FrameCodec`→`SendWindow`→`SendBytesAsync` + ingress recv→reassemble→order→inbox → register handle → set `engine.InboundPump`; register kernels via `BodyKernelRegistry` injection seam. OQ-3: new `'_link_send'/3`, receiver no kernel. Open: FR-007 re-setup cell-aliasing.
 - [ ] **T031** `'_link_send'/3` + `link_send/3` (channel face) + `out_relay/3` (LinkId face); ground-relay (`ground(Msg?)` gate; no `_w`/`_r`/embedded reader on the wire); host egress drainer on `Out`. (FR-010/040)
 - [ ] **T032** `link_recv/3` + the per-link host ingress (fills `In`; routes through the T002 dedup gate; reactivate-exactly-once). (FR-017/051)
 - [ ] **T033** `'_link_request'/5` + `'_link_accept'/5` + `request_link/4` + `accept_link/4`; in-band request frame over the transport connect (OQ-A3); both paths converge on the T030 registry → equivalent link. (FR-002)
