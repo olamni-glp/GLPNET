@@ -131,6 +131,16 @@ const Set<String> builtinProcedures = {
   '_send/3',
   // Output (system predicate)
   '_output/1',
+  // Link-layer host kernels (feature 025; ratified rulings-log OQ-A4/C1/C2). NEW approved
+  // system predicates — host-implemented (csharp/glp_link; Dart mirror later), no GLP clauses.
+  // Registered here so programs/lib/link.glp's wrappers type-check (same mechanism as atom/@<).
+  '_link_setup/5',
+  '_link_send/3',
+  '_link_request/5',
+  '_link_listen/3',
+  '_link_accept/5',
+  '_link_monitor/2',
+  '_link_close/2',
 };
 
 /// Check if a type name is predefined
