@@ -1,0 +1,135 @@
+using GlpRuntime.Link.Seam;
+using GlpRuntime.Runtime;
+
+namespace GlpRuntime.Link.Primitives;
+
+/// <summary>
+/// The ONE canonical establish-and-wire core every establishment path converges on
+/// (feature 025, T033): listen/connect (<c>'_link_setup'</c>), and the path-B
+/// handshake (<c>'_link_request'</c> connector + <c>'_link_accept'</c> adopting a
+/// pending connection). Centralizing it is what makes the two FR-002 paths yield an
+/// INDISTINGUISHABLE established link and closes risk R-5 ("two paths, one registry"):
+/// given a ground <see cref="LinkId"/>, an endpoint factory, and the three heap stream
+/// holes, it registers the handle idempotently (FR-007), wires the In/Out/Faults
+/// cursors, arms the Out egress drainer, starts the ingress pump, and installs it.
+/// </summary>
+public static class LinkEstablish
+{
+    private const string ListCons = ".";
+    private const string Nil = "nil";
+
+    /// <summary>
+    /// Establish (or idempotently reuse) the link for <paramref name="id"/> and wire it
+    /// to the three heap holes. <paramref name="establish"/> runs only on first
+    /// establishment (it opens/adopts the transport endpoint). Returns
+    /// <see cref="BodyKernelResult.Success"/> once wired, or
+    /// <see cref="BodyKernelResult.Abort"/> on a malformed hole / transport failure /
+    /// FR-007 re-establishment (cell-aliasing unspecified — surfaced, not guessed).
+    /// </summary>
+    public static BodyKernelResult WireEstablishedLink(
+        GlpRuntimeEngine rt, LinkRuntime link, LinkId id, Func<ILinkEndpoint> establish,
+        object? inArg, object? outArg, object? faultsArg, string who)
+    {
+        var heap = rt.Heap;
+
+        // Resolve the three output cells to their RAW heap addresses. Use the bare arg
+        // VarRef address, NOT heap.Dereference: a local reader dereferences to its paired
+        // WRITER (DerefAddr canonicalizes reader→writer), erasing the Out? reader identity.
+        if (inArg is not VarRef inVr || !heap.IsWriter(inVr.Addr))
+            return Abort(who, "In must be an unbound writer cell");
+        if (outArg is not VarRef outVr || !heap.IsReader(outVr.Addr))
+            return Abort(who, "Out? must be an unbound reader cell");
+        if (faultsArg is not VarRef faultsVr || !heap.IsWriter(faultsVr.Addr))
+            return Abort(who, "Faults must be an unbound writer cell");
+
+        // Idempotency at link-identity (FR-007): re-establishment of the same ground
+        // LinkId reuses the handle rather than opening a duplicate.
+        bool firstEstablishment = !link.Links.Contains(id);
+        LinkHandle handle;
+        try
+        {
+            handle = link.Links.GetOrEstablish(id, () => new LinkHandle(id, establish(), LinkOptions.Default));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or AggregateException)
+        {
+            return Abort(who, $"transport establishment failed for {id}: {Unwrap(ex).Message}");
+        }
+
+        if (!firstEstablishment)
+            return Abort(who, $"re-establishment of already-established {id}: cell-aliasing unspecified (FR-007) — first only");
+
+        // Wire the heap stream cursors onto the handle.
+        handle.InWriterAddr = inVr.Addr;
+        handle.OutReaderAddr = outVr.Addr;
+        handle.FaultsWriterAddr = faultsVr.Addr;
+
+        // Egress: observe binds on the writer the program fills as `Out` (egress rides the
+        // ordinary drain, no pump needed). Ingress: start the background receive loop.
+        int? outWriterAddr = heap.TryWriterForReader(outVr.Addr);
+        if (outWriterAddr is null)
+            return Abort(who, "Out reader has no paired writer to drain");
+        ArmEgress(heap, handle, outWriterAddr.Value);
+        link.Pump.AddLink(handle);
+        rt.InboundPump ??= link.Pump;
+
+        return BodyKernelResult.Success;
+    }
+
+    /// <summary>
+    /// Arm the egress drainer: when the program binds the <c>Out</c> writer to a stream
+    /// cons, ship the ground head (shared <see cref="LinkEgress.ShipGround"/>) and re-arm
+    /// on the tail; an <c>Out = []</c> bind is the graceful stream-end close (FR-010).
+    /// </summary>
+    public static void ArmEgress(HeapFCP heap, LinkHandle handle, int outWriterAddr)
+    {
+        heap.OnBind(outWriterAddr, bound => OnOutboundBind(heap, handle, bound));
+    }
+
+    private static void OnOutboundBind(HeapFCP heap, LinkHandle handle, Term bound)
+    {
+        var value = heap.Dereference(bound);
+
+        // `Out = []` → graceful stream-end close (the program closed its sender).
+        if (value is ConstTerm c && Equals(c.Value, Nil))
+        {
+            handle.Endpoint.CloseAsync().GetAwaiter().GetResult();
+            return;
+        }
+
+        if (value is not StructTerm cons || cons.Functor != ListCons || cons.Args.Count != 2)
+            return; // not a stream cons — nothing to ship (defensive; the wrapper only conses)
+
+        // Ground-relay ship (FR-010), shared with the '_link_send'/3 kernel face. If a
+        // non-ground head slips past the GLP `ground(Msg?)` guard, ShipGround throws and
+        // the channel face drops the frame rather than placing a partial term on the wire.
+        try
+        {
+            LinkEgress.ShipGround(heap, handle, cons.Args[0]);
+        }
+        catch (InvalidOperationException)
+        {
+            Console.WriteLine("[link egress] non-ground term reached Out — ground-relay gate violated; dropped");
+            return;
+        }
+
+        // Re-arm on the tail's writer for the next value.
+        var tail = heap.Dereference(cons.Args[1]);
+        if (tail is VarRef tailVr)
+        {
+            int? tailWriter = heap.IsReader(tailVr.Addr)
+                ? heap.TryWriterForReader(tailVr.Addr)
+                : (heap.IsWriter(tailVr.Addr) ? tailVr.Addr : null);
+            if (tailWriter is int tw)
+                ArmEgress(heap, handle, tw);
+        }
+    }
+
+    private static Exception Unwrap(Exception ex) =>
+        ex is AggregateException agg && agg.InnerException is { } inner ? inner : ex;
+
+    internal static BodyKernelResult Abort(string who, string why)
+    {
+        Console.WriteLine($"[ABORT] {who}: {why}");
+        return BodyKernelResult.Abort;
+    }
+}

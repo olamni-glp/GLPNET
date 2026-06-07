@@ -1,3 +1,4 @@
+using GlpRuntime.Link.Seam;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -27,6 +28,16 @@ public sealed class LinkRuntime
 
     /// <summary>The one inbound pump this engine's run-to-quiescence driver services (Option B).</summary>
     public LinkPump Pump { get; }
+
+    /// <summary>
+    /// Accepted-but-not-yet-adopted inbound connections, keyed by the ground
+    /// <see cref="LinkId"/> carried in the request token (T033 Option A). Populated by
+    /// <c>'_link_listen'</c> when it reads an in-band request frame; drained by
+    /// <c>'_link_accept'</c>, which adopts the endpoint into <see cref="Links"/> via the
+    /// shared establish-core. The two-step split (listen produces requests; accept
+    /// establishes one) is the ratified separation of concerns.
+    /// </summary>
+    public Dictionary<LinkId, ILinkEndpoint> Pending { get; } = new();
 
     /// <summary>The engine whose heap the kernel binds and whose goal queue the pump feeds.</summary>
     public GlpRuntimeEngine Engine { get; }

@@ -31,6 +31,14 @@ public static class LinkKernels
     /// <summary>The kernel arity of <c>'_link_send'/3</c>.</summary>
     public const long LinkSendArity = 3;
 
+    /// <summary>Path-B handshake kernels (T033): connector / rendezvous-listener / accept.</summary>
+    public const string LinkRequestName = "_link_request";
+    public const long LinkRequestArity = 5;
+    public const string LinkListenName = "_link_listen";
+    public const long LinkListenArity = 3;
+    public const string LinkAcceptName = "_link_accept";
+    public const long LinkAcceptArity = 5;
+
     /// <summary>
     /// Build a <see cref="LinkRuntime"/> for <paramref name="engine"/> and register
     /// the link body kernels on it. Register transports into the returned runtime's
@@ -53,5 +61,11 @@ public static class LinkKernels
             (rt, args) => LinkSetupKernel.LinkSetup(rt, args, link));
         registry.Register(LinkSendName, LinkSendArity,
             (rt, args) => LinkSendKernel.LinkSend(rt, args, link));
+        registry.Register(LinkRequestName, LinkRequestArity,
+            (rt, args) => LinkRequestKernel.LinkRequest(rt, args, link));
+        registry.Register(LinkListenName, LinkListenArity,
+            (rt, args) => LinkListenKernel.LinkListen(rt, args, link));
+        registry.Register(LinkAcceptName, LinkAcceptArity,
+            (rt, args) => LinkAcceptKernel.LinkAccept(rt, args, link));
     }
 }

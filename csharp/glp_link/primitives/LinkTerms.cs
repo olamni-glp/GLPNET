@@ -22,6 +22,7 @@ public static class LinkTerms
 {
     private const string LinkIdFunctor = "link_id";
     private const string EndpointFunctor = "ep";
+    private const string RequestFunctor = "request";
     public const string GracefulReason = "eos";
 
     // ---- parse: term → host value ----
@@ -37,7 +38,11 @@ public static class LinkTerms
         return new LinkId(scheme, endpoint, nonce);
     }
 
-    private static LinkAddress ParseEndpoint(Term term) => term switch
+    /// <summary>Parse a ground <c>Scheme</c> string (the first component of <c>rendezvous(Scheme, Endpoint)</c>).</summary>
+    public static LinkScheme ParseScheme(Term term) => LinkScheme.Of(ConstString(term, "Scheme"));
+
+    /// <summary>Parse a ground <c>Endpoint ::= String ; ep(String, Integer)</c> term (used by both LinkId and rendezvous).</summary>
+    public static LinkAddress ParseEndpoint(Term term) => term switch
     {
         StructTerm ep when ep.Functor == EndpointFunctor && ep.Args.Count == 2 =>
             LinkAddress.Endpoint(ConstString(ep.Args[0], "ep host"), checked((int)ConstLong(ep.Args[1], "ep port"))),
@@ -84,6 +89,20 @@ public static class LinkTerms
 
     private static Term NonceToTerm(LinkNonce nonce) =>
         nonce.IsInteger ? new ConstTerm(nonce.IntValue) : new ConstTerm(nonce.StringValue!);
+
+    // ---- in-band request token (T033 path-B handshake, OQ-A3) ----
+
+    /// <summary>Build the in-band <c>request(LinkId, FromPeer)</c> handshake token.</summary>
+    public static Term RequestToken(LinkId id, Term fromPeer) =>
+        new StructTerm(RequestFunctor, new Term[] { ToTerm(id), fromPeer });
+
+    /// <summary>Parse a ground <c>request(LinkId, FromPeer)</c> token (the listener's in-band first frame).</summary>
+    public static (LinkId Id, Term FromPeer) ParseRequestToken(Term term)
+    {
+        if (term is not StructTerm st || st.Functor != RequestFunctor || st.Args.Count != 2)
+            throw new ArgumentException($"expected request/2 token, got {Describe(term)}");
+        return (ParseLinkId(st.Args[0]), st.Args[1]);
+    }
 
     // ---- fault lattice terms (FR-043/045; rulings-log fault vocab) ----
 

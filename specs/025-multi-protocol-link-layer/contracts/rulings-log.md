@@ -54,4 +54,22 @@ Fault ::= ok
 
 Deferred to their own facets (post-gate): OQ-F3 credit-unification elaboration; SC-015 GEPA loop; OQ-G5 `=\=` prelude-target verification; OQ-T2 platform matrix (per-leaf).
 
+## T033 establishment-path-B ratification — Option A (Gabi, 2026-06-07)
+
+The accept side's `RequestStream` was under-specified: `accept_link/4` takes it as an INPUT, but no ruled primitive produced it. Gabi RULED **Option A — an explicit, visible producer**, on the language principle that **transparency/understandability is mandatory**: the program author must SEE where requests come from, not have a kernel conjure them silently ("never let the kernel give you a god or nasty surprise but never tell you if or why"). A is also the clean **separation of two concerns** Gabi named: (1) the *listener* binding + producing requests, vs (2) *accepting* one request to then establish a link — B muddled both into one kernel.
+
+**Ratified new surface (10th primitive):**
+```prolog
+% The EXPLICIT producer of accept_link's RequestStream. A rendezvous is NOT a link,
+% so it uses its own address term (not link_id, whose Nonce is meaningless here).
+procedure request_listener(Rendezvous?, Stream(request(LinkId, AgentId))).
+request_listener(rendezvous(Scheme, Endpoint), Requests?) :-
+    ground(Scheme?), ground(Endpoint?) | '_link_listen'(Scheme?, Endpoint?, Requests).
+```
+- NEW system-predicate `'_link_listen'/3`; NEW address term `rendezvous(Scheme, Endpoint)`.
+- `'_link_request'/5` (connector) emits the in-band `request(LinkId, FromPeer)` token over the transport connect (OQ-A3), then establishes via the shared establish-core → T030 registry.
+- `'_link_listen'/3` binds the rendezvous, reads each inbound connect's in-band first frame as the token, surfaces `request(LinkId, FromPeer)` on `Requests`, and parks the accepted connection in a per-engine pending table keyed by ground LinkId.
+- `'_link_accept'/5` adopts the pending connection for the matched LinkId (the GLP `=?=` does the match in `accept_link/4`) and establishes via the SAME shared establish-core → T030 registry. Both paths therefore yield an indistinguishable established link (FR-002, risk R-5).
+- **Base-MVP bounds (documented, not hidden):** one-request-per-rendezvous (the current `ILinkTransport.ListenAsync` seam returns a single endpoint; a multi-request accept-loop is a transport-leaf concern, Phase 6); the request token is a raw out-of-band frame consumed before the data pump engages, so NO new `FrameKind` is needed and the data sequence still starts at 0; `FromPeer` origin identity is a base placeholder — authenticated origin binding is FR-026/T075.
+
 **PLAN-APPROVAL GATE: COMPLETE.** The 9 base link primitives + the approved guard set + the three core fixes are approved-to-implement under language authority, with the signatures above. Proceeding to plan_task_analyze finalize.
