@@ -9,7 +9,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
-- [ ] **T001** Record green baseline: `bash test/run_all_tests.sh`; capture counts. (SC-017)
+- [x] **T001** Record green baseline: `bash test/run_all_tests.sh`; capture counts. (SC-017) — **524/525** (1 known pre-existing AOT-smoke failure; matches T011/T012 baseline). Established green baseline for Phase 2.
 - [x] **T002** Fix **FR-021 duplicate-delivery crash**: add the dedup gate to the inbound ingress so a redelivered (seq + global-name) frame is a **verified no-op** — no `StateError`, no re-bind, no re-enqueue (today `mad_context` `_handle*Assignment` throw; `bindWriter` throws on a bound cell). Files: `csharp/glp_link/reliability/` + ingress; mirror later. (FR-021/SC-008)
 - [x] **T003** Fix **FR-034 compound-operand-suspend**: `_dereferenceWithTracking` must recurse into `StructTerm.args` (cycle-safe), mirroring the correct `GroundEqual.collectUnbound`, so a nested unbound reader SUSPENDS not FAILs. Files: runner guard path. (FR-034/SC-009)
 - [x] **T004** Fix **FR-035 imported-reader reactivation (OQ-2 = option 1)**: wire `handleMadAssignment` → `bindImportedReader` (drain `VariableEntry.suspensions`); KEEP the `VariableEntry` path (Preserve-Working-Code). Files: `mad_context` ingress + heap dispatch. (FR-035/SC-009)
@@ -25,7 +25,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 ## Phase 2 — Reliability sublayer + seam (C# reference, clobber-safe `csharp/glp_link/`)
 
 - [x] **T020** `LinkTransport` seam: `ILinkTransport`/`ILinkEndpoint` (open / send-bytes / recv-bytes / close + fault), scheme-selected. (FR-058) — `csharp/glp_link/` package created (clobber-safe, refs `out/csharp`); `seam/` = `ILinkTransport`, `ILinkEndpoint`, `LinkId(Scheme,Endpoint,Nonce)`, `LinkScheme`, `LinkAddress`, `LinkRole`, `LinkOptions(window N=8)`, `LinkFaultSignal`. Builds clean.
-- [ ] **T021** Wire format: version byte + length/CRC + cycle-guard (visited-set) + fragmentation/reassembly for under-MTU leaves; bad-version/bad-CRC rejected; over-MTU fragments. (FR-022)
+- [x] **T021** Wire format: version byte + length/CRC + cycle-guard (visited-set) + fragmentation/reassembly for under-MTU leaves; bad-version/bad-CRC rejected; over-MTU fragments. (FR-022) — `reliability/`: `Crc32` (IEEE/zlib, Dart-mirror-able), `FrameCodec` (22-byte BE header: version+kind+msgId+totalLen+fragIdx/count+chunkCRC+chunkLen; caller-supplied deterministic msgId), `FrameReassembler` (out-of-order + dup-frag tolerant; bounded in-flight/bytes for FR-028), `CycleGuard` (ref-identity visited-set, wired into the T031 send walker). 15 xUnit tests green (`csharp/glp_link.tests`).
 - [ ] **T022** Per-link sequence/dedup + FIFO + reorder buffer (in-order reconstruct; corruption detected when sublayer off); broker-relay FIFO+at-least-once enforced end-to-end. (FR-020/023/053)
 - [ ] **T023** Epoch/fencing token (split-brain): competing writers for one global name → exactly one wins, loser `permFail`. (FR-047)
 - [ ] **T024** Distributed GC: on `permFail`/close, registry + send-registry goals + heap bind callbacks + reply-table return to baseline; no unreclaimable cycle. (FR-024)
