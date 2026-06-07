@@ -42,6 +42,8 @@
        EV/OUT wire format the differential oracle consumes (T017). -->
   <ItemGroup>
     <Compile Include="lib/runtime/equiv_trace.cs" />
+    <!-- Feature 025 (Option B): hand-written inbound-pump seam, not a codegen file. -->
+    <Compile Include="lib/runtime/inbound_pump.cs" />
   </ItemGroup>
 
 </Project>

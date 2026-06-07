@@ -173,6 +173,13 @@ public sealed class GlpEngine
     /// <summary>For madGLP: the MadContext for this engine.</summary>
     public GlpRuntime.Multiagent.MadContext? MadContext { get; set; }
 
+    /// <summary>
+    /// Feature 025 (Option B): how long the inbound-pump driver blocks for the next
+    /// link frame before giving up and reporting the run as suspended. A liveness
+    /// tuning knob, not a correctness bound.
+    /// </summary>
+    public TimeSpan InboundPumpWait { get; set; } = TimeSpan.FromSeconds(30);
+
     // ── Computed getters ──────────────────────────────────────────────────────
 
     /// <summary>Access to the runtime (for madGLP integration).</summary>
@@ -541,6 +548,26 @@ public sealed class GlpEngine
             showBindings: false,
             debugOutput:  DebugOutput);
 
+        // Feature 025 (Option B) — inbound-pump driver (single-goal path). When a
+        // link is open the drain above leaves the goal suspended on the link
+        // variable; service inbound frames ON THIS thread and re-drain until no link
+        // is live. Skipped when no InboundPump is set → non-link runs unchanged.
+        if (_runtime.InboundPump is { } pump)
+        {
+            while (pump.HasPendingOrLive)
+            {
+                if (!pump.TryApplyNext(InboundPumpWait))
+                    break; // idle: a still-open link's reader stays safely suspended
+                MadContext?.FlushMessages();
+                result = await scheduler.DrainAsyncWithStatus(
+                    maxCycles:    MaxCycles,
+                    debug:        DebugTrace,
+                    showBindings: false,
+                    debugOutput:  DebugOutput);
+                if (result.Status == ExecutionStatus.Failed) break;
+            }
+        }
+
         // Collect bindings.
         var bindings = new Dictionary<string, RtTerm?>(StringComparer.Ordinal);
         foreach (var entry in queryVarWriters)
@@ -672,6 +699,27 @@ public sealed class GlpEngine
             else if (result.Status == ExecutionStatus.Suspended)
             {
                 anySuspended = true;
+            }
+        }
+
+        // Feature 025 (Option B) — inbound-pump driver. When a link is open the
+        // initial drains above leave the program suspended on the link variable;
+        // service inbound frames ON THIS (runner) thread and re-drain until no link
+        // is live. Skipped when no InboundPump is set → non-link runs unchanged.
+        if (_runtime.InboundPump is { } pump)
+        {
+            while (pump.HasPendingOrLive)
+            {
+                if (!pump.TryApplyNext(InboundPumpWait))
+                    break; // idle: a still-open link's reader stays safely suspended
+                MadContext?.FlushMessages();
+                var pr = await scheduler.DrainAsyncWithStatus(
+                    maxCycles:    MaxCycles,
+                    debug:        DebugTrace,
+                    showBindings: false,
+                    debugOutput:  DebugOutput);
+                if (pr.Status == ExecutionStatus.Failed) { allSucceeded = false; break; }
+                anySuspended = pr.Status == ExecutionStatus.Suspended;
             }
         }
 
