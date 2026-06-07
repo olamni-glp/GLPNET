@@ -10,10 +10,10 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
 - [ ] **T001** Record green baseline: `bash test/run_all_tests.sh`; capture counts. (SC-017)
-- [ ] **T002** Fix **FR-021 duplicate-delivery crash**: add the dedup gate to the inbound ingress so a redelivered (seq + global-name) frame is a **verified no-op** — no `StateError`, no re-bind, no re-enqueue (today `mad_context` `_handle*Assignment` throw; `bindWriter` throws on a bound cell). Files: `csharp/glp_link/reliability/` + ingress; mirror later. (FR-021/SC-008)
-- [ ] **T003** Fix **FR-034 compound-operand-suspend**: `_dereferenceWithTracking` must recurse into `StructTerm.args` (cycle-safe), mirroring the correct `GroundEqual.collectUnbound`, so a nested unbound reader SUSPENDS not FAILs. Files: runner guard path. (FR-034/SC-009)
-- [ ] **T004** Fix **FR-035 imported-reader reactivation (OQ-2 = option 1)**: wire `handleMadAssignment` → `bindImportedReader` (drain `VariableEntry.suspensions`); KEEP the `VariableEntry` path (Preserve-Working-Code). Files: `mad_context` ingress + heap dispatch. (FR-035/SC-009)
-- [ ] **T005** Regression after each of T002–T004: baseline green; add the new no-op/suspend/reactivate cases to Section A. (SC-008/009/017)
+- [x] **T002** Fix **FR-021 duplicate-delivery crash**: add the dedup gate to the inbound ingress so a redelivered (seq + global-name) frame is a **verified no-op** — no `StateError`, no re-bind, no re-enqueue (today `mad_context` `_handle*Assignment` throw; `bindWriter` throws on a bound cell). Files: `csharp/glp_link/reliability/` + ingress; mirror later. (FR-021/SC-008)
+- [x] **T003** Fix **FR-034 compound-operand-suspend**: `_dereferenceWithTracking` must recurse into `StructTerm.args` (cycle-safe), mirroring the correct `GroundEqual.collectUnbound`, so a nested unbound reader SUSPENDS not FAILs. Files: runner guard path. (FR-034/SC-009)
+- [x] **T004** Fix **FR-035 imported-reader reactivation (OQ-2 = option 1)**: wire `handleMadAssignment` → `bindImportedReader` (drain `VariableEntry.suspensions`); KEEP the `VariableEntry` path (Preserve-Working-Code). Files: `mad_context` ingress + heap dispatch. (FR-035/SC-009)
+- [~] **T005** Regression after each of T002–T004: baseline green; add the new no-op/suspend/reactivate cases to Section A. (SC-008/009/017) — PARTIAL: FR-034 case present (Section A24b/c); the **FR-021 dup-no-op** and **FR-035 imported-reader reactivation** cases need the multi-instance ingress path → deferred to the integration harness (Phase 5 / T052 duplicate fault-injection).
 
 ## Phase 1 — Guards (language authority; approved)
 
@@ -24,7 +24,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ## Phase 2 — Reliability sublayer + seam (C# reference, clobber-safe `csharp/glp_link/`)
 
-- [ ] **T020** `LinkTransport` seam: `ILinkTransport`/`ILinkEndpoint` (open / send-bytes / recv-bytes / close + fault), scheme-selected. (FR-058)
+- [x] **T020** `LinkTransport` seam: `ILinkTransport`/`ILinkEndpoint` (open / send-bytes / recv-bytes / close + fault), scheme-selected. (FR-058) — `csharp/glp_link/` package created (clobber-safe, refs `out/csharp`); `seam/` = `ILinkTransport`, `ILinkEndpoint`, `LinkId(Scheme,Endpoint,Nonce)`, `LinkScheme`, `LinkAddress`, `LinkRole`, `LinkOptions(window N=8)`, `LinkFaultSignal`. Builds clean.
 - [ ] **T021** Wire format: version byte + length/CRC + cycle-guard (visited-set) + fragmentation/reassembly for under-MTU leaves; bad-version/bad-CRC rejected; over-MTU fragments. (FR-022)
 - [ ] **T022** Per-link sequence/dedup + FIFO + reorder buffer (in-order reconstruct; corruption detected when sublayer off); broker-relay FIFO+at-least-once enforced end-to-end. (FR-020/023/053)
 - [ ] **T023** Epoch/fencing token (split-brain): competing writers for one global name → exactly one wins, loser `permFail`. (FR-047)
