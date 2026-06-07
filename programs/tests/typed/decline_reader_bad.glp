@@ -1,0 +1,9 @@
+% decline_reader_bad.glp — FR-036 DECLINE (NEGATIVE: must be REJECTED at load).
+% reader/1 is NON-MONOTONIC: it succeeds on an unbound reader, then a later bind
+% makes it false — so a committed verdict can be falsified, which is unsound
+% across a link (a withheld/late remote bind makes the committed guard wrong).
+% It violates the FR-039 monotone-commit invariant and is never introduced. This
+% file is identical in shape to atom_guard.glp's is_atom except the declined
+% guard, so the rejection (undefined guard predicate) isolates the decline.
+exported procedure dreader(_?, _).
+dreader(X, yes) :- reader(X?) | true.

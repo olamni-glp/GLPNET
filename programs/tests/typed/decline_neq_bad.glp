@@ -1,0 +1,7 @@
+% decline_neq_bad.glp — FR-036 DECLINE (NEGATIVE: must be REJECTED at load).
+% \== (Prolog term non-identity) is NOT a GLP guard: it is a redundant alias of
+% ~(=?=) (Tier-3 ISO/Prolog idiom, deliberately absent from the GLP kernel). A
+% clause using it in guard position must be rejected. Canonical GLP form:
+% ~(X? =?= Y?).
+exported procedure dneq(_?, _?, _).
+dneq(X, Y, yes) :- X? \== Y? | true.

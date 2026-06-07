@@ -15,3 +15,14 @@ is_atom(X, yes) :- atom(X?) | true.
 % COMPILE — proof the analyzer marks atom as grounding.
 exported procedure echo_atom(_?, _).
 echo_atom(X, wrap(X?)) :- atom(X?) | true.
+
+% Three-valued MIDDLE case (suspend-then-reactivate-EXACTLY-once): is_atom
+% suspends on the unbound reader X?; a sibling waker binds it to an atom; the
+% guard reactivates exactly once and commits (the whole goal succeeds). Mirrors
+% the FR-034 compound wake idiom (compound_suspend.glp run_eq_wake): the verdict
+% is discarded with bare `_` so the procedure is zero-arg.
+exported procedure run_atom_wake.
+run_atom_wake :- is_atom(X?, _), waker_atom(X).
+
+exported procedure waker_atom(_).
+waker_atom(hello).

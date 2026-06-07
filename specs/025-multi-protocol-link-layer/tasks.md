@@ -17,9 +17,9 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 ## Phase 1 — Guards (language authority; approved)
 
-- [ ] **T010** `atom/1`: add the runner `_evaluateGuard` arm = runtime `string/1` (non-numeric atomic, excludes `[]`/`nil`); register in prelude. Aligns analyzer (already grounds it) ↔ runtime. (FR-033/SC-005)
-- [ ] **T011** `@< @> @=< @>=` (non-negatable; total order Number<String<compound then arity/functor/args, equality = `=?=`): lexer `@`-lookahead (must not break `Goal@Agent`) + 4 tokens + parser + runner arms + new `_compareTerms` (cycle-safe, byte/behaviour-identical Dart↔C#) + SRSW analyzer (ground-implying; `_nonNegatableGuards`) + prelude. (FR-037/SC-004/006) — **largest core edit**.
-- [ ] **T012** `[P]` Guard tests: Section A three-valued (succeed / suspend-then-reactivate-once / fail) for `@<` family + `atom/1`; Section B positive SRSW-relaxation; Section C negatives incl. **declines** `== \== \= reader/1` (FR-036) reject; `=\=` untouched regression (FR-038). Files: `programs/tests/typed/`. (SC-004/006)
+- [x] **T010** `atom/1`: add the runner `_evaluateGuard` arm = runtime `string/1` (non-numeric atomic, excludes `[]`/`nil`); register in prelude. Aligns analyzer (already grounds it) ↔ runtime. (FR-033/SC-005)
+- [x] **T011** `@< @> @=< @>=` (non-negatable; total order Number<String<compound then arity/functor/args, equality = `=?=`): lexer `@`-lookahead (must not break `Goal@Agent`) + 4 tokens + parser + runner arms + new `_compareTerms` (cycle-safe, byte/behaviour-identical Dart↔C#) + SRSW analyzer (ground-implying; `_nonNegatableGuards`) + prelude. (FR-037/SC-004/006) — **largest core edit**.
+- [x] **T012** `[P]` Guard tests: Section A three-valued (succeed / suspend-then-reactivate-once / fail) for `@<` family + `atom/1`; Section B positive SRSW-relaxation; Section C negatives incl. **declines** `== \== \= reader/1` (FR-036) reject; `=\=` untouched regression (FR-038). Files: `programs/tests/typed/`. (SC-004/006)
 - [ ] **T013** `[P]` Consolidate `docs/guards-reference.md` as the single authoritative guard spec (fold the additions/fixes/declines in; no duplicate spec). (FR-032)
 
 ## Phase 2 — Reliability sublayer + seam (C# reference, clobber-safe `csharp/glp_link/`)

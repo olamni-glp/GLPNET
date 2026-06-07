@@ -1,0 +1,16 @@
+% arith_diseq.glp — FR-038 / SC-017: =\= (arithmetic disequality) is UNTOUCHED
+% by feature 025. It is load-bearing and must keep working EXACTLY as before:
+% succeed when the two ground numbers differ, fail (here via the otherwise
+% fallback → no) when they are equal, suspend on an unbound reader operand.
+% =\= is non-negatable and ground-implying, like the other arithmetic
+% comparisons; this file is the standing regression that the guard machinery was
+% not disturbed by the @< / atom additions (T010/T011).
+
+exported procedure ne(_?, _?, _).
+ne(X, Y, yes) :- X? =\= Y? | true.
+ne(_, _, no)  :- otherwise | true.
+
+% Suspend case: single clause, no otherwise fallback — an unbound operand makes
+% =\= SUSPEND (it must not fall through to a fail).
+exported procedure ne_strict(_?, _?, _).
+ne_strict(X, Y, yes) :- X? =\= Y? | true.

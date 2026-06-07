@@ -733,6 +733,51 @@ check "FR-037 @> reverse" "R7 = yes" "$a24f"
 check "FR-037 @< suspends on unbound operand" "suspended" "$a24f"
 check "FR-037 @< ground-implying (SC-006 multi-read compiles)" "R9 = pair(1, 2)" "$a24f"
 
+# --- A24g: FR-037/FR-033 three-valued MIDDLE case — suspend-then-reactivate-
+# EXACTLY-once for @< and atom/1. Each wake goal runs in its OWN session so the
+# single "succeeds" verdict unambiguously witnesses the one reactivation: the
+# guard suspends on an unbound reader, a sibling waker binds it, the guard wakes
+# once and commits. (A24f/A24d already cover the suspend + succeed + fail rows;
+# this is the reactivation row.) Mirrors the A24b compound wake. ---
+echo "--- A24g: @< / atom reactivate-exactly-once ---"
+a24g_lt=$($DART run "$REPL" <<HEREDOC
+$TYPED/order_guards.glp
+run_lt_wake.
+:quit
+HEREDOC
+2>&1)
+
+check "FR-037 @< reactivates exactly once (wakes and commits)" "succeeds" "$a24g_lt"
+check_not "FR-037 @< wake not left suspended" "suspended" "$a24g_lt"
+
+a24g_atom=$($DART run "$REPL" <<HEREDOC
+$TYPED/atom_guard.glp
+run_atom_wake.
+:quit
+HEREDOC
+2>&1)
+
+check "FR-033 atom reactivates exactly once (wakes and commits)" "succeeds" "$a24g_atom"
+check_not "FR-033 atom wake not left suspended" "suspended" "$a24g_atom"
+
+# --- A24h: FR-038 =\= UNTOUCHED regression — arithmetic disequality still works
+# exactly: succeed on differing ground numbers, fail (otherwise -> no) on equal,
+# suspend on an unbound reader. Standing witness that the @< / atom additions
+# (T010/T011) did not disturb the existing arithmetic-comparison machinery. ---
+echo "--- A24h: FR-038 =\\= untouched regression ---"
+a24h=$($DART run "$REPL" <<HEREDOC
+$TYPED/arith_diseq.glp
+ne(1, 2, Rne1).
+ne(3, 3, Rne2).
+ne_strict(Wne?, 2, Rne3).
+:quit
+HEREDOC
+2>&1)
+
+check "FR-038 =\\= succeeds on differing numbers" "Rne1 = yes" "$a24h"
+check "FR-038 =\\= fails on equal numbers (otherwise)" "Rne2 = no" "$a24h"
+check "FR-038 =\\= suspends on unbound reader" "suspended" "$a24h"
+
 # --- A25: Quoted functor and body ---
 echo "--- A25: Quoted functor and body ---"
 a25=$($DART run "$REPL" <<HEREDOC
@@ -966,6 +1011,12 @@ POSITIVE_FILES=(
     # --- module guard test ---
     "$TYPED/module_guard.glp"
 
+    # --- T012/FR-037/FR-033 guard SRSW-relaxation positives: @< and atom/1 are
+    # ground-implying, so a var they ground may be read multiply (order_pair,
+    # echo_atom). These files must type-check cleanly (SC-006 positive). ---
+    "$TYPED/order_guards.glp"
+    "$TYPED/atom_guard.glp"
+
     # --- parameterized types ---
     "$TYPED/param_stream_integer.glp"
     "$TYPED/param_channel.glp"
@@ -1102,6 +1153,15 @@ NEGATIVE_FILES=(
 
     # --- parameterized proc decl negative (Case A: own clauses checked) ---
     "$TC_DIR/negative/body/param_merge_wrong_mode.glp"
+
+    # --- T012/FR-036 DECLINED guards: == \== \= reader/1 are NOT GLP guards and
+    # a clause using one in guard position MUST be rejected at load (the first
+    # three are not even GLP tokens -> syntax error; reader/1 is an undefined
+    # guard predicate -> type error). Enforces the decline, not merely "unimplemented". ---
+    "$TYPED/decline_eq_bad.glp"
+    "$TYPED/decline_neq_bad.glp"
+    "$TYPED/decline_struct_diseq_bad.glp"
+    "$TYPED/decline_reader_bad.glp"
 )
 
 # Build REPL input with :clear between each negative file
