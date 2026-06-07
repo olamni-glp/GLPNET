@@ -8,16 +8,19 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 ---
 
 > **🔴 RESUME POINTER (2026-06-07).** Phases 0–2 complete; **T030 `'_link_setup'/5`
-> + T031 `'_link_send'/3` kernels DONE** (`csharp/glp_link/primitives/`:
-> `LinkSetupKernel`, `LinkSendKernel`, shared `LinkEgress.ShipGround` ground-relay
-> ship routine used by BOTH faces; tests `LinkSetupKernelTests`+`LinkSendKernelTests`;
-> **72 xUnit green**; Option-B pump live). **Next = T032 `link_recv/3`** (per-link
-> host ingress filling `In`, routed through the T002 dedup gate, reactivate-once),
-> then T033 request/accept, T034 monitor, T035 close, T036 `programs/lib/link.glp`
-> wrappers (the GLP clause text for `link_send/3`/`out_relay/3` lands HERE), T040
-> producer/consumer over loopback (the functional proof). T030/T031 touched NO core
-> (`out/csharp`/`programs/`), so the REPL baseline is unaffected. **`marathon resume`
-> is STALE at T012 — ignore it; this file + `git log` are authoritative.**
+> + T031 `'_link_send'/3` + T032 recv-ingress DONE** (`csharp/glp_link/primitives/`:
+> `LinkSetupKernel`, `LinkSendKernel`, shared `LinkEgress.ShipGround`; T032 proved the
+> existing T030 pump + T022 `InboundOrdering` ingress satisfies the FULL recv contract
+> (suspend / reactivate-exactly-once / dup-no-op / reorder) — NO new production code,
+> contract tests only; tests `LinkSetupKernelTests`+`LinkSendKernelTests`+`LinkRecvIngressTests`;
+> **76 xUnit green**; Option-B pump live). **Next = T033 request/accept**
+> (`'_link_request'/5`+`'_link_accept'/5`+`request_link/4`+`accept_link/4`; in-band
+> request frame, both paths converge on the T030 registry), then T034 monitor, T035
+> close, T036 `programs/lib/link.glp` wrappers (the GLP clause text for `link_send/3`,
+> `out_relay/3`, AND `link_recv/3` lands HERE), T040 producer/consumer over loopback
+> (the functional proof). T030–T032 touched NO core (`out/csharp`/`programs/`), so the
+> REPL baseline is unaffected. **`marathon resume` is STALE at T012 — ignore it; this
+> file + `git log` are authoritative.**
 
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
@@ -48,7 +51,7 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 
 - [x] **T030** `'_link_setup'/5` kernel + per-instance LinkId→handle registry (idempotent at identity). (FR-001/002/003/004/007) — **KERNEL DONE** (66 xUnit green). `csharp/glp_link/primitives/`: `LinkPump.cs` (impl `IInboundPump`: thread-safe `inbox` + per-link bg recv loop + runner-thread `TryApplyNext` stream-extend, design-ref §1.6 B5/B6); `LinkSetupKernel.cs` (the `'_link_setup'(LinkId?, Role?, In, Out?, Faults)` body: parse ground LinkId/Role → `TransportRegistry.Select` → blocking listen/connect rendezvous → `LinkRegistry.GetOrEstablish` → wire In-writer/Out-reader/Faults-writer cursors → arm egress `Heap.OnBind(Out-writer)`→ground-relay `PayloadSerializer.SerializeAgentMessage` (throws on VarRef = ground gate)→`FrameCodec`+`Sequencer`→`SendBytesAsync`, re-arm on tail → `Pump.AddLink` ingress → `rt.InboundPump ??= pump`); `LinkRuntime.cs` (per-engine holder); `LinkKernels.cs` (registers `"_link_setup"`/5 on `engine.BodyKernels` via injection seam — NO out/csharp edit; dep flows glp_link→out/csharp). Test `LinkSetupKernelTests.cs`: setup-wiring, egress ground-frame-on-wire, ingress pump-extends-In, idempotent-at-identity (re-setup **surfaced** as Abort). **Use raw arg `VarRef.Addr` for Out? — `heap.Dereference` canonicalizes reader→writer (DerefAddr:422-427).** OQ-3: new `'_link_send'/3`, receiver no kernel. **Deferred-in-T030 (own tasks):** GLP wrappers `link_setup/4`/`server_listener/3`/`client_connector/3` → T036 `link.glp`; **SendWindow backpressure NOT gated** (credit-release rides inbound ack path → T031/T034; gating Acquire w/o Release would freeze the runner); FR-007 re-setup cell-aliasing (currently Abort).
 - [x] **T031** `'_link_send'/3` + `link_send/3` (channel face) + `out_relay/3` (LinkId face); ground-relay (`ground(Msg?)` gate; no `_w`/`_r`/embedded reader on the wire); host egress drainer on `Out`. (FR-010/040) — **KERNEL DONE** (72 xUnit green). `csharp/glp_link/primitives/`: `LinkEgress.cs` (the ONE ground-relay ship routine both faces share — closes risk R-5; deep `ResolveGround` flattens a ground struct to a VarRef-free tree AND is the ground gate: an unbound cell at any depth throws, never reaches the wire); `LinkSendKernel.cs` (`'_link_send'(Msg?, LinkId?, ToPeer?)` = the LinkId-keyed face backing `out_relay/3`: parse ground LinkId → `Links.TryGet` (Abort if "send before setup") → `LinkEgress.ShipGround`; non-ground Msg or unbound ToPeer = caller-bug Abort, FR-010); registered `_link_send`/3 on `engine.BodyKernels` via `LinkKernels`. **Channel face**: the T030 `'_link_setup'` egress drainer (`OnOutboundBind`) now calls the shared `LinkEgress.ShipGround` — `link_send/3` conses ground onto `Out`, the drainer ships it. **GLP wrapper clause text** (`link_send/3`, `out_relay/3`) lands in T036 `link.glp` (kernel-direct tests stand in until the compile pipeline arrives). SendWindow backpressure still NOT gated (credit-release rides inbound ack → T034). Tests `LinkSendKernelTests.cs`: ground-const ship, ground-STRUCT deep-resolve, per-link FIFO monotone seq, unknown-link Abort, non-ground-Msg/ToPeer Abort. NO core touched → REPL baseline unaffected.
-- [ ] **T032** `link_recv/3` + the per-link host ingress (fills `In`; routes through the T002 dedup gate; reactivate-exactly-once). (FR-017/051)
+- [x] **T032** `link_recv/3` + the per-link host ingress (fills `In`; routes through the T002 dedup gate; reactivate-exactly-once). (FR-017/051) — **DONE** (76 xUnit green). `link_recv/3` is **pure composable GLP** (no kernel; clause `link_recv(Msg?, ch([Msg|In], Out?), ch(In?, Out)).` lands in T036 `link.glp`) — the host-side recv machinery is the T030 `LinkPump` ingress + T022 `InboundOrdering`, which already (a) fill `In` by minting a fresh pair/cons-ing the ground value/binding the writer, (b) route a redelivered frame through the per-link sequence high-water dedup as a **verified no-op** BEFORE the heap (no inbox item ⇒ no re-bind, no throw, no second reactivation — FR-021/SC-008; the base ground-relay wire carries no global names, so the §4 sequence half is the whole gate; the global-name `mad_context` half is the deferred glink path), and (c) reactivate a reader suspended on the unarrived stream head **exactly once** (`heap.BindVariable` collects the suspension → `EnqueueReactivatedGoal`; the `SuspensionRecord` disarms on activation — FR-017/051). **No new production code** — T030 over-delivered the ingress; T032 is the contract PROOF. Tests `LinkRecvIngressTests.cs`: suspend→reactivate-exactly-once (`SuspensionRecord` on the In reader → one `Gq` entry, disarmed), duplicate=verified-no-op (re-sent seq absorbed upstream, head cell unchanged, `Gq` still 1), two-frame FIFO, reordered-frames reconstruct-in-order. NO core touched → REPL baseline unaffected.
 - [ ] **T033** `'_link_request'/5` + `'_link_accept'/5` + `request_link/4` + `accept_link/4`; in-band request frame over the transport connect (OQ-A3); both paths converge on the T030 registry → equivalent link. (FR-002)
 - [ ] **T034** `'_link_monitor'/2` + `link_monitor/2` + fault vocab `ok` / `closed(LinkId,Reason)` / `tempFail(LinkId,Reason)` / `permFail(LinkId,Reason)` on a per-link monitor stream (data, not a verdict). (FR-008/043-046)
 - [ ] **T035** `'_link_close'/2` + `link_close/1`+`/2` (abrupt teardown → RST_STREAM-equiv) + graceful stream-end `[]` close; both run T024 GC and emit `closed(LinkId, Reason)` (`eos` for graceful). (FR-024)
