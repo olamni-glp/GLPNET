@@ -1,6 +1,4 @@
-using GlpRuntime.Link.Reliability;
 using GlpRuntime.Link.Seam;
-using GlpRuntime.Multiagent;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -148,28 +146,19 @@ public static class LinkSetupKernel
         if (value is not StructTerm cons || cons.Functor != ListCons || cons.Args.Count != 2)
             return; // not a stream cons — nothing to ship (defensive; the wrapper only conses)
 
-        // Ground-relay gate (FR-010): SerializeAgentMessage throws on any embedded
-        // VarRef, so a non-ground head — which the GLP `ground(Msg?)` guard is meant to
-        // exclude — cannot reach the wire. Surface it rather than ship a partial term.
-        var msg = heap.Dereference(cons.Args[0]);
-        byte[] payload;
+        // Ground-relay ship (FR-010), shared with the '_link_send'/3 kernel face. The
+        // ground gate is the GLP `ground(Msg?)` guard; if a non-ground head slips past
+        // it onto the stream, ShipGround throws here — the channel face drops the frame
+        // rather than placing a partial term on the wire (the kernel face Aborts).
         try
         {
-            payload = new PayloadSerializer(string.Empty).SerializeAgentMessage(msg);
+            LinkEgress.ShipGround(heap, handle, cons.Args[0]);
         }
         catch (InvalidOperationException)
         {
             Console.WriteLine("[link egress] non-ground term reached Out — ground-relay gate violated; dropped");
             return;
         }
-
-        uint seq = handle.Sequencer.Next();
-        // NOTE: SendWindow backpressure (FR-025) is intentionally NOT gated here yet —
-        // credit release rides the inbound ack path, which lands with the send/monitor
-        // primitives (T031/T034). Wiring an Acquire without a Release would freeze the
-        // runner thread at the window bound. Framing + sequencing are real today.
-        foreach (var frame in FrameCodec.Encode(payload, seq, handle.Options.MaxFrameBytes))
-            handle.Endpoint.SendBytesAsync(frame).GetAwaiter().GetResult();
 
         // Re-arm on the tail's writer for the next value (the `Out?` reader of the cons
         // is paired with the writer the next link_send fills).

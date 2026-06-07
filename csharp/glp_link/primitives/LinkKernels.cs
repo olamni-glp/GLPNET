@@ -25,6 +25,12 @@ public static class LinkKernels
     /// <summary>The kernel arity of <c>'_link_setup'/5</c>.</summary>
     public const long LinkSetupArity = 5;
 
+    /// <summary>The registered (quote-stripped) name of the LinkId-keyed sender kernel.</summary>
+    public const string LinkSendName = "_link_send";
+
+    /// <summary>The kernel arity of <c>'_link_send'/3</c>.</summary>
+    public const long LinkSendArity = 3;
+
     /// <summary>
     /// Build a <see cref="LinkRuntime"/> for <paramref name="engine"/> and register
     /// the link body kernels on it. Register transports into the returned runtime's
@@ -45,5 +51,7 @@ public static class LinkKernels
         ArgumentNullException.ThrowIfNull(link);
         registry.Register(LinkSetupName, LinkSetupArity,
             (rt, args) => LinkSetupKernel.LinkSetup(rt, args, link));
+        registry.Register(LinkSendName, LinkSendArity,
+            (rt, args) => LinkSendKernel.LinkSend(rt, args, link));
     }
 }
