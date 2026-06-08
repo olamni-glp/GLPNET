@@ -13,10 +13,26 @@
 
 using System.Threading.Tasks;
 
+using GlpRuntime.Link.Primitives;
+using GlpRuntime.Link.Transports;
+
 namespace GlpRuntime.Repl.Host;
 
 internal static class EntryPoint
 {
     // Task-returning async entry point; forwards argv to the converted REPL.
-    private static Task Main(string[] args) => GlpRuntime.Repl.Program.Main(args);
+    private static Task Main(string[] args)
+    {
+        // feature 025 — composition root: wire the hand-authored link layer into the REPL
+        // engine the converted Program builds. This is the ONLY place that may reference both
+        // glp_runtime_net and GlpLink (the library can't, without a reference cycle). The hook
+        // runs once, right after engine construction (out/csharp/bin/glp_repl.cs).
+        GlpRuntime.Repl.Program.AfterEngineCreated = engine =>
+        {
+            var link = LinkKernels.Install(engine.Runtime);
+            link.Transports.Register(new TcpTransport());        // first real cross-process leaf (127.0.0.1)
+            link.Transports.Register(new LoopbackTransport());   // in-process hermetic substrate
+        };
+        return GlpRuntime.Repl.Program.Main(args);
+    }
 }

@@ -681,6 +681,32 @@ class HeapFCP {
     return bindWriter(writerAddr, value);
   }
 
+  /// FR-035/SC-009: dispatch a value-arrival bind to the correct heap path,
+  /// keeping BOTH variable representations (Preserve-Working-Code).
+  ///
+  /// A genuinely writerless **imported reader** ([allocateImportedReader]: a
+  /// RoTag cell whose content is a [VariableEntry]) keeps its suspended goals
+  /// in `VariableEntry.suspensions`, which are drained ONLY by
+  /// [bindImportedReader]. A local writer binds via [bindVariable]. The madGLP
+  /// assignment ingress (`handleMadAssignment`) MUST route value arrivals
+  /// through this single seam so a guard suspended on an imported reader
+  /// reactivates exactly once when its value arrives (FR-051), instead of
+  /// staying permanently un-woken because `bindVariable` never touches
+  /// `VariableEntry.suspensions`. Only an *unbound* imported reader (content is
+  /// a `VariableEntry`) is routed here; every other address (local writer, or a
+  /// reader already bound via [bindImportedReader]) takes the existing path.
+  List<GoalRef> bindAny(int addr, Term value) {
+    if (addr >= 0 && addr < cells.length) {
+      final cell = cells[addr];
+      if (cell.tag == CellTag.RoTag && cell.content is VariableEntry) {
+        // Unbound imported reader → drain its VariableEntry.suspensions.
+        return bindImportedReader(addr, value, cell.content as VariableEntry);
+      }
+    }
+    // Local writer (or any non-imported-reader address) → existing path.
+    return bindVariable(addr, value);
+  }
+
   /// Bind variable to constant
   List<GoalRef> bindVariableConst(int writerAddr, Object? v) {
     return bindWriter(writerAddr, ConstTerm(v));

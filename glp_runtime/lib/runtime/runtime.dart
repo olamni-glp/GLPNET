@@ -9,6 +9,7 @@ import 'abandon.dart';
 import 'fairness.dart';
 import 'system_predicates.dart';
 import 'body_kernels.dart';
+import 'inbound_pump.dart';
 import 'package:glp_runtime/bytecode/runner.dart' show CallEnv, BytecodeRunner;
 import 'package:glp_runtime/runtime/glp_activation.dart' show GlpChannelHandle;
 
@@ -72,6 +73,12 @@ class GlpRuntime {
   // Output callback for '_output'/1 kernel.
   // If set, called instead of print(). Used by tests and Flutter UI.
   void Function(String)? outputCallback;
+
+  /// Inbound-pump seam (feature 025, Option B). When set (by the link layer on
+  /// first link setup), the engine's run-to-quiescence driver services inbound
+  /// link frames on the runner thread until no link is live. Null for ordinary
+  /// non-link runs — the driver loop is then skipped, leaving behaviour unchanged.
+  IInboundPump? inboundPump;
 
   /// Check if a goal has a pending wait and if the timer has fired
   /// Returns null if no wait state, true if timer fired, false if still waiting

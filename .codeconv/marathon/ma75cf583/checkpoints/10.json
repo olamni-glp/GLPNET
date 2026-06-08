@@ -1,0 +1,30 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 0,
+  "completed_units": [
+    "Phase 0 (T002/T003/T004) committed + PUSHED (64d3813f, ed3892e6, 448e4eb5)",
+    "T010 (atom/1 = string/1 synonym) committed 183225c8",
+    "T011 (@< @> @=< @>= standard-order term comparison) committed 4c84f9eb",
+    "Link Phases A+B+C (C#): kernels in C# REPL boot; TcpTransport 127.0.0.1; 99 xUnit + 4/4 two-process TCP; examples bidirectional(88e6d4e4) + fault-monitor/close(76823e48)",
+    "Core runner deref-conflation fix (Dart+C# 8af18c3a)",
+    "Sibling propagation: deref fix merged to olamni-glp/GLP main 8a5aa8f6 (494/495 known-AOT-only)",
+    "Phase D layer 1 (Workflow wf_509ad026-971): Dart mirror of seam+reliability+transports -> glp_runtime/lib/link/ (21 files; dart analyze CLEAN; CRC 0xCBF43926 + frame Version/HeaderSize/offsets verified byte-identical to C#)"
+  ],
+  "created_at": "2026-06-08T15:56:45.303000+00:00",
+  "id": 298,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "Phase D layer 2: link_terms + registries + handle + runtime + egress + faults + teardown + establish + 7 kernels + link_kernels + pump (Dart; deep-deref + quote-strip fixes)",
+    "Phase D core: null-guarded inbound-pump seam in Dart engine + async-scheduler drain (approved gate 133) + boot wiring in bin/glp_repl.dart",
+    "GATE D: Dart REPL loads link.glp + two-process Dart<->Dart == baseline; cross-runtime Dart<->C# byte-identical (FR-060/061)",
+    "Phase E: full regression both runtimes; pass/fail matrix",
+    "buildkit-codexreview iterate-to-convergence",
+    "Ship via buildkit GitFlow + new CalVer release on main (SEPARATE explicit pause)",
+    "Pre-link guard units T012/T013 \u2014 status unverified, not in this session's directive"
+  ],
+  "sequence_no": 10,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "Phase D layer 2 \u2014 link_terms + 7 kernels + pump/establish + null-guarded core inbound-pump seam + boot wiring",
+  "workflow_run_id": "wf_509ad026-971"
+}

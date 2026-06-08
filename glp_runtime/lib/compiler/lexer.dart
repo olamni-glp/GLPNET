@@ -58,7 +58,30 @@ class Lexer {
       case '~': return _makeToken(TokenType.TILDE, startLine, startColumn);
       case '#': return _makeToken(TokenType.HASH, startLine, startColumn);
       case '\\': return _makeToken(TokenType.BACKSLASH, startLine, startColumn);
-      case '@': return _makeToken(TokenType.AT, startLine, startColumn);
+      case '@':
+        // Standard-order term-comparison guards (T011/FR-037): @< @> @>= @=<.
+        // `@` followed by anything else stays a bare AT — the Goal@Agent
+        // isolate-spawn operator (Agent never starts with </>/=).
+        if (_match('<')) {
+          final lexeme = source.substring(_current - 2, _current);
+          return Token(TokenType.AT_LESS, lexeme, startLine, startColumn);
+        }
+        if (_match('>')) {
+          if (_match('=')) {
+            final lexeme = source.substring(_current - 3, _current);
+            return Token(TokenType.AT_GREATER_EQUAL, lexeme, startLine, startColumn);
+          }
+          final lexeme = source.substring(_current - 2, _current);
+          return Token(TokenType.AT_GREATER, lexeme, startLine, startColumn);
+        }
+        if (_match('=')) {
+          if (_match('<')) {
+            final lexeme = source.substring(_current - 3, _current);
+            return Token(TokenType.AT_LESS_EQUAL, lexeme, startLine, startColumn);
+          }
+          throw CompileError('Expected "<" after "@=" (the @=< guard)', startLine, startColumn, phase: 'lexer');
+        }
+        return _makeToken(TokenType.AT, startLine, startColumn);
 
       // Arithmetic operators
       case '+': return _makeToken(TokenType.PLUS, startLine, startColumn);

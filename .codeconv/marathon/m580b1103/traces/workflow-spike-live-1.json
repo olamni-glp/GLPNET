@@ -1,0 +1,44 @@
+{
+  "created_at": "2026-06-06T10:32:11.681695+00:00",
+  "decision": "accept",
+  "experiment_input": {
+    "budget_trace": [
+      [
+        2,
+        101954
+      ],
+      [
+        3,
+        101958
+      ]
+    ],
+    "cached_prefix": [
+      0,
+      1
+    ],
+    "first_reexecuted_step": 2,
+    "reexecuted": [
+      2,
+      3
+    ],
+    "run_a_id": "wf_30f38c83-53a",
+    "run_b_id": "wf_30f38c83-53a",
+    "steps_a": [
+      "scaffold",
+      "analyze",
+      "plan",
+      "emit"
+    ],
+    "steps_b": [
+      "scaffold",
+      "analyze",
+      "plan_v2",
+      "emit"
+    ]
+  },
+  "id": 1,
+  "marathon_id": "m580b1103",
+  "metric_score": 0.5,
+  "refine_seq": 1,
+  "subject": "workflow-spike-live"
+}

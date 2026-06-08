@@ -687,7 +687,11 @@ class Parser {
     if (_check(TokenType.LESS) || _check(TokenType.GREATER) ||
         _check(TokenType.LESS_EQUAL) || _check(TokenType.GREATER_EQUAL) ||
         _check(TokenType.EQUALS) || _check(TokenType.ARITH_EQUAL) ||
-        _check(TokenType.ARITH_NOT_EQUAL) || _check(TokenType.GROUND_EQUAL)) {
+        _check(TokenType.ARITH_NOT_EQUAL) || _check(TokenType.GROUND_EQUAL) ||
+        // Standard-order term-comparison guards (T011/FR-037): @< @> @=< @>=.
+        // The transform below reuses opToken.lexeme as the functor → @<(L,R).
+        _check(TokenType.AT_LESS) || _check(TokenType.AT_GREATER) ||
+        _check(TokenType.AT_LESS_EQUAL) || _check(TokenType.AT_GREATER_EQUAL)) {
       final opToken = _advance();
       final right = _parseExpression(6);
 
@@ -1633,6 +1637,14 @@ class Parser {
       nameToken = _advance();
     } else if (_check(TokenType.GROUND_EQUAL)) {
       nameToken = _advance();
+    } else if (_check(TokenType.AT_LESS)) {
+      nameToken = _advance(); // @< (T011/FR-037)
+    } else if (_check(TokenType.AT_GREATER)) {
+      nameToken = _advance(); // @>
+    } else if (_check(TokenType.AT_LESS_EQUAL)) {
+      nameToken = _advance(); // @=<
+    } else if (_check(TokenType.AT_GREATER_EQUAL)) {
+      nameToken = _advance(); // @>=
     } else if (_check(TokenType.EQUALS)) {
       nameToken = _advance();
     } else if (_check(TokenType.UNIV)) {

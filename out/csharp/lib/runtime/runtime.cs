@@ -121,6 +121,14 @@ public class GlpRuntimeEngine
     public object? MadContext { get; set; }
 
     /// <summary>
+    /// Inbound-pump seam (feature 025, Option B). When set (by the link layer on
+    /// first link setup), the engine's run-to-quiescence driver services inbound
+    /// link frames on the runner thread until no link is live. Null for ordinary
+    /// non-link runs — the driver loop is then skipped, leaving behaviour unchanged.
+    /// </summary>
+    public IInboundPump? InboundPump { get; set; }
+
+    /// <summary>
     /// Output callback for '_output'/1 kernel.
     /// If set, called instead of Console.WriteLine(). Used by tests and Flutter UI.
     /// </summary>

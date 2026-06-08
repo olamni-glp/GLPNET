@@ -76,3 +76,54 @@ def test_resume_cold_start_is_not_found(marathon_fallback_store) -> None:
     from codeconv.marathon.checkpoint import resume
 
     assert resume(store, m.id).found is False
+
+
+def test_resume_flags_commit_push_pending_on_crash(marathon_fallback_store) -> None:
+    """FR-014/SC-010 crash window: a completed block (final checkpoint, no
+    remaining) whose commit/push never landed is flagged ``commit_push_pending``
+    so the skill re-drives commit+push on resume instead of skipping it."""
+    store = marathon_fallback_store
+    m, b = make_marathon(store, slug="cppend")
+    store.write_checkpoint(
+        b.id,
+        stage="plan",
+        wip_unit=None,
+        completed_units=["u1", "u2"],
+        remaining_units=[],
+        workflow_run_id="wf_x",
+        budget_spent=2,
+    )
+
+    from codeconv.marathon.checkpoint import resume
+
+    rep = resume(store, m.id)
+    assert rep.block_complete is True
+    assert rep.commit_push_pending is True  # no git_blocks record → crash pre-commit
+
+
+def test_resume_no_pending_after_successful_push(marathon_fallback_store) -> None:
+    """A completed block whose commit was pushed is NOT flagged pending."""
+    store = marathon_fallback_store
+    m, b = make_marathon(store, slug="cpdone")
+    store.write_checkpoint(
+        b.id,
+        stage="plan",
+        wip_unit=None,
+        completed_units=["u1"],
+        remaining_units=[],
+        workflow_run_id="wf_y",
+        budget_spent=1,
+    )
+    # Record a committed + pushed git block for this block (JSON mirror).
+    from codeconv.marathon.gitblock import _record_git_block, _update_git_block_push
+
+    _record_git_block(
+        store, b.id, commit_sha="abc123", staged_files=["f.py"], pushed=False
+    )
+    _update_git_block_push(store, b.id, pushed=True, escalation=None)
+
+    from codeconv.marathon.checkpoint import resume
+
+    rep = resume(store, m.id)
+    assert rep.block_complete is True
+    assert rep.commit_push_pending is False

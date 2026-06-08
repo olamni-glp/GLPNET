@@ -1,0 +1,12 @@
+{
+  "auto_mode": false,
+  "budget_ceiling": null,
+  "budget_spent": 0,
+  "created_at": "2026-06-06T10:32:11.678376+00:00",
+  "feature_branch": "marathon-harness-hardening",
+  "feature_slug": "marathon-harness-verify",
+  "id": "m580b1103",
+  "preauth_commit_push": false,
+  "preauth_revoked_at": null,
+  "preauth_workflow_optin": false
+}

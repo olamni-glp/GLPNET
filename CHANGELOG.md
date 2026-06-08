@@ -89,6 +89,72 @@
 
 ## [Unreleased]
 
+## [v2026.06.08.1] - 2026-06-08
+
+### Added
+- GATE D Dart<->Dart 8/8 green — path-B listen-driver fix + clean link shutdown
+- Phase D layer 2 complete — async-aware link establish + 7 kernels + boot + engine async pump-driver
+- Phase D layer 1 — Dart mirror of link seam+reliability+transports
+- WORKING two-process producer/consumer over real TCP (C# REPL x2, 127.0.0.1) - Got=[10,20,30] byte-identical. Fixes: TcpTransport connect-retry (timing-independent rendezvous) + LinkTerms.Unquote (GLP string constants carry quotes by design for type-checker string-vs-atom; kernels must strip for host interop - xUnit used bare ConstTerms, hiding it). pc.glp role-boot demo (T037)
+- relocate link types+wrappers link.glp -> root self.glp (Gabi-approved A, callable universally like send/receive) + deep-deref kernels for real compiler terms (LinkTerms.GroundResolve across all 7 kernels; xUnit used ground ConstTerms, hiding the nested-VarRef bug); Dart baseline 524/525, 99 xUnit, wrapper->kernel chain proven on C# REPL
+- T038 wire link kernels into C# REPL boot (exe composition-root hook -> LinkKernels.Install + register TcpTransport/LoopbackTransport) + TcpTransport (raw TCP/IPv4 localhost, first real cross-process leaf) + C# builtinProcedures mirror; link.glp loads on C# REPL; 99/99 xUnit
+- T036 programs/lib/link.glp - link-layer types + 12 GLP wrappers over the host kernels (H1/H2/H3/M1 mode fixes applied); register 7 ratified link kernels in type-checker builtinProcedures allowlist; loads clean via dart REPL, baseline 524/525 unchanged
+- T035 link_close - '_link_close'/2 + graceful [] close converge on LinkTeardown core (emit closed(LinkId,Reason) on every monitor + end-stream + CloseAsync + live T024 GC via LinkRuntime.Reclaimer); data path untouched (FR-024/044); 95/95 xUnit
+- T034 per-link fault monitor - '_link_monitor'/2 + LinkFaults fan-out core + LinkHandle.MonitorCursors + pump OnFault->inbox delivery; fault = bound term on per-link stream (never 4th verdict/never Fail; FR-008/043-046); 85/85 xUnit
+- T033 path-B handshake (Option A) - request/listen/accept kernels + explicit request_listener + rendezvous term; shared LinkEstablish core converges all paths on T030 registry (FR-002/R-5); 79/79 xUnit
+- T031 '_link_send'/3 kernel + shared LinkEgress ground-relay ship (LinkId face backs out_relay/3; deep ground-resolve gate; 72/72 xUnit)
+- T030 '_link_setup'/5 kernel + Option-B LinkPump (setup/egress/ingress wiring over loopback; idempotent-at-identity; 66/66 xUnit)
+- Option-B inbound-pump seam (IInboundPump + engine.InboundPump + run-to-quiescence driver loop in both goal paths); null-guarded = zero change for non-link runs; out/csharp builds clean, glp_link.tests 62/62
+- T030 infra - LinkTerms mapping + TransportRegistry + idempotent LinkRegistry + LinkHandle (FR-007/013); 62/62 xUnit green
+- T026 deterministic loopback transport + full Phase-2-stack round-trip test (FR-002/004/018/020); Phase 2 complete, 52/52 xUnit green
+- T025 bounded backpressure SendWindow N=8 (FR-025); 44/44 xUnit green
+- T024 distributed GC framework - LinkReclaimer + ResourceSnapshot (FR-024); 36/36 xUnit green
+- T023 epoch/fencing token split-brain defense (FR-047); 30/30 xUnit green
+- T022 per-link sequence/dedup + FIFO + reorder buffer (FR-020/023/053); 22/22 xUnit green
+- T021 wire format - version+length/CRC32+fragmentation/reassembly+cycle-guard (FR-022); 15 xUnit tests green
+- T020 LinkTransport seam (ILinkTransport/ILinkEndpoint + value types) in clobber-safe csharp/glp_link/ (FR-058); T002-T004 bookkeeping
+- FR-037/SC-006 @< @> @=< @>= standard-order term-comparison guards (lexer+parser+runner _compareTerms+analyzer+prelude+self.glp; Dart + C# mirror; Section A24f tests)
+- FR-033/SC-005 atom/1 guard = string/1 synonym (runner arm + prelude reg + self.glp decl + C# mirror + Section A24d/e tests)
+
+### Fixed
+- codexreview cycle 1 — loopback cancel busy-loop + _rendezvous socket leak + clean recv-loop teardown
+- LinkTerms.ToTerm re-quotes string components + path-B example
+- core runner heap-addr/register-index deref conflation (Dart + C# mirror)
+- FR-035/SC-009 imported-reader reactivation via bindAny ingress seam (heap_fcp.dart + mad_context wiring + C# mirror + regression test)
+- FR-034/SC-009 compound-operand guard suspends on nested unbound reader (runner.dart generic-guard recursion + C# mirror + Section A24b/c regression test)
+- FR-021/SC-008 redelivered madGLP assignment is a verified no-op (mad_context Dart + C# mirror + regression test)
+- harden marathon harness pre-marathon (rerun runId echo, resume commit/push crash guard, budget-halt escalation, live-spike recorder)
+
+### Changed
+- Merge pull request #27 from olamni-glp/025-multi-protocol-link-layer
+- codexreview cycle 1 — per-peer timeout guard on link harnesses (fail-fast, never hang the gate)
+- marathon status checkpoint row 100 (GATE D + cross-runtime green)
+- cross-runtime Dart<->C# link rig — 16/16 both directions (release gate T042/T081)
+- persistent-embeddable-engine epic dossier (REPL/engine separation)
+- wip(025): Phase D async-correctness fixes — Dart<->Dart 6/8 two-process GATE-D green
+- wip(025): Phase D layer 2 partial — link primitives infra+glue + null-guarded core inbound-pump seam
+- fault-monitor + graceful-close two-process link example (FR-008/044)
+- bidirectional (FR-003) + link_recv-chain two-process link examples
+- checkpoint WIP — requirements edit, design dossier (docx/pdf), transport-runtime-feasibility research, buildkit-codexreview skill, marathon harness state
+- refresh restart resume pointers - CURRENT STATUS block in runtime-integration-plan.md (Phase A/B done, Phase C 4/4 two-process examples + driver, next = link_recv-chain debug -> monitor/path-B/bidir -> Dart mirror -> regression); tasks.md points to it
+- add link_send/3 wrapper producer (producer_ls) to pc.glp + driver - 4/4 two-process examples PASS (integers, strings, compound terms, link_send wrapper over real TCP). Isolated: explicit link_recv-chain consumer has a separate runtime issue (link_recv alone suspends correctly; the 3-recv concurrent-body variant fails) - next debug batch
+- scripted 2-process real-TCP link integration driver (test/link/run_link_tests.sh) + pc.glp integer/string/compound-term producers; 3/3 PASS over 127.0.0.1 (Got byte-identical to produced values); results captured to test/link/results/
+- T032 recv-ingress contract proof (suspend/reactivate-once/dup-no-op/reorder on the T030+T022 ingress; link_recv composable; 76/76 xUnit)
+- resume pointer + T030 status (infra+Option-B done, kernel next); marathon-checkpoint-stale caveat
+- inbound-pump + isolate_manager design reference (md/docx/pdf) + Option-B decision record
+- T013 FR-032 consolidate guards-reference.md as single authoritative guard spec (fold in @< @> @=< @>= standard-order family + atom/1=string synonym + decline == \== \= reader/1 with canonical forms; =\= unchanged; nested-compound suspend note)
+- T012 FR-033/036/037/038 guard three-valued + decline + =\= regression (@< & atom reactivate-exactly-once Section A24g; =\= untouched A24h; declines == \== \= reader/1 rejected Section C; @< & atom SRSW-relaxation Section B; +13 checks, suite 524/525)
+- correct exemplar GLP per REPL-verified canonical forms (channel-head modes, send-shape, output-holes, bare-_ singletons, body-= -> head-construct, Fault/Link types); add adversarial GLP review (2 passes) + canonical-forms card
+- plan block - plan/tasks/analyze + design dossier, contracts, per-transport tutorials, integration-harness + coverage matrix (gate ruled: 9 primitives + guard set + 3 core fixes)
+- clarify block — resolve peer-id ordering (ruling B: compound/totally-ordered, @</@> family in scope)
+- specify block - spec.md (67 FR/17 SC/4 stories) + requirements checklist
+- Merge pull request #26 from olamni-glp/marathon-harness-hardening
+- lock B2/B3/G rulings — C#-first reference, base-primitives-before-glink, keep+implement comparison-guards, keep BLE BIS, cross-runtime Dart<->C#
+- B2/B3/G decision doc + 18-source provenanced corpus (multi-protocol-link-layer design study)
+- end-to-end marathon kickoff prompt for multi-protocol-link-layer (fresh-session launch template)
+- SKILL.md — honor rerun workflow_run_id (resumeFromRunId) + resume commit_push_pending crash-window on resume
+- Merge pull request #25 from olamni-glp/main
+
 ## [v2026.06.05.1] - 2026-06-05
 
 ### Added

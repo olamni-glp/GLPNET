@@ -53,6 +53,11 @@ enum TokenType {
   HASH,           // # (module operator: Module # Goal)
   BACKSLASH,      // \ (difference list operator: H\T)
   AT,             // @ (isolate spawn operator: Goal@Agent)
+  // Standard-order term-comparison guards (T011/FR-037): @< @> @=< @>=
+  AT_LESS,          // @<
+  AT_GREATER,       // @>
+  AT_LESS_EQUAL,    // @=<
+  AT_GREATER_EQUAL, // @>=
 
   // Type declarations
   COLONCOLONEQ,   // ::= (type definition)

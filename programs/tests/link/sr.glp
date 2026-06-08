@@ -1,0 +1,25 @@
+% sr.glp — explicit link_recv-chain consumer (feature 025 debug, step 1).
+% Where pc.glp's consume_link walks the inbound stream recursively, this consumer
+% receives exactly 3 values via three threaded link_recv/3 calls (Link→Link1→Link2),
+% collecting them in the [A?, B?, C?] head. Pairs with pc.glp's producer (10,20,30
+% over tcp 127.0.0.1:9100). The last link_recv discards its threaded channel (anon _);
+% the consumer sends nothing, so its outbound is never closed (unused reverse path).
+-mode(system).
+
+procedure main_sr(AgentId?, Stream(_)).
+main_sr(Me, [A?, B?, C?]) :- Me? =?= consumer |
+    server_listener(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    link_recv(A, Link?, Link1),
+    link_recv(B, Link1?, Link2),
+    link_recv(C, Link2?, _).
+main_sr(Me, []) :- Me? =?= producer |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    produce_sr(Link?, [10, 20, 30]).
+
+% Producer side (self-contained so the two-process driver can load one file for both
+% roles): ship the values onto the outbound stream, then graceful-close ([]).
+procedure produce_sr(Link(_, _)?, Stream(_)?).
+produce_sr(ch(_, Out?), Vals) :- produce_s(Vals?, Out).
+procedure produce_s(Stream(_)?, Stream(_)).
+produce_s([V|Vs], [V?|Out?]) :- ground(V?) | produce_s(Vs?, Out).
+produce_s([], []).

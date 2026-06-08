@@ -53,6 +53,7 @@ public static class Prelude
         "integer",
         "number",
         "string",
+        "atom", // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string`
         "constant",
         "compound",
         "tuple",
@@ -74,6 +75,11 @@ public static class Prelude
         ">=",
         "=:=",
         "=\\=",
+        // Standard-order term comparison (T011/FR-037, OQ-G1)
+        "@<",
+        "@>",
+        "@=<",
+        "@>=",
         // Equality (fundamental)
         "=?=",
         // Univ operations (fundamental)
@@ -108,6 +114,7 @@ public static class Prelude
         "integer/1",
         "number/1",
         "string/1",
+        "atom/1", // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string/1`
         "constant/1",
         "compound/1",
         "tuple/1",
@@ -129,6 +136,11 @@ public static class Prelude
         ">=/2",
         "=:=/2",
         "=\\=/2",
+        // Standard-order term comparison (T011/FR-037, OQ-G1)
+        "@</2",
+        "@>/2",
+        "@=</2",
+        "@>=/2",
         // Structural equality guard
         "=?=/2",
         // Univ operations
@@ -143,6 +155,15 @@ public static class Prelude
         "_send/3",
         // Output (system predicate)
         "_output/1",
+        // Link-layer host kernels (feature 025; ratified rulings-log OQ-A4/C1/C2). C# mirror of
+        // the Dart prelude.dart allowlist — host-implemented (csharp/glp_link), no GLP clauses.
+        "_link_setup/5",
+        "_link_send/3",
+        "_link_request/5",
+        "_link_listen/3",
+        "_link_accept/5",
+        "_link_monitor/2",
+        "_link_close/2",
     }.ToFrozenSet();
 
     /// <summary>Check if a type name is predefined.</summary>

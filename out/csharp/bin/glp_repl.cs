@@ -35,6 +35,18 @@ public static class Program
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
     /// <summary>
+    /// Composition-root seam (feature 025): invoked once, right after the REPL constructs its
+    /// <see cref="GlpEngine"/>, so an outer host can install host kernels + register transports
+    /// on the live engine. The link layer lives in the hand-authored <c>GlpLink</c> package, which
+    /// DEPENDS ON this library — so the dependency must flow exe → (GlpLink + glp_runtime_net), and
+    /// the library cannot reference GlpLink directly (a cycle). The exe (glp_repl/Program.cs) sets
+    /// this hook to call <c>LinkKernels.Install(engine.Runtime)</c> + register <c>TcpTransport</c>/
+    /// <c>LoopbackTransport</c>. Null for every other host (tests, the feature-020 oracle), so those
+    /// runs are byte-for-byte unchanged.
+    /// </summary>
+    public static Action<GlpEngine>? AfterEngineCreated;
+
+    /// <summary>
     /// Resolve the absolute path to programs/self.glp by walking up from
     /// AppContext.BaseDirectory until an ancestor directory contains
     /// programs/self.glp. This ports the Dart bin/glp_repl.dart
@@ -111,6 +123,7 @@ public static class Program
         var rootSelfGlpPath = ResolveRootSelfGlpPath();
 
         var engine = new GlpEngine(rootSelfGlpPath);
+        AfterEngineCreated?.Invoke(engine); // feature 025: outer host installs link kernels + transports
         Console.WriteLine($"Loaded root self.glp from: {rootSelfGlpPath}");
         Console.WriteLine();
 

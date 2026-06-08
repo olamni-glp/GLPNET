@@ -35,6 +35,7 @@ const Set<String> predefinedProcedureNames = {
   'integer',
   'number',
   'string',
+  'atom', // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string`
   'constant',
   'compound',
   'tuple',
@@ -56,6 +57,11 @@ const Set<String> predefinedProcedureNames = {
   '>=',
   '=:=',
   '=\\=',
+  // Standard-order term comparison (T011/FR-037, OQ-G1)
+  '@<',
+  '@>',
+  '@=<',
+  '@>=',
   // Equality (fundamental)
   '=?=',
   // Univ operations (fundamental)
@@ -84,6 +90,7 @@ const Set<String> builtinProcedures = {
   'integer/1',
   'number/1',
   'string/1',
+  'atom/1', // FR-033/SC-005 (OQ-G3): paper-kernel synonym of `string/1`
   'constant/1',
   'compound/1',
   'tuple/1',
@@ -105,6 +112,11 @@ const Set<String> builtinProcedures = {
   '>=/2',
   '=:=/2',
   '=\\=/2',
+  // Standard-order term comparison (T011/FR-037, OQ-G1)
+  '@</2',
+  '@>/2',
+  '@=</2',
+  '@>=/2',
   // Structural equality guard
   '=?=/2',
   // Univ operations
@@ -119,6 +131,16 @@ const Set<String> builtinProcedures = {
   '_send/3',
   // Output (system predicate)
   '_output/1',
+  // Link-layer host kernels (feature 025; ratified rulings-log OQ-A4/C1/C2). NEW approved
+  // system predicates — host-implemented (csharp/glp_link; Dart mirror later), no GLP clauses.
+  // Registered here so programs/lib/link.glp's wrappers type-check (same mechanism as atom/@<).
+  '_link_setup/5',
+  '_link_send/3',
+  '_link_request/5',
+  '_link_listen/3',
+  '_link_accept/5',
+  '_link_monitor/2',
+  '_link_close/2',
 };
 
 /// Check if a type name is predefined

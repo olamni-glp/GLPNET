@@ -167,3 +167,77 @@ def test_failure_history_is_append_only(marathon_fallback_store) -> None:
     assert len(history) == 2  # both attempts retained
     assert history[0].completed_units == []  # the failed attempt
     assert history[1].completed_units == ["x"]  # the eventual success
+
+
+def test_rerun_echoes_workflow_run_id_for_resume(marathon_fallback_store) -> None:
+    """FR-009: rerun_subagent + rerun_block echo the block's Workflow runId so
+    the skill can pass it as ``resumeFromRunId`` (siblings stay cached, the
+    failed unit is the changed step). Without this the skill loses the cached
+    prefix and re-burns budget."""
+    store = marathon_fallback_store
+    _m, b = make_marathon(store, slug="rerunrunid")
+    store.write_checkpoint(
+        b.id,
+        stage="implement",
+        wip_unit="c",
+        completed_units=["a", "b"],
+        remaining_units=["c"],
+        workflow_run_id="wf_run_live",
+        budget_spent=3,
+    )
+
+    from codeconv.marathon.orchestrate import rerun_block, rerun_subagent
+
+    assert rerun_subagent(store, b.id, "c")["workflow_run_id"] == "wf_run_live"
+    assert rerun_block(store, b.id)["workflow_run_id"] == "wf_run_live"
+
+
+def test_rerun_subagent_run_id_not_leaked_from_sibling_block(
+    marathon_fallback_store,
+) -> None:
+    """The echoed runId must be THIS block's — never a later sibling block's
+    (mirrors the ``untouched`` guard): read_position returns the marathon-wide
+    max-seq checkpoint, which may belong to a sibling."""
+    store = marathon_fallback_store
+    m, b1 = make_marathon(store, slug="rerunrunidsib", stage="plan", ordinal=1)
+    store.write_checkpoint(
+        b1.id,
+        stage="plan",
+        wip_unit="c",
+        completed_units=["a"],
+        remaining_units=["c"],
+        workflow_run_id="wf_b1",
+        budget_spent=1,
+    )
+    from codeconv.marathon.cadence import (
+        block_id,
+        block_kind_for_stage,
+        canonical_stage,
+    )
+    from codeconv.marathon.models import StageBlock
+
+    b2 = store.upsert_block(
+        StageBlock(
+            id=block_id(m.id, "implement", 2),
+            marathon_id=m.id,
+            stage=canonical_stage("implement"),
+            block_kind=block_kind_for_stage("implement"),
+            ordinal=2,
+            status="running",
+        )
+    )
+    store.write_checkpoint(
+        b2.id,
+        stage="implement",
+        wip_unit=None,
+        completed_units=["x"],
+        remaining_units=[],
+        workflow_run_id="wf_b2",
+        budget_spent=2,
+    )
+
+    from codeconv.marathon.orchestrate import rerun_subagent
+
+    res = rerun_subagent(store, b1.id, "c")
+    assert res["workflow_run_id"] is None  # read_position points at b2, not b1
+    assert res["untouched"] == []  # and never leaks b2's units

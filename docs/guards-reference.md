@@ -1,6 +1,15 @@
 # GLP Guards Quick Reference
 
-**Last Updated**: 2026-03-06
+**Last Updated**: 2026-06-07
+
+> **Single authoritative guard spec (FR-032).** This is the one normative reference
+> for the GLP guard set — additions, fixes, and declines are folded in here, not
+> duplicated elsewhere. Feature 025 (multi-protocol link layer) folded in the
+> standard-order term-comparison family `@< @> @=< @>=` (T011/FR-037), the
+> `atom/1` type guard (T010/FR-033), and the explicit **declines** of `==`, `\==`,
+> `\=`, and `reader/1` (FR-036). The arithmetic disequality guard `=\=` is
+> unchanged (FR-038). The contract `specs/025-multi-protocol-link-layer/contracts/guards.md`
+> references this file; it does not restate it.
 
 ---
 
@@ -23,6 +32,8 @@ Guards are pure tests with **three-valued semantics** (success/suspend/fail) tha
 - **Success**: Guard condition definitively true → continue to next guard or body
 - **Suspend**: Unbound variables present, success possible → add to suspension set Si
 - **Fail**: Guard condition definitively false → try next clause
+
+**Unbound reader vs writer**: an unbound **reader** operand causes **suspend** (wait for the paired writer; reactivate exactly once on bind); an unbound **writer** operand causes **fail** (SRSW: no paired reader can ever supply the value). This holds whether the unbound reader is at top level **or nested inside a compound operand** — e.g. `f(a, X?)` with `X?` unbound suspends, it does not fail (FR-034). Across a link, an un-arrived remote value behaves as a local unbound reader → suspend, never spurious fail.
 
 **Key Property**: Guards never have side effects and execute during HEAD/GUARDS phase (before commit).
 
@@ -52,6 +63,7 @@ These guards can be negated with `~`:
 | `integer(X?)` | Test for integer type | `~integer(X?)` succeeds if X is not an integer |
 | `number(X?)` | Test for numeric type | `~number(X?)` succeeds if X is not a number |
 | `string(X?)` | Test for string type | `~string(X?)` succeeds if X is not a string |
+| `atom(X?)` | Test for atom (synonym of `string`) | `~atom(X?)` succeeds if X is not an atom |
 | `constant(X?)` | Test for constant | `~constant(X?)` succeeds if X is not a constant |
 | `compound(X?)` | Test for compound term | `~compound(X?)` succeeds if X is not compound |
 | `list(X?)` | Test for list type | `~list(X?)` succeeds if X is not a list |
@@ -68,6 +80,7 @@ These guards cannot be negated (due to type-error semantics or special behavior)
 |-------|--------|
 | `<`, `>`, `=<`, `>=` | Type error on non-numeric operands |
 | `=:=`, `=\=` | Type error on non-numeric operands |
+| `@<`, `@>`, `@=<`, `@>=` | Standard order defined only over ground terms; the natural complement of `@<` is `@>=` (and `@>`↔`@=<`), so negation is redundant and would invite a partial-order trap on non-ground operands |
 | `otherwise` | Special clause-ordering semantics |
 | `wait`, `wait_until` | Time-based control flow |
 
@@ -292,6 +305,7 @@ This is distinct from the multiple-occurrence relaxation below. Guard reader cou
 | ✅ `integer(X?)` | Yes | ✅ Yes |
 | ✅ `number(X?)` | Yes | ✅ Yes |
 | ✅ `string(X?)` | Yes | ✅ Yes |
+| ✅ `atom(X?)` | Yes | ✅ Yes |
 | ✅ `module(X?)` | Yes | ✅ Yes |
 | ✅ `X? < Y?` | Yes (both operands, when succeeds) | ✅ Yes |
 | ✅ `X? =< Y?` | Yes (both operands, when succeeds) | ✅ Yes |
@@ -299,6 +313,10 @@ This is distinct from the multiple-occurrence relaxation below. Guard reader cou
 | ✅ `X? >= Y?` | Yes (both operands, when succeeds) | ✅ Yes |
 | ✅ `X? =:= Y?` | Yes (both operands, when succeeds) | ✅ Yes |
 | ✅ `X? =\= Y?` | Yes (both operands, when succeeds) | ✅ Yes |
+| ✅ `X? @< Y?` | Yes (both operands, when succeeds) | ✅ Yes |
+| ✅ `X? @> Y?` | Yes (both operands, when succeeds) | ✅ Yes |
+| ✅ `X? @=< Y?` | Yes (both operands, when succeeds) | ✅ Yes |
+| ✅ `X? @>= Y?` | Yes (both operands, when succeeds) | ✅ Yes |
 | ✅ `compound(X?)` | **NO** | ❌ No |
 | ✅ `known(X?)` | **NO** | ❌ No |
 | ✅ `no_readers(X?)` | **NO** | ❌ No |
@@ -352,8 +370,9 @@ bad_example(X, Y1, Y2) :- known(X?) |
 The SRSW analyzer must:
 1. Track guards in HEAD/GUARDS phase
 2. Recognize guards that imply groundness:
-   - Type guards: `ground/1`, `integer/1`, `number/1`, `string/1`, `constant/1`
+   - Type guards: `ground/1`, `integer/1`, `number/1`, `string/1`, `atom/1`, `constant/1`
    - Arithmetic comparisons: `<`, `=<`, `>`, `>=`, `=:=`, `=\=`
+   - Standard-order term comparisons: `@<`, `@>`, `@=<`, `@>=`
 3. For variables with ground-guaranteeing guards:
    - Mark variable as "ground-certified" for this clause
    - Allow multiple occurrences of both writer and reader in clause
@@ -390,6 +409,26 @@ This feature enables essential concurrent patterns:
 ```prolog
 % Process string messages
 handle(X, Y) :- string(X?) | process_message(X?, Y).
+```
+
+---
+
+### ✅ `atom(X?)`
+**Test for atom — an EXACT synonym of `string(X?)`** (T010/FR-033)
+
+**Semantics** (identical to `string/1`):
+- Success: X? bound to a non-numeric atomic constant (e.g., `hello`, `foo`)
+- Suspend: X? is unbound reader
+- Fail: X? bound to number, compound term, or empty list
+
+**Note**: `atom/1` is the paper-kernel name; `string/1` is the glpnet name for the same runtime test. They are interchangeable (OQ-G3 RULED: exact synonyms). Like `string`, the empty list `[]` (internally `nil`) is NOT an atom, so `atom([])` fails. Before T010 the analyzer accepted and grounded `atom/1` and the partial evaluator folded it, but the runner had no arm, so any accepted input failed at runtime via the `[WARN] Unknown guard predicate` default; T010 added the runner arm so runtime matches the analyzer/PE.
+
+**SRSW Relaxation**: Yes. Atoms are ground by definition, so `atom(X?)` implies groundness and permits multiple occurrences (same as `string`).
+
+**Example**:
+```prolog
+% Process atom messages
+handle(X, Y) :- atom(X?) | process_message(X?, Y).
 ```
 
 ---
@@ -633,6 +672,64 @@ factorial(N, 1) :- integer(N?), N? =< 0 | true.
 - Fail: Both bound and not numerically equal
 
 **Note on `=\=`**: The arithmetic inequality guard `=\=` is **redundant** once guard negation (`~`) is implemented. It becomes equivalent to `~(X =:= Y)`. Use `~(X? =:= Y?)` for arithmetic inequality.
+
+---
+
+### ✅ `X @< Y`, `X @> Y`, `X @=< Y`, `X @>= Y`
+**Standard-order term comparison** (T011/FR-037)
+
+Total order over **ground terms** (the GLP standard order of terms), for use cases
+that order non-numeric compound peer-ids (leader election, sorted peer sets).
+Infix surface syntax `X? @< Y?` transforms to prefix `@<(X?, Y?)`, mirroring the
+arithmetic comparisons. Both operands are **readers** (a reader suspends patiently;
+a writer fails — see "Guard Arguments: Why Readers?").
+
+**The total order** (lowest → highest):
+
+1. **Number** < **String (atom)** < **compound**
+2. within numbers: by numeric value
+3. within strings: by code-point lexicographic order
+4. within compounds: by **arity**, then **functor name**, then **arguments left-to-right**
+
+Equality within the order coincides with `=?=`. `@=<` and `@>=` are the reflexive
+companions. The order is **stable across the Dart↔C# wire** (byte/behaviour-identical
+comparator, FR-060), so a verdict computed on one runtime holds on the other.
+
+**Semantics** (three-valued, over ground terms):
+- Success / Fail: both operands ground → per the order
+- Suspend: either operand an unbound reader — at top level **or nested inside a compound** — → suspend, reactivate exactly once on bind
+- Fail: either operand an unbound writer
+
+**SRSW Relaxation**: Yes. The order is defined only over ground terms, so success
+implies both operands are ground → ground-implying, exactly like the arithmetic
+comparisons; both operands may then occur multiply in the clause.
+
+**Non-Negatable**: the natural complement of `@<` is `@>=` (and `@>`↔`@=<`), so
+`~(@<)` is redundant and would invite a partial-order trap on non-ground operands.
+
+**Example**:
+```prolog
+% Elect the lower peer-id under the standard order (compound ids supported)
+elect(A, B, A?) :- A? @=< B? | true.
+elect(A, B, B?) :- otherwise  | true.
+```
+
+---
+
+## Declined Guards (NOT part of GLP — FR-036)
+
+The following are Tier-3 Prolog/ISO/FCP idioms deliberately **absent** from the GLP
+kernel. They are **declined**, not merely unimplemented: a clause using one in guard
+position is **rejected at load** (the first three are not GLP tokens → syntax error;
+`reader/1` is an undefined guard predicate → type error). Do not re-propose them — use
+the canonical GLP form instead.
+
+| Declined | Why declined | Canonical GLP form |
+|----------|--------------|--------------------|
+| `==` (term identity) | Redundant alias of `=?=` over ground terms | `X? =?= Y?` |
+| `\==` (term non-identity) | Redundant alias of `~(=?=)` | `~(X? =?= Y?)` |
+| `\=` (structural disequality) | Removed from GLP: ill-defined patiently over partial terms (a later bind can falsify a committed verdict) | `~(X? =?= Y?)` |
+| `reader/1` | **Non-monotonic** (succeeds on an unbound reader, then a later bind makes it false) → unsound across a link; violates the monotone-commit invariant | (none — do not introduce) |
 
 ---
 

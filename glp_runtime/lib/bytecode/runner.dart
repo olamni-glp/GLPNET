@@ -4124,8 +4124,15 @@ class BytecodeRunner {
     final unboundReaders = <int>{};
 
     Object? dereference(Object? t) {
-      // Resolve clauseVars first (same pattern as Execute fix)
-      if (t is VarRef && cx.clauseVars.containsKey(t.addr)) {
+      // Resolve clauseVars first (same pattern as Execute fix).
+      // BUT only when t.addr is a register index, NOT a live heap address: heap
+      // addresses (allocateVariable cells) and clause-var register indices share the
+      // int namespace, so a heap VarRef whose addr numerically collides with a
+      // populated head-structure temp register (X10, X11, ...) was wrongly resolved
+      // through clauseVars (returning the temp's structure) instead of dereferenced
+      // via the heap. A live reader/writer cell is always a genuine heap address.
+      if (t is VarRef && cx.clauseVars.containsKey(t.addr) &&
+          !cx.rt.heap.isReader(t.addr) && !cx.rt.heap.isWriter(t.addr)) {
         // Resolve clause variable index to actual heap addr
         final resolved = cx.clauseVars[t.addr];
         if (resolved is int) {
@@ -4177,8 +4184,17 @@ class BytecodeRunner {
           }
         }
       } else if (t is StructTerm) {
-        // Return structure as-is (don't evaluate arithmetic here)
-        // Guards like =:= will evaluate explicitly using evaluateNumeric
+        // FR-034/SC-009: a compound operand may hide a nested unbound reader
+        // (e.g. peer(Region, Id?) with Id? un-arrived from a remote bind).
+        // Recurse into the args so that reader is collected into
+        // `unboundReaders` → the generic guard gate SUSPENDS on it, instead of
+        // passing the struct through to be wrongly committed as a FAIL (a
+        // non-monotone wrong commit; _termsEqual returns false on the unbound
+        // inner reader). Mirrors the proven cycle-safe walker of the dedicated
+        // GroundEqual opcode (collectUnbound). The structure itself is still
+        // returned as-is — guards like =:= and the term comparators re-deref
+        // the args via their own visited-set machinery.
+        _collectUnboundReaders(t, cx, unboundReaders);
         return t;
       } else if (t is ConstTerm) {
         // CRITICAL FIX: Unwrap ConstTerm to get primitive value
@@ -4202,6 +4218,68 @@ class BytecodeRunner {
 
     final result = dereference(term);
     return (result, unboundReaders);
+  }
+
+  /// FR-034/SC-009: collect every unbound reader nested anywhere inside [term]
+  /// — compound args included — into [out]. Used by the generic guard path so a
+  /// nested un-arrived reader makes the guard SUSPEND (reactivate once on bind)
+  /// rather than wrongly commit a FAIL. A bound writer/reader recurses into its
+  /// value; an unbound reader is recorded; an unbound writer is left for the
+  /// comparator to FAIL on (verdict matrix: reader→suspend, writer→fail). The
+  /// address-keyed visited set guarantees termination on a cyclic compound
+  /// (FR-022 tie-in). Structural mirror of the dedicated GroundEqual opcode's
+  /// collectUnbound (the proven-correct dedicated path).
+  static void _collectUnboundReaders(
+      Object? term, RunnerContext cx, Set<int> out) {
+    final visited = <int>{};
+    void walk(Object? t) {
+      if (t is VarRef && cx.rt.heap.isWriter(t.addr)) {
+        final writerAddr = t.addr;
+        if (!visited.add(writerAddr)) return;
+        final sigmaBinding = cx.sigmaHat[writerAddr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (cx.rt.heap.isFullyBound(writerAddr)) {
+          walk(cx.rt.heap.getValue(writerAddr));
+        }
+        // Unbound writer: not a reader → not collected (comparator FAILs).
+      } else if (t is VarRef && cx.rt.heap.isReader(t.addr)) {
+        final readerAddr = t.addr;
+        if (!visited.add(readerAddr)) return;
+        final sigmaBinding = cx.sigmaHat[readerAddr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (!cx.rt.heap.isReaderBound(readerAddr)) {
+          out.add(readerAddr);
+        } else {
+          walk(cx.rt.heap.getReaderValue(readerAddr));
+        }
+      } else if (t is StructTerm) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is _TentativeStruct) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is int) {
+        if (!visited.add(t)) return;
+        final sigmaBinding = cx.sigmaHat[t];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (cx.rt.heap.isWriter(t)) {
+          if (cx.rt.heap.isFullyBound(t)) {
+            walk(cx.rt.heap.getValue(t));
+          }
+        } else if (!cx.rt.heap.isReaderBound(t)) {
+          out.add(t);
+        } else {
+          walk(cx.rt.heap.getReaderValue(t));
+        }
+      }
+      // Constants and other leaves contribute nothing.
+    }
+    walk(term);
   }
 
   /// Check if a functor is an arithmetic operator
@@ -4393,6 +4471,33 @@ class BytecodeRunner {
         }
         return GuardResult.failure;
 
+      // Standard-order term-comparison guards (T011/FR-037/SC-006, OQ-G1 RULED:
+      // Number < String < compound, then arity/functor/args; equality = =?=).
+      // Operands are already ground here — the generic gate suspends on an
+      // unbound reader (top-level OR nested-in-compound, after the T003 fix);
+      // an unbound writer falls through the comparator to FAIL. Non-negatable
+      // (OQ-G2): `~(@<)` is rejected by the SRSW analyzer.
+      case '@<':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) < 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@>':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) > 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@=<':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) <= 0
+            ? GuardResult.success
+            : GuardResult.failure;
+      case '@>=':
+        if (args.length < 2) return GuardResult.failure;
+        return _compareTerms(args[0], args[1], cx) >= 0
+            ? GuardResult.success
+            : GuardResult.failure;
+
       // Type guards
       case 'ground':
         // Already checked for unbound readers in caller
@@ -4413,6 +4518,15 @@ class BytecodeRunner {
         final val = getValue(args[0]);
         return (val is int) ? GuardResult.success : GuardResult.failure;
 
+      // FR-033/SC-005 (OQ-G3 RULED): `atom/1` is the paper-kernel name and an
+      // EXACT synonym of the runtime `string/1` test — a non-numeric atomic
+      // constant, excluding `[]`/`nil`. Stacked label so both share one body;
+      // closes the analyzer/PE↔runner divergence (analyzer already grounds
+      // `atom`, the PE folds it, but the runner previously had no arm → a
+      // wrongly-grounded input hit the `[WARN] Unknown guard predicate` default
+      // and FAILED at runtime). Suspension on an unbound reader is handled
+      // upstream by the generic gate (`atom` is not in the `unknown` exception).
+      case 'atom':
       case 'string':
         // Succeeds if X is a string (lowercase identifier or quoted string)
         if (args.isEmpty) return GuardResult.failure;
@@ -4784,6 +4898,117 @@ class BytecodeRunner {
 
     // Default: use Dart equality
     return a == b;
+  }
+
+  /// Standard-order rank of a ground leaf: Number(0) < String/atom(1) <
+  /// compound(2); any other ground leaf sorts last (3). (T011/FR-037, OQ-G1.)
+  static int _orderRank(Object? t) {
+    if (t is num) return 0;
+    if (t is String) return 1;
+    if (t is StructTerm) return 2;
+    return 3;
+  }
+
+  /// FR-037/SC-006 (OQ-G1 RULED): standard-order comparison of two GROUND terms,
+  /// returning -1 | 0 | 1. The total order is Number < String(atom) < compound;
+  /// within numbers by value, within strings by code-unit (code-point) order,
+  /// within compounds by arity, then functor name, then arguments left-to-right.
+  /// A result of 0 coincides with `=?=`. Mirrors `_termsEqual`'s VarRef-deref +
+  /// visited-set discipline (operands are ground — the generic gate suspends
+  /// otherwise — so every nested VarRef is bound; the visited set keeps a cyclic
+  /// term safe). MUST stay byte/behaviour-identical to the C# `_compareTerms`
+  /// (Dart↔C# wire stability, FR-060).
+  static int _compareTerms(Object? a, Object? b, RunnerContext cx,
+      [Set<(int, int)>? visited]) {
+    visited ??= <(int, int)>{};
+
+    // Unwrap ConstTerm to its primitive value.
+    if (a is ConstTerm) a = a.value;
+    if (b is ConstTerm) b = b.value;
+
+    // Dereference VarRefs (ground operands → bound), mirroring _termsEqual.
+    if (a is VarRef) {
+      final aAddr = a.addr;
+      Object? aDeref;
+      if (cx.rt.heap.isReader(aAddr)) {
+        final writerAddr = cx.rt.heap.tryWriterForReader(aAddr);
+        if (writerAddr != null && cx.sigmaHat.containsKey(writerAddr)) {
+          aDeref = cx.sigmaHat[writerAddr];
+        } else if (cx.rt.heap.isReaderBound(aAddr)) {
+          aDeref = cx.rt.heap.getReaderValue(aAddr);
+        } else {
+          return 0; // unbound (should not happen for a ground operand)
+        }
+      } else {
+        if (cx.sigmaHat.containsKey(aAddr)) {
+          aDeref = cx.sigmaHat[aAddr];
+        } else if (cx.rt.heap.isFullyBound(aAddr)) {
+          aDeref = cx.rt.heap.getValue(aAddr);
+        } else {
+          return 0;
+        }
+      }
+      if (b is VarRef) {
+        final pair = (aAddr, b.addr);
+        if (visited.contains(pair)) return 0; // cycle at corresponding positions
+        visited.add(pair);
+      }
+      return _compareTerms(aDeref, b, cx, visited);
+    }
+    if (b is VarRef) {
+      final bAddr = b.addr;
+      Object? bDeref;
+      if (cx.rt.heap.isReader(bAddr)) {
+        final writerAddr = cx.rt.heap.tryWriterForReader(bAddr);
+        if (writerAddr != null && cx.sigmaHat.containsKey(writerAddr)) {
+          bDeref = cx.sigmaHat[writerAddr];
+        } else if (cx.rt.heap.isReaderBound(bAddr)) {
+          bDeref = cx.rt.heap.getReaderValue(bAddr);
+        } else {
+          return 0;
+        }
+      } else {
+        if (cx.sigmaHat.containsKey(bAddr)) {
+          bDeref = cx.sigmaHat[bAddr];
+        } else if (cx.rt.heap.isFullyBound(bAddr)) {
+          bDeref = cx.rt.heap.getValue(bAddr);
+        } else {
+          return 0;
+        }
+      }
+      return _compareTerms(a, bDeref, cx, visited);
+    }
+
+    // Cross-class order: Number < String < compound (< other).
+    final ra = _orderRank(a);
+    final rb = _orderRank(b);
+    if (ra != rb) return ra < rb ? -1 : 1;
+
+    switch (ra) {
+      case 0: // numbers, by value
+        final na = a as num;
+        final nb = b as num;
+        return na < nb ? -1 : (na > nb ? 1 : 0);
+      case 1: // strings/atoms, code-unit (code-point) lexicographic
+        final cmp = (a as String).compareTo(b as String);
+        return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+      case 2: // compounds: arity, then functor, then args left-to-right
+        final sa = a as StructTerm;
+        final sb = b as StructTerm;
+        if (sa.args.length != sb.args.length) {
+          return sa.args.length < sb.args.length ? -1 : 1;
+        }
+        final fc = sa.functor.compareTo(sb.functor);
+        if (fc != 0) return fc < 0 ? -1 : 1;
+        for (int i = 0; i < sa.args.length; i++) {
+          final c = _compareTerms(sa.args[i], sb.args[i], cx, visited);
+          if (c != 0) return c;
+        }
+        return 0;
+      default: // deterministic fallback for any other ground leaf
+        final cmp = a.toString().compareTo(b.toString());
+        return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+    }
   }
 }
 
