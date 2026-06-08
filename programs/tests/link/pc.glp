@@ -1,0 +1,35 @@
+% pc.glp — role-parameterized producer/consumer split over a real TCP link (feature 025).
+% ONE source, role chosen by a ground AgentId (the @/boot idiom, FR-011). The producer
+% (connector) streams ground integers out then closes; the consumer (listener) receives
+% each value, collects them, and stops at stream-end. Run split across two C# REPL
+% processes over 127.0.0.1:9100 — the consumer goal prints the collected list.
+%
+%   Consumer:  main(consumer, Got).   → Got = [10, 20, 30]
+%   Producer:  main(producer, _).     → streams 10,20,30 then graceful-closes
+-mode(system).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Got?) :- Me? =?= consumer |
+    server_listener(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    consume_link(Link?, Got).
+main(Me, []) :- Me? =?= producer |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    produce_link(Link?, [10, 20, 30]).
+
+% Decompose the established Link, then consume just the inbound stream. The consumer sends
+% nothing, so it head-constructs [] on its outbound (canonical close); In captures inbound.
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+% Decompose the established Link, then produce onto the outbound stream (the egress drainer
+% ships each ground value; the [] base case graceful-closes). Inbound is ignored (anon _).
+procedure produce_link(Link(_, _)?, Stream(_)?).
+produce_link(ch(_, Out?), Vals) :- produce(Vals?, Out).
+
+procedure produce(Stream(_)?, Stream(_)).
+produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
+produce([], []).

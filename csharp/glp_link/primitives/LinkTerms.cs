@@ -165,10 +165,21 @@ public static class LinkTerms
 
     private static object? Const(Term term, string what) => term switch
     {
-        ConstTerm c => c.Value,
+        ConstTerm c => c.Value is string s ? Unquote(s) : c.Value,
         VarRef => throw new ArgumentException($"{what}: unbound/unresolved VarRef — kernel must deep-deref before parsing"),
         _ => throw new ArgumentException($"{what}: expected an atomic constant, got {Describe(term)}"),
     };
+
+    /// <summary>
+    /// Strip the surrounding double-quotes a GLP STRING literal carries in its ConstTerm value.
+    /// The compiler stores a string constant as <c>"value"</c> (quotes included) so the type
+    /// checker can tell a String literal from a bare atom (parser.cs: "Wrap in quotes so type
+    /// checker can distinguish strings from atoms"); a bare atom (e.g. <c>listener</c>,
+    /// <c>abrupt</c>) carries no quotes. The kernels need the raw host value (e.g. the scheme
+    /// token, the IPv4 host for <c>IPAddress.Parse</c>), so strip one surrounding pair if present.
+    /// </summary>
+    private static string Unquote(string s) =>
+        s.Length >= 2 && s[0] == '"' && s[^1] == '"' ? s[1..^1] : s;
 
     private static string ConstString(Term term, string what) =>
         Const(term, what) as string ?? throw new ArgumentException($"{what}: expected a String constant, got {Describe(term)}");

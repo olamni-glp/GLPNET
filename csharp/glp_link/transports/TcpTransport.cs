@@ -53,10 +53,25 @@ public sealed class TcpTransport : ILinkTransport
     {
         Require(scheme);
         int port = RequirePort(remote, "connect");
-        var client = new TcpClient();
-        await client.ConnectAsync(ParseIp(remote.Host), port, ct).ConfigureAwait(false);
-        Configure(client);
-        return new TcpEndpoint(new LinkId(LinkScheme.Tcp, remote, LinkNonce.Int(port)), client);
+        var ip = ParseIp(remote.Host);
+        // The connector's goal may activate BEFORE the listener has bound (independent processes);
+        // retry connection-refused until ct (the kernel's ConnectTimeout) cancels, so establishment
+        // is timing-independent rather than a hard race. Role-order independence (FR-004).
+        while (true)
+        {
+            var client = new TcpClient();
+            try
+            {
+                await client.ConnectAsync(ip, port, ct).ConfigureAwait(false);
+                Configure(client);
+                return new TcpEndpoint(new LinkId(LinkScheme.Tcp, remote, LinkNonce.Int(port)), client);
+            }
+            catch (SocketException)
+            {
+                client.Dispose();
+                await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
+            }
+        }
     }
 
     private static void Require(LinkScheme scheme)
