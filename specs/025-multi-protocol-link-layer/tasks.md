@@ -32,6 +32,18 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 > via T082). **Next = T037** role-parameterized boot (branch on ground AgentId), then T040
 > producer/consumer over loopback (the functional proof). T030–T035 touched NO core; **T036 touched
 > programs/ + glp_runtime/lib/prelude.dart** (baseline-gated, green).
+> **RUNTIME-INTEGRATION (2026-06-08, Gabi-directed; plan = [runtime-integration-plan.md](runtime-integration-plan.md)):**
+> wire kernels into the C# REPL boot → 2-process real-link tests → Dart mirror → both-runtime
+> regression. **DONE so far:** (1) link types+wrappers **RELOCATED `programs/lib/link.glp` → root
+> `programs/self.glp`** (Gabi-approved option A) so link programs call them universally like
+> `send`/`receive`; baseline **524/525** preserved (R-2 byte-equiv is the cssg cluster, not root). (2)
+> **C# REPL boot wired** (`out/csharp/glp_repl/Program.cs` composition-root hook `AfterEngineCreated` →
+> `LinkKernels.Install` + register `TcpTransport`/`LoopbackTransport`; `_link_*` added to C# `prelude.cs`
+> builtinProcedures mirror). (3) **`TcpTransport`** (raw TCP/IPv4 127.0.0.1, first real cross-process
+> leaf; 4 xUnit). (4) **Kernel deep-deref fix** (`LinkTerms.GroundResolve`): the real compiler wraps
+> `link_id(...)` struct args in VarRefs → all kernels now deep-resolve before parsing (xUnit used ground
+> ConstTerms, hiding it). Wrapper→kernel chain proven on the C# REPL (`link_close` goal → correct
+> unestablished-link abort). **Next:** producer/consumer demo + 2-process TCP proof, then Dart mirror.
 > **`marathon resume` is STALE at T012 — ignore it; this file + `git log` are authoritative.**
 
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)

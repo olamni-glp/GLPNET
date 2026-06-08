@@ -28,6 +28,36 @@ public static class LinkTerms
 
     // ---- parse: term → host value ----
 
+    /// <summary>
+    /// Recursively dereference <paramref name="term"/> against the heap into a VarRef-free
+    /// ground tree, so the <c>Parse*</c> helpers below see the bound constants at every depth.
+    /// REQUIRED before parsing: the compiler represents a ground <c>link_id(Scheme, …)</c> with
+    /// each struct ARG as a <see cref="VarRef"/> into a bound cell, so a shallow
+    /// <c>heap.Dereference</c> resolves only the outer struct and leaves <c>Scheme</c>/<c>Endpoint</c>
+    /// as VarRefs (the xUnit kernels passed ground <see cref="ConstTerm"/> args directly, hiding this).
+    /// The GLP wrappers guard <c>ground/1</c>, so every nested cell is bound; an unbound cell at any
+    /// depth is a caller bug → <see cref="ArgumentException"/> (the kernel aborts).
+    /// </summary>
+    public static Term GroundResolve(HeapFCP heap, Term term)
+    {
+        Term d = heap.Dereference(term);
+        switch (d)
+        {
+            case ConstTerm c:
+                return c;
+            case StructTerm s:
+                var args = new Term[s.Args.Count];
+                for (int i = 0; i < s.Args.Count; i++)
+                    args[i] = GroundResolve(heap, s.Args[i]);
+                return new StructTerm(s.Functor, args);
+            case VarRef v:
+                throw new ArgumentException(
+                    $"unbound cell {v.Addr} in a term expected ground (the ground/1 guard should have excluded it)");
+            default:
+                throw new ArgumentException($"cannot ground-resolve {d.GetType().Name}");
+        }
+    }
+
     /// <summary>Parse a ground <c>link_id(Scheme, Endpoint, Nonce)</c> term.</summary>
     public static LinkId ParseLinkId(Term term)
     {

@@ -39,8 +39,8 @@ public static class LinkListenKernel
         LinkAddress endpointAddr;
         try
         {
-            scheme = LinkTerms.ParseScheme(heap.Dereference((Term)args[0]!));
-            endpointAddr = LinkTerms.ParseEndpoint(heap.Dereference((Term)args[1]!));
+            scheme = LinkTerms.ParseScheme(LinkTerms.GroundResolve(heap, (Term)args[0]!));
+            endpointAddr = LinkTerms.ParseEndpoint(LinkTerms.GroundResolve(heap, (Term)args[1]!));
         }
         catch (ArgumentException ex)
         {

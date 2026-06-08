@@ -32,8 +32,8 @@ public static class LinkSetupKernel
         LinkRole role;
         try
         {
-            id = LinkTerms.ParseLinkId(heap.Dereference((Term)args[0]!));
-            role = LinkTerms.ParseRole(heap.Dereference((Term)args[1]!));
+            id = LinkTerms.ParseLinkId(LinkTerms.GroundResolve(heap, (Term)args[0]!));
+            role = LinkTerms.ParseRole(LinkTerms.GroundResolve(heap, (Term)args[1]!));
         }
         catch (ArgumentException ex)
         {

@@ -40,7 +40,7 @@ public static class LinkSendKernel
         LinkId id;
         try
         {
-            id = LinkTerms.ParseLinkId(heap.Dereference((Term)args[1]!));
+            id = LinkTerms.ParseLinkId(LinkTerms.GroundResolve(heap, (Term)args[1]!));
         }
         catch (ArgumentException ex)
         {

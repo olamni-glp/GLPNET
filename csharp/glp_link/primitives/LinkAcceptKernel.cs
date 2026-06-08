@@ -32,7 +32,7 @@ public static class LinkAcceptKernel
         LinkId id;
         try
         {
-            id = LinkTerms.ParseLinkId(heap.Dereference((Term)args[0]!));
+            id = LinkTerms.ParseLinkId(LinkTerms.GroundResolve(heap, (Term)args[0]!));
         }
         catch (ArgumentException ex)
         {

@@ -35,8 +35,8 @@ public static class LinkCloseKernel
         string reason;
         try
         {
-            id = LinkTerms.ParseLinkId(heap.Dereference((Term)args[0]!));
-            reason = LinkTerms.ParseReason(heap.Dereference((Term)args[1]!));
+            id = LinkTerms.ParseLinkId(LinkTerms.GroundResolve(heap, (Term)args[0]!));
+            reason = LinkTerms.ParseReason(LinkTerms.GroundResolve(heap, (Term)args[1]!));
         }
         catch (ArgumentException ex)
         {
