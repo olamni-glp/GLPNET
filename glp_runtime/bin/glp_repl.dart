@@ -44,6 +44,17 @@ String _resolveRootSelfGlpPath() {
       'snapshot, or the compiled .exe must all reside under glp_runtime/).');
 }
 
+/// Composition-root seam (feature 025): invoked once, right after the REPL constructs
+/// its [GlpEngine], so an outer host can install host kernels + register transports on
+/// the live engine. The link layer lives in the hand-authored link package, which
+/// DEPENDS ON the runtime/engine — so the wiring is injected here at the composition
+/// root rather than referenced by the engine (the engine never references the link
+/// layer; FR-057). The host sets this hook to call `LinkKernels.install(engine.runtime)`
+/// + register `TcpTransport`/`LoopbackTransport` into the returned `LinkRuntime.transports`
+/// and set `engine.runtime.inboundPump` to the runtime's pump. Null for every other host
+/// (tests, the feature-020 oracle), so those runs are byte-for-byte unchanged.
+void Function(GlpEngine)? afterEngineCreated;
+
 void main() async {
   final gitCommit = await _getGitCommit();
   final buildTime = '2026-02-01 (GlpEngine refactor)';
@@ -70,6 +81,8 @@ void main() async {
   // See test/aot_self_glp_path_test.dart for the regression coverage.
   final rootSelfGlpPath = _resolveRootSelfGlpPath();
   final engine = GlpEngine(rootSelfGlpPath: rootSelfGlpPath);
+  afterEngineCreated
+      ?.call(engine); // feature 025: outer host installs link kernels + transports
   print('Loaded root self.glp from: $rootSelfGlpPath');
   print('');
 

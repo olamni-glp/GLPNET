@@ -1,0 +1,28 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 0,
+  "completed_units": [
+    "Phase 0 (T002/T003/T004) + T010 + T011",
+    "Link Phases A+B+C (C#) + examples (88e6d4e4, 76823e48)",
+    "Core runner deref-conflation fix (8af18c3a) + sibling-main propagation (8a5aa8f6)",
+    "Phase D layer 1 (Workflow wf_509ad026-971): seam+reliability+transports -> glp_runtime/lib/link/ (committed 57087a00; dart analyze clean; byte-identical constants verified)",
+    "Phase D layer 2 PARTIAL (Workflow wf_53fe0416-dcf): infra (link_terms+GroundResolve/Unquote, registries, handle, runtime, faults, teardown) + glue (egress, establish, pump) + core inbound-pump seam (inbound_pump.dart) + null-guarded engine drain (glp_engine.dart) reviewed OK + boot hook stub. dart analyze clean on new files."
+  ],
+  "created_at": "2026-06-08T16:28:43.880000+00:00",
+  "id": 331,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "ISSUE: link_establish.wireEstablishedLink uses a SYNC `ILinkEndpoint Function()` factory (mirrors C#'s blocking .GetResult()); Dart single-isolate CANNOT block on async TCP connect. FIX: async-aware establish (wire cells sync, connect in background, start recv-loop/egress on resolve, return success now). Touches link_handle/establish/pump/egress.",
+    "7 kernels + link_kernels.dart NOT WRITTEN (kernels agent died on terminal API error - transient). Write against the fixed async establish + BodyKernel(GlpRuntime,List<Object?>)->BodyKernelResult signature.",
+    "Boot wiring: bin/glp_repl.dart afterEngineCreated hook is UNSET; install LinkKernels + register Tcp/Loopback transports (link/ is same Dart package, import directly).",
+    "GATE D: Dart REPL loads link.glp + two-process Dart<->Dart over TCP == baseline; cross-runtime Dart<->C# byte-identical",
+    "Phase E: full regression both runtimes",
+    "buildkit-codexreview; then ship + CalVer release on main (SEPARATE pause)",
+    "Pre-link T012/T013 (unverified, out of scope)"
+  ],
+  "sequence_no": 11,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "Phase D layer 2 FIX: async-aware establish + 7 kernels + boot wiring (kernels agent died; async-establish impedance found)",
+  "workflow_run_id": "wf_53fe0416-dcf"
+}

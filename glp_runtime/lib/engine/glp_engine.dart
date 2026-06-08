@@ -136,6 +136,11 @@ class GlpEngine {
   /// When true, type errors abort program loading (default: true)
   bool strictTypes = true;
 
+  /// Feature 025 (Option B): how long the inbound-pump driver blocks for the next
+  /// link frame before giving up and reporting the run as suspended. A liveness
+  /// tuning knob, not a correctness bound.
+  Duration inboundPumpWait = const Duration(seconds: 30);
+
   /// Path to the root self.glp (programs/self.glp) for the type scope chain.
   late final String _rootSelfGlpPath;
 
@@ -545,12 +550,33 @@ class GlpEngine {
     _runtime.gq.enqueue(GoalRef(_goalId, entryPC));
     _goalId++;
 
-    final result = await scheduler.drainAsyncWithStatus(
+    var result = await scheduler.drainAsyncWithStatus(
       maxCycles: maxCycles,
       debug: debugTrace,
       showBindings: false,
       debugOutput: debugOutput,
     );
+
+    // Feature 025 (Option B) — inbound-pump driver (single-goal path). When a
+    // link is open the drain above leaves the goal suspended on the link
+    // variable; service inbound frames ON THIS thread and re-drain until no link
+    // is live. Skipped when no inboundPump is set → non-link runs unchanged.
+    final pump = _runtime.inboundPump;
+    if (pump != null) {
+      while (pump.hasPendingOrLive) {
+        if (!pump.tryApplyNext(inboundPumpWait)) {
+          break; // idle: a still-open link's reader stays safely suspended
+        }
+        madContext?.flushMessages();
+        result = await scheduler.drainAsyncWithStatus(
+          maxCycles: maxCycles,
+          debug: debugTrace,
+          showBindings: false,
+          debugOutput: debugOutput,
+        );
+        if (result.status == ExecutionStatus.failed) break;
+      }
+    }
 
     // Collect bindings
     final bindings = <String, rt.Term?>{};
@@ -654,6 +680,31 @@ class GlpEngine {
         break;
       } else if (result.status == ExecutionStatus.suspended) {
         anySuspended = true;
+      }
+    }
+
+    // Feature 025 (Option B) — inbound-pump driver. When a link is open the
+    // initial drains above leave the program suspended on the link variable;
+    // service inbound frames ON THIS (runner) thread and re-drain until no link
+    // is live. Skipped when no inboundPump is set → non-link runs unchanged.
+    final pump = _runtime.inboundPump;
+    if (pump != null) {
+      while (pump.hasPendingOrLive) {
+        if (!pump.tryApplyNext(inboundPumpWait)) {
+          break; // idle: a still-open link's reader stays safely suspended
+        }
+        madContext?.flushMessages();
+        final pr = await scheduler.drainAsyncWithStatus(
+          maxCycles: maxCycles,
+          debug: debugTrace,
+          showBindings: false,
+          debugOutput: debugOutput,
+        );
+        if (pr.status == ExecutionStatus.failed) {
+          allSucceeded = false;
+          break;
+        }
+        anySuspended = pr.status == ExecutionStatus.suspended;
       }
     }
 
