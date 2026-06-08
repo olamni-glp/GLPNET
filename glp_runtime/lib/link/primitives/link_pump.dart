@@ -54,11 +54,43 @@ class LinkPump implements IInboundPump {
   /// [_waiter] signal can never be missed.
   void _enqueue(_InboundItem item) {
     _inbox.add(item);
+    _wake();
+  }
+
+  /// Wake the single driver waiter — on an inbound enqueue OR an outstanding-I/O
+  /// completion. Reset so the next park re-arms it.
+  void _wake() {
     final w = _waiter;
     if (w != null && !w.isCompleted) {
       _waiter = null;
       w.complete();
     }
+  }
+
+  /// Count of outstanding OUTBOUND I/O futures (deferred connect, egress sends,
+  /// close) — see [trackIo].
+  int _outstandingIo = 0;
+
+  /// Count of LIVE links — incremented in [addLink], decremented when a recv loop
+  /// ends (the PEER's FIN or pump cancel), mirroring the C# `_liveLinks`. A link stays
+  /// live even after WE close our own send side, so we keep RECEIVING the peer's data
+  /// until it FINs (bilateral links, FR-003) — closing our sender never stops our
+  /// receiver.
+  int _liveLinks = 0;
+
+  /// Track one outstanding OUTBOUND I/O future so the run-to-quiescence driver stays
+  /// live ([hasPendingOrLive]) and parks in [waitForInbound] until it settles. This
+  /// is the Dart equivalent of the C# runner thread BLOCKING on
+  /// `SendBytesAsync(...).GetAwaiter().GetResult()` / the connect `.GetResult()`:
+  /// on a single isolate we cannot block, so instead we keep the run alive until the
+  /// async send/connect/close completes. Without it a producer's GLP goal could finish
+  /// (and the process exit) before its async I/O ran, so the peer would receive nothing.
+  void trackIo(Future<void> io) {
+    _outstandingIo++;
+    io.whenComplete(() {
+      if (_outstandingIo > 0) _outstandingIo--;
+      _wake();
+    });
   }
 
   LinkPump(GlpRuntime engine)
@@ -77,9 +109,11 @@ class LinkPump implements IInboundPump {
     if (handle.inWriterAddr == null) {
       throw StateError('addLink before the In-stream ingress cursor was wired');
     }
-    // Track the handle so it counts as live (still-connecting included) until it
-    // is closed — the engine's pump-driver keeps awaiting through the connect gate.
+    // Count the link LIVE from now until its recv loop ends — on the PEER's FIN
+    // (recvBytes==null) or pump cancel, NOT on our own send-close. Closing OUR send
+    // side must not stop us RECEIVING the peer's data (FR-003).
     _handles.add(handle);
+    _liveLinks++;
     // The recv loop gates on the deferred endpoint: it awaits handle.ready, then
     // subscribes to onFault and runs the receive loop. The endpoint may not have
     // connected yet (Dart's single isolate cannot block on the connect Future).
@@ -112,7 +146,7 @@ class LinkPump implements IInboundPump {
   /// is closed/permFailed and the inbox is drained — the driver then stops.
   @override
   bool get hasPendingOrLive =>
-      _inbox.isNotEmpty || _handles.any((h) => !h.closed);
+      _inbox.isNotEmpty || _outstandingIo > 0 || _liveLinks > 0;
 
   /// Apply the next inbound frame ON THE CALLING (runner) THREAD. Returns `true`
   /// if a frame was applied (heap bound, reactivated goals enqueued), or `false`
@@ -200,51 +234,59 @@ class LinkPump implements IInboundPump {
   /// violation, not something to localize.
   Future<void> _recvLoop(LinkHandle handle) async {
     final deserializer = PayloadSerializer('');
-    // Gate on the deferred endpoint: the async connect/listen rendezvous must resolve
-    // before any receive can run (Dart's single isolate cannot block on it). If the
-    // connect FAILED, `ready` rejects — the establish path has already surfaced the
-    // transport fault and marked the handle closed, so just stop without faulting twice.
-    final ILinkEndpoint ep;
     try {
-      ep = await handle.ready;
-    } on Object {
-      handle.closed = true;
-      return;
-    }
-
-    // Out-of-band transport faults (FR-008): refine the seam signal to its GLP
-    // lattice term and enqueue it for runner-thread fan-out onto the monitor cursors.
-    // The handler runs on the transport's thread but only touches the thread-safe
-    // inbox — never the heap (T034). Subscribed only after the endpoint exists.
-    final faultSub = ep.onFault.listen((signal) => _enqueueFault(handle, signal));
-    try {
-      while (!handle.closed && !_cancel.isCompleted) {
-        final Uint8List? frame = await ep.recvBytes(cancel: _cancel.future);
-        if (frame == null) {
-          _enqueue(_InboundItem(handle, null, close: true, fault: false));
-          return;
-        }
-
-        final parsed = FrameCodec.parseFrame(frame);
-        final Uint8List? payload = handle.reassembler.accept(parsed);
-        if (payload == null) {
-          continue; // awaiting more fragments
-        }
-
-        for (final ordered in handle.ordering.accept(parsed.messageId, payload)) {
-          final Term term = deserializer.deserializeAgentMessagePayload(
-            ordered,
-            (_) => throw StateError(
-                'ground-relay base received a non-ground payload (embedded variable)'),
-          );
-          _enqueue(_InboundItem(handle, term, close: false, fault: false));
-        }
+      // Gate on the deferred endpoint: the async connect/listen rendezvous must resolve
+      // before any receive can run (Dart's single isolate cannot block on it). If the
+      // connect FAILED, `ready` rejects — the establish path already surfaced the
+      // transport fault and marked the handle closed, so just stop without faulting twice.
+      final ILinkEndpoint ep;
+      try {
+        ep = await handle.ready;
+      } on Object {
+        handle.closed = true;
+        return;
       }
-      // pump disposed / link torn down — the guarded loop exits normally (the Dart
-      // seam models cancellation by completing `_cancel`, not by throwing the C#
-      // `OperationCanceledException` that `RecvBytesAsync(ct)` would raise).
+
+      // Out-of-band transport faults (FR-008): refine the seam signal to its GLP
+      // lattice term and enqueue it for runner-thread fan-out onto the monitor cursors.
+      // The handler runs on the transport's thread but only touches the thread-safe
+      // inbox — never the heap (T034). Subscribed only after the endpoint exists.
+      final faultSub = ep.onFault.listen((signal) => _enqueueFault(handle, signal));
+      try {
+        // Loop until the PEER FINs (recvBytes==null) or the pump is cancelled — NOT on
+        // our own send-close (handle.closed). Mirrors the C# RecvLoopAsync, which runs
+        // `while (!ct.IsCancellationRequested)` and ends only on a null frame: closing
+        // our sender must never stop our receiver (bilateral, FR-003).
+        while (!_cancel.isCompleted) {
+          final Uint8List? frame = await ep.recvBytes(cancel: _cancel.future);
+          if (frame == null) {
+            _enqueue(_InboundItem(handle, null, close: true, fault: false));
+            return;
+          }
+
+          final parsed = FrameCodec.parseFrame(frame);
+          final Uint8List? payload = handle.reassembler.accept(parsed);
+          if (payload == null) {
+            continue; // awaiting more fragments
+          }
+
+          for (final ordered in handle.ordering.accept(parsed.messageId, payload)) {
+            final Term term = deserializer.deserializeAgentMessagePayload(
+              ordered,
+              (_) => throw StateError(
+                  'ground-relay base received a non-ground payload (embedded variable)'),
+            );
+            _enqueue(_InboundItem(handle, term, close: false, fault: false));
+          }
+        }
+      } finally {
+        await faultSub.cancel();
+      }
     } finally {
-      await faultSub.cancel();
+      // The recv loop has ended (peer FIN / pump cancel / connect failure): the link is
+      // no longer live. Decrement so hasPendingOrLive can settle and wake the driver.
+      _liveLinks--;
+      _wake();
     }
   }
 

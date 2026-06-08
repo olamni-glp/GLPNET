@@ -64,15 +64,42 @@ class LinkTeardown {
     //    resolves: close it now if connected, else chain the close on readiness so a
     //    link torn down mid-connect still releases its socket once it lands.
     handle.closed = true;
-    final ep = handle.endpoint;
-    if (ep != null) {
-      ep.close();
+    // Close the transport, TRACKED so run-to-quiescence stays live until the socket is
+    // actually closed (the single-isolate stand-in for the C#
+    // `CloseAsync().GetAwaiter().GetResult()`). GRACEFUL (eos) first drains any queued
+    // egress frames by chaining the close on the per-handle egress tail, THEN FINs
+    // (flush-then-close, FR-018 FIFO) — otherwise the FIN could race ahead of the
+    // still-async data sends and the peer would receive nothing. ABRUPT (RST-equiv)
+    // closes immediately regardless of stream state. The endpoint may still be
+    // connecting, so the close gates on [LinkHandle.ready].
+    final Future<void> closeIo;
+    if (reason == LinkTerms.gracefulReason) {
+      closeIo = handle.egressTail =
+          handle.egressTail.then((_) => _closeEndpoint(handle), onError: (Object _) {});
     } else {
-      handle.ready.then((late) => late.close(), onError: (Object _) {});
+      closeIo = _closeEndpoint(handle);
     }
+    (handle.ioTracker ?? link.pump.trackIo)(closeIo);
 
     // 4. Distributed GC (FR-024): run every registered reclamation hook so the runtime
     //    returns to its pre-link baseline (registry entry removed today). Idempotent.
     link.reclaimer.reclaim(handle.id, reason);
+  }
+
+  /// Close the transport endpoint, gating on the deferred connect: close it now if
+  /// connected, else once the rendezvous resolves (a link torn down mid-connect still
+  /// releases its socket). Swallows a connect that never resolved (already faulted).
+  static Future<void> _closeEndpoint(LinkHandle handle) async {
+    final ep = handle.endpoint;
+    if (ep != null) {
+      await ep.close();
+    } else {
+      try {
+        final resolved = await handle.ready;
+        await resolved.close();
+      } on Object {
+        // connect failed / never resolved — nothing to close.
+      }
+    }
   }
 }

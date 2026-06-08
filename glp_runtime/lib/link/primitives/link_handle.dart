@@ -43,6 +43,14 @@ class LinkHandle {
   /// have connected yet. Mutated only on the runner thread (the egress drainer).
   Future<void> egressTail = Future<void>.value();
 
+  /// Registers an outstanding OUTBOUND I/O future (deferred connect, egress send,
+  /// close) with the pump so the engine's run-to-quiescence driver stays live until
+  /// it settles — the single-isolate stand-in for the C# runner thread blocking on
+  /// each `…Async().GetResult()`. Set by the establish core to `LinkPump.trackIo`;
+  /// the egress drainer calls it for every shipped frame. Null only before the handle
+  /// is registered with the pump (no async I/O can predate that).
+  void Function(Future<void> io)? ioTracker;
+
   /// Outbound sequence source (→ frame MessageId).
   final LinkSequencer sequencer;
 

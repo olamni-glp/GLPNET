@@ -110,13 +110,20 @@ class LinkEstablish {
     armEgress(rt, link, handle, outWriterAddr);
     link.pump.addLink(handle);
     rt.inboundPump ??= link.pump;
+    // Route this handle's outbound I/O (egress sends + close) through the pump's
+    // outstanding-I/O tracker, so run-to-quiescence stays live until they drain — the
+    // single-isolate stand-in for the C# runner thread blocking on each `…GetResult()`.
+    handle.ioTracker = link.pump.trackIo;
 
     // Kick off the genuinely-async transport rendezvous WITHOUT awaiting (Dart's single
     // isolate cannot block on it). On success, attach the endpoint — that unblocks the
     // pump's recv loop and the egress readiness gate. On failure, surface a permanent
     // transport fault on the monitor (FR-008) and mark the handle closed (FR-044), and
     // reject `ready` so the recv loop and egress chains unwind quietly.
-    establish().then(handle.attachEndpoint, onError: (Object ex) {
+    // Track the connect itself: run-to-quiescence must stay live until the rendezvous
+    // resolves (or fails) — exactly what the C# runner thread did by blocking on the
+    // connect `.GetAwaiter().GetResult()`.
+    link.pump.trackIo(establish().then(handle.attachEndpoint, onError: (Object ex) {
       handle.closed = true;
       link.pump.enqueueFault(
           handle,
@@ -125,7 +132,7 @@ class LinkEstablish {
       if (!handle.endpointReady.isCompleted) {
         handle.endpointReady.completeError(ex);
       }
-    });
+    }));
 
     return BodyKernelResult.success;
   }

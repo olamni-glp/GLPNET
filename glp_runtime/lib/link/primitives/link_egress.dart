@@ -51,6 +51,11 @@ class LinkEgress {
           // A failed connect (ready rejects) must not poison the tail; the fault is
           // surfaced on the monitor by the establish path. Swallow so later chains run.
           onError: (Object _) {});
+      // Keep run-to-quiescence live until this frame actually flushes — the single-
+      // isolate stand-in for the C# `SendBytesAsync(frame).GetAwaiter().GetResult()`
+      // that blocked the runner thread until the byte write completed. Without it the
+      // producer's goal could finish (and the process exit) before the frame shipped.
+      handle.ioTracker?.call(handle.egressTail);
     }
   }
 
