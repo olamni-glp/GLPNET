@@ -1,0 +1,48 @@
+% krepro.glp — KERNEL-FREE reproduction of the N-receive-chain failure.
+% src/1 uses the proven new_channel primitive to hand back one channel end whose peer
+% end (holding the inbound writer) is discarded — so receives off it must SUSPEND for
+% want of an inbound value. Then 1/2/3 receives decompose that bound channel in a
+% COMPILED clause body. No link kernel, no blocking — runs identically on C# and Dart.
+% If t3 FAILS where t1/t2 SUSPEND, the bug is kernel-free and runtime-shared.
+-mode(system).
+
+procedure src(Link(Integer, Integer)).
+src(C1?) :- new_channel(C1, _C2) | true.
+
+% t1: ONE receive off the bound channel.
+procedure t1(AgentId?, Stream(Integer)).
+t1(Me, [A?]) :- Me? =?= go |
+    src(Link),
+    receive(A, Link?, _).
+
+% t2: TWO receives.
+procedure t2(AgentId?, Stream(Integer)).
+t2(Me, [A?, B?]) :- Me? =?= go |
+    src(Link),
+    receive(A, Link?, Link1),
+    receive(B, Link1?, _).
+
+% t3: THREE receives.
+procedure t3(AgentId?, Stream(Integer)).
+t3(Me, [A?, B?, C?]) :- Me? =?= go |
+    src(Link),
+    receive(A, Link?, Link1),
+    receive(B, Link1?, Link2),
+    receive(C, Link2?, _).
+
+% t4: FOUR receives chained (is it exactly-3 or >=3?).
+procedure t4(AgentId?, Stream(Integer)).
+t4(Me, [A?, B?, C?, D?]) :- Me? =?= go |
+    src(Link),
+    receive(A, Link?, Link1),
+    receive(B, Link1?, Link2),
+    receive(C, Link2?, Link3),
+    receive(D, Link3?, _).
+
+% t3ind: THREE receives on THREE INDEPENDENT channels (depth 1 each, no threading).
+procedure t3ind(AgentId?, Stream(Integer)).
+t3ind(Me, [A?, B?, C?]) :- Me? =?= go |
+    src(LinkA), src(LinkB), src(LinkC),
+    receive(A, LinkA?, _),
+    receive(B, LinkB?, _),
+    receive(C, LinkC?, _).

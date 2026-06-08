@@ -4124,8 +4124,15 @@ class BytecodeRunner {
     final unboundReaders = <int>{};
 
     Object? dereference(Object? t) {
-      // Resolve clauseVars first (same pattern as Execute fix)
-      if (t is VarRef && cx.clauseVars.containsKey(t.addr)) {
+      // Resolve clauseVars first (same pattern as Execute fix).
+      // BUT only when t.addr is a register index, NOT a live heap address: heap
+      // addresses (allocateVariable cells) and clause-var register indices share the
+      // int namespace, so a heap VarRef whose addr numerically collides with a
+      // populated head-structure temp register (X10, X11, ...) was wrongly resolved
+      // through clauseVars (returning the temp's structure) instead of dereferenced
+      // via the heap. A live reader/writer cell is always a genuine heap address.
+      if (t is VarRef && cx.clauseVars.containsKey(t.addr) &&
+          !cx.rt.heap.isReader(t.addr) && !cx.rt.heap.isWriter(t.addr)) {
         // Resolve clause variable index to actual heap addr
         final resolved = cx.clauseVars[t.addr];
         if (resolved is int) {
