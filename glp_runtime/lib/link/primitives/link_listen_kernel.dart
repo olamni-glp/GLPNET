@@ -42,7 +42,6 @@ class LinkListenKernel {
   LinkListenKernel._();
 
   static const String _who = "'_link_listen'/3";
-  static const String _listCons = '.';
 
   static BodyKernelResult linkListen(
       GlpRuntime rt, List<Object?> args, LinkRuntime link) {
@@ -66,17 +65,23 @@ class LinkListenKernel {
     }
     final reqWriterAddr = reqArg.addr;
 
-    // Bind the rendezvous and read the in-band request token in the background (the
-    // isolate cannot block on the genuinely-async listen/read). On completion, park the
-    // accepted connection for '_link_accept' to adopt and surface the request on the
-    // runner isolate.
-    _rendezvous(rt, link, scheme, endpointAddr, reqWriterAddr);
+    // Register the pump as the run-to-quiescence inbound driver and keep it LIVE across
+    // the genuinely-async rendezvous (the single isolate cannot block on listen/read).
+    // Unlike path A's '_link_setup', listen here does NOT yet establish a link — so
+    // without this nothing would keep the engine's pump-driver loop alive while
+    // serve_one is suspended on Requests, and the goal would report `suspended` before
+    // the rendezvous ever completed. The tracked rendezvous accepts the connection,
+    // reads the in-band token, parks the connection for '_link_accept', and surfaces the
+    // request THROUGH the inbox (pump discipline) so the runner-thread driver re-drives
+    // the suspended serve_one when it lands.
+    rt.inboundPump ??= link.pump;
+    link.pump.trackIo(_rendezvous(link, scheme, endpointAddr, reqWriterAddr));
 
     return BodyKernelResult.success;
   }
 
-  static Future<void> _rendezvous(GlpRuntime rt, LinkRuntime link,
-      LinkScheme scheme, LinkAddress endpointAddr, int reqWriterAddr) async {
+  static Future<void> _rendezvous(LinkRuntime link, LinkScheme scheme,
+      LinkAddress endpointAddr, int reqWriterAddr) async {
     final LinkId id;
     final Term fromPeer;
     final ILinkEndpoint endpoint;
@@ -96,16 +101,13 @@ class LinkListenKernel {
       return;
     }
 
-    // Park the accepted connection for '_link_accept' to adopt; surface the request on
-    // the runner isolate (this .then continuation runs on the single runner isolate).
-    final heap = rt.heap;
+    // Park the accepted connection for '_link_accept' to adopt, then surface the request
+    // THROUGH the inbox: this continuation runs off the runner-thread drive loop, so per
+    // the §1.3 pump discipline it must not bind the heap itself. The runner-thread
+    // [LinkPump.tryApplyNext] extends Requests + reactivates serve_one, and the driver
+    // re-drains.
     link.pending[id] = endpoint;
-    final requestTerm = LinkTerms.requestToken(id, fromPeer);
-    final (_, tailReader) = heap.allocateVariable();
-    final cons = StructTerm(_listCons, <Term>[requestTerm, VarRef(tailReader)]);
-    for (final act in heap.bindVariable(reqWriterAddr, cons)) {
-      rt.enqueueReactivatedGoal(act);
-    }
+    link.pump.enqueueRequestSurface(reqWriterAddr, LinkTerms.requestToken(id, fromPeer));
   }
 
   /// Read one whole ground message off [endpoint] (reassembling fragments) — the

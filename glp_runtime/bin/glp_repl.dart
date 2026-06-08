@@ -7,6 +7,7 @@ library;
 import 'dart:io';
 import 'package:glp_runtime/engine/glp_engine.dart';
 import 'package:glp_runtime/link/primitives/link_kernels.dart';
+import 'package:glp_runtime/link/primitives/link_runtime.dart';
 import 'package:glp_runtime/link/transports/loopback_transport.dart';
 import 'package:glp_runtime/link/transports/tcp_transport.dart';
 import 'package:glp_runtime/multiagent/boot_loader.dart';
@@ -87,10 +88,13 @@ void main() async {
   // the live engine. link/ is in the same Dart package as the runtime/engine, so the
   // composition root imports it directly. The setup kernel installs the inbound pump
   // lazily (`rt.inboundPump ??= link.pump`); we only register the kernels + transports.
+  // Captured so the REPL can release the link layer's OS resources on exit (below).
+  LinkRuntime? linkRuntime;
   afterEngineCreated ??= (engine) {
     final link = LinkKernels.install(engine.runtime);
     link.transports.register(TcpTransport());
     link.transports.register(LoopbackTransport());
+    linkRuntime = link;
   };
   final engine = GlpEngine(rootSelfGlpPath: rootSelfGlpPath);
   afterEngineCreated
@@ -314,6 +318,20 @@ void main() async {
     }
 
     print('');
+  }
+
+  // feature 025 clean shutdown: release the link layer's sockets (cancel the pump's
+  // background recv loops, close + destroy every established/parked endpoint) so the
+  // isolate isn't held alive by parked recv Futures, then force-exit. Without this a
+  // one-shot (`echo … | dart run glp_repl.dart`) or the back-to-back link suite hangs
+  // after `Goodbye!` because a suspended link goal's recv loop / a still-pending accept
+  // keeps the event loop non-empty. exit(0) is the backstop for any in-flight transport
+  // future the registry-walk can't reach; all tracked OUTBOUND I/O has already drained
+  // via run-to-quiescence before we reach this point, so nothing is lost.
+  if (linkRuntime != null) {
+    await linkRuntime!.dispose();
+    await stdout.flush();
+    exit(0);
   }
 }
 

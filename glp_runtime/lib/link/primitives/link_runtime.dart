@@ -53,4 +53,35 @@ class LinkRuntime {
     if (engine == null) throw ArgumentError.notNull('engine');
     pump = LinkPump(engine);
   }
+
+  /// Release every link-layer OS resource (feature 025 clean shutdown): cancel the
+  /// pump's background recv loops (completing its cancel signal unparks each
+  /// `await recvBytes`), then dispose every established and every parked-but-unadopted
+  /// transport endpoint — close + destroy the socket and cancel its reader
+  /// subscription. After this the isolate holds no link sockets through the registry,
+  /// so a one-shot REPL / embedded host can terminate promptly instead of being held
+  /// alive by parked recv Futures (which is what hung the back-to-back link suite's
+  /// `wait`). Best-effort and idempotent; a still-pending transport `listen`/`connect`
+  /// future (its socket not yet in the registry) is the REPL's `exit(0)` backstop.
+  Future<void> dispose() async {
+    pump.dispose();
+    for (final handle in links.handles) {
+      final ep = handle.endpoint;
+      if (ep != null) {
+        try {
+          await ep.dispose();
+        } on Object {
+          /* best-effort: process is shutting down */
+        }
+      }
+    }
+    for (final ep in pending.values) {
+      try {
+        await ep.dispose();
+      } on Object {
+        /* best-effort */
+      }
+    }
+    pending.clear();
+  }
 }

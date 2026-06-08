@@ -128,10 +128,27 @@ class LinkPump implements IInboundPump {
   void enqueueFault(LinkHandle handle, LinkFaultSignal signal) =>
       _enqueueFault(handle, signal);
 
+  /// Surface a path-B request token on the listener's `Requests` writer through the
+  /// inbox (feature 025, FR-002). Called by `'_link_listen'`'s background rendezvous
+  /// once it has accepted a connection and read the in-band `request(LinkId, FromPeer)`
+  /// token: the rendezvous runs OFF the runner-thread drive loop, so — per the §1.3
+  /// pump discipline — it must NOT bind the heap itself. Instead it enqueues here; the
+  /// runner-thread [tryApplyNext] extends the `Requests` stream and reactivates the
+  /// suspended `serve_one`/`accept_link` goal, and the driver re-drains. A request
+  /// arriving after the pump is disposed is dropped (the run is being torn down).
+
   /// Refine an out-of-band seam fault to its GLP lattice term and enqueue it for
   /// runner-thread delivery (T034). Builds the term off the heap (a [Term]
   /// is pure data) and only touches the inbox; a fault arriving after the
   /// pump is disposed is dropped (the link is being torn down anyway).
+  void enqueueRequestSurface(int writerAddr, Term requestTerm) {
+    if (_disposed) {
+      return;
+    }
+    _enqueue(_InboundItem(null, requestTerm,
+        close: false, fault: false, requestWriterAddr: writerAddr));
+  }
+
   void _enqueueFault(LinkHandle handle, LinkFaultSignal signal) {
     final term = LinkTerms.fromSignal(signal);
     if (_disposed) {
@@ -161,16 +178,30 @@ class LinkPump implements IInboundPump {
 
     final heap = _engine.heap;
 
+    if (item.requestWriterAddr != null) {
+      // Path-B request surfacing (FR-002): extend the listener's `Requests` writer by
+      // one `request(LinkId, FromPeer)` term — mint a fresh (writer, reader) pair, cons
+      // [request | reader], bind the writer, wake the suspended serve_one/accept_link
+      // goal. Base-MVP is one request per rendezvous, so the fresh writer is left for
+      // the stream tail (open but unbound — serve_one reads only the head).
+      final (_, freshReader) = heap.allocateVariable();
+      final cons = StructTerm('.', <Term>[item.value!, VarRef(freshReader)]);
+      for (final act in heap.bindVariable(item.requestWriterAddr!, cons)) {
+        _engine.enqueueReactivatedGoal(act);
+      }
+      return true;
+    }
+
     if (item.fault) {
       // Fan the refined fault term out to every monitor cursor of this link — the
       // establishment `Faults` stream and each `link_monitor` stream (FR-008). A
       // fault is delivered as a bound term, never a verdict (FR-043) and never a
       // logical Fail (FR-044).
-      LinkFaults.deliverFault(heap, _engine, item.handle, item.value!);
+      LinkFaults.deliverFault(heap, _engine, item.handle!, item.value!);
       return true;
     }
 
-    final int cursor = item.handle.inWriterAddr!;
+    final int cursor = item.handle!.inWriterAddr!;
 
     if (item.close) {
       // Graceful peer close: end the In stream with [] (nil). A consumer reading
@@ -178,7 +209,7 @@ class LinkPump implements IInboundPump {
       for (final act in heap.bindVariable(cursor, ConstTerm('nil'))) {
         _engine.enqueueReactivatedGoal(act);
       }
-      item.handle.inWriterAddr = null; // stream terminated; no further extension
+      item.handle!.inWriterAddr = null; // stream terminated; no further extension
       return true;
     }
 
@@ -190,7 +221,7 @@ class LinkPump implements IInboundPump {
     for (final act in heap.bindVariable(cursor, cons)) {
       _engine.enqueueReactivatedGoal(act);
     }
-    item.handle.inWriterAddr = freshWriter;
+    item.handle!.inWriterAddr = freshWriter;
     return true;
   }
 
@@ -301,11 +332,18 @@ class LinkPump implements IInboundPump {
 /// One decoded inbound event awaiting application on the runner thread (the C#
 /// `InboundItem` readonly record struct).
 class _InboundItem {
-  final LinkHandle handle;
+  /// The owning link handle for data/close/fault items; `null` for a path-B
+  /// request-surface item (no link is established yet — see [requestWriterAddr]).
+  final LinkHandle? handle;
   final Term? value;
   final bool close;
   final bool fault;
 
+  /// Path-B only: the listener's `Requests` writer address to extend with the
+  /// surfaced `request(...)` term. Non-null marks a request-surface item; mutually
+  /// exclusive with [handle]/[close]/[fault].
+  final int? requestWriterAddr;
+
   const _InboundItem(this.handle, this.value,
-      {required this.close, required this.fault});
+      {required this.close, required this.fault, this.requestWriterAddr});
 }

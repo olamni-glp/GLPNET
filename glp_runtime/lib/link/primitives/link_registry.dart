@@ -52,4 +52,8 @@ class LinkRegistry {
 
   /// Number of established links.
   int get count => _handles.length;
+
+  /// Every established handle (clean-shutdown iteration — dispose each endpoint's
+  /// transport socket). Order-agnostic; the caller does not mutate the registry mid-walk.
+  Iterable<LinkHandle> get handles => _handles.values;
 }
