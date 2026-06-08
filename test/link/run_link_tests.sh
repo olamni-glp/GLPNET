@@ -100,7 +100,14 @@ run_link_test "path_b_request_accept" "$LINKDIR/pathb.glp" \
     "main(acceptor, Got)." "main(requester, X)." \
     "Got = [100, 200, 300]"
 
-# Next batch (WIP — fault-monitor + close) added here as each is debugged to a clean pass.
+# Fault-monitor + close (FR-008/044): consumer reads the data stream to eos AND reads the
+# per-link fault monitor, which surfaces closed(LinkId, eos) as an ordinary bound term on
+# graceful close — no spurious logical failure. Asserts BOTH the data and the close term.
+run_link_test "monitor_close" "$LINKDIR/mon.glp" \
+    "main(consumer, R)." "main(producer, X)." \
+    'res([7, 8, 9], [closed(link_id('
+
+# Next batch (WIP — abrupt-disconnect fault liveness SC-010) added here as each lands.
 
 echo "======================================"
 echo "Link tests: PASS=$PASS FAIL=$FAIL"

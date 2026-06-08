@@ -1,0 +1,32 @@
+% mon.glp — probe: does the per-link fault monitor surface anything on a peer GRACEFUL
+% close? Consumer drives the data stream to eos AND reads one term off the monitor stream
+% (the Faults from server_listener). Producer sends [7,8,9] then graceful-closes.
+-mode(system).
+
+MonResult ::= res(Stream(Integer), Stream(Fault)).
+
+procedure main(AgentId?, MonResult).
+main(Me, res(Got?, Fault?)) :- Me? =?= consumer |
+    server_listener(link_id("tcp", ep("127.0.0.1", 9130), 1), Link, Faults),
+    consume_link(Link?, Got),
+    take_fault(Faults?, Fault).
+main(Me, res([], [])) :- Me? =?= producer |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9130), 1), Link, _),
+    produce_link(Link?, [7, 8, 9]).
+
+% Take the first term off the monitor stream as the result (suspends if none arrives).
+procedure take_fault(Stream(Fault)?, Stream(Fault)).
+take_fault([F|_], [F?]) :- true.
+take_fault([], []).
+
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+procedure produce_link(Link(_, _)?, Stream(_)?).
+produce_link(ch(_, Out?), Vals) :- produce(Vals?, Out).
+procedure produce(Stream(_)?, Stream(_)).
+produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
+produce([], []).
