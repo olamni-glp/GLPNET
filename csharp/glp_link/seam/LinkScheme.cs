@@ -20,6 +20,10 @@ public readonly struct LinkScheme : IEquatable<LinkScheme>
     /// <summary>File endpoint (binary + text) — first headline-split transport (T041, FR-012).</summary>
     public static readonly LinkScheme File = new("file");
 
+    /// <summary>Raw TCP over IPv4 localhost (127.0.0.1) — the FIRST real cross-process transport
+    /// (feature 025 runtime-integration; ws/wss is the next iteration). One bidirectional duplex socket.</summary>
+    public static readonly LinkScheme Tcp = new("tcp");
+
     public static readonly LinkScheme Ws = new("ws");
     public static readonly LinkScheme Wss = new("wss");
     public static readonly LinkScheme Https = new("https");

@@ -155,6 +155,15 @@ public static class Prelude
         "_send/3",
         // Output (system predicate)
         "_output/1",
+        // Link-layer host kernels (feature 025; ratified rulings-log OQ-A4/C1/C2). C# mirror of
+        // the Dart prelude.dart allowlist — host-implemented (csharp/glp_link), no GLP clauses.
+        "_link_setup/5",
+        "_link_send/3",
+        "_link_request/5",
+        "_link_listen/3",
+        "_link_accept/5",
+        "_link_monitor/2",
+        "_link_close/2",
     }.ToFrozenSet();
 
     /// <summary>Check if a type name is predefined.</summary>

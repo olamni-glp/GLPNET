@@ -21,6 +21,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\glp_runtime_net.csproj" />
+    <!-- feature 025: the hand-authored link layer (kernels + transports). The exe is the
+         composition root that wires it into the REPL engine; the dependency flows
+         exe -> GlpLink -> glp_runtime_net (a DAG; the library never references GlpLink). -->
+    <ProjectReference Include="..\..\..\csharp\glp_link\GlpLink.csproj" />
   </ItemGroup>
 
 </Project>
