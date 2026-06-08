@@ -71,8 +71,12 @@ run_link_test "pc_terms" "$LINKDIR/pc.glp" \
     "main(consumer, Got)." "main(producer_terms, X)." \
     "Got = [pt(1, 2), pt(3, 4)]"
 
-# Next batch (WIP — explicit link_send/link_recv, fault-monitor+close, path-B request/accept,
-# bidirectional) added here as each is debugged to a clean two-process pass.
+run_link_test "link_send_wrapper" "$LINKDIR/pc.glp" \
+    "main(consumer, Got)." "main(producer_ls, X)." \
+    "Got = [10, 20, 30]"
+
+# Next batch (WIP — explicit link_recv-chain consumer, fault-monitor+close, path-B
+# request/accept, bidirectional) added here as each is debugged to a clean two-process pass.
 
 echo "======================================"
 echo "Link tests: PASS=$PASS FAIL=$FAIL"
