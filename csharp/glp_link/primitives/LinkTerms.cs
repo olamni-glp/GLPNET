@@ -113,20 +113,29 @@ public static class LinkTerms
 
     // ---- build: host value → term ----
 
-    /// <summary>Build the GLP <c>link_id(Scheme, Endpoint, Nonce)</c> term.</summary>
+    /// <summary>
+    /// Build the GLP <c>link_id(Scheme, Endpoint, Nonce)</c> term. String components
+    /// (scheme, host, string nonce) are RE-QUOTED — the inverse of <see cref="Unquote"/> —
+    /// so the reconstructed term is byte-identical to the GLP source literal
+    /// <c>link_id("tcp", ep("127.0.0.1", 9100), 1)</c> the compiler produces (string
+    /// constants carry their quotes). Without this, a path-B request token round-trip
+    /// yields a bare <c>link_id(tcp, …)</c> that fails the <c>=?=</c> match in
+    /// <c>accept_link</c> against the served (quoted) LinkId, and any program matching a
+    /// <c>closed(link_id(…), …)</c> fault against a literal would likewise mismatch.
+    /// </summary>
     public static Term ToTerm(LinkId id) => new StructTerm(LinkIdFunctor, new Term[]
     {
-        new ConstTerm(id.Scheme.Name),
+        new ConstTerm(Requote(id.Scheme.Name)),
         EndpointToTerm(id.Endpoint),
         NonceToTerm(id.Nonce),
     });
 
     private static Term EndpointToTerm(LinkAddress addr) => addr.Port is { } p
-        ? new StructTerm(EndpointFunctor, new Term[] { new ConstTerm(addr.Host), new ConstTerm((long)p) })
-        : new ConstTerm(addr.Host);
+        ? new StructTerm(EndpointFunctor, new Term[] { new ConstTerm(Requote(addr.Host)), new ConstTerm((long)p) })
+        : new ConstTerm(Requote(addr.Host));
 
     private static Term NonceToTerm(LinkNonce nonce) =>
-        nonce.IsInteger ? new ConstTerm(nonce.IntValue) : new ConstTerm(nonce.StringValue!);
+        nonce.IsInteger ? new ConstTerm(nonce.IntValue) : new ConstTerm(Requote(nonce.StringValue!));
 
     // ---- in-band request token (T033 path-B handshake, OQ-A3) ----
 
@@ -180,6 +189,13 @@ public static class LinkTerms
     /// </summary>
     private static string Unquote(string s) =>
         s.Length >= 2 && s[0] == '"' && s[^1] == '"' ? s[1..^1] : s;
+
+    /// <summary>Inverse of <see cref="Unquote"/>: wrap a raw host string value in the
+    /// surrounding double-quotes a GLP STRING constant carries, so a term rebuilt from
+    /// host data is structurally identical to the source literal (idempotent — a value
+    /// that already carries quotes is left as-is).</summary>
+    private static string Requote(string s) =>
+        s.Length >= 2 && s[0] == '"' && s[^1] == '"' ? s : "\"" + s + "\"";
 
     private static string ConstString(Term term, string what) =>
         Const(term, what) as string ?? throw new ArgumentException($"{what}: expected a String constant, got {Describe(term)}");

@@ -93,8 +93,14 @@ run_link_test "bidirectional" "$LINKDIR/bidi.glp" \
     "main(peerb, Got)." "main(peera, Got)." \
     "Got = [1, 2, 3]" "Got = [10, 20, 30]"
 
-# Next batch (WIP — fault-monitor+close, path-B request/accept) added here as each is
-# debugged to a clean two-process pass.
+# Path-B establishment (FR-002): request/accept handshake instead of listener/connector.
+# Acceptor binds a rendezvous + accepts the surfaced request; requester dials + sends the
+# in-band token; the established link then carries data like a path-A one (R-5).
+run_link_test "path_b_request_accept" "$LINKDIR/pathb.glp" \
+    "main(acceptor, Got)." "main(requester, X)." \
+    "Got = [100, 200, 300]"
+
+# Next batch (WIP — fault-monitor + close) added here as each is debugged to a clean pass.
 
 echo "======================================"
 echo "Link tests: PASS=$PASS FAIL=$FAIL"
