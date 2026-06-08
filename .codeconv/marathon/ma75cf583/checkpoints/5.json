@@ -1,0 +1,21 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 394418,
+  "completed_units": [
+    "T002:core (FR-021/SC-008 mad_context redelivery no-op; Dart+C#+test; commit 64d3813f; baseline 494/495)",
+    "T003 (FR-034/SC-009 compound-operand suspend; runner.dart generic-guard recursion + C# mirror + Section A24b/c regression; commit ed3892e6; baseline 497/498)"
+  ],
+  "created_at": "2026-06-06T20:47:26.550000+00:00",
+  "id": 133,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "T004 (FR-035 imported-reader reactivation: wire handleMadAssignment->bindImportedReader)",
+    "T005 (regression cases \u2014 partially done: A24b/c added for FR-034)",
+    "T002:link-ingress-gate (new C#-first transport code, later phase)"
+  ],
+  "sequence_no": 5,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "T004",
+  "workflow_run_id": null
+}

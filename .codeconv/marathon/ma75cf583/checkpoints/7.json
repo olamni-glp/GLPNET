@@ -1,0 +1,23 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 394418,
+  "completed_units": [
+    "Phase 0 (T002 FR-021 / T003 FR-034 / T004 FR-035) \u2014 committed 64d3813f, ed3892e6, 448e4eb5; PUSHED",
+    "T010 (FR-033/SC-005 atom/1 = string/1 synonym; runner arm + prelude reg + self.glp decl + C# mirror + Section A24d/e; commit 183225c8; baseline 502/503)",
+    "self.glp guard-decl mechanism understood + Gabi-approved for Phase-1 guards (atom added; @< decls pending T011 lexer/parser)"
+  ],
+  "created_at": "2026-06-06T22:11:27.465000+00:00",
+  "id": 199,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "T011 (@< @> @=< @>= family \u2014 LARGEST core edit: lexer @-lookahead + 4 tokens + parser + runner arms + new _compareTerms cycle-safe byte-identical Dart<->C# + SRSW analyzer _nonNegatableGuards + prelude + self.glp @< decls). Dart-first then C# mirror.",
+    "T012 guard tests (3-valued @< + atom; declines == \\== \\= reader/1)",
+    "T013 consolidate docs/guards-reference.md",
+    "Phases 2-7 link layer (C#-first); Phase 8 Dart mirror"
+  ],
+  "sequence_no": 7,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "T011",
+  "workflow_run_id": null
+}

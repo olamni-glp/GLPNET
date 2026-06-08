@@ -1,0 +1,12 @@
+{
+  "auto_mode": true,
+  "budget_ceiling": null,
+  "budget_spent": 394418,
+  "created_at": "2026-06-06T13:03:11.714000+00:00",
+  "feature_branch": "025-multi-protocol-link-layer",
+  "feature_slug": "multi-protocol-link-layer",
+  "id": "ma75cf583",
+  "preauth_commit_push": true,
+  "preauth_revoked_at": null,
+  "preauth_workflow_optin": true
+}

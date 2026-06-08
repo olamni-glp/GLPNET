@@ -1,0 +1,10 @@
+{
+  "block_id": "ma75cf583:specify:1",
+  "created_at": "2026-06-06T13:07:00.781000+00:00",
+  "decided_at": "2026-06-06T13:15:45.609459+00:00",
+  "decided_by": "gabi",
+  "id": 1,
+  "outcome": "approve",
+  "presented_plan_ref": "plan:specify \u2014 spec.md for multi-protocol-link-layer per RULED contract",
+  "supersedes_id": null
+}

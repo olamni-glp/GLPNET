@@ -1,0 +1,12 @@
+{
+  "block_kind": "plan_task_analyze",
+  "completed_at": null,
+  "id": "ma75cf583:plan:1",
+  "last_sequence_no": 0,
+  "marathon_id": "ma75cf583",
+  "ordinal": 1,
+  "stage": "plan",
+  "started_at": null,
+  "status": "running",
+  "workflow_run_id": "wf_7e8dae81-461"
+}

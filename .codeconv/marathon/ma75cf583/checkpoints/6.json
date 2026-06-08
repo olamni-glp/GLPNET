@@ -1,0 +1,25 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 394418,
+  "completed_units": [
+    "T002 (FR-021/SC-008 redelivery no-op; Dart+C#+test; commit 64d3813f)",
+    "T003 (FR-034/SC-009 compound-operand suspend; runner.dart+C#+Section A24b/c; commit ed3892e6)",
+    "T004 (FR-035/SC-009 imported-reader reactivation via bindAny seam; heap_fcp.dart+mad_context+C#+test; commit 448e4eb5)",
+    "T005 (regression: baselines green 497/498 after each; FR-034 in Section A, FR-021/FR-035 as multiagent Dart tests)",
+    "Phase 0 baseline fixes COMPLETE (all Dart-first then C# mirror, per ruling)"
+  ],
+  "created_at": "2026-06-06T21:22:22.849000+00:00",
+  "id": 166,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "Phase 1 guards (T010 atom/1, T011 @< family, T012 guard tests, T013 guards-reference) \u2014 NEW language features; SEQUENCING (C#-first vs Dart-first) to confirm with Gabi",
+    "Phases 2-7 link layer (C#-first reference)",
+    "Phase 8 Dart mirror of link layer",
+    "T002:link-ingress-gate (transport phase)"
+  ],
+  "sequence_no": 6,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": null,
+  "workflow_run_id": null
+}
