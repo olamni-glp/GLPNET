@@ -15,6 +15,12 @@ main(Me, Got?) :- Me? =?= consumer |
 main(Me, []) :- Me? =?= producer |
     client_connector(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
     produce_link(Link?, [10, 20, 30]).
+main(Me, []) :- Me? =?= producer_strs |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    produce_link(Link?, ["alice", "bob", "carol"]).
+main(Me, []) :- Me? =?= producer_terms |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9100), 1), Link, _),
+    produce_link(Link?, [pt(1, 2), pt(3, 4)]).
 
 % Decompose the established Link, then consume just the inbound stream. The consumer sends
 % nothing, so it head-constructs [] on its outbound (canonical close); In captures inbound.
