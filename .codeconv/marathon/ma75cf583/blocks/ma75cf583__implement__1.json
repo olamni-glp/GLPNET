@@ -2,11 +2,11 @@
   "block_kind": "implement_session",
   "completed_at": null,
   "id": "ma75cf583:implement:1",
-  "last_sequence_no": 0,
+  "last_sequence_no": 9,
   "marathon_id": "ma75cf583",
   "ordinal": 1,
   "stage": "implement",
   "started_at": null,
   "status": "running",
-  "workflow_run_id": null
+  "workflow_run_id": "wf_509ad026-971"
 }

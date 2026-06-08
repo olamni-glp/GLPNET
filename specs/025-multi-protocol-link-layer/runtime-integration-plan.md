@@ -125,3 +125,49 @@ Use `dart run bin/glp_repl.dart` (NOT the stale `glp_repl.exe`) for the Dart REP
 - Exact file-transport close/rotation semantics (B1) — pick the simplest correct scheme, document it.
 - "Numerous examples" / N for GATE C — start with producer/consumer + request/accept + monitor + close;
   expand until coverage is convincing.
+
+---
+
+## Phase D — DISCOVERED SCOPE & EXECUTION (2026-06-08, post-`/clear` session)
+
+Read-only scoping of `glp_runtime` vs `csharp/glp_link` (~3077 LOC, 40 files) settled the
+feasibility questions:
+
+- **Body-kernel seam ALREADY EXISTS in Dart.** `glp_runtime/lib/runtime/body_kernels.dart`
+  (`BodyKernelRegistry`, line 37) is the original the C# `body_kernels.cs` was converted from;
+  `GlpRuntime.bodyKernels` is dispatched at `runner.dart:2806`. Registering the 7 link kernels
+  needs **no core edit** — same injection-seam approach as C# (`LinkKernels.Install`).
+- **Inbound-pump seam DOES NOT exist in Dart** — it was added only to `out/csharp`
+  (`inbound_pump.cs` + `GlpRuntimeEngine.InboundPump` + drain in `glp_engine.cs`, Option B).
+  Mirroring it is the **one core Dart change**: a null-guarded `IInboundPump` field on the Dart
+  runtime/engine + a drain hook in the async scheduler loop. **Null-guarded ⇒ zero behavior/trace
+  change for every non-link run** (the feature-020 "golden frozen" / sibling-convergence concern is
+  satisfied by construction — identical bytes out for classical programs). **This is the D2 gate
+  decision (core-GLP change ⇒ explicit Gabi approval per CLAUDE.md).**
+- **Dart engine is already async** (`glp_engine.dart` `runGoal`/`_runSingleGoal`/`_runConjunction`
+  are `Future…async` over `scheduler.drainAsyncWithStatus`) — no sync→async rewrite needed; the
+  pump drains alongside the existing async scheduler drain.
+
+### File inventory to mirror into `glp_runtime/lib/link/` (this repo only — sibling untouched)
+| group | C# LOC | Dart files (snake_case) | notes |
+|---|---|---|---|
+| seam | 397 | link_scheme, link_id, link_role, link_address, link_fault, link_options, i_link_transport, i_link_endpoint | pure types/interfaces |
+| reliability | 751 | crc32, frame_codec, frame_exception, link_sequencer, inbound_ordering, frame_reassembler, cycle_guard, fencing_registry, send_window, link_reclaimer, resource_snapshot | **parity-critical: byte-identical wire (FR-060/061)** |
+| primitives | 1545 | link_terms, transport_registry, link_registry, link_handle, link_runtime, link_pump, link_establish, link_egress, link_faults, link_teardown + 7 kernels (setup/send/request/listen/accept/monitor/close) + link_kernels | bind to Dart heap/runner APIs |
+| transports | 384 | loopback_transport(+endpoint), tcp_transport(+endpoint) | TCP = chosen real vehicle |
+| **core (1 file)** | — | `runtime/inbound_pump.dart` seam + null-guarded drain in `engine/glp_engine.dart` | **D2 decision** |
+| boot | — | `LinkKernels.install(rt)` + register Tcp/Loopback in `bin/glp_repl.dart` | mirror of C# boot |
+
+Must replicate the **two live-REPL fixes** the C# kernels carry (already in `LinkTerms.cs`):
+deep-deref nested struct args (`GroundResolve`) + quote-strip string constants (`Unquote`).
+
+### Workflow-tool structure (marathon composes it; durable checkpoints per sub-step)
+1. **seam + reliability** (runtime-agnostic, parallel-safe by file-group) — fan-out.
+2. **transports** (depend on seam) — fan-out Loopback + Tcp.
+3. **primitives** (kernels/pump/establish; coupled to heap/runner APIs) — fewer, larger units.
+4. **core pump seam + boot wiring** (D2) — single coherent unit.
+5. **build + GATE D**: `dart analyze`/build; Dart↔Dart two-process over TCP == single-instance
+   baseline; then cross-runtime Dart↔C# (on-wire frame/message bytes must match — FR-060/061).
+
+GATE D decisions for Gabi: **(a)** approve the null-guarded core inbound-pump seam (D2);
+**(b)** confirm Workflow-driven execution under the marathon (standing grants already recorded).
