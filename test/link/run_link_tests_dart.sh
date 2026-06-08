@@ -25,10 +25,16 @@ mkdir -p "$RESULTS"
 PASS=0
 FAIL=0
 
+# Per-peer wall-clock cap so a hung REPL (e.g. a clean-shutdown regression that leaves a
+# consumer alive) makes the suite REPORT A FAILURE instead of blocking forever on `wait`.
+# `timeout` kills the peer on expiry (exit 124); its output then lacks the expected
+# substring → FAIL. Generous vs the ~7 s Windows dart cold-init + normal run.
+PEER_TIMEOUT="${PEER_TIMEOUT:-90}"
+
 # repl <out_file> <glp_file> <goal>  — run one Dart REPL process from glp_runtime/.
 repl() {
     local out="$1" glp="$2" goal="$3"
-    ( cd "$RT" && printf 'load %s\n%s\n:quit\n' "$glp" "$goal" | "$DART" run bin/glp_repl.dart ) > "$out" 2>&1
+    ( cd "$RT" && printf 'load %s\n%s\n:quit\n' "$glp" "$goal" | timeout "$PEER_TIMEOUT" "$DART" run bin/glp_repl.dart ) > "$out" 2>&1
 }
 
 # run_link_test NAME GLP_FILE CONSUMER_GOAL PRODUCER_GOAL EXPECT_IN_CONSUMER [EXPECT_IN_PRODUCER]

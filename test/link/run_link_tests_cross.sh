@@ -39,13 +39,20 @@ if [ ! -f "$CSREPL" ]; then
     exit 1
 fi
 
+# Per-peer wall-clock cap so a hung REPL (e.g. a clean-shutdown regression that leaves a
+# consumer alive) makes the gate REPORT A FAILURE instead of blocking forever on `wait` —
+# a release gate that hangs on the very fault it exists to catch is no gate. `timeout`
+# kills the peer on expiry (exit 124); its output then lacks the expected substring → FAIL.
+# Generous vs the ~7 s Windows dart/PGLite cold-init + normal ~15-20 s run.
+PEER_TIMEOUT="${PEER_TIMEOUT:-90}"
+
 # dart_repl <out> <glp> <goal>  — one Dart REPL process from glp_runtime/.
 dart_repl() {
-    ( cd "$RT" && printf 'load %s\n%s\n:quit\n' "$2" "$3" | "$DART" run bin/glp_repl.dart ) > "$1" 2>&1
+    ( cd "$RT" && printf 'load %s\n%s\n:quit\n' "$2" "$3" | timeout "$PEER_TIMEOUT" "$DART" run bin/glp_repl.dart ) > "$1" 2>&1
 }
 # cs_repl <out> <glp> <goal>  — one C# REPL process (Windows exe; forward-slash paths).
 cs_repl() {
-    printf 'load %s\n%s\n:quit\n' "$2" "$3" | "$CSREPL" > "$1" 2>&1
+    printf 'load %s\n%s\n:quit\n' "$2" "$3" | timeout "$PEER_TIMEOUT" "$CSREPL" > "$1" 2>&1
 }
 
 # cross_test NAME GLP CONS_GOAL PROD_GOAL EXPECT_CONS [EXPECT_PROD]

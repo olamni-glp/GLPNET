@@ -39,9 +39,12 @@ run_link_test() {
     local name="$1" glp="$2" cons_goal="$3" prod_goal="$4" expect="$5" prod_expect="${6:-}"
     local cout="$RESULTS/$name.consumer.out" pout="$RESULTS/$name.producer.out"
 
-    printf 'load %s\n%s\n:quit\n' "$glp" "$cons_goal" | "$REPL" > "$cout" 2>&1 &
+    # Per-peer wall-clock cap (PEER_TIMEOUT, default 90s): a hung REPL makes the suite
+    # REPORT A FAILURE instead of blocking forever on `wait`. timeout kills on expiry
+    # (124) → the output lacks the expected substring → FAIL, never a stalled gate.
+    printf 'load %s\n%s\n:quit\n' "$glp" "$cons_goal" | timeout "${PEER_TIMEOUT:-90}" "$REPL" > "$cout" 2>&1 &
     local cpid=$!
-    printf 'load %s\n%s\n:quit\n' "$glp" "$prod_goal" | "$REPL" > "$pout" 2>&1
+    printf 'load %s\n%s\n:quit\n' "$glp" "$prod_goal" | timeout "${PEER_TIMEOUT:-90}" "$REPL" > "$pout" 2>&1
     wait "$cpid"
 
     local ok=1
