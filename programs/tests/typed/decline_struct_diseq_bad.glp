@@ -1,0 +1,7 @@
+% decline_struct_diseq_bad.glp — FR-036 DECLINE (NEGATIVE: must be REJECTED at
+% load). \= (structural disequality) was deliberately REMOVED from GLP: it is
+% ill-defined applied patiently over partial terms (a later bind can falsify a
+% committed verdict). A clause using it in guard position must be rejected.
+% Canonical GLP form: ~(X? =?= Y?).
+exported procedure ddiff(_?, _?, _).
+ddiff(X, Y, yes) :- X? \= Y? | true.

@@ -1,0 +1,29 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "budget_spent": 0,
+  "completed_units": [
+    "Phase 0 (T002/T003/T004) committed + PUSHED (64d3813f, ed3892e6, 448e4eb5)",
+    "T010 (atom/1 = string/1 synonym) committed 183225c8",
+    "T011 (@< @> @=< @>= standard-order term comparison) committed 4c84f9eb",
+    "Link Phases A+B+C (C#): kernels wired into C# REPL boot; TcpTransport (127.0.0.1, 4-byte framing); link types in self.glp; 99 xUnit + 4/4 two-process TCP; examples bidirectional(FR-003 88e6d4e4) + fault-monitor/graceful-close(FR-008/044 76823e48)",
+    "Core runner heap-addr/register-index deref-conflation fix (Dart+C# 8af18c3a); root cause of link_recv-chain consumer failure",
+    "Sibling propagation: shared-core deref fix merged to olamni-glp/GLP main 8a5aa8f6 (sibling 494/495 known-AOT-only, no regressions)"
+  ],
+  "created_at": "2026-06-08T15:44:24.391000+00:00",
+  "id": 265,
+  "marathon_id": "ma75cf583",
+  "remaining_units": [
+    "Phase D: Dart mirror of csharp/glp_link into glp_runtime/lib/link/ (seam+reliability+7 kernels+pump/establish+Loopback/Tcp; replicate deep-deref + quote-strip fixes)",
+    "Phase D core: null-guarded inbound-pump seam in Dart engine + async-scheduler drain (approved) + boot wiring in bin/glp_repl.dart",
+    "GATE D: Dart REPL loads link.glp + runs examples two-process Dart<->Dart == baseline; then cross-runtime Dart<->C# (byte-identical wire FR-060/061)",
+    "Phase E: full regression both runtimes (classical 1-instance + link 2-instance); pass/fail matrix",
+    "buildkit-codexreview iterate-to-convergence on branch diff",
+    "Ship via buildkit GitFlow + new CalVer release on main (SEPARATE explicit pause)",
+    "Pre-link guard units T012/T013 (guard tests + docs/guards-reference.md) \u2014 status unverified, not in this session's directive"
+  ],
+  "sequence_no": 9,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "Phase D \u2014 Dart link-layer mirror (glp_runtime/lib/link/) + null-guarded inbound-pump seam (Gabi-approved gate id 133)",
+  "workflow_run_id": null
+}

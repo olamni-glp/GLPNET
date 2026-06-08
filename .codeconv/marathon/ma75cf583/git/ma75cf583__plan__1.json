@@ -1,0 +1,28 @@
+{
+  "block_id": "ma75cf583:plan:1",
+  "commit_sha": "264bd5cfc32c30879107b3ef6ffbf1bf6c9f7695",
+  "created_at": "2026-06-06T17:13:43.384000+00:00",
+  "escalation": null,
+  "pushed": true,
+  "staged_files": [
+    "specs/025-multi-protocol-link-layer/plan.md",
+    "specs/025-multi-protocol-link-layer/tasks.md",
+    "specs/025-multi-protocol-link-layer/analyze.md",
+    "specs/025-multi-protocol-link-layer/DESIGN-DOSSIER.md",
+    "specs/025-multi-protocol-link-layer/contracts/link-primitives.md",
+    "specs/025-multi-protocol-link-layer/contracts/guards.md",
+    "specs/025-multi-protocol-link-layer/contracts/architecture-context.md",
+    "specs/025-multi-protocol-link-layer/contracts/codesign-proposal.md",
+    "specs/025-multi-protocol-link-layer/contracts/rulings-log.md",
+    "specs/025-multi-protocol-link-layer/contracts/example-http-link.md",
+    "specs/025-multi-protocol-link-layer/tutorials/README.md",
+    "specs/025-multi-protocol-link-layer/tutorials/file-loopback.md",
+    "specs/025-multi-protocol-link-layer/tutorials/websocket.md",
+    "specs/025-multi-protocol-link-layer/tutorials/https-http2-mtls.md",
+    "specs/025-multi-protocol-link-layer/tutorials/mqtt.md",
+    "specs/025-multi-protocol-link-layer/tutorials/coap.md",
+    "specs/025-multi-protocol-link-layer/tutorials/ble-l2cap.md",
+    "specs/025-multi-protocol-link-layer/tests/integration-harness-design.md",
+    "specs/025-multi-protocol-link-layer/tests/test-matrix.md"
+  ]
+}

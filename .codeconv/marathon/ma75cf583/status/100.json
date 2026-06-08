@@ -1,0 +1,23 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "created_at": "2026-06-08T20:25:54.122000+00:00",
+  "done": [
+    "Phase 0 + T010 + T011; Link Phases A-C (C#) + examples; runner deref fix 8af18c3a + sibling main 8a5aa8f6",
+    "Phase D layer 1 (wf_509ad026-971) committed 57087a00: seam+reliability+transports",
+    "Phase D layer 2 committed afc25d53 + 291b519a: async-aware establish + 7 kernels + link_kernels.install + boot wiring + inbound_pump seam + null-guarded engine async pump-driver (waitForInbound). dart analyze clean; classical smoke Sum=5; C# blocking-net vs Dart native-async model VERIFIED faithful.",
+    "Phase D layer 2 async-correctness fixes (UNCOMMITTED until this checkpoint's commit): link_pump trackIo+_liveLinks+recv-loop-runs-until-peer-FIN (not own-close); link_handle ioTracker hook; link_establish track connect; link_egress track each send; link_teardown graceful-close chains AFTER egressTail. RESULT: Dart<->Dart two-process over real TCP 6/8 PASS EXACT (pc integers/strings/terms, link_send wrapper, link_recv-chain, bidirectional[1,2,3]/[10,20,30])."
+  ],
+  "id": 100,
+  "issues": [],
+  "marathon_id": "ma75cf583",
+  "todo": [
+    "BUG path_b_request_accept (Dart): acceptor goal -> suspended, never receives [100,200,300]. Path-B request/accept handshake. SUSPECT: link_request_kernel/link_listen_kernel/link_accept_kernel OR the accept-path establish closure resolving link.pending endpoint (Future). Program: programs/tests/link/pathb.glp. DIAGNOSE FIRST next session.",
+    "monitor_close (Dart) UNTESTED: suite hung before test 8 ran (path_b acceptor process did not exit -> harness `wait` blocked). Program: programs/tests/link/mon.glp; expect res([7,8,9],[closed(link_id(...)...]).",
+    "CLEAN-EXIT issue: a suspended/failed link goal leaves the Dart isolate alive (parked recv-loop/pending-accept Futures) -> one-shot `dart run bin/glp_repl.dart` process does NOT exit on :quit -> the back-to-back suite test/link/run_link_tests_dart.sh hangs at `wait`. FIX: dispose link pump (cancel recv loops, close sockets) on :quit/one-shot end, or force exit(0). Needed for harness robustness + clean shutdown.",
+    "THEN cross-runtime Dart<->C# (run a Dart end vs a C# end over TCP; byte-identical wire FR-060/061).",
+    "Phase E: full regression both runtimes; buildkit-codexreview; ship + CalVer release on main (separate explicit pause).",
+    "NOTE this session also captured a large NEW epic (persistent embeddable engine / REPL-engine separation) on the roadmap (16 features) + docs/research/repl-engine-separation/ \u2014 SEPARATE from this 025 marathon."
+  ],
+  "tokens_remaining": null,
+  "tokens_spent": 394418
+}

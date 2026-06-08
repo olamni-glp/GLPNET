@@ -1,0 +1,20 @@
+{
+  "block_id": "ma75cf583:implement:1",
+  "created_at": "2026-06-08T14:09:45.636000+00:00",
+  "done": [
+    "Phase 0 (T002/T003/T004) committed + PUSHED (64d3813f, ed3892e6, 448e4eb5)",
+    "T010 (atom/1 = string/1 synonym) committed 183225c8",
+    "T011 (@< @> @=< @>= standard-order term comparison; lexer+parser+runner _compareTerms+analyzer+prelude+self.glp; Dart+C# mirror; Section A24f 9 checks; Goal@Agent intact) committed 4c84f9eb; baseline 511/512"
+  ],
+  "id": 67,
+  "issues": [],
+  "marathon_id": "ma75cf583",
+  "todo": [
+    "T012 guard tests: @< 3-valued reactivate-once + Section C negatives (declines == \\== \\= reader/1 reject) + =\\= untouched regression",
+    "T013 consolidate docs/guards-reference.md (single authoritative guard spec)",
+    "Phases 2-7 link layer (C#-first); Phase 8 Dart mirror",
+    "DECLINE guards (FR-036): == \\== \\= reader/1 must stay rejected (verify, no edit)"
+  ],
+  "tokens_remaining": null,
+  "tokens_spent": 394418
+}

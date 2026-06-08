@@ -616,6 +616,9 @@ class Analyzer {
   static const _nonNegatableGuards = {
     // Arithmetic (type error on non-numeric)
     '<', '>', '=<', '>=', '=:=', '=\\=',
+    // Standard-order term comparison (T011/FR-037, OQ-G2 RULED non-negatable:
+    // the natural complement of @< is @>=, @> is @=<)
+    '@<', '@>', '@=<', '@>=',
     // Control
     'otherwise',
     // Time
@@ -724,7 +727,11 @@ class Analyzer {
     // Per spec: comparison guards require both operands to be bound numeric values,
     // which means they're ground. This allows multiple reader occurrences.
     // Arguments may be complex arithmetic expressions, so extract all reader variables.
-    final comparisonOps = ['<', '>', '=<', '>=', '=:=', '=\\='];
+    // @< family (T011/FR-037, OQ-G1): the standard order is defined only over
+    // ground terms, so success implies both operands are ground → ground-implying
+    // for SRSW exactly like the arithmetic comparisons (SC-006).
+    final comparisonOps = ['<', '>', '=<', '>=', '=:=', '=\\=',
+        '@<', '@>', '@=<', '@>='];
     if (comparisonOps.contains(guard.predicate) && guard.args.length == 2) {
       for (final arg in guard.args) {
         _extractAndMarkGroundedVars(arg, varTable);

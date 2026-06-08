@@ -1,0 +1,40 @@
+% pathb.glp — path-B establishment (feature 025, FR-002): request/accept handshake
+% (NOT the listener/connector pairing of path A). The acceptor binds a rendezvous,
+% surfaces the inbound request, and accepts it; the requester dials the rendezvous and
+% ships the in-band request token. Both ends then hold an equivalent established Link
+% (converges on the same registry as path A — R-5). The requester sends [100,200,300];
+% the acceptor collects them — proving the path-B link carries data like a path-A one.
+%   consumer slot:  main(acceptor, Got).    → Got = [100, 200, 300]
+%   producer slot:  main(requester, X).
+-mode(system).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Got?) :- Me? =?= acceptor |
+    request_listener(rendezvous("tcp", ep("127.0.0.1", 9120)), Requests),
+    serve_one(Requests?, Got).
+main(Me, []) :- Me? =?= requester |
+    request_link(link_id("tcp", ep("127.0.0.1", 9120), 1), acceptor, Link, _),
+    produce_link(Link?, [100, 200, 300]).
+
+% The request-loop (one-shot): match the listener Stream's non-empty head, hand that
+% OpenStream view to accept_link (which decomposes request(LinkId2, FromPeer) and matches
+% the served LinkId with =?=), then consume the established link's data.
+procedure serve_one(Stream(RequestMsg)?, Stream(_)).
+serve_one([Req|Rest], Got?) :-
+    accept_link(link_id("tcp", ep("127.0.0.1", 9120), 1), [Req?|Rest?], Link, _),
+    consume_link(Link?, Got).
+serve_one([], []).
+
+% Receive-only: capture inbound In, head-close the outbound ([]), walk In into Got.
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+% Send-only: produce onto the outbound Out, ignore inbound (anon _).
+procedure produce_link(Link(_, _)?, Stream(_)?).
+produce_link(ch(_, Out?), Vals) :- produce(Vals?, Out).
+procedure produce(Stream(_)?, Stream(_)).
+produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
+produce([], []).

@@ -6,6 +6,10 @@ library;
 
 import 'dart:io';
 import 'package:glp_runtime/engine/glp_engine.dart';
+import 'package:glp_runtime/link/primitives/link_kernels.dart';
+import 'package:glp_runtime/link/primitives/link_runtime.dart';
+import 'package:glp_runtime/link/transports/loopback_transport.dart';
+import 'package:glp_runtime/link/transports/tcp_transport.dart';
 import 'package:glp_runtime/multiagent/boot_loader.dart';
 import 'package:glp_runtime/multiagent/isolate_manager.dart';
 import 'package:glp_runtime/runtime/scheduler.dart';
@@ -44,6 +48,17 @@ String _resolveRootSelfGlpPath() {
       'snapshot, or the compiled .exe must all reside under glp_runtime/).');
 }
 
+/// Composition-root seam (feature 025): invoked once, right after the REPL constructs
+/// its [GlpEngine], so an outer host can install host kernels + register transports on
+/// the live engine. The link layer lives in the hand-authored link package, which
+/// DEPENDS ON the runtime/engine — so the wiring is injected here at the composition
+/// root rather than referenced by the engine (the engine never references the link
+/// layer; FR-057). The host sets this hook to call `LinkKernels.install(engine.runtime)`
+/// + register `TcpTransport`/`LoopbackTransport` into the returned `LinkRuntime.transports`
+/// and set `engine.runtime.inboundPump` to the runtime's pump. Null for every other host
+/// (tests, the feature-020 oracle), so those runs are byte-for-byte unchanged.
+void Function(GlpEngine)? afterEngineCreated;
+
 void main() async {
   final gitCommit = await _getGitCommit();
   final buildTime = '2026-02-01 (GlpEngine refactor)';
@@ -69,7 +84,21 @@ void main() async {
   // when invoked through the AOT exe (which lives one level shallower than the source).
   // See test/aot_self_glp_path_test.dart for the regression coverage.
   final rootSelfGlpPath = _resolveRootSelfGlpPath();
+  // feature 025: default REPL host wiring — install the native-Dart link layer onto
+  // the live engine. link/ is in the same Dart package as the runtime/engine, so the
+  // composition root imports it directly. The setup kernel installs the inbound pump
+  // lazily (`rt.inboundPump ??= link.pump`); we only register the kernels + transports.
+  // Captured so the REPL can release the link layer's OS resources on exit (below).
+  LinkRuntime? linkRuntime;
+  afterEngineCreated ??= (engine) {
+    final link = LinkKernels.install(engine.runtime);
+    link.transports.register(TcpTransport());
+    link.transports.register(LoopbackTransport());
+    linkRuntime = link;
+  };
   final engine = GlpEngine(rootSelfGlpPath: rootSelfGlpPath);
+  afterEngineCreated
+      ?.call(engine); // feature 025: outer host installs link kernels + transports
   print('Loaded root self.glp from: $rootSelfGlpPath');
   print('');
 
@@ -289,6 +318,20 @@ void main() async {
     }
 
     print('');
+  }
+
+  // feature 025 clean shutdown: release the link layer's sockets (cancel the pump's
+  // background recv loops, close + destroy every established/parked endpoint) so the
+  // isolate isn't held alive by parked recv Futures, then force-exit. Without this a
+  // one-shot (`echo … | dart run glp_repl.dart`) or the back-to-back link suite hangs
+  // after `Goodbye!` because a suspended link goal's recv loop / a still-pending accept
+  // keeps the event loop non-empty. exit(0) is the backstop for any in-flight transport
+  // future the registry-walk can't reach; all tracked OUTBOUND I/O has already drained
+  // via run-to-quiescence before we reach this point, so nothing is lost.
+  if (linkRuntime != null) {
+    await linkRuntime!.dispose();
+    await stdout.flush();
+    exit(0);
   }
 }
 

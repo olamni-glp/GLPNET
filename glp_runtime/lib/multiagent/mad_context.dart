@@ -38,6 +38,16 @@ class MadContext {
   /// Registry for pending global_send goals (watches readers, sends when known)
   final GlobalSendRegistry globalSendRegistry;
 
+  /// FR-021 / SC-008: per-global-name record of already-delivered assignments, so a
+  /// redelivered frame is recognized as a duplicate and absorbed as a VERIFIED no-op
+  /// (no throw, no swallowed error, no re-bind, no goal re-enqueue) instead of crashing
+  /// the agent on the now-removed entry. Recognition is by global-name (writer index /
+  /// reader agent:index). Value-conflict split-brain defense (FR-047, epoch/fence), the
+  /// serializer index-0 exactly-once, and cross-link sequence dedup are the fuller
+  /// reliability sublayer (T022/T023, Phase 2).
+  final Set<int> _deliveredWriterIndices = {};
+  final Set<String> _deliveredReaderKeys = {};
+
   /// Payload serializer for message encoding
   late final PayloadSerializer _serializer;
 
@@ -303,7 +313,9 @@ class MadContext {
     final listCell = StructTerm('.', [content, VarRef(freshReader)]);
 
     // Bind current writer to extend the stream: N_p := [content | N'_p?]
-    final activations = runtime.heap.bindVariable(currentWriter, listCell);
+    // FR-035/SC-009: route through bindAny (single seam) so an imported-reader
+    // target drains VariableEntry.suspensions; a local writer is unchanged.
+    final activations = runtime.heap.bindAny(currentWriter, listCell);
     _trace('[MAD $agentId] _handleSerializerAssignment: bound stream, ${activations.length} activations');
 
     // Update the serializer entry to point to the fresh writer
@@ -326,6 +338,13 @@ class MadContext {
     final entry = wp.lookupByIndex(globalName.index);
 
     if (entry == null) {
+      // FR-021/SC-008: a redelivered writer assignment whose entry was already
+      // consumed is a VERIFIED no-op (recognized duplicate), not a crash.
+      if (_deliveredWriterIndices.contains(globalName.index)) {
+        _trace('[MAD $agentId] _handleWriterAssignment: verified duplicate for $globalName — no-op (FR-021/SC-008)');
+        return;
+      }
+      // Genuinely-unknown index: surface (never swallow).
       throw StateError(
         'No GlobalizeEntry at index ${globalName.index} for $globalName',
       );
@@ -352,7 +371,9 @@ class MadContext {
     }
 
     // Bind the writer with localized value
-    final activations = runtime.heap.bindVariable(writerAddr, localizedValue);
+    // FR-035/SC-009: route through bindAny (single seam) — imported reader →
+    // bindImportedReader (drain suspensions); local writer → bindVariable.
+    final activations = runtime.heap.bindAny(writerAddr, localizedValue);
     _trace('[MAD $agentId] _handleWriterAssignment: bound writer, ${activations.length} activations');
 
     // Reactivate suspended goals
@@ -362,6 +383,7 @@ class MadContext {
 
     // Remove the entry
     wp.removeGlobalizeEntry(globalName.index);
+    _deliveredWriterIndices.add(globalName.index); // FR-021: mark delivered for dedup recognition
     _trace('[MAD $agentId] _handleWriterAssignment: entry removed');
   }
 
@@ -373,6 +395,14 @@ class MadContext {
   void _handleReaderAssignment(GlobalName globalName, Term value, String fromAgent) {
     final entry = wp.findByRemote(globalName.agent, globalName.index);
     if (entry == null) {
+      // FR-021/SC-008: a redelivered reader assignment whose entry was already
+      // consumed is a VERIFIED no-op (recognized duplicate), not a crash.
+      final dupKey = '${globalName.agent}:${globalName.index}';
+      if (_deliveredReaderKeys.contains(dupKey)) {
+        _trace('[MAD $agentId] _handleReaderAssignment: verified duplicate for $globalName — no-op (FR-021/SC-008)');
+        return;
+      }
+      // Genuinely-unknown (remoteAgent, remoteIndex): surface (never swallow).
       throw StateError(
         'No LocalizeEntry for $globalName: expected entry with '
         '(remoteAgent=${globalName.agent}, remoteIndex=${globalName.index})',
@@ -399,7 +429,10 @@ class MadContext {
     }
 
     // Bind the writer with localized value
-    final activations = runtime.heap.bindVariable(entry.writerAddr, localizedValue);
+    // FR-035/SC-009: route through bindAny (single seam) so a genuinely
+    // writerless imported reader reactivates its suspended goals (FR-051);
+    // the local-pair writer path is unchanged.
+    final activations = runtime.heap.bindAny(entry.writerAddr, localizedValue);
     _trace('[MAD $agentId] _handleReaderAssignment: bound writer, ${activations.length} activations');
 
     // Reactivate suspended goals
@@ -409,6 +442,7 @@ class MadContext {
 
     // Remove the entry
     wp.removeLocalizeEntry(globalName.agent, globalName.index);
+    _deliveredReaderKeys.add('${globalName.agent}:${globalName.index}'); // FR-021: mark delivered
     _trace('[MAD $agentId] _handleReaderAssignment: entry removed');
   }
 

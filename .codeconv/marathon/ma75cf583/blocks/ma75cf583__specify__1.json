@@ -1,0 +1,12 @@
+{
+  "block_kind": "specify",
+  "completed_at": null,
+  "id": "ma75cf583:specify:1",
+  "last_sequence_no": 0,
+  "marathon_id": "ma75cf583",
+  "ordinal": 1,
+  "stage": "specify",
+  "started_at": null,
+  "status": "awaiting_approval",
+  "workflow_run_id": "wf_7acdd635-350"
+}

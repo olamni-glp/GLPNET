@@ -744,7 +744,11 @@ public class Parser
         if (Check(TokenType.LESS) || Check(TokenType.GREATER) ||
             Check(TokenType.LESS_EQUAL) || Check(TokenType.GREATER_EQUAL) ||
             Check(TokenType.EQUALS) || Check(TokenType.ARITH_EQUAL) ||
-            Check(TokenType.ARITH_NOT_EQUAL) || Check(TokenType.GROUND_EQUAL))
+            Check(TokenType.ARITH_NOT_EQUAL) || Check(TokenType.GROUND_EQUAL) ||
+            // Standard-order term-comparison guards (T011/FR-037): @< @> @=< @>=.
+            // The transform reuses opToken.Lexeme as the functor → @<(L,R).
+            Check(TokenType.AT_LESS) || Check(TokenType.AT_GREATER) ||
+            Check(TokenType.AT_LESS_EQUAL) || Check(TokenType.AT_GREATER_EQUAL))
         {
             var opToken = Advance();
             var right   = ParseExpression(6);
@@ -1750,6 +1754,11 @@ public class Parser
             case TokenType.ARITH_EQUAL:
             case TokenType.ARITH_NOT_EQUAL:
             case TokenType.GROUND_EQUAL:
+            // Standard-order term-comparison guards (T011/FR-037): @< @> @=< @>=
+            case TokenType.AT_LESS:
+            case TokenType.AT_GREATER:
+            case TokenType.AT_LESS_EQUAL:
+            case TokenType.AT_GREATER_EQUAL:
             case TokenType.EQUALS:
             case TokenType.UNIV:
             case TokenType.UNIV_DECOMPOSE:

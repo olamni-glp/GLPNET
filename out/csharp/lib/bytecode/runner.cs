@@ -4869,8 +4869,15 @@ public sealed class BytecodeRunner
 
         object? Dereference(object? t)
         {
-            // Resolve clauseVars first (same pattern as Execute fix)
-            if (t is VarRef tvr && cx.ClauseVars.ContainsKey(tvr.Addr))
+            // Resolve clauseVars first (same pattern as Execute fix).
+            // BUT only when Addr is a register index, NOT a live heap address: heap
+            // addresses (AllocateVariable cells) and clause-var register indices share
+            // the int namespace, so a heap VarRef whose addr numerically collides with a
+            // populated head-structure temp register (X10, X11, ...) was wrongly resolved
+            // through ClauseVars (returning the temp's structure) instead of dereferenced
+            // via the heap. A live reader/writer cell is always a genuine heap address.
+            if (t is VarRef tvr && cx.ClauseVars.ContainsKey(tvr.Addr) &&
+                !cx.Rt.Heap.IsReader(tvr.Addr) && !cx.Rt.Heap.IsWriter(tvr.Addr))
             {
                 // Resolve clause variable index to actual heap addr
                 var resolved = cx.ClauseVars[tvr.Addr];
@@ -4940,8 +4947,16 @@ public sealed class BytecodeRunner
             }
             else if (t is StructTerm)
             {
-                // Return structure as-is (don't evaluate arithmetic here)
-                // Guards like =:= will evaluate explicitly using evaluateNumeric
+                // FR-034/SC-009: a compound operand may hide a nested unbound reader
+                // (e.g. peer(Region, Id?) with Id? un-arrived from a remote bind).
+                // Recurse into the args so that reader is collected into
+                // `unboundReaders` → the generic guard gate SUSPENDS on it, instead of
+                // passing the struct through to be wrongly committed as a FAIL (a
+                // non-monotone wrong commit; _termsEqual returns false on the unbound
+                // inner reader). Mirrors the dedicated GroundEqual opcode's CollectUnbound.
+                // The structure itself is still returned as-is — guards like =:= and the
+                // term comparators re-deref the args via their own visited-set machinery.
+                _collectUnboundReaders(t, cx, unboundReaders);
                 return t;
             }
             else if (t is ConstTerm ct)
@@ -4976,6 +4991,87 @@ public sealed class BytecodeRunner
 
         var result = Dereference(term);
         return (result, unboundReaders);
+    }
+
+    /// <summary>
+    /// FR-034/SC-009: collect every unbound reader nested anywhere inside <paramref name="term"/>
+    /// — compound args included — into <paramref name="outSet"/>. Used by the generic guard path
+    /// so a nested un-arrived reader makes the guard SUSPEND (reactivate once on bind) rather than
+    /// wrongly commit a FAIL. A bound writer/reader recurses into its value; an unbound reader is
+    /// recorded; an unbound writer is left for the comparator to FAIL on (verdict matrix:
+    /// reader→suspend, writer→fail). The address-keyed visited set guarantees termination on a
+    /// cyclic compound. Structural mirror of the dedicated GroundEqual opcode's CollectUnbound.
+    /// </summary>
+    private static void _collectUnboundReaders(object? term, RunnerContext cx, ISet<int> outSet)
+    {
+        var visited = new HashSet<int>();
+        void Walk(object? t)
+        {
+            if (t is VarRef wterm && cx.Rt.Heap.IsWriter(wterm.Addr))
+            {
+                var writerAddr = wterm.Addr;
+                if (!visited.Add(writerAddr)) return;
+                if (cx.SigmaHat.TryGetValue(writerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsFullyBound(writerAddr))
+                {
+                    Walk(cx.Rt.Heap.GetValue(writerAddr));
+                }
+                // Unbound writer: not a reader → not collected (comparator FAILs).
+            }
+            else if (t is VarRef rterm && cx.Rt.Heap.IsReader(rterm.Addr))
+            {
+                var readerAddr = rterm.Addr;
+                if (!visited.Add(readerAddr)) return;
+                if (cx.SigmaHat.TryGetValue(readerAddr, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (!cx.Rt.Heap.IsReaderBound(readerAddr))
+                {
+                    outSet.Add(readerAddr);
+                }
+                else
+                {
+                    Walk(cx.Rt.Heap.GetReaderValue(readerAddr));
+                }
+            }
+            else if (t is StructTerm st)
+            {
+                foreach (var arg in st.Args) Walk(arg);
+            }
+            else if (t is _TentativeStruct ts)
+            {
+                foreach (var arg in ts.Args) Walk(arg);
+            }
+            else if (t is int ti)
+            {
+                if (!visited.Add(ti)) return;
+                if (cx.SigmaHat.TryGetValue(ti, out var sigmaBinding) && sigmaBinding != null)
+                {
+                    Walk(sigmaBinding);
+                }
+                else if (cx.Rt.Heap.IsWriter(ti))
+                {
+                    if (cx.Rt.Heap.IsFullyBound(ti))
+                    {
+                        Walk(cx.Rt.Heap.GetValue(ti));
+                    }
+                }
+                else if (!cx.Rt.Heap.IsReaderBound(ti))
+                {
+                    outSet.Add(ti);
+                }
+                else
+                {
+                    Walk(cx.Rt.Heap.GetReaderValue(ti));
+                }
+            }
+            // Constants and other leaves contribute nothing.
+        }
+        Walk(term);
     }
 
     /// <summary>Test if a functor is an arithmetic operator.</summary>
@@ -5221,6 +5317,24 @@ public sealed class BytecodeRunner
                     return GuardResult.Fail;
                 }
 
+            // Standard-order term-comparison guards (T011/FR-037/SC-006, OQ-G1 RULED:
+            // Number < String < compound, then arity/functor/args; equality = =?=).
+            // Operands are already ground here — the generic gate suspends on an
+            // unbound reader (top-level OR nested-in-compound); an unbound writer
+            // falls through the comparator to FAIL. Non-negatable (OQ-G2).
+            case "@<":
+                if (args.Count < 2) return GuardResult.Fail;
+                return CompareTerms(args[0], args[1], cx) < 0 ? GuardResult.Pass : GuardResult.Fail;
+            case "@>":
+                if (args.Count < 2) return GuardResult.Fail;
+                return CompareTerms(args[0], args[1], cx) > 0 ? GuardResult.Pass : GuardResult.Fail;
+            case "@=<":
+                if (args.Count < 2) return GuardResult.Fail;
+                return CompareTerms(args[0], args[1], cx) <= 0 ? GuardResult.Pass : GuardResult.Fail;
+            case "@>=":
+                if (args.Count < 2) return GuardResult.Fail;
+                return CompareTerms(args[0], args[1], cx) >= 0 ? GuardResult.Pass : GuardResult.Fail;
+
             // Type guards
             case "ground":
                 // Already checked for unbound readers in caller
@@ -5246,6 +5360,10 @@ public sealed class BytecodeRunner
                     return (val is int || val is long) ? GuardResult.Pass : GuardResult.Fail;
                 }
 
+            // FR-033/SC-005 (OQ-G3 RULED): `atom/1` is the paper-kernel name and an
+            // EXACT synonym of the runtime `string/1` test — a non-numeric atomic
+            // constant, excluding `[]`/`nil`. Stacked label so both share one body.
+            case "atom":
             case "string":
                 // Succeeds if X is a string (lowercase identifier or quoted string)
                 if (args.Count == 0) return GuardResult.Fail;
@@ -5673,6 +5791,136 @@ public sealed class BytecodeRunner
 
         // Default: use object equality
         return Equals(a, b);
+    }
+
+    /// <summary>
+    /// Standard-order rank of a ground leaf: Number(0) &lt; String/atom(1) &lt;
+    /// compound(2); any other ground leaf sorts last (3). (T011/FR-037, OQ-G1.)
+    /// </summary>
+    private static int OrderRank(object? t)
+    {
+        if (_isNum(t)) return 0;
+        if (t is string) return 1;
+        if (t is StructTerm) return 2;
+        return 3;
+    }
+
+    /// <summary>
+    /// FR-037/SC-006 (OQ-G1 RULED): standard-order comparison of two GROUND terms,
+    /// returning -1 | 0 | 1. Total order Number &lt; String(atom) &lt; compound; within
+    /// numbers by value, within strings by code-unit (ordinal) order, within compounds
+    /// by arity, then functor name, then arguments left-to-right. A result of 0
+    /// coincides with =?=. Mirrors _termsEqual's VarRef-deref + visited discipline
+    /// (operands are ground — the generic gate suspends otherwise). MUST stay
+    /// byte/behaviour-identical to the Dart _compareTerms (Dart↔C# wire stability,
+    /// FR-060): string.CompareOrdinal matches Dart String.compareTo (UTF-16 code units).
+    /// </summary>
+    private static int CompareTerms(object? a, object? b, RunnerContext cx, HashSet<(int, int)>? visited = null)
+    {
+        visited ??= new HashSet<(int, int)>();
+
+        // Unwrap ConstTerm to its primitive value.
+        if (a is ConstTerm act) a = act.Value;
+        if (b is ConstTerm bct) b = bct.Value;
+
+        // Dereference VarRefs (ground operands → bound), mirroring _termsEqual.
+        if (a is VarRef avr)
+        {
+            var aAddr = avr.Addr;
+            object? aDeref;
+            if (cx.Rt.Heap.IsReader(aAddr))
+            {
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(aAddr);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                    aDeref = cx.SigmaHat[writerAddr.Value];
+                else if (cx.Rt.Heap.IsReaderBound(aAddr))
+                    aDeref = cx.Rt.Heap.GetReaderValue(aAddr);
+                else
+                    return 0; // unbound (should not happen for a ground operand)
+            }
+            else
+            {
+                if (cx.SigmaHat.ContainsKey(aAddr))
+                    aDeref = cx.SigmaHat[aAddr];
+                else if (cx.Rt.Heap.IsFullyBound(aAddr))
+                    aDeref = cx.Rt.Heap.GetValue(aAddr);
+                else
+                    return 0;
+            }
+            if (b is VarRef bvr0)
+            {
+                var pair = (aAddr, bvr0.Addr);
+                if (visited.Contains(pair)) return 0; // cycle at corresponding positions
+                visited.Add(pair);
+            }
+            return CompareTerms(aDeref, b, cx, visited);
+        }
+        if (b is VarRef bvr)
+        {
+            var bAddr = bvr.Addr;
+            object? bDeref;
+            if (cx.Rt.Heap.IsReader(bAddr))
+            {
+                var writerAddr = cx.Rt.Heap.TryWriterForReader(bAddr);
+                if (writerAddr != null && cx.SigmaHat.ContainsKey(writerAddr.Value))
+                    bDeref = cx.SigmaHat[writerAddr.Value];
+                else if (cx.Rt.Heap.IsReaderBound(bAddr))
+                    bDeref = cx.Rt.Heap.GetReaderValue(bAddr);
+                else
+                    return 0;
+            }
+            else
+            {
+                if (cx.SigmaHat.ContainsKey(bAddr))
+                    bDeref = cx.SigmaHat[bAddr];
+                else if (cx.Rt.Heap.IsFullyBound(bAddr))
+                    bDeref = cx.Rt.Heap.GetValue(bAddr);
+                else
+                    return 0;
+            }
+            return CompareTerms(a, bDeref, cx, visited);
+        }
+
+        // Cross-class order: Number < String < compound (< other).
+        var ra = OrderRank(a);
+        var rb = OrderRank(b);
+        if (ra != rb) return ra < rb ? -1 : 1;
+
+        switch (ra)
+        {
+            case 0: // numbers, by value
+            {
+                static double Conv(object? v) => v is double d ? d : v is long l ? l : v is int i ? i : double.NaN;
+                var na = Conv(a);
+                var nb = Conv(b);
+                return na < nb ? -1 : (na > nb ? 1 : 0);
+            }
+            case 1: // strings/atoms, code-unit (ordinal) lexicographic
+            {
+                var cmp = string.CompareOrdinal((string)a!, (string)b!);
+                return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+            }
+            case 2: // compounds: arity, then functor, then args left-to-right
+            {
+                var sa = (StructTerm)a!;
+                var sb = (StructTerm)b!;
+                if (sa.Args.Count != sb.Args.Count)
+                    return sa.Args.Count < sb.Args.Count ? -1 : 1;
+                var fc = string.CompareOrdinal(sa.Functor, sb.Functor);
+                if (fc != 0) return fc < 0 ? -1 : 1;
+                for (var i = 0; i < sa.Args.Count; i++)
+                {
+                    var c = CompareTerms(sa.Args[i], sb.Args[i], cx, visited);
+                    if (c != 0) return c;
+                }
+                return 0;
+            }
+            default: // deterministic fallback for any other ground leaf
+            {
+                var cmp = string.CompareOrdinal(a?.ToString() ?? "", b?.ToString() ?? "");
+                return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+            }
+        }
     }
 
     /// <summary>True if value is a GLP numeric (int/long/double).</summary>
