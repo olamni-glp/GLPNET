@@ -36,9 +36,21 @@ class LinkEgress {
     // credit release rides the inbound ack path, which lands with the monitor
     // primitive (T034). Acquiring a credit with no Release would freeze the runner
     // thread at the window bound. Framing + monotone sequencing are real today.
+    //
+    // Endpoint readiness gate (async establish): the transport endpoint is DEFERRED
+    // until the async connect/listen rendezvous resolves, so a frame may be ready to
+    // ship before the link has connected. Chain every send on handle.ready, and chain
+    // that off the per-handle egress tail so frames serialize in SUBMISSION order even
+    // across the connect gate (FR-018/053 per-link FIFO). The framing + sequencing
+    // above already happened synchronously on the runner thread, so monotone sequence
+    // order matches submission order; the tail preserves it through to the wire.
     for (final frame
         in FrameCodec.encode(payload, seq, handle.options.maxFrameBytes)) {
-      handle.endpoint.sendBytes(frame);
+      handle.egressTail = handle.egressTail.then(
+          (_) => handle.ready.then((ep) => ep.sendBytes(frame)),
+          // A failed connect (ready rejects) must not poison the tail; the fault is
+          // surfaced on the monitor by the establish path. Swallow so later chains run.
+          onError: (Object _) {});
     }
   }
 

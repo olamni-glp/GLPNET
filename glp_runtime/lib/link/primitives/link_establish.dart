@@ -2,6 +2,7 @@ import '../../runtime/body_kernels.dart' show BodyKernelResult;
 import '../../runtime/runtime.dart';
 import '../../runtime/terms.dart';
 import '../seam/i_link_endpoint.dart';
+import '../seam/link_fault.dart';
 import '../seam/link_id.dart';
 import '../seam/link_options.dart';
 import 'link_egress.dart';
@@ -26,16 +27,26 @@ class LinkEstablish {
   static const String _nil = 'nil';
 
   /// Establish (or idempotently reuse) the link for [id] and wire it
-  /// to the three heap holes. [establish] runs only on first
-  /// establishment (it opens/adopts the transport endpoint). Returns
-  /// [BodyKernelResult.success] once wired, or
-  /// [BodyKernelResult.abort] on a malformed hole / transport failure /
+  /// to the three heap holes. [establish] opens/adopts the transport endpoint and is
+  /// invoked only on first establishment. Returns [BodyKernelResult.success] once the
+  /// link is wired and registered, or [BodyKernelResult.abort] on a malformed hole /
   /// FR-007 re-establishment (cell-aliasing unspecified — surfaced, not guessed).
+  ///
+  /// ASYNC-AWARE (Dart single-isolate adaptation of the C# blocking
+  /// `endpointTask.GetAwaiter().GetResult()`): the heap-cell validation, registry
+  /// install, cursor wiring, fault registration, GC hook, egress arming and pump
+  /// registration ALL run SYNCHRONOUSLY here and the kernel returns success
+  /// immediately. The actual transport [establish] (a genuinely async ServerSocket
+  /// accept / Socket.connect-retry) is kicked off WITHOUT awaiting; when it resolves,
+  /// [LinkHandle.attachEndpoint] unblocks the pump's recv loop and the egress
+  /// readiness gate. A connect FAILURE surfaces as a transport fault on the
+  /// establishment `Faults` monitor (FR-008) and marks the handle closed (FR-044: a
+  /// disconnect is a bound fault term, never a logical Fail).
   static BodyKernelResult wireEstablishedLink(
       GlpRuntime rt,
       LinkRuntime link,
       LinkId id,
-      ILinkEndpoint Function() establish,
+      Future<ILinkEndpoint> Function() establish,
       Object? inArg,
       Object? outArg,
       Object? faultsArg,
@@ -59,20 +70,18 @@ class LinkEstablish {
     final faultsVr = faultsArg;
 
     // Idempotency at link-identity (FR-007): re-establishment of the same ground
-    // LinkId reuses the handle rather than opening a duplicate.
-    final bool firstEstablishment = !link.links.contains(id);
-    LinkHandle handle;
-    try {
-      handle = link.links.getOrEstablish(
-          id, () => LinkHandle(id, establish(), LinkOptions.default_));
-    } catch (ex) {
-      return abort(who, 'transport establishment failed for $id: ${_unwrap(ex)}');
-    }
-
-    if (!firstEstablishment) {
+    // LinkId reuses the handle rather than opening a duplicate. Validate this BEFORE
+    // any wiring or kicking off the connect.
+    if (link.links.contains(id)) {
       return abort(who,
           're-establishment of already-established $id: cell-aliasing unspecified (FR-007) — first only');
     }
+
+    // Build the handle WITHOUT an endpoint (deferred until the async connect resolves)
+    // and register it synchronously — subsequent same-id setups now hit the
+    // idempotency abort above while this link is connecting.
+    final handle = LinkHandle(id, LinkOptions.default_);
+    link.links.put(id, handle);
 
     // Wire the heap stream cursors onto the handle.
     handle.inWriterAddr = inVr.addr;
@@ -92,7 +101,8 @@ class LinkEstablish {
     link.reclaimer.register(id, () => link.links.remove(id));
 
     // Egress: observe binds on the writer the program fills as `Out` (egress rides the
-    // ordinary drain, no pump needed). Ingress: start the background receive loop.
+    // ordinary drain, no pump needed; sends gate on handle.ready until connected).
+    // Ingress: register with the pump, whose recv loop awaits handle.ready first.
     final int? outWriterAddr = heap.tryWriterForReader(outVr.addr);
     if (outWriterAddr == null) {
       return abort(who, 'Out reader has no paired writer to drain');
@@ -100,6 +110,22 @@ class LinkEstablish {
     armEgress(rt, link, handle, outWriterAddr);
     link.pump.addLink(handle);
     rt.inboundPump ??= link.pump;
+
+    // Kick off the genuinely-async transport rendezvous WITHOUT awaiting (Dart's single
+    // isolate cannot block on it). On success, attach the endpoint — that unblocks the
+    // pump's recv loop and the egress readiness gate. On failure, surface a permanent
+    // transport fault on the monitor (FR-008) and mark the handle closed (FR-044), and
+    // reject `ready` so the recv loop and egress chains unwind quietly.
+    establish().then(handle.attachEndpoint, onError: (Object ex) {
+      handle.closed = true;
+      link.pump.enqueueFault(
+          handle,
+          LinkFaultSignal(
+              id, LinkFaultKind.permanent, 'transport establishment failed: ${_unwrap(ex)}'));
+      if (!handle.endpointReady.isCompleted) {
+        handle.endpointReady.completeError(ex);
+      }
+    });
 
     return BodyKernelResult.success;
   }

@@ -564,17 +564,22 @@ class GlpEngine {
     final pump = _runtime.inboundPump;
     if (pump != null) {
       while (pump.hasPendingOrLive) {
-        if (!pump.tryApplyNext(inboundPumpWait)) {
-          break; // idle: a still-open link's reader stays safely suspended
+        if (pump.tryApplyNext(inboundPumpWait)) {
+          madContext?.flushMessages();
+          result = await scheduler.drainAsyncWithStatus(
+            maxCycles: maxCycles,
+            debug: debugTrace,
+            showBindings: false,
+            debugOutput: debugOutput,
+          );
+          if (result.status == ExecutionStatus.failed) break;
+        } else if (!await pump.waitForInbound(inboundPumpWait)) {
+          // Inbox empty + a link still live (connecting/idle): waitForInbound yielded
+          // to the event loop so the background connect/recv microtasks ran. A false
+          // return = timeout with no new input → stop; the still-open link's reader
+          // stays safely suspended.
+          break;
         }
-        madContext?.flushMessages();
-        result = await scheduler.drainAsyncWithStatus(
-          maxCycles: maxCycles,
-          debug: debugTrace,
-          showBindings: false,
-          debugOutput: debugOutput,
-        );
-        if (result.status == ExecutionStatus.failed) break;
       }
     }
 
@@ -690,21 +695,25 @@ class GlpEngine {
     final pump = _runtime.inboundPump;
     if (pump != null) {
       while (pump.hasPendingOrLive) {
-        if (!pump.tryApplyNext(inboundPumpWait)) {
-          break; // idle: a still-open link's reader stays safely suspended
-        }
-        madContext?.flushMessages();
-        final pr = await scheduler.drainAsyncWithStatus(
-          maxCycles: maxCycles,
-          debug: debugTrace,
-          showBindings: false,
-          debugOutput: debugOutput,
-        );
-        if (pr.status == ExecutionStatus.failed) {
-          allSucceeded = false;
+        if (pump.tryApplyNext(inboundPumpWait)) {
+          madContext?.flushMessages();
+          final pr = await scheduler.drainAsyncWithStatus(
+            maxCycles: maxCycles,
+            debug: debugTrace,
+            showBindings: false,
+            debugOutput: debugOutput,
+          );
+          if (pr.status == ExecutionStatus.failed) {
+            allSucceeded = false;
+            break;
+          }
+          anySuspended = pr.status == ExecutionStatus.suspended;
+        } else if (!await pump.waitForInbound(inboundPumpWait)) {
+          // Inbox empty + a link still live: waitForInbound yielded to the event loop
+          // so background connect/recv microtasks ran. False = timeout, no new input
+          // → stop; the still-open link's reader stays safely suspended.
           break;
         }
-        anySuspended = pr.status == ExecutionStatus.suspended;
       }
     }
 

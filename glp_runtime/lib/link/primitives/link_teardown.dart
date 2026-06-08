@@ -57,10 +57,19 @@ class LinkTeardown {
     handle.monitorCursors
         .clear(); // streams ended; a late fan-out would extend a dead stream
 
-    // 3. Transport teardown (abrupt = RST-equiv per leaf; graceful drains — both via the
-    //    seam's close, which is idempotent). The background recv loop ends when the
-    //    peer closes or the pump is disposed.
-    handle.endpoint.close();
+    // 3. Mark the handle closed so the pump's recv loop exits between frames and the
+    //    pump stops counting it as live (hasPendingOrLive). Then transport teardown
+    //    (abrupt = RST-equiv per leaf; graceful drains — both via the seam's close,
+    //    which is idempotent). The endpoint is DEFERRED until the async connect
+    //    resolves: close it now if connected, else chain the close on readiness so a
+    //    link torn down mid-connect still releases its socket once it lands.
+    handle.closed = true;
+    final ep = handle.endpoint;
+    if (ep != null) {
+      ep.close();
+    } else {
+      handle.ready.then((late) => late.close(), onError: (Object _) {});
+    }
 
     // 4. Distributed GC (FR-024): run every registered reclamation hook so the runtime
     //    returns to its pre-link baseline (registry entry removed today). Idempotent.

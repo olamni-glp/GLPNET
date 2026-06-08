@@ -26,4 +26,16 @@ abstract class IInboundPump {
   /// applied (the driver then stops; a still-open but idle link leaves its reader
   /// safely suspended).
   bool tryApplyNext(Duration wait);
+
+  /// Asynchronously YIELD TO THE EVENT LOOP and wait for the next inbound item.
+  ///
+  /// Dart adaptation of the C# blocking [tryApplyNext]: on the single isolate the
+  /// background receive loops + the deferred connect run as event-loop microtasks,
+  /// so the synchronous [tryApplyNext] cannot block-wait for them. The driver
+  /// instead awaits this between drains — it completes `true` as soon as an item is
+  /// buffered (or arrives within [timeout]), or `false` once [timeout] elapses with
+  /// nothing buffered and a still-open link (the reader then stays safely
+  /// suspended). Returns `false` immediately when no link is live and the inbox is
+  /// empty (nothing more can arrive).
+  Future<bool> waitForInbound(Duration timeout);
 }

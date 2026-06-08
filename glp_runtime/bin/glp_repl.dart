@@ -6,6 +6,9 @@ library;
 
 import 'dart:io';
 import 'package:glp_runtime/engine/glp_engine.dart';
+import 'package:glp_runtime/link/primitives/link_kernels.dart';
+import 'package:glp_runtime/link/transports/loopback_transport.dart';
+import 'package:glp_runtime/link/transports/tcp_transport.dart';
 import 'package:glp_runtime/multiagent/boot_loader.dart';
 import 'package:glp_runtime/multiagent/isolate_manager.dart';
 import 'package:glp_runtime/runtime/scheduler.dart';
@@ -80,6 +83,15 @@ void main() async {
   // when invoked through the AOT exe (which lives one level shallower than the source).
   // See test/aot_self_glp_path_test.dart for the regression coverage.
   final rootSelfGlpPath = _resolveRootSelfGlpPath();
+  // feature 025: default REPL host wiring — install the native-Dart link layer onto
+  // the live engine. link/ is in the same Dart package as the runtime/engine, so the
+  // composition root imports it directly. The setup kernel installs the inbound pump
+  // lazily (`rt.inboundPump ??= link.pump`); we only register the kernels + transports.
+  afterEngineCreated ??= (engine) {
+    final link = LinkKernels.install(engine.runtime);
+    link.transports.register(TcpTransport());
+    link.transports.register(LoopbackTransport());
+  };
   final engine = GlpEngine(rootSelfGlpPath: rootSelfGlpPath);
   afterEngineCreated
       ?.call(engine); // feature 025: outer host installs link kernels + transports

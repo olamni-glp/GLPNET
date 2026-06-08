@@ -7,6 +7,7 @@ import '../../runtime/inbound_pump.dart';
 import '../../runtime/runtime.dart';
 import '../../runtime/terms.dart';
 import '../reliability/frame_codec.dart';
+import '../seam/i_link_endpoint.dart';
 import '../seam/link_fault.dart';
 import 'link_faults.dart';
 import 'link_handle.dart';
@@ -40,8 +41,25 @@ class LinkPump implements IInboundPump {
   final Queue<_InboundItem> _inbox = Queue<_InboundItem>();
   final Completer<void> _cancel = Completer<void>();
   final List<Future<void>> _recvLoops = <Future<void>>[];
-  int _liveLinks = 0;
+  final List<LinkHandle> _handles = <LinkHandle>[];
   bool _disposed = false;
+
+  /// Single-shot signal the runner-thread driver awaits ([waitForInbound]): a
+  /// background recv loop / fault / close completes it on each enqueue so the
+  /// driver wakes, applies the item, and re-drains. Reset after each wake.
+  Completer<void>? _waiter;
+
+  /// Enqueue one decoded inbound event and wake the driver. The ONLY mutator of
+  /// [_inbox] — every recv-loop/fault/close path routes through here so the
+  /// [_waiter] signal can never be missed.
+  void _enqueue(_InboundItem item) {
+    _inbox.add(item);
+    final w = _waiter;
+    if (w != null && !w.isCompleted) {
+      _waiter = null;
+      w.complete();
+    }
+  }
 
   LinkPump(GlpRuntime engine)
       // ignore: unnecessary_null_comparison, prefer_initializing_formals
@@ -59,14 +77,22 @@ class LinkPump implements IInboundPump {
     if (handle.inWriterAddr == null) {
       throw StateError('addLink before the In-stream ingress cursor was wired');
     }
-    _liveLinks++;
-    // Out-of-band transport faults (FR-008): refine the seam signal to its GLP
-    // lattice term and enqueue it for runner-thread fan-out onto the monitor
-    // cursors. The handler runs on the transport's thread but only touches the
-    // thread-safe inbox — never the heap (T034).
-    handle.endpoint.onFault.listen((signal) => _enqueueFault(handle, signal));
+    // Track the handle so it counts as live (still-connecting included) until it
+    // is closed — the engine's pump-driver keeps awaiting through the connect gate.
+    _handles.add(handle);
+    // The recv loop gates on the deferred endpoint: it awaits handle.ready, then
+    // subscribes to onFault and runs the receive loop. The endpoint may not have
+    // connected yet (Dart's single isolate cannot block on the connect Future).
     _recvLoops.add(_recvLoop(handle));
   }
+
+  /// Enqueue an out-of-band transport fault for runner-thread fan-out onto the
+  /// link's monitor cursors (FR-008/T034). PUBLIC so the establish path can surface a
+  /// connect failure here (its background connect rejecting is a transport fault on
+  /// the establishment `Faults` monitor). Builds the GLP lattice term off the heap (a
+  /// [Term] is pure data) and only touches the thread-safe inbox — never the heap.
+  void enqueueFault(LinkHandle handle, LinkFaultSignal signal) =>
+      _enqueueFault(handle, signal);
 
   /// Refine an out-of-band seam fault to its GLP lattice term and enqueue it for
   /// runner-thread delivery (T034). Builds the term off the heap (a [Term]
@@ -78,14 +104,15 @@ class LinkPump implements IInboundPump {
       // Pump disposed / inbox completed mid-teardown — nothing left to deliver to.
       return;
     }
-    _inbox.add(_InboundItem(handle, term, close: false, fault: true));
+    _enqueue(_InboundItem(handle, term, close: false, fault: true));
   }
 
   /// True while there is buffered inbound input OR at least one open link still
   /// expecting more (so the driver should keep servicing). False once every link
   /// is closed/permFailed and the inbox is drained — the driver then stops.
   @override
-  bool get hasPendingOrLive => _inbox.isNotEmpty || _liveLinks > 0;
+  bool get hasPendingOrLive =>
+      _inbox.isNotEmpty || _handles.any((h) => !h.closed);
 
   /// Apply the next inbound frame ON THE CALLING (runner) THREAD. Returns `true`
   /// if a frame was applied (heap bound, reactivated goals enqueued), or `false`
@@ -133,6 +160,38 @@ class LinkPump implements IInboundPump {
     return true;
   }
 
+  /// Yield to the event loop and wait for the next inbound item (the Dart driver's
+  /// replacement for the C# blocking [tryApplyNext]). Completes `true` the moment an
+  /// item is buffered — immediately if one already is, else when a background recv
+  /// loop / deferred connect enqueues one (or anything arrives within [timeout]).
+  /// Completes `false` when [timeout] elapses with an empty inbox but a still-open
+  /// link (its reader stays safely suspended), or immediately when nothing is live
+  /// and the inbox is empty (nothing more can ever arrive).
+  @override
+  Future<bool> waitForInbound(Duration timeout) async {
+    if (_inbox.isNotEmpty) return true;
+    if (!hasPendingOrLive || _disposed) return false;
+    final waiter = _waiter ??= Completer<void>();
+    // Race the enqueue signal against the timeout; awaiting either yields the isolate
+    // so the background recv/connect microtasks run. A Timer-backed delay (not
+    // Future.delayed alone) lets us stop waiting deterministically.
+    var timedOut = false;
+    final timer = Timer(timeout, () {
+      timedOut = true;
+      if (!waiter.isCompleted) {
+        _waiter = null;
+        waiter.complete();
+      }
+    });
+    try {
+      await waiter.future;
+    } finally {
+      timer.cancel();
+    }
+    // True iff an item actually landed (a timeout wake leaves the inbox empty).
+    return !timedOut || _inbox.isNotEmpty;
+  }
+
   /// The per-link background receive loop (never touches the heap): pull a frame,
   /// CRC-validate + reassemble + reorder it through the Phase-2 sublayer, decode the
   /// ground payload, and hand it to the inbox. A `null` frame is the peer's
@@ -141,12 +200,28 @@ class LinkPump implements IInboundPump {
   /// violation, not something to localize.
   Future<void> _recvLoop(LinkHandle handle) async {
     final deserializer = PayloadSerializer('');
+    // Gate on the deferred endpoint: the async connect/listen rendezvous must resolve
+    // before any receive can run (Dart's single isolate cannot block on it). If the
+    // connect FAILED, `ready` rejects — the establish path has already surfaced the
+    // transport fault and marked the handle closed, so just stop without faulting twice.
+    final ILinkEndpoint ep;
     try {
-      while (!_cancel.isCompleted) {
-        final Uint8List? frame =
-            await handle.endpoint.recvBytes(cancel: _cancel.future);
+      ep = await handle.ready;
+    } on Object {
+      handle.closed = true;
+      return;
+    }
+
+    // Out-of-band transport faults (FR-008): refine the seam signal to its GLP
+    // lattice term and enqueue it for runner-thread fan-out onto the monitor cursors.
+    // The handler runs on the transport's thread but only touches the thread-safe
+    // inbox — never the heap (T034). Subscribed only after the endpoint exists.
+    final faultSub = ep.onFault.listen((signal) => _enqueueFault(handle, signal));
+    try {
+      while (!handle.closed && !_cancel.isCompleted) {
+        final Uint8List? frame = await ep.recvBytes(cancel: _cancel.future);
         if (frame == null) {
-          _inbox.add(_InboundItem(handle, null, close: true, fault: false));
+          _enqueue(_InboundItem(handle, null, close: true, fault: false));
           return;
         }
 
@@ -162,14 +237,14 @@ class LinkPump implements IInboundPump {
             (_) => throw StateError(
                 'ground-relay base received a non-ground payload (embedded variable)'),
           );
-          _inbox.add(_InboundItem(handle, term, close: false, fault: false));
+          _enqueue(_InboundItem(handle, term, close: false, fault: false));
         }
       }
-      // pump disposed / link torn down — the `_cancel`-guarded loop exits normally
-      // (the Dart seam models cancellation by completing `_cancel`, not by throwing
-      // the C# `OperationCanceledException` that `RecvBytesAsync(ct)` would raise).
+      // pump disposed / link torn down — the guarded loop exits normally (the Dart
+      // seam models cancellation by completing `_cancel`, not by throwing the C#
+      // `OperationCanceledException` that `RecvBytesAsync(ct)` would raise).
     } finally {
-      _liveLinks--;
+      await faultSub.cancel();
     }
   }
 

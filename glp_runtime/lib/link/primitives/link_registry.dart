@@ -29,6 +29,21 @@ class LinkRegistry {
     return handle;
   }
 
+  /// Store a freshly-built (endpoint-deferred) handle under its identity. Used by
+  /// the async establish path, which builds the handle and wires the heap cursors
+  /// SYNCHRONOUSLY (the FR-007 first-establishment check having already run) before
+  /// the background connect resolves. Asserts the id matches and that no handle was
+  /// already registered (idempotency is enforced by the caller's `contains` check).
+  void put(LinkId id, LinkHandle handle) {
+    if (handle.id != id) {
+      throw StateError('established handle id ${handle.id} != requested $id');
+    }
+    if (_handles.containsKey(id)) {
+      throw StateError('put over an already-established $id (idempotency violated)');
+    }
+    _handles[id] = handle;
+  }
+
   /// True if this exact handle was newly stored by the last [getOrEstablish] call for an id.
   bool contains(LinkId id) => _handles.containsKey(id);
 
