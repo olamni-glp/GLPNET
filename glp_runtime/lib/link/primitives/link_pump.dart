@@ -310,6 +310,14 @@ class LinkPump implements IInboundPump {
             _enqueue(_InboundItem(handle, term, close: false, fault: false));
           }
         }
+      } on Object {
+        // recvBytes threw rather than returned — on pump dispose the transport surfaces
+        // its (file-private) cancellation exception when _cancel completes mid-park. That
+        // is expected teardown: swallow it so it never escapes this unawaited recv-loop
+        // Future as an unhandled async error (the REPL masks it with exit(0); an embedded
+        // host would see it). A throw while we are NOT cancelling is a real transport
+        // error — rethrow it.
+        if (!_cancel.isCompleted) rethrow;
       } finally {
         await faultSub.cancel();
       }

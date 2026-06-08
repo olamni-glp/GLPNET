@@ -211,7 +211,14 @@ class _Channel<T> {
       }
       final waiter = _waiter ??= Completer<void>();
       if (cancel != null) {
-        await Future.any<void>([waiter.future, cancel]);
+        // Honour cancel by THROWING (mirrors TcpTransport._SocketReader.read and the
+        // C# `ReadAsync(ct)` raising OperationCanceledException). A bare
+        // `Future.any([waiter, cancel])` would merely RETURN when cancel completes, and
+        // the loop would re-create a waiter and re-race the already-completed cancel —
+        // an infinite busy microtask loop pinning the isolate. On pump dispose
+        // (_cancel completed) the recv loop's recvBytes must unwind, not spin.
+        await Future.any<void>(
+            [waiter.future, cancel.then((_) => throw _CancelledException())]);
       } else {
         await waiter.future;
       }

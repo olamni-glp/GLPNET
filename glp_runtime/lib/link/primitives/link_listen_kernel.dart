@@ -84,7 +84,7 @@ class LinkListenKernel {
       LinkAddress endpointAddr, int reqWriterAddr) async {
     final LinkId id;
     final Term fromPeer;
-    final ILinkEndpoint endpoint;
+    ILinkEndpoint? endpoint;
     try {
       final transport = link.transports.select(scheme);
       final opts = LinkOptions.default_;
@@ -95,7 +95,16 @@ class LinkListenKernel {
     } on Object catch (ex) {
       // No link/monitor stream exists yet to surface a fault onto; the rendezvous
       // simply produced no request. Surface as a diagnostic (a caller bug or a peer
-      // that never connected), leaving Requests suspended.
+      // that never connected), leaving Requests suspended. If the connection was already
+      // accepted before the token read/parse failed, dispose it — it is neither parked in
+      // pending nor adopted by accept, so nothing else would ever release its socket.
+      if (endpoint != null) {
+        try {
+          await endpoint.dispose();
+        } on Object {
+          /* best-effort: we are surfacing a failure anyway */
+        }
+      }
       LinkEstablish.abort(
           _who, 'rendezvous/handshake on $scheme:$endpointAddr failed: $ex');
       return;
