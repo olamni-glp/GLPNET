@@ -17,6 +17,43 @@ phase order in `tasks.md` for the duration of this effort; `tasks.md` remains th
 
 ---
 
+## 🔴 CURRENT STATUS — for restart (2026-06-08, head = `52d1c8ae`)
+
+**Trust git log + this file + `tasks.md`; `marathon resume` is STALE (T012).** Resume order:
+`buildkit-roadmap next` → spec dir `specs/025-…` → this file → `tasks.md` WIP pointer.
+
+**DONE (committed, all green):**
+- **Phase A** ✅ — kernels wired into the C# REPL boot (`out/csharp/glp_repl/Program.cs` sets
+  `GlpRuntime.Repl.Program.AfterEngineCreated` → `LinkKernels.Install(engine.Runtime)` + registers
+  `TcpTransport`/`LoopbackTransport`; the hook field + its invoke are in `out/csharp/bin/glp_repl.cs`).
+  `_link_*` mirrored into C# `out/csharp/lib/analysis/type_checker/prelude.cs` builtinProcedures.
+- **Phase B** ✅ — `csharp/glp_link/transports/TcpTransport.cs` (raw TCP/IPv4 127.0.0.1; 4-byte length
+  framing; connect-retry; graceful close) + `LinkScheme.Tcp`. 99/99 xUnit (incl. 4 TcpTransport tests).
+- Link types+wrappers **relocated into root `programs/self.glp`** (Gabi option A); Dart baseline 524/525.
+- **Phase C (partial)** ✅ — `programs/tests/link/pc.glp` role-boot demo + **scripted driver**
+  `test/link/run_link_tests.sh` → **4/4 two-process PASS** over real TCP: integers, strings,
+  compound terms, and the explicit `link_send/3` wrapper (`producer_ls`). Results → `test/link/results/`.
+- Two real bugs fixed (only surfaced via the live REPL, xUnit hid them): kernels now **deep-deref**
+  nested struct args (`LinkTerms.GroundResolve`); GLP string constants carry quotes by design →
+  kernels **strip** them (`LinkTerms.Unquote`).
+
+**NEXT (in order):**
+1. **Debug the explicit `link_recv`-chain consumer** — `link_recv` alone suspends correctly and
+   `link_send` works, but a consumer doing 3 concurrent `link_recv` (threaded Link→Link1→Link2 with a
+   `[A?,B?,C?]` head) fails fast before `server_listener` binds. Was the removed `sr.glp`; re-add once fixed.
+2. **More examples** → driver: fault-monitor + close (likely needs the pump to fan `closed(eos)` to
+   monitor cursors on a peer graceful-close), path-B request/accept over TCP, bidirectional (FR-003).
+3. **Phase D — the Dart mirror** (`glp_runtime/lib/link/`): the 7 kernels + seam + reliability bundle +
+   Loopback/Tcp transports + wire `LinkKernels.Install` into `glp_runtime/bin/glp_repl.dart` boot.
+   The Dart kernels MUST replicate the two fixes above (deep-deref + quote-strip). Then run the same
+   examples Dart↔Dart and cross-runtime Dart↔C#.
+4. **Phase E — full regression** both runtimes (classical 1-instance + link 2-instance), scripted+captured.
+
+**How to re-run the proof:** `(cd out/csharp/glp_repl && dotnet build)` then `bash test/link/run_link_tests.sh`.
+Use `dart run bin/glp_repl.dart` (NOT the stale `glp_repl.exe`) for the Dart REPL.
+
+---
+
 ## The 5 directive steps → sequenced phases (each ends in a verification GATE)
 
 ### Phase A — Wire link kernels into the C# REPL boot  *(directive step 1)*

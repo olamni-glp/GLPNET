@@ -42,9 +42,12 @@ Conventions: `[P]` = parallelizable with siblings (different files, no dep). Eac
 > builtinProcedures mirror). (3) **`TcpTransport`** (raw TCP/IPv4 127.0.0.1, first real cross-process
 > leaf; 4 xUnit). (4) **Kernel deep-deref fix** (`LinkTerms.GroundResolve`): the real compiler wraps
 > `link_id(...)` struct args in VarRefs → all kernels now deep-resolve before parsing (xUnit used ground
-> ConstTerms, hiding it). Wrapper→kernel chain proven on the C# REPL (`link_close` goal → correct
-> unestablished-link abort). **Next:** producer/consumer demo + 2-process TCP proof, then Dart mirror.
-> **`marathon resume` is STALE at T012 — ignore it; this file + `git log` are authoritative.**
+> ConstTerms, hiding it). Wrapper→kernel chain proven on the C# REPL. **(5) WORKING two-process linking over real TCP** —
+> `bash test/link/run_link_tests.sh` → 4/4 PASS (integers/strings/compound-terms/`link_send` wrapper;
+> two C# REPL processes, 127.0.0.1; `Got` byte-identical to produced values). **Live status + the exact
+> NEXT steps (link_recv-chain debug → monitor/path-B/bidir examples → Dart mirror → both-runtime
+> regression) are in [runtime-integration-plan.md](runtime-integration-plan.md) §CURRENT STATUS.**
+> **`marathon resume` is STALE at T012 — ignore it; git log + this file + the plan are authoritative.**
 
 ## Phase 0 — Baseline + the three live core fixes (no link layer yet)
 
