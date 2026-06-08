@@ -36,7 +36,7 @@ fi
 # Starts the consumer (listener) first in the background, then the producer; the
 # connector's connect-retry makes the rendezvous order-independent.
 run_link_test() {
-    local name="$1" glp="$2" cons_goal="$3" prod_goal="$4" expect="$5"
+    local name="$1" glp="$2" cons_goal="$3" prod_goal="$4" expect="$5" prod_expect="${6:-}"
     local cout="$RESULTS/$name.consumer.out" pout="$RESULTS/$name.producer.out"
 
     printf 'load %s\n%s\n:quit\n' "$glp" "$cons_goal" | "$REPL" > "$cout" 2>&1 &
@@ -44,11 +44,17 @@ run_link_test() {
     printf 'load %s\n%s\n:quit\n' "$glp" "$prod_goal" | "$REPL" > "$pout" 2>&1
     wait "$cpid"
 
-    if grep -qF "$expect" "$cout"; then
-        echo "  PASS: $name  (consumer saw: $expect)"
+    local ok=1
+    grep -qF "$expect" "$cout" || ok=0
+    # Optional producer-side assertion (used by the bidirectional test, where BOTH ends
+    # both send and receive — FR-003 — so the producer slot also collects a result).
+    if [ -n "$prod_expect" ]; then grep -qF "$prod_expect" "$pout" || ok=0; fi
+
+    if [ "$ok" -eq 1 ]; then
+        echo "  PASS: $name  (consumer saw: $expect${prod_expect:+ ; producer saw: $prod_expect})"
         PASS=$((PASS + 1))
     else
-        echo "  FAIL: $name  (expected '$expect' in consumer output)"
+        echo "  FAIL: $name  (expected '$expect'${prod_expect:+ + producer '$prod_expect'})"
         echo "      consumer: $(grep -E '=|succeeds|failed|ABORT|Error' "$cout" | tail -3 | tr '\n' '|')"
         echo "      producer: $(grep -E '=|succeeds|failed|ABORT|Error' "$pout" | tail -3 | tr '\n' '|')"
         FAIL=$((FAIL + 1))
@@ -75,8 +81,20 @@ run_link_test "link_send_wrapper" "$LINKDIR/pc.glp" \
     "main(consumer, Got)." "main(producer_ls, X)." \
     "Got = [10, 20, 30]"
 
-# Next batch (WIP — explicit link_recv-chain consumer, fault-monitor+close, path-B
-# request/accept, bidirectional) added here as each is debugged to a clean two-process pass.
+# Explicit link_recv-chain consumer (3 threaded link_recv) — exercises the path that
+# surfaced the runner deref-conflation bug (fixed in 8af18c3a). Pairs with pc.glp's producer.
+run_link_test "link_recv_chain" "$LINKDIR/sr.glp" \
+    "main_sr(consumer, Got)." "main_sr(producer, X)." \
+    "Got = [10, 20, 30]"
+
+# Bidirectional (FR-003): each end both sends and receives over one link; both slots
+# collect a result, so we assert BOTH directions.
+run_link_test "bidirectional" "$LINKDIR/bidi.glp" \
+    "main(peerb, Got)." "main(peera, Got)." \
+    "Got = [1, 2, 3]" "Got = [10, 20, 30]"
+
+# Next batch (WIP — fault-monitor+close, path-B request/accept) added here as each is
+# debugged to a clean two-process pass.
 
 echo "======================================"
 echo "Link tests: PASS=$PASS FAIL=$FAIL"

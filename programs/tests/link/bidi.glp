@@ -1,0 +1,29 @@
+% bidi.glp — bidirectional link (feature 025, FR-003: every end can BOTH send and
+% receive; neither end is privileged). peerb LISTENS, peera CONNECTS, over one TCP link.
+% Each end concurrently produces its own values onto the outbound stream and consumes the
+% peer's values off the inbound stream, then both graceful-close. Run split two-process:
+%   consumer slot:  main(peerb, Got).  → Got = [1, 2, 3]   (receives peera's values)
+%   producer slot:  main(peera, Got).  → Got = [10, 20, 30] (receives peerb's values)
+-mode(system).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Got?) :- Me? =?= peera |
+    client_connector(link_id("tcp", ep("127.0.0.1", 9110), 1), Link, _),
+    run_bidi(Link?, [1, 2, 3], Got).
+main(Me, Got?) :- Me? =?= peerb |
+    server_listener(link_id("tcp", ep("127.0.0.1", 9110), 1), Link, _),
+    run_bidi(Link?, [10, 20, 30], Got).
+
+% Decompose the link as ch(In, Out?): capture the inbound stream In and take the outbound
+% writer Out. Concurrently ship our Vals on Out and collect the peer's on In. Both
+% directions run on the one link — the FR-003 symmetry.
+procedure run_bidi(Link(_, _)?, Stream(_)?, Stream(_)).
+run_bidi(ch(In, Out?), Vals, Got?) :- produce(Vals?, Out), consume(In?, Got).
+
+procedure produce(Stream(_)?, Stream(_)).
+produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
+produce([], []).
+
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
