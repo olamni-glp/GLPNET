@@ -59,6 +59,8 @@ This is the table §1–§8 reference. Every row is re-verified against current 
 
 ## §1. The seam — front-end/client vs embeddable engine+scheduler  ·  *classification: reuse (engine core exists) + refactor (turn facade into wire)*
 
+> **→ Successor seeds:** #2 result-envelope-and-deep-resolve, #3 structured-output-capture-seam — see Appendix B.
+
 ### 1.1 What the front-end owns
 
 The front-end is the 38-line composition-root shim `out/csharp/glp_repl/Program.cs` (the **sole** place allowed to reference both the engine library and `GlpLink`) plus the converted REPL `out/csharp/bin/glp_repl.cs` (`Main` at `:98-371`). It owns console I/O + banner; the read-trim-dispatch loop (`glp_repl.cs:130-144`); the colon-command set (`:148-259`); and **all result display** — `FormatTerm` (`:432-584`) renders terms with heap-deref + cycle detection, `PrintStatus` (`:379-388`) maps status to `→ succeeds/failed/suspended`. It owns **no** parsing/compilation/execution/scheduling/suspension. There is **no pause state in the front-end** — a suspended goal is merely the status word; the real suspend/re-drain machinery lives in the engine pump driver (`glp_engine.cs:555-569`, `709-724`).
@@ -99,6 +101,8 @@ A **second** front-end→engine seam bypasses `GlpEngine`: `:boot` → `RunBoot`
 
 ## §2. Binary wire shapes — client→engine payload + the net-new engine→client result envelope  ·  *classification: net-new (envelope) over reuse (framing)*
 
+> **→ Successor seeds:** #2 result-envelope-and-deep-resolve, #4 il-codec-spike, #5 result-codec-and-framecodec-ride, #11 compiled-il-on-the-wire-and-factor-out-compiler — see Appendix B.
+
 ### 2.1 The IL is an in-memory object graph, not a byte array
 
 `BytecodeProgram` (`runner.cs:41-73`) = `IReadOnlyList<object> Instructions` (heterogeneous **by design**, `:44`) + `Dictionary<string,int> Labels` (derived by `IndexLabels`, `:61-73`). **Two opcode families coexist in one list:** v1 `IOp` (`opcodes.cs`, ~50 classes) and v2 `IOpV2` (`opcodes_v2.cs`, unified reader/writer with an `IsReader` bool; codegen emits v2 directly, `codegen.cs:209`), plus `Label` markers. Operands are primitives (`long` indices, `string` functors/labels, `bool` flags) and **`object?` constant Values that can be recursive** — codegen embeds a runtime `Rt.StructTerm` as a `UnifyConstant.Value` for ground lists (`codegen.cs:737-759`), so a constant encoder must be a **recursive term sub-encoder**, not scalar-only.
@@ -137,6 +141,8 @@ The engine does **not** synthesize bytecode (§9.2). "Engine-generated IL on the
 
 ## §3. Wire reuse decision — transport/framing reused, payload codecs net-new  ·  *classification: reuse (transport) + net-new (codecs)*
 
+> **→ Successor seeds:** #4 il-codec-spike, #5 result-codec-and-framecodec-ride — see Appendix B.
+
 **Reuse, as-is:** `FrameCodec` (`csharp/glp_link/reliability/FrameCodec.cs:42,45,52,56-62`) gives a 0x01 version byte, a 22-byte big-endian header (Version/Kind/MessageId/TotalLen/FragIndex/FragCount/ChunkCrc/ChunkLen), per-chunk CRC-32, MTU fragmentation/reassembly, and a 64 MiB payload guard — it wraps an **opaque** payload and knows nothing about terms or opcodes, so it frames an IL blob or a result envelope **unchanged**, distinguished by the header **`Kind` byte** (`:64`). `ILinkTransport`/`ILinkEndpoint` (`csharp/glp_link/seam/`, `SendBytesAsync`/`RecvBytesAsync`) is the byte seam; `TcpTransport` (`transports/TcpTransport.cs:99-126`) is a working cross-process loopback (4-byte length-prefixed frames). **This stack is exactly what a REPL↔engine OS link needs — reuse it.**
 
 **Do NOT reuse `PayloadSerializer` as the wire payload codec** — it is ground-only (`:511`) and term-only (no opcodes). Two **dedicated net-new codecs**, both riding `FrameCodec` (distinguished by `Kind`):
@@ -149,6 +155,8 @@ The engine does **not** synthesize bytecode (§9.2). "Engine-generated IL on the
 ---
 
 ## §4. Control-program startup + client model  ·  *classification: net-new (host) + refactor (multi-accept) + reuse (GLP loop)*
+
+> **→ Successor seeds:** #6 repl-engine-process-split-mvp, #10 multi-accept-transport-extension, #13 multi-client-control-program-in-glp — see Appendix B.
 
 ### 4.1 The startup seam is the right insertion point
 
@@ -177,6 +185,8 @@ For the **MVP**: a **C# host control program** (a `BackgroundService` owning a o
 
 ## §5. Liveness / crash-signal / restart model  ·  *classification: net-new (host layer)*
 
+> **→ Successor seed:** #8 liveness-crash-restart-host — see Appendix B.
+
 **NONE exists today** — grep across `out/csharp` and `csharp/glp_link` finds no heartbeat/watchdog/sd_notify/`IHostedService`/`BackgroundService`/`Environment.Exit` (re-confirmed). The only "liveness" hits are per-link timeout knobs (`LinkOptions.TempFailAfter=5s`, `seam/LinkOptions.cs:41`; `ConnectTimeout` `:51`) — link-fault knobs, not OS liveness. Transport faults become GLP lattice terms `ok/closed/tempFail/permFail` (`self.glp:451`, `Fault ::= ok ; closed(...) ; tempFail(...) ; permFail(...)`) but never escalate to the OS. This whole capability is **net-new C# host work**, placed in the host layer (alongside the composition root, **above** the engine library per FR-057).
 
 **Recommended shape (advisory):**
@@ -190,6 +200,8 @@ For the **MVP**: a **C# host control program** (a `BackgroundService` owning a o
 ---
 
 ## §6. Persistent-vs-ephemeral state model (+ DB-abstraction + bootstrap + resume)  ·  *classification: net-new (serialization) over reuse (MarathonStore + LinkRegistry patterns)*
+
+> **→ Successor seeds:** #7 engine-state-snapshot-and-persistence-api, #9 restore-and-resume-with-link-reestablish — see Appendix B.
 
 ### 6.1 Where full state lives (none serializable today)
 
@@ -245,6 +257,8 @@ The persistent-**definition** vs ephemeral-**instance** line is **already drawn*
 
 ## §7. Mailbox decision — OS-level vs in-GLP  ·  *classification: reuse (OS-level, MVP) + net-new-in-GLP (target)*
 
+> **→ Successor seed:** #13 multi-client-control-program-in-glp — see Appendix B.
+
 Both substrates exist in-repo.
 
 - **OS-level mailbox:** `TcpTransport` (`transports/TcpTransport.cs:99-126`) is a working cross-process relay (4-byte big-endian length-prefixed self-delimiting frames over a duplex `NetworkStream`). `ILinkTransport`/`ILinkEndpoint` (`csharp/glp_link/seam/`) is the per-scheme seam where a **named-pipe / unix-domain-socket** leaf slots in for a same-host mailbox (TCP-127.0.0.1 works today).
@@ -257,6 +271,8 @@ Both substrates exist in-repo.
 ## §8. MVP slice(s)  ·  *classification: composition of the above*
 
 Each slice names the **net-new** capabilities it depends on and what it **defers** (SC-007).
+
+> **→ Successor seed:** #6 repl-engine-process-split-mvp (and its prerequisites #2, #3, #5) — see Appendix B.
 
 ### 8.1 Slice A — one-engine / one-REPL-client process split (advisory-recommended MVP)
 
@@ -276,6 +292,8 @@ Each slice names the **net-new** capabilities it depends on and what it **defers
 ---
 
 ## §9. Premise reconciliations  ·  *(SC-002 — each: assumption · as-built + `file:line` · decision · downstream consequence)*
+
+> **→ Successor seeds:** #6 repl-engine-process-split-mvp (source-text MVP), #11 compiled-il-on-the-wire-and-factor-out-compiler (the relocation follow-up) — see Appendix B.
 
 ### 9.1 Premise: "the parser lives in the front-end; client→engine carries compiled IL"
 
@@ -395,6 +413,33 @@ Kinds: **PREP** (unblocking refactor/foundation) · **EXPERIMENT** (verification
 - **INV-3 (re-verified reality):** where as-built code contradicted a step-1 claim, current reality is recorded — `AfterEngineCreated` in `glp_repl.cs:47` (not the engine library); `BytecodeProgram` at `runner.cs:41` (step-1's `:452` stale); `serve/2` const at `glp_engine.cs:135-136` + Dart `glp_engine.dart:71-82`; `mwm` proc at `self.glp:387-422`; `PayloadSerializer` unbound throw at `:511` / `NotSupported` at `:447`; durable layer at `codeconv/src/codeconv/durable/`; migration `0010_marathon_schema.py` (FR-016).
 - **INV-4 (present-options):** no genuine fork (§10) recorded as settled; recommendations are advisory; the owner decides at the marathon gate (FR-011).
 - **INV-5 (self-contained):** the wire-crossing design (§2) is locatable from this dossier alone — a reviewer needs no engine source to find the result-envelope field set (SC-005).
+
+---
+
+## Appendix B — Successor Seed Registry (two-way traceability, FR-013)
+
+Each successor feature seeded in `buildkit-roadmap` (state `captured`) maps to the dossier section(s) that motivate it (inverse of §11's per-entry `§ref`). Per-seed reconciliation memos live under `reconciliation/<num>-<id>.md` (authored by the seed-reconciliation pass; methodology in `reconciliation/SEED-RECONCILIATION-BRIEF.md`). In-situ `→ Successor seeds` markers appear at the head of §1–§9.
+
+| # | Seed (feature_id) | Kind | Dossier §-anchors | Reconciliation memo |
+|---|---|---|---|---|
+| 2 | result-envelope-and-deep-resolve | PREP | §1.3, §2.3, §0.4 (result-envelope codec; deep-resolve) | `reconciliation/2-result-envelope-and-deep-resolve.md` |
+| 3 | structured-output-capture-seam | PREP | §1.3 | `reconciliation/3-structured-output-capture-seam.md` |
+| 4 | il-codec-spike | EXPERIMENT | §2.1, §2.2, §3, §0.4 (IL/bytecode wire codec) | `reconciliation/4-il-codec-spike.md` |
+| 5 | result-codec-and-framecodec-ride | PREP | §2.3, §3 | `reconciliation/5-result-codec-and-framecodec-ride.md` |
+| 6 | repl-engine-process-split-mvp | MVP | §4, §8.1, §9.1 | `reconciliation/6-repl-engine-process-split-mvp.md` |
+| 7 | engine-state-snapshot-and-persistence-api | PREP/MVP | §6.2, §6.3, §0.4 (engine-state serialization) | `reconciliation/7-engine-state-snapshot-and-persistence-api.md` |
+| 8 | liveness-crash-restart-host | MVP | §5, §0.4 (OS-liveness/crash/watchdog) | `reconciliation/8-liveness-crash-restart-host.md` |
+| 9 | restore-and-resume-with-link-reestablish | MVP | §6.4, §6.2 (definition/instance seam) | `reconciliation/9-restore-and-resume-with-link-reestablish.md` |
+| 10 | multi-accept-transport-extension | PREP/FOLLOW-UP | §4.2, §0.4 (multi-accept listener) | `reconciliation/10-multi-accept-transport-extension.md` |
+| 11 | compiled-il-on-the-wire-and-factor-out-compiler | FOLLOW-UP | §9.1, §2.4, §0.4 (compiler relocation) | `reconciliation/11-compiled-il-on-the-wire-and-factor-out-compiler.md` |
+| 12 | antlr4-shared-grammar-spike | EXPERIMENT | §10.10 (deferred dimensions) | `reconciliation/12-antlr4-shared-grammar-spike.md` |
+| 13 | multi-client-control-program-in-glp | FOLLOW-UP | §4.3, §7 | `reconciliation/13-multi-client-control-program-in-glp.md` |
+| 14 | cpp-engine-feasibility | EXPERIMENT | §10.10 | `reconciliation/14-cpp-engine-feasibility.md` |
+| 15 | many-instances-shared-static-memory-cooperative-scheduling | EXPERIMENT/FOLLOW-UP | §10.10 | `reconciliation/15-many-instances-shared-static-memory-cooperative-scheduling.md` |
+| 16 | research-programme-and-llvm-feasibility | EXPERIMENT | §10.10 | `reconciliation/16-research-programme-and-llvm-feasibility.md` |
+| 1.5 | repl-engine-split-mvp-binary-wire-format-intermediate-language-c *(pre-decomposition monolith)* | UMBRELLA / supersession case | §8, §9, §11 (whole) | `reconciliation/1_5-repl-engine-split-mvp-binary-wire-format-intermediate-language-c.md` |
+
+**Refinement methodology (all seeds):** each seed is shaped for iterative GEPA/DSPy refinement (Claude-run, no API) against a per-step **pragmatic + formal** metric combination, settled interactively at `/buildkit-specify`. Formal verification spans the GLP language (ANTLR4 grammar-as-example-verifier; type-checker/SRSW; mechanized semantics in Lean/Coq building on the Shapiro/FCP + WAM-verification line), its implementation, and the IL (TWAM/Vellvm-style verified-IL; MLIR verification dialect as the higher-level layer). Full methodology: `reconciliation/SEED-RECONCILIATION-BRIEF.md` + `reconciliation/REFINEMENT-METHOD.md`.
 
 ---
 
