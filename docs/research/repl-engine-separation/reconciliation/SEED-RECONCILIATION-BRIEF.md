@@ -73,7 +73,7 @@ Per seed: memo `./<num>-<id>.md` (sections: Title; Dossier cross-references; See
 ## 6. Requirement status
 - [x] Owner supplied the higher-level IL-verification layer (MLIR multi-level logic dialect + progressive lowering; §3.2) — 2026-06-09.
 - [x] Owner supplied the formal-tooling matrix + the no-API resolution (§3.2a) and the Shapiro/embedded-switch pragmatic anchor (§3.5) — 2026-06-09.
-- [ ] Pin the correct citation for the Typed-Multi-level-Datalog-IR (the `2502.06854` link was mis-attributed; do during the #4/#12 spike).
+- [ ] Pin the correct citation for the Typed-Multi-level-Datalog-IR (the `2502.06854` link was mis-attributed). Reconciliation suggests **LingoDB (VLDB 2022, Jungmair et al.)** — an MLIR-based data-processing system with relational/sub-operator dialects — as the likely intended reference; **confirm at the #4/#12 spike**.
 - [ ] Owner **GO** to launch the 16-agent reconciliation.
 
 ---
