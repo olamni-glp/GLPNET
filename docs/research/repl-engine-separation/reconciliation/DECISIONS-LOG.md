@@ -19,4 +19,12 @@ Owner-ratified pre-`/buildkit-specify` decisions. Each is **binding** on the nam
 | R11 | **Formal Lean/Rocq proofs are OFF the MVP critical path** (#6 is a source-text split); proofs gate only language-touching seeds (#4, #11, #12). | #1a, #6 | **DEF-B1** |
 | R12 | **Binding depth-truncation bound = 32 for MVP** (sets the Lean proof scope; revisit if cycles/large terms surface). | #2 | **DEF-C-depth** (revisit bound) |
 
+**Ratified 2026-06-09 (R13–R15)** (owner: Gabi) — during #1a (`027-refinement-verification-framework`) `/buildkit-specify`/`-clarify`.
+
+| # | Decision (ratified) | Applies to | Creates deferral |
+|---|---|---|---|
+| R13 | **Lean tactic-loop + MLIR/GLP-dialect approaches MUST be validated by runnable real-tool spikes in #1a — not desk research** (Python harness driving a real Lean 4 install over MCP; real MLIR Python bindings). Minimal feasibility spikes only (one GLP property; one IL fragment). **Extends R11/DEF-B1/DEF-H1**: a real spike runs now; full proofs/MLIR-infra stay at #4/#11/#12. Lean budget = 20 attempts as a tuned starting point. | #1a (then #4/#11/#12 inherit) | — (extends DEF-B1, DEF-H1) |
+| R14 | **Promela/SPIN adopted as the REQUIRED pragmatic-tier default for front↔back wire-protocol validation** (deadlock-freedom, no unspecified receptions, progress/liveness); mandatory in the metric table of #2/#5/#6. #1a delivers a real-SPIN validation spike on a minimal handshake. | #1a, #2, #5, #6 | **DEF-A3** (full protocol model at #5/#6) |
+| R15 | **Protocol/concurrency verification armoury** stocked alongside SPIN: **TLA+, UPPAAL, NuSMV/nuXMV, mCRL2, FDR4, CADP** — each seed selects the fit tool by protocol type at its interactive spec step (SPIN default; TLA+ consensus/multi-client; UPPAAL timed; nuXMV symbolic/large; mCRL2/FDR4/CADP process-algebra/asynchronous). | #1a (then wire/protocol seeds) | — |
+
 **How a seed's spec consumes this:** at `/buildkit-specify` for seed N, `buildkit-roadmap brief <id>` shows a `PRE-SPECIFY` pointer to this log + `DEFERRALS.md`. Apply every R-row whose "Applies to" includes N, and action every DEF-row anchored at N.
