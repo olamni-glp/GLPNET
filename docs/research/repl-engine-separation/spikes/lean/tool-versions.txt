@@ -4,7 +4,11 @@
 python: 3.14.3   (codeconv/.venv)
 #
 # Real-tool versions (recorded at T012 — Lean 4 + Lean-LSP-MCP in WSL2):
-elan: <pending — T012>
-lake: <pending — T012>
-lean: <pending — T012>
-lean-lsp-mcp: <pending — T012>
+elan: 4.2.3 (b6cec7e10 2026-06-08)
+lean: 4.30.0 (x86_64-unknown-linux-gnu, commit d024af099ca4bf2c86f649261ebf59565dc8c622, Release)
+lake: 5.0.0-src+d024af0 (Lean 4.30.0)
+lean-lsp-mcp: 0.26.2 (pipx, Python 3.12.3) -> ~/.local/bin/lean-lsp-mcp
+host: WSL2 v2.6.3.0, Ubuntu 24.04; toolchain at ~/.elan (sudo-free, --default-toolchain stable)
+# Kernel verified 2026-06-09: `lean Smoke.lean` proved a trivial theorem + #eval ran (LEAN_COMPILE_OK).
+# REMAINING wiring (at T014): register lean-lsp-mcp as an MCP server in Claude Code so the
+#   harness drives Claude-over-MCP (no external API). Launch cmd: wsl -d Ubuntu -- ~/.local/bin/lean-lsp-mcp

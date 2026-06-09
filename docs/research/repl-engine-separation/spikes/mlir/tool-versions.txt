@@ -4,6 +4,12 @@
 python: 3.14.3   (codeconv/.venv)
 #
 # Real-tool versions (recorded at T017 — real MLIR Python bindings):
-mlir-python-bindings: <pending — T017>
-llvm/mlir: <pending — T017>
-acquisition: <pending — pip wheel | WSL2 LLVM build (-DMLIR_ENABLE_BINDINGS_PYTHON=ON)>
+# BLOCKED 2026-06-09 — no pip wheel for REAL (compiled LLVM) MLIR Python bindings:
+#   - PyPI 'mlir' = pure-python pymlir parser v0.0.1 (py3-none-any) — NOT the LLVM bindings; does not satisfy R13 "real MLIR".
+#   - PyPI 'mlir-python-bindings' = 404 (does not exist).
+# Escalation: marathon stage_flagged #1 (block m57f4c46e:implement:3). Awaiting Gabi's choice:
+#   A) community wheel index makslevental/mlir-wheels (real compiled bindings; fast; 3rd-party supply-chain)
+#   B) WSL2 LLVM source build (-DMLIR_ENABLE_BINDINGS_PYTHON=ON; hours + multi-GB; likely needs sudo)
+#   C) defer T017/US4 (P2) — ship SPIN + Lean spikes now
+mlir-python-bindings: <BLOCKED — see escalation #1>
+llvm/mlir: <BLOCKED — see escalation #1>
