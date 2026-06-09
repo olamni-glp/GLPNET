@@ -49,6 +49,8 @@ The verified environment prevents AI agents from hallucinating logical steps: tr
 
 **NO-API resolution (a tension surfaced + resolved):** AutoRocq and similar are often demoed on **GPT-4 API**, which violates this project's no-API/Claude-only rule (cost + the rule). **Resolution:** the agentic-ITP loop is **model-agnostic** — APOLLO is explicitly "modular, model-agnostic" (ran with o3-mini/o4-mini/Goedel-Prover); Lean-LSP-MCP and Lean Copilot are model-neutral. So adopt the *architecture* (Lean/Rocq as the verified search space with compiler feedback) and **drive tactic generation with Claude via Agent-tool seams / MCP**, not a fixed API. AutoRocq's GPT-4 reliance is the defect to adapt away, not a constraint to accept. This is itself a per-seed decision where formal verification is in the metric set.
 
+**Owner decision (2026-06-09) — proof assistant:** **evaluate both Lean 4 and Rocq per seed**, select the single best-fit **primary**, and **retain the other as a documented alternative** only where the per-seed evaluation identifies a specific circumstance that needs it. Lean 4 may suffice as the primary across the board — that is the evaluation's to confirm, not to assume.
+
 ### 3.3 Per-metric record (each seed memo, as a table)
 Each metric: **name · kind (pragmatic|formal) · concrete tool/harness · threshold (the "right level")**.
 
