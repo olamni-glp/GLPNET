@@ -43,8 +43,8 @@ avoid cross-story file conflicts).
 **⚠️ CRITICAL**: complete before US1/US2 begin.
 
 - [X] T003 Read-only input gate: verify the 026 artifacts are present + authoritative on this branch — `REFINEMENT-METHOD.md`, `DECISIONS-FOR-OWNER.md`, `DECISIONS-LOG.md` (R1–R15), `DEFERRALS.md` (DEF-A3/B1/B2/H1) — under `docs/research/repl-engine-separation/reconciliation/`; STOP + report if any is missing
-- [ ] T004 Finalize `docs/research/repl-engine-separation/reconciliation/REFINEMENT-METHOD.md` as the authoritative framework artifact (FR-001): §1 loop, §2 pragmatic+formal metric model, §4 the **six formal-tooling slots** each with name + threshold-shape + dependency-pointer (FR-022, SC-004), §5 the **five Shapiro criteria** mandatory/advisory map + embedded-switch framing (FR-050/051, SC-005), the no-API rule, and the budget-cap discipline
-- [ ] T005 Finalize `docs/research/repl-engine-separation/reconciliation/DECISIONS-FOR-OWNER.md` (FR-002): prover choice (Lean 4 primary / Rocq alternative), MLIR dialect primitive spec, Shapiro mandatory/advisory mapping, tactic-loop depth limit
+- [X] T004 Finalize `docs/research/repl-engine-separation/reconciliation/REFINEMENT-METHOD.md` as the authoritative framework artifact (FR-001): §1 loop, §2 pragmatic+formal metric model, §4 the **six formal-tooling slots** each with name + threshold-shape + dependency-pointer (FR-022, SC-004), §5 the **five Shapiro criteria** mandatory/advisory map + embedded-switch framing (FR-050/051, SC-005), the no-API rule, and the budget-cap discipline
+- [X] T005 Finalize `docs/research/repl-engine-separation/reconciliation/DECISIONS-FOR-OWNER.md` (FR-002): prover choice (Lean 4 primary / Rocq alternative), MLIR dialect primitive spec, Shapiro mandatory/advisory mapping, tactic-loop depth limit — cross-linked to ratified R1–R15
 
 **Checkpoint**: methodology file authoritative; tooling slots + Shapiro map present → US1/US2 can start.
 

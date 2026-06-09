@@ -9,6 +9,26 @@ mutated code or roadmap state). Dossier §-anchors and `file:line` cite the evid
 - Index + legend: [`README.md`](README.md).
 - Cross-cutting methodology: [`REFINEMENT-METHOD.md`](REFINEMENT-METHOD.md).
 
+> **Ratification status (2026-06-09).** The MVP-critical advisories below have been
+> owner-ratified and are now **binding** in [`DECISIONS-LOG.md`](DECISIONS-LOG.md) —
+> superseding their "advisory" framing here. Cross-reference:
+> - **§3 prover choice** → **R10/R11/R13**: Lean 4 primary on all 11 prover-needing seeds
+>   (WSL2/container on Windows); proofs OFF the #6 MVP critical path; Rocq the named
+>   alternative only on full-bisimulation (#4/#11/#14) / coinductive-stream (#13) seeds
+>   (→ DEF-F-tooling).
+> - **§4 / REFINEMENT-METHOD §4 MLIR primitives** → **R13**: dialect approach validated by a
+>   runnable real-MLIR spike (HEAD-unify / GUARD-test / BODY-spawn / suspend-reactivate;
+>   `decode(encode(p)) ≡ p`); citation `2502.06854` recorded open (DEF-B2).
+> - **§3 / §5 (U-M2) Shapiro mandatory/advisory map** → **R9**: mandatory for
+>   language/semantics/wire seeds; advisory (N/A + justification) for host/infra (#8, #10).
+> - **§4 (U-M3) tactic-loop / depth limits** → **R13** (Lean attempt budget = 20, tuned
+>   start) + **R12** (binding depth-truncation = 32 for MVP → DEF-C-depth).
+> - **Wire-protocol verification** → **R14/R15**: Promela/SPIN the required default (#2/#5/#6);
+>   armoury TLA+/UPPAAL/nuXMV/mCRL2/FDR4/CADP. Real-SPIN spike delivered by #1a (→ DEF-A3).
+>
+> Items NOT yet ratified (per-seed forks in §2, the U-questions in §4) remain advisory and
+> are confirmed at each seed's interactive `/buildkit-specify` step.
+
 ---
 
 ## 1. TOP TENSIONS (decide these first)

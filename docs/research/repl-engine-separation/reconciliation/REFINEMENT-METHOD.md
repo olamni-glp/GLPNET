@@ -1,9 +1,11 @@
 # Refinement Method — shared GEPA/DSPy + formal-metrics methodology for `engine-separation`
 
 Cross-cutting note for the epic. Every seed's `/buildkit-specify` instantiates this
-method; it is the de-facto spec deliverable of seed **#1a**
-(`iterative-refinement-and-verification-framework`). Owner decisions live in
-[`DECISIONS-FOR-OWNER.md`](DECISIONS-FOR-OWNER.md); per-seed detail in the numbered memos.
+method; it is the **authoritative framework artifact** (FR-001) of seed **#1a**
+(`iterative-refinement-and-verification-framework`). The **binding** owner decisions are
+ratified in [`DECISIONS-LOG.md`](DECISIONS-LOG.md) (R1–R15); the advisory synthesis Gabi
+reads is [`DECISIONS-FOR-OWNER.md`](DECISIONS-FOR-OWNER.md); per-seed detail in the numbered
+memos; deferrals these create are anchored in [`DEFERRALS.md`](DEFERRALS.md).
 
 ---
 
@@ -83,22 +85,68 @@ genuinely better.
 
 ---
 
-## 4. The formal-tooling layers (specified by #1a, implemented by later seeds)
+## 4. The six formal-tooling slots (specified by #1a, implemented by later seeds)
 
-- **ANTLR4 grammar-as-verifier** (#12 Phase-A): a single `.g4` GLP grammar that **parses
-  every working-definition example** before any compiler exists (brief §3.2). Threshold:
-  100% of the `programs/` corpus accepted; rejection-preservation on the negative suite
-  (grammar accepts syntactically-valid-but-type/SRSW-invalid programs). This is the early
-  formal gate for all language-touching seeds.
-- **MLIR GLP/FCP IL-dialect** (specified by #1a/#4; lowering pass in #11; deferred for
-  #14/#15): primitives **HEAD-unify / GUARD-test / BODY-spawn / suspend-reactivate**,
-  progressively lowered, verified via first-class verification dialects (PLDI'25).
-  Round-trip criterion `decode(encode(p)) ≡ p`. **Citation to pin** (brief §6): the
-  Typed-Multi-level-Datalog-IR reference — arxiv 2502.06854 is **mis-attributed** (it is an
-  LLM-comprehension-of-LLVM-IR study); correct ref is **LingoDB, VLDB 2022 (Jungmair et
-  al.)**.
-- **Byte-parity oracle** (FR-060/061): every codec (#4, #5, #11) carries a golden-file
-  round-trip identity test; cross-runtime Dart parity where the mirror is kept (§12r7).
+#1a specifies **six** formal-tooling slots (FR-022, SC-004). Each slot is named with a
+**threshold-shape** (the form its pass/fail metric takes — a seed instantiates the concrete
+threshold at its interactive spec step) and a **dependency-pointer** (which seed introduces
+or consumes it). A seed's metric table (§2) draws its *formal* rows from these slots; the
+Shapiro map (§5) and the proof-assistant policy (§3) constrain which slots are mandatory.
+
+1. **ANTLR4 grammar-as-verifier.**
+   - *Threshold-shape:* 100% of the `programs/` corpus accepted; rejection-preservation on
+     the negative suite (grammar accepts syntactically-valid-but-type/SRSW-invalid programs).
+   - *Dependency-pointer:* introduced by **#12 Phase-A** (dep #1a/corpus); the early formal
+     gate for all language-touching seeds, available before any compiler exists (brief §3.2).
+
+2. **MLIR GLP/FCP IL-dialect.**
+   - *Threshold-shape:* the four primitives **HEAD-unify / GUARD-test / BODY-spawn /
+     suspend-reactivate** realized in a real dialect, progressively lowered, with the
+     deterministic round-trip criterion `decode(encode(p)) ≡ p` (Claude = structural
+     generation only; the oracle decides). Verified via first-class verification dialects
+     (PLDI'25). **R13: validated by a runnable real-MLIR spike in #1a (one IL fragment), not
+     desk research.**
+   - *Dependency-pointer:* specified by **#1a/#4**; lowering pass in **#11**; deferred for
+     #14/#15. **Citation to pin** (brief §6, DEF-B2): arxiv 2502.06854 is **mis-attributed**
+     (it is an LLM-comprehension-of-LLVM-IR study); correct ref candidate is **LingoDB, VLDB
+     2022 (Jungmair et al.)** — recorded open.
+
+3. **Byte-parity round-trip oracle** (FR-060/061).
+   - *Threshold-shape:* golden-file byte-identity on `decode(encode(p)) ≡ p`
+     (`csharp/glp_link/reliability/FrameCodec.cs:31-32` precedent); cross-runtime Dart parity
+     where the mirror is kept (§12r7). The deterministic checker that mitigates the "LLMs
+     struggle with IR control flow" risk (brief §3.2).
+   - *Dependency-pointer:* every codec seed — **#4, #5, #11**.
+
+4. **Lean 4 prover** (primary; Rocq the alternative per §3).
+   - *Threshold-shape:* the seed's target proposition **proved**, or **`sorry`-isolated +
+     owner-escalated**, within the bounded Claude-over-MCP tactic loop. **R13: attempt budget
+     = 20 as a tuned starting point**; capped run yields best-so-far. Driven via
+     **Lean-LSP-MCP + APOLLO (sorry-isolation) + Lean Copilot** — Claude-native, model-
+     agnostic, no-API. **R13: validated by a runnable real-Lean-4 spike in #1a (one GLP
+     property), not desk research.**
+   - *Dependency-pointer:* the 11 prover-needing seeds (§6); architecture specified by
+     **#1a** (`LEAN-TACTIC-LOOP.md`); **R10: WSL2/container setup on Windows**; Rocq alt only
+     on full-bisimulation (#4/#11/#14) / coinductive-stream (#13) triggers (§3, DEF-F-tooling).
+
+5. **SMT (Z3 / CVC5).**
+   - *Threshold-shape:* finite-domain decision properties discharged UNSAT/exhaustive — e.g.
+     opcode-discriminant uniqueness (no two opcodes share a discriminant) and exception-
+     taxonomy exhaustiveness (the unrecoverable-state set is closed).
+   - *Dependency-pointer:* **#4** (discriminant uniqueness, complements the Lean round-trip
+     proof), **#8** (exception-taxonomy exhaustiveness). No proof-assistant needed.
+
+6. **Promela/SPIN + the protocol-verification armoury** (R14/R15).
+   - *Threshold-shape:* **deadlock-freedom + no unspecified receptions + a named
+     progress/liveness property** under real SPIN (`spin -a` → `pan -a`), or a counterexample
+     trace. **R14: SPIN is the REQUIRED pragmatic-tier default** for front↔back wire-protocol
+     validation, mandatory in the metric tables of **#2/#5/#6** with named safety+liveness.
+     **R15 armoury** — **TLA+/PlusCal, UPPAAL, NuSMV/nuXMV, mCRL2, FDR4, CADP** — each seed
+     selects the fit tool by protocol type (SPIN default; TLA+ consensus/multi-client; UPPAAL
+     timed; nuXMV symbolic/large; mCRL2/FDR4/CADP process-algebra/asynchronous).
+   - *Dependency-pointer:* **#1a delivers the real-SPIN spike on a minimal handshake**
+     (full protocol model deferred to #5/#6 — DEF-A3); then every wire/protocol seed selects
+     from the armoury at its interactive spec step.
 
 ---
 
