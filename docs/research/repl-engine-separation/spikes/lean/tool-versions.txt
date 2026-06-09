@@ -1,0 +1,10 @@
+# Tool versions — Lean 4 tactic-loop validation spike (US3, 027 / R13-R14)
+#
+# Baseline harness runtime (recorded at T002):
+python: 3.14.3   (codeconv/.venv)
+#
+# Real-tool versions (recorded at T012 — Lean 4 + Lean-LSP-MCP in WSL2):
+elan: <pending — T012>
+lake: <pending — T012>
+lean: <pending — T012>
+lean-lsp-mcp: <pending — T012>

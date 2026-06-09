@@ -1,0 +1,9 @@
+# Tool versions — Promela/SPIN wire-protocol validation spike (US5, 027 / R13-R14)
+#
+# Baseline harness runtime (recorded at T002):
+python: 3.14.3   (codeconv/.venv)
+#
+# Real-tool versions (recorded at T022 — real SPIN + C compiler for pan.c):
+spin: <pending — T022>
+gcc: <pending — T022 (MinGW native, or WSL2)>
+install-path: <pending — native spin.exe | WSL2 spin fallback>

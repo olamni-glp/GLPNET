@@ -30,8 +30,8 @@ serve as the remaining verification.
 
 **Purpose**: scaffold the spike subtree and confirm the harness runtime.
 
-- [ ] T001 Create the spike subtree skeleton: `docs/research/repl-engine-separation/spikes/{lean,mlir,spin}/`, each with placeholder `run.sh`, `run.ps1`, `tool-versions.txt`, and `RESULT.md` stubs
-- [ ] T002 [P] Confirm `codeconv/.venv` (Python 3.11) is usable for the harnesses and record the baseline Python version in each spike's `tool-versions.txt`
+- [X] T001 Create the spike subtree skeleton: `docs/research/repl-engine-separation/spikes/{lean,mlir,spin}/`, each with placeholder `run.sh`, `run.ps1`, `tool-versions.txt`, and `RESULT.md` stubs
+- [X] T002 [P] Confirm `codeconv/.venv` is usable for the harnesses and record the baseline Python version in each spike's `tool-versions.txt` (actual baseline: Python **3.14.3**; the "3.11" in this line was a stale assumption)
 
 ---
 
@@ -42,7 +42,7 @@ avoid cross-story file conflicts).
 
 **⚠️ CRITICAL**: complete before US1/US2 begin.
 
-- [ ] T003 Read-only input gate: verify the 026 artifacts are present + authoritative on this branch — `REFINEMENT-METHOD.md`, `DECISIONS-FOR-OWNER.md`, `DECISIONS-LOG.md` (R1–R15), `DEFERRALS.md` (DEF-A3/B1/B2/H1) — under `docs/research/repl-engine-separation/reconciliation/`; STOP + report if any is missing
+- [X] T003 Read-only input gate: verify the 026 artifacts are present + authoritative on this branch — `REFINEMENT-METHOD.md`, `DECISIONS-FOR-OWNER.md`, `DECISIONS-LOG.md` (R1–R15), `DEFERRALS.md` (DEF-A3/B1/B2/H1) — under `docs/research/repl-engine-separation/reconciliation/`; STOP + report if any is missing
 - [ ] T004 Finalize `docs/research/repl-engine-separation/reconciliation/REFINEMENT-METHOD.md` as the authoritative framework artifact (FR-001): §1 loop, §2 pragmatic+formal metric model, §4 the **six formal-tooling slots** each with name + threshold-shape + dependency-pointer (FR-022, SC-004), §5 the **five Shapiro criteria** mandatory/advisory map + embedded-switch framing (FR-050/051, SC-005), the no-API rule, and the budget-cap discipline
 - [ ] T005 Finalize `docs/research/repl-engine-separation/reconciliation/DECISIONS-FOR-OWNER.md` (FR-002): prover choice (Lean 4 primary / Rocq alternative), MLIR dialect primitive spec, Shapiro mandatory/advisory mapping, tactic-loop depth limit
 

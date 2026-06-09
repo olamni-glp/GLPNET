@@ -1,0 +1,9 @@
+# Tool versions — MLIR/GLP-dialect round-trip validation spike (US4, 027 / R13-R14)
+#
+# Baseline harness runtime (recorded at T002):
+python: 3.14.3   (codeconv/.venv)
+#
+# Real-tool versions (recorded at T017 — real MLIR Python bindings):
+mlir-python-bindings: <pending — T017>
+llvm/mlir: <pending — T017>
+acquisition: <pending — pip wheel | WSL2 LLVM build (-DMLIR_ENABLE_BINDINGS_PYTHON=ON)>
