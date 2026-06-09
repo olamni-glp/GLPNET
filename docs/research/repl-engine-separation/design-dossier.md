@@ -372,6 +372,7 @@ Kinds: **PREP** (unblocking refactor/foundation) · **EXPERIMENT** (verification
 | # | Name | Kind | Scope (one line) | Why | depends_on | §ref |
 |---|---|---|---|---|---|---|
 | 1 | engine-review-and-design-dossier | PREP | This dossier: seam/wire/persistence/mailbox design + premise reconciliations | every later feature cites it | — | §0–§12 |
+| 1a | iterative-refinement-and-verification-framework | PREP | Shared GEPA/DSPy refinement loop (Claude-run, no API) + dual **formal** (ANTLR4 grammar-as-verifier, type/SRSW, mechanized GLP semantics via model-agnostic agentic Lean/Rocq, MLIR IL-dialect) + **pragmatic** (testing policy + pluggable per-domain strategies, Shapiro-criteria preservation) verification strategy that every later feature instantiates as its metric combination | every successor's refinement + metrics plan depends on it; avoids per-feature reinvention | 1 | §0.4, Appendix B + `reconciliation/SEED-RECONCILIATION-BRIEF.md` |
 | 2 | result-envelope-and-deep-resolve | PREP | Promote var→writer map + suspended detail + captured output into `ExecutionResult`; server-side deep-resolver (reuse `_ResolveDeepForTrace`) | closes the §1.3 leak; prerequisite for ANY wire result | 1 | §1.3, §2.3 |
 | 3 | structured-output-capture-seam | PREP | Route all `Console.WriteLine`/trace through `OutputCallback`/`TraceSink` | output must be capturable before a process split | 1 | §1.3 |
 | 4 | il-codec-spike | EXPERIMENT | Prove `BytecodeProgram`↔bytes round-trip (both opcode families + recursive constants + labels + VariableMap) via compile→encode→decode→execute-equivalence | de-risks the single hardest unknown (no codec; v1/v2 split) | 1 | §2.1, §2.2, §3 |
@@ -422,6 +423,7 @@ Each successor feature seeded in `buildkit-roadmap` (state `captured`) maps to t
 
 | # | Seed (feature_id) | Kind | Dossier §-anchors | Reconciliation memo |
 |---|---|---|---|---|
+| 1a | iterative-refinement-and-verification-framework *(early-stage methodology feature)* | PREP | §0.4, §3-metrics (via brief) — prerequisite-for-refinement of #2–#16 | `reconciliation/SEED-RECONCILIATION-BRIEF.md` (de-facto spec) |
 | 2 | result-envelope-and-deep-resolve | PREP | §1.3, §2.3, §0.4 (result-envelope codec; deep-resolve) | `reconciliation/2-result-envelope-and-deep-resolve.md` |
 | 3 | structured-output-capture-seam | PREP | §1.3 | `reconciliation/3-structured-output-capture-seam.md` |
 | 4 | il-codec-spike | EXPERIMENT | §2.1, §2.2, §3, §0.4 (IL/bytecode wire codec) | `reconciliation/4-il-codec-spike.md` |
