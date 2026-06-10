@@ -1,5 +1,6 @@
-# Reproduction script (Windows) for the Promela/SPIN wire-protocol spike (US5, 027).
-# PLACEHOLDER — filled in T024 (recorded real-tool run).
-# Native spin.exe + MinGW gcc for pan.c, or WSL2 spin fallback (research §3).
-Write-Error "spikes/spin/run.ps1: not yet implemented (filled in T024)"
-exit 1
+# Reproduction (Windows) — Promela/SPIN wire-protocol spike (US5, 027, T024).
+# Thin wrapper: real SPIN 6.5.1 + gcc run in WSL2 (Ubuntu). Forwards to the canonical run.sh.
+$ErrorActionPreference = "Stop"
+$wslPath = "/mnt/d/bstdev/research/GLP/GLPNET/docs/research/repl-engine-separation/spikes/spin/run.sh"
+wsl.exe -d Ubuntu -- bash -lc "bash '$wslPath'"
+exit $LASTEXITCODE

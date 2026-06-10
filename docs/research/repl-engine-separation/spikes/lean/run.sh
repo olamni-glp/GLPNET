@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
-# Reproduction script for the Lean 4 tactic-loop validation spike (US3, 027).
-# PLACEHOLDER — filled in T015 (recorded real-tool run).
-# Will: activate the Lean toolchain (elan/lake), run spikes/lean/harness.py
-# driving the bounded Claude-over-MCP tactic loop on <Property>.lean, and
-# print the outcome (proved | sorry-isolated) + tactic-attempt count.
+# Reproduction — Lean 4 bounded tactic-loop validation spike (US3, 027, T015).
+# CANONICAL run path: WSL2 (real Lean 4.30.0 via elan; see tool-versions.txt). run.ps1 wraps this.
+#
+# Reproduces the PROVED outcome: splices the loop-discovered tactic block (proof.lean) in place of
+# the `sorry` in SRSWPreservation.lean and checks the REAL Lean kernel accepts it (no sorry, no
+# error). The bounded-loop SEARCH that found proof.lean (5 attempts / budget 20) is recorded in
+# RESULT.md; this script reproduces its verified RESULT deterministically.
 set -euo pipefail
-echo "spikes/lean/run.sh: not yet implemented (filled in T015)" >&2
-exit 1
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="${ELAN_BIN_DIR:-$HOME/.elan/bin}:$PATH"
+command -v lean >/dev/null || { echo "run.sh: lean not found (provisioned at T012; see tool-versions.txt)" >&2; exit 1; }
+lean --version
+cd "$HERE"
+
+# Drive one budgeted loop attempt with the discovered proof → expect "proved" (demonstrates the
+# harness loop + budget accounting); then the un-budgeted verify as the deterministic gate.
+python3 harness.py reset --budget 20
+python3 harness.py attempt --proof proof.lean
+python3 harness.py verify  --proof proof.lean
