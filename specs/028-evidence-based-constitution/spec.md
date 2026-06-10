@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "Populate glpnet's empty .specify/memory/constitution.md with an evidence-based, non-negotiable constitution so the /buildkit-analyze Constitution Check becomes a real gate instead of a cosmetic one. … (full prescriptive brief — frozen 8 principles, owner-merge floor 6; per-principle Evidence + buildkit-analog + gate-ability label; principles III/V/VI-a worded as analyze-LM scan instructions; negative-control + before/after analyze baseline validation; governance-documentation only; per-principle owner walkthrough before write)."
 
+## Clarifications
+
+### Session 2026-06-10
+
+- Q: Where should the captured-evidence notes (before/after analyze transcripts, negative-control demonstration) live? → A: `specs/028-evidence-based-constitution/evidence/` (e.g. `analyze-before.md`, `analyze-after.md`, `negative-control.md`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The Constitution Check becomes a real gate (Priority: P1)
@@ -73,7 +79,7 @@ The feature runs a Claude-only (no external API) read-only repo scan to ground e
   - **VI-a**: the single linear migration head is asserted by the test family `test_migration_*_single_head.py` (currently `heads == [0010]`) — **not** by a `versions/` filename count.
 - **FR-005**: The scan instructions in FR-004 MUST be scoped to the artifacts under review (the feature's spec/plan/tasks), and MUST NOT cause the constitution's own mention of those literal tokens to be flagged.
 - **FR-006**: Principle VII MUST be labelled **advisory** at the analyze layer. Principle VIII's roadmap-linkage clause MUST be kept **advisory** (the out-of-scope 027 reconcile / slug-drift situation MUST NOT be retroactively flagged).
-- **FR-007**: The numerals **III / IV / V / VI MUST remain stable** even though the two sanctioned merges apply (II merged into I; VII's commit-clause merged into VIII). The principle count MUST be frozen before any content is written.
+- **FR-007**: The numerals **III / IV / V / VI MUST remain stable** even though the two sanctioned merges apply (II merged into I; VII's commit-clause merged into VIII). The principle count MUST be frozen before any content is written. (Clarification: the default proposed set is 8 distinct numerals per FR-002; the two sanctioned merges are *owner options offered at the walkthrough* that reduce the count toward the owner-merge floor of 6 — they are not pre-applied, and applying them never renumbers III / IV / V / VI.)
 - **FR-008**: The `Version` MUST be a semantic version (e.g. `1.0.0`), **not** a CalVer tag, and MUST be stamped together with `Ratified` and `Last Amended` dates.
 - **FR-009**: The constitution MUST reference `docs/DISCIPLINE.md`, `CLAUDE.md`, and the relevant `specs/` rather than duplicate their content (single source of truth).
 - **FR-010**: The constitution MUST record, explicitly, **why** `docs/DISCIPLINE.md`'s GLP-First section and its FCP-Reference-Architecture section are **not** raised to principles.
@@ -83,10 +89,10 @@ The feature runs a Claude-only (no external API) read-only repo scan to ground e
 
 - **FR-012**: The grounding step MUST be a Claude-only (no external API), read-only repo scan — it MUST NOT call OpenAI/litellm or require `OPENAI_API_KEY`, consistent with principle V it is establishing.
 - **FR-013**: The feature MUST walk the owner (Gabi) through every principle point-by-point and obtain per-principle approval **before** `constitution.md` is written; no partial or pre-approval write is permitted.
-- **FR-014**: The feature MUST NOT auto-invoke any pipeline command (no `/buildkit-plan`, `/buildkit-tasks`, `/buildkit-analyze`, etc., triggered by the feature itself).
+- **FR-014**: The feature MUST NOT auto-invoke any pipeline command (no `/buildkit-plan`, `/buildkit-tasks`, `/buildkit-analyze`, etc., triggered by the feature itself). This prohibits *autonomous pipeline auto-advance*; it does NOT prohibit the explicit, owner-driven `/buildkit-analyze` runs that capture the FR-017 before/after baseline, which are measurements of the deliverable, not the feature advancing its own pipeline stage.
 - **FR-015**: The feature MUST NOT modify the `/buildkit-analyze` skill, and MUST NOT implement a grep harness or any external scanning tool — the determinism is honest instruction-level best-effort LM compliance achieved by wording, not by code.
-- **FR-016**: The feature MUST validate the machine-checkable principles with a concrete negative control: a planted `skipSRSW` fragment MUST be flagged CRITICAL via principle III, and a planted `OPENAI_API_KEY` fragment MUST be flagged CRITICAL via principle V (demonstration captured as evidence, not added as a permanent harness).
-- **FR-017**: The feature MUST capture a before/after `/buildkit-analyze` Constitution-Check baseline on feature **026 or 027** (before = vacuous/no-MUST pass against the template; after = MUSTs extracted and reasoned about).
+- **FR-016**: The feature MUST validate the machine-checkable principles with a concrete negative control: a planted `skipSRSW` fragment MUST be flagged CRITICAL via principle III, and a planted `OPENAI_API_KEY` fragment MUST be flagged CRITICAL via principle V (demonstration captured as evidence under `specs/028-evidence-based-constitution/evidence/` (e.g. `negative-control.md`), not added as a permanent harness).
+- **FR-017**: The feature MUST capture a before/after `/buildkit-analyze` Constitution-Check baseline on feature **026 or 027** (before = vacuous/no-MUST pass against the template; after = MUSTs extracted and reasoned about), saved under `specs/028-evidence-based-constitution/evidence/` (e.g. `analyze-before.md`, `analyze-after.md`).
 - **FR-018**: The feature is governance-documentation **only**: it MUST touch no GLP runtime code, no `.glp` source, and MUST NOT extend, revise, or add to the GLP language definition.
 
 ### Key Entities *(include if feature involves data)*
@@ -106,7 +112,7 @@ The feature runs a Claude-only (no external API) read-only repo scan to ground e
 - **SC-003**: **100%** of Evidence lines in the written constitution resolve to an existing on-disk artifact + anchor; **0** fabricated or unresolved citations remain.
 - **SC-004**: The written file contains exactly the frozen principle set (6–8 after owner walkthrough), with numerals III / IV / V / VI unchanged from the proposed numbering, a semantic `Version`, and `Ratified` + `Last Amended` dates.
 - **SC-005**: The constitution's own occurrences of `skipSRSW` / `OPENAI_API_KEY` / `litellm` / `openai` do **not** cause the Constitution Check to flag the constitution against itself.
-- **SC-006**: No GLP runtime file, `.glp` source, or GLP language-definition artifact is modified; the `/buildkit-analyze` skill is unmodified; no grep harness is added (diff confined to the constitution file plus this feature's spec artifacts and captured-evidence notes).
+- **SC-006**: No GLP runtime file, `.glp` source, or GLP language-definition artifact is modified; the `/buildkit-analyze` skill is unmodified; no grep harness is added (diff confined to the constitution file plus this feature's spec artifacts and captured-evidence notes under `specs/028-evidence-based-constitution/evidence/`).
 - **SC-007**: No pipeline command is auto-invoked by the feature, and no write to `constitution.md` occurs before the owner has approved every principle.
 
 ## Assumptions
