@@ -1,0 +1,13 @@
+{
+  "block_id": "m57f4c46e:implement:2",
+  "commit_sha": "3146254d695f4085b56a604e50bfd169f4dc2c15",
+  "created_at": "2026-06-09T13:30:01.200000+00:00",
+  "escalation": null,
+  "pushed": true,
+  "staged_files": [
+    "docs/research/repl-engine-separation/reconciliation/REFINEMENT-METHOD.md",
+    "docs/research/repl-engine-separation/reconciliation/DECISIONS-FOR-OWNER.md",
+    "specs/027-refinement-verification-framework/marathon/block-02-plan.md",
+    "specs/027-refinement-verification-framework/tasks.md"
+  ]
+}

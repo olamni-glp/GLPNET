@@ -1,0 +1,19 @@
+{
+  "block_id": "m57f4c46e:implement:3",
+  "budget_spent": 200000,
+  "completed_units": [
+    "T012",
+    "T022"
+  ],
+  "created_at": "2026-06-09T13:53:42.046000+00:00",
+  "id": 529,
+  "marathon_id": "m57f4c46e",
+  "remaining_units": [
+    "T017"
+  ],
+  "sequence_no": 4,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "T017 MLIR: Gabi chose B (LLVM source build); building llvmorg-22.1.7 in WSL2 background (~/mlir-spike/build); harness bg id b2oqpwrds",
+  "workflow_run_id": null
+}
