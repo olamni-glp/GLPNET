@@ -43,3 +43,21 @@ use of it. Classified, all benign:
 **Verdict**: zero matches on any refinement/verification *path*; all remaining occurrences are the
 rule declaring its own prohibition. No external-LM API is imported, configured, or reachable anywhere
 in the framework or its spikes. Gate **PASS** (FR-012 / SC-003 / US2-AC3).
+
+## Result — T025 (block 07, FINAL, 2026-06-10): **PASS**
+
+Re-run after the spike harnesses landed (block 06), now covering **every spike harness, subject, and
+reproduction script** in addition to the docs:
+
+- **`spikes/` tree — literally zero matches** across all of: `mlir/{harness.py,ilfrag1.py,*.sh,*.ps1,
+  RESULT.md,tool-versions.txt}`, `lean/{harness.py,proof.lean,SRSWPreservation.lean,*.sh,*.ps1,
+  RESULT.md,tool-versions.txt}`, `spin/{front_back.pml,*.sh,*.ps1,RESULT.md,tool-versions.txt}`. No
+  external-LM API is imported or reachable in any executable verification path — the Lean harness
+  shells out only to `lean`, the MLIR harness only to `mlir.ir`, the SPIN harness only to `spin`/`pan`.
+- **Doc tree — 21 prohibitive matches**, all the no-API *rule* (the count grew from T010 because new
+  rule-stating docs — `LEAN-TACTIC-LOOP.md`, the three `RESULT.md` "no LM on the path" notes — and
+  THIS file's own classification table quote the forbidden terms in order to forbid them). None is an
+  API call/import.
+
+**Verdict**: confirmed at feature close — the no-API rule holds across the whole framework and all
+three real-tool spikes. Gate **PASS** (SC-003).

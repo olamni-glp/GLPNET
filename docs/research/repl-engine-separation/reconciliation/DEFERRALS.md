@@ -15,12 +15,12 @@
 |---|---|---|---|---|---|
 | DEF-A1 | Dart-mirror **byte-parity** for the result codec (R4) | MVP ships C#-only; don't gate the first split on a second runtime | Specify the result codec to FR-060/061 byte-parity; add the Dart mirror + golden-file test | R4; §2.5; §12r7; memo #5 | open |
 | DEF-A2 | **Multi-client / multi-accept** (#10, then #13) | one engine/one client is the MVP; N-clients needs the deferred multi-accept loop | Specify #10 (multi-accept) → #13 (GLP control program) | §4.2/§4.5; memo #10/#13 | open |
-| DEF-A3 | **Full Promela/SPIN model of the complete wire protocol / result envelope** (R14: #1a ships only a minimal-handshake spike) | the full envelope/protocol is not designed until #5/#6 | Model the complete front↔back protocol in Promela; check deadlock-freedom + named liveness with SPIN (or an armoury alternative per R15) | R14; #1a spec FR-081; §2.3 | open |
+| DEF-A3 | **Full Promela/SPIN model of the complete wire protocol / result envelope** (R14: #1a ships only a minimal-handshake spike) | the full envelope/protocol is not designed until #5/#6 | Model the complete front↔back protocol in Promela; check deadlock-freedom + named liveness with SPIN (or an armoury alternative per R15) | R14; #1a spec FR-081; §2.3 | open — *anchored: #1a DELIVERED the minimal-handshake real-SPIN spike — deadlock-free + `request_eventually_answered` **PASS** on real SPIN 6.5.1 (`spikes/spin/RESULT.md`); the FULL protocol model stays at #5/#6* |
 
 ## Anchor B — Before #4 (IL codec spike) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
 |---|---|---|---|---|---|
-| DEF-B1 | Start of **formal Lean proofs** (R11) | proofs are off the MVP critical path | Instantiate the round-trip-identity proof obligation in Lean 4 (Rocq alt for full bisimulation) | R11; memo #4 | open — *partly de-risked: R13 added a minimal real-Lean validation spike in #1a; the FULL proof suite still starts here* |
+| DEF-B1 | Start of **formal Lean proofs** (R11) | proofs are off the MVP critical path | Instantiate the round-trip-identity proof obligation in Lean 4 (Rocq alt for full bisimulation) | R11; memo #4 | open — *partly de-risked: #1a DELIVERED a minimal real-Lean-4 spike — `rename_preserves_SRSW` **PROVED** in 5/20 attempts on real Lean 4.30.0 (`spikes/lean/RESULT.md`); the FULL proof suite still starts here* |
 | DEF-B2 | Confirm the **MLIR Typed-Datalog-IR citation** | `2502.06854` was mis-attributed; candidate = LingoDB (VLDB 2022, Jungmair et al.) | Pin/confirm the citation during the spike | brief §6; memo #4/#16 | open |
 | DEF-B3 | Codec-scope forks: "identical IL" def (byte vs exec-equiv), raw vs `CombinedProgram`, obsolete v1 opcodes | not needed until the spike | Resolve U-E1/U-E2/U-E3 at spec | memo #4/#12 (U-E1-3) | open |
 
@@ -59,7 +59,7 @@
 ## Anchor H — Experiments (#12 / #14 / #15 / #16)
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
 |---|---|---|---|---|---|
-| DEF-H1 | #12 **two-phase split** (grammar-verifier early dep #1a; production-parser dep #4+#11) + add #4 dep + define "identical IL" | grammar-as-verifier value is available early; byte-identity needs #4 | Split/sequence #12 at spec; drop C++ target (defer to #14) | D5; memo #12 | open — *partly de-risked: R13 added a minimal real-MLIR round-trip validation spike in #1a; the PRODUCTION MLIR infra still starts here/#4* |
+| DEF-H1 | #12 **two-phase split** (grammar-verifier early dep #1a; production-parser dep #4+#11) + add #4 dep + define "identical IL" | grammar-as-verifier value is available early; byte-identity needs #4 | Split/sequence #12 at spec; drop C++ target (defer to #14) | D5; memo #12 | open — *partly de-risked: #1a DELIVERED a minimal real-MLIR round-trip spike — `decode(encode(p))==p` **PASS** on real compiled-LLVM MLIR 22.0.0 (`spikes/mlir/RESULT.md`); the PRODUCTION MLIR infra still starts here/#4* |
 | DEF-H2 | #14 **C++ scope** = executor-only (dep #4,#12); footprint target; **explicit infeasibility verdict** | narrows the spike; gates #15 viability | Define footprint number + scope at #14 spec | D6; memo #14 | open |
 | DEF-H3 | #15 definitions: "one atomic reduction chain"; in-process N-engines vs OS-process-per-instance | drive safe-preempt + shared-static mechanism | Resolve U-E5/U-E6 + give the FOLLOW-UP half an output gate | memo #15 | open |
 | DEF-H4 | #16 **LLVM deepen/spike hibernated** on `blocked_on #14`; reassign exploration links to #1a; **close #16 as a research deliverable** (low GEPA/DSPy applicability) | research, not iterate-to-threshold | Close #16 at specify (reports + spike-ownership table + LingoDB fix); hibernate LLVM stage | memo #16 | open |

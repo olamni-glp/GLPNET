@@ -140,10 +140,10 @@ invalid end states), with the checked properties named and the run reproducible 
 
 **Purpose**: close the success criteria and the deferral trail.
 
-- [ ] T025 [P] Final no-API gate: re-run the `grep` over ALL framework artifacts + every spike harness/example → zero `OPENAI_API_KEY`/`litellm`/`openai` on a refinement/verification path (SC-003)
-- [ ] T026 [P] Done-ness check against `quickstart.md`: six tooling slots (SC-004), five Shapiro criteria mapped (SC-005), template + worked example (SC-001/008), armoury ≥7 tools (SC-012), and three `RESULT.md` files recorded against real tools + reproducible (SC-006/007/009/010/011)
-- [ ] T027 Update `DEFERRALS.md` statuses: confirm DEF-B1/DEF-H1 "partly de-risked" notes (minimal real-Lean / real-MLIR spikes delivered here; full proofs/MLIR-infra still at #4/#11/#12) and DEF-A3 anchored (full protocol model at #5/#6)
-- [ ] T028 Final framework review: confirm all five entity→requirement coverages (data-model.md map) are satisfied and SC-010's three highest-risk claims each have empirical evidence from a real-tool run
+- [X] T025 [P] Final no-API gate: re-run the `grep` over ALL framework artifacts + every spike harness/example → zero `OPENAI_API_KEY`/`litellm`/`openai` on a refinement/verification path (SC-003) — DONE (block 07): PASS — spikes tree literally zero (incl. harness.py/proof.lean/*.lean/*.pml); 21 doc matches all prohibitive (rule-stating); recorded in `NO-API-GATE.md`
+- [X] T026 [P] Done-ness check against `quickstart.md`: six tooling slots (SC-004), five Shapiro criteria mapped (SC-005), template + worked example (SC-001/008), armoury ≥7 tools (SC-012), and three `RESULT.md` files recorded against real tools + reproducible (SC-006/007/009/010/011) — DONE (block 07): all 12 SC verified met; recorded in `DONE-NESS.md` §1 traceability table
+- [X] T027 Update `DEFERRALS.md` statuses: confirm DEF-B1/DEF-H1 "partly de-risked" notes (minimal real-Lean / real-MLIR spikes delivered here; full proofs/MLIR-infra still at #4/#11/#12) and DEF-A3 anchored (full protocol model at #5/#6) — DONE (block 07): DEF-B1 (Lean PROVED), DEF-H1 (MLIR PASS), DEF-A3 (SPIN PASS) notes updated to cite delivered RESULT.md evidence; DEF-B2 citation still open (non-blocking, FR-042); rows not deleted
+- [X] T028 Final framework review: confirm all five entity→requirement coverages (data-model.md map) are satisfied and SC-010's three highest-risk claims each have empirical evidence from a real-tool run — DONE (block 07): data-model map is actually NINE entities (E1–E9, "five" was a stale task count) — all 9 confirmed satisfied; SC-010's three claims (MLIR PASS, Lean PROVED, SPIN PASS) each have recorded real-tool evidence; recorded in `DONE-NESS.md` §2/§3
 
 ---
 
