@@ -16,7 +16,7 @@ that reproduces). A criterion not met would be flagged here as a gap — none is
 | **SC-005** | Five Shapiro criteria mapped mandatory/advisory | [`REFINEMENT-METHOD.md`](REFINEMENT-METHOD.md) §5 (5 criteria, each mapped) | ✅ |
 | **SC-006** | Lean spike recorded against real tool | [`../spikes/lean/RESULT.md`](../spikes/lean/RESULT.md) — **PROVED**, 5/20 attempts, Lean 4.30.0 | ✅ |
 | **SC-007** | MLIR spike recorded against real tool | [`../spikes/mlir/RESULT.md`](../spikes/mlir/RESULT.md) — **PASS** `decode(encode(p))==p`, MLIR 22.0.0 | ✅ |
-| **SC-008** | Template worked example well-formed + formal tier present | [`METRIC-COMBINATION-TEMPLATE.md`](METRIC-COMBINATION-TEMPLATE.md) §2 (#5: 7 rows, 4 formal; T008-validated) | ✅ |
+| **SC-008** | Template worked example well-formed + formal tier present | [`METRIC-COMBINATION-TEMPLATE.md`](METRIC-COMBINATION-TEMPLATE.md) §2 (#5: 7 rows, 3 formal; T008-validated) | ✅ |
 | **SC-009** | Each spike reproducible (committed command + pinned versions) | three `run.sh`/`run.ps1` + `tool-versions.txt`; all re-run exit 0 | ✅ |
 | **SC-010** | Three highest-risk claims each have real-tool empirical evidence | the three `RESULT.md` (see §3) | ✅ |
 | **SC-011** | SPIN spike: deadlock-free + progress (or counterexample) | [`../spikes/spin/RESULT.md`](../spikes/spin/RESULT.md) — **PASS**, SPIN 6.5.1 | ✅ |

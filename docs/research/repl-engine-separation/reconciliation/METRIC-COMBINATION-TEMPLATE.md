@@ -58,8 +58,8 @@ Instantiating the template end-to-end for the already-reconciled result-envelope
 **boundary codec** that transforms the engine-internal `ExecutionResult` + `DrainResult` +
 `queryVarWriters` + captured output into a self-contained `byte[]` chunk riding
 `FrameCodec`/`TcpTransport`. Because it **touches the byte/wire contract**, the table MUST
-carry at least one `formal` row (**US1-AC1**) — here it carries four (byte-parity, the SPIN
-protocol check, the Lean 4 unbound-sentinel proof, and the SRSW gate). Applicable ratified
+carry at least one `formal` row (**US1-AC1**) — here it carries three (byte-parity, the Lean 4
+unbound-sentinel proof, and the SRSW gate). Applicable ratified
 decisions: **R1** (var→writer = stable `GlobalVarId`), **R2** (unbound = display-only for MVP),
 **R3** (output = length-prefixed UTF-8 blob), **R14** (SPIN required for #5's table).
 
@@ -73,7 +73,7 @@ decisions: **R1** (var→writer = stable `GlobalVarId`), **R2** (unbound = displ
 | Unbound-var sentinel correctness | **formal** | Lean 4 over Lean-LSP-MCP + APOLLO + Lean Copilot (Claude-native, no-API; budget 20 attempts per **R13**): prove `Suspended` + ≥1 `null` binding ⇒ encoder emits the unbound-sentinel tag and decoder reconstructs the display string with no heap access | proposition proved, or `sorry`-isolated + owner-escalated; 100% of `Suspended` cases |
 | SRSW preservation | **formal** | In-repo SRSW validator (REPL suite §D) run before/after the codec + its #3 output-capture dependency | 0 new SRSW violations (REPL suite 384/384) |
 
-The blend is satisfied (three pragmatic rows + four formal rows), the formal tier is present
+The blend is satisfied (four pragmatic rows + three formal rows), the formal tier is present
 because #5 is a wire/byte-contract seed (US1-AC1), and every row names a concrete runnable
 tool with a measurable threshold. This matches the §6 headline combination for #5 in
 [`REFINEMENT-METHOD.md`](REFINEMENT-METHOD.md): *loopback equiv + round-trip + output (prag) ·
