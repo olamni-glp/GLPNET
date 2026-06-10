@@ -34,6 +34,26 @@ loop:
 Termination is **metric-thresholds-met AND owner confirmation** at the interactive
 `/buildkit-specify` step — not budget exhaustion alone.
 
+### 1.1 Loop ↔ precedent seam map (confirmed against `optimize.py:257–335`, FR-011)
+
+Every element of the loop above maps 1:1 to a real seam of the in-repo GEPA precedent
+`run_optimize` — **zero unmatched seams** (SC-002, US2-AC1/AC2). Confirmed by reading the code,
+not asserted:
+
+| loop element (above) | `codegen_opt/optimize.py` precedent seam | line |
+|---|---|---|
+| `candidate ← Claude drafts/edits the artifact or diff` | `generate_fn` (injected, Claude-backed; `gen = _require_fn(generate_fn, …)`) | `:268`, `:297` |
+| `GEPA mutation ← Claude proposes a revised candidate` | `propose_fn` → `candidate = prop(best_instr, all_refl)` | `:271`, `:313` |
+| `evaluate ← run the seed's metric-combination table` | `score_instructions(…) → (score, reflections)`; the per-example metric is `oracle_fn` | `:302`, `:314`, `:270` |
+| `reflections ← unmet criteria + feedback` | `base_refl` / `cand_refl` accumulated into `all_refl` | `:308`, `:319` |
+| `repeat (budget-capped)` | `BudgetCounter(budget)` (default **20**, `:262`); `while counter.used < counter.budget` | `:299`, `:311` |
+| `capped run yields best-so-far` | `best_instr, best_score` kept on improvement, returned in `OptimizeResult` | `:320–324` |
+| **NO external API** | `generate_fn`/`propose_fn` Claude-injected, "no external-API default"; header no-API rule | `:286–288`, `:6–11` |
+
+The DSPy "refine the instruction set" step is the same seam as `propose_fn` (the proposer mutates the
+*instruction set* driving the drafting agent — `prop(best_instr, all_refl)`), so it carries no
+separate, unmatched seam. The mapping is total.
+
 ---
 
 ## 2. The metric-combination principle: pragmatic + formal, always both
