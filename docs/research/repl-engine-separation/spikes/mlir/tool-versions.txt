@@ -11,5 +11,18 @@ python: 3.14.3   (codeconv/.venv)
 #   A) community wheel index makslevental/mlir-wheels (real compiled bindings; fast; 3rd-party supply-chain)
 #   B) WSL2 LLVM source build (-DMLIR_ENABLE_BINDINGS_PYTHON=ON; hours + multi-GB; likely needs sudo)
 #   C) defer T017/US4 (P2) — ship SPIN + Lean spikes now
-mlir-python-bindings: <BLOCKED — see escalation #1>
-llvm/mlir: <BLOCKED — see escalation #1>
+# RESOLUTION 2026-06-10: Gabi chose option A (community wheel index) with option B (WSL2
+#   source build) pre-approved as silent fallback; T017/US4 NOT to be deferred. Option A
+#   succeeded — the earlier "404" was PyPI only; the makslevental find-links index DOES
+#   publish a REAL compiled-LLVM wheel. Option B (in-progress llvmorg-22.1.7 source build in
+#   ~/mlir-spike/build) was abandoned (background build had died) — superseded by A.
+#
+# Real-tool runtime (NOTE: WSL2, not Windows codeconv/.venv — no compiled-LLVM cp314 win wheel):
+wsl-distro:           Ubuntu (WSL2)
+python:               3.12.3   (~/mlir-spike/wheel-venv)
+mlir-python-bindings: 22.0.0.2025112901+cuda.9bae84b0   (makslevental find-links; REAL compiled mlir.ir bindings)
+  index:              https://makslevental.github.io/wheels
+  import-verified:    import mlir.ir { Context, Module } — Module.parse/str round-trip OK
+  deps:               numpy 2.1.2, ml_dtypes 0.5.4, PyYAML 6.0.3
+# T017 acceptance smoke (not the US4 oracle — that is T019/T020 on ILFRAG-1):
+#   round-trip decode(encode(p))==p on a func.func @id module → TRUE
