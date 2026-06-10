@@ -1,0 +1,18 @@
+{
+  "block_id": "m57f4c46e:implement:3",
+  "budget_spent": 230000,
+  "completed_units": [
+    "T012",
+    "T022",
+    "T017"
+  ],
+  "created_at": "2026-06-10T08:55:41.585000+00:00",
+  "id": 595,
+  "marathon_id": "m57f4c46e",
+  "remaining_units": [],
+  "sequence_no": 6,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": null,
+  "workflow_run_id": null
+}

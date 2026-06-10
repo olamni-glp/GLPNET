@@ -1,0 +1,19 @@
+{
+  "block_id": "m57f4c46e:implement:3",
+  "budget_spent": 210000,
+  "completed_units": [
+    "T012",
+    "T022"
+  ],
+  "created_at": "2026-06-09T13:55:24.714000+00:00",
+  "id": 562,
+  "marathon_id": "m57f4c46e",
+  "remaining_units": [
+    "T017"
+  ],
+  "sequence_no": 5,
+  "stage": "implement",
+  "store_origin": "primary",
+  "wip_unit": "T017 MLIR build (option B, llvmorg-22.1.7) running in WSL2 bg id br7gwcmgr; log: tasks/br7gwcmgr.output; build dir ~/mlir-spike/build",
+  "workflow_run_id": null
+}
