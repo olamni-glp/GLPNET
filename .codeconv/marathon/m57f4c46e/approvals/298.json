@@ -1,0 +1,10 @@
+{
+  "block_id": "m57f4c46e:implement:5",
+  "created_at": "2026-06-10T10:35:32.515000+00:00",
+  "decided_at": "2026-06-10T10:35:32.526933+00:00",
+  "decided_by": "gabi",
+  "id": 298,
+  "outcome": "approve",
+  "presented_plan_ref": "specs/027-refinement-verification-framework/marathon/block-05-plan.md",
+  "supersedes_id": null
+}

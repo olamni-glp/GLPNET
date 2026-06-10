@@ -1,0 +1,28 @@
+# Tool versions — MLIR/GLP-dialect round-trip validation spike (US4, 027 / R13-R14)
+#
+# Baseline harness runtime (recorded at T002):
+python: 3.14.3   (codeconv/.venv)
+#
+# Real-tool versions (recorded at T017 — real MLIR Python bindings):
+# BLOCKED 2026-06-09 — no pip wheel for REAL (compiled LLVM) MLIR Python bindings:
+#   - PyPI 'mlir' = pure-python pymlir parser v0.0.1 (py3-none-any) — NOT the LLVM bindings; does not satisfy R13 "real MLIR".
+#   - PyPI 'mlir-python-bindings' = 404 (does not exist).
+# Escalation: marathon stage_flagged #1 (block m57f4c46e:implement:3). Awaiting Gabi's choice:
+#   A) community wheel index makslevental/mlir-wheels (real compiled bindings; fast; 3rd-party supply-chain)
+#   B) WSL2 LLVM source build (-DMLIR_ENABLE_BINDINGS_PYTHON=ON; hours + multi-GB; likely needs sudo)
+#   C) defer T017/US4 (P2) — ship SPIN + Lean spikes now
+# RESOLUTION 2026-06-10: Gabi chose option A (community wheel index) with option B (WSL2
+#   source build) pre-approved as silent fallback; T017/US4 NOT to be deferred. Option A
+#   succeeded — the earlier "404" was PyPI only; the makslevental find-links index DOES
+#   publish a REAL compiled-LLVM wheel. Option B (in-progress llvmorg-22.1.7 source build in
+#   ~/mlir-spike/build) was abandoned (background build had died) — superseded by A.
+#
+# Real-tool runtime (NOTE: WSL2, not Windows codeconv/.venv — no compiled-LLVM cp314 win wheel):
+wsl-distro:           Ubuntu (WSL2)
+python:               3.12.3   (~/mlir-spike/wheel-venv)
+mlir-python-bindings: 22.0.0.2025112901+cuda.9bae84b0   (makslevental find-links; REAL compiled mlir.ir bindings)
+  index:              https://makslevental.github.io/wheels
+  import-verified:    import mlir.ir { Context, Module } — Module.parse/str round-trip OK
+  deps:               numpy 2.1.2, ml_dtypes 0.5.4, PyYAML 6.0.3
+# T017 acceptance smoke (not the US4 oracle — that is T019/T020 on ILFRAG-1):
+#   round-trip decode(encode(p))==p on a func.func @id module → TRUE

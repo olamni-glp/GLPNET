@@ -1,0 +1,23 @@
+{
+  "block_id": "m57f4c46e:implement:3",
+  "created_at": "2026-06-09T13:44:28.682000+00:00",
+  "detail": {
+    "finding": "No pip wheel for REAL (compiled LLVM) MLIR Python bindings: PyPI 'mlir' is pure-python pymlir parser v0.0.1 (py3-none-any), not LLVM bindings; 'mlir-python-bindings' = 404.",
+    "options": [
+      "A) community wheel index makslevental/mlir-wheels (real compiled bindings; fast; 3rd-party supply-chain)",
+      "B) build LLVM/MLIR from source in WSL2 (-DMLIR_ENABLE_BINDINGS_PYTHON=ON; hours + multi-GB; likely needs sudo for cmake/ninja/clang)",
+      "C) defer T017/US4 (P2, lowest priority); ship SPIN+Lean spikes now"
+    ],
+    "reason": "mlir_no_real_wheel",
+    "task": "T017"
+  },
+  "id": 1,
+  "kind": "stage_flagged",
+  "marathon_id": "m57f4c46e",
+  "resolved_at": "2026-06-10T08:54:02.428328+00:00",
+  "resolution": {
+    "by": "gabi",
+    "decision": "A",
+    "note": "Option A (makslevental find-links real compiled wheel) succeeded; B pre-approved fallback unused; T017/US4 NOT deferred. mlir-python-bindings 22.0.0.2025112901, round-trip verified."
+  }
+}

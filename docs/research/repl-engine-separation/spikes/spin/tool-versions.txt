@@ -1,0 +1,12 @@
+# Tool versions — Promela/SPIN wire-protocol validation spike (US5, 027 / R13-R14)
+#
+# Baseline harness runtime (recorded at T002):
+python: 3.14.3   (codeconv/.venv)
+#
+# Real-tool versions (recorded at T022 — real SPIN + C compiler for pan.c):
+spin: 6.5.1 (20 December 2019)   # prebuilt linux64 from nimble-code/Spin Bin/spin651_linux64
+gcc: 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1)
+install-path: WSL2 Ubuntu, ~/.local/bin/spin (sudo-free prebuilt; apt spin 6.5.2 would need sudo)
+host: WSL2 v2.6.3.0, Ubuntu 24.04, default distro
+# End-to-end chain smoke-tested 2026-06-09: spin -a -> gcc -O2 pan.c -> ./pan ran clean (errors: 0).
+# Source repo cloned at ~/Spin (nimble-code/Spin, 6.5.2 source; only the prebuilt 6.5.1 linux64 used).

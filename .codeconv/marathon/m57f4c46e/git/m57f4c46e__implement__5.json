@@ -1,0 +1,19 @@
+{
+  "block_id": "m57f4c46e:implement:5",
+  "commit_sha": "788be937aa7cb430b4e4bbc32c212e4c3beb5ffe",
+  "created_at": "2026-06-10T10:46:12.173000+00:00",
+  "escalation": null,
+  "pushed": true,
+  "staged_files": [
+    "docs/research/repl-engine-separation/reconciliation/METRIC-COMBINATION-TEMPLATE.md",
+    "docs/research/repl-engine-separation/reconciliation/INTERACTIVE-SPEC-STEP.md",
+    "docs/research/repl-engine-separation/reconciliation/LEAN-TACTIC-LOOP.md",
+    "docs/research/repl-engine-separation/reconciliation/PROTOCOL-VERIFICATION-ARMOURY.md",
+    "docs/research/repl-engine-separation/reconciliation/NO-API-GATE.md",
+    "docs/research/repl-engine-separation/reconciliation/REFINEMENT-METHOD.md",
+    "docs/research/repl-engine-separation/spikes/lean/SRSWPreservation.lean",
+    "docs/research/repl-engine-separation/spikes/spin/front_back.pml",
+    "specs/027-refinement-verification-framework/marathon/block-05-plan.md",
+    "specs/027-refinement-verification-framework/tasks.md"
+  ]
+}
