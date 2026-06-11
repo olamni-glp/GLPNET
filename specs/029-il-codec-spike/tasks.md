@@ -17,16 +17,16 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 
 ## Phase 0: Baseline (Constitution VII — green before change)
 
-- [ ] T000 Run the existing suites green and commit a baseline checkpoint BEFORE any spike code: REPL suite (`DART="C:/Users/gavri/dart-sdk/bin/dart.exe" bash test/run_all_tests.sh`), codeconv `pytest`, and `dotnet build`/`dotnet test csharp/glp_link.tests`. The spike is purely additive (new projects; FR-012 forbids touching existing code), so a green baseline attributes any later failure correctly. (Remediation F4.)
+- [X] T000 Run the existing suites green and commit a baseline checkpoint BEFORE any spike code: REPL suite (`DART="C:/Users/gavri/dart-sdk/bin/dart.exe" bash test/run_all_tests.sh`), codeconv `pytest`, and `dotnet build`/`dotnet test csharp/glp_link.tests`. The spike is purely additive (new projects; FR-012 forbids touching existing code), so a green baseline attributes any later failure correctly. (Remediation F4.)
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `csharp/glp_il_codec/GlpIlCodec.csproj` (net10.0, Nullable/ImplicitUsings enable, RootNamespace `GlpRuntime.IlCodec`) referencing `..\..\out\csharp\glp_runtime_net.csproj` and `..\glp_link\GlpLink.csproj` (FrameCodec). Clobber-safe location, no Dart preimage.
-- [ ] T002 Create `csharp/glp_il_codec.tests/GlpIlCodec.Tests.csproj` (xUnit, matching `glp_link.tests`) referencing `GlpIlCodec`, `glp_runtime_net`, and `GlpLink`.
+- [X] T001 Create `csharp/glp_il_codec/GlpIlCodec.csproj` (net10.0, Nullable/ImplicitUsings enable, RootNamespace `GlpRuntime.IlCodec`) referencing `..\..\out\csharp\glp_runtime_net.csproj` and `..\glp_link\GlpLink.csproj` (FrameCodec). Clobber-safe location, no Dart preimage.
+- [X] T002 Create `csharp/glp_il_codec.tests/GlpIlCodec.Tests.csproj` (xUnit, matching `glp_link.tests`) referencing `GlpIlCodec`, `glp_runtime_net`, and `GlpLink`.
 - [ ] T003 [P] Scaffold the Lean project `csharp/glp_il_codec/lean/IlCodecRoundTrip/` (`lakefile.lean` + `IlCodecRoundTrip/Basic.lean`, mathlib dep) — `lake build` compiles an empty stub.
-- [ ] T004 [P] Add `csharp/glp_il_codec.tests/Corpus.cs` scaffold: a helper that compiles a named `programs/` GLP source to a `BytecodeProgram` + `VariableMap` via the standard pipeline (no new language constructs — A7).
+- [X] T004 [P] Add `csharp/glp_il_codec.tests/Corpus.cs` scaffold: a helper that compiles a named `programs/` GLP source to a `BytecodeProgram` + `VariableMap` via the standard pipeline (no new language constructs — A7).
 
 ---
 
@@ -34,14 +34,14 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 
 **⚠️ CRITICAL**: the codec core below must exist before ANY gate (US1/US2/US3) can run.
 
-- [ ] T005 [P] Implement `PayloadHeader.cs` — `version=0x01` + `payloadType=0x10 (IL_PROGRAM)`; read/write + version/type-mismatch loud check (no new `FrameKind` value — A4).
-- [ ] T006 [P] Implement v1 family in `OpcodeDiscriminant.cs` — closed 1-byte discriminant table for every concrete `IOp` in `out/csharp/lib/bytecode/opcodes.cs` (incl. `[Obsolete]` `UnionSiAndGoto`/`ResetAndGoto`, A3). Family prefix `0x01`.
-- [ ] T007 [P] Implement v2 family in `OpcodeDiscriminant.cs` — 1-byte discriminant for the 6 `IOpV2` classes (`opcodes_v2.cs:13`) + the `isReader` byte (`opcodes_v2.cs:32,60,88`). Family prefix `0x02`.
-- [ ] T008 Implement `ConstantCodec.cs` — recursive sub-encoder for the closed whitelist `null|bool|int64|double|string|Rt.ConstTerm|Rt.StructTerm` (ctags 0x00–0x06, D1); `Rt.StructTerm` recurses to arbitrary depth (FR-005); out-of-whitelist → `IlCodecException` (FR-006).
-- [ ] T009 [P] Implement `VariableMap` codec block in `IlCodec.cs` (per-module `Dictionary<string,long>`, A2/result.cs:9).
-- [ ] T010 Implement `IlCodec.Encode(BytecodeProgram, VariableMap?)` — instruction loop, family dispatch (0x01/0x02), `Label` marker family 0x03; uses T005–T009 (depends on T005,T006,T007,T008,T009).
-- [ ] T011 Implement `IlCodec.Decode(byte[])` — rebuild instruction list; **recompute `Labels` via `IndexLabels`** from decoded instructions (D2); reconstruct `VariableMap` (depends on T010).
-- [ ] T012 Implement `IlCodecException` loud-failure paths: unknown/out-of-family instruction (D4), **a known-family instruction whose concrete class has no discriminant-table entry** (F1), out-of-whitelist constant (D1), truncated/corrupt payload (depends on T010,T011).
+- [X] T005 [P] Implement `PayloadHeader.cs` — `version=0x01` + `payloadType=0x10 (IL_PROGRAM)`; read/write + version/type-mismatch loud check (no new `FrameKind` value — A4).
+- [X] T006 [P] Implement v1 family in `OpcodeDiscriminant.cs` — closed 1-byte discriminant table for every concrete `IOp` in `out/csharp/lib/bytecode/opcodes.cs` (incl. `[Obsolete]` `UnionSiAndGoto`/`ResetAndGoto`, A3). Family prefix `0x01`.
+- [X] T007 [P] Implement v2 family in `OpcodeDiscriminant.cs` — 1-byte discriminant for the 6 `IOpV2` classes (`opcodes_v2.cs:13`) + the `isReader` byte (`opcodes_v2.cs:32,60,88`). Family prefix `0x02`.
+- [X] T008 Implement `ConstantCodec.cs` — recursive sub-encoder for the closed whitelist `null|bool|int64|double|string|Rt.ConstTerm|Rt.StructTerm` (ctags 0x00–0x06, D1); `Rt.StructTerm` recurses to arbitrary depth (FR-005); out-of-whitelist → `IlCodecException` (FR-006).
+- [X] T009 [P] Implement `VariableMap` codec block in `IlCodec.cs` (per-module `Dictionary<string,long>`, A2/result.cs:9).
+- [X] T010 Implement `IlCodec.Encode(BytecodeProgram, VariableMap?)` — instruction loop, family dispatch (0x01/0x02), `Label` marker family 0x03; uses T005–T009 (depends on T005,T006,T007,T008,T009).
+- [X] T011 Implement `IlCodec.Decode(byte[])` — rebuild instruction list; **recompute `Labels` via `IndexLabels`** from decoded instructions (D2); reconstruct `VariableMap` (depends on T010).
+- [X] T012 Implement `IlCodecException` loud-failure paths: unknown/out-of-family instruction (D4), **a known-family instruction whose concrete class has no discriminant-table entry** (F1), out-of-whitelist constant (D1), truncated/corrupt payload (depends on T010,T011).
 
 **Checkpoint**: `Encode`/`Decode` exist for both families + constants + varmap — gates can now run.
 
@@ -52,9 +52,9 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 **Goal**: a downstream author sees every corpus program round-trip and execute-equivalently.
 **Independent Test**: `dotnet test --filter "Category=RoundTrip|Category=Execute"` is green on the corpus.
 
-- [ ] T013 [P] [US1] Build corpus cases 1–7 in `Corpus.cs`: v1-only, v2-only, mixed v1/v2, recursive-constant, label-bearing, empty, suspension-reaching (FR-007; phase a) — selecting from `programs/`. **The full corpus MUST total ≥10 concrete compiled programs** (cases 1–9 + ≥1 named constant-type-sweep program, case 10 — see data-model corpus table); the floor is met by construction, not by counting assertions. (F3.)
-- [ ] T014 [US1] `RoundTripIdentityTests.cs` — structural-identity assertion `Decode(Encode(p)) ≡ p` (family + class + operands + `IsReader` + order; `Labels` equal after recompute) over the corpus (FR-002, SC-001) (depends on T011,T013).
-- [ ] T015 [US1] `ExecuteEquivalenceTests.cs` — run a fixed goal against `p` vs `Decode(Encode(p))`; assert identical `ExecutionResult` incl. `Suspended` status (FR-003, SC-002) (depends on T011,T013). **The empty program is exempt** from this gate (no defined goal/result) and is covered by structural identity (T014) only. (F2.)
+- [X] T013 [P] [US1] Build corpus cases 1–7 in `Corpus.cs`: v1-only, v2-only, mixed v1/v2, recursive-constant, label-bearing, empty, suspension-reaching (FR-007; phase a) — selecting from `programs/`. **The full corpus MUST total ≥10 concrete compiled programs** (cases 1–9 + ≥1 named constant-type-sweep program, case 10 — see data-model corpus table); the floor is met by construction, not by counting assertions. (F3.)
+- [X] T014 [US1] `RoundTripIdentityTests.cs` — structural-identity assertion `Decode(Encode(p)) ≡ p` (family + class + operands + `IsReader` + order; `Labels` equal after recompute) over the corpus (FR-002, SC-001) (depends on T011,T013).
+- [X] T015 [US1] `ExecuteEquivalenceTests.cs` — run a fixed goal against `p` vs `Decode(Encode(p))`; assert identical `ExecutionResult` incl. `Suspended` status (FR-003, SC-002) (depends on T011,T013). **The empty program is exempt** from this gate (no defined goal/result) and is covered by structural identity (T014) only. (F2.)
 
 **Checkpoint**: MVP — the round-trip is proven sound on the corpus (phase a). Spike has delivered its core value.
 
