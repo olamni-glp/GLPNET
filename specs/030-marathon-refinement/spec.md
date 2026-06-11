@@ -61,9 +61,11 @@ marathon's implement stage**. A captured item that is a **blocking missing prere
 **advisory / default-deny**: the harness names the item's next incomplete mini-stage in the resume
 position but never auto-advances it.
 
-**Why this priority**: This is the headline differentiator beyond the sibling package — it lets a
-marathon absorb mid-flight discoveries without abandoning the run or smuggling unplanned work in
-untracked. It depends on US1 (a captured item grows the run's stage total).
+**Why this priority**: This extends and diverges from the sibling package's own mini-pipeline — the sibling
+captures items into a six-stage mini-pipeline (with a per-item implement), whereas this feature uses five
+mini-stages feeding the marathon's shared implement and applies glpnet's gate / re-run / budget / trace to
+them. It lets a marathon absorb mid-flight discoveries without abandoning the run or smuggling unplanned
+work in untracked. It depends on US1 (a captured item grows the run's stage total).
 
 **Independent Test**: Mid-run, capture a `missing-prerequisite` item that blocks stage `c`; the
 resume position now names `mini-specify` for that item as the next action and shows the item's
@@ -288,7 +290,8 @@ registrable/dynamic/mini stages.
 ### Key Entities
 
 - **Marathon run**: a long, multi-session unit of work with an id, a title, a status (in-progress /
-  finalised), an accumulated budget, and an ordered set of stages that may grow over time.
+  finalised), an accumulated budget, and an ordered set of stages that may grow over time. The canonical
+  identifier is `run_id` and the CLI flag is `--run`; the legacy `--feature` slug is a **deprecated alias**.
 - **Stage**: a named unit of work within a run, with an order, an origin (registered up-front, appended
   dynamically, or generated as a mini-stage), and — for mini-stages — a link to the item and the
   mini-kind that produced it.
