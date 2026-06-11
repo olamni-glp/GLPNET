@@ -96,8 +96,10 @@ header (`0x10 = IL_PROGRAM`), not by a new `FrameKind` value.
 **Verified by**: `FrameRideTests` (payload survives Whole and Fragment framing).
 
 ## Guarantee 8 — Formal round-trip soundness (FR-010/SC-007)
-A Lean 4 proof of `decode ∘ encode = id` over a simplified model (v1 family + ground constants)
-compiles **sorry-free**. Located at `csharp/glp_il_codec/lean/IlCodecRoundTrip`.
+A Lean 4 proof of `decode ∘ encode = id` (`IlCodecRoundTrip.decode_encode`) over a simplified
+model (v1-opcode subset + ground constants null|bool|int|string) compiles **sorry-free** — it
+depends only on `propext`, not `sorryAx` (`#print axioms`). Core Lean, no mathlib; checked by
+`lake build` with no external LM API (A6). Located at `csharp/glp_il_codec/lean/IlCodecRoundTrip`.
 *Stretch (NOT guaranteed by this spike)*: v2 + recursive constants in the model; Z3
 discriminant-uniqueness; Dart byte-parity (→ #11, A5).
 

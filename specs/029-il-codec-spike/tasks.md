@@ -25,7 +25,7 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 
 - [X] T001 Create `csharp/glp_il_codec/GlpIlCodec.csproj` (net10.0, Nullable/ImplicitUsings enable, RootNamespace `GlpRuntime.IlCodec`) referencing `..\..\out\csharp\glp_runtime_net.csproj` and `..\glp_link\GlpLink.csproj` (FrameCodec). Clobber-safe location, no Dart preimage.
 - [X] T002 Create `csharp/glp_il_codec.tests/GlpIlCodec.Tests.csproj` (xUnit, matching `glp_link.tests`) referencing `GlpIlCodec`, `glp_runtime_net`, and `GlpLink`.
-- [ ] T003 [P] Scaffold the Lean project `csharp/glp_il_codec/lean/IlCodecRoundTrip/` (`lakefile.lean` + `IlCodecRoundTrip/Basic.lean`, mathlib dep) — `lake build` compiles an empty stub.
+- [X] T003 [P] Scaffold the Lean project `csharp/glp_il_codec/lean/IlCodecRoundTrip/` (`lakefile.lean` + `IlCodecRoundTrip/Basic.lean`, mathlib dep) — `lake build` compiles an empty stub.
 - [X] T004 [P] Add `csharp/glp_il_codec.tests/Corpus.cs` scaffold: a helper that compiles a named `programs/` GLP source to a `BytecodeProgram` + `VariableMap` via the standard pipeline (no new language constructs — A7).
 
 ---
@@ -83,9 +83,9 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 
 - [X] T021 [US3] `CoverageGateTests.cs` — assert every concrete v1 `IOp` and v2 `IOpV2` class is exercised by ≥1 encode+decode (FR-008, SC-003); run the D7 constant-type sweep over compiled `programs/` to confirm the D1 whitelist is empirically complete (depends on T013,T018).
 - [X] T029 [US3] `DiscriminantCompletenessTests.cs` — by reflection over `glp_runtime_net`, assert **every** concrete `IOp` and `IOpV2` subtype has a discriminant-table entry (independent of corpus), and that `Encode` of a synthesized instruction whose class lacks an entry fails loud with `IlCodecException`. Closes the silent-gap a corpus-only coverage gate (T021) would leave for an opcode class no corpus program uses. (F1; strengthens SC-004/FR-008) (depends on T006,T007,T012).
-- [ ] T031 [US3] **Prereq for T022 (F5a)**: verify the formal-gate toolchain is available on this host — Lean 4 (`elan`/`lake`), mathlib fetch, and the Lean-LSP-MCP connector (no external LM API — A6). If unavailable, escalate (blocks SC-007) rather than silently skipping the formal gate (depends on T003).
-- [ ] T022 [US3] Lean simplified model in `IlCodecRoundTrip/Basic.lean` — `inductive Op` (v1 subset), `inductive Const` (null|bool|int|str ground), `encode`/`decode`; via Lean-LSP-MCP, no external LM API (A6, Constitution V) (depends on T003).
-- [ ] T023 [US3] Lean theorem `roundtrip (p) : decode (encode p) = p` — **sorry-free**, `lake build` green (FR-010, SC-007) (depends on T022).
+- [X] T031 [US3] **Prereq for T022 (F5a)**: verify the formal-gate toolchain is available on this host — Lean 4 (`elan`/`lake`), mathlib fetch, and the Lean-LSP-MCP connector (no external LM API — A6). If unavailable, escalate (blocks SC-007) rather than silently skipping the formal gate (depends on T003).
+- [X] T022 [US3] Lean simplified model in `IlCodecRoundTrip/Basic.lean` — `inductive Op` (v1 subset), `inductive Const` (null|bool|int|str ground), `encode`/`decode`; via Lean-LSP-MCP, no external LM API (A6, Constitution V) (depends on T003).
+- [X] T023 [US3] Lean theorem `roundtrip (p) : decode (encode p) = p` — **sorry-free**, `lake build` green (FR-010, SC-007) (depends on T022).
 
 **Checkpoint**: all three stories' in-scope gates green (phase a).
 
