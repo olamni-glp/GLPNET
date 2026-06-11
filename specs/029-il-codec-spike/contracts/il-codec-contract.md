@@ -13,12 +13,17 @@ public static class IlCodec
 {
     // Encode a raw per-module compiled program (+ optional per-module VariableMap) to bytes.
     // Throws IlCodecException on any out-of-whitelist constant or out-of-family instruction.
-    public static byte[] Encode(BytecodeProgram program, VariableMap? variableMap = null);
+    public static byte[] Encode(BytecodeProgram program,
+                                IReadOnlyDictionary<string, long>? variableMap = null);
 
     // Decode bytes back to a structurally identical program (+ VariableMap).
     // Labels are recomputed from the decoded instruction list (canonical form).
-    public static (BytecodeProgram program, VariableMap? variableMap) Decode(byte[] payload);
+    public static DecodedProgram Decode(byte[] payload);
 }
+
+// Decode result: the rebuilt program plus its optional per-module variable map.
+public sealed record DecodedProgram(BytecodeProgram Program,
+                                    IReadOnlyDictionary<string, long>? VariableMap);
 
 public sealed class IlCodecException : Exception { /* loud, attributable */ }
 ```
@@ -41,13 +46,19 @@ operands, and — for v2 — the same `IsReader` polarity. Labels compare equal 
 
 ## Guarantee 2 — Execute-equivalence (FR-003, independent of G1)
 Running a fixed goal against `p` and against `Decode(Encode(p))` yields an identical
-`ExecutionResult` — status (including `Suspended`), bindings, error. **The empty program is
-exempt** (no defined goal/result) and is covered by Guarantee 1 only.
-**Verified by**: `ExecuteEquivalenceTests` (100% of corpus except the empty program, SC-002).
+`ExecutionStatus` — **including `Suspended`** — via the engine's own public runner seam (so the
+two runs differ only in the program object). The runnable corpus uses nullary goals (`succeed`,
+`fail`, `suspend`), for which the query-binding set is empty by construction, so status is the
+operative witness; each run is also anchored against its intended status. **The empty program and
+the synthetic opcode-coverage programs are exempt** (no defined goal/result) and are covered by
+Guarantee 1 only.
+**Verified by**: `ExecuteEquivalenceTests` (every runnable corpus program, incl. a genuinely
+suspending one, SC-002).
 
 ## Guarantee 3 — Covered opcode families & coverage (FR-008)
-Both families are covered: **v1 `IOp`** (all concrete classes incl. the `[Obsolete]`
-`UnionSiAndGoto`/`ResetAndGoto`, round-tripped exactly per A3) and **v2 `IOpV2`** (all 6 classes).
+Both families are covered: **v1 `IOp`** (all 53 concrete classes incl. `Label` and the `[Obsolete]`
+`UnionSiAndGoto`/`ResetAndGoto`, round-tripped exactly per A3) and **v2 `IOpV2`** (all 7 classes —
+the design docs' "6" undercounted `Unknown`, which carries no `IsReader` byte).
 Every concrete opcode class is exercised by ≥1 encode+decode. Additionally, a **reflection
 completeness check** asserts every concrete `IOp`/`IOpV2` subtype has a discriminant entry
 (independent of corpus); a class with no entry fails loud — closing the gap corpus-only coverage

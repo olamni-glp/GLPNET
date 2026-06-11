@@ -65,12 +65,12 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 **Goal**: each guarantee in `contracts/il-codec-contract.md` maps to a named, passing gate.
 **Independent Test**: open the contract; every guarantee row resolves to a green test.
 
-- [ ] T016 [P] [US2] `ConstantWhitelistTests.cs` — out-of-whitelist constant value raises `IlCodecException`; zero silent drops (FR-006, SC-004) (depends on T012).
-- [ ] T017 [US2] `GlpPropertyGateTests.cs` — the five named gates: `Srsw_PolarityPreserved`, `PhaseOrderingPreserved`, `CommitPositionPreserved`, `SuspensionPreserved`, `ThreeValuedOpcodesPreserved` (FR-004, SC-005) (depends on T014).
-- [ ] T018 [P] [US2] Add corpus case 8 (obsolete-opcode program) + assert exact round-trip of `UnionSiAndGoto`/`ResetAndGoto` (A3) (depends on T006,T013).
-- [ ] T032 [US2] **Prereq for T019 (F5b)**: verify `csharp/glp_link` `FrameCodec` exposes a public API that wraps an arbitrary `byte[]` payload as `Whole`/`Fragment`. If the surface is internal, adjust the ride-check (e.g., `InternalsVisibleTo` or a thin public shim) rather than weakening the gate (depends on T001).
-- [ ] T019 [US2] `FrameRideTests.cs` — payload rides `GlpLink` `FrameCodec` as `Whole` and `Fragment` unchanged; `FrameKind` enum untouched (A4) (depends on T005,T010,T032).
-- [ ] T020 [US2] Cross-check `contracts/il-codec-contract.md`: confirm every Guarantee 1–8 row names a gate that exists and passes; correct any drift (FR-011, SC-006) (depends on T014,T015,T016,T017,T019).
+- [X] T016 [P] [US2] `ConstantWhitelistTests.cs` — out-of-whitelist constant value raises `IlCodecException`; zero silent drops (FR-006, SC-004) (depends on T012).
+- [X] T017 [US2] `GlpPropertyGateTests.cs` — the five named gates: `Srsw_PolarityPreserved`, `PhaseOrderingPreserved`, `CommitPositionPreserved`, `SuspensionPreserved`, `ThreeValuedOpcodesPreserved` (FR-004, SC-005) (depends on T014).
+- [X] T018 [P] [US2] Add corpus case 8 (obsolete-opcode program) + assert exact round-trip of `UnionSiAndGoto`/`ResetAndGoto` (A3) (depends on T006,T013).
+- [X] T032 [US2] **Prereq for T019 (F5b)**: verify `csharp/glp_link` `FrameCodec` exposes a public API that wraps an arbitrary `byte[]` payload as `Whole`/`Fragment`. If the surface is internal, adjust the ride-check (e.g., `InternalsVisibleTo` or a thin public shim) rather than weakening the gate (depends on T001).
+- [X] T019 [US2] `FrameRideTests.cs` — payload rides `GlpLink` `FrameCodec` as `Whole` and `Fragment` unchanged; `FrameKind` enum untouched (A4) (depends on T005,T010,T032).
+- [X] T020 [US2] Cross-check `contracts/il-codec-contract.md`: confirm every Guarantee 1–8 row names a gate that exists and passes; correct any drift (FR-011, SC-006) (depends on T014,T015,T016,T017,T019).
 
 **Checkpoint**: the contract is reusable — guarantees verified, not asserted.
 
@@ -81,8 +81,8 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 **Goal**: coverage gate + Lean simplified-model proof raise confidence beyond examples.
 **Independent Test**: coverage report shows 100% concrete-class exercise; `lake build` is sorry-free.
 
-- [ ] T021 [US3] `CoverageGateTests.cs` — assert every concrete v1 `IOp` and v2 `IOpV2` class is exercised by ≥1 encode+decode (FR-008, SC-003); run the D7 constant-type sweep over compiled `programs/` to confirm the D1 whitelist is empirically complete (depends on T013,T018).
-- [ ] T029 [US3] `DiscriminantCompletenessTests.cs` — by reflection over `glp_runtime_net`, assert **every** concrete `IOp` and `IOpV2` subtype has a discriminant-table entry (independent of corpus), and that `Encode` of a synthesized instruction whose class lacks an entry fails loud with `IlCodecException`. Closes the silent-gap a corpus-only coverage gate (T021) would leave for an opcode class no corpus program uses. (F1; strengthens SC-004/FR-008) (depends on T006,T007,T012).
+- [X] T021 [US3] `CoverageGateTests.cs` — assert every concrete v1 `IOp` and v2 `IOpV2` class is exercised by ≥1 encode+decode (FR-008, SC-003); run the D7 constant-type sweep over compiled `programs/` to confirm the D1 whitelist is empirically complete (depends on T013,T018).
+- [X] T029 [US3] `DiscriminantCompletenessTests.cs` — by reflection over `glp_runtime_net`, assert **every** concrete `IOp` and `IOpV2` subtype has a discriminant-table entry (independent of corpus), and that `Encode` of a synthesized instruction whose class lacks an entry fails loud with `IlCodecException`. Closes the silent-gap a corpus-only coverage gate (T021) would leave for an opcode class no corpus program uses. (F1; strengthens SC-004/FR-008) (depends on T006,T007,T012).
 - [ ] T031 [US3] **Prereq for T022 (F5a)**: verify the formal-gate toolchain is available on this host — Lean 4 (`elan`/`lake`), mathlib fetch, and the Lean-LSP-MCP connector (no external LM API — A6). If unavailable, escalate (blocks SC-007) rather than silently skipping the formal gate (depends on T003).
 - [ ] T022 [US3] Lean simplified model in `IlCodecRoundTrip/Basic.lean` — `inductive Op` (v1 subset), `inductive Const` (null|bool|int|str ground), `encode`/`decode`; via Lean-LSP-MCP, no external LM API (A6, Constitution V) (depends on T003).
 - [ ] T023 [US3] Lean theorem `roundtrip (p) : decode (encode p) = p` — **sorry-free**, `lake build` green (FR-010, SC-007) (depends on T022).
