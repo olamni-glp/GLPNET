@@ -561,5 +561,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/027-refinement-verification-framework/plan.md
+- specs/029-il-codec-spike/plan.md
 <!-- BUILDKIT END -->

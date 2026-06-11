@@ -1,0 +1,34 @@
+<!--
+  GlpIlCodec — net-new, CLOBBER-SAFE C# IL/bytecode round-trip codec (feature 029 spike).
+
+  WHY THIS PACKAGE EXISTS (same rule as GlpLink.csproj / FR-057):
+    codeconv's dart_csharp mirror regenerates one .cs per source .dart under
+    out/csharp/lib/** and glp_runtime_net/. Hand-authored .cs at a path that maps
+    to a Dart preimage is OVERWRITTEN by the next mirror/scaffold/codegen. This
+    package has NO Dart preimage and lives OUTSIDE out/csharp and the gitignored
+    glp_runtime_net/, so the regen oracle never names it as an output. It is the
+    permanent home for the hand-authored codec body.
+
+  It references the build-gated out/csharp product (glp_runtime_net) for the
+  bytecode opcode families (IOp / IOpV2), the runtime Term types, the compiler,
+  and the runner, rather than forking them. It also references GlpLink for the
+  FrameCodec ride-as-payload integration check (A4).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.IlCodec</RootNamespace>
+    <AssemblyName>glp_il_codec</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\out\csharp\glp_runtime_net.csproj" />
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+  </ItemGroup>
+
+</Project>
