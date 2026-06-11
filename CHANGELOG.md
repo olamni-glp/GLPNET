@@ -89,6 +89,55 @@
 
 ## [Unreleased]
 
+## [v2026.06.11.1] - 2026-06-11
+
+### Added
+- polish — pin Typed-Datalog-IR citation, KEEP decision + findings to seed/quickstart, FR-012 baseline re-check green (T026-T028)
+- part B — Lean 4 formal gate, sorry-free decode∘encode=id (propext only); install elan/lean 4.30
+- phase-b heap-embedded ModuleTerm round-trip + execute-equivalence (3/3)
+- US2 contract gates + US3 coverage/completeness (41/41); reconcile contract drift (7 v2 classes, Decode record, status-based execute-equiv)
+- IL codec core + harness MVP — US1 round-trip identity + execute-equivalence green (14/14)
+- clarify+plan+tasks+analyze il-codec-spike (3 forks resolved; 5 analyze remediations folded)
+- populate evidence-based constitution v1.0.0 (8 principles) + plan/tasks/analyze + before/after baseline & negative-control evidence
+- block 07 — Polish/close-out (T025-T028); feature 28/28 complete
+- block 06 — real-tool spike RUNS: SPIN (T024) + Lean tactic loop (T014/T015)
+- block 05 — US1 template+interactive-spec, US2 loop-seam+no-API gate, US3/US5 docs+subjects (parallel author batch wf_17e57fd5-646)
+- block 04 — US4/MLIR vertical slice complete (T016 MLIR-GLP-DIALECT.md + T018 ILFRAG-1 + T019 harness + T020 real-MLIR round-trip PASS, mlir-python-bindings 22.0.0/WSL2)
+- block 03 complete — T017 real MLIR bindings via option A (mlir-python-bindings 22.0.0.2025112901, mlir.ir round-trip verified); escalation #1 resolved
+- block 03 partial — real SPIN 6.5.1 (T022) + Lean 4.30.0/lean-lsp-mcp (T012) provisioned in WSL2; MLIR (T017) escalated #1 (no real wheel)
+- marathon block 02 — finalize REFINEMENT-METHOD §4 six formal-tooling slots (T004) + DECISIONS-FOR-OWNER cross-link to ratified R1-R15 (T005)
+- marathon block 01 — spike subtree skeleton (T001) + Python baseline (T002) + 026 input gate (T003)
+
+### Fixed
+- flip stale T017 checkbox to [X] (MLIR bindings done block 03, used block 04) — tasks.md now 28/28
+
+### Changed
+- Merge pull request #33 from olamni-glp/029-il-codec-spike
+- refine(codexreview): cycle 1/10 [csharp/glp_il_codec/general]
+- specify evidence-based-constitution feature (spec + requirements checklist)
+- Merge pull request #32 from olamni-glp/main
+- Merge pull request #31 from olamni-glp/release/v2026.06.10.1
+- release: v2026.06.10.1
+- Merge pull request #30 from olamni-glp/027-refinement-verification-framework
+- refine(codexreview): cycle 1/10 [diff/general]
+- commit marathon m57f4c46e durable JSON-mirror state for block 07 (open+approve, checkpoints 13-14, git block) — feature complete 28/28
+- commit marathon m57f4c46e durable JSON-mirror state for block 06 (open+approve, checkpoints 11-12, git block)
+- commit marathon m57f4c46e durable JSON-mirror state for block 05 (open+approve, checkpoints 9-10, git block, run-linkage)
+- commit marathon m57f4c46e durable JSON-mirror state for block 04 (open+approve, checkpoints 7-8, git block, status)
+- commit marathon m57f4c46e durable JSON-mirror state + spin scratch ahead of safe restart
+- pipeline artifacts (plan/research/data-model/quickstart/contracts/tasks) + marathon launch prompt; buildkit pointer 026->027
+- spec #1a refinement-verification-framework (Option D + real-tool validation spikes: Lean/MLIR/SPIN; protocol-verification armoury) + ratify R13-R15 + DEF-A3
+- ratify 12 MVP-critical decisions (DECISIONS-LOG R1-R12) + anchored deferral register (DEFERRALS.md, stages A-H + pickup protocol); seed notes carry PRE-SPECIFY pointers
+- apply reconciliation corrections - D3 FrameCodec payload-type-prefix-byte (header Kind is fragmentation-only), shallow-vs-deep Bindings clarification, LingoDB citation candidate; (§7 note was provenance, not a typo)
+- 17-seed reconciliation memos + README index + DECISIONS-FOR-OWNER + REFINEMENT-METHOD (GEPA/DSPy + formal/pragmatic metrics, per-seed Lean4-vs-Rocq, monolith supersession)
+- record owner decision - evaluate Lean4 + Rocq per seed, pick best-fit primary, keep alternative only where identified
+- add #1a iterative-refinement-and-verification-framework seed; complete reconciliation brief with formal+pragmatic verification methodology (MLIR IL-dialect, model-agnostic Lean/Rocq via Claude, ANTLR4 grammar-verifier, Shapiro-criteria pragmatic anchor, no-API resolution)
+- dossier seed cross-refs (in-situ §1-§9 + Appendix B registry) + reconciliation brief with GEPA/DSPy metrics methodology and formal-verification research
+- engine-separation design dossier (§0-§12, re-verified citations); complete tasks; verify roadmap seeds
+- plan + Phase-1 artifacts + tasks + analyze remediations for engine-review-dossier
+- engine review + refactoring design dossier spec (specify + clarify)
+- Merge pull request #29 from olamni-glp/main
+
 ## [v2026.06.10.1] - 2026-06-10
 
 ### Added
