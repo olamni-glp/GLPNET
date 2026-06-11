@@ -86,6 +86,9 @@ public static class IlCodec
                 throw new IlCodecException($"Corrupt payload: hasVariableMap flag 0x{hasMap:X2} (expected 0 or 1)");
             }
 
+            if (ms.Position != ms.Length)
+                throw new IlCodecException($"Corrupt payload: {ms.Length - ms.Position} unconsumed trailing byte(s) after program");
+
             // Labels are recomputed by the constructor's IndexLabels (D2) — never serialized.
             return new DecodedProgram(new Bc.BytecodeProgram(instructions), variableMap);
         }
