@@ -5,6 +5,15 @@
 **Status**: Draft
 **Input**: User description: "Refine glpnet's marathon-stage-harness (feature 024, `codeconv.marathon`) by adopting-and-reconciling the capabilities of the sibling crucible-xyz `crucible_marathon` package, plus a key extension: capture emergent mid-marathon work as first-class items that each run through an in-marathon mini-pipeline."
 
+## Clarifications
+
+### Session 2026-06-11
+
+- Q: Store model (FR-027) — per-run isolated store (sibling) vs glpnet's shared cluster + JSON dual-store? → A: **Hybrid** — a per-run **isolated** store provides the keeper / single-writer / lifecycle (US3); glpnet's dual-store reconciliation is **rebased** to PGLite-vs-its-own-JSON-mirror on that isolated store, so FR-024 reconciliation is preserved as a safety net (not against the shared codeconv cluster).
+- Q: Packaging (FR-028) — standalone installable package vs codeconv-resident module? → A: **Workload-agnostic module inside codeconv NOW** (de-hardcode the stage vocabulary; keep composing codeconv's bridge/durable libraries). **Standalone extraction is a planned follow-on** — this feature does the in-codeconv refinement; a later feature extracts the package.
+- Q: Mini-pipeline implement semantics (FR-006/FR-007) — 5 mini-stages feeding the marathon's implement, or a 6th per-item implement? → A: **5 mini-stages** (`mini-specify … mini-analyze`); their output feeds the **marathon's single implement stage** (emergent work implemented together). Confirmed — intentionally diverges from the sibling's per-item implement.
+- Q: Migration of in-flight 024 state (FR-029) — migrate or greenfield? → A: **Greenfield** — the refined model is fresh; the 024 model is retired once no run is in flight. Verified there is no live 024 marathon (the 025 / 027 / harness-verify records are all complete; none `in_progress`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 The "user" throughout is an **engineer driving a long, multi-session feature** through the buildkit
@@ -263,20 +272,18 @@ registrable/dynamic/mini stages.
 - **FR-026**: The refinement MUST NOT require modifying already-shipped, unrelated features to adopt
   it (no regressions forced on existing adopters).
 
-**Open scope decisions** (resolve in `/buildkit-clarify`)
-- **FR-027**: The harness MUST persist marathon state in a store that is isolated from the working
-  repository and from unrelated project state. [NEEDS CLARIFICATION: store model — adopt the sibling's
-  **per-run isolated store outside the repo**, or keep glpnet's current **shared embedded cluster +
-  on-disk JSON fallback with reconciliation**? The two differ in isolation guarantees vs. reuse of the
-  already-running shared bridge.]
-- **FR-028**: The refined harness MUST be packaged for reuse. [NEEDS CLARIFICATION: packaging — extract
-  it as a **truly standalone, separately-installable package** (sibling model), or keep it a
-  **workload-agnostic module that resides within the existing toolchain** but no longer hard-codes a
-  stage vocabulary?]
-- **FR-029**: The refinement MUST define what happens to any **in-flight state created under the
-  current (024) model**. [NEEDS CLARIFICATION: migration — must existing live marathon state migrate
-  into the refined model, or is the refined model greenfield with the 024 model retired once no run is
-  in flight?]
+**Store, packaging & migration** (resolved — Session 2026-06-11)
+- **FR-027**: The harness MUST persist marathon state in a **per-run isolated store** outside the
+  working repository and unrelated project state, owned by the keeper (FR-012–FR-016). glpnet's
+  dual-store reconciliation (FR-024) MUST be **rebased onto that isolated store** — reconciling the
+  isolated PGLite store against its own JSON mirror — rather than against the shared codeconv cluster.
+- **FR-028**: The refined harness MUST be a **workload-agnostic module within the existing codeconv
+  toolchain** — it no longer hard-codes a stage vocabulary and composes codeconv's bridge/durable
+  libraries — drivable as a library and via a thin CLI (FR-025). A **truly standalone, separately
+  installable package is explicitly out of scope for this feature** and deferred to a follow-on.
+- **FR-029**: The refined model is **greenfield**: it does not migrate state created under the current
+  (024) model. The 024 model is retired once no run is in flight; pre-existing 024 records are left
+  in place as inert history and are NOT read by the refined harness.
 
 ### Key Entities
 
@@ -328,9 +335,9 @@ registrable/dynamic/mini stages.
   replacing glpnet's harness wholesale; glpnet's existing strengths (US5) are carried forward, not
   dropped.
 - The mini-pipeline is the **five planning stages** (`mini-specify … mini-analyze`) whose output feeds
-  the **marathon's** implement stage — per the requester's framing. (This intentionally diverges from
-  the sibling package, where each item's mini-pipeline includes its own sixth `implement` stage; the
-  divergence is called out so `/buildkit-clarify` can confirm it.)
+  the **marathon's** single implement stage — confirmed in clarification (Q3). This intentionally
+  diverges from the sibling package, where each item's mini-pipeline includes its own sixth `implement`
+  stage.
 - "Workload-agnostic" means the **stage vocabulary and cadence become data** (a registered list), not
   that the harness must serve multiple concurrent marathons — single-active-marathon-per-store remains
   the operating assumption (single-writer, FR-015).
@@ -339,5 +346,6 @@ registrable/dynamic/mini stages.
   feature depends on **feature 024 (marathon-stage-harness)** as its baseline.
 - Telemetry/analytics mirroring, if added, is **fail-safe** — a telemetry failure never blocks or
   breaks a durable operation.
-- Resolving FR-027 (store model), FR-028 (packaging), and FR-029 (migration) in `/buildkit-clarify`
-  may materially change implementation size; they are held as explicit forks rather than guessed.
+- FR-027 (store model), FR-028 (packaging), and FR-029 (migration) were **resolved** in clarification
+  (Session 2026-06-11): per-run isolated store with reconciliation rebased onto it; workload-agnostic
+  module within codeconv (standalone extraction deferred); greenfield (no migration).

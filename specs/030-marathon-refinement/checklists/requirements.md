@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [X] No [NEEDS CLARIFICATION] markers remain
 - [X] Requirements are testable and unambiguous
 - [X] Success criteria are measurable
 - [X] Success criteria are technology-agnostic (no implementation details)
@@ -31,13 +31,12 @@
 
 ## Notes
 
-- **3 [NEEDS CLARIFICATION] markers remain by design** — FR-027 (store model: per-run isolated
-  vs. glpnet's shared cluster + JSON fallback), FR-028 (packaging: standalone-extractable vs.
-  toolchain-resident module), FR-029 (migration of in-flight 024-model state). These are the three
-  genuinely scope-defining forks; each materially changes implementation size, so they are held for
-  `/buildkit-clarify` rather than guessed. The remaining scope (stage model, emergent-work
-  mini-pipeline, keeper lifecycle, commit/status reconciliation, preserved 024 strengths) is settled
-  via the recon of the sibling `crucible_marathon` and is documented in Assumptions.
+- **All 3 forks RESOLVED in `/buildkit-clarify` (Session 2026-06-11)** — FR-027 store model =
+  hybrid (per-run isolated store, reconciliation rebased onto it); FR-028 packaging = workload-agnostic
+  module within codeconv now, standalone extraction deferred; FR-029 = greenfield (no migration of
+  024 state; verified nothing in flight). Mini-pipeline implement semantics confirmed (5 mini-stages
+  feeding the marathon's single implement). The rest of scope was settled via the recon of the
+  sibling `crucible_marathon` and is documented in Assumptions.
 - Content-quality note: domain terms (stage, checkpoint, resume, mini-pipeline, keeper, single-writer)
   are problem-domain vocabulary for a developer-facing harness, not implementation choices — no
   language/framework/storage technology is prescribed in the spec body.
