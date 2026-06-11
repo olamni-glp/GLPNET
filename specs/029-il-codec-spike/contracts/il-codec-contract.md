@@ -30,11 +30,16 @@ public sealed class IlCodecException : Exception { /* loud, attributable */ }
 
 Phase b (heap-embedded) adds:
 ```csharp
-public static class IlHeapCodec  // PHASE b
+public static class HeapWalk  // PHASE b — locate
 {
-    // Locate every ModuleTerm-embedded BytecodeProgram reachable on the engine heap and
-    // round-trip each via IlCodec. Does NOT define #7's full snapshot envelope.
-    public static IReadOnlyList<RoundTripResult> RoundTripEmbedded(Heap heap);
+    // Find every ModuleTerm-embedded BytecodeProgram stored on the engine heap.
+    public static IReadOnlyList<EmbeddedProgram> FindEmbeddedPrograms(HeapFCP heap);
+}
+
+public static class IlHeapCodec  // PHASE b — round-trip
+{
+    // Round-trip each heap-embedded program via IlCodec. Does NOT define #7's snapshot envelope.
+    public static IReadOnlyList<EmbeddedRoundTrip> RoundTripEmbedded(HeapFCP heap);
 }
 ```
 

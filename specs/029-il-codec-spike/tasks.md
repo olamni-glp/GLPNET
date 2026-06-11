@@ -96,9 +96,9 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 **Goal**: extend round-trip soundness to `ModuleTerm`-embedded programs reached as heap data.
 **Note**: bounded per D5 — round-trips *embedded programs*, does NOT design #7's snapshot envelope.
 
-- [ ] T033 [US1] **Prereq for T024 (F5c)**: define and verify how the phase-b test heap is constructed — drive the engine through module activation so a `ModuleTerm` is stored on the `Heap` (`glp_activation.cs:78-89`), confirming a real embedded `BytecodeProgram` is reachable; document the construction in `Corpus.cs` (depends on T011).
-- [ ] T024 [US1] Implement `HeapWalk.cs` — locate `ModuleTerm` instances on the engine `Heap` (`terms.cs:146-156`, `glp_activation.cs:78-89`) and read `ModuleTerm.Bytecode` (always a `BytecodeProgram`) (depends on T011).
-- [ ] T025 [US1] `IlHeapCodec.RoundTripEmbedded(Heap)` + corpus case 9 (heap-embedded `ModuleTerm`): round-trip each embedded program via `IlCodec`; structural + execute equivalence (FR-009b) (depends on T024,T014,T015).
+- [X] T033 [US1] **Prereq for T024 (F5c)**: define and verify how the phase-b test heap is constructed — drive the engine through module activation so a `ModuleTerm` is stored on the `Heap` (`glp_activation.cs:78-89`), confirming a real embedded `BytecodeProgram` is reachable; document the construction in `Corpus.cs` (depends on T011).
+- [X] T024 [US1] Implement `HeapWalk.cs` — locate `ModuleTerm` instances on the engine `Heap` (`terms.cs:146-156`, `glp_activation.cs:78-89`) and read `ModuleTerm.Bytecode` (always a `BytecodeProgram`) (depends on T011).
+- [X] T025 [US1] `IlHeapCodec.RoundTripEmbedded(Heap)` + corpus case 9 (heap-embedded `ModuleTerm`): round-trip each embedded program via `IlCodec`; structural + execute equivalence (FR-009b) (depends on T024,T014,T015).
 
 **Checkpoint**: phase b complete — full codec ready for #7 + #11 consumers.
 
