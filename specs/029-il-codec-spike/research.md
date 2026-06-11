@@ -104,4 +104,10 @@ theorem; Claude-native Lean-LSP-MCP; owner preference; APOLLO sorry-repair, all 
 
 TWAM (arxiv 1801.00471); Verified Prolog→WAM compiler (ScienceDirect 0743106692900547); BinProlog
 (arxiv 1102.1178); First-Class Verification Dialects for MLIR (PLDI 2025); APOLLO (arxiv 2505.05758).
-Pin the correct Typed-Datalog-IR citation during the spike (seed formal-tooling §4 open item).
+
+**Typed-Datalog-IR (seed formal-tooling §4 open item) — PINNED**: Pacharanukún & Szabó et al.,
+"A Typed Multi-level Datalog IR and Its Compiler Framework", *Proc. ACM Program. Lang.* 8 (OOPSLA2,
+2024), DOI [10.1145/3689767](https://dl.acm.org/doi/10.1145/3689767) (JGU Mainz). Relevance to this
+spike: its IR type system is **three-valued** (bidirectional, flow-sensitive, bipolar) — a direct
+resonance with GLP's three-valued unification and a reference design for a future *typed* IR codec
+beyond this spike's structural-identity bar.

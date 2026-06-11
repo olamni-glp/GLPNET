@@ -325,3 +325,31 @@ This step (proving the IL codec is correct) does not execute GLP programs; it op
 - [APOLLO — Model-agnostic agentic Lean prover (arxiv 2505.05758)](https://arxiv.org/abs/2505.05758) — the Claude-driven agentic ITP loop for sorry-isolation and repair; the no-API Lean tactic driver for the formal gate
 - [LLM comprehension of LLVM IR (arxiv 2502.06854v1 — mis-attributed in brief)](https://arxiv.org/html/2502.06854v1) — retained for its finding: LLMs struggle with IR control-flow reasoning; a real risk for Claude-driven IL codec design (mitigated by the formal Lean proof as the ground-truth gate)
 - [KLIC: A KL1 implementation for Unix systems (Springer)](https://link.springer.com/article/10.1007/BF03038274) — KL1/FCP C-translation approach; KLIC compiles to C rather than a binary bytecode, so does not directly model this spike's serialization, but confirms the GHC/FCP lineage of GLP's concurrency semantics
+
+---
+
+## Spike outcome (feature 029, implemented 2026-06-11) — KEEP
+
+The spike was implemented and **all in-scope gates are green**: 44/44 C# xUnit gates (phase a
+per-module + phase b heap-embedded) and the Lean 4 simplified-model proof (`decode ∘ encode = id`,
+sorry-free, depends only on `propext`). The codec is a net-new clobber-safe project
+`csharp/glp_il_codec/` (`GlpRuntime.IlCodec`) referencing the regenerated engine product; the
+pinned correctness contract is `specs/029-il-codec-spike/contracts/il-codec-contract.md`.
+Downstream features #7 (persistence) and #11 (compiled-IL-on-the-wire) can build on it.
+
+Findings to carry forward:
+- **v2 `IOpV2` has 7 concrete classes, not 6.** The reconciliation/data-model "6 v2 classes"
+  undercounted `Unknown` (the lone v2 opcode with no `IsReader` byte). The codec registry is made
+  exhaustive by a reflection-completeness gate (T029), so this can't silently regress.
+- **v1 `IOp` has 53 concrete classes** (52 in family 0x01 + the `Label` marker in family 0x03);
+  the closed discriminant table covers all, incl. the two `[Obsolete]` opcodes (round-tripped
+  exactly, A3).
+- **Labels are not serialized** — recomputed via `IndexLabels` on decode (D2) — and execute-
+  equivalence holds, so the derived label table needs no wire representation.
+- **Type-agnostic codec**: the harness compiles fixtures with `StrictTypes=false`; the codec
+  round-trips whatever bytecode the compiler emits, independent of GLP type-correctness.
+- **Formal gate needs no mathlib** — core-Lean structural induction meets the bar; the proof
+  checks in a single fast `lake build` (Lean 4.30.0, no external LM API — Constitution V / A6).
+- **Typed-Datalog-IR citation pinned**: "A Typed Multi-level Datalog IR and Its Compiler
+  Framework", OOPSLA 2024, DOI 10.1145/3689767 — its IR type system is three-valued, resonant
+  with GLP; a reference design for a future *typed* IR codec beyond this spike's structural bar.

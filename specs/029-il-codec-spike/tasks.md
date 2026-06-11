@@ -106,9 +106,9 @@ description: "Task list for IL/Bytecode Round-Trip Codec Spike"
 
 ## Phase 7: Polish & Decision
 
-- [ ] T026 [P] Pin the correct Typed-Datalog-IR citation in `research.md`/seed (seed formal-tooling §4 open item).
-- [ ] T027 Run `quickstart.md` end-to-end; record the **keep-or-throwaway** decision (A8) and feed findings back into the seed/dossier.
-- [ ] T028 [P] Baseline-green re-check of existing suites (no runtime/scheduler/compiler/REPL change — FR-012); commit only the spike's paths (Constitution VII).
+- [X] T026 [P] Pin the correct Typed-Datalog-IR citation in `research.md`/seed (seed formal-tooling §4 open item).
+- [X] T027 Run `quickstart.md` end-to-end; record the **keep-or-throwaway** decision (A8) and feed findings back into the seed/dossier.
+- [X] T028 [P] Baseline-green re-check of existing suites (no runtime/scheduler/compiler/REPL change — FR-012); commit only the spike's paths (Constitution VII).
 
 ---
 
