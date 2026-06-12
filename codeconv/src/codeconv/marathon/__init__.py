@@ -85,9 +85,288 @@ def _emit(ctx: typer.Context, payload: dict, *, json_out: bool) -> None:
             typer.echo(f"{k}: {v}")
 
 
-# Subcommands are registered by the per-user-story phases (see module docstring).
-# Until then the app loads with no commands so ``codeconv marathon --help`` and
-# the static registration in ``codeconv/cli.py`` keep working through the rewrite.
+# --- guarded execution (exit-code mapping per contracts/cli.md) --------------
+# Library imports stay INSIDE the command bodies so `codeconv marathon --help`
+# never pays for sqlalchemy/bridge imports (bridge acquisition itself is always
+# deferred to the library call).
+
+
+def _execute(ctx: typer.Context, run_id: str, op, *, json_out: bool) -> None:
+    """Resolve the per-run env, run ``op(env)``, emit its payload dict.
+
+    Exit-code mapping: usage/filesystem guard → 64; escalation (blocked, not
+    an error) → 2 with the payload still emitted; unexpected → 70.
+    """
+    from codeconv.bridge_client import DataDirFilesystemError
+    from codeconv.marathon.env import StoreRootInsideRepoError, resolve_env
+    from codeconv.marathon.intake import PrereqAgainstCompletedStage
+
+    try:
+        env = resolve_env(
+            run_id, data_dir=_data_dir(ctx), repo_dir=_repo_root(ctx)
+        )
+        payload = op(env)
+    except (DataDirFilesystemError, StoreRootInsideRepoError, ValueError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(EXIT_USAGE)
+    except PrereqAgainstCompletedStage as exc:
+        _emit(
+            ctx,
+            {
+                "escalation": "prereq_against_completed_stage",
+                "escalation_id": exc.escalation_id,
+                "detail": str(exc),
+            },
+            json_out=json_out,
+        )
+        raise typer.Exit(EXIT_ESCALATION)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # surfaced, never swallowed (II)
+        typer.echo(f"internal error: {exc}", err=True)
+        raise typer.Exit(EXIT_INTERNAL)
+    _emit(ctx, payload, json_out=json_out)
+
+
+def _split_csv(raw: Optional[str]) -> Optional[list[str]]:
+    if raw is None:
+        return None
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _position_payload(pos) -> dict:
+    from dataclasses import asdict
+
+    return asdict(pos)
+
+
+# --- US1 subcommands (T018): register / append-stage / stage-start /
+# --- checkpoint / resume / position / finalize --------------------------------
+
+
+@marathon_app.command("register")
+def cmd_register(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run", help="Run id (canonical)."),
+    stages: Optional[str] = typer.Option(
+        None, "--stages", help="Comma-separated ordered stage names."
+    ),
+    title: Optional[str] = typer.Option(None, "--title"),
+    budget: Optional[int] = typer.Option(None, "--budget", help="Budget ceiling."),
+    budget_unit: Optional[str] = typer.Option(None, "--budget-unit"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Register (or re-attach) a run with its own ordered stage list (FR-001)."""
+
+    def op(env):
+        from codeconv.marathon.stages import register_run
+
+        result = register_run(
+            run,
+            stages=_split_csv(stages),
+            title=title,
+            budget_ceiling=budget,
+            budget_unit=budget_unit,
+            env=env,
+        )
+        return {
+            "run": result.id,
+            "title": result.title,
+            "status": result.status,
+            "stages": _split_csv(stages) or [],
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("append-stage")
+def cmd_append_stage(
+    ctx: typer.Context,
+    name: str = typer.Argument(..., help="New stage name."),
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Append a dynamically-discovered stage; the total grows (FR-002)."""
+
+    def op(env):
+        from codeconv.marathon.stages import append_stage
+
+        stage = append_stage(run, name, env=env)
+        return {
+            "run": run,
+            "stage": stage.name,
+            "stage_index": stage.stage_index,
+            "order_key": stage.order_key,
+            "origin": stage.origin,
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("stage-start")
+def cmd_stage_start(
+    ctx: typer.Context,
+    name: str = typer.Argument(..., help="Stage name."),
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Flip a stage pending→running (started ≠ complete, FR-004)."""
+
+    def op(env):
+        from codeconv.marathon.checkpoint import start_stage
+
+        stage = start_stage(run, name, env=env)
+        return {
+            "run": run,
+            "stage": stage.name,
+            "status": stage.status,
+            "started_at": str(stage.started_at),
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("checkpoint")
+def cmd_checkpoint(
+    ctx: typer.Context,
+    name: str = typer.Argument(..., help="Stage name."),
+    run: str = typer.Option(..., "--run"),
+    completed: Optional[str] = typer.Option(
+        None, "--completed", help="JSON array of completed units."
+    ),
+    remaining: Optional[str] = typer.Option(
+        None, "--remaining", help="JSON array of remaining units ([] = complete)."
+    ),
+    wip: Optional[str] = typer.Option(None, "--wip", help="Unit in flight."),
+    budget: int = typer.Option(0, "--budget", help="Budget delta for this block."),
+    paths: Optional[str] = typer.Option(
+        None, "--paths", help="Comma-separated paths this block touched."
+    ),
+    issues: Optional[str] = typer.Option(
+        None, "--issues", help="Comma-separated issue summaries to open."
+    ),
+    message: Optional[str] = typer.Option(None, "-m", "--message"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Append a durable checkpoint; empty remaining completes the stage."""
+
+    def op(env):
+        import json as _json
+
+        from codeconv.marathon.checkpoint import checkpoint as _checkpoint
+
+        cp = _checkpoint(
+            run,
+            name,
+            completed_units=_json.loads(completed) if completed else None,
+            remaining_units=_json.loads(remaining) if remaining else None,
+            wip_unit=wip,
+            budget_delta=budget,
+            committed_paths=_split_csv(paths),
+            issues=_split_csv(issues),
+            message=message,
+            env=env,
+        )
+        return {
+            "run": run,
+            "stage": name,
+            "sequence_no": cp.sequence_no,
+            "store_origin": cp.store_origin,
+            "remaining_units": cp.remaining_units,
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+def _cmd_resume_impl(ctx: typer.Context, run: str, json_out: bool) -> None:
+    def op(env):
+        from codeconv.marathon.position import resume_position
+
+        pos = resume_position(run, env=env)
+        if pos.diverged:
+            _emit(ctx, _position_payload(pos), json_out=json_out)
+            raise typer.Exit(EXIT_ESCALATION)  # store fork — never pick (rule 7)
+        return _position_payload(pos)
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("resume")
+def cmd_resume(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """The objective resume position, from durable rows alone (SC-008)."""
+    _cmd_resume_impl(ctx, run, json_out)
+
+
+@marathon_app.command("position")
+def cmd_position(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Alias of `resume` surfacing the four-field position (contracts/cli.md)."""
+    _cmd_resume_impl(ctx, run, json_out)
+
+
+@marathon_app.command("capture")
+def cmd_capture(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    kind: str = typer.Option(
+        ...,
+        "--kind",
+        help="latent-requirement | issue | bug | missing-prerequisite",
+    ),
+    title: str = typer.Option(..., "--title"),
+    description: Optional[str] = typer.Option(None, "--description"),
+    blocks: Optional[str] = typer.Option(
+        None, "--blocks", help="Stage this missing-prerequisite blocks."
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Capture emergent work; expands a 5-stage mini-pipeline (FR-005/006)."""
+
+    def op(env):
+        from codeconv.marathon.intake import capture_item
+
+        item = capture_item(
+            run,
+            kind=kind,
+            title=title,
+            description=description,
+            blocks_stage=blocks,
+            env=env,
+        )
+        return {
+            "run": run,
+            "item": item.id,
+            "kind": item.kind,
+            "title": item.title,
+            "blocks_stage_id": item.blocks_stage_id,
+            "artifacts_dir": item.artifacts_dir,
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("finalize")
+def cmd_finalize(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Finalize the run — only when every current stage is complete."""
+
+    def op(env):
+        from codeconv.marathon.stages import finalize
+
+        result = finalize(run, env=env)
+        return {"run": result.id, "status": result.status}
+
+    _execute(ctx, run, op, json_out=json_out)
 
 
 __all__ = [

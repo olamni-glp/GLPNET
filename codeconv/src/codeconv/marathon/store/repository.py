@@ -42,6 +42,7 @@ from codeconv.bridge_client import DataDirFilesystemError
 from codeconv.db import engine as db_engine
 from codeconv.marathon.models import (
     CheckpointRow,
+    Escalation,
     Issue,
     Item,
     MarathonEnv,
@@ -139,6 +140,7 @@ _ITEM_COLS = (
     "artifacts_dir, created_at"
 )
 _ISSUE_COLS = "id, run_id, stage_id, summary, status, created_at"
+_ESCALATION_COLS = "id, run_id, stage_id, kind, detail, resolved_at, created_at"
 
 _RUN_UPDATABLE = frozenset(
     {
@@ -661,6 +663,62 @@ class Repository:
         out = Issue(**dict(row))
         self._write_mirror(f"issues/{out.id}.json", row_payload(out))
         return out
+
+    # --- escalation (substrate write; auto-decision policy is US5's T048) -----------
+
+    def insert_escalation(self, esc: Escalation) -> Escalation:
+        eng = self.engine()
+        with eng.begin() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "INSERT INTO marathon.escalation "
+                        "(run_id, stage_id, kind, detail) "
+                        "VALUES (:run_id, :stage_id, :kind, CAST(:detail AS jsonb)) "
+                        f"RETURNING {_ESCALATION_COLS}"
+                    ),
+                    {
+                        "run_id": esc.run_id,
+                        "stage_id": esc.stage_id,
+                        "kind": esc.kind,
+                        "detail": json.dumps(esc.detail),
+                    },
+                )
+                .mappings()
+                .one()
+            )
+        out = Escalation(**dict(row))
+        self._write_mirror(f"escalations/{out.id}.json", row_payload(out))
+        return out
+
+    def list_escalations(
+        self, run_id: str, *, open_only: bool = False
+    ) -> list[Escalation]:
+        eng = self._engine_or_none()
+        if eng is not None:
+            clause = " AND resolved_at IS NULL" if open_only else ""
+            with eng.connect() as conn:
+                rows = (
+                    conn.execute(
+                        text(
+                            f"SELECT {_ESCALATION_COLS} FROM marathon.escalation "
+                            f"WHERE run_id = :run_id{clause} ORDER BY id"
+                        ),
+                        {"run_id": run_id},
+                    )
+                    .mappings()
+                    .all()
+                )
+            return [Escalation(**dict(r)) for r in rows]
+        payloads = [
+            p
+            for p in self._read_mirror_dir("escalations")
+            if p.get("run_id") == run_id
+            and (not open_only or p.get("resolved_at") is None)
+        ]
+        escalations = [Escalation(**p) for p in payloads]
+        escalations.sort(key=lambda e: e.id or 0)
+        return escalations
 
     # --- shared update helper -------------------------------------------------------
 
