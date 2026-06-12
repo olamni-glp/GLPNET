@@ -7,6 +7,11 @@ has a 1:1 library equivalent ([`contracts/library-api.md`](./contracts/library-a
 > Per-run store path must be on **NTFS/ReFS** (the `_check_data_dir_filesystem` guard, exit 64). The default
 > marathon root is a guaranteed-NTFS user-level path (e.g. under `C:/pglite/marathon/`); override with
 > `--data-dir` if needed.
+>
+> **Provision the store root first**: the keeper spawns the per-run bridge with `repo_root=store_root`, so
+> the repo's `prereq-patterns/` must be junction-linked (or symlinked) into the store root —
+> `cmd /c mklink /J <store_root>\prereq-patterns <repo>\prereq-patterns` (the same wiring the test
+> fixture uses). Without it `register` fails with "unified bridge script not found".
 
 ## 1. Register a run with your own stages
 ```
@@ -44,6 +49,7 @@ codeconv marathon status --run mywork-2026q3
 # A blocking missing-prerequisite discovered while in 'build':
 codeconv marathon capture --run mywork-2026q3 --kind missing-prerequisite \
     --title "schema migration must land first" --blocks build
+# (complete 'design' first — earlier pending stages still surface before the minis)
 codeconv marathon resume --run mywork-2026q3 --json
 #  next_action: "run mini-specify for item-1"   # routed AHEAD of 'build' (5 mini-stages inserted before it)
 ```
