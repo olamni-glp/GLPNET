@@ -1,121 +1,146 @@
-"""Objective resume-locate + skip-completed + boundary safety (FR-002/003).
+"""Stage lifecycle + durable checkpoint over the data-driven model (T015).
 
-**Objective position location (FR-002/D4, I8).** The CLAUDE.md Restart-Resume
-order is: roadmap (`buildkit-roadmap next` → *what feature + stage*) → buildkit
-pipeline state (*where in the feature*) → spec/plan/tasks (*the WIP unit*). The
-harness encodes the *result* of that walk durably: the marathon row fixes the
-feature, and the **max(sequence_no) checkpoint** fixes the exact WIP unit +
-completed/remaining units. :func:`resume` therefore reads ONLY durable state —
-**never** a conversation/compaction summary (I8).
+- :func:`start_stage` — flip ``pending→running``, set ``started_at``. A
+  started-not-complete stage is NOT counted done (FR-004); re-starting a
+  running stage is an idempotent no-op; a complete stage is refused (per-block
+  re-run is US5's ``rerun_block``).
+- :func:`checkpoint` — append a durable checkpoint (the sole source of truth
+  for resume): ``remaining_units == []`` flips the stage ``complete`` and sets
+  ``completed_at``; ``stage.last_sequence_no`` tracks the latest checkpoint;
+  ``budget_delta`` accumulates onto ``run.budget_spent`` (the substrate CHECK
+  ``spent <= ceiling`` guards overruns — SC-006; the graceful halt-escalate
+  path is US5's ``advance_budget_or_halt``). Completing an item's
+  ``mini_analyze`` flips the parent item ``done`` (D4/FR-007, T024).
+  ``message`` is accepted for CLI parity and reserved for the scoped-commit
+  boundary (US4 ``gitblock``); ``committed_paths`` are recorded on the row.
 
-**Skip-completed (FR-003/SC-002).** :func:`units_to_execute` removes already-
-completed units exactly once, so a resumed run re-executes none of them and
-recorded decisions stay in effect.
-
-**Boundary safety (I9).** Because completed_units are append-only, a unit is
-skipped *only* if a checkpoint recorded it complete. A boundary unit (the first
-unit of the next block) has no checkpoint yet, so it is neither skipped nor
-double-executed — it runs exactly once.
+``units_to_execute`` (skip-completed, preserved from 024) feeds the per-block
+re-run semantics (US5).
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from datetime import datetime, timezone
+from typing import Any, Optional, Sequence
+
+from codeconv.marathon.env import resolve_env
+from codeconv.marathon.models import (
+    CheckpointRow,
+    Issue,
+    MarathonEnv,
+    StageRow,
+)
+from codeconv.marathon.store import Repository
+
+__all__ = ["checkpoint", "start_stage", "units_to_execute"]
 
 
-@dataclass
-class ResumeReport:
-    """The objective resume picture (contracts/cli.md ``resume`` shape)."""
-
-    found: bool
-    diverged: bool = False
-    escalation_id: Optional[int] = None
-    stage: Optional[str] = None
-    block_id: Optional[str] = None
-    block_kind: Optional[str] = None
-    wip_unit: Optional[str] = None
-    completed_units: list[Any] = field(default_factory=list)
-    remaining_units: list[Any] = field(default_factory=list)
-    workflow_run_id: Optional[str] = None
-    store_origin: Optional[str] = None
-    approval_state: Optional[str] = None
-    block_complete: bool = False
-    commit_push_pending: bool = False
-    sequence_no: int = 0
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "found": self.found,
-            "diverged": self.diverged,
-            "escalation_id": self.escalation_id,
-            "stage": self.stage,
-            "block_id": self.block_id,
-            "block_kind": self.block_kind,
-            "wip_unit": self.wip_unit,
-            "completed_units": self.completed_units,
-            "remaining_units": self.remaining_units,
-            "workflow_run_id": self.workflow_run_id,
-            "store_origin": self.store_origin,
-            "approval_state": self.approval_state,
-            "block_complete": self.block_complete,
-            "commit_push_pending": self.commit_push_pending,
-            "sequence_no": self.sequence_no,
-        }
+def _repo(run_id: str, env: Optional[MarathonEnv]) -> tuple[MarathonEnv, Repository]:
+    env = env if env is not None else resolve_env(run_id)
+    return env, Repository(env)
 
 
-def resume(store: Any, marathon_id: str) -> ResumeReport:
-    """Locate the resume position objectively from durable state (FR-002).
+def _stage_or_raise(repo: Repository, run_id: str, name: str) -> StageRow:
+    stage = repo.get_stage(run_id, name)
+    if stage is None:
+        raise ValueError(f"unknown stage '{name}' in run '{run_id}'")
+    return stage
 
-    Order: reconcile the two stores first (D5) — a true fork stops and
-    escalates (``diverged``, exit 2); else read the max(sequence_no)
-    checkpoint and report stage / block / WIP / completed / remaining /
-    approval state. Never reads a summary (I8)."""
-    from .gate import approval_state
 
-    rec = store.reconcile(marathon_id)
-    if rec.status == "fork":
-        return ResumeReport(
-            found=True, diverged=True, escalation_id=rec.escalation_id
+def start_stage(
+    run_id: str, name: str, *, env: Optional[MarathonEnv] = None
+) -> StageRow:
+    """Flip a stage to ``running`` and stamp ``started_at`` (FR-004)."""
+    env, repo = _repo(run_id, env)
+    stage = _stage_or_raise(repo, run_id, name)
+    if stage.status == "complete":
+        raise ValueError(
+            f"stage '{name}' is already complete; re-running a block is "
+            f"US5's rerun, not stage-start"
+        )
+    if stage.status == "running":
+        return stage  # idempotent
+    return repo.update_stage(
+        stage.id, status="running", started_at=datetime.now(timezone.utc)
+    )
+
+
+def checkpoint(
+    run_id: str,
+    name: str,
+    *,
+    completed_units: Optional[Sequence[Any]] = None,
+    remaining_units: Optional[Sequence[Any]] = None,
+    wip_unit: Optional[str] = None,
+    budget_delta: int = 0,
+    committed_paths: Optional[Sequence[str]] = None,
+    issues: Optional[Sequence[str]] = None,
+    message: Optional[str] = None,  # reserved for the US4 commit boundary
+    env: Optional[MarathonEnv] = None,
+) -> CheckpointRow:
+    """Append a checkpoint; empty ``remaining_units`` completes the stage."""
+    env, repo = _repo(run_id, env)
+    run = repo.get_run(run_id)
+    if run is None:
+        raise ValueError(f"unknown run '{run_id}'; register it first")
+    stage = _stage_or_raise(repo, run_id, name)
+
+    cp = repo.insert_checkpoint(
+        CheckpointRow(
+            run_id=run_id,
+            stage_id=stage.id,
+            sequence_no=0,  # allocated by the repository (T010 monotonic)
+            wip_unit=wip_unit,
+            completed_units=list(completed_units or []),
+            remaining_units=list(remaining_units or []),
+            budget_spent=int(budget_delta),
+            committed_paths=list(committed_paths or []),
+        )
+    )
+
+    stage_fields: dict[str, Any] = {"last_sequence_no": cp.sequence_no}
+    block_complete = not cp.remaining_units
+    if block_complete:
+        stage_fields["status"] = "complete"
+        stage_fields["completed_at"] = datetime.now(timezone.utc)
+    repo.update_stage(stage.id, **stage_fields)
+
+    # D4/FR-007 (T024): an item is done when its mini_analyze completes; its
+    # artifacts in <store_root>/items/<id>/ feed the marathon's implement.
+    if block_complete and stage.mini_kind == "mini_analyze" and stage.item_id:
+        repo.update_item(stage.item_id, status="done")
+
+    if budget_delta:
+        repo.update_run(
+            run_id, budget_spent=run.budget_spent + int(budget_delta)
         )
 
-    pos = store.read_position(marathon_id)
-    if pos is None:
-        return ResumeReport(found=False)  # cold start — nothing checkpointed
+    for summary in issues or []:
+        repo.insert_issue(Issue(run_id=run_id, summary=summary, stage_id=stage.id))
 
-    block = store.read_block(pos.block_id)
-    block_complete = len(pos.remaining_units) == 0
-    # Crash-window guard (FR-014/SC-010): finalize_block writes the FINAL
-    # checkpoint (remaining=[]), THEN commits, THEN pushes. A crash between the
-    # checkpoint and the commit/push would leave block_complete=True with the
-    # block's git checkpoint silently lost — the next session would skip the
-    # commit. Cross-check the git_blocks record so the skill re-drives commit/
-    # push when it did not durably land.
-    commit_push_pending = False
+    # T039/D9: the scoped commit boundary — checkpoint durably written FIRST,
+    # then commit + push (crash in between ⇒ rule-2a re-drive). Runs only under
+    # the standing grant; without it the named paths are informational and the
+    # driving agent commits itself.
+    from codeconv.marathon.gitblock import commit_block, commit_push_granted, push_block
+
+    if cp.committed_paths and commit_push_granted(run):
+        default_msg = (
+            f"marathon {run_id}: {name} checkpoint {cp.sequence_no}"
+        )
+        cp = commit_block(
+            repo, run, cp, message=message or default_msg, repo_dir=env.repo_dir
+        )
+        cp = push_block(repo, run_id, cp, repo_dir=env.repo_dir)
+
+    # T038/FR-019: a status report at every stage boundary.
     if block_complete:
-        from .gitblock import read_git_block
+        from codeconv.marathon.status import emit_status
 
-        gb = read_git_block(store, pos.block_id)
-        if gb is None:
-            commit_push_pending = True  # no commit at all (crash before commit)
-        elif not gb.get("pushed") and gb.get("escalation") is None:
-            commit_push_pending = True  # committed but unpushed & not escalated
-    return ResumeReport(
-        found=True,
-        stage=pos.stage,
-        block_id=pos.block_id,
-        block_kind=block.block_kind if block is not None else None,
-        wip_unit=pos.wip_unit,
-        completed_units=pos.completed_units,
-        remaining_units=pos.remaining_units,
-        workflow_run_id=pos.workflow_run_id,
-        store_origin=pos.store_origin,
-        approval_state=approval_state(store, pos.block_id),
-        block_complete=block_complete,
-        commit_push_pending=commit_push_pending,
-        sequence_no=pos.sequence_no,
-    )
+        emit_status(run_id, env=env)
+
+    return cp
 
 
 def _unit_key(unit: Any) -> str:
@@ -131,10 +156,7 @@ def units_to_execute(
     all_units: list[Any], completed_units: list[Any]
 ) -> list[Any]:
     """The units still to run, in order, with completed ones removed exactly
-    once (FR-003/SC-002). A not-yet-completed boundary unit is preserved, so
-    it runs exactly once (I9)."""
+    once — a resumed run re-executes none of them, and a boundary unit (no
+    checkpoint yet) runs exactly once (preserved 024 semantics; US5 rerun)."""
     done = {_unit_key(u) for u in completed_units}
     return [u for u in all_units if _unit_key(u) not in done]
-
-
-__all__ = ["ResumeReport", "resume", "units_to_execute"]

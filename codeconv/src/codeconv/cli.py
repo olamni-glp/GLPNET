@@ -321,7 +321,7 @@ app.add_typer(
     marathon_app,
     name="marathon",
     help=(
-        "Durable, restart-safe stage harness (feature 024). "
+        "Durable, restart-safe, workload-agnostic stage harness (feature 030). "
         "See /marathon-stage-harness."
     ),
 )

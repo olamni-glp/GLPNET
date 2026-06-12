@@ -350,86 +350,99 @@ def stage_convspec_artifacts(
 
 
 # ---------------------------------------------------------------------------
-# Marathon stage-harness fixtures (feature 024, T011)
+# Marathon stage-harness fixtures (feature 030 — per-run isolated store)
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def marathon_fallback_store(tmp_path: Path):
-    """A fallback-only ``MarathonStore`` (pure JSON, no bridge).
+def kill_marathon_bridge(store_root: Path) -> None:
+    """Best-effort kill of the per-run marathon bridge.
 
-    For the seq-allocation / read_position / reconcile / approval-gate /
-    trace unit tests that need no PGLite — fast, no ``@needs_bridge``.
+    The keeper's per-run PGLite cluster lives at ``<store_root>/pgdb`` (T007),
+    so its sidecar is ``<store_root>/pgdb/bridge.json``. Mirrors
+    :func:`kill_bridge` for the off-repo per-run data-dir. Safe to call even if
+    no bridge is running.
     """
-    from codeconv.marathon.store import MarathonStore
-
-    return MarathonStore(tmp_path, fallback_only=True)
-
-
-@pytest.fixture
-def marathon_bridge_repo(tmp_path: Path) -> Iterable[Path]:
-    """Isolated repo with ``prereq-patterns/`` wired + the ``marathon`` schema
-    migrated against a throwaway PGLite cluster; bridge torn down after.
-
-    Uses Alembic upgrade head only (the store needs the ``marathon`` schema,
-    not a DBOS launch — DBOS is the orchestrate layer's reuse), so this is
-    lighter than a full ``codeconv migrate``. ``@needs_bridge`` tests only.
-    """
-    from codeconv.bridge_client import acquire_or_discover
-    from codeconv.cli import _run_alembic_upgrade
-    from codeconv.db.engine import reset_engine_cache_for_tests
-
-    _link_prereq_patterns(tmp_path)
-    script = tmp_path / "prereq-patterns" / "pglite" / "pglite_bridge.mjs"
-    endpoint = acquire_or_discover(tmp_path, bridge_script=script)
-    _run_alembic_upgrade(endpoint=endpoint)
+    sidecar = store_root / "pgdb" / "bridge.json"
+    if not sidecar.is_file():
+        return
     try:
-        yield tmp_path
-    finally:
-        reset_engine_cache_for_tests()
-        kill_bridge(tmp_path)
+        pid = int(_json.loads(sidecar.read_text(encoding="utf-8"))["pid"])
+    except Exception:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/F", "/PID", str(pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        else:
+            os.kill(pid, signal.SIGKILL)
+    except Exception:
+        pass
+    deadline = time.time() + 2.0
+    while time.time() < deadline and sidecar.is_file():
+        time.sleep(0.05)
 
 
-def make_marathon(
-    store,
-    *,
-    slug: str = "testfeat",
-    branch: str = "000-testfeat",
-    budget: Optional[int] = None,
-    stage: str = "plan",
-    ordinal: int = 1,
-    auto: bool = False,
-):
-    """Create a marathon + one stage-block in ``store``; return (marathon,
-    block). The store may be primary-backed or fallback-only — both honor the
-    same dual-write interface."""
-    from codeconv.marathon.cadence import (
-        block_id,
-        block_kind_for_stage,
-        canonical_stage,
-    )
-    from codeconv.marathon.models import Marathon, StageBlock
-    from codeconv.marathon.store import marathon_id_for
+@pytest.fixture
+def marathon_store(tmp_path: Path) -> Iterable[Path]:
+    """An isolated per-run marathon store root on the NTFS tmp path, with
+    per-run bridge teardown (the proven ``discover_repo`` pattern; FR-027/US3).
 
-    mid = marathon_id_for(slug)
-    m = store.upsert_marathon(
-        Marathon(
-            id=mid,
-            feature_slug=slug,
-            feature_branch=branch,
-            budget_ceiling=budget,
-            auto_mode=auto,
-        )
+    Yields the off-repo ``store_root``. The per-run PGLite cluster lives at
+    ``<store_root>/pgdb`` and the JSON mirror at ``<store_root>/json`` (T007/T009).
+    ``prereq-patterns/`` is junction-linked into ``store_root`` so the per-run
+    bridge (spawned by the keeper with ``repo_root=store_root``) finds the bridge
+    script and its ``node_modules``. The spawned bridge is killed at test end so
+    each marathon test is fully isolated (no leaked WASM/lock — feature-018).
+
+    Marathon subcommands address this store with ``--data-dir <store_root>``
+    (see :func:`marathon_run`); the cluster data-dir ``<store_root>/pgdb`` is
+    derived by the keeper.
+    """
+    store_root = tmp_path / "marathon_run_store"
+    store_root.mkdir(parents=True, exist_ok=True)
+    if _node_available() and _bridge_script_present():
+        _link_prereq_patterns(store_root)
+    yield store_root
+    kill_marathon_bridge(store_root)
+
+
+def marathon_run(
+    store_root: Path,
+    *args: str,
+    timeout: float = 180.0,
+    check: bool = False,
+    extra_env: Optional[dict[str, str]] = None,
+) -> subprocess.CompletedProcess[str]:
+    """Invoke ``python -m codeconv.cli --data-dir <store_root> marathon …``
+    against the per-run isolated store in a fresh subprocess.
+
+    Mirrors :func:`run_codeconv`; each call is a fresh process (fresh in-memory
+    DBOS state). The per-run bridge spawned by the first call persists across
+    subsequent calls until :func:`kill_marathon_bridge` (the ``marathon_store``
+    fixture's teardown).
+    """
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "codeconv.cli",
+            "--repo-root",
+            str(store_root),
+            "--data-dir",
+            str(store_root),
+            "marathon",
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=check,
+        env=env,
     )
-    bid = block_id(mid, stage, ordinal)
-    b = store.upsert_block(
-        StageBlock(
-            id=bid,
-            marathon_id=mid,
-            stage=canonical_stage(stage),
-            block_kind=block_kind_for_stage(stage),
-            ordinal=ordinal,
-            status="running",
-        )
-    )
-    return m, b

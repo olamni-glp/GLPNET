@@ -1,123 +1,78 @@
-"""US5 — token budget ceiling halt/escalate with 0 overruns (SC-006).
+"""US5 budget ceiling — bridge-free Budget + the halt path (T042).
 
-At the ceiling, work halts at a safe checkpoint and never overruns. Fallback
-store — no bridge needed.
+FR-022/SC-006/AS3: advancing past the ceiling halts (safe checkpoint +
+``budget_exceeded`` escalation), never overruns; the substrate CHECK
+(``budget_spent <= budget_ceiling``) enforces it at the store level too.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from .conftest import make_marathon
+from .conftest import needs_bridge
+
+RUN_ID = "us5-budget"
 
 
-def test_budget_add_refuses_to_overrun_ceiling() -> None:
-    """The Budget mirror is a HARD ceiling: a spend that would cross it raises,
-    never silently overruns (SC-006)."""
+def test_budget_is_a_hard_ceiling_bridge_free():
     from codeconv.marathon.orchestrate import Budget, BudgetCeilingReached
 
-    budget = Budget(ceiling=2_500)
-    budget.add(1_000)
-    budget.add(1_000)  # spent 2_000
-    assert budget.spent() == 2_000
-    assert budget.remaining() == 500
+    budget = Budget(100)
+    assert budget.add(60) == 60
+    assert budget.remaining() == 40
     with pytest.raises(BudgetCeilingReached):
-        budget.add(1_000)  # would be 3_000 > 2_500
-    assert budget.spent() == 2_000  # unchanged — 0 overrun
+        budget.add(50)  # would overrun — refused
+    assert budget.spent() == 60  # spend unchanged after refusal
+    with pytest.raises(BudgetCeilingReached):
+        budget.set_spent(101)
+    assert budget.set_spent(100) == 100
+    assert budget.remaining() == 0
+
+    unbounded = Budget(None)
+    assert unbounded.remaining() is None
+    assert unbounded.add(10_000_000) == 10_000_000  # no ceiling, no refusal
 
 
-def test_unbounded_budget_has_none_remaining() -> None:
-    from codeconv.marathon.orchestrate import Budget
+@needs_bridge
+def test_halt_path_writes_budget_exceeded_and_never_overruns(marathon_store):
+    import sqlalchemy.exc
 
-    budget = Budget(ceiling=None)
-    budget.add(5_000)
-    assert budget.spent() == 5_000
-    assert budget.remaining() is None  # unbounded
-
-
-def test_advance_or_halt_ends_at_safe_checkpoint(marathon_fallback_store) -> None:
-    """At the ceiling, ``advance_budget_or_halt`` ends the in-flight unit at a
-    safe checkpoint and halts — 0 overrun, no abandoned partial unit."""
-    store = marathon_fallback_store
-    m, b = make_marathon(store, slug="budgetfeat", budget=2_500)
-
+    from codeconv.marathon.checkpoint import start_stage
+    from codeconv.marathon.env import resolve_env
     from codeconv.marathon.orchestrate import Budget, advance_budget_or_halt
+    from codeconv.marathon.stages import register_run
+    from codeconv.marathon.store import Repository
 
-    budget = Budget(ceiling=2_500, spent=2_000)
-    res = advance_budget_or_halt(
-        store,
-        m.id,
-        budget,
-        1_000,  # would push to 3_000 > 2_500
-        block_id=b.id,
-        stage="implement",
-        completed_units=["u1", "u2"],
-        remaining_units=["u3"],
+    env = resolve_env(RUN_ID, data_dir=marathon_store)
+    repo = Repository(env)
+    register_run(RUN_ID, stages=["a"], budget_ceiling=1000,
+                 budget_unit="tokens", env=env)
+    start_stage(RUN_ID, "a", env=env)
+
+    budget = Budget(1000, spent=900)
+
+    # Within ceiling: advances and persists.
+    ok = advance_budget_or_halt(
+        repo, RUN_ID, budget, 50, stage_name="a",
+        completed_units=["u1"], remaining_units=["u2"],
     )
-    assert res["halted"] is True
-    assert res["spent"] == 2_000  # never crossed the ceiling
-    assert res["remaining"] == 500
+    assert ok == {"halted": False, "spent": 950, "remaining": 50}
+    assert repo.get_run(RUN_ID).budget_spent == 950
 
-    # A safe checkpoint was written so the in-flight unit ends cleanly.
-    history = store.checkpoints(m.id)
-    assert len(history) == 1
-    assert history[0].completed_units == ["u1", "u2"]
-    assert history[0].budget_spent == 2_000
-
-
-def test_advance_within_budget_persists_spend(marathon_fallback_store) -> None:
-    store = marathon_fallback_store
-    m, b = make_marathon(store, slug="budgetok", budget=10_000)
-
-    from codeconv.marathon.orchestrate import Budget, advance_budget_or_halt
-
-    budget = Budget(ceiling=10_000)
-    res = advance_budget_or_halt(
-        store,
-        m.id,
-        budget,
-        3_000,
-        block_id=b.id,
-        stage="implement",
-        completed_units=[],
-        remaining_units=["u1"],
+    # Would overrun: halt — safe checkpoint + budget_exceeded, spend untouched.
+    halted = advance_budget_or_halt(
+        repo, RUN_ID, budget, 200, stage_name="a",
+        completed_units=["u1"], remaining_units=["u2"],
     )
-    assert res["halted"] is False
-    assert res["spent"] == 3_000
-    # spend persisted on the marathon row
-    assert store.read_marathon(m.id).budget_spent == 3_000
-    # within-budget advances write NO escalation (only a ceiling hit does).
-    from codeconv.marathon.escalation import open_escalations
+    assert halted["halted"] is True
+    assert halted["spent"] == 950  # zero overruns
+    assert halted["escalation_id"] is not None
+    kinds = [e.kind for e in repo.list_escalations(RUN_ID, open_only=True)]
+    assert "budget_exceeded" in kinds
+    cps = repo.list_checkpoints(RUN_ID)
+    assert cps and cps[-1].remaining_units == ["u2"]  # safe checkpoint written
+    assert repo.get_run(RUN_ID).budget_spent == 950
 
-    assert open_escalations(store, m.id) == []
-
-
-def test_budget_halt_writes_durable_escalation(marathon_fallback_store) -> None:
-    """FR-022: a ceiling halt records a durable ``stage_flagged`` escalation
-    (reason=budget_ceiling) so ``doctor``/``status`` surface the halt — never a
-    silent stop in unattended auto-mode."""
-    store = marathon_fallback_store
-    m, b = make_marathon(store, slug="budgetesc", budget=2_500)
-
-    from codeconv.marathon.escalation import open_escalations
-    from codeconv.marathon.orchestrate import Budget, advance_budget_or_halt
-
-    budget = Budget(ceiling=2_500, spent=2_000)
-    res = advance_budget_or_halt(
-        store,
-        m.id,
-        budget,
-        1_000,  # would push to 3_000 > 2_500
-        block_id=b.id,
-        stage="implement",
-        completed_units=["u1"],
-        remaining_units=["u2"],
-    )
-    assert res["halted"] is True
-    assert res["escalation_id"] is not None
-
-    open_ = open_escalations(store, m.id)
-    assert len(open_) == 1
-    assert open_[0]["kind"] == "stage_flagged"
-    assert open_[0]["detail"]["reason"] == "budget_ceiling"
-    assert open_[0]["detail"]["ceiling"] == 2_500
+    # Substrate CHECK: the store itself refuses spent > ceiling (SC-006).
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        repo.update_run(RUN_ID, budget_spent=2000)
