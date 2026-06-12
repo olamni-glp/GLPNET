@@ -89,6 +89,23 @@
 
 ## [Unreleased]
 
+## [v2026.06.12.1] - 2026-06-12
+
+### Added
+- Phase 7 US5 (T040-T050) - gate/orchestrate/trace/escalation ported onto stage+checkpoint rows, reconcile (in_sync/fast-forward/fork escalation, resume reconciles first), budget_exceeded kind, CLI gate/rerun/trace/reconcile; US5 6/6, full marathon set 26/26
+- Phase 6 US4 (T033-T039) - scoped commit+push folded onto checkpoint rows (named paths only, hooks run, never force), push_blocked escalation, rule-2a re-drive guard + redrive_commit, status line grammar + emit_status at every boundary, CLI status/--emit + exit 2 on push_blocked; tests 4/4
+- Phase 5 US3 keeper (T026-T032) - start/stop/recover over bridge_client, kernel-fd single-writer lock with ConcurrentWriter refusal distinct from stale residue, read-only doctor, keeper CLI; FIX latent bridge_client.request_force_shutdown marker path (inside data_dir -> sibling, matching bridge poll + 012 sibling convention); tests 2/2
+- Phases 3+4 US1+US2 (T012-T025) - data-driven stages register/append/finalize, start_stage+checkpoint, pure derive_position resume, emergent intake with 5-stage mini-pipeline + fractional routing + prereq escalation, CLI register/append-stage/stage-start/checkpoint/resume/position/finalize/capture; tests 11/11
+- Phase 2 Foundational (T005-T011) - per-run isolated store: resolve_env off-repo guard, idempotent 9-table schema, bridge-composed single-writer repository CRUD, JSON-mirror dual-write, monotonic sequencing; foundation tests 3/3
+- Phase 1 scaffold (T001-T004) — verify greenfield precondition, rewrite models data-driven, new module stubs, drop obsolete 024 tests/modules
+- plan + tasks + analyze marathon-refinement; resolve VI-b via constitution v1.1.0
+- clarify marathon-refinement — resolve 4 forks (hybrid store, codeconv-module now+extract-later, 5-stage mini-pipeline→marathon implement, greenfield)
+- specify marathon-refinement (spec + requirements checklist; 29 FRs, 5 user stories, 3 clarify forks)
+
+### Changed
+- Merge pull request #36 from olamni-glp/030-marathon-refinement
+- Merge pull request #35 from olamni-glp/main
+
 ## [v2026.06.11.1] - 2026-06-11
 
 ### Added
