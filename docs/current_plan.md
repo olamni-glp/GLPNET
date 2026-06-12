@@ -14,18 +14,23 @@
 3. **Where in the feature (WIP position)?** → the buildkit pipeline stage state
    (DBOS + PGLite, per-feature) + the feature's `spec.md`/`plan.md`/`tasks.md`.
 
-## Active now (2026-06-05)
+## Active now (2026-06-12)
 
-- **Roadmap feature**: `024-marathon-stage-harness` — **implemented** on branch
-  `024-marathon-stage-harness` (spec dir `specs/024-marathon-stage-harness/`). The durable,
-  restart-safe harness now lives in `codeconv.marathon` (PGLite schema `marathon` via Alembic
-  `0010` + JSON fallback). It is the durable checkpoint that makes the "where in the feature"
-  answer automatic.
+- **Harness**: `030-marathon-refinement` (refines 024) — **shipped to main `v2026.06.12.1`**;
+  Phase 8 polish in flight on branch `030-marathon-refinement`. The durable, restart-safe
+  harness is `codeconv.marathon`, refined **data-driven**: registrable + growable per-run
+  stage list, emergent-work intake (5-stage mini-pipeline), per-run isolated store OUTSIDE
+  any repo (default `C:/pglite/marathon/<run-id>`; per-run PGLite cluster + JSON mirror,
+  background keeper). Contracts: `specs/030-marathon-refinement/contracts/`. 024's
+  shared-cluster `marathon` schema (Alembic `0010`) is inert history — never read or
+  written (VIII).
 - **How to locate position now**: after the roadmap→pipeline→tasks order above, run
-  `codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
-  — the max(sequence_no) checkpoint, never a summary. See `/marathon-stage-harness`.
+  `codeconv/.venv/Scripts/python.exe -m codeconv.cli marathon resume --run <run-id>`
+  (`--data-dir <store-root>` for a non-default store; `--feature` is a deprecated 024 alias)
+  — the position derives from durable rows alone, never a summary; a store fork exits 2.
+  See `/marathon-stage-harness`.
 - **Marathon it unblocks**: epic `distributed-glp-connectivity` → `multi-protocol-link-layer`
-  (state `captured`, `blocked-by: marathon-stage-harness`) — now drivable end-to-end by the harness.
+  — driven end-to-end by the harness (in progress).
 
 ## History (do not resume these — they are done/parked)
 
