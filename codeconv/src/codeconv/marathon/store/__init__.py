@@ -7,10 +7,25 @@ cluster + JSON mirror, reconcile — D1/D6). The cluster lives *outside* the rep
 at a per-run ``data_dir`` and is reached through the existing, hardened
 ``codeconv.bridge_client`` (FR-028), never the shared ``<repo>/.pgdb/`` chain.
 
-Filled by Phase 2 (Foundational): T006 (``ensure_schema``) + T007–T010
-(repository) + T049 (``reconcile``).
+``reconcile`` is completed by US5 (T049).
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from codeconv.marathon.store.repository import (
+    IntegrityFailure,
+    Repository,
+    StoreUnavailable,
+    reconcile,
+    row_payload,
+)
+from codeconv.marathon.store.schema import ensure_schema
+
+__all__ = [
+    "IntegrityFailure",
+    "Repository",
+    "StoreUnavailable",
+    "ensure_schema",
+    "reconcile",
+    "row_payload",
+]
