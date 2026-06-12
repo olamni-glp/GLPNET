@@ -1,39 +1,52 @@
-"""Workflow-tool composition layer (FR-009/010/012).
+"""Budget ceiling, per-block/per-subagent re-run, Workflow opt-in (T046).
 
-One stage-block == one Workflow run. This module owns ONLY what the harness
-adds around the Workflow tool — it does NOT re-implement fan-out, per-agent
-journaling, or cached-prefix resume (those are the Workflow tool's, driven
-by the model at the buildkit-stage skill layer; Python cannot invoke the
-Workflow tool). Concretely the harness layer provides:
+Ported 024 semantics keyed off the new ``stage``/``checkpoint`` rows
+(FR-021/022; zero regressions, SC-009):
 
-- the **Workflow opt-in** preauthorization check before a run launches
-  (FR-023, the standing grant #2);
-- **run-linkage** — recording the Workflow ``runId`` onto the stage-block so
-  a same-session retry resumes the cached prefix (FR-009);
-- a **Budget** mirror of the Workflow tool's ``budget.total /
-  budget.spent() / budget.remaining()`` with ceiling enforcement, so the
-  harness can persist/halt at the ceiling with **0 overruns** (FR-012/SC-006,
-  reused by US5 T037).
+- :class:`Budget` — mirror of the Workflow tool's budget object; the ceiling
+  is a HARD limit (:meth:`Budget.add` / :meth:`Budget.set_spent` refuse to
+  cross it — SC-006, 0 overruns).
+- :func:`advance_budget_or_halt` — would-exceed ⇒ write a safe checkpoint and
+  a ``budget_exceeded`` escalation (the new dedicated kind; 024 had to borrow
+  ``stage_flagged``), signal ``halted`` — never overrun, never silent.
+- :func:`rerun_block` — resume from the STAGE's last checkpoint, not run
+  start; completed units are skipped exactly once (``units_to_execute``).
+- :func:`rerun_subagent` — only the named subagent re-runs; the stage's own
+  completed siblings are reported untouched, and the stage's Workflow
+  ``runId`` is echoed for the cached-prefix re-run cascade (FR-021).
+- :func:`require_workflow_optin` — standing grant #2 guard (unchanged).
 
-The skill feeds the real ``budget.spent()`` from the live Workflow run into
-:meth:`Budget.set_spent`; tests drive :meth:`Budget.add` directly.
+024's ``finalize_block`` is gone: D9 folded the commit boundary onto the
+checkpoint itself (``checkpoint(committed_paths=…)`` in ``checkpoint.py``).
 """
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
+from codeconv.marathon.checkpoint import units_to_execute
+from codeconv.marathon.models import CheckpointRow, Escalation, MarathonRun
+from codeconv.marathon.store import Repository
+
+__all__ = [
+    "Budget",
+    "BudgetCeilingReached",
+    "WorkflowOptinNotGranted",
+    "advance_budget_or_halt",
+    "record_run_linkage",
+    "require_workflow_optin",
+    "rerun_block",
+    "rerun_subagent",
+    "workflow_optin_ok",
+]
+
 
 class WorkflowOptinNotGranted(RuntimeError):
-    """Raised when a stage-block would launch a Workflow run but the opt-in
-    standing grant is absent or revoked (FR-023)."""
+    """A Workflow run would launch without the opt-in standing grant #2."""
 
 
 class BudgetCeilingReached(RuntimeError):
-    """Raised when a spend would push past the marathon's token ceiling.
-
-    The caller ends the in-flight unit at a safe checkpoint, then halts or
-    escalates — never overruns (FR-012/SC-006)."""
+    """A spend would push past the run's token ceiling (never overrun)."""
 
     def __init__(self, *, spent: int, ceiling: int, attempted: int) -> None:
         self.spent = spent
@@ -46,11 +59,7 @@ class BudgetCeilingReached(RuntimeError):
 
 
 class Budget:
-    """Mirror of the Workflow tool's budget object (FR-012).
-
-    ``ceiling`` is the per-marathon token target (``None`` = unbounded).
-    ``remaining()`` is ``None`` when unbounded. The ceiling is a HARD limit:
-    :meth:`add` / :meth:`set_spent` refuse to cross it (SC-006: 0 overruns)."""
+    """Mirror of the Workflow tool's budget object (ceiling = hard limit)."""
 
     def __init__(self, ceiling: Optional[int], spent: int = 0) -> None:
         self.ceiling = ceiling
@@ -84,215 +93,155 @@ class Budget:
 
     def set_spent(self, spent: int) -> int:
         """Sync the absolute spend from the live Workflow ``budget.spent()``;
-        refuse a value that already overruns the ceiling."""
+        refuse a value already past the ceiling."""
         if spent < 0:
             raise ValueError("spent must be non-negative")
         if self.ceiling is not None and spent > self.ceiling:
             raise BudgetCeilingReached(
-                spent=self._spent, ceiling=self.ceiling, attempted=spent - self._spent
+                spent=self._spent,
+                ceiling=self.ceiling,
+                attempted=spent - self._spent,
             )
         self._spent = spent
         return self._spent
 
 
-def workflow_optin_ok(marathon: Any) -> bool:
-    """True iff the Workflow-tool opt-in standing grant is held and not revoked
-    (FR-023/D10)."""
-    return bool(getattr(marathon, "preauth_workflow_optin", False)) and (
-        getattr(marathon, "preauth_revoked_at", None) is None
-    )
+def workflow_optin_ok(run: MarathonRun) -> bool:
+    return bool(run.preauth_workflow_optin) and run.preauth_revoked_at is None
 
 
-def require_workflow_optin(marathon: Any) -> None:
-    """Guard a Workflow-run launch (run lifecycle step 2,
-    workflow-composition.md). Raises if the opt-in is absent/revoked."""
-    if not workflow_optin_ok(marathon):
+def require_workflow_optin(run: MarathonRun) -> None:
+    if not workflow_optin_ok(run):
         raise WorkflowOptinNotGranted(
-            f"Workflow-tool opt-in not granted for marathon "
-            f"{getattr(marathon, 'id', '?')!r} (grant it at `marathon start "
-            f"--preauth-workflow`)"
+            f"Workflow-tool opt-in not granted for run {run.id!r} "
+            f"(grant preauth_workflow_optin on the run)"
         )
 
 
-def record_run_linkage(store: Any, block: Any, run_id: str) -> Any:
-    """Record the Workflow ``runId`` as run-linkage on the stage-block
-    (FR-009) so a same-session retry can resume its cached prefix."""
-    block.workflow_run_id = run_id
-    store.upsert_block(block)
-    return block
+def record_run_linkage(
+    store: Repository, checkpoint_id: int, workflow_run_id: str
+) -> CheckpointRow:
+    """Record the Workflow ``runId`` on the checkpoint so a same-session retry
+    resumes its cached prefix (FR-021)."""
+    return store.update_checkpoint(checkpoint_id, workflow_run_id=workflow_run_id)
 
 
-# --- re-run (US3: T029/T030/T032) ------------------------------------------
+def _last_checkpoint_of_stage(
+    store: Repository, run_id: str, stage_id: int
+) -> Optional[CheckpointRow]:
+    cps = [c for c in store.list_checkpoints(run_id) if c.stage_id == stage_id]
+    return max(cps, key=lambda c: c.sequence_no) if cps else None
 
 
 def rerun_block(
-    store: Any, block_id: str, *, all_units: Optional[list[Any]] = None
+    store: Repository,
+    run_id: str,
+    stage_name: str,
+    *,
+    all_units: Optional[list[Any]] = None,
 ) -> dict[str, Any]:
-    """Per-stage re-run from the block's LAST checkpoint — NOT marathon start
-    (FR-006). Returns the units still to run (succeeded units skipped) and the
-    sequence to resume from.
-
-    When ``all_units`` is supplied, a unit whose *input changed* (different
-    content → different key) is treated as **new work** and re-included, even
-    if a stale completion of the old input exists (edge case / T032)."""
-    from .checkpoint import units_to_execute
-    from .store import marathon_id_of_block
-
-    pos = store.read_position(marathon_id_of_block(block_id))
-    if pos is None or pos.block_id != block_id:
-        # No checkpoint for this block yet → a full run.
+    """Per-stage re-run from the stage's LAST checkpoint — not run start
+    (FR-021). A unit whose input changed (different content → different key)
+    is new work and re-included even if a stale completion exists."""
+    stage = store.get_stage(run_id, stage_name)
+    if stage is None:
+        raise ValueError(f"unknown stage '{stage_name}' in run '{run_id}'")
+    last = _last_checkpoint_of_stage(store, run_id, stage.id)
+    if last is None:
         return {
             "from_seq": 0,
             "to_run": all_units,
             "completed_units": [],
             "workflow_run_id": None,
         }
-    completed = pos.completed_units
+    completed = list(last.completed_units)
     to_run = (
         units_to_execute(all_units, completed)
         if all_units is not None
-        else list(pos.remaining_units)
+        else list(last.remaining_units)
     )
     return {
-        "from_seq": pos.sequence_no,
+        "from_seq": last.sequence_no,
         "to_run": to_run,
         "completed_units": completed,
-        "workflow_run_id": pos.workflow_run_id,
+        "workflow_run_id": last.workflow_run_id,
     }
 
 
-def rerun_subagent(store: Any, block_id: str, subagent: Any) -> dict[str, Any]:
-    """Isolated per-subagent re-run: ONLY ``subagent`` re-executes; succeeded
-    siblings are untouched (FR-007/SC-003). The production re-run composes the
-    Workflow tool's ``resumeFromRunId`` cached-prefix at the skill layer (the
-    failed subagent is the changed step; siblings stay cached); here the
-    harness reports the isolated unit + the siblings it must not disturb."""
-    from .store import marathon_id_of_block
-
-    pos = store.read_position(marathon_id_of_block(block_id))
-    # read_position returns the marathon-WIDE max-sequence checkpoint, which may
-    # belong to a sibling block. Mirror rerun_block's guard: only this block's
-    # own completed units are its siblings — never a different block's (FR-007).
-    same_block = pos is not None and pos.block_id == block_id
-    siblings = list(pos.completed_units) if same_block else []
-    # Echo THIS block's Workflow runId so the skill can pass it as
-    # ``resumeFromRunId`` (the failed subagent is the changed step; siblings
-    # stay cached — FR-007/FR-009). Never a sibling block's runId, mirroring
-    # the ``untouched`` guard above.
-    run_id = pos.workflow_run_id if same_block else None
-    return {"to_run": [subagent], "untouched": siblings, "workflow_run_id": run_id}
-
-
-# --- budget ceiling enforcement (US5: T037) --------------------------------
+def rerun_subagent(
+    store: Repository, run_id: str, stage_name: str, subagent: Any
+) -> dict[str, Any]:
+    """Isolated per-subagent re-run: ONLY ``subagent`` re-executes; the
+    stage's own completed siblings are untouched; the stage's Workflow runId
+    is echoed for ``resumeFromRunId`` cached-prefix composition (FR-021)."""
+    stage = store.get_stage(run_id, stage_name)
+    if stage is None:
+        raise ValueError(f"unknown stage '{stage_name}' in run '{run_id}'")
+    last = _last_checkpoint_of_stage(store, run_id, stage.id)
+    siblings = list(last.completed_units) if last is not None else []
+    run_linkage = last.workflow_run_id if last is not None else None
+    return {
+        "to_run": [subagent],
+        "untouched": siblings,
+        "workflow_run_id": run_linkage,
+    }
 
 
 def advance_budget_or_halt(
-    store: Any,
-    marathon_id: str,
-    budget: "Budget",
+    store: Repository,
+    run_id: str,
+    budget: Budget,
     tokens: int,
     *,
-    block_id: str,
-    stage: str,
-    completed_units: list[Any],
-    remaining_units: list[Any],
+    stage_name: str,
+    completed_units: Optional[list[Any]] = None,
+    remaining_units: Optional[list[Any]] = None,
     workflow_run_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Attempt to spend ``tokens`` against the ceiling (FR-012/D7/SC-006).
+    """Spend ``tokens`` against the ceiling, or halt-with-escalation (FR-022).
 
-    If it would overrun, **do not overrun**: write a safe checkpoint (the
-    in-flight unit ends cleanly at the last safe state) and signal ``halted``
-    — never abandon a partial unit, never cross the ceiling (0 overruns) — and
-    record a ``stage_flagged`` escalation so the halt is visible to
-    ``doctor``/``status`` (FR-022), not a silent stop. Else advance the spend
-    and persist it on the marathon."""
+    Would-exceed ⇒ do NOT overrun: write a safe checkpoint (the in-flight
+    unit ends at the last safe state), record a ``budget_exceeded``
+    escalation so the halt is visible to doctor/status (never a silent stop),
+    and signal ``halted``. Else advance and persist the run's spend."""
+    stage = store.get_stage(run_id, stage_name)
+    if stage is None:
+        raise ValueError(f"unknown stage '{stage_name}' in run '{run_id}'")
     if budget.would_exceed(tokens):
-        store.write_checkpoint(
-            block_id,
-            stage=stage,
-            wip_unit=None,
-            completed_units=completed_units,
-            remaining_units=remaining_units,
-            workflow_run_id=workflow_run_id,
-            budget_spent=budget.spent(),
+        store.insert_checkpoint(
+            CheckpointRow(
+                run_id=run_id,
+                stage_id=stage.id,
+                sequence_no=0,
+                completed_units=list(completed_units or []),
+                remaining_units=list(remaining_units or []),
+                workflow_run_id=workflow_run_id,
+                budget_spent=budget.spent(),
+            )
         )
-        # A ceiling hit is an FR-022 escalation block-point: record it durably
-        # so `marathon doctor`/`status` surface the halt to Gabi instead of the
-        # run stopping silently in unattended auto-mode (kind=stage_flagged —
-        # the data-model CHECK has no dedicated budget kind, and this needs no
-        # migration).
-        from .escalation import write_escalation
-
-        escalation_id = write_escalation(
-            store,
-            marathon_id,
-            kind="stage_flagged",
-            detail={
-                "reason": "budget_ceiling",
-                "stage": stage,
-                "spent": budget.spent(),
-                "ceiling": budget.ceiling,
-                "attempted": tokens,
-            },
-            block_id=block_id,
+        esc = store.insert_escalation(
+            Escalation(
+                run_id=run_id,
+                kind="budget_exceeded",
+                stage_id=stage.id,
+                detail={
+                    "stage": stage_name,
+                    "spent": budget.spent(),
+                    "ceiling": budget.ceiling,
+                    "attempted": tokens,
+                },
+            )
         )
         return {
             "halted": True,
             "spent": budget.spent(),
             "remaining": budget.remaining(),
-            "escalation_id": escalation_id,
+            "escalation_id": esc.id,
         }
     budget.add(tokens)
-    store.update_budget_spent(marathon_id, budget.spent())
-    return {"halted": False, "spent": budget.spent(), "remaining": budget.remaining()}
-
-
-# --- block completion → commit/push boundary (US6: T042) -------------------
-
-
-def finalize_block(
-    store: Any,
-    block_id: str,
-    *,
-    files: list[str],
-    message: str,
-    repo_root: Any,
-    completed_units: list[Any],
-    stage: str,
-    workflow_run_id: Optional[str] = None,
-    budget_spent: int = 0,
-) -> dict[str, Any]:
-    """Block completion (FR-019): the checkpoint boundary == the commit/push
-    boundary == this block. Write the FINAL checkpoint, then commit + push only
-    the block's files under the standing grant (a blocked push escalates, never
-    forces — gitblock.py)."""
-    from .gitblock import commit_block, push_block
-
-    cp = store.write_checkpoint(
-        block_id,
-        stage=stage,
-        wip_unit=None,
-        completed_units=completed_units,
-        remaining_units=[],
-        workflow_run_id=workflow_run_id,
-        budget_spent=budget_spent,
-    )
-    commit = commit_block(
-        store, block_id, files=files, message=message, repo_root=repo_root
-    )
-    push = push_block(store, block_id, repo_root=repo_root)
-    return {"checkpoint_seq": cp.sequence_no, "commit": commit, "push": push}
-
-
-__all__ = [
-    "Budget",
-    "BudgetCeilingReached",
-    "WorkflowOptinNotGranted",
-    "advance_budget_or_halt",
-    "finalize_block",
-    "record_run_linkage",
-    "require_workflow_optin",
-    "rerun_block",
-    "rerun_subagent",
-    "workflow_optin_ok",
-]
+    store.update_run(run_id, budget_spent=budget.spent())
+    return {
+        "halted": False,
+        "spent": budget.spent(),
+        "remaining": budget.remaining(),
+    }

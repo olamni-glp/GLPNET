@@ -1,82 +1,66 @@
-"""US7 — durable verification-trace substrate (US7-AS1/2/3).
+"""US5 verification-trace substrate — append-only, ordered (T043, FR-023).
 
-Append-only; ordered by (subject, refine_seq); reconstructable by an external
-reader with no harness internals. Fallback store — no bridge needed.
+``write_trace`` never overwrites (UNIQUE ``(run, subject, refine_seq)``);
+``list_traces`` is ordered by ``(subject, refine_seq)``.
 """
 
 from __future__ import annotations
 
-from .conftest import make_marathon
+import pytest
+
+from .conftest import needs_bridge
+
+RUN_ID = "us5-trace"
 
 
-def test_traces_persist_across_restart(marathon_fallback_store) -> None:
-    """US7-AS1: records survive a restart (a fresh store over the same dir)."""
-    store = marathon_fallback_store
-    m, _b = make_marathon(store, slug="tracefeat")
+@needs_bridge
+def test_trace_append_only_and_ordered(marathon_store):
+    import sqlalchemy.exc
 
+    from codeconv.marathon.env import resolve_env
+    from codeconv.marathon.stages import register_run
+    from codeconv.marathon.store import Repository
     from codeconv.marathon.trace import list_traces, write_trace
 
-    write_trace(
-        store,
-        m.id,
-        subject="codegen",
-        experiment_input={"variant": "A"},
-        metric_score=0.7,
-        decision="accept",
+    env = resolve_env(RUN_ID, data_dir=marathon_store)
+    repo = Repository(env)
+    register_run(RUN_ID, stages=["a"], env=env)
+
+    t1 = write_trace(
+        repo, RUN_ID, subject="design", experiment_input={"k": 1},
+        metric_score=0.4, decision="reject",
     )
+    t2 = write_trace(
+        repo, RUN_ID, subject="design", experiment_input={"k": 2},
+        metric_score=0.9, decision="accept",
+    )
+    t_other = write_trace(
+        repo, RUN_ID, subject="api", experiment_input={"v": 1},
+    )
+    assert (t1.refine_seq, t2.refine_seq) == (1, 2)  # auto-monotonic
+    assert t_other.refine_seq == 1  # per-subject sequence
 
-    from codeconv.marathon.store import MarathonStore
-
-    restarted = MarathonStore(store.repo_root, fallback_only=True)
-    traces = list_traces(restarted, m.id, subject="codegen")
-    assert len(traces) == 1
-    assert traces[0]["decision"] == "accept"
-    assert traces[0]["experiment_input"] == {"variant": "A"}
-
-
-def test_iterations_preserve_order_no_overwrite(marathon_fallback_store) -> None:
-    """US7-AS2: multiple iterations preserve (subject, refine_seq) order; an
-    earlier iteration is never overwritten."""
-    store = marathon_fallback_store
-    m, _b = make_marathon(store, slug="traceiter")
-
-    from codeconv.marathon.trace import list_traces, write_trace
-
-    for i, variant in enumerate(["A", "B", "C"], start=1):
-        t = write_trace(
-            store,
-            m.id,
-            subject="codegen",
-            experiment_input={"variant": variant},
-            metric_score=float(i),
-            decision="accept" if variant != "B" else "reject",
+    # Never overwrites: an explicit duplicate (run, subject, refine_seq) is
+    # refused by the substrate UNIQUE constraint.
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        write_trace(
+            repo, RUN_ID, subject="design", experiment_input={"k": 99},
+            refine_seq=1,
         )
-        assert t.refine_seq == i  # monotonic, allocated automatically
+    # The earlier iteration is intact.
+    history = list_traces(repo, RUN_ID, subject="design")
+    assert [t.refine_seq for t in history] == [1, 2]
+    assert history[0].experiment_input == {"k": 1}
+    assert history[0].decision == "reject"
 
-    traces = list_traces(store, m.id, subject="codegen")
-    assert [t["refine_seq"] for t in traces] == [1, 2, 3]
-    assert [t["experiment_input"]["variant"] for t in traces] == ["A", "B", "C"]
-    # the rejected middle iteration is retained, not overwritten
-    assert traces[1]["decision"] == "reject"
-
-
-def test_external_reader_reconstructs_history(marathon_fallback_store) -> None:
-    """US7-AS3: an external reader reconstructs the ordered history from the
-    plain records, needing no harness internals."""
-    store = marathon_fallback_store
-    m, _b = make_marathon(store, slug="traceext")
-
-    from codeconv.marathon.trace import list_traces, write_trace
-
-    write_trace(store, m.id, subject="planner", experiment_input={"k": 1}, decision="reject")
-    write_trace(store, m.id, subject="planner", experiment_input={"k": 2}, decision="accept")
-    write_trace(store, m.id, subject="codegen", experiment_input={"k": 9}, decision="accept")
-
-    all_traces = list_traces(store, m.id)
-    # ordered by (subject, refine_seq) — plain dicts, no harness objects
-    keyed = [(t["subject"], t["refine_seq"], t["decision"]) for t in all_traces]
-    assert keyed == [
-        ("codegen", 1, "accept"),
-        ("planner", 1, "reject"),
-        ("planner", 2, "accept"),
+    # Ordered by (subject, refine_seq) across subjects.
+    all_traces = list_traces(repo, RUN_ID)
+    assert [(t.subject, t.refine_seq) for t in all_traces] == [
+        ("api", 1), ("design", 1), ("design", 2),
     ]
+
+    # Dual-store: the mirror carries every trace.
+    mirror = sorted(
+        p.name for p in (marathon_store / "json" / "traces").glob("*.json")
+    )
+    assert mirror == ["api-1.json", "design-1.json", "design-2.json"]

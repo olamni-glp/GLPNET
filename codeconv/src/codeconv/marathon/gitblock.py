@@ -1,32 +1,48 @@
-"""Preauthorized commit + push per logical block (FR-014/015, D10, SC-010).
+"""Scoped commit + push boundary, folded onto the checkpoint row (T035/T036, D9).
 
-Under the standing commit/push grant the harness, at block completion, stages
-**exactly** the block's files (never ``git add -A``), commits **without**
-bypassing git hooks (never ``--no-verify``), and pushes **without** forcing
-(never ``--force``/``--force-with-lease``). A non-fast-forward / rejected push
-writes a ``push_blocked`` escalation and stops — it never forces (SC-010).
+Ports 024's ``gitblock`` discipline onto the data-driven model
+(``contracts/checkpoint-commit.md``): at block completion, under the run's
+standing ``preauth_commit_push`` grant, stage **exactly** the checkpoint's
+``committed_paths`` (``git add -- <paths>``; never ``git add -A``/``.``),
+commit **without** bypassing hooks (never ``--no-verify``), record
+``commit_sha`` on the **checkpoint** row, and push **without** forcing (never
+``--force``/``--force-with-lease``). A non-fast-forward / rejected push writes
+a ``push_blocked`` escalation and sets ``checkpoint.push_escalation`` — it
+never retries with force (FR-017, SC-007).
 
-Outcomes are recorded to ``marathon.git_blocks`` (+ JSON mirror
-``git/<block>.json``).
+Crash-window re-drive (FR-018): the durable order is checkpoint-then-commit,
+so a crash in between leaves a complete checkpoint with ``commit_sha IS
+NULL`` — the resume position names "re-drive scoped commit for <stage>" and
+:func:`redrive_commit` re-drives exactly that one boundary. If the crash fell
+*after* the git commit but *before* the sha record, the re-drive detects the
+already-clean paths and records the existing HEAD instead of failing.
 """
 
 from __future__ import annotations
 
-import json
 import subprocess
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Optional
+
+from codeconv.marathon.env import resolve_env
+from codeconv.marathon.models import CheckpointRow, Escalation, MarathonEnv, MarathonRun
+from codeconv.marathon.store import Repository
+
+__all__ = [
+    "CommitPreauthMissing",
+    "commit_block",
+    "commit_push_granted",
+    "push_block",
+    "redrive_commit",
+]
 
 
 class CommitPreauthMissing(RuntimeError):
-    """Raised when commit/push is attempted without the standing grant #1
-    (or after it was revoked) — FR-014/D10."""
+    """Commit/push attempted without the standing grant (or after revocation)."""
 
 
-def _git(repo_root: Any, *args: str) -> subprocess.CompletedProcess:
+def _git(repo_dir: Any, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git", "-C", str(repo_root), *args],
+        ["git", "-C", str(repo_dir), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -34,208 +50,118 @@ def _git(repo_root: Any, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def _commit_push_granted(marathon: Any) -> bool:
+def commit_push_granted(run: Optional[MarathonRun]) -> bool:
     return (
-        marathon is not None
-        and bool(getattr(marathon, "preauth_commit_push", False))
-        and getattr(marathon, "preauth_revoked_at", None) is None
+        run is not None
+        and bool(run.preauth_commit_push)
+        and run.preauth_revoked_at is None
     )
 
 
 def commit_block(
-    store: Any,
-    block_id: str,
+    repo: Repository,
+    run: MarathonRun,
+    cp: CheckpointRow,
     *,
-    files: list[str],
     message: str,
-    repo_root: Any,
-    marathon: Any = None,
-) -> dict[str, Any]:
-    """Stage exactly ``files`` (no sweeping) and commit (hooks run). Requires
-    the standing commit/push grant. Records a ``git_blocks`` row."""
-    from .store import marathon_id_of_block
-
-    mid = marathon_id_of_block(block_id)
-    m = marathon if marathon is not None else store.read_marathon(mid)
-    if not _commit_push_granted(m):
+    repo_dir: Any,
+) -> CheckpointRow:
+    """Stage exactly ``cp.committed_paths`` and commit (hooks run); record the
+    sha on the checkpoint row. Idempotent for the crash-after-commit window."""
+    if not commit_push_granted(run):
         raise CommitPreauthMissing(
-            f"commit/push not preauthorized for marathon {mid!r} "
-            f"(grant at `marathon start --preauth-commit-push`)"
+            f"commit/push not preauthorized for run {run.id!r} "
+            f"(grant preauth_commit_push on the run)"
         )
-    if not files:
-        raise ValueError("commit_block requires at least one file (no sweeping)")
+    paths = list(cp.committed_paths or [])
+    if not paths:
+        raise ValueError("commit_block requires at least one path (no sweeping)")
 
-    add = _git(repo_root, "add", "--", *files)  # ONLY the block's files
+    add = _git(repo_dir, "add", "--", *paths)  # ONLY the block's paths
     if add.returncode != 0:
         raise RuntimeError(f"git add failed: {add.stderr.strip()}")
-    commit = _git(repo_root, "commit", "-m", message)  # hooks run (no --no-verify)
+    commit = _git(repo_dir, "commit", "-m", message)  # hooks run, no --no-verify
     if commit.returncode != 0:
-        raise RuntimeError(
-            f"git commit failed: {(commit.stderr or commit.stdout).strip()}"
-        )
-    sha = _git(repo_root, "rev-parse", "HEAD").stdout.strip()
-    _record_git_block(
-        store, block_id, commit_sha=sha, staged_files=list(files), pushed=False
-    )
-    return {"commit_sha": sha, "staged_files": list(files)}
+        # Re-drive after a crash that fell past the commit: the paths are
+        # already clean ⇒ the commit landed; record HEAD instead of failing.
+        status = _git(repo_dir, "status", "--porcelain", "--", *paths)
+        if status.returncode != 0 or status.stdout.strip():
+            raise RuntimeError(
+                f"git commit failed: {(commit.stderr or commit.stdout).strip()}"
+            )
+    sha = _git(repo_dir, "rev-parse", "HEAD").stdout.strip()
+    if not sha:
+        raise RuntimeError("git rev-parse HEAD returned no sha")
+    return repo.update_checkpoint(cp.id, commit_sha=sha)
 
 
 def push_block(
-    store: Any,
-    block_id: str,
+    repo: Repository,
+    run_id: str,
+    cp: CheckpointRow,
     *,
-    repo_root: Any,
+    repo_dir: Any,
     remote: str = "origin",
     branch: Optional[str] = None,
-) -> dict[str, Any]:
-    """Push the current branch (never ``--force``). A non-fast-forward /
-    rejected push → ``push_blocked`` escalation + stop (FR-015/SC-010)."""
-    from .escalation import write_escalation
-    from .store import marathon_id_of_block
-
+) -> CheckpointRow:
+    """Push the current branch (never ``--force``). Non-FF / rejected →
+    ``push_blocked`` escalation + ``push_escalation`` on the checkpoint."""
     if branch is None:
-        branch = _git(repo_root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        branch = _git(repo_dir, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
 
-    push = _git(repo_root, "push", remote, branch)  # NEVER --force
+    push = _git(repo_dir, "push", remote, branch)  # NEVER --force
     if push.returncode == 0:
-        _update_git_block_push(store, block_id, pushed=True, escalation=None)
-        return {"pushed": True, "escalation": None}
+        return repo.update_checkpoint(cp.id, pushed=True)
 
-    detail = {
-        "remote": remote,
-        "branch": branch,
-        "stderr": push.stderr.strip()[:2000],
-    }
-    eid = write_escalation(
-        store,
-        marathon_id_of_block(block_id),
-        kind="push_blocked",
-        detail=detail,
-        block_id=block_id,
+    esc = repo.insert_escalation(
+        Escalation(
+            run_id=run_id,
+            kind="push_blocked",
+            stage_id=cp.stage_id,
+            detail={
+                "remote": remote,
+                "branch": branch,
+                "sequence_no": cp.sequence_no,
+                "stderr": (push.stderr or push.stdout).strip()[:2000],
+            },
+        )
     )
-    _update_git_block_push(store, block_id, pushed=False, escalation="push_blocked")
-    return {"pushed": False, "escalation": "push_blocked", "escalation_id": eid}
+    return repo.update_checkpoint(
+        cp.id, pushed=False, push_escalation="push_blocked"
+    )
 
 
-# --- git_blocks record (primary + JSON mirror) -----------------------------
-
-
-def _record_git_block(
-    store: Any,
-    block_id: str,
+def redrive_commit(
+    run_id: str,
+    stage_name: str,
     *,
-    commit_sha: Optional[str],
-    staged_files: list[str],
-    pushed: bool,
-    escalation: Optional[str] = None,
-) -> None:
-    from .store import _atomic_write_json, _safe_filename, marathon_id_of_block
-
-    created = None
-    engine = store._primary()
-    if engine is not None:
-        from sqlalchemy import text
-
-        with engine.begin() as conn:
-            row = conn.execute(
-                text(
-                    "INSERT INTO marathon.git_blocks "
-                    "(block_id, commit_sha, staged_files, pushed, escalation) "
-                    "VALUES (:bid, :sha, CAST(:files AS jsonb), :pushed, :esc) "
-                    "RETURNING created_at"
-                ),
-                {
-                    "bid": block_id,
-                    "sha": commit_sha,
-                    "files": json.dumps(staged_files),
-                    "pushed": pushed,
-                    "esc": escalation,
-                },
-            ).one()
-            created = row.created_at
-    if created is None:
-        created = datetime.now(timezone.utc)
-    mid = marathon_id_of_block(block_id)
-    _atomic_write_json(
-        store._marathon_dir(mid) / "git" / f"{_safe_filename(block_id)}.json",
-        {
-            "block_id": block_id,
-            "commit_sha": commit_sha,
-            "staged_files": staged_files,
-            "pushed": pushed,
-            "escalation": escalation,
-            "created_at": created.isoformat(),
-        },
-    )
-
-
-def _update_git_block_push(
-    store: Any, block_id: str, *, pushed: bool, escalation: Optional[str]
-) -> None:
-    from .store import _atomic_write_json, _safe_filename, marathon_id_of_block
-
-    engine = store._primary()
-    if engine is not None:
-        from sqlalchemy import text
-
-        with engine.begin() as conn:
-            conn.execute(
-                text(
-                    "UPDATE marathon.git_blocks SET pushed = :pushed, "
-                    "escalation = :esc WHERE block_id = :bid"
-                ),
-                {"pushed": pushed, "esc": escalation, "bid": block_id},
-            )
-    mid = marathon_id_of_block(block_id)
-    path = store._marathon_dir(mid) / "git" / f"{_safe_filename(block_id)}.json"
-    if path.is_file():
-        try:
-            d = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return
-        d["pushed"] = pushed
-        d["escalation"] = escalation
-        _atomic_write_json(path, d)
-
-
-def read_git_block(store: Any, block_id: str) -> Optional[dict[str, Any]]:
-    from .store import _safe_filename, marathon_id_of_block
-
-    engine = store._primary()
-    if engine is not None:
-        from sqlalchemy import text
-
-        with engine.connect() as conn:
-            row = conn.execute(
-                text(
-                    "SELECT commit_sha, staged_files, pushed, escalation, created_at "
-                    "FROM marathon.git_blocks WHERE block_id = :bid ORDER BY id DESC "
-                    "LIMIT 1"
-                ),
-                {"bid": block_id},
-            ).one_or_none()
-        if row is not None:
-            return {
-                "block_id": block_id,
-                "commit_sha": row.commit_sha,
-                "staged_files": row.staged_files,
-                "pushed": row.pushed,
-                "escalation": row.escalation,
-                "created_at": row.created_at.isoformat() if row.created_at else None,
-            }
-    mid = marathon_id_of_block(block_id)
-    path = store._marathon_dir(mid) / "git" / f"{_safe_filename(block_id)}.json"
-    if path.is_file():
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return None
-    return None
-
-
-__all__ = [
-    "CommitPreauthMissing",
-    "commit_block",
-    "push_block",
-    "read_git_block",
-]
+    message: Optional[str] = None,
+    env: Optional[MarathonEnv] = None,
+    push: bool = True,
+) -> CheckpointRow:
+    """Re-drive the one pending scoped commit for a complete stage whose last
+    checkpoint has ``commit_sha IS NULL`` (FR-018) — before any new work."""
+    env = env if env is not None else resolve_env(run_id)
+    repo = Repository(env)
+    run = repo.get_run(run_id)
+    if run is None:
+        raise ValueError(f"unknown run '{run_id}'")
+    stage = repo.get_stage(run_id, stage_name)
+    if stage is None:
+        raise ValueError(f"unknown stage '{stage_name}' in run '{run_id}'")
+    cps = [c for c in repo.list_checkpoints(run_id) if c.stage_id == stage.id]
+    if not cps:
+        raise ValueError(f"stage '{stage_name}' has no checkpoint to re-drive")
+    last = max(cps, key=lambda c: c.sequence_no)
+    if last.commit_sha is not None:
+        return last  # nothing pending — idempotent
+    if not last.committed_paths:
+        raise ValueError(
+            f"stage '{stage_name}' last checkpoint named no paths; "
+            f"nothing to re-drive"
+        )
+    msg = message or f"marathon {run_id}: re-drive scoped commit for {stage_name}"
+    cp = commit_block(repo, run, last, message=msg, repo_dir=env.repo_dir)
+    if push:
+        cp = push_block(repo, run_id, cp, repo_dir=env.repo_dir)
+    return cp

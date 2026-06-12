@@ -1,52 +1,69 @@
-"""US5 — periodic standardized status report (SC-005).
+"""US4 status-line grammar — bridge-free (T034, FR-019).
 
-A status report must carry all four fields (done / issues / tokens spent +
-remaining / to-do) and be emittable repeatedly (the ~5-min cadence). Fallback
-store — no bridge needed.
+Pins the fixed grammar of ``contracts/status-line.md``:
+
+    marathon <run_id> | done=<d>/<n> | open=<k> | budget=<b>[<unit>] | next=<action>
+
+``build_status_line`` is pure from a ``ResumePosition`` — `<n>` is whatever
+the position carries (the *current* total).
 """
 
 from __future__ import annotations
 
-from .conftest import make_marathon
+import re
+
+from codeconv.marathon.models import ResumePosition
+from codeconv.marathon.status import build_status_line
+
+_GRAMMAR = re.compile(
+    r"^marathon (?P<run>\S+) \| done=(?P<d>\d+)/(?P<n>\d+) \| "
+    r"open=(?P<k>\d+) \| budget=(?P<b>\d+)(?P<unit>\S*) \| next=(?P<action>.+)$"
+)
 
 
-def test_status_has_all_four_fields(marathon_fallback_store) -> None:
-    store = marathon_fallback_store
-    m, b = make_marathon(store, slug="statusfeat", budget=10_000)
-    store.write_checkpoint(
-        b.id,
-        stage="plan",
-        wip_unit="t3",
-        completed_units=["t1", "t2"],
-        remaining_units=["t3", "t4"],
-        workflow_run_id=None,
-        budget_spent=4_000,
+def _pos(**kw) -> ResumePosition:
+    base = dict(
+        run_id="r", done=0, total=0, next_action="register stages",
+        outstanding_issues=0, budget_spent=0, budget_unit=None,
     )
-    store.update_budget_spent(m.id, 4_000)
-
-    from codeconv.marathon.status import build_status
-
-    report = build_status(store, m.id)
-    # All four fields present (SC-005).
-    assert report.done == ["t1", "t2"]
-    assert report.todo == ["t3", "t4"]
-    assert report.issues == []
-    assert report.tokens_spent == 4_000
-    assert report.tokens_remaining == 6_000  # ceiling 10000 - spent 4000
+    base.update(kw)
+    return ResumePosition(**base)
 
 
-def test_status_emits_a_row_per_cadence_tick(marathon_fallback_store) -> None:
-    """Each cadence tick (--emit) persists a report; SC-005's "at least once
-    per interval" is satisfied by repeated emission during active work."""
-    store = marathon_fallback_store
-    m, _b = make_marathon(store, slug="statuscad", budget=10_000)
+def test_contract_example_line():
+    line = build_status_line(
+        _pos(
+            run_id="030-marathon-refinement",
+            done=2,
+            total=7,
+            outstanding_issues=1,
+            budget_spent=41000,
+            budget_unit="tokens",
+            next_action="run mini-plan for item-3",
+        )
+    )
+    assert line == (
+        "marathon 030-marathon-refinement | done=2/7 | open=1 | "
+        "budget=41000tokens | next=run mini-plan for item-3"
+    )
+    match = _GRAMMAR.match(line)
+    assert match is not None
+    assert match.group("n") == "7"  # current total, not registration-time
 
-    from codeconv.marathon.status import emit_status, list_status
 
-    emit_status(store, m.id)
-    emit_status(store, m.id)
+def test_budget_unset_renders_zero_and_grammar_holds():
+    line = build_status_line(_pos(done=1, total=4, next_action="run b"))
+    assert "budget=0 |" in line
+    assert _GRAMMAR.match(line) is not None
 
-    rows = list_status(store, m.id)
-    assert len(rows) == 2
-    for r in rows:  # every persisted report carries all four fields
-        assert set(r) >= {"done", "issues", "tokens_spent", "tokens_remaining", "todo"}
+
+def test_parse_contract_split_on_pipes():
+    line = build_status_line(
+        _pos(run_id="x", done=3, total=9, budget_spent=5, budget_unit="tokens",
+             next_action="run verify")
+    )
+    fields = line.split(" | ")
+    assert fields[0] == "marathon x"
+    assert [f.split("=")[0] for f in fields[1:]] == [
+        "done", "open", "budget", "next",
+    ]  # the four fields, always in this order

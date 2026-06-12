@@ -48,9 +48,9 @@ Database migrations are additive and idempotent; prior heads are never destructi
 - **buildkit analog**: Alembic single-head discipline.
 - **Gate-ability**: machine-checkable.
 
-### VI-b. Single OS-Lock-Guarded PGLite Cluster
-There is exactly one PGLite deployment per repo at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every consumer auto-spawns or discovers the shared bridge; no second cluster is created.
-- **Evidence**: `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`; `CLAUDE.md` "Migration to unified bridge".
+### VI-b. Single OS-Lock-Guarded PGLite Cluster (repo working-data)
+There is exactly one PGLite deployment for the repo's **working data** at `<repo>/.pgdb/`, guarded by an OS-level cross-process lock at the sibling path `<repo>/.pgdb.bridge.lock/`. Every consumer of the repo's working-data cluster auto-spawns or discovers that shared bridge; no second working-data cluster is created. **Exemption (added v1.1.0, 2026-06-11):** ephemeral, per-run *isolated* stores that live **outside** the repo tree and hold transient orchestration state — e.g. the marathon harness's per-run store (feature 030, FR-027) — are NOT the repo working-data cluster and are permitted, provided they are reached through the same `codeconv.bridge_client` infrastructure (not a parallel bridge stack) and are never created inside `<repo>/`.
+- **Evidence**: `specs/012-codeconv-runner/contracts/bridge_lifecycle.md`; `CLAUDE.md` "Migration to unified bridge"; exemption rationale: `specs/030-marathon-refinement/spec.md` FR-027 + `specs/030-marathon-refinement/plan.md` Complexity Tracking.
 - **buildkit analog**: none.
 - **Gate-ability**: judgement-gate-able.
 
@@ -76,4 +76,6 @@ This constitution supersedes ad-hoc practice within its scope. It is FROZEN: ame
 
 **Reference, don't duplicate.** The authoritative texts for every principle above live in `docs/DISCIPLINE.md`, `CLAUDE.md`, and the cited `specs/`. This file points to them; it does not restate them.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-06-10
+**Version**: 1.1.0 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-06-11
+
+*v1.1.0 (2026-06-11): VI-b scoped to the repo working-data cluster; explicit exemption added for ephemeral per-run isolated stores outside the repo (marathon harness, feature 030 FR-027). Owner-approved. MINOR bump — a principle's scope was refined with an explicit carve-out; no principle removed or redefined.*
