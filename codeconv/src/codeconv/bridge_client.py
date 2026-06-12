@@ -333,10 +333,16 @@ def request_force_shutdown(
     *,
     data_dir: Optional[str | os.PathLike[str]] = None,
 ) -> bool:
-    """D — non-destructive force-shutdown. Writes ``<data_dir>/.shutdown``
-    marker; bridge polls and exits gracefully on next tick. Returns True if
-    the marker was written. ``data_dir`` override mirrors
-    :func:`acquire_or_discover`'s — for repos on PGLite-hostile filesystems."""
+    """D — non-destructive force-shutdown. Writes the SIBLING
+    ``<data_dir>.shutdown`` marker; the bridge polls it
+    (``${args.pgdir}.shutdown`` in pglite_bridge.mjs) and exits gracefully on
+    its next tick. Sibling, not inside, for the same reason as the lock and
+    consumers paths: PGLite refuses to initialize a data-dir containing any
+    non-PG file (specs/012 bridge_lifecycle.md). (Fixed 2026-06-12: this
+    previously wrote ``<data_dir>/.shutdown`` — inside — which the bridge
+    never polls; the function was untested/unexercised until feature 030's
+    keeper stop.) Returns True if the marker was written. ``data_dir``
+    override mirrors :func:`acquire_or_discover`'s."""
     repo_root = Path(repo_root).resolve()
     data_dir_path = (
         Path(data_dir).resolve() if data_dir is not None else (repo_root / ".pgdb")
@@ -344,7 +350,7 @@ def request_force_shutdown(
     _check_data_dir_filesystem(data_dir_path)
     if not data_dir_path.is_dir():
         return False
-    marker = data_dir_path / ".shutdown"
+    marker = data_dir_path.parent / (data_dir_path.name + ".shutdown")
     try:
         marker.write_text("requested\n", encoding="utf-8")
     except OSError:

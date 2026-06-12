@@ -13,19 +13,25 @@ at a per-run ``data_dir`` and is reached through the existing, hardened
 from __future__ import annotations
 
 from codeconv.marathon.store.repository import (
+    ConcurrentWriter,
     IntegrityFailure,
     Repository,
     StoreUnavailable,
+    acquire_writer_lock,
     reconcile,
+    release_writer_lock,
     row_payload,
 )
 from codeconv.marathon.store.schema import ensure_schema
 
 __all__ = [
+    "ConcurrentWriter",
     "IntegrityFailure",
     "Repository",
     "StoreUnavailable",
+    "acquire_writer_lock",
     "ensure_schema",
     "reconcile",
+    "release_writer_lock",
     "row_payload",
 ]

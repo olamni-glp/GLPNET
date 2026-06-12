@@ -100,6 +100,7 @@ def _execute(ctx: typer.Context, run_id: str, op, *, json_out: bool) -> None:
     from codeconv.bridge_client import DataDirFilesystemError
     from codeconv.marathon.env import StoreRootInsideRepoError, resolve_env
     from codeconv.marathon.intake import PrereqAgainstCompletedStage
+    from codeconv.marathon.store import ConcurrentWriter
 
     try:
         env = resolve_env(
@@ -117,6 +118,14 @@ def _execute(ctx: typer.Context, run_id: str, op, *, json_out: bool) -> None:
                 "escalation_id": exc.escalation_id,
                 "detail": str(exc),
             },
+            json_out=json_out,
+        )
+        raise typer.Exit(EXIT_ESCALATION)
+    except ConcurrentWriter as exc:
+        # Blocked-not-broken (FR-015): refusal of a second live writer.
+        _emit(
+            ctx,
+            {"escalation": "concurrent_writer", "detail": str(exc)},
             json_out=json_out,
         )
         raise typer.Exit(EXIT_ESCALATION)
@@ -369,6 +378,90 @@ def cmd_finalize(
     _execute(ctx, run, op, json_out=json_out)
 
 
+# --- US3 subcommands (T032): keeper start|stop|recover + doctor ---------------
+
+keeper_app = typer.Typer(
+    add_completion=False,
+    no_args_is_help=True,
+    help="Per-run store keeper lifecycle (start | stop | recover).",
+)
+marathon_app.add_typer(keeper_app, name="keeper")
+
+
+def _endpoint_payload(ep) -> dict:
+    return {
+        "host": ep.host,
+        "port": ep.port,
+        "pid": ep.pid,
+        "data_dir": ep.data_dir,
+    }
+
+
+@keeper_app.command("start")
+def cmd_keeper_start(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Spawn/discover the per-run bridge; publish its endpoint (FR-012)."""
+
+    def op(env):
+        from codeconv.marathon.keeper import start_keeper
+
+        return _endpoint_payload(start_keeper(run, env=env))
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@keeper_app.command("stop")
+def cmd_keeper_stop(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Graceful flush-and-exit; the next start needs no recovery (FR-013)."""
+
+    def op(env):
+        from codeconv.marathon.keeper import stop_keeper
+
+        stop_keeper(run, env=env)
+        return {"run": run, "keeper": "stopped"}
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@keeper_app.command("recover")
+def cmd_keeper_recover(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Auto-clear stale residue; a live bridge is consumed, never killed."""
+
+    def op(env):
+        from codeconv.marathon.keeper import recover_keeper
+
+        return _endpoint_payload(recover_keeper(run, env=env))
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("doctor")
+def cmd_doctor(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Read-only health: endpoint, active store, last-seq, escalations, budget."""
+
+    def op(env):
+        from codeconv.marathon.keeper import doctor
+
+        return doctor(run, env=env)
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
 __all__ = [
     "EXIT_ESCALATION",
     "EXIT_INTERNAL",
@@ -377,5 +470,6 @@ __all__ = [
     "_data_dir",
     "_emit",
     "_repo_root",
+    "keeper_app",
     "marathon_app",
 ]

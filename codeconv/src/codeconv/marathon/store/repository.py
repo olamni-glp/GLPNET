@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
+import portalocker
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -52,10 +53,13 @@ from codeconv.marathon.models import (
 from codeconv.marathon.store.schema import ensure_schema
 
 __all__ = [
+    "ConcurrentWriter",
     "IntegrityFailure",
     "Repository",
     "StoreUnavailable",
+    "acquire_writer_lock",
     "reconcile",
+    "release_writer_lock",
     "row_payload",
 ]
 
@@ -70,6 +74,62 @@ class StoreUnavailable(RuntimeError):
 
 class IntegrityFailure(RuntimeError):
     """The store answered but its content violates an invariant (FR-016)."""
+
+
+class ConcurrentWriter(RuntimeError):
+    """A second concurrent marathon writer was refused (FR-015).
+
+    Raised when another live process holds the per-run writer lock. The
+    message is deliberately distinct from recoverable residue (FR-016):
+    the kernel releases the lock on process exit, so a crashed writer never
+    leaves this condition behind."""
+
+
+# --- single-writer lock (T031; kernel-fd, per-process, per store root) ---------
+# Acquired lazily on the FIRST write and held for process lifetime (released
+# on process exit by the kernel, or explicitly by the keeper's graceful stop).
+# Sequential short-lived writers therefore serialise naturally; concurrent
+# ones are refused. Reads never take the lock (single-WRITER, not -reader).
+
+_WRITER_LOCKS: dict[str, Any] = {}
+
+
+def acquire_writer_lock(env: MarathonEnv) -> None:
+    key = str(env.store_root.resolve())
+    if key in _WRITER_LOCKS:
+        return
+    lock_path = env.store_root / "writer.lock"
+    lock = portalocker.Lock(
+        str(lock_path),
+        mode="ab",
+        timeout=0,
+        flags=portalocker.LOCK_EX | portalocker.LOCK_NB,
+    )
+    try:
+        lock.acquire()
+    except (
+        portalocker.exceptions.LockException,
+        portalocker.exceptions.AlreadyLocked,
+        OSError,
+    ) as exc:
+        raise ConcurrentWriter(
+            f"second concurrent writer refused: another live marathon process "
+            f"holds the writer lock at {lock_path} (FR-015). This is not "
+            f"recoverable residue — the kernel releases the lock when the "
+            f"other writer exits; stop it or wait, do not delete anything."
+        ) from exc
+    _WRITER_LOCKS[key] = lock
+
+
+def release_writer_lock(env: MarathonEnv) -> None:
+    """Explicit release for the keeper's graceful stop (tests / handover);
+    otherwise the kernel releases on process exit."""
+    lock = _WRITER_LOCKS.pop(str(env.store_root.resolve()), None)
+    if lock is not None:
+        try:
+            lock.release()
+        except Exception:
+            pass
 
 
 # --- serialisation ------------------------------------------------------------
@@ -177,12 +237,22 @@ class Repository:
     content (T011's parity assertion).
     """
 
-    def __init__(self, env: MarathonEnv) -> None:
+    def __init__(self, env: MarathonEnv, *, autostart: bool = True) -> None:
         self.env = env
+        # autostart=False = read-only diagnostics mode (keeper's `doctor`):
+        # never spawn/acquire a bridge; use a pre-set env.engine or the mirror.
+        self.autostart = autostart
 
     # --- connection -----------------------------------------------------------
 
     def engine(self) -> Engine:
+        if not self.autostart:
+            if self.env.engine is None:
+                raise StoreUnavailable(
+                    f"per-run store at {self.env.store_root}: no live engine "
+                    f"and autostart is disabled (read-only diagnostics)"
+                )
+            return self.env.engine
         return _connect(self.env)
 
     def _engine_or_none(self) -> Optional[Engine]:
@@ -190,6 +260,9 @@ class Repository:
             return self.engine()
         except StoreUnavailable:
             return None
+
+    def _ensure_writer(self) -> None:
+        acquire_writer_lock(self.env)
 
     # --- JSON mirror (T009) ----------------------------------------------------
 
@@ -231,6 +304,7 @@ class Repository:
         """Idempotent insert: re-attaching an existing run returns it unchanged
         (data-model: "Idempotent upsert on start"); it never clobbers durable
         state with re-register arguments."""
+        self._ensure_writer()
         eng = self.engine()
         with eng.begin() as conn:
             conn.execute(
@@ -303,6 +377,7 @@ class Repository:
     # --- stage --------------------------------------------------------------------
 
     def insert_stage(self, stage: StageRow) -> StageRow:
+        self._ensure_writer()
         eng = self.engine()
         with eng.begin() as conn:
             row = (
@@ -411,6 +486,7 @@ class Repository:
         the primary and mirrors, or — when the per-run bridge is unreachable —
         writes the mirror alone with ``store_origin='fallback'`` so progress
         survives the outage and ``reconcile`` can fast-forward later (D6)."""
+        self._ensure_writer()
         if not cp.sequence_no:
             cp.sequence_no = self.next_sequence_no(cp.run_id)
         eng = self._engine_or_none()
@@ -506,6 +582,7 @@ class Repository:
         defaulted to ``<store_root>/items/<id>`` inside the same transaction
         (the id is only known post-insert; creating the directory itself is
         intake's job — T021/FR-008)."""
+        self._ensure_writer()
         eng = self.engine()
         with eng.begin() as conn:
             row = (
@@ -600,6 +677,7 @@ class Repository:
     # --- issue --------------------------------------------------------------------
 
     def insert_issue(self, issue: Issue) -> Issue:
+        self._ensure_writer()
         eng = self.engine()
         with eng.begin() as conn:
             row = (
@@ -667,6 +745,7 @@ class Repository:
     # --- escalation (substrate write; auto-decision policy is US5's T048) -----------
 
     def insert_escalation(self, esc: Escalation) -> Escalation:
+        self._ensure_writer()
         eng = self.engine()
         with eng.begin() as conn:
             row = (
@@ -731,6 +810,7 @@ class Repository:
         allowed: frozenset[str],
         returning: str,
     ) -> Mapping[str, Any]:
+        self._ensure_writer()
         if not fields:
             raise ValueError(f"update of marathon.{table} requires fields")
         unknown = set(fields) - allowed
