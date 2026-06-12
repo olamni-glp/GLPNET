@@ -424,6 +424,147 @@ def cmd_finalize(
     _execute(ctx, run, op, json_out=json_out)
 
 
+# --- US5 subcommands (T050): gate / rerun / trace / reconcile ------------------
+# `--stage` takes the stage NAME (the human-facing identifier every other
+# subcommand uses); the numeric row id stays internal.
+
+
+def _stage_id_or_usage(env, run: str, stage: str) -> int:
+    from codeconv.marathon.store import Repository
+
+    row = Repository(env).get_stage(run, stage)
+    if row is None or row.id is None:
+        raise ValueError(f"unknown stage '{stage}' in run '{run}'")
+    return row.id
+
+
+@marathon_app.command("gate")
+def cmd_gate(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    stage: str = typer.Option(..., "--stage", help="Stage name."),
+    approve: bool = typer.Option(False, "--approve"),
+    change: bool = typer.Option(False, "--change"),
+    plan: Optional[str] = typer.Option(None, "--plan", help="Plan ref."),
+    by: Optional[str] = typer.Option(None, "--by"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Present the per-stage gate, or record approve/change (FR-020)."""
+
+    def op(env):
+        from codeconv.marathon.gate import present_gate, record_decision
+        from codeconv.marathon.store import Repository
+
+        if approve and change:
+            raise ValueError("--approve and --change are mutually exclusive")
+        stage_id = _stage_id_or_usage(env, run, stage)
+        repo = Repository(env)
+        if approve or change:
+            return record_decision(
+                repo,
+                stage_id,
+                outcome="approve" if approve else "change",
+                decided_by=by,
+                plan_ref=plan,
+            )
+        return present_gate(repo, stage_id, plan_ref=plan or "(unspecified)")
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("rerun")
+def cmd_rerun(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    stage: str = typer.Option(..., "--stage", help="Stage name."),
+    subagent: Optional[str] = typer.Option(None, "--subagent"),
+    units: Optional[str] = typer.Option(
+        None, "--units", help="JSON array of the block's full unit list."
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Per-block (or isolated per-subagent) re-run picture (FR-021)."""
+
+    def op(env):
+        import json as _json
+
+        from codeconv.marathon.orchestrate import rerun_block, rerun_subagent
+        from codeconv.marathon.store import Repository
+
+        repo = Repository(env)
+        if subagent is not None:
+            return rerun_subagent(repo, run, stage, subagent)
+        return rerun_block(
+            repo, run, stage,
+            all_units=_json.loads(units) if units else None,
+        )
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("trace")
+def cmd_trace(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    subject: str = typer.Option(..., "--subject"),
+    input_json: str = typer.Option("{}", "--input", help="experiment_input JSON."),
+    score: Optional[float] = typer.Option(None, "--score"),
+    accept: bool = typer.Option(False, "--accept"),
+    reject: bool = typer.Option(False, "--reject"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Append a verification-trace record (append-only, FR-023)."""
+
+    def op(env):
+        import json as _json
+
+        from codeconv.marathon.store import Repository
+        from codeconv.marathon.trace import write_trace
+
+        if accept and reject:
+            raise ValueError("--accept and --reject are mutually exclusive")
+        trace = write_trace(
+            Repository(env),
+            run,
+            subject=subject,
+            experiment_input=_json.loads(input_json),
+            metric_score=score,
+            decision="reject" if reject else "accept",
+        )
+        return {
+            "run": run,
+            "subject": trace.subject,
+            "refine_seq": trace.refine_seq,
+            "decision": trace.decision,
+            "id": trace.id,
+        }
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("reconcile")
+def cmd_reconcile(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """PGLite ↔ JSON mirror: fast-forward or escalate a fork (exit 2, FR-024)."""
+
+    def op(env):
+        from dataclasses import asdict
+
+        from codeconv.marathon.store import reconcile
+
+        result = reconcile(run, env=env)
+        payload = asdict(result)
+        if result.status == "fork":  # never silently pick — exit 2
+            _emit(ctx, payload, json_out=json_out)
+            raise typer.Exit(EXIT_ESCALATION)
+        return payload
+
+    _execute(ctx, run, op, json_out=json_out)
+
+
 # --- US3 subcommands (T032): keeper start|stop|recover + doctor ---------------
 
 keeper_app = typer.Typer(

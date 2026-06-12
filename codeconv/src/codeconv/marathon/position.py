@@ -61,6 +61,11 @@ def derive_position(
         first_open = next((s for s in ordered if s.status != "complete"), None)
         if first_open is None:
             next_action = "finalise run"  # rule 6
+        elif first_open.status == "awaiting_approval":
+            # Rule 2b (US5/FR-020): the gate is the next action until approved;
+            # record_decision('approve') flips the stage back to pending, so an
+            # approved gate is short-circuited by durable state alone.
+            next_action = f"approve gate for {first_open.name}"
         elif first_open.item_id is not None and first_open.mini_kind:
             next_action = (
                 f"run {first_open.mini_kind.replace('_', '-')} "
@@ -117,12 +122,32 @@ def _pending_commit_stage(
 def resume_position(
     run_id: str, *, env: Optional[MarathonEnv] = None
 ) -> ResumePosition:
-    """I/O wrapper: read the durable rows, derive the position."""
+    """I/O wrapper: reconcile the two stores FIRST (rule 7 / D6 — a true fork
+    stops with the escalation signal, never silently picking a store; a
+    fast-forward proceeds), then derive the position from durable rows."""
     env = env if env is not None else resolve_env(run_id)
     repo = Repository(env)
     run = repo.get_run(run_id)
     if run is None:
         raise ValueError(f"unknown run '{run_id}'; register it first")
+
+    from codeconv.marathon.store import reconcile
+
+    rec = reconcile(run_id, env=env)
+    if rec.status == "fork":
+        return ResumePosition(
+            run_id=run_id,
+            done=0,
+            total=0,
+            next_action=(
+                f"resolve store divergence (escalation {rec.escalation_id})"
+            ),
+            status=run.status,
+            budget_spent=run.budget_spent,
+            budget_unit=run.budget_unit,
+            diverged=True,
+        )
+
     return derive_position(
         run,
         repo.list_stages(run_id),

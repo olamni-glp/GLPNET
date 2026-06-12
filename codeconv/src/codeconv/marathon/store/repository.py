@@ -30,6 +30,7 @@ a doc nit on the data-model tree).
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,14 +43,17 @@ from sqlalchemy.engine import Engine
 from codeconv.bridge_client import DataDirFilesystemError
 from codeconv.db import engine as db_engine
 from codeconv.marathon.models import (
+    Approval,
     CheckpointRow,
     Escalation,
     Issue,
     Item,
     MarathonEnv,
     MarathonRun,
+    ReconcileResult,
     StageRow,
     StatusReport,
+    VerificationTrace,
 )
 from codeconv.marathon.store.schema import ensure_schema
 
@@ -149,6 +153,14 @@ def row_payload(row: Any) -> dict[str, Any]:
     return {k: _jsonable(v) for k, v in asdict(row).items()}
 
 
+_UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+def _safe_filename(token: str) -> str:
+    """Filesystem-safe token for mirror file names (trace subjects)."""
+    return _UNSAFE_FILENAME.sub("_", token)
+
+
 # --- connection (T007) ----------------------------------------------------------
 
 
@@ -206,6 +218,14 @@ _STATUS_COLS = (
     "id, run_id, stage_id, done, issues, tokens_spent, tokens_remaining, "
     "todo, created_at"
 )
+_APPROVAL_COLS = (
+    "id, stage_id, presented_plan_ref, outcome, decided_by, decided_at, "
+    "supersedes_id, created_at"
+)
+_TRACE_COLS = (
+    "id, run_id, subject, refine_seq, experiment_input, metric_score, "
+    "decision, created_at"
+)
 
 _RUN_UPDATABLE = frozenset(
     {
@@ -231,6 +251,7 @@ _ITEM_UPDATABLE = frozenset(
     {"title", "description", "blocks_stage_id", "status", "artifacts_dir"}
 )
 _ISSUE_UPDATABLE = frozenset({"summary", "stage_id", "status"})
+_APPROVAL_UPDATABLE = frozenset({"outcome", "decided_by", "decided_at"})
 
 
 class Repository:
@@ -781,6 +802,142 @@ class Repository:
         self._write_mirror(f"status/{out.id}.json", row_payload(out))
         return out
 
+    # --- approval (T045 gate substrate; append-only, supersedes retained) -----------
+
+    def insert_approval(self, approval: Approval) -> Approval:
+        self._ensure_writer()
+        eng = self.engine()
+        with eng.begin() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "INSERT INTO marathon.approval "
+                        "(stage_id, presented_plan_ref, outcome, decided_by, "
+                        " decided_at, supersedes_id) "
+                        "VALUES (:stage_id, :presented_plan_ref, :outcome, "
+                        " :decided_by, :decided_at, :supersedes_id) "
+                        f"RETURNING {_APPROVAL_COLS}"
+                    ),
+                    {
+                        "stage_id": approval.stage_id,
+                        "presented_plan_ref": approval.presented_plan_ref,
+                        "outcome": approval.outcome,
+                        "decided_by": approval.decided_by,
+                        "decided_at": approval.decided_at,
+                        "supersedes_id": approval.supersedes_id,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+        out = Approval(**dict(row))
+        self._write_mirror(f"approvals/{out.id}.json", row_payload(out))
+        return out
+
+    def update_approval(self, approval_id: int, **fields: Any) -> Approval:
+        row = self._update(
+            "approval", "id", approval_id, fields, _APPROVAL_UPDATABLE,
+            _APPROVAL_COLS,
+        )
+        out = Approval(**dict(row))
+        self._write_mirror(f"approvals/{out.id}.json", row_payload(out))
+        return out
+
+    def list_approvals(self, stage_id: int) -> list[Approval]:
+        eng = self._engine_or_none()
+        if eng is not None:
+            with eng.connect() as conn:
+                rows = (
+                    conn.execute(
+                        text(
+                            f"SELECT {_APPROVAL_COLS} FROM marathon.approval "
+                            "WHERE stage_id = :sid ORDER BY id"
+                        ),
+                        {"sid": stage_id},
+                    )
+                    .mappings()
+                    .all()
+                )
+            return [Approval(**dict(r)) for r in rows]
+        payloads = [
+            p
+            for p in self._read_mirror_dir("approvals")
+            if p.get("stage_id") == stage_id
+        ]
+        approvals = [Approval(**p) for p in payloads]
+        approvals.sort(key=lambda a: a.id or 0)
+        return approvals
+
+    # --- verification_trace (T047; append-only, UNIQUE (run,subject,seq)) -----------
+
+    def insert_trace(self, trace: VerificationTrace) -> VerificationTrace:
+        self._ensure_writer()
+        eng = self.engine()
+        with eng.begin() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "INSERT INTO marathon.verification_trace "
+                        "(run_id, subject, refine_seq, experiment_input, "
+                        " metric_score, decision) "
+                        "VALUES (:run_id, :subject, :refine_seq, "
+                        " CAST(:experiment_input AS jsonb), :metric_score, "
+                        " :decision) "
+                        f"RETURNING {_TRACE_COLS}"
+                    ),
+                    {
+                        "run_id": trace.run_id,
+                        "subject": trace.subject,
+                        "refine_seq": trace.refine_seq,
+                        "experiment_input": json.dumps(trace.experiment_input),
+                        "metric_score": trace.metric_score,
+                        "decision": trace.decision,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+        out = VerificationTrace(**dict(row))
+        safe = _safe_filename(out.subject)
+        self._write_mirror(
+            f"traces/{safe}-{out.refine_seq}.json", row_payload(out)
+        )
+        return out
+
+    def list_traces(
+        self, run_id: str, *, subject: Optional[str] = None
+    ) -> list[VerificationTrace]:
+        eng = self._engine_or_none()
+        if eng is not None:
+            clause = "" if subject is None else " AND subject = :subject"
+            params: dict[str, Any] = {"run_id": run_id}
+            if subject is not None:
+                params["subject"] = subject
+            with eng.connect() as conn:
+                rows = (
+                    conn.execute(
+                        text(
+                            f"SELECT {_TRACE_COLS} "
+                            "FROM marathon.verification_trace "
+                            f"WHERE run_id = :run_id{clause} "
+                            "ORDER BY subject, refine_seq"
+                        ),
+                        params,
+                    )
+                    .mappings()
+                    .all()
+                )
+            return [VerificationTrace(**dict(r)) for r in rows]
+        payloads = [
+            p
+            for p in self._read_mirror_dir("traces")
+            if p.get("run_id") == run_id
+            and (subject is None or p.get("subject") == subject)
+        ]
+        traces = [VerificationTrace(**p) for p in payloads]
+        traces.sort(key=lambda t: (t.subject, t.refine_seq))
+        return traces
+
     # --- escalation (substrate write; auto-decision policy is US5's T048) -----------
 
     def insert_escalation(self, esc: Escalation) -> Escalation:
@@ -873,6 +1030,165 @@ class Repository:
             )
 
 
-def reconcile(run_id: str, *, env: Optional[MarathonEnv] = None) -> Any:
-    """PGLite ↔ JSON-mirror reconciliation (FR-024/D6) — lands with US5 (T049)."""
-    raise NotImplementedError("reconcile is implemented in US5 (T049)")
+def reconcile(
+    run_id: str, *, env: Optional[MarathonEnv] = None
+) -> ReconcileResult:
+    """Per-run PGLite ↔ JSON-mirror reconciliation by ``sequence_no`` (T049,
+    FR-024/D6) over the checkpoint substrate (the sole source of truth for
+    resume):
+
+    - identical max + identical shared rows → ``in_sync``;
+    - one store ahead, shared rows identical → **fast-forward the stale
+      store** (FK-safe: stages are primary-written and referenced by id) and
+      re-mirror so both stores converge byte-wise;
+    - a shared ``sequence_no`` whose content differs → a **true fork**: write
+      a ``store_divergence`` escalation and return ``fork`` — never silently
+      pick either store.
+
+    Stage/run rows are dual-written on every mutation; the checkpoint stream
+    is the reconciliation spine (data-model: checkpoint = append-only source
+    of truth)."""
+    if env is None:
+        from codeconv.marathon.env import resolve_env
+
+        env = resolve_env(run_id)
+    repo = Repository(env)
+
+    primary_rows: dict[int, CheckpointRow] = {
+        cp.sequence_no: cp
+        for cp in _primary_checkpoints(repo, run_id)
+    }
+    fallback_payloads: dict[int, dict[str, Any]] = {}
+    for payload in repo._read_mirror_dir("checkpoints"):
+        if payload.get("run_id") != run_id:
+            continue
+        try:
+            fallback_payloads[int(payload["sequence_no"])] = payload
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    primary_seq = max(primary_rows, default=0)
+    fallback_seq = max(fallback_payloads, default=0)
+
+    # 1. A shared sequence_no with differing content = a true fork.
+    for seq in sorted(set(primary_rows) & set(fallback_payloads)):
+        if row_payload(primary_rows[seq]) != fallback_payloads[seq]:
+            esc = repo.insert_escalation(
+                Escalation(
+                    run_id=run_id,
+                    kind="store_divergence",
+                    stage_id=primary_rows[seq].stage_id,
+                    detail={
+                        "sequence_no": seq,
+                        "primary": row_payload(primary_rows[seq]),
+                        "fallback": fallback_payloads[seq],
+                    },
+                )
+            )
+            return ReconcileResult(
+                status="fork",
+                primary_seq=primary_seq,
+                fallback_seq=fallback_seq,
+                escalation_id=esc.id,
+            )
+
+    # 2. Same frontier, same content → in sync.
+    if primary_seq == fallback_seq:
+        return ReconcileResult(
+            status="in_sync", primary_seq=primary_seq, fallback_seq=fallback_seq
+        )
+
+    # 3. Fast-forward the stale store from the ahead one.
+    if primary_seq > fallback_seq:
+        for seq in sorted(set(primary_rows) - set(fallback_payloads)):
+            repo._write_mirror(
+                f"checkpoints/{seq}.json", row_payload(primary_rows[seq])
+            )
+        winner = "primary"
+    else:
+        for seq in sorted(set(fallback_payloads) - set(primary_rows)):
+            inserted = _insert_checkpoint_verbatim(
+                repo, fallback_payloads[seq]
+            )
+            # Converge byte-wise: the mirror now carries the primary's row
+            # (id assigned, created_at preserved) so future compares match.
+            repo._write_mirror(
+                f"checkpoints/{seq}.json", row_payload(inserted)
+            )
+        winner = "fallback"
+    return ReconcileResult(
+        status="fast_forward",
+        primary_seq=primary_seq,
+        fallback_seq=fallback_seq,
+        winner=winner,
+    )
+
+
+def _primary_checkpoints(repo: Repository, run_id: str) -> list[CheckpointRow]:
+    eng = repo._engine_or_none()
+    if eng is None:
+        return []
+    with eng.connect() as conn:
+        rows = (
+            conn.execute(
+                text(
+                    f"SELECT {_CHECKPOINT_COLS} FROM marathon.checkpoint "
+                    "WHERE run_id = :run_id ORDER BY sequence_no"
+                ),
+                {"run_id": run_id},
+            )
+            .mappings()
+            .all()
+        )
+    return [CheckpointRow(**dict(r)) for r in rows]
+
+
+def _insert_checkpoint_verbatim(
+    repo: Repository, payload: Mapping[str, Any]
+) -> CheckpointRow:
+    """Fast-forward insert of a fallback-written checkpoint into the primary,
+    preserving sequence_no / store_origin / created_at (FK-safe: the stage row
+    already exists in the primary)."""
+    repo._ensure_writer()
+    created_at = payload.get("created_at")
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at)
+    eng = repo.engine()
+    with eng.begin() as conn:
+        row = (
+            conn.execute(
+                text(
+                    "INSERT INTO marathon.checkpoint "
+                    "(run_id, stage_id, sequence_no, wip_unit, completed_units, "
+                    " remaining_units, budget_spent, committed_paths, commit_sha, "
+                    " pushed, push_escalation, workflow_run_id, store_origin, "
+                    " created_at) "
+                    "VALUES (:run_id, :stage_id, :sequence_no, :wip_unit, "
+                    " CAST(:completed_units AS jsonb), "
+                    " CAST(:remaining_units AS jsonb), :budget_spent, "
+                    " CAST(:committed_paths AS jsonb), :commit_sha, :pushed, "
+                    " :push_escalation, :workflow_run_id, :store_origin, "
+                    " COALESCE(:created_at, NOW())) "
+                    f"RETURNING {_CHECKPOINT_COLS}"
+                ),
+                {
+                    "run_id": payload["run_id"],
+                    "stage_id": payload["stage_id"],
+                    "sequence_no": int(payload["sequence_no"]),
+                    "wip_unit": payload.get("wip_unit"),
+                    "completed_units": json.dumps(payload.get("completed_units", [])),
+                    "remaining_units": json.dumps(payload.get("remaining_units", [])),
+                    "budget_spent": int(payload.get("budget_spent", 0)),
+                    "committed_paths": json.dumps(payload.get("committed_paths", [])),
+                    "commit_sha": payload.get("commit_sha"),
+                    "pushed": bool(payload.get("pushed", False)),
+                    "push_escalation": payload.get("push_escalation"),
+                    "workflow_run_id": payload.get("workflow_run_id"),
+                    "store_origin": payload.get("store_origin", "fallback"),
+                    "created_at": created_at,
+                },
+            )
+            .mappings()
+            .one()
+        )
+    return CheckpointRow(**dict(row))

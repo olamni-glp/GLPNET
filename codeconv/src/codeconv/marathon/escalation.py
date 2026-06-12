@@ -1,31 +1,33 @@
-"""Auto-mode escalation policy + the durable escalation-row writer.
+"""Auto-mode escalation policy + the durable escalation writer (T048).
 
-Two parts:
-
-- :func:`write_escalation` (added here for US1 — store reconcile's fork path,
-  T020): the durable writer. An escalation is recorded to the primary when
-  reachable AND always mirrored to the JSON fallback, because some
-  escalations (notably ``store_divergence``) arise precisely when the bridge
-  is flapping — the record must survive that.
-- The auto-mode *policy* (FR-022/023, D11) — exactly two block-points (the
-  plan-approval gate + escalations) and the decision table — is consolidated
-  in :func:`auto_decision` at Polish (T046).
-
-The JSON fallback layout (data-model.md) does not enumerate an
-``escalations/`` dir; this module adds one as the natural mirror so an
-escalation is durable in fallback mode too (flagged for Gabi — small,
-layout-consistent extension).
-"""
+Ported 024 semantics over the per-run store: :func:`write_escalation` records
+to the primary AND the JSON mirror (some escalations — notably
+``store_divergence`` — arise precisely when the bridge is flapping; the
+record must survive that). The auto-mode *policy* is unchanged: exactly two
+block-points (the plan-approval gate + escalations); everything else
+proceeds. New kinds vs 024 (data-model): ``budget_exceeded`` (dedicated, no
+longer borrowing ``stage_flagged``) and ``prereq_against_completed_stage``
+(written by intake)."""
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any, Optional
 
+from codeconv.marathon.models import ESCALATION_KINDS, Escalation
+from codeconv.marathon.store import Repository
 
-# --- auto-mode policy: exactly two block-points (T046, FR-022/023, D11) -----
+__all__ = [
+    "AutoDecision",
+    "auto_decision",
+    "is_block_point",
+    "open_escalations",
+    "preauthorizations",
+    "write_escalation",
+]
+
+
+# --- auto-mode policy: exactly two block-points ------------------------------
 
 
 @dataclass
@@ -34,31 +36,26 @@ class AutoDecision:
 
     proceed: bool
     action: str
-    block_point: Optional[str] = None  # "gate" | "escalation" when not proceeding
-    escalation_kind: Optional[str] = None  # set when block_point == "escalation"
+    block_point: Optional[str] = None  # "gate" | "escalation" when blocked
+    escalation_kind: Optional[str] = None  # set when block_point=="escalation"
 
 
-# In auto-mode the harness is autonomous INSIDE an approved block and blocks
-# for Gabi at exactly two kinds of point: (a) the plan-approval gate, and
-# (b) escalations. Everything else proceeds. (contracts/escalation.md.)
 def auto_decision(
     situation: str,
     *,
     retry_budget_remaining: bool = False,
     approved: bool = False,
 ) -> AutoDecision:
-    """Encode the contracts/escalation.md decision table. ``situation`` is one
-    of: ``subagent_failure``, ``push_fast_forward``, ``push_non_ff``,
-    ``reconcile_fast_forward``, ``reconcile_fork``, ``mutating_block``,
-    ``budget_ceiling``, ``stage_flagged``."""
+    """The decision table. ``situation`` ∈ {subagent_failure,
+    push_fast_forward, push_non_ff, reconcile_fast_forward, reconcile_fork,
+    mutating_block, budget_ceiling, stage_flagged,
+    prereq_against_completed_stage}."""
     if situation == "subagent_failure":
         if retry_budget_remaining:
             return AutoDecision(True, "rerun_from_checkpoint")
-        return AutoDecision(
-            False, "escalate", "escalation", "non_retryable_failure"
-        )
+        return AutoDecision(False, "escalate", "escalation", "non_retryable_failure")
     if situation == "push_fast_forward":
-        return AutoDecision(True, "commit_push_block")  # grant #1
+        return AutoDecision(True, "commit_push_block")  # standing grant #1
     if situation == "push_non_ff":
         return AutoDecision(False, "escalate", "escalation", "push_blocked")
     if situation == "reconcile_fast_forward":
@@ -70,9 +67,15 @@ def auto_decision(
             return AutoDecision(True, "proceed")  # approval on record — no re-ask
         return AutoDecision(False, "present_gate_and_wait", "gate")
     if situation == "budget_ceiling":
-        return AutoDecision(False, "safe_checkpoint_then_halt", "escalation")
+        return AutoDecision(
+            False, "safe_checkpoint_then_halt", "escalation", "budget_exceeded"
+        )
     if situation == "stage_flagged":
         return AutoDecision(False, "escalate", "escalation", "stage_flagged")
+    if situation == "prereq_against_completed_stage":
+        return AutoDecision(
+            False, "escalate", "escalation", "prereq_against_completed_stage"
+        )
     raise ValueError(f"unknown auto-mode situation {situation!r}")
 
 
@@ -81,132 +84,51 @@ def is_block_point(decision: AutoDecision) -> bool:
     return not decision.proceed and decision.block_point in ("gate", "escalation")
 
 
+# --- durable writer + readers -------------------------------------------------
+
+
 def write_escalation(
-    store: Any,
-    marathon_id: str,
+    store: Repository,
+    run_id: str,
     *,
     kind: str,
     detail: dict[str, Any],
-    block_id: Optional[str] = None,
+    stage_id: Optional[int] = None,
 ) -> Optional[int]:
-    """Append an ``escalations`` row (append-only) to the primary (if up) and
-    the JSON mirror (always). Returns the escalation id.
-
-    ``kind`` ∈ {non_retryable_failure, store_divergence, push_blocked,
-    stage_flagged} (data-model CHECK). On creation the harness durably
-    checkpoints and waits — it never auto-resolves (FR-022)."""
-    from .store import _atomic_write_json
-
-    eid: Optional[int] = None
-    created: Optional[datetime] = None
-
-    engine = store._primary()
-    if engine is not None:
-        from sqlalchemy import text
-
-        with engine.begin() as conn:
-            row = conn.execute(
-                text(
-                    "INSERT INTO marathon.escalations "
-                    "(marathon_id, block_id, kind, detail) "
-                    "VALUES (:mid, :bid, :kind, CAST(:detail AS jsonb)) "
-                    "RETURNING id, created_at"
-                ),
-                {
-                    "mid": marathon_id,
-                    "bid": block_id,
-                    "kind": kind,
-                    "detail": json.dumps(detail),
-                },
-            ).one()
-            eid = int(row.id)
-            created = row.created_at
-
-    if created is None:
-        created = datetime.now(timezone.utc)
-
-    edir = store._marathon_dir(marathon_id) / "escalations"
-    if eid is None:
-        existing = (
-            [int(p.stem) for p in edir.glob("*.json") if p.stem.isdigit()]
-            if edir.is_dir()
-            else []
+    """Append an escalation row (primary + JSON mirror — dual-store). On
+    creation the harness durably checkpoints and waits — never auto-resolves."""
+    if kind not in ESCALATION_KINDS:
+        raise ValueError(
+            f"kind must be one of {ESCALATION_KINDS}, got {kind!r}"
         )
-        eid = (max(existing) + 1) if existing else 1
-
-    _atomic_write_json(
-        edir / f"{eid}.json",
-        {
-            "id": eid,
-            "marathon_id": marathon_id,
-            "block_id": block_id,
-            "kind": kind,
-            "detail": detail,
-            "resolved_at": None,
-            "created_at": created.isoformat(),
-        },
+    esc = store.insert_escalation(
+        Escalation(run_id=run_id, kind=kind, stage_id=stage_id, detail=detail)
     )
-    return eid
+    return esc.id
 
 
-def open_escalations(store: Any, marathon_id: str) -> list[dict[str, Any]]:
-    """Return unresolved escalations (primary if reachable, else JSON mirror)
-    — used by ``marathon doctor`` (contracts/cli.md)."""
-    engine = store._primary()
-    if engine is not None:
-        from sqlalchemy import text
-
-        with engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    "SELECT id, kind, block_id, detail, created_at "
-                    "FROM marathon.escalations "
-                    "WHERE marathon_id = :mid AND resolved_at IS NULL "
-                    "ORDER BY id"
-                ),
-                {"mid": marathon_id},
-            ).all()
-        return [
-            {
-                "id": int(r.id),
-                "kind": r.kind,
-                "block_id": r.block_id,
-                "detail": r.detail,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in rows
-        ]
-
-    edir = store._marathon_dir(marathon_id) / "escalations"
-    out: list[dict[str, Any]] = []
-    if edir.is_dir():
-        for fp in sorted(edir.glob("*.json")):
-            try:
-                d = json.loads(fp.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            if d.get("resolved_at") is None:
-                out.append(d)
-    return out
+def open_escalations(store: Repository, run_id: str) -> list[dict[str, Any]]:
+    """Unresolved escalations (primary if reachable, else JSON mirror) —
+    surfaced by ``marathon doctor``."""
+    return [
+        {
+            "id": e.id,
+            "kind": e.kind,
+            "stage_id": e.stage_id,
+            "detail": e.detail,
+            "created_at": str(e.created_at) if e.created_at else None,
+        }
+        for e in store.list_escalations(run_id, open_only=True)
+    ]
 
 
-def preauthorizations(marathon: Any) -> dict[str, bool]:
-    """The two — and only two — standing grants and their live state (D10).
-    Both are revoked together by ``preauth_revoked_at``."""
-    revoked = getattr(marathon, "preauth_revoked_at", None) is not None
+def preauthorizations(run: Any) -> dict[str, bool]:
+    """The two — and only two — standing grants and their live state. Both
+    are revoked together by ``preauth_revoked_at``."""
+    revoked = getattr(run, "preauth_revoked_at", None) is not None
     return {
-        "commit_push": bool(getattr(marathon, "preauth_commit_push", False))
+        "commit_push": bool(getattr(run, "preauth_commit_push", False))
         and not revoked,
-        "workflow_optin": bool(getattr(marathon, "preauth_workflow_optin", False))
+        "workflow_optin": bool(getattr(run, "preauth_workflow_optin", False))
         and not revoked,
     }
-
-
-__all__ = [
-    "AutoDecision",
-    "auto_decision",
-    "is_block_point",
-    "open_escalations",
-    "preauthorizations",
-    "write_escalation",
-]
