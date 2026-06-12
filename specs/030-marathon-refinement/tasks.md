@@ -172,8 +172,8 @@ behave as in 024, now over registrable/dynamic/mini stages.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T051 [P] Add `codeconv/tests/test_marathon_cli_parity.py`: assert every CLI subcommand maps to exactly one public library function and vice-versa (FR-025).
-- [ ] T052 [P] Add `codeconv/tests/test_marathon_resume_determinism.py`: the resume position is byte-identical when computed twice from durable state (simulating full-context vs total-context-loss) (SC-008).
+- [X] T051 [P] Add `codeconv/tests/test_marathon_cli_parity.py`: assert every CLI subcommand maps to exactly one public library function and vice-versa (FR-025). **DONE 2026-06-12**: parity table = contracts/cli.md verbatim; mechanical both-direction check via Typer introspection + callback-source import scan (bridge-free); `position` handled as the one documented alias; flag-variant rows (gate/rerun/status) carry their per-variant pair. 3/3; marathon set 29/29.
+- [X] T052 [P] Add `codeconv/tests/test_marathon_resume_determinism.py`: the resume position is byte-identical when computed twice from durable state (simulating full-context vs total-context-loss) (SC-008). **DONE 2026-06-12**: canonical-JSON byte compare across (1) warm in-process, (2) fresh env + engine cache (`reset_engine_cache_for_tests`), (3) a separate Python process sharing only the durable store; state exercises rules 2/3 (blocking minis ahead of `c`), budget + open issue. 1/1.
 - [ ] T053 Add the single-head regression guard `codeconv/tests/test_migration_marathon_no_new_head.py`: assert the shared-repo Alembic head is still `0010` (the refined harness adds **no** shared-cluster migration — Constitution VI-a, D2).
 - [ ] T054 [P] Confirm no LM/API path is introduced: a grep test asserting zero `OPENAI_API_KEY`/`litellm`/`openai` tokens on any marathon code path (Constitution V).
 - [ ] T055 Update `codeconv` docs / `CLAUDE.md` "marathon-stage-harness" references to the refined data-driven model + per-run isolated store (point at this feature's contracts); note 024 schema is inert history (VIII single-source-of-truth).
