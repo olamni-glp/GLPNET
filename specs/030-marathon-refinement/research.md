@@ -131,3 +131,28 @@ technical decisions and the reconciliation findings that the design depends on.
   `_check_data_dir_filesystem` fails (exit 64). The marathon root default must therefore be a guaranteed-
   NTFS user-level path (consistent with the canonical `C:/pglite/...` convention), not, e.g., a path the user
   might place on exFAT removable media. Captured as a quickstart/contract note.
+
+## T001 — Greenfield precondition verification (2026-06-12, implement Phase 1)
+
+Queried the shared cluster (`--data-dir C:/pglite/research/glpnet`, schema `marathon`) directly for any
+in-flight 024 run before beginning the in-place rewrite (FR-029 precondition).
+
+**Raw finding** — schema `marathon` exists with its 8 024 tables. **2** `marathons` rows, **27**
+`checkpoints`, and **9 non-final `stage_blocks`** (status `<> 'done'`):
+
+| marathon_id | feature_slug | non-final blocks | budget_spent |
+|---|---|---|---|
+| `ma75cf583` | multi-protocol-link-layer (025) | 1 `awaiting_approval` + 3 `running` | 394 418 |
+| `m57f4c46e` | 027-refinement-verification-framework | 5 `running` (2 `done`) | 200 000 |
+
+**Determination: NO live 024 marathon is in flight.** Both non-final rows are **stale residue from features
+already shipped to `main`** — they are *exactly* the never-advanced-row defect feature 030 exists to remedy,
+not live work:
+- **027** — merged to `main` via PR #30 (merge commit `a43d1280`), feature complete 28/28, yet its row still
+  shows 5 `running` blocks. Tag `v2026.06.10.1`.
+- **025** — shipped under tag `v2026.06.08.1`; its commit is an ancestor of the current `030-marathon-refinement`
+  branch. Row left at `awaiting_approval`/`running`.
+
+This **refines D8's wording**: the records are *not* "all complete" at the harness level — the *work* shipped
+but the *rows* are stale-not-final. The greenfield rewrite is unaffected: 030's per-run isolated store never
+reads these `marathon.*` rows; they remain inert history (D8/FR-029). Precondition satisfied → rewrite proceeds.
