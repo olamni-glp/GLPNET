@@ -119,6 +119,27 @@ def checkpoint(
     for summary in issues or []:
         repo.insert_issue(Issue(run_id=run_id, summary=summary, stage_id=stage.id))
 
+    # T039/D9: the scoped commit boundary — checkpoint durably written FIRST,
+    # then commit + push (crash in between ⇒ rule-2a re-drive). Runs only under
+    # the standing grant; without it the named paths are informational and the
+    # driving agent commits itself.
+    from codeconv.marathon.gitblock import commit_block, commit_push_granted, push_block
+
+    if cp.committed_paths and commit_push_granted(run):
+        default_msg = (
+            f"marathon {run_id}: {name} checkpoint {cp.sequence_no}"
+        )
+        cp = commit_block(
+            repo, run, cp, message=message or default_msg, repo_dir=env.repo_dir
+        )
+        cp = push_block(repo, run_id, cp, repo_dir=env.repo_dir)
+
+    # T038/FR-019: a status report at every stage boundary.
+    if block_complete:
+        from codeconv.marathon.status import emit_status
+
+        emit_status(run_id, env=env)
+
     return cp
 
 

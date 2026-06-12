@@ -49,7 +49,13 @@ def derive_position(
     total = len(ordered)
     done = sum(1 for s in ordered if s.status == "complete")
 
-    if total == 0:
+    redrive = _pending_commit_stage(run, ordered, checkpoints)
+    if redrive is not None:
+        # Rule 2a (T037, D9/FR-018 crash-window guard): a complete stage whose
+        # last checkpoint intended a commit (named paths, preauth granted) but
+        # carries no sha — re-drive that ONE scoped commit before any new work.
+        next_action = f"re-drive scoped commit for {redrive.name}"
+    elif total == 0:
         next_action = "register stages"  # rule 5
     else:
         first_open = next((s for s in ordered if s.status != "complete"), None)
@@ -73,6 +79,39 @@ def derive_position(
         budget_spent=run.budget_spent,
         budget_unit=run.budget_unit,
     )
+
+
+def _pending_commit_stage(
+    run: MarathonRun,
+    ordered: Sequence[StageRow],
+    checkpoints: Sequence[CheckpointRow],
+):
+    """The first complete stage (in order) whose LAST checkpoint completed the
+    block (remaining==[]) with named ``committed_paths`` but ``commit_sha``
+    NULL — the crash window between checkpoint-write and scoped commit.
+
+    Gated on the run's standing grant: without ``preauth_commit_push`` the
+    commit was never the harness's to drive, so paths-without-sha is merely
+    informational (no false re-drive loop). Pure — no I/O."""
+    if not run.preauth_commit_push or run.preauth_revoked_at is not None:
+        return None
+    last_by_stage: dict[int, CheckpointRow] = {}
+    for cp in checkpoints:
+        prev = last_by_stage.get(cp.stage_id)
+        if prev is None or cp.sequence_no > prev.sequence_no:
+            last_by_stage[cp.stage_id] = cp
+    for stage in ordered:
+        if stage.status != "complete" or stage.id is None:
+            continue
+        cp = last_by_stage.get(stage.id)
+        if (
+            cp is not None
+            and not cp.remaining_units
+            and cp.committed_paths
+            and cp.commit_sha is None
+        ):
+            return stage
+    return None
 
 
 def resume_position(

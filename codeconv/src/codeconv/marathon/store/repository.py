@@ -49,6 +49,7 @@ from codeconv.marathon.models import (
     MarathonEnv,
     MarathonRun,
     StageRow,
+    StatusReport,
 )
 from codeconv.marathon.store.schema import ensure_schema
 
@@ -201,6 +202,10 @@ _ITEM_COLS = (
 )
 _ISSUE_COLS = "id, run_id, stage_id, summary, status, created_at"
 _ESCALATION_COLS = "id, run_id, stage_id, kind, detail, resolved_at, created_at"
+_STATUS_COLS = (
+    "id, run_id, stage_id, done, issues, tokens_spent, tokens_remaining, "
+    "todo, created_at"
+)
 
 _RUN_UPDATABLE = frozenset(
     {
@@ -740,6 +745,40 @@ class Repository:
         )
         out = Issue(**dict(row))
         self._write_mirror(f"issues/{out.id}.json", row_payload(out))
+        return out
+
+    # --- status_report (T038) ---------------------------------------------------------
+
+    def insert_status_report(self, report: StatusReport) -> StatusReport:
+        self._ensure_writer()
+        eng = self.engine()
+        with eng.begin() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "INSERT INTO marathon.status_report "
+                        "(run_id, stage_id, done, issues, tokens_spent, "
+                        " tokens_remaining, todo) "
+                        "VALUES (:run_id, :stage_id, CAST(:done AS jsonb), "
+                        " CAST(:issues AS jsonb), :tokens_spent, "
+                        " :tokens_remaining, CAST(:todo AS jsonb)) "
+                        f"RETURNING {_STATUS_COLS}"
+                    ),
+                    {
+                        "run_id": report.run_id,
+                        "stage_id": report.stage_id,
+                        "done": json.dumps(report.done),
+                        "issues": json.dumps(report.issues),
+                        "tokens_spent": report.tokens_spent,
+                        "tokens_remaining": report.tokens_remaining,
+                        "todo": json.dumps(report.todo),
+                    },
+                )
+                .mappings()
+                .one()
+            )
+        out = StatusReport(**dict(row))
+        self._write_mirror(f"status/{out.id}.json", row_payload(out))
         return out
 
     # --- escalation (substrate write; auto-decision policy is US5's T048) -----------

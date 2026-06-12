@@ -276,15 +276,61 @@ def cmd_checkpoint(
             message=message,
             env=env,
         )
-        return {
+        payload = {
             "run": run,
             "stage": name,
             "sequence_no": cp.sequence_no,
             "store_origin": cp.store_origin,
             "remaining_units": cp.remaining_units,
+            "commit_sha": cp.commit_sha,
+            "pushed": cp.pushed,
+            "push_escalation": cp.push_escalation,
         }
+        if cp.push_escalation:  # blocked, not broken (FR-017) — exit 2
+            _emit(ctx, payload, json_out=json_out)
+            raise typer.Exit(EXIT_ESCALATION)
+        return payload
 
     _execute(ctx, run, op, json_out=json_out)
+
+
+@marathon_app.command("status")
+def cmd_status(
+    ctx: typer.Context,
+    run: str = typer.Option(..., "--run"),
+    emit: bool = typer.Option(
+        False, "--emit", help="Also persist a status_report row."
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """The parseable status line (FR-019); --emit persists the report."""
+    # Prints the BARE line (parse contract: split on ' | ') unless JSON mode.
+    from codeconv.bridge_client import DataDirFilesystemError
+    from codeconv.marathon.env import StoreRootInsideRepoError, resolve_env
+
+    try:
+        env = resolve_env(run, data_dir=_data_dir(ctx), repo_dir=_repo_root(ctx))
+        from codeconv.marathon.status import emit_status, status_line
+
+        line = status_line(run, env=env)
+        report = emit_status(run, env=env) if emit else None
+    except (DataDirFilesystemError, StoreRootInsideRepoError, ValueError) as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(EXIT_USAGE)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        typer.echo(f"internal error: {exc}", err=True)
+        raise typer.Exit(EXIT_INTERNAL)
+    if json_out or _ctx_flag(ctx, "json"):
+        from dataclasses import asdict
+
+        payload = {"line": line}
+        if report is not None:
+            payload["report"] = asdict(report)
+        _emit(ctx, payload, json_out=True)
+    else:
+        typer.echo(line)
 
 
 def _cmd_resume_impl(ctx: typer.Context, run: str, json_out: bool) -> None:
