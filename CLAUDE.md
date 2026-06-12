@@ -317,13 +317,22 @@ or post-crash) locate yourself in this order:
 
 `docs/current_plan.md` is now only a **thin pointer** to the above, not a work ledger — do
 not resurrect the old "write the full plan here and resume from it" mechanism. The
-**marathon-stage-harness** (feature 024, **implemented** as `codeconv.marathon` — PGLite
-schema `marathon` via Alembic `0010` + JSON fallback) owns the durable cross-session
-checkpoint + compaction/crash-recovery protocol that makes steps 2–3 instant and reliable:
-detect a compaction/crash → recover from the last durable checkpoint → skip partial work,
-tidy up → continue. After the roadmap→pipeline→tasks order above, run
-`codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
-for the max-`sequence_no` checkpoint (never a summary). See `/marathon-stage-harness`.
+**marathon-stage-harness** (refined by feature 030 as the **data-driven** `codeconv.marathon`:
+a registrable + growable stage list, a **per-run isolated store OUTSIDE any repo** —
+`<store_root>/pgdb` PGLite cluster + `<store_root>/json` mirror, owned by a background
+keeper — emergent-work intake with a 5-stage mini-pipeline, and 024's preserved strengths:
+gate, re-run, budget ceiling, trace, reconcile; contracts at
+`specs/030-marathon-refinement/contracts/`) owns the durable cross-session checkpoint +
+compaction/crash-recovery protocol that makes steps 2–3 instant and reliable: detect a
+compaction/crash → recover from the last durable checkpoint → skip partial work, tidy up →
+continue. The 024 shared-cluster schema (`marathon` via Alembic `0010`) is **inert history**
+— per-run stores are provisioned by `ensure_schema`, never by a shared migration. After the
+roadmap→pipeline→tasks order above, run
+`codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir D:/pglite/marathon/<run-id> marathon resume --run <run-id>`
+for the objective four-field position (never a summary; store fork ⇒ exit 2, never a silent
+pick). The per-run store root needs `prereq-patterns/` junction-linked into it so the keeper
+can spawn the bridge (`cmd /c mklink /J <store_root>\prereq-patterns <repo>\prereq-patterns`).
+`--feature <slug>` is a deprecated 024 alias. See `/marathon-stage-harness`.
 
 ---
 

@@ -14,16 +14,18 @@
 3. **Where in the feature (WIP position)?** → the buildkit pipeline stage state
    (DBOS + PGLite, per-feature) + the feature's `spec.md`/`plan.md`/`tasks.md`.
 
-## Active now (2026-06-05)
+## Active now (2026-06-12)
 
-- **Roadmap feature**: `024-marathon-stage-harness` — **implemented** on branch
-  `024-marathon-stage-harness` (spec dir `specs/024-marathon-stage-harness/`). The durable,
-  restart-safe harness now lives in `codeconv.marathon` (PGLite schema `marathon` via Alembic
-  `0010` + JSON fallback). It is the durable checkpoint that makes the "where in the feature"
-  answer automatic.
+- **Harness**: `030-marathon-refinement` **SHIPPED** `v2026.06.12.1` — the refined,
+  **data-driven** `codeconv.marathon`: registrable + growable stage list, **per-run isolated
+  store outside any repo** (`<store_root>/pgdb` + `<store_root>/json` mirror, background
+  keeper), emergent-work intake (5-stage mini-pipeline), 024 strengths preserved (gate,
+  re-run, budget, trace, reconcile). Contracts: `specs/030-marathon-refinement/contracts/`.
+  The 024 shared-cluster schema (Alembic `0010`) is **inert history**.
 - **How to locate position now**: after the roadmap→pipeline→tasks order above, run
-  `codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
-  — the max(sequence_no) checkpoint, never a summary. See `/marathon-stage-harness`.
+  `codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir D:/pglite/marathon/<run-id> marathon resume --run <run-id>`
+  — the objective four-field position, never a summary (`--feature` is a deprecated 024
+  alias). See `/marathon-stage-harness`.
 - **Marathon it unblocks**: epic `distributed-glp-connectivity` → `multi-protocol-link-layer`
   (state `captured`, `blocked-by: marathon-stage-harness`) — now drivable end-to-end by the harness.
 
