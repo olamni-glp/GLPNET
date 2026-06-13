@@ -8,17 +8,15 @@
 - **Branching/versioning**: **buildkit GitFlow** — see `docs/BRANCHING.md` and `docs/VERSIONING.md` (feature `NNN-short-name` → `develop` → `release/*` → `main`; CalVer tags `vYYYY.MM.DD.N` cut by `buildkit release`, never by hand).
 - **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
-## 🔴 PGLite data-dir — use the canonical cluster `--data-dir C:/pglite/research/glpnet`
+## 🔴 PGLite data-dir + drive topology — repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
-**2026-05-17 (verified, Gabi-approved cleanup):** D: is **NTFS** (`Get-Volume D` → `FileSystem: NTFS`, label `GAVRI_VOL_D`; the prior Lexar/exFAT drive was replaced). The old "the repo is on exFAT, PGLite cannot run here, the bridge crashes mid-migration on `<repo>/.pgdb/`" premise is **VOID** — `<repo>/.pgdb/` on D: now passes the CLI filesystem guard. `docs/known-issues.md` Issue 8 is historical.
+**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Three rules from Gabi, all 🔴 ABSOLUTE:
 
-For **consistency and to reuse the already-running shared bridge**, every `codeconv` invocation that talks to the bridge SHOULD still pass:
+1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established. The data-dir is now the repo-local `D:/bstdev/research/glp/glpnet/.pgdb` (provisioned 2026-06-12: copied from the G: archive, then `codeconv migrate` applied Alembic + DBOS → `codeconv doctor` OVERALL OK). Set `PYTHONUTF8=1` for the CLI (cp1252 console vs rich `→`).
+2. **`G:\BSTDEV\research\glp\glpnet` is COPY-FROM-ONLY** — never run tooling against it in place; copy what you need onto D:. **One sanctioned exception: `G:\BSTDEV\research\glp\glpnet\COOP\`** — the bk-colab mailbox (read/write OK). Everything else under G: glpnet stays observe-only.
+3. **Drive topology:** `GAVRI_VOL_D` is a **shared volume** — it is **G: on this host (OLAMNIT)** and **D: on the colleague host (GAVRI)**. So `G:\BSTDEV\research\glp\glpnet` here == `D:\BSTDEV\research\glp\glpnet` on GAVRI (same files). The bk-colab COOP mailbox lives on this volume so both hosts share it; the channel is **asynchronous** (the volume is not always mounted on both at once). See `/bk-colab` (in design).
 
-```
-codeconv --data-dir C:/pglite/research/glpnet <subcommand> ...
-```
-
-`C:\pglite\research\glpnet\` is the canonical shared PGLite cluster for this repo (a healthy bridge runs there — `codeconv doctor` → OVERALL OK). This is now a **convention for consistency, not a filesystem necessity**. The CLI guard (`codeconv.bridge_client._check_data_dir_filesystem`) still refuses non-NTFS/ReFS data-dirs (exit 64) — a safety net that no longer triggers on D:.
+The CLI guard (`codeconv.bridge_client._check_data_dir_filesystem`) still refuses non-NTFS/ReFS data-dirs (exit 64). Marathon per-run stores live OFF-repo at `D:/pglite/marathon/<run-id>` (FR-027), each needing `prereq-patterns/` junction-linked in (`cmd /c mklink /J <store_root>\prereq-patterns <repo>\prereq-patterns`).
 
 ---
 
