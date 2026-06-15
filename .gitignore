@@ -92,3 +92,6 @@ pgdb.consumers/
 
 # buildkit-codexreview advisory review artifacts (local-only; never pushed)
 reviews/
+
+# bk-colab COOP mailbox lives on the shared volume, never git-tracked
+COOP/
