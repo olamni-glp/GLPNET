@@ -89,6 +89,23 @@
 
 ## [Unreleased]
 
+## [v2026.06.19.1] - 2026-06-19
+
+### Fixed
+- per-run marathon bridge resolves script from toolchain checkout, not the off-repo store (Fix A) - T057 e2e drive found the primary PGLite store never started via the real CLI; decouple repo_root(script source) from store_root(cluster) and commit-target repo_dir; junction-free fixture + regression test
+
+### Changed
+- Merge pull request #39 from olamni-glp/030-marathon-refinement
+- T058 full-suite gate done + T057 addendum (Fix A supersedes the prereq-patterns junction workaround; 34/34 marathon on reconciled tree, real-CLI primary-store smoke green)
+- T057 quickstart e2e validated + tasks.md T051-T057 DONE notes (Phase 8 complete except T058 full-suite gate, held for the Sunday 2026-06-14 ~01:00 intensive-regression window)
+- T056 /marathon-stage-harness skill drives the refined CLI - canonical --run, data-driven register/append-stage/capture intake, keeper lifecycle + hygiene, rule-2a re-drive in Restart-Resume step 4, gate/rerun by stage NAME, full contracts/cli.md command table, preauth grants documented as library-level Repository.update_run
+- T055 point marathon-stage-harness references at the refined model - CLAUDE.md + current_plan.md now describe the data-driven per-run isolated store (default C:/pglite/marathon/<run-id>, keeper, JSON mirror), canonical --run resume (--feature deprecated alias), 030 contracts pointer; 024 shared-cluster schema noted inert history (VIII)
+- T054 Constitution V guard - zero OPENAI_API_KEY/litellm/openai tokens anywhere in the marathon package source; bridge-free 1/1
+- T053 shared-cluster no-new-head guard - Alembic head stays exactly 0010, no versions/ file beyond 0010, only marathon migration is 024's inert 0010_marathon_schema, per-run store schema imports no Alembic machinery (VI-a, D2); bridge-free 4/4
+- T052 resume-position byte-identity (SC-008) - pure derive_position over reconstructed+reshuffled rows (incl. rule-2a re-drive branch) and live three-way check (session env / fresh env / fresh CLI subprocess) all canonical-JSON byte-equal; 2/2
+- T051 CLI parity guard - registered Typer surface == contracts/cli.md table, declared lib functions importable, callback wiring references its declared function, no function owns two subcommands (position->resume alias folded); bridge-free 4/4
+- Merge pull request #38 from olamni-glp/main
+
 ## [v2026.06.12.1] - 2026-06-12
 
 ### Added

@@ -1,0 +1,650 @@
+Compiling REPL snapshot...
+Compiling bin/glp_repl.dart to kernel file .dart_tool/repl.dill.
+======================================
+   GLP Unified Test Suite v1.0        
+======================================
+
+=== Section A: Typed Runtime Tests ===
+
+--- A1: p, merge, metainterpreter ---
+  PASS: p(X) unification
+  PASS: Merge [1,2,3]+[a,b]
+  PASS: Clause lookup
+  PASS: run(true)
+  PASS: Meta merge
+  PASS: runA empty merge
+--- A2: Append, Reverse, Copy ---
+  PASS: Append two lists
+  PASS: Append empty+list
+  PASS: Append list+empty
+  PASS: Reverse list
+  PASS: Reverse empty
+  PASS: Reverse single
+  PASS: Copy list
+  PASS: Copy empty
+--- A3: Quicksort ---
+  PASS: Quicksort empty
+  PASS: Quicksort single
+  PASS: Quicksort two
+  PASS: Quicksort larger
+  PASS: Quicksort five
+  PASS: Quicksort non-number
+  PASS: Quicksort unbound tail
+--- A4: Insertion Sort ---
+  PASS: Insertion sort empty
+  PASS: Insertion sort single
+  PASS: Insertion sort two
+  PASS: Insertion sort larger
+--- A6: Ordered merge ---
+  PASS: Ordered merge
+  PASS: Ordered merge duplicates
+  PASS: Ordered merge empty
+--- A7: Fair merge ---
+  PASS: Fair merge equal
+  PASS: Fair merge unequal
+--- A8: Logic gates ---
+  PASS: AND gate
+  PASS: OR gate
+  PASS: AND all ones
+  PASS: OR all zeros
+--- A9: Arithmetic programs ---
+  PASS: Inner product
+  PASS: Fibonacci 0
+  PASS: Fibonacci 1
+  PASS: Fibonacci 3
+  PASS: Fibonacci 10
+  PASS: Factorial 1
+  PASS: Factorial 2
+  PASS: Factorial 3
+  PASS: Factorial 5
+  PASS: Hanoi 0
+  PASS: Hanoi 1
+  PASS: Hanoi 2
+  PASS: Primes 20
+  PASS: Primes 10
+--- A10: Multiply ---
+  PASS: Multiply stream
+  PASS: Multiply empty
+--- A11: Structure and pattern tests ---
+  PASS: Build person
+  PASS: Nested binary
+  PASS: Ternary all vars
+  PASS: Deep binary tree
+  PASS: Multiple writers
+  PASS: p(X,X?) succeeds
+  PASS: No guard
+  PASS: With guard
+  PASS: Two struct list
+  PASS: Non-ground list pass
+  PASS: Build list
+  PASS: Unwrap
+  PASS: Identity
+  PASS: Assign reader
+--- A12: Arithmetic guards and otherwise ---
+  PASS: compare_and_use
+  PASS: max
+  PASS: in_range yes
+  PASS: in_range no
+  PASS: compare_expr
+  PASS: arith_eq equal
+  PASS: arith_eq not equal
+  PASS: arith_neq
+  PASS: arith_neq equal
+  PASS: expr_eq
+  PASS: test_lt
+  PASS: test_gt
+  PASS: test_le
+  PASS: test_ge fails
+  PASS: classify positive
+  PASS: classify negative
+  PASS: classify zero
+  PASS: grade a
+  PASS: grade c
+  PASS: grade f
+  PASS: type integer
+  PASS: type string
+  PASS: guard_ground
+  PASS: guard_int
+  PASS: guard_compare
+  PASS: guard_known_valid
+--- A13: Ground equal and guard negation ---
+  PASS: equal atoms
+  PASS: not equal atoms
+  PASS: equal structs
+  PASS: not equal structs
+  PASS: equal lists
+  PASS: not equal lists
+  PASS: neg int is_int
+  PASS: neg int not_int
+  PASS: neg number is_num
+  PASS: neg number not_num
+  PASS: neg eq equal
+  PASS: neg eq not equal
+--- A14: Circular term tests ---
+  PASS: ground foo
+  PASS: ground f(a,b)
+  PASS: equal foo foo
+  PASS: equal foo bar
+  PASS: self equal
+  PASS: show
+--- A15: Arithmetic with := ---
+  PASS: add 5+3
+  PASS: multiply 4*7
+  PASS: compute (2*3)+4
+  PASS: subtract 10-3
+--- A16: Arithmetic kernels ---
+  PASS: idiv
+  PASS: abs
+  PASS: sqrt
+  PASS: pow
+  PASS: floor
+  PASS: ceil
+--- A17: Guards comprehensive ---
+  PASS: list guard
+  PASS: string guard
+  PASS: constant guard
+--- A18: Constant ground, gethead ---
+  PASS: constant ground
+  PASS: gethead
+--- A18b: Param bare typevar ---
+  PASS: param bare typevar
+--- A19: Defined guards ---
+  PASS: defined guard match
+  PASS: defined guard fail
+  PASS: defined guard suspend
+--- A20: Channel guards ---
+  PASS: channel make_pair succeeds
+--- A21: Comprehensive defined guards ---
+  PASS: DG make_pair succeeds
+  PASS: DG bind yes
+  PASS: DG bind yes local
+  PASS: DG bind no
+  PASS: DG bind no local
+  PASS: DG channel ok
+  PASS: DG channel fail atom
+  PASS: DG channel fail pair
+  PASS: DG pair ok
+  PASS: DG pair fail
+  PASS: DG wrapper ok
+  PASS: DG wrapper fail
+  PASS: DG nested pair
+  PASS: DG nested wrapper
+  PASS: DG nested neither
+  PASS: DG wrap binding
+  PASS: DG deep binding
+  PASS: DG triple
+--- A22: Wait test ---
+  PASS: wait test
+--- A23: Difference lists ---
+  PASS: DL term parses
+  PASS: DL dl_to_list
+--- A24: Suspension tests ---
+  PASS: bob suspend
+  PASS: level1 suspend
+  PASS: level2 suspend
+  PASS: level3 suspend
+  PASS: guard ground suspend
+--- A24b: FR-034 compound-operand suspend ---
+  PASS: FR-034 compound nested-reader suspends
+  PASS: FR-034 compound reader reactivates once
+  PASS: FR-034 nested writer does not suspend
+--- A24d: FR-033 atom/1 guard ---
+  PASS: FR-033 atom succeeds on atom
+  PASS: FR-033 atom suspends on unbound reader
+  PASS: FR-033 atom is ground-implying (echo compiles+runs)
+  PASS: FR-033 atom rejects non-atoms (no succeed)
+  PASS: FR-033 atom rejects non-atoms (no suspend)
+--- A24f: FR-037 @< family (standard-order term comparison) ---
+  PASS: FR-037 @< numeric
+  PASS: FR-037 @=< cross-class Number<atom
+  PASS: FR-037 @< compound by arity
+  PASS: FR-037 @< string lexicographic
+  PASS: FR-037 @=< equal
+  PASS: FR-037 @< equal is false
+  PASS: FR-037 @> reverse
+  PASS: FR-037 @< suspends on unbound operand
+  PASS: FR-037 @< ground-implying (SC-006 multi-read compiles)
+--- A24g: @< / atom reactivate-exactly-once ---
+  PASS: FR-037 @< reactivates exactly once (wakes and commits)
+  PASS: FR-037 @< wake not left suspended
+  PASS: FR-033 atom reactivates exactly once (wakes and commits)
+  PASS: FR-033 atom wake not left suspended
+--- A24h: FR-038 =\= untouched regression ---
+  PASS: FR-038 =\= succeeds on differing numbers
+  PASS: FR-038 =\= fails on equal numbers (otherwise)
+  PASS: FR-038 =\= suspends on unbound reader
+--- A25: Quoted functor and body ---
+  PASS: quoted functor
+  PASS: double 5
+  PASS: quoted in struct
+--- A26: Univ, assignment, MWM ---
+  PASS: Univ compose foo
+  PASS: Univ compose bar
+  PASS: Univ decompose foo(a,b)
+  PASS: Univ decompose bar(1,2,3)
+  PASS: Unify atom
+  PASS: Unify number
+  PASS: Unify struct
+  PASS: Unify list
+  PASS: Unify nested
+  PASS: Unify suspend
+  PASS: Assign 3
+  PASS: Assign add
+  PASS: Assign sub
+  PASS: Assign mul
+  PASS: Assign div
+  PASS: Assign precedence
+  PASS: Assign parens
+  PASS: Assign negative
+  PASS: MWM empty
+  PASS: MWM single
+  PASS: MWM two streams
+--- A27: Reader-to-reader fail ---
+  PASS: reader-to-reader no reduction
+--- A28: Module guard ---
+  PASS: module guard ~module(42)
+
+Section A: 204 passed, 0 failed
+
+=== Section B: Positive Type Check Tests ===
+
+  PASS: merge_basic
+  PASS: append_list
+  PASS: copy_stream
+  PASS: dl_append
+  PASS: new_channel
+  PASS: monitor
+  PASS: int_list_sum
+  PASS: nat_operations
+  PASS: process_complete
+  PASS: disjoint_primitives
+  PASS: universal_structured_term
+  PASS: guards_all
+  PASS: merge_variable_coverage_base
+  PASS: merge_variable_coverage_mixed
+  PASS: merge_variable_coverage_recursive
+  PASS: universal_accepts_structured
+  PASS: append
+  PASS: counter
+  PASS: simple_io
+  PASS: merge
+  PASS: union_alias_basic
+  PASS: union_alias_simple
+  PASS: union_alias_three
+  PASS: counter_show
+  PASS: input_with_input_embedded
+  PASS: output_with_input_embedded
+  PASS: output_with_output_embedded
+  PASS: any_copy
+  PASS: any_multi_clause
+  PASS: list_with_any_element
+  PASS: any_constant_at_output
+  PASS: any_constant_at_input
+  PASS: any_empty_list
+  PASS: circuits
+  PASS: gates
+  PASS: gates_simple
+  PASS: ackermann
+  PASS: exp
+  PASS: factorial
+  PASS: fibonacci
+  PASS: gcd_integer
+  PASS: lesseq
+  PASS: min
+  PASS: natural_numbers
+  PASS: plus
+  PASS: primes
+  PASS: times
+  PASS: append
+  PASS: copy
+  PASS: delete
+  PASS: dl_append
+  PASS: filter_even
+  PASS: inner_product
+  PASS: inner_product_iter
+  PASS: insertion_sort
+  PASS: length
+  PASS: map_inc
+  PASS: maxlist
+  PASS: member
+  PASS: merge_ordered
+  PASS: merge_sort
+  PASS: nth
+  PASS: polygon_area
+  PASS: quicksort
+  PASS: reverse
+  PASS: reverse_naive
+  PASS: translate
+  PASS: quicksort_original
+  PASS: binary_tree
+  PASS: list_to_bst
+  PASS: substitute
+  PASS: traversals
+  PASS: tree_sum
+  PASS: channel
+  PASS: typed_social_agent
+  PASS: broadcast
+  PASS: replicate
+  PASS: replicate2
+  PASS: replicate3
+  PASS: hollow_integers
+  PASS: biased_merge
+  PASS: cooperative
+  PASS: distribute
+  PASS: distribute_binary
+  PASS: distribute_ground
+  PASS: distribute_indexed
+  PASS: fair_merge
+  PASS: merge_dynamic
+  PASS: merge_simple
+  PASS: merge_tree
+  PASS: mwm
+  PASS: producer_consumer
+  PASS: producer_consumer_countdown
+  PASS: test_bug
+  PASS: test_friend
+  PASS: test_lookup2
+  PASS: basic_readop_fileop
+  PASS: constants_fewer_alternatives
+  PASS: contravariant_response_slot
+  PASS: direct_constant_subtype
+  PASS: struct_fewer_functors
+  PASS: module_guard
+  PASS: order_guards
+  PASS: atom_guard
+  PASS: param_stream_integer
+  PASS: param_channel
+  PASS: param_procedure_inference
+
+Section B: 107 passed, 0 failed
+
+=== Section C: Negative Type Tests ===
+
+  PASS: merge_missing_both_nil (rejected)
+  PASS: merge_missing_first_nil (rejected)
+  PASS: merge_missing_cons (rejected)
+  PASS: merge_wrong_constant (rejected)
+  PASS: merge_wrong_functor (rejected)
+  PASS: merge_undefined_proc (rejected)
+  PASS: merge_wrong_mode (rejected)
+  PASS: merge_type_mismatch (rejected)
+  PASS: merge_swapped_vars (rejected)
+  PASS: merge_undefined_type (rejected)
+  PASS: merge_incomplete (rejected)
+  PASS: missing_coverage (rejected)
+  PASS: non_complementary_types (rejected)
+  PASS: append_bad_type (rejected)
+  PASS: constant_at_wrong_type (rejected)
+  PASS: functor_mismatch (rejected)
+  PASS: channel_non_complementary (rejected)
+  PASS: reader_at_input (rejected)
+  PASS: writer_at_output (rejected)
+  PASS: call_mode_mismatch (rejected)
+  PASS: embedded_mode_error (rejected)
+  PASS: union_alias_overlap (rejected)
+  PASS: union_alias_refs_alias (rejected)
+  PASS: counter_wrong_mode (rejected)
+  PASS: accumulator_wrong_mode (rejected)
+  PASS: channel_wrong_inversion (rejected)
+  PASS: correct_type_wrong_annotation (rejected)
+  PASS: double_nesting_error (rejected)
+  PASS: list_tail_mode_error (rejected)
+  PASS: mixed_clauses (rejected)
+  PASS: nested_struct_wrong_mode (rejected)
+  PASS: pair_list_wrong_mode (rejected)
+  PASS: recursive_type_deep_error (rejected)
+  PASS: response_slot_no_embedded (rejected)
+  PASS: any_list_cons (rejected)
+  PASS: any_mixed_clauses (rejected)
+  PASS: any_reduce_pattern (rejected)
+  PASS: any_struct_at_input (rejected)
+  PASS: any_struct_at_output (rejected)
+  PASS: wrong_direction_fileop_readop (rejected)
+  PASS: contravariant_wrong_direction (rejected)
+  PASS: disjoint_types (rejected)
+  PASS: arg_type_mismatch (rejected)
+  PASS: param_arity_mismatch (rejected)
+  PASS: param_merge_wrong_mode (rejected)
+  PASS: decline_eq_bad (rejected)
+  PASS: decline_neq_bad (rejected)
+  PASS: decline_struct_diseq_bad (rejected)
+  PASS: decline_reader_bad (rejected)
+
+Section C: 49 passed, 0 failed
+
+=== Section D: SRSW Violation Tests ===
+
+  PASS: merge_reader_at_input (rejected)
+  PASS: merge_writer_at_output (rejected)
+  PASS: merge_with_reader (SRSW rejected)
+
+=== Section E: Invalid Guard Test ===
+
+  PASS: true in guard position rejected
+
+=== Section F: CSSG Modules ===
+
+   CSSG Modules — Play Tests                
+Using project-directory loading (static linker)
+  PASS: Project loads
+  PASS: No type errors on load
+  PASS: No load errors
+  PASS: play1 succeeds
+  PASS: play2 succeeds
+  PASS: play3 succeeds
+  PASS: play4 succeeds
+  PASS: play5 succeeds
+  PASS: play6 succeeds
+  PASS: play7 succeeds
+  PASS: fplay1 succeeds
+  PASS: fplay1 alice connected bob
+  PASS: fplay1 charlie connected alice
+  PASS: fplay2 succeeds
+  PASS: fplay2 alice rejected
+  PASS: fplay3 succeeds
+  PASS: fplay4 succeeds
+  PASS: fplay4 carol connected dave
+  PASS: fplay5 succeeds
+  PASS: fplay6 succeeds
+  PASS: fplay7 succeeds
+ALL CSSG MODULE TESTS PASSED!
+
+=== Section G: Social Graph Simulated UI Modules ===
+
+  PASS: SG-SIM project loads
+  PASS: SG-SIM no type errors
+  PASS: SG-SIM no load errors
+--- Silent plays (play1-play3) ---
+  PASS: SG play1 succeeds
+  PASS: SG play2 succeeds
+  PASS: SG play3 succeeds
+--- Tagged plays (fplay1-fplay3) ---
+  PASS: SG fplay1 succeeds
+  PASS: SG fplay1 alice connected bob
+  PASS: SG fplay1 charlie connected alice
+  PASS: SG fplay2 succeeds
+  PASS: SG fplay2 rejected
+  PASS: SG fplay3 succeeds
+
+=== Section H: CSSN Modules ===
+
+  PASS: CSSN project loads
+  PASS: CSSN no type errors
+  PASS: CSSN no load errors
+--- Basic social graph (fplay1-fplay3) ---
+  PASS: CSSN fplay1 succeeds
+  PASS: CSSN fplay1 alice connected bob
+  PASS: CSSN fplay1 charlie connected alice
+  PASS: CSSN fplay2 succeeds
+  PASS: CSSN fplay2 rejected
+  PASS: CSSN fplay3 succeeds
+--- CSSG plays (fplay4-fplay7) ---
+  PASS: CSSN fplay4 succeeds
+  PASS: CSSN fplay4 carol connected dave
+  PASS: CSSN fplay5 succeeds
+  PASS: CSSN fplay6 succeeds
+  PASS: CSSN fplay7 succeeds
+--- CSSN group plays (fplay8-fplay10) ---
+  PASS: CSSN fplay8 succeeds
+  PASS: CSSN fplay8 group_joined
+  PASS: CSSN fplay8 group_received
+  PASS: CSSN fplay9 succeeds
+  PASS: CSSN fplay10 succeeds
+--- Large CSSN plays (fplay11-fplay12) ---
+  PASS: CSSN fplay11 succeeds
+  PASS: CSSN fplay11 tagged output
+  PASS: CSSN fplay12 succeeds
+  PASS: CSSN fplay12 tagged output
+
+=== Section I: self.glp Procedure Tests ===
+
+--- I1: self.glp shared procedure ---
+  PASS: self.glp shared proc loads
+  PASS: self.glp shared proc result
+--- I2: self.glp shadowing ---
+  PASS: self.glp shadow loads
+  PASS: self.glp shadow outer
+  PASS: self.glp shadow inner
+--- I3: Local shadows self.glp ---
+  PASS: local shadow loads
+  PASS: local shadow result
+--- I4: Type error in self.glp (negative) ---
+  PASS: self.glp type error rejected
+  PASS: self.glp type error not loaded
+
+=== Section J: CSSG v2 Modules ===
+
+  PASS: CSSG v2 project loads
+  PASS: CSSG v2 no type errors
+--- CSSG v2 child_agent plays (fplay4-fplay7) ---
+  PASS: CSSG v2 fplay4 succeeds
+  PASS: CSSG v2 fplay4 carol connected dave
+  PASS: CSSG v2 fplay5 succeeds
+  PASS: CSSG v2 fplay6 succeeds
+  PASS: CSSG v2 fplay7 succeeds
+
+=== Section K: CSSN v2 Modules ===
+
+  PASS: CSSN v2 project loads
+  PASS: CSSN v2 no type errors
+--- CSSN v2 basic social graph (fplay1-fplay3) ---
+  PASS: CSSN v2 fplay1 succeeds
+  PASS: CSSN v2 fplay2 succeeds
+  PASS: CSSN v2 fplay3 succeeds
+--- CSSN v2 child_agent befriending (fplay4-fplay7) ---
+  PASS: CSSN v2 fplay4 succeeds
+  PASS: CSSN v2 fplay4 carol connected dave
+  PASS: CSSN v2 fplay5 succeeds
+  PASS: CSSN v2 fplay6 succeeds
+  PASS: CSSN v2 fplay7 succeeds
+--- CSSN v2 group plays (fplay8-fplay10) ---
+  PASS: CSSN v2 fplay8 succeeds
+  PASS: CSSN v2 fplay8 group_joined
+  PASS: CSSN v2 fplay9 succeeds
+  PASS: CSSN v2 fplay10 succeeds
+--- CSSN v2 blocking consent play (fplay11) ---
+  PASS: CSSN v2 fplay11 succeeds
+  PASS: CSSN v2 fplay11 tagged output
+--- CSSN v2 adult-managed group play (fplay12) ---
+  PASS: CSSN v2 fplay12 succeeds
+  PASS: CSSN v2 fplay12 tagged output
+
+=== Section L: Dynamic Module Dispatch Tests ===
+
+--- L1: Dynamic dispatch double ---
+  PASS: math_service activated
+  PASS: test_double(5, X) = 10
+--- L2: Dynamic dispatch triple ---
+  PASS: test_triple(4, X) = 12
+--- L3: Dynamic dispatch add_ten ---
+  PASS: test_add_ten(7, X) = 17
+
+=== Section M: Multi-Isolate (madGLP) Tests ===
+
+  PASS: All 13 multi-isolate tests passed
+
+=== Section N: Bonds V2 Modules ===
+
+  PASS: Bonds v2 project loads
+  PASS: Bonds v2 no type errors
+--- Bonds v2 solo mint (fplay1) ---
+  PASS: Bonds v2 fplay1 succeeds
+  PASS: Bonds v2 fplay1 minted
+--- Bonds v2 befriend + trade (fplay2) ---
+  PASS: Bonds v2 fplay2 succeeds
+  PASS: Bonds v2 fplay2 connected
+  PASS: Bonds v2 fplay2 trade_completed
+--- Bonds v2 trade plays (fplay3-fplay6) ---
+  PASS: Bonds v2 fplay3 succeeds
+  PASS: Bonds v2 fplay4 succeeds
+  PASS: Bonds v2 fplay5 succeeds
+  PASS: Bonds v2 fplay6 succeeds
+--- Bonds v2 time-dependent trade (fplay4b) ---
+  PASS: Bonds v2 fplay4b succeeds
+--- Bonds v2 buyback + symmetric (fplay8-fplay9) ---
+  PASS: Bonds v2 fplay8 succeeds
+  PASS: Bonds v2 fplay9 succeeds
+--- Bonds v2 escrow plays (fplay10-fplay11) ---
+  PASS: Bonds v2 fplay10 succeeds
+  PASS: Bonds v2 fplay10 escrow
+  PASS: Bonds v2 fplay11 succeeds
+  PASS: Bonds v2 fplay11 escrow_cancelled
+--- Bonds v2 village market (fplay12) ---
+  PASS: Bonds v2 fplay12 succeeds
+  PASS: Bonds v2 fplay12 tagged output
+
+=== Section O: Bonds V2 Multi-Isolate Tests ===
+
+  PASS: All 12 bonds_v2 multi-isolate tests passed
+
+=== Section P: Module Boundary Enforcement Tests ===
+
+--- Module boundary: exported vs private ---
+  PASS: public_proc(5,X) returns X=6
+  PASS: private_proc not callable from REPL
+  PASS: private_proc fails or not found
+
+=== Section Q: AOT REPL exe regression smoke ===
+
+  FAIL: 1 AOT smoke check(s) failed (8 passed)
+      
+      Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+      
+      GLP> Goodbye!
+
+--- AOT ex-02 (:=/2 arithmetic) ---
+  PASS: AOT ex-02 file loads cleanly
+  PASS: AOT ex-02 runs := arithmetic to Sum=21
+  PASS: AOT ex-02 reports succeeds
+  PASS: AOT ex-02 does NOT emit Spawn error
+
+--- AOT ex-03 (now/1 + '_output'/1 + :=/2) ---
+  PASS: AOT ex-03 file loads cleanly
+  PASS: AOT ex-03 emits elapsed_ms output
+  PASS: AOT ex-03 binds Zs correctly
+  PASS: AOT ex-03 reports succeeds
+
+======================================
+AOT smoke: PASS=8 FAIL=1
+======================================
+
+=== Section R: ch07 cluster projects ===
+
+--- R-1: cluster A simple-multimodule load + plays ---
+  PASS: cluster A loads via project mode
+  PASS: cluster A play1 succeeds or suspended
+  PASS: cluster A play2 succeeds or suspended
+  PASS: cluster A play3 succeeds or suspended
+--- R-2: cluster B byte-equivalence to canonical ---
+  PASS: byte-equivalent: self.glp
+  PASS: byte-equivalent: agent.glp
+  PASS: byte-equivalent: ui/mediator.glp
+  PASS: byte-equivalent: ui/actors.glp
+  PASS: byte-equivalent: boot.glp
+  PASS: byte-equivalent: mad_boot.glp
+
+======================================
+Total: 525 | Passed: 524 | Failed: 1
+======================================
+SOME TESTS FAILED
+REPL_EXIT:1
