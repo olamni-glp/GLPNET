@@ -42,6 +42,28 @@ def test_store_root_inside_repo_refused(repo_root):
         resolve_env(RUN_ID, data_dir=inside)
 
 
+def test_bridge_script_source_decoupled_from_store_root(repo_root, tmp_path):
+    """Fix-A invariant (bridge-free): the bridge SCRIPT is resolved from the
+    toolchain checkout, NOT from the off-repo per-run store root.
+
+    Regression guard for the original defect — both ``keeper.start_keeper`` and
+    ``store._connect`` passed ``store_root`` as the bridge ``repo_root``, so the
+    real CLI looked for ``pglite_bridge.mjs`` *inside the off-repo store* (where
+    FR-027 guarantees it never is) and the primary store never started. Only the
+    test fixture's now-removed junction masked it."""
+    from codeconv.marathon.env import toolchain_repo_root
+
+    rel = "prereq-patterns/pglite/pglite_bridge.mjs"
+    root = toolchain_repo_root()
+    # The toolchain root actually owns the bridge asset...
+    assert (root / rel).is_file(), f"toolchain_repo_root() {root} lacks {rel}"
+    assert root == repo_root.resolve()
+    # ...and an off-repo store root does NOT (the decoupling the fix restored).
+    store_root = tmp_path / "marathon_run_store"
+    store_root.mkdir(parents=True, exist_ok=True)
+    assert not (store_root / rel).exists()
+
+
 @needs_bridge
 def test_schema_idempotent_and_mirror_parity(marathon_store):
     """T006 idempotency + T007 composition + T008/T009 CRUD dual-write."""

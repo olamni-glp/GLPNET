@@ -1,10 +1,13 @@
 """Single-writer data access for the per-run store (T007–T010, T049).
 
 Composes the per-run bridge (D1, FR-028): :func:`_connect` →
-``codeconv.db.engine.connect(repo_root=store_root, data_dir=store_root/'pgdb')``
-(the canonical accessor over ``bridge_client.acquire_or_discover`` — single-
-writer SQLAlchemy engine, ``pool_size=1`` via ``pglite_engine_kwargs``) →
-``ensure_schema`` once per env (idempotent anyway).
+``codeconv.db.engine.connect(repo_root=toolchain_repo_root(),
+data_dir=store_root/'pgdb')`` (the canonical accessor over
+``bridge_client.acquire_or_discover`` — single-writer SQLAlchemy engine,
+``pool_size=1`` via ``pglite_engine_kwargs``) → ``ensure_schema`` once per env
+(idempotent anyway). The bridge SCRIPT comes from the toolchain checkout (its
+fixed asset); ``data_dir`` keeps the cluster off-repo and per-run — the two are
+decoupled, so the off-repo ``store_root`` never needs a bridge script.
 
 Owns CRUD for ``run``/``stage``/``checkpoint``/``item``/``issue`` (T008; all
 writes inside ``engine.begin()`` transactions), the **JSON-mirror dual-write**
@@ -42,6 +45,7 @@ from sqlalchemy.engine import Engine
 
 from codeconv.bridge_client import DataDirFilesystemError
 from codeconv.db import engine as db_engine
+from codeconv.marathon.env import toolchain_repo_root
 from codeconv.marathon.models import (
     Approval,
     CheckpointRow,
@@ -175,8 +179,11 @@ def _connect(env: MarathonEnv) -> Engine:
     if env.engine is not None:
         return env.engine
     try:
+        # repo_root = toolchain checkout (bridge-script source); data_dir = the
+        # off-repo per-run cluster — decoupled (bridge_client keys the bridge on
+        # data_dir, never on repo_root).
         engine = db_engine.connect(
-            env.store_root,
+            toolchain_repo_root(),
             data_dir=env.store_root / "pgdb",
             application_name="codeconv-marathon",
         )

@@ -30,7 +30,36 @@ __all__ = [
     "StoreRootInsideRepoError",
     "default_marathon_root",
     "resolve_env",
+    "toolchain_repo_root",
 ]
+
+# The unified-bridge asset path, relative to the toolchain checkout root.
+_BRIDGE_SCRIPT_REL = Path("prereq-patterns") / "pglite" / "pglite_bridge.mjs"
+
+
+def toolchain_repo_root() -> Path:
+    """The codeconv/glpnet checkout that owns the unified PGLite **bridge
+    script** (``prereq-patterns/pglite/pglite_bridge.mjs`` + its
+    ``node_modules``).
+
+    The bridge SCRIPT is a fixed asset of this toolchain — it must be located
+    here, NOT under a run's off-repo ``store_root`` (FR-027: nothing repo-shaped
+    lives there) and NOT under the run's ``repo_dir`` (the scoped-commit target,
+    which a caller may point at a throwaway work-repo with no bridge asset).
+    ``acquire_or_discover`` is therefore given this root, while ``data_dir`` keeps
+    the per-run cluster off-repo (the two are decoupled — bridge_client).
+
+    Resolved by walking up from this package to the first ancestor that actually
+    holds the bridge script (self-validating; resilient to checkout layout).
+    """
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if (candidate / _BRIDGE_SCRIPT_REL).is_file():
+            return candidate
+    # Conventional layout fallback (…/codeconv/src/codeconv/marathon/env.py →
+    # repo root is parents[4]); acquire_or_discover surfaces a clear error if the
+    # script is genuinely absent.
+    return here.parents[4]
 
 
 class StoreRootInsideRepoError(RuntimeError):
