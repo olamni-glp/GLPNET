@@ -5,9 +5,14 @@ The keeper owns a **per-run isolated PGLite store** outside the repo and is a th
 re-implement a supervisor (D1/D5).
 
 ## Endpoint (FR-012)
-- `start_keeper(run)` calls `bridge_client.acquire_or_discover(repo_root=<store_root>, data_dir=<store_root>/pgdb)`.
-  This spawns the per-run bridge (speculative spawn; the `mkdir` of `<data_dir>.bridge.lock/` is the mutex)
-  or fast-paths an existing fresh one, and registers this process as a consumer.
+- `start_keeper(run)` calls `bridge_client.acquire_or_discover(repo_root=<toolchain_repo_root>, data_dir=<store_root>/pgdb)`.
+  `repo_root` is the **toolchain checkout** that owns the unified bridge script
+  (`prereq-patterns/pglite/pglite_bridge.mjs` + its `node_modules`) — NOT the off-repo `store_root` (which holds
+  no bridge asset) and NOT the run's scoped-commit `repo_dir` (a possibly-throwaway work-repo). The bridge is keyed
+  on `data_dir`, so the per-run cluster stays off-repo and isolated while the script comes from the toolchain
+  (the two are decoupled — `bridge_client`). This spawns the per-run bridge (speculative spawn; the `mkdir` of
+  `<data_dir>.bridge.lock/` is the mutex) or fast-paths an existing fresh one, and registers this process as a
+  consumer.
 - The connection endpoint is the bridge **sidecar** (host/port/pid/heartbeat) under the store root; published
   on start and reused by subsequent operations. `engine_for(run)` builds the SQLAlchemy engine on it and runs
   `ensure_schema` once.

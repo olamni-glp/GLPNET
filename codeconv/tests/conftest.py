@@ -393,19 +393,22 @@ def marathon_store(tmp_path: Path) -> Iterable[Path]:
 
     Yields the off-repo ``store_root``. The per-run PGLite cluster lives at
     ``<store_root>/pgdb`` and the JSON mirror at ``<store_root>/json`` (T007/T009).
-    ``prereq-patterns/`` is junction-linked into ``store_root`` so the per-run
-    bridge (spawned by the keeper with ``repo_root=store_root``) finds the bridge
-    script and its ``node_modules``. The spawned bridge is killed at test end so
-    each marathon test is fully isolated (no leaked WASM/lock — feature-018).
 
-    Marathon subcommands address this store with ``--data-dir <store_root>``
-    (see :func:`marathon_run`); the cluster data-dir ``<store_root>/pgdb`` is
-    derived by the keeper.
+    NO ``prereq-patterns/`` junction is created here — that is exactly the
+    production shape: the off-repo store root holds **no** bridge script. The
+    keeper/repository resolve the bridge script from the toolchain checkout
+    (``env.toolchain_repo_root()``) and keep only the cluster off-repo
+    (decoupled — fixed by the Fix-A wiring). Exercising the store without the
+    junction is the regression guard for that decoupling (an end-to-end drive
+    used to fail here while the old junction masked it).
+
+    The spawned bridge is killed at test end so each marathon test is fully
+    isolated (no leaked WASM/lock — feature-018). Marathon subcommands address
+    this store with ``--data-dir <store_root>`` (see :func:`marathon_run`); the
+    cluster data-dir ``<store_root>/pgdb`` is derived by the keeper.
     """
     store_root = tmp_path / "marathon_run_store"
     store_root.mkdir(parents=True, exist_ok=True)
-    if _node_available() and _bridge_script_present():
-        _link_prereq_patterns(store_root)
     yield store_root
     kill_marathon_bridge(store_root)
 

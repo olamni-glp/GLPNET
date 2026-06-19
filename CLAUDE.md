@@ -8,17 +8,20 @@
 - **Branching/versioning**: **buildkit GitFlow** — see `docs/BRANCHING.md` and `docs/VERSIONING.md` (feature `NNN-short-name` → `develop` → `release/*` → `main`; CalVer tags `vYYYY.MM.DD.N` cut by `buildkit release`, never by hand).
 - **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
-## 🔴 PGLite data-dir — use the canonical cluster `--data-dir C:/pglite/research/glpnet`
+## 🔴 PGLite data-dir — use the repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
-**2026-05-17 (verified, Gabi-approved cleanup):** D: is **NTFS** (`Get-Volume D` → `FileSystem: NTFS`, label `GAVRI_VOL_D`; the prior Lexar/exFAT drive was replaced). The old "the repo is on exFAT, PGLite cannot run here, the bridge crashes mid-migration on `<repo>/.pgdb/`" premise is **VOID** — `<repo>/.pgdb/` on D: now passes the CLI filesystem guard. `docs/known-issues.md` Issue 8 is historical.
+**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, both 🔴 ABSOLUTE:
 
-For **consistency and to reuse the already-running shared bridge**, every `codeconv` invocation that talks to the bridge SHOULD still pass:
+1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established.
+2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place.
+
+The canonical cluster is now the repo-local one. Every `codeconv` invocation that talks to the bridge passes:
 
 ```
-codeconv --data-dir C:/pglite/research/glpnet <subcommand> ...
+codeconv --data-dir D:/bstdev/research/glp/glpnet/.pgdb <subcommand> ...
 ```
 
-`C:\pglite\research\glpnet\` is the canonical shared PGLite cluster for this repo (a healthy bridge runs there — `codeconv doctor` → OVERALL OK). This is now a **convention for consistency, not a filesystem necessity**. The CLI guard (`codeconv.bridge_client._check_data_dir_filesystem`) still refuses non-NTFS/ReFS data-dirs (exit 64) — a safety net that no longer triggers on D:.
+Provisioned 2026-06-12: `.pgdb` copied from the G: archive (had only legacy `public`), then `codeconv migrate` applied Alembic + DBOS schemas → `codeconv doctor` OVERALL OK. The old C: cluster's rows (pre-030 marathon rows, codeconv inventory) did **not** survive the swap — inventory is rebuildable via `codeconv discover`; WIP truth lives in git (`specs/<NNN>/tasks.md`). Set `PYTHONUTF8=1` when invoking the CLI (cp1252 console chokes on rich's `→`). The CLI guard (`codeconv.bridge_client._check_data_dir_filesystem`) still refuses non-NTFS/ReFS data-dirs (exit 64).
 
 ---
 
@@ -317,13 +320,20 @@ or post-crash) locate yourself in this order:
 
 `docs/current_plan.md` is now only a **thin pointer** to the above, not a work ledger — do
 not resurrect the old "write the full plan here and resume from it" mechanism. The
-**marathon-stage-harness** (feature 024, **implemented** as `codeconv.marathon` — PGLite
-schema `marathon` via Alembic `0010` + JSON fallback) owns the durable cross-session
-checkpoint + compaction/crash-recovery protocol that makes steps 2–3 instant and reliable:
-detect a compaction/crash → recover from the last durable checkpoint → skip partial work,
-tidy up → continue. After the roadmap→pipeline→tasks order above, run
-`codeconv/.venv/Scripts/python.exe -m codeconv.cli --data-dir C:/pglite/research/glpnet marathon resume --feature <slug>`
-for the max-`sequence_no` checkpoint (never a summary). See `/marathon-stage-harness`.
+**marathon-stage-harness** (feature 030 `marathon-refinement`, refining 024; implemented as
+`codeconv.marathon`) owns the durable cross-session checkpoint + compaction/crash-recovery
+protocol that makes steps 2–3 instant and reliable: detect a compaction/crash → recover from
+the last durable checkpoint → skip partial work, tidy up → continue. The refined model is
+**data-driven** — a registrable + growable per-run stage list with emergent-work intake
+(5-stage mini-pipeline) — over a **per-run isolated store outside any repo** (default
+`C:/pglite/marathon/<run-id>`: per-run PGLite cluster at `<store>/pgdb` + JSON mirror, owned
+by a background keeper). Contracts: `specs/030-marathon-refinement/contracts/`. 024's
+shared-cluster `marathon` schema (Alembic `0010`) is **inert history** — never read or
+written (VIII). After the roadmap→pipeline→tasks order above, run
+`codeconv/.venv/Scripts/python.exe -m codeconv.cli marathon resume --run <run-id>`
+(`--data-dir <store-root>` for a non-default store; `--feature` is a deprecated 024 alias)
+— the position derives from durable rows alone, never a summary; on a store fork it exits 2
+and escalates (never pick a side). See `/marathon-stage-harness`.
 
 ---
 
