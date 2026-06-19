@@ -92,3 +92,7 @@ pgdb.consumers/
 
 # buildkit-codexreview advisory review artifacts (local-only; never pushed)
 reviews/
+.specify/.deploy-migrated
+
+# buildkit-co observability lake (DuckDB/parquet; regenerable, per-machine)
+.specify/co-lake/
