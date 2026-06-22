@@ -1,6 +1,6 @@
 //// js-probe — the JavaScript-backend evidence for the build-target matrix (US4, 031 spike).
 ////
-//// The full hello-glp-term smoke does NOT compile to JS (it uses gleam_otp / gleam_erlang,
+//// The full hello-glp-term smoke does NOT compile to JS (it uses gleam_erlang BEAM processes,
 //// which are Erlang/BEAM-only). This minimal sibling contains ONLY the pure functional subset
 //// (representative GLP term construction + one immutable unbound->bound "bind"), using only
 //// gleam_stdlib, so it DOES compile to JS and run on node. It mirrors the functional-sibling
