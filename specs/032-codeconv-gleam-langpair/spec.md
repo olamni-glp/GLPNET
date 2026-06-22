@@ -10,6 +10,12 @@
 - Language-pair plugin contract: `specs/016-codeconv-init-scaffold-langpair/contracts/langpair_plugin_contract.md` (the `LangPair` protocol + registry + stage-enforcement rules; single source of truth).
 - F1 handoff: `docs/research/gleam-atomvm/dossier.md` §6 ("Downstream handoff for F2/F3") — chosen source basis is Dart `glp_runtime/`; F2 targets the Dart→Gleam direction mirroring the existing Dart→C# pair's input.
 
+## Clarifications
+
+### Session 2026-06-22
+
+- Q: Should the pair's source→target path mapping mirror the Dart structure verbatim with an extension swap (layout-agnostic, like `dart_csharp`), or emit a Gleam project layout (e.g. a `src/glp/...` prefix) itself? → A: Mirror verbatim + swap extension, layout-agnostic — the `glp_gleam/` project layout is F3's responsibility, not this pair's.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The "users" are GLP maintainers driving the codeconv conversion toolchain for the Gleam port. The feature adds Gleam as a *selectable conversion target* alongside the existing C# target — nothing more. It is the structural enabler that later epic features (F3 subtree scaffold, F4+ runtime port) build on.
@@ -75,7 +81,7 @@ Adding the Gleam pair is confined to a new language-pair package plus a single r
 
 - **FR-001**: The toolchain MUST register a Dart→Gleam language pair identified by `(source="dart", target="gleam")` that satisfies the existing language-pair plugin contract in full (identity + source-side + target-side + mirror-side hooks), discoverable via the registry's list and retrievable by its identity.
 - **FR-002**: The pair's source-side behavior (source file extensions, tool-exclusion globs, package-name reading, import extraction, leading-doc extraction) MUST be identical in result to the existing Dart source side — Dart is the shared, authoritative source for both the C# and Gleam targets.
-- **FR-003**: The pair's target file extension MUST be the Gleam source extension, and the source→target path mapping MUST mirror the Dart subsystem directory structure while producing only Gleam-legal module path segments.
+- **FR-003**: The pair's target file extension MUST be the Gleam source extension, and the source→target path mapping MUST mirror the Dart subsystem directory structure verbatim with only an extension swap (no Gleam project-layout prefix), while producing only Gleam-legal module path segments. Rooting the mapped output into the `glp_gleam/` project layout is out of scope (F3's responsibility).
 - **FR-004**: The pair MUST define its mirror-side artifacts: directory-prune segments, the preserved-source suffix, the companion-artifact set (the codeconv per-source stage-tracking companions with the Gleam target file in place of the C# one), the companion stub-comment body in Gleam comment syntax, and a pair-defined root tracker filename.
 - **FR-005**: Introducing the pair MUST be confined to a new language-pair package plus a single registry registration line; no inventory/structure stage tool (init, discover, scaffold, mirror) source may be modified ("Extensibility proof").
 - **FR-006**: The pair MUST be selectable via the workspace source/target binding and/or a per-invocation override, and MUST NOT change the default workspace pair `(dart, csharp)` nor any pre-existing default behavior.
@@ -107,6 +113,6 @@ Adding the Gleam pair is confined to a new language-pair package plus a single r
 - **Source basis is Dart `glp_runtime/`** — per the F1 dossier GO-with-revisions verdict (the tracked C# is generated from the Dart; the Dart tree is the single authoritative source). The Gleam target therefore reuses the Dart source side unchanged.
 - **Scope is the structural language pair only.** F2 does NOT create the `glp_gleam/` subtree (that is F3 `glp-gleam-subtree-scaffold`) and does NOT port or translate any runtime semantics (F4+). Actual Dart→Gleam code *content* generation is out of scope here — F2 delivers the pipeline plumbing (identity, structure mirroring, conventions, tracking), not translated Gleam code.
 - **Companion set mirrors the existing Dart→C# pair**, with the Gleam target file replacing the C# one in the per-source companion set; the root tracker filename is pair-defined (the C# pair keeps a legacy literal for fidelity, so the Gleam pair chooses its own).
-- **Target path policy parallels the existing Dart→C# pair**: mirror the Dart subsystem directory structure verbatim with an extension swap, plus Gleam-legal segment normalization (FR-003/FR-008). An optional Gleam project layout prefix (e.g. placing modules under a `src/glp/...` root) is treated as the F3 subtree-layout concern, NOT baked into this pair's mapping — to be confirmed during clarification/planning if F3 needs the pair itself to emit the prefix.
+- **Target path policy parallels the existing Dart→C# pair** (resolved — see Clarifications 2026-06-22): mirror the Dart subsystem directory structure verbatim with an extension swap, plus Gleam-legal segment normalization (FR-003/FR-008). A Gleam project-layout prefix (e.g. placing modules under a `src/glp/...` root) is explicitly NOT baked into this pair's mapping — it is the F3 subtree-layout concern.
 - **Toolchain/runtime versions** named in the dossier (Gleam 1.17.0, OTP 25.3.2.8, etc.) bear only on downstream features that build/run Gleam; F2 is pure Python and target-language-agnostic except for the Gleam naming/extension/comment rules it encodes.
 - **No new language primitives or GLP semantics** are involved — this is conversion-toolchain plumbing, not a GLP language change.
