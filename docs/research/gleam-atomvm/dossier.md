@@ -85,7 +85,7 @@ source with the codeconv pipeline's *input* (Dart) is also the natural fit for t
 |---|---|---|---|---|
 | **Erlang/BEAM** | **viable** | `gleam run --target erlang` → full observed output (term `pair(label, _G0)`; bind `_G0 := bound_atom`; reader observes `bound_atom`; resolved `pair(label, bound_atom)`); `gleam test` → **4 passed**; clean `rm -rf build && gleam run` reproduces identically. (`hello-glp-term/README.md` §BEAM) | None for the spike's scope; `gleam_otp`/`gleam_erlang` fully available. The **test runtime**. | host build |
 | **AtomVM** | **viable** (host build) | The **full Gleam smoke** (term + the process/state-holder unbound→bound bind over real BEAM processes) runs on the AtomVM host build → byte-identical observed output to Erlang + `Return value: nil` (README §AtomVM). Host sanity: the release's `hello_world.avm` → `Return value: ok`. | **Subset constraint:** spawn the cell via a raw `erlang:spawn` external (+ `gleam_erlang` Subjects), NOT `gleam_otp` — AtomVM omits **`proc_lib`**, which `gleam_otp` (and `gleam_erlang`'s own `process.spawn`) route through (a `gleam_otp` actor build crashes: `module proc_lib cannot be resolved`). | host build (`AtomVM-linux-x86_64-static-mbedtls-v0.6.6`; no embedded HW) |
-| **JavaScript** | **partially viable** | Functional subset (term + immutable bind, `gleam_stdlib` only) compiles + runs on **node v18.19.1** → `pair(label, _G0)` / `bound_atom`. Full smoke `gleam build --target javascript` → `error: Unsupported target … no implementation for the JavaScript target` at `process.send` / `actor.new`/`actor.start`. (README §JavaScript) | **JS fallback cost vs BEAM:** pure compute + types port for free; but **`gleam_erlang`/`gleam_otp` are BEAM-only**, so GLP's process/message-passing concurrency must be *replaced* (event loop / web workers) — a major rewrite. Viable for the *pure* compiler/type-checker, not the concurrent engine. | N/A (host runtime, node) |
+| **JavaScript** | **partially viable** | Functional subset (term + immutable bind, `gleam_stdlib` only) compiles + runs on **node v18.19.1** → `pair(label, _G0)` / `bound_atom`. Full smoke `gleam build --target javascript` → `error: Unsupported target … no implementation for the JavaScript target` at `process.send` / `process.receive`. (README §JavaScript; the JS-targetable functional subset is the committed `js-probe/` project) | **JS fallback cost vs BEAM:** pure compute + types port for free; but **`gleam_erlang` is BEAM-only**, so GLP's process/message-passing concurrency must be *replaced* (event loop / web workers) — a major rewrite. Viable for the *pure* compiler/type-checker, not the concurrent engine. | N/A (host runtime, node) |
 
 No cell is "unknown". Every row has a verdict + ≥1 evidence item (SC-003).
 
@@ -175,8 +175,9 @@ runtime) `gleam_otp` is fine.
   subtree, sibling to `glp_runtime/` and `glp_runtime_net/`. **(F3 creates this subtree — not
   this spike.)**
 - **Toolchain versions to build against:** Gleam **1.17.0** · Erlang/OTP **25.3.2.8** ·
-  rebar3 **3.19.0** · deps `gleam_stdlib` 1.0.3 / `gleam_erlang` 1.3.0 / `gleam_otp` 1.2.0 /
-  `gleeunit` 1.11.0 · node **v18.19.1** (only if the JS backend is exercised). **Environment:**
+  rebar3 **3.19.0** · deps `gleam_stdlib` 1.0.3 / `gleam_erlang` 1.3.0 / `gleeunit` 1.11.0
+  (**NOT `gleam_otp`** — its `proc_lib` use is outside AtomVM's subset; spawn raw) · node
+  **v18.19.1** (only if the JS backend is exercised). **Environment:**
   Linux / **WSL Ubuntu** (see toolchain-inventory.md environment finding).
 
 ---

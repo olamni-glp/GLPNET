@@ -108,6 +108,14 @@ So the **full** Gleam smoke — term construction AND the process/state-holder u
 over real BEAM processes — runs on AtomVM, not just on Erlang. Sanity: the AtomVM host build
 also runs its own `hello_world.avm` → `Return value: ok`.
 
+> **Packaging note (reproducibility).** AtomVM's CLI accepts one-or-more files —
+> `<path-to-avm-or-beam-file>+` (`AtomVM-static -h`) — so passing the app beam **plus all
+> dependency beams** is supported, and the run above was re-verified reproducible from a clean
+> `gleam build`. AtomVM's *documented production packaging* instead bundles the same beams into a
+> single `.avm` via `packbeam` (e.g. the `atomvm_rebar3_plugin` / `atomvm_packbeam`); F2/F3 should
+> adopt `.avm` packing for shippable artifacts. Either way the host-build verdict stands — this is
+> a packaging-form note, not a viability caveat.
+
 ---
 
 ## JavaScript backend (US4)

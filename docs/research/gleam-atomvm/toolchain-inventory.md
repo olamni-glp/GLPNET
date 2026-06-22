@@ -18,7 +18,7 @@
 | `erlang_otp_version` | **25.3.2.8** (OTP release 25, ERTS 13.2.2.5) | apt pkg `erlang-base` = `1:25.3.2.8+dfsg-1ubuntu4.6`; `erlang:system_info(otp_release)`=`25`, `…(version)`=`13.2.2.5` |
 | `atomvm_build` | **v0.6.6**, prebuilt asset `AtomVM-linux-x86_64-static-mbedtls-v0.6.6` (host/generic build) | `./AtomVM-static -v` → `0.6.6` |
 | `build_tooling` | `rebar3` **3.19.0** (apt `3.19.0-1`); Gleam built-in build tool (v1.17.0); **node v18.19.1** (JS backend) | `rebar3 version`; `node --version` → `v18.19.1` |
-| Gleam deps (resolved, `manifest.toml`) | `gleam_stdlib` 1.0.3 · `gleam_erlang` 1.3.0 · `gleam_otp` 1.2.0 · `gleeunit` 1.11.0 | `gleam deps download` / `manifest.toml` |
+| Gleam deps (resolved, `manifest.toml`) | `gleam_stdlib` 1.0.3 · `gleam_erlang` 1.3.0 · `gleeunit` 1.11.0 (dev) | `gleam deps download` / committed `manifest.toml`. **`gleam_otp` is intentionally NOT a dependency** (it routes through `proc_lib`, absent on AtomVM) — see `gleam.toml`. |
 | `environment` | **WSL Ubuntu 24.04.3 LTS (noble), x86_64** — see environment finding below | `/etc/os-release`, `uname -m` |
 
 ---
@@ -83,8 +83,10 @@ chmod +x AtomVM-static
 
 ```bash
 cd docs/research/gleam-atomvm/hello-glp-term
-gleam build --target erlang        # compile to BEAM
-gleam build --target javascript     # JS backend (full smoke fails — see README; functional subset compiles)
+gleam build --target erlang        # compile to BEAM (the smoke targets BEAM/AtomVM)
+# The full smoke does NOT build to JS (BEAM-only process APIs — expected failure). The
+# JS-targetable functional subset is the sibling project:
+#   (cd ../js-probe && gleam build --target javascript && gleam run --target javascript)
 ```
 
 ## `run_commands`
