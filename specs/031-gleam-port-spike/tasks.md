@@ -32,9 +32,9 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **Purpose**: Create the deliverable scaffolding and the evidence convention.
 
-- [ ] T001 Create `docs/research/gleam-atomvm/` and a section-skeleton `docs/research/gleam-atomvm/dossier.md` keyed to `specs/031-gleam-port-spike/contracts/dossier-outline.md` (all 7 required sections as headed placeholders)
-- [ ] T002 [P] Create `docs/research/gleam-atomvm/toolchain-inventory.md` skeleton with all fields from `specs/031-gleam-port-spike/contracts/toolchain-inventory.schema.md`, including the evidence-recording convention header (command + observed output + exact version — FR-009)
-- [ ] T003 [P] Scaffold the Gleam project skeleton at `docs/research/gleam-atomvm/hello-glp-term/` (`gleam.toml`, `src/`, `test/`, `README.md` stub) per `specs/031-gleam-port-spike/contracts/hello-glp-term.contract.md` — placeholder only, not yet implemented
+- [X] T001 Create `docs/research/gleam-atomvm/` and a section-skeleton `docs/research/gleam-atomvm/dossier.md` keyed to `specs/031-gleam-port-spike/contracts/dossier-outline.md` (all 7 required sections as headed placeholders)
+- [X] T002 [P] Create `docs/research/gleam-atomvm/toolchain-inventory.md` skeleton with all fields from `specs/031-gleam-port-spike/contracts/toolchain-inventory.schema.md`, including the evidence-recording convention header (command + observed output + exact version — FR-009)
+- [X] T003 [P] Scaffold the Gleam project skeleton at `docs/research/gleam-atomvm/hello-glp-term/` (`gleam.toml`, `src/`, `test/`, `README.md` stub) per `specs/031-gleam-port-spike/contracts/hello-glp-term.contract.md` — placeholder only, not yet implemented
 
 ---
 
@@ -44,8 +44,8 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **⚠️ CRITICAL**: No smoke/run task can begin until this phase is complete.
 
-- [ ] T004 Stand up the Gleam + Erlang/OTP toolchain on the primary **Windows** environment; if infeasible, fall back to **WSL/Linux** then sibling **Mac**, and record which environment was used as a first-class finding (research R1; spec Edge case "toolchain will not install on Windows")
-- [ ] T005 Pin and record **exact** versions (`gleam --version`, `erl +V`, `rebar3 version`) and the reproducible setup commands into `docs/research/gleam-atomvm/toolchain-inventory.md` (FR-003; SC-002; contract `toolchain-inventory.schema.md`) — depends on T002, T004
+- [X] T004 Stand up the Gleam + Erlang/OTP toolchain on the primary **Windows** environment; if infeasible, fall back to **WSL/Linux** then sibling **Mac**, and record which environment was used as a first-class finding (research R1; spec Edge case "toolchain will not install on Windows")
+- [X] T005 Pin and record **exact** versions (`gleam --version`, `erl +V`, `rebar3 version`) and the reproducible setup commands into `docs/research/gleam-atomvm/toolchain-inventory.md` (FR-003; SC-002; contract `toolchain-inventory.schema.md`) — depends on T002, T004
 
 **Checkpoint**: Toolchain proven and pinned — smoke and runtime attempts can begin.
 
@@ -59,13 +59,13 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 > The source-decision core (T006–T008) is the true MVP and is independent of the smoke. The architectural-fit (T009) and final verdict (T012) **integrate** US2's smoke and US3/US4's findings — see Dependencies.
 
-- [ ] T006 [US1] Inventory every source-candidate root and record per-criterion evidence into the dossier's source-decision section: Dart `glp_runtime/` (single coherent tree, ~151 files, current 2026-06-08) vs C# `glp_runtime_net/` (hand-port + own REPL) + `csharp/` (feature modules) + `out/csharp/` (regenerable scaffold mirror) — over {health & currency, structural fit to Gleam, conversion effort, divergence} (FR-001; research R5; data-model E4)
-- [ ] T007 [US1] Write the source-criteria table in `dossier.md` (rows = {Dart, C#, file-by-file replication}; columns = the four criteria), surfacing Dart↔C# divergence **explicitly as a criterion**, not assumed parity (FR-001; spec Edge case; contract `dossier-outline.md` §2.1–2.2) — depends on T006
-- [ ] T008 [US1] State exactly one source recommendation + a one-sentence ratifiable rationale in `dossier.md`, confirming or overturning the roadmap's initial C#-lean with evidence (FR-001; SC-001; contract §2.3) — depends on T007
-- [ ] T009 [US1] Write the architectural-fit section in `dossier.md`: the mutable-heap/immutability mismatch (**backed by the running unbound→bound demonstration from T013/T014**, citing the smoke's observed output — not analysis alone) and the FCP-concurrency/BEAM-process opportunity, each with its bearing on the recommendation (FR-006; SC-006; contract §4) — depends on T008, T014
-- [ ] T010 [US1] Write the downstream re-scope notes in `dossier.md` naming F5 bytecode runner, F6 compiler/loader, and F9 link layer, each with a recommended re-scope **or** "confirmed unchanged" (FR-007; SC-005; contract §5) — depends on T009
-- [ ] T011 [US1] Write the downstream-handoff block in `dossier.md` (chosen source basis + assumed `glp_gleam/` layout/conventions + toolchain versions for F2/F3) (FR-008; SC-004; contract §6) — depends on T008, T005
-- [ ] T012 [US1] Write the executive summary + the single **go / no-go / go-with-revisions** verdict (revisions enumerated if applicable) in `dossier.md` §1/§7, ensuring the dossier is self-sufficient (FR-010; SC-001; SC-005; contract §1,§7) — depends on T009, T017, T019
+- [X] T006 [US1] Inventory every source-candidate root and record per-criterion evidence into the dossier's source-decision section: Dart `glp_runtime/` (single coherent tree, ~151 files, current 2026-06-08) vs C# `glp_runtime_net/` (hand-port + own REPL) + `csharp/` (feature modules) + `out/csharp/` (regenerable scaffold mirror) — over {health & currency, structural fit to Gleam, conversion effort, divergence} (FR-001; research R5; data-model E4)
+- [X] T007 [US1] Write the source-criteria table in `dossier.md` (rows = {Dart, C#, file-by-file replication}; columns = the four criteria), surfacing Dart↔C# divergence **explicitly as a criterion**, not assumed parity (FR-001; spec Edge case; contract `dossier-outline.md` §2.1–2.2) — depends on T006
+- [X] T008 [US1] State exactly one source recommendation + a one-sentence ratifiable rationale in `dossier.md`, confirming or overturning the roadmap's initial C#-lean with evidence (FR-001; SC-001; contract §2.3) — depends on T007
+- [X] T009 [US1] Write the architectural-fit section in `dossier.md`: the mutable-heap/immutability mismatch (**backed by the running unbound→bound demonstration from T013/T014**, citing the smoke's observed output — not analysis alone) and the FCP-concurrency/BEAM-process opportunity, each with its bearing on the recommendation (FR-006; SC-006; contract §4) — depends on T008, T014
+- [X] T010 [US1] Write the downstream re-scope notes in `dossier.md` naming F5 bytecode runner, F6 compiler/loader, and F9 link layer, each with a recommended re-scope **or** "confirmed unchanged" (FR-007; SC-005; contract §5) — depends on T009
+- [X] T011 [US1] Write the downstream-handoff block in `dossier.md` (chosen source basis + assumed `glp_gleam/` layout/conventions + toolchain versions for F2/F3) (FR-008; SC-004; contract §6) — depends on T008, T005
+- [X] T012 [US1] Write the executive summary + the single **go / no-go / go-with-revisions** verdict (revisions enumerated if applicable) in `dossier.md` §1/§7, ensuring the dossier is self-sufficient (FR-010; SC-001; SC-005; contract §1,§7) — depends on T009, T017, T019
 
 **Checkpoint**: The dossier settles the source question and carries a go/no-go — independently reviewable (MVP).
 
@@ -77,9 +77,9 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **Independent Test**: On a clean checkout, a second person follows the recorded commands; the module compiles to BEAM, runs on Erlang, and emits the same expected term result. (US2 Independent Test)
 
-- [ ] T013 [US2] Implement `docs/research/gleam-atomvm/hello-glp-term/src/hello_glp_term.gleam`: construct a representative GLP term (≥1 compound/structure term + 1 unbound-variable analogue) and exactly **one** unbound→bound transition with a reader observing the bound value — primary **process/state-holder** model (Gleam `gleam_otp`/`gleam_erlang` actor) plus a **functional sibling** for contrast; do NOT implement full unification, suspension/reactivation scheduling, bytecode execution, or any perf measurement (FR-004; research R4; contract `hello-glp-term.contract.md`) — depends on T003, T004
-- [ ] T014 [US2] Compile to BEAM and run on Erlang; capture the verbatim observed output (the documented term representation + the observed bound value); record the exact build+run commands and output into `docs/research/gleam-atomvm/hello-glp-term/README.md` (FR-004; FR-009; SC-002; US2 acceptance #2) — depends on T013
-- [ ] T015 [US2] Re-run from a clean state to confirm an identical observed result and fill the Erlang/BEAM row evidence for the build-target matrix (US2 acceptance #3; SC-002) — depends on T014
+- [X] T013 [US2] Implement `docs/research/gleam-atomvm/hello-glp-term/src/hello_glp_term.gleam`: construct a representative GLP term (≥1 compound/structure term + 1 unbound-variable analogue) and exactly **one** unbound→bound transition with a reader observing the bound value — primary **process/state-holder** model (Gleam `gleam_otp`/`gleam_erlang` actor) plus a **functional sibling** for contrast; do NOT implement full unification, suspension/reactivation scheduling, bytecode execution, or any perf measurement (FR-004; research R4; contract `hello-glp-term.contract.md`) — depends on T003, T004
+- [X] T014 [US2] Compile to BEAM and run on Erlang; capture the verbatim observed output (the documented term representation + the observed bound value); record the exact build+run commands and output into `docs/research/gleam-atomvm/hello-glp-term/README.md` (FR-004; FR-009; SC-002; US2 acceptance #2) — depends on T013
+- [X] T015 [US2] Re-run from a clean state to confirm an identical observed result and fill the Erlang/BEAM row evidence for the build-target matrix (US2 acceptance #3; SC-002) — depends on T014
 
 **Checkpoint**: Toolchain "observed working," not merely "claimed feasible"; BEAM matrix row evidenced.
 
@@ -91,8 +91,8 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **Independent Test**: The matrix's AtomVM row carries a verdict (viable / partially / not viable) plus evidence — an observed smoke result on an AtomVM host build, the named BEAM/OTP-subset limitation, or the recorded bring-up blocker. (US3 Independent Test)
 
-- [ ] T016 [US3] Attempt the smoke on an AtomVM host build — **effort-bounded**: prefer a prebuilt/generic host release → only a time-boxed source build of `generic_unix` if no prebuilt runs → else record the **bring-up blocker** (record the budget used); capture outcome/output or the named subset limitation; record the AtomVM build identity into `toolchain-inventory.md` (FR-005; research R3; US3 acceptance #1) — depends on T014, T004
-- [ ] T017 [US3] Write the AtomVM build-target-matrix row in `dossier.md` (verdict + evidence + `host build` caveat) and state the implication for the heavy downstream features (bytecode runner, compiler/loader, link layer) (FR-005; FR-007; US3 acceptance #2; contract `build-target-matrix.schema.md`) — depends on T016
+- [X] T016 [US3] Attempt the smoke on an AtomVM host build — **effort-bounded**: prefer a prebuilt/generic host release → only a time-boxed source build of `generic_unix` if no prebuilt runs → else record the **bring-up blocker** (record the budget used); capture outcome/output or the named subset limitation; record the AtomVM build identity into `toolchain-inventory.md` (FR-005; research R3; US3 acceptance #1) — depends on T014, T004
+- [X] T017 [US3] Write the AtomVM build-target-matrix row in `dossier.md` (verdict + evidence + `host build` caveat) and state the implication for the heavy downstream features (bytecode runner, compiler/loader, link layer) (FR-005; FR-007; US3 acceptance #2; contract `build-target-matrix.schema.md`) — depends on T016
 
 **Checkpoint**: AtomVM row decided with evidence; epic can proceed on BEAM regardless.
 
@@ -104,8 +104,8 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **Independent Test**: Every target row has a verdict and ≥1 supporting evidence; no cell is "unknown" without a recorded reason; the JS row states whether JS is a viable fallback and its cost vs the BEAM path. (US4 Independent Test)
 
-- [ ] T018 [US4] Evaluate the Gleam **JavaScript** backend (`gleam build --target javascript` + run, or authoritative citation) and record whether JS is a viable fallback for GLP and its cost relative to the BEAM path (US4 acceptance #2; research R7) — depends on T013, T004
-- [ ] T019 [US4] Assemble the complete 3-row build-target matrix and embed it in `dossier.md` — every cell a verdict + ≥1 evidence + host-vs-hardware caveat, **no unexplained "unknown"** (FR-002; SC-003; contract `build-target-matrix.schema.md`) — depends on T015, T017, T018
+- [X] T018 [US4] Evaluate the Gleam **JavaScript** backend (`gleam build --target javascript` + run, or authoritative citation) and record whether JS is a viable fallback for GLP and its cost relative to the BEAM path (US4 acceptance #2; research R7) — depends on T013, T004
+- [X] T019 [US4] Assemble the complete 3-row build-target matrix and embed it in `dossier.md` — every cell a verdict + ≥1 evidence + host-vs-hardware caveat, **no unexplained "unknown"** (FR-002; SC-003; contract `build-target-matrix.schema.md`) — depends on T015, T017, T018
 
 **Checkpoint**: Matrix complete; dossier's verdict (T012) can be finalized.
 
@@ -115,9 +115,9 @@ Contracts the deliverables satisfy live in `specs/031-gleam-port-spike/contracts
 
 **Purpose**: Reproducibility and contract conformance.
 
-- [ ] T020 [P] Run the `specs/031-gleam-port-spike/quickstart.md` validation end-to-end as the second-person reproducibility check; fix any gap in the recorded commands/versions (SC-002; quickstart Done-when)
-- [ ] T021 [P] Self-check `dossier.md` against the binary acceptance checklist in `contracts/dossier-outline.md` and the smoke against `contracts/hello-glp-term.contract.md` (SC-001; SC-005; SC-006)
-- [ ] T022 Final consistency & scope pass: confirm exactly one source recommendation + one verdict; every "it works" claim has command+output or citation; **no `glp_gleam/` subtree created**; **no GLP runtime / programs / roadmap modified** (FR-009; FR-011)
+- [X] T020 [P] Run the `specs/031-gleam-port-spike/quickstart.md` validation end-to-end as the second-person reproducibility check; fix any gap in the recorded commands/versions (SC-002; quickstart Done-when)
+- [X] T021 [P] Self-check `dossier.md` against the binary acceptance checklist in `contracts/dossier-outline.md` and the smoke against `contracts/hello-glp-term.contract.md` (SC-001; SC-005; SC-006)
+- [X] T022 Final consistency & scope pass: confirm exactly one source recommendation + one verdict; every "it works" claim has command+output or citation; **no `glp_gleam/` subtree created**; **no GLP runtime / programs / roadmap modified** (FR-009; FR-011)
 
 ---
 
