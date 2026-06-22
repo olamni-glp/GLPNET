@@ -52,10 +52,13 @@ for a developer with admin rights but was not exercised here.
 # Host: Windows 11 + WSL2. Enter the Ubuntu distro as root (avoids sudo password prompts):
 #   wsl -d Ubuntu -u root -- bash
 
-# 1) Erlang/OTP 25.3.2.8 + rebar3 3.19.0 (official Ubuntu noble packages)
+# 1) Erlang/OTP 25.3.2.8 + rebar3 3.19.0 (official Ubuntu noble packages).
+#    Pin the EXACT package versions — `apt-get install erlang rebar3` (unpinned) would drift if
+#    noble publishes an update. For byte-exact reproduction, point apt at a snapshot.ubuntu.com
+#    mirror for the date below.
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y erlang rebar3
+apt-get install -y erlang=1:25.3.2.8+dfsg-1ubuntu4.6 rebar3=3.19.0-1
 
 # 2) Gleam 1.17.0 (official prebuilt static binary)
 TAG=v1.17.0
@@ -91,12 +94,11 @@ gleam build --target javascript     # JS backend (full smoke fails — see READM
 gleam run  --target erlang          # observe the term + the unbound->bound bind
 gleam test --target erlang          # 4 passed, no failures
 
-# AtomVM host build (effort-bounded attempt) — AtomVM accepts .beam/.avm directly.
-# Entry shim (AtomVM calls start/0; Gleam's entry is main/0):
-printf '%s\n' '-module(glp_start).' '-export([start/0]).' 'start() -> hello_glp_term:main().' > /tmp/glp_start.erl
-erlc -o /tmp /tmp/glp_start.erl
-BEAMS=$(find build/dev/erlang -path '*/ebin/*.beam' | tr '\n' ' ')
-/opt/atomvm/AtomVM-static /tmp/glp_start.beam $BEAMS /opt/atomvm/atomvmlib-v0.6.6.avm
+# AtomVM host build — AtomVM accepts .beam directly and calls the first module's start/0,
+# which the Gleam smoke exports (pub fn start) — no shim needed. The full smoke runs here.
+MAIN=build/dev/erlang/hello_glp_term/ebin/hello_glp_term.beam
+DEPS=$(find build/dev/erlang -path '*/ebin/*.beam' ! -name 'hello_glp_term.beam')
+/opt/atomvm/AtomVM-static "$MAIN" $DEPS /opt/atomvm/atomvmlib-v0.6.6.avm
 ```
 
 ---

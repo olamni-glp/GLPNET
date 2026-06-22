@@ -3,12 +3,13 @@ version = "1.0.0"
 description = "Spike F1 smoke: construct a representative GLP term + one unbound->bound bind, on Gleam/BEAM (031-gleam-port-spike). Throwaway-grade research artifact."
 licences = ["Apache-2.0"]
 
-# Dependencies for the process/state-holder bind demo (gleam_erlang, gleam_otp)
-# added in T013 for the "logic variable = BEAM process" model.
+# The process/state-holder bind uses gleam_erlang Subjects + a RAW erlang:spawn external
+# (NOT gleam_otp). gleam_otp and gleam_erlang's own spawn route through proc_lib, which
+# AtomVM's BEAM/OTP subset omits — so gleam_otp is intentionally NOT a dependency, keeping
+# the smoke runnable on AtomVM as well as Erlang.
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
 gleam_erlang = ">= 0.34.0 and < 2.0.0"
-gleam_otp = ">= 0.16.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

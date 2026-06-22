@@ -21,13 +21,15 @@ feature modules, plus a gitignored snapshot).
 
 **Verdict: GO — with revisions.** The Gleam + Erlang/OTP toolchain is proven end-to-end
 (a Gleam module constructs a GLP term, performs one unbound→bound bind, compiles to BEAM, and
-runs on Erlang with reproducible observed output). Plain **BEAM is viable** as the test
-runtime; **AtomVM is partially viable** (host build runs; raw BEAM processes work; the
-`gleam_otp` OTP-library layer does not — `proc_lib` is outside AtomVM's subset);
-**JavaScript is partially viable** (pure functional code ports; the BEAM-process concurrency
-model does not). The revisions (enumerated in §7) re-scope the heap-mutation strategy (F5),
-the link layer (F9), and the AtomVM concurrency substrate; the compiler/loader (F6) is
-confirmed largely unchanged. None of these is a blocker — they change *scope*, not viability.
+runs on Erlang **and on AtomVM** with reproducible observed output). Plain **BEAM is viable** as
+the test runtime; **AtomVM is viable on the host build** — the *full* Gleam smoke (term + the
+process/state-holder unbound→bound bind over real BEAM processes) runs on AtomVM when the cell is
+spawned via a raw `erlang:spawn` external plus `gleam_erlang` Subjects; only `gleam_otp`'s
+`proc_lib`-based actors are outside AtomVM's subset; **JavaScript is partially viable** (pure
+functional code ports; the BEAM-process concurrency model does not). The revisions (enumerated in
+§7) re-scope the heap-mutation strategy (F5) and the link layer (F9), and fix the AtomVM
+concurrency substrate to raw `erlang:spawn` (proven); the compiler/loader (F6) is confirmed
+largely unchanged. None of these is a blocker — they change *scope*, not viability.
 
 ---
 
@@ -82,7 +84,7 @@ source with the codeconv pipeline's *input* (Dart) is also the natural fit for t
 | target | verdict | evidence | constraints | host_vs_hardware |
 |---|---|---|---|---|
 | **Erlang/BEAM** | **viable** | `gleam run --target erlang` → full observed output (term `pair(label, _G0)`; bind `_G0 := bound_atom`; reader observes `bound_atom`; resolved `pair(label, bound_atom)`); `gleam test` → **4 passed**; clean `rm -rf build && gleam run` reproduces identically. (`hello-glp-term/README.md` §BEAM) | None for the spike's scope; `gleam_otp`/`gleam_erlang` fully available. The **test runtime**. | host build |
-| **AtomVM** | **partially viable** | Host build runs the release's `hello_world.avm` → `Return value: ok`. The smoke's **term-construction path runs on AtomVM** (prints `pair(label, _G0)`), then the `gleam_otp` actor crashes: `Unable to open proc_lib.beam … module proc_lib cannot be resolved … x[1]: undef`. A **raw** BEAM bind (`spawn`/`!`/`receive`/`make_ref`, no OTP) runs → `{cell_after_bind,{bound,bound_atom}}`. (README §AtomVM) | **Named subset limitation:** AtomVM 0.6.6 omits **`proc_lib`** → no `gleam_otp`/OTP-`gen_*`-style actors. **Raw** processes & message passing **do** work. | host build (`AtomVM-linux-x86_64-static-mbedtls-v0.6.6`; no embedded HW) |
+| **AtomVM** | **viable** (host build) | The **full Gleam smoke** (term + the process/state-holder unbound→bound bind over real BEAM processes) runs on the AtomVM host build → byte-identical observed output to Erlang + `Return value: nil` (README §AtomVM). Host sanity: the release's `hello_world.avm` → `Return value: ok`. | **Subset constraint:** spawn the cell via a raw `erlang:spawn` external (+ `gleam_erlang` Subjects), NOT `gleam_otp` — AtomVM omits **`proc_lib`**, which `gleam_otp` (and `gleam_erlang`'s own `process.spawn`) route through (a `gleam_otp` actor build crashes: `module proc_lib cannot be resolved`). | host build (`AtomVM-linux-x86_64-static-mbedtls-v0.6.6`; no embedded HW) |
 | **JavaScript** | **partially viable** | Functional subset (term + immutable bind, `gleam_stdlib` only) compiles + runs on **node v18.19.1** → `pair(label, _G0)` / `bound_atom`. Full smoke `gleam build --target javascript` → `error: Unsupported target … no implementation for the JavaScript target` at `process.send` / `actor.new`/`actor.start`. (README §JavaScript) | **JS fallback cost vs BEAM:** pure compute + types port for free; but **`gleam_erlang`/`gleam_otp` are BEAM-only**, so GLP's process/message-passing concurrency must be *replaced* (event loop / web workers) — a major rewrite. Viable for the *pure* compiler/type-checker, not the concurrent engine. | N/A (host runtime, node) |
 
 No cell is "unknown". Every row has a verdict + ≥1 evidence item (SC-003).
@@ -120,19 +122,21 @@ observe. BEAM's process + message-passing substrate is a *natural* fit for FCP/S
 concurrency and suspension-on-readers. This is the epic's strongest tailwind.
 
 **Bearing:** raises confidence in GO. The concurrency engine can be re-expressed idiomatically
-on BEAM — and the raw-primitive version runs **even on AtomVM** (§3), so the concurrency model
-is the most portable part of the port, not a risk.
+on BEAM — and the **full Gleam bind demo runs on AtomVM** (raw `erlang:spawn` + `gleam_erlang`
+Subjects, §3), so the concurrency model is the most portable part of the port, not a risk.
 
 ### 4.3 WAM-style bytecode execution & custom heap vs AtomVM's BEAM/OTP subset
 
 AtomVM runs a **subset** of BEAM/OTP. The spike's evidence localizes the boundary precisely:
-**full-OTP library code (`proc_lib`, hence `gleam_otp`/`gen_*`) is unavailable, but raw BEAM
-processes and message passing work.** A WAM-style bytecode interpreter is plain sequential
-BEAM code (fine for AtomVM); the *concurrency* layer is where the subset bites.
+**`proc_lib` (hence `gleam_otp`/`gen_*`, and `gleam_erlang`'s own `process.spawn`) is unavailable,
+but raw `erlang:spawn` + message passing + `gleam_erlang` Subjects work — the full Gleam smoke runs
+on AtomVM that way (§3).** A WAM-style bytecode interpreter is plain sequential BEAM code (fine for
+AtomVM); only the *spawn* primitive needs the raw form.
 
 **Bearing:** the heavy features (bytecode runner F5, link layer F9) must, **if AtomVM is a
-real target**, build concurrency on raw process primitives (or a thin AtomVM-compatible
-actor) rather than `gleam_otp`. On **plain BEAM** (the test runtime) `gleam_otp` is fine.
+real target**, spawn via raw `erlang:spawn` (or a thin AtomVM-compatible actor) rather than
+`gleam_otp`/`gen_*` — a proven, low-cost constraint, not a blocker. On **plain BEAM** (the test
+runtime) `gleam_otp` is fine.
 
 ---
 
@@ -191,9 +195,10 @@ roadmap revisions:
    AtomVM-safe variant uses raw processes (no `proc_lib`). *(§5)*
 4. **F6 (compiler/loader): confirmed largely unchanged** — pure pipeline ports cleanly; only
    the loader's process-spawning follows the concurrency-substrate decision. *(§5)*
-5. **Scope AtomVM as a P2 / optional target.** The epic proceeds on plain BEAM regardless;
-   AtomVM is *partially viable* and, if pursued, requires concurrency without full OTP
-   (`proc_lib`) — raw BEAM processes are proven to work. *(§3, §4.3)*
+5. **AtomVM is viable on the host build** — the *full* Gleam smoke (term + process-cell bind)
+   runs on AtomVM. The only constraint: spawn the cell via a raw `erlang:spawn` external (+
+   `gleam_erlang` Subjects), **not** `gleam_otp` (`proc_lib` is out of AtomVM's subset). The epic
+   can target AtomVM (P2) with confidence; plain BEAM remains the test runtime. *(§3, §4.3)*
 6. **Account for `glp_il_codec` (C#-only):** if needed, a separate port from C#, not Dart. *(§5)*
 7. **Standardize the dev environment** on Linux/WSL with the pinned versions; native-Windows is
    viable for a developer with admin rights but was not exercised in this spike. *(§6;

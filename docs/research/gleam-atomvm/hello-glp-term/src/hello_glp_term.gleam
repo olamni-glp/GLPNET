@@ -5,26 +5,34 @@
 ////   1. construction of a representative GLP term — a compound/structure term plus an
 ////      unbound-variable analogue — whose representation is printed/observable;
 ////   2. EXACTLY ONE unbound→bound transition, observed by a reader, modelled two ways:
-////        - PRIMARY: process/state-holder ("logic variable = BEAM process") — a Gleam
-////          actor holds the cell; a separate writer process binds it; a separate reader
-////          process observes the bound value. This exercises core BEAM message passing,
-////          the FCP-concurrency/BEAM-process fit (SC-006), on the most AtomVM-portable
-////          substrate.
-////        - FUNCTIONAL SIBLING: the same single bind as immutable threaded state, making
-////          the mutable-heap-vs-immutability contrast explicit (the old "unbound" value is
-////          never mutated; binding yields a NEW value).
+////        - PRIMARY: process/state-holder ("logic variable = BEAM process") — a cell process
+////          holds the binding; a separate writer process binds it; a separate reader process
+////          observes the bound value. Core BEAM message passing.
+////        - FUNCTIONAL SIBLING: the same single bind as immutable threaded state, making the
+////          mutable-heap-vs-immutability contrast explicit.
+////
+//// ATOMVM-RUNNABLE BY DESIGN: the cell is spawned via a RAW `erlang:spawn` external, NOT
+//// `gleam_otp`'s actor — AtomVM's BEAM/OTP subset omits `proc_lib`, which `gleam_otp` (and
+//// `gleam_erlang`'s own `process.spawn`/`spawn_unlinked`) route through. Subjects
+//// (`self()`+`make_ref()`), `!`, and selective `receive` ARE in AtomVM's subset, so this whole
+//// smoke compiles to BEAM and runs on BOTH Erlang and AtomVM. `start/0` lets AtomVM call it.
 ////
 //// OUT OF SCOPE — deliberately NOT implemented (Assumptions; FR-004; hello-glp-term.contract.md):
 //// full unification of two terms, suspension/reactivation SCHEDULING, bytecode execution,
 //// any performance measurement. The single bind is the *bounded* mutable-variable demo.
 
-import gleam/erlang/process.{type Subject}
+import gleam/erlang/process.{type Pid, type Subject}
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/otp/actor
 import gleam/string
+
+// Raw erlang:spawn/1 — AtomVM-safe (no proc_lib). gleam_erlang's process.spawn/spawn_unlinked
+// both go through proc_lib (absent on AtomVM), so we spawn the raw way and keep gleam_erlang's
+// Subjects for typed message passing.
+@external(erlang, "erlang", "spawn")
+fn raw_spawn(work: fn() -> a) -> Pid
 
 // --------------------------------------------------------------------------
 // Representative GLP term
@@ -92,70 +100,74 @@ fn show_opt(value: Option(Term)) -> String {
 /// Messages to a logic-variable cell. The cell holds `Option(Term)`
 /// (None = unbound). `Bind` performs the one-shot write; `Read` replies with the
 /// current binding to a reader.
-type CellMsg {
+pub type CellMsg {
   Bind(value: Term)
   Read(reply: Subject(Option(Term)))
 }
 
-/// The cell's message handler. EXACTLY ONE unbound→bound transition is enforced:
-/// `Bind` takes effect only while the cell is still unbound; a second `Bind` is a
-/// no-op (single-assignment, the SRSW spirit).
-fn handle_cell(
-  state: Option(Term),
-  msg: CellMsg,
-) -> actor.Next(Option(Term), CellMsg) {
-  case msg {
-    Bind(value) ->
+/// The cell process loop. EXACTLY ONE unbound→bound transition is enforced:
+/// `Bind` takes effect only while unbound; a second `Bind` is a no-op
+/// (single-assignment, the SRSW spirit). The cell owns `me` and receives on it.
+fn cell_loop(state: Option(Term), me: Subject(CellMsg)) -> Nil {
+  case process.receive(me, 5000) {
+    Ok(Bind(value)) ->
       case state {
-        None -> actor.continue(Some(value))
-        Some(_) -> actor.continue(state)
+        None -> cell_loop(Some(value), me)
+        Some(_) -> cell_loop(state, me)
       }
-    Read(reply) -> {
+    Ok(Read(reply)) -> {
       process.send(reply, state)
-      actor.continue(state)
+      cell_loop(state, me)
     }
+    Error(Nil) -> Nil
   }
 }
 
-/// Synchronous read of the cell's current binding.
+/// Spawn a cell process (raw erlang:spawn — AtomVM-safe) and hand its subject back.
+fn spawn_cell() -> Subject(CellMsg) {
+  let init = process.new_subject()
+  let _ = raw_spawn(fn() {
+    let me = process.new_subject()
+    process.send(init, me)
+    cell_loop(None, me)
+  })
+  let assert Ok(cell) = process.receive(init, 5000)
+  cell
+}
+
+/// Synchronous read of the cell's current binding (caller owns the reply subject).
 fn read_cell(cell: Subject(CellMsg)) -> Option(Term) {
-  actor.call(cell, waiting: 1000, sending: Read)
-}
-
-/// A separate WRITER process: binds the cell, then signals completion. The
-/// synchronous read round-trip guarantees the bind has been applied (the actor
-/// processes messages in order) before `done` is signalled — deterministic, no sleeps.
-fn writer_process(cell: Subject(CellMsg), value: Term, done: Subject(Nil)) -> Nil {
-  process.send(cell, Bind(value))
-  let _ = read_cell(cell)
-  process.send(done, Nil)
-}
-
-/// A separate READER process: observes the cell and reports the value back.
-fn reader_process(cell: Subject(CellMsg), out: Subject(Option(Term))) -> Nil {
-  process.send(out, read_cell(cell))
+  let reply = process.new_subject()
+  process.send(cell, Read(reply))
+  case process.receive(reply, 5000) {
+    Ok(value) -> value
+    Error(Nil) -> None
+  }
 }
 
 /// Runs the process/state-holder bind demo. Returns `#(before, after)`:
 /// the cell value observed BEFORE the bind (unbound) and AFTER it (bound),
 /// each read across a process boundary via message passing.
 pub fn process_bind_demo() -> #(Option(Term), Option(Term)) {
-  let assert Ok(started) =
-    actor.new(None) |> actor.on_message(handle_cell) |> actor.start
-  let cell = started.data
+  let cell = spawn_cell()
 
   // reader (main) observes the cell BEFORE any bind -> unbound
   let before = read_cell(cell)
 
-  // a separate WRITER process performs the single unbound->bound bind
+  // a separate WRITER process performs the single unbound->bound bind, then signals.
+  // The synchronous read round-trip guarantees the bind is applied before `done`.
   let done = process.new_subject()
-  let _ = process.spawn(fn() { writer_process(cell, Atom("bound_atom"), done) })
-  let _ = process.receive(done, 1000)
+  let _ = raw_spawn(fn() {
+    process.send(cell, Bind(Atom("bound_atom")))
+    let _ = read_cell(cell)
+    process.send(done, Nil)
+  })
+  let _ = process.receive(done, 5000)
 
   // a separate READER process observes the cell AFTER the bind -> bound
   let out = process.new_subject()
-  let _ = process.spawn(fn() { reader_process(cell, out) })
-  let after = case process.receive(out, 1000) {
+  let _ = raw_spawn(fn() { process.send(out, read_cell(cell)) })
+  let after = case process.receive(out, 5000) {
     Ok(value) -> value
     Error(Nil) -> None
   }
@@ -188,19 +200,19 @@ pub fn functional_bind_demo() -> #(Option(Term), Option(Term)) {
 }
 
 // --------------------------------------------------------------------------
-// main — prints the observable evidence
+// main / start — prints the observable evidence
 // --------------------------------------------------------------------------
 
 pub fn main() -> Nil {
   let term = representative_term()
-  io.println("== hello-glp-term : Gleam smoke on Erlang/BEAM ==")
+  io.println("== hello-glp-term : Gleam smoke on Erlang/BEAM + AtomVM ==")
   io.println("representative term       : " <> term_to_string(term))
   io.println("  compound/structure      : pair/2")
   io.println("  unbound-variable        : _G0")
 
   let #(before, after) = process_bind_demo()
   io.println("")
-  io.println("[process/state-holder model: logic variable = BEAM process]")
+  io.println("[process/state-holder model: logic variable = BEAM process (raw spawn)]")
   io.println("  cell before bind (read by main)     : " <> show_opt(before))
   io.println("  writer process binds _G0            : _G0 := bound_atom")
   io.println("  cell after bind (read by reader)    : " <> show_opt(after))
@@ -216,4 +228,9 @@ pub fn main() -> Nil {
   io.println("  heap1 = write(heap0, bound_atom)    : " <> show_opt(fheap1))
   io.println("  heap0 re-read (immutable, unchanged): " <> show_opt(fheap0))
   Nil
+}
+
+/// AtomVM entry point — AtomVM runs `start/0` of the first module it is given.
+pub fn start() -> Nil {
+  main()
 }
