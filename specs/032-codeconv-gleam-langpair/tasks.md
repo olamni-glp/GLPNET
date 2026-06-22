@@ -56,7 +56,7 @@ implementation per story.
 **Goal**: the pipeline runs end-to-end for `(dart, gleam)`; default `(dart, csharp)` unaffected.
 **Independent Test**: bind workspace to `(dart, gleam)`, run scaffold+mirror over a small Dart subtree → complete Gleam-targeted tree; pair not selected → unchanged Dart→C# output.
 
-- [ ] T008 [P] [US1] Registry/selectability + identity tests (`list_pairs()` has both; `get` returns it; `UnknownLangPair` for absent names BOTH pairs; `key()`, `source_extensions()`, `target_extension()`) in codeconv/tests/test_langpair_dart_gleam.py
+- [ ] T008 [P] [US1] Registry/selectability + identity + refusal tests (`list_pairs()` has both; `get` returns it; `UnknownLangPair` for absent names BOTH pairs; **`PairMismatch` when bound to `(dart,gleam)` with a disagreeing override** — FR-007/SC-005 mismatch half; `key()`, `source_extensions()`, `target_extension()`) in codeconv/tests/test_langpair_dart_gleam.py
 - [ ] T009 [P] [US1] Source-parity tests — `extract_imports`/`extract_leading_doc`/`tool_exclusion_globs` equal `dart_csharp` AND `tools/discover` on a tmp fixture (FR-002) in codeconv/tests/test_langpair_dart_gleam.py
 - [ ] T010 [US1] End-to-end structure smoke (quickstart §4, bridge): throwaway workspace bound to `(dart, gleam)` over a small Dart subtree → scaffold+mirror emit `.gleam` targets + companion set + `codeconv-gleam-tracker.json`; confirm default `(dart, csharp)` output unchanged (SC-001/SC-002). Manual/quickstart verification, `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`.
 
