@@ -126,6 +126,17 @@ JavaScript target` at `process.send` / `process.receive`). The **pure functional
 (term construction + immutable bind, `gleam_stdlib` only) DOES compile + run on JS — see the
 committed sibling project `../js-probe/` (`cd ../js-probe && gleam run --target javascript`).
 
+**Observed output** (`js-probe`, `gleam run --target javascript` on node v18.19.1, verbatim):
+
+```text
+    Running js_probe.main
+== js functional subset (no BEAM processes) ==
+representative term : pair(label, _G0)
+heap0 (unbound)     : unbound
+heap1 (bound)       : bound_atom
+heap0 re-read       : unbound
+```
+
 ---
 
 ## Project layout (the assumed `glp_gleam/` convention for F2/F3)
