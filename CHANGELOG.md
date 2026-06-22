@@ -89,6 +89,23 @@
 
 ## [Unreleased]
 
+## [v2026.06.22.1] - 2026-06-22
+
+### Changed
+- Merge pull request #43 from olamni-glp/031-gleam-port-spike
+- fix codexreview cycle-2 evidence findings (correct C# inventory counts, record JS-probe output)
+- fix codexreview cycle-2 residual (stale gleam_otp mention in js-probe comment)
+- fix codexreview cycle-1 findings (gleam_otp stale listing x2, JS actor citation, inventory JS-build, AtomVM packaging note)
+- gitignore buildkit refine cache (.specify/.refine-cache/, regenerable)
+- full Gleam smoke runs on AtomVM (raw erlang:spawn, no gleam_otp) + codex-review fixes
+- Gleam port spike deliverables - dossier, toolchain inventory, hello-glp-term smoke
+- spec(031): plan, tasks, analyze remediations for Gleam port spike
+- Merge develop (bk-* aliases, pinned CLI) into 031-gleam-port-spike
+- Merge pull request #42 from olamni-glp/chore-bk-aliases-pin-v2026.06.17.1
+- pin CLI v2026.06.17.1, apply /bk-* aliases, register deploy
+- spec(031): Gleam port source+toolchain / AtomVM feasibility spike
+- Merge pull request #41 from olamni-glp/main
+
 ## [v2026.06.19.1] - 2026-06-19
 
 ### Fixed

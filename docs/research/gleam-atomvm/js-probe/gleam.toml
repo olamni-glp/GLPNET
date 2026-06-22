@@ -1,0 +1,10 @@
+name = "js_probe"
+version = "1.0.0"
+description = "Spike F1 JS-backend evidence (031-gleam-port-spike): the pure functional GLP-term subset compiled to JavaScript via Gleam + run on node. Companion to ../hello-glp-term (which targets BEAM)."
+licences = ["Apache-2.0"]
+
+[dependencies]
+gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

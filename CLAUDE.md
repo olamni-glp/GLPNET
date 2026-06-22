@@ -569,7 +569,8 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-- specs/030-marathon-refinement/plan.md
+Active feature plan: `specs/031-gleam-port-spike/plan.md` (Gleam port source &
+toolchain / AtomVM feasibility spike — research/decision spike; deliverables under
+`docs/research/gleam-atomvm/`). For technologies, project structure, and conventions,
+read that plan and its sibling `research.md` / `data-model.md` / `contracts/`.
 <!-- BUILDKIT END -->
