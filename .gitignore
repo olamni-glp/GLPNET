@@ -94,5 +94,8 @@ pgdb.consumers/
 reviews/
 .specify/.deploy-migrated
 
+# buildkit refine guidance cache (regenerable, per-machine; resolved each stage)
+.specify/.refine-cache/
+
 # buildkit-co observability lake (DuckDB/parquet; regenerable, per-machine)
 .specify/co-lake/
