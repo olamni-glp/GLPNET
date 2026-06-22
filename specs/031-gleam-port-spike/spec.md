@@ -17,6 +17,14 @@ This spike is a **research and decision feature**, not a production build. It ex
 
 The spike's deliverable is a **decision dossier** plus a **hello-GLP-term smoke**, whose outputs feed `codeconv-gleam-langpair` and the `glp_gleam` subtree.
 
+## Clarifications
+
+### Session 2026-06-22
+
+- Q: Where do the spike's three durable artifacts (dossier, hello-GLP-term smoke, toolchain inventory) live in the repo? → A: All under `docs/research/gleam-atomvm/` — dossier and toolchain inventory as documents, and the hello-GLP-term smoke as a self-contained Gleam project in a subfolder there. (The `glp_gleam/` subtree is explicitly NOT created by this spike; that is F2/F3.)
+- Q: How much effort to stand up an AtomVM host build for FR-005's "attempt"? → A: Prefer a prebuilt/generic AtomVM host release; only a time-boxed source-build attempt if no prebuilt works; if no AtomVM host build can be stood up within that budget, record the bring-up blocker as the AtomVM matrix row's evidence (bounded — AtomVM bring-up is not unbounded spike scope).
+- Q: How deep must the architectural-fit evidence go for the mutable-heap-vs-immutability risk? → A: The smoke (or a small sibling experiment) MUST demonstrate one unbound→bound transition with a reader observing the bound value — via a process/state-holder or functional model — giving the top architectural-fit risk running evidence. Bounded to a single bind; full unification, suspension/reactivation scheduling, and bytecode execution remain out of scope.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ratifiable source-language decision & go/no-go (Priority: P1)
@@ -96,14 +104,14 @@ The team needs the full build-target matrix — **Erlang/BEAM, AtomVM, JavaScrip
 - **FR-001**: The spike MUST produce a written decision dossier that recommends exactly one source basis for the port — Dart source, C# source, or file-by-file replication of both — and records the decision criteria and the rationale for the recommendation.
 - **FR-002**: The dossier MUST include a build-target matrix evaluating each candidate runtime target — Erlang/BEAM, AtomVM, and JavaScript — with a per-target feasibility verdict (viable / partially viable / not viable) and supporting evidence for each verdict.
 - **FR-003**: The spike MUST stand up a working Gleam + Erlang/OTP toolchain on a documented development environment and record the exact tool versions and the reproducible setup, build, and run commands.
-- **FR-004**: The spike MUST deliver a "hello-GLP-term" smoke — a minimal Gleam module that constructs a representative GLP term (including at least one compound/structure term and an unbound-variable analogue), compiles to BEAM, and runs on Erlang producing an observable, correct result.
-- **FR-005**: The spike MUST attempt to run the hello-GLP-term smoke on an AtomVM host build and record the outcome; if AtomVM cannot run it, the dossier MUST record the specific BEAM/OTP-subset limitation that blocked it.
-- **FR-006**: The dossier MUST assess the architectural fit between the GLP runtime model (mutable heap, WAM-style execution, suspension/reactivation, single-reader/single-writer unification) and Gleam's immutable/functional model, identifying the highest-risk porting concerns and the opportunities (e.g., the concurrency model's fit to BEAM processes and message passing).
+- **FR-004**: The spike MUST deliver a "hello-GLP-term" smoke — a minimal Gleam module that constructs a representative GLP term (including at least one compound/structure term and an unbound-variable analogue), compiles to BEAM, and runs on Erlang producing an observable, correct result. The smoke (or a small sibling experiment in the same project) MUST additionally demonstrate **one** unbound→bound transition with a reader observing the bound value, modelled via a process/state-holder or a functional approach. This single bind is the bounded demonstration of the mutable-variable mechanism; full unification, suspension/reactivation scheduling, and bytecode execution remain out of scope (see Assumptions).
+- **FR-005**: The spike MUST attempt to run the hello-GLP-term smoke on an AtomVM host build and record the outcome; if AtomVM cannot run it, the dossier MUST record the specific BEAM/OTP-subset limitation that blocked it. The attempt is **effort-bounded**: prefer a prebuilt/generic AtomVM host release; only a time-boxed source-build attempt if no prebuilt works; if no AtomVM host build can be stood up within that budget, record the bring-up blocker (not just subset limits) as the AtomVM matrix row's evidence. AtomVM bring-up is not unbounded spike scope.
+- **FR-006**: The dossier MUST assess the architectural fit between the GLP runtime model (mutable heap, WAM-style execution, suspension/reactivation, single-reader/single-writer unification) and Gleam's immutable/functional model, identifying the highest-risk porting concerns and the opportunities (e.g., the concurrency model's fit to BEAM processes and message passing). The mutable-variable mismatch finding MUST be backed by the running unbound→bound demonstration of FR-004, not by analysis alone.
 - **FR-007**: The spike MUST identify and record the porting risks or limits that could force a re-split or re-scope of the heavy downstream features (bytecode runner, compiler/loader, link layer), in a form the roadmap can act on.
 - **FR-008**: The dossier outputs MUST be consumable by the downstream langpair feature and subtree-scaffold feature — i.e., it MUST state the chosen source basis, the target `glp_gleam/` project layout/conventions to assume, and the toolchain versions those features will build against.
 - **FR-009**: Every feasibility verdict and "it works" claim in the dossier MUST be backed by reproducible evidence — a command plus its observed output, or a citation to an authoritative source — rather than by assertion alone.
 - **FR-010**: The dossier MUST conclude with a single go / no-go / go-with-revisions recommendation for the Gleam port epic; a "go-with-revisions" recommendation MUST enumerate the specific roadmap changes required.
-- **FR-011**: The spike MUST NOT modify the existing GLP runtime, programs, or the roadmap's downstream feature definitions; its only durable outputs are the dossier, the hello-GLP-term smoke artifact, and the recorded toolchain inventory. (Final ratification of the source decision and any roadmap changes is the engineer's, informed by the dossier.)
+- **FR-011**: The spike MUST NOT modify the existing GLP runtime, programs, or the roadmap's downstream feature definitions; its only durable outputs are the dossier, the hello-GLP-term smoke artifact, and the recorded toolchain inventory, all located under `docs/research/gleam-atomvm/` (the smoke as a self-contained Gleam project in a subfolder). The spike MUST NOT create the `glp_gleam/` subtree (that is F2/F3). (Final ratification of the source decision and any roadmap changes is the engineer's, informed by the dossier.)
 
 ### Key Entities
 
@@ -122,7 +130,7 @@ The team needs the full build-target matrix — **Erlang/BEAM, AtomVM, JavaScrip
 - **SC-003**: Every target in the build-target matrix has a verdict and at least one piece of supporting evidence; no cell is left "unknown" without a recorded reason.
 - **SC-004**: The downstream langpair and subtree-scaffold features can begin without re-opening the source-language question — zero re-litigation of the source decision after ratification.
 - **SC-005**: The dossier ends with exactly one go / no-go / go-with-revisions verdict, and every heavy downstream feature whose scope the spike's findings affect is named with its recommended re-scope (or explicitly confirmed unchanged).
-- **SC-006**: The architectural-fit assessment identifies at least the mutable-heap/immutability mismatch and the FCP-concurrency/BEAM-process fit, each with its bearing on the recommendation stated.
+- **SC-006**: The architectural-fit assessment identifies at least the mutable-heap/immutability mismatch and the FCP-concurrency/BEAM-process fit, each with its bearing on the recommendation stated; the mutable-heap/immutability finding is backed by the running unbound→bound demonstration (FR-004), not analysis alone.
 
 ## Assumptions
 
@@ -131,11 +139,11 @@ The team needs the full build-target matrix — **Erlang/BEAM, AtomVM, JavaScrip
 - **AtomVM target**: "AtomVM feasibility" is measured against an AtomVM **host/generic build** — no embedded hardware (ESP32 etc.) is required for this spike. Where a verdict would differ on real hardware, that distinction is noted but not blocking.
 - **Representative term**: "Hello-GLP-term" is a minimal but representative term exercising the crux of the runtime model — at least one compound/structure term and an unbound-variable analogue — not the full term universe.
 - **Source leaning**: The roadmap records an initial lean toward the C# source; the spike treats this as a prior to be confirmed or overturned by evidence, not a foregone conclusion.
-- **Scope of the smoke**: The smoke proves the *toolchain and term-representation path*, not a working interpreter; performance, full unification, and bytecode execution are explicitly out of scope for this spike and belong to later features.
+- **Scope of the smoke**: The smoke proves the *toolchain, term-representation path, and a single mutable-variable bind* (one unbound→bound transition observed by a reader), not a working interpreter; performance, full unification, suspension/reactivation scheduling, and bytecode execution are explicitly out of scope for this spike and belong to later features.
 - **No production code**: This spike produces a dossier, a throwaway-grade smoke artifact, and a toolchain inventory — not the `glp_gleam/` runtime, the langpair, or the subtree scaffold (those are F2/F3).
 
 ## Dependencies
 
 - **Upstream**: None blocking — this is F1, the head of the `gleam-atomvm` epic dependency chain.
 - **Downstream consumers**: `codeconv-gleam-langpair` (F2) and `glp-gleam-subtree-scaffold` (F3) consume this spike's source-basis decision, toolchain versions, and target project conventions. The heavy features (bytecode runner F5, compiler/loader F6, link layer F9) consume the architectural-fit risk findings and any re-scope recommendations.
-- **Reference inputs**: The existing Dart source (`glp_runtime/`) and C# source (the `csharp/` runtime), and the roadmap entry for the `gleam-atomvm` epic.
+- **Reference inputs**: The existing Dart source (`glp_runtime/`) and the C# source — which is multi-rooted: the `.NET` hand-port `glp_runtime_net/` (with its own REPL), the feature-specific `csharp/` modules (`glp_il_codec`, `glp_link`), and the regenerable `out/csharp/` scaffold mirror; the spike states which root it treats as *the* C# candidate (see plan research R5) — and the roadmap entry for the `gleam-atomvm` epic.
