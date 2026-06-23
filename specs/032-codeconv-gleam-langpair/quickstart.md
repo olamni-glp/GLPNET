@@ -7,7 +7,7 @@ D:/bstdev/research/glp/glpnet/.pgdb`). Python: `codeconv/.venv`.
 ## 0. Baseline (Principle VII)
 
 ```
-cd codeconv && .venv/Scripts/python.exe -m pytest -q --test-concurrency=1
+cd codeconv && .venv/Scripts/python.exe -m pytest -q
 ```
 Confirm green before any change (regression oracle = `test_langpair_registry.py`).
 
@@ -29,7 +29,7 @@ Expect: `.gleam` / `lib/runtime/heap_fcp.gleam` / `lib/foo.gleam` /
 ## 3. New unit suite
 
 ```
-.venv/Scripts/python.exe -m pytest tests/test_langpair_dart_gleam.py -q --test-concurrency=1
+.venv/Scripts/python.exe -m pytest tests/test_langpair_dart_gleam.py -q
 ```
 All green (target+mirror hooks, source parity, normalization, registry, SC-003
 proxy, corpus no-collision).

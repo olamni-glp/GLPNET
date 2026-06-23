@@ -147,3 +147,10 @@ structure so both pairs route to the single proven Dart parser in `tools/discove
 | Violation / Tension | Why it exists | Simpler alternative & why deferred |
 |---|---|---|
 | **FR-008 "detect & surface collision" cannot be met at runtime without editing a stage tool, which FR-005/SC-003 forbid.** Identity-preserving normalization (FR-003 AS-2) + illegal-segment normalization (FR-008) ⇒ collisions are provably possible (an illegal segment can normalize onto an already-legal sibling — pigeonhole). The only places that aggregate `target_for` outputs are the scaffold planner/workflow (stage tools), and neither detects duplicate targets today; the per-file pure `target_for` (FR-009, contract behaviour 2) cannot see cross-file collisions without becoming stateful (breaking purity/idempotency). | The three requirements are individually sound but jointly unsatisfiable as written. The pair-plugin protocol has no aggregate-validation hook, by design (all hooks per-file/constant). | **Deferred to owner decision (top `/bk-analyze` remediation), NOT chosen in-plan.** Default carried into tasks = **R3-a (zero stage edit):** identity-preserving normalization + a unit test asserting the authoritative `glp_runtime/` corpus normalizes collision-free (FR-008 "never silently overwritten" guaranteed for the production corpus; runtime erroring documented as out of reach without a seam). **Recommended alternative = R3-b:** one *generic* target-uniqueness assertion in `scaffold/planner.py` (helps any normalizing pair) — strongest correctness, but a stage-tool diff that needs a narrow SC-003 carve-out the owner must bless. **R3-c** (new protocol aggregate hook + planner call) is heavier and edits the 016 contract. |
+
+> **OWNER RULING (2026-06-23): R3-b.** The owner blessed the SC-003 carve-out.
+> Implemented as `scaffold/planner.py::TargetCollisionError` + a generic,
+> pair-agnostic uniqueness check appended to `plan_target_tree` (raises before any
+> staging write). SC-003/FR-005/FR-008 reconciled in `spec.md`; the diff now
+> legitimately touches `tools/scaffold/planner.py` (one generic seam) in addition
+> to the new pair package + the one registry line.

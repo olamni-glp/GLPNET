@@ -41,12 +41,14 @@ parity test asserts `dart_gleam.extract_imports(...) == dart_csharp.extract_impo
 
 **Determinism (FR-010)**: `target_for` is a pure function of `source_rel`.
 
-**Collision (FR-008) — R-003 owner decision** (see `research.md`/`plan.md`):
-default R3-a guarantees collision-freedom over the authoritative `glp_runtime/`
-corpus via a unit test; recommended R3-b adds a generic uniqueness seam in the
-scaffold planner (needs an SC-003 carve-out). The contract for *this pair* is:
-`target_for` is identity-preserving + emits only legal segments; whether runtime
-collision-erroring is in scope is the owner's R-003 ruling.
+**Collision (FR-008) — R-003 owner ruling: R3-b (2026-06-23)** (see
+`research.md`/`plan.md`): `target_for` is identity-preserving + emits only legal
+segments (pure, per-file); cross-file collision detection is realized by a single
+generic, pair-agnostic uniqueness assertion in `scaffold/planner.py`
+(`TargetCollisionError`) that raises before any output is staged. Both halves are
+verified: a corpus no-collision unit test over `glp_runtime/` (R3-a guarantee) AND
+a planner-raises test over a synthetic colliding source set (R3-b runtime
+detection). SC-003 is restated as "zero *pair-specific* stage edits".
 
 ## Mirror side (FR-004)
 
@@ -58,11 +60,12 @@ stubs, tracker `"codeconv-gleam-tracker.json"`. All pure (no fs/DB).
 
 The feature diff MUST touch only `langpairs/dart_gleam/**`, the single
 `_PRODUCTION_PAIR_MODULES` line in `langpairs/__init__.py`, the new test
-`codeconv/tests/test_langpair_dart_gleam.py`, and `specs/032/**`. **Zero** edits
-to `tools/{init,discover,depgraph,scaffold,mirror}` — UNLESS the owner adopts
-R3-b, which permits exactly one generic uniqueness assertion in
-`tools/scaffold/planner.py` (then SC-003 is restated as "zero *pair-specific*
-stage edits"). `test_langpair_registry.py` (the existing suite) MUST stay green
+`codeconv/tests/test_langpair_dart_gleam.py`, `specs/032/**`, and — under the
+adopted R3-b ruling — exactly one generic uniqueness assertion in
+`tools/scaffold/planner.py` (`TargetCollisionError` + the pre-return uniqueness
+check; SC-003 restated as "zero *pair-specific* stage edits"). **Zero** edits to
+`tools/{init,discover,depgraph,mirror}` and **zero** *pair-specific* logic in
+`scaffold`. `test_langpair_registry.py` (the existing suite) MUST stay green
 (FR-006/SC-002 — Dart→C# unchanged).
 
 ## Test obligations (new `test_langpair_dart_gleam.py`, pure unit — no bridge)

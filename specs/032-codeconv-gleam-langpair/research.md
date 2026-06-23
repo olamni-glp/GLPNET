@@ -168,6 +168,15 @@ the documented limitation). Either way the pigeonhole reality means FR-003 AS-2
 + FR-008's full runtime-erroring cannot both hold without *some* aggregate seam —
 the spec should be reconciled to say so explicitly.
 
+**OWNER RULING (2026-06-23): R3-b.** Implemented as `TargetCollisionError` + a
+generic, pair-agnostic uniqueness check appended to
+`scaffold/planner.py::plan_target_tree` (raises before any staging write, naming
+both colliding sources). The default `dart_csharp` `target_for` is injective on
+`.dart` inputs so the guard never fires for it (FR-006/SC-002 preserved). Both
+guarantees are tested: corpus no-collision over `glp_runtime/` (221 pruned files,
+0 collisions) AND planner-raises on a synthetic `Runner.dart`/`runner.dart` pair.
+SC-003/FR-005/FR-008 reconciled in `spec.md` (Clarifications 2026-06-23).
+
 ### Normalization algorithm (applies under both R3-a and R3-b)
 
 Per path segment (directory or basename stem, after stripping the source
