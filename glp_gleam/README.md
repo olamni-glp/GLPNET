@@ -21,8 +21,8 @@ glp_gleam/
 └── test/glp_gleam_test.gleam   # gleeunit smoke (≥1 passing test)
 ```
 
-Each `src/glp/<subsystem>.gleam` is a placeholder (module-doc + a `subsystem` marker, no ported
-logic); a downstream feature fills it from its Dart source of truth at `glp_runtime/lib/<subsystem>/`.
+Each `src/glp/<subsystem>.gleam` is a placeholder (module-doc only — no exported definitions, no
+ported logic); a downstream feature fills it from its Dart source of truth at `glp_runtime/lib/<subsystem>/`.
 
 ## Build & test (under WSL only)
 
