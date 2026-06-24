@@ -72,7 +72,7 @@ its test suite passes**, with no ported runtime code present.
 - [ ] T015 [P] [US2] Create `glp_gleam/src/glp/multiagent.gleam` (Dart `glp_runtime/lib/multiagent/`).
 - [ ] T016 [P] [US2] Create `glp_gleam/src/glp/runtime.gleam` (Dart `glp_runtime/lib/runtime/`).
 - [ ] T017 [US2] Rebuild green with all 8 placeholders: `gleam build --target erlang` under WSL → every placeholder compiles even though nothing imports it (edge case "imported but unused must still compile") (SC-003).
-- [ ] T018 [US2] Verify the subsystem set is **exactly** the 8 and equals `glp_runtime/lib/` dir names (set equality both ways) — no 9th, none missing (FR-004, SC-003).
+- [ ] T018 [US2] Verify the subsystem set is **exactly** the 8 and equals `glp_runtime/lib/` dir names (set equality both ways) — no 9th, none missing (FR-004, SC-003); and assert every module path segment matches `^[a-z][a-z0-9_]*$` and is non-reserved — the skeleton contains no illegal segment (FR-006, edge case "illegal module/namespace segment").
 
 **Checkpoint**: US1 + US2 — a building skeleton 1:1 with the Dart source-of-truth.
 
@@ -88,7 +88,7 @@ under `codeconv/src/codeconv/tools/` and zero new `langpairs/` files (FR-008/SC-
 
 - [ ] T019 [US3] Author `glp_gleam/smoke.sh` per `contracts/build-test-smoke.md`: resolve own dir + `cd`; **loud toolchain check** (Gleam 1.17.0 · OTP 25) failing with required versions; `gleam build --target erlang`; `gleam test --target erlang`; exit 0 iff both green, non-zero otherwise; Erlang/BEAM target only (FR-007).
 - [ ] T020 [US3] Run `bash glp_gleam/smoke.sh` under WSL → exit 0 on green; confirm it fails non-zero if the toolchain check is tripped (SC-005, edge case).
-- [ ] T021 [US3] Verify FR-008 recognition is **config-only**: confirm `git diff --name-only` is empty under `codeconv/src/codeconv/tools/{init,discover,scaffold,mirror}/` and adds no `codeconv/src/codeconv/langpairs/` file; the `dart_gleam` pair (F2) + `workspace_settings` roots already carry recognition (FR-008, SC-006; R-004). No code change — verification + note in `glp_gleam/README.md`.
+- [ ] T021 [US3] **Establish + verify** FR-008 recognition (config-only). (a) *Establish/document* the lightweight recognition path: record — in `glp_gleam/README.md` and against `contracts/conversion-recognition.md` — how the Dart→Gleam data flow sees `glp_gleam/` purely via `codeconv init` → `codeconv.workspace_settings` (active pair `dart_gleam`; `target_rel_root`/`output_rel` roots), mirroring how `glp_runtime_net`/`out/csharp` participate for the C# pipeline — no stage-tool source. (b) *Verify the negative*: `git diff --name-only` is empty under `codeconv/src/codeconv/tools/{init,discover,scaffold,mirror}/` and adds no `codeconv/src/codeconv/langpairs/` file (FR-008, SC-006; R-004). No code change.
 - [ ] T022 [US3] Author `glp_gleam/README.md` — one screen: purpose (F3 skeleton; where F4+ land), build/test commands (SC-001/SC-002), the `smoke.sh` gate, and a pointer to `docs/research/gleam-atomvm/dossier.md` §6 (reference, don't duplicate — Principle VIII).
 
 **Checkpoint**: all three stories independently functional.
