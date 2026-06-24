@@ -70,6 +70,44 @@ def _scaffold(repo_root: Path, *extra: str):
     return run_codeconv(repo_root, "scaffold", "run", "--json", *extra)
 
 
+def _init_gleam(repo_root: Path, *extra: str):
+    return run_codeconv(
+        repo_root,
+        "init",
+        "run",
+        "--source",
+        "glp_runtime_net",
+        "--target",
+        "out/gleam",
+        "--source-lang",
+        "dart",
+        "--target-lang",
+        "gleam",
+        "--accept-suggested-exclusions",
+        "--non-interactive",
+        *extra,
+    )
+
+
+def _mk_collision_subtree(repo_root: Path) -> Path:
+    """Two distinct Dart sources whose Gleam targets collide.
+
+    ``lib/foo-bar.dart`` and ``lib/foo_bar.dart`` both normalize to
+    ``lib/foo_bar.gleam`` (the Gleam module-segment rule maps ``-`` → ``_``),
+    a real non-injective collision for the Dart→Gleam pair. Unlike the
+    ``Runner``/``runner`` case these are distinct filenames, so the pair
+    also exists on a case-insensitive filesystem (Windows)."""
+    sub = repo_root / "glp_runtime_net"
+    (sub / "lib").mkdir(parents=True)
+    (sub / "lib" / "foo-bar.dart").write_text(
+        "/// A.\nclass A {}\n", encoding="utf-8"
+    )
+    (sub / "lib" / "foo_bar.dart").write_text(
+        "/// B.\nclass B {}\n", encoding="utf-8"
+    )
+    return sub
+
+
 def _read_tombstone(repo_root: Path, rel: str) -> dict:
     from codeconv.tools.discover.tombstone import read_tombstone
 
@@ -289,3 +327,29 @@ def test_scaffold_advances_phase_status(discover_repo: Path) -> None:
         ).scalar()
     assert status == "COMPLETE", status
     assert int(seq or 0) == 1, seq
+
+
+@needs_bridge
+def test_scaffold_refuses_target_collision_for_normalizing_pair(
+    discover_repo: Path,
+) -> None:
+    """feature-032 R3-b / FR-008: when a normalizing pair (Dart→Gleam) maps
+    two distinct sources onto one target, ``run_scaffold`` surfaces the
+    planner's ``TargetCollisionError`` as a STRUCTURED refusal (exit 2, the
+    colliding sources named) — it does NOT let the exception escape as an
+    uncaught traceback through the DBOS step — and stages nothing (FR-008
+    "no output produced"). Regression guard for the cycle-1 review fix."""
+    _mk_collision_subtree(discover_repo)
+    assert run_codeconv(discover_repo, "migrate").returncode == 0
+    assert _init_gleam(discover_repo).returncode == 0
+
+    proc = _scaffold(discover_repo)
+    # Structured refusal, not an uncaught traceback (which would exit 1).
+    assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
+    blob = proc.stdout + proc.stderr
+    assert "foo-bar.dart" in blob and "foo_bar.dart" in blob, blob
+    # FR-008: nothing produced / no staging residue on collision.
+    assert not (discover_repo / "out" / "gleam").exists(), blob
+    assert not (
+        discover_repo / "out" / "gleam.codeconv-scaffold-tmp"
+    ).exists(), blob
