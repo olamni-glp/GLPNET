@@ -89,6 +89,22 @@
 
 ## [Unreleased]
 
+## [v2026.06.24.1] - 2026-06-24
+
+### Added
+- Dart->Gleam codeconv langpair (dart,gleam) + R3-b generic collision seam
+
+### Changed
+- Merge pull request #46 from olamni-glp/032-codeconv-gleam-langpair
+- refine(codexreview): cycle 2/10 [diff/general]
+- refine(codexreview): cycle 1/10 [diff/general]
+- analyze(032): remediate F3 (add PairMismatch coverage to T008); F1/R-003 owner decision pending
+- tasks(032): 20 tasks across 3 user stories; R-003 owner-decision gate flagged before implement
+- plan(032): Dart->Gleam langpair plan + Phase0/1 artifacts; flag FR-005<->FR-008 collision tension (R-003)
+- clarify Gleam target path policy (verbatim mirror, F3 owns layout)
+- add codeconv-gleam-langpair (Dart-to-Gleam) feature spec + checklist
+- Merge pull request #45 from olamni-glp/main
+
 ## [v2026.06.22.1] - 2026-06-22
 
 ### Changed
