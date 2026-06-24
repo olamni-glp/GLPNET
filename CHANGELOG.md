@@ -89,6 +89,25 @@
 
 ## [Unreleased]
 
+## [v2026.06.24.2] - 2026-06-24
+
+### Added
+- polish — additive-only + quickstart walkthrough + artifact hygiene green (T023-T025)
+- WSL smoke gate + config-only conversion recognition + README (US3, T019-T022)
+- 8 subsystem placeholders 1:1 with glp_runtime/lib (US2, T009-T018)
+- glp_gleam MVP — buildable+testable Gleam/BEAM subtree (US1, T001-T008)
+
+### Fixed
+- strip placeholder export markers -> doc-only (codexreview: T009-T016 'no exported definitions')
+
+### Changed
+- Merge pull request #50 from olamni-glp/033-glp-gleam-subtree-scaffold
+- upgrade installed artifacts to v2026.06.24.3
+- analyze(033): apply top remediations — clarify FR-007/SC-005 wired-in wording; strengthen T021 (FR-008 establish+verify) and T018 (FR-006 segment legality)
+- tasks(033): 25 tasks for glp_gleam subtree scaffold (US1 MVP build+test, US2 8 placeholders, US3 smoke+recognition)
+- plan(033): glp_gleam subtree scaffold — plan, research, data-model, contracts, quickstart
+- Merge pull request #48 from olamni-glp/main
+
 ## [v2026.06.24.1] - 2026-06-24
 
 ### Added
