@@ -14,7 +14,18 @@
 3. **Where in the feature (WIP position)?** → the buildkit pipeline stage state
    (DBOS + PGLite, per-feature) + the feature's `spec.md`/`plan.md`/`tasks.md`.
 
-## Active now (2026-06-12)
+## Active now (2026-06-25)
+
+- **Pipeline feature**: `034-glp-gleam-core-terms-and-heap` (epic `gleam-atomvm`, F4) — **specify ✓ →
+  plan ✓ → tasks ✓ → analyze ✓** all complete (DBOS pipeline state recorded); **next stage =
+  `/bk-implement`, to run in a NEW session.** Resume objectively: `buildkit-roadmap next` → feature has a
+  spec dir (`.specify/feature.json` → `specs/034-glp-gleam-core-terms-and-heap/`) → read its `plan.md`
+  (cascade-bearing decision R-001: **immutable threaded binding store**, not process-cells) +
+  `tasks.md` (28 tasks: Setup → Foundational → US1 MVP → US2 unify → US3 suspension+parity → Polish) →
+  run `/bk-implement`. Analyze found 0 CRITICAL/HIGH; 4 remediations (F1–F4) already applied to the
+  plan-stage artifacts. **Owner-review flag**: spec US2 AS#4 ("a suspension is recorded") is reconciled
+  at the artifact level (F4 `unify` yields the Suspend verdict + address; F5 records) — see data-model §7.
+  Build/test on WSL Ubuntu (`gleam test` + `glp_gleam/smoke.sh`); additive-only; no `gleam_otp`.
 
 - **Harness**: `030-marathon-refinement` (refines 024) — **shipped to main `v2026.06.12.1`**;
   Phase 8 polish in flight on branch `030-marathon-refinement`. The durable, restart-safe
