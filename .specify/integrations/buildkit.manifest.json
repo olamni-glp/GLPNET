@@ -1,6 +1,6 @@
 {
   "integration": "buildkit",
-  "version": "2026.6.17.1",
+  "version": "2026.6.24.1",
   "installed_at": "2026-04-30T00:54:11.829270+00:00",
   "files": {
     ".specify/scripts/powershell/check-prerequisites.ps1": "83f6fb05316164619f96a44665accb97e50182e66ee1aa23826e8251218bf2a0",

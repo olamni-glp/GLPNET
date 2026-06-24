@@ -1,5 +1,5 @@
 {
-  "version": "2026.6.17.1",
+  "version": "2026.6.24.1",
   "integration_state_schema": 1,
   "installed_integrations": [
     "claude"
