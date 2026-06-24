@@ -97,9 +97,9 @@ under `codeconv/src/codeconv/tools/` and zero new `langpairs/` files (FR-008/SC-
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T023 [P] Verify **additive-only** (FR-009, SC-006): the only tracked changes are under `glp_gleam/` (plus the `specs/033-...` docs); no existing subtree's source changed; existing gates' outcomes unchanged.
-- [ ] T024 Run the `quickstart.md` walkthrough end-to-end under WSL — steps 1–6 all green (SC-001..SC-006 spot-check).
-- [ ] T025 [P] Final artifact-hygiene check: `git status --porcelain glp_gleam/build` empty (ignored); `manifest.toml`, `gleam.toml`, `src/**`, `test/**`, `smoke.sh`, `README.md` tracked (FR-010).
+- [X] T023 [P] Verify **additive-only** (FR-009, SC-006): the only tracked changes are under `glp_gleam/` (plus the `specs/033-...` docs); no existing subtree's source changed; existing gates' outcomes unchanged.
+- [X] T024 Run the `quickstart.md` walkthrough end-to-end under WSL — steps 1–6 all green (SC-001..SC-006 spot-check).
+- [X] T025 [P] Final artifact-hygiene check: `git status --porcelain glp_gleam/build` empty (ignored); `manifest.toml`, `gleam.toml`, `src/**`, `test/**`, `smoke.sh`, `README.md` tracked (FR-010).
 
 ---
 
