@@ -569,11 +569,16 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/032-codeconv-gleam-langpair/plan.md` (F2 — add a
-Dart→Gleam codeconv language pair `(dart, gleam)` alongside `(dart, csharp)`;
-new `codeconv/src/codeconv/langpairs/dart_gleam/` package + one registry line,
-zero stage-tool edits). For technologies, project structure, and conventions,
-read that plan and its sibling `research.md` / `data-model.md` / `contracts/`.
-Open owner decision (R-003): FR-008 runtime collision-erroring vs FR-005 zero
-stage-edits — see plan.md Complexity Tracking.
+Active feature plan: `specs/033-glp-gleam-subtree-scaffold/plan.md` (F3 — create
+the committed, hand-authored `glp_gleam/` repo-root Gleam project skeleton:
+`gleam.toml` + committed `manifest.toml` (pins gleam_stdlib 1.0.3 / gleam_erlang
+1.3.0 / gleeunit 1.11.0; NO gleam_otp) + 8 empty-but-building placeholder modules
+under `src/glp/` (1:1 with `glp_runtime/lib/`) + gleeunit smoke + WSL `smoke.sh`;
+build+test green on Erlang/BEAM under WSL). For technologies, structure, and
+conventions read that plan and its sibling `research.md` / `data-model.md` /
+`contracts/`. Constitution Check: no violations. Non-blocking owner-awareness
+flag (research.md R-003): the smoke is a *separate* WSL gate, not embedded in
+`test/run_all_tests.sh` (cross-runtime/OS + additive-only). FR-008 recognition is
+config-only via `workspace_settings` + the existing F2 `dart_gleam` pair — zero
+stage-tool edits.
 <!-- BUILDKIT END -->
