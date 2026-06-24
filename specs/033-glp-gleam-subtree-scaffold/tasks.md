@@ -63,16 +63,16 @@ its test suite passes**, with no ported runtime code present.
 
 **Independent Test**: enumerate `src/glp/*.gleam` → exactly the 8 subsystems; rebuild → all compile.
 
-- [ ] T009 [P] [US2] Create `glp_gleam/src/glp/analysis.gleam` — a `////` module-doc naming the subsystem + its Dart source-of-truth path (`glp_runtime/lib/analysis/`); no exported definitions (R-006).
-- [ ] T010 [P] [US2] Create `glp_gleam/src/glp/bytecode.gleam` (same discipline; Dart `glp_runtime/lib/bytecode/`).
-- [ ] T011 [P] [US2] Create `glp_gleam/src/glp/compiler.gleam` (Dart `glp_runtime/lib/compiler/`).
-- [ ] T012 [P] [US2] Create `glp_gleam/src/glp/engine.gleam` (Dart `glp_runtime/lib/engine/`).
-- [ ] T013 [P] [US2] Create `glp_gleam/src/glp/link.gleam` (Dart `glp_runtime/lib/link/`).
-- [ ] T014 [P] [US2] Create `glp_gleam/src/glp/lint.gleam` (Dart `glp_runtime/lib/lint/`).
-- [ ] T015 [P] [US2] Create `glp_gleam/src/glp/multiagent.gleam` (Dart `glp_runtime/lib/multiagent/`).
-- [ ] T016 [P] [US2] Create `glp_gleam/src/glp/runtime.gleam` (Dart `glp_runtime/lib/runtime/`).
-- [ ] T017 [US2] Rebuild green with all 8 placeholders: `gleam build --target erlang` under WSL → every placeholder compiles even though nothing imports it (edge case "imported but unused must still compile") (SC-003).
-- [ ] T018 [US2] Verify the subsystem set is **exactly** the 8 and equals `glp_runtime/lib/` dir names (set equality both ways) — no 9th, none missing (FR-004, SC-003); and assert every module path segment matches `^[a-z][a-z0-9_]*$` and is non-reserved — the skeleton contains no illegal segment (FR-006, edge case "illegal module/namespace segment").
+- [X] T009 [P] [US2] Create `glp_gleam/src/glp/analysis.gleam` — a `////` module-doc naming the subsystem + its Dart source-of-truth path (`glp_runtime/lib/analysis/`); no exported definitions (R-006).
+- [X] T010 [P] [US2] Create `glp_gleam/src/glp/bytecode.gleam` (same discipline; Dart `glp_runtime/lib/bytecode/`).
+- [X] T011 [P] [US2] Create `glp_gleam/src/glp/compiler.gleam` (Dart `glp_runtime/lib/compiler/`).
+- [X] T012 [P] [US2] Create `glp_gleam/src/glp/engine.gleam` (Dart `glp_runtime/lib/engine/`).
+- [X] T013 [P] [US2] Create `glp_gleam/src/glp/link.gleam` (Dart `glp_runtime/lib/link/`).
+- [X] T014 [P] [US2] Create `glp_gleam/src/glp/lint.gleam` (Dart `glp_runtime/lib/lint/`).
+- [X] T015 [P] [US2] Create `glp_gleam/src/glp/multiagent.gleam` (Dart `glp_runtime/lib/multiagent/`).
+- [X] T016 [P] [US2] Create `glp_gleam/src/glp/runtime.gleam` (Dart `glp_runtime/lib/runtime/`).
+- [X] T017 [US2] Rebuild green with all 8 placeholders: `gleam build --target erlang` under WSL → every placeholder compiles even though nothing imports it (edge case "imported but unused must still compile") (SC-003).
+- [X] T018 [US2] Verify the subsystem set is **exactly** the 8 and equals `glp_runtime/lib/` dir names (set equality both ways) — no 9th, none missing (FR-004, SC-003); and assert every module path segment matches `^[a-z][a-z0-9_]*$` and is non-reserved — the skeleton contains no illegal segment (FR-006, edge case "illegal module/namespace segment").
 
 **Checkpoint**: US1 + US2 — a building skeleton 1:1 with the Dart source-of-truth.
 
