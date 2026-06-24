@@ -21,6 +21,39 @@ from typing import Any
 from sqlalchemy import text
 
 
+class TargetCollisionError(Exception):
+    """Two distinct source files map to the same scaffold target path.
+
+    Generic, pair-agnostic guard (feature-032 R-003 owner ruling **R3-b**):
+    a normalizing ``target_for`` — e.g. the Dart->Gleam pair's Gleam
+    module-segment normalization — is **not injective**, so two distinct
+    sources can collide onto one ``target_rel`` (or ``workdir_rel``).
+    :func:`plan_target_tree` raises this with an actionable message naming
+    the colliding sources. The planner is pure and runs BEFORE any staging
+    write (``scaffold.workflow`` stages only after it has the plan), so
+    **nothing is produced** on collision (spec-032 FR-008 — a colliding
+    target is never silently merged or overwritten). This check is generic
+    (it benefits every present/future normalizing pair) and is NOT
+    pair-specific logic — the SC-003 carve-out the owner blessed permits
+    exactly this one uniqueness assertion in the scaffold planner.
+    """
+
+    def __init__(
+        self, kind: str, target: str, first: str, second: str
+    ) -> None:
+        self.kind = kind
+        self.target = target
+        self.first = first
+        self.second = second
+        super().__init__(
+            f"scaffold {kind} collision: source files {first!r} and "
+            f"{second!r} both map to {kind} {target!r}. The selected "
+            f"language pair's target mapping is not injective for this "
+            f"source set; rename one source or adjust the pair's "
+            f"normalization. No output was produced."
+        )
+
+
 @dataclass(frozen=True)
 class PlannedFile:
     """One in-scope source file's scaffold plan entry.
@@ -104,7 +137,38 @@ def plan_target_tree(
                 workdir_rel=workdir_rel,
             )
         )
+    _assert_no_target_collisions(plan)
     return plan
 
 
-__all__ = ["PlannedFile", "plan_target_tree"]
+def _assert_no_target_collisions(plan: list[PlannedFile]) -> None:
+    """Generic uniqueness guard (feature-032 R-003 / R3-b).
+
+    Raise :class:`TargetCollisionError` if two distinct sources share a
+    ``target_rel`` (or a non-``None`` ``workdir_rel``). Pair-agnostic: the
+    default ``dart_csharp`` ``target_for`` is injective on ``.dart`` inputs
+    so this never fires for it; a normalizing pair (e.g. Dart->Gleam) can
+    collide, and detecting it here — before any filesystem write — is the
+    only place an aggregate (all-target-paths) check can live without
+    making the per-file ``target_for`` hook stateful (spec-032 FR-008/
+    FR-009).
+    """
+    seen_target: dict[str, str] = {}
+    seen_workdir: dict[str, str] = {}
+    for pf in plan:
+        prior = seen_target.get(pf.target_rel)
+        if prior is not None:
+            raise TargetCollisionError(
+                "target", pf.target_rel, prior, pf.source_rel
+            )
+        seen_target[pf.target_rel] = pf.source_rel
+        if pf.workdir_rel is not None:
+            prior_wd = seen_workdir.get(pf.workdir_rel)
+            if prior_wd is not None:
+                raise TargetCollisionError(
+                    "workdir", pf.workdir_rel, prior_wd, pf.source_rel
+                )
+            seen_workdir[pf.workdir_rel] = pf.source_rel
+
+
+__all__ = ["PlannedFile", "TargetCollisionError", "plan_target_tree"]

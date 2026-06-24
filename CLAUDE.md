@@ -569,8 +569,11 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/031-gleam-port-spike/plan.md` (Gleam port source &
-toolchain / AtomVM feasibility spike — research/decision spike; deliverables under
-`docs/research/gleam-atomvm/`). For technologies, project structure, and conventions,
+Active feature plan: `specs/032-codeconv-gleam-langpair/plan.md` (F2 — add a
+Dart→Gleam codeconv language pair `(dart, gleam)` alongside `(dart, csharp)`;
+new `codeconv/src/codeconv/langpairs/dart_gleam/` package + one registry line,
+zero stage-tool edits). For technologies, project structure, and conventions,
 read that plan and its sibling `research.md` / `data-model.md` / `contracts/`.
+Open owner decision (R-003): FR-008 runtime collision-erroring vs FR-005 zero
+stage-edits — see plan.md Complexity Tracking.
 <!-- BUILDKIT END -->
