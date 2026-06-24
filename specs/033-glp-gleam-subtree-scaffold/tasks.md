@@ -23,9 +23,9 @@ incomplete work.
 
 **Purpose**: Create the project skeleton and static config (no toolchain needed yet).
 
-- [ ] T001 Create the `glp_gleam/` directory tree at the repo root (`glp_gleam/src/glp/`, `glp_gleam/test/`) per `specs/033-glp-gleam-subtree-scaffold/contracts/project-layout.md` — sibling to `glp_runtime/` and `glp_runtime_net/` (FR-001).
-- [ ] T002 Author `glp_gleam/gleam.toml` — `name = "glp_gleam"`, version/description/licences, `[dependencies] gleam_stdlib`, `gleam_erlang`, `[dev-dependencies] gleeunit`, **no `gleam_otp`**, ranges per `contracts/dependency-lock.md` (FR-001, FR-005, FR-006).
-- [ ] T003 [P] Author `glp_gleam/.gitignore` with `*.beam`, `*.ez`, `/build`, `erl_crash.dump` (FR-010).
+- [X] T001 Create the `glp_gleam/` directory tree at the repo root (`glp_gleam/src/glp/`, `glp_gleam/test/`) per `specs/033-glp-gleam-subtree-scaffold/contracts/project-layout.md` — sibling to `glp_runtime/` and `glp_runtime_net/` (FR-001).
+- [X] T002 Author `glp_gleam/gleam.toml` — `name = "glp_gleam"`, version/description/licences, `[dependencies] gleam_stdlib`, `gleam_erlang`, `[dev-dependencies] gleeunit`, **no `gleam_otp`**, ranges per `contracts/dependency-lock.md` (FR-001, FR-005, FR-006).
+- [X] T003 [P] Author `glp_gleam/.gitignore` with `*.beam`, `*.ez`, `/build`, `erl_crash.dump` (FR-010).
 
 ---
 
@@ -33,8 +33,8 @@ incomplete work.
 
 **Purpose**: Lock dependencies so any build is reproducible. **⚠️ BLOCKS all build/test tasks.**
 
-- [ ] T004 Verify the WSL toolchain: `gleam --version` == `1.17.0`, `erl` OTP release == `25`, `rebar3` present; **fail loudly** with the required versions if not (edge case "toolchain absent/wrong version").
-- [ ] T005 Generate and **commit** `glp_gleam/manifest.toml` by running `gleam deps download` under WSL (cwd `glp_gleam/`), then verify it locks `gleam_stdlib` 1.0.3 / `gleam_erlang` 1.3.0 / `gleeunit` 1.11.0 and `grep -c gleam_otp manifest.toml` == `0` (FR-005, FR-010, SC-004). Manifest is git-tracked; `build/` is not.
+- [X] T004 Verify the WSL toolchain: `gleam --version` == `1.17.0`, `erl` OTP release == `25`, `rebar3` present; **fail loudly** with the required versions if not (edge case "toolchain absent/wrong version").
+- [X] T005 Generate and **commit** `glp_gleam/manifest.toml` by running `gleam deps download` under WSL (cwd `glp_gleam/`), then verify it locks `gleam_stdlib` 1.0.3 / `gleam_erlang` 1.3.0 / `gleeunit` 1.11.0 and `grep -c gleam_otp manifest.toml` == `0` (FR-005, FR-010, SC-004). Manifest is git-tracked; `build/` is not.
 
 **Checkpoint**: deps locked → builds are reproducible; user stories can begin.
 
@@ -48,9 +48,9 @@ its test suite passes**, with no ported runtime code present.
 **Independent Test**: `gleam build --target erlang` (0 errors) then `gleam test --target erlang`
 (≥1 test, 0 failures), under WSL — the SC-001/SC-002 gate.
 
-- [ ] T006 [US1] Author `glp_gleam/test/glp_gleam_test.gleam` — a gleeunit smoke test with ≥1 assertion exercising the build-and-run path (FR-003, SC-002).
-- [ ] T007 [US1] Build green: `gleam build --target erlang` under WSL → 0 errors (FR-002, SC-001). Here resolve the R-006 empty-src question against the **real compiler**: if `gleam build` requires ≥1 `src/` module, add a single minimal `////`-doc module (formalized into the full 8 in US2) — decided by the compiler, not guessed.
-- [ ] T008 [US1] Test green: `gleam test --target erlang` under WSL → ≥1 test, 0 failures (SC-002).
+- [X] T006 [US1] Author `glp_gleam/test/glp_gleam_test.gleam` — a gleeunit smoke test with ≥1 assertion exercising the build-and-run path (FR-003, SC-002).
+- [X] T007 [US1] Build green: `gleam build --target erlang` under WSL → 0 errors (FR-002, SC-001). Here resolve the R-006 empty-src question against the **real compiler**: if `gleam build` requires ≥1 `src/` module, add a single minimal `////`-doc module (formalized into the full 8 in US2) — decided by the compiler, not guessed.
+- [X] T008 [US1] Test green: `gleam test --target erlang` under WSL → ≥1 test, 0 failures (SC-002).
 
 **Checkpoint**: MVP delivered — a buildable, testable empty-but-building Gleam subtree. Deployable.
 
