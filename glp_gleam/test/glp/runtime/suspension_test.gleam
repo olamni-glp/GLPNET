@@ -87,3 +87,20 @@ pub fn suspend_on_non_writer_errors_test() {
   heap.suspend_on_writer(h1, r, Suspension(goal_id: 1, resume_pc: 1, armed: True))
   |> should.equal(Error(NotAWriter(r)))
 }
+
+// FR-008 regression (forward-to-chained-target): forwarding onto a target whose immediate
+// paired writer is ALREADY bound onward (`WriterBound`) must ride to the chain's TERMINAL
+// writer, not silently drop. Chain wb→rc first; suspend on wa; bind wa→rb (rb's immediate
+// paired writer wb is already WriterBound, terminal = wc); binding wc fires the suspension.
+pub fn forward_onto_chained_target_fires_test() {
+  let #(h1, wa, _ra) = heap.allocate_variable(heap.new())
+  let #(h2, wb, rb) = heap.allocate_variable(h1)
+  let #(h3, wc, rc) = heap.allocate_variable(h2)
+  let assert Ok(#(h4, [])) = heap.bind_writer_to_var(h3, wb, rc)
+  let assert Ok(h5) =
+    heap.suspend_on_writer(h4, wa, Suspension(goal_id: 7, resume_pc: 3, armed: True))
+  let assert Ok(#(h6, [])) = heap.bind_writer_to_var(h5, wa, rb)
+  let assert Ok(#(_h7, activations)) =
+    heap.bind_writer(h6, wc, ConstTerm(ConstInt(0)))
+  activations |> should.equal([GoalRef(goal_id: 7, resume_pc: 3)])
+}

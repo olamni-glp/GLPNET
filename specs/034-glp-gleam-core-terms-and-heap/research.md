@@ -139,12 +139,20 @@ activation list on binding; the scheduler that *consumes* it is F5.
   `armed` flag; `GoalRef(goal_id: Int, resume_pc: Int)`. A writer cell carries an optional suspension
   list (the FCP `WriterContent` that preserves the reader pairing while suspensions are attached,
   `heap_fcp.dart:48`). `bind`-to-ground returns `#(Heap, List(GoalRef))` containing one `GoalRef` per
-  armed suspension (and disarms them); `bind`-to-variable forwards armed suspensions to the target writer
-  and returns `[]`.
-- **Rationale**: directly ports `bindWriter`/`bindWriterToReader`/`suspendOnWriter`/`_walkAndActivate`/
-  `_forwardSuspensions`. The shared-record/double-activation guard (`disarm()`) is preserved because
-  var-to-var forwarding shares the record (FR-008 "forward the suspensions to the target"). F4 produces
-  the list; it never runs the goals.
+  armed suspension (then replaces the cell with the value, so those records cannot re-fire); `bind`-to-
+  variable forwards armed suspensions to the target chain's terminal writer and returns `[]`.
+- **Rationale**: ports `bindWriter`/`bindWriterToReader`/`suspendOnWriter`/`_walkAndActivate`;
+  forwarding mirrors `_forwardSuspensions` but resolves to the chain's **terminal** writer (a faithful
+  improvement — the Dart forwards to the *immediate* paired writer, which drops the suspension when that
+  writer is already bound onward). **Recorded divergence (corrected 2026-06-25):** the Dart's *cross-writer*
+  single-fire guard relies on a SHARED mutable `SuspensionRecord` — `disarm()` flips `goalId=null` for
+  every list the record is linked into, so one goal suspended on two distinct writers fires once even if
+  both bind. The Gleam port uses immutable VALUE suspensions (each writer holds its own copy), so it does
+  **not** preserve that cross-writer guard. This is unreachable through F4's own API — var-to-var
+  forwarding MOVES the suspension off the source, and bind-to-value discards the cell — so F4 is correct
+  for the single-runtime surface it exposes. **F5 must reintroduce the single-fire guard** (e.g. dedupe
+  activations by `goal_id` at the scheduler) once it can suspend one goal on multiple writers (the
+  HEAD/GUARD phase). F4 produces the activation list; it never runs the goals.
 
 ## R-008 — Explicit scope exclusions (recorded so later adds are faithful, not surprises)
 

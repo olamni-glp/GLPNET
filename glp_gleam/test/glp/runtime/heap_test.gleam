@@ -3,7 +3,7 @@
 //// glp_runtime/lib/runtime/heap_fcp.dart.
 
 import gleeunit/should
-import glp/runtime/heap.{AlreadyBound, Bound, Unbound, WriterToWriter}
+import glp/runtime/heap.{AlreadyBound, Bound, NotAWriter, Unbound, WriterToWriter}
 import glp/runtime/terms.{ConstAtom, ConstInt, ConstTerm}
 
 // A fresh variable: role read from the tag; deref of either half reaches the unbound
@@ -92,4 +92,34 @@ pub fn wxw_writer_to_writer_test() {
   let #(h2, w2, _r2) = heap.allocate_variable(h1)
   heap.bind_writer_to_var(h2, w1, w2)
   |> should.equal(Error(WriterToWriter(w1, w2)))
+}
+
+// bind_writer on a READER address is reported loudly (FR-005, NotAWriter) — distinct trigger
+// point from the AlreadyBound single-assignment case above.
+pub fn bind_writer_on_reader_errors_test() {
+  let #(h1, _w, r) = heap.allocate_variable(heap.new())
+  heap.bind_writer(h1, r, ConstTerm(ConstInt(1)))
+  |> should.equal(Error(NotAWriter(r)))
+}
+
+// bind_writer_to_var on an already var-bound (WriterBound) writer is single-assignment:
+// AlreadyBound, NOT a fresh re-bind (FR-006 / contract runtime-api.md:38).
+pub fn bind_writer_to_var_already_bound_test() {
+  let #(h1, w1, _r1) = heap.allocate_variable(heap.new())
+  let #(h2, _w2, r2) = heap.allocate_variable(h1)
+  let #(h3, _w3, r3) = heap.allocate_variable(h2)
+  let assert Ok(#(h4, [])) = heap.bind_writer_to_var(h3, w1, r2)
+  heap.bind_writer_to_var(h4, w1, r3)
+  |> should.equal(Error(AlreadyBound(w1)))
+}
+
+// bind_writer_to_var whose second argument resolves to a value cell (not a reader) →
+// NotAWriter (the ValueCell branch of the target dispatch, runtime-api.md:38).
+pub fn bind_writer_to_var_value_target_errors_test() {
+  let #(h1, w1, _r1) = heap.allocate_variable(heap.new())
+  let #(h2, w2, _r2) = heap.allocate_variable(h1)
+  let assert Ok(#(h3, [])) = heap.bind_writer(h2, w2, ConstTerm(ConstInt(5)))
+  // w2 is now a ValueCell; using it as the bind target is NotAWriter(w2).
+  heap.bind_writer_to_var(h3, w1, w2)
+  |> should.equal(Error(NotAWriter(w2)))
 }

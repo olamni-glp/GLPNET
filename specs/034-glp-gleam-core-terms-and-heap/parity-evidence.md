@@ -47,7 +47,7 @@ outcome, and the expected value baked into `parity_test.gleam`.
 | 8 | suspend → activate on bind-to-value | `suspension_pointer_test.dart` · "On wake, activation pc equals kappa" (l.21): `g=77,pc=1`; "Multiple suspensions … all activate" (l.48); `binding_pointer_test.dart` "binding ground value activates all suspensions" (l.225) | `bind_writer` returns one `GoalRef(goal_id, resume_pc)` per armed suspension |
 | 9 | disarmed suspension not activated | `suspension_pointer_test.dart` · "Disarmed suspensions do not activate" (l.72); `binding_pointer_test.dart` l.264 | a disarmed record yields no `GoalRef` (double-activation guard) |
 | 10 | suspend → forward on bind-to-variable | `suspension_pointer_test.dart` · "Suspension forwarding when binding to another variable" (l.94): `record(42,500)`; "Chain … forwards suspensions correctly" (l.122): `record(99,999)`; `binding_pointer_test.dart` l.241 | `bind_writer_to_var` returns `[]` (nothing fires); the suspension rides to the target writer; binding the target then fires it |
-| 11 | deref of a cyclic structure terminates loudly | `circular_term_pointer_test.dart` · "dereference through circular structure terminates" | a writer↔own-reader pointer cycle → Gleam `Error(Cycle)` (Dart: terminates / `StateError`); no occurs-check prevents forming it |
+| 11 | self-bind: writer↔own-reader pair derefs UNBOUND | `binding_pointer_test.dart` · "unbound chain returns final writer VarRef" (l.167) + `heap_fcp.dart` `derefAddr` bidirectional recognizer (l.312-323) | `unify(VarRef(w), VarRef(r))` with `r` = `w`'s own paired reader → `Success`; `deref` = `Unbound(w)`. The Dart `derefAddr` recognizes the writer→paired-reader-points-back shape and returns `VarRef(w)` (still unbound), **not** a `StateError`. The pair is formable precisely because there is no occurs-check. (A genuine multi-hop pointer cycle, not this self-pair, would still be reported loudly.) |
 
 ## Notes on faithful divergences (observable-equivalent)
 
@@ -65,3 +65,14 @@ outcome, and the expected value baked into `parity_test.gleam`.
   `goal_id`/`resume_pc` — those are the F5 runner's); the Dart end-to-end behaviour
   ("a suspension is recorded") is met by F4's `unify` verdict + the caller's
   `suspend_on_writer` (F1 reconciliation, data-model §7).
+- **No occurs-check — two distinct shapes, both faithful to Dart.** (1) A *structural*
+  self-reference `f(X?)` bound into `X`'s writer (`no_occurs_check_struct_test`) derefs to the
+  `Bound` struct and terminates — `derefAddr` returns `ValueTag` content without recursing into
+  struct args (`heap_fcp.dart` l.331-333; the Dart `circular_term_pointer_test` "dereference
+  through circular structure terminates" fixes this). (2) A *pointer* self-bind — a writer bound
+  onward to its own paired reader (`no_occurs_check_self_bind_unbound_test` / parity #11) —
+  derefs to `Unbound(w)`, because `derefAddr`'s bidirectional recognizer (`heap_fcp.dart`
+  l.312-323) reads the writer→paired-reader-points-back shape as still-unbound. Earlier drafts
+  conflated these two and mis-asserted a cycle error for (2); the corrected outcome is `Unbound`,
+  matching the Dart. A *genuine multi-hop* pointer cycle (distinct from either self-shape) is
+  still caught loudly by `deref`'s visited-set guard.

@@ -104,9 +104,13 @@ pub type Suspension {                  // ← SuspensionRecord + SuspensionListN
 pub type GoalRef { GoalRef(goal_id: Int, resume_pc: Int) }   // ← machine_state.dart GoalRef
 ```
 
-- A writer cell carries `List(Suspension)` (R-007). `armed` mirrors the Dart `armed`/`disarm()` guard
-  against double-activation; binding-to-value emits one `GoalRef` per armed suspension then marks them
-  disarmed; binding-to-variable forwards armed suspensions to the target writer (shared semantics).
+- A writer cell carries `List(Suspension)` (R-007). `armed` records whether a suspension may activate;
+  binding-to-value emits one `GoalRef` per armed suspension and then replaces the cell with the value
+  (the records cannot re-fire); binding-to-variable forwards armed suspensions to the target chain's
+  **terminal** writer. **Recorded divergence (2026-06-25):** because suspensions are immutable VALUES
+  (not the Dart's shared mutable record), F4 does NOT preserve the *cross-writer* single-fire guard for
+  one goal suspended on multiple distinct writers — unreachable through F4's API, but **F5 must dedupe
+  activations by `goal_id`** when it suspends a goal on multiple writers (R-007).
 - **F4 owns storage + activation-list *production* only** — never consumes/schedules (Clarification
   2026-06-24; FR-008). The activation list is the hand-off to the future F5 scheduler.
 
@@ -136,8 +140,8 @@ pub fn suspend_on_writer(heap: Heap, writer: Int, susp: Suspension) -> Result(He
 
 - `bind_writer`: writer must be `WriterCell` (else `AlreadyBound`/`NotAWriter`); → `ValueCell(value)`;
   returns armed activations (FR-005/FR-008).
-- `bind_writer_to_var`: writer→target's reader (`WriterBound`); forwards suspensions; returns `[]`;
-  target-is-a-writer ⇒ `WriterToWriter` (FR-004/FR-006).
+- `bind_writer_to_var`: writer→target's reader (`WriterBound`); forwards suspensions to the target
+  chain's terminal writer; returns `[]`; target-is-a-writer ⇒ `WriterToWriter` (FR-004/FR-006).
 
 ## 7. Unification outcome (`glp/runtime/unify.gleam`)
 

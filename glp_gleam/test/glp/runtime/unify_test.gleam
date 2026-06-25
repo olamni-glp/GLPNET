@@ -4,7 +4,7 @@
 //// occurs-check (F4). Dart source of truth: glp_runtime/lib/runtime/ (HEAD-phase unify).
 
 import gleeunit/should
-import glp/runtime/heap.{Bound, Cycle, WriterToWriter}
+import glp/runtime/heap.{Bound, Unbound, WriterToWriter}
 import glp/runtime/terms.{
   ConstAtom, ConstInt, ConstTerm, StructTerm, VarRef, cons, nil,
 }
@@ -147,10 +147,14 @@ pub fn no_occurs_check_struct_test() {
   out |> should.equal(self_struct)
 }
 
-// No occurs-check (F4): unifying a writer with its OWN reader succeeds and forms a genuine
-// pointer cycle; a subsequent deref reports it loudly as Cycle (faithful to Dart).
-pub fn no_occurs_check_cycle_test() {
+// No occurs-check (F4): unifying a writer with its OWN reader succeeds, binding the writer
+// onward to that reader — a self-referential pair the Dart `derefAddr` treats as STILL
+// UNBOUND (the bidirectional recognizer, heap_fcp.dart:312-323). A subsequent deref yields
+// Unbound(w), faithful to the Dart (NOT a cycle error). A genuine multi-hop pointer cycle
+// would still be reported loudly by deref's visited-set guard.
+pub fn no_occurs_check_self_bind_unbound_test() {
   let #(h1, w, r) = heap.allocate_variable(heap.new())
   let assert Ok(Success(h2)) = unify(h1, VarRef(w), VarRef(r))
-  heap.deref(h2, r) |> should.equal(Error(Cycle(r)))
+  let assert Ok(#(_, dr)) = heap.deref(h2, r)
+  dr |> should.equal(Unbound(w))
 }

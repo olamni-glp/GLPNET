@@ -8,7 +8,7 @@
 //// Dart source of truth: glp_runtime/lib/runtime/{terms,heap_fcp,suspension}.dart.
 
 import gleeunit/should
-import glp/runtime/heap.{Bound, Cycle, Unbound, WriterToWriter}
+import glp/runtime/heap.{Bound, Unbound, WriterToWriter}
 import glp/runtime/suspension.{GoalRef, Suspension}
 import glp/runtime/terms.{ConstInt, ConstTerm, StructTerm, VarRef}
 import glp/runtime/unify.{Fail, Success, Suspend, unify}
@@ -109,9 +109,13 @@ pub fn parity_forward_on_var_bind_test() {
   acts |> should.equal([GoalRef(goal_id: 42, resume_pc: 500)])
 }
 
-// #11 — no occurs-check: a writer↔own-reader cycle forms, and deref reports it loudly.
-pub fn parity_cycle_deref_test() {
+// #11 — no occurs-check: unifying a writer with its OWN paired reader succeeds, binding the
+// writer onward to that reader. That self-referential pair is one the Dart `derefAddr` treats
+// as STILL UNBOUND (the bidirectional recognizer, heap_fcp.dart:312-323) — deref yields
+// Unbound(w), NOT an error. The pair is formable precisely because there is no occurs-check.
+pub fn parity_self_bind_deref_unbound_test() {
   let #(h1, w, r) = heap.allocate_variable(heap.new())
   let assert Ok(Success(h2)) = unify(h1, VarRef(w), VarRef(r))
-  heap.deref(h2, r) |> should.equal(Error(Cycle(r)))
+  let assert Ok(#(_, dr)) = heap.deref(h2, r)
+  dr |> should.equal(Unbound(w))
 }

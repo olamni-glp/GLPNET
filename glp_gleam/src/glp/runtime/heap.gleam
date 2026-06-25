@@ -163,7 +163,16 @@ fn deref_walk(
                 current,
               )
             WriterBound(target) ->
-              deref_walk(heap, target, visited, readers, True, current)
+              // A writer bound onward to its OWN paired reader is a self-reference the Dart
+              // `derefAddr` treats as STILL UNBOUND (the bidirectional recognizer,
+              // heap_fcp.dart:312-323), NOT a cycle. Mirror that observable outcome: yield
+              // Unbound(current). A genuine multi-hop pointer cycle still trips the
+              // visited-set guard at the top of deref_walk.
+              case cell_at(heap, target) {
+                ReaderCell(back) if back == current ->
+                  Ok(#(compress(heap, readers, current), Unbound(current)))
+                _ -> deref_walk(heap, target, visited, readers, True, current)
+              }
             WriterCell(_, _) ->
               Ok(#(compress(heap, readers, current), Unbound(current)))
             ValueCell(term) -> Ok(#(compress(heap, readers, current), Bound(term)))
@@ -207,8 +216,8 @@ pub fn bind_writer(
 
 /// Bind an unbound writer onward to another variable's reader → `WriterBound` chain
 /// (FR-006). Binding to a writer target is a WxW violation (FR-004). Armed suspensions on
-/// the writer are forwarded to the target writer (FR-008); returns `[]` (nothing fires
-/// until the target itself binds a value).
+/// the writer are forwarded to the target chain's TERMINAL unbound writer (FR-008); returns
+/// `[]` (nothing fires until that terminal itself binds a value).
 pub fn bind_writer_to_var(
   heap: Heap,
   writer: Int,
@@ -217,11 +226,13 @@ pub fn bind_writer_to_var(
   case cell_at(heap, writer) {
     WriterCell(_, suspensions) ->
       case cell_at(heap, reader) {
-        ReaderCell(target_writer) -> {
-          let heap = set_cell(heap, writer, WriterBound(reader))
-          let armed = list.filter(suspensions, fn(s) { s.armed })
-          Ok(#(forward_suspensions(heap, target_writer, armed), []))
-        }
+        ReaderCell(_immediate_writer) ->
+          forward_to_terminal(
+            heap,
+            writer,
+            reader,
+            list.filter(suspensions, fn(s) { s.armed }),
+          )
         WriterCell(_, _) | WriterBound(_) ->
           Error(WriterToWriter(writer, reader))
         ValueCell(_) -> Error(NotAWriter(reader))
@@ -229,6 +240,40 @@ pub fn bind_writer_to_var(
     ValueCell(_) -> Error(AlreadyBound(writer))
     WriterBound(_) -> Error(AlreadyBound(writer))
     ReaderCell(_) -> Error(NotAWriter(writer))
+  }
+}
+
+/// Bind `writer` onward to `reader` and forward `armed` suspensions to the target chain's
+/// TERMINAL unbound writer (FR-008) — not merely the reader's IMMEDIATE paired writer, which
+/// would silently drop them when that writer is already bound onward (`WriterBound`). The
+/// terminal is resolved by `deref` on the pre-binding heap (which also path-compresses the
+/// target chain). Reachable via `unify` when the bound writer carries a suspension.
+fn forward_to_terminal(
+  heap: Heap,
+  writer: Int,
+  reader: Int,
+  armed: List(Suspension),
+) -> Result(#(Heap, List(GoalRef)), HeapError) {
+  case armed {
+    [] -> Ok(#(set_cell(heap, writer, WriterBound(reader)), []))
+    _ ->
+      case deref(heap, reader) {
+        Error(e) -> Error(e)
+        Ok(#(heap, Unbound(terminal))) ->
+          Ok(#(
+            forward_suspensions(
+              set_cell(heap, writer, WriterBound(reader)),
+              terminal,
+              armed,
+            ),
+            [],
+          ))
+        // Target chain already resolves to a ground value — not the intended use of
+        // bind_writer_to_var (its precondition is an unbound reader); record the binding,
+        // fire nothing (the verdict carries no activation here).
+        Ok(#(heap, Bound(_))) ->
+          Ok(#(set_cell(heap, writer, WriterBound(reader)), []))
+      }
   }
 }
 
