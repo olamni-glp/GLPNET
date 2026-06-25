@@ -29,9 +29,9 @@ binding store — NOT process-cells. **Toolchain**: Gleam 1.17.0 / OTP 25.3.2.8 
 
 **Purpose**: scaffold the new module + test files; confirm the F3 subtree baseline is green before any change.
 
-- [ ] T001 Confirm baseline: from `glp_gleam/` run `gleam build --target erlang` + `gleam test` + `./smoke.sh` (WSL) — all green (F3 baseline) before touching anything (Constitution VII).
-- [ ] T002 [P] Create empty module files `glp_gleam/src/glp/runtime/terms.gleam`, `glp_gleam/src/glp/runtime/suspension.gleam`, `glp_gleam/src/glp/runtime/heap.gleam`, `glp_gleam/src/glp/runtime/unify.gleam` (compile-clean placeholders).
-- [ ] T003 [P] Create empty test files `glp_gleam/test/glp/runtime/terms_test.gleam`, `heap_test.gleam`, `unify_test.gleam`, `suspension_test.gleam`, `parity_test.gleam` (compile-clean placeholders) under `glp_gleam/test/glp/runtime/`.
+- [X] T001 Confirm baseline: from `glp_gleam/` run `gleam build --target erlang` + `gleam test` + `./smoke.sh` (WSL) — all green (F3 baseline) before touching anything (Constitution VII).
+- [X] T002 [P] Create empty module files `glp_gleam/src/glp/runtime/terms.gleam`, `glp_gleam/src/glp/runtime/suspension.gleam`, `glp_gleam/src/glp/runtime/heap.gleam`, `glp_gleam/src/glp/runtime/unify.gleam` (compile-clean placeholders).
+- [X] T003 [P] Create empty test files `glp_gleam/test/glp/runtime/terms_test.gleam`, `heap_test.gleam`, `unify_test.gleam`, `suspension_test.gleam`, `parity_test.gleam` (compile-clean placeholders) under `glp_gleam/test/glp/runtime/`.
 
 **Checkpoint**: subtree still builds + tests green with empty new files (additivity preserved — FR-011).
 
@@ -44,11 +44,11 @@ shared result/error types). **Models before services** — types here, behaviour
 
 **⚠️ CRITICAL**: no user-story work begins until this phase is complete.
 
-- [ ] T004 [P] Define the term model in `glp_gleam/src/glp/runtime/terms.gleam`: `Constant { ConstAtom(String) ConstInt(Int) ConstReal(Float) ConstString(String) }`, `Term { ConstTerm(Constant) StructTerm(functor: String, args: List(Term)) VarRef(addr: Int) }`, plus `nil()`/`cons(Term, Term)` helpers (← `terms.dart`; data-model §1; R-002/R-003). NO `MutualRefTerm`/`ModuleTerm` (R-008).
-- [ ] T005 [P] Define suspension types in `glp_gleam/src/glp/runtime/suspension.gleam`: `Suspension(goal_id: Int, resume_pc: Int, armed: Bool)` and `GoalRef(goal_id: Int, resume_pc: Int)` (← `suspension.dart`; data-model §4).
-- [ ] T006 Define the heap container in `glp_gleam/src/glp/runtime/heap.gleam`: `opaque Heap`, `Cell { WriterCell(reader_addr, suspensions) WriterBound(target) ReaderCell(writer_addr) ValueCell(term) }`, `CellTag` + a **derived** `tag(Cell) -> CellTag` (NOT a stored field — F2/data-model §2), `DerefResult { Bound(Term) Unbound(writer) }`, `HeapError { WriterToWriter AlreadyBound NotAWriter Cycle }`, `UnifyOutcome { Success(Heap) Suspend(Heap, on) Fail }`, and `new() -> Heap` (← `heap_fcp.dart`; data-model §2,3,5,7,8). Depends on T004, T005.
-- [ ] T007 Implement `allocate_variable(Heap) -> #(Heap, Int, Int)` and tag predicates `is_writer`/`is_reader`/`is_value` (role from cell tag ONLY, never address arithmetic — FR-002) in `heap.gleam` (← `allocateVariable`; data-model §3). Depends on T006.
-- [ ] T008 Wire the `glp_gleam/src/glp/runtime.gleam` umbrella to re-export the public surface from `terms`/`suspension`/`heap` (type aliases + thin wrappers; replaces the F3 doc-only placeholder — R-004). Extended for `unify` in T015. Depends on T004–T007.
+- [X] T004 [P] Define the term model in `glp_gleam/src/glp/runtime/terms.gleam`: `Constant { ConstAtom(String) ConstInt(Int) ConstReal(Float) ConstString(String) }`, `Term { ConstTerm(Constant) StructTerm(functor: String, args: List(Term)) VarRef(addr: Int) }`, plus `nil()`/`cons(Term, Term)` helpers (← `terms.dart`; data-model §1; R-002/R-003). NO `MutualRefTerm`/`ModuleTerm` (R-008).
+- [X] T005 [P] Define suspension types in `glp_gleam/src/glp/runtime/suspension.gleam`: `Suspension(goal_id: Int, resume_pc: Int, armed: Bool)` and `GoalRef(goal_id: Int, resume_pc: Int)` (← `suspension.dart`; data-model §4).
+- [X] T006 Define the heap container in `glp_gleam/src/glp/runtime/heap.gleam`: `opaque Heap`, `Cell { WriterCell(reader_addr, suspensions) WriterBound(target) ReaderCell(writer_addr) ValueCell(term) }`, `CellTag` + a **derived** `tag(Cell) -> CellTag` (NOT a stored field — F2/data-model §2), `DerefResult { Bound(Term) Unbound(writer) }`, `HeapError { WriterToWriter AlreadyBound NotAWriter Cycle }`, `UnifyOutcome { Success(Heap) Suspend(Heap, on) Fail }`, and `new() -> Heap` (← `heap_fcp.dart`; data-model §2,3,5,7,8). Depends on T004, T005.
+- [X] T007 Implement `allocate_variable(Heap) -> #(Heap, Int, Int)` and tag predicates `is_writer`/`is_reader`/`is_value` (role from cell tag ONLY, never address arithmetic — FR-002) in `heap.gleam` (← `allocateVariable`; data-model §3). Depends on T006.
+- [X] T008 Wire the `glp_gleam/src/glp/runtime.gleam` umbrella to re-export the public surface from `terms`/`suspension`/`heap` (type aliases + thin wrappers; replaces the F3 doc-only placeholder — R-004). Extended for `unify` in T015. Depends on T004–T007.
 
 **Checkpoint**: types compile; `allocate_variable` usable; subtree green. User stories can begin.
 
@@ -65,15 +65,15 @@ WxW-during-deref → `Error(WriterToWriter)`.
 
 ### Tests for User Story 1 (write FIRST, ensure they FAIL)
 
-- [ ] T009 [P] [US1] `terms_test.gleam`: construct + structurally inspect + equality-compare all 9 kinds (atom, int, real, string, compound struct, empty list `nil()`, non-empty list `cons`, nested struct, `VarRef`) — SC-001 — in `glp_gleam/test/glp/runtime/terms_test.gleam`.
-- [ ] T010 [P] [US1] `heap_test.gleam`: fresh var → `deref` = `Unbound`; after `bind_writer` → `deref` = the value; repeated `deref` on the returned heap does not re-traverse (compression); role read from tag (AS US1#4); WxW chain → `Error(WriterToWriter)` — SC-002 + SC-004(deref) — in `glp_gleam/test/glp/runtime/heap_test.gleam`.
+- [X] T009 [P] [US1] `terms_test.gleam`: construct + structurally inspect + equality-compare all 9 kinds (atom, int, real, string, compound struct, empty list `nil()`, non-empty list `cons`, nested struct, `VarRef`) — SC-001 — in `glp_gleam/test/glp/runtime/terms_test.gleam`.
+- [X] T010 [P] [US1] `heap_test.gleam`: fresh var → `deref` = `Unbound`; after `bind_writer` → `deref` = the value; repeated `deref` on the returned heap does not re-traverse (compression); role read from tag (AS US1#4); WxW chain → `Error(WriterToWriter)` — SC-002 + SC-004(deref) — in `glp_gleam/test/glp/runtime/heap_test.gleam`.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement `deref(Heap, Int) -> Result(#(Heap, DerefResult), HeapError)` with **path compression threaded into the returned heap**, cycle detection, and WxW detection during traversal in `glp_gleam/src/glp/runtime/heap.gleam` (← `derefAddr`; data-model §5; FR-003/FR-004/R-006). Depends on T007.
-- [ ] T012 [US1] Implement `bind_writer(Heap, Int, Term) -> Result(#(Heap, List(GoalRef)), HeapError)`: unbound `WriterCell` → `ValueCell(value)`; single-assignment (`AlreadyBound`); returns `[]` activations for now (suspension production lands in US3) in `heap.gleam` (← `bindWriter`; FR-005). Depends on T007.
-- [ ] T013 [US1] Implement `bind_writer_to_var(Heap, Int, Int) -> Result(#(Heap, List(GoalRef)), HeapError)`: writer→target-reader chain (`WriterBound`); target-resolves-to-writer → `Error(WriterToWriter)`; returns `[]` (forwarding lands in US3) in `heap.gleam` (← `bindWriterToReader`; FR-004/FR-006). Depends on T007.
-- [ ] T014 [US1] Run `gleam test` + `./smoke.sh`; make `terms_test` + `heap_test` green; confirm additivity (no other-subtree change).
+- [X] T011 [US1] Implement `deref(Heap, Int) -> Result(#(Heap, DerefResult), HeapError)` with **path compression threaded into the returned heap**, cycle detection, and WxW detection during traversal in `glp_gleam/src/glp/runtime/heap.gleam` (← `derefAddr`; data-model §5; FR-003/FR-004/R-006). Depends on T007.
+- [X] T012 [US1] Implement `bind_writer(Heap, Int, Term) -> Result(#(Heap, List(GoalRef)), HeapError)`: unbound `WriterCell` → `ValueCell(value)`; single-assignment (`AlreadyBound`); returns `[]` activations for now (suspension production lands in US3) in `heap.gleam` (← `bindWriter`; FR-005). Depends on T007.
+- [X] T013 [US1] Implement `bind_writer_to_var(Heap, Int, Int) -> Result(#(Heap, List(GoalRef)), HeapError)`: writer→target-reader chain (`WriterBound`); target-resolves-to-writer → `Error(WriterToWriter)`; returns `[]` (forwarding lands in US3) in `heap.gleam` (← `bindWriterToReader`; FR-004/FR-006). Depends on T007.
+- [X] T014 [US1] Run `gleam test` + `./smoke.sh`; make `terms_test` + `heap_test` green; confirm additivity (no other-subtree change).
 
 **Checkpoint**: US1 is a fully functional, demonstrable MVP — GLP data + a bound/read-back logic variable.
 
@@ -89,13 +89,13 @@ verdict; every WxW attempt → `Error(WriterToWriter)` (0 silent — SC-004).
 
 ### Tests for User Story 2 (write FIRST, ensure they FAIL)
 
-- [ ] T015 [P] [US2] `unify_test.gleam`: SC-003 truth table — const/const (match & mismatch), struct/struct (match, functor-mismatch, arity-mismatch), var/value, value/var, var/var, **unbound-reader-needed → `Suspend`** (never `Fail`); assert the suspend case yields the **verdict + `on` address only** (NOT a stored `SuspensionRecord` — `unify` has no goal context, F1); assert binding touches only writers; WxW → `Error` not `Fail` (SC-004); **no occurs-check** (F4) — unify of a writer with a struct containing that writer's own reader succeeds without diverging (and a subsequent `deref` of the resulting cyclic term yields `Error(Cycle)`, faithful to Dart) — in `glp_gleam/test/glp/runtime/unify_test.gleam`.
+- [X] T015 [P] [US2] `unify_test.gleam`: SC-003 truth table — const/const (match & mismatch), struct/struct (match, functor-mismatch, arity-mismatch), var/value, value/var, var/var, **unbound-reader-needed → `Suspend`** (never `Fail`); assert the suspend case yields the **verdict + `on` address only** (NOT a stored `SuspensionRecord` — `unify` has no goal context, F1); assert binding touches only writers; WxW → `Error` not `Fail` (SC-004); **no occurs-check** (F4) — unify of a writer with a struct containing that writer's own reader succeeds without diverging (and a subsequent `deref` of the resulting cyclic term yields `Error(Cycle)`, faithful to Dart) — in `glp_gleam/test/glp/runtime/unify_test.gleam`.
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Implement `unify(Heap, Term, Term) -> Result(UnifyOutcome, HeapError)` in `glp_gleam/src/glp/runtime/unify.gleam`: deref both (thread heap); ground-equal→`Success`, mismatch→`Fail`; writer vs ground→`bind_writer`; writer vs var→`bind_writer_to_var`; struct/N same functor→unify args pairwise (first non-`Success` short-circuits); needed unbound reader→`Suspend(on:)`; bind **only writers**; **no occurs-check** (FR-007; data-model §7; R-008). Depends on T011–T013.
-- [ ] T017 [US2] Extend the `glp/runtime.gleam` umbrella (T008) to re-export `unify` + `UnifyOutcome`. Depends on T016.
-- [ ] T018 [US2] Run `gleam test`; make `unify_test` green; confirm additivity.
+- [X] T016 [US2] Implement `unify(Heap, Term, Term) -> Result(UnifyOutcome, HeapError)` in `glp_gleam/src/glp/runtime/unify.gleam`: deref both (thread heap); ground-equal→`Success`, mismatch→`Fail`; writer vs ground→`bind_writer`; writer vs var→`bind_writer_to_var`; struct/N same functor→unify args pairwise (first non-`Success` short-circuits); needed unbound reader→`Suspend(on:)`; bind **only writers**; **no occurs-check** (FR-007; data-model §7; R-008). Depends on T011–T013.
+- [X] T017 [US2] Extend the `glp/runtime.gleam` umbrella (T008) to re-export `unify` + `UnifyOutcome`. Depends on T016.
+- [X] T018 [US2] Run `gleam test`; make `unify_test` green; confirm additivity.
 
 **Checkpoint**: US1 + US2 both independently functional — the distinctive GLP unification semantic works.
 
@@ -112,15 +112,15 @@ corpus matches Dart observable outcomes (SC-005).
 
 ### Tests for User Story 3 (write FIRST, ensure they FAIL)
 
-- [ ] T019 [P] [US3] `suspension_test.gleam`: suspend on unbound writer (reader pairing preserved) → `bind_writer` returns activation list containing exactly the armed suspension; `bind_writer_to_var` forwards suspensions to the target writer and returns `[]` (no activation yet) — FR-008 / US3 AS#1,#2 — in `glp_gleam/test/glp/runtime/suspension_test.gleam`.
-- [ ] T020 [P] [US3] `parity_test.gleam`: the fixed micro-scenario corpus (allocate · deref · bind-to-value · bind-to-variable · the unify truth table · suspend-and-activate), each asserting the **observable** outcome (deref result · unify verdict · activation set) — internal heap layout EXCLUDED — against the Dart-derived expected values (SC-005; R-010) — in `glp_gleam/test/glp/runtime/parity_test.gleam`.
+- [X] T019 [P] [US3] `suspension_test.gleam`: suspend on unbound writer (reader pairing preserved) → `bind_writer` returns activation list containing exactly the armed suspension; `bind_writer_to_var` forwards suspensions to the target writer and returns `[]` (no activation yet) — FR-008 / US3 AS#1,#2 — in `glp_gleam/test/glp/runtime/suspension_test.gleam`.
+- [X] T020 [P] [US3] `parity_test.gleam`: the fixed micro-scenario corpus (allocate · deref · bind-to-value · bind-to-variable · the unify truth table · suspend-and-activate), each asserting the **observable** outcome (deref result · unify verdict · activation set) — internal heap layout EXCLUDED — against the Dart-derived expected values (SC-005; R-010) — in `glp_gleam/test/glp/runtime/parity_test.gleam`.
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Implement `suspend_on_writer(Heap, Int, Suspension) -> Result(Heap, HeapError)`: attach to the `WriterCell` suspension list, preserving the reader pairing; `NotAWriter` otherwise (← `suspendOnWriter`; FR-008) in `glp_gleam/src/glp/runtime/heap.gleam`. Depends on T007.
-- [ ] T022 [US3] Add activation production to `bind_writer` (armed suspensions → `GoalRef` list, then disarm — guarding double-activation) and suspension **forwarding** to `bind_writer_to_var` (armed → target writer) in `heap.gleam` (← `_walkAndActivate` / `_forwardSuspensions`; FR-008). Depends on T012, T013, T021.
-- [ ] T023 [US3] Author the Dart-derived parity corpus expected-values and **cross-validate each scenario against the Dart `runtime` source-of-truth, recording the command + observed output** per scenario (F1-dossier evidence convention) into a checked-in evidence note (e.g. `specs/034-glp-gleam-core-terms-and-heap/parity-evidence.md`) — **REQUIRED**, not a soft SHOULD: it is the auditable basis for the FR-009/SC-005 "matches Dart" claim (F3). `gleam test` stays hermetic (expected values are baked in; no Dart dependency in the suite — R-010). Feeds T020.
-- [ ] T024 [US3] Run `gleam test` + `./smoke.sh`; make `suspension_test` + `parity_test` green; confirm additivity.
+- [X] T021 [US3] Implement `suspend_on_writer(Heap, Int, Suspension) -> Result(Heap, HeapError)`: attach to the `WriterCell` suspension list, preserving the reader pairing; `NotAWriter` otherwise (← `suspendOnWriter`; FR-008) in `glp_gleam/src/glp/runtime/heap.gleam`. Depends on T007.
+- [X] T022 [US3] Add activation production to `bind_writer` (armed suspensions → `GoalRef` list, then disarm — guarding double-activation) and suspension **forwarding** to `bind_writer_to_var` (armed → target writer) in `heap.gleam` (← `_walkAndActivate` / `_forwardSuspensions`; FR-008). Depends on T012, T013, T021.
+- [X] T023 [US3] Author the Dart-derived parity corpus expected-values and **cross-validate each scenario against the Dart `runtime` source-of-truth, recording the command + observed output** per scenario (F1-dossier evidence convention) into a checked-in evidence note (e.g. `specs/034-glp-gleam-core-terms-and-heap/parity-evidence.md`) — **REQUIRED**, not a soft SHOULD: it is the auditable basis for the FR-009/SC-005 "matches Dart" claim (F3). `gleam test` stays hermetic (expected values are baked in; no Dart dependency in the suite — R-010). Feeds T020.
+- [X] T024 [US3] Run `gleam test` + `./smoke.sh`; make `suspension_test` + `parity_test` green; confirm additivity.
 
 **Checkpoint**: all three stories independently functional; observable parity to Dart pinned.
 
@@ -128,10 +128,10 @@ corpus matches Dart observable outcomes (SC-005).
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T025 [P] Verify additivity (SC-007): `git diff --stat -- glp_runtime/ glp_runtime_net/ out/csharp/ codeconv/` is EMPTY; `git status --porcelain glp_gleam/` shows only new `src/glp/runtime/**` + `test/glp/runtime/**` (+ filled `runtime.gleam`); `glp_gleam/build/` is gitignored (no BEAM/build artifacts staged).
-- [ ] T026 [P] Verify `gleam_otp` absent from `glp_gleam/manifest.toml` (0 occurrences — SC-006) and the only runtime dep terms/heap/unify use is `gleam_stdlib`.
-- [ ] T027 [P] Module-doc each `glp/runtime/*.gleam` with its Dart source-of-truth pointer; run the `quickstart.md` walkthrough end-to-end.
-- [ ] T028 Final clean-checkout gate (SC-006): in `glp_gleam/` `rm -rf build && gleam build --target erlang && gleam test && ./smoke.sh` — zero errors, suite green (≥1 test, 0 failures).
+- [X] T025 [P] Verify additivity (SC-007): `git diff --stat -- glp_runtime/ glp_runtime_net/ out/csharp/ codeconv/` is EMPTY; `git status --porcelain glp_gleam/` shows only new `src/glp/runtime/**` + `test/glp/runtime/**` (+ filled `runtime.gleam`); `glp_gleam/build/` is gitignored (no BEAM/build artifacts staged).
+- [X] T026 [P] Verify `gleam_otp` absent from `glp_gleam/manifest.toml` (0 occurrences — SC-006) and the only runtime dep terms/heap/unify use is `gleam_stdlib`.
+- [X] T027 [P] Module-doc each `glp/runtime/*.gleam` with its Dart source-of-truth pointer; run the `quickstart.md` walkthrough end-to-end.
+- [X] T028 Final clean-checkout gate (SC-006): in `glp_gleam/` `rm -rf build && gleam build --target erlang && gleam test && ./smoke.sh` — zero errors, suite green (≥1 test, 0 failures).
 
 ---
 
