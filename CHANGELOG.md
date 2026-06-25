@@ -89,6 +89,15 @@
 
 ## [Unreleased]
 
+## [v2026.06.25.1] - 2026-06-25
+
+### Changed
+- Merge pull request #53 from olamni-glp/034-glp-gleam-core-terms-and-heap
+- 034(F4): codexreview fixes — deref self-bind->Unbound (Dart parity), forward suspensions to terminal writer (FR-008), correct R-007/parity-evidence claims, +4 tests (54 green)
+- 034: implement glp_gleam core terms+heap+unify (F4) — immutable threaded store, 50 tests green on BEAM
+- 034: plan/tasks/analyze for glp_gleam core terms+heap+unify (F4) — immutable threaded store; 4 analyze remediations
+- Merge pull request #52 from olamni-glp/main
+
 ## [v2026.06.24.2] - 2026-06-24
 
 ### Added
