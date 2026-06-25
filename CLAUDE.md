@@ -569,16 +569,20 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/033-glp-gleam-subtree-scaffold/plan.md` (F3 — create
-the committed, hand-authored `glp_gleam/` repo-root Gleam project skeleton:
-`gleam.toml` + committed `manifest.toml` (pins gleam_stdlib 1.0.3 / gleam_erlang
-1.3.0 / gleeunit 1.11.0; NO gleam_otp) + 8 empty-but-building placeholder modules
-under `src/glp/` (1:1 with `glp_runtime/lib/`) + gleeunit smoke + WSL `smoke.sh`;
-build+test green on Erlang/BEAM under WSL). For technologies, structure, and
+Active feature plan: `specs/034-glp-gleam-core-terms-and-heap/plan.md` (F4 — port
+the GLP data+binding core into F3's `glp_gleam/` `runtime` subsystem: the term
+model (const atom/int/real/string, struct, cons/nil list, var ref), the variable
+store (FCP writer/reader pairs, tag-determined roles, path-compressing deref,
+bind-to-value, bind-to-var), writer-MGU three-valued unification (success/suspend/
+fail, binds only writers), and heap-level suspension storage + activation-list
+production. No scheduler/runner/compiler/link; single-runtime. **Cascade-bearing
+plan decision (research.md R-001): the WAM mutable heap is re-expressed as an
+IMMUTABLE THREADED BINDING STORE — not process-cells (those deferred to F5).** Port
+basis = Dart `glp_runtime/lib/runtime/{terms,heap_fcp,suspension}.dart` (F1-ratified
+source of truth). Lands as `src/glp/runtime/{terms,suspension,heap,unify}.gleam` +
+the filled `glp/runtime.gleam` umbrella; additive (no other-subtree change, no
+artifacts). Build/test green on Erlang/BEAM under WSL (`gleam test` + `smoke.sh`),
+no `gleam_otp`. Constitution Check: no violations. For technologies, structure, and
 conventions read that plan and its sibling `research.md` / `data-model.md` /
-`contracts/`. Constitution Check: no violations. Non-blocking owner-awareness
-flag (research.md R-003): the smoke is a *separate* WSL gate, not embedded in
-`test/run_all_tests.sh` (cross-runtime/OS + additive-only). FR-008 recognition is
-config-only via `workspace_settings` + the existing F2 `dart_gleam` pair — zero
-stage-tool edits.
+`contracts/runtime-api.md` / `quickstart.md`.
 <!-- BUILDKIT END -->
