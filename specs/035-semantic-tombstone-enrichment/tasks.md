@@ -80,14 +80,14 @@ Run tests via `codeconv/.venv/Scripts/python.exe -m pytest`.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T013 [P] [US2] Test `codeconv/tests/test_enrich_idempotence.py` — enrich twice with no source change: 2nd run performs zero `infer_fn` calls and the tombstone set is byte-identical (SC-002); a file whose source changed is re-inferred (Acceptance 2).
-- [ ] T014 [P] [US2] Test `codeconv/tests/test_discover_preserves_inferred.py` — (a) `discover` re-run on an unchanged enriched file preserves `purpose`/`key_idea`/`*_source: inferred` (SC-003, 100%); (b) source change → `discover` re-seeds + resets `*_source` (FR-007); (c) drop the `dart_files` row (rebuilt inventory) → `discover` restores inferred values from the tombstone, not blanks them.
+- [X] T013 [P] [US2] Test `codeconv/tests/test_enrich_idempotence.py` — enrich twice with no source change: 2nd run performs zero `infer_fn` calls and the tombstone set is byte-identical (SC-002); a file whose source changed is re-inferred (Acceptance 2).
+- [X] T014 [P] [US2] Test `codeconv/tests/test_discover_preserves_inferred.py` — (a) `discover` re-run on an unchanged enriched file preserves `purpose`/`key_idea`/`*_source: inferred` (SC-003, 100%); (b) source change → `discover` re-seeds + resets `*_source` (FR-007); (c) drop the `dart_files` row (rebuilt inventory) → `discover` restores inferred values from the tombstone, not blanks them.
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Implement enrich idempotence + stale guard in `workflow.py`: a non-blank (`inferred`/`doc`) field is skipped (no inference); if a tombstone's recorded `sha256` ≠ current file hash → skip-and-warn (do NOT infer from stale metadata) (FR-007 + edge case). (Depends T010)
-- [ ] T016 [US2] discover seed sets provenance in `codeconv/src/codeconv/tools/discover/workflow.py`: on the mechanical seed (`workflow.py:527-528`), set `purpose_source`/`key_idea_source` = `doc` if `extract_leading_doc` non-empty else `absent`; extend the UPSERT column list + `ON CONFLICT DO UPDATE SET` (`workflow.py:547-569`) with the two source columns. (Depends T006)
-- [ ] T017 [US2] discover conditional inferred-preservation on re-write in `discover/workflow.py` (per contracts/discover_preservation.md): before seeding, read the existing tombstone's `*_source` + recorded `sha256`; when `*_source == inferred` AND sha unchanged → carry forward existing value + `inferred`; when the `dart_files` row is absent but the tombstone holds inferred + unchanged sha → restore inferred into the new row. (Depends T016)
+- [X] T015 [US2] Implement enrich idempotence + stale guard in `workflow.py`: a non-blank (`inferred`/`doc`) field is skipped (no inference); if a tombstone's recorded `sha256` ≠ current file hash → skip-and-warn (do NOT infer from stale metadata) (FR-007 + edge case). (Depends T010)
+- [X] T016 [US2] discover seed sets provenance in `codeconv/src/codeconv/tools/discover/workflow.py`: on the mechanical seed (`workflow.py:527-528`), set `purpose_source`/`key_idea_source` = `doc` if `extract_leading_doc` non-empty else `absent`; extend the UPSERT column list + `ON CONFLICT DO UPDATE SET` (`workflow.py:547-569`) with the two source columns. (Depends T006)
+- [X] T017 [US2] discover conditional inferred-preservation on re-write in `discover/workflow.py` (per contracts/discover_preservation.md): before seeding, read the existing tombstone's `*_source` + recorded `sha256`; when `*_source == inferred` AND sha unchanged → carry forward existing value + `inferred`; when the `dart_files` row is absent but the tombstone holds inferred + unchanged sha → restore inferred into the new row. (Depends T016)
 
 **Checkpoint**: re-runs are idempotent and never clobber inferred values.
 
