@@ -101,13 +101,13 @@ Run tests via `codeconv/.venv/Scripts/python.exe -m pytest`.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T018 [P] [US3] Test `codeconv/tests/test_enrich_scope_and_faults.py` — `--path` narrows candidates + counts (Acceptance 1); a forced-raise `infer_fn` leaves that file's tombstone + `dart_files` row unchanged and lists the failure while others still enrich (SC-007 / Acceptance 2); summary emits candidates/enriched/skipped/failed (+ low_confidence) and a durable log (Acceptance 3 / FR-011).
+- [X] T018 [P] [US3] Test `codeconv/tests/test_enrich_scope_and_faults.py` — `--path` narrows candidates + counts (Acceptance 1); a forced-raise `infer_fn` leaves that file's tombstone + `dart_files` row unchanged and lists the failure while others still enrich (SC-007 / Acceptance 2); summary emits candidates/enriched/skipped/failed (+ low_confidence) and a durable log (Acceptance 3 / FR-011).
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Implement the `--path` scope filter (repeatable) in `workflow.py` + `enrich/__init__.py`; default = all blank candidates excl. `.orphaned/` (FR-012/013). (Depends T009)
-- [ ] T020 [US3] Implement per-file fault isolation + low-confidence handling in `workflow.py`: wrap each file's infer+write in try/except → `failed` outcome with reason, tombstone unchanged (FR-010); reject `grounded == False`/whitespace-only/over the `MAX_PURPOSE_CHARS`(200)/`MAX_KEY_IDEA_CHARS`(320) caps from `seam.py` → `low_confidence`, tombstone unchanged (FR-009, analyze B1); continue with remaining candidates. (Depends T010)
-- [ ] T021 [US3] Implement the run summary + `--json` + durable run log in `workflow.py`/`enrich/__init__.py` per data-model.md §6: emit the FR-011 four counts `candidates/enriched/skipped/failed` (+ sub-counts `low_confidence`, `skipped_non_candidate`) and a `failures[]` list, with `candidates == enriched + skipped + low_confidence + failed` (SC-001); write the full summary + per-file outcomes to a durable file `.codeconv/enrich-runs/<run-id>.json` (NO new DB table — analyze C1). (Depends T020)
+- [X] T019 [US3] Implement the `--path` scope filter (repeatable) in `workflow.py` + `enrich/__init__.py`; default = all blank candidates excl. `.orphaned/` (FR-012/013). (Depends T009)
+- [X] T020 [US3] Implement per-file fault isolation + low-confidence handling in `workflow.py`: wrap each file's infer+write in try/except → `failed` outcome with reason, tombstone unchanged (FR-010); reject `grounded == False`/whitespace-only/over the `MAX_PURPOSE_CHARS`(200)/`MAX_KEY_IDEA_CHARS`(320) caps from `seam.py` → `low_confidence`, tombstone unchanged (FR-009, analyze B1); continue with remaining candidates. (Depends T010)
+- [X] T021 [US3] Implement the run summary + `--json` + durable run log in `workflow.py`/`enrich/__init__.py` per data-model.md §6: emit the FR-011 four counts `candidates/enriched/skipped/failed` (+ sub-counts `low_confidence`, `skipped_non_candidate`) and a `failures[]` list, with `candidates == enriched + skipped + low_confidence + failed` (SC-001); write the full summary + per-file outcomes to a durable file `.codeconv/enrich-runs/<run-id>.json` (NO new DB table — analyze C1). (Depends T020)
 
 **Checkpoint**: scoping, observability, and fault isolation complete.
 
