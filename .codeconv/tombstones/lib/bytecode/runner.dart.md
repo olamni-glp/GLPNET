@@ -1,8 +1,8 @@
 ---
 path: lib/bytecode/runner.dart
 name: runner.dart
-purpose: ''
-key_idea: ''
+purpose: 'The GLP bytecode interpreter: executes a BytecodeProgram for one goal via BytecodeRunner.runWithStatus, driving three-phase clause reduction over the FCP heap.'
+key_idea: while pc<ops.length loop with linear `op is X` type-dispatch over mixed v1/v2 ops; RunnerContext carries tentative writer bindings sigmaHat, Si/U suspension sets, WAM read/write mode + S pointer; soft-fail jumps to next ClauseTry; Commit applies sigmaHat and wakes goals; NoMoreClauses suspends-or-fails.
 dependencies:
 - lib/bytecode/opcodes.dart
 - lib/bytecode/opcodes_v2.dart
@@ -76,5 +76,8 @@ codegen_completed_at: '2026-06-03T10:43:31Z'
 target_cs_path: out/csharp/lib/bytecode/runner.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+The GLP bytecode interpreter: executes a BytecodeProgram for one goal via BytecodeRunner.runWithStatus, driving three-phase clause reduction over the FCP heap.

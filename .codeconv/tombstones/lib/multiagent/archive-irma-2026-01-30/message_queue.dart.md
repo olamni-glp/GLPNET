@@ -30,6 +30,8 @@ callers:
 mtime: '2026-05-21T12:38:13.995Z'
 sha256: bba161225b6e5ff7e189c76d53db720fdab1da84ad59c6e83b0619dd81419d45
 target_path: lib/multiagent/archive-irma-2026-01-30/message_queue.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Message Queue (M_p) for irmaGLP

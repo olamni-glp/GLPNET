@@ -53,6 +53,8 @@ callers: []
 mtime: '2026-05-21T12:38:13.892Z'
 sha256: fd04669c92ea09c63813226bc607f7ea2641f1a17569bc834d8e717be7170cc8
 target_path: lib/multiagent/archive-irma-2026-01-30/irma_context-phase4.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 irmaGLP Agent Context

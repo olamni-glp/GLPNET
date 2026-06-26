@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/well_typed_clause.dart
 name: well_typed_clause.dart
-purpose: ''
-key_idea: ''
+purpose: 'Checks a GLP clause is well-typed (Definition 5.7): the moded head, each body atom, and cross-clause variable-pair duality/subtyping.'
+key_idea: 'checkClause builds moded head/body terms, checks each arg''s paths against its type automaton, then _checkClauseDuality applies location rules: head-head pairs must be dual, body-body need writer<:reader subtyping, head-body must share base type; Case B infers concrete parameterized proc decls at call sites.'
 dependencies:
 - lib/analysis/type_checker/mode.dart
 - lib/analysis/type_checker/moded_head.dart
@@ -30,5 +30,8 @@ codegen_completed_at: '2026-05-28T09:56:48Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/well_typed_clause.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Checks a GLP clause is well-typed (Definition 5.7): the moded head, each body atom, and cross-clause variable-pair duality/subtyping.

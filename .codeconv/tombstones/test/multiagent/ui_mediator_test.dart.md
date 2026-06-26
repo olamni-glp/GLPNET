@@ -30,6 +30,8 @@ plan_started_at: '2026-05-21T16:49:35Z'
 plan_completed_at: '2026-05-21T16:54:22Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/ui_mediator_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for ui_mediator.glp — ground-term mediator between agent/4 and Dart.

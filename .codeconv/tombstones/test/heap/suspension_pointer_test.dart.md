@@ -52,6 +52,8 @@ plan_started_at: '2026-05-21T16:24:10Z'
 plan_completed_at: '2026-05-21T16:28:40Z'
 plan_path: .codeconv/conversion-plans/test/heap/suspension_pointer_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for suspension and reactivation with Pointer Architecture Heap

@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/clause_validation.dart
 name: clause_validation.dart
-purpose: ''
-key_idea: ''
+purpose: Validates Term AST nodes in clause head/body/guard contexts, rejecting anonymous readers (_?, _X?) that program clauses may never use.
+key_idea: _checkNoAnonymousReader recursively walks each Term (StructTerm.args, ListTerm head/tail) and throws CompileError when an UnderscoreTerm or _-prefixed VarTerm is a reader, while permitting anonymous writers _.
 dependencies:
 - lib/compiler/ast.dart
 - lib/compiler/error.dart
@@ -22,5 +22,8 @@ codegen_completed_at: '2026-05-28T09:22:22Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/clause_validation.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Validates Term AST nodes in clause head/body/guard contexts, rejecting anonymous readers (_?, _X?) that program clauses may never use.

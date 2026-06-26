@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/terms.dart
 name: terms.dart
-purpose: ''
-key_idea: ''
+purpose: 'GLP term type hierarchy: abstract Term plus ConstTerm, StructTerm, address-only VarRef, MutualRefTerm (mutable stream tail), and ModuleTerm (compiled-bytecode wrapper).'
+key_idea: 'Each Term subclass models a heap value: VarRef stores only a heap addr (reader/writer identity comes from the cell tag, never address parity); MutualRefTerm holds a mutable currentWriterAddr to the stream''s unbound tail for O(1) append; ModuleTerm wraps a BytecodeProgram as a ground term.'
 dependencies: []
 callers:
 - bin/glp_repl.dart
@@ -89,5 +89,8 @@ codegen_completed_at: '2026-05-28T09:09:11Z'
 target_cs_path: out/csharp/lib/runtime/terms.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+GLP term type hierarchy: abstract Term plus ConstTerm, StructTerm, address-only VarRef, MutualRefTerm (mutable stream tail), and ModuleTerm (compiled-bytecode wrapper).

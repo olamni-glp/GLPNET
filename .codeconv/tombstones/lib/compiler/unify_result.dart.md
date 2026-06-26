@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/unify_result.dart
 name: unify_result.dart
-purpose: ''
-key_idea: ''
+purpose: Defines the three-valued result type for compile-time GLP unification used by the partial evaluator.
+key_idea: 'A sealed UnifyResult hierarchy with three variants modeling GLP''s three-valued unification: UnifySuccess (Map<String,Term> substitution), UnifyFail (reason string), and UnifySuspend (Set<String> of unbound readers), enabling exhaustive switch dispatch.'
 dependencies:
 - lib/compiler/ast.dart
 callers:
@@ -18,5 +18,8 @@ codegen_completed_at: '2026-05-28T09:41:29Z'
 target_cs_path: out/csharp/lib/compiler/unify_result.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the three-valued result type for compile-time GLP unification used by the partial evaluator.

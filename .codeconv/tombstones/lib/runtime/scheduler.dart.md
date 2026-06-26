@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/scheduler.dart
 name: scheduler.dart
-purpose: ''
-key_idea: ''
+purpose: 'Goal-queue scheduler (Scheduler): drains queued goals through BytecodeRunner, classifies the run as succeeded/failed/suspended, and formats terms/goals for trace output.'
+key_idea: drainWithStatus dequeues until empty/maxCycles, runs each goal via runner.runWithStatus with an onReduction callback; a goal that terminates without reducing = failed (stops drain), suspended goals are tracked and final status excludes infrastructure goals; blocking readers come from rt.suspended.
 dependencies:
 - lib/bytecode/runner.dart
 - lib/runtime/runtime.dart
@@ -61,5 +61,8 @@ codegen_completed_at: '2026-05-28T13:09:13Z'
 target_cs_path: out/csharp/lib/runtime/scheduler.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Goal-queue scheduler (Scheduler): drains queued goals through BytecodeRunner, classifies the run as succeeded/failed/suspended, and formats terms/goals for trace output.

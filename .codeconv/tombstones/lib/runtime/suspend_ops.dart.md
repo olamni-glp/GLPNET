@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/suspend_ops.dart
 name: suspend_ops.dart
-purpose: ''
-key_idea: ''
+purpose: 'FCP-exact goal suspension (SuspendOps): attaches a suspended goal to every unbound variable it blocks on so binding any one can reactivate it.'
+key_idea: suspendGoalFCP builds ONE shared SuspensionRecord and, per reader address, derefs to the terminal unbound writer; local writers get it via heap.suspendOnWriter, imported readers get a SuspensionListNode pushed onto the VariableEntry's list; already-ground vars are skipped.
 dependencies:
 - lib/multiagent/variable_table.dart
 - lib/runtime/heap_fcp.dart
@@ -26,5 +26,8 @@ codegen_completed_at: '2026-05-28T11:55:03Z'
 target_cs_path: out/csharp/lib/runtime/suspend_ops.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+FCP-exact goal suspension (SuspendOps): attaches a suspended goal to every unbound variable it blocks on so binding any one can reactivate it.

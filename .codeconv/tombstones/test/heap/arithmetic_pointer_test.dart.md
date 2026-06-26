@@ -46,6 +46,8 @@ plan_started_at: '2026-05-21T16:38:54Z'
 plan_completed_at: '2026-05-21T16:43:44Z'
 plan_path: .codeconv/conversion-plans/test/heap/arithmetic_pointer_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for arithmetic body kernels with Pointer Architecture Heap

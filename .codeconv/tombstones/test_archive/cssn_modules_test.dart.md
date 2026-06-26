@@ -23,6 +23,8 @@ callers: []
 mtime: '2026-05-21T12:38:16.735Z'
 sha256: 785fc7fe9acf7f4ada8770ea304dcfd6c4a96b01c92d7fcef333418353710a7b
 target_path: test_archive/cssn_modules_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 CSSN (Child-Safe Social Network) — Modular integration test.

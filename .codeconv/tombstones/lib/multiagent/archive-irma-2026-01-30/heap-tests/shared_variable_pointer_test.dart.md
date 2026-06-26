@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.159Z'
 sha256: 72e0165798d73303437fed0898a6bff52a16ac76ee75ba0b8a841c192140541f
 target_path: lib/multiagent/archive-irma-2026-01-30/heap-tests/shared_variable_pointer_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for shared logic variables with Pointer Architecture Heap

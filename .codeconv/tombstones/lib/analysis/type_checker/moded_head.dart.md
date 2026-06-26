@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/moded_head.dart
 name: moded_head.dart
-purpose: ''
-key_idea: ''
+purpose: Constructs the moded head H' (Def 5.5) from a clause head and its procedure declaration for well-typing, and builds produced terms for body atoms.
+key_idea: modedHead builds an I/O-moded term (root consume), combining declared arg modes with embedded type modes via involution, then _ensureVariablesMatchModes flips every variable (X<->X?); producedTerm uses root produce, no flip. Unknown types route to _buildOpaqueModedTerm.
 dependencies:
 - lib/analysis/type_checker/mode.dart
 - lib/analysis/type_checker/moded_term.dart
@@ -25,5 +25,8 @@ codegen_completed_at: '2026-05-28T09:22:27Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/moded_head.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Constructs the moded head H' (Def 5.5) from a clause head and its procedure declaration for well-typing, and builds produced terms for body atoms.

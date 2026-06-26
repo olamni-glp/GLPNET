@@ -1,8 +1,8 @@
 ---
 path: test/module/module_hierarchy_test.dart
 name: module_hierarchy_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies hierarchical self.glp ancestor-chain discovery and assembly of the type/procedure scope visible to a descendant GLP module.
+key_idea: 'Builds temp dir trees and checks discoverSelfChain (root to target, missing/skipped self.glp, target-is-self) then assembleTypeScope: ancestor types/procedures visible, child & module-own defs shadow parents, siblings isolated, prelude types/procs always present.'
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/analysis/type_checker/type_environment_builder.dart
@@ -21,5 +21,8 @@ plan_started_at: '2026-05-21T16:33:44Z'
 plan_completed_at: '2026-05-21T16:38:35Z'
 plan_path: .codeconv/conversion-plans/test/module/module_hierarchy_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies hierarchical self.glp ancestor-chain discovery and assembly of the type/procedure scope visible to a descendant GLP module.

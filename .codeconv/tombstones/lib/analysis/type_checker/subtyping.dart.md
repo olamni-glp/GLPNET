@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/subtyping.dart
 name: subtyping.dart
-purpose: ''
-key_idea: ''
+purpose: Decides output-type subtyping A<:B (Def 4.7) over the program DFA's automata.
+key_idea: 'Coinductive isSubtype with a visited pair-set for cycles: every transition out of A must match one in B, recursing covariantly on output targets but contravariantly (reversed inner states) at dual/mode-inversion points; wildcards are top and Integer/Real <: Number.'
 dependencies:
 - lib/analysis/type_checker/program_dfa.dart
 callers:
@@ -21,5 +21,8 @@ codegen_completed_at: '2026-05-28T09:24:56Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/subtyping.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Decides output-type subtyping A<:B (Def 4.7) over the program DFA's automata.

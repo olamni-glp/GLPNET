@@ -13,6 +13,8 @@ callers: []
 mtime: '2026-05-21T12:38:13.840Z'
 sha256: 4699c9a2961396743f442ef6e1e2aeccbc95790e9b0b1f08a9af8b24e34f8328
 target_path: lib/multiagent/archive-irma-2026-01-30/helpers.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Helper Routines for irmaGLP Transactions

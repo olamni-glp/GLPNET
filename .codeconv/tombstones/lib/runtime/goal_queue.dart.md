@@ -17,5 +17,7 @@ plan_path: .codeconv/conversion-plans/lib/runtime/goal_queue.dart.md
 open_escalation_count: 0
 codegen_no_emit: true
 codegen_no_emit_reason: Dart export aggregator — no types to emit; intentionally no C# (no_emit, Stage 4)
+purpose_source: absent
+key_idea_source: absent
 ---
 

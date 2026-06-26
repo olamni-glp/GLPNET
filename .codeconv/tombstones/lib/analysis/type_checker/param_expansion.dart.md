@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/param_expansion.dart
 name: param_expansion.dart
-purpose: ''
-key_idea: ''
+purpose: Monomorphizes a Module's parameterized types (Def 8.1) by expanding each concrete instantiation into a distinct monomorphic type definition before automaton construction.
+key_idea: Separates templates from monomorphic defs, collects instantiations from type-def bodies and proc decls, then worklist-expands each by substituting type params and renaming to Name<Args>. Parameterized proc decls keep a preserved template; all-wildcard args collapse to the base name (Stream(_) == Stream).
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/compiler/ast.dart
@@ -26,5 +26,8 @@ codegen_completed_at: '2026-05-28T09:24:51Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/param_expansion.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Monomorphizes a Module's parameterized types (Def 8.1) by expanding each concrete instantiation into a distinct monomorphic type definition before automaton construction.

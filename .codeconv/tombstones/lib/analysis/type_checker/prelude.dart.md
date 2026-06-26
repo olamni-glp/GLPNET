@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/prelude.dart
 name: prelude.dart
-purpose: ''
-key_idea: ''
+purpose: Declares GLP's predefined/reserved names - protected primitive types, fundamental builtin procedure guards, builtin goals, and Dart-implemented true builtins - with membership-test helpers.
+key_idea: Static const Sets (predefinedTypeNames, predefinedProcedureNames, builtinGoals, builtinProcedures keyed by name/arity) plus isPredefinedType/isBuiltinProcedure lookups; typePrelude is now empty since real defs moved to programs/self.glp.
 dependencies: []
 callers:
 - lib/analysis/type_checker/type_environment_builder.dart
@@ -23,5 +23,8 @@ codegen_completed_at: '2026-05-28T08:53:58Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/prelude.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Declares GLP's predefined/reserved names - protected primitive types, fundamental builtin procedure guards, builtin goals, and Dart-implemented true builtins - with membership-test helpers.

@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/type_environment_builder.dart
 name: type_environment_builder.dart
-purpose: ''
-key_idea: ''
+purpose: 'Builds the TypeEnvironment from a parsed module: loads the prelude, merges user definitions, resolves type aliases, and enforces redefinition/determinism rules.'
+key_idea: Merges prelude/ancestor base env with user env, then _resolveAliases transitively folds simple aliases (cycle-detected) and expands union aliases from referenced alternatives with complement (T?)?=T; _checkDeterminism rejects overlapping functor/constant/primitive alternatives.
 dependencies:
 - lib/analysis/type_checker/param_expansion.dart
 - lib/analysis/type_checker/prelude.dart
@@ -36,5 +36,8 @@ codegen_completed_at: '2026-05-28T10:08:45Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/type_environment_builder.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Builds the TypeEnvironment from a parsed module: loads the prelude, merges user definitions, resolves type aliases, and enforces redefinition/determinism rules.

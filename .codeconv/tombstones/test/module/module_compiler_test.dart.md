@@ -1,8 +1,8 @@
 ---
 path: test/module/module_compiler_test.dart
 name: module_compiler_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies the module compiler's import-index allocation and codegen of remote (#) goals into Distribute/Transmit bytecode opcodes.
+key_idea: Exercises ImportTable (1-based indices, dedup to same index, getIndex null, size, orderedImports, contains); compiles static math#factorial->Distribute and dynamic M?#foo->Transmit, asserting importIndex/functor/arity reuse and Distribute/Transmit toString formats.
 dependencies:
 - lib/bytecode/opcodes.dart
 - lib/compiler/analyzer.dart
@@ -21,5 +21,8 @@ plan_started_at: '2026-05-21T16:38:48Z'
 plan_completed_at: '2026-05-21T16:43:38Z'
 plan_path: .codeconv/conversion-plans/test/module/module_compiler_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies the module compiler's import-index allocation and codegen of remote (#) goals into Distribute/Transmit bytecode opcodes.
