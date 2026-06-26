@@ -38,20 +38,23 @@ def test_exactly_one_head_offline() -> None:
 
     Feature 020 appends ``0008_equivalence`` (revision 0008, down_revision
     0007) then ``0009_no_emit`` (Stage 4; revision 0009, down_revision
-    0008), so the single head advanced 0007 → 0008 → 0009. The single-head
-    + linear-chain invariant is unchanged. (test_migration_0009_single_head
-    is the Stage-4 owner of the 0009 assertions.)"""
+    0008); feature 024 added ``0010_marathon_schema``; feature 035 added
+    ``0011_enrich_provenance`` (revision 0011, down_revision 0010), so the
+    single head advanced 0009 → 0010 → 0011. The single-head + linear-chain
+    invariant is unchanged. (test_migration_0011_single_head is the owner
+    of the authoritative 0011 head assertions.)"""
     sd = _script_dir()
     heads = sd.get_heads()
-    assert heads == ["0010"], f"expected single head 0010, got {heads}"
+    assert heads == ["0011"], f"expected single head 0011, got {heads}"
 
 
 def test_linear_chain_offline() -> None:
-    """The chain is strictly linear 0001→…→0010 (no branch/merge), so
+    """The chain is strictly linear 0001→…→0011 (no branch/merge), so
     ``alembic upgrade head`` is unambiguous."""
     sd = _script_dir()
     chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
     assert chain == {
+        "0011": "0010",
         "0010": "0009",
         "0009": "0008",
         "0008": "0007",
