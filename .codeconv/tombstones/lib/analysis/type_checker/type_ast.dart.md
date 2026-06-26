@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/type_ast.dart
 name: type_ast.dart
-purpose: ''
-key_idea: ''
+purpose: Defines the AST node hierarchy for GLP type declarations and procedure signatures, plus the TypeEnvironment that holds them for type checking.
+key_idea: TypeExpr subclasses (TypeRef/ConstantAlt/StructAlt/List*Alt/PrimitiveModeAlt/DiffListAlt) model type alternatives; TypeRef.dual() inverts mode T<->T?; TypeDef.classification scans for internal complementation; ProcDecl keys procedures by name/arity; TypeEnvironment maps and merges types & procedures.
 dependencies: []
 callers:
 - lib/analysis/type_checker/moded_head.dart
@@ -40,5 +40,8 @@ codegen_completed_at: '2026-05-28T08:54:01Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/type_ast.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the AST node hierarchy for GLP type declarations and procedure signatures, plus the TypeEnvironment that holds them for type checking.

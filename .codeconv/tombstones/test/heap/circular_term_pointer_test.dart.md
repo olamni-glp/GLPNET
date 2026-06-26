@@ -52,6 +52,8 @@ plan_started_at: '2026-05-21T16:28:59Z'
 plan_completed_at: '2026-05-21T16:33:27Z'
 plan_path: .codeconv/conversion-plans/test/heap/circular_term_pointer_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for circular term handling with Pointer Architecture Heap

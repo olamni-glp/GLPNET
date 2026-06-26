@@ -1,8 +1,8 @@
 ---
 path: test/analysis/type_checker/moded_head_test.dart
 name: moded_head_test.dart
-purpose: ''
-key_idea: ''
+purpose: 'Verifies moded-head construction (modedHead/producedTerm): mode assignment and writer/reader complementation for clause heads versus body atoms.'
+key_idea: Asserts consume/produce mode + writer<->reader flips at consume/produce positions across merge head, base case, single-arg, anon-var unique names, arity-mismatch throwing ArityMismatchError, producedTerm keeping body vars as-is, and explicit-dual Channel/DiffList structure preservation.
 dependencies:
 - lib/analysis/type_checker/mode.dart
 - lib/analysis/type_checker/moded_head.dart
@@ -20,5 +20,8 @@ plan_started_at: '2026-05-21T16:00:27Z'
 plan_completed_at: '2026-05-21T16:05:43Z'
 plan_path: .codeconv/conversion-plans/test/analysis/type_checker/moded_head_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies moded-head construction (modedHead/producedTerm): mode assignment and writer/reader complementation for clause heads versus body atoms.

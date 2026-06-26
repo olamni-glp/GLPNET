@@ -16,5 +16,7 @@ plan_started_at: '2026-05-21T16:38:51Z'
 plan_completed_at: '2026-05-21T16:43:41Z'
 plan_path: .codeconv/conversion-plans/test/bytecode/inspect_bytecode_test.dart.md
 open_escalation_count: 0
+purpose_source: absent
+key_idea_source: absent
 ---
 

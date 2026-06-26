@@ -30,6 +30,8 @@ plan_started_at: '2026-05-21T16:49:37Z'
 plan_completed_at: '2026-05-21T16:54:20Z'
 plan_path: .codeconv/conversion-plans/test/debug_four_agents_modules.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Diagnostic: Four agents (Alice, Bob, Carol, Dave) with project modules.

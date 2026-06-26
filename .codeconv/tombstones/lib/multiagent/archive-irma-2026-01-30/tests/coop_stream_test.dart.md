@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.258Z'
 sha256: 4567b4fc9f678dcbb3d120b68f36a8f374a02b60495a12aa19212aa685e8b284
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/coop_stream_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Cooperative Stream Multi-Agent Tests

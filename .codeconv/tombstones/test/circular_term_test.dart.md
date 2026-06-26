@@ -49,6 +49,8 @@ plan_started_at: '2026-05-21T16:28:58Z'
 plan_completed_at: '2026-05-21T16:33:25Z'
 plan_path: .codeconv/conversion-plans/test/circular_term_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for circular term handling in GLP runtime.

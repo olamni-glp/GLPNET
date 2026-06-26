@@ -38,6 +38,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.584Z'
 sha256: 06e942b62b6c0e2a0ec5943a7acf48a600caa7a212ccef55ad005c789a4a2f1b
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/payload_serializer_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Unit tests for PayloadSerializer

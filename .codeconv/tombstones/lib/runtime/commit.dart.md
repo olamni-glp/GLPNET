@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/commit.dart
 name: commit.dart
-purpose: ''
-key_idea: ''
+purpose: Applies the tentative writer substitution to the heap on COMMIT, binding writers and collecting goal reactivations.
+key_idea: 'applySigmaHatFCP iterates the writer substitution: rejects writer-to-writer binds, routes VarRefs via bindWriterToReader or deref, binds ground via bindWriterNoCallback, re-derefs chained pointer cells (W->V->value), then fires deferred callbacks LAST so nested VarRefs resolve fully.'
 dependencies:
 - lib/runtime/heap_fcp.dart
 - lib/runtime/machine_state.dart
@@ -26,5 +26,8 @@ codegen_completed_at: '2026-05-28T11:54:50Z'
 target_cs_path: out/csharp/lib/runtime/commit.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Applies the tentative writer substitution to the heap on COMMIT, binding writers and collecting goal reactivations.

@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.610Z'
 sha256: b7819dde39257dddd7b82343a2a48b732c1d318d7e558d2a8ad01ba68fc0e119
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/play_alice_bob_charlie_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Full Play Alice-Bob-Charlie with Three Isolates

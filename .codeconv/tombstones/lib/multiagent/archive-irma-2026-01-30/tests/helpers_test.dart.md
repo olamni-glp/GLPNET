@@ -27,6 +27,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.355Z'
 sha256: 3eb248b34373571266ac49ec19d9a8f9f32227da3ece71e9ec1f88b22f2a266d
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/helpers_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Unit tests for irmaGLP Helper Routines

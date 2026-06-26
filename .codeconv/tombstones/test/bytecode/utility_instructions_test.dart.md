@@ -1,8 +1,8 @@
 ---
 path: test/bytecode/utility_instructions_test.dart
 name: utility_instructions_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies the Nop and Halt utility bytecode instructions execute correctly within the scheduler, alongside Proceed.
+key_idea: 'Hand-assembles p/0 programs via BC builders: three nops then PROCEED runs once, halt terminates after one execution, and a Halt-vs-Proceed comparison shows both end execution in exactly one drained goal.'
 dependencies:
 - lib/bytecode/asm.dart
 - lib/bytecode/opcodes.dart
@@ -22,5 +22,8 @@ plan_started_at: '2026-05-21T16:28:57Z'
 plan_completed_at: '2026-05-21T16:33:24Z'
 plan_path: .codeconv/conversion-plans/test/bytecode/utility_instructions_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies the Nop and Halt utility bytecode instructions execute correctly within the scheduler, alongside Proceed.

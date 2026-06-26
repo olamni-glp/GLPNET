@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/runtime.dart
 name: runtime.dart
-purpose: ''
-key_idea: ''
+purpose: 'Central GLP runtime state (GlpRuntime): owns heap, goal queue, system predicates, body kernels, per-goal env/program/budget maps, file/FFI handles, and suspension tracking.'
+key_idea: Holds parallel GoalId-keyed maps (env, program, module-context, budget) plus a suspended reader-varId -> Set<GoalRef> index; commitSigmaHat delegates to CommitOps then enqueues reactivated goals; tailReduce cycles a per-goal budget for fair preemption.
 dependencies:
 - lib/bytecode/runner.dart
 - lib/runtime/abandon.dart
@@ -87,5 +87,8 @@ codegen_completed_at: '2026-05-28T12:39:18Z'
 target_cs_path: out/csharp/lib/runtime/runtime.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Central GLP runtime state (GlpRuntime): owns heap, goal queue, system predicates, body kernels, per-goal env/program/budget maps, file/FFI handles, and suspension tracking.

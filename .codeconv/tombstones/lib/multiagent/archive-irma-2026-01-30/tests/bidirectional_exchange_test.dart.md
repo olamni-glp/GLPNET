@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.200Z'
 sha256: d5dd1cb67d99ccc2d46385b5cee20f68a11b0aae09115b9ceaba7af314af908a
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/bidirectional_exchange_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Bidirectional Exchange Test

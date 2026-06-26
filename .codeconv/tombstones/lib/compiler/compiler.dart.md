@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/compiler.dart
 name: compiler.dart
-purpose: ''
-key_idea: ''
+purpose: Top-level GLP compiler driver orchestrating the full source-to-bytecode pipeline; exposes compile/compileWithMetadata/compileProgram entry points.
+key_idea: GlpCompiler chains injectable lexer->parser.parseModule->PartialEvaluator guard expansion->optional checkModule type-check->Analyzer (reduce/2 gen, SRSW, register annotation)->CodeGenerator, rewrapping CompileErrors with source context; compileProgram is a linker fast-path skipping lex/parse/type-check.
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/analysis/type_checker/type_checker.dart
@@ -71,5 +71,8 @@ codegen_completed_at: '2026-05-28T13:19:43Z'
 target_cs_path: out/csharp/lib/compiler/compiler.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Top-level GLP compiler driver orchestrating the full source-to-bytecode pipeline; exposes compile/compileWithMetadata/compileProgram entry points.

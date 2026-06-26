@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/type_conversion.dart
 name: type_conversion.dart
-purpose: ''
-key_idea: ''
+purpose: Pure structural converter from parser Term AST into TypeExpr type-declaration AST, with no semantic validation.
+key_idea: 'termToTypeExpr dispatches on Term subtype: VarTerm->TypeRef, UnderscoreTerm->PrimitiveModeAlt, ConstTerm->ConstantAlt, ListTerm->ListNil/ConsAlt, StructTerm backslash/2->DiffListAlt; for structs an uppercase-initial functor (optional trailing ''?'') becomes a parameterized TypeRef, lowercase becomes StructAlt.'
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/compiler/ast.dart
@@ -22,5 +22,8 @@ codegen_completed_at: '2026-05-28T09:22:44Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/type_conversion.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Pure structural converter from parser Term AST into TypeExpr type-declaration AST, with no semantic validation.

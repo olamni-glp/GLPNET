@@ -24,6 +24,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.386Z'
 sha256: cfdb99cb4aa57750d68f3d697b915c73a5d05f39e1620e51fe9d7cdf159590ed
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/irma_agent_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Unit tests for IrmaAgent
