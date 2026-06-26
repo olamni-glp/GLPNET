@@ -9,10 +9,11 @@ from a file's actual Dart source through an *injected* callable
 ``/codeconv-enrich`` skill loop injects a Claude-backed one (one sub-agent
 per file, reading ``source_text``). A bare in-process run with no injected
 ``infer_fn`` is a usage error (:func:`_require_fn` raises ``RuntimeError``);
-there is **NO** ``OPENAI_API_KEY`` / ``litellm`` / ``openai`` fallback
-anywhere on this path (Constitution V / FR-003 / SC-004). The shape of
-:func:`_require_fn` mirrors ``tools/codegen_opt/optimize.py:100-117`` — the
-ratified no-API precedent.
+there is **NO** external-LM-API-key / third-party-LM-SDK fallback anywhere
+on this path (Constitution V / FR-003 / SC-004 — the SC-004 grep guard
+forbids the literal external-LM-provider tokens in this tree, so this
+module names them only obliquely). The shape of :func:`_require_fn` mirrors
+``tools/codegen_opt/optimize.py:100-117`` — the ratified no-API precedent.
 """
 
 from __future__ import annotations
@@ -66,9 +67,9 @@ def _require_fn(fn: Optional[InferFn], name: str) -> InferFn:
         raise RuntimeError(
             f"{name} was not provided. codeconv enrich runs its inference "
             "in Claude (sub-agents) — there is NO external-API default "
-            "(no OPENAI_API_KEY / litellm / openai). Drive enrichment "
-            "through the /codeconv-enrich skill loop, which injects a "
-            f"Claude-backed {name}."
+            "(no external-LM API key, no third-party LM SDK). Drive "
+            "enrichment through the /codeconv-enrich skill loop, which "
+            f"injects a Claude-backed {name}."
         )
     return fn
 
