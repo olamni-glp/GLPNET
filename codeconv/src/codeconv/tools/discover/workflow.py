@@ -935,6 +935,14 @@ def _preflight_from_tombstones(tombstones_root: Path) -> dict:
                 "key_idea": fm.get("key_idea") or "",
                 "mtime": fm.get("mtime") or _format_mtime(_utc_now()),
                 "sha256": fm["sha256"],
+                # Feature 035: carry provenance so a --from-tombstones rebuild
+                # does not silently reset inferred/doc to absent (FR-008).
+                "purpose_source": _provenance_from_fm(
+                    fm, "purpose", "purpose_source"
+                ),
+                "key_idea_source": _provenance_from_fm(
+                    fm, "key_idea", "key_idea_source"
+                ),
             }
         )
         deps = fm.get("dependencies")
@@ -1066,15 +1074,19 @@ def _run_from_tombstones(
             conn.execute(
                 text(
                     "INSERT INTO codeconv.dart_files "
-                    "  (path, name, purpose, key_idea, mtime, sha256, discovered_at) "
+                    "  (path, name, purpose, key_idea, mtime, sha256, "
+                    "   purpose_source, key_idea_source, discovered_at) "
                     "VALUES (:path, :name, :purpose, :key_idea, "
-                    "        :mtime, :sha256, NOW()) "
+                    "        :mtime, :sha256, "
+                    "        :purpose_source, :key_idea_source, NOW()) "
                     "ON CONFLICT (path) DO UPDATE SET "
                     "  name = EXCLUDED.name, "
                     "  purpose = EXCLUDED.purpose, "
                     "  key_idea = EXCLUDED.key_idea, "
                     "  mtime = EXCLUDED.mtime, "
                     "  sha256 = EXCLUDED.sha256, "
+                    "  purpose_source = EXCLUDED.purpose_source, "
+                    "  key_idea_source = EXCLUDED.key_idea_source, "
                     "  discovered_at = NOW()"
                 ),
                 f,
@@ -1354,6 +1366,22 @@ def _format_mtime(dt: datetime) -> str:
         dt = dt.replace(tzinfo=timezone.utc)
     ms = dt.microsecond // 1000
     return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ms:03d}Z"
+
+
+def _provenance_from_fm(fm: dict, value_key: str, source_key: str) -> str:
+    """Feature 035: provenance for a rebuilt ``dart_files`` row from a tombstone.
+
+    Faithfully carries a present ``purpose_source``/``key_idea_source`` (``doc``
+    / ``inferred`` / ``absent``) so a ``--from-tombstones`` rebuild preserves
+    enrichment provenance (markdown⇔DB agreement, FR-008). A pre-035 tombstone
+    has no provenance key, or a malformed value sneaks in → derive it from the
+    value's blank-ness (non-blank ⇒ ``doc``, blank ⇒ ``absent``), matching the
+    migration-0011 backfill rule.
+    """
+    src = fm.get(source_key)
+    if src in ("doc", "inferred", "absent"):
+        return src
+    return "absent" if str(fm.get(value_key) or "") == "" else "doc"
 
 
 __all__ = ["register", "run_discover"]
