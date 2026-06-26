@@ -116,7 +116,7 @@ Run tests via `codeconv/.venv/Scripts/python.exe -m pytest`.
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T022 [P] Run quickstart.md end-to-end (migrate → `--dry-run` → scoped enrich → verify `lib/compiler/codegen.dart` tombstone gains inferred provenance + DB agreement), and confirm the inferred `purpose`/`key_idea` + `*_source` appear in `git diff` of the `.codeconv/tombstones/` tree (FR-014 git-reviewability — analyze E1).
-- [ ] T023 Full green: `codeconv/.venv/Scripts/python.exe -m pytest codeconv/tests/test_enrich_*.py codeconv/tests/test_discover_*.py codeconv/tests/test_migration_0011_single_head.py -q`, then a baseline regression check of the wider codeconv suite (track known pre-existing reds separately).
+- [X] T023 Full green: `codeconv/.venv/Scripts/python.exe -m pytest codeconv/tests/test_enrich_*.py codeconv/tests/test_discover_*.py codeconv/tests/test_migration_0011_single_head.py -q`, then a baseline regression check of the wider codeconv suite (track known pre-existing reds separately).
 - [X] T024 [P] Belt-and-suspenders SC-004 guard: grep `codeconv/src/codeconv/tools/enrich/` for `openai`/`litellm`/`OPENAI_API_KEY` → must be zero (Constitution V machine-check).
 
 ---
