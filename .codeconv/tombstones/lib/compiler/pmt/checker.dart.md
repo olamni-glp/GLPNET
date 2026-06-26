@@ -56,6 +56,8 @@ codegen_completed_at: '2026-05-28T12:34:05Z'
 target_cs_path: out/csharp/lib/compiler/pmt/checker.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 PMT SRSW Checker: Verifies Single-Reader/Single-Writer constraint

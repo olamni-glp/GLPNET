@@ -41,6 +41,8 @@ plan_started_at: '2026-05-21T16:24:12Z'
 plan_completed_at: '2026-05-21T16:28:42Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/mad_scenarios_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 End-to-End madGLP Scenario Tests

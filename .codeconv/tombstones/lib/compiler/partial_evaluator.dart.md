@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/partial_evaluator.dart
 name: partial_evaluator.dart
-purpose: ''
-key_idea: ''
+purpose: Source-to-source partial evaluator that unfolds defined guards (single unit-clause guards) and reduce/2 body calls before the SRSW/type-check phases.
+key_idea: 'PartialEvaluator collects unit/reduce facts then fixpoint-iterates each clause: compile-time GLP unification (_glpUnifyForPE -> UnifySuccess/Fail/Suspend) yields a substitution resolved through alias chains and applied to head/guards/body; non-reducible guards raise CompileError, redundant type guards are dropped.'
 dependencies:
 - lib/analysis/type_checker/prelude.dart
 - lib/compiler/ast.dart
@@ -36,5 +36,8 @@ codegen_completed_at: '2026-05-28T10:09:44Z'
 target_cs_path: out/csharp/lib/compiler/partial_evaluator.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Source-to-source partial evaluator that unfolds defined guards (single unit-clause guards) and reduce/2 body calls before the SRSW/type-check phases.

@@ -70,6 +70,12 @@ glp_runtime_net/
 # round-trip source). Tombstones under .codeconv/tombstones/ stay tracked.
 .codeconv/depgraph.json
 
+# codeconv-enrich per-run audit logs (feature 035) — regenerated each
+# `codeconv enrich run`; NOT checked in (the durable reviewable record is the
+# enriched provenance in .codeconv/tombstones/, FR-014). Same discipline as
+# depgraph.json above.
+.codeconv/enrich-runs/
+
 # codeconv-codegen (feature 019 / R11, resolved 2026-05-23):
 #   - out/csharp/  → COMMITTED (reviewable, build-gated product; NOT ignored).
 #   - .codeconv/conversion-code/  → COMMITTED (escalations report + reviews log).

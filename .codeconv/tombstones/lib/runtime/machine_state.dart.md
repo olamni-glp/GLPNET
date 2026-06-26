@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/machine_state.dart
 name: machine_state.dart
-purpose: ''
-key_idea: ''
+purpose: 'Core runtime data types: goal identifiers, GoalState, GoalRef, the writer-substitution typedef, and the FIFO GoalQueue.'
+key_idea: Defines opaque int typedefs (GoalId/Pc/ReaderId/WriterId), GoalStatus enum, value-equality GoalRef, per-goal GoalState (pc, kappa restart, tailBudget=26, clearable sigmaHat), and GoalQueue wrapping QueueList for FIFO enqueue/dequeue of GoalRefs.
 dependencies: []
 callers:
 - lib/bytecode/runner.dart
@@ -79,5 +79,8 @@ codegen_completed_at: '2026-05-28T09:08:59Z'
 target_cs_path: out/csharp/lib/runtime/machine_state.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Core runtime data types: goal identifiers, GoalState, GoalRef, the writer-substitution typedef, and the FIFO GoalQueue.

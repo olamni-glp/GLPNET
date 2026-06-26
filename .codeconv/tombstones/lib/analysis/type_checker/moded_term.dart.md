@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/moded_term.dart
 name: moded_term.dart
-purpose: ''
-key_idea: ''
+purpose: 'Defines the moded-term data model (Def 4.2): mode-annotated compound/constant/variable nodes plus path extraction and classification ops (isConsumed/isProduced/isIO/dual).'
+key_idea: ModedTerm hierarchy (ModedCompound/Constant/Variable) with a visitor; variables carry structural vs implicit mode. Visitor-based isIO validates only consume->produce transitions per root-to-leaf path; dual flips every mode and reader/writer; paths extracts root-to-leaf PathStep sequences.
 dependencies:
 - lib/analysis/type_checker/mode.dart
 callers:
@@ -26,5 +26,8 @@ codegen_completed_at: '2026-05-28T09:09:16Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/moded_term.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the moded-term data model (Def 4.2): mode-annotated compound/constant/variable nodes plus path extraction and classification ops (isConsumed/isProduced/isIO/dual).

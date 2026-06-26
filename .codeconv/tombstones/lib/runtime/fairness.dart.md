@@ -1,8 +1,8 @@
 ---
 path: lib/runtime/fairness.dart
 name: fairness.dart
-purpose: ''
-key_idea: ''
+purpose: Tail-recursion budget helpers that drive fair scheduler yields between successive goal reductions.
+key_idea: 'Two pure functions: nextTailBudget(current) decrements toward 0 (0 signals the scheduler to yield), resetTailBudget() restores tailRecursionBudgetInit (26) after a yield - implementing per-goal bounded tail recursion for fairness.'
 dependencies:
 - lib/runtime/machine_state.dart
 callers:
@@ -21,5 +21,8 @@ codegen_completed_at: '2026-05-28T09:18:26Z'
 target_cs_path: out/csharp/lib/runtime/fairness.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Tail-recursion budget helpers that drive fair scheduler yields between successive goal reductions.

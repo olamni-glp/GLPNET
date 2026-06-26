@@ -569,20 +569,24 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/034-glp-gleam-core-terms-and-heap/plan.md` (F4 — port
-the GLP data+binding core into F3's `glp_gleam/` `runtime` subsystem: the term
-model (const atom/int/real/string, struct, cons/nil list, var ref), the variable
-store (FCP writer/reader pairs, tag-determined roles, path-compressing deref,
-bind-to-value, bind-to-var), writer-MGU three-valued unification (success/suspend/
-fail, binds only writers), and heap-level suspension storage + activation-list
-production. No scheduler/runner/compiler/link; single-runtime. **Cascade-bearing
-plan decision (research.md R-001): the WAM mutable heap is re-expressed as an
-IMMUTABLE THREADED BINDING STORE — not process-cells (those deferred to F5).** Port
-basis = Dart `glp_runtime/lib/runtime/{terms,heap_fcp,suspension}.dart` (F1-ratified
-source of truth). Lands as `src/glp/runtime/{terms,suspension,heap,unify}.gleam` +
-the filled `glp/runtime.gleam` umbrella; additive (no other-subtree change, no
-artifacts). Build/test green on Erlang/BEAM under WSL (`gleam test` + `smoke.sh`),
-no `gleam_otp`. Constitution Check: no violations. For technologies, structure, and
-conventions read that plan and its sibling `research.md` / `data-model.md` /
-`contracts/runtime-api.md` / `quickstart.md`.
+Active feature plan: `specs/035-semantic-tombstone-enrichment/plan.md` — a NEW
+auto-discovered codeconv tool `codeconv enrich` that fills BLANK
+`purpose`/`key_idea` tombstone fields for discovered Dart files by inferring a
+concise **purpose** (responsibility/role) and a DISTINCT **key_idea** (central
+algorithm/mechanism) from the file's actual source, exclusively through an
+injected **Claude/Agent seam** (no external LM API — GEPA-no-API rule;
+`_require_fn` no-API-default mirroring `codegen-opt`). Each field gains a
+provenance marker `purpose_source`/`key_idea_source` ∈ {`doc`,`inferred`,
+`absent`}, persisted to BOTH the tombstone `.dart.md` (appended to
+`discover/tombstone.py` `_FIELD_ORDER` + `_PRESERVED_APPENDED_KEYS`) and the
+`codeconv.dart_files` row (additive migration `0011`, backfill
+`CASE WHEN value='' THEN 'absent' ELSE 'doc'`). Idempotent + change-aware (keys
+on `sha256`; no-change re-run = zero inferences, byte-identical), path-scopable,
+fault-isolated (per-file failure never corrupts a tombstone). FR-008 = a SCOPED,
+provenance-aware edit to `discover` so re-runs preserve `inferred` values
+(discover already skips unchanged files via its idempotence short-circuit
+`workflow.py:512-519`; the real work is the re-write path). NO runner/CLI edits
+(FR-016 zero-edit registry). Constitution Check: no violations (V/VI-a/VI-b all
+PASS). For structure/decisions read that plan + `research.md` (8 source-grounded
+decisions) / `data-model.md` / `contracts/{enrich_cli,infer_seam,discover_preservation,migration_0011}.md` / `quickstart.md`.
 <!-- BUILDKIT END -->

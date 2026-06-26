@@ -26,6 +26,8 @@ plan_started_at: '2026-05-21T16:44:00Z'
 plan_completed_at: '2026-05-21T16:49:17Z'
 plan_path: .codeconv/conversion-plans/test/test_agent_init_goal.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Test to debug agent_init goal setup - mimics Flutter app behavior

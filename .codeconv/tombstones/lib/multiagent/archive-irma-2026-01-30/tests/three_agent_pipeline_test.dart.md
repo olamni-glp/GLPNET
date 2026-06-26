@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.759Z'
 sha256: 1b8fad1e92fd9f4b5a484d9886767a5f3389b9159e0966397170ce35c87c050d
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/three_agent_pipeline_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Three-Agent Pipeline Test

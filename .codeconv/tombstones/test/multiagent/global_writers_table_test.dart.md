@@ -54,6 +54,8 @@ plan_started_at: '2026-05-21T14:50:53Z'
 plan_completed_at: '2026-05-21T14:56:22Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/global_writers_table_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for GlobalWritersTable

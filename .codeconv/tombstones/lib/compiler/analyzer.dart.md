@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/analyzer.dart
 name: analyzer.dart
-purpose: ''
-key_idea: ''
+purpose: 'Semantic analyzer for GLP: validates SRSW single-writer/single-reader constraints, expands defined guards, and annotates clauses with per-variable register assignments.'
+key_idea: Per-clause VariableTable tallies writer/reader occurrences (head/body vs guard-only); guards and constant-type proc-decls mark vars grounded to relax the multi-reader rule; SRSW is checked pre-partial-eval, then DefinedGuardEvaluator unfolds unit-clause guards via a fixpoint unification pass.
 dependencies:
 - lib/analysis/type_checker/type_ast.dart
 - lib/compiler/ast.dart
@@ -27,5 +27,8 @@ codegen_completed_at: '2026-05-28T10:19:25Z'
 target_cs_path: out/csharp/lib/compiler/analyzer.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Semantic analyzer for GLP: validates SRSW single-writer/single-reader constraints, expands defined guards, and annotates clauses with per-variable register assignments.

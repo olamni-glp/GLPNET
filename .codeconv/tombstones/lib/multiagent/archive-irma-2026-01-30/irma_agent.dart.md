@@ -30,6 +30,8 @@ callers: []
 mtime: '2026-05-21T12:38:13.869Z'
 sha256: 81ba662e9959c8b7978401354c40d4225bfe0356ad9ecd5b15e72a5bc852b4ce
 target_path: lib/multiagent/archive-irma-2026-01-30/irma_agent.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 IrmaAgent - Agent wrapper for irmaGLP multiagent integration

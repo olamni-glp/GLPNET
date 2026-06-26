@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/parser.dart
 name: parser.dart
-purpose: ''
-key_idea: ''
+purpose: 'Recursive-descent parser turning the token stream into the AST: a Module/Program of type definitions, procedure declarations, and clauses (head, guards, body).'
+key_idea: Recursive descent plus a precedence-climbing (Pratt) expression parser driven by a _precedence table; splits guards from body at '|', enforces clause contiguity and pending procedure-declaration rules, backtracks via saved _current, and runs a parallel term-parse path for '::=' type alternatives.
 dependencies:
 - lib/analysis/type_checker/prelude.dart
 - lib/analysis/type_checker/type_ast.dart
@@ -43,5 +43,8 @@ codegen_completed_at: '2026-05-28T10:03:50Z'
 target_cs_path: out/csharp/lib/compiler/parser.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Recursive-descent parser turning the token stream into the AST: a Module/Program of type definitions, procedure declarations, and clauses (head, guards, body).

@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/glp_printer.dart
 name: glp_printer.dart
-purpose: ''
-key_idea: ''
+purpose: Serializes a GLP AST back into valid GLP source text (unparser/pretty-printer), preserving SRSW reader marks (X?) and every term and operator form.
+key_idea: Recursive structural descent (printProgram->printClause->printAtom/Goal/Guard->printTerm) into a StringBuffer; special-cases infix operators, appends '?' for reader vars, flattens proper/improper lists, and regex-distinguishes bare atoms from quoted/escaped strings.
 dependencies:
 - lib/compiler/ast.dart
 callers: []
@@ -20,5 +20,8 @@ codegen_completed_at: '2026-05-28T09:41:53Z'
 target_cs_path: out/csharp/lib/compiler/glp_printer.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Serializes a GLP AST back into valid GLP source text (unparser/pretty-printer), preserving SRSW reader marks (X?) and every term and operator form.

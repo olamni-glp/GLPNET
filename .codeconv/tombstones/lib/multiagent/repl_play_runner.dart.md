@@ -53,6 +53,8 @@ codegen_completed_at: '2026-05-28T09:08:47Z'
 target_cs_path: out/csharp/lib/multiagent/repl_play_runner.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 ReplPlayRunner — runs simulated dGLP plays via REPL subprocess.

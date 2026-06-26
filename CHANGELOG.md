@@ -89,6 +89,21 @@
 
 ## [Unreleased]
 
+## [v2026.06.26.1] - 2026-06-26
+
+### Changed
+- Merge pull request #56 from olamni-glp/035-semantic-tombstone-enrichment
+- 035(fix): --from-tombstones rebuild carries purpose_source/key_idea_source (FR-008) — was resetting inferred/doc to absent; pre-035 derives from blank-ness; +regression test
+- 035(corpus): enrich glp_runtime_net tombstones via Claude seam — 68 inferred (9 compiler + 59), 104 doc, 7 stubs left blank; gitignore enrich-runs logs
+- 035(enrich): mark T023 (consolidated feature gate 22/22 green) — all 24 tasks complete
+- 035(enrich polish): T022 isolated quickstart e2e (dry-run + scoped enrich + FR-014 git-diff); T024 SC-004 grep guard verified
+- 035(enrich US3): --path scope + per-file fault isolation + low-confidence + run summary/durable log; T018 green
+- 035(enrich US2): discover provenance-aware seed + conditional inferred-preservation (FR-008); enrich idempotence/stale-guard; T013/T014 green
+- 035(enrich US1/MVP): run_enrich candidate scan + Claude-seam infer/write + non-candidate stamping + no-API exit-2; T007/T008 green
+- 035(enrich P1-2): tool skeleton + no-API seam + migration 0011 + frontmatter provenance keys + head tests
+- 035(plan/tasks/analyze): semantic tombstone enrichment pipeline artifacts + analyze remediations (B1 len-caps, C1 file run-log, D1/E1/F1)
+- Merge pull request #55 from olamni-glp/main
+
 ## [v2026.06.25.1] - 2026-06-25
 
 ### Changed

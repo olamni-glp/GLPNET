@@ -43,6 +43,8 @@ codegen_completed_at: '2026-05-28T11:54:56Z'
 target_cs_path: out/csharp/lib/runtime/external_io.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 External I/O for GLP - Phase 0 Implementation

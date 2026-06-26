@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.735Z'
 sha256: 106b578450cb14f3c9336bea57645667863d64b2d392b1ec78327b23bfbe2c23
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/three_agent_merge_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Three-Agent Merge Test

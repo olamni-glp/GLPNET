@@ -44,6 +44,8 @@ callers: []
 mtime: '2026-05-21T12:38:16.717Z'
 sha256: dd59fc1b474856737100512ba9ac9f96e012662716170d1f1e471be3837dd226
 target_path: test_archive/cssg_glp_dispatch_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 CSSG GLP Dispatch Integration Test

@@ -62,6 +62,8 @@ codegen_completed_at: '2026-05-28T08:56:14Z'
 target_cs_path: out/csharp/lib/bytecode/opcodes_v2.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Phase 2: Unified Instruction Set

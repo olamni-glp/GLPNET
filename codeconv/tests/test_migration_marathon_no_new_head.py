@@ -30,25 +30,35 @@ def _script_dir():
     return ScriptDirectory.from_config(cfg)
 
 
-def test_shared_repo_head_is_still_0010() -> None:
-    """030 ships with the head 024 left: exactly one head, ``0010``."""
-    heads = _script_dir().get_heads()
-    assert heads == ["0010"], (
-        f"expected the shared-repo Alembic head to remain 0010 — feature 030 "
-        f"must not add a shared-cluster migration (VI-a, D2); got {heads}"
-    )
+def test_marathon_0010_remains_an_intact_interior_link() -> None:
+    """024's ``0010_marathon_schema`` is preserved non-destructively (VI-a:
+    prior heads are never rewritten) and still revises ``0009``.
+
+    030 added NO shared-cluster migration; later features legitimately
+    advance the Alembic head (035's ``0011_enrich_provenance`` is the head
+    now), so this assertion is decoupled from the absolute head number and
+    only verifies 024's marathon link is intact — what 030's invariant is
+    actually about. The current-head assertion lives in
+    ``test_migration_0011_single_head.py``."""
+    sd = _script_dir()
+    assert "0010" not in sd.get_heads(), "0010 should be an interior link, not head"
+    rev = sd.get_revision("0010")
+    assert rev.down_revision == "0009", rev.down_revision
 
 
-def test_no_version_file_beyond_0010() -> None:
-    """A branch can hide behind an unchanged head — no versions/ file may
-    carry a numeric prefix beyond 0010 at all."""
-    prefixes = sorted(
+def test_no_marathon_version_file_beyond_0010() -> None:
+    """030/marathon added no shared-cluster migration: the ONLY ``marathon``-
+    named ``versions/`` file is 024's ``0010_marathon_schema`` — none beyond
+    0010. (A non-marathon migration beyond 0010, e.g. 035's ``0011_enrich_
+    provenance``, is permitted — it is not a marathon migration.)"""
+    marathon_prefixes = sorted(
         int(m.group(1))
         for f in (_migrations_dir() / "versions").glob("*.py")
-        if (m := re.match(r"^(\d{4})_", f.name))
+        if "marathon" in f.name.lower() and (m := re.match(r"^(\d{4})_", f.name))
     )
-    assert prefixes and max(prefixes) == 10, (
-        f"versions/ contains a migration beyond 0010: {prefixes}"
+    assert marathon_prefixes == [10], (
+        f"a marathon migration beyond 0010 appeared (030/VI-a, D2): "
+        f"{marathon_prefixes}"
     )
 
 

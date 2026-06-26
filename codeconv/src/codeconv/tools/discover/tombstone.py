@@ -73,6 +73,9 @@ _FIELD_ORDER: tuple[str, ...] = (
     # --- feature 020 (Stage 4 — no_emit status) appended fields ---
     "codegen_no_emit",
     "codegen_no_emit_reason",
+    # --- feature 035 (semantic-tombstone-enrichment) appended fields ---
+    "purpose_source",
+    "key_idea_source",
 )
 
 # The feature-015 appended keys, as a set, for round-trip preservation.
@@ -162,10 +165,24 @@ _FEATURE_020_NO_EMIT_KEYS: tuple[str, ...] = (
     "codegen_no_emit_reason",
 )
 
+# The feature-035 (semantic-tombstone-enrichment) appended keys, as a set,
+# for round-trip preservation. ``purpose_source`` / ``key_idea_source`` ∈
+# {doc, inferred, absent} mark the provenance of ``purpose`` / ``key_idea``.
+# A ``/codeconv-discover`` re-write (a feature-012 caller) MUST carry these
+# forward unchanged so a re-discover never erases enrichment provenance.
+# NOTE: ``purpose`` / ``key_idea`` themselves are NOT added here — their
+# preservation is CONDITIONAL (carried forward only when ``*_source ==
+# inferred`` AND the recorded sha256 is unchanged; see discover/workflow.py
+# FR-008 logic), not the unconditional carry-forward this set implements.
+_FEATURE_035_KEYS: tuple[str, ...] = (
+    "purpose_source",
+    "key_idea_source",
+)
+
 # Combined append-only preservation set: every key appended after the
 # original feature-012 eight. Used by ``_canonicalise`` and
-# ``merge_preserving_feature015`` so no feature-015/-017/-018/-019/-020 state
-# is dropped when a tombstone is re-written by a caller that did not
+# ``merge_preserving_feature015`` so no feature-015/-017/-018/-019/-020/-035
+# state is dropped when a tombstone is re-written by a caller that did not
 # author those keys.
 _PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
     _FEATURE_015_KEYS
@@ -174,6 +191,7 @@ _PRESERVED_APPENDED_KEYS: tuple[str, ...] = (
     + _FEATURE_019_KEYS
     + _FEATURE_020_KEYS
     + _FEATURE_020_NO_EMIT_KEYS
+    + _FEATURE_035_KEYS
 )
 
 # YAML emitter settings pinned for diff stability.

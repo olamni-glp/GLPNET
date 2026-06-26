@@ -1,8 +1,8 @@
 ---
 path: lib/bytecode/opcodes.dart
 name: opcodes.dart
-purpose: ''
-key_idea: ''
+purpose: 'Defines the v1 GLP bytecode instruction set: the abstract Op base and every concrete opcode class (control, HEAD, GUARD, BODY, structure, scheduling, module-RPC).'
+key_idea: Each opcode is a small immutable data class implementing Op, holding only its operands (functor, arity, argSlot, varIndex, label, value); docstrings carry the three-valued HEAD/GUARD/BODY spec semantics; spec-compliant ClauseNext/TryNextClause/NoMoreClauses coexist with @deprecated legacy ops.
 dependencies: []
 callers:
 - lib/bytecode/asm.dart
@@ -26,5 +26,8 @@ codegen_completed_at: '2026-06-03T01:24:40Z'
 target_cs_path: out/csharp/lib/bytecode/opcodes.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the v1 GLP bytecode instruction set: the abstract Op base and every concrete opcode class (control, HEAD, GUARD, BODY, structure, scheduling, module-RPC).

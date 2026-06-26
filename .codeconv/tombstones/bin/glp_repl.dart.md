@@ -34,6 +34,8 @@ codegen_completed_at: '2026-05-28T13:42:34Z'
 target_cs_path: out/csharp/bin/glp_repl.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 GLP REPL - Command Line Interface

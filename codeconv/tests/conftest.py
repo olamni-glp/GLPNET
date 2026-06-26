@@ -350,6 +350,69 @@ def stage_convspec_artifacts(
 
 
 # ---------------------------------------------------------------------------
+# Enrich seam test doubles (feature 035 — semantic-tombstone-enrichment)
+# ---------------------------------------------------------------------------
+#
+# These are deterministic, OFFLINE ``infer_fn`` stubs injected into
+# ``run_enrich(..., infer_fn=...)`` in-process. They prove SC-004
+# structurally (no network / no external-LM SDK) and enable the
+# idempotence (SC-002) + fault-isolation (FR-010) tests. Integration
+# tests still spawn the real bridge via ``run_codeconv`` (migrate +
+# discover) and ``@needs_bridge``; the in-process ``run_enrich`` call then
+# *discovers* that already-running bridge.
+
+
+def fake_infer_fn(req):
+    """A deterministic, grounded, distinct fake Claude seam (no network).
+
+    ``purpose`` (role) and ``key_idea`` (mechanism) are derived from the
+    request's ``rel_path`` + ``source_text`` so they are (a) source-grounded,
+    (b) genuinely distinct from each other (FR-015 / SC-005), (c) stable
+    across runs (so a no-change re-run is byte-identical — SC-002), and
+    (d) well under the seam length caps.
+    """
+    from codeconv.tools.enrich.seam import InferResult
+
+    src = req.source_text or ""
+    n_lines = len(src.splitlines())
+    stem = req.rel_path.rsplit("/", 1)[-1]
+    purpose = f"Defines the {stem} unit ({n_lines} source lines)."
+    mech = next(
+        (
+            ln.strip()
+            for ln in src.splitlines()
+            if ln.strip() and not ln.strip().startswith("//")
+        ),
+        "no executable statements",
+    )
+    key_idea = f"Central mechanism: {mech[:120]}"
+    return InferResult(
+        purpose=purpose,
+        key_idea=key_idea,
+        grounded=True,
+        reason="deterministic fake (test double)",
+    )
+
+
+def raising_infer_fn(req):
+    """A forced-raise seam — exercises FR-010 per-file fault isolation."""
+    raise RuntimeError(f"forced seam failure for {req.rel_path}")
+
+
+def ungrounded_infer_fn(req):
+    """A seam that self-signals low confidence (grounded=False) — exercises
+    the FR-009 ``low_confidence`` outcome (tombstone left unchanged)."""
+    from codeconv.tools.enrich.seam import InferResult
+
+    return InferResult(
+        purpose="",
+        key_idea="",
+        grounded=False,
+        reason="source is trivial/generated; refusing to fabricate",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Marathon stage-harness fixtures (feature 030 — per-run isolated store)
 # ---------------------------------------------------------------------------
 

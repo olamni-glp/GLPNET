@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/type_checker.dart
 name: type_checker.dart
-purpose: ''
-key_idea: ''
+purpose: 'The main GLP type checker: verifies a program is well-typed per Definition 4.10 via covariance (each clause) and contravariance (input coverage).'
+key_idea: check() groups clauses by name/arity, runs per-clause covariance through well_typed_clause, then walks each input type's DFA automaton recursively (_checkStateCoverage) confirming every transition/alternative is matched by some clause-head term at the structural path, else emits a CoverageError.
 dependencies:
 - lib/analysis/type_checker/clause_validation.dart
 - lib/analysis/type_checker/param_expansion.dart
@@ -37,5 +37,8 @@ codegen_completed_at: '2026-05-28T10:19:17Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/type_checker.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+The main GLP type checker: verifies a program is well-typed per Definition 4.10 via covariance (each clause) and contravariance (input coverage).

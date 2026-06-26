@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/well_typed_term.dart
 name: well_typed_term.dart
-purpose: ''
-key_idea: ''
+purpose: Checks a single moded term is well-typed by a type automaton (Definition 5.4) through per-path automaton traversal and variable-pair duality.
+key_idea: checkModedTerm extracts paths(term) and runs checkPathAgainstAutomaton, following functor(arity,argIndex) transition labels, switching automata at user-type boundaries and accepting whole subterms at wildcard states via a mode-only check; _checkDuality verifies each (X,X?) pair is dual.
 dependencies:
 - lib/analysis/type_checker/mode.dart
 - lib/analysis/type_checker/moded_term.dart
@@ -25,5 +25,8 @@ codegen_completed_at: '2026-05-28T09:25:01Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/well_typed_term.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Checks a single moded term is well-typed by a type automaton (Definition 5.4) through per-path automaton traversal and variable-pair duality.

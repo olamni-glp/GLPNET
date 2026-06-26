@@ -1,8 +1,8 @@
 ---
 path: test/multiagent/boot_loader_test.dart
 name: boot_loader_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies BootLoader.load parses GLP boot clauses into per-agent spawn directives and rejects malformed boot files.
+key_idea: 'Valid cases: three/two/single-agent boots, differing functors, embedded comments, flexible whitespace, fullSource preserved while boot clause and ''@'' stripped. Error cases throw BootLoaderException for missing ''procedure boot'', no boot clause, agent-ID mismatch, duplicate IDs, no spawn directives.'
 dependencies:
 - lib/multiagent/boot_loader.dart
 callers: []
@@ -16,5 +16,8 @@ plan_started_at: '2026-05-21T14:50:51Z'
 plan_completed_at: '2026-05-21T14:56:21Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/boot_loader_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies BootLoader.load parses GLP boot clauses into per-agent spawn directives and rejects malformed boot files.

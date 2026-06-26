@@ -27,6 +27,8 @@ codegen_completed_at: '2026-05-28T09:01:43Z'
 target_cs_path: out/csharp/lib/engine/claude_adapter.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Adapter skeleton: will bridge GLP's argument-indexed ops to Claude's VM.
