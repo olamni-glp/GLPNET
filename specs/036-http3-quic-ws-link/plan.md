@@ -1,7 +1,13 @@
 # Implementation Plan: HTTP/3 (QUIC) + WebSocket Channel-Link Prototype
 
-**Branch**: `036-http3-quic-ws-link` | **Date**: 2026-06-27 | **Spec**: [spec.md](./spec.md)
+**Branch**: `036-http3-quic-ws-link` | **Date**: 2026-06-27 (reworked 2026-06-28) | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/036-http3-quic-ws-link/spec.md`
+
+> **Rework 2026-06-28**: realigned to the spec's 2026-06-28 corpus/distillation clarifications — (1) the WS link
+> is genuine RFC 6455 framing over a raw QUIC bidi stream (025 `FrameCodec`), with the RFC 9220 Extended-CONNECT
+> bootstrap isolated behind a seam (no longer "WS over HTTP/3 via RFC 9220"); (2) the C# stack is **cross-platform**,
+> not Windows-locked (gate on `IsSupported`); (3) the Gleam stack ships as two deployment profiles (A: AtomVM +
+> native QUIC side-process; C: full BEAM + `quicer`/MsQuic), interchangeable at the channel-link contract.
 
 ## Summary
 
@@ -17,11 +23,18 @@ that hosts both roles (`--server` / `--client`).
   per-stack transport runtime, the GLP-REPL ↔ link bridge, and the LAN-IP conformance/concurrency demo.
   Python is **never** the QUIC endpoint — making it one would introduce a third transport stack and defeat
   the C#-vs-Gleam comparison that is a core goal (FR-009/FR-010).
-- **Data plane (C#/.NET first, then Gleam/AtomVM)**: the real QUIC handshake (System.Net.Quic / MsQuic),
-  HTTP/3 (Kestrel, RFC 9114), and the WebSocket link over HTTP/3 (RFC 9220 Extended CONNECT). The C# stack
-  is built as a **new transport leaf reusing spec 025's `ILinkTransport`/`ILinkEndpoint` seam, reliability
-  sublayer, and ground-relay wire discipline** (FR-018) — not re-derived. The Gleam/AtomVM stack is a
-  subsequent staged reimplementation of the identical contract.
+- **Data plane (C#/.NET first, then Gleam)**: the real QUIC handshake (System.Net.Quic / MsQuic — GA in
+  .NET 9, **cross-platform**, gated on `QuicListener`/`QuicConnection.IsSupported`) and a **genuine
+  WebSocket link carried as RFC 6455 framing over one QUIC bidirectional stream** (one WS per stream — the
+  exact carriage RFC 9220 standardizes), reusing spec 025's `FrameCodec` and established by a minimal
+  CONNECT-style bootstrap on the stream. This is a first-class WS-over-QUIC design, not a fallback (QUIC/HTTP-3
+  is de-facto dominant). The RFC 9220 **Extended-CONNECT-over-HTTP/3 bootstrap** — the only piece .NET has not
+  shipped, needed only for third-party/browser interop — is isolated behind a handshake seam for later
+  (FR-002). The C# stack is built as a **new transport leaf reusing spec 025's `ILinkTransport`/`ILinkEndpoint`
+  seam, reliability sublayer, and ground-relay wire discipline** (FR-018) — not re-derived. The Gleam stack is
+  a subsequent staged reimplementation of the identical channel-link contract, shipped as **two deployment
+  profiles** (A: Gleam/AtomVM logic + WebSocket link / native QUIC side-process; C: Gleam on full BEAM +
+  `quicer`/MsQuic terminating genuine in-process QUIC) — interchangeable at the contract, not at QUIC termination.
 
 The whole effort runs as **one durable, resumable marathon** (`mrun-15d7dd0ffbc2`) across six stages:
 research-strategy → ~50+50 corpus → distillation → implementation plan → skeleton/mock → implement-and-demo.
@@ -30,14 +43,19 @@ research-strategy → ~50+50 corpus → distillation → implementation plan →
 
 **Language/Version**:
 - Python 3.14 — control-plane tool (`glp_quick`), cert generation, process supervision, demo driver.
-- C#/.NET 9 — data-plane stack A (reference): System.Net.Quic / MsQuic, Kestrel HTTP/3, ASP.NET Core WebSockets.
-- Gleam on AtomVM (WASM BEAM) via a Node WASM host — data-plane stack B (second implementation, staged).
+- C#/.NET 9 — data-plane stack A (reference): System.Net.Quic / MsQuic (GA, cross-platform), Kestrel HTTP/3,
+  RFC 6455 WebSocket framing over a `QuicStream` (spec 025 `FrameCodec`).
+- Gleam (BEAM-family runtime, profile-dependent) — data-plane stack B (second implementation, staged), two
+  deployment profiles: **A** Gleam/AtomVM logic + WebSocket link / native QUIC side-process (MAUI Blazor hybrids,
+  smaller nodes); **C** Gleam on full BEAM + `quicer`/MsQuic for genuine in-process QUIC (workstations/servers).
 - GLP — the payload; runs on the existing C# GLP REPL (`out/csharp/glp_repl`, mandated default) and/or Dart REPL.
 
 **Primary Dependencies**:
 - Python: `typer` (CLI, matches codeconv convention), `cryptography` (self-signed cert), stdlib `subprocess`/`asyncio`.
-- C#: Kestrel + `Microsoft.AspNetCore` (HTTP/3, WebSockets-over-HTTP/3), `System.Net.Quic`; reuses `csharp/glp_link` (spec 025).
-- Gleam/AtomVM: AtomVM WASM build + Node WASM host; Gleam stdlib / `gleam_otp` (Phase 3+).
+- C#: Kestrel + `Microsoft.AspNetCore` (HTTP/3), `System.Net.Quic` (raw `QuicStream` carrying RFC 6455 frames);
+  reuses `csharp/glp_link` (spec 025 `FrameCodec`). On Linux: `libmsquic` 2.2+; macOS: `brew install libmsquic`.
+- Gleam: Profile A — AtomVM build + Node WASM host + native QUIC side-process (length-prefixed local IPC); Profile C
+  — full BEAM + `quicer` (NIF over MsQuic) + `gleam_otp` (Phase 3+).
 
 **Storage**:
 - Marathon run state — additive `marathon_*` rows in the **out-of-repo** machine catalog under the deploy home
@@ -52,8 +70,13 @@ research-strategy → ~50+50 corpus → distillation → implementation plan →
 - The LAN-IP conformance demo (the SC-001..SC-006 acceptance harness) driven by `glp-quick demo`.
 - The existing GLP REPL suite (`test/run_all_tests.sh`) must stay green — this feature must not regress it.
 
-**Target Platform**: Windows-first; cross-host LAN (two+ hosts/VMs by IP or machine name). .NET runs Windows/Linux;
-Node hosts the WASM BEAM. Internet-capable in principle (LAN-over-IP is the demonstrated target; no NAT-traversal demo).
+**Target Platform**: **Cross-platform — NOT Windows-locked.** `System.Net.Quic` (GA in .NET 9) runs on Windows
+11 / Server 2022+ (msquic.dll ships with the runtime), Linux (`libmsquic` 2.2+, OpenSSL 3+/1.1 from
+packages.microsoft.com), and macOS (partial — `brew install libmsquic` + `DYLD_FALLBACK_LIBRARY_PATH`). Endpoints
+gate on `QuicListener`/`QuicConnection.IsSupported` before claiming a real handshake. **This repo's demo hosts are
+Windows 11 (confirmed)** so the Win11 floor applies to *our* demo, but the spec/design MUST NOT assume Windows.
+Cross-host LAN (two+ hosts/VMs by IP or machine name); internet-capable in principle (LAN-over-IP is the
+demonstrated target; no NAT-traversal demo).
 
 **Project Type**: Multi-runtime CLI + transport prototype — one Python control-plane tool orchestrating
 pluggable per-stack data-plane runtimes (C#/.NET, Gleam/AtomVM), with GLP REPL endpoints as the payload.
@@ -63,7 +86,10 @@ on-wire QUIC handshake (verifiable, not loopback/simulated), a live WebSocket li
 client sessions. No latency/throughput SLO; concurrency designed to scale beyond 3.
 
 **Constraints**:
-- Real QUIC only — no loopback-only or simulated handshake (FR-001).
+- Real QUIC only — no loopback-only or simulated handshake (FR-001); every endpoint gates on
+  `QuicListener`/`QuicConnection.IsSupported` and verifies msquic availability before claiming a handshake.
+- Cross-platform design — no Windows-only assumption; the WS link is **genuine RFC 6455 framing over a raw QUIC
+  bidi stream** (spec 025 `FrameCodec`), with the RFC 9220 Extended-CONNECT bootstrap isolated behind a seam (FR-002).
 - Shared self-signed certificate as the **only** trust anchor — no domain name, no public CA, no hostname-bound
   cert (FR-003, SC-005); the Python tool generates it; manual out-of-band trust pinning.
 - Full-duplex link + peer-to-peer duplex mesh of ≥3 REPLs (FR-008a/FR-008b).
@@ -74,8 +100,9 @@ client sessions. No latency/throughput SLO; concurrency designed to scale beyond
 - LM-in-the-loop research runs in Claude only — no external-LM API or proxy library on any LM path (constitution V).
 
 **Scale/Scope**: Prototype. Two transport stacks built **sequentially** (C# reference complete first, then Gleam
-staged). ≥3 concurrent clients, designed to scale. Research corpus ~50 C# + ~50 Gleam/AtomVM sources covering
-RFC 9114 (HTTP/3) and RFC 9000/9001/9002 (QUIC), each close-read distilled (not summarised).
+staged in two deployment profiles A/C — interchangeable at the channel-link contract, not at QUIC termination).
+≥3 concurrent clients, designed to scale. Research corpus complete: 106 close-read source notes (58 C# + 48
+Gleam/AtomVM) covering RFC 9114 (HTTP/3), RFC 9000/9001/9002 (QUIC), and RFC 9220/8441/7301/6455, distilled (not summarised).
 
 ## Constitution Check
 
@@ -134,15 +161,17 @@ glp_quick/                                 # NEW — single Python control-plane
 └── tests/                                 # pytest: cli, cert, stack-adapter, demo (loopback-gated)
 
 csharp/glp_link/transports/                # EXTEND spec 025 (FR-018) — QUIC+WS transport leaf
-├── Http3QuicTransport.cs                  # ILinkTransport: real QUIC via System.Net.Quic / Kestrel HTTP/3
-├── Http3QuicEndpoint.cs                   # ILinkEndpoint over a QUIC connection
-└── WebSocketOverHttp3.cs                  # RFC 9220 WebSocket framing over HTTP/3 (Extended CONNECT)
+├── QuicTransport.cs                       # ILinkTransport: real QUIC via System.Net.Quic (IsSupported-gated)
+├── QuicEndpoint.cs                        # ILinkEndpoint over a QUIC connection / bidi stream
+├── WebSocketOverQuic.cs                   # genuine RFC 6455 framing over one QuicStream (spec 025 FrameCodec)
+└── ConnectBootstrap.cs                    # minimal CONNECT-style link bootstrap; RFC 9220 Extended-CONNECT seam (later)
 csharp/glp_link.tests/                     # xUnit: loopback transport tests + LAN smoke
 
-gleam_quic/                                # NEW (Phase 3+) — second stack, greenfield
+gleam_quic/                                # NEW (Phase 3+) — second stack, two deployment profiles
 ├── gleam.toml
-├── src/                                   # quic_server.gleam, quic_client.gleam, websocket.gleam
-└── node_host/                             # Node WASM host invoking the AtomVM/WASM binary
+├── src/                                   # quic_link.gleam (channel-link contract), websocket.gleam, profile dispatch
+├── profile_a/                             # AtomVM logic + WebSocket link / native QUIC side-process (local IPC)
+└── profile_c/                             # full BEAM + `quicer`/MsQuic — genuine in-process QUIC
 
 .claude/skills/glp-quick/SKILL.md          # NEW — /GLP-Quick skill → invokes the glp_quick CLI
 ```
@@ -152,8 +181,12 @@ single-package-per-tool convention (`pyproject.toml` + `[project.scripts]` Typer
 as `codeconv/` does). The C# data plane **extends** the existing `csharp/glp_link/transports/` directory from
 spec 025 rather than starting a new project — the QUIC+WS endpoint is one more `ILinkTransport`/`ILinkEndpoint`
 leaf alongside `LoopbackTransport`/`TcpTransport`, inheriting the reliability sublayer and ground-relay
-discipline for free (FR-018). The Gleam stack is a self-contained greenfield `gleam_quic/` added only after the
-C# reference passes the full real-QUIC LAN demo.
+discipline for free (FR-018); the WebSocket is genuine RFC 6455 framing over a raw `QuicStream` (not RFC 9220
+Extended-CONNECT, which .NET has not shipped — isolated behind a bootstrap seam for later browser interop). The
+Gleam stack is a self-contained greenfield `gleam_quic/` added only after the C# reference passes the full
+real-QUIC LAN demo, and ships as two deployment profiles (A: AtomVM logic + native QUIC side-process; C: full
+BEAM + `quicer`/MsQuic in-process) interchangeable at the channel-link contract — genuine QUIC on bare AtomVM/WASM
+is infeasible (research §F2), so QUIC termination is delegated honestly per profile (constitution II).
 
 ## Complexity Tracking
 

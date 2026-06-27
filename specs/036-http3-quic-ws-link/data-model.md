@@ -32,8 +32,10 @@ The genuine HTTP/3 transport between a client and the server (RFC 9000/9001/9002
   cleanly, never half-open (edge case, FR-019); one bidirectional stream carries the WebSocket per link.
 
 ### WebSocket link
-The framed message channel layered over the QUIC connection (RFC 9220 Extended CONNECT; fallback: framing over a
-bidi QUIC stream reusing 025's `FrameCodec`).
+The framed message channel layered over the QUIC connection: **genuine RFC 6455 framing over one QUIC
+bidirectional stream** (one WS per stream — the carriage RFC 9220 standardizes), reusing 025's `FrameCodec`,
+established by a minimal CONNECT-style bootstrap on the stream. The RFC 9220 Extended-CONNECT-over-HTTP/3 bootstrap
+(unshipped in .NET) is isolated behind a seam for later third-party/browser interop only.
 - **Fields**: `link_id` (025 `LinkId`), `role` (025 `LinkRole` — independent of data direction), `epoch`
   (025 fencing), `send_window` (025 backpressure N), `seq`/`ack` (025 sequencing).
 - **Rules**: full-duplex (FR-008a); reliable, ordered, idempotent redelivery and bounded backpressure are
@@ -59,10 +61,13 @@ A unit of data emitted by one REPL endpoint and delivered to one or more receivi
   in order, exactly once (025 dedup); routed peer-to-peer in the mesh.
 
 ### Stack adapter
-A transport implementation (C#/.NET or Gleam/AtomVM) behind the common CLI/contract.
-- **Fields**: `name` (`csharp` | `gleam`), `launch_cmd`, `health`, `capabilities` (`real_quic: bool`).
-- **Rules**: both drivable through the identical `glp-quick` surface and wire contract (FR-010); `csharp` is the
-  reference (must reach the full real-QUIC demo first); `gleam` reports `real_quic` honestly (Decision 8).
+A transport implementation (C#/.NET, or Gleam in deployment Profile A or C) behind the common CLI/contract.
+- **Fields**: `name` (`csharp` | `gleam`), `profile` (`a` | `c`, gleam only), `launch_cmd`, `health`,
+  `capabilities` (`real_quic: bool`, `quic_termination`: `in_process` | `side_process`).
+- **Rules**: all drivable through the identical `glp-quick` surface and wire contract (FR-010), interchangeable
+  **at the channel-link contract** (not at QUIC termination); `csharp` is the cross-platform reference (must reach
+  the full real-QUIC demo first); `gleam` Profile A attributes `real_quic` to a native side-process and Profile C
+  terminates QUIC in-process — both reported honestly (Decision 8, constitution II).
 
 ### Research source / Distillation note
 A catalogued corpus entry and its close-read architectural findings (FR-014/FR-015).
@@ -76,7 +81,8 @@ A catalogued corpus entry and its close-read architectural findings (FR-014/FR-0
 
 1. **Transport**: QUIC (RFC 9000) + QUIC-TLS (RFC 9001), loss/cc per RFC 9002. ALPN = HTTP/3 (`h3`).
 2. **Application**: HTTP/3 (RFC 9114).
-3. **Link bootstrap**: WebSocket over HTTP/3 via Extended CONNECT (RFC 9220); fallback = 025 `FrameCodec` over a bidi QUIC stream.
+3. **Link bootstrap**: genuine RFC 6455 WebSocket framing over one bidi QUIC stream (025 `FrameCodec`), via a
+   minimal CONNECT-style bootstrap on the stream. RFC 9220 Extended-CONNECT-over-HTTP/3 isolated behind a seam (later interop only).
 4. **Trust**: shared self-signed cert, accepted by SHA-256 fingerprint only (no CA/hostname).
 5. **Message framing**: spec 025 framing (version + CRC32 + fragment) carrying ground GLP terms; sequencing,
    dedup, reorder, epoch/fencing, and a backpressure window of N — all inherited from 025.
@@ -87,8 +93,8 @@ A catalogued corpus entry and its close-read architectural findings (FR-014/FR-0
 ```
 B: QUIC Initial (ALPN h3) ──────────────▶ A
 A: TLS 1.3 cert = shared self-signed  ──▶ B   (B verifies by fingerprint, not chain/hostname)
-B: (fingerprint match) ─ completes 1-RTT handshake ─ HTTP/3 connection up
-B: HTTP/3 Extended CONNECT (:protocol=websocket) ▶ A   → WebSocket link established on a QUIC stream
+B: (SPKI-pin match) ─ completes 1-RTT handshake ─ QUIC connection up (ALPN h3)
+B: minimal CONNECT-style bootstrap on a bidi QuicStream ▶ A   → genuine RFC 6455 WebSocket link up on that stream
 A/B: 025 link epoch/seq init → linked; GLP messages flow full-duplex
 ```
 - Cert mismatch → handshake rejected, clear error (no half-open). ALPN/version mismatch → clean reject.

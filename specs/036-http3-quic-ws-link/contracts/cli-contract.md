@@ -1,7 +1,9 @@
 # Contract: `/GLP-Quick` CLI Surface
 
 **Feature**: 036-http3-quic-ws-link | One Python tool hosts both roles (FR-007). The `/GLP-Quick` skill is a thin
-front end that invokes this CLI. The surface is **identical across stacks** (FR-010): only `--stack` changes.
+front end that invokes this CLI. The surface is **identical across stacks** (FR-010): only `--stack` changes (and,
+for `--stack gleam`, an optional `--profile a|c` selecting the deployment profile — A: AtomVM + native QUIC
+side-process; C: full BEAM + `quicer`/MsQuic in-process; default `c`). The operator-facing surface is otherwise unchanged.
 
 Entry point: `glp-quick = "glp_quick.cli:app"` (Typer).
 

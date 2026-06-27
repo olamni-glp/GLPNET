@@ -32,34 +32,42 @@ the C#/.NET stack is the reference and MUST pass the full real-QUIC demo before 
 **⚠️ CRITICAL**: No US1–US3 behavioural work begins until this phase is complete (research-before-build FR-015;
 skeleton-before-behaviour FR-017).
 
-### Research / corpus / distillation (marathon stages 1–3)
-- [ ] T004 Research-strategy: write the corpus plan (RFC 9114/9000/9001/9002/9220 + per-stack source plan) →
-      `specs/036-http3-quic-ws-link/research/strategy.md` (FR-014/FR-012).
-- [ ] T005 [P] Build the **C# corpus** (~50 sources) under `research/corpus-csharp/` covering the named RFCs +
-      .NET QUIC/Kestrel/HTTP-3/RFC-9220 docs + GitHub samples (FR-014).
-- [ ] T006 [P] Build the **Gleam/AtomVM corpus** (~50 sources) under `research/corpus-gleam/` covering the named
-      RFCs + AtomVM/Gleam/WASM-BEAM docs + repos (FR-014).
-- [ ] T007 Distill the corpus into **close-read notes (not summaries)** under `research/`, and close the Phase-0
-      research items: MsQuic packaging, RFC 9220 .NET maturity + fallback, cert-fingerprint pinning specifics,
-      AtomVM genuine-QUIC feasibility (FR-015, SC-007; research.md Decisions 2/3/5/8).
+### Research / corpus / distillation (marathon stages 1–3) — ✅ COMPLETE (committed `10cdc452`/`e519613b`)
+- [x] T004 Research-strategy + corpus plan (RFC 9114/9000/9001/9002/9220 + per-stack source plan) (FR-014/FR-012).
+- [x] T005 [P] **C# corpus** built — 58 close-read notes (`research/corpus-csharp-01..05`) covering the named RFCs +
+      .NET QUIC/MsQuic/Kestrel/RFC-9220 docs + GitHub samples (FR-014).
+- [x] T006 [P] **Gleam/AtomVM corpus** built — 48 close-read notes (`research/corpus-gleam-01..04`) covering the
+      named RFCs + AtomVM/Gleam/WASM-BEAM docs + repos (FR-014).
+- [x] T007 Corpus **distilled** into close-read notes (`research/distillation-2026-06-27.md`); Phase-0 research
+      items **closed**: MsQuic cross-platform support (Decision 2), RFC 9220 maturity → genuine WS-over-QUIC with
+      the bootstrap seam isolated (Decision 3), SPKI cert-pin recipe (Decision 5), AtomVM genuine-QUIC
+      infeasibility → two Gleam deployment profiles (Decision 8) (FR-015, SC-007).
 
 ### Skeleton / mock + shared contract (marathon stage 5; FR-017)
 - [ ] T008 Define the `StackAdapter` ABC in `glp_quick/src/glp_quick/stacks/base.py` per
       `contracts/stack-adapter-contract.md` (FR-009/FR-010).
-- [ ] T009 [P] Implement shared self-signed cert generation + SHA-256 fingerprint pinning in
-      `glp_quick/src/glp_quick/cert.py` per `contracts/cli-contract.md` `cert generate` (FR-003).
+- [ ] T009 [P] Implement shared self-signed cert generation + **SPKI SHA-256 pin** in
+      `glp_quick/src/glp_quick/cert.py` per `contracts/cli-contract.md` `cert generate` and research Decision 5:
+      `cryptography` profile `subject==issuer`, `BasicConstraints(ca=False)`,
+      `KeyUsage(digital_signature,key_encipherment)`, `EKU[serverAuth,clientAuth]`, EC P-256 or RSA-2048; export
+      PFX (holder) + PEM (distribution); emit the SPKI-pin value (FR-003).
 - [ ] T010 [P] Define the GLP-message envelope + routing (from/to/broadcast, ground-relay) in
       `glp_quick/src/glp_quick/repl_link.py` per `contracts/wire-contract.md` (FR-008/008b, FR-018).
 - [ ] T011 Wire the CLI surface (`cli.py`: `cert` / `--server` / `--client` / `demo`) as a **top-down skeleton +
       mocks, no behaviour** (FR-017, FR-007).
-- [ ] T012 Skeleton the C# QUIC+WS transport leaf — `Http3QuicTransport` / `Http3QuicEndpoint` /
-      `WebSocketOverHttp3` as `ILinkTransport`/`ILinkEndpoint` **stubs** in `csharp/glp_link/transports/`,
-      reusing spec 025's seam + reliability sublayer (FR-017, FR-018).
+- [ ] T012 Skeleton the C# QUIC+WS transport leaf — `QuicTransport` / `QuicEndpoint` / `WebSocketOverQuic`
+      (genuine RFC 6455 over a raw bidi `QuicStream`) / `ConnectBootstrap` (minimal CONNECT-style bootstrap; RFC
+      9220 Extended-CONNECT seam, later) as `ILinkTransport`/`ILinkEndpoint` **stubs** in
+      `csharp/glp_link/transports/`, reusing spec 025's seam + reliability sublayer + `FrameCodec` (FR-017, FR-018).
 - [ ] T013 **GATE (Constitution IV-a — Language Authority)**: determine whether bridging GLP REPL messages onto
       the link needs any *new* GLP primitive beyond spec 025's approved set. Default = none. **If one is needed,
       STOP and obtain owner approval before any behavioural implementation.**
+- [ ] T013a **GATE — residual verification probes (research §6; escalate-don't-guess)** before any QUIC code:
+      (1) confirm `QuicListener.IsSupported == true` on the actual demo host (one-line C# probe); (2) confirm
+      msquic is present in the pinned .NET 9 runtime; (3) if Gleam Profile A is targeted later, confirm AtomVM-WASM
+      `open_port` spawn works (build-time). On any probe failure, STOP and report — do not fake or work around.
 
-**Checkpoint**: corpus distilled, research items closed, skeletons + shared contract in place, IV-a gate cleared.
+**Checkpoint**: corpus distilled (done), research items closed (done), skeletons + shared contract in place, IV-a gate + residual probes cleared.
 
 ---
 
@@ -72,14 +80,18 @@ and a GLP send→receive round-trip, with both ends sending concurrently.
 
 ### Tests for US1
 - [ ] T014 [P] [US1] xUnit loopback test for the QUIC+WS transport leaf in `csharp/glp_link.tests/`.
-- [ ] T015 [P] [US1] pytest for cert generation + fingerprint-pinned trust accept/reject in `glp_quick/tests/test_cert.py`.
+- [ ] T015 [P] [US1] pytest for cert generation + **SPKI (SubjectPublicKeyInfo) SHA-256 pin** trust accept/reject
+      in `glp_quick/tests/test_cert.py` (research Decision 5).
 
 ### Implementation for US1
-- [ ] T016 [US1] Implement the **real QUIC handshake + HTTP/3** (Kestrel server / `System.Net.Quic` client,
-      `HttpVersion.Version30`) with shared-cert **fingerprint pinning** via the cert-validation callback
-      (FR-001/FR-003, SC-001/SC-005). Depends on T012.
-- [ ] T017 [US1] Implement **WebSocket-over-HTTP/3** (RFC 9220 Extended CONNECT) link bring-up over a QUIC stream;
-      implement the 025-`FrameCodec` fallback path if 9220 support is incomplete (FR-002; research.md Decision 3).
+- [ ] T016 [US1] Implement the **real QUIC handshake** (`System.Net.Quic`, **`IsSupported`-gated**, cross-platform)
+      with the **shared-cert SPKI SHA-256 pin** via `RemoteCertificateValidationCallback` — never `return true`;
+      waive only no-CA-chain + hostname-mismatch (FR-001/FR-003, SC-001/SC-005). Depends on T012, T013a.
+- [ ] T017 [US1] Implement the **genuine WebSocket link = RFC 6455 framing over one bidi `QuicStream`** (025
+      `FrameCodec`; opcodes text/binary/close/ping/pong, FIN/continuation, varint length; no masking on the
+      TLS-encrypted QUIC stream), brought up by the **minimal CONNECT-style bootstrap** (`ConnectBootstrap`). Keep
+      the RFC 9220 Extended-CONNECT-over-HTTP/3 path isolated behind the bootstrap seam (later browser interop
+      only — do not block MVP on it) (FR-002; research Decision 3).
 - [ ] T018 [US1] Implement the `csharp` `StackAdapter` (`start_server`/`start_client`/`health`/`stop`) in
       `glp_quick/src/glp_quick/stacks/csharp.py`, launching + supervising the C# endpoint (FR-007). Depends on T008, T016.
 - [ ] T019 [US1] Bridge a GLP REPL endpoint (`out/csharp/glp_repl` default) to the link in `repl_link.py`: one
@@ -121,16 +133,28 @@ client's failure does not disturb the others.
 
 ## Phase 5: User Story 3 — Two interchangeable stacks behind one CLI (Priority: P3)
 
-**Goal**: The same CLI/wire contract drives a second stack (Gleam/AtomVM); both pass the identical demo.
-**Independent Test**: Run `glp-quick demo` once per `--stack`; both reach a real QUIC+WS link + GLP round-trip with identical outcomes.
+**Goal**: The same CLI/wire contract drives the second stack (Gleam), shipped as **two deployment profiles**
+(A: AtomVM + native QUIC side-process; C: full BEAM + `quicer`/MsQuic in-process); interchangeable **at the
+channel-link contract** (not at QUIC termination — genuine QUIC on bare AtomVM/WASM is infeasible, research §F2).
+**Independent Test**: Run `glp-quick demo --stack gleam --profile c` (and `--profile a`); each reaches a real
+QUIC+WS link + GLP round-trip with the same observable outcomes as `csharp`.
 
 > **BLOCKED until US1 + US2 pass the full real-QUIC LAN demo** — the C#/.NET reference must be complete first (FR-010).
 
 - [ ] T030 [US3] **GATE (FR-010)**: confirm the C# reference passes the full real-QUIC LAN demo (SC-001..SC-006) before starting Gleam.
-- [ ] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/` (quic_server/quic_client/websocket), `node_host/` (Node WASM host).
-- [ ] T032 [US3] From the corpus (T007), resolve AtomVM/WASM genuine-QUIC feasibility; set `capabilities().real_quic` **honestly** (Decision 8; constitution II).
-- [ ] T033 [US3] Implement the `gleam` `StackAdapter` in `glp_quick/src/glp_quick/stacks/gleam.py`, built out in stages against the identical wire/CLI contract (FR-009/FR-010).
-- [ ] T034 [P] [US3] Cross-stack conformance vector — identical observable outcomes for `csharp` vs `gleam` (SC-006).
+- [ ] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/` (`quic_link.gleam` channel-link contract,
+      `websocket.gleam`, profile dispatch), `profile_a/` (AtomVM logic + Node WASM host + native QUIC side-process
+      over length-prefixed local IPC) and `profile_c/` (full BEAM + `quicer`/MsQuic in-process).
+- [ ] T032 [US3] Wire **Profile C** first (full BEAM + `quicer`/MsQuic, genuine in-process QUIC) as the Gleam stack's
+      genuine-QUIC path; set `capabilities()` = `{real_quic: true, quic_termination: "in_process"}` (Decision 8).
+- [ ] T032a [US3] Wire **Profile A** (AtomVM logic + **native genuine-QUIC side-process**); attribute `real_quic`
+      truthfully to the side-process — `{real_quic: true, quic_termination: "side_process"}`; never simulate
+      in-runtime QUIC (constitution II). Run the §6 AtomVM `open_port` probe first.
+- [ ] T033 [US3] Implement the `gleam` `StackAdapter` (with `profile() -> "a"|"c"`) in
+      `glp_quick/src/glp_quick/stacks/gleam.py`, built out in stages against the identical wire/CLI contract,
+      selecting the profile by `--profile` (FR-009/FR-010).
+- [ ] T034 [P] [US3] Cross-stack conformance vector — identical observable outcomes for `csharp` vs `gleam`
+      (each profile) at the channel-link contract level (SC-006).
 
 **Checkpoint**: both stacks interchangeable from the operator's view (or Gleam limitation reported honestly).
 
@@ -141,8 +165,9 @@ client's failure does not disturb the others.
 **Goal**: The corpus is complete + distilled, and the marathon resumes objectively across interrupts.
 **Independent Test**: Inspect corpus counts/coverage + distillation depth; interrupt and resume the run.
 
-- [ ] T035 [US4] Verify corpus completeness — ~50 C# + ~50 Gleam sources covering RFC 9114/9000/9001/9002, **each close-read distilled** (SC-007).
-- [ ] T036 [US4] Verify marathon durability — interrupt + resume of `mrun-15d7dd0ffbc2` reports the objective next step and skips completed stages (SC-008).
+- [x] T035 [US4] Corpus completeness verified — **106 close-read notes (58 C# + 48 Gleam)** covering RFC
+      9114/9000/9001/9002/9220 (+8441/7301/6455), distilled in `distillation-2026-06-27.md` (SC-007).
+- [ ] T036 [US4] Verify marathon durability — interrupt + resume of `mrun-15d7dd0ffbc2` reports the objective next step and skips completed stages (FR-013, SC-008).
 
 ---
 
@@ -159,11 +184,11 @@ client's failure does not disturb the others.
 
 ```
 Setup (T001-T003)
-  └─▶ Foundational (T004-T013)   [research+distill gate FR-015; skeletons FR-017; IV-a gate T013]
+  └─▶ Foundational (T004-T013a)  [research+corpus+distill ✅ DONE (T004-T007); skeletons FR-017; IV-a gate T013; residual probes T013a]
         └─▶ US1 / P1 MVP (T014-T022)
               └─▶ US2 / P2 (T023-T029)
-                    └─▶ [FR-010 GATE T030] ─▶ US3 / P3 (T031-T034)
-                                                    └─▶ US4 / P4 (T035-T036)
+                    └─▶ [FR-010 GATE T030] ─▶ US3 / P3 (T031-T034, incl. Profile C T032 + Profile A T032a)
+                                                    └─▶ US4 / P4 (T035 ✅, T036)
                                                           └─▶ Polish (T037-T040)
 ```
 - US1 is the MVP and is independently shippable. US2 builds on US1's link. US3 (Gleam) is hard-gated behind a

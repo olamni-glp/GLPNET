@@ -8,16 +8,19 @@ GLP-message envelope on top of it.
 
 | Layer | Protocol | Normative source | Notes |
 |-------|----------|------------------|-------|
-| L1 Transport | QUIC | RFC 9000 + RFC 9001 (TLS) + RFC 9002 (loss/cc) | Real on-wire handshake (FR-001); ALPN `h3`. |
-| L2 Application | HTTP/3 | RFC 9114 | Kestrel (server) / HttpVersion 3.0 (client). |
-| L3 Link bootstrap | WebSocket over HTTP/3 | RFC 9220 (Extended CONNECT) | Fallback: 025 `FrameCodec` over a bidi QUIC stream if 9220 support is incomplete (Decision 3). |
+| L1 Transport | QUIC | RFC 9000 + RFC 9001 (TLS) + RFC 9002 (loss/cc) | Real on-wire handshake (FR-001); ALPN `h3`; gate on `IsSupported`. |
+| L2 Application | HTTP/3 | RFC 9114 | Genuine HTTP/3-capable connection (ALPN `h3`, FR-001). Kestrel available for the optional RFC 9220 seam. |
+| L3 Link | **genuine RFC 6455 WebSocket framing over one bidi `QuicStream`** | RFC 6455 (+ the carriage RFC 9220 standardizes) | One WS per stream, reusing 025 `FrameCodec`, via a minimal CONNECT-style bootstrap on the stream. The RFC 9220 Extended-CONNECT-over-HTTP/3 bootstrap (unshipped in .NET) is isolated behind a seam for later browser interop only (Decision 3). |
 | L4 Link reliability | spec 025 sublayer | `specs/025-multi-protocol-link-layer/contracts/link-primitives.md` | Framing(version+CRC32+fragment), seq/dedup/reorder, epoch/fencing, backpressure window N. |
 | L5 Message | GLP-message envelope | this contract | Ground GLP terms only. |
 
 ## Trust (FR-003 / SC-005)
 - TLS 1.3 server cert = the shared self-signed cert (no SAN/hostname used for trust).
-- Both ends accept the peer **iff** the presented cert's SHA-256 fingerprint equals the pinned shared fingerprint.
-- No CA chain, no hostname validation, no public-CA path is consulted. Mismatch → handshake rejected, clear error.
+- Both ends accept the peer **iff** the presented cert's **SPKI (SubjectPublicKeyInfo) SHA-256** equals the pinned
+  shared value (SPKI pin survives re-issue with the same key; preferred over the whole-cert thumbprint).
+- The validation callback **never** `return true`; it waives **only** the no-CA-chain error + hostname mismatch
+  (trust is the pin, not the name). No CA chain, no hostname validation, no public-CA path is consulted.
+  Mismatch → handshake rejected, clear error.
 
 ## GLP-message envelope (L5)
 ```

@@ -22,28 +22,41 @@ and land under `specs/036-http3-quic-ws-link/research/`; this document is the de
 
 ## Decision 2 — Real QUIC + HTTP/3 in C#: System.Net.Quic / MsQuic + Kestrel
 
-- **Decision**: Stack A uses Kestrel configured for HTTP/3 (server) and `System.Net.Quic` / `HttpClient` with
-  `HttpVersion.Version30` (client), over MsQuic. This is the reference that must reach the full real-QUIC LAN demo.
-- **Rationale**: .NET 9 ships first-class HTTP/3 in Kestrel and QUIC in `System.Net.Quic` (MsQuic under the hood),
-  with ALPN and custom certificate-validation callbacks — exactly what FR-001/FR-003 require.
-- **Research item (corpus must confirm)**: MsQuic availability/packaging on the target Windows hosts; the precise
-  Kestrel listener config for HTTP/3-only on a chosen UDP port; client-side custom cert pinning via
-  `QuicClientConnectionOptions` / `SslClientAuthenticationOptions.RemoteCertificateValidationCallback`.
+- **Decision**: Stack A uses `System.Net.Quic` (real QUIC, MsQuic under the hood) carrying the link on a raw
+  `QuicStream`, with Kestrel HTTP/3 available for the optional RFC 9220 seam. This is the reference that must
+  reach the full real-QUIC LAN demo. **CONFIRMED cross-platform (2026-06-28 corpus, §F1/§4): NOT Windows-locked.**
+- **Rationale**: `System.Net.Quic` is **GA in .NET 9** and runs on Windows 11/Server 2022+ (msquic.dll ships
+  with the runtime), Linux (`libmsquic` 2.2+/OpenSSL from packages.microsoft.com), and macOS (partial — `brew
+  install libmsquic` + `DYLD_FALLBACK_LIBRARY_PATH`) — [MS Learn](https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/quic/quic-overview).
+  ALPN + custom cert-validation callbacks are exactly what FR-001/FR-003 require. This repo's demo hosts are
+  Windows 11 (confirmed) but the design MUST NOT assume Windows.
+- **Mandatory gate**: every endpoint checks `QuicListener.IsSupported`/`QuicConnection.IsSupported` (silent
+  failure otherwise) and verifies msquic availability (historical packaging regression dotnet/runtime #81447)
+  before claiming a real handshake; sets mandatory ALPN + `DefaultStreamErrorCode`/`DefaultCloseErrorCode`.
+- **Closed by corpus**: client-side cert pinning via `QuicClientConnectionOptions` /
+  `SslClientAuthenticationOptions.RemoteCertificateValidationCallback` (corpus C#-02/C#-05).
 - **Alternatives rejected**: raw MsQuic P/Invoke (lower-level than needed for a prototype); a non-Kestrel HTTP/3
   server (loses the WebSocket-over-HTTP/3 integration Kestrel provides).
 
-## Decision 3 — WebSocket over HTTP/3 via RFC 9220 (Extended CONNECT)
+## Decision 3 — Genuine WebSocket over QUIC: RFC 6455 framing over a QUIC bidi stream (first-class, not a fallback)
 
-- **Decision**: The link is a WebSocket bootstrapped over HTTP/3 per RFC 9220 (Extended CONNECT), carried on a
-  QUIC stream — not a bespoke frame protocol over a raw QUIC stream.
-- **Rationale**: Standards-based, matches FR-002 ("layer a WebSocket link over the established connection"), and
-  is the natural fit for Kestrel HTTP/3 + `ClientWebSocket` with HTTP/3.
-- **Research item (corpus must confirm)**: the maturity of `ClientWebSocket` over HTTP/3 in .NET 9 and Kestrel's
-  server-side Extended-CONNECT support; **document a fallback** (a WebSocket-style framing directly over a
-  bidirectional QUIC stream reusing spec 025's `FrameCodec`) if RFC 9220 support is incomplete — reported
-  honestly, not faked (constitution II).
-- **Alternatives rejected**: WebSocket over HTTP/2/TCP (not QUIC — fails FR-001); raw QUIC datagrams (loses the
-  WebSocket requirement FR-002).
+- **Decision (corrected 2026-06-28, §F1/§4/§5.2)**: The link is a **genuine WebSocket carried as RFC 6455
+  framing over a single QUIC bidirectional stream** (one WS per stream — the exact carriage RFC 9220
+  standardizes), reusing spec 025's `FrameCodec`, established by a **minimal CONNECT-style bootstrap on the
+  stream**. This is a first-class WS-over-QUIC design (QUIC/HTTP-3 is de-facto dominant, ~21–39% of web
+  traffic), **not** a consolation fallback. RFC 6455 details: opcodes text 0x1/binary 0x2/close 0x8/ping
+  0x9/pong 0xA, FIN/continuation, varint length; masking N/A on a TLS-encrypted intermediary-free QUIC stream.
+- **Rationale**: It satisfies FR-002 genuinely and the prototype owns both C# endpoints on a LAN, so it does
+  **not** need RFC 9220 browser support. The RFC 9220 **Extended-CONNECT-over-HTTP/3 bootstrap** is the *only*
+  piece .NET has not shipped (`ClientWebSocket`'s bootstrap ceiling is HTTP/2/RFC 8441; Kestrel rejects CONNECT —
+  dotnet/aspnetcore #32004) — and it matters **only for third-party/browser interop** (out of MVP scope), so it
+  is isolated behind a handshake seam to slot in unchanged when .NET ships it. WebTransport-over-HTTP/3 is noted
+  as the future browser-native client path. Nothing is simulated (constitution II).
+- **Closed by corpus** (C#-01/C#-03/C#-04): RFC 9220/8441 maturity in .NET confirmed; the seam isolation is the
+  agreed disposition, not an open question.
+- **Alternatives rejected**: WebSocket over HTTP/2/TCP (not QUIC — fails FR-001); raw QUIC datagrams (loses
+  WebSocket framing FR-002); blocking on the unshipped RFC 9220 .NET bootstrap (needlessly couples the LAN
+  prototype to a browser-interop feature it does not need).
 
 ## Decision 4 — Reuse spec 025's link seam, reliability sublayer, and ground-relay wire discipline (FR-018)
 
@@ -65,8 +78,12 @@ and land under `specs/036-http3-quic-ws-link/research/`; this document is the de
 - **Rationale**: FR-003/SC-005 require the shared self-signed cert to be the only trust anchor — no CA, no
   enrollment, no domain. Fingerprint pinning lets the C# client's `RemoteCertificateValidationCallback` accept
   by identity, not by chain/hostname.
-- **Research item**: minimal cert profile QUIC/TLS 1.3 requires (key usage, validity); how to express "trust this
-  fingerprint only" on both the C# server and client; equivalent on the Gleam/AtomVM TLS stack.
+- **Closed by corpus (C#-05, §4 Decision 5) — concrete recipe**: pin the **SPKI (SubjectPublicKeyInfo) SHA-256**
+  (survives re-issue with the same key) rather than the whole-cert thumbprint; in the validation callback never
+  `return true` — waive **only** the no-CA-chain error + hostname mismatch (trust is the pin, not the name).
+  Python `cryptography` cert profile: `subject == issuer`, `BasicConstraints(ca=False)`,
+  `KeyUsage(digital_signature, key_encipherment)`, `EKU[serverAuth, clientAuth]`, EC P-256 or RSA-2048; export
+  PFX (holder) + PEM (distribution). Gleam/BEAM TLS expresses the same pin in its profile's TLS stack.
 - **Alternatives rejected**: a tiny private CA (adds enrollment the spec forbids); disabling cert validation
   (insecure *and* fails the "authenticate using the shared cert" requirement — not a no-op).
 
@@ -90,13 +107,23 @@ and land under `specs/036-http3-quic-ws-link/research/`; this document is the de
   kernels are already installed there. Note the prebuilt `.exe` may be stale — invoke via `dart run`/rebuild.
 - **Alternatives rejected**: Dart-only REPL (inconsistent with C#-first reference path).
 
-## Decision 8 — Gleam/AtomVM is a staged second implementation with an honest feasibility gate
+## Decision 8 — Gleam as two deployment profiles, interchangeable at the channel-link contract (RESOLVED 2026-06-28)
 
-- **Decision**: After the C# reference passes the full real-QUIC LAN demo, the Gleam/AtomVM stack is built out in
-  stages against the identical contract. Genuine-QUIC feasibility on AtomVM/WASM is an explicit research question;
-  if the WASM host cannot perform real QUIC, the stack's status is reported honestly (no simulation passed off as real).
-- **Rationale**: FR-009/FR-010 sequencing + the spec's Gleam-feasibility edge case + constitution II.
-- **Research item**: AtomVM QUIC/TLS capability under a Node WASM host; whether a native side-process is needed.
+- **Finding (§F2, HIGH confidence)**: genuine QUIC on **bare AtomVM/WASM is infeasible** — AtomVM's `ssl` is
+  client-only/crash-in-active with no RFC-9001 secret export; `quicer` (a C NIF over MsQuic) cannot load on
+  AtomVM (no runtime NIFs); the WASM/Node host cannot originate QUIC (no raw UDP). So "two interchangeable
+  genuine-QUIC stacks at the QUIC-termination layer" is not achievable as originally written.
+- **Decision (Gabi 2026-06-28)**: After the C# reference passes the full real-QUIC LAN demo, the Gleam stack is
+  built out in stages against the identical channel-link contract, shipped as **two deployment profiles,
+  interchangeable at the contract (not at QUIC termination)**: **Profile A** — Gleam/AtomVM logic + WebSocket
+  link / **native genuine-QUIC side-process** (length-prefixed local IPC: Erlang `open_port` on native AtomVM,
+  WebSocket-proxy shape on WASM), `real_quic` truthfully attributed to the side-process — for MAUI Blazor hybrids
+  and smaller freestanding nodes; **Profile C** — Gleam on **full BEAM + `quicer`/MsQuic** terminating genuine
+  in-process QUIC — for larger workstations and servers. "AtomVM" is relaxed to "a BEAM-family runtime,
+  profile-dependent." At least one profile achieves genuine QUIC; side-process QUIC is reported honestly (constitution II).
+- **Rationale**: FR-009/FR-010 sequencing + the spec's Gleam-feasibility edge case + constitution II; preserves
+  interchangeability at the contract boundary without faking in-runtime QUIC.
+- **Residual probe (implementation start)**: whether AtomVM-WASM `open_port` spawn works (build-time) — only if Profile A is the chosen target.
 
 ## Decision 9 — Marathon durability via the existing harness, state out-of-repo
 
@@ -121,7 +148,11 @@ and land under `specs/036-http3-quic-ws-link/research/`; this document is the de
 
 ## Outputs of Phase 0
 
-All NEEDS-CLARIFICATION items from Technical Context are resolved into the decisions above. Remaining
-**research items** (MsQuic packaging, RFC 9220 .NET maturity + fallback, cert-fingerprint pinning specifics,
-AtomVM QUIC feasibility, REPL-link primitive gate) are explicitly flagged to be closed by the corpus stage
-before behavioural implementation begins — and are carried as gates into `tasks.md`.
+All NEEDS-CLARIFICATION items from Technical Context are resolved into the decisions above. The corpus +
+distillation stages are **COMPLETE** (106 close-read notes + `distillation-2026-06-27.md`, committed `10cdc452`):
+the previously-open research items are now **closed** — MsQuic packaging + cross-platform support (Decision 2),
+RFC 9220 maturity → genuine WS-over-QUIC with the bootstrap seam isolated (Decision 3), SPKI cert-pin recipe
+(Decision 5), and AtomVM genuine-QUIC infeasibility → two Gleam deployment profiles (Decision 8). The only items
+carried into `tasks.md` as gates are the cheap **residual verification probes** (`IsSupported`, msquic.dll
+present, AtomVM `open_port` if Profile A) and the **Constitution IV-a REPL-link primitive gate** (default: no new
+GLP primitive; STOP for owner approval if one proves necessary) — both escalate-don't-guess, at implementation start.

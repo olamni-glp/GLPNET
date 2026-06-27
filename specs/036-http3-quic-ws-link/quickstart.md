@@ -3,8 +3,11 @@
 **Feature**: 036-http3-quic-ws-link | The LAN-IP runbook that proves SC-001..SC-006. Run with the **C#/.NET stack**
 (the reference); the same steps run the Gleam stack once it is built (`--stack gleam`).
 
-> Prereq: two or more hosts (or VMs) on the same LAN. Host A = server, Hosts B/C/D = clients. .NET 9 + MsQuic on
-> each host; `glp-quick` installed (`pip install -e glp_quick/`). The UDP port must be open through the LAN firewall.
+> Prereq: two or more hosts (or VMs) on the same LAN. Host A = server, Hosts B/C/D = clients. .NET 9 with
+> `System.Net.Quic` supported on each host — **cross-platform**: Windows 11/Server 2022+ (msquic ships), Linux
+> (`libmsquic` 2.2+), macOS (partial — `brew install libmsquic`); each endpoint self-checks
+> `QuicListener.IsSupported`. (This repo's demo hosts are Windows 11.) `glp-quick` installed
+> (`pip install -e glp_quick/`). The UDP port must be open through the LAN firewall.
 
 ## 1. Generate + distribute the shared certificate (FR-003 / SC-005)
 On host A:
@@ -44,7 +47,10 @@ glp-quick demo --addr <A-LAN-IP> --port 8443 --cert ./glpquick-cert --stack csha
 Runs steps 2–5 automatically and prints a pass/fail line per success criterion (SC-001..SC-006).
 
 ## 7. Cross-stack check (US3 / SC-006) — after the Gleam stack is built
-Re-run step 6 with `--stack gleam`; expect the same observable outcomes and identical operator surface.
+Re-run step 6 with `--stack gleam --profile c` (full BEAM + `quicer`/MsQuic, genuine in-process QUIC) or
+`--profile a` (AtomVM logic + native QUIC side-process). Expect the same observable outcomes and identical
+operator surface — interchangeability holds at the channel-link contract, regardless of how each profile
+terminates QUIC.
 
 ## Failure modes to expect (FR-019 — clear, never a silent hang)
 | Symptom | Cause | Expected report |
