@@ -4,7 +4,7 @@
 %%   network2/2 entirely; plays 4-7; fplays 4-7.
 %% Retained: 3-agent actor imported decls (alice1..charlie3); cold-call network3/3 clauses
 %%   + base case; local utilities (tee/sink/send_to_user_tagged/merge); plays 1-3; fplays 1-3.
-%% Per /speckit-clarify Q1 + Q5 + Q-amendment Q1a (recorded in spec.md Clarifications).
+%% Per /buildkit-clarify Q1 + Q5 + Q-amendment Q1a (recorded in spec.md Clarifications).
 %% Cluster A's byte-exact files (self.glp, agent.glp, ui/mediator.glp, ui/actors.glp) are
 %%   inherited unchanged from canonical; only this boot.glp is the derivation surface.
 %% boot.glp — CSSG play orchestrator

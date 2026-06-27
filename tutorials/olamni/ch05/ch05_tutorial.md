@@ -70,7 +70,7 @@ Within a group, exercises are implemented sequentially. Group approval flips all
 ## Sources
 
 - `ch05-sources.md` — chapter 5 PDF code-block index.
-- `ch05-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (rev-eng input to `/speckit-specify`).
+- `ch05-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (rev-eng input to `/buildkit-specify`).
 - `spec-rev-eng-input/ch05-DEPRECATED-spec.md` — quarantined reverse-engineering input only; superseded by `specs/006-tutorial-ch05/spec.md` + the artefacts in this directory.
 
 ## Exercise status

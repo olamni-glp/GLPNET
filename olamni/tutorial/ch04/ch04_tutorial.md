@@ -59,7 +59,7 @@ Within a group, exercises are implemented sequentially but DO NOT require pairwi
 ## Sources
 
 - `ch04-sources.md` — chapter 4 PDF code-block index (committed in `592d89e3`).
-- `ch04-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (rev-eng input to `/speckit-specify`).
+- `ch04-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (rev-eng input to `/buildkit-specify`).
 - `spec-rev-eng-input/ch04-DEPRECATED-spec.md` — quarantined reverse-engineering input only; superseded by `specs/005-tutorial-ch04/spec.md` + the artefacts in this directory.
 
 ## Exercise status

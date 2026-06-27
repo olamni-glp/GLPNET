@@ -2,14 +2,13 @@
 name: "buildkit-roadmap"
 description: "Durable, per-repo roadmap at the front of the buildkit pipeline. Capture epics & richly-profiled candidate features, refine & prioritise them with WSJF+RICE in an AI-guided review, detect inter-feature dependencies, and hand off one prepared feature at a time to /buildkit-specify. Advisory only — it records the engineer's decision and never auto-invokes a pipeline command (FR-014)."
 argument-hint: "[init | add-epic | add-feature | edit-feature | review [propose-scores|set-score|rank|override|signoff|deps] | add-dependency | confirm-dependency | promote | brief | next | link | status]"
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+compatibility: "Requires buildkit project structure with .specify/ directory and buildkit's pgdb/ runtime."
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-roadmap.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
 
 
 ## User Input
@@ -20,19 +19,19 @@ $ARGUMENTS
 
 ## What this does
 
-`/buildkit-roadmap` is the **missing front of the pipeline** — the roadmap-shaped
-sibling of `/buildkit-builder`. The buildkit pipeline is per-feature and begins
-at `/buildkit-specify`; the roadmap is **per-repo** and sits *upstream* of it.
+`/bk-roadmap` is the **missing front of the pipeline** — the roadmap-shaped
+sibling of `/bk-builder`. The buildkit pipeline is per-feature and begins
+at `/bk-specify`; the roadmap is **per-repo** and sits *upstream* of it.
 It is where epics and candidate features are captured with rich profiles,
 refined and prioritised with engineers, checked for inter-feature dependencies,
 and handed off — one prepared, ready-to-build feature at a time.
 
 It is **advisory**: it never builds anything and **never auto-invokes**
-`/buildkit-specify` or any other `/buildkit-*` command (FR-014). It informs the
+`/bk-specify` or any other `/buildkit-*` command (FR-014). It informs the
 engineer's decision and records it durably. All roadmap data lives in the
 existing per-repo PGlite catalog (additive `roadmap_*` tables — FR-004); the
 roadmap is **not** a pipeline stage, so this skill uses **no** sidecar stage
-gate and **no** refine resolve/record hooks (exactly like `/buildkit-builder`).
+gate and **no** refine resolve/record hooks (exactly like `/bk-builder`).
 
 Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
 
@@ -56,10 +55,10 @@ Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
 - `promote <id> [--confirm]` — internal `refined → promoted` transition.
   Profile gaps warn but `--confirm` is always honored; never auto-promotes,
   never hard-blocks (FR-012).
-- `brief <id>` — render the `/buildkit-specify` brief for a feature (FR-013).
+- `brief <id>` — render the `/bk-specify` brief for a feature (FR-013).
 - `next` — recommend the single next feature to build (top-ranked promoted,
   dependency-satisfied, not-yet-specified) and print the exact
-  `/buildkit-specify` command + brief. **Never runs it** (FR-014, SC-005/006).
+  `/bk-specify` command + brief. **Never runs it** (FR-014, SC-005/006).
 - `link [--auto]` — scan `specs/` and link new spec dirs to promoted features by
   slug; on link the feature → `specified` (FR-015). Runs opportunistically at
   the top of every subcommand.
@@ -83,10 +82,33 @@ Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
 3. If the exit code is non-zero, surface the error message to the user without
    wrapping it in extra prose.
 
+## Story-size confirm-or-update (spec-020 FR-006/FR-007 — advisory, non-blocking)
+
+When you capture or refine a roadmap feature, optionally surface and record its story-point
+size. Advisory; never blocks the roadmap flow (SC-003):
+
+1. `buildkit-size prompt roadmap --feature <roadmap-feature-id> --type roadmap_item --json`
+   (read-only; always exits 0; degrades to the built-in default buckets if the catalog is down).
+2. Ask the engineer via AskUserQuestion — Confirm unchanged / Update / Decline — presenting the
+   current size + active scheme buckets from the payload.
+3. Record the response (advisory — ignore any failure):
+   - Confirm → `buildkit-size confirm roadmap_item <roadmap-feature-id> --stage roadmap`
+   - Update  → `buildkit-size set roadmap_item <roadmap-feature-id> --label <bucket> --stage roadmap`
+   - Decline → `buildkit-size decline roadmap_item <roadmap-feature-id> --stage roadmap`
+
+If `buildkit-size` is not installed or the catalog is unavailable, skip silently — sizing is advisory.
+
+## Per-stage token record (spec-020 FR-010 — advisory, non-blocking)
+
+On the success path, optionally record this stage's token usage (every stage records; the
+roadmap runs before a per-feature pipeline exists, so omit `--feature`):
+- `buildkit-size tokens record roadmap --total <N> --method self-reported --model <model>`
+  (omit all counts to record an `unavailable` 0). Advisory — ignore failures; never block.
+
 ## The AI-guided `review` flow
 
 `review` is the one interactive, AI-guided surface — in the spirit of
-`/buildkit-clarify`: **the skill converses, the CLI persists.** A good session:
+`/bk-clarify`: **the skill converses, the CLI persists.** A good session:
 
 1. `review` (optionally `--seed-from-last`) to open a session; note the
    `review_id` it prints.
@@ -114,7 +136,7 @@ Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
 ## Key invariants
 
 - **Advisory only**: this skill never runs `/buildkit-*` commands. `next` and
-  `brief` print the exact `/buildkit-specify` command for the engineer to run.
+  `brief` print the exact `/bk-specify` command for the engineer to run.
 - **Engineer is the deciding layer**: WSJF + RICE are advisory inputs; scores
   are AI-proposed and engineer-confirmed (FR-006/FR-007). Nothing is
   auto-ranked or auto-promoted.
@@ -129,9 +151,14 @@ Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
 
 ## When to suggest this
 
-- Before any `/buildkit-specify`, to decide *what* to build next from a
+- Before any `/bk-specify`, to decide *what* to build next from a
   prioritised, dependency-aware backlog.
 - When the user asks "what should we build next", "what's on the roadmap", or
   wants to capture/triage candidate features and epics.
 - When juggling many candidate features and needing a deterministic,
   reviewable prioritisation with dependency-aware build order.
+
+**Registry upkeep (spec-028 FR-004)**: run
+`python -m buildkit_cli.registry touch --tool buildkit-roadmap` from the project root. It marks the
+capability registry possibly-stale and **always exits 0** (fail-safe; never blocks this stage).
+Ignore its output.

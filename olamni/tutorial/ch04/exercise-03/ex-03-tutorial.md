@@ -12,7 +12,7 @@ This is the only such cross-chapter inversion in the entire tutorial set. ch04 h
 
 ## Two-file structure (Clarifications Q4 amendment)
 
-Per Clarifications Q4 spec amendment (recorded during /speckit-implement), this exercise contains TWO `.glp` files instead of one:
+Per Clarifications Q4 spec amendment (recorded during /buildkit-implement), this exercise contains TWO `.glp` files instead of one:
 
 - `ch-04-ex-03-producer-consumer-naive-reverse.glp` — producer + consumer + naive reverse + append
 - `ch-04-ex-03-producer-consumer-acc-reverse.glp` — producer + consumer (duplicated per FR-010) + accumulator reverse + reverse_acc
