@@ -11,6 +11,16 @@ A working prototype that lets two (or more) independently-started CLI processes 
 
 The feature is researched, skeletoned, and implemented across **two candidate transport stacks** — (A) C#/.NET (System.Net.Quic / MsQuic, Kestrel HTTP/3) and (B) Gleam on AtomVM (a WASM build of the Erlang BEAM, run from the CLI via a Node WASM host) — so the two can be compared on the identical demo. It is run as **one durable, resumable marathon** (no transport shortcuts), refined across six stages: research-strategy formulation → corpus → distillation → implementation plan → skeleton/mock → implement-and-demo.
 
+## Clarifications
+
+### Session 2026-06-27
+
+- Q: What does "run GLP over the link" mean for the prototype? → A: The link connects **GLP REPL endpoints that exchange messages** (not a submit-source/return-result RPC). Progression: (1) two REPLs — one sending, one listening/receiving; (2) full-duplex bidirectional message flow between the pair; (3) multiple REPLs messaging each other **peer-to-peer in a duplex mesh**.
+- Q: Build order / which stack first? → A: **Implement the C#/.NET stack first** as the reference implementation, **then reimplement in the Gleam/AtomVM stack.** The two are built sequentially (C# → Gleam), not in parallel.
+- Q: Stack acceptance bar (must both reach the full real-QUIC demo)? → A: **C#/.NET first** is the reference that reaches the full real-QUIC LAN demo. The **Gleam/AtomVM stack is the second implementation, built out in stages** against the same contract (a genuine staged build-out, not merely a skeleton).
+- Q: Target concurrency N for the LAN demo? → A: **At least 3 concurrent clients**, designed to scale beyond.
+- Q: Shared self-signed cert distribution? → A: **The Python tool generates the shared cert**; it is **copied out-of-band to each host (manual trust pinning)**. No CA, no enrollment service.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Real QUIC + WebSocket link between two machines, running GLP (Priority: P1)
@@ -24,7 +34,8 @@ An operator starts `GLP-Quick --server` on machine A (bound to A's LAN IP / mach
 **Acceptance Scenarios**:
 
 1. **Given** a server running on host A bound to A's LAN IP with a shared self-signed cert, **When** a client on host B connects to A's IP using the same shared cert/trust, **Then** a real QUIC/HTTP-3 connection is established and a WebSocket link comes up over it.
-2. **Given** an established link, **When** the client submits a GLP interaction over the link, **Then** the server runs it and the client receives the corresponding result over the same link.
+2. **Given** an established link between a sending REPL and a listening REPL, **When** the sending REPL emits a GLP message, **Then** the listening REPL receives that message over the same link.
+4. **Given** an established link, **When** both REPLs send messages at the same time, **Then** each receives the other's messages (full-duplex).
 3. **Given** a client configured to trust only the shared self-signed cert, **When** it connects, **Then** the handshake succeeds without relying on any domain-name / public-CA / hostname-bound certificate validation.
 
 ---
@@ -39,8 +50,9 @@ A single `GLP-Quick --server` instance simultaneously serves several `GLP-Quick 
 
 **Acceptance Scenarios**:
 
-1. **Given** a running server, **When** several clients connect concurrently, **Then** each obtains an independent, isolated link and completes its own GLP interaction.
+1. **Given** a running server, **When** several client REPLs connect concurrently, **Then** each obtains an independent, isolated full-duplex link and can exchange messages.
 2. **Given** several concurrent client sessions, **When** one client disconnects or fails mid-session, **Then** the remaining sessions continue unaffected.
+3. **Given** several REPLs connected through the server, **When** they message one another, **Then** messages are delivered peer-to-peer across the duplex mesh (each REPL reaches each other participating REPL).
 
 ---
 
@@ -55,7 +67,7 @@ The same `/GLP-Quick` skill and Python tool can drive either transport stack —
 **Acceptance Scenarios**:
 
 1. **Given** the C#/.NET stack selected, **When** the standard demo runs, **Then** it passes the real-QUIC + WS + GLP acceptance checks.
-2. **Given** the Gleam/AtomVM stack selected, **When** the standard demo runs, **Then** it passes the same acceptance checks (subject to the stack-feasibility decision in clarification).
+2. **Given** the Gleam/AtomVM stack selected, **When** the standard demo runs, **Then** it passes the same acceptance checks — built out in stages after the C#/.NET reference is complete.
 3. **Given** either stack, **When** the operator uses `GLP-Quick`, **Then** the CLI surface, message/wire contract, and handshake are identical from the operator's point of view.
 
 ---
@@ -92,15 +104,17 @@ The architecture is grounded in a distilled research corpus (~50 sources for the
 
 - **FR-001**: The system MUST establish a genuine HTTP/3 (QUIC) connection between independently-started server and client processes — a real QUIC handshake observable on the wire, NOT a loopback-only or simulated handshake.
 - **FR-002**: The system MUST layer a WebSocket link over the established connection and use it to carry GLP interactions.
-- **FR-003**: The system MUST authenticate the connection using a **shared self-signed certificate** as QUIC requires, WITHOUT any domain-name, public-CA, or hostname-bound-certificate shortcut.
+- **FR-003**: The system MUST authenticate the connection using a **shared self-signed certificate** as QUIC requires, WITHOUT any domain-name, public-CA, or hostname-bound-certificate shortcut. The **Python tool MUST generate the shared certificate**; it is distributed **out-of-band to each host and pinned as trusted** (manual trust, no CA or enrollment service).
 - **FR-004**: The system MUST operate over a LAN addressed by IP address or machine name, and MUST be internet-capable in principle (LAN-over-IP is the demonstrated target).
 - **FR-005**: A single server instance MUST serve several concurrent client instances, each with an independent, isolated link.
 - **FR-006**: The remaining concurrent sessions MUST be unaffected when one client disconnects or fails.
 - **FR-007**: The capability MUST be delivered as a `/GLP-Quick` skill backed by ONE Python tool/toolkit that hosts both roles: `GLP-Quick --server …` starts a server; `GLP-Quick --client …` connects a client.
-- **FR-008**: The link MUST let the operator "run GLP" over it — submit a GLP interaction from a client and receive its result back over the same link. [NEEDS CLARIFICATION: exact meaning of "run GLP" for the prototype — e.g., send GLP source/goals and return computed results, stream a remote GLP REPL session, or round-trip a representative GLP message payload?]
-- **FR-009**: Both transport stacks MUST be researched, skeletoned, and implemented: (A) C#/.NET (System.Net.Quic / MsQuic, Kestrel HTTP/3) and (B) Gleam on AtomVM (WASM BEAM via a Node WASM host).
-- **FR-010**: Both stacks MUST be drivable through the same `/GLP-Quick` CLI surface and the same wire/message contract and handshake, so they are interchangeable from the operator's perspective. [NEEDS CLARIFICATION: stack acceptance bar — must BOTH stacks reach the full real-QUIC LAN demo, or is C#/.NET the primary deliverable while Gleam/AtomVM may land as a proven skeleton if genuine QUIC on AtomVM/WASM proves infeasible?]
-- **FR-011**: The system MUST support a configurable number of concurrent clients for the demonstration. [NEEDS CLARIFICATION: target concurrency N for the LAN demo — e.g., 3, 10, or more?]
+- **FR-008**: The link MUST connect **GLP REPL endpoints that exchange messages** over it. The minimal slice is one REPL sending and another REPL listening/receiving a message across the link.
+- **FR-008a**: The link MUST support **full-duplex** message flow — both connected REPLs can send and receive concurrently over the same link.
+- **FR-008b**: The system MUST support **multiple REPLs messaging each other peer-to-peer in a duplex mesh** — each participating REPL can send messages to, and receive messages from, the other participating REPLs.
+- **FR-009**: Both transport stacks MUST be researched, skeletoned, and implemented: (A) C#/.NET (System.Net.Quic / MsQuic, Kestrel HTTP/3) and (B) Gleam on AtomVM (WASM BEAM via a Node WASM host). **The C#/.NET stack is implemented first as the reference; the Gleam/AtomVM stack is a subsequent reimplementation of the same contract** (sequential, not parallel).
+- **FR-010**: Both stacks MUST be drivable through the same `/GLP-Quick` CLI surface and the same wire/message contract and handshake, so they are interchangeable from the operator's perspective. The **C#/.NET stack is the reference that MUST reach the full real-QUIC LAN demo first**; the **Gleam/AtomVM stack MUST then be built out in stages against the same contract** as the second implementation.
+- **FR-011**: The system MUST support a configurable number of concurrent clients, demonstrated with **at least 3 concurrent clients** and designed to scale beyond that.
 - **FR-012**: The effort MUST be executed as ONE marathon feature (not split), refined and extended across the six defined stages (research-strategy → corpus → distill → implementation plan → skeleton/mock → implement-and-demo).
 - **FR-013**: The marathon MUST be durable and resumable across sessions: an interrupted run resumes from objective persisted state and does not redo completed stages.
 - **FR-014**: The research output MUST be a corpus of ~50 sources for the C# stack and ~50 for the Gleam/AtomVM stack, covering RFC 9114 (HTTP/3) and RFC 9000 / 9001 / 9002 (QUIC), plus relevant technical/academic sources and GitHub repositories.
@@ -117,7 +131,8 @@ The architecture is grounded in a distilled research corpus (~50 sources for the
 - **QUIC connection / stream**: The genuine HTTP/3 transport between a client and the server; streams carry the multiplexed traffic.
 - **WebSocket link**: The framed message channel layered over the connection, carrying GLP interactions.
 - **Shared certificate**: A self-signed certificate/trust material shared by server and clients; the only trust anchor (no domain/public CA).
-- **GLP interaction**: A unit of GLP work submitted over the link and its returned result.
+- **GLP REPL endpoint**: A running GLP REPL participating in the link as a message sender and/or receiver; in the mesh case, a peer that messages other peers.
+- **GLP message**: A unit of data emitted by one REPL endpoint and delivered to one or more receiving REPL endpoints over the link.
 - **Stack adapter**: A transport implementation (C#/.NET or Gleam/AtomVM) behind the common CLI/contract.
 - **Research source / Distillation note**: A catalogued corpus entry and its close-read architectural findings.
 
@@ -126,7 +141,7 @@ The architecture is grounded in a distilled research corpus (~50 sources for the
 ### Measurable Outcomes
 
 - **SC-001**: On two distinct LAN hosts addressed by IP, a server and a client complete a **real** QUIC/HTTP-3 handshake (confirmable on the wire, not loopback) and bring up a WebSocket link, in at least one stack.
-- **SC-002**: Over that link, a GLP interaction submitted by the client returns the correct result to the client.
+- **SC-002**: Over that link, a message emitted by a sending GLP REPL is received by a listening GLP REPL; and with both ends active, messages flow full-duplex. With three or more REPLs, each can message each other peer-to-peer across the mesh.
 - **SC-003**: One server concurrently serves at least the target number of clients (per FR-011), each completing an independent GLP round-trip, with no cross-session interference.
 - **SC-004**: A single client failure among concurrent sessions leaves the others fully functional.
 - **SC-005**: The handshake succeeds using only the shared self-signed certificate — with no domain name and no hostname-bound/public-CA certificate involved.

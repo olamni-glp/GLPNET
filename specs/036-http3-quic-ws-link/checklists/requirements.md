@@ -18,7 +18,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -36,13 +36,13 @@
 
 ## Notes
 
-- Three `[NEEDS CLARIFICATION]` markers remain by design, to be resolved in `/bk-clarify`:
-  1. **FR-008** — exact meaning of "run GLP" over the link (send source/goals & return
-     results vs. remote REPL stream vs. representative payload round-trip).
-  2. **FR-010** — stack acceptance bar (must BOTH stacks reach the full real-QUIC LAN
-     demo, or is C#/.NET primary while Gleam/AtomVM may land as a proven skeleton if
-     genuine QUIC on AtomVM/WASM proves infeasible).
-  3. **FR-011** — target concurrency N for the LAN demo.
-- These are the highest-impact open questions (scope > feasibility > scale) and are the
-  intended focus of the clarification stage. Items marked incomplete require spec
-  updates before `/bk-plan`.
+- All clarification markers were resolved in the `/bk-clarify` session of 2026-06-27
+  (see the spec's `## Clarifications` section). Summary of decisions:
+  1. **FR-008** — "run GLP" = GLP REPL endpoints exchanging messages: one-way send/listen →
+     full-duplex → peer-to-peer duplex mesh of multiple REPLs.
+  2. **FR-009/FR-010** — C#/.NET implemented first as the reference (full real-QUIC demo),
+     then the Gleam/AtomVM stack built out in stages against the same contract.
+  3. **FR-011** — at least 3 concurrent clients, designed to scale beyond.
+  4. **FR-003** — the Python tool generates the shared self-signed cert; distributed
+     out-of-band and pinned (no CA/enrollment).
+- Spec is ready for `/bk-plan`.
