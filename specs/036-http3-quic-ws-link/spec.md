@@ -35,8 +35,8 @@ An operator starts `GLP-Quick --server` on machine A (bound to A's LAN IP / mach
 
 1. **Given** a server running on host A bound to A's LAN IP with a shared self-signed cert, **When** a client on host B connects to A's IP using the same shared cert/trust, **Then** a real QUIC/HTTP-3 connection is established and a WebSocket link comes up over it.
 2. **Given** an established link between a sending REPL and a listening REPL, **When** the sending REPL emits a GLP message, **Then** the listening REPL receives that message over the same link.
-4. **Given** an established link, **When** both REPLs send messages at the same time, **Then** each receives the other's messages (full-duplex).
 3. **Given** a client configured to trust only the shared self-signed cert, **When** it connects, **Then** the handshake succeeds without relying on any domain-name / public-CA / hostname-bound certificate validation.
+4. **Given** an established link, **When** both REPLs send messages at the same time, **Then** each receives the other's messages (full-duplex).
 
 ---
 

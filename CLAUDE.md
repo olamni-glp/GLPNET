@@ -561,5 +561,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/030-marathon-refinement/plan.md
+- specs/036-http3-quic-ws-link/plan.md
 <!-- BUILDKIT END -->
