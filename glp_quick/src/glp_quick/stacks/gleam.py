@@ -25,6 +25,7 @@ from glp_quick.stacks.csharp import (
     dotnet_path,
     host_dll_path,
     spawn_handle,
+    terminate_tree,
 )
 
 
@@ -108,15 +109,7 @@ class GleamStackAdapter(StackAdapter):
     def stop(self, handle: Handle) -> None:
         h = handle
         assert isinstance(h, CSharpHandle)
-        try:
-            if h._proc.stdin and not h._proc.stdin.closed:
-                h._proc.stdin.close()
-        except OSError:
-            pass
-        try:
-            h._proc.wait(timeout=8)
-        except Exception:
-            h._proc.terminate()
+        terminate_tree(h._proc)  # kills gleam → erl → the C# QUIC side-process (no orphans)
 
     def _spawn(self, host_args: list[str], await_token: str, peer_ids: Sequence[str]) -> CSharpHandle:
         if self._profile == "c":

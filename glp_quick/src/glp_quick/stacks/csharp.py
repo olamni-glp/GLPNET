@@ -166,15 +166,7 @@ class CSharpStackAdapter(StackAdapter):
     def stop(self, handle: Handle) -> None:
         h = handle
         assert isinstance(h, CSharpHandle)
-        try:
-            if h._proc.stdin and not h._proc.stdin.closed:
-                h._proc.stdin.close()  # EOF → host drains, closes the link, exits
-        except OSError:
-            pass
-        try:
-            h._proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            h._proc.terminate()
+        terminate_tree(h._proc)
 
     def _spawn(self, args: list[str], await_token: str, peer_ids: Sequence[str]) -> CSharpHandle:
         dll = host_dll_path()
@@ -184,6 +176,33 @@ class CSharpStackAdapter(StackAdapter):
                 f"{dll} not built — run: dotnet build csharp/glp_quick_host/glp_quick_host.csproj",
             )
         return spawn_handle([dotnet_path(), str(dll), *args], await_token, peer_ids)
+
+
+def terminate_tree(proc: subprocess.Popen) -> None:
+    """Kill a supervised endpoint process AND its children (e.g. gleam -> erl -> dotnet), so no QUIC
+    host is orphaned holding its UDP port. The host now lives for the link's lifetime (not stdin),
+    so terminating is the stop signal; the peer detects the drop via the aborted QUIC connection.
+    """
+    try:
+        if proc.stdin and not proc.stdin.closed:
+            proc.stdin.close()
+    except OSError:
+        pass
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           capture_output=True, timeout=8)
+        else:
+            proc.terminate()
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        pass
 
 
 def spawn_handle(

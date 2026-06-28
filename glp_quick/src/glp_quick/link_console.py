@@ -82,11 +82,13 @@ def run(
             except Exception:
                 return
             if msg is not None and msg.payload != "__connected__":
-                line = f"{msg.sender} -> {msg.to}: {msg.payload}"
-                print(line, flush=True)
+                # Carriage-return + fresh line + marker so an incoming message lands on its own line
+                # instead of garbling whatever you are typing. Re-show a minimal prompt afterwards.
+                sys.stdout.write(f"\r\n<< {msg.sender}: {msg.payload}\n> ")
+                sys.stdout.flush()
                 if inbox:
                     with open(inbox, "a", encoding="utf-8") as f:
-                        f.write(line + "\n")
+                        f.write(f"{msg.sender}: {msg.payload}\n")
 
     def stdin_reader() -> None:
         try:
