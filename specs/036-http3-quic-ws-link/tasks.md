@@ -86,31 +86,35 @@ bring up a WebSocket link, and exchange a GLP message — full-duplex.
 and a GLP send→receive round-trip, with both ends sending concurrently.
 
 ### Tests for US1
-- [ ] T014 [P] [US1] xUnit loopback test for the QUIC+WS transport leaf in `csharp/glp_link.tests/`.
-- [ ] T015 [P] [US1] pytest for cert generation + **SPKI (SubjectPublicKeyInfo) SHA-256 pin** trust accept/reject
-      in `glp_quick/tests/test_cert.py` (research Decision 5).
+- [x] T014 [P] [US1] xUnit loopback test for the QUIC+WS transport leaf in `csharp/glp_link.tests/QuicTransportTests.cs`
+      — 5 tests, **real same-host msquic handshake** + RFC6455 round-trip (both dirs, FIFO, 100KB/64-bit length,
+      graceful close, **cert-pin mismatch rejected**). All green within the 104-test glp_link suite.
+- [x] T015 [P] [US1] pytest for cert generation + **SPKI SHA-256 pin** trust accept/reject in
+      `glp_quick/tests/test_cert.py` (9 tests, research Decision 5).
 
 ### Implementation for US1
-- [ ] T016 [US1] Implement the **real QUIC handshake** (`System.Net.Quic`, **`IsSupported`-gated**, cross-platform)
-      with the **shared-cert SPKI SHA-256 pin** via `RemoteCertificateValidationCallback` — never `return true`;
-      waive only no-CA-chain + hostname-mismatch (FR-001/FR-003, SC-001/SC-005). Depends on T012, T013a.
-- [ ] T017 [US1] Implement the **genuine WebSocket link = RFC 6455 framing over one bidi `QuicStream`** (025
-      `FrameCodec`; opcodes text/binary/close/ping/pong, FIN/continuation, varint length; no masking on the
-      TLS-encrypted QUIC stream), brought up by the **minimal CONNECT-style bootstrap** (`ConnectBootstrap`). Keep
-      the RFC 9220 Extended-CONNECT-over-HTTP/3 path isolated behind the bootstrap seam (later browser interop
-      only — do not block MVP on it) (FR-002; research Decision 3).
-- [ ] T018 [US1] Implement the `csharp` `StackAdapter` (`start_server`/`start_client`/`health`/`stop`) in
-      `glp_quick/src/glp_quick/stacks/csharp.py`, launching + supervising the C# endpoint (FR-007). Depends on T008, T016.
-- [ ] T019 [US1] Bridge a GLP REPL endpoint (`out/csharp/glp_repl` default) to the link in `repl_link.py`: one
-      REPL sends, the other receives over the link (FR-008, SC-002). Depends on T010, T018.
-- [ ] T020 [US1] Full-duplex message flow over one link — both ends send/receive concurrently (FR-008a, SC-002).
-- [ ] T021 [US1] Clear, distinct failure reporting for `cert_mismatch` / `alpn_version_mismatch` / `udp_blocked` /
-      `server_not_ready` — no silent hang, no half-open link (FR-019, edge cases).
-- [ ] T022 [US1] Two-host LAN path in `glp_quick/src/glp_quick/demo.py`: verify real on-wire handshake + GLP
-      round-trip, addressed by **both raw LAN IP and machine name** — without falling back to a
-      hostname-bound/domain-cert shortcut (SC-001/SC-002, FR-004, "IP vs machine-name addressing" edge case).
+- [x] T016 [US1] **real QUIC handshake** (`System.Net.Quic`, `IsSupported`-gated, cross-platform) with the
+      **shared-cert SPKI SHA-256 pin** in `QuicTransport.cs` — mutual validation, never `return true`, waives only
+      no-CA-chain + hostname-mismatch (FR-001/FR-003, SC-001/SC-005). Verified by a real two-process handshake.
+- [x] T017 [US1] **genuine WebSocket link = RFC 6455 over one bidi `QuicStream`** (`WebSocketOverQuic.cs`; opcodes
+      text/binary/close/ping/pong, FIN/continuation, 7/16/64-bit length, unmasked) via the **minimal CONNECT-style
+      bootstrap** (`ConnectBootstrap.cs`); RFC 9220 Extended-CONNECT isolated behind the seam (FR-002, Decision 3).
+- [x] T018 [US1] `csharp` `StackAdapter` (`start_server`/`start_client`/`health`/`stop`) in `stacks/csharp.py`,
+      launching + supervising the C# endpoint (`csharp/glp_quick_host` exe, run via `dotnet <dll>`) (FR-007).
+- [~] T019 [US1] Bridge to the link in `repl_link.py` — **GLP-message envelope bridge done** (Handle send/recv;
+      verified two-process full-duplex, T020). **REMAINING**: bridging the live `out/csharp/glp_repl` *process*'s
+      message I/O (needs the REPL's spec-025 link-message interface) — follow-up.
+- [x] T020 [US1] **Full-duplex** message flow over one link — both ends send/receive concurrently; verified
+      (client↔server + 5-frame FIFO) via `test_csharp_adapter.py` (FR-008a, SC-002).
+- [x] T021 [US1] Clear, distinct failure reporting — `glp_quick_host` maps `cert_mismatch` / `alpn_version_mismatch`
+      (quic_unsupported) / `udp_blocked` / `server_not_ready` to distinct exit tokens; `cert_mismatch` verified by
+      test (xUnit + adapter pytest). No silent hang / half-open (FR-019).
+- [x] T022 [US1] `demo.py` + CLI `demo` — genuine same-host run reports SC-001/SC-002/SC-005 **PASS** over the real
+      link; **honestly NOT-RUN** for SC-003/004 (needs US2), SC-006 (US3), and the true two-host LAN acceptance
+      (needs a 2nd host) — no over-claim. Machine-name addressing path implemented (`ResolveHost`), IP path verified.
 
-**Checkpoint**: MVP — a real QUIC+WS link runs GLP full-duplex between two LAN hosts.
+**Checkpoint**: MVP — a real QUIC+WS link runs **GLP-message exchange** full-duplex between two processes (same-host
+verified; cross-host LAN = the same code path pending a 2nd host). Live-`glp_repl`-process bridge + ≥3-client mesh remain.
 
 ---
 
@@ -119,6 +123,11 @@ and a GLP send→receive round-trip, with both ends sending concurrently.
 **Goal**: One server serves ≥3 concurrent isolated client links; the REPLs form a peer-to-peer duplex mesh; one
 client's failure does not disturb the others.
 **Independent Test**: Launch one server + ≥3 clients; each completes an independent round-trip; kill one — others continue.
+
+> **STATUS (not started)**: the current `glp_quick_host` server role accepts ONE link per process. US2 needs a
+> **multi-accept server** (one `QuicListener` looping `AcceptConnectionAsync` → N isolated links, each with its own
+> 025 epoch/seq/window) + a stdio addressing layer for mesh `to`/broadcast routing. The envelope router
+> (`repl_link.route`) and `--max-clients` plumbing are already in place; the multi-link server is the missing piece.
 
 ### Tests for US2
 - [ ] T023 [P] [US2] Integration test: ≥3 concurrent clients, each an independent isolated round-trip (SC-003) in `glp_quick/tests/`.
@@ -147,6 +156,10 @@ channel-link contract** (not at QUIC termination — genuine QUIC on bare AtomVM
 QUIC+WS link + GLP round-trip with the same observable outcomes as `csharp`.
 
 > **BLOCKED until US1 + US2 pass the full real-QUIC LAN demo** — the C#/.NET reference must be complete first (FR-010).
+>
+> **STATUS (blocked — toolchain absent)**: `gleam`, `erl`, `rebar3`, `escript` are all absent on this machine.
+> US3 needs Erlang/OTP + Gleam + (Profile C) the `quicer` NIF over MsQuic + (Profile A) AtomVM/WASM — a major
+> toolchain install — AND is hard-gated behind US1+US2 (FR-010). Honestly deferred (constitution II), not faked.
 
 - [ ] T030 [US3] **GATE (FR-010)**: confirm the C# reference passes the full real-QUIC LAN demo (SC-001..SC-006) before starting Gleam.
 - [ ] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/` (`quic_link.gleam` channel-link contract,

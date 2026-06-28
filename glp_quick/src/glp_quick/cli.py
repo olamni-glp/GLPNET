@@ -104,17 +104,21 @@ def demo(
     profile: Optional[str] = typer.Option(None, "--profile", help="gleam only: a | c."),
     clients: int = typer.Option(3, "--clients", help="Concurrent clients (≥3).", min=1),
 ) -> None:
-    """LAN-IP conformance demo (SC-001..SC-006). Skeleton — emits the planned harness only."""
+    """LAN-IP conformance demo (SC-001..SC-006) over the genuine QUIC+WS link."""
     stack_ = _validate_stack(stack)
-    profile_ = _validate_profile(stack_, profile)
-    pin = _require_cert_dir(cert)
-    typer.echo(f"{_SKELETON} demo --stack {stack_}"
-               + (f" --profile {profile_}" if profile_ else "")
-               + f" --addr {addr} --port {port} --clients {clients}")
-    typer.echo(f"{_SKELETON} would: 1 server + {clients} clients; verify real on-wire handshake, "
-               "full-duplex, ≥3-REPL mesh, concurrent isolation, single-failure resilience (SC-001..SC-006).")
-    typer.echo(f"{_SKELETON} trust pin: {pin}")
-    typer.echo(f"{_SKELETON} no QUIC endpoint opened — data-plane '{stack_}' not yet wired (US1+).")
+    _validate_profile(stack_, profile)
+    _require_cert_dir(cert)
+    from glp_quick.demo import run_demo
+    from glp_quick.stacks.csharp import LinkError
+
+    try:
+        report = run_demo(addr, port, cert, stack=stack_, clients=clients)
+    except (LinkError, NotImplementedError) as e:
+        typer.echo(f"demo failed: {e}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(report.render())
+    if not report.ok:
+        raise typer.Exit(code=1)
 
 
 # --------------------------------------------------------------------------------------
