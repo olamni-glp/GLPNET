@@ -2,41 +2,36 @@ using System.Net.Quic;
 
 using GlpRuntime.Link.Seam;
 
+// System.Net.Quic is [SupportedOSPlatform] windows/linux/macOS; runtime-gated by
+// QuicTransport.IsSupported (FR-001) — the CA1416 platform advisory does not apply.
+#pragma warning disable CA1416
+
 namespace GlpRuntime.Link.Transports;
 
 /// <summary>
-/// One established QUIC+WS link end (feature 036): a <see cref="QuicConnection"/> with one
+/// One established QUIC+WS link end (feature 036): a live <see cref="QuicConnection"/> with one
 /// bidirectional <see cref="QuicStream"/> carrying a <b>genuine RFC 6455 WebSocket link</b>
-/// (one WS per stream — the carriage RFC 9220 standardizes), reusing spec 025's
-/// <see cref="ILinkEndpoint"/> seam so the reliability sublayer (seq/dedup, reorder,
-/// epoch/fence, backpressure) and ground-relay discipline ride for free (FR-018).
+/// (<see cref="WebSocketOverQuic"/>), reusing spec 025's <see cref="ILinkEndpoint"/> seam so the
+/// reliability sublayer (seq/dedup, reorder, epoch/fence, backpressure) + ground-relay ride for
+/// free (FR-018).
 /// </summary>
 /// <remarks>
-/// SKELETON (FR-017). The frame I/O is delegated to <see cref="WebSocketOverQuic"/> (025
-/// FrameCodec over the QuicStream); both land in US1 (T017). Send and recv run on different
-/// threads (the egress drainer writes; the pump's recv loop reads), which a single
-/// <see cref="QuicStream"/> supports for one concurrent reader + one writer — matching the
-/// <see cref="TcpEndpoint"/> precedent.
+/// One <see cref="SendBytesAsync"/> ⇒ one RFC 6455 binary message ⇒ one peer
+/// <see cref="RecvBytesAsync"/> (self-delimiting), matching the <see cref="TcpEndpoint"/> precedent.
+/// Send and recv run on different threads (one concurrent reader + one writer on the stream).
 /// </remarks>
 internal sealed class QuicEndpoint : ILinkEndpoint
 {
-    private readonly QuicConnection? _connection;
-    private readonly QuicStream? _stream;
-    private readonly WebSocketOverQuic? _ws;
+    private readonly QuicConnection _connection;
+    private readonly QuicStream _stream;
+    private readonly WebSocketOverQuic _ws;
+    private int _closed;
 
     public LinkId Id { get; }
 
-#pragma warning disable CS0067 // OnFault is raised by the US1 frame I/O bodies (T017), not the skeleton.
     public event Action<LinkFaultSignal>? OnFault;
-#pragma warning restore CS0067
 
-    /// <summary>
-    /// Construct an established endpoint over a live QUIC connection + bidi stream. The US1
-    /// establishment paths (<see cref="QuicTransport.ListenAsync"/>/<see cref="QuicTransport.ConnectAsync"/>)
-    /// pass the negotiated connection/stream; the skeleton accepts nulls so the type is
-    /// constructable in tests before the handshake exists.
-    /// </summary>
-    internal QuicEndpoint(LinkId id, QuicConnection? connection = null, QuicStream? stream = null, WebSocketOverQuic? ws = null)
+    internal QuicEndpoint(LinkId id, QuicConnection connection, QuicStream stream, WebSocketOverQuic ws)
     {
         Id = id;
         _connection = connection;
@@ -44,21 +39,55 @@ internal sealed class QuicEndpoint : ILinkEndpoint
         _ws = ws;
     }
 
-    public Task SendBytesAsync(ReadOnlyMemory<byte> frame, CancellationToken ct = default) =>
-        // US1 T017: one self-delimiting frame ⇒ one RFC 6455 data frame over the QuicStream
-        // (no masking on the TLS-encrypted QUIC stream); per-link FIFO reconstructed above by 025.
-        throw new NotImplementedException("QuicEndpoint.SendBytesAsync — WS-over-QUIC frame I/O lands in US1 (T017).");
+    public async Task SendBytesAsync(ReadOnlyMemory<byte> frame, CancellationToken ct = default)
+    {
+        try
+        {
+            await _ws.SendFrameAsync(frame, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
+        {
+            if (Volatile.Read(ref _closed) == 0)
+                OnFault?.Invoke(new LinkFaultSignal(Id, LinkFaultKind.Transient, $"quic/ws send failed: {ex.Message}"));
+            throw;
+        }
+    }
 
-    public Task<byte[]?> RecvBytesAsync(CancellationToken ct = default) =>
-        // US1 T017: reassemble one RFC 6455 message (FIN/continuation) from the QuicStream;
-        // null on the peer's clean WS close (→ closed/eos upstream).
-        throw new NotImplementedException("QuicEndpoint.RecvBytesAsync — WS-over-QUIC frame I/O lands in US1 (T017).");
+    public async Task<byte[]?> RecvBytesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await _ws.ReceiveFrameAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // pump disposed / link torn down — normal shutdown
+        }
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException or EndOfStreamException)
+        {
+            // An error on a link WE closed is the expected end of our own teardown — not a fault.
+            if (Volatile.Read(ref _closed) == 0)
+                OnFault?.Invoke(new LinkFaultSignal(Id, LinkFaultKind.Transient, $"quic/ws recv failed: {ex.Message}"));
+            return null;
+        }
+    }
 
-    public Task CloseAsync() =>
-        // US1 T017: send a RFC 6455 close frame, let in-flight frames drain, then close the stream.
-        throw new NotImplementedException("QuicEndpoint.CloseAsync — graceful WS/QUIC teardown lands in US1 (T017).");
+    public async Task CloseAsync()
+    {
+        if (Interlocked.Exchange(ref _closed, 1) != 0)
+            return;
+        // Graceful: send a WS close frame and complete our send direction so the peer drains then
+        // reads null. The recv side stays open until the peer's close arrives.
+        try { await _ws.CloseAsync().ConfigureAwait(false); }
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException) { /* already gone */ }
+        try { _stream.CompleteWrites(); }
+        catch (Exception ex) when (ex is QuicException or ObjectDisposedException) { /* already gone */ }
+    }
 
-    public ValueTask DisposeAsync() =>
-        // Best-effort disposal of stream + connection; full teardown semantics in US1 (T017).
-        throw new NotImplementedException("QuicEndpoint.DisposeAsync — teardown lands in US1 (T017).");
+    public async ValueTask DisposeAsync()
+    {
+        await CloseAsync().ConfigureAwait(false);
+        try { await _stream.DisposeAsync().ConfigureAwait(false); } catch { /* best-effort */ }
+        try { await _connection.DisposeAsync().ConfigureAwait(false); } catch { /* best-effort */ }
+    }
 }
