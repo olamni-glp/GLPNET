@@ -1,7 +1,9 @@
-using System.Security.Authentication;
+using System.Collections.Concurrent;
 using System.Net.Quic;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
 
 using GlpRuntime.Link.Seam;
 using GlpRuntime.Link.Transports;
@@ -9,26 +11,21 @@ using GlpRuntime.Link.Transports;
 namespace GlpQuick.Host;
 
 /// <summary>
-/// The C# QUIC+WS endpoint the glp_quick control plane launches (FR-007). One process = one role
-/// (<c>--role server|client</c>) running one genuine real-QUIC + RFC 6455 WebSocket link
-/// (<see cref="QuicTransport"/>), bridging newline-delimited L5 GLP-message envelopes between
-/// stdio and the link. stdout carries data frames; stderr carries control + the FR-019 failure
-/// tokens. Real QUIC only — gated on <see cref="QuicTransport.IsSupported"/> (FR-001).
+/// The C# QUIC+WS endpoint the glp_quick control plane launches (FR-007). One process = one role:
+/// <c>--role client</c> runs one link bridged to stdio; <c>--role server</c> is a multi-accept
+/// <b>mesh router</b> (US2) — one <see cref="QuicTransport.QuicListenerHandle"/> accepting up to
+/// <c>--max-clients</c> isolated links, routing L5 envelopes by <c>to</c>/<c>broadcast</c> among the
+/// clients and the server's own stdio endpoint. Real QUIC only (FR-001).
 /// </summary>
 internal static class Program
 {
-    // FR-019 failure tokens (wire-contract.md §Failure contract) → distinct non-zero exit codes.
-    private const int ExitOk = 0;
-    private const int ExitUsage = 2;
-    private const int ExitCertMismatch = 3;    // cert_mismatch
-    private const int ExitServerNotReady = 4;  // server_not_ready
-    private const int ExitUdpBlocked = 5;      // udp_blocked
-    private const int ExitQuicUnsupported = 6; // alpn_version_mismatch / unsupported stack
-    private const int ExitBindFailed = 7;
+    // FR-019 failure tokens → distinct non-zero exit codes.
+    private const int ExitOk = 0, ExitUsage = 2, ExitCertMismatch = 3, ExitServerNotReady = 4,
+        ExitUdpBlocked = 5, ExitQuicUnsupported = 6, ExitBindFailed = 7;
 
     private static async Task<int> Main(string[] args)
     {
-        Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false); // no BOM on stdout
+        Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false); // no BOM
         var stdout = Console.Out;
         stdout.NewLine = "\n";
 
@@ -50,74 +47,49 @@ internal static class Program
                 X509KeyStorageFlags.Exportable);
             pin = File.ReadAllText(Path.Combine(opts.CertDir, "glpquick.fingerprint")).Trim();
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"ERR cert_load {ex.Message}");
-            return ExitBindFailed;
-        }
+        catch (Exception ex) { Console.Error.WriteLine($"ERR cert_load {ex.Message}"); return ExitBindFailed; }
 
         var transport = new QuicTransport(cert, pin);
         var addr = LinkAddress.Endpoint(opts.Addr, opts.Port);
         using var life = new CancellationTokenSource();
 
-        // Readiness signal so the control plane can start the server before the client. For the
-        // server this precedes the UDP bind by microseconds; QUIC handshake retransmission absorbs
-        // the tiny race if a client Initial arrives first.
-        Console.Error.WriteLine($"READY {opts.Role} {opts.Addr}:{opts.Port}");
-
-        ILinkEndpoint endpoint;
         try
         {
-            endpoint = opts.Role == "server"
-                ? await transport.ListenAsync(LinkScheme.Quic, addr, LinkOptions.Default, life.Token)
-                : await ConnectWithReadinessAsync(transport, addr, opts.Retry, life.Token);
+            return opts.Role == "server"
+                ? await RunMeshServerAsync(transport, addr, opts, stdout, life)
+                : await RunClientAsync(transport, addr, opts, stdout, life);
         }
-        catch (AuthenticationException ex)
-        {
-            Console.Error.WriteLine($"ERR cert_mismatch {ex.Message}"); // SPKI pin rejected — no half-open link
-            return ExitCertMismatch;
-        }
-        catch (QuicException ex) when (ex.QuicError == QuicError.ConnectionTimeout || ex.QuicError == QuicError.ConnectionAborted)
-        {
-            Console.Error.WriteLine($"ERR server_not_ready {ex.QuicError}: {ex.Message}");
-            return ExitServerNotReady;
-        }
-        catch (QuicException ex)
-        {
-            Console.Error.WriteLine($"ERR udp_blocked {ex.QuicError}: {ex.Message}"); // unreachable/datagrams dropped
-            return ExitUdpBlocked;
-        }
-        catch (System.Net.Sockets.SocketException ex)
-        {
-            Console.Error.WriteLine($"ERR bind_failed {ex.SocketErrorCode}: {ex.Message}");
-            return ExitBindFailed;
-        }
+        catch (AuthenticationException ex) { Console.Error.WriteLine($"ERR cert_mismatch {ex.Message}"); return ExitCertMismatch; }
+        catch (QuicException ex) when (ex.QuicError is QuicError.ConnectionTimeout or QuicError.ConnectionAborted)
+        { Console.Error.WriteLine($"ERR server_not_ready {ex.QuicError}: {ex.Message}"); return ExitServerNotReady; }
+        catch (QuicException ex) { Console.Error.WriteLine($"ERR udp_blocked {ex.QuicError}: {ex.Message}"); return ExitUdpBlocked; }
+        catch (System.Net.Sockets.SocketException ex) { Console.Error.WriteLine($"ERR bind_failed {ex.SocketErrorCode}: {ex.Message}"); return ExitBindFailed; }
+    }
 
+    // ---------------------------------------------------------------- client role (US1)
+    private static async Task<int> RunClientAsync(QuicTransport transport, LinkAddress addr, Opts opts, TextWriter stdout, CancellationTokenSource life)
+    {
+        var endpoint = await ConnectWithReadinessAsync(transport, addr, opts.Retry, life.Token).ConfigureAwait(false);
         Console.Error.WriteLine($"LINK_UP {endpoint.Id}");
         endpoint.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
 
-        // Full-duplex bridge (FR-008a): stdin→link and link→stdout run concurrently.
-        var sendLoop = SendLoopAsync(endpoint, life.Token);
-        var recvLoop = RecvLoopAsync(endpoint, stdout, life);
-        await Task.WhenAny(sendLoop, recvLoop).ConfigureAwait(false);
+        var send = StdinToLinkAsync(endpoint, life.Token);
+        var recv = LinkToStdoutAsync(endpoint, stdout, life);
+        await Task.WhenAny(send, recv).ConfigureAwait(false);
         life.Cancel();
         await endpoint.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
     }
 
-    /// <summary>Client connect with server-not-ready readiness retry (FR-019); cert mismatch is NOT retried.</summary>
     private static async Task<ILinkEndpoint> ConnectWithReadinessAsync(QuicTransport transport, LinkAddress addr, bool retry, CancellationToken ct)
     {
+        Console.Error.WriteLine($"READY client {addr}");
         var deadline = DateTime.UtcNow + (retry ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(8));
         while (true)
         {
-            try
-            {
-                return await transport.ConnectAsync(LinkScheme.Quic, addr, LinkOptions.Default, ct).ConfigureAwait(false);
-            }
+            try { return await transport.ConnectAsync(LinkScheme.Quic, addr, LinkOptions.Default, ct).ConfigureAwait(false); }
             catch (QuicException ex) when (retry
-                && (ex.QuicError == QuicError.ConnectionTimeout || ex.QuicError == QuicError.ConnectionRefused)
-                && DateTime.UtcNow < deadline)
+                && (ex.QuicError is QuicError.ConnectionTimeout or QuicError.ConnectionRefused) && DateTime.UtcNow < deadline)
             {
                 Console.Error.WriteLine($"WAIT server_not_ready {ex.QuicError} — retrying");
                 await Task.Delay(500, ct).ConfigureAwait(false);
@@ -125,40 +97,107 @@ internal static class Program
         }
     }
 
-    /// <summary>Read newline-delimited L5 envelopes from stdin; ship each as one link frame.</summary>
-    private static async Task SendLoopAsync(ILinkEndpoint endpoint, CancellationToken ct)
+    private static async Task StdinToLinkAsync(ILinkEndpoint endpoint, CancellationToken ct)
     {
         using var stdin = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8);
         string? line;
         while (!ct.IsCancellationRequested && (line = await stdin.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
-        {
-            if (line.Length == 0) continue;
-            await endpoint.SendBytesAsync(Encoding.UTF8.GetBytes(line), ct).ConfigureAwait(false);
-        }
+            if (line.Length > 0)
+                await endpoint.SendBytesAsync(Encoding.UTF8.GetBytes(line), ct).ConfigureAwait(false);
     }
 
-    /// <summary>Emit each received link frame as one newline-delimited L5 envelope on stdout.</summary>
-    private static async Task RecvLoopAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life)
+    private static async Task LinkToStdoutAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life)
     {
         while (!life.IsCancellationRequested)
         {
             byte[]? frame = await endpoint.RecvBytesAsync(life.Token).ConfigureAwait(false);
-            if (frame is null) // graceful close / eos
-            {
-                Console.Error.WriteLine("LINK_CLOSED");
-                life.Cancel();
-                return;
-            }
+            if (frame is null) { Console.Error.WriteLine("LINK_CLOSED"); life.Cancel(); return; }
             await stdout.WriteLineAsync(Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
             await stdout.FlushAsync().ConfigureAwait(false);
         }
     }
 
-    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry)
+    // ---------------------------------------------------------------- server role: mesh router (US2)
+    private static async Task<int> RunMeshServerAsync(QuicTransport transport, LinkAddress addr, Opts opts, TextWriter stdout, CancellationTokenSource life)
+    {
+        await using var listener = await transport.CreateListenerAsync(addr, LinkOptions.Default, life.Token).ConfigureAwait(false);
+        Console.Error.WriteLine($"READY server {addr}"); // listener bound — clients may connect
+        var mesh = new Mesh(opts.SelfId, stdout);
+
+        // The server's own stdio endpoint participates as `SelfId` (preserves US1: client→server).
+        var selfPump = SelfStdioPumpAsync(mesh, life.Token);
+
+        int active = 0;
+        while (!life.IsCancellationRequested)
+        {
+            ILinkEndpoint link;
+            try { link = await listener.AcceptAsync(life.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { break; }
+            catch (QuicException ex) { Console.Error.WriteLine($"ACCEPT_FAULT {ex.QuicError}: {ex.Message}"); continue; }
+
+            if (Interlocked.Increment(ref active) > opts.MaxClients)
+            {
+                Interlocked.Decrement(ref active);
+                Console.Error.WriteLine($"REJECT over_capacity {link.Id}"); // T026: clear over-capacity reject
+                _ = RejectOverCapacityAsync(link);
+                continue;
+            }
+            Console.Error.WriteLine($"CLIENT_UP {link.Id} ({active}/{opts.MaxClients})");
+            _ = ClientPumpAsync(mesh, link, () => Interlocked.Decrement(ref active), life.Token);
+        }
+        await selfPump.ConfigureAwait(false);
+        return ExitOk;
+    }
+
+    /// <summary>Pump the server's own stdio endpoint into the mesh (envelopes from/to <c>SelfId</c>).</summary>
+    private static async Task SelfStdioPumpAsync(Mesh mesh, CancellationToken ct)
+    {
+        using var stdin = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8);
+        string? line;
+        while (!ct.IsCancellationRequested && (line = await stdin.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
+            if (line.Length > 0)
+                await mesh.RouteAsync(Encoding.UTF8.GetBytes(line), fromSelf: true, srcLink: null, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>One isolated client link: register it, route its envelopes, and clean up on drop (FR-006/SC-004).</summary>
+    private static async Task ClientPumpAsync(Mesh mesh, ILinkEndpoint link, Action onGone, CancellationToken ct)
+    {
+        link.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                byte[]? frame = await link.RecvBytesAsync(ct).ConfigureAwait(false);
+                if (frame is null) break; // client gone → leave siblings untouched
+                await mesh.RouteAsync(frame, fromSelf: false, srcLink: link, ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) { /* shutdown */ }
+        finally
+        {
+            mesh.Remove(link);
+            onGone();
+            Console.Error.WriteLine($"CLIENT_DOWN {link.Id}");
+            await link.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private static async Task RejectOverCapacityAsync(ILinkEndpoint link)
+    {
+        try
+        {
+            var env = "{\"msg_id\":\"capacity\",\"from\":\"server\",\"to\":\"_overflow\",\"seq\":null,\"payload\":\"over_capacity\"}";
+            await link.SendBytesAsync(Encoding.UTF8.GetBytes(env)).ConfigureAwait(false);
+        }
+        catch { /* best-effort notice */ }
+        await link.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId)
     {
         public static Opts Parse(string[] args)
         {
-            string? role = null, addr = null, cert = null;
+            string? role = null, addr = null, cert = null, selfId = "server";
             int port = 0, maxClients = 3;
             bool retry = false;
             for (int i = 0; i < args.Length; i++)
@@ -170,6 +209,7 @@ internal static class Program
                     case "--port": port = int.Parse(Req(args, ++i)); break;
                     case "--cert": cert = Req(args, ++i); break;
                     case "--max-clients": maxClients = int.Parse(Req(args, ++i)); break;
+                    case "--id": selfId = Req(args, ++i); break;
                     case "--retry": retry = true; break;
                     default: throw new ArgumentException($"unknown arg '{args[i]}'");
                 }
@@ -178,10 +218,103 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
             if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
-            return new Opts(role, addr, port, cert, maxClients, retry);
+            return new Opts(role, addr, port, cert, maxClients, retry, selfId!);
         }
 
         private static string Req(string[] args, int i) =>
             i < args.Length ? args[i] : throw new ArgumentException("missing value for last flag");
+    }
+}
+
+/// <summary>
+/// The server-side mesh router (US2 T027): keeps the server's own stdio endpoint plus a registry of
+/// connected client links keyed by their announced endpoint_id, and routes each L5 envelope by its
+/// <c>to</c> field (a specific endpoint or <c>broadcast</c>). A client's id is learned from the
+/// <c>from</c> of its first envelope. Routing reads only <c>from</c>/<c>to</c>; the original frame
+/// bytes are forwarded unchanged (msg_id/seq/payload preserved).
+/// </summary>
+internal sealed class Mesh
+{
+    private const string Broadcast = "broadcast";
+    private readonly string _selfId;
+    private readonly TextWriter _stdout;
+    private readonly SemaphoreSlim _stdoutLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, ILinkEndpoint> _byId = new();
+    private readonly ConcurrentDictionary<ILinkEndpoint, string> _idOf = new();
+
+    public Mesh(string selfId, TextWriter stdout)
+    {
+        _selfId = selfId;
+        _stdout = stdout;
+    }
+
+    public void Remove(ILinkEndpoint link)
+    {
+        if (_idOf.TryRemove(link, out var id))
+            _byId.TryRemove(id, out _);
+    }
+
+    public async Task RouteAsync(byte[] frame, bool fromSelf, ILinkEndpoint? srcLink, CancellationToken ct)
+    {
+        if (!TryRoute(frame, out string from, out string to))
+        {
+            Console.Error.WriteLine("DROP malformed-envelope");
+            return;
+        }
+        // Register the client's announced id on first sight (so `to:<id>` can reach it).
+        if (!fromSelf && srcLink is not null && !string.IsNullOrEmpty(from))
+        {
+            if (_idOf.TryGetValue(srcLink, out var known))
+            {
+                if (known != from) { _byId.TryRemove(known, out _); _idOf[srcLink] = from; _byId[from] = srcLink; }
+            }
+            else { _idOf[srcLink] = from; _byId[from] = srcLink; }
+        }
+
+        if (to == _selfId) { await WriteSelfAsync(frame, ct).ConfigureAwait(false); return; }
+
+        if (to == Broadcast)
+        {
+            foreach (var kv in _byId)
+                if (!ReferenceEquals(kv.Value, srcLink))
+                    await SafeSendAsync(kv.Value, frame, ct).ConfigureAwait(false);
+            if (!fromSelf) await WriteSelfAsync(frame, ct).ConfigureAwait(false); // server also receives broadcasts
+            return;
+        }
+
+        if (_byId.TryGetValue(to, out var dest)) await SafeSendAsync(dest, frame, ct).ConfigureAwait(false);
+        else Console.Error.WriteLine($"DROP no-route to={to}");
+    }
+
+    private static bool TryRoute(byte[] frame, out string from, out string to)
+    {
+        from = ""; to = "";
+        try
+        {
+            using var doc = JsonDocument.Parse(frame);
+            var r = doc.RootElement;
+            from = r.GetProperty("from").GetString() ?? "";
+            to = r.GetProperty("to").GetString() ?? "";
+            return true;
+        }
+        catch { return false; }
+    }
+
+    private async Task WriteSelfAsync(byte[] frame, CancellationToken ct)
+    {
+        await _stdoutLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await _stdout.WriteLineAsync(Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
+            await _stdout.FlushAsync(ct).ConfigureAwait(false);
+        }
+        finally { _stdoutLock.Release(); }
+    }
+
+    private static async Task SafeSendAsync(ILinkEndpoint link, byte[] frame, CancellationToken ct)
+    {
+        try { await link.SendBytesAsync(frame, ct).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
+        { Console.Error.WriteLine($"DROP send-failed {link.Id}: {ex.Message}"); }
     }
 }

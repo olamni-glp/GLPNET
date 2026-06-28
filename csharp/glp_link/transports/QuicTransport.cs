@@ -69,38 +69,78 @@ public sealed class QuicTransport : ILinkTransport
         RequireQuicSupported("listen");
         int port = RequirePort(local, "listen");
 
-        var listenerOptions = new QuicListenerOptions
-        {
-            ListenEndPoint = new IPEndPoint(ParseBindIp(local.Host), port),
-            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
-            {
-                DefaultStreamErrorCode = 0,
-                DefaultCloseErrorCode = 0,
-                ServerAuthenticationOptions = new SslServerAuthenticationOptions
-                {
-                    ServerCertificate = _sharedCert,
-                    ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-                    ClientCertificateRequired = true, // mutual: validate the peer's cert by pin too
-                    RemoteCertificateValidationCallback = PinValidationCallback,
-                },
-            }),
-        };
-
-        var listener = await QuicListener.ListenAsync(listenerOptions, ct).ConfigureAwait(false);
+        var listener = await QuicListener.ListenAsync(BuildListenerOptions(local, port), ct).ConfigureAwait(false);
         try
         {
-            var connection = await listener.AcceptConnectionAsync(ct).ConfigureAwait(false);
-            var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
-            var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
-            return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, LinkNonce.Int(port)), connection, stream, ws);
+            return await AcceptOneAsync(listener, local, ct).ConfigureAwait(false);
         }
         finally
         {
-            // One link per listen for the MVP (a multi-accept loop is the server's concern, US2 T025);
-            // dispose the listener so the UDP port releases.
+            // One link per listen for the seam contract (the multi-accept mesh server uses
+            // CreateListenerAsync, US2 T025); dispose the listener so the UDP port releases.
             await listener.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Bind one QUIC listener and hand back a <see cref="QuicListenerHandle"/> that accepts MANY
+    /// isolated client links from the same UDP port (US2 T025) — each its own
+    /// <see cref="QuicConnection"/> + bidi stream + WS link, so one link's fault never touches a
+    /// sibling (FR-005/FR-006/SC-004). The single-link <see cref="ListenAsync"/> is the seam form;
+    /// this is the server-role form.
+    /// </summary>
+    public async Task<QuicListenerHandle> CreateListenerAsync(LinkAddress local, LinkOptions opts, CancellationToken ct = default)
+    {
+        RequireQuicSupported("listen");
+        int port = RequirePort(local, "listen");
+        var listener = await QuicListener.ListenAsync(BuildListenerOptions(local, port), ct).ConfigureAwait(false);
+        return new QuicListenerHandle(listener, local);
+    }
+
+    private QuicListenerOptions BuildListenerOptions(LinkAddress local, int port) => new()
+    {
+        ListenEndPoint = new IPEndPoint(ParseBindIp(local.Host), port),
+        ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+        ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
+        {
+            DefaultStreamErrorCode = 0,
+            DefaultCloseErrorCode = 0,
+            ServerAuthenticationOptions = new SslServerAuthenticationOptions
+            {
+                ServerCertificate = _sharedCert,
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                ClientCertificateRequired = true, // mutual: validate the peer's cert by pin too
+                RemoteCertificateValidationCallback = PinValidationCallback,
+            },
+        }),
+    };
+
+    private static async Task<ILinkEndpoint> AcceptOneAsync(QuicListener listener, LinkAddress local, CancellationToken ct)
+    {
+        var connection = await listener.AcceptConnectionAsync(ct).ConfigureAwait(false);
+        var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
+        var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
+        var nonce = LinkNonce.Str(connection.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString());
+        return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, nonce), connection, stream, ws);
+    }
+
+    /// <summary>A bound QUIC listener that accepts many isolated client links (US2 T025).</summary>
+    public sealed class QuicListenerHandle : IAsyncDisposable
+    {
+        private readonly QuicListener _listener;
+        private readonly LinkAddress _local;
+
+        internal QuicListenerHandle(QuicListener listener, LinkAddress local)
+        {
+            _listener = listener;
+            _local = local;
+        }
+
+        /// <summary>Accept the next client: a genuine per-client QUIC handshake + WS bootstrap.</summary>
+        public Task<ILinkEndpoint> AcceptAsync(CancellationToken ct = default) =>
+            AcceptOneAsync(_listener, _local, ct);
+
+        public ValueTask DisposeAsync() => _listener.DisposeAsync();
     }
 
     public async Task<ILinkEndpoint> ConnectAsync(LinkScheme scheme, LinkAddress remote, LinkOptions opts, CancellationToken ct = default)

@@ -32,12 +32,15 @@ def test_demo_passes_run_criteria_and_does_not_overclaim(tmp_path):
     cert_mod.generate_shared_cert(tmp_path, days=2)
     report = run_demo("127.0.0.1", _free_udp_port(), tmp_path, stack="csharp", clients=3)
 
-    # The genuinely-exercised criteria pass over the real link.
+    # The genuinely-exercised criteria pass over the real multi-accept mesh.
     assert report.results["SC-001 real on-wire QUIC/HTTP-3 handshake (not loopback-sim)"] == "PASS"
     assert report.results["SC-002 full-duplex GLP-message exchange"] == "PASS"
     assert report.results["SC-005 shared self-signed cert (SPKI pin) is the only trust anchor"] == "PASS"
+    assert report.results["SC-003 ≥3 concurrent isolated clients"] == "PASS"
+    assert report.results["SC-002b peer-to-peer duplex mesh (to-routing + broadcast)"] == "PASS"
+    assert report.results["SC-004 single-client-failure resilience (siblings unaffected)"] == "PASS"
     assert report.ok
 
-    # What we cannot show same-host is NOT silently claimed.
-    assert report.results["SC-003 ≥3 concurrent isolated clients"].startswith("NOT-RUN")
+    # What we cannot show without the other stack / a 2nd host is NOT silently claimed.
     assert report.results["SC-006 cross-stack csharp ≡ gleam"].startswith("NOT-RUN")
+    assert report.results["two-host LAN acceptance (T040)"].startswith("NOT-RUN")

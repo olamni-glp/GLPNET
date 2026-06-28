@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from glp_quick.repl_link import GlpMessage
+from glp_quick.repl_link import BROADCAST, GlpMessage
 from glp_quick.stacks.base import StackAdapter
 from glp_quick.stacks.csharp import CSharpStackAdapter
 
@@ -64,39 +64,62 @@ def _free_local_port() -> int:
 
 
 def run_demo(addr: str, port: Optional[int], cert_dir: Path, stack: str = "csharp", clients: int = 3) -> DemoReport:
-    """Run the conformance demo; return a per-criterion report (no over-claiming)."""
+    """Run the conformance demo over a genuine multi-accept mesh; per-criterion report (no over-claiming)."""
     report = DemoReport()
     adapter = _adapter(stack)
     port = port or _free_local_port()
+    n = max(1, clients)
 
-    # --- SC-001 / SC-002 / SC-005: genuine 1:1 real-QUIC link, full-duplex, shared-cert pin ---
-    server = adapter.start_server(addr, port, cert_dir, max(3, clients), "csharp")
-    client = adapter.start_client(addr, port, cert_dir, "csharp")
+    server = adapter.start_server(addr, port, cert_dir, max(3, n), "csharp")
+    cs = [adapter.start_client(addr, port, cert_dir, "csharp") for _ in range(n)]
     try:
-        client.send(GlpMessage(sender="client", to="server", payload="hello(server)"))
-        a = server.recv(timeout=10)
-        server.send(GlpMessage(sender="server", to="client", payload="hello(client)"))
-        b = client.recv(timeout=10)
-
-        handshake_ok = a is not None and b is not None
+        # Each client announces (registers its endpoint_id at the server) → all N seen ⇒ N real handshakes.
+        for i, h in enumerate(cs):
+            h.send(GlpMessage(sender=f"c{i}", to="server", payload=f"hello(c{i})"))
+        seen = {server.recv(timeout=10).sender for _ in range(n)}
+        handshake_ok = len(seen) == n
         report.record("SC-001 real on-wire QUIC/HTTP-3 handshake (not loopback-sim)", "PASS" if handshake_ok else "FAIL")
-        duplex_ok = handshake_ok and a.payload == "hello(server)" and b.payload == "hello(client)"
-        report.record("SC-002 full-duplex GLP-message exchange", "PASS" if duplex_ok else "FAIL")
-        # The handshake completed only because both ends pinned the same shared cert by SPKI; a
-        # mismatched cert is rejected (covered by test_csharp_adapter.test_cert_mismatch_is_rejected).
+
+        # SC-002 full-duplex: server → c0 and back already shown by the announce; confirm the reverse leg.
+        server.send(GlpMessage(sender="server", to="c0", payload="hi(c0)"))
+        b = cs[0].recv(timeout=10)
+        report.record("SC-002 full-duplex GLP-message exchange", "PASS" if b is not None and b.payload == "hi(c0)" else "FAIL")
         report.record("SC-005 shared self-signed cert (SPKI pin) is the only trust anchor",
                       "PASS" if handshake_ok else "FAIL")
+
+        if n >= 3:
+            report.record(f"SC-003 ≥{n} concurrent isolated clients", "PASS" if handshake_ok else "FAIL")
+        else:
+            report.record("SC-003 ≥3 concurrent isolated clients", f"NOT-RUN: --clients {n} < 3")
+
+        # SC-002b peer-to-peer mesh: c0→c1 direct + c0→broadcast fan-out
+        if n >= 2:
+            cs[0].send(GlpMessage(sender="c0", to="c1", payload="direct"))
+            d = cs[1].recv(timeout=10)
+            cs[0].send(GlpMessage(sender="c0", to=BROADCAST, payload="bcast"))
+            bcast_ok = all((cs[i].recv(timeout=10) or _none()).payload == "bcast" for i in range(1, n))
+            mesh_ok = d is not None and d.payload == "direct" and bcast_ok
+            report.record("SC-002b peer-to-peer duplex mesh (to-routing + broadcast)", "PASS" if mesh_ok else "FAIL")
+
+        # SC-004 single-failure resilience: drop the last client; c0↔c1 still routes
+        if n >= 3:
+            adapter.stop(cs[-1])
+            cs[0].send(GlpMessage(sender="c0", to="c1", payload="after"))
+            r = cs[1].recv(timeout=10)
+            report.record("SC-004 single-client-failure resilience (siblings unaffected)",
+                          "PASS" if r is not None and r.payload == "after" else "FAIL")
+            cs = cs[:-1]  # already stopped
     finally:
-        adapter.stop(client)
+        for h in cs:
+            adapter.stop(h)
         adapter.stop(server)
 
-    # --- honestly NOT-RUN here ---
-    if clients > 1:
-        report.record(f"SC-003 ≥{clients} concurrent isolated clients",
-                      "NOT-RUN: needs US2 multi-accept server (one listener, N isolated links)")
-        report.record("SC-004 single-client-failure resilience (siblings unaffected)",
-                      "NOT-RUN: needs US2 multi-accept server")
-    report.record("SC-006 cross-stack csharp ≡ gleam", "NOT-RUN: gleam stack (US3) not built — toolchain absent")
+    # Cross-stack + true two-host acceptance are reported honestly (filled in by US3 / a gavri run).
+    report.record("SC-006 cross-stack csharp ≡ gleam", "NOT-RUN: run with --stack gleam (Profile A/C) to compare")
     report.record("two-host LAN acceptance (T040)",
-                  "NOT-RUN: same-host exercises the identical real-QUIC path; cross-host needs a 2nd host")
+                  "NOT-RUN: same-host (or cross-NIC) exercises the identical real-QUIC path; final run = server here + clients on gavri")
     return report
+
+
+class _none:
+    payload = None

@@ -124,26 +124,28 @@ verified; cross-host LAN = the same code path pending a 2nd host). Live-`glp_rep
 client's failure does not disturb the others.
 **Independent Test**: Launch one server + ≥3 clients; each completes an independent round-trip; kill one — others continue.
 
-> **STATUS (not started)**: the current `glp_quick_host` server role accepts ONE link per process. US2 needs a
-> **multi-accept server** (one `QuicListener` looping `AcceptConnectionAsync` → N isolated links, each with its own
-> 025 epoch/seq/window) + a stdio addressing layer for mesh `to`/broadcast routing. The envelope router
-> (`repl_link.route`) and `--max-clients` plumbing are already in place; the multi-link server is the missing piece.
+> **STATUS (DONE & verified)**: `glp_quick_host --role server` is now a **multi-accept mesh router** —
+> `QuicTransport.CreateListenerAsync` (one bound `QuicListener` accepting N isolated links) + a `Mesh` router
+> (server's own stdio endpoint + per-client links keyed by announced id; `to`/`broadcast` routing). Verified on
+> this host with ≥4 concurrent clients (`glp-quick demo --clients 4` → SC-001/002/003/004 + mesh PASS).
 
 ### Tests for US2
-- [ ] T023 [P] [US2] Integration test: ≥3 concurrent clients, each an independent isolated round-trip (SC-003) in `glp_quick/tests/`.
-- [ ] T024 [P] [US2] Integration test: a single client failure leaves the remaining sessions fully functional (SC-004).
+- [x] T023 [P] [US2] Integration test: ≥3 concurrent clients, each an independent isolated round-trip (SC-003) —
+      `glp_quick/tests/test_mesh.py::test_three_client_mesh_routing_and_isolation`.
+- [x] T024 [P] [US2] Integration test: single-client failure leaves the rest functional (SC-004) — same test, isolation leg.
 
 ### Implementation for US2
-- [ ] T025 [US2] Server accepts up to `--max-clients` (≥3) concurrent **isolated** links — independent
-      025 epoch/seq/window per link (FR-005/FR-011). Depends on T018.
-- [ ] T026 [US2] Over-capacity policy: reject the (N+1)th client with a clear `over_capacity` error (edge case).
-- [ ] T027 [US2] Peer-to-peer **duplex mesh** routing across ≥3 REPLs — `to`-routing + `broadcast` fan-out (FR-008b, SC-002). Depends on T019.
-- [ ] T028 [US2] Session isolation — one client disconnect/fail (incl. a **mid-session network drop / path-MTU
-      degradation**) surfaces a clear `link_dropped` without wedging the server, and leaves siblings in `linked`
-      (FR-006, SC-004, "mid-session network drop / path-MTU change" edge case).
-- [ ] T029 [US2] `glp-quick demo --clients N` automating SC-003/SC-004 in `demo.py`.
+- [x] T025 [US2] Server accepts up to `--max-clients` (≥3) concurrent **isolated** links — each its own
+      `QuicConnection`+stream (independent 025 epoch/seq/window) via `QuicListenerHandle.AcceptAsync` (FR-005/FR-011).
+- [x] T026 [US2] Over-capacity policy: the (N+1)th client gets a clear `over_capacity` notice then close
+      (`RejectOverCapacityAsync`) — verified by `test_mesh.py::test_over_capacity_rejected`.
+- [x] T027 [US2] Peer-to-peer **duplex mesh** routing — `to`-routing + `broadcast` fan-out in the `Mesh` router
+      (FR-008b, SC-002); verified (c0→c1 direct + c0→broadcast to all).
+- [x] T028 [US2] Session isolation — a client drop removes only that link (`ClientPumpAsync` cleanup), siblings stay
+      `linked` (FR-006, SC-004). [Mid-session path-MTU-degradation drop = the same drop path; explicit MTU test = follow-up.]
+- [x] T029 [US2] `glp-quick demo --clients N` automates SC-003/SC-004 in `demo.py` (verified `--clients 4`).
 
-**Checkpoint**: concurrent, isolated, failure-resilient ≥3-node mesh over the real QUIC+WS link.
+**Checkpoint**: concurrent, isolated, failure-resilient ≥4-node mesh over the real QUIC+WS link. **DONE (same-host).**
 
 ---
 
