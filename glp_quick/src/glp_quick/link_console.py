@@ -1,18 +1,17 @@
 """Interactive / file-driven `--server` / `--client` link console (FR-007/FR-008a).
 
 Launches the chosen stack's endpoint over a genuine QUIC+WS link and gives the operator a duplex
-console. Messages are sent from **either** stdin (interactive terminal) **or** an outbox file
-(``GLPQUICK_OUTBOX`` — append a line to send; works across turns / non-interactive shells). Received
-messages are printed (and appended to ``GLPQUICK_INBOX`` if set). The link stays alive until the
-peer/link closes or Ctrl-C — it does **not** tear down on stdin EOF, so a one-shot/piped invocation
-still receives the peer's replies.
+console. In an interactive terminal it uses **prompt_toolkit** so your input line stays pinned at the
+bottom and incoming messages render cleanly **above** it (no garbling). In a non-interactive shell
+(piped / background / file-driven) it falls back to a plain stdin reader + an outbox-file poller, so
+the same entry point drives the multi-process demo and tests.
 
-On connect the endpoint **auto-announces** (an empty-payload envelope) so the mesh registers its id
-immediately and the peer can address it before the operator types anything.
+Send: type a line (interactive) or append to ``GLPQUICK_OUTBOX``. Receive: printed (and appended to
+``GLPQUICK_INBOX`` if set). ``GLPQUICK_QUIET=1`` suppresses stdout printing (send-only; pair with a
+``Get-Content -Wait`` tail of the inbox in another window).
 
-Input line grammar:
-  ``<to> <payload>``   → send payload to endpoint `<to>` (or `broadcast`)
-  ``<payload>``        → send to the default peer (client→`server`, server→`broadcast`)
+Input grammar: plain text → the default peer (client→``server``, server→``broadcast``);
+``@<to> payload`` → a specific endpoint / ``broadcast``.
 """
 
 from __future__ import annotations
@@ -41,9 +40,10 @@ def run(
 ) -> int:
     """Run a link console in the given role until the link closes / Ctrl-C. Returns an exit code."""
     adapter = _adapter(stack, profile)
-    sid = self_id or os.environ.get("GLPQUICK_ID") or role  # "server" | "client" | custom
+    sid = self_id or os.environ.get("GLPQUICK_ID") or role
     outbox = os.environ.get("GLPQUICK_OUTBOX")
     inbox = os.environ.get("GLPQUICK_INBOX")
+    quiet = bool(os.environ.get("GLPQUICK_QUIET"))
 
     if role == "server":
         handle = adapter.start_server(addr, port, cert, max_clients, repl)  # type: ignore[arg-type]
@@ -53,12 +53,11 @@ def run(
         default_to = "server"
 
     print(f"[glp-quick] {role} '{sid}' linked on {addr}:{port} (stack={stack}). "
-          f"send: stdin or append to GLPQUICK_OUTBOX={outbox or '(unset)'}; "
-          f"type '<to> <payload>' or '<payload>' (default to={default_to}); Ctrl-C to quit.",
+          f"Type a message (or '@<to> msg'); Ctrl-C/Ctrl-D to quit. "
+          f"OUTBOX={outbox or '(unset)'} INBOX={inbox or '(unset)'}",
           file=sys.stderr, flush=True)
 
-    # Auto-announce so the peer's mesh registers this id immediately (clients announce to the server).
-    if role == "client":
+    if role == "client":  # auto-announce so the peer's mesh registers this id immediately
         handle.send(GlpMessage(sender=sid, to="server", payload="__connected__"))
 
     stop = threading.Event()
@@ -67,13 +66,35 @@ def run(
         line = line.rstrip("\r\n")
         if not line.strip():
             return
-        # Plain text goes to the default peer; "@<to> payload" addresses a specific endpoint/broadcast.
         if line.startswith("@"):
             head, _, rest = line[1:].partition(" ")
             to, payload = head, rest
         else:
             to, payload = default_to, line
         handle.send(GlpMessage(sender=sid, to=to, payload=payload))
+
+    # Decide on the interactive (prompt_toolkit) path vs the plain path.
+    interactive = False
+    try:
+        interactive = sys.stdin.isatty() and sys.stdout.isatty()
+    except Exception:
+        interactive = False
+    patch_stdout = None
+    PromptSession = None
+    if interactive:
+        try:
+            from prompt_toolkit import PromptSession as _PS
+            from prompt_toolkit.patch_stdout import patch_stdout as _patch
+            PromptSession, patch_stdout = _PS, _patch
+        except ImportError:
+            interactive = False
+
+    def emit(text: str) -> None:
+        if not quiet:
+            print(text, flush=True)  # under patch_stdout this renders above the prompt
+        if inbox:
+            with open(inbox, "a", encoding="utf-8") as f:
+                f.write(text + "\n")
 
     def printer() -> None:
         while not stop.is_set():
@@ -82,20 +103,7 @@ def run(
             except Exception:
                 return
             if msg is not None and msg.payload != "__connected__":
-                # Carriage-return + fresh line + marker so an incoming message lands on its own line
-                # instead of garbling whatever you are typing. Re-show a minimal prompt afterwards.
-                sys.stdout.write(f"\r\n<< {msg.sender}: {msg.payload}\n> ")
-                sys.stdout.flush()
-                if inbox:
-                    with open(inbox, "a", encoding="utf-8") as f:
-                        f.write(f"{msg.sender}: {msg.payload}\n")
-
-    def stdin_reader() -> None:
-        try:
-            for raw in sys.stdin:
-                _send(raw)
-        except Exception:
-            pass  # EOF / closed stdin — the link stays alive via the printer + outbox
+                emit(f"<< {msg.sender}: {msg.payload}")
 
     def outbox_poller() -> None:
         if not outbox:
@@ -104,7 +112,7 @@ def run(
         sent = 0
         while not stop.is_set():
             try:
-                lines = Path(outbox).read_text(encoding="utf-8").splitlines()
+                lines = Path(outbox).read_text(encoding="utf-8", errors="replace").splitlines()
             except OSError:
                 lines = []
             if len(lines) > sent:
@@ -114,17 +122,33 @@ def run(
             time.sleep(0.3)
 
     threading.Thread(target=printer, daemon=True).start()
-    threading.Thread(target=stdin_reader, daemon=True).start()
     threading.Thread(target=outbox_poller, daemon=True).start()
 
     try:
-        while not stop.is_set():
-            try:
-                if not adapter.health(handle).alive:
-                    break
-            except Exception:
-                pass
-            time.sleep(0.4)
+        if interactive:
+            session = PromptSession()
+            with patch_stdout():
+                while not stop.is_set():
+                    try:
+                        _send(session.prompt("> "))
+                    except (EOFError, KeyboardInterrupt):
+                        break
+        else:
+            # Plain path: a stdin reader (EOF just ends it) + a keep-alive health loop.
+            def stdin_reader() -> None:
+                try:
+                    for raw in sys.stdin:
+                        _send(raw)
+                except Exception:
+                    pass
+            threading.Thread(target=stdin_reader, daemon=True).start()
+            while not stop.is_set():
+                try:
+                    if not adapter.health(handle).alive:
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.4)
     except KeyboardInterrupt:
         pass
     finally:
