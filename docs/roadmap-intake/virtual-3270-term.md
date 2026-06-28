@@ -79,9 +79,29 @@ A toggle between modes: **green screen**, **amber screen**, **black-on-white**, 
 
 - 3270-style OIA: mode (block), current page X/N + name + owner, link info, the dynamic PF-key legend.
 
-## Prototype status (what `--tui` already does)
+## Prototype status (what `--tui` already does, 2026-06-28)
 
-Block-mode compose + **F9** transmit; green-screen transcript; local pages (**F7/F8** switch, **F6** new);
-OIA status line; incoming renders cleanly above. **To add next** (prototype): colour-theme toggle, **F1**
-help, **F10** page list, configurable command lines, startup art, arrow-key nav polish. **Deeper** (build
-via pipeline): joint live-edit/overwrite, masks/forms, REPL-in-a-page, file/URL/glob send, bindable F-keys.
+Block-mode compose; transmit via **F9 / Ctrl-X / Alt-Enter / `//`-line+Enter**; **5 colour themes**
+(F2 or `/theme`); **F1/`/help`**, **F10/`/pages`** page list with owners; local pages (**F7/F8** /
+`/next`/`/prev` switch, **F6**/`/new`); OIA status line; startup screen art; configurable command lines
+(`GLPQUICK_CMDLINES`, default 3); incoming renders cleanly above on the CHAT page.
+
+### ⚠️ HARD LEARNING — RDP eats function keys (must design around it)
+
+Over **Remote Desktop**, function keys (F1–F12) **do not reach the app** — not plain, not Shift+Fx,
+not Ctrl+Fx, not Win+Fx. So the terminal **MUST be fully operable with only typing + Enter**. The
+prototype now has an **RDP-safe command mode** (a hard requirement, not a nicety):
+- **Transmit** = a line that is just `//` then **Enter** (also F9/Ctrl-X/Alt-Enter where they survive).
+- **All actions** as slash-commands run the same way: `/help /theme [name] /pages /new [name] /next
+  /prev /goto N /focus /quit /send <text>`.
+- Function keys remain as accelerators **where the terminal passes them**, but are never the only path.
+- The live PF-key legend should also expose the equivalent command, and bindable keys must have a
+  typed-command equivalent.
+
+### Deeper features to build via the pipeline
+
+Joint live-edit / pinpoint block-overwrite (saved original; transient framed comment vs. permanent),
+masks/forms, REPL-in-a-page (spawn a virtual GLP REPL in a new named page), agent-sent pages for the
+user to complete/edit/return, file/URL/glob send, user-bindable F-keys + typed equivalents, the
+2-strip layout (server response strip + user command strip), and the colour-mode set incl. purple
+command lines.
