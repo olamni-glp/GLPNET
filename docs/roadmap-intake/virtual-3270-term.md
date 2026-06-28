@@ -40,6 +40,18 @@ A toggle between modes: **green screen**, **amber screen**, **black-on-white**, 
   command line as little **reverse-video blocks** (PF-key legend) — quick signals to the server to do
   something to/with a page *before* sending the whole page.
 
+### PF-key activation & modifiers (Gabi Q 2026-06-28)
+
+- Press **Fx directly** (no modifier) to fire a PF key — F9 = PF9.
+- **Win+Fx is NOT available** — Windows intercepts Win-combos before the terminal app sees them.
+- **Ctrl / Shift / Alt + Fx ARE bindable** (prompt_toolkit: `c-`, `escape`-prefix; Shift+F1–F12 often
+  arrive as F13–F24). 3270 convention: **PF13–PF24 = Shift+F1–F12**.
+- Terminals may reserve some keys (e.g. Windows Terminal **F11** = fullscreen) → provide **Ctrl
+  alternates** as fallbacks (prototype already maps: Ctrl-X send · Ctrl-G help · Ctrl-T theme ·
+  Ctrl-L list · Ctrl-N/P page · Ctrl-O new page · Ctrl-C quit).
+- The bindable-F-key feature should let the user **remap** the free PF keys (and Shift/Ctrl/Alt
+  variants) to page actions / quick server signals, with the live legend reflecting the current map.
+
 ## Pages
 
 - Pages are **named**; **F10** shows the list of open pages + owner.
