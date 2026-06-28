@@ -19,11 +19,13 @@ the C#/.NET stack is the reference and MUST pass the full real-QUIC demo before 
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create the `glp_quick/` Python package skeleton — `pyproject.toml` with `[project.scripts]
+- [x] T001 Create the `glp_quick/` Python package skeleton — `pyproject.toml` with `[project.scripts]
       glp-quick = "glp_quick.cli:app"` (Typer), `src/glp_quick/`, `tests/`, `.venv` — per plan.md (FR-007).
-- [ ] T002 [P] Scaffold the `/GLP-Quick` skill at `.claude/skills/glp-quick/SKILL.md` — a thin front end that
+- [x] T002 [P] Scaffold the `/GLP-Quick` skill at `.claude/skills/glp-quick/SKILL.md` — a thin front end that
       invokes the `glp-quick` CLI (FR-007).
 - [ ] T003 [P] Confirm marathon run `mrun-15d7dd0ffbc2` is resumable; record the research-strategy stage entry (FR-012/013).
+      **BLOCKED**: the marathon-harness CLI (`marathon` subcommand) is absent from the installed buildkit
+      (deploy-home venv `2026.6.13.1`); needs `/bk-marathon` or a buildkit upgrade. Not fabricated.
 
 ---
 
@@ -44,28 +46,33 @@ skeleton-before-behaviour FR-017).
       infeasibility → two Gleam deployment profiles (Decision 8) (FR-015, SC-007).
 
 ### Skeleton / mock + shared contract (marathon stage 5; FR-017)
-- [ ] T008 Define the `StackAdapter` ABC in `glp_quick/src/glp_quick/stacks/base.py` per
+- [x] T008 Define the `StackAdapter` ABC in `glp_quick/src/glp_quick/stacks/base.py` per
       `contracts/stack-adapter-contract.md` (FR-009/FR-010).
-- [ ] T009 [P] Implement shared self-signed cert generation + **SPKI SHA-256 pin** in
+- [x] T009 [P] Implement shared self-signed cert generation + **SPKI SHA-256 pin** in
       `glp_quick/src/glp_quick/cert.py` per `contracts/cli-contract.md` `cert generate` and research Decision 5:
       `cryptography` profile `subject==issuer`, `BasicConstraints(ca=False)`,
       `KeyUsage(digital_signature,key_encipherment)`, `EKU[serverAuth,clientAuth]`, EC P-256 or RSA-2048; export
       PFX (holder) + PEM (distribution); emit the SPKI-pin value (FR-003).
-- [ ] T010 [P] Define the GLP-message envelope + routing (from/to/broadcast, ground-relay) in
+- [x] T010 [P] Define the GLP-message envelope + routing (from/to/broadcast, ground-relay) in
       `glp_quick/src/glp_quick/repl_link.py` per `contracts/wire-contract.md` (FR-008/008b, FR-018).
-- [ ] T011 Wire the CLI surface (`cli.py`: `cert` / `--server` / `--client` / `demo`) as a **top-down skeleton +
-      mocks, no behaviour** (FR-017, FR-007).
-- [ ] T012 Skeleton the C# QUIC+WS transport leaf — `QuicTransport` / `QuicEndpoint` / `WebSocketOverQuic`
+- [x] T011 Wire the CLI surface (`cli.py`: `cert` / `--server` / `--client` / `demo`) as a **top-down skeleton +
+      mocks, no behaviour** (FR-017, FR-007). [`cert generate` wired to the tested utility; roles/demo are labelled skeletons.]
+- [x] T012 Skeleton the C# QUIC+WS transport leaf — `QuicTransport` / `QuicEndpoint` / `WebSocketOverQuic`
       (genuine RFC 6455 over a raw bidi `QuicStream`) / `ConnectBootstrap` (minimal CONNECT-style bootstrap; RFC
       9220 Extended-CONNECT seam, later) as `ILinkTransport`/`ILinkEndpoint` **stubs** in
       `csharp/glp_link/transports/`, reusing spec 025's seam + reliability sublayer + `FrameCodec` (FR-017, FR-018).
-- [ ] T013 **GATE (Constitution IV-a — Language Authority)**: determine whether bridging GLP REPL messages onto
+- [x] T013 **GATE (Constitution IV-a — Language Authority)**: determine whether bridging GLP REPL messages onto
       the link needs any *new* GLP primitive beyond spec 025's approved set. Default = none. **If one is needed,
       STOP and obtain owner approval before any behavioural implementation.**
-- [ ] T013a **GATE — residual verification probes (research §6; escalate-don't-guess)** before any QUIC code:
+      **PASS (none)**: QUIC+WS is a host-level `ILinkTransport` leaf (below GLP, per the seam's own contract);
+      mesh `to`/`broadcast` routing is Python control-plane; payload uses 025's approved ground-relay + link
+      primitives. No new guard/predicate/kernel/directive/type. Re-STOP if US1/US2 reveals a need.
+- [x] T013a **GATE — residual verification probes (research §6; escalate-don't-guess)** before any QUIC code:
       (1) confirm `QuicListener.IsSupported == true` on the actual demo host (one-line C# probe); (2) confirm
       msquic is present in the pinned .NET 9 runtime; (3) if Gleam Profile A is targeted later, confirm AtomVM-WASM
       `open_port` spawn works (build-time). On any probe failure, STOP and report — do not fake or work around.
+      **PASS** on Win11 26200 / .NET runtime 10.0.9: `QuicListener.IsSupported=True`, `QuicConnection.IsSupported=True`,
+      msquic present. Probe (3) deferred (Gleam Profile A is US3, not yet targeted).
 
 **Checkpoint**: corpus distilled (done), research items closed (done), skeletons + shared contract in place, IV-a gate + residual probes cleared.
 

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glp_quick"
+version = "0.1.0"
+description = "glp-quick — /GLP-Quick control-plane tool: shared-cert QUIC/HTTP-3 + WebSocket channel-link between GLP REPL endpoints (feature 036)"
+requires-python = ">=3.11"
+dependencies = [
+  "typer",
+  "cryptography",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7",
+  "pytest-mock",
+]
+
+[project.scripts]
+glp-quick = "glp_quick.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
