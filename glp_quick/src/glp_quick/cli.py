@@ -137,6 +137,7 @@ def main(
     max_clients: int = typer.Option(3, "--max-clients", help="Server: max concurrent clients (≥3).", min=1),
     repl: str = typer.Option("csharp", "--repl", help="GLP REPL to bridge: csharp | dart."),
     retry: bool = typer.Option(False, "--retry", help="Client: retry while server-not-ready."),
+    tui: bool = typer.Option(False, "--tui", help="Virtual IBM-3270-style full-screen chat UX (block-mode, pages, PF keys)."),
 ) -> None:
     """Dispatch the role flags when no subcommand (``cert`` / ``demo``) is given."""
     if ctx.invoked_subcommand is not None:
@@ -155,11 +156,16 @@ def main(
     _require_cert_dir(cert)
 
     role = "server" if server else "client"
-    from glp_quick.link_console import run as run_link
     from glp_quick.stacks.csharp import LinkError
 
     try:
-        raise typer.Exit(code=run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients))
+        if tui:
+            from glp_quick.tui import run_tui
+            code = run_tui(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients)
+        else:
+            from glp_quick.link_console import run as run_link
+            code = run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients)
+        raise typer.Exit(code=code)
     except LinkError as e:
         typer.echo(f"{role} failed: {e}", err=True)
         raise typer.Exit(code=1)
