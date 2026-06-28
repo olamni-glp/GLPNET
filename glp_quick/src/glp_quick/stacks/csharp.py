@@ -1,0 +1,207 @@
+"""C# data-plane adapter — the cross-platform reference stack (FR-009/FR-010, T018).
+
+Launches + supervises the C# QUIC+WS endpoint (``csharp/glp_quick_host``), which runs the genuine
+real-QUIC + RFC 6455 WebSocket link (spec 025 `QuicTransport` leaf, FR-018) and bridges
+newline-delimited L5 GLP-message envelopes over its stdio. This adapter speaks to it over that
+stdio seam: data envelopes on stdout, control + FR-019 failure tokens on stderr.
+"""
+
+from __future__ import annotations
+
+import os
+import queue
+import shutil
+import subprocess
+import threading
+from pathlib import Path
+from typing import Optional, Sequence
+
+from glp_quick.repl_link import GlpMessage
+from glp_quick.stacks.base import Handle, ReplKind, StackAdapter, StackName, Status
+
+# FR-019 failure tokens the host emits on stderr (`ERR <token> ...`) → these exit codes.
+_EXIT_TOKEN = {
+    2: "usage",
+    3: "cert_mismatch",
+    4: "server_not_ready",
+    5: "udp_blocked",
+    6: "alpn_version_mismatch",
+    7: "bind_failed",
+}
+
+
+class LinkError(RuntimeError):
+    """A clear, distinct link failure (FR-019) — carries the wire-contract token (e.g. ``cert_mismatch``)."""
+
+    def __init__(self, token: str, detail: str = "") -> None:
+        super().__init__(f"{token}: {detail}".strip(": "))
+        self.token = token
+        self.detail = detail
+
+
+def _repo_root() -> Path:
+    # glp_quick/src/glp_quick/stacks/csharp.py → repo root is five parents up.
+    return Path(__file__).resolve().parents[4]
+
+
+def host_dll_path() -> Path:
+    """Resolve the built ``glp_quick_host.dll`` (override with ``GLPQUICK_HOST_DLL``).
+
+    We launch the framework-dependent dll via ``dotnet`` rather than the apphost ``.exe`` so the
+    runtime is resolved by the (possibly non-default-located) ``dotnet`` host — the apphost only
+    searches default install locations and fails when .NET lives under the user profile.
+    """
+    override = os.environ.get("GLPQUICK_HOST_DLL")
+    if override:
+        return Path(override)
+    base = _repo_root() / "csharp" / "glp_quick_host" / "bin"
+    for config in ("Debug", "Release"):
+        cand = base / config / "net10.0" / "glp_quick_host.dll"
+        if cand.exists():
+            return cand
+    return base / "Debug" / "net10.0" / "glp_quick_host.dll"
+
+
+def dotnet_path() -> str:
+    """Resolve the ``dotnet`` host (override with ``GLPQUICK_DOTNET``)."""
+    override = os.environ.get("GLPQUICK_DOTNET")
+    if override:
+        return override
+    found = shutil.which("dotnet")
+    if found:
+        return found
+    exe = "dotnet.exe" if os.name == "nt" else "dotnet"
+    candidates = [
+        os.environ.get("DOTNET_ROOT", ""),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "dotnet"),
+        r"C:\Program Files\dotnet" if os.name == "nt" else "/usr/share/dotnet",
+        os.path.join(os.path.expanduser("~"), ".dotnet"),
+    ]
+    for root in candidates:
+        if root and Path(root, exe).exists():
+            return str(Path(root, exe))
+    return "dotnet"  # last resort — PATH lookup at exec time
+
+
+class CSharpHandle(Handle):
+    """Live link end backed by a supervised ``glp_quick_host`` process (the GLP-message I/O seam)."""
+
+    def __init__(self, proc: subprocess.Popen, link_label: str, peer_ids: Sequence[str]) -> None:
+        self._proc = proc
+        self._link = link_label
+        self._peers = list(peer_ids)
+        self._rx: "queue.Queue[Optional[bytes]]" = queue.Queue()
+        self._closed_reason: Optional[str] = None
+        self._reader = threading.Thread(target=self._read_stdout, daemon=True)
+        self._reader.start()
+        self._errs = threading.Thread(target=self._drain_stderr, daemon=True)
+        self._errs.start()
+
+    @property
+    def link_id(self) -> str:
+        return self._link
+
+    def send(self, message: GlpMessage) -> None:
+        assert self._proc.stdin is not None
+        self._proc.stdin.write(message.to_wire() + b"\n")
+        self._proc.stdin.flush()
+
+    def recv(self, timeout: Optional[float] = None) -> Optional[GlpMessage]:
+        try:
+            line = self._rx.get(timeout=timeout)
+        except queue.Empty:
+            return None
+        if line is None:  # graceful link close / process exit
+            return None
+        return GlpMessage.from_wire(line)
+
+    def peers(self) -> Sequence[str]:
+        return tuple(self._peers)
+
+    def _read_stdout(self) -> None:
+        assert self._proc.stdout is not None
+        for raw in self._proc.stdout:
+            line = raw.rstrip(b"\r\n")
+            if line:
+                self._rx.put(line)
+        self._rx.put(None)  # EOF → unblock recv with a graceful close
+
+    def _drain_stderr(self) -> None:
+        assert self._proc.stderr is not None
+        for raw in self._proc.stderr:
+            line = raw.rstrip(b"\r\n").decode("utf-8", "replace")
+            if line.startswith("LINK_CLOSED") or line.startswith("FAULT"):
+                self._closed_reason = line
+
+
+class CSharpStackAdapter(StackAdapter):
+    """The C# reference stack (cross-platform, genuine in-process QUIC)."""
+
+    def name(self) -> StackName:
+        return "csharp"
+
+    def profile(self) -> Optional[str]:
+        return None
+
+    def capabilities(self) -> dict:
+        return {"real_quic": True, "quic_termination": "in_process"}
+
+    def start_server(self, bind: str, port: int, cert: Path, max_clients: int, repl: ReplKind) -> Handle:
+        args = ["--role", "server", "--addr", bind, "--port", str(port),
+                "--cert", str(cert), "--max-clients", str(max_clients)]
+        return self._spawn(args, await_token="READY", peer_ids=[f"server@{bind}:{port}"])
+
+    def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind) -> Handle:
+        args = ["--role", "client", "--addr", server_addr, "--port", str(port), "--cert", str(cert)]
+        return self._spawn(args, await_token="LINK_UP", peer_ids=[f"server@{server_addr}:{port}"])
+
+    def health(self, handle: Handle) -> Status:
+        h = handle
+        assert isinstance(h, CSharpHandle)
+        alive = h._proc.poll() is None
+        if h._closed_reason:
+            return Status(state="closed", alive=alive, detail=h._closed_reason)
+        return Status(state="linked" if alive else "failed", alive=alive)
+
+    def stop(self, handle: Handle) -> None:
+        h = handle
+        assert isinstance(h, CSharpHandle)
+        try:
+            if h._proc.stdin and not h._proc.stdin.closed:
+                h._proc.stdin.close()  # EOF → host drains, closes the link, exits
+        except OSError:
+            pass
+        try:
+            h._proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            h._proc.terminate()
+
+    def _spawn(self, args: list[str], await_token: str, peer_ids: Sequence[str]) -> CSharpHandle:
+        dll = host_dll_path()
+        if not dll.exists():
+            raise LinkError(
+                "host_missing",
+                f"{dll} not built — run: dotnet build csharp/glp_quick_host/glp_quick_host.csproj",
+            )
+        proc = subprocess.Popen(
+            [dotnet_path(), str(dll), *args],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+        )
+        # Block on the readiness/error signal from stderr before handing back the handle.
+        assert proc.stderr is not None
+        link_label = await_token
+        while True:
+            raw = proc.stderr.readline()
+            if not raw:  # stderr EOF before readiness → the process failed to start the link
+                code = proc.wait()
+                raise LinkError(_EXIT_TOKEN.get(code, "link_failed"), f"host exited {code} before {await_token}")
+            line = raw.rstrip(b"\r\n").decode("utf-8", "replace")
+            if line.startswith("ERR "):
+                parts = line.split(" ", 2)
+                token = parts[1] if len(parts) > 1 else "link_failed"
+                proc.wait()
+                raise LinkError(token, parts[2] if len(parts) > 2 else "")
+            if line.startswith(await_token):
+                link_label = line.split(" ", 1)[1] if " " in line else await_token
+                break
+        return CSharpHandle(proc, link_label, peer_ids)
