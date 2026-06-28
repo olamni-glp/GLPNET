@@ -1,0 +1,20 @@
+name = "glp_quick_gleam"
+version = "0.1.0"
+target = "erlang"
+
+# Feature 036 — the Gleam data-plane stack, Decision 8.
+#
+# Profile A (this build): Gleam/BEAM channel-link logic + a **native genuine-QUIC side-process**
+# (the verified C# `glp_quick_host`) over line-delimited local IPC. QUIC is terminated by the
+# side-process and attributed honestly (`real_quic: true, quic_termination: "side_process"`) —
+# genuine QUIC on bare AtomVM/WASM is infeasible (research §F2), so termination is delegated, not faked.
+#
+# Profile C (full BEAM + `quicer`/MsQuic in-process) is the in-process variant — gated on a `quicer`
+# NIF build (msquic) on this host; see profile_c/README.md.
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+argv = ">= 1.0.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

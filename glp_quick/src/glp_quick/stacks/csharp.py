@@ -183,25 +183,40 @@ class CSharpStackAdapter(StackAdapter):
                 "host_missing",
                 f"{dll} not built — run: dotnet build csharp/glp_quick_host/glp_quick_host.csproj",
             )
-        proc = subprocess.Popen(
-            [dotnet_path(), str(dll), *args],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
-        )
-        # Block on the readiness/error signal from stderr before handing back the handle.
-        assert proc.stderr is not None
-        link_label = await_token
-        while True:
-            raw = proc.stderr.readline()
-            if not raw:  # stderr EOF before readiness → the process failed to start the link
-                code = proc.wait()
-                raise LinkError(_EXIT_TOKEN.get(code, "link_failed"), f"host exited {code} before {await_token}")
-            line = raw.rstrip(b"\r\n").decode("utf-8", "replace")
-            if line.startswith("ERR "):
-                parts = line.split(" ", 2)
-                token = parts[1] if len(parts) > 1 else "link_failed"
-                proc.wait()
-                raise LinkError(token, parts[2] if len(parts) > 2 else "")
-            if line.startswith(await_token):
-                link_label = line.split(" ", 1)[1] if " " in line else await_token
-                break
-        return CSharpHandle(proc, link_label, peer_ids)
+        return spawn_handle([dotnet_path(), str(dll), *args], await_token, peer_ids)
+
+
+def spawn_handle(
+    cmd: list[str],
+    await_token: str,
+    peer_ids: Sequence[str],
+    env: Optional[dict] = None,
+    cwd: Optional[str] = None,
+) -> CSharpHandle:
+    """Launch a host endpoint process and block on its stderr readiness/error signal.
+
+    Shared by the C# and Gleam stacks — both supervise an endpoint that speaks the identical stdio
+    seam (data envelopes on stdout; `READY`/`LINK_UP`/`ERR <token>` control on stderr), so the
+    control plane is stack-agnostic (SC-006).
+    """
+    proc = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+        env=env, cwd=cwd,
+    )
+    assert proc.stderr is not None
+    link_label = await_token
+    while True:
+        raw = proc.stderr.readline()
+        if not raw:  # stderr EOF before readiness → the process failed to start the link
+            code = proc.wait()
+            raise LinkError(_EXIT_TOKEN.get(code, "link_failed"), f"endpoint exited {code} before {await_token}")
+        line = raw.rstrip(b"\r\n").decode("utf-8", "replace")
+        if line.startswith("ERR "):
+            parts = line.split(" ", 2)
+            token = parts[1] if len(parts) > 1 else "link_failed"
+            proc.wait()
+            raise LinkError(token, parts[2] if len(parts) > 2 else "")
+        if line.startswith(await_token):
+            link_label = line.split(" ", 1)[1] if " " in line else await_token
+            break
+    return CSharpHandle(proc, link_label, peer_ids)

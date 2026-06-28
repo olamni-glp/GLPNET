@@ -106,13 +106,13 @@ def demo(
 ) -> None:
     """LAN-IP conformance demo (SC-001..SC-006) over the genuine QUIC+WS link."""
     stack_ = _validate_stack(stack)
-    _validate_profile(stack_, profile)
+    profile_ = _validate_profile(stack_, profile) or "a"
     _require_cert_dir(cert)
     from glp_quick.demo import run_demo
     from glp_quick.stacks.csharp import LinkError
 
     try:
-        report = run_demo(addr, port, cert, stack=stack_, clients=clients)
+        report = run_demo(addr, port, cert, stack=stack_, clients=clients, profile=profile_)
     except (LinkError, NotImplementedError) as e:
         typer.echo(f"demo failed: {e}", err=True)
         raise typer.Exit(code=1)

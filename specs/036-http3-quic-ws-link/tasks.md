@@ -157,28 +157,27 @@ channel-link contract** (not at QUIC termination — genuine QUIC on bare AtomVM
 **Independent Test**: Run `glp-quick demo --stack gleam --profile c` (and `--profile a`); each reaches a real
 QUIC+WS link + GLP round-trip with the same observable outcomes as `csharp`.
 
-> **BLOCKED until US1 + US2 pass the full real-QUIC LAN demo** — the C#/.NET reference must be complete first (FR-010).
->
-> **STATUS (blocked — toolchain absent)**: `gleam`, `erl`, `rebar3`, `escript` are all absent on this machine.
-> US3 needs Erlang/OTP + Gleam + (Profile C) the `quicer` NIF over MsQuic + (Profile A) AtomVM/WASM — a major
-> toolchain install — AND is hard-gated behind US1+US2 (FR-010). Honestly deferred (constitution II), not faked.
+> **STATUS (Profile A DONE & verified; Profile C scaffolded/blocked)**: Gabi corrected the earlier
+> PATH-only check — Gleam 1.17, Erlang/OTP 28, rebar3, AtomVM (source), emsdk, msys64 are all installed
+> (see memory `036-env-toolchains-hosts`). Profile A is implemented and verified; Profile C needs a `quicer`
+> NIF build (msquic) on Windows — the open risk (no MSVC; msys64/MinGW only) — scaffolded, not built.
 
-- [ ] T030 [US3] **GATE (FR-010)**: confirm the C# reference passes the full real-QUIC LAN demo (SC-001..SC-006) before starting Gleam.
-- [ ] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/` (`quic_link.gleam` channel-link contract,
-      `websocket.gleam`, profile dispatch), `profile_a/` (AtomVM logic + Node WASM host + native QUIC side-process
-      over length-prefixed local IPC) and `profile_c/` (full BEAM + `quicer`/MsQuic in-process).
-- [ ] T032 [US3] Wire **Profile C** first (full BEAM + `quicer`/MsQuic, genuine in-process QUIC) as the Gleam stack's
-      genuine-QUIC path; set `capabilities()` = `{real_quic: true, quic_termination: "in_process"}` (Decision 8).
-- [ ] T032a [US3] Wire **Profile A** (AtomVM logic + **native genuine-QUIC side-process**); attribute `real_quic`
-      truthfully to the side-process — `{real_quic: true, quic_termination: "side_process"}`; never simulate
-      in-runtime QUIC (constitution II). Run the §6 AtomVM `open_port` probe first.
-- [ ] T033 [US3] Implement the `gleam` `StackAdapter` (with `profile() -> "a"|"c"`) in
-      `glp_quick/src/glp_quick/stacks/gleam.py`, built out in stages against the identical wire/CLI contract,
-      selecting the profile by `--profile` (FR-009/FR-010).
-- [ ] T034 [P] [US3] Cross-stack conformance vector — identical observable outcomes for `csharp` vs `gleam`
-      (each profile) at the channel-link contract level (SC-006).
+- [x] T030 [US3] **GATE (FR-010)**: C# reference complete — genuine real-QUIC + WS + full mesh, SC-001..005 + mesh
+      green same-host (`glp-quick demo --clients 4` PASS). Final two-host (gavri) acceptance is T040.
+- [~] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/glp_quick_gleam.gleam` (Gleam main +
+      channel-link role) + `src/glpq_ffi.erl` (OS-port relay). [Profile-C-specific `quicer` sources = follow-up.]
+- [ ] T032 [US3] Profile C (full BEAM + `quicer`/MsQuic in-process) — **BLOCKED**: needs a `quicer` NIF build
+      (msquic) on this host; no MSVC (msys64/MinGW only). Honestly not built (constitution II), not faked.
+- [x] T032a [US3] **Profile A** — Gleam/BEAM channel-link logic + the verified C# `glp_quick_host` as the
+      **native genuine-QUIC side-process** over line-delimited IPC; `capabilities()` =
+      `{real_quic: true, quic_termination: "side_process"}` (attributed truthfully). VERIFIED.
+- [x] T033 [US3] `gleam` `StackAdapter` (`profile() -> "a"|"c"`) in `stacks/gleam.py` — drives `gleam run` over the
+      identical wire/CLI contract; `--profile c` returns a clear `profile_c_not_built` (FR-009/FR-010).
+- [x] T034 [P] [US3] Cross-stack conformance — `glp-quick demo --stack gleam --profile a` passes SC-001..005 +
+      mesh + **SC-006**; both cross-stack legs verified (`test_gleam.py`: gleam-client↔csharp-server and reverse).
 
-**Checkpoint**: both stacks interchangeable from the operator's view (or Gleam limitation reported honestly).
+**Checkpoint**: **Profile A interchangeable** with the C# stack (SC-006 PASS via Gleam/BEAM + side-process QUIC);
+Profile C (in-process `quicer`) honestly reported as build-blocked on this host.
 
 ---
 
