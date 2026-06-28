@@ -148,27 +148,21 @@ def main(
         raise typer.Exit(code=0)
 
     stack_ = _validate_stack(stack)
-    profile_ = _validate_profile(stack_, profile)
+    profile_ = _validate_profile(stack_, profile) or "a"
     repl_ = _validate_repl(repl)
     if addr is None or port is None or cert is None:
         raise typer.BadParameter("--addr, --port and --cert are required for --server/--client")
-    pin = _require_cert_dir(cert)
+    _require_cert_dir(cert)
 
     role = "server" if server else "client"
-    typer.echo(f"{_SKELETON} --{role} --stack {stack_}"
-               + (f" --profile {profile_}" if profile_ else "")
-               + f" --addr {addr} --port {port} --repl {repl_}"
-               + (f" --max-clients {max_clients}" if server else (" --retry" if retry else "")))
-    if server:
-        typer.echo(f"{_SKELETON} would: bind UDP {port}, load shared cert, launch+supervise the "
-                   f"'{stack_}' QUIC+WS runtime, accept ≤{max_clients} isolated links, bridge a "
-                   f"'{repl_}' GLP REPL to each (FR-005/FR-008b).")
-    else:
-        typer.echo(f"{_SKELETON} would: real QUIC/HTTP-3 handshake to {addr}:{port} trusting ONLY the "
-                   f"shared cert by SPKI pin, bring up the WebSocket link, bridge a '{repl_}' GLP REPL "
-                   f"(FR-001/002/008a).")
-    typer.echo(f"{_SKELETON} trust pin: {pin}")
-    typer.echo(f"{_SKELETON} no QUIC endpoint opened — data-plane '{stack_}' not yet wired (US1+).")
+    from glp_quick.link_console import run as run_link
+    from glp_quick.stacks.csharp import LinkError
+
+    try:
+        raise typer.Exit(code=run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients))
+    except LinkError as e:
+        typer.echo(f"{role} failed: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":  # pragma: no cover
