@@ -1,14 +1,16 @@
 """A virtual IBM-3270-style full-screen chat UX over the genuine QUIC+WS link (feature 036).
 
-Inspired by the IBM 3270 Information Display System: a **block-mode** terminal — you edit a whole
-screen freely and *transmit* only on an AID / PF key (not char-by-char). Prototype for the roadmap
-feature ``virtual-3270-term`` (full requirements: ``docs/roadmap-intake/virtual-3270-term.md``).
+Block-mode (edit a screen, transmit on an AID/PF key). Prototype for the roadmap feature
+``virtual-3270-term`` (full requirements: ``docs/roadmap-intake/virtual-3270-term.md``).
 
-Keys: F1 help · F2 theme · F9 (or Ctrl-X) transmit · Enter newline · arrows move · F6 new page ·
-F7/F8 prev/next page · F10 list pages · Tab focus screen/command · F3 (or Ctrl-C) quit.
+RDP-ROBUST COMMAND MODE (works when function keys are eaten by Remote Desktop): everything is doable
+with only typing + Enter. End your input with a line that is just ``//`` then Enter to TRANSMIT. Type a
+slash-command then ``//``+Enter to run it: ``/help /theme [name] /pages /new [name] /next /prev /goto N
+/focus /quit``. Function keys still work where the terminal passes them:
 
-Themes (F2 cycles): GREEN · AMBER · WHITE-on-black · PAPER (black-on-white) · COLOR.
-Falls back to the plain line console when not on a TTY (handled by the CLI).
+  F1/`/help`  help · F2/`/theme`  theme · F9 (or Ctrl-X, or Alt-Enter, or `//`+Enter)  transmit ·
+  Enter newline · arrows move · F6/`/new` new page · F7/F8 (`/prev`,`/next`) page · F10/`/pages` list ·
+  Tab focus · F3 (or `/quit`) quit. Themes (F2): GREEN · AMBER · WHITE · PAPER · COLOR.
 """
 
 from __future__ import annotations
@@ -28,8 +30,28 @@ _ART = r"""
  | |  _| |   | |_) |_____| | | | | | | |/ __| |/ /   |_ \ __) |  / / | | |
  | |_| | |___|  __/_____| |_| | |_| | | (__|   <   ___) / __/  / /| |_| |
   \____|_____|_|         \__\_\\__,_|_|\___|_|\_\ |____/_____|/_/  \___/
-        block-mode 3270 over genuine QUIC + WebSocket   ·   F1 = help
+     block-mode 3270 over genuine QUIC + WebSocket   ·   type /help then //  (Enter)
 """
+
+_HELP = (
+    "─── GLP-QUICK 3270 — HELP ───\n\n"
+    "  BLOCK MODE: compose in the command area, then TRANSMIT.\n"
+    "  TRANSMIT (any of):  a line that is just '//' then Enter  ·  F9  ·  Ctrl-X  ·  Alt-Enter\n"
+    "  Enter = newline.  Arrow keys move the cursor.\n\n"
+    "  COMMAND MODE (RDP-safe — only needs typing + Enter): type a command, then '//' + Enter:\n"
+    "    /help            this help\n"
+    "    /theme [name]    cycle, or set GREEN|AMBER|WHITE|PAPER|COLOR\n"
+    "    /pages           list open pages + owners\n"
+    "    /new [name]      new scratch page\n"
+    "    /next  /prev     switch page   ·   /goto N   go to page N\n"
+    "    /focus           toggle focus (screen <-> command)\n"
+    "    /quit            quit\n"
+    "    /send <text>     send <text> as one message\n\n"
+    "  Address a specific peer:  @<to> message   (default goes to the link peer).\n"
+    "  Function keys also work where the terminal passes them: F1 help · F2 theme · F6 new ·\n"
+    "  F7/F8 page · F9 send · F10 list · F3 quit (Ctrl alts: Ctrl-X send).\n\n"
+    "  (Use /prev or F7 to return to your pages.)\n"
+)
 
 
 def run_tui(
@@ -67,16 +89,19 @@ def run_tui(
         handle = adapter.start_client(addr, port, cert, repl)  # type: ignore[arg-type]
         handle.send(GlpMessage(sender=sid, to="server", payload="__connected__"))
 
-    # --- pages (block-mode screens). Page 0 = CHAT (the live link). owner: shared|me ---
     pages = [{"name": "CHAT", "owner": "shared",
-              "text": _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — F1 for help ***\n"}]
+              "text": _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"}]
     cur = [0]
     unread = [False]
     stop = threading.Event()
+    app_ref = [None]  # set after the app is built (for exit/style from helpers)
 
     screen = Buffer(multiline=True)
     command = Buffer(multiline=True)
     screen.set_document(Document(pages[0]["text"], len(pages[0]["text"])), bypass_readonly=True)
+
+    THEMES = None  # set below; theme_idx used by helpers
+    theme_idx = [0]
 
     def _save_current() -> None:
         pages[cur[0]]["text"] = screen.text
@@ -101,15 +126,101 @@ def run_tui(
         else:
             unread[0] = True
 
-    def transmit() -> None:
-        text = command.text.rstrip("\n")
+    # --- actions (called by both PF keys and slash-commands) ---
+    def do_help() -> None:
+        i = _ensure_page("HELP"); pages[i]["text"] = _HELP; _save_current(); _load(i)
+
+    def do_pages() -> None:
+        i = _ensure_page("PAGES")
+        pages[i]["text"] = "─── OPEN PAGES ───\n\n" + "".join(
+            f"  {n + 1:>2}. {pg['name']:<16} owner={pg['owner']}\n" for n, pg in enumerate(pages)
+        ) + "\n  (/next /prev /goto N · F7/F8 · /new)\n"
+        _save_current(); _load(i)
+
+    def do_new(name: Optional[str] = None) -> None:
+        _save_current()
+        pages.append({"name": name or f"SCRATCH{len(pages)}", "owner": "me", "text": ""})
+        _load(len(pages) - 1)
+
+    def do_nav(delta: int) -> None:
+        _save_current(); _load(cur[0] + delta)
+
+    def do_goto(n: int) -> None:
+        _save_current(); _load((n - 1) % len(pages))
+
+    def do_theme(name: Optional[str] = None) -> None:
+        if name:
+            for k, (nm, _st) in enumerate(THEMES):
+                if nm.lower() == name.lower():
+                    theme_idx[0] = k
+                    break
+        else:
+            theme_idx[0] = (theme_idx[0] + 1) % len(THEMES)
+        if app_ref[0] is not None:
+            app_ref[0].style = THEMES[theme_idx[0]][1]
+            app_ref[0].invalidate()
+
+    def do_quit() -> None:
+        if app_ref[0] is not None:
+            app_ref[0].exit()
+
+    def do_focus() -> None:
+        app = app_ref[0]
+        if app is None:
+            return
+        app.layout.focus(screen_ctrl if app.layout.current_control is command_ctrl else command_ctrl)
+
+    def run_command(line: str) -> None:
+        parts = line.strip().split()
+        cmd, args = parts[0].lower(), parts[1:]
+        if cmd in ("/help", "/h"):
+            do_help()
+        elif cmd in ("/theme", "/t"):
+            do_theme(args[0] if args else None)
+        elif cmd in ("/pages", "/p"):
+            do_pages()
+        elif cmd in ("/new",):
+            do_new(args[0] if args else None)
+        elif cmd in ("/next",):
+            do_nav(+1)
+        elif cmd in ("/prev",):
+            do_nav(-1)
+        elif cmd in ("/goto",):
+            try:
+                do_goto(int(args[0]))
+            except (IndexError, ValueError):
+                append_chat("?? /goto needs a page number")
+        elif cmd in ("/focus",):
+            do_focus()
+        elif cmd in ("/quit", "/q", "/exit"):
+            do_quit()
+        elif cmd in ("/send",):
+            _send_message(" ".join(args))
+        else:
+            append_chat(f"?? unknown command: {cmd} (try /help)")
+
+    def _send_message(text: str) -> None:
+        text = text.rstrip("\n")
         if not text.strip():
             return
         handle.send(GlpMessage(sender=sid, to=default_to, payload=text))
         append_chat(f"[{sid}] " + text.replace("\n", "\n      "))
-        command.reset()
 
-    # --- themes (F2 cycles) ---
+    def submit() -> None:
+        # strip trailing sentinel/blank lines, then run as a command or send as a message.
+        lines = command.text.split("\n")
+        while lines and lines[-1].strip() in ("", "//", "///"):
+            lines.pop()
+        text = "\n".join(lines).strip("\n")
+        command.reset()
+        if not text.strip():
+            return
+        if text.lstrip().startswith("/") and "\n" not in text.strip():
+            run_command(text.strip())
+        else:
+            _send_message(text)
+
+    # --- themes ---
     def _mk(scr_fg, scr_bg, hdr_fg, hdr_bg, oia_fg, oia_bg, cmd_fg):
         return Style.from_dict({
             "": f"bg:{scr_bg} {scr_fg}",
@@ -125,15 +236,14 @@ def run_tui(
         ("PAPER", _mk("#101010", "#c8c8c8", "#000000", "#9a9a9a", "#202020", "#b0b0b0", "#7a00aa")),
         ("COLOR", _mk("#c8d8ff", "#000018", "#ffffff", "#0000aa", "#00ddff", "#001030", "#ff66cc")),
     ]
-    theme_idx = [0]
 
     def oia_text():
         pg = pages[cur[0]]
         flag = "  ●CHAT" if unread[0] else ""
-        legend = "F1 help·F2 theme·F9 SEND·F7/8 page·F6 new·F10 list·TAB focus·F3 quit"
         return [("class:oia",
                  f" BLOCK MODE  P{cur[0] + 1}/{len(pages)}:{pg['name']}({pg['owner']})  "
-                 f"THEME:{THEMES[theme_idx[0]][0]}{flag}   {legend} ")]
+                 f"THEME:{THEMES[theme_idx[0]][0]}{flag}   "
+                 f"TRANSMIT: '//'+Enter or F9 · /help · /quit ")]
 
     def header_text():
         return [("class:header", f" GLP-QUICK 3270   {role.upper()} '{sid}'   link {addr}:{port} ({stack})   ")]
@@ -154,75 +264,52 @@ def run_tui(
 
     @kb.add("enter")
     def _(event):
-        event.current_buffer.insert_text("\n")
+        buf = event.current_buffer
+        if buf is command and buf.document.current_line.strip() in ("//", "///"):
+            submit()
+        else:
+            buf.insert_text("\n")
 
     @kb.add("f9")
     @kb.add("c-x")
+    @kb.add("escape", "enter")  # Alt-Enter / Esc-then-Enter
     def _(event):
-        transmit()
+        submit()
 
     @kb.add("f1")
-    @kb.add("c-g")
     def _(event):
-        i = _ensure_page("HELP")
-        pages[i]["text"] = (
-            "─── GLP-QUICK 3270 — HELP ───\n\n"
-            "  Block mode: edit the command area, press F9 to TRANSMIT the whole block.\n"
-            "  Enter = newline · arrows move the cursor.\n\n"
-            "  F1  this help          F2  cycle theme (GREEN/AMBER/WHITE/PAPER/COLOR)\n"
-            "  F9  transmit           Enter  newline   arrows  move cursor\n"
-            "  F6  new scratch page   F7/F8  prev/next page   F10  list pages\n"
-            "  TAB switch focus (screen <-> command)   F3  quit\n\n"
-            "  PF keys: press Fx directly (no modifier). Win+Fx is grabbed by Windows.\n"
-            "  If a terminal swallows an F-key, use the Ctrl alternates:\n"
-            "    Ctrl-X send · Ctrl-G help · Ctrl-T theme · Ctrl-L list ·\n"
-            "    Ctrl-N/Ctrl-P next/prev page · Ctrl-O new page · Ctrl-C quit\n\n"
-            "  Address a specific peer with '@<to> message'; default goes to "
-            f"'{default_to}'.\n\n  (F7/F8 to return to your pages.)\n")
-        _save_current(); _load(i)
+        do_help()
 
     @kb.add("f2")
-    @kb.add("c-t")
     def _(event):
-        theme_idx[0] = (theme_idx[0] + 1) % len(THEMES)
-        event.app.style = THEMES[theme_idx[0]][1]
-        event.app.invalidate()
+        do_theme()
 
     @kb.add("f10")
-    @kb.add("c-l")
     def _(event):
-        i = _ensure_page("PAGES")
-        listing = "─── OPEN PAGES ───\n\n" + "".join(
-            f"  {n + 1:>2}. {pg['name']:<16} owner={pg['owner']}\n" for n, pg in enumerate(pages))
-        pages[i]["text"] = listing + "\n  (F7/F8 to switch · F6 new page)\n"
-        _save_current(); _load(i)
+        do_pages()
 
     @kb.add("f8")
-    @kb.add("c-n")
     def _(event):
-        _save_current(); _load(cur[0] + 1)
+        do_nav(+1)
 
     @kb.add("f7")
-    @kb.add("c-p")
     def _(event):
-        _save_current(); _load(cur[0] - 1)
+        do_nav(-1)
 
     @kb.add("f6")
-    @kb.add("c-o")
     def _(event):
-        _save_current(); pages.append({"name": f"SCRATCH{len(pages)}", "owner": "me", "text": ""}); _load(len(pages) - 1)
+        do_new()
 
     @kb.add("tab")
     def _(event):
-        cur_ctrl = event.app.layout.current_control
-        event.app.layout.focus(screen_ctrl if cur_ctrl is command_ctrl else command_ctrl)
+        do_focus()
 
     @kb.add("f3")
-    @kb.add("c-c")
     def _(event):
-        event.app.exit()
+        do_quit()
 
     app = Application(layout=layout, key_bindings=kb, style=THEMES[0][1], full_screen=True, mouse_support=True)
+    app_ref[0] = app
 
     async def recv_loop():
         loop = asyncio.get_event_loop()
