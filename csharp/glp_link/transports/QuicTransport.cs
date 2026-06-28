@@ -105,6 +105,7 @@ public sealed class QuicTransport : ILinkTransport
         {
             DefaultStreamErrorCode = 0,
             DefaultCloseErrorCode = 0,
+            IdleTimeout = TimeSpan.FromHours(2), // a chat link is idle between messages — don't auto-close it
             ServerAuthenticationOptions = new SslServerAuthenticationOptions
             {
                 ServerCertificate = _sharedCert,
@@ -155,6 +156,7 @@ public sealed class QuicTransport : ILinkTransport
             RemoteEndPoint = endpoint,
             DefaultStreamErrorCode = 0,
             DefaultCloseErrorCode = 0,
+            IdleTimeout = TimeSpan.FromHours(2), // a chat link is idle between messages — don't auto-close it
             ClientAuthenticationOptions = new SslClientAuthenticationOptions
             {
                 ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },

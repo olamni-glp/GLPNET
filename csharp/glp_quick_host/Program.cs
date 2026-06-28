@@ -73,9 +73,11 @@ internal static class Program
         Console.Error.WriteLine($"LINK_UP {endpoint.Id}");
         endpoint.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
 
-        var send = StdinToLinkAsync(endpoint, life.Token);
-        var recv = LinkToStdoutAsync(endpoint, stdout, life);
-        await Task.WhenAny(send, recv).ConfigureAwait(false);
+        // The client lives for the LINK's lifetime, NOT stdin's: stdin EOF (a one-shot / piped /
+        // non-interactive shell) must NOT tear the link down — it only stops accepting new sends.
+        // We exit when the peer closes the link (recv returns) or the process is killed.
+        _ = StdinToLinkAsync(endpoint, life.Token);
+        await LinkToStdoutAsync(endpoint, stdout, life).ConfigureAwait(false);
         life.Cancel();
         await endpoint.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
