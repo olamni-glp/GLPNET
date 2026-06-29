@@ -92,8 +92,8 @@ verifiers fire) and the ANTLR-integration starting point (T008). Decision record
 |---|---|---|---|
 | GLP (language, upstream) | `D:\bstdev\research\glp\GLP\` | `glp/`, `glp_runtime/`, `glp_multiagent/`, `programs/`, `plays/`, `docs/`, `specs/`, `AofGLP/` | Corpus (§A), parity upstream (§B). |
 | qhstate | `D:\bstdev\research\qhstate\` | `src/`, `docs/`, `specs/`, `tests/`, `codeconv/`, `CMakeLists.txt` (C++ / LLVM-Clang) | P7 (QHSM), ANTLR `.g4` precedent (T008). |
-| qhstate-Yngenios | `D:\bstdev\research\qhstate-Yngenios\` | **stub dir, coordination notes only** | P7 — see §H caution. |
-| mstack-coop | `D:\bstdev\research\mstack-coop\` | `src/`, `specs/`, `tests/`, `tools/`, `workflows/`, `zephyr/`, `synthesis-os/` (C++/embedded) | P7 (YngeniOS microkernel context). |
+| qhstate-Yngenios | `D:\bstdev\research\qhstate-Yngenios\` | `src/`, `Csharp/`, `specs/` (incl. `034-*` full pipeline, `023-aok-os-synthesis`), `synthesis-os/`, `zephyr/`, `ports/aok/`, `vendor/rtos-kernels-cxx23/aok/`, `codeconv/`, `workflows/`, `tools/`, `tests/`, `docs/`, `examples/` — a ~3820-file QHSM tree; `.git` is a **worktree of `qhstate`**. **(CORRECTED 2026-06-29 per P7 DOSSIER.md:120 — was mislabeled "stub".)** | P7 (QHSM/YngeniOS; AOK C++23 port + spec-034 pipeline) — the real YngeniOS grounding. |
+| mstack-coop | `D:\bstdev\research\mstack-coop\` | **thin — coordination notes only**; only structured dir is `COOP/`; **no `docs/` dir** (`COOP/README.md`, `architecture-evidence-captured.md`, `task-diana-research.md`, `note-phaseb-gabi-named-components.md`). **(CORRECTED 2026-06-29 — the prior `src/…/synthesis-os/` listing here actually described qhstate-Yngenios.)** | P7 (YngeniOS microkernel context; NATO-DIANA tender notes). |
 | olamnit | `D:\bstdev\research\olamnit\` | `Olamnit/`, `Olamnit.EdgeHost/`, `docs/`, `specs/`, `COOP/` (C#/.NET edge) | P7 (RTOS / edge host). |
 
 ## H. Gaps & cautions (record-the-gap, do not fabricate — spec Edge Cases)
@@ -103,9 +103,12 @@ verifiers fire) and the ANTLR-integration starting point (T008). Decision record
   → P7 (T010) must treat the `diana` grounding as **missing**; mark any design resting on it
   **provisional** (spec: *"A sibling repo is inaccessible or ambiguous → the gap is reported; the
   affected design is marked provisional"*). If `diana` material is needed, escalate to the owner.
-- ⚠️ **`qhstate-Yngenios` is a stub** (coordination notes only). `tasks.md` T010 also cites
-  `qhstate-Yngenios/specs/034`; confirm contents before relying on it — likely thin. P7's YngeniOS
-  grounding leans on `qhstate/`, `mstack-coop/`, and `olamnit/` instead.
+- ✅ **`qhstate-Yngenios` is NOT a stub** (CORRECTED 2026-06-29 per P7 direct `ls`, DOSSIER.md:120).
+  It is a ~3820-file QHSM tree whose `.git` is a worktree of `qhstate`; `specs/034-*` carries the full
+  pipeline artifact set, and `vendor/rtos-kernels-cxx23/aok/` + `ports/aok/` hold the real AOK C++23
+  port (spec-023, `Status: Draft`). P7's YngeniOS grounding cites it firsthand. The
+  "coordination-notes-only / thin" label belongs to **`mstack-coop`** (only structured dir `COOP/`, no
+  `docs/`) — the original index transposed the two siblings.
 - The sibling `GLP` repo duplicates much of glpnet; for this program cite the **in-repo** copy and
   note the sibling as upstream where load-bearing (avoids ambiguity over which tree is canonical).
 

@@ -13,6 +13,8 @@ Corpus sources: [`../CORPUS-INDEX.md`](../CORPUS-INDEX.md). Proof invocation:
 [`../PROOF-HARNESS.md`](../PROOF-HARNESS.md). Ratified architecture (fixed input ED-1…ED-6):
 [`P5-il-machine-language/DECISIONS.md`](./P5-il-machine-language/DECISIONS.md).
 
+> **Status as of 2026-06-29 (T013 reconciliation, per completeness-critic G-12).** Phase A (T001–T003) **and ALL Phase-B pipelines are DONE and checkpointed** in the marathon (`mrun-5611c436ba95`): **P4** (PARITY-BAR + PROOFS), **P1b** (DISPOSITIONS), **ANTLR** (DOSSIER), **P6** (DOSSIER), **P7** (DOSSIER), **P2** (REGISTER, non-saturated), **P3** (REGISTER), **P8** (RECONFIGURATION + COMPLETENESS). Remaining: **T014 discharge gate** (owner approval) → **T015** owner-approved migration. The marathon durable rows are authoritative for resume; the per-row Status cells below predate this run.
+
 ## Status table
 
 | Pipeline | Task | Phase | Status | Artifact path | Verification gate |
