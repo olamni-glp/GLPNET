@@ -1,0 +1,48 @@
+{
+  "roots": [
+    "p5_il_merge"
+  ],
+  "packages": [
+    {
+      "name": "p5_il_merge",
+      "version": "0.0.1",
+      "dependencies": [
+        "antlr4",
+        "glp_runtime"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "antlr4",
+      "version": "4.13.2",
+      "dependencies": [
+        "collection",
+        "logging"
+      ]
+    },
+    {
+      "name": "glp_runtime",
+      "version": "1.0.0",
+      "dependencies": [
+        "collection",
+        "path"
+      ]
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
+    },
+    {
+      "name": "logging",
+      "version": "1.3.0",
+      "dependencies": []
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

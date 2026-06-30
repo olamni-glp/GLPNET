@@ -1,0 +1,37 @@
+I have now read the entire 44-page paper (Secs 1-10 + full Appendix A traces) and `formal.tex`. Report follows.
+
+---
+
+# G2 Report — Shapiro's semantics; is a machine language defined?
+
+**Scope note.** `D:\bstdev\research\GLP\Art-of-GLP-2025\formal.tex` contains **no semantics** — it is only LaTeX box infrastructure (the `formal` mdframed environment + theorem counters, lines 20-49). All semantic content below is from `GLP_IMPLEMENTATION.pdf` (arXiv:2602.06934v3, 44 pp.), cited by page/definition.
+
+## (1) Semantic obligations any seam/IL/ML must preserve
+
+- **Variable pair (the "two-cell" model).** Def 3.1 (p.4): writers `V` (uppercase), readers `V? = {X? | X∈V}`; "A writer `X` and its reader `X?` form a **variable pair**." glpnet's two-cell writer/reader cells are the representation of this pair; the paper's abstraction is the *pair*, and madGLP splits each spanning pair into **two local pairs** (p.13).
+- **SO + SRSW.** Def 3.3 single-occurrence (every variable at most once); Def 3.4 SRSW (a variable occurs in a clause iff its paired variable does) (p.4). These "ensure GLP eschews unification in favour of simple term matching" (p.4).
+- **Writer-MGU binds only writers.** Def 3.7 (p.4): "A writers substitution applied to a term assigns only writers, readers are left unchanged." Example 3.9 (p.5): "the readers `In2?, X?, Zs?` appear in assigned terms but are not themselves assigned—only writers are assigned by the writer mgu."
+- **Three-valued unify (Success / Suspend / Fail).** Def 3.8 term-matching table (p.5): Writer×{Writer,Reader,Term}→assignment; Reader×Reader→`suspend on X1?`; Term×Term→`fail if f1≠f2 or n1≠n2`. "The writer mgu is the union of all writer assignments if no fail was encountered **and the suspension set is empty**." Restated operationally as Def 3.21 (p.7): reduction **succeeds** / **suspends with suspension set W** (minimal) / **fails**.
+- **Committed choice (no backtracking).** Reduce (Def 3.11, p.5) fires on "the **first** clause for which the GLP reduction of A with C succeeds"; p.6: "chooses the first applicable clause instead of any clause … allows writing fair concurrent programs."
+- **Three-phase HEAD/GUARD/BODY.** The *formal core* is HEAD-match (Def 3.8) → commit → BODY spawn `G' = (G∖{A}∪B)σ̂` (Def 3.11). **Guards are present only in examples, not in the core Reduction definition**: Def 3.2 (p.4) defines a clause as `A :- B` with no guard; the guard `integer(Sum?) | Body` ("the body is executed only when the guard succeeds") appears in Program 1 (p.14-15). So a faithful ML must keep guards *between* head-commit and body — exactly glpnet's three-phase split — but the paper does not formalize the guard phase.
+- **Suspension / reactivation.** Def 3.21 suspend set `W`; Def 3.24 reactivation set `reactivate(S,σ?) = {G:(G,W)∈S ∧ ∃X?∈W. X?σ? ≠ X?}` (p.8); dGLP Reduce/Suspend/Fail (Def 3.25, p.8) is the deterministic discipline: FIFO active queue `Q`, suspended set `S` (goal+blocking readers), failed set `F`. Example 3.22 (p.7): `merge(Xs?,…)` suspends with `W={Xs?}`.
+
+## (2) Does the paper define a machine language / instruction set? **No.**
+
+The paper defines **operational semantics as transition systems** at four levels — GLP (Def 3.11), dGLP (Def 3.25), maGLP (Def 5.1), madGLP (Def 5.9 + Sec 6) — never a bytecode/ISA. There are **no opcodes, no registers, no heap layout, no compiled-clause format, no instruction selection**. The lowest-level object is dGLP/madGLP: a deterministic transition system over configurations `(Q,S,F)` (+ global writers table + message queues). dGLP is "implementation-ready deterministic operational semantics" (Abstract, p.1) — a *specification to be hand-implemented*, not a machine. The only "system predicate" defined is `global_send/3` (Def 6.5, p.17) — a GLP predicate, not an instruction.
+
+Crucially, the v2.16.3 bytecode ISA is **downstream of, and absent from, this paper**: "dGLP was used by AI (Claude) as a formal specification from which it developed a workstation-based implementation of GLP in Dart" (Abstract, p.1; methodology Sec 7, p.2-3: math→English+code spec→Dart). **Shapiro's FCP Sequential Abstract Machine is not referenced** — the reference list (pp.32-35) has no Houri & Shapiro; the nearest implementation cite is Mierowsky et al. "On the implementation of flat concurrent prolog" (ref 33), used only for *flattening* in Related Work (p.29). The paper therefore neither defines nor points to an abstract-machine language.
+
+**Implication:** M1 faithfulness is bounded at the **dGLP/madGLP transition-system** level. Any IL or ML (existing bytecode, MLIR dialect) is an *unspecified-by-the-paper refinement* that must preserve **outcome equivalence**, not step-by-step matching (Remark 3.35, p.10: lockstep "is impossible due to GLP's nondeterministic goal selection vs dGLP's FIFO scheduling; outcome-based completeness is the appropriate notion").
+
+## (3) What the message-passing model implies for the M2 linked seam
+
+maGLP (Def 5.1, p.12): variable pairs span agents; three transactions — **Reduce** (unary, local), **Communicate** (binary, transfers a writer assignment `X:=T` to the paired remote reader), **Cold-call** (binary, establishes shared vars via network streams). madGLP (Sec 5.2-6) refines this so **all transactions are unary** (Reduce/Send/Receive, Def 5.9, p.14): each spanning pair becomes two local pairs joined by a **global link** (p.13); **no variable ever migrates** — "all variables remaining in their originating agent's resolvent" (Sec 7, p.24, "Eliminating variable migration").
+
+The **wire protocol is fully specified and term-level**: globalization `T↑` (Def 6.12), localization `T↓` (Def 6.13), messages of form `_w(p,i):=T↑` / `_r(p,i):=T↑`, routed via the global writers table (Def 6.3, 6.25) and an **index-0 serializer** for cold-calls (Def 6.7). Appendix A (pp.35-44) gives three complete traces (client-monitor; friend-mediated introduction; both-ends-to-same-agent relay).
+
+**For the M2 Dart/C#/Gleam linked seam this is decisive:** the over-the-wire unit is a **globalized GLP term + global name**, *not* bytecode and *not* a shared heap. Two heterogeneous engines interoperate iff they agree on this term/message format and global-name scheme; each engine's internal representation (bytecode, heap, MLIR) is private. This supports a thin, heterogeneous, multi-target front/back split, and bounds M2 parity at **outcome equivalence of globalized-term exchange** (correctness via disjoint-substitution commutativity from SO, Lemma 3.30/3.31, p.9; monotonicity Lemma 5.4, p.12). The Sec 7 revisions flag what the protocol *must* get right: unify cold-calls with regular comms via the index-0 serializer, and store the **writer** (not reader) on Localize (p.24-25).
+
+## (4) What the paper says about compilation / an abstract machine
+
+Nothing operationalizable. The paper is explicitly the **mathematical layer** of a 3-layer AI methodology (math → informal English+code → Dart; Sec 7, p.24). It contains no compilation, codegen, or instruction selection. dGLP's contribution over GLP is purely *scheduling/bookkeeping determinism* (p.7: FIFO scheduling, explicit suspended/failed tracking, automatic reactivation) — semantics, not a machine. Any IL/ML is **out of scope of the paper** and must be justified as a refinement of dGLP/madGLP that preserves the obligations in (1).
