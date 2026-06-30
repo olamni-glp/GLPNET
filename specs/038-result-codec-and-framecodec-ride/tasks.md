@@ -15,7 +15,7 @@
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 [P] Create the Dart codec module dir + empty modules `glp_runtime/lib/codec/{result_envelope.dart,term_codec.dart,result_envelope_codec.dart}` and test dir `glp_runtime/test/codec/`.
+- [X] T001 [P] Create the Dart codec module dir + empty modules `glp_runtime/lib/codec/{result_envelope.dart,term_codec.dart,result_envelope_codec.dart}` and test dir `glp_runtime/test/codec/`.
 - [ ] T002 [P] Create the C# clobber-safe project `csharp/glp_result_codec/` (`GlpRuntime.ResultCodec`, .csproj) + `tests/` dir; do NOT modify the shipped `csharp/glp_il_codec/`.
 - [ ] T003 [P] Create the Gleam codec dir + empty modules `glp_gleam/src/glp/codec/{term_codec.gleam,result_envelope.gleam}` and test dir `glp_gleam/test/glp/codec/`.
 - [ ] T004 Create the shared golden-corpus dir `specs/038-result-codec-and-framecodec-ride/contracts/golden/` and a `corpus-manifest.md` listing the in-scope result shapes (FB-M1-17/41/42 + FB-M2-06) and the quarantined gated shapes (float, 64-bit-int edge, cyclic) — gated entries clearly labelled per research R11.
@@ -28,12 +28,12 @@
 
 - [ ] T005 [P] Define `GlobalVarId {agentId:String, localId:int64}` value type with `(agentId,localId)` identity in Dart `glp_runtime/lib/codec/result_envelope.dart`, C# `csharp/glp_result_codec/ResultEnvelope.cs`, Gleam `glp_gleam/src/glp/codec/result_envelope.gleam` (data-model §4).
 - [ ] T006 [P] Define the `ResultEnvelope` value type `{status, resolvedBindings, varToWriter, suspended, captured, error}` (immutable) in all three runtimes (same files as T005), per data-model §1.
-- [ ] T007 [US-shared] Implement the **term sub-codec** byte primitives in Dart `glp_runtime/lib/codec/term_codec.dart`: LEB128 varint (≤64 bits else loud-fail), fixed 8-byte LE int64, IEEE-754 double-bits, varint+UTF-8 string (contract §2).
+- [X] T007 [US-shared] Implement the **term sub-codec** byte primitives in Dart `glp_runtime/lib/codec/term_codec.dart`: LEB128 varint (≤64 bits else loud-fail), fixed 8-byte LE int64, IEEE-754 double-bits, varint+UTF-8 string (contract §2).
 - [ ] T008 [P] Mirror the term sub-codec primitives in C# `csharp/glp_result_codec/TermCodec.cs` (byte-conventions identical to 029 `ByteIo`; parallel impl, no code reuse from shipped 029).
 - [ ] T009 [P] Mirror the term sub-codec primitives in Gleam `glp_gleam/src/glp/codec/term_codec.gleam` (BitArray; matches the same byte layout; runs on AtomVM 0.6.6).
-- [ ] T010 Implement `Term` encode/decode (tags `0x00–0x07`, recursive `StructTerm`, `VarRef`→`0x07 GlobalVarId`) in Dart `term_codec.dart`, riding T007; unknown tag ⇒ loud-fail (contract §3).
+- [X] T010 Implement `Term` encode/decode (tags `0x00–0x07`, recursive `StructTerm`, `VarRef`→`0x07 GlobalVarId`) in Dart `term_codec.dart`, riding T007; unknown tag ⇒ loud-fail (contract §3).
 - [ ] T011 [P] Same `Term` encode/decode (tags `0x00–0x07`) in C# `TermCodec.cs` and Gleam `term_codec.gleam`.
-- [ ] T012 Implement the envelope **frame header** (`version 0x01` + `payloadType 0x11`) + the section framing skeleton (status byte, length-prefixed bindings/varToWriter/suspended, capturedLen, errorPresent) encode/decode in Dart `result_envelope_codec.dart`, with **loud-fail on trailing bytes / bad version / bad payloadType / bad status / bad errorPresent** (contract §4, §5).
+- [X] T012 Implement the envelope **frame header** (`version 0x01` + `payloadType 0x11`) + the section framing skeleton (status byte, length-prefixed bindings/varToWriter/suspended, capturedLen, errorPresent) encode/decode in Dart `result_envelope_codec.dart`, with **loud-fail on trailing bytes / bad version / bad payloadType / bad status / bad errorPresent** (contract §4, §5).
 - [ ] T013 [P] Mirror the frame header + section framing + loud-fail in C# `ResultEnvelopeCodec.cs` and Gleam `result_envelope.gleam`.
 
 **Checkpoint**: term sub-codec + envelope frame + value types exist and loud-fail in all three runtimes.
@@ -48,9 +48,9 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Round-trip test `decode(encode(R)) == R` field-by-field (incl. `captured` value) over the in-scope corpus — Dart `glp_runtime/test/codec/result_envelope_codec_test.dart` (SC-001, contract §8).
-- [ ] T015 [P] [US1] No-heap-address test: reconstruct every field with no heap handle; assert 0 live heap addresses — Dart `glp_runtime/test/codec/no_heap_address_test.dart` (SC-003, V1).
-- [ ] T016 [P] [US1] In-process-vs-bytes equality test: the value read in-process equals the value decoded from bytes (Acceptance #2) — Dart `result_envelope_codec_test.dart`.
+- [X] T014 [P] [US1] Round-trip test `decode(encode(R)) == R` field-by-field (incl. `captured` value) over the in-scope corpus — Dart `glp_runtime/test/codec/result_envelope_codec_test.dart` (SC-001, contract §8).
+- [X] T015 [P] [US1] No-heap-address test: reconstruct every field with no heap handle; assert 0 live heap addresses — Dart `glp_runtime/test/codec/no_heap_address_test.dart` (SC-003, V1).
+- [X] T016 [P] [US1] In-process-vs-bytes equality test: the value read in-process equals the value decoded from bytes (Acceptance #2) — Dart `result_envelope_codec_test.dart`.
 
 ### Implementation for User Story 1
 
