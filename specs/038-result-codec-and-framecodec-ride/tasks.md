@@ -16,8 +16,8 @@
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [X] T001 [P] Create the Dart codec module dir + empty modules `glp_runtime/lib/codec/{result_envelope.dart,term_codec.dart,result_envelope_codec.dart}` and test dir `glp_runtime/test/codec/`.
-- [ ] T002 [P] Create the C# clobber-safe project `csharp/glp_result_codec/` (`GlpRuntime.ResultCodec`, .csproj) + `tests/` dir; do NOT modify the shipped `csharp/glp_il_codec/`.
-- [ ] T003 [P] Create the Gleam codec dir + empty modules `glp_gleam/src/glp/codec/{term_codec.gleam,result_envelope.gleam}` and test dir `glp_gleam/test/glp/codec/`.
+- [X] T002 [P] Create the C# clobber-safe project `csharp/glp_result_codec/` (`GlpRuntime.ResultCodec`, .csproj) + `tests/` dir; do NOT modify the shipped `csharp/glp_il_codec/`.
+- [X] T003 [P] Create the Gleam codec dir + empty modules `glp_gleam/src/glp/codec/{term_codec.gleam,result_envelope.gleam}` and test dir `glp_gleam/test/glp/codec/`.
 - [ ] T004 Create the shared golden-corpus dir `specs/038-result-codec-and-framecodec-ride/contracts/golden/` and a `corpus-manifest.md` listing the in-scope result shapes (FB-M1-17/41/42 + FB-M2-06) and the quarantined gated shapes (float, 64-bit-int edge, cyclic) — gated entries clearly labelled per research R11.
 
 ---
@@ -26,15 +26,15 @@
 
 **⚠️ CRITICAL**: the shared byte primitives + value types every story rides. No user story can begin until this is complete.
 
-- [ ] T005 [P] Define `GlobalVarId {agentId:String, localId:int64}` value type with `(agentId,localId)` identity in Dart `glp_runtime/lib/codec/result_envelope.dart`, C# `csharp/glp_result_codec/ResultEnvelope.cs`, Gleam `glp_gleam/src/glp/codec/result_envelope.gleam` (data-model §4).
-- [ ] T006 [P] Define the `ResultEnvelope` value type `{status, resolvedBindings, varToWriter, suspended, captured, error}` (immutable) in all three runtimes (same files as T005), per data-model §1.
+- [X] T005 [P] Define `GlobalVarId {agentId:String, localId:int64}` value type with `(agentId,localId)` identity in Dart `glp_runtime/lib/codec/result_envelope.dart`, C# `csharp/glp_result_codec/ResultEnvelope.cs`, Gleam `glp_gleam/src/glp/codec/term_codec.gleam` (data-model §4). [Gleam value types landed in term_codec.gleam — non-circular module split.]
+- [X] T006 [P] Define the `ResultEnvelope` value type `{status, resolvedBindings, varToWriter, suspended, captured, error}` (immutable) in all three runtimes (same files as T005; Gleam `result_envelope.gleam`), per data-model §1. [Ordered bindings/varToWriter via insertion-ordered map (Dart) / `IReadOnlyList<KeyValuePair>` (C#) / `List(#(String,_))` (Gleam) so canonical order is part of the value — parity invariant.]
 - [X] T007 [US-shared] Implement the **term sub-codec** byte primitives in Dart `glp_runtime/lib/codec/term_codec.dart`: LEB128 varint (≤64 bits else loud-fail), fixed 8-byte LE int64, IEEE-754 double-bits, varint+UTF-8 string (contract §2).
-- [ ] T008 [P] Mirror the term sub-codec primitives in C# `csharp/glp_result_codec/TermCodec.cs` (byte-conventions identical to 029 `ByteIo`; parallel impl, no code reuse from shipped 029).
-- [ ] T009 [P] Mirror the term sub-codec primitives in Gleam `glp_gleam/src/glp/codec/term_codec.gleam` (BitArray; matches the same byte layout; runs on AtomVM 0.6.6).
+- [X] T008 [P] Mirror the term sub-codec primitives in C# `csharp/glp_result_codec/TermCodec.cs` (byte-conventions identical to 029 `ByteIo`; parallel impl, no code reuse from shipped 029).
+- [X] T009 [P] Mirror the term sub-codec primitives in Gleam `glp_gleam/src/glp/codec/term_codec.gleam` (BitArray; matches the same byte layout; runs on AtomVM 0.6.6).
 - [X] T010 Implement `Term` encode/decode (tags `0x00–0x07`, recursive `StructTerm`, `VarRef`→`0x07 GlobalVarId`) in Dart `term_codec.dart`, riding T007; unknown tag ⇒ loud-fail (contract §3).
-- [ ] T011 [P] Same `Term` encode/decode (tags `0x00–0x07`) in C# `TermCodec.cs` and Gleam `term_codec.gleam`.
+- [X] T011 [P] Same `Term` encode/decode (tags `0x00–0x07`) in C# `TermCodec.cs` and Gleam `term_codec.gleam`.
 - [X] T012 Implement the envelope **frame header** (`version 0x01` + `payloadType 0x11`) + the section framing skeleton (status byte, length-prefixed bindings/varToWriter/suspended, capturedLen, errorPresent) encode/decode in Dart `result_envelope_codec.dart`, with **loud-fail on trailing bytes / bad version / bad payloadType / bad status / bad errorPresent** (contract §4, §5).
-- [ ] T013 [P] Mirror the frame header + section framing + loud-fail in C# `ResultEnvelopeCodec.cs` and Gleam `result_envelope.gleam`.
+- [X] T013 [P] Mirror the frame header + section framing + loud-fail in C# `ResultEnvelopeCodec.cs` and Gleam `result_envelope.gleam`.
 
 **Checkpoint**: term sub-codec + envelope frame + value types exist and loud-fail in all three runtimes.
 
@@ -61,7 +61,7 @@
 - [ ] T021 [US1] C# full envelope encode/decode end-to-end — `csharp/glp_result_codec/ResultEnvelopeCodec.cs`.
 - [ ] T022 [P] [US1] Gleam deep-resolve over 034 `glp/runtime/heap.deref` (recursive, depth-32, `$truncated` marker) + envelope builder on 034 `terms`/`suspension` — `glp_gleam/src/glp/codec/result_envelope.gleam` (R10; no F5 dependency). **NOTE (U1):** since no Gleam engine exists yet (`engine.gleam` empty), the builder takes `agentId: String` as an **explicit parameter** for `GlobalVarId` construction (the Dart/C# engine supplies it from agent context; Gleam supplies it at the call site until the F-series engine lands).
 - [ ] T023 [US1] Gleam full envelope encode/decode end-to-end — `glp_gleam/src/glp/codec/result_envelope.gleam`.
-- [ ] T024 [P] [US1] Port the round-trip + no-heap-address tests to C# (`csharp/glp_result_codec/tests/`) and Gleam (`glp_gleam/test/glp/codec/result_envelope_codec_test.gleam`).
+- [X] T024 [P] [US1] Port the round-trip + no-heap-address tests to C# (`csharp/glp_result_codec/tests/`) and Gleam (`glp_gleam/test/glp/codec/result_envelope_codec_test.gleam`). [C# 84/84, Gleam 68/68 green; both verified independently.]
 - [ ] T025 [US1] Add the suspended-status acceptance case (Acceptance #3): a suspended goal emits `Status=suspended` + the blocking-reader set, no heap address leaks — tests in all three runtimes.
 
 **Checkpoint**: US1 fully functional + independently testable in all three runtimes.
