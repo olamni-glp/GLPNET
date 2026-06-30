@@ -18,7 +18,7 @@
 - [X] T001 [P] Create the Dart codec module dir + empty modules `glp_runtime/lib/codec/{result_envelope.dart,term_codec.dart,result_envelope_codec.dart}` and test dir `glp_runtime/test/codec/`.
 - [X] T002 [P] Create the C# clobber-safe project `csharp/glp_result_codec/` (`GlpRuntime.ResultCodec`, .csproj) + `tests/` dir; do NOT modify the shipped `csharp/glp_il_codec/`.
 - [X] T003 [P] Create the Gleam codec dir + empty modules `glp_gleam/src/glp/codec/{term_codec.gleam,result_envelope.gleam}` and test dir `glp_gleam/test/glp/codec/`.
-- [ ] T004 Create the shared golden-corpus dir `specs/038-result-codec-and-framecodec-ride/contracts/golden/` and a `corpus-manifest.md` listing the in-scope result shapes (FB-M1-17/41/42 + FB-M2-06) and the quarantined gated shapes (float, 64-bit-int edge, cyclic) — gated entries clearly labelled per research R11.
+- [X] T004 Create the shared golden-corpus dir `specs/038-result-codec-and-framecodec-ride/contracts/golden/` and a `corpus-manifest.md` listing the in-scope result shapes (FB-M1-17/41/42 + FB-M2-06) and the quarantined gated shapes (float, 64-bit-int edge, cyclic) — gated entries clearly labelled per research R11.
 
 ---
 
@@ -76,14 +76,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T026 [P] [US2] Golden byte-identity test in Dart: `encode(R) == golden(R)` for the non-gated corpus — `glp_runtime/test/codec/golden_corpus_test.dart` (SC-002).
+- [X] T026 [P] [US2] Golden byte-identity test in Dart: `encode(R) == golden(R)` for the non-gated corpus — `glp_runtime/test/codec/golden_corpus_test.dart` (SC-002).
 - [ ] T027 [P] [US2] Golden byte-identity tests in C# (`csharp/glp_result_codec/tests/GoldenByteIdentityTests.cs`) and Gleam (`glp_gleam/test/glp/codec/golden_corpus_test.gleam`) — each reproduces `corpus.hex`, captured masked.
 - [ ] T028 [P] [US2] Decode-other-runtime test (Acceptance #2): bytes from one runtime decode to the original envelope in another (use the golden as the shared byte source).
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Golden-corpus generator tool — Dart `glp_runtime/tool/gen_result_golden.dart` → `specs/038-.../contracts/golden/corpus.hex` from the shared result corpus (Dart = source of truth, R9).
-- [ ] T030 [US2] Generate `corpus.hex` (non-gated entries only) and commit it as the pinned contract artifact.
+- [X] T029 [US2] Golden-corpus generator tool — Dart `glp_runtime/tool/gen_result_golden.dart` → `specs/038-.../contracts/golden/corpus.hex` from the shared result corpus (Dart = source of truth, R9).
+- [X] T030 [US2] Generate `corpus.hex` (non-gated entries only) and commit it as the pinned contract artifact.
 - [ ] T031 [US2] Cross-runtime diff harness + quickstart wiring (`quickstart.md` §"golden corpus harness") — all three encoders reproduce `corpus.hex`.
 - [ ] T032 [US2] **V5 oracle cross-check (C#)**: assert the result codec's term bytes (`0x00–0x06`) are byte-identical to 029 `GlpRuntime.IlCodec` `ConstantCodec` for shared term inputs — `csharp/glp_result_codec/tests/OracleConsistencyTests.cs` (FR-007 boundary: cross-check only, NOT proof for Dart/Gleam).
 

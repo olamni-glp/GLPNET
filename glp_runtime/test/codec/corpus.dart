@@ -122,3 +122,10 @@ final Map<String, ResultEnvelope> nonGatedCorpus = {
     captured: Uint8List.fromList(utf8.encode('line one\nline two\n')),
   ),
 };
+
+/// The byte-parity subset (SC-002): non-gated entries with EMPTY `captured`, so the
+/// golden hex needs no masking (R4 excludes captured from the parity criterion). This
+/// is the corpus the cross-runtime golden (`contracts/golden/corpus.hex`) pins.
+final Map<String, ResultEnvelope> goldenCorpus = Map.fromEntries(
+  nonGatedCorpus.entries.where((e) => e.value.captured.isEmpty),
+);
