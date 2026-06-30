@@ -1,0 +1,32 @@
+# W4 — IL-as-SEAM, thin/decoupled front-ends, ANTLR→IR
+
+## 1. A stable IR/bytecode IS the decoupling seam (general principle + examples)
+
+The canonical compiler architecture is the **three-phase design** (front-end → optimizer → back-end) where a **single well-specified IR is the *only* interface between halves**. The LLVM chapter of *The Architecture of Open Source Applications* states the IR "is both well specified and the *only* interface to the optimizer," and that "a front end can be written for any language that can compile to it, and a back end... for any target that can compile from it" — turning M×N compilers into **M+N components** ([aosabook.org/en/v1/llvm.html](https://aosabook.org/en/v1/llvm.html)). This is precisely the *thin/swappable/multi-language front-end + independent back-end* property the owner wants. LLVM's componentized IR lets "core compiler components be shared between different languages and target architectures" ([compilersutra LLVM intro](https://www.compilersutra.com/docs/llvm/llvm_basic/intro-to-llvm/)).
+
+The same seam appears as **bytecode**: **JVM bytecode** and **.NET CIL** are the contract many languages compile to and one runtime executes; **WebAssembly** is explicitly "a portable compilation target for programming languages" reached by C/C++, Rust, Go, C#, Kotlin, Swift, Elm, OCaml and more — "many diverse languages target a single universal compilation target — similar to how JVM bytecode and CIL serve as intermediate layers" ([webassembly.org](https://webassembly.org/), [byby.dev/wasm-langs](https://byby.dev/wasm-langs), [InfoWorld](https://www.infoworld.com/article/2266205/14-hot-language-projects-riding-webassembly.html)).
+
+**Implication for GLP (Q2):** the existing **v2.16.3 bytecode ISA already qualifies as the seam** — a stable machine language any front-end emits and the Gleam/AtomVM engine consumes, exactly as JVM/CIL/Wasm decouple their fronts from their VMs. No *separate* IL is architecturally required *for the seam itself*.
+
+## 2. Where a logic-centric IL fits (Q3)
+
+The Wasm-via-MLIR work shows IRs are also used **inside the front-end** to lower "without losing abstraction" before emitting the portable target ([WAMI, arXiv:2506.16048](https://arxiv.org/pdf/2506.16048)). That matches the owner's hypothesis: a GLP/FCP **MLIR dialect lives *inside* the front-end** as a typed, analyzable lowering/optimization layer that *generates the bytecode better* — while the **bytecode (not the IL) crosses the seam**. IL = front-end analysis aid; bytecode = the wire/in-process contract.
+
+## 3. ANTLR4 → IR, and the BEAM gap
+
+ANTLR4 officially targets **exactly 10 languages: Java, C#, Python3, JavaScript, TypeScript, Go, C++, Swift, PHP, Dart**, with "only one tool, written in Java" generating all runtimes, released as one version-locked set ([antlr4/doc/targets.md](https://github.com/antlr/antlr4/blob/master/doc/targets.md)). **There is NO Erlang, Gleam, or BEAM target.** A custom BEAM target is feasible but substantial — it needs a `Target` subclass, a full StringTemplate `.stg` group, a complete Erlang/Gleam **runtime library**, test templates and CI, validated against the Java reference ([creating-a-language-target.md](https://github.com/antlr/antlr4/blob/master/doc/creating-a-language-target.md)).
+
+**Integration options (owner-decidable fork):**
+- **(A) ANTLR parser in a supported target (C#/Dart/Go/C++) as a separate thin front-end process**, emitting v2.16.3 bytecode over the seam to the Gleam/AtomVM engine. Cheapest; reuses glpnet's existing C#/Dart parity runtimes; heterogeneous front-end by construction; backend stays pure Gleam. Consequence: front-end and back-end are different languages (acceptable — the seam exists precisely to allow that).
+- **(B) Build a custom ANTLR Gleam/Erlang target.** Homogeneous BEAM stack; high build+maintenance cost (full runtime + version-lock churn).
+- **(C) Keep hand-written recursive descent in Gleam.** No grammar artifact; loses (4) below.
+
+## 4. Declared grammar + typed IR vs hand-written RD
+
+Honest tradeoff. **Hand-written RD** is what *most* production languages use; gives best error messages, full control, no build-step/codegen, and structure that mirrors the grammar ([Wikipedia: recursive descent](https://en.wikipedia.org/wiki/Recursive_descent_parser), [lobste.rs survey 2021](https://lobste.rs/s/10pkib/parser_generators_vs_handwritten), [thunderseethe.dev](https://thunderseethe.dev/posts/parser-base/)). **Parser generators** complicate builds, debug poorly, and fight ambiguity/context-sensitivity ([lobste.rs](https://lobste.rs/s/10pkib/parser_generators_vs_handwritten)). But a **declared `.g4` grammar** wins on the owner's stated axes: it is a **single analyzable source of truth**, machine-checkable, and **multi-target** (one grammar → C#/Dart/… parsers), feeding a **typed IR** that is independently testable — robustness and maintainability over a parser-emitting-bytecode-directly monolith.
+
+## Conclusion — recommended seam design
+
+**Make the bytecode the seam, the IL a front-end-internal tool.** Concretely: the **v2.16.3 ISA is the stable decoupling interface** (in-process *and* over-the-wire) between an arbitrary front-end and the Gleam/AtomVM engine — satisfying M1/M2 because Dart/C#/Gleam all speak the *same* ISA. **A logic-centric IL (the GLP/FCP MLIR dialect) sits inside the front-end** to lower committed-choice/three-phase HEAD-GUARD-BODY/SRSW/suspension/two-cell writer-reader constructs into that bytecode *more analyzably* — it generates the machine language, it does not replace it as the seam. For the **ANTLR-defined grammar**, the genuine fork is **(A) vs (B) vs (C) above** — the owner decides; (A) gives a thin, declared-grammar, multi-language front-end emitting bytecode to a pure-Gleam backend with the least new infrastructure, since ANTLR has **no BEAM target today**.
+
+Sources: [aosabook LLVM](https://aosabook.org/en/v1/llvm.html), [ANTLR targets](https://github.com/antlr/antlr4/blob/master/doc/targets.md), [ANTLR custom target](https://github.com/antlr/antlr4/blob/master/doc/creating-a-language-target.md), [webassembly.org](https://webassembly.org/), [WAMI MLIR→Wasm](https://arxiv.org/pdf/2506.16048), [lobste.rs parser survey](https://lobste.rs/s/10pkib/parser_generators_vs_handwritten), [compilersutra LLVM](https://www.compilersutra.com/docs/llvm/llvm_basic/intro-to-llvm/), [byby.dev wasm langs](https://byby.dev/wasm-langs).
