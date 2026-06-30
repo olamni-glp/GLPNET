@@ -89,6 +89,33 @@
 
 ## [Unreleased]
 
+## [v2026.06.30.1] - 2026-06-30
+
+### Changed
+- Merge pull request #60 from olamni-glp/039-m2-0-verify-erlang-monitor-atomvm
+- 039(implement): VERDICT=works — erlang:monitor/2+DOWN faithful on AtomVM 0.6.6 (vs OTP-25); spawn_monitor/1 absent (use spawn+monitor); D10 fork not triggered
+- 039(implement MVP): monitor_probe + OTP-25 reference (normal/boom/noproc); AtomVM 0.6.6 run blocked on host provisioning (not present in WSL)
+- 039 tasks: T001-T007, MVP=T001-T003 (toolchain, probe, run+observe normal-exit DOWN).
+- 039 plan: Erlang monitor probe built+run on AtomVM 0.6.6 via F1 WSL toolchain; 5 phases (toolchain confirm, MVP normal-exit DOWN, abnormal exit, edge+fallback, verdict).
+- 039 m2-0 specify: gating spike to verify erlang:monitor + DOWN on AtomVM 0.6.6; gate-free (D10 fork only on negative result). sidecar specify=complete; marathon mrun-117a92c4eea7.
+- Merge pull request #59 from olamni-glp/036-glp-gleam-baseline-program
+- 036: program complete — P1/P5/spike research artifacts + spec/plan/contracts; T015 two-epic roadmap reconfiguration applied & marathon mrun-5611c436ba95 discharged (also sweeps 034/035 retros + BEACON-JOIN.md per commit-all)
+- 036: restart pointer — T014 approved, T015 migration next in new session
+- 036(T013): completeness-critic pass + folded gap fixes
+- 036(T007): P8 two-epic reconfiguration synthesis
+- 036(T012): P3 opportunities register (70; saturated)
+- 036(T011): P2 concerns register (218 concerns; loop not yet saturated -> T013)
+- 036(T010): P7 QHSM/YngeniOS integration dossier
+- 036(T006): P1b corrected realignment dispositions
+- 036(T009): P6 Gleam/AtomVM implementation-strategy dossier
+- 036(T008): ANTLR-integration deep-dive dossier (FR-005 verified via spike)
+- 036(T005): P4 proof artifact register (3 proved / 2 open)
+- 036(T004): P4 faithfulness parity bar (M1+M2, primary-source-cited)
+- 036(T003): pipeline status index for the glp-gleam-baseline research machinery
+- 036(T002): proof-harness wiring for the glp-gleam-baseline research machinery
+- 036(T001): corpus index for the glp-gleam-baseline research machinery
+- Merge pull request #58 from olamni-glp/main
+
 ## [v2026.06.26.1] - 2026-06-26
 
 ### Changed
