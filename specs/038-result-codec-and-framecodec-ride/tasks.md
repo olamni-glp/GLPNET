@@ -59,7 +59,7 @@
 - [ ] T019 [US1] Wire the full envelope encode/decode (frame T012 + term T010 + builder T018) end-to-end — Dart `result_envelope_codec.dart`. **MVP checkpoint: Dart round-trip + no-heap-address green.**
 - [ ] T020 [P] [US1] C# deep-resolve + envelope builder — `csharp/glp_result_codec/ResultEnvelope.cs` (from `ExecutionResult` + `DrainResult`).
 - [ ] T021 [US1] C# full envelope encode/decode end-to-end — `csharp/glp_result_codec/ResultEnvelopeCodec.cs`.
-- [ ] T022 [P] [US1] Gleam deep-resolve over 034 `glp/runtime/heap.deref` (recursive, depth-32, `$truncated` marker) + envelope builder on 034 `terms`/`suspension` — `glp_gleam/src/glp/codec/result_envelope.gleam` (R10; no F5 dependency).
+- [ ] T022 [P] [US1] Gleam deep-resolve over 034 `glp/runtime/heap.deref` (recursive, depth-32, `$truncated` marker) + envelope builder on 034 `terms`/`suspension` — `glp_gleam/src/glp/codec/result_envelope.gleam` (R10; no F5 dependency). **NOTE (U1):** since no Gleam engine exists yet (`engine.gleam` empty), the builder takes `agentId: String` as an **explicit parameter** for `GlobalVarId` construction (the Dart/C# engine supplies it from agent context; Gleam supplies it at the call site until the F-series engine lands).
 - [ ] T023 [US1] Gleam full envelope encode/decode end-to-end — `glp_gleam/src/glp/codec/result_envelope.gleam`.
 - [ ] T024 [P] [US1] Port the round-trip + no-heap-address tests to C# (`csharp/glp_result_codec/tests/`) and Gleam (`glp_gleam/test/glp/codec/result_envelope_codec_test.gleam`).
 - [ ] T025 [US1] Add the suspended-status acceptance case (Acceptance #3): a suspended goal emits `Status=suspended` + the blocking-reader set, no heap address leaks — tests in all three runtimes.

@@ -67,6 +67,8 @@ GlobalVarId = { agentId: String, localId: int64 }
 
 Wire: `agentId` (tag `0x04` string body) + `localId` (fixed 8-byte LE). Scheme `agentId:localId` (FB-M1-14, DISPOSITIONS #15). Identity equality is `(agentId, localId)` — never the local heap address.
 
+**`agentId` source (U1):** Dart/C# obtain `agentId` from the producing engine/agent context. Gleam has no engine yet (034 only) — the Gleam envelope builder takes `agentId: String` as an **explicit parameter** at the call site until the Gleam F-series engine lands. `localId` maps from 034's local `VarRef(addr:Int)`.
+
 ## 5. Envelope Wire Frame (summary — full layout in contracts/)
 
 ```
