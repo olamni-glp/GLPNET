@@ -11,6 +11,13 @@ The combined Gleam/AtomVM GLP instance must hand a query **result** to a consume
 
 The "users" here are runtime-internal: the Gleam GLP REPL/engine that produces and consumes results, and the cross-runtime conformance harness that proves the codec is a faithful shared contract across Dart, C#, and Gleam.
 
+## Clarifications
+
+### Session 2026-06-30 (owner-ruled)
+
+- **D4 — ISA freeze + v1/v2 (IOp/IOpV2) opcode split** → **Option A**: freeze toward **v2** now; unify/version the v1/v2 opcode split and **author the Section-15 codec as part of the freeze** (unblocks the whole M1 codec spine). The result-envelope codec targets the frozen v2 ISA.
+- **ED-6 — float-decode on AtomVM 0.6.6 (unverified)** → **Option A**: authorize a small AtomVM `/float` bit-syntax decode **spike** now; it is a prerequisite for float-bearing byte-parity and pairs with the m2-0 AtomVM work. Non-float byte-parity is not gated by it.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Heap-independent result envelope across the seam (Priority: P1)
@@ -75,8 +82,8 @@ A result containing deeply-nested bound terms and unbound variable→writer refe
 - **FR-007**: The codec MUST NOT cite the shipped 029 C# `IlCodec` as proof of correctness for the Dart/Gleam path; 029 is the C# reference **oracle** only.
 - **FR-008**: Circular/cross-goal cyclic terms in a result MUST be handled consistently with the runtime's deref per owner decision **D5** (FORK-1 cycle discriminator); the codec MUST NOT define its own divergent cycle behavior.
 - **FR-009**: The codec's byte layout for the bytecode/term portion MUST be finalized only against a **frozen, versioned ISA** — see FR-010 (D4). Until then the codec is implementable against a *candidate* layout but MUST NOT be declared byte-parity-final.
-- **FR-010**: System MUST resolve the bytecode ISA freeze before byte-parity is declared final [NEEDS CLARIFICATION: **owner gate D4** — ISA freeze + v1/v2 (IOp/IOpV2) opcode-split resolution. The Section-15 term/bytecode codec the envelope rides cannot be frozen for byte-parity until the v1/v2 ISA split is unified/versioned; ISA-freeze and Section-15 authoring are mutually blocking. Decision and sequencing are the owner's.].
-- **FR-011**: System MUST ground float encoding/decoding on AtomVM before float-bearing byte-parity is declared [NEEDS CLARIFICATION: **ED-6 float-decode on AtomVM UNVERIFIED** — the `/float` bit-syntax extraction on AtomVM 0.6.6 is not grounded; a spike MUST confirm it before the byte-parity codec is committed for float-bearing results, else the byte-parity decision is invalidated].
+- **FR-010**: System MUST finalize byte-parity only against a **frozen, versioned ISA**. **RESOLVED (D4=A, owner-ruled 2026-06-30)**: freeze toward **v2** now — the v1/v2 (IOp/IOpV2) opcode split is unified/versioned and the Section-15 codec is **authored as part of the freeze**. The result-envelope codec targets the frozen v2 ISA; byte-parity may be declared once the freeze + Section-15 authoring land.
+- **FR-011**: System MUST ground float encode/decode on AtomVM before **float-bearing** byte-parity is declared. **RESOLVED (ED-6=A, owner-ruled 2026-06-30)**: a small AtomVM 0.6.6 `/float` bit-syntax decode spike is authorized and is a prerequisite for float byte-parity (pairs with the m2-0 AtomVM work). Non-float byte-parity is NOT gated by this.
 
 ### Key Entities
 

@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **2 INTENTIONAL owner gates remain** (FR-010 D4 ISA-freeze; FR-011 ED-6 float-decode). These are deferred to `/bk-clarify` for the owner's ruling; they are NOT oversights.
+- [x] No [NEEDS CLARIFICATION] markers remain — the 2 owner gates were RULED 2026-06-30: D4=A (freeze toward v2, author Section-15 in the freeze), ED-6=A (authorize AtomVM float-decode spike). See spec `## Clarifications`.
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (outcome-framed)
