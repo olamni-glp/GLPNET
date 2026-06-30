@@ -569,24 +569,23 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/036-glp-gleam-baseline-program/plan.md` — the GLP →
-Gleam/AtomVM Baseline **research / verification / reconfiguration PROGRAM**, run
-under `/bk-marathon` in two macro-phases (A: build the machinery; B: run it →
-synthesise → owner-gated migration). Goal: compress the three open epics
-(REPL/engine-separation · marathon · Gleam-AtomVM) into the SHORTEST VERIFIED
-roadmap to a combined Gleam/AtomVM GLP instance — M1 single-instance parity +
-M2 linked parity vs Dart/C# — output = two NEW epics (**Optional features** /
-**Full Gleam implementation**), GATED on owner approval (read-only on the live
-roadmap/specs/code + all sibling repos until then; FR-010/FR-011). 🔴 **Seam
-architecture is owner-ratified + spike-verified** (spec.md §Established Decisions
-ED-1…ED-6; full record `docs/research/glp-gleam-baseline/pipelines/P5-il-machine-language/DECISIONS.md`):
-`ANTLR grammar → AST → lightweight 4-primitive front-end IL (+verifiers) → frozen
-v2.16.3 bytecode → engine`, **bytecode-on-wire = the front/back seam** (identical
-in-process + over-the-wire); IL never crosses; maGLP term-link is a separate M2
-seam. Verified by `spike/p5-il-merge/` (byte-identical to stock codegen +
-execution-equivalent + verifiers fire). Machinery = pipelines P2–P8 (P5 DONE);
-Phase-B order P4 faithfulness-proofs → corrected-P1 realignment → ANTLR
-deep-dive/P2/P3/P6/P7 → P8 synthesis. Constitution Check: no violations. Read
-that plan + `research.md` / `data-model.md` / `contracts/pipeline-contract.md` /
-`quickstart.md`, and `docs/research/glp-gleam-baseline/feature-definition.md`.
+Active feature plan: `specs/038-result-codec-and-framecodec-ride/plan.md` — the
+**Result-Envelope Codec** (full-gleam M1 spine; roadmap #15, REALIGN+SPLIT of
+P1b row #15). Delivers the heap-independent **result envelope**
+`{Status, ResolvedBindings, var→writer(GlobalVarId), suspended, captured, Error}`
+(result side of the ratified ED-1 seam) + its **byte codec**, riding the
+Section-15 **term** codec (ED-6 obl#1). 🔑 Key plan decision: the envelope is
+**terms+scalars, not opcodes** → rides only the term portion (the shipped 029
+`ConstantCodec` conventions: LEB128 varints / 8-byte LE int64 / IEEE-754 doubles /
+varint+UTF-8 strings / tags `0x00–0x06`, +`0x07` unbound VarRef; payloadType
+`0x11`), so it is **buildable now on the 034 Gleam term/heap layer WITHOUT the
+unbuilt F5 bytecode runner** and without the v2-ISA opcode freeze. Byte-parity
+proven Dart(truth)/C#/Gleam via a golden corpus; loud-fail on trailing/unknown.
+Owner gates RULED 2026-06-30: **D4=A** (freeze→v2, author Section-15 in the
+freeze) + **ED-6=A** (AtomVM `/float` decode spike). GATED-not-final: float
+(ED-6), 64-bit-int edges (Gleam bignum masking), cyclic terms (D5/FORK-1 OPEN —
+defer to runtime deref, never self-decide), and the whole-Section-15 "final"
+declaration (D4 must land). 029 = C# **oracle only** (FR-007). Framing/transport
+→ link-layer #36 (FR-006). Read plan.md + research.md / data-model.md /
+contracts/result-envelope-codec.md / quickstart.md.
 <!-- BUILDKIT END -->
