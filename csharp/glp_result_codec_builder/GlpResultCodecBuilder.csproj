@@ -1,0 +1,40 @@
+<!--
+  GlpResultCodecBuilder — feature 038 (T020/T021).
+
+  The engine→envelope builder for the C# reference slice. It is a SEPARATE
+  project (owner decision A) so the shipped GlpResultCodec stays CHARTER-BOUND
+  ENGINE-FREE (its .csproj forbids any glp_runtime_net reference; FR-007 byte-
+  parity is a property of the bytes, not shared code). This project is the one
+  place that couples the codec value types to the live engine:
+
+    * ProjectReference GlpResultCodec  — the heap-independent envelope value types.
+    * ProjectReference glp_runtime_net — the live engine heap + DrainResult.
+
+  Option B (interface seam): the builder depends on IHeapView, not the concrete
+  HeapFCP, so deep-resolve is unit-testable against a fake heap without spinning
+  the engine. HeapFcpView is the only type bound to the concrete engine heap.
+
+  Mirrors glp_runtime/lib/codec/result_envelope_builder.dart (Dart source of truth).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.ResultCodec.Builder</RootNamespace>
+    <AssemblyName>glp_result_codec_builder</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../glp_result_codec/GlpResultCodec.csproj" />
+    <ProjectReference Include="../../out/csharp/glp_runtime_net.csproj" />
+  </ItemGroup>
+
+</Project>
