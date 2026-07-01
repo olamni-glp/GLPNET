@@ -195,8 +195,8 @@ Profile C (in-process `quicer`) honestly reported as build-blocked on this host.
 ## Phase N: Polish & Cross-Cutting
 
 - [ ] T037 [P] Docs: run `quickstart.md` validation; record any limitation in `docs/known-issues.md`.
-- [ ] T038 Run the GLP REPL suite `bash test/run_all_tests.sh` — confirm **no regression** (constitution VII).
-- [ ] T039 [P] `glp_quick` pytest + `csharp/glp_link.tests` xUnit suites green.
+- [X] T038 Run the GLP REPL suite `bash test/run_all_tests.sh` — confirm **no regression** (constitution VII). ✅ 2026-07-01: 524/525 pass; the lone failure is the pre-existing Section-Q AOT-exe smoke ex-01 (root self.glp path resolution), unrelated to 036 (networking-only) — no 036 regression.
+- [X] T039 [P] `glp_quick` pytest + `csharp/glp_link.tests` xUnit suites green. ✅ 2026-07-01: glp_quick 18 pytest passed (project .venv), glp_link 104 xUnit passed (0 failed).
 - [ ] T040 Run `quickstart.md` end-to-end on two LAN hosts (final acceptance).
 
 ---
