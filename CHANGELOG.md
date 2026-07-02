@@ -89,6 +89,13 @@
 
 ## [Unreleased]
 
+## [v2026.07.02.2] - 2026-07-02
+
+### Changed
+- Merge pull request #66 from olamni-glp/038-result-codec-and-framecodec-ride
+- 8 codify notes from 2026-07-02 roadmap history reconciliation (reconcile bug, post-ship stall, backfill gap, number collisions, scan-method win)
+- Merge pull request #65 from olamni-glp/main
+
 ## [v2026.07.02.1] - 2026-07-02
 
 ### Added
