@@ -89,6 +89,39 @@
 
 ## [Unreleased]
 
+## [v2026.07.02.1] - 2026-07-02
+
+### Added
+- T042 (optional) Lean decode∘encode=id proof for term sub-codec — mirrors verified 029 IlCodecRoundTrip (flat ground-term model, no mathlib/sorry); authored, machine-verification pending Lean toolchain (auto-install sandbox-blocked)
+- T039/T040 GATED corpus RUN on real AtomVM 0.7.999 via Node/WASM wrapper — real Gleam codec, float 0x03 + int64 edges byte-identical + round-trip (PASS); T043 #36 handoff note (verified FrameCodec offsets)
+- T031 cross-runtime golden byte-parity harness + quickstart wiring — Dart==C#==Gleam==corpus.hex; harness PASS on dev box
+- T032 V5 oracle cross-check — result-codec term bytes byte-identical to 029 ConstantCodec (int64/double/string/struct-header); models diverge at 0x05 wrapper by design; C# 131
+- T038 loud-fail fuzz (0 silent accepts) + T041 cyclic-term depth-bounded no-loop — all 3 runtimes; D5/FORK-1 policy left OPEN (test only)
+- US3 T033-T037 — deref+var->writer fidelity (all 3 runtimes): exact depth-32/33 boundary + $truncated marker, var->writer identity, canonical-order determinism; deref-corpus.md reference; Dart/C#-builder/Gleam green
+- US1 T025 — suspended-status acceptance (all 3 runtimes): Status=suspended + blocking-reader set + no heap-addr leak; Dart+2/C#113/Gleam79 green
+- US2 T027/T028 — C#+Gleam golden byte-identity + cross-decode against pinned corpus.hex (encode(corpus)==golden, decode(golden)==corpus, all 13 non-gated); C# 111, Gleam 77 green
+- Gleam result-envelope builder (T022/T023) — new result_envelope_builder.gleam; heap-threaded deep-resolve (depth-32 + $truncated) over 034 heap.deref, build from query writers, round-trips shipped codec; 74 gleam tests green
+- C# result-envelope builder (T020/T021) — new glp_result_codec_builder project w/ IHeapView seam (owner A+B); deep-resolve depth-32 + $truncated, build from queryVarWriters/DrainResult, round-trips shipped codec; 7/7 tests green
+
+### Fixed
+- codexreview cycle-2 — golden harness rejects zero-match C# filter (dotnet test --filter exits 0 on no matches; a renamed class would false-pass); guard on non-zero Passed count
+- codexreview cycle-1 — AtomVM gate hard-fails on gleam build error + missing beam (was unchecked, could false-pass on stale beams); output-content stays the success signal (AtomVM exits 1 benignly on success)
+
+### Changed
+- Merge pull request #63 from olamni-glp/038-result-codec-and-framecodec-ride
+- Merge remote-tracking branch 'origin/develop' into 038-result-codec-and-framecodec-ride
+- T044 doc audit + T045 end-to-end validation — Dart 83/C# 131/builder 14/Gleam 91 + golden harness PASS + AtomVM gated PASS; all 44 tasks done (+T042 optional authored)
+- 038(impl): US2 golden corpus authored from Dart + Dart byte-identity test (T004/T026/T029/T030); 69 Dart codec tests green
+- 038(impl): C# + Gleam result-codec fan-out — byte-identical to Dart source of truth (T002/3/5/6/8/9/11/13/24); C# 84/84, Gleam 68/68 green
+- 038(impl): Dart engine->envelope builder + depth-32 deep-resolve (T017/T018/T019); MVP sub-checkpoint green (55 codec tests)
+- 038(impl): Dart codec foundation — value types + term sub-codec + envelope frame codec; US1 round-trip/no-heap/in-process green (T001/T007/T010/T012/T014/T015/T016)
+- 038(analyze): cross-artifact analysis — 0 critical/high, 100% coverage; applied U1 remedy (Gleam GlobalVarId agentId = explicit builder param, no Gleam engine yet)
+- 038(tasks): 45 tasks across 6 phases by US1/US2/US3; MVP=US1 Dart envelope round-trip+no-heap; gated float/64bit/cyclic quarantined
+- 038(plan): result-envelope codec plan — rides Section-15 term codec (029 conventions), buildable on 034 w/o F5; D4=A/ED-6=A encoded; float/64-bit-edge/cyclic-term gated
+- Merge pull request #62 from olamni-glp/main
+- 038 clarify: owner-ruled D4=A (freeze toward v2, author Section-15 in the freeze) and ED-6=A (authorize AtomVM float-decode spike); NEEDS CLARIFICATION resolved. clarify=complete; plan next.
+- 038 specify: result-envelope codec spec (rides ED-6 Section-15 codec; framing/transport split to #36). 2 owner gates marked NEEDS CLARIFICATION: D4 ISA-freeze, ED-6 float-decode-on-AtomVM. Pipeline sidecar specify=complete; marathon run mrun-67d510b22e34.
+
 ## [v2026.06.30.1] - 2026-06-30
 
 ### Changed
