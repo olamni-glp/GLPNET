@@ -1,0 +1,107 @@
+# Roadmap intake — virtual-3270-term
+
+> **Status**: roadmap intake (captured 2026-06-28 from Gabi). Epic `epic-virtual-3270-term`,
+> feature `virtual-3270-term`. A working prototype exists (`glp_quick/tui.py`, `--tui`); these are the
+> full requirements to refine via `/bk-roadmap review` → `/bk-specify` → build.
+
+## Concept
+
+A virtual **IBM-3270-style block-mode** full-screen terminal UX over the 036 QUIC+WS link. It is
+*conversation-flavoured* (not a plain terminal): a **screen area** of pages above, a **command/response**
+area below. You edit your own pages and transmit them (block mode); the counterpart can send pages too.
+
+## Layout (configurable)
+
+- **Configurable number of command lines** (default ~1; option for 3, or 1 command line with a line
+  above and a line below).
+- Bottom-up: **one command line for the user (me, Gabi)** at the very bottom; **just above, a response
+  line for Claude** (command-mode conversation); the **screen/pages area** above that.
+- A reasonable layout: a scrollable **server (Claude) response strip** and a scrollable **user command
+  strip**, separated by rules — **1 line each may be enough**:
+  ```
+  ──────────────────  screen / pages (scrollable, editable) ──────────────────
+  Claude response line(s) — scrollable
+  ─────────────────────────────────────────────────────────────────────────────
+  User command line(s) — scrollable
+  ─────────────────────────────────────────────────────────────────────────────
+  ```
+
+## Colour themes (toggle)
+
+A toggle between modes: **green screen**, **amber screen**, **black-on-white**, **black-and-green**,
+**amber-on-black**, **black-and-white**, and a **full colour mode**. (Command lines maybe purple.)
+
+## Keys (block mode)
+
+- **F9 = transmit/send**; **Enter = newline**; **F1 = help** (what I can do).
+- **↑/↓** move up/down a line; **←/→** move left/right.
+- **F10 = list open pages** + who owns each (the user or the conversation partner).
+- **Flexible, user-bindable F-keys** for quick per-page interactions/signals, shown just above the
+  command line as little **reverse-video blocks** (PF-key legend) — quick signals to the server to do
+  something to/with a page *before* sending the whole page.
+
+### PF-key activation & modifiers (Gabi Q 2026-06-28)
+
+- Press **Fx directly** (no modifier) to fire a PF key — F9 = PF9.
+- **Win+Fx is NOT available** — Windows intercepts Win-combos before the terminal app sees them.
+- **Ctrl / Shift / Alt + Fx ARE bindable** (prompt_toolkit: `c-`, `escape`-prefix; Shift+F1–F12 often
+  arrive as F13–F24). 3270 convention: **PF13–PF24 = Shift+F1–F12**.
+- Terminals may reserve some keys (e.g. Windows Terminal **F11** = fullscreen) → provide **Ctrl
+  alternates** as fallbacks (prototype already maps: Ctrl-X send · Ctrl-G help · Ctrl-T theme ·
+  Ctrl-L list · Ctrl-N/P page · Ctrl-O new page · Ctrl-C quit).
+- The bindable-F-key feature should let the user **remap** the free PF keys (and Shift/Ctrl/Alt
+  variants) to page actions / quick server signals, with the live legend reflecting the current map.
+
+## Pages
+
+- Pages are **named**; **F10** shows the list of open pages + owner.
+- Normally **each side writes its own pages and sends them**; the counterpart receives them.
+- **Joint mode** (toggle): the counterpart can send **live pinpoint changes** to a page — a block of
+  chars that **overwrites** a region. With the **original content saved**, this can be a transient
+  comment/highlight (a framed/bordered block) OR a **true permanent overwrite** if that's the intent.
+- **Masks / forms**: a side can set up **masks**; the other enters values into the mask (form screens).
+- A page can be a **live virtual GLP REPL** (so it can respond) — a **command to spawn a new REPL in a
+  new named page** in the same terminal. But pages can also just be **sent** (no REPL needed); an agent
+  server can send pages for the user to **complete/edit and send back** (no REPL there).
+
+## File / URL / glob send
+
+- A command to point to a **file**, a **URL**, a **directory**, or a **glob** and **send** via an F-key:
+  - send a **single file**,
+  - send an **entire directory**,
+  - send everything matching a **glob** (incl. a "globbed URL").
+
+## Startup
+
+- A nice **screen-art splash** when the terminal starts.
+
+## Status line (OIA)
+
+- 3270-style OIA: mode (block), current page X/N + name + owner, link info, the dynamic PF-key legend.
+
+## Prototype status (what `--tui` already does, 2026-06-28)
+
+Block-mode compose; transmit via **F9 / Ctrl-X / Alt-Enter / `//`-line+Enter**; **5 colour themes**
+(F2 or `/theme`); **F1/`/help`**, **F10/`/pages`** page list with owners; local pages (**F7/F8** /
+`/next`/`/prev` switch, **F6**/`/new`); OIA status line; startup screen art; configurable command lines
+(`GLPQUICK_CMDLINES`, default 3); incoming renders cleanly above on the CHAT page.
+
+### ⚠️ HARD LEARNING — RDP eats function keys (must design around it)
+
+Over **Remote Desktop**, function keys (F1–F12) **do not reach the app** — not plain, not Shift+Fx,
+not Ctrl+Fx, not Win+Fx. So the terminal **MUST be fully operable with only typing + Enter**. The
+prototype now has an **RDP-safe command mode** (a hard requirement, not a nicety):
+- **Transmit** = a line that is just `//` then **Enter** (also F9/Ctrl-X/Alt-Enter where they survive).
+- **All actions** as slash-commands run the same way: `/help /theme [name] /pages /new [name] /next
+  /prev /goto N /focus /quit /send <text>`.
+- Function keys remain as accelerators **where the terminal passes them**, but are never the only path.
+- The live PF-key legend should also expose the equivalent command, and bindable keys must have a
+  typed-command equivalent.
+
+### Deeper features to build via the pipeline
+
+Joint live-edit / pinpoint block-overwrite (saved original; transient framed comment vs. permanent),
+masks/forms, REPL-in-a-page (spawn a virtual GLP REPL in a new named page), agent-sent pages for the
+user to complete/edit/return, file/URL/glob send, user-bindable F-keys + typed equivalents, the
+2-strip layout (server response strip + user command strip), and the colour-mode set incl. purple
+command lines.

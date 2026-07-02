@@ -293,3 +293,34 @@ but deferred (`supported=False` with a reason, or degrade to a clear backend err
 The mandated C# REPL was repaired (7 Dart→C# conversion regressions) before this feature —
 final sweep 33/38 MATCH, 0 runtime bugs, 0 regressions. Full record + codegen/convspec
 follow-up: `docs/research/csharp-repl-convergence-fixes.md`.
+
+---
+
+## Issue 11: HTTP/3-QUIC-WS link (036) — three acceptance items deferred to a follow-up feature
+
+**Status**: By design. Carved out (2026-07-02) into roadmap feature
+`http3-quic-ws-link-full-acceptance` (epic `distributed-glp-connectivity`, promoted); brief at
+`specs/036-http3-quic-ws-link/followup-full-acceptance-brief.md`. 036 tasks T003/T032/T036/T040
+are marked `[>]` deferred (not done, not faked).
+**Discovered**: 2026-06-27..07-02 while completing 036 on the primary dev host (Olamnit).
+**Affects**: Only the final environment-dependent acceptance items — the core link is fully verified.
+
+### What IS verified (single host, T037 quickstart validation 2026-07-02)
+`glp-quick demo` passes every runnable criterion on this host, both stacks:
+- **C# stack**: SC-001 (real on-wire QUIC/HTTP-3 handshake), SC-002 (full-duplex), SC-002b
+  (peer-to-peer duplex mesh, to-routing + broadcast), SC-003 (≥4 isolated clients), SC-004
+  (single-failure resilience), SC-005 (SPKI-pin-only trust) — all **PASS**.
+- **Gleam Profile A** (`--stack gleam --profile a`): the same SC-001..SC-005 **plus SC-006**
+  (cross-stack `csharp ≡ gleam`) — all **PASS**. Backed by `glp_quick` 18 pytest + `glp_link`
+  104 xUnit green; REPL suite 524/525 (lone fail is a pre-existing, unrelated AOT-exe smoke case).
+
+### The three deferred items (environment-blocked, not code-blocked)
+- **Profile C — in-process QUIC on full BEAM** (`quicer`/MsQuic NIF): needs a `quicer` build with
+  **MSVC + msquic**; this host has msys64/MinGW only. `--profile c` returns a clear
+  `profile_c_not_built` (never a silent failure). See `gleam_quic/profile_c/README.md`.
+- **True two-host LAN acceptance** (T040): needs the **gavri** host as the second endpoint. Same-host
+  and cross-NIC runs exercise the identical real-QUIC path; the on-wire cross-host run is the only
+  thing pending.
+- **Marathon durability verify** (T003/T036): the planning-time run `mrun-15d7dd0ffbc2` was named but
+  **never persisted** in any marathon store — there is nothing to resume. Per-stage commits served as
+  the durable checkpoints for 036; a real persisted run is needed to verify SC-008.

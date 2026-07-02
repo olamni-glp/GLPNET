@@ -13,30 +13,32 @@
 3. **Where in the feature (WIP position)?** → the marathon durable rows (objective) +
    the feature's `tasks.md`.
 
-## Active now (2026-06-30)
+## Active now — two parallel threads (merged 2026-07-02, 036↔develop integration)
 
-- **PROGRAM `036-glp-gleam-baseline-program`** (branch `036-glp-gleam-baseline-program`, pushed to
-  origin) — the GLP→Gleam/AtomVM research/verification/reconfiguration program, run under
-  `/bk-marathon` (run **`mrun-5611c436ba95`**). **All work tasks T001–T013 are COMPLETE +
-  checkpointed; the T014 discharge gate is APPROVED by Gabi 2026-06-30** (recorded: marathon
-  trace #38 `accept` + discharge item `mdi-019f064b…` satisfied). **The ONLY remaining task is
-  T015 — the single roadmap mutation — to run in this NEW session.**
+### Thread A — `036-http3-quic-ws-link` (this branch; pinned in `.specify/feature.json`)
+
+- HTTP/3 (QUIC) + WebSocket channel-link prototype for GLP. Core **US0–US3 Profile A** verified green
+  (18 `glp_quick` pytest + 104 `glp_link` xUnit; REPL 524/525, the lone failure a pre-existing,
+  unrelated AOT-exe smoke case).
+- Three environment-blocked acceptance items — **T032** Profile C (`quicer`/MsQuic in-process, needs
+  MSVC), **T040** two-host LAN e2e (needs the `gavri` host), **T003/T036** marathon durability of the
+  never-persisted `mrun-15d7dd0ffbc2` — were **carved out (2026-07-02) into roadmap feature
+  `http3-quic-ws-link-full-acceptance`** (epic `distributed-glp-connectivity`, promoted). Those 036
+  tasks are marked `[>]` deferred; brief at `specs/036-http3-quic-ws-link/followup-full-acceptance-brief.md`.
+- Remaining native 036 task: **T037** (single-host quickstart docs). Downstream: `/bk-codexreview` → ship.
+
+### Thread B — PROGRAM `036-glp-gleam-baseline-program` (from develop; run `mrun-5611c436ba95`)
+
+- GLP→Gleam/AtomVM research/verification/reconfiguration program under `/bk-marathon`. Work tasks
+  **T001–T013 COMPLETE + checkpointed; T014 discharge gate APPROVED (Gabi 2026-06-30)**. **Remaining:
+  T015** — the single roadmap migration (create epics **Optional features** + **Full Gleam
+  implementation**; add the 24 features per the ADVISORY MIGRATION MAPPING in
+  `docs/research/glp-gleam-baseline/pipelines/P8-synthesis/RECONFIGURATION.md`; then `marathon discharge`).
+  The 16 owner-decisions **D1–D16** are feature-level — resolve **after** the migration.
 - **Resume objectively:** `PYTHONUTF8=1 python -m buildkit_cli.marathon resume --run mrun-5611c436ba95`
-  (or `… status` / `position`) → derives **done 13/14, discharge 1/1, next = T015** step
-  `mstep-019f15dc-8687-7755-8408-e8a3ab28f794` (left UNSTARTED on purpose). Position comes from the
-  durable rows, never this file.
-- **T015 = migrate via `buildkit-roadmap`:** create epics **Optional features** + **Full Gleam
-  implementation**; add the 24 features (15 full-gleam scored + topo-ordered incl. the PROPOSED-NEW
-  M2-0 + 7 optional) per the **ADVISORY MIGRATION MAPPING** in
-  `docs/research/glp-gleam-baseline/pipelines/P8-synthesis/RECONFIGURATION.md`; then
-  `marathon discharge` to close the run. The 16 owner-decisions **D1–D16** (incl. language-authority
-  gates **D6** `ground/1` SRSW relaxation + **D7** new self-prove predicate, and **D12** M2-seam
-  trust boundary) are feature-level — resolve **after** the migration, not before.
-- **Deliverables (all committed + pushed under `docs/research/glp-gleam-baseline/`):** `CORPUS-INDEX`,
-  `PROOF-HARNESS`, `pipelines/INDEX`; `pipelines/P4-faithfulness/` (PARITY-BAR = 66 cited criteria +
-  PROOFS = 3 proved/3 open), `P1b-realignment/DISPOSITIONS` (24 features), `ANTLR-integration/`,
-  `P6-gleam-impl/`, `P7-qhsm-yngenios/`, `P2-concerns/` (218, non-saturated), `P3-opportunities/`
-  (70, saturated), `P8-synthesis/` (RECONFIGURATION + COMPLETENESS).
+  (→ done 13/14, discharge 1/1, next = T015). Position comes from the durable rows, never this file.
+- Deliverables committed under `docs/research/glp-gleam-baseline/` (CORPUS-INDEX, PROOF-HARNESS,
+  pipelines P1b/P2/P3/P4/P6/P7/P8, ANTLR-integration).
 
 ## History (do not resume these — they are done/parked)
 
