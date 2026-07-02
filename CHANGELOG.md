@@ -89,6 +89,43 @@
 
 ## [Unreleased]
 
+## [v2026.07.02.3] - 2026-07-02
+
+### Added
+- RDP-robust command mode in 3270 TUI — transmit via '//'+Enter or Alt-Enter (no F-keys needed); slash-commands /help /theme /pages /new /next /prev /goto /focus /quit /send; F-keys still work where passed through
+- 3270 TUI enhancements — 5 colour themes (F2/Ctrl-T), F1 help page, F10 page list w/ owners, startup screen art, configurable command lines (GLPQUICK_CMDLINES), Ctrl-key alternates for swallowed F-keys; record PF-key activation reqs
+- prototype virtual IBM-3270 full-screen chat TUI (--tui) — block-mode compose (F9 transmit), green-screen transcript, pages (PF7/8/6), OIA status line; web-researched 3270 model
+- prompt_toolkit REPL for interactive chat (input pinned at bottom, incoming renders cleanly above via patch_stdout); plain stdin/outbox path retained for background/file-driven use; GLPQUICK_QUIET send-only mode
+- interactive --server/--client link console (real cross-process QUIC, both directions) + quickstart runbook (machine-name + gavri two-host steps); 18 pytest green
+- US3 Gleam Profile A — Gleam/BEAM channel-link + C# genuine-QUIC side-process (real_quic side_process); gleam StackAdapter; demo --stack gleam SC-001..006 PASS; 18 pytest green (T030-T034). Profile C honestly build-blocked (no MSVC)
+- US2 multi-accept mesh server — QuicListenerHandle (N isolated links/port) + Mesh router (to/broadcast, over_capacity, isolation); demo --clients 4 PASS SC-001..005+mesh; 14 pytest + 104 xUnit green (T023-T029)
+- US1 demo + CLI wiring — genuine same-host conformance (SC-001/002/005 PASS, SC-003/004/006+two-host honestly NOT-RUN); 12 pytest + 104 xUnit green; tasks.md status (T014-T022, US2/US3 notes)
+- US1 C# host exe + csharp StackAdapter — two-process genuine QUIC+WS GLP-message exchange, full-duplex + cert-mismatch reject; 11 pytest green (T018/T019/T020 message-level)
+- US1 genuine QUIC+WS leaf — real System.Net.Quic handshake (IsSupported-gated, mutual SPKI pin, ALPN h3) + RFC6455 over QuicStream + minimal CONNECT bootstrap; 5 xUnit + 9 cert pytest green (T014/T015/T016/T017)
+- US0 Setup+Foundational — glp_quick scaffold (cert/SPKI pin, GLP-msg envelope, CLI skeleton), /GLP-Quick skill, C# QUIC+WS leaf stubs (LinkScheme.Quic); IV-a gate PASS, real-QUIC probes PASS
+
+### Fixed
+- codexreview fixes #1/#2/#4 — bound WS frame size + surface FrameException as clean fault (FR-019); default gleam profile A; exit-code 6 -> quic_unsupported; +regression tests
+- process-tree kill on stop (no orphaned QUIC hosts incl. gleam->erl->dotnet); REPL polish (incoming on its own line); restore _spawn method
+- client stays alive for the link lifetime (not stdin) + disable QUIC idle timeout; link console survives EOF, auto-announces, file-outbox (GLPQUICK_OUTBOX), @to grammar
+
+### Changed
+- Merge pull request #69 from olamni-glp/036-http3-quic-ws-link
+- T037 done — single-host quickstart validated (csharp SC-001..005+mesh, gleam Profile A SC-001..006 all PASS); record deferred acceptance as known-issues Issue 11
+- Merge origin/develop into 036-http3-quic-ws-link (integrate 130 commits: bk-* skill rename, gleam-port 031-039, engine-split); resolve feature.json/CLAUDE.md/current_plan.md to 036 + preserve gleam-baseline T015 pointer
+- carve deferred acceptance (T003/T032/T036/T040) into roadmap feature http3-quic-ws-link-full-acceptance + follow-up brief
+- Merge pull request #68 from olamni-glp/main
+- T038/T039 verified green — REPL 524/525 (1 unrelated AOT-smoke fail, no 036 regression), glp_quick 18 pytest + glp_link 104 xUnit
+- fold RDP command-mode hard requirement + prototype learnings into virtual-3270-term reqs
+- intake briefs for virtual-3270-term (full 3270 reqs), durable-mesh-messaging-protocol, and HTTP3-QUIC-WS (036 record + re-specify prompt + restart prep)
+- commit gleam_quic dependency lockfile (manifest.toml)
+- rework plan/tasks/analyze to 2026-06-28 clarifications (genuine WS-over-QUIC, cross-platform C#, two Gleam profiles)
+- correct WS-over-QUIC framing (first-class, de-facto) + cross-platform .NET QUIC; encode 2026-06-28 clarifications
+- research corpus (106 sources) + distillation; resolve RFC 9220 + AtomVM-QUIC feasibility
+- plan + research + data-model + contracts + tasks; analyze remediations (constitution tokens, addressing/mid-drop coverage, scenario numbering)
+- clarify GLP-over-link (REPL mesh), C#-first build order, concurrency, cert distribution
+- specify HTTP/3 QUIC + WebSocket channel-link prototype
+
 ## [v2026.07.02.2] - 2026-07-02
 
 ### Changed
