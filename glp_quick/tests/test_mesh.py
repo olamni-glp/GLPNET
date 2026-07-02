@@ -8,6 +8,7 @@ among the clients (and its own endpoint). Skipped when the C# host dll is not bu
 from __future__ import annotations
 
 import socket
+import time
 
 import pytest
 
@@ -67,6 +68,39 @@ def test_three_client_mesh_routing_and_isolation(cert_dir):
         for h in clients.values():
             ad.stop(h)
         ad.stop(server)
+
+
+def test_duplicate_announced_id_never_evicts_the_incumbent(cert_dir):
+    """Regression: a duplicate announced id must not hijack the incumbent's route, and dropping the
+    duplicate link must not evict the live incumbent (a routing/data-loss bug: first-come owns the id).
+    """
+    port = _free_udp_port()
+    ad = CSharpStackAdapter()
+    server = ad.start_server("127.0.0.1", port, cert_dir, max_clients=3, repl="csharp")
+    a = ad.start_client("127.0.0.1", port, cert_dir, "csharp")      # announces "dup" FIRST -> incumbent
+    b = ad.start_client("127.0.0.1", port, cert_dir, "csharp")      # announces "dup" second -> duplicate
+    probe = ad.start_client("127.0.0.1", port, cert_dir, "csharp")  # addresses "dup"
+    try:
+        # A claims "dup" first; wait until the server has registered it before B announces the same id.
+        a.send(GlpMessage(sender="dup", to="server", payload="a-here"))
+        assert server.recv(timeout=10).payload == "a-here"
+        b.send(GlpMessage(sender="dup", to="server", payload="b-here"))
+        assert server.recv(timeout=10).payload == "b-here"
+        probe.send(GlpMessage(sender="probe", to="server", payload="probe-here"))
+        assert server.recv(timeout=10).payload == "probe-here"
+
+        # `to:dup` must reach the INCUMBENT (A), not the duplicate (B) — no route hijack.
+        probe.send(GlpMessage(sender="probe", to="dup", payload="to-dup-1"))
+        assert a.recv(timeout=10).payload == "to-dup-1"
+
+        # Drop the DUPLICATE B; the incumbent A's route must survive (the bug evicted it).
+        ad.stop(b)
+        time.sleep(1.0)  # let the server process B's link drop (mesh.Remove) before re-addressing "dup"
+        probe.send(GlpMessage(sender="probe", to="dup", payload="to-dup-2"))
+        assert a.recv(timeout=10).payload == "to-dup-2"
+    finally:
+        for h in (a, b, probe, server):
+            ad.stop(h)
 
 
 def test_over_capacity_rejected(cert_dir):

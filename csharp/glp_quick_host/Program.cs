@@ -253,7 +253,30 @@ internal sealed class Mesh
     public void Remove(ILinkEndpoint link)
     {
         if (_idOf.TryRemove(link, out var id))
-            _byId.TryRemove(id, out _);
+            // Only evict the id->link mapping if it still points at THIS link — never drop a live
+            // sibling that has since taken over the same announced id (routing-loss / data-loss guard).
+            _byId.TryRemove(new KeyValuePair<string, ILinkEndpoint>(id, link));
+    }
+
+    /// <summary>
+    /// Learn/refresh a link's announced id. NEVER evicts or hijacks a live incumbent already holding
+    /// <paramref name="from"/>: first-come owns the routable id; a duplicate id from a different live
+    /// link is tracked (so its cleanup is clean) but not made addressable under the taken name — so one
+    /// client cannot silently steal another's route nor evict it on drop (FR-006/SC-004).
+    /// </summary>
+    private void Register(ILinkEndpoint srcLink, string from)
+    {
+        if (_idOf.TryGetValue(srcLink, out var known))
+        {
+            if (known == from) return;  // already registered under this id
+            // this link changed its announced id: release the old mapping only if it still points at us
+            _byId.TryRemove(new KeyValuePair<string, ILinkEndpoint>(known, srcLink));
+        }
+        _idOf[srcLink] = from;  // always track the declared id (clean Remove; avoids re-processing)
+        if (!_byId.TryGetValue(from, out var holder) || ReferenceEquals(holder, srcLink))
+            _byId[from] = srcLink;  // claim the routable id only if free or already ours
+        else
+            Console.Error.WriteLine($"WARN dup-id from={from}; incumbent keeps the route (newcomer not addressable under {from})");
     }
 
     public async Task RouteAsync(byte[] frame, bool fromSelf, ILinkEndpoint? srcLink, CancellationToken ct)
@@ -265,13 +288,7 @@ internal sealed class Mesh
         }
         // Register the client's announced id on first sight (so `to:<id>` can reach it).
         if (!fromSelf && srcLink is not null && !string.IsNullOrEmpty(from))
-        {
-            if (_idOf.TryGetValue(srcLink, out var known))
-            {
-                if (known != from) { _byId.TryRemove(known, out _); _idOf[srcLink] = from; _byId[from] = srcLink; }
-            }
-            else { _idOf[srcLink] = from; _byId[from] = srcLink; }
-        }
+            Register(srcLink, from);
 
         if (to == _selfId) { await WriteSelfAsync(frame, ct).ConfigureAwait(false); return; }
 
