@@ -23,9 +23,10 @@ the C#/.NET stack is the reference and MUST pass the full real-QUIC demo before 
       glp-quick = "glp_quick.cli:app"` (Typer), `src/glp_quick/`, `tests/`, `.venv` — per plan.md (FR-007).
 - [x] T002 [P] Scaffold the `/GLP-Quick` skill at `.claude/skills/glp-quick/SKILL.md` — a thin front end that
       invokes the `glp-quick` CLI (FR-007).
-- [ ] T003 [P] Confirm marathon run `mrun-15d7dd0ffbc2` is resumable; record the research-strategy stage entry (FR-012/013).
-      **BLOCKED**: the marathon-harness CLI (`marathon` subcommand) is absent from the installed buildkit
-      (deploy-home venv `2026.6.13.1`); needs `/bk-marathon` or a buildkit upgrade. Not fabricated.
+- [>] T003 [P] Confirm marathon run `mrun-15d7dd0ffbc2` is resumable; record the research-strategy stage entry (FR-012/013).
+      **DEFERRED → reassigned (2026-07-02) to roadmap feature `http3-quic-ws-link-full-acceptance`.**
+      Verified this session: run `mrun-15d7dd0ffbc2` exists in **no** marathon store (buildkit or codeconv) —
+      it was named at planning time but never persisted; there is nothing to resume. Not fabricated.
 
 ---
 
@@ -166,8 +167,9 @@ QUIC+WS link + GLP round-trip with the same observable outcomes as `csharp`.
       green same-host (`glp-quick demo --clients 4` PASS). Final two-host (gavri) acceptance is T040.
 - [~] T031 [US3] Scaffold greenfield `gleam_quic/` — `gleam.toml`, `src/glp_quick_gleam.gleam` (Gleam main +
       channel-link role) + `src/glpq_ffi.erl` (OS-port relay). [Profile-C-specific `quicer` sources = follow-up.]
-- [ ] T032 [US3] Profile C (full BEAM + `quicer`/MsQuic in-process) — **BLOCKED**: needs a `quicer` NIF build
-      (msquic) on this host; no MSVC (msys64/MinGW only). Honestly not built (constitution II), not faked.
+- [>] T032 [US3] Profile C (full BEAM + `quicer`/MsQuic in-process) — **DEFERRED → reassigned (2026-07-02) to
+      roadmap feature `http3-quic-ws-link-full-acceptance`.** Needs a `quicer` NIF build (msquic) with MSVC;
+      this host has msys64/MinGW only. Honestly not built (constitution II), not faked. Do on/with gavri.
 - [x] T032a [US3] **Profile A** — Gleam/BEAM channel-link logic + the verified C# `glp_quick_host` as the
       **native genuine-QUIC side-process** over line-delimited IPC; `capabilities()` =
       `{real_quic: true, quic_termination: "side_process"}` (attributed truthfully). VERIFIED.
@@ -188,7 +190,9 @@ Profile C (in-process `quicer`) honestly reported as build-blocked on this host.
 
 - [x] T035 [US4] Corpus completeness verified — **106 close-read notes (58 C# + 48 Gleam)** covering RFC
       9114/9000/9001/9002/9220 (+8441/7301/6455), distilled in `distillation-2026-06-27.md` (SC-007).
-- [ ] T036 [US4] Verify marathon durability — interrupt + resume of `mrun-15d7dd0ffbc2` reports the objective next step and skips completed stages (FR-013, SC-008).
+- [>] T036 [US4] Verify marathon durability — interrupt + resume of `mrun-15d7dd0ffbc2` reports the objective next step and skips completed stages (FR-013, SC-008).
+      **DEFERRED → reassigned (2026-07-02) to roadmap feature `http3-quic-ws-link-full-acceptance`** (depends on a
+      real persisted marathon run; see T003 — `mrun-15d7dd0ffbc2` was never created).
 
 ---
 
@@ -197,7 +201,9 @@ Profile C (in-process `quicer`) honestly reported as build-blocked on this host.
 - [ ] T037 [P] Docs: run `quickstart.md` validation; record any limitation in `docs/known-issues.md`.
 - [X] T038 Run the GLP REPL suite `bash test/run_all_tests.sh` — confirm **no regression** (constitution VII). ✅ 2026-07-01: 524/525 pass; the lone failure is the pre-existing Section-Q AOT-exe smoke ex-01 (root self.glp path resolution), unrelated to 036 (networking-only) — no 036 regression.
 - [X] T039 [P] `glp_quick` pytest + `csharp/glp_link.tests` xUnit suites green. ✅ 2026-07-01: glp_quick 18 pytest passed (project .venv), glp_link 104 xUnit passed (0 failed).
-- [ ] T040 Run `quickstart.md` end-to-end on two LAN hosts (final acceptance).
+- [>] T040 Run `quickstart.md` end-to-end on two LAN hosts (final acceptance).
+      **DEFERRED → reassigned (2026-07-02) to roadmap feature `http3-quic-ws-link-full-acceptance`** (needs the
+      gavri host as the second LAN endpoint).
 
 ---
 
