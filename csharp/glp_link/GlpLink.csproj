@@ -35,4 +35,10 @@
     <ProjectReference Include="..\..\out\csharp\glp_runtime_net.csproj" />
   </ItemGroup>
 
+  <!-- Expose internals (WebSocketOverQuic etc.) to the test assembly for unit-level
+       framing regression tests (036 review fix, finding #1). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_link.tests" />
+  </ItemGroup>
+
 </Project>

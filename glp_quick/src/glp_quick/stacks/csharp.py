@@ -25,7 +25,7 @@ _EXIT_TOKEN = {
     3: "cert_mismatch",
     4: "server_not_ready",
     5: "udp_blocked",
-    6: "alpn_version_mismatch",
+    6: "quic_unsupported",
     7: "bind_failed",
 }
 

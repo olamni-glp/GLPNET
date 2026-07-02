@@ -48,7 +48,9 @@ def _validate_repl(repl: str) -> ReplKind:
 
 def _validate_profile(stack: str, profile: Optional[str]) -> Optional[GleamProfile]:
     if profile is None:
-        return "c" if stack == "gleam" else None
+        # Default gleam to the built, documented Profile A (side-process QUIC); Profile C
+        # (in-process quicer) is opt-in via --profile c and may be build-blocked on a host.
+        return "a" if stack == "gleam" else None
     if stack != "gleam":
         raise typer.BadParameter("--profile applies only to --stack gleam")
     if profile not in ("a", "c"):

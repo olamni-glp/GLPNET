@@ -1,5 +1,6 @@
 using System.Net.Quic;
 
+using GlpRuntime.Link.Reliability;
 using GlpRuntime.Link.Seam;
 
 // System.Net.Quic is [SupportedOSPlatform] windows/linux/macOS; runtime-gated by
@@ -63,9 +64,11 @@ internal sealed class QuicEndpoint : ILinkEndpoint
         {
             throw; // pump disposed / link torn down — normal shutdown
         }
-        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException or EndOfStreamException)
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException or EndOfStreamException or FrameException)
         {
             // An error on a link WE closed is the expected end of our own teardown — not a fault.
+            // A FrameException is a peer protocol violation (bad opcode / oversized frame): surface it
+            // as a clean link fault and end this link — never crash the receive pump (FR-019).
             if (Volatile.Read(ref _closed) == 0)
                 OnFault?.Invoke(new LinkFaultSignal(Id, LinkFaultKind.Transient, $"quic/ws recv failed: {ex.Message}"));
             return null;

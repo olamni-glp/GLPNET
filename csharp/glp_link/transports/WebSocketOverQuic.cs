@@ -31,6 +31,10 @@ internal sealed class WebSocketOverQuic
     private const byte OpPing = 0x9;
     private const byte OpPong = 0xA;
     private const byte MaskBit = 0x80;
+    // RFC 6455 §5.5: control frames are ≤125 bytes. Data frames are bounded so a corrupt/huge
+    // 64-bit length from an (authenticated) peer surfaces as a clean FrameException rather than an
+    // OverflowException/OOM crash (FR-019: always a clear fault, never a silent crash).
+    private const long MaxFramePayload = 16L * 1024 * 1024; // 16 MiB
 
     private readonly Stream _stream;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
@@ -75,6 +79,10 @@ internal sealed class WebSocketOverQuic
             int b1 = await ReadByteAsync(ct).ConfigureAwait(false);
             bool masked = (b1 & MaskBit) != 0;
             long len = await ReadPayloadLengthAsync((byte)(b1 & 0x7F), ct).ConfigureAwait(false);
+            if ((opcode & 0x08) != 0 && len > 125)
+                throw new FrameException($"RFC 6455: control frame length {len} exceeds 125");
+            if (len > MaxFramePayload)
+                throw new FrameException($"RFC 6455: frame length {len} exceeds max {MaxFramePayload} bytes");
 
             byte[] maskKey = Array.Empty<byte>();
             if (masked)
