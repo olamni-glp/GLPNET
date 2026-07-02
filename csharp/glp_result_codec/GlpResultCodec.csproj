@@ -1,0 +1,38 @@
+<!--
+  GlpResultCodec — net-new, CLOBBER-SAFE C# result-envelope round-trip codec
+  (feature 038-result-codec-and-framecodec-ride).
+
+  WHY THIS PACKAGE EXISTS (same rule as GlpIlCodec.csproj / GlpLink.csproj):
+    codeconv's dart_csharp mirror regenerates one .cs per source .dart under
+    out/csharp/lib/** and glp_runtime_net/. A hand-authored .cs at a path that
+    maps to a Dart preimage would be OVERWRITTEN by the next mirror/scaffold.
+    This package has NO Dart preimage and lives OUTSIDE out/csharp and the
+    gitignored glp_runtime_net/, so the regen oracle never names it as output.
+    It is the permanent home for the hand-authored result-envelope codec body.
+
+  It is fully STANDALONE: it defines its own value-type term model and reproduces
+  the shipped 029 byte conventions in PARALLEL (FR-007 — 029 is the C# byte
+  oracle only; byte-parity is a property of the bytes, not of shared code). It
+  therefore takes NO ProjectReference on glp_runtime_net / glp_il_codec / GlpLink.
+
+  Dart is the source of truth for the cross-runtime bytes (R9); this C# slice is
+  byte-identical to glp_runtime/lib/codec/result_envelope_codec.dart et al.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.ResultCodec</RootNamespace>
+    <AssemblyName>glp_result_codec</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- The xUnit test project lives in tests/; keep its sources out of the lib build. -->
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
+
+</Project>
