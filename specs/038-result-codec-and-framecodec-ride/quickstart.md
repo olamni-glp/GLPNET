@@ -29,15 +29,20 @@ The shared corpus lives at `specs/038-result-codec-and-framecodec-ride/contracts
 
 ```bash
 # 1. (re)generate the golden from the Dart reference encoder
-C:/Users/gavri/dart-sdk/bin/dart.exe run glp_runtime/tool/gen_result_golden.dart > specs/038-.../contracts/golden/corpus.hex
+dart run glp_runtime/tool/gen_result_golden.dart > specs/038-.../contracts/golden/corpus.hex
 
-# 2. each runtime asserts byte-identity to the golden (captured field masked)
-#    - Dart  golden_corpus_test.dart
-#    - C#    GoldenByteIdentityTests
-#    - Gleam result_envelope_codec_test.gleam
+# 2. run the cross-runtime byte-parity harness (T031): runs all three golden tests and
+#    confirms Dart == C# == Gleam == corpus.hex. Toolchains aren't on PATH on the dev box,
+#    so the harness has host defaults; override with DART=/DOTNET=/GLEAM=/ERLANG_BIN= env.
+bash specs/038-result-codec-and-framecodec-ride/contracts/golden/run_golden_harness.sh
+
+#    (the harness exercises, per runtime:)
+#    - Dart  glp_runtime/test/codec/golden_corpus_test.dart          (authors corpus.hex, T026)
+#    - C#    GoldenByteIdentityTests  (reproduces corpus.hex, T027)
+#    - Gleam glp_gleam/test/glp/codec/golden_corpus_test.gleam       (reproduces corpus.hex, T027)
 ```
 
-Pass criterion (SC-002): all three encoders reproduce `corpus.hex` byte-for-byte on the **non-gated** corpus.
+Pass criterion (SC-002): all three encoders reproduce `corpus.hex` byte-for-byte on the **non-gated** corpus. The harness prints `GOLDEN HARNESS: PASS` iff every runtime matches the single pinned artifact (byte-parity proven transitively).
 
 ## What to verify (maps to spec success criteria)
 
