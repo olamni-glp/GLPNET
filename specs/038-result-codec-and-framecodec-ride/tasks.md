@@ -85,7 +85,7 @@
 - [X] T029 [US2] Golden-corpus generator tool — Dart `glp_runtime/tool/gen_result_golden.dart` → `specs/038-.../contracts/golden/corpus.hex` from the shared result corpus (Dart = source of truth, R9).
 - [X] T030 [US2] Generate `corpus.hex` (non-gated entries only) and commit it as the pinned contract artifact.
 - [ ] T031 [US2] Cross-runtime diff harness + quickstart wiring (`quickstart.md` §"golden corpus harness") — all three encoders reproduce `corpus.hex`.
-- [ ] T032 [US2] **V5 oracle cross-check (C#)**: assert the result codec's term bytes (`0x00–0x06`) are byte-identical to 029 `GlpRuntime.IlCodec` `ConstantCodec` for shared term inputs — `csharp/glp_result_codec/tests/OracleConsistencyTests.cs` (FR-007 boundary: cross-check only, NOT proof for Dart/Gleam).
+- [X] T032 [US2] **V5 oracle cross-check (C#)**: assert the result codec's term bytes (`0x00–0x06`) are byte-identical to 029 `GlpRuntime.IlCodec` `ConstantCodec` for shared term inputs — `csharp/glp_result_codec/tests/OracleConsistencyTests.cs` (FR-007 boundary: cross-check only, NOT proof for Dart/Gleam). Compares `ConstantCodec.Write` vs `TermCodec.EncodeTerm` for the SHARED byte-identical subset — int64 (0x02, incl min/max/neg), double (0x03), string (0x04, incl UTF-8), struct-header framing (0x06 arity-0); plus an explicit test that the models diverge at 029's 0x05 ConstTerm-wrapper (038 flattens to 0x02) yet the inner primitive bytes match. Reached 029's internal `ConstantCodec` via an additive `InternalsVisibleTo("GlpResultCodec.Tests")` in `glp_il_codec/AssemblyInfo.cs` + a test-only ProjectReference (library stays engine-free). ✅ C# 131.
 
 **Checkpoint**: non-gated corpus byte-identical across all three runtimes.
 

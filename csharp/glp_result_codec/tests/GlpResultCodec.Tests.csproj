@@ -21,6 +21,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GlpResultCodec.csproj" />
+    <!-- T032 V5 oracle cross-check only (FR-007): the 029 codec is the C# byte oracle.
+         The result-codec LIBRARY stays engine-free; only this test project references 029. -->
+    <ProjectReference Include="..\..\glp_il_codec\GlpIlCodec.csproj" />
   </ItemGroup>
 
 </Project>
