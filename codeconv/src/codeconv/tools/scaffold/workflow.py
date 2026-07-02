@@ -27,7 +27,7 @@ from sqlalchemy import text
 from codeconv.bridge_client import acquire_or_discover
 from codeconv.db.engine import build_engine
 
-from .planner import plan_target_tree
+from .planner import TargetCollisionError, plan_target_tree
 
 
 # Exit codes — contract § Exit codes.
@@ -196,8 +196,20 @@ def run_scaffold(
         }
 
     # 4–5. Plan the target tree from the inventory minus exclusions, via
-    #      the pair's target hooks.
-    plan = plan_target_tree(engine, pair)
+    #      the pair's target hooks. A normalizing pair (e.g. Dart->Gleam,
+    #      feature-032 R3-b) can map two distinct sources onto one target;
+    #      plan_target_tree raises TargetCollisionError BEFORE any staging
+    #      write (FR-008 — nothing produced), so surface it as a structured
+    #      refusal like the sibling refusals above rather than letting an
+    #      uncaught exception propagate through the DBOS step.
+    try:
+        plan = plan_target_tree(engine, pair)
+    except TargetCollisionError as exc:
+        return {
+            "ok": False,
+            "exit_code": _EXIT_PREREQ,
+            "error": str(exc),
+        }
     if not plan:
         return {
             "ok": False,

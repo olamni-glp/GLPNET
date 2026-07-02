@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/mode.dart
 name: mode.dart
-purpose: ''
-key_idea: ''
+purpose: Defines the two-valued data-flow Mode (input/output, aka consume/produce) used throughout moded type checking.
+key_idea: enum Mode {output,input} with consume/produce aliases, a dual/flip getter that inverts direction at call boundaries, and combineMode implementing mode involution as XOR (equal modes -> output, differing -> input).
 dependencies: []
 callers:
 - lib/analysis/type_checker/moded_head.dart
@@ -27,5 +27,8 @@ codegen_completed_at: '2026-05-28T08:53:55Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/mode.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the two-valued data-flow Mode (input/output, aka consume/produce) used throughout moded type checking.

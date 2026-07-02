@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/lexer.dart
 name: lexer.dart
-purpose: ''
-key_idea: ''
+purpose: Lexical analyzer (class Lexer) that scans raw GLP source characters into a flat List<Token> consumed by the parser.
+key_idea: Single forward character scan with switch dispatch and maximal-munch _match lookahead for multi-char operators (=:=, =\=, =?=, ..=, ::=); tracks line/column, skips % line and /* */ block comments, classifies identifiers as VARIABLE/ATOM/READER by leading case plus trailing '?'.
 dependencies:
 - lib/compiler/error.dart
 - lib/compiler/token.dart
@@ -39,5 +39,8 @@ codegen_completed_at: '2026-05-28T09:18:07Z'
 target_cs_path: out/csharp/lib/compiler/lexer.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Lexical analyzer (class Lexer) that scans raw GLP source characters into a flat List<Token> consumed by the parser.

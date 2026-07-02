@@ -1,8 +1,8 @@
 ---
 path: test/module/module_typecheck_test.dart
 name: module_typecheck_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies cross-module type-checking of remote (#) goals against `imported procedure` declarations.
+key_idea: 'checkSource filters ''Body atom'' errors: matching imported decl passes; missing decl errors mentioning math#check; arity mismatch errors; deep ui#actors path and no-path ancestor imports pass; multiple imports each found; dynamic M#goal (var module) skips checking.'
 dependencies:
 - lib/analysis/type_checker/type_checker.dart
 callers: []
@@ -16,5 +16,8 @@ plan_started_at: '2026-05-21T16:33:45Z'
 plan_completed_at: '2026-05-21T16:38:36Z'
 plan_path: .codeconv/conversion-plans/test/module/module_typecheck_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies cross-module type-checking of remote (#) goals against `imported procedure` declarations.

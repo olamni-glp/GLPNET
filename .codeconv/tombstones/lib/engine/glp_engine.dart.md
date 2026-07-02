@@ -77,6 +77,8 @@ codegen_completed_at: '2026-05-28T13:32:58Z'
 target_cs_path: out/csharp/lib/engine/glp_engine.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 GLP Engine - Embeddable GLP Execution Core

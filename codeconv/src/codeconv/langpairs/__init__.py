@@ -34,6 +34,7 @@ _REGISTRY: dict[tuple[str, str], LangPair] = {}
 # explicitly NOT a stage-tool edit; contract § "Extensibility proof").
 _PRODUCTION_PAIR_MODULES: tuple[str, ...] = (
     "codeconv.langpairs.dart_csharp",
+    "codeconv.langpairs.dart_gleam",
 )
 
 

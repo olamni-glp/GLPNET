@@ -22,6 +22,8 @@ callers: []
 mtime: '2026-05-21T12:38:16.775Z'
 sha256: 558e3c20314afc7ccd55efda86a7af71874819f07e296b5f27724af4077e18d5
 target_path: test_archive/direct_structterm_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Test: Can we pass a StructTerm directly as a CallEnv argument?

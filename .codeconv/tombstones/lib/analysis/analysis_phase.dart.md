@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/analysis_phase.dart
 name: analysis_phase.dart
-purpose: ''
-key_idea: ''
+purpose: Defines the pluggable analysis-phase framework (error/warning types, shared context, multi-phase runner) for type/SRSW/guard checks run during or independent of compilation.
+key_idea: AnalysisPhase interface + AnalysisRunner.run/runPhases iterate phases over a shared AnalysisContext, aggregating AnalysisError/Warning (success = no errors); the standard TypeCheck/SRSW/DefinedGuards phases are stub placeholders returning empty lists, assembled by createStandardRunner.
 dependencies: []
 callers: []
 mtime: '2026-05-21T12:38:12.681Z'
@@ -19,5 +19,8 @@ codegen_completed_at: '2026-05-28T08:56:10Z'
 target_cs_path: out/csharp/lib/analysis/analysis_phase.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines the pluggable analysis-phase framework (error/warning types, shared context, multi-phase runner) for type/SRSW/guard checks run during or independent of compilation.

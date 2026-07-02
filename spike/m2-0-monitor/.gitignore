@@ -1,0 +1,3 @@
+# build artifacts (regenerable via erlc / packbeam)
+*.beam
+*.avm

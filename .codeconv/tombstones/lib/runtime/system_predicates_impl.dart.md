@@ -51,6 +51,8 @@ codegen_completed_at: '2026-05-28T13:02:13Z'
 target_cs_path: out/csharp/lib/runtime/system_predicates_impl.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Standard system predicate implementations for GLP

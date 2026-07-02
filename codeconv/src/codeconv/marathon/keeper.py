@@ -3,10 +3,13 @@
 A thin lifecycle — NOT a re-ported ``PGliteSupervisor`` (D1/D5) — that owns the
 per-run isolated store at ``<store_root>/pgdb``:
 
-- :func:`start_keeper` — ``acquire_or_discover(repo_root=store_root,
-  data_dir=store_root/'pgdb')``: fast-paths a live, heartbeat-fresh bridge or
-  spawns one (the ``mkdir`` of ``<data_dir>.bridge.lock/`` is the mutex),
-  registers this process as a consumer, and surfaces the sidecar endpoint as
+- :func:`start_keeper` — ``acquire_or_discover(repo_root=toolchain_repo_root(),
+  data_dir=store_root/'pgdb')``: the bridge SCRIPT comes from the toolchain
+  checkout (its fixed asset), while ``data_dir`` keeps the cluster off-repo and
+  per-run (decoupled — the off-repo ``store_root`` never holds a bridge script).
+  Fast-paths a live, heartbeat-fresh bridge or spawns one (the ``mkdir`` of
+  ``<data_dir>.bridge.lock/`` is the mutex), registers this process as a
+  consumer, and surfaces the sidecar endpoint as
   ``Endpoint(host, port, pid, data_dir)`` (FR-012).
 - :func:`stop_keeper` — ``request_force_shutdown`` writes the non-destructive
   ``.shutdown`` marker; the bridge flushes and exits on its next tick (the
@@ -44,7 +47,7 @@ from codeconv.bridge_client import (
     request_force_shutdown,
 )
 from codeconv.db import engine as db_engine
-from codeconv.marathon.env import resolve_env
+from codeconv.marathon.env import resolve_env, toolchain_repo_root
 from codeconv.marathon.models import Endpoint, MarathonEnv
 from codeconv.marathon.store.repository import (
     ConcurrentWriter,
@@ -75,7 +78,9 @@ def start_keeper(run_id: str, *, env: Optional[MarathonEnv] = None) -> Endpoint:
     """Acquire (spawn or discover) the per-run bridge; publish its endpoint."""
     env = _env(run_id, env)
     data_dir = env.store_root / "pgdb"
-    ep = acquire_or_discover(env.store_root, data_dir=data_dir)
+    # repo_root = the toolchain checkout (bridge-script source); data_dir = the
+    # off-repo per-run cluster (decoupled — store_root holds no bridge script).
+    ep = acquire_or_discover(toolchain_repo_root(), data_dir=data_dir)
     return Endpoint(host=ep.host, port=ep.port, pid=ep.pid, data_dir=str(data_dir))
 
 

@@ -38,6 +38,8 @@ plan_started_at: '2026-05-21T16:38:52Z'
 plan_completed_at: '2026-05-21T16:43:42Z'
 plan_path: .codeconv/conversion-plans/test/compiler/project_linker_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Project linker tests: static linking of multi-module GLP projects.

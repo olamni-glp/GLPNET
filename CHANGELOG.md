@@ -89,6 +89,166 @@
 
 ## [Unreleased]
 
+## [v2026.07.02.2] - 2026-07-02
+
+### Changed
+- Merge pull request #66 from olamni-glp/038-result-codec-and-framecodec-ride
+- 8 codify notes from 2026-07-02 roadmap history reconciliation (reconcile bug, post-ship stall, backfill gap, number collisions, scan-method win)
+- Merge pull request #65 from olamni-glp/main
+
+## [v2026.07.02.1] - 2026-07-02
+
+### Added
+- T042 (optional) Lean decode∘encode=id proof for term sub-codec — mirrors verified 029 IlCodecRoundTrip (flat ground-term model, no mathlib/sorry); authored, machine-verification pending Lean toolchain (auto-install sandbox-blocked)
+- T039/T040 GATED corpus RUN on real AtomVM 0.7.999 via Node/WASM wrapper — real Gleam codec, float 0x03 + int64 edges byte-identical + round-trip (PASS); T043 #36 handoff note (verified FrameCodec offsets)
+- T031 cross-runtime golden byte-parity harness + quickstart wiring — Dart==C#==Gleam==corpus.hex; harness PASS on dev box
+- T032 V5 oracle cross-check — result-codec term bytes byte-identical to 029 ConstantCodec (int64/double/string/struct-header); models diverge at 0x05 wrapper by design; C# 131
+- T038 loud-fail fuzz (0 silent accepts) + T041 cyclic-term depth-bounded no-loop — all 3 runtimes; D5/FORK-1 policy left OPEN (test only)
+- US3 T033-T037 — deref+var->writer fidelity (all 3 runtimes): exact depth-32/33 boundary + $truncated marker, var->writer identity, canonical-order determinism; deref-corpus.md reference; Dart/C#-builder/Gleam green
+- US1 T025 — suspended-status acceptance (all 3 runtimes): Status=suspended + blocking-reader set + no heap-addr leak; Dart+2/C#113/Gleam79 green
+- US2 T027/T028 — C#+Gleam golden byte-identity + cross-decode against pinned corpus.hex (encode(corpus)==golden, decode(golden)==corpus, all 13 non-gated); C# 111, Gleam 77 green
+- Gleam result-envelope builder (T022/T023) — new result_envelope_builder.gleam; heap-threaded deep-resolve (depth-32 + $truncated) over 034 heap.deref, build from query writers, round-trips shipped codec; 74 gleam tests green
+- C# result-envelope builder (T020/T021) — new glp_result_codec_builder project w/ IHeapView seam (owner A+B); deep-resolve depth-32 + $truncated, build from queryVarWriters/DrainResult, round-trips shipped codec; 7/7 tests green
+
+### Fixed
+- codexreview cycle-2 — golden harness rejects zero-match C# filter (dotnet test --filter exits 0 on no matches; a renamed class would false-pass); guard on non-zero Passed count
+- codexreview cycle-1 — AtomVM gate hard-fails on gleam build error + missing beam (was unchecked, could false-pass on stale beams); output-content stays the success signal (AtomVM exits 1 benignly on success)
+
+### Changed
+- Merge pull request #63 from olamni-glp/038-result-codec-and-framecodec-ride
+- Merge remote-tracking branch 'origin/develop' into 038-result-codec-and-framecodec-ride
+- T044 doc audit + T045 end-to-end validation — Dart 83/C# 131/builder 14/Gleam 91 + golden harness PASS + AtomVM gated PASS; all 44 tasks done (+T042 optional authored)
+- 038(impl): US2 golden corpus authored from Dart + Dart byte-identity test (T004/T026/T029/T030); 69 Dart codec tests green
+- 038(impl): C# + Gleam result-codec fan-out — byte-identical to Dart source of truth (T002/3/5/6/8/9/11/13/24); C# 84/84, Gleam 68/68 green
+- 038(impl): Dart engine->envelope builder + depth-32 deep-resolve (T017/T018/T019); MVP sub-checkpoint green (55 codec tests)
+- 038(impl): Dart codec foundation — value types + term sub-codec + envelope frame codec; US1 round-trip/no-heap/in-process green (T001/T007/T010/T012/T014/T015/T016)
+- 038(analyze): cross-artifact analysis — 0 critical/high, 100% coverage; applied U1 remedy (Gleam GlobalVarId agentId = explicit builder param, no Gleam engine yet)
+- 038(tasks): 45 tasks across 6 phases by US1/US2/US3; MVP=US1 Dart envelope round-trip+no-heap; gated float/64bit/cyclic quarantined
+- 038(plan): result-envelope codec plan — rides Section-15 term codec (029 conventions), buildable on 034 w/o F5; D4=A/ED-6=A encoded; float/64-bit-edge/cyclic-term gated
+- Merge pull request #62 from olamni-glp/main
+- 038 clarify: owner-ruled D4=A (freeze toward v2, author Section-15 in the freeze) and ED-6=A (authorize AtomVM float-decode spike); NEEDS CLARIFICATION resolved. clarify=complete; plan next.
+- 038 specify: result-envelope codec spec (rides ED-6 Section-15 codec; framing/transport split to #36). 2 owner gates marked NEEDS CLARIFICATION: D4 ISA-freeze, ED-6 float-decode-on-AtomVM. Pipeline sidecar specify=complete; marathon run mrun-67d510b22e34.
+
+## [v2026.06.30.1] - 2026-06-30
+
+### Changed
+- Merge pull request #60 from olamni-glp/039-m2-0-verify-erlang-monitor-atomvm
+- 039(implement): VERDICT=works — erlang:monitor/2+DOWN faithful on AtomVM 0.6.6 (vs OTP-25); spawn_monitor/1 absent (use spawn+monitor); D10 fork not triggered
+- 039(implement MVP): monitor_probe + OTP-25 reference (normal/boom/noproc); AtomVM 0.6.6 run blocked on host provisioning (not present in WSL)
+- 039 tasks: T001-T007, MVP=T001-T003 (toolchain, probe, run+observe normal-exit DOWN).
+- 039 plan: Erlang monitor probe built+run on AtomVM 0.6.6 via F1 WSL toolchain; 5 phases (toolchain confirm, MVP normal-exit DOWN, abnormal exit, edge+fallback, verdict).
+- 039 m2-0 specify: gating spike to verify erlang:monitor + DOWN on AtomVM 0.6.6; gate-free (D10 fork only on negative result). sidecar specify=complete; marathon mrun-117a92c4eea7.
+- Merge pull request #59 from olamni-glp/036-glp-gleam-baseline-program
+- 036: program complete — P1/P5/spike research artifacts + spec/plan/contracts; T015 two-epic roadmap reconfiguration applied & marathon mrun-5611c436ba95 discharged (also sweeps 034/035 retros + BEACON-JOIN.md per commit-all)
+- 036: restart pointer — T014 approved, T015 migration next in new session
+- 036(T013): completeness-critic pass + folded gap fixes
+- 036(T007): P8 two-epic reconfiguration synthesis
+- 036(T012): P3 opportunities register (70; saturated)
+- 036(T011): P2 concerns register (218 concerns; loop not yet saturated -> T013)
+- 036(T010): P7 QHSM/YngeniOS integration dossier
+- 036(T006): P1b corrected realignment dispositions
+- 036(T009): P6 Gleam/AtomVM implementation-strategy dossier
+- 036(T008): ANTLR-integration deep-dive dossier (FR-005 verified via spike)
+- 036(T005): P4 proof artifact register (3 proved / 2 open)
+- 036(T004): P4 faithfulness parity bar (M1+M2, primary-source-cited)
+- 036(T003): pipeline status index for the glp-gleam-baseline research machinery
+- 036(T002): proof-harness wiring for the glp-gleam-baseline research machinery
+- 036(T001): corpus index for the glp-gleam-baseline research machinery
+- Merge pull request #58 from olamni-glp/main
+
+## [v2026.06.26.1] - 2026-06-26
+
+### Changed
+- Merge pull request #56 from olamni-glp/035-semantic-tombstone-enrichment
+- 035(fix): --from-tombstones rebuild carries purpose_source/key_idea_source (FR-008) — was resetting inferred/doc to absent; pre-035 derives from blank-ness; +regression test
+- 035(corpus): enrich glp_runtime_net tombstones via Claude seam — 68 inferred (9 compiler + 59), 104 doc, 7 stubs left blank; gitignore enrich-runs logs
+- 035(enrich): mark T023 (consolidated feature gate 22/22 green) — all 24 tasks complete
+- 035(enrich polish): T022 isolated quickstart e2e (dry-run + scoped enrich + FR-014 git-diff); T024 SC-004 grep guard verified
+- 035(enrich US3): --path scope + per-file fault isolation + low-confidence + run summary/durable log; T018 green
+- 035(enrich US2): discover provenance-aware seed + conditional inferred-preservation (FR-008); enrich idempotence/stale-guard; T013/T014 green
+- 035(enrich US1/MVP): run_enrich candidate scan + Claude-seam infer/write + non-candidate stamping + no-API exit-2; T007/T008 green
+- 035(enrich P1-2): tool skeleton + no-API seam + migration 0011 + frontmatter provenance keys + head tests
+- 035(plan/tasks/analyze): semantic tombstone enrichment pipeline artifacts + analyze remediations (B1 len-caps, C1 file run-log, D1/E1/F1)
+- Merge pull request #55 from olamni-glp/main
+
+## [v2026.06.25.1] - 2026-06-25
+
+### Changed
+- Merge pull request #53 from olamni-glp/034-glp-gleam-core-terms-and-heap
+- 034(F4): codexreview fixes — deref self-bind->Unbound (Dart parity), forward suspensions to terminal writer (FR-008), correct R-007/parity-evidence claims, +4 tests (54 green)
+- 034: implement glp_gleam core terms+heap+unify (F4) — immutable threaded store, 50 tests green on BEAM
+- 034: plan/tasks/analyze for glp_gleam core terms+heap+unify (F4) — immutable threaded store; 4 analyze remediations
+- Merge pull request #52 from olamni-glp/main
+
+## [v2026.06.24.2] - 2026-06-24
+
+### Added
+- polish — additive-only + quickstart walkthrough + artifact hygiene green (T023-T025)
+- WSL smoke gate + config-only conversion recognition + README (US3, T019-T022)
+- 8 subsystem placeholders 1:1 with glp_runtime/lib (US2, T009-T018)
+- glp_gleam MVP — buildable+testable Gleam/BEAM subtree (US1, T001-T008)
+
+### Fixed
+- strip placeholder export markers -> doc-only (codexreview: T009-T016 'no exported definitions')
+
+### Changed
+- Merge pull request #50 from olamni-glp/033-glp-gleam-subtree-scaffold
+- upgrade installed artifacts to v2026.06.24.3
+- analyze(033): apply top remediations — clarify FR-007/SC-005 wired-in wording; strengthen T021 (FR-008 establish+verify) and T018 (FR-006 segment legality)
+- tasks(033): 25 tasks for glp_gleam subtree scaffold (US1 MVP build+test, US2 8 placeholders, US3 smoke+recognition)
+- plan(033): glp_gleam subtree scaffold — plan, research, data-model, contracts, quickstart
+- Merge pull request #48 from olamni-glp/main
+
+## [v2026.06.24.1] - 2026-06-24
+
+### Added
+- Dart->Gleam codeconv langpair (dart,gleam) + R3-b generic collision seam
+
+### Changed
+- Merge pull request #46 from olamni-glp/032-codeconv-gleam-langpair
+- refine(codexreview): cycle 2/10 [diff/general]
+- refine(codexreview): cycle 1/10 [diff/general]
+- analyze(032): remediate F3 (add PairMismatch coverage to T008); F1/R-003 owner decision pending
+- tasks(032): 20 tasks across 3 user stories; R-003 owner-decision gate flagged before implement
+- plan(032): Dart->Gleam langpair plan + Phase0/1 artifacts; flag FR-005<->FR-008 collision tension (R-003)
+- clarify Gleam target path policy (verbatim mirror, F3 owns layout)
+- add codeconv-gleam-langpair (Dart-to-Gleam) feature spec + checklist
+- Merge pull request #45 from olamni-glp/main
+
+## [v2026.06.22.1] - 2026-06-22
+
+### Changed
+- Merge pull request #43 from olamni-glp/031-gleam-port-spike
+- fix codexreview cycle-2 evidence findings (correct C# inventory counts, record JS-probe output)
+- fix codexreview cycle-2 residual (stale gleam_otp mention in js-probe comment)
+- fix codexreview cycle-1 findings (gleam_otp stale listing x2, JS actor citation, inventory JS-build, AtomVM packaging note)
+- gitignore buildkit refine cache (.specify/.refine-cache/, regenerable)
+- full Gleam smoke runs on AtomVM (raw erlang:spawn, no gleam_otp) + codex-review fixes
+- Gleam port spike deliverables - dossier, toolchain inventory, hello-glp-term smoke
+- spec(031): plan, tasks, analyze remediations for Gleam port spike
+- Merge develop (bk-* aliases, pinned CLI) into 031-gleam-port-spike
+- Merge pull request #42 from olamni-glp/chore-bk-aliases-pin-v2026.06.17.1
+- pin CLI v2026.06.17.1, apply /bk-* aliases, register deploy
+- spec(031): Gleam port source+toolchain / AtomVM feasibility spike
+- Merge pull request #41 from olamni-glp/main
+
+## [v2026.06.19.1] - 2026-06-19
+
+### Fixed
+- per-run marathon bridge resolves script from toolchain checkout, not the off-repo store (Fix A) - T057 e2e drive found the primary PGLite store never started via the real CLI; decouple repo_root(script source) from store_root(cluster) and commit-target repo_dir; junction-free fixture + regression test
+
+### Changed
+- Merge pull request #39 from olamni-glp/030-marathon-refinement
+- T058 full-suite gate done + T057 addendum (Fix A supersedes the prereq-patterns junction workaround; 34/34 marathon on reconciled tree, real-CLI primary-store smoke green)
+- T057 quickstart e2e validated + tasks.md T051-T057 DONE notes (Phase 8 complete except T058 full-suite gate, held for the Sunday 2026-06-14 ~01:00 intensive-regression window)
+- T056 /marathon-stage-harness skill drives the refined CLI - canonical --run, data-driven register/append-stage/capture intake, keeper lifecycle + hygiene, rule-2a re-drive in Restart-Resume step 4, gate/rerun by stage NAME, full contracts/cli.md command table, preauth grants documented as library-level Repository.update_run
+- T055 point marathon-stage-harness references at the refined model - CLAUDE.md + current_plan.md now describe the data-driven per-run isolated store (default C:/pglite/marathon/<run-id>, keeper, JSON mirror), canonical --run resume (--feature deprecated alias), 030 contracts pointer; 024 shared-cluster schema noted inert history (VIII)
+- T054 Constitution V guard - zero OPENAI_API_KEY/litellm/openai tokens anywhere in the marathon package source; bridge-free 1/1
+- T053 shared-cluster no-new-head guard - Alembic head stays exactly 0010, no versions/ file beyond 0010, only marathon migration is 024's inert 0010_marathon_schema, per-run store schema imports no Alembic machinery (VI-a, D2); bridge-free 4/4
+- T052 resume-position byte-identity (SC-008) - pure derive_position over reconstructed+reshuffled rows (incl. rule-2a re-drive branch) and live three-way check (session env / fresh env / fresh CLI subprocess) all canonical-JSON byte-equal; 2/2
+- T051 CLI parity guard - registered Typer surface == contracts/cli.md table, declared lib functions importable, callback wiring references its declared function, no function owns two subcommands (position->resume alias folded); bridge-free 4/4
+- Merge pull request #38 from olamni-glp/main
+
 ## [v2026.06.12.1] - 2026-06-12
 
 ### Added

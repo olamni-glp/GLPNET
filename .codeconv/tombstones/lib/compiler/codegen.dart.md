@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/codegen.dart
 name: codegen.dart
-purpose: ''
-key_idea: ''
+purpose: Code generator that lowers the annotated GLP AST into FCP-style bytecode, emitting per-clause HEAD/GUARD/BODY instruction sequences plus module-RPC and spawn ops.
+key_idea: CodeGenContext threads PC, labels, temp registers and phase flags per clause; head args emit GetVariable-vs-GetValue by first-occurrence tracking, structures via Push/Pop/PutStructure, ClauseTry/Commit/Proceed frame the phases, body goals Spawn and remote goals Distribute/Transmit.
 dependencies:
 - lib/bytecode/asm.dart
 - lib/bytecode/opcodes.dart
@@ -30,5 +30,8 @@ codegen_completed_at: '2026-05-28T13:15:54Z'
 target_cs_path: out/csharp/lib/compiler/codegen.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Code generator that lowers the annotated GLP AST into FCP-style bytecode, emitting per-clause HEAD/GUARD/BODY instruction sequences plus module-RPC and spawn ops.

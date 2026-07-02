@@ -51,6 +51,8 @@ plan_started_at: '2026-05-21T16:55:19Z'
 plan_completed_at: '2026-05-21T16:58:09Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/multiagent_glp_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Multi-agent GLP tests via IsolateManager

@@ -1,8 +1,8 @@
 ---
 path: test/conformance/restart_clause1_test.dart
 name: restart_clause1_test.dart
-purpose: ''
-key_idea: ''
+purpose: Verifies that a suspended goal, on wake, restarts execution at its recorded restart point (kappa = clause 1).
+key_idea: Allocates an FCP heap variable, suspends a GoalId on its reader with kappa=1 via SuspendOps.suspendGoalFCP, then binds the writer through CommitOps.applySigmaHatFCP and asserts exactly one activation whose id==g and pc==kappa.
 dependencies:
 - lib/runtime/commit.dart
 - lib/runtime/heap_fcp.dart
@@ -21,5 +21,8 @@ plan_started_at: '2026-05-21T16:24:09Z'
 plan_completed_at: '2026-05-21T16:28:39Z'
 plan_path: .codeconv/conversion-plans/test/conformance/restart_clause1_test.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Verifies that a suspended goal, on wake, restarts execution at its recorded restart point (kappa = clause 1).

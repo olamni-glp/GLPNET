@@ -1,0 +1,16 @@
+name: p5_il_merge
+description: >-
+  P5 verification spike — a lightweight in-language 4-primitive logic IL with
+  verifiers that lowers merge/3 clause 1 to v2.16.3 bytecode, execution-equivalent
+  to glp_runtime's stock CodeGenerator. Reuses glp_runtime read-only via a path dep.
+publish_to: none
+version: 0.0.1
+
+environment:
+  sdk: ^3.9.4
+
+dependencies:
+  glp_runtime:
+    path: ../../glp_runtime
+  # antlr4 added for Phase B (ANTLR-generated Dart parser runtime).
+  antlr4: ^4.13.2

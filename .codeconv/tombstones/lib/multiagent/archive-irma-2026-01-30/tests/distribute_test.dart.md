@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.287Z'
 sha256: 1df6d645a7d8eab129c2e8cfc5bd4572b23d0705368c95dd3bac6483e9e843db
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/distribute_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Distribution Test (1 Producer, 2 Consumers)

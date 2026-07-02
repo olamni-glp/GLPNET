@@ -25,6 +25,8 @@ codegen_completed_at: '2026-05-28T09:01:34Z'
 target_cs_path: out/csharp/lib/compiler/pmt/errors.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 PMT Error: Represents a mode/SRSW violation detected during PMT checking

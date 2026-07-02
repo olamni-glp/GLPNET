@@ -23,6 +23,8 @@ callers: []
 mtime: '2026-05-21T12:38:16.695Z'
 sha256: 68ab81b1cbeab3658ec6e1f318e3eab4d83469f238313efed3d9aedaf1991a37
 target_path: test_archive/actor_single_isolate_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Test actor boot file in single-isolate dGLP mode

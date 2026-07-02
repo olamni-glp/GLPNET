@@ -1,8 +1,8 @@
 ---
 path: lib/bytecode/asm.dart
 name: asm.dart
-purpose: ''
-key_idea: ''
+purpose: Static factory/DSL facade (BC) for constructing GLP bytecode instruction objects and assembling them into a BytecodeProgram.
+key_idea: A class of static helper methods, each a thin constructor wrapper (e.g. headStruct->HeadStructure, commit->Commit, spawn->Spawn, guard->Guard), exposed in dual lowerCamelCase and UPPERCASE-alias forms; prog(ops) boxes a List<Op> into a BytecodeProgram; some legacy ops (u/next) are @deprecated.
 dependencies:
 - lib/bytecode/opcodes.dart
 - lib/bytecode/opcodes_v2.dart
@@ -27,5 +27,8 @@ codegen_completed_at: '2026-05-28T13:09:08Z'
 target_cs_path: out/csharp/lib/bytecode/asm.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Static factory/DSL facade (BC) for constructing GLP bytecode instruction objects and assembling them into a BytecodeProgram.

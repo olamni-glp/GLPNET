@@ -16,5 +16,7 @@ plan_started_at: '2026-05-21T14:50:50Z'
 plan_completed_at: '2026-05-21T14:56:20Z'
 plan_path: .codeconv/conversion-plans/test/glp_runtime_test.dart.md
 open_escalation_count: 0
+purpose_source: absent
+key_idea_source: absent
 ---
 

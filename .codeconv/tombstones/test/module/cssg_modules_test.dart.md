@@ -23,6 +23,8 @@ plan_started_at: '2026-05-21T16:33:43Z'
 plan_completed_at: '2026-05-21T16:38:34Z'
 plan_path: .codeconv/conversion-plans/test/module/cssg_modules_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Validation test: cssg_modules project against Phase 1-3 module system.

@@ -1,8 +1,8 @@
 ---
 path: lib/compiler/result.dart
 name: result.dart
-purpose: ''
-key_idea: ''
+purpose: Defines CompilationResult, the value object returned by the compiler bundling emitted bytecode with its variable-to-register mapping.
+key_idea: An immutable data class holding a BytecodeProgram (from bytecode/runner.dart) plus a Map<String,int> variableMap from variable name to register index, set via a single positional constructor.
 dependencies:
 - lib/bytecode/runner.dart
 callers:
@@ -22,5 +22,8 @@ codegen_completed_at: '2026-05-28T13:02:18Z'
 target_cs_path: out/csharp/lib/compiler/result.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Defines CompilationResult, the value object returned by the compiler bundling emitted bytecode with its variable-to-register mapping.

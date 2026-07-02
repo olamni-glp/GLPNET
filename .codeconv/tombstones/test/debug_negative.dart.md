@@ -1,8 +1,8 @@
 ---
 path: test/debug_negative.dart
 name: debug_negative.dart
-purpose: ''
-key_idea: ''
+purpose: Standalone debug harness verifying the GLP type-checker's mode/direction enforcement on a difference-list append procedure (my_dl_append).
+key_idea: Helper checkTypes strips type (::=) + procedure declarations, lexes/parses the clauses, parses types separately, runs TypeChecker.check; a my_dl_append clause with WRONG I/O modes must yield isWellTyped=false, one with CORRECT modes true; prints BUG/CORRECT verdict.
 dependencies:
 - lib/analysis/type_checker/type_checker.dart
 - lib/analysis/type_checker/type_parser.dart
@@ -19,5 +19,8 @@ plan_started_at: '2026-05-21T16:28:59Z'
 plan_completed_at: '2026-05-21T16:33:26Z'
 plan_path: .codeconv/conversion-plans/test/debug_negative.dart.md
 open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Standalone debug harness verifying the GLP type-checker's mode/direction enforcement on a difference-list append procedure (my_dl_append).

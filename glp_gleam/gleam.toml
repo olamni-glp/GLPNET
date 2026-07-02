@@ -1,0 +1,16 @@
+name = "glp_gleam"
+version = "0.1.0"
+description = "Gleam/BEAM port skeleton for GLP (feature 033, epic gleam-atomvm). An empty-but-building subtree — 8 placeholder modules under src/glp/, 1:1 with glp_runtime/lib/. The buildable, green baseline the heavy downstream port features (F4+) land in. No ported runtime semantics yet."
+licences = ["Apache-2.0"]
+
+# Runtime deps pinned to the F1-ratified shape (ranges here; exact versions in the
+# committed manifest.toml). The Gleam OTP actor package is intentionally NOT a dependency:
+# its proc_lib use is outside AtomVM's BEAM/OTP subset (F1 dossier §3), so the downstream
+# port stays AtomVM-runnable by spawning the raw erlang way + gleam_erlang Subjects.
+# (Verified absent transitively too — see manifest.toml.)
+[dependencies]
+gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+gleam_erlang = ">= 0.34.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

@@ -70,6 +70,8 @@ codegen_completed_at: '2026-05-28T12:39:09Z'
 target_cs_path: out/csharp/lib/runtime/body_kernels.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Body kernel infrastructure for GLP arithmetic

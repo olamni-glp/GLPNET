@@ -524,8 +524,47 @@ def _process_one_file(
     # Feature 016 / T011: per-file source-parse via the resolved language
     # pair's hooks (dart_csharp delegates to the same parse impl —
     # byte-identical; FR-023/SC-005).
-    purpose = source_pair.extract_leading_doc(abs_path)
-    key_idea = purpose
+    mech_purpose = source_pair.extract_leading_doc(abs_path)
+
+    # Feature 035 / T016+T017 (FR-008): provenance-aware seed.
+    # The mechanical seed sets purpose_source/key_idea_source (``doc`` when a
+    # leading doc-comment exists, else ``absent``). This code runs ONLY on the
+    # re-write path (the file was NOT sha-skipped above: row absent OR source
+    # changed). An existing tombstone's INFERRED value is carried forward iff
+    # its recorded sha256 equals the current file hash — preserving enrichment
+    # across a rebuilt inventory (row absent, R-002 case a) while DISCARDING
+    # stale inference on a real source change (FR-007, R-002 case b). See
+    # contracts/discover_preservation.md. An explicitly-set value in ``fields``
+    # below wins over ``merge_preserving_feature015`` (which only fills keys it
+    # did not author), so a reset correctly overwrites the old ``inferred``.
+    prior_psrc = prior_ksrc = None
+    prior_purpose = prior_key = None
+    prior_sha = ""
+    _existing_tomb = tombstone_path(tombstones_root, rel_path)
+    if _existing_tomb.is_file():
+        try:
+            _prior = read_tombstone(_existing_tomb)
+            prior_psrc = _prior.get("purpose_source")
+            prior_ksrc = _prior.get("key_idea_source")
+            prior_purpose = _prior.get("purpose")
+            prior_key = _prior.get("key_idea")
+            prior_sha = str(_prior.get("sha256") or "")
+        except (OSError, ValueError):
+            pass
+    _sha_unchanged = bool(prior_sha) and prior_sha == sha256
+
+    if prior_psrc == "inferred" and _sha_unchanged and (prior_purpose or "") != "":
+        purpose = str(prior_purpose)
+        purpose_source = "inferred"
+    else:
+        purpose = mech_purpose
+        purpose_source = "doc" if mech_purpose != "" else "absent"
+    if prior_ksrc == "inferred" and _sha_unchanged and (prior_key or "") != "":
+        key_idea = str(prior_key)
+        key_idea_source = "inferred"
+    else:
+        key_idea = mech_purpose
+        key_idea_source = "doc" if mech_purpose != "" else "absent"
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -548,14 +587,18 @@ def _process_one_file(
         conn.execute(
             text(
                 "INSERT INTO codeconv.dart_files "
-                "  (path, name, purpose, key_idea, mtime, sha256, discovered_at) "
-                "VALUES (:path, :name, :purpose, :key_idea, :mtime, :sha256, NOW()) "
+                "  (path, name, purpose, key_idea, mtime, sha256, "
+                "   purpose_source, key_idea_source, discovered_at) "
+                "VALUES (:path, :name, :purpose, :key_idea, :mtime, :sha256, "
+                "        :purpose_source, :key_idea_source, NOW()) "
                 "ON CONFLICT (path) DO UPDATE SET "
                 "  name = EXCLUDED.name, "
                 "  purpose = EXCLUDED.purpose, "
                 "  key_idea = EXCLUDED.key_idea, "
                 "  mtime = EXCLUDED.mtime, "
                 "  sha256 = EXCLUDED.sha256, "
+                "  purpose_source = EXCLUDED.purpose_source, "
+                "  key_idea_source = EXCLUDED.key_idea_source, "
                 "  discovered_at = NOW()"
             ),
             {
@@ -565,6 +608,8 @@ def _process_one_file(
                 "key_idea": key_idea,
                 "mtime": mtime,
                 "sha256": sha256,
+                "purpose_source": purpose_source,
+                "key_idea_source": key_idea_source,
             },
         )
         conn.execute(
@@ -601,6 +646,10 @@ def _process_one_file(
         "callers": [],  # filled by _backfill_tombstone_callers
         "mtime": _format_mtime(mtime),
         "sha256": sha256,
+        # Feature 035: explicit provenance wins over merge_preserving (so a
+        # reset on source change overwrites a stale ``inferred``).
+        "purpose_source": purpose_source,
+        "key_idea_source": key_idea_source,
     }
     # Carry forward the appended feature-015 + feature-017 keys if a prior
     # tombstone (e.g. from `depgraph stamp-tombstones` or `planagents
@@ -886,6 +935,14 @@ def _preflight_from_tombstones(tombstones_root: Path) -> dict:
                 "key_idea": fm.get("key_idea") or "",
                 "mtime": fm.get("mtime") or _format_mtime(_utc_now()),
                 "sha256": fm["sha256"],
+                # Feature 035: carry provenance so a --from-tombstones rebuild
+                # does not silently reset inferred/doc to absent (FR-008).
+                "purpose_source": _provenance_from_fm(
+                    fm, "purpose", "purpose_source"
+                ),
+                "key_idea_source": _provenance_from_fm(
+                    fm, "key_idea", "key_idea_source"
+                ),
             }
         )
         deps = fm.get("dependencies")
@@ -1017,15 +1074,19 @@ def _run_from_tombstones(
             conn.execute(
                 text(
                     "INSERT INTO codeconv.dart_files "
-                    "  (path, name, purpose, key_idea, mtime, sha256, discovered_at) "
+                    "  (path, name, purpose, key_idea, mtime, sha256, "
+                    "   purpose_source, key_idea_source, discovered_at) "
                     "VALUES (:path, :name, :purpose, :key_idea, "
-                    "        :mtime, :sha256, NOW()) "
+                    "        :mtime, :sha256, "
+                    "        :purpose_source, :key_idea_source, NOW()) "
                     "ON CONFLICT (path) DO UPDATE SET "
                     "  name = EXCLUDED.name, "
                     "  purpose = EXCLUDED.purpose, "
                     "  key_idea = EXCLUDED.key_idea, "
                     "  mtime = EXCLUDED.mtime, "
                     "  sha256 = EXCLUDED.sha256, "
+                    "  purpose_source = EXCLUDED.purpose_source, "
+                    "  key_idea_source = EXCLUDED.key_idea_source, "
                     "  discovered_at = NOW()"
                 ),
                 f,
@@ -1305,6 +1366,22 @@ def _format_mtime(dt: datetime) -> str:
         dt = dt.replace(tzinfo=timezone.utc)
     ms = dt.microsecond // 1000
     return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{ms:03d}Z"
+
+
+def _provenance_from_fm(fm: dict, value_key: str, source_key: str) -> str:
+    """Feature 035: provenance for a rebuilt ``dart_files`` row from a tombstone.
+
+    Faithfully carries a present ``purpose_source``/``key_idea_source`` (``doc``
+    / ``inferred`` / ``absent``) so a ``--from-tombstones`` rebuild preserves
+    enrichment provenance (markdown⇔DB agreement, FR-008). A pre-035 tombstone
+    has no provenance key, or a malformed value sneaks in → derive it from the
+    value's blank-ness (non-blank ⇒ ``doc``, blank ⇒ ``absent``), matching the
+    migration-0011 backfill rule.
+    """
+    src = fm.get(source_key)
+    if src in ("doc", "inferred", "absent"):
+        return src
+    return "absent" if str(fm.get(value_key) or "") == "" else "doc"
 
 
 __all__ = ["register", "run_discover"]

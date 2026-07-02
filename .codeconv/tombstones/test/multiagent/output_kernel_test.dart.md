@@ -20,6 +20,8 @@ plan_started_at: '2026-05-21T16:49:33Z'
 plan_completed_at: '2026-05-21T16:54:25Z'
 plan_path: .codeconv/conversion-plans/test/multiagent/output_kernel_test.dart.md
 open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Tests for '_output'/1 kernel and send_to_user/1 GLP predicate.

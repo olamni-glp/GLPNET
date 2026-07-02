@@ -111,6 +111,62 @@ def test_from_tombstones_does_not_read_dart(discover_repo: Path) -> None:
     )
 
 
+@needs_bridge
+def test_from_tombstones_preserves_provenance(discover_repo: Path) -> None:
+    """Regression (feature 035): a --from-tombstones rebuild must carry the
+    tombstone's purpose_source/key_idea_source into the dart_files row —
+    NOT silently reset inferred/doc to absent (FR-008).
+
+    Before the fix the rebuild UPSERT omitted the provenance columns, so a
+    rebuilt inventory defaulted every row to 'absent' (markdown⇔DB drift +
+    lost enrichment). This builds a doc'd file + a blank file, enriches the
+    blank one to 'inferred' in-process, then rebuilds from tombstones and
+    asserts both files' provenance survives.
+    """
+    from sqlalchemy import text
+
+    from .conftest import BRIDGE_SCRIPT, fake_infer_fn
+    from codeconv.db.engine import connect
+
+    sub = discover_repo / "glp_runtime_net"
+    (sub / "lib").mkdir(parents=True)
+    (sub / "lib" / "docced.dart").write_text(
+        "/// A documented unit.\nclass Docced {}\n", encoding="utf-8"
+    )
+    (sub / "lib" / "blank.dart").write_text(
+        "class Blank {\n  int v = 1;\n}\n", encoding="utf-8"
+    )
+    assert run_codeconv(discover_repo, "migrate").returncode == 0
+    assert run_codeconv(
+        discover_repo, "discover", "run", "--root", str(sub), "--json"
+    ).returncode == 0
+
+    # Enrich the blank file → tombstone+DB become 'inferred'.
+    from codeconv.tools.enrich.workflow import run_enrich
+
+    run_enrich(discover_repo, infer_fn=fake_infer_fn, bridge_script=BRIDGE_SCRIPT)
+
+    # Rebuild the inventory purely from the tombstone tree.
+    assert run_codeconv(
+        discover_repo, "discover", "run", "--root", str(sub),
+        "--from-tombstones", "--json",
+    ).returncode == 0
+
+    engine = connect(discover_repo)
+    with engine.begin() as conn:
+        prov = dict(
+            conn.execute(
+                text(
+                    "SELECT path, purpose_source FROM codeconv.dart_files "
+                    "WHERE path IN ('lib/docced.dart','lib/blank.dart')"
+                )
+            ).all()
+        )
+    # Without the fix both would be 'absent'.
+    assert prov["lib/docced.dart"] == "doc", prov
+    assert prov["lib/blank.dart"] == "inferred", prov
+
+
 # ---------------------------------------------------------------------------
 # Amendment v2 — preflight (exit 65, zero mutation) + Option B + dangling edge
 # ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 ---
 path: lib/analysis/type_checker/program_dfa.dart
 name: program_dfa.dart
-purpose: ''
-key_idea: ''
+purpose: Builds and represents the program's type DFA - states/automata for each defined type, its complement, and procedures - and checks leaf-term consistency (Def 4.3).
+key_idea: buildProgramDFA creates T and T? states/automata per type (modes flipped + targets dualized for the complement), with mode-labeled transitions via involution; checkLeafConsistency matches a variable's reader/writer mode against the path mode, or a constant against type transitions/acceptedPrimitives.
 dependencies:
 - lib/analysis/type_checker/mode.dart
 - lib/analysis/type_checker/type_ast.dart
@@ -27,5 +27,8 @@ codegen_completed_at: '2026-05-28T09:17:57Z'
 target_cs_path: out/csharp/lib/analysis/type_checker/program_dfa.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: inferred
+key_idea_source: inferred
 ---
 
+Builds and represents the program's type DFA - states/automata for each defined type, its complement, and procedures - and checks leaf-term consistency (Def 4.3).

@@ -18,6 +18,8 @@ callers: []
 mtime: '2026-05-21T12:38:14.229Z'
 sha256: 0a701a84d49a792dee8bd342ce679ee3698899b4f1b71da19438ab8cac446099
 target_path: lib/multiagent/archive-irma-2026-01-30/tests/bidirectional_stream_test.cs
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Bidirectional Stream Test

@@ -63,6 +63,8 @@ codegen_completed_at: '2026-05-28T10:19:33Z'
 target_cs_path: out/csharp/lib/runtime/module_hierarchy.cs
 build_status: pass
 codegen_open_escalation_count: 0
+purpose_source: doc
+key_idea_source: doc
 ---
 
 Module hierarchy: self.glp chain discovery and type scope assembly.

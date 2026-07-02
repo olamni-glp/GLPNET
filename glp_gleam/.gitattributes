@@ -1,0 +1,6 @@
+# This subtree builds and runs on Erlang/BEAM under WSL/Linux. The repo sets
+# core.autocrlf=true, which would rewrite shell scripts to CRLF on a Windows
+# checkout and break them under WSL bash (verified: a CRLF smoke.sh dies with
+# "set: pipefail: invalid option name"). Pin shell scripts to LF so the smoke
+# gate (FR-007) runs everywhere.
+*.sh text eol=lf
