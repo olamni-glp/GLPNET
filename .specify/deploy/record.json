@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-06-27T16:17:30.762341+00:00",
+  "actor": "claude-opus-4-8 (/bk-deploy --heal batch)",
+  "source_buildkit": "D:/bstdev/research/buildkit",
+  "deploy": {
+    "schema_version": "1",
+    "action": "deploy",
+    "outcome": "no_op",
+    "migrated": 0,
+    "target": {
+      "canonical_path": "D:\\BSTDEV\\research\\glp\\GLPNET",
+      "pinned_version": "v2026.06.24.1",
+      "status": "active",
+      "store_dir": "C:\\Users\\smbuser\\AppData\\Local\\buildkit\\deploy-home\\targets\\fb9d55f94f8b"
+    },
+    "home": {
+      "home_path": "C:\\Users\\smbuser\\AppData\\Local\\buildkit\\deploy-home",
+      "format_version": 1
+    },
+    "installed_version": {
+      "version": "v2026.06.24.1",
+      "integrity_ok": true
+    }
+  }
+}
