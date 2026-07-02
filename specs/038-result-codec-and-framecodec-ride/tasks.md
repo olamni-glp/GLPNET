@@ -99,14 +99,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Nested-bound-term fidelity test: deref resolution matches the reference up to depth-32 (no over/under-resolve; `$truncated` at the bound) — all three runtimes (Acceptance #1, contract §6).
-- [ ] T034 [P] [US3] var→writer identity test: an unbound variable paired to a writer round-trips by **GlobalVarId** (`agentId:localId`), identity preserved — all three runtimes (Acceptance #2, R7).
+- [X] T033 [P] [US3] Nested-bound-term fidelity test: deref resolution matches the reference up to depth-32 (no over/under-resolve; `$truncated` at the bound) — all three runtimes (Acceptance #1, contract §6). New `deref_fidelity_test.{dart,cs,gleam}` build a real heap (Dart `GlpRuntime.heap`, C# `MapHeap:IHeapView`, Gleam 034 `heap`) and pin the boundary EXACTLY: a 32-deep struct chain resolves fully (no marker); helpers `_depthToMarker`/`_containsTruncated`. ✅ Dart 6, C# builder 13, Gleam 87.
+- [X] T034 [P] [US3] var→writer identity test: an unbound variable paired to a writer round-trips by **GlobalVarId** (`agentId:localId`), identity preserved — all three runtimes (Acceptance #2, R7). Same files: multiple unbound query vars → ordered var→writer by (agentId, localId); an unbound var nested in a bound struct keeps its GlobalVarId; both survive the codec round-trip. Per-runtime (localId = local writer addr, R7). ✅
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Author the deref + var→writer fidelity corpus (depth-1, depth-32-bound, multi-var→writer) under `specs/038-.../contracts/golden/` (non-gated), with recorded Dart outcomes as the reference.
-- [ ] T036 [US3] Ensure the canonical serialization order (bindings/varToWriter/suspended) is deterministic + identical across runtimes (parity invariant, data-model §1) — verified by T033/T034 across runtimes.
-- [ ] T037 [US3] Add the depth-32 truncation-marker fidelity case to the corpus + assertions (matches reference depth, explicit marker; R5).
+- [X] T035 [US3] Author the deref + var→writer fidelity corpus (depth-1, depth-32-bound, multi-var→writer) under `specs/038-.../contracts/golden/` (non-gated), with recorded Dart outcomes as the reference. `contracts/golden/deref-corpus.md` — 5 vectors + recorded Dart outcomes; notes which are address-independent (byte-identical cross-runtime) vs identity-preserving per-runtime. ✅
+- [X] T036 [US3] Ensure the canonical serialization order (bindings/varToWriter/suspended) is deterministic + identical across runtimes (parity invariant, data-model §1) — verified by T033/T034 across runtimes. New `canonical_order_test.{dart,cs,gleam}`: encode is deterministic + bindings/varToWriter keep declaration order (non-alphabetical insertion order — map iteration MUST NOT leak); cross-runtime identity additionally pinned by golden `multi_binding`/`var_to_writer`. ✅
+- [X] T037 [US3] Add the depth-32 truncation-marker fidelity case to the corpus + assertions (matches reference depth, explicit marker; R5). In `deref_fidelity_test.*`: a 33-deep chain yields `$truncated` at EXACTLY depth 33 (`_depthToMarker == 33`), and the marker is a normal decodable term (never a silent cut). ✅ all three runtimes.
 
 **Checkpoint**: all three user stories independently functional.
 
