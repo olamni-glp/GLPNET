@@ -16,15 +16,27 @@ if [ ! -f "$AVM_MJS" ]; then
 fi
 
 cd "$REPO/glp_gleam"
-PATH="$ERLANG_BIN:$PATH" "$GLEAM" build --target erlang >/dev/null
 EB=build/dev/erlang
+# Fail hard if the Gleam build errors (codex P2): a failing `gleam build` exits non-zero,
+# so a stale-beam false-pass is unreachable — the gate stops here instead of running old
+# artifacts. Beam-existence + Node-exit are checked below as belt-and-braces.
+if ! PATH="$ERLANG_BIN:$PATH" "$GLEAM" build --target erlang >/dev/null; then
+  echo "ATOMVM GATED: FAIL — gleam build --target erlang failed"; exit 1
+fi
 
 beams=( "$EB/glp_gleam/ebin/atomvm_gated_probe.beam" "$EB/glp_gleam/ebin/glp@codec@term_codec.beam" )
 for m in gleam@int gleam@bit_array gleam@result gleam@order gleam@list gleam@bool gleam@option gleam_stdlib; do
   beams+=( "$(find "$EB" -name "$m.beam" | head -1)" )
 done
+for b in "${beams[@]}"; do
+  if [ ! -f "$b" ]; then echo "ATOMVM GATED: FAIL — missing beam after build: $b"; exit 1; fi
+done
 abs=(); for b in "${beams[@]}"; do abs+=( "$(cd "$(dirname "$b")" && pwd)/$(basename "$b")" ); done
 
+# NB: this AtomVM (emscripten) build exits non-zero even on a successful run (its default
+# init-module probe fails first), so the process exit code is NOT a usable success signal.
+# The authoritative signal is the OUTPUT content asserted below: a crashing/wrong probe
+# cannot emit the expected byte lines + 3 round-trip `true`s, so the checks still FAIL loud.
 out="$("$NODE" "$AVM_MJS" "${abs[@]}" 2>&1)"
 echo "$out" | grep -vE "streaming|fallback|prepare wasm|pthread|Downloading|Failed load module: init"
 
