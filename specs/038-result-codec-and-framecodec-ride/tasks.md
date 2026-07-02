@@ -77,8 +77,8 @@
 ### Tests for User Story 2
 
 - [X] T026 [P] [US2] Golden byte-identity test in Dart: `encode(R) == golden(R)` for the non-gated corpus — `glp_runtime/test/codec/golden_corpus_test.dart` (SC-002).
-- [ ] T027 [P] [US2] Golden byte-identity tests in C# (`csharp/glp_result_codec/tests/GoldenByteIdentityTests.cs`) and Gleam (`glp_gleam/test/glp/codec/golden_corpus_test.gleam`) — each reproduces `corpus.hex`, captured masked.
-- [ ] T028 [P] [US2] Decode-other-runtime test (Acceptance #2): bytes from one runtime decode to the original envelope in another (use the golden as the shared byte source).
+- [X] T027 [P] [US2] Golden byte-identity tests in C# (`csharp/glp_result_codec/tests/GoldenByteIdentityTests.cs`) and Gleam (`glp_gleam/test/glp/codec/golden_corpus_test.gleam`) — each READS the pinned `corpus.hex` (drift guard, not inlined) and asserts `encode(corpus[name]) == golden[name]` for all 13 non-gated entries + name-set coverage (captured masked, R4). Gleam reads via OTP `file:read_file/1` FFI (no new dep); hex via `int.base_parse`. ✅ C# 111 tests, Gleam 77 tests green.
+- [X] T028 [P] [US2] Decode-other-runtime test (Acceptance #2): the Dart-authored golden bytes (shared byte source) decode, in C# and Gleam, back to the corpus envelope — `Decode(golden[name]) == corpus[name]` for all 13 non-gated entries. Same two test files. ✅ green.
 
 ### Implementation for User Story 2
 
