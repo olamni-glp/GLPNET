@@ -569,23 +569,7 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 7. FCP paper: `docs/1-s2.0-0743106689900113-main.pdf`. FCP source: `/Users/udi/Dropbox/Concurrent Prolog/FCP/Savannah`. Mirror: https://github.com/EShapiro2/FCP
 
 <!-- BUILDKIT START -->
-Active feature plan: `specs/038-result-codec-and-framecodec-ride/plan.md` — the
-**Result-Envelope Codec** (full-gleam M1 spine; roadmap #15, REALIGN+SPLIT of
-P1b row #15). Delivers the heap-independent **result envelope**
-`{Status, ResolvedBindings, var→writer(GlobalVarId), suspended, captured, Error}`
-(result side of the ratified ED-1 seam) + its **byte codec**, riding the
-Section-15 **term** codec (ED-6 obl#1). 🔑 Key plan decision: the envelope is
-**terms+scalars, not opcodes** → rides only the term portion (the shipped 029
-`ConstantCodec` conventions: LEB128 varints / 8-byte LE int64 / IEEE-754 doubles /
-varint+UTF-8 strings / tags `0x00–0x06`, +`0x07` unbound VarRef; payloadType
-`0x11`), so it is **buildable now on the 034 Gleam term/heap layer WITHOUT the
-unbuilt F5 bytecode runner** and without the v2-ISA opcode freeze. Byte-parity
-proven Dart(truth)/C#/Gleam via a golden corpus; loud-fail on trailing/unknown.
-Owner gates RULED 2026-06-30: **D4=A** (freeze→v2, author Section-15 in the
-freeze) + **ED-6=A** (AtomVM `/float` decode spike). GATED-not-final: float
-(ED-6), 64-bit-int edges (Gleam bignum masking), cyclic terms (D5/FORK-1 OPEN —
-defer to runtime deref, never self-decide), and the whole-Section-15 "final"
-declaration (D4 must land). 029 = C# **oracle only** (FR-007). Framing/transport
-→ link-layer #36 (FR-006). Read plan.md + research.md / data-model.md /
-contracts/result-envelope-codec.md / quickstart.md.
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+- specs/036-http3-quic-ws-link/plan.md
 <!-- BUILDKIT END -->

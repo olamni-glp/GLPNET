@@ -24,6 +24,11 @@ public readonly struct LinkScheme : IEquatable<LinkScheme>
     /// (feature 025 runtime-integration; ws/wss is the next iteration). One bidirectional duplex socket.</summary>
     public static readonly LinkScheme Tcp = new("tcp");
 
+    /// <summary>Genuine HTTP/3 (QUIC) transport carrying a WebSocket link over one bidi
+    /// <c>QuicStream</c> (feature 036). Real on-wire handshake via <c>System.Net.Quic</c>/MsQuic
+    /// (GA in .NET 9+, cross-platform), gated on <c>QuicListener</c>/<c>QuicConnection.IsSupported</c>.</summary>
+    public static readonly LinkScheme Quic = new("quic");
+
     public static readonly LinkScheme Ws = new("ws");
     public static readonly LinkScheme Wss = new("wss");
     public static readonly LinkScheme Https = new("https");

@@ -1,0 +1,25 @@
+<!--
+  glp_quick_host — the C# QUIC+WS endpoint executable the glp_quick control plane launches and
+  supervises (feature 036, FR-007/T018). It is a thin host around the spec-025 QUIC+WS transport
+  leaf (GlpLink): establish one real QUIC+WS link in the server or client role, then bridge
+  newline-delimited L5 GLP-message envelopes between stdin/stdout and the link. The control plane
+  (glp_quick.stacks.csharp) speaks to it over stdio; data on stdout, control/errors on stderr.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>glp_quick_host</AssemblyName>
+    <RootNamespace>GlpQuick.Host</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+  </ItemGroup>
+
+</Project>

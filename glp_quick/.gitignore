@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+# cert material is generated to an operator-specified path, never committed (FR-003)
+*.pem
+*.key
+*.pfx
+*.fingerprint
