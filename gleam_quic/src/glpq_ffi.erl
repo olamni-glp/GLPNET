@@ -18,23 +18,25 @@ relay(Dotnet, Dll, Args) ->
     ),
     Parent = self(),
     _Reader = spawn(fun() -> stdin_loop(Parent) end),
-    loop(Port).
+    loop(Port, <<>>).
 
-loop(Port) ->
+%% Reassemble long lines. The port splits any line longer than the {line,N} buffer into a run of
+%% {noeol, Frag} pieces followed by a final {eol, Frag}. We ACCUMULATE the fragments and classify
+%% only the COMPLETE reassembled line — otherwise a data envelope larger than the buffer would be
+%% misrouted fragment-by-fragment to stderr and LOST from the data plane (a silent data-loss bug).
+loop(Port, Acc) ->
     receive
-        {Port, {data, {eol, Line}}} ->
-            classify(Line),
-            loop(Port);
         {Port, {data, {noeol, Frag}}} ->
-            %% a line fragment longer than the {line,N} bound — emit as control text
-            io:put_chars(standard_error, [Frag]),
-            loop(Port);
+            loop(Port, <<Acc/binary, Frag/binary>>);
+        {Port, {data, {eol, Frag}}} ->
+            classify(<<Acc/binary, Frag/binary>>),
+            loop(Port, <<>>);
         {Port, {exit_status, Status}} ->
             Status;
         {stdin, Data} ->
             %% forward one line (already \n-terminated by io:get_line) to the side-process stdin
             try port_command(Port, Data) catch _:_ -> ok end,
-            loop(Port);
+            loop(Port, Acc);
         stdin_eof ->
             try port_close(Port) catch _:_ -> ok end,
             0
