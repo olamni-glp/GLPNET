@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Union
 
 from glp_quick.repl_link import GlpMessage
-from glp_quick.terminal import forms, joint, protocol
+from glp_quick.terminal import forms, joint, protocol, replpage
 from glp_quick.terminal.pages import ME, SHARED, Page, receive_page
 from glp_quick.terminal.protocol import decode, is_known
 from glp_quick.terminal.routing import PeerSource, Resolution, resolve
@@ -71,6 +71,9 @@ class TerminalState:
         self.last_response: str = ""
         #: Mask definitions by page name (US4) — the fillable-form model behind mask pages.
         self.masks: dict = {}
+        #: Optional host hook: ``(sender, page, goal) -> None`` answers an inbound ``repl_goal`` (US5).
+        #: Set by the view when this endpoint hosts a REPL; unset ⇒ inbound goals are reported, not run.
+        self.on_repl_goal: Optional[Callable[[str, str, str], None]] = None
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -191,6 +194,10 @@ class TerminalState:
             self._handle_form_def(msg.sender, tm)
         elif tm.kind == "form_fill":
             self._handle_form_fill(msg.sender, tm)
+        elif tm.kind == "repl_goal":
+            self._handle_repl_goal(msg.sender, tm)
+        elif tm.kind == "repl_result":
+            self._handle_repl_result(msg.sender, tm)
         elif tm.kind == "link_status":
             state = str(tm.fields[0]) if tm.fields else "?"
             detail = tm.fields[1] if len(tm.fields) > 1 else ""
@@ -254,6 +261,33 @@ class TerminalState:
                 self.pages[idx].unread = True
             self.last_changed_index = idx
         self.last_response = f"{sender} returned form '{name}'"
+
+    def _handle_repl_goal(self, sender: str, tm) -> None:
+        """A peer sent a goal to a REPL page hosted here (US5/FR-016). Delegate to the host hook if one
+        is registered (it evaluates off-thread + replies); otherwise surface that no REPL is hosted."""
+        if len(tm.fields) < 2:
+            self.append_chat_line(f"** malformed repl_goal from {sender} **")
+            return
+        page, goal = tm.fields[0], tm.fields[1]
+        if self.on_repl_goal is not None:
+            self.on_repl_goal(sender, page, goal)
+        else:
+            self.append_chat_line(f"** {sender} sent a REPL goal but no REPL is hosted here **")
+
+    def _handle_repl_result(self, sender: str, tm) -> None:
+        """The REPL's rendered result for a goal — render it on that REPL page (US5/FR-016)."""
+        if len(tm.fields) < 2:
+            self.append_chat_line(f"** malformed repl_result from {sender} **")
+            return
+        page, rendered = tm.fields[0], tm.fields[1]
+        idx = self.find_page_index(page)
+        if idx is None:
+            idx = self.add_page(page, owner=ME, kind="repl")
+        replpage.append_result(self.pages[idx], rendered)
+        if idx != self.current:
+            self.pages[idx].unread = True
+        self.last_changed_index = idx
+        self.last_response = f"{sender} → REPL '{page}'"
 
     def _set_link(self, state: str, detail: Optional[str], notice: str) -> None:
         if self.link_state == state and self.link_detail == detail:

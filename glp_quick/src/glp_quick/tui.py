@@ -30,6 +30,7 @@ from glp_quick.terminal import keys as keylib
 from glp_quick.terminal import pages as pagelib
 from glp_quick.terminal import presentation as pres
 from glp_quick.terminal import protocol
+from glp_quick.terminal import replpage as replpagelib
 from glp_quick.terminal.pages import ME, SHARED
 from glp_quick.terminal.state import TerminalState, compose_chat
 
@@ -50,6 +51,8 @@ _HELP = (
     "    /undo-pin        dismiss the last transient pinpoint (restore original)\n"
     '    /mask NAME label R C "text" | field R C W ...   define a fillable form\n'
     "    /fill idx=value ...   fill a mask's fields and return it\n"
+    "    /repl [name]     open a page bound to a live GLP REPL over the link\n"
+    "    /return          send a peer-received page back to its owner\n"
     "    /layout [lines N|two-strip]  choose the compose layout\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
@@ -94,6 +97,8 @@ def run_tui(
 
     stop = threading.Event()
     app_ref = [None]  # set after the app is built (for exit/style/invalidate from helpers)
+    the_loop = [None]  # the asyncio loop (set in main) — lets off-thread REPL replies re-enter it
+    repl_service = [None]  # lazily-created host-side ReplService (spawns glp_repl on first goal)
 
     # The whole model — pages / unread / peers / OIA link-state + the loop-serialized receive-path
     # mutation seam — lives in TerminalState (host-free, unit-tested). This view is a thin wiring over
@@ -275,6 +280,54 @@ def run_tui(
         handle.send(GlpMessage(sender=sid, to=target, payload=protocol.form_fill(name, fills)))
         _echo(f"[{sid}>{target}] returned filled form '{name}'")
 
+    # --- US5: live REPL page + agent-sent plain pages ---
+    def _serve_repl_goal(sender: str, page: str, goal: str) -> None:
+        """Host side: evaluate an inbound goal off the UI loop, then reply repl_result on the loop."""
+        def work():
+            if repl_service[0] is None:
+                repl_service[0] = replpagelib.ReplService()
+            rendered = repl_service[0].evaluate(goal)
+            loop = the_loop[0]
+            if loop is not None and not stop.is_set():
+                loop.call_soon_threadsafe(
+                    lambda: handle.send(GlpMessage(sender=sid, to=sender,
+                                                   payload=protocol.repl_result(page, rendered)))
+                )
+        threading.Thread(target=work, daemon=True).start()
+
+    def do_repl(name: Optional[str] = None) -> None:
+        pg_name = name or f"REPL{sum(1 for p in state.pages if p.kind == 'repl') + 1}"
+        state.save_current(screen.text)
+        i = state.ensure_page(pg_name, owner=ME, kind="repl")
+        state.pages[i].kind = "repl"
+        if not state.pages[i].text:
+            state.pages[i].text = (f"─── GLP REPL page '{pg_name}' — goals evaluate over the link ───\n"
+                                   "(type a goal, then '//' + Enter to send it)\n")
+        _show(state.load(i))
+        state.on_repl_goal = _serve_repl_goal  # also host a REPL here so a peer can drive a repl page
+
+    def do_repl_goal(goal: str) -> None:
+        pg = state.current_page()
+        replpagelib.append_goal(pg, goal)
+        _show(pg)
+        target = _directed_target(pg)
+        if target == BROADCAST:
+            target = default_to
+        if target == BROADCAST:
+            replpagelib.append_result(pg, "[no peer connected to evaluate this goal over the link]")
+            _show(pg)
+            return
+        handle.send(GlpMessage(sender=sid, to=target, payload=protocol.repl_goal(pg.name, goal)))
+
+    def do_return() -> None:
+        state.save_current(screen.text)
+        pg = state.current_page()
+        if pg.owner in (ME, SHARED):
+            _echo("?? /return is for a page received from a peer — use /transmit for your own pages")
+            return
+        handle.send(GlpMessage(sender=sid, to=pg.owner, payload=protocol.page(pg.name, sid, pg.kind, pg.text)))
+        _echo(f"[{sid}>{pg.owner}] returned page '{pg.name}'")
+
     def do_nav(delta: int) -> None:
         _switch(state.current + delta)
 
@@ -348,6 +401,10 @@ def run_tui(
             do_mask(argtail)
         elif cmd in ("/fill",):
             do_fill(argtail)
+        elif cmd in ("/repl",):
+            do_repl(args[0] if args else None)
+        elif cmd in ("/return",):
+            do_return()
         elif cmd in ("/quit", "/q", "/exit"):
             do_quit()
         elif cmd in ("/send",):
@@ -373,6 +430,8 @@ def run_tui(
             return
         if text.lstrip().startswith("/") and "\n" not in text.strip():
             run_command(text.strip())
+        elif state.current_page().kind == "repl":
+            do_repl_goal(text)  # on a REPL page, a transmitted block is a GLP goal (US5)
         else:
             _send_message(text)
 
@@ -499,13 +558,17 @@ def run_tui(
             # else: an idle tick — keep listening.
 
     async def main():
-        state.bind_loop(asyncio.get_running_loop())  # receive mutations serialize on this loop (R4)
+        loop = asyncio.get_running_loop()
+        the_loop[0] = loop
+        state.bind_loop(loop)  # receive mutations serialize on this loop (R4)
         bg = asyncio.ensure_future(recv_loop())
         try:
             await app.run_async()
         finally:
             stop.set()
             bg.cancel()
+            if repl_service[0] is not None:
+                repl_service[0].stop()
             adapter.stop(handle)
 
     asyncio.run(main())

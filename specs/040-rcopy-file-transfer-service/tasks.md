@@ -148,14 +148,14 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 5
 
-- [ ] T034 [P] [US5] Unit test REPL-page (goal→`repl_goal`; `repl_result`→page render; spawn-failure reported on a page; other pages intact) against a fake REPL bridge (FR-016) in `glp_quick/tests/unit/test_replpage.py`.
-- [ ] T035 [P] [US5] Integration test (host-gated): `/repl` page evaluates a GLP goal over the link and renders the result; agent-sent plain page editable+returnable, in `glp_quick/tests/integration/test_us5_repl_page_mesh.py`.
+- [X] T034 [P] [US5] Unit test REPL-page (goal→`repl_goal`; `repl_result`→page render; spawn-failure reported on a page; other pages intact) against a fake REPL bridge (FR-016) in `glp_quick/tests/unit/test_replpage.py`.
+- [X] T035 [P] [US5] Integration test (host-gated): `/repl` page evaluates a GLP goal over the link and renders the result; agent-sent plain page editable+returnable, in `glp_quick/tests/integration/test_us5_repl_page_mesh.py`.
 
 ### Implementation for User Story 5
 
-- [ ] T036 [US5] Build the `repl_link` process bridge — spawn/pump a GLP REPL process (`out/csharp/glp_repl`; dart on demand) onto a `Handle` (R10 prerequisite) in `glp_quick/src/glp_quick/repl_link.py`.
-- [ ] T037 [US5] Implement REPL-in-a-page (`/repl [name]`, `repl_goal`/`repl_result` over the link, spawn-failure reported on a page, other pages intact) in `glp_quick/src/glp_quick/terminal/replpage.py` + `tui.py` (FR-016).
-- [ ] T038 [US5] Support an agent/server-sent plain (non-REPL) page for the user to edit and return (FR-017) in `glp_quick/src/glp_quick/terminal/pages.py` + `tui.py`.
+- [X] T036 [US5] Build the `repl_link` process bridge — spawn/pump a GLP REPL process (`out/csharp/glp_repl`; dart on demand) onto a `Handle` (R10 prerequisite) in `glp_quick/src/glp_quick/repl_link.py`.
+- [X] T037 [US5] Implement REPL-in-a-page (`/repl [name]`, `repl_goal`/`repl_result` over the link, spawn-failure reported on a page, other pages intact) in `glp_quick/src/glp_quick/terminal/replpage.py` + `tui.py` (FR-016).
+- [X] T038 [US5] Support an agent/server-sent plain (non-REPL) page for the user to edit and return (FR-017) in `glp_quick/src/glp_quick/terminal/pages.py` + `tui.py`.
 
 **Checkpoint**: US1–US5 independently functional.
 
