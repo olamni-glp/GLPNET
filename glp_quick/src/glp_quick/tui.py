@@ -53,6 +53,7 @@ _HELP = (
     "    /fill idx=value ...   fill a mask's fields and return it\n"
     "    /repl [name]     open a page bound to a live GLP REPL over the link\n"
     "    /return          send a peer-received page back to its owner\n"
+    "    /bind Fx <cmd>   bind a free PF key (F4/F5/F11/F12, PF13-24=Shift+Fx) to a command\n"
     "    /layout [lines N|two-strip]  choose the compose layout\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
@@ -120,6 +121,7 @@ def run_tui(
 
     theme_idx = [0]
     layout_cfg = pres.LayoutConfig.from_env(os.environ)
+    bindings = keylib.BindingRegistry()  # live PF-key bindings (defaults + user /bind), US7
 
     screen = Buffer(multiline=True)
     command = Buffer(multiline=True)
@@ -328,6 +330,36 @@ def run_tui(
         handle.send(GlpMessage(sender=sid, to=pg.owner, payload=protocol.page(pg.name, sid, pg.kind, pg.text)))
         _echo(f"[{sid}>{pg.owner}] returned page '{pg.name}'")
 
+    # --- US7: user-bindable free PF keys with typed equivalents ---
+    def _pt_keys(key: str):
+        """Map our PF key name to prompt_toolkit key name(s): F1..F12 → f1..f12; PF13..24 → s-f1..s-f12."""
+        if key.startswith("PF"):
+            n = int(key[2:]) - 12
+            return [f"s-f{n}"]
+        if key.startswith("F") and key[1:].isdigit():
+            return [f"f{int(key[1:])}"]
+        return []
+
+    def do_bind(argstr: str) -> None:
+        parts = argstr.strip().split(None, 1)
+        if len(parts) < 2:
+            _echo("?? /bind Fx <command>   e.g.  /bind F4 /pages")
+            return
+        key, command = parts[0].upper(), parts[1].strip()
+        ok, msg = bindings.bind(key, command)
+        _echo(("● " if ok else "?? ") + msg)
+        if not ok:
+            return
+        b = bindings.user_binding(key)
+        pt_names = _pt_keys(key) + ([b.ctrl_alt.lower()] if b and b.ctrl_alt else [])
+        for ptk in pt_names:
+            try:
+                kb.add(ptk)(lambda event, c=command: run_command(c))  # key fires the command…
+            except Exception:  # noqa: BLE001 — the typed equivalent still works regardless (FR-002)
+                pass
+        if app_ref[0] is not None:
+            app_ref[0].invalidate()  # legend reflects the new binding live (FR-019)
+
     def do_nav(delta: int) -> None:
         _switch(state.current + delta)
 
@@ -405,6 +437,8 @@ def run_tui(
             do_repl(args[0] if args else None)
         elif cmd in ("/return",):
             do_return()
+        elif cmd in ("/bind",):
+            do_bind(argtail)
         elif cmd in ("/quit", "/q", "/exit"):
             do_quit()
         elif cmd in ("/send",):
@@ -442,8 +476,9 @@ def run_tui(
         return [("class:oia", pres.render_oia(state, pres.THEMES[theme_idx[0]].name))]
 
     def legend_text():
-        # Dynamic PF-legend as reverse-video blocks, each showing its typed equivalent (FR-025).
-        return [("class:legend", keylib.legend_line())]
+        # Dynamic PF-legend as reverse-video blocks (defaults + user binds), each showing its typed
+        # equivalent (FR-025/FR-019); reflects live /bind changes.
+        return [("class:legend", bindings.legend())]
 
     def response_text():
         return [("class:oia", " ⇦ " + (state.last_response or "(awaiting the counterpart's response)"))]

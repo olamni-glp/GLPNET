@@ -216,12 +216,12 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 7
 
-- [ ] T054 [P] [US7] Unit test key bindings + legend (bind a free PF key → legend updates with typed equivalent; action fires via key + typed equiv; reserved key exposes a Ctrl alternate) (FR-019/FR-020) in `glp_quick/tests/unit/test_keys.py`.
+- [X] T054 [P] [US7] Unit test key bindings + legend (bind a free PF key → legend updates with typed equivalent; action fires via key + typed equiv; reserved key exposes a Ctrl alternate) (FR-019/FR-020) in `glp_quick/tests/unit/test_keys.py`.
 
 ### Implementation for User Story 7
 
-- [ ] T055 [P] [US7] Implement the `KeyBinding` model (free-key detection, `Shift+F1..F12`=PF13..24, Ctrl alternates, typed equivalents, legend labels) in `glp_quick/src/glp_quick/terminal/keys.py` (FR-019/FR-020).
-- [ ] T056 [US7] Wire `/bind` + live legend update + activation (Fx / Shift / Ctrl + typed equivalent) in `glp_quick/src/glp_quick/tui.py` + `terminal/presentation.py`.
+- [X] T055 [P] [US7] Implement the `KeyBinding` model (free-key detection, `Shift+F1..F12`=PF13..24, Ctrl alternates, typed equivalents, legend labels) in `glp_quick/src/glp_quick/terminal/keys.py` (FR-019/FR-020).
+- [X] T056 [US7] Wire `/bind` + live legend update + activation (Fx / Shift / Ctrl + typed equivalent) in `glp_quick/src/glp_quick/tui.py` + `terminal/presentation.py`.
 
 **Checkpoint**: All user stories US1–US8 independently functional.
 
