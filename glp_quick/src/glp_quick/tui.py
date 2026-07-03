@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
-from glp_quick.repl_link import BROADCAST, GlpMessage
+from glp_quick.repl_link import BROADCAST, GlpMessage, parse_addressed
 
 _ART = r"""
    ____ _     ____         ___        _      _      _____ ____  _____ ___
@@ -203,8 +203,13 @@ def run_tui(
         text = text.rstrip("\n")
         if not text.strip():
             return
-        handle.send(GlpMessage(sender=sid, to=default_to, payload=text))
-        append_chat(f"[{sid}] " + text.replace("\n", "\n      "))
+        to, payload = parse_addressed(text, default_to)  # FR-006 @name directed routing
+        if not payload.strip():
+            append_chat(f"?? nothing to send to @{to}")
+            return
+        handle.send(GlpMessage(sender=sid, to=to, payload=payload))
+        tag = f"[{sid}>{to}]" if to != default_to else f"[{sid}]"
+        append_chat(tag + " " + payload.replace("\n", "\n      "))
 
     def submit() -> None:
         # strip trailing sentinel/blank lines, then run as a command or send as a message.
@@ -316,7 +321,10 @@ def run_tui(
         while not stop.is_set():
             try:
                 msg = await loop.run_in_executor(None, lambda: handle.recv(timeout=0.3))
-            except Exception:
+            except Exception as exc:  # report link errors rather than vanishing (edge case)
+                if not stop.is_set():
+                    append_chat(f"** link receive error: {exc} -- receive stopped **")
+                    app.invalidate()
                 return
             if msg is not None and msg.payload != "__connected__":
                 append_chat(f"<< {msg.sender}: " + msg.payload.replace("\n", "\n   "))

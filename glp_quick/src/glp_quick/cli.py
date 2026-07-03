@@ -15,6 +15,7 @@ their behaviour lands in the user-story phases (US1 MVP onward). Skeleton runs a
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -160,8 +161,19 @@ def main(
     role = "server" if server else "client"
     from glp_quick.stacks.csharp import LinkError
 
+    # FR-005 / SC-003: the full-screen --tui needs a real TTY; when stdin/stdout is not a terminal
+    # (piped / redirected), fall back to the plain line console instead of crashing.
+    use_tui = tui
+    if tui:
+        try:
+            use_tui = sys.stdin.isatty() and sys.stdout.isatty()
+        except Exception:
+            use_tui = False
+        if not use_tui:
+            typer.echo("--tui: no interactive terminal detected; using the plain line console.", err=True)
+
     try:
-        if tui:
+        if use_tui:
             from glp_quick.tui import run_tui
             code = run_tui(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients)
         else:

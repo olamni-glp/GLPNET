@@ -68,6 +68,20 @@ def new_msg_id() -> str:
     return uuid.uuid4().hex
 
 
+def parse_addressed(text: str, default_to: EndpointId) -> "tuple[EndpointId, str]":
+    """Route a composed message to a peer (FR-006): ``@<peer> body`` -> ``(peer, body)``; otherwise
+    ``(default_to, text)``.
+
+    The single source of truth for the ``@name`` directed-send convention, shared by the plain link
+    console and the ``--tui`` terminal so the two cannot drift. (The terminal previously advertised
+    ``@<to>`` in its help but never parsed it -- every message silently went to the default peer.)
+    """
+    if text.startswith("@"):
+        head, _, rest = text[1:].partition(" ")
+        return head, rest
+    return default_to, text
+
+
 @dataclass(frozen=True)
 class GlpMessage:
     """One L5 GLP-message envelope (``contracts/wire-contract.md``).
