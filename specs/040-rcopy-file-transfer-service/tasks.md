@@ -39,11 +39,11 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 **⚠️ CRITICAL**: No user-story work begins until this phase is complete.
 
-- [ ] T004 Implement the `tmsg(...)` ground-term codec (encode/decode all kinds; ground-relay escaping; bare-text→`chat`) in `glp_quick/src/glp_quick/terminal/protocol.py` per `contracts/terminal-protocol.md`.
-- [ ] T005 [P] Unit-test the protocol codec (round-trip all kinds + escaping + backward-compat with bare chat) in `glp_quick/tests/unit/test_protocol.py`.
-- [ ] T006 Implement the shared terminal state model (pages/unread/peers/OIA link-state; a loop-serialized `post(fn)` mutation seam per R4 + a lock-guarded variant for tests) in `glp_quick/src/glp_quick/terminal/state.py` per `data-model.md`.
-- [ ] T007 Implement `@name` resolution against a peer-set provider (unknown → structured "unknown peer" result, never default-fallback) in `glp_quick/src/glp_quick/terminal/routing.py` per R3.
-- [ ] T008 [P] Unit-test `@name` resolution incl. unknown-peer report in `glp_quick/tests/unit/test_routing_resolve.py` (complements the existing `test_routing.py` parse coverage).
+- [X] T004 Implement the `tmsg(...)` ground-term codec (encode/decode all kinds; ground-relay escaping; bare-text→`chat`) in `glp_quick/src/glp_quick/terminal/protocol.py` per `contracts/terminal-protocol.md`.
+- [X] T005 [P] Unit-test the protocol codec (round-trip all kinds + escaping + backward-compat with bare chat) in `glp_quick/tests/unit/test_protocol.py`.
+- [X] T006 Implement the shared terminal state model (pages/unread/peers/OIA link-state; a loop-serialized `post(fn)` mutation seam per R4 + a lock-guarded variant for tests) in `glp_quick/src/glp_quick/terminal/state.py` per `data-model.md`.
+- [X] T007 Implement `@name` resolution against a peer-set provider (unknown → structured "unknown peer" result, never default-fallback) in `glp_quick/src/glp_quick/terminal/routing.py` per R3.
+- [X] T008 [P] Unit-test `@name` resolution incl. unknown-peer report in `glp_quick/tests/unit/test_routing_resolve.py` (complements the existing `test_routing.py` parse coverage).
 
 **Checkpoint**: Foundation ready — user-story work can begin.
 
