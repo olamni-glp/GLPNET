@@ -169,18 +169,18 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 8
 
-- [ ] T039 [P] [US8] Unit test the WAL journal (append + replay/rebuild the catalog with 0 loss after catalog-file deletion) (FR-036/SC-010) in `glp_quick/tests/unit/test_rcopy_wal.py`.
-- [ ] T040 [P] [US8] Unit test the catalog + synchronise SHA-256 compare (skip identical; force overwrites) (FR-034/FR-035) in `glp_quick/tests/unit/test_rcopy_catalog.py`.
-- [ ] T041 [P] [US8] Unit test permission/quota/path-safety (`reject(perm|quota|path)`; write nothing outside a permitted root; per-file explicit outcomes) (FR-033/FR-038) in `glp_quick/tests/unit/test_rcopy_responder.py`.
-- [ ] T042 [P] [US8] Unit test commit-on-complete / all-or-nothing (interrupted file discarded, no WAL/catalog/quota trace; provenance for transferred+rejected) (FR-037/FR-039) in `glp_quick/tests/unit/test_rcopy_commit.py`.
+- [X] T039 [P] [US8] Unit test the WAL journal (append + replay/rebuild the catalog with 0 loss after catalog-file deletion) (FR-036/SC-010) in `glp_quick/tests/unit/test_rcopy_wal.py`.
+- [X] T040 [P] [US8] Unit test the catalog + synchronise SHA-256 compare (skip identical; force overwrites) (FR-034/FR-035) in `glp_quick/tests/unit/test_rcopy_catalog.py`.
+- [X] T041 [P] [US8] Unit test permission/quota/path-safety (`reject(perm|quota|path)`; write nothing outside a permitted root; per-file explicit outcomes) (FR-033/FR-038) in `glp_quick/tests/unit/test_rcopy_responder.py`.
+- [X] T042 [P] [US8] Unit test commit-on-complete / all-or-nothing (interrupted file discarded, no WAL/catalog/quota trace; provenance for transferred+rejected) (FR-037/FR-039) in `glp_quick/tests/unit/test_rcopy_commit.py`.
 
 ### Implementation for User Story 8
 
-- [ ] T043 [P] [US8] Implement the per-root append-only WAL journal (append + replay/rebuild) in `glp_quick/src/glp_quick/rcopy/wal.py` per `contracts/responder-store.md`.
-- [ ] T044 [P] [US8] Implement the per-root catalog projection + synchronise SHA-256 compare in `glp_quick/src/glp_quick/rcopy/catalog.py`.
-- [ ] T045 [P] [US8] Implement durable provenance records (transferred + rejected) in `glp_quick/src/glp_quick/rcopy/provenance.py` (FR-037).
-- [ ] T046 [US8] Implement chunked transfer receive: temp write → fsync → SHA-256 verify → atomic rename commit (FR-039) in `glp_quick/src/glp_quick/rcopy/transfer.py`.
-- [ ] T047 [US8] Implement the responder service (`/rcopy init` config; offer; per-file verdict need/skip/reject; landing under a permitted root; quota/perm/path enforcement; wire WAL+catalog+provenance) in `glp_quick/src/glp_quick/rcopy/responder.py` (FR-032/FR-033/FR-034/FR-038).
+- [X] T043 [P] [US8] Implement the per-root append-only WAL journal (append + replay/rebuild) in `glp_quick/src/glp_quick/rcopy/wal.py` per `contracts/responder-store.md`.
+- [X] T044 [P] [US8] Implement the per-root catalog projection + synchronise SHA-256 compare in `glp_quick/src/glp_quick/rcopy/catalog.py`.
+- [X] T045 [P] [US8] Implement durable provenance records (transferred + rejected) in `glp_quick/src/glp_quick/rcopy/provenance.py` (FR-037).
+- [X] T046 [US8] Implement chunked transfer receive: temp write → fsync → SHA-256 verify → atomic rename commit (FR-039) in `glp_quick/src/glp_quick/rcopy/transfer.py`.
+- [X] T047 [US8] Implement the responder service (`/rcopy init` config; offer; per-file verdict need/skip/reject; landing under a permitted root; quota/perm/path enforcement; wire WAL+catalog+provenance) in `glp_quick/src/glp_quick/rcopy/responder.py` (FR-032/FR-033/FR-034/FR-038).
 
 **Checkpoint**: US8 responder independently testable (config + store + WAL-loss recreate).
 
