@@ -231,10 +231,10 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 **Purpose**: Prove the whole terminal does what it advertises and every SC is asserted (US9 / FR-045 / FR-046 / SC-013).
 
-- [ ] T057 [P] Add the SC coverage-map test asserting every US1–US8 and every SC-001..SC-012 has ≥1 asserting test (SC-013) in `glp_quick/tests/test_sc_coverage_map.py`. **SC-008** (onboarding to a first transmitted message via on-screen `/help` only) is asserted by an automatable **help-completeness proxy** — assert `/help` enumerates the `//`+Enter transmit path and every core command — with the RDP/first-user manual pass noted as the real acceptance (per spec Assumptions).
-- [ ] T058 [P] Update `/help` + module docstrings for the new commands (`/transmit /joint /pin /undo-pin /mask /fill /repl /layout /bind /rcopy`) in `glp_quick/src/glp_quick/tui.py` — the `/help` content is also the SC-008 proxy asserted by T057, so it MUST list the transmit path + every core command.
-- [ ] T059 [P] Verify (do not re-implement) `link_console.py` parity with the `--tui` path — `@name` routing (from T017) and the `chat` codec routing through `terminal/protocol.py` (from T018) — so the no-TTY fallback matches; add the parity assertion to `glp_quick/tests/unit/test_notty_fallback.py` (FR-005). *(Consolidated with T017/T018 — no duplicate implementation.)*
-- [ ] T060 Run the full suite (host-free always; host-gated when `csharp/glp_quick_host` is built) + validate `quickstart.md`; confirm no story shipped deferred/minimized/partial (FR-046).
+- [X] T057 [P] Add the SC coverage-map test asserting every US1–US8 and every SC-001..SC-012 has ≥1 asserting test (SC-013) in `glp_quick/tests/test_sc_coverage_map.py`. **SC-008** (onboarding to a first transmitted message via on-screen `/help` only) is asserted by an automatable **help-completeness proxy** — assert `/help` enumerates the `//`+Enter transmit path and every core command — with the RDP/first-user manual pass noted as the real acceptance (per spec Assumptions).
+- [X] T058 [P] Update `/help` + module docstrings for the new commands (`/transmit /joint /pin /undo-pin /mask /fill /repl /layout /bind /rcopy`) in `glp_quick/src/glp_quick/tui.py` — the `/help` content is also the SC-008 proxy asserted by T057, so it MUST list the transmit path + every core command.
+- [X] T059 [P] Verify (do not re-implement) `link_console.py` parity with the `--tui` path — `@name` routing (from T017) and the `chat` codec routing through `terminal/protocol.py` (from T018) — so the no-TTY fallback matches; add the parity assertion to `glp_quick/tests/unit/test_notty_fallback.py` (FR-005). *(Consolidated with T017/T018 — no duplicate implementation.)*
+- [X] T060 Run the full suite (host-free always; host-gated when `csharp/glp_quick_host` is built) + validate `quickstart.md`; confirm no story shipped deferred/minimized/partial (FR-046).
 
 ---
 

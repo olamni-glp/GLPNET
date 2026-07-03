@@ -50,3 +50,17 @@ def test_tui_isatty_exception_falls_back_not_crash(monkeypatch):
     use, notice = decide_tui(True)
     assert use is False  # hardening (FR-041): any isatty error ⇒ fallback, never propagate
     assert notice and "line console" in notice
+
+
+def test_link_console_parity_shares_the_tui_send_receive_codec():
+    """T059 — verify (don't re-implement) that the no-TTY fallback shares the ``--tui`` behaviours:
+    ``@name`` resolve on send + the ``chat`` codec on send/receive, so the two paths cannot drift
+    (FR-005/FR-040/FR-026)."""
+    import inspect
+
+    from glp_quick import link_console
+
+    src = inspect.getsource(link_console)
+    assert "compose_chat" in src          # shared @name resolve + chat codec on send (from T017/T018)
+    assert "decode(" in src               # the one codec on receive (T018)
+    assert "parse_addressed" not in src   # the old raw @name path is gone — no drift with --tui

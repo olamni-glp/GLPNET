@@ -5,8 +5,9 @@ Block-mode (edit a screen, transmit on an AID/PF key). Prototype for the roadmap
 
 RDP-ROBUST COMMAND MODE (works when function keys are eaten by Remote Desktop): everything is doable
 with only typing + Enter. End your input with a line that is just ``//`` then Enter to TRANSMIT. Type a
-slash-command then ``//``+Enter to run it: ``/help /theme [name] /pages /new [name] /next /prev /goto N
-/focus /quit``. Function keys still work where the terminal passes them:
+slash-command then ``//``+Enter to run it: ``/help /theme /pages /new /transmit /next /prev /goto /joint
+/pin /undo-pin /mask /fill /repl /return /bind /rcopy /layout /focus /quit`` (``/help`` lists them all
+with arguments). Function keys still work where the terminal passes them:
 
   F1/`/help`  help · F2/`/theme`  theme · F9 (or Ctrl-X, or Alt-Enter, or `//`+Enter)  transmit ·
   Enter newline · arrows move · F6/`/new` new page · F7/F8 (`/prev`,`/next`) page · F10/`/pages` list ·

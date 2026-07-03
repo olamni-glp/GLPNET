@@ -59,18 +59,19 @@ append(a,b,X).  //    // entered on the page → evaluated over the link → res
 
 ## 6. `/rcopy` file transfer (US6 client + US8 responder)
 
-Responder (target peer) configures its service once:
+Responder (target peer) configures its service once (typed, RDP-safe; writes `<data_dir>/config.json`):
 
 ```
-/rcopy init //        // declare upload roots, permitted peers, per-root quota (writes <data_dir>/config.json)
+/rcopy init docs D:/share/docs bob 1073741824 //   // root 'docs' at D:/share/docs, permit peer bob, 1 GiB quota
 ```
 
-Client drives the wizard:
+Client drives the transfer (each step is a typed argument; the offer is auto-queried, the outcome renders on a
+page):
 
 ```
-/rcopy //             // list reachable peers → pick one → (offer) pick root → create/select target folder
-                      // → pick local globs → set exclusion filter (size/name/subdir/attribute)
-                      // → choose synchronise (skip byte-identical by SHA-256) or force → submit
+/rcopy @bob root=docs dir=D:/local/reports folder=july mode=synchronise exclude=*.tmp //
+       // → offer-gated → local files gathered under dir, exclusion filter applied → manifest → per-file verdict
+       //   → chunked transfer of the needed files → per-file outcome page
 ```
 
 Result: a per-file outcome page — `transferred` / `skipped_identical` / `filtered_out` / `rejected(reason)`.
