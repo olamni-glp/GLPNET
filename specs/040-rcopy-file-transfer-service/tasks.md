@@ -194,15 +194,15 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 6
 
-- [ ] T048 [P] [US6] Unit test the exclusion filter (size/name/subdir/attribute; filtered-out reported) — pure (FR-028) in `glp_quick/tests/unit/test_rcopy_filter.py`.
-- [ ] T049 [P] [US6] Unit test the wizard flow (peer select; no-service ⇒ report + 0 transfers; root/folder select; mode+fingerprint; per-file outcome mapping) against a fake responder (FR-018/FR-027/FR-029/FR-030/FR-031) in `glp_quick/tests/unit/test_rcopy_wizard.py`.
-- [ ] T050 [P] [US6] Integration test (host-gated) `/rcopy` end-to-end: mixed set (new/identical/filtered/quota/reject); synchronise skips byte-identical; force overwrites; then delete the responder catalog + restart → rebuilt from WAL (SC-007/SC-009/SC-010) in `glp_quick/tests/integration/test_us6_rcopy_e2e_mesh.py`.
+- [X] T048 [P] [US6] Unit test the exclusion filter (size/name/subdir/attribute; filtered-out reported) — pure (FR-028) in `glp_quick/tests/unit/test_rcopy_filter.py`.
+- [X] T049 [P] [US6] Unit test the wizard flow (peer select; no-service ⇒ report + 0 transfers; root/folder select; mode+fingerprint; per-file outcome mapping) against a fake responder (FR-018/FR-027/FR-029/FR-030/FR-031) in `glp_quick/tests/unit/test_rcopy_wizard.py`.
+- [X] T050 [P] [US6] Integration test (host-gated) `/rcopy` end-to-end: mixed set (new/identical/filtered/quota/reject); synchronise skips byte-identical; force overwrites; then delete the responder catalog + restart → rebuilt from WAL (SC-007/SC-009/SC-010) in `glp_quick/tests/integration/test_us6_rcopy_e2e_mesh.py`.
 
 ### Implementation for User Story 6
 
-- [ ] T051 [P] [US6] Implement the exclusion filter (pure `(files, filter) -> (kept, filtered_out)`) in `glp_quick/src/glp_quick/rcopy/filter.py` (FR-028).
-- [ ] T052 [US6] Implement the `/rcopy` client wizard (peers→offer→root→folder→globs→filter→mode→fingerprint→submit→per-file outcome page) in `glp_quick/src/glp_quick/rcopy/wizard.py` + `tui.py` (FR-018/FR-027–FR-031).
-- [ ] T053 [US6] Wire the client⇄responder exchange (`rcopy_offer_query`/`rcopy_offer`, `rcopy_manifest`/`rcopy_verdict`, `rcopy_chunk`, `rcopy_outcome`) over the link per `contracts/rcopy-protocol.md` in `glp_quick/src/glp_quick/rcopy/wizard.py` + `rcopy/responder.py` + `terminal/protocol.py`.
+- [X] T051 [P] [US6] Implement the exclusion filter (pure `(files, filter) -> (kept, filtered_out)`) in `glp_quick/src/glp_quick/rcopy/filter.py` (FR-028).
+- [X] T052 [US6] Implement the `/rcopy` client wizard (peers→offer→root→folder→globs→filter→mode→fingerprint→submit→per-file outcome page) in `glp_quick/src/glp_quick/rcopy/wizard.py` + `tui.py` (FR-018/FR-027–FR-031).
+- [X] T053 [US6] Wire the client⇄responder exchange (`rcopy_offer_query`/`rcopy_offer`, `rcopy_manifest`/`rcopy_verdict`, `rcopy_chunk`, `rcopy_outcome`) over the link per `contracts/rcopy-protocol.md` in `glp_quick/src/glp_quick/rcopy/wizard.py` + `rcopy/responder.py` + `terminal/protocol.py`.
 
 **Checkpoint**: US6 + US8 deliver the end-to-end `/rcopy` capability.
 

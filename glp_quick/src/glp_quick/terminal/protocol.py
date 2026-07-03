@@ -352,3 +352,52 @@ def repl_goal(page_name: str, goal: str) -> str:
 def repl_result(page_name: str, rendered: str) -> str:
     """``tmsg(repl_result, "Page", "Rendered")`` — the REPL's rendered result for a page (US5)."""
     return encode_terminal("repl_result", page_name, rendered)
+
+
+# --- /rcopy control kinds (US6/US8; contracts/rcopy-protocol.md) --------------------------
+def rcopy_offer_query() -> str:
+    """``tmsg(rcopy_offer_query)`` — ask a peer what file service it offers *this* user (FR-018)."""
+    return encode_terminal("rcopy_offer_query")
+
+
+def rcopy_offer(roots) -> str:
+    """``tmsg(rcopy_offer, [root("Name",[folder…],QuotaLeft)…])``; empty ⇒ no service (FR-018/FR-032).
+
+    ``roots`` is a list of ``(name, folders, quota_left)``; ``quota_left`` is bytes left, or ``-1`` for
+    no quota.
+    """
+    terms = [Term("root", (name, list(folders), -1 if left is None else left))
+             for (name, folders, left) in roots]
+    return encode_terminal("rcopy_offer", terms)
+
+
+def rcopy_manifest(root: str, folder: str, mode: str, files) -> str:
+    """``tmsg(rcopy_manifest, "Root", "Folder", Mode, [file("rel",Size,"sha")…])`` (FR-029/FR-030).
+
+    ``files`` is a list of ``(rel, size, sha)``; ``mode ∈ {synchronise, force}``.
+    """
+    fterms = [Term("file", (rel, size, sha)) for (rel, size, sha) in files]
+    return encode_terminal("rcopy_manifest", root, folder, Atom(mode), fterms)
+
+
+def rcopy_verdict(verdicts) -> str:
+    """``tmsg(rcopy_verdict, [verdict("rel", V)…])`` (FR-034/FR-038).
+
+    ``verdicts`` is a list of ``(rel, kind, reason)`` with ``kind ∈ {need, skip_identical, reject}`` and
+    ``reason`` used only for ``reject`` (``∈ {quota, perm, path}``).
+    """
+    terms = []
+    for rel, kind, reason in verdicts:
+        v = Term("reject", (Atom(reason),)) if kind == "reject" else Atom(kind)
+        terms.append(Term("verdict", (rel, v)))
+    return encode_terminal("rcopy_verdict", terms)
+
+
+def rcopy_chunk(rel: str, seq: int, b64: str) -> str:
+    """``tmsg(rcopy_chunk, "rel", Seq, "b64")`` — one bounded base64 file chunk (FR-039)."""
+    return encode_terminal("rcopy_chunk", rel, seq, b64)
+
+
+def rcopy_outcome(rel: str, outcome: str, reason=None) -> str:
+    """``tmsg(rcopy_outcome, "rel", Outcome, Reason)`` — final per-file outcome (FR-031)."""
+    return encode_terminal("rcopy_outcome", rel, Atom(outcome), Atom(reason or "none"))

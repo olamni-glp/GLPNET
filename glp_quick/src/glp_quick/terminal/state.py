@@ -17,6 +17,7 @@ import threading
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Union
 
+from glp_quick.rcopy.wizard import ResponderSession
 from glp_quick.repl_link import GlpMessage
 from glp_quick.terminal import forms, joint, protocol, replpage
 from glp_quick.terminal.pages import ME, SHARED, Page, receive_page
@@ -74,6 +75,12 @@ class TerminalState:
         #: Optional host hook: ``(sender, page, goal) -> None`` answers an inbound ``repl_goal`` (US5).
         #: Set by the view when this endpoint hosts a REPL; unset ⇒ inbound goals are reported, not run.
         self.on_repl_goal: Optional[Callable[[str, str, str], None]] = None
+        #: /rcopy responder wiring (US6/US8). ``responder`` set by ``/rcopy init``; ``on_rcopy_reply``
+        #: sends a reply payload to a peer; ``rcopy_inbox`` is an active client wizard's response queue.
+        self.responder: Any = None
+        self._responder_session: Optional[ResponderSession] = None
+        self.on_rcopy_reply: Optional[Callable[[str, str], None]] = None
+        self.rcopy_inbox: Any = None
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -198,6 +205,14 @@ class TerminalState:
             self._handle_repl_goal(msg.sender, tm)
         elif tm.kind == "repl_result":
             self._handle_repl_result(msg.sender, tm)
+        elif tm.kind == "rcopy_offer_query":
+            self._rcopy_offer_query(msg.sender)
+        elif tm.kind == "rcopy_manifest":
+            self._rcopy_manifest(msg.sender, tm)
+        elif tm.kind == "rcopy_chunk":
+            self._rcopy_chunk(msg.sender, tm)
+        elif tm.kind in ("rcopy_offer", "rcopy_verdict", "rcopy_outcome"):
+            self._rcopy_client_reply(msg.sender, msg.payload, tm)
         elif tm.kind == "link_status":
             state = str(tm.fields[0]) if tm.fields else "?"
             detail = tm.fields[1] if len(tm.fields) > 1 else ""
@@ -288,6 +303,39 @@ class TerminalState:
             self.pages[idx].unread = True
         self.last_changed_index = idx
         self.last_response = f"{sender} → REPL '{page}'"
+
+    def set_responder(self, responder: Any) -> None:
+        """Configure this endpoint as an ``/rcopy`` responder (``/rcopy init``)."""
+        self.responder = responder
+        self._responder_session = ResponderSession(responder, self.self_id) if responder else None
+
+    # --- /rcopy responder side (US8) ---------------------------------------------------
+    def _rcopy_offer_query(self, sender: str) -> None:
+        if self.on_rcopy_reply is None:
+            return
+        if self._responder_session is None:
+            self.on_rcopy_reply(sender, protocol.rcopy_offer([]))  # no service configured here
+            return
+        self.on_rcopy_reply(sender, self._responder_session.offer_payload(sender))
+
+    def _rcopy_manifest(self, sender: str, tm) -> None:
+        if self._responder_session is None or self.on_rcopy_reply is None:
+            return
+        self.on_rcopy_reply(sender, self._responder_session.manifest_verdict_payload(sender, tm))
+
+    def _rcopy_chunk(self, sender: str, tm) -> None:
+        if self._responder_session is None or self.on_rcopy_reply is None:
+            return
+        payload = self._responder_session.chunk_outcome_payload(sender, tm)
+        if payload is not None:
+            self.on_rcopy_reply(sender, payload)
+
+    # --- /rcopy client side (US6) ------------------------------------------------------
+    def _rcopy_client_reply(self, sender: str, payload: str, tm) -> None:
+        if self.rcopy_inbox is not None:
+            self.rcopy_inbox.put(payload)  # feed the active wizard worker thread
+        else:
+            self.append_chat_line(f"<< {sender}: [rcopy {tm.kind}] (no active /rcopy wizard)")
 
     def _set_link(self, state: str, detail: Optional[str], notice: str) -> None:
         if self.link_state == state and self.link_detail == detail:

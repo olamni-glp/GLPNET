@@ -17,12 +17,15 @@ from __future__ import annotations
 
 import asyncio
 import os
+import queue
 import shlex
 import threading
 from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
+from glp_quick.rcopy import wizard as wizardlib
+from glp_quick.rcopy.filter import ExclusionFilter
 from glp_quick.repl_link import BROADCAST, GlpMessage
 from glp_quick.terminal import forms as formslib
 from glp_quick.terminal import joint as jointlib
@@ -54,6 +57,8 @@ _HELP = (
     "    /repl [name]     open a page bound to a live GLP REPL over the link\n"
     "    /return          send a peer-received page back to its owner\n"
     "    /bind Fx <cmd>   bind a free PF key (F4/F5/F11/F12, PF13-24=Shift+Fx) to a command\n"
+    "    /rcopy init <root> <path> <peer>   configure the file-transfer responder\n"
+    "    /rcopy @peer root=<r> dir=<localdir> [folder= glob= mode= exclude=]   send files\n"
     "    /layout [lines N|two-strip]  choose the compose layout\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
@@ -360,6 +365,99 @@ def run_tui(
         if app_ref[0] is not None:
             app_ref[0].invalidate()  # legend reflects the new binding live (FR-019)
 
+    # --- US6/US8: /rcopy file transfer (responder config + client wizard) ---
+    def _link_send(to: str, payload: str) -> None:
+        loop = the_loop[0]
+        if loop is not None:
+            loop.call_soon_threadsafe(lambda: handle.send(GlpMessage(sender=sid, to=to, payload=payload)))
+
+    state.on_rcopy_reply = _link_send  # answer inbound rcopy_* as a responder (when configured)
+
+    def do_rcopy_init(toks) -> None:
+        if len(toks) < 3:
+            _echo("?? /rcopy init <root-name> <path> <peer[,peer2]> [quota-bytes]")
+            return
+        name, path, peers = toks[0], toks[1], toks[2].split(",")
+        quota = {"kind": "bytes", "limit": int(toks[3])} if len(toks) >= 4 and toks[3].isdigit() else None
+        data_dir = Path(os.environ.get("GLPQUICK_RCOPY_DATA", ".rcopy-data"))
+        from glp_quick.rcopy.responder import Responder
+        state.set_responder(Responder.init(data_dir, [
+            {"name": name, "path": path, "permitted_peers": peers, "quota": quota}]))
+        _echo(f"● rcopy responder: root '{name}' at {path} for {peers}" + (f" quota={quota['limit']}B" if quota else ""))
+
+    def _rcopy_result_text(peer: str, root: str, result) -> str:
+        lines = [f"─── /rcopy → @{peer} (root {root}) ───", "", result.summary(), ""]
+        for o in result.outcomes:
+            reason = f" ({o.reason})" if o.reason else ""
+            lines.append(f"  {o.outcome:<18} {o.rel}{reason}")
+        return "\n".join(lines) + "\n"
+
+    def do_rcopy_wizard(args) -> None:
+        if not args or not args[0].startswith("@"):
+            _echo("?? /rcopy @peer root=<name> dir=<localdir> [folder=<f>] [glob=<g>] "
+                  "[mode=synchronise|force] [exclude=<glob>]")
+            return
+        peer = args[0][1:]
+        kv = {}
+        for a in args[1:]:
+            k, _, v = a.partition("=")
+            kv[k] = v
+        root, local = kv.get("root"), kv.get("dir")
+        if not root or not local:
+            _echo("?? /rcopy needs root=<name> and dir=<localdir>")
+            return
+        exclude = kv.get("exclude")
+        filt = ExclusionFilter(name_globs=(exclude,) if exclude else ())
+        base = Path(local)
+        req = wizardlib.TransferRequest(
+            root, kv.get("folder", ""),
+            [wizardlib.FileSpec(wizardlib.gather_files(base, kv.get("glob", "**/*")), filt)],
+            kv.get("mode", "synchronise"),
+        )
+        page = "RCOPY"
+        i = state.ensure_page(page, owner=ME, kind="plain")
+        state.pages[i].text = f"─── /rcopy → @{peer} (root {root}) — transferring… ───\n"
+        _show(state.load(i))
+        inbox: "queue.Queue" = queue.Queue()
+        state.rcopy_inbox = inbox
+        proxy = wizardlib.LinkProxy(send=_link_send,
+                                    recv=lambda t: _rcopy_recv(inbox, t))
+
+        def work():
+            try:
+                result = wizardlib.run_transfer(peer, req, proxy, wizardlib.disk_reader(base))
+                text = _rcopy_result_text(peer, root, result)
+            except Exception as exc:  # noqa: BLE001 — surface a failed transfer on the page, never crash
+                text = f"─── /rcopy → @{peer} ───\n\n/rcopy failed: {exc}\n"
+            state.rcopy_inbox = None
+            loop = the_loop[0]
+            if loop is not None:
+                loop.call_soon_threadsafe(lambda: _rcopy_render(page, text))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _rcopy_recv(inbox, timeout):
+        try:
+            return inbox.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def _rcopy_render(page, text) -> None:
+        idx = state.find_page_index(page)
+        if idx is None:
+            idx = state.add_page(page, owner=ME, kind="plain")
+        state.pages[idx].text = text
+        if idx == state.current:
+            _show(state.pages[idx])
+        if app_ref[0] is not None:
+            app_ref[0].invalidate()
+
+    def do_rcopy(args) -> None:
+        if args and args[0].lower() == "init":
+            do_rcopy_init(args[1:])
+        else:
+            do_rcopy_wizard(args)
+
     def do_nav(delta: int) -> None:
         _switch(state.current + delta)
 
@@ -439,6 +537,8 @@ def run_tui(
             do_return()
         elif cmd in ("/bind",):
             do_bind(argtail)
+        elif cmd in ("/rcopy",):
+            do_rcopy(args)
         elif cmd in ("/quit", "/q", "/exit"):
             do_quit()
         elif cmd in ("/send",):
