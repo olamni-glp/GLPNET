@@ -17,16 +17,20 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shlex
 import threading
 from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
 from glp_quick.repl_link import BROADCAST, GlpMessage
-from glp_quick.terminal import pages as pagelib
+from glp_quick.terminal import forms as formslib
+from glp_quick.terminal import joint as jointlib
 from glp_quick.terminal import keys as keylib
+from glp_quick.terminal import pages as pagelib
 from glp_quick.terminal import presentation as pres
 from glp_quick.terminal import protocol
+from glp_quick.terminal.pages import ME, SHARED
 from glp_quick.terminal.state import TerminalState, compose_chat
 
 _HELP = (
@@ -41,6 +45,11 @@ _HELP = (
     "    /new [name]      new scratch page\n"
     "    /transmit [@peer] transmit the current page as an owned block to a peer\n"
     "    /next  /prev     switch page   ·   /goto N   go to page N\n"
+    "    /joint [on|off]  toggle joint live-edit on the current page\n"
+    '    /pin R C "block" [transient|permanent]   overwrite a region of a joint page\n'
+    "    /undo-pin        dismiss the last transient pinpoint (restore original)\n"
+    '    /mask NAME label R C "text" | field R C W ...   define a fillable form\n'
+    "    /fill idx=value ...   fill a mask's fields and return it\n"
     "    /layout [lines N|two-strip]  choose the compose layout\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
@@ -159,6 +168,113 @@ def run_tui(
         handle.send(GlpMessage(sender=sid, to=target, payload=protocol.page(pg.name, sid, pg.kind, pg.text)))
         _echo(f"[{sid}>{target}] transmitted page '{pg.name}' ({len(pg.text)} chars)")
 
+    def _directed_target(pg) -> str:
+        """The peer to direct a page-scoped op to: the page's owner if it is a peer, else the default."""
+        return pg.owner if pg.owner not in (ME, SHARED) else default_to
+
+    # --- US4: joint pinpoint + masks/forms ---
+    def do_joint(arg: Optional[str] = None) -> None:
+        pg = state.current_page()
+        a = (arg or "").strip().lower()
+        pg.joint = True if a == "on" else False if a == "off" else not pg.joint
+        _echo(f"joint mode {'ON' if pg.joint else 'OFF'} on page '{pg.name}'")
+
+    def do_pin(argstr: str) -> None:
+        try:
+            parts = shlex.split(argstr)
+        except ValueError:
+            parts = []
+        if len(parts) < 3 or not parts[0].lstrip("-").isdigit() or not parts[1].lstrip("-").isdigit():
+            _echo('?? /pin R C "block" [transient|permanent]')
+            return
+        row, col, block = int(parts[0]), int(parts[1]), parts[2]
+        classification = parts[3].lower() if len(parts) >= 4 and parts[3].lower() in ("transient", "permanent") else "transient"
+        state.save_current(screen.text)
+        pg = state.current_page()
+        h, w = jointlib.block_dims(block)
+        res = jointlib.apply_pinpoint(pg, row, col, h, w, block, classification)
+        if not res.ok:
+            _echo(f"?? pinpoint rejected ({res.reason})")
+            return
+        _show(pg)
+        target = _directed_target(pg)
+        if target == BROADCAST:
+            _echo("?? /pin needs a peer-owned page (open or transmit it to a specific peer first)")
+            return
+        handle.send(GlpMessage(sender=sid, to=target,
+                               payload=protocol.pinpoint(pg.name, row, col, h, w, block, classification)))
+        _echo(f"[{sid}>{target}] pinpoint {classification} at {row},{col} on '{pg.name}'")
+
+    def do_undo_pin() -> None:
+        state.save_current(screen.text)
+        pg = state.current_page()
+        res = jointlib.undo_pin(pg)
+        if res.ok:
+            _show(pg)
+            _echo(f"dismissed transient pinpoint on '{pg.name}'")
+        else:
+            _echo(f"?? nothing to undo ({res.reason})")
+
+    def do_mask(argstr: str) -> None:
+        name, _, rest = argstr.strip().partition(" ")
+        if not name or not rest.strip():
+            _echo('?? /mask NAME label R C "text" | field R C W | ...')
+            return
+        labels, fields = [], []
+        try:
+            for item in rest.split("|"):
+                toks = shlex.split(item)
+                if not toks:
+                    continue
+                if toks[0].lower() == "label":
+                    labels.append((int(toks[1]), int(toks[2]), toks[3]))
+                elif toks[0].lower() == "field":
+                    fields.append((int(toks[1]), int(toks[2]), int(toks[3])))
+        except (IndexError, ValueError):
+            _echo('?? bad /mask item — use: label R C "text"  or  field R C W')
+            return
+        mask = formslib.Mask(labels=[formslib.Label(*l) for l in labels],
+                             fields=[formslib.Field(*f) for f in fields])
+        state.masks[name] = mask
+        state.save_current(screen.text)
+        i = state.ensure_page(name, owner=ME, kind="mask")
+        state.pages[i].kind = "mask"
+        state.pages[i].text = formslib.render(mask)
+        _show(state.load(i))
+        if default_to == BROADCAST:
+            _echo(f"mask '{name}' defined — address a specific peer to send it")
+            return
+        handle.send(GlpMessage(sender=sid, to=default_to, payload=protocol.form_def(name, labels, fields)))
+        _echo(f"[{sid}>{default_to}] defined form '{name}'")
+
+    def do_fill(argstr: str) -> None:
+        pg = state.current_page()
+        name = pg.name
+        if name not in state.masks:
+            _echo(f"?? current page '{name}' is not a fillable mask")
+            return
+        try:
+            pairs = shlex.split(argstr)
+        except ValueError:
+            pairs = []
+        fills = []
+        for p in pairs:
+            k, _, v = p.partition("=")
+            if k.strip().isdigit():
+                fills.append((int(k), v))
+        if not fills:
+            _echo("?? /fill idx=value idx=value")
+            return
+        state.masks[name] = formslib.fill(state.masks[name], fills)
+        pg.text = formslib.render(state.masks[name])
+        _show(pg)
+        target = _directed_target(pg)
+        if target == BROADCAST:
+            _echo("?? /fill needs the form owner (open the peer's form page)")
+            return
+        handle.send(GlpMessage(sender=sid, to=target, payload=protocol.form_fill(name, fills)))
+        _echo(f"[{sid}>{target}] returned filled form '{name}'")
+
     def do_nav(delta: int) -> None:
         _switch(state.current + delta)
 
@@ -198,6 +314,7 @@ def run_tui(
     def run_command(line: str) -> None:
         parts = line.strip().split()
         cmd, args = parts[0].lower(), parts[1:]
+        argtail = line.strip()[len(parts[0]):].strip()  # raw remainder (quotes preserved) for /pin /mask /fill
         if cmd in ("/help", "/h"):
             do_help()
         elif cmd in ("/theme", "/t"):
@@ -221,6 +338,16 @@ def run_tui(
             do_layout(" ".join(args))
         elif cmd in ("/transmit", "/xmit"):
             do_transmit(args[0] if args else None)
+        elif cmd in ("/joint",):
+            do_joint(args[0] if args else None)
+        elif cmd in ("/pin",):
+            do_pin(argtail)
+        elif cmd in ("/undo-pin", "/unpin"):
+            do_undo_pin()
+        elif cmd in ("/mask",):
+            do_mask(argtail)
+        elif cmd in ("/fill",):
+            do_fill(argtail)
         elif cmd in ("/quit", "/q", "/exit"):
             do_quit()
         elif cmd in ("/send",):

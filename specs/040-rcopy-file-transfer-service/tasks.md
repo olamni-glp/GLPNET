@@ -124,15 +124,15 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 4
 
-- [ ] T028 [P] [US4] Unit test joint pinpoint (joint-off rejects; joint-on applies+saves original; transient dismiss restores; permanent persists; overlap last-writer-wins; out-of-bounds/closed-page rejected+reported) (FR-012/FR-013/FR-014) in `glp_quick/tests/unit/test_joint.py`.
-- [ ] T029 [P] [US4] Unit test masks/forms (define labels+fields; fill returns with fixed labels intact) (FR-015) in `glp_quick/tests/unit/test_forms.py`.
-- [ ] T030 [P] [US4] Integration test (host-gated): counterpart pinpoint applied on owner page with original recoverable; mask filled+returned, in `glp_quick/tests/integration/test_us4_joint_forms_mesh.py`.
+- [X] T028 [P] [US4] Unit test joint pinpoint (joint-off rejects; joint-on applies+saves original; transient dismiss restores; permanent persists; overlap last-writer-wins; out-of-bounds/closed-page rejected+reported) (FR-012/FR-013/FR-014) in `glp_quick/tests/unit/test_joint.py`.
+- [X] T029 [P] [US4] Unit test masks/forms (define labels+fields; fill returns with fixed labels intact) (FR-015) in `glp_quick/tests/unit/test_forms.py`.
+- [X] T030 [P] [US4] Integration test (host-gated): counterpart pinpoint applied on owner page with original recoverable; mask filled+returned, in `glp_quick/tests/integration/test_us4_joint_forms_mesh.py`.
 
 ### Implementation for User Story 4
 
-- [ ] T031 [P] [US4] Implement pinpoint change (region save/restore, transient/permanent, bounds/closed checks, last-writer-wins) in `glp_quick/src/glp_quick/terminal/joint.py` per `data-model.md`.
-- [ ] T032 [P] [US4] Implement mask/form (fixed labels + fillable regions + fill/return) in `glp_quick/src/glp_quick/terminal/forms.py`.
-- [ ] T033 [US4] Wire `/joint`, `/pin`, `/undo-pin`, `/mask`, `/fill` + `tmsg(pinpoint|form_def|form_fill)` send/receive in `glp_quick/src/glp_quick/tui.py` + `terminal/protocol.py`.
+- [X] T031 [P] [US4] Implement pinpoint change (region save/restore, transient/permanent, bounds/closed checks, last-writer-wins) in `glp_quick/src/glp_quick/terminal/joint.py` per `data-model.md`.
+- [X] T032 [P] [US4] Implement mask/form (fixed labels + fillable regions + fill/return) in `glp_quick/src/glp_quick/terminal/forms.py`.
+- [X] T033 [US4] Wire `/joint`, `/pin`, `/undo-pin`, `/mask`, `/fill` + `tmsg(pinpoint|form_def|form_fill)` send/receive in `glp_quick/src/glp_quick/tui.py` + `terminal/protocol.py`.
 
 **Checkpoint**: US1–US4 independently functional.
 

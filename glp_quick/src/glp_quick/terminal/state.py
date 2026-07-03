@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Union
 
 from glp_quick.repl_link import GlpMessage
-from glp_quick.terminal import protocol
+from glp_quick.terminal import forms, joint, protocol
 from glp_quick.terminal.pages import ME, SHARED, Page, receive_page
 from glp_quick.terminal.protocol import decode, is_known
 from glp_quick.terminal.routing import PeerSource, Resolution, resolve
@@ -69,6 +69,8 @@ class TerminalState:
         self.last_changed_index: Optional[int] = None
         #: The last inbound line from the counterpart — shown in the two-strip layout's response strip.
         self.last_response: str = ""
+        #: Mask definitions by page name (US4) — the fillable-form model behind mask pages.
+        self.masks: dict = {}
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -129,6 +131,13 @@ class TerminalState:
         self.pages.append(Page(name, owner=owner, kind=kind, text=text))
         return len(self.pages) - 1
 
+    def find_page_index(self, name: str) -> Optional[int]:
+        """Index of the first page with this name (any owner), or ``None`` — used by joint/form ops."""
+        for i, pg in enumerate(self.pages):
+            if pg.name == name:
+                return i
+        return None
+
     def append_chat_line(self, line: str) -> None:
         """Append one already-rendered line to the CHAT page; mark unread if it is not in view."""
         chat = self.pages[0]
@@ -176,6 +185,12 @@ class TerminalState:
                 self.last_response = f"{msg.sender} sent page '{name}'"
             else:
                 self.append_chat_line(f"<< {msg.sender}: [malformed page] {msg.payload}")
+        elif tm.kind == "pinpoint":
+            self._handle_pinpoint(msg.sender, tm)
+        elif tm.kind == "form_def":
+            self._handle_form_def(msg.sender, tm)
+        elif tm.kind == "form_fill":
+            self._handle_form_fill(msg.sender, tm)
         elif tm.kind == "link_status":
             state = str(tm.fields[0]) if tm.fields else "?"
             detail = tm.fields[1] if len(tm.fields) > 1 else ""
@@ -187,6 +202,58 @@ class TerminalState:
             # Known kinds handled by later stories (pinpoint/form_*/repl_*/rcopy_*): surface a notice
             # rather than silently dropping (R6). Each story replaces its branch as it lands.
             self.append_chat_line(f"<< {msg.sender}: [{tm.kind}] (handled from a later story)")
+
+    def _handle_pinpoint(self, sender: str, tm) -> None:
+        """Apply a counterpart pinpoint to the named local page (US4/FR-012). Rejections are reported."""
+        if len(tm.fields) < 7:
+            self.append_chat_line(f"** malformed pinpoint from {sender} **")
+            return
+        name, row, col, h, w = tm.fields[0], tm.fields[1], tm.fields[2], tm.fields[3], tm.fields[4]
+        block, classification = tm.fields[5], str(tm.fields[6])
+        idx = self.find_page_index(name)
+        if idx is None:
+            self.append_chat_line(f"** pinpoint from {sender} rejected: no page '{name}' **")
+            return
+        res = joint.apply_pinpoint(self.pages[idx], row, col, h, w, block, classification)
+        if res.ok:
+            if idx != self.current:
+                self.pages[idx].unread = True
+            self.last_changed_index = idx
+            self.last_response = f"{sender} pinpointed '{name}'"
+        else:
+            self.append_chat_line(f"** pinpoint from {sender} rejected ({res.reason}) on '{name}' **")
+
+    def _handle_form_def(self, sender: str, tm) -> None:
+        """Receive a mask definition and render it as a peer-owned mask page (US4/FR-015)."""
+        if len(tm.fields) < 3:
+            self.append_chat_line(f"** malformed form_def from {sender} **")
+            return
+        name = tm.fields[0]
+        mask = forms.from_wire(tm.fields[1], tm.fields[2])
+        self.masks[name] = mask
+        idx, _new = receive_page(self.pages, sender, name, "mask", forms.render(mask))
+        if idx == self.current:
+            self.pages[idx].unread = False
+        self.last_changed_index = idx
+        self.last_response = f"{sender} sent form '{name}'"
+
+    def _handle_form_fill(self, sender: str, tm) -> None:
+        """Receive a completed form: apply the fills to the stored mask, re-render, labels intact (FR-015)."""
+        if len(tm.fields) < 2:
+            self.append_chat_line(f"** malformed form_fill from {sender} **")
+            return
+        name = tm.fields[0]
+        if name not in self.masks:
+            self.append_chat_line(f"** form_fill for unknown form '{name}' from {sender} **")
+            return
+        self.masks[name] = forms.fill(self.masks[name], forms.fills_from_wire(tm.fields[1]))
+        idx = self.find_page_index(name)
+        if idx is not None:
+            self.pages[idx].text = forms.render(self.masks[name])
+            if idx != self.current:
+                self.pages[idx].unread = True
+            self.last_changed_index = idx
+        self.last_response = f"{sender} returned form '{name}'"
 
     def _set_link(self, state: str, detail: Optional[str], notice: str) -> None:
         if self.link_state == state and self.link_detail == detail:
