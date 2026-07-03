@@ -57,19 +57,19 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 1 (write first, expect FAIL)
 
-- [ ] T009 [P] [US1] Unit test: no-TTY fallback engages under `--tui` (monkeypatch `sys.stdin/stdout.isatty`) → line-console path, no exception (FR-005/FR-041/SC-003) in `glp_quick/tests/unit/test_notty_fallback.py`.
-- [ ] T010 [P] [US1] Unit test: receive-path thread-safety — concurrent fake-Handle receives never corrupt/lose page/peer state (FR-042/SC-012) in `glp_quick/tests/unit/test_recv_threadsafe.py`.
-- [ ] T011 [P] [US1] Unit test: a link error/drop is surfaced to the OIA/status (never swallowed) and the terminal stays locally operable (FR-043/FR-044/SC-012) in `glp_quick/tests/unit/test_link_drop_report.py`.
-- [ ] T012 [P] [US1] Unit test: `@name` delivers to the named peer and an unknown name is reported (no silent default-fallback) against the fake Handle (FR-040/SC-011) in `glp_quick/tests/unit/test_at_delivery.py`.
-- [ ] T013 [P] [US1] Integration test (host-gated): two endpoints — a `//`+Enter message arrives, core slash-commands work, `@name` delivers to the named peer, in `glp_quick/tests/integration/test_us1_conversation_mesh.py`.
+- [X] T009 [P] [US1] Unit test: no-TTY fallback engages under `--tui` (monkeypatch `sys.stdin/stdout.isatty`) → line-console path, no exception (FR-005/FR-041/SC-003) in `glp_quick/tests/unit/test_notty_fallback.py`.
+- [X] T010 [P] [US1] Unit test: receive-path thread-safety — concurrent fake-Handle receives never corrupt/lose page/peer state (FR-042/SC-012) in `glp_quick/tests/unit/test_recv_threadsafe.py`.
+- [X] T011 [P] [US1] Unit test: a link error/drop is surfaced to the OIA/status (never swallowed) and the terminal stays locally operable (FR-043/FR-044/SC-012) in `glp_quick/tests/unit/test_link_drop_report.py`.
+- [X] T012 [P] [US1] Unit test: `@name` delivers to the named peer and an unknown name is reported (no silent default-fallback) against the fake Handle (FR-040/SC-011) in `glp_quick/tests/unit/test_at_delivery.py`.
+- [X] T013 [P] [US1] Integration test (host-gated): two endpoints — a `//`+Enter message arrives, core slash-commands work, `@name` delivers to the named peer, in `glp_quick/tests/integration/test_us1_conversation_mesh.py`.
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Refactor `run_tui`: move the closure's actions/state into `terminal/state.py` and wire the view, **preserving the prompt_toolkit `Application` + the existing surface incl. the F9 / Ctrl-X / Alt-Enter transmit accelerators (FR-008)** and the `//`+Enter transmit (FR-003/FR-026) in `glp_quick/src/glp_quick/tui.py`.
-- [ ] T015 [US1] Serialize receive-loop state mutations via `loop.call_soon_threadsafe` and distinguish `None`/close vs fault/FR-019-token vs message, surfacing link-state to the OIA (FR-042/FR-043/FR-044) in `glp_quick/src/glp_quick/tui.py` + `terminal/state.py`.
-- [ ] T016 [US1] Resolve `@name` against `handle.peers()` before send; report an unknown peer, never default-fallback (FR-040) in `glp_quick/src/glp_quick/tui.py` using `terminal/routing.py`.
-- [ ] T017 [US1] Harden the `cli.py` no-TTY gate (any `isatty` exception ⇒ fallback; keep the notice) and give `link_console.py` `@name` unknown-report parity (FR-005/FR-041) in `glp_quick/src/glp_quick/cli.py` + `glp_quick/src/glp_quick/link_console.py`.
-- [ ] T018 [US1] Route all send/receive text through `terminal/protocol.py` (`chat` kind) so `tui` and `link_console` share one codec (FR-026) in `glp_quick/src/glp_quick/tui.py` + `link_console.py`.
+- [X] T014 [US1] Refactor `run_tui`: move the closure's actions/state into `terminal/state.py` and wire the view, **preserving the prompt_toolkit `Application` + the existing surface incl. the F9 / Ctrl-X / Alt-Enter transmit accelerators (FR-008)** and the `//`+Enter transmit (FR-003/FR-026) in `glp_quick/src/glp_quick/tui.py`.
+- [X] T015 [US1] Serialize receive-loop state mutations via `loop.call_soon_threadsafe` and distinguish `None`/close vs fault/FR-019-token vs message, surfacing link-state to the OIA (FR-042/FR-043/FR-044) in `glp_quick/src/glp_quick/tui.py` + `terminal/state.py`.
+- [X] T016 [US1] Resolve `@name` against `handle.peers()` before send; report an unknown peer, never default-fallback (FR-040) in `glp_quick/src/glp_quick/tui.py` using `terminal/routing.py`.
+- [X] T017 [US1] Harden the `cli.py` no-TTY gate (any `isatty` exception ⇒ fallback; keep the notice) and give `link_console.py` `@name` unknown-report parity (FR-005/FR-041) in `glp_quick/src/glp_quick/cli.py` + `glp_quick/src/glp_quick/link_console.py`.
+- [X] T018 [US1] Route all send/receive text through `terminal/protocol.py` (`chat` kind) so `tui` and `link_console` share one codec (FR-026) in `glp_quick/src/glp_quick/tui.py` + `link_console.py`.
 
 **Checkpoint (MVP)**: US1 fully functional, hardened, and tested independently — STOP and validate.
 

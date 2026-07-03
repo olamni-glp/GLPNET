@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import typer
 
@@ -57,6 +57,25 @@ def _validate_profile(stack: str, profile: Optional[str]) -> Optional[GleamProfi
     if profile not in ("a", "c"):
         raise typer.BadParameter("--profile must be 'a' or 'c'")
     return profile  # type: ignore[return-value]
+
+
+def decide_tui(want_tui: bool) -> Tuple[bool, Optional[str]]:
+    """Decide whether to launch the full-screen ``--tui`` (FR-005/FR-041/SC-003).
+
+    The full-screen block-mode UI needs a real interactive terminal. When ``--tui`` is requested but
+    stdin/stdout is not a TTY (piped / redirected / background) — or ``isatty`` itself raises (a
+    detached or exotic stream) — fall back to the plain line console instead of crashing. Returns
+    ``(use_tui, notice_or_None)``; the caller prints the notice on the fallback.
+    """
+    if not want_tui:
+        return False, None
+    try:
+        tty = bool(sys.stdin.isatty() and sys.stdout.isatty())
+    except Exception:
+        tty = False  # any isatty error ⇒ fall back, never propagate (FR-041 hardening)
+    if tty:
+        return True, None
+    return False, "--tui: no interactive terminal detected; using the plain line console."
 
 
 def _require_cert_dir(cert: Path) -> str:
@@ -162,15 +181,10 @@ def main(
     from glp_quick.stacks.csharp import LinkError
 
     # FR-005 / SC-003: the full-screen --tui needs a real TTY; when stdin/stdout is not a terminal
-    # (piped / redirected), fall back to the plain line console instead of crashing.
-    use_tui = tui
-    if tui:
-        try:
-            use_tui = sys.stdin.isatty() and sys.stdout.isatty()
-        except Exception:
-            use_tui = False
-        if not use_tui:
-            typer.echo("--tui: no interactive terminal detected; using the plain line console.", err=True)
+    # (piped / redirected / isatty raising), fall back to the plain line console instead of crashing.
+    use_tui, notice = decide_tui(tui)
+    if notice:
+        typer.echo(notice, err=True)
 
     try:
         if use_tui:

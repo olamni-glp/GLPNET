@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
-from glp_quick.repl_link import BROADCAST, GlpMessage, parse_addressed
+from glp_quick.repl_link import BROADCAST, GlpMessage
+from glp_quick.terminal.state import TerminalState, compose_chat
 
 _ART = r"""
    ____ _     ____         ___        _      _      _____ ____  _____ ___
@@ -89,64 +90,67 @@ def run_tui(
         handle = adapter.start_client(addr, port, cert, repl)  # type: ignore[arg-type]
         handle.send(GlpMessage(sender=sid, to="server", payload="__connected__"))
 
-    pages = [{"name": "CHAT", "owner": "shared",
-              "text": _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"}]
-    cur = [0]
-    unread = [False]
     stop = threading.Event()
-    app_ref = [None]  # set after the app is built (for exit/style from helpers)
+    app_ref = [None]  # set after the app is built (for exit/style/invalidate from helpers)
+
+    # The whole model — pages / unread / peers / OIA link-state + the loop-serialized receive-path
+    # mutation seam — lives in TerminalState (host-free, unit-tested). This view is a thin wiring over
+    # it (R1); received messages mutate through state.deliver so the receive path is race-free (FR-042).
+    banner = _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"
+
+    def _on_recv_change() -> None:
+        # Runs on the event loop thread after each delivered inbound event (R4). Reflect newly
+        # appended CHAT lines when CHAT is in view, and refresh the OIA (unread / link-state).
+        if state.current == 0:
+            _show(state.pages[0])
+        if app_ref[0] is not None:
+            app_ref[0].invalidate()
+
+    state = TerminalState(
+        sid, default_to, peers=handle.peers, initial_chat_text=banner, on_change=_on_recv_change
+    )
+
+    theme_idx = [0]
+    THEMES = None  # set below; theme_idx used by helpers
 
     screen = Buffer(multiline=True)
     command = Buffer(multiline=True)
-    screen.set_document(Document(pages[0]["text"], len(pages[0]["text"])), bypass_readonly=True)
+    screen.set_document(Document(state.pages[0].text, len(state.pages[0].text)), bypass_readonly=True)
 
-    THEMES = None  # set below; theme_idx used by helpers
-    theme_idx = [0]
+    def _show(pg) -> None:
+        screen.set_document(Document(pg.text, len(pg.text)), bypass_readonly=True)
 
-    def _save_current() -> None:
-        pages[cur[0]]["text"] = screen.text
+    def _switch(i: int) -> None:
+        state.save_current(screen.text)
+        _show(state.load(i))
 
-    def _load(i: int) -> None:
-        cur[0] = i % len(pages)
-        if cur[0] == 0:
-            unread[0] = False
-        screen.set_document(Document(pages[cur[0]]["text"], len(pages[cur[0]]["text"])), bypass_readonly=True)
-
-    def _ensure_page(name: str, owner: str = "me") -> int:
-        for idx, pg in enumerate(pages):
-            if pg["name"] == name:
-                return idx
-        pages.append({"name": name, "owner": owner, "text": ""})
-        return len(pages) - 1
-
-    def append_chat(line: str) -> None:
-        pages[0]["text"] += line + "\n"
-        if cur[0] == 0:
-            screen.set_document(Document(pages[0]["text"], len(pages[0]["text"])), bypass_readonly=True)
-        else:
-            unread[0] = True
+    def _echo(line: str) -> None:
+        """Append a local line to CHAT and reflect it if CHAT is in view (else it raises unread)."""
+        state.append_chat_line(line)
+        if state.current == 0:
+            _show(state.pages[0])
 
     # --- actions (called by both PF keys and slash-commands) ---
     def do_help() -> None:
-        i = _ensure_page("HELP"); pages[i]["text"] = _HELP; _save_current(); _load(i)
+        i = state.ensure_page("HELP"); state.pages[i].text = _HELP; _switch(i)
 
     def do_pages() -> None:
-        i = _ensure_page("PAGES")
-        pages[i]["text"] = "─── OPEN PAGES ───\n\n" + "".join(
-            f"  {n + 1:>2}. {pg['name']:<16} owner={pg['owner']}\n" for n, pg in enumerate(pages)
+        i = state.ensure_page("PAGES")
+        state.pages[i].text = "─── OPEN PAGES ───\n\n" + "".join(
+            f"  {n + 1:>2}. {pg.name:<16} owner={pg.owner}\n" for n, pg in enumerate(state.pages)
         ) + "\n  (/next /prev /goto N · F7/F8 · /new)\n"
-        _save_current(); _load(i)
+        _switch(i)
 
     def do_new(name: Optional[str] = None) -> None:
-        _save_current()
-        pages.append({"name": name or f"SCRATCH{len(pages)}", "owner": "me", "text": ""})
-        _load(len(pages) - 1)
+        state.save_current(screen.text)
+        i = state.add_page(name or f"SCRATCH{len(state.pages)}")
+        _show(state.load(i))
 
     def do_nav(delta: int) -> None:
-        _save_current(); _load(cur[0] + delta)
+        _switch(state.current + delta)
 
     def do_goto(n: int) -> None:
-        _save_current(); _load((n - 1) % len(pages))
+        _switch(n - 1)
 
     def do_theme(name: Optional[str] = None) -> None:
         if name:
@@ -189,7 +193,7 @@ def run_tui(
             try:
                 do_goto(int(args[0]))
             except (IndexError, ValueError):
-                append_chat("?? /goto needs a page number")
+                _echo("?? /goto needs a page number")
         elif cmd in ("/focus",):
             do_focus()
         elif cmd in ("/quit", "/q", "/exit"):
@@ -197,19 +201,14 @@ def run_tui(
         elif cmd in ("/send",):
             _send_message(" ".join(args))
         else:
-            append_chat(f"?? unknown command: {cmd} (try /help)")
+            _echo(f"?? unknown command: {cmd} (try /help)")
 
     def _send_message(text: str) -> None:
-        text = text.rstrip("\n")
-        if not text.strip():
-            return
-        to, payload = parse_addressed(text, default_to)  # FR-006 @name directed routing
-        if not payload.strip():
-            append_chat(f"?? nothing to send to @{to}")
-            return
-        handle.send(GlpMessage(sender=sid, to=to, payload=payload))
-        tag = f"[{sid}>{to}]" if to != default_to else f"[{sid}]"
-        append_chat(tag + " " + payload.replace("\n", "\n      "))
+        # @name resolve against the live peer set + chat codec, shared with link_console (FR-040/FR-026).
+        out = compose_chat(sid, default_to, text, handle.peers)
+        if out.message is not None:
+            handle.send(out.message)
+        _echo(out.echo)
 
     def submit() -> None:
         # strip trailing sentinel/blank lines, then run as a command or send as a message.
@@ -243,11 +242,11 @@ def run_tui(
     ]
 
     def oia_text():
-        pg = pages[cur[0]]
-        flag = "  ●CHAT" if unread[0] else ""
+        pg = state.current_page()
+        flag = "  ●CHAT" if (state.pages[0].unread and state.current != 0) else ""
         return [("class:oia",
-                 f" BLOCK MODE  P{cur[0] + 1}/{len(pages)}:{pg['name']}({pg['owner']})  "
-                 f"THEME:{THEMES[theme_idx[0]][0]}{flag}   "
+                 f" BLOCK MODE  P{state.current + 1}/{len(state.pages)}:{pg.name}({pg.owner})  "
+                 f"THEME:{THEMES[theme_idx[0]][0]}  {state.oia_link_label()}{flag}   "
                  f"TRANSMIT: '//'+Enter or F9 · /help · /quit ")]
 
     def header_text():
@@ -317,20 +316,37 @@ def run_tui(
     app_ref[0] = app
 
     async def recv_loop():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while not stop.is_set():
             try:
                 msg = await loop.run_in_executor(None, lambda: handle.recv(timeout=0.3))
-            except Exception as exc:  # report link errors rather than vanishing (edge case)
+            except Exception as exc:  # a raised recv is a fault — surface it, never vanish (FR-043)
                 if not stop.is_set():
-                    append_chat(f"** link receive error: {exc} -- receive stopped **")
-                    app.invalidate()
+                    state.report_fault((str(exc) or type(exc).__name__)[:80])
                 return
-            if msg is not None and msg.payload != "__connected__":
-                append_chat(f"<< {msg.sender}: " + msg.payload.replace("\n", "\n   "))
-                app.invalidate()
+            if stop.is_set():
+                return
+            if msg is not None:
+                state.deliver(msg)  # decode + dispatch, serialized on the loop (FR-042)
+                continue
+            # recv returned None: an idle timeout OR a link close/fault — the return value alone cannot
+            # tell them apart (csharp.recv maps both to None), so consult health (FR-043/FR-044).
+            try:
+                status = adapter.health(handle)
+            except Exception:
+                status = None
+            if status is not None and (not status.alive or status.state in ("closed", "failed")):
+                if not stop.is_set():
+                    detail = status.detail or ""
+                    if "FAULT" in detail or status.state == "failed":
+                        state.report_fault(detail or "link_lost")
+                    else:
+                        state.deliver(None)  # graceful close
+                return
+            # else: an idle tick — keep listening.
 
     async def main():
+        state.bind_loop(asyncio.get_running_loop())  # receive mutations serialize on this loop (R4)
         bg = asyncio.ensure_future(recv_loop())
         try:
             await app.run_async()
