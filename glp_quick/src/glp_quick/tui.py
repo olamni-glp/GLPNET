@@ -24,17 +24,10 @@ from typing import Optional
 from glp_quick.demo import _adapter
 from glp_quick.repl_link import BROADCAST, GlpMessage
 from glp_quick.terminal import pages as pagelib
+from glp_quick.terminal import keys as keylib
+from glp_quick.terminal import presentation as pres
 from glp_quick.terminal import protocol
 from glp_quick.terminal.state import TerminalState, compose_chat
-
-_ART = r"""
-   ____ _     ____         ___        _      _      _____ ____  _____ ___
-  / ___| |   |  _ \       / _ \ _   _(_) ___| | __ |___ /___ \|___  / _ \
- | |  _| |   | |_) |_____| | | | | | | |/ __| |/ /   |_ \ __) |  / / | | |
- | |_| | |___|  __/_____| |_| | |_| | | (__|   <   ___) / __/  / /| |_| |
-  \____|_____|_|         \__\_\\__,_|_|\___|_|\_\ |____/_____|/_/  \___/
-     block-mode 3270 over genuine QUIC + WebSocket   ·   type /help then //  (Enter)
-"""
 
 _HELP = (
     "─── GLP-QUICK 3270 — HELP ───\n\n"
@@ -48,6 +41,7 @@ _HELP = (
     "    /new [name]      new scratch page\n"
     "    /transmit [@peer] transmit the current page as an owned block to a peer\n"
     "    /next  /prev     switch page   ·   /goto N   go to page N\n"
+    "    /layout [lines N|two-strip]  choose the compose layout\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
     "    /send <text>     send <text> as one message\n\n"
@@ -82,10 +76,6 @@ def run_tui(
     adapter = _adapter(stack, profile)
     sid = self_id or os.environ.get("GLPQUICK_ID") or role
     default_to = BROADCAST if role == "server" else "server"
-    try:
-        cmd_lines = max(1, int(os.environ.get("GLPQUICK_CMDLINES", "3")))
-    except ValueError:
-        cmd_lines = 3
 
     if role == "server":
         handle = adapter.start_server(addr, port, cert, max_clients, repl)  # type: ignore[arg-type]
@@ -99,7 +89,7 @@ def run_tui(
     # The whole model — pages / unread / peers / OIA link-state + the loop-serialized receive-path
     # mutation seam — lives in TerminalState (host-free, unit-tested). This view is a thin wiring over
     # it (R1); received messages mutate through state.deliver so the receive path is race-free (FR-042).
-    banner = _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"
+    banner = pres.SPLASH + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"
 
     def _on_recv_change() -> None:
         # Runs on the event loop thread after each delivered inbound event (R4). Reflect the change
@@ -115,7 +105,7 @@ def run_tui(
     )
 
     theme_idx = [0]
-    THEMES = None  # set below; theme_idx used by helpers
+    layout_cfg = pres.LayoutConfig.from_env(os.environ)
 
     screen = Buffer(multiline=True)
     command = Buffer(multiline=True)
@@ -177,14 +167,22 @@ def run_tui(
 
     def do_theme(name: Optional[str] = None) -> None:
         if name:
-            for k, (nm, _st) in enumerate(THEMES):
-                if nm.lower() == name.lower():
-                    theme_idx[0] = k
-                    break
+            k = pres.find_theme(name)
+            if k >= 0:
+                theme_idx[0] = k
+            else:
+                _echo(f"?? unknown theme '{name}' (GREEN|AMBER|WHITE|PAPER|COLOR)")
+                return
         else:
-            theme_idx[0] = (theme_idx[0] + 1) % len(THEMES)
+            theme_idx[0] = (theme_idx[0] + 1) % len(THEME_STYLES)
         if app_ref[0] is not None:
-            app_ref[0].style = THEMES[theme_idx[0]][1]
+            app_ref[0].style = THEME_STYLES[theme_idx[0]][1]
+            app_ref[0].invalidate()
+
+    def do_layout(arg: Optional[str] = None) -> None:
+        _echo(layout_cfg.apply_command(arg or ""))
+        if app_ref[0] is not None:
+            app_ref[0].layout = Layout(build_body(), focused_element=command_ctrl)
             app_ref[0].invalidate()
 
     def do_quit() -> None:
@@ -219,6 +217,8 @@ def run_tui(
                 _echo("?? /goto needs a page number")
         elif cmd in ("/focus",):
             do_focus()
+        elif cmd in ("/layout",):
+            do_layout(" ".join(args))
         elif cmd in ("/transmit", "/xmit"):
             do_transmit(args[0] if args else None)
         elif cmd in ("/quit", "/q", "/exit"):
@@ -249,46 +249,46 @@ def run_tui(
         else:
             _send_message(text)
 
-    # --- themes ---
-    def _mk(scr_fg, scr_bg, hdr_fg, hdr_bg, oia_fg, oia_bg, cmd_fg):
-        return Style.from_dict({
-            "": f"bg:{scr_bg} {scr_fg}",
-            "header": f"bg:{hdr_bg} {hdr_fg} bold",
-            "oia": f"bg:{oia_bg} {oia_fg}",
-            "sep": oia_fg,
-            "command": cmd_fg,
-        })
-    THEMES = [
-        ("GREEN", _mk("#33ff33", "#000000", "#33ff33", "#003300", "#00cc00", "#001a00", "#cc66ff")),
-        ("AMBER", _mk("#ffb000", "#000000", "#ffd060", "#332200", "#ff9000", "#1a1000", "#cc66ff")),
-        ("WHITE", _mk("#d0d0d0", "#000000", "#ffffff", "#202020", "#a0a0a0", "#101010", "#cc66ff")),
-        ("PAPER", _mk("#101010", "#c8c8c8", "#000000", "#9a9a9a", "#202020", "#b0b0b0", "#7a00aa")),
-        ("COLOR", _mk("#c8d8ff", "#000018", "#ffffff", "#0000aa", "#00ddff", "#001030", "#ff66cc")),
-    ]
+    # --- themes (colour data in presentation.py; built into prompt_toolkit Styles here) ---
+    THEME_STYLES = [(t.name, Style.from_dict(pres.to_style_dict(t))) for t in pres.THEMES]
 
     def oia_text():
-        pg = state.current_page()
-        unread = pagelib.unread_names(state.pages, state.current)
-        flag = f"  ●NEW:{','.join(unread)}" if unread else ""
-        return [("class:oia",
-                 f" BLOCK MODE  P{state.current + 1}/{len(state.pages)}:{pg.name}({pg.owner})  "
-                 f"THEME:{THEMES[theme_idx[0]][0]}  {state.oia_link_label()}{flag}   "
-                 f"TRANSMIT: '//'+Enter or F9 · /help · /quit ")]
+        return [("class:oia", pres.render_oia(state, pres.THEMES[theme_idx[0]].name))]
+
+    def legend_text():
+        # Dynamic PF-legend as reverse-video blocks, each showing its typed equivalent (FR-025).
+        return [("class:legend", keylib.legend_line())]
+
+    def response_text():
+        return [("class:oia", " ⇦ " + (state.last_response or "(awaiting the counterpart's response)"))]
 
     def header_text():
         return [("class:header", f" GLP-QUICK 3270   {role.upper()} '{sid}'   link {addr}:{port} ({stack})   ")]
 
     screen_ctrl = BufferControl(buffer=screen, focusable=True)
     command_ctrl = BufferControl(buffer=command, focusable=True)
-    body = HSplit([
-        Window(FormattedTextControl(header_text), height=1, style="class:header"),
-        Window(screen_ctrl, wrap_lines=True),
-        Window(height=1, char="─", style="class:sep"),
-        Window(FormattedTextControl(oia_text), height=1, style="class:oia"),
-        Window(command_ctrl, height=Dimension(min=cmd_lines, max=cmd_lines + 3),
-               wrap_lines=True, style="class:command"),
-    ])
-    layout = Layout(body, focused_element=command_ctrl)
+
+    def build_body() -> HSplit:
+        rows = [
+            Window(FormattedTextControl(header_text), height=1, style="class:header"),
+            Window(screen_ctrl, wrap_lines=True),
+            Window(height=1, char="─", style="class:sep"),
+            Window(FormattedTextControl(oia_text), height=1, style="class:oia"),
+            Window(FormattedTextControl(legend_text), height=1, style="class:legend"),
+        ]
+        if layout_cfg.mode == "two-strip":
+            # A scrollable counterpart-response strip above the user command strip, ~1 line each,
+            # separated by a rule (FR-023).
+            rows.append(Window(FormattedTextControl(response_text), height=1, style="class:oia"))
+            rows.append(Window(height=1, char="─", style="class:sep"))
+            rows.append(Window(command_ctrl, height=1, wrap_lines=True, style="class:command"))
+        else:
+            n = layout_cfg.n_command_lines
+            rows.append(Window(command_ctrl, height=Dimension(min=n, max=n + 3),
+                               wrap_lines=True, style="class:command"))
+        return HSplit(rows)
+
+    layout = Layout(build_body(), focused_element=command_ctrl)
 
     kb = KeyBindings()
 
@@ -338,7 +338,7 @@ def run_tui(
     def _(event):
         do_quit()
 
-    app = Application(layout=layout, key_bindings=kb, style=THEMES[0][1], full_screen=True, mouse_support=True)
+    app = Application(layout=layout, key_bindings=kb, style=THEME_STYLES[0][1], full_screen=True, mouse_support=True)
     app_ref[0] = app
 
     async def recv_loop():

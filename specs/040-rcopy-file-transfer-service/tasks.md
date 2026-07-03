@@ -104,13 +104,13 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Unit test presentation (5 distinct themes + accent; OIA fields; two-strip vs N-line layout; legend blocks carry typed equivalents) (FR-021/FR-022/FR-023/FR-025) in `glp_quick/tests/unit/test_presentation.py`.
+- [X] T024 [P] [US3] Unit test presentation (5 distinct themes + accent; OIA fields; two-strip vs N-line layout; legend blocks carry typed equivalents) (FR-021/FR-022/FR-023/FR-025) in `glp_quick/tests/unit/test_presentation.py`.
 
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Extract the five themes + OIA + ASCII splash into `glp_quick/src/glp_quick/terminal/presentation.py` (FR-021/FR-022/FR-024).
-- [ ] T026 [US3] Add the two-strip compose layout + `/layout [lines N|two-strip]` command (default ~3 lines via `GLPQUICK_CMDLINES`) (FR-023) in `glp_quick/src/glp_quick/terminal/presentation.py` + `tui.py`.
-- [ ] T027 [US3] Render the dynamic PF-legend as reverse-video blocks above the command line, each labelled with its typed-command equivalent (FR-025) in `glp_quick/src/glp_quick/terminal/presentation.py` + `terminal/keys.py` + `tui.py`.
+- [X] T025 [P] [US3] Extract the five themes + OIA + ASCII splash into `glp_quick/src/glp_quick/terminal/presentation.py` (FR-021/FR-022/FR-024).
+- [X] T026 [US3] Add the two-strip compose layout + `/layout [lines N|two-strip]` command (default ~3 lines via `GLPQUICK_CMDLINES`) (FR-023) in `glp_quick/src/glp_quick/terminal/presentation.py` + `tui.py`.
+- [X] T027 [US3] Render the dynamic PF-legend as reverse-video blocks above the command line, each labelled with its typed-command equivalent (FR-025) in `glp_quick/src/glp_quick/terminal/presentation.py` + `terminal/keys.py` + `tui.py`.
 
 **Checkpoint**: US1–US3 independently functional.
 

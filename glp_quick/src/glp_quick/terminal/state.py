@@ -67,6 +67,8 @@ class TerminalState:
         #: Index of the page most recently mutated by the receive path — lets the view refresh only
         #: the current page's screen buffer (avoids clobbering an off-screen page / needless scroll).
         self.last_changed_index: Optional[int] = None
+        #: The last inbound line from the counterpart — shown in the two-strip layout's response strip.
+        self.last_response: str = ""
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -159,6 +161,7 @@ class TerminalState:
         tm = decode(msg.payload)
         if tm.kind == "chat":
             text = tm.fields[0] if tm.fields else ""
+            self.last_response = f"{msg.sender}: {text}"
             self.append_chat_line(f"<< {msg.sender}: " + text.replace("\n", "\n   "))
         elif tm.kind == "page":
             # A received page is owned by its authenticated sender (never the self-declared owner in
@@ -170,6 +173,7 @@ class TerminalState:
                 if idx == self.current:
                     self.pages[idx].unread = False  # it is already in view — nothing new to flag
                 self.last_changed_index = idx
+                self.last_response = f"{msg.sender} sent page '{name}'"
             else:
                 self.append_chat_line(f"<< {msg.sender}: [malformed page] {msg.payload}")
         elif tm.kind == "link_status":
