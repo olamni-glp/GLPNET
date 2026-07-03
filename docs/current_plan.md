@@ -1,47 +1,51 @@
-# Restart pointer — NOT a work ledger
+# Restart pointer — NOT a work ledger (updated 2026-07-03)
 
-> This file is intentionally thin. Do **not** write a full multi-step plan here and
-> "resume from the current step" — that mechanism drifted stale (it once pointed
-> restarts at already-shipped work). The **roadmap + buildkit pipeline / marathon state**
-> are the source of truth. See CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*.
+> Intentionally thin. The **roadmap + buildkit pipeline / marathon state** are the source of truth
+> (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Do not resume from a hand-written plan.
 
-## How to locate yourself on any restart (fresh / post-compaction / post-crash)
+## How to locate yourself on any restart
+1. **Feature states** → `python -m buildkit_cli.roadmap status`. NOTE `roadmap --json next` returns `null`
+   (nothing `promoted`) → **040 must be promoted before it can be specified**.
+2. `.specify/feature.json` still points at the shipped `036-http3-quic-ws-link` (drift F3 — repoint when a
+   new feature pipeline starts).
+3. Branch `037-virtual-3270-term` (off `develop`) @ **`b8c474b1`**, pushed. All work committed+pushed.
 
-1. **What feature / what stage?** → `buildkit-roadmap next` (or `buildkit-roadmap status`).
-2. **In progress?** → a feature with a spec dir (`.specify/feature.json` → `specs/<NNN>/`)
-   has entered the pipeline; a `bk-marathon` run drives the bigger ones.
-3. **Where in the feature (WIP position)?** → the marathon durable rows (objective) +
-   the feature's `tasks.md`.
+## Session 2026-07-02/03 outcome
+- **035+ adversarial oblivion audit** (4 blind scanners) → `docs/research/035plus-oblivion-audit-2026-07-02.md`
+  (the "nothing lost" register — every deferral/gap/bug given a real home).
+- Roadmap homed: created **link-completion** + **full-acceptance**; **040** (row `rcopy-file-transfer-service`,
+  legacy-slug misnomer) reframed as the **COMPLETE + HARDENED virtual-3270 terminal** catch-all;
+  **three-role-agent-team-orchestration** (buildkit-bound) captured; 2 stale rows → `released`.
 
-## Active now — two parallel threads (merged 2026-07-02, 036↔develop integration)
+## DONE this session (committed+pushed on `037-virtual-3270-term`)
+- **C# host BUILT** (`dotnet build csharp/glp_quick_host`) → integration tests un-skip (glp_quick **22 pass / 4 gleam-skip**).
+- **Data-loss #1** mesh dup-id hijack/eviction (`csharp/glp_quick_host/Program.cs`) — fixed + regression test.
+- **Data-loss #2** Gleam >1 MiB relay misroute (`gleam_quic/src/glpq_ffi.erl`) — fixed, `erlc`-verified (WSL);
+  TODO add a >1 MiB round-trip test on the Gleam/WSL host (none exists).
+- **A4** demo `AttributeError` on handshake timeout (`glp_quick/demo.py`) — fixed.
+- **A5** pre-readiness stdout pipe-fill hang (`glp_quick/src/glp_quick/stacks/csharp.py`) — fixed.
+- **037 hardening**: `@name` routing (FR-006), `--tui` TTY fallback (FR-005), link-drop reporting +
+  shared `parse_addressed` + 5 tests.
 
-### Thread A — `036-http3-quic-ws-link` (this branch; pinned in `.specify/feature.json`)
+## NEXT (post-restart, in order)
+1. **T019 — live `glp_repl`-process bridge** (link-completion **A1**; the core "run GLP over the link").
+   **Design (scoped, spec-first):** FR-008 (`specs/036-http3-quic-ws-link/spec.md:118`) + clarification (:18)
+   = *"GLP REPL endpoints that exchange MESSAGES, not a submit-source/return-result RPC."* The REPL binary
+   already has a **spec-025 link layer** — `out/csharp/glp_repl/Program.cs` installs `LinkKernels` + registers
+   `TcpTransport`(127.0.0.1) / `LoopbackTransport`. So the bridge is **not** a text-scrape RPC: relay between the
+   REPL's 025 `TcpTransport` and glp_quick's QUIC+WS `Handle` so two real REPLs exchange messages over the wire.
+   **First reads:** `csharp/glp_link/transports/TcpTransport.cs`, the `LinkKernels` / 025 link-message interface,
+   `glp_quick/src/glp_quick/repl_link.py` (envelope+routing only today; `--repl` flag inert). Substantial — do fresh.
+2. **Promote + `/bk-specify` 040** = the **complete + hardened virtual-3270 terminal** (revisit+harden+complete
+   every US1–US7 / FR-001..031, fully tested). See `specs/040-rcopy-file-transfer-service/CAPTURE.md`.
+   037 = best-effort; **040 = the serious complete home** (owner-directed: don't minimise/defer).
+3. **full-acceptance** — blocked: Profile C (MSVC/quicer), two-host LAN (gavri), marathon durability (real run;
+   `mrun-15d7dd0ffbc2` was a phantom).
+4. **038 residuals** (owner-gated D4 §15-freeze, D5 cyclic) + housekeeping **F1–F5** (036 dir collision,
+   feature.json repoint, spec pointers).
 
-- HTTP/3 (QUIC) + WebSocket channel-link prototype for GLP. Core **US0–US3 Profile A** verified green
-  (18 `glp_quick` pytest + 104 `glp_link` xUnit; REPL 524/525, the lone failure a pre-existing,
-  unrelated AOT-exe smoke case).
-- Three environment-blocked acceptance items — **T032** Profile C (`quicer`/MsQuic in-process, needs
-  MSVC), **T040** two-host LAN e2e (needs the `gavri` host), **T003/T036** marathon durability of the
-  never-persisted `mrun-15d7dd0ffbc2` — were **carved out (2026-07-02) into roadmap feature
-  `http3-quic-ws-link-full-acceptance`** (epic `distributed-glp-connectivity`, promoted). Those 036
-  tasks are marked `[>]` deferred; brief at `specs/036-http3-quic-ws-link/followup-full-acceptance-brief.md`.
-- Remaining native 036 task: **T037** (single-host quickstart docs). Downstream: `/bk-codexreview` → ship.
+## Tail (after the above): codexreview → ship → close → push (per the 2026-07-02 directive).
 
-### Thread B — PROGRAM `036-glp-gleam-baseline-program` (from develop; run `mrun-5611c436ba95`)
-
-- GLP→Gleam/AtomVM research/verification/reconfiguration program under `/bk-marathon`. Work tasks
-  **T001–T013 COMPLETE + checkpointed; T014 discharge gate APPROVED (Gabi 2026-06-30)**. **Remaining:
-  T015** — the single roadmap migration (create epics **Optional features** + **Full Gleam
-  implementation**; add the 24 features per the ADVISORY MIGRATION MAPPING in
-  `docs/research/glp-gleam-baseline/pipelines/P8-synthesis/RECONFIGURATION.md`; then `marathon discharge`).
-  The 16 owner-decisions **D1–D16** are feature-level — resolve **after** the migration.
-- **Resume objectively:** `PYTHONUTF8=1 python -m buildkit_cli.marathon resume --run mrun-5611c436ba95`
-  (→ done 13/14, discharge 1/1, next = T015). Position comes from the durable rows, never this file.
-- Deliverables committed under `docs/research/glp-gleam-baseline/` (CORPUS-INDEX, PROOF-HARNESS,
-  pipelines P1b/P2/P3/P4/P6/P7/P8, ANTLR-integration).
-
-## History (do not resume these — they are done/parked)
-
-- `034-glp-gleam-core-terms-and-heap` (gleam-atomvm F4) **SHIPPED** `v2026.06.25.1`.
-- `030-marathon-refinement` **SHIPPED** (`v2026.06.12.1` + Phase 8 `v2026.06.19.1`).
-- `035-semantic-tombstone-enrichment` **SHIPPED** `v2026.06.26.1`.
+## History (done — do not resume)
+- `036-http3-quic-ws-link` SHIPPED `v2026.07.02.3`; `038` SHIPPED `v2026.07.02.1`; `039` SHIPPED `v2026.06.30.1`;
+  `036-glp-gleam-baseline-program` merged-to-develop (research program); `034/035/030` shipped earlier.

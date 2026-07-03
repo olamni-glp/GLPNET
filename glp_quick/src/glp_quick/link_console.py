@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
-from glp_quick.repl_link import BROADCAST, GlpMessage
+from glp_quick.repl_link import BROADCAST, GlpMessage, parse_addressed
 
 
 def run(
@@ -66,11 +66,7 @@ def run(
         line = line.rstrip("\r\n")
         if not line.strip():
             return
-        if line.startswith("@"):
-            head, _, rest = line[1:].partition(" ")
-            to, payload = head, rest
-        else:
-            to, payload = default_to, line
+        to, payload = parse_addressed(line, default_to)  # FR-006 @name directed routing (shared helper)
         handle.send(GlpMessage(sender=sid, to=to, payload=payload))
 
     # Decide on the interactive (prompt_toolkit) path vs the plain path.
