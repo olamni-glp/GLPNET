@@ -76,7 +76,12 @@ def run_demo(addr: str, port: Optional[int], cert_dir: Path, stack: str = "cshar
         # Each client announces (registers its endpoint_id at the server) → all N seen ⇒ N real handshakes.
         for i, h in enumerate(cs):
             h.send(GlpMessage(sender=f"c{i}", to="server", payload=f"hello(c{i})"))
-        seen = {server.recv(timeout=10).sender for _ in range(n)}
+        seen = set()
+        for _ in range(n):
+            m = server.recv(timeout=10)
+            if m is None:
+                break  # a client's handshake did not complete in time — record SC-001 FAIL, don't crash
+            seen.add(m.sender)
         handshake_ok = len(seen) == n
         report.record("SC-001 real on-wire QUIC/HTTP-3 handshake (not loopback-sim)", "PASS" if handshake_ok else "FAIL")
 
