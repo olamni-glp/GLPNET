@@ -27,9 +27,9 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 **Purpose**: Create the testable subpackage skeletons + the test doubles the whole feature relies on.
 
-- [ ] T001 Create the `terminal/` and `rcopy/` subpackage skeletons (`glp_quick/src/glp_quick/terminal/__init__.py`, `glp_quick/src/glp_quick/rcopy/__init__.py`) and the two-tier test dirs (`glp_quick/tests/unit/__init__.py`, `glp_quick/tests/integration/__init__.py`).
-- [ ] T002 [P] Add a fake in-memory `Handle` test double implementing `stacks.base.Handle` (send/recv/peers/link_id) with an injectable peer set + fault/close injection, in `glp_quick/tests/_fakes.py` (enables host-free US1/US2/US4/US5 behavior tests).
-- [ ] T003 [P] Document the two-tier test layout (host-free `unit/` always run; `integration/` gated by `host_dll_path()` `skipif`, matching `test_mesh.py`) in `glp_quick/tests/README.md`.
+- [X] T001 Create the `terminal/` and `rcopy/` subpackage skeletons (`glp_quick/src/glp_quick/terminal/__init__.py`, `glp_quick/src/glp_quick/rcopy/__init__.py`) and the two-tier test dirs (`glp_quick/tests/unit/__init__.py`, `glp_quick/tests/integration/__init__.py`).
+- [X] T002 [P] Add a fake in-memory `Handle` test double implementing `stacks.base.Handle` (send/recv/peers/link_id) with an injectable peer set + fault/close injection, in `glp_quick/tests/_fakes.py` (enables host-free US1/US2/US4/US5 behavior tests).
+- [X] T003 [P] Document the two-tier test layout (host-free `unit/` always run; `integration/` gated by `host_dll_path()` `skipif`, matching `test_mesh.py`) in `glp_quick/tests/README.md`.
 
 ---
 
