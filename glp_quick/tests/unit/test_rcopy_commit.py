@@ -52,3 +52,19 @@ def test_quota_reflects_committed_bytes(tmp_path):
     big = b"x" * 15
     v = r.verdict("alice-U1", "docs", "f", [("b.txt", 15, transfer.sha256_bytes(big))], "force")
     assert v[0].verdict == "reject" and v[0].reason == "quota"   # 10 committed + 15 > 20
+
+
+def test_commit_rejects_oversized_actual_bytes_past_quota(tmp_path):
+    """Codexreview P1 regression — quota is re-enforced at commit against ACTUAL bytes (FR-038).
+
+    The manifest size verdict() checks is peer-declared, so a peer could under-declare it to pass the
+    verdict gate and then send a payload larger than its remaining quota. commit() MUST still reject.
+    """
+    r, share = _responder(tmp_path, quota_limit=10)
+    big = b"x" * 25                          # 25 real bytes against a 10-byte quota
+    sha = transfer.sha256_bytes(big)         # peer honestly declares the SHA of the large payload
+    out = r.commit("alice-U1", "docs", "f", "sneak.txt", big, sha)
+    assert out.outcome == "rejected" and out.reason == "quota"
+    assert not (share / "xfer" / "in" / "alice-U1" / "f" / "sneak.txt").exists()  # nothing landed
+    assert len(r.catalog("docs")) == 0                                            # no catalog/quota trace
+    assert any(p.outcome == "rejected" and p.reason == "quota" for p in r.provenance("docs"))  # audited

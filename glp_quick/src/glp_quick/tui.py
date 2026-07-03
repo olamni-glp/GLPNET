@@ -421,6 +421,7 @@ def run_tui(
         _show(state.load(i))
         inbox: "queue.Queue" = queue.Queue()
         state.rcopy_inbox = inbox
+        state.rcopy_peer = peer            # only replies from this peer feed the wizard (spoof guard)
         proxy = wizardlib.LinkProxy(send=_link_send,
                                     recv=lambda t: _rcopy_recv(inbox, t))
 
@@ -431,6 +432,7 @@ def run_tui(
             except Exception as exc:  # noqa: BLE001 — surface a failed transfer on the page, never crash
                 text = f"─── /rcopy → @{peer} ───\n\n/rcopy failed: {exc}\n"
             state.rcopy_inbox = None
+            state.rcopy_peer = None
             loop = the_loop[0]
             if loop is not None:
                 loop.call_soon_threadsafe(lambda: _rcopy_render(page, text))

@@ -76,11 +76,14 @@ class TerminalState:
         #: Set by the view when this endpoint hosts a REPL; unset ⇒ inbound goals are reported, not run.
         self.on_repl_goal: Optional[Callable[[str, str, str], None]] = None
         #: /rcopy responder wiring (US6/US8). ``responder`` set by ``/rcopy init``; ``on_rcopy_reply``
-        #: sends a reply payload to a peer; ``rcopy_inbox`` is an active client wizard's response queue.
+        #: sends a reply payload to a peer; ``rcopy_inbox`` is an active client wizard's response queue,
+        #: and ``rcopy_peer`` is the one peer whose replies may feed it (spoof guard — a different peer
+        #: in the mesh must not be able to inject a verdict/outcome into an in-flight transfer).
         self.responder: Any = None
         self._responder_session: Optional[ResponderSession] = None
         self.on_rcopy_reply: Optional[Callable[[str, str], None]] = None
         self.rcopy_inbox: Any = None
+        self.rcopy_peer: Optional[str] = None
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -332,8 +335,12 @@ class TerminalState:
 
     # --- /rcopy client side (US6) ------------------------------------------------------
     def _rcopy_client_reply(self, sender: str, payload: str, tm) -> None:
-        if self.rcopy_inbox is not None:
-            self.rcopy_inbox.put(payload)  # feed the active wizard worker thread
+        if self.rcopy_inbox is not None and sender == self.rcopy_peer:
+            self.rcopy_inbox.put(payload)  # feed the active wizard worker thread (only the transfer peer)
+        elif self.rcopy_inbox is not None:
+            # a reply from a peer other than the active transfer target — never feed the wizard; a mesh
+            # peer must not be able to spoof a verdict/outcome into someone else's transfer (spoof guard).
+            self.append_chat_line(f"<< {sender}: [rcopy {tm.kind}] ignored (not the active /rcopy peer)")
         else:
             self.append_chat_line(f"<< {sender}: [rcopy {tm.kind}] (no active /rcopy wizard)")
 

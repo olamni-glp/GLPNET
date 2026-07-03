@@ -169,6 +169,15 @@ class Responder:
             self._provenance(peer, root_name, rel_in_folder, expected_sha, "rejected", "perm")
             return Outcome(rel_in_folder, "rejected", "perm")
         rel = f"{folder}/{rel_in_folder}" if folder else rel_in_folder
+        # Re-enforce quota against the ACTUAL received bytes: the manifest size verdict() checked is
+        # peer-declared and untrusted, so a peer could under-declare size to slip an oversized payload
+        # past the verdict gate. Quota MUST hold at the point of landing (FR-038).
+        if root.quota is not None and root.quota.kind == "bytes":
+            existing = self._cat[root_name].get(peer, rel)
+            delta = len(data) - (existing.size if existing else 0)
+            if self._cat[root_name].total_bytes() + delta > root.quota.limit:
+                self._provenance(peer, root_name, rel, expected_sha, "rejected", "quota")
+                return Outcome(rel_in_folder, "rejected", "quota")
         res = transfer.commit_file(self._landing(root, peer), rel, data, expected_sha)
         ts = int(time.time())
         if not res.ok:
