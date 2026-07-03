@@ -14,18 +14,15 @@ Send-path composition (``@name`` resolution + ``chat`` encoding + local echo) is
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional, Sequence, Union
+from dataclasses import dataclass
+from typing import Any, Callable, List, Optional, Union
 
 from glp_quick.repl_link import GlpMessage
 from glp_quick.terminal import protocol
+from glp_quick.terminal.pages import ME, SHARED, Page, receive_page
 from glp_quick.terminal.protocol import decode, is_known
 from glp_quick.terminal.routing import PeerSource, Resolution, resolve
 
-#: Owner sentinel for pages this side authored.
-ME = "me"
-#: The CHAT page is a shared conversation, owned by neither a single peer nor "me".
-SHARED = "shared"
 #: The mesh self-announce sentinel (feature 036) — a control line, never rendered as chat.
 CONNECTED_SENTINEL = "__connected__"
 
@@ -33,23 +30,6 @@ CONNECTED_SENTINEL = "__connected__"
 LINK_UP = "up"
 LINK_CLOSED = "closed"
 LINK_FAULTED = "faulted"
-
-
-@dataclass
-class Page:
-    """A named, scrollable, editable screen of text (data-model.md §Page).
-
-    ``owner`` is ``ME``, ``SHARED`` (the CHAT page), or a ``PeerId``. ``joint``/``saved_regions`` are
-    consumed by US4; ``unread`` raises the OIA "new page" indicator without stealing focus (FR-010).
-    """
-
-    name: str
-    owner: str = ME
-    kind: str = "plain"  # plain | mask | repl
-    text: str = ""
-    joint: bool = False
-    unread: bool = False
-    saved_regions: dict = field(default_factory=dict)
 
 
 class TerminalState:
@@ -84,6 +64,9 @@ class TerminalState:
         self.current: int = 0
         self.link_state: str = LINK_UP
         self.link_detail: Optional[str] = None
+        #: Index of the page most recently mutated by the receive path — lets the view refresh only
+        #: the current page's screen buffer (avoids clobbering an off-screen page / needless scroll).
+        self.last_changed_index: Optional[int] = None
 
     # --- the R4 mutation seam ----------------------------------------------------------
     def bind_loop(self, loop: Any) -> None:
@@ -150,6 +133,7 @@ class TerminalState:
         chat.text += line + "\n"
         if self.current != 0:
             chat.unread = True
+        self.last_changed_index = 0
 
     # --- receive path (serialized via post) --------------------------------------------
     def deliver(self, msg: Optional[GlpMessage]) -> None:
@@ -176,6 +160,18 @@ class TerminalState:
         if tm.kind == "chat":
             text = tm.fields[0] if tm.fields else ""
             self.append_chat_line(f"<< {msg.sender}: " + text.replace("\n", "\n   "))
+        elif tm.kind == "page":
+            # A received page is owned by its authenticated sender (never the self-declared owner in
+            # the term), lands as a distinct page, is NOT merged into CHAT, and does NOT steal focus —
+            # it only raises the OIA "new page" indicator (FR-010; terminal-protocol §Invariants #1).
+            if len(tm.fields) >= 4:
+                name, _claimed, kind, text = tm.fields[0], tm.fields[1], str(tm.fields[2]), tm.fields[3]
+                idx, _is_new = receive_page(self.pages, msg.sender, name, kind, text)
+                if idx == self.current:
+                    self.pages[idx].unread = False  # it is already in view — nothing new to flag
+                self.last_changed_index = idx
+            else:
+                self.append_chat_line(f"<< {msg.sender}: [malformed page] {msg.payload}")
         elif tm.kind == "link_status":
             state = str(tm.fields[0]) if tm.fields else "?"
             detail = tm.fields[1] if len(tm.fields) > 1 else ""
@@ -184,9 +180,9 @@ class TerminalState:
             # Surface, never swallow (R6): unknown/unparseable terms are reported as info lines.
             self.append_chat_line(f"<< {msg.sender}: [unhandled {tm.kind}] {msg.payload}")
         else:
-            # Known kinds handled by later stories (page/pinpoint/form_*/repl_*/rcopy_*): surface a
-            # notice in the MVP rather than silently dropping (R6). US2+ replace this branch.
-            self.append_chat_line(f"<< {msg.sender}: [{tm.kind}] (delivered — shown from US2 on)")
+            # Known kinds handled by later stories (pinpoint/form_*/repl_*/rcopy_*): surface a notice
+            # rather than silently dropping (R6). Each story replaces its branch as it lands.
+            self.append_chat_line(f"<< {msg.sender}: [{tm.kind}] (handled from a later story)")
 
     def _set_link(self, state: str, detail: Optional[str], notice: str) -> None:
         if self.link_state == state and self.link_detail == detail:

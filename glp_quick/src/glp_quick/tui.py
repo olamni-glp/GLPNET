@@ -23,6 +23,8 @@ from typing import Optional
 
 from glp_quick.demo import _adapter
 from glp_quick.repl_link import BROADCAST, GlpMessage
+from glp_quick.terminal import pages as pagelib
+from glp_quick.terminal import protocol
 from glp_quick.terminal.state import TerminalState, compose_chat
 
 _ART = r"""
@@ -44,6 +46,7 @@ _HELP = (
     "    /theme [name]    cycle, or set GREEN|AMBER|WHITE|PAPER|COLOR\n"
     "    /pages           list open pages + owners\n"
     "    /new [name]      new scratch page\n"
+    "    /transmit [@peer] transmit the current page as an owned block to a peer\n"
     "    /next  /prev     switch page   ·   /goto N   go to page N\n"
     "    /focus           toggle focus (screen <-> command)\n"
     "    /quit            quit\n"
@@ -99,10 +102,11 @@ def run_tui(
     banner = _ART + f"\n*** link up as '{sid}' on {addr}:{port} ({stack}) — type /help then // ***\n"
 
     def _on_recv_change() -> None:
-        # Runs on the event loop thread after each delivered inbound event (R4). Reflect newly
-        # appended CHAT lines when CHAT is in view, and refresh the OIA (unread / link-state).
-        if state.current == 0:
-            _show(state.pages[0])
+        # Runs on the event loop thread after each delivered inbound event (R4). Reflect the change
+        # only when it hit the page in view (a received page for another page must NOT steal focus,
+        # FR-010); always refresh the OIA (unread indicator / link-state).
+        if state.last_changed_index == state.current:
+            _show(state.current_page())
         if app_ref[0] is not None:
             app_ref[0].invalidate()
 
@@ -136,15 +140,34 @@ def run_tui(
 
     def do_pages() -> None:
         i = state.ensure_page("PAGES")
-        state.pages[i].text = "─── OPEN PAGES ───\n\n" + "".join(
-            f"  {n + 1:>2}. {pg.name:<16} owner={pg.owner}\n" for n, pg in enumerate(state.pages)
-        ) + "\n  (/next /prev /goto N · F7/F8 · /new)\n"
+        # Build the listing from the CURRENT page set (before switching to the PAGES page itself).
         _switch(i)
+        state.pages[i].text = pagelib.list_text(state.pages, i)
+        _show(state.pages[i])
 
     def do_new(name: Optional[str] = None) -> None:
         state.save_current(screen.text)
         i = state.add_page(name or f"SCRATCH{len(state.pages)}")
         _show(state.load(i))
+
+    def do_transmit(target_arg: Optional[str] = None) -> None:
+        # Transmit the current page as an owned block (FR-007). Pages are DIRECTED (never broadcast) —
+        # resolve @peer against the live peer set; an unknown/absent target is reported (FR-040/inv#2).
+        state.save_current(screen.text)
+        pg = state.current_page()
+        members = state.peers()
+        if target_arg and target_arg.startswith("@"):
+            target = target_arg[1:].strip()
+            if target != BROADCAST and target not in members:
+                _echo(f"?? unknown peer '{target}' — known peers: {', '.join(members) or '(none connected)'}")
+                return
+        else:
+            target = default_to
+        if target == BROADCAST:
+            _echo("?? /transmit needs a specific peer (pages are directed): /transmit @name")
+            return
+        handle.send(GlpMessage(sender=sid, to=target, payload=protocol.page(pg.name, sid, pg.kind, pg.text)))
+        _echo(f"[{sid}>{target}] transmitted page '{pg.name}' ({len(pg.text)} chars)")
 
     def do_nav(delta: int) -> None:
         _switch(state.current + delta)
@@ -196,6 +219,8 @@ def run_tui(
                 _echo("?? /goto needs a page number")
         elif cmd in ("/focus",):
             do_focus()
+        elif cmd in ("/transmit", "/xmit"):
+            do_transmit(args[0] if args else None)
         elif cmd in ("/quit", "/q", "/exit"):
             do_quit()
         elif cmd in ("/send",):
@@ -243,7 +268,8 @@ def run_tui(
 
     def oia_text():
         pg = state.current_page()
-        flag = "  ●CHAT" if (state.pages[0].unread and state.current != 0) else ""
+        unread = pagelib.unread_names(state.pages, state.current)
+        flag = f"  ●NEW:{','.join(unread)}" if unread else ""
         return [("class:oia",
                  f" BLOCK MODE  P{state.current + 1}/{len(state.pages)}:{pg.name}({pg.owner})  "
                  f"THEME:{THEMES[theme_idx[0]][0]}  {state.oia_link_label()}{flag}   "

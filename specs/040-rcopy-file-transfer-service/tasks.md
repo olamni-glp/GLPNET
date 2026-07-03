@@ -83,14 +83,14 @@ Single project — the `glp_quick` Python package (`glp_quick/src/glp_quick/…`
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Unit test the page model (create/name/switch/goto, owner me/peer, received page not merged + no focus-steal + unread indicator) (FR-009/FR-010) in `glp_quick/tests/unit/test_pages.py`.
-- [ ] T020 [P] [US2] Integration test (host-gated): transmit a page → peer receives it as an owned page (not shared chat); `/pages` shows owner-by-name on both ends, in `glp_quick/tests/integration/test_us2_page_transmit_mesh.py`.
+- [X] T019 [P] [US2] Unit test the page model (create/name/switch/goto, owner me/peer, received page not merged + no focus-steal + unread indicator) (FR-009/FR-010) in `glp_quick/tests/unit/test_pages.py`.
+- [X] T020 [P] [US2] Integration test (host-gated): transmit a page → peer receives it as an owned page (not shared chat); `/pages` shows owner-by-name on both ends, in `glp_quick/tests/integration/test_us2_page_transmit_mesh.py`.
 
 ### Implementation for User Story 2
 
-- [ ] T021 [P] [US2] Implement `Page` + page store (owner, kind, unread, navigation) in `glp_quick/src/glp_quick/terminal/pages.py` per `data-model.md`.
-- [ ] T022 [US2] Send `tmsg(page,…)` on `/transmit` and render an inbound page as an owned page with an OIA "new page" indicator (no focus-steal) (FR-007/FR-010) in `glp_quick/src/glp_quick/tui.py` + `terminal/pages.py` + `terminal/protocol.py`.
-- [ ] T023 [US2] Show owner as me/peer-name + current page in `/pages`, and current page `X/N + name + owner` on the OIA (FR-009/FR-022) in `glp_quick/src/glp_quick/tui.py` + `terminal/presentation.py`.
+- [X] T021 [P] [US2] Implement `Page` + page store (owner, kind, unread, navigation) in `glp_quick/src/glp_quick/terminal/pages.py` per `data-model.md`.
+- [X] T022 [US2] Send `tmsg(page,…)` on `/transmit` and render an inbound page as an owned page with an OIA "new page" indicator (no focus-steal) (FR-007/FR-010) in `glp_quick/src/glp_quick/tui.py` + `terminal/pages.py` + `terminal/protocol.py`.
+- [X] T023 [US2] Show owner as me/peer-name + current page in `/pages`, and current page `X/N + name + owner` on the OIA (FR-009/FR-022) in `glp_quick/src/glp_quick/tui.py` + `terminal/presentation.py`.
 
 **Checkpoint**: US1 + US2 both work independently.
 
