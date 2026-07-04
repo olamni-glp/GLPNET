@@ -105,3 +105,4 @@ reviews/
 
 # buildkit-co observability lake (DuckDB/parquet; regenerable, per-machine)
 .specify/co-lake/
+.specify/deploy-ledger.jsonl

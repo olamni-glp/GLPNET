@@ -24,7 +24,9 @@ from pathlib import Path
 from typing import Optional
 
 from glp_quick.demo import _adapter
-from glp_quick.repl_link import BROADCAST, GlpMessage, parse_addressed
+from glp_quick.repl_link import BROADCAST, GlpMessage
+from glp_quick.terminal.protocol import decode
+from glp_quick.terminal.state import compose_chat
 
 
 def run(
@@ -66,8 +68,13 @@ def run(
         line = line.rstrip("\r\n")
         if not line.strip():
             return
-        to, payload = parse_addressed(line, default_to)  # FR-006 @name directed routing (shared helper)
-        handle.send(GlpMessage(sender=sid, to=to, payload=payload))
+        # Shared send-path: @name resolve against the live peer set + chat codec (FR-040/FR-026),
+        # identical to the --tui path so the two cannot drift (parity checked by T059).
+        out = compose_chat(sid, default_to, line, handle.peers)
+        if out.message is None:
+            emit(out.echo)  # unknown-peer / empty-body report — never a silent default-fallback
+            return
+        handle.send(out.message)
 
     # Decide on the interactive (prompt_toolkit) path vs the plain path.
     interactive = False
@@ -98,8 +105,13 @@ def run(
                 msg = handle.recv(timeout=0.4)
             except Exception:
                 return
-            if msg is not None and msg.payload != "__connected__":
-                emit(f"<< {msg.sender}: {msg.payload}")
+            if msg is None or msg.payload == "__connected__":
+                continue
+            tm = decode(msg.payload)  # one codec on receive too (FR-026)
+            if tm.kind == "chat":
+                emit(f"<< {msg.sender}: {tm.fields[0] if tm.fields else ''}")
+            else:
+                emit(f"<< {msg.sender}: [{tm.kind}] {msg.payload}")  # surface non-chat, never swallow (R6)
 
     def outbox_poller() -> None:
         if not outbox:
