@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [v2026.07.04.3] - 2026-07-04
+
+### Added
+- E1-E9 rulings encoded in buildingblocks-synthesis section 6 + new feature crdtmsg-xsd-style-schema-language + export 20260704T072850Z
+
+### Fixed
+- CHANGELOG ordering - stray v2026.06.03.1 block moved to chronological slot, Unreleased restored to top
+- E1 store side confirmed delta-CRDT+Merkle (option b both layers) - doc + mvp notes + export
+
+### Changed
+- roadmap export 20260704 pre-release
+- promote crdtmsg-mvp + export 20260704
+- roadmap - virtual-3270-term released (superseded via 040) + export 20260704
+- roadmap export 20260704T070059Z post-ship (13 epics, 75 features, 1003 journal lines)
+- bk-close retrospective - 4 findings (2 systematic: ship-state visibility, review-ledger) + CLAUDE.md update
+- Merge pull request #81 from olamni-glp/main
+
 ## [v2026.07.04.2] - 2026-07-04
 
 ### Added
