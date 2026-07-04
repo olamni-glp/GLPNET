@@ -235,3 +235,14 @@ Everything else: provisional/post-MVP per §5.
 - **Cycles**: 1 full cycle + targeted counter-queries; ledger closed 28/28 on cycle 1 → stop rule met, no cycle-3 re-scan.
 - **Known drift observed by scanner C** (feasibility veto duty): mesh routes JSON-only (binary codecs unused by the router); payloadType constants duplicated; spec-vs-plan store naming (PGlite-DuckLake vs file-WAL, owner-flagged in 040 plan); 037 @name promise shipped unimplemented once (origin of BB-RTE-3).
 - **Full claim sets**: preserved in the F3 run records (session transcripts); the three scanners' complete 86-claim output is the evidence appendix of record, per-claim fields intact.
+
+---
+
+## Change log — 042 verification pass (2026-07-04)
+
+> All amendments below were made by feature 042-crdtmsg-verify-harden; the finding ids
+> resolve in docs/research/crdt-multiformat-messaging/verification-report-042.md.
+
+| # | Section touched | Change | Why (finding id) | Baseline |
+|---|---|---|---|---|
+| 1 | (new terminal section) | Added this change-log section skeleton (contract rule 4) | SETUP-042-F3 | HEAD(6ff3a8c9) |

@@ -19,9 +19,9 @@ never self-ruled — they land in report §9 (FR-013); all verification labor is
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `CORPUS/evidence/` with `evidence-index.md` skeleton (columns per data-model.md EvidencePointer) and `CORPUS/verification-report-042.md` skeleton with all 12 section headers + baselines table per `contracts/verification-report.md`; add the `## Change log — 042 verification pass` skeleton section to each of the three corpus docs per `contracts/amendment-changelog.md`, each with row 1 logging its own addition (contract rule 4) — so all later tasks append rows to one existing section
-- [ ] T002 Resolve the F3 scanner-C pinned repo view (branch `037-virtual-3270-term`, post-040-implement — F3 provenance L4) to an exact commit via git history; record it in the report baselines table; record current-HEAD commit likewise
-- [ ] T003 [P] Baseline checkpoint per Test Protocol: `git log -1`, run `bash test/run_all_tests.sh`, confirm green, note result in report frontmatter (docs-only feature — this pins the pre-change baseline)
+- [X] T001 Create `CORPUS/evidence/` with `evidence-index.md` skeleton (columns per data-model.md EvidencePointer) and `CORPUS/verification-report-042.md` skeleton with all 12 section headers + baselines table per `contracts/verification-report.md`; add the `## Change log — 042 verification pass` skeleton section to each of the three corpus docs per `contracts/amendment-changelog.md`, each with row 1 logging its own addition (contract rule 4) — so all later tasks append rows to one existing section
+- [X] T002 Resolve the F3 scanner-C pinned repo view (branch `037-virtual-3270-term`, post-040-implement — F3 provenance L4) to an exact commit via git history; record it in the report baselines table; record current-HEAD commit likewise
+- [X] T003 [P] Baseline checkpoint per Test Protocol: `git log -1`, run `bash test/run_all_tests.sh`, confirm green, note result in report frontmatter (docs-only feature — this pins the pre-change baseline)
 
 **Checkpoint**: report + evidence skeletons exist; all 5 baseline rows pinned.
 

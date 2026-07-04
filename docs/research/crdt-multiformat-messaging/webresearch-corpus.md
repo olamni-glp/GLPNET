@@ -589,3 +589,14 @@ Legend: **well** = external literature richly covers the design space · **moder
 ---
 
 *End of curated web-research corpus. 148 papers · 10 themes · extends beacon-42 / mstack-18 / qmedit-50. Advisory input to F3 synthesis.*
+
+---
+
+## Change log — 042 verification pass (2026-07-04)
+
+> All amendments below were made by feature 042-crdtmsg-verify-harden; the finding ids
+> resolve in docs/research/crdt-multiformat-messaging/verification-report-042.md.
+
+| # | Section touched | Change | Why (finding id) | Baseline |
+|---|---|---|---|---|
+| 1 | (new terminal section) | Added this change-log section skeleton (contract rule 4) | SETUP-042-F2 | HEAD(6ff3a8c9) |

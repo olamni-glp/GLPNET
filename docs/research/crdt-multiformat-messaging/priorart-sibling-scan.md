@@ -306,3 +306,14 @@ Rank by (recency since cutoff × directness × confidence). All paths absolute.
 ---
 
 *End of consolidated prior-art scan. 33 ranked sources · 9 identified gaps · 8 units. Advisory, non-blocking.*
+
+---
+
+## Change log — 042 verification pass (2026-07-04)
+
+> All amendments below were made by feature 042-crdtmsg-verify-harden; the finding ids
+> resolve in docs/research/crdt-multiformat-messaging/verification-report-042.md.
+
+| # | Section touched | Change | Why (finding id) | Baseline |
+|---|---|---|---|---|
+| 1 | (new terminal section) | Added this change-log section skeleton (contract rule 4) | SETUP-042-F1 | HEAD(6ff3a8c9) |
