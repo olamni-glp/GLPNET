@@ -28,6 +28,26 @@ may already be met, making parts of the register stale. The three documents are 
 single source of truth; downstream consumers (`crdtmsg-xsd-style-schema-language`, `glp-policy-guard`,
 post-MVP features) will keep reading them.
 
+## Clarifications
+
+### Session 2026-07-04
+
+- Q: When a claim's execution record (the 86-claim scanner sets, preserved only in session
+  transcripts) is unrecoverable, what does verification require? → A: **Targeted re-execution
+  (option C)** — re-derive F3 merge decisions from in-doc data everywhere; re-execute fresh blind
+  scans **only** for the 9 single-family survivor blocks and any contested/discrepant claims;
+  in-doc summaries suffice for multi-family corroborated blocks.
+- Q: May the pass promote PROVISIONAL rows whose triggers are objectively met, or must promotions
+  escalate? → A: **Self-promote mechanically-met rows (option A)** — the pass promotes rows whose
+  trigger is met by concrete shipped evidence (evidence quoted per row), batch-listed in the
+  verification report for owner review; judgment calls, ambiguous triggers, and contradictions
+  still escalate (FR-013; F3's zero-self-decision rule intact).
+- Q: Which repo state is the verification baseline? → A: **Hybrid (option C)** —
+  method-conformance and coverage-ledger re-derivation are judged against the **delivery-time git
+  state** (what the scanners could see); hardening, PROVISIONAL closure, drift dispositions, and
+  evidence materialization run against **current HEAD**; every finding is labeled with its
+  baseline.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Method-conformance verification of each deliverable (Priority: P1)
@@ -149,8 +169,9 @@ resolution or record disposition. Value delivered: zero dangling pointers.
 
 ### Edge Cases
 
-- Session transcripts holding the full claim sets may be partially or wholly unavailable — the
-  verification depth then depends on the ruling under [NEEDS CLARIFICATION] below.
+- Session transcripts holding the full claim sets may be partially or wholly unavailable — handled
+  by the targeted re-execution ruling (Clarifications 2026-07-04, FR-014): singletons + contested
+  claims get fresh blind re-scans; corroborated blocks verify against in-doc summaries.
 - A frozen method itself may be under-specified in the surviving record (e.g. F1/F2 methods are
   less explicitly materialized than F3's §8 audit) — the pass must first reconstruct each method
   from the best in-repo evidence and record where reconstruction is inference, not record.
@@ -181,15 +202,22 @@ resolution or record disposition. Value delivered: zero dangling pointers.
   confirmed / demoted / promoted verdict per block with the corroborating evidence or an explicit
   no-further-evidence ruling.
 - **FR-005**: The pass MUST re-derive the three coverage artifacts (F1 §12 matrix, F2 §11 table,
-  F3 §3 matrix + §4 closure ledger) from their sources and either confirm them exactly or enumerate
-  and correct every discrepancy.
+  F3 §3 matrix + §4 closure ledger) from their sources, judged against the delivery-time git state
+  (clarified 2026-07-04), and either confirm them exactly or enumerate and correct every
+  discrepancy.
+- **FR-015**: Every finding in the verification report MUST be labeled with its baseline —
+  delivery-time state (conformance, ledger re-derivation) or current HEAD (hardening, PROVISIONAL
+  closure, drift dispositions, evidence materialization) — per the hybrid-baseline ruling
+  (clarified 2026-07-04).
 - **FR-006**: The pass MUST disposition every scanner-C known-drift item (F3 §8): corrected in the
   corpus, recorded as a proposed roadmap follow-up, or ruled obsolete.
 - **FR-007**: The pass MUST verify E1–E9 ruling propagation: every block status touched by a ruling
   is consistent across all its appearances in the three documents; inconsistencies are corrected.
 - **FR-008**: The pass MUST re-adjudicate all 8 PROVISIONAL register rows (F3 §5) against current
   repo state; rows with met triggers are closed with evidence, others re-affirmed with corrected
-  triggers.
+  triggers. Rows whose trigger is met by concrete shipped evidence are promoted by the pass itself
+  (evidence quoted per row) and batch-listed in the verification report for owner review; ambiguous
+  triggers and judgment calls escalate to the owner instead (clarified 2026-07-04).
 - **FR-009**: Closure or promotion requiring net-new implementation MUST be captured as a proposed
   roadmap follow-up and MUST NOT be implemented within this feature.
 - **FR-010**: The pass MUST enumerate every evidence pointer in the three documents and either
@@ -204,12 +232,11 @@ resolution or record disposition. Value delivered: zero dangling pointers.
 - **FR-013**: Contradictions between a hardened verdict and decisions the shipped 041 MVP built on
   MUST be recorded in the verification report and escalated to the owner — never self-ruled and
   never patched into 041.
-- **FR-014**: Verification depth for claims whose full execution records are unavailable in-repo
-  MUST follow [NEEDS CLARIFICATION: the full claim sets (86 claims, per-claim fields) are recorded
-  as living in session transcripts, which may be gone — when a claim's execution record is
-  unrecoverable, is verification against the in-doc summaries + independent spot re-derivation
-  sufficient, or must the affected scan be RE-EXECUTED (fresh blind re-scan of the named sources)
-  to regenerate the evidence?].
+- **FR-014**: Where a claim's full execution record is unavailable in-repo, verification MUST use
+  targeted re-execution (clarified 2026-07-04): F3 merge decisions are re-derived from in-doc data
+  everywhere; a fresh blind re-scan of the named sources is executed **only** for the 9
+  single-family survivor blocks and for any claim found contested or discrepant during the pass;
+  in-doc summaries are the accepted evidence baseline for multi-family corroborated blocks.
 
 ### Key Entities
 

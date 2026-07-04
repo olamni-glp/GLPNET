@@ -13,9 +13,9 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **1 marker (FR-014, verification depth when
-      execution records are unrecoverable) deliberately deferred to `/bk-clarify` for the owner's
-      ruling; it is the single scope-shaping fork with no reasonable default**
+- [x] No [NEEDS CLARIFICATION] markers remain — FR-014 resolved at `/bk-clarify` 2026-07-04
+      (targeted re-execution), plus promotion-authority and hybrid-baseline rulings recorded in
+      spec §Clarifications
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,6 +33,7 @@
 
 ## Notes
 
-- FR-014's [NEEDS CLARIFICATION] (re-execute scans vs verify against summaries + spot
-  re-derivation when transcripts are gone) is the question `/bk-clarify` must put to the owner
-  before planning.
+- All three clarify rulings recorded 2026-07-04 in spec §Clarifications: (1) targeted
+  re-execution for unrecoverable records (FR-014), (2) mechanical PROVISIONAL promotions with
+  batch review (FR-008), (3) hybrid verification baseline with per-finding labels (FR-005/FR-015).
+  Spec ready for `/bk-plan`.
