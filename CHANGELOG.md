@@ -89,6 +89,19 @@
 
 ## [Unreleased]
 
+## [v2026.07.04.2] - 2026-07-04
+
+### Added
+- F3 buildingblocks-synthesis delivered - 86 claims to 40 blocks, 9 escalations + roadmap 040 shipped/F3 released + export
+
+### Changed
+- Merge pull request #79 from olamni-glp/037-virtual-3270-term
+- Merge pull request #78 from olamni-glp/037-virtual-3270-term
+- roadmap fold - crdtmsg-verify-and-harden feature + 3-role dogfood win note + codify notes + exports 20260704
+- Merge pull request #77 from olamni-glp/037-virtual-3270-term
+- roadmap capture fix - crdtmsg F1/F2 released with doc pointers + export 20260704T063315Z
+- Merge pull request #76 from olamni-glp/main
+
 ## [v2026.07.04.1] - 2026-07-04
 
 ### Added
