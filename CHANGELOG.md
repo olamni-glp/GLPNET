@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+## [v2026.07.04.4] - 2026-07-04
+
+### Added
+- implement (041) Polish - dual-DSL schema registry, GLP guard PROPOSAL (propose-only, §1.14 gate), parity vectors, docs; C# gates 253 green (T053-T057)
+- implement (041) US5 routing+e2e - unified header, v2 additive cap slot, @name loud-fail, dedup, policy matcher, mesh demonstrator; SC-007/008/009 green (T043-T052)
+- implement (041) US4 cap/sig - macaroon fail-closed + amulet slot + Ed25519 whole/sub-content seals + provenance; SC-005/006/011 green (T035-T042)
+- implement (041) US3 MANDATORY rich-text - Fugue no-interleaving + Peritext unknown-mark preservation, op semantics/tombstone/delivery (T026-T034)
+- implement (041) US2 store-first - op-WAL (040 shape) + rebuildable projection + Merkle anti-entropy; convergence+crash-rebuild green (T020-T025)
+- implement (041) US1 MVP - TLV+4 surface codecs, loud-fail, version tolerance; 16-cell conformance matrix green (T010-T019)
+- implement (041) foundational - wire registry (SC-010), abstract model, DVV/hash-chain, transport seam; T001-T009,T012 green
+
+### Fixed
+- apply code-review findings - LEB128 overlong/overflow loud-fail, seal count-binding, section type_number CrdtMsgException, injective caveat encoding (+NUL cleanup); 86 tests green
+
+### Changed
+- Merge pull request #85 from olamni-glp/041-crdtmsg-mvp
+- analyze (041) - apply top remedies (FR-019/031/023 coverage, FR-038 relabel)
+- tasks (041) - 57 tasks by user story, store-first, tests-first
+- plan (041) - design artifacts, C# workspace, store-first, constitution PASS
+- clarify (041) - rich-text CRDT mandatory, C# primary, guard gated on 1.14
+- specify crdtmsg-mvp (041) - CRDT multi-format messaging MVP spec
+- dedup 55 dup-GUID groups from cross-host merge (0 dups; 78 feats/18 epics) + restart pointer
+- restart pointer for 2026-07-04 — ship v2026.07.04.1 done, roadmap synced; NEXT=dedup dup-GUIDs, bk-upgrade+deploy, marathon
+- roadmap-sync import+export (olamnit↔gavriellas cross-host merge, idempotent)
+- bk-close retro for F3 cycle - 3 findings (agent-teams win, release-planner creatordate gotcha, retro-inputs gap)
+- Merge pull request #83 from olamni-glp/main
+
 ## [v2026.07.04.3] - 2026-07-04
 
 ### Added
