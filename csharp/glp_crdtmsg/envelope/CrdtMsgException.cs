@@ -7,8 +7,10 @@
 
 namespace GlpRuntime.CrdtMsg.Envelope;
 
-/// <summary>Raised on any malformed / out-of-policy message. Never swallowed; never a silent drop.</summary>
-public sealed class CrdtMsgException : Exception
+/// <summary>Raised on any malformed / out-of-policy message. Never swallowed; never a silent drop.
+/// Base of the op-apply transport faults (CyclicTermException / NonGroundTermException) — those are
+/// surfaced as loud faults on this exception hierarchy, never as a GLP Fail verdict (FR-023/031).</summary>
+public class CrdtMsgException : Exception
 {
     public CrdtMsgException(string message) : base(message) { }
     public CrdtMsgException(string message, Exception inner) : base(message, inner) { }

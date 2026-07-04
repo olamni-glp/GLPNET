@@ -90,17 +90,17 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: op idempotence + observed-remove; Fugue no-interleaving; Peritext unknown-mark preservation.
 
 ### Tests (write first, must fail)
-- [ ] T026 [P] [US3] Op idempotence + observed-remove tombstone tests + ground-term/acyclic rejection cases in `csharp/glp_crdtmsg.tests/OpSemanticsTests.cs` (FR-015/030/031/023)
-- [ ] T027 [P] [US3] Fugue no-interleaving convergence test (concurrent typing, randomized delivery) in `csharp/glp_crdtmsg.tests/FugueTests.cs` (SC-012)
-- [ ] T028 [P] [US3] Peritext unknown-mark preservation (through convergence + 4-surface transcode) in `csharp/glp_crdtmsg.tests/PeritextTests.cs` (SC-013)
+- [X] T026 [P] [US3] Op idempotence + observed-remove tombstone tests + ground-term/acyclic rejection cases in `csharp/glp_crdtmsg.tests/OpSemanticsTests.cs` (FR-015/030/031/023) — DONE (+delivery window reorder/dedup/fencing/bounded)
+- [X] T027 [P] [US3] Fugue no-interleaving convergence test (concurrent typing, randomized delivery) in `csharp/glp_crdtmsg.tests/FugueTests.cs` (SC-012) — DONE (concurrent runs at start+middle stay contiguous under randomized order; observed delete)
+- [X] T028 [P] [US3] Peritext unknown-mark preservation (through convergence + 4-surface transcode) in `csharp/glp_crdtmsg.tests/PeritextTests.cs` (SC-013) — DONE (unknown mark survives convergence + overlapping spans + all-4-surface transcode)
 
 ### Implementation
-- [ ] T029 [US3] Op-based JSON-CRDT op model (ground-term ops, deps, pred_hash; ground-terms-only law) in `csharp/glp_crdtmsg/crdt/Op.cs` — enforce **acyclic op payloads** (CycleGuard at op-apply, FR-031) and **reject non-ground wire values** (FR-023 / BB-CRDT-9), surfacing faults as transport faults not GLP Fail
-- [ ] T030 [US3] Semantic tombstone op (observed-remove) in `csharp/glp_crdtmsg/crdt/Tombstone.cs`
-- [ ] T031 [US3] Delivery over the shipped reliability substrate (monotone seq, bounded-reorder idempotent inbound, N=8 window, single-winner fencing) in `csharp/glp_crdtmsg/crdt/Delivery.cs`
-- [ ] T032 [US3] Fugue sequence CRDT (stable `elem_id=(dot,side)`, left/right origin, maximal non-interleaving) in `csharp/glp_crdtmsg/crdt/richtext/Fugue.cs`
-- [ ] T033 [US3] Peritext formatting spans (stable anchors, unknown-mark verbatim passthrough) in `csharp/glp_crdtmsg/crdt/richtext/Peritext.cs`
-- [ ] T034 [US3] `crdt_model` discriminator (op_based / state_based; non-CRDT request/response unimpeded) in `csharp/glp_crdtmsg/model/AbstractModel.cs`
+- [X] T029 [US3] Op-based JSON-CRDT op model (ground-term ops, deps, pred_hash; ground-terms-only law) in `csharp/glp_crdtmsg/crdt/Op.cs` — enforce **acyclic op payloads** (CycleGuard at op-apply, FR-031) and **reject non-ground wire values** (FR-023 / BB-CRDT-9), surfacing faults as transport faults not GLP Fail — DONE (Op body = ground Term via TermCodec; crdt/TermGuards.cs = EnsureGround/EnsureAcyclic → NonGroundTermException/CyclicTermException, applied at RichTextDoc.Apply)
+- [X] T030 [US3] Semantic tombstone op (observed-remove) in `csharp/glp_crdtmsg/crdt/Tombstone.cs` — DONE (Tombstone record + ObservedRemoveSet; seq_delete/mark_remove are dot-targeted specializations)
+- [X] T031 [US3] Delivery over the shipped reliability substrate (monotone seq, bounded-reorder idempotent inbound, N=8 window, single-winner fencing) in `csharp/glp_crdtmsg/crdt/Delivery.cs` — DONE (DeliveryWindow: seq order, N=8 reorder buffer, dedup, epoch fencing)
+- [X] T032 [US3] Fugue sequence CRDT (stable `elem_id=(dot,side)`, left/right origin, maximal non-interleaving) in `csharp/glp_crdtmsg/crdt/richtext/Fugue.cs` — DONE (tree formulation, ancestor-based placement → each run a subtree → no interleaving; SC-012 green)
+- [X] T033 [US3] Peritext formatting spans (stable anchors, unknown-mark verbatim passthrough) in `csharp/glp_crdtmsg/crdt/richtext/Peritext.cs` — DONE (MarkSet, anchors=(dot,side), unknown types kept verbatim; +RichTextDoc ties Fugue+Peritext with ground-term op bodies)
+- [X] T034 [US3] `crdt_model` discriminator (op_based / state_based; non-CRDT request/response unimpeded) in `csharp/glp_crdtmsg/model/AbstractModel.cs` — DONE (CrdtModel enum None/StateBased/OpBased in AbstractModel; None message round-trips unimpeded — covered by US1 conformance "minimal" sample)
 
 **Checkpoint**: rich-text CRDT converges without interleaving and preserves unknown marks — the mandatory bar.
 

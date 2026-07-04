@@ -25,6 +25,15 @@ public readonly record struct Dot(string PeerName, long Counter) : IComparable<D
     /// <summary>Canonical wire/text form <c>peer:counter</c>.</summary>
     public override string ToString() => $"{PeerName}:{Counter}";
 
+    /// <summary>Parse the canonical <c>peer:counter</c> form (peer may contain ':'; split on the last).</summary>
+    public static Dot Parse(string s)
+    {
+        int i = s.LastIndexOf(':');
+        if (i < 0 || !long.TryParse(s.AsSpan(i + 1), out long counter))
+            throw new FormatException($"invalid dot '{s}' (expected peer:counter)");
+        return new Dot(s[..i], counter);
+    }
+
     /// <summary>Deterministic tiebreak order for last-writer-style convergence decisions.</summary>
     public int CompareTo(Dot other)
     {
