@@ -48,18 +48,18 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: 16-cell conformance matrix passes (incl. unknown-field preservation); malformed inputs all reject.
 
 ### Tests (write first, must fail)
-- [ ] T010 [P] [US1] Conformance-matrix test (16 surface pairs, golden corpus, unknown-field preservation) in `csharp/glp_crdtmsg.tests/ConformanceMatrixTests.cs` (SC-001)
-- [ ] T011 [P] [US1] Loud-fail fuzz test (bad version, unknown must-understand tag, truncation, trailing bytes) in `csharp/glp_crdtmsg.tests/LoudFailTests.cs` (SC-002)
+- [X] T010 [P] [US1] Conformance-matrix test (16 surface pairs, golden corpus, unknown-field preservation) in `csharp/glp_crdtmsg.tests/ConformanceMatrixTests.cs` (SC-001) — DONE (16 pairs × 3 msgs; +byte-identical re-encode +greasing/unknown-section survival +v2 accept-range)
+- [X] T011 [P] [US1] Loud-fail fuzz test (bad version, unknown must-understand tag, truncation, trailing bytes) in `csharp/glp_crdtmsg.tests/LoudFailTests.cs` (SC-002) — DONE (bad codec ver, trailing, truncation, unknown payload_type, out-of-range schema ver, unknown must-understand — across all 4 surfaces)
 - [X] T012 [P] [US1] Registry single-source test (zero duplicated constants across assemblies) in `csharp/glp_wire_registry.tests/SingleSourceTests.cs` (SC-010) — DONE (6/6 green; proves both former constant sites alias the one registry entry)
 
 ### Implementation
-- [ ] T013 [P] [US1] TLV section codec (LEB128, criticality ranges, skip-by-length, mandatory greasing) in `csharp/glp_crdtmsg/envelope/TlvSection.cs`
-- [ ] T014 [US1] Binary-term surface (TLV-outer / `TermCodec`-inner; CycleGuard fault on cyclic payload) in `csharp/glp_crdtmsg/model/BinaryTermCodec.cs`
-- [ ] T015 [P] [US1] JSON surface codec in `csharp/glp_crdtmsg/model/JsonCodec.cs`
-- [ ] T016 [P] [US1] YAML surface codec (YamlDotNet, model-level round-trip) in `csharp/glp_crdtmsg/model/YamlCodec.cs`
-- [ ] T017 [P] [US1] CBOR surface codec (deterministic; unknown keys retained) in `csharp/glp_crdtmsg/model/CborCodec.cs`
-- [ ] T018 [US1] Loud-fail decode invariant (consume-all-or-throw) enforced across all surfaces in `csharp/glp_crdtmsg/envelope/DecodeGuard.cs`
-- [ ] T019 [US1] Two-tier version tolerance (envelope emit-low/accept-range; frame+codec hard-reject) in `csharp/glp_crdtmsg/envelope/VersionPolicy.cs`
+- [X] T013 [P] [US1] TLV section codec (LEB128, criticality ranges, skip-by-length, mandatory greasing) in `csharp/glp_crdtmsg/envelope/TlvSection.cs` — DONE (+VarInt.cs LEB128 u64; criticality convention: odd=must-understand; Grease() factory)
+- [X] T014 [US1] Binary-term surface (TLV-outer / `TermCodec`-inner; CycleGuard fault on cyclic payload) in `csharp/glp_crdtmsg/model/BinaryTermCodec.cs` — DONE (canonical/signing form via reused ByteWriter/ByteReader; sections opaque=acyclic, active CycleGuard deferred to op-apply T029/FR-031; cap slot on binary deferred to v2/T048 = loud-fail if set)
+- [X] T015 [P] [US1] JSON surface codec in `csharp/glp_crdtmsg/model/JsonCodec.cs` — DONE (System.Text.Json over MessageDto, SnakeCaseLower, unknown-key tolerant, trailing-content loud-fail)
+- [X] T016 [P] [US1] YAML surface codec (YamlDotNet, model-level round-trip) in `csharp/glp_crdtmsg/model/YamlCodec.cs` — DONE (UnderscoredNamingConvention, IgnoreUnmatchedProperties)
+- [X] T017 [P] [US1] CBOR surface codec (deterministic; unknown keys retained) in `csharp/glp_crdtmsg/model/CborCodec.cs` — DONE (System.Formats.Cbor, fixed-order definite-length, byte-string values, trailing-byte loud-fail, unknown-key skip)
+- [X] T018 [US1] Loud-fail decode invariant (consume-all-or-throw) enforced across all surfaces in `csharp/glp_crdtmsg/envelope/DecodeGuard.cs` — DONE (+CrdtMsgException; payload_type-known + must-understand checks; per-surface consume-all in each codec)
+- [X] T019 [US1] Two-tier version tolerance (envelope emit-low/accept-range; frame+codec hard-reject) in `csharp/glp_crdtmsg/envelope/VersionPolicy.cs` — DONE (codec-format byte hard-reject; schema accept-range [1,2], emit 1)
 
 **Checkpoint**: US1 MVP — a message round-trips across all four surfaces, malformed input rejects.
 
