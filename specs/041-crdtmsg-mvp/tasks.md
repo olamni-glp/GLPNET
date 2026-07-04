@@ -71,14 +71,14 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: randomized-order convergence + crash-rebuild pass.
 
 ### Tests (write first, must fail)
-- [ ] T020 [P] [US2] Convergence test (two stores, randomized op order → identical state) in `csharp/glp_crdtmsg.tests/StoreConvergenceTests.cs` (SC-003)
-- [ ] T021 [P] [US2] Crash-rebuild zero-loss test (interrupt at arbitrary point → WAL replay) in `csharp/glp_crdtmsg.tests/StoreRebuildTests.cs` (SC-004)
+- [X] T020 [P] [US2] Convergence test (two stores, randomized op order → identical state) in `csharp/glp_crdtmsg.tests/StoreConvergenceTests.cs` (SC-003) — DONE (random-order+dupes; disjoint-subset Merkle reconcile; idempotence; LWW-map witness)
+- [X] T021 [P] [US2] Crash-rebuild zero-loss test (interrupt at arbitrary point → WAL replay) in `csharp/glp_crdtmsg.tests/StoreRebuildTests.cs` (SC-004) — DONE (reopen recovers all; orphan-temp discarded; corruption detected loud)
 
 ### Implementation
-- [ ] T022 [US2] Append-only op-WAL (temp → SHA-256 verify → atomic commit → journal, 040 shape) in `csharp/glp_crdtmsg/store/OpWal.cs`
-- [ ] T023 [US2] Rebuildable projection + replay in `csharp/glp_crdtmsg/store/Projection.cs`
-- [ ] T024 [US2] Delta-state CRDT mutators + Merkle-tree anti-entropy reconciliation in `csharp/glp_crdtmsg/store/DeltaMerkle.cs`
-- [ ] T025 [US2] Seam wiring `op_id` (DVV dot) as store key, distinct from `msg_id` in `csharp/glp_crdtmsg/store/OpWal.cs`
+- [X] T022 [US2] Append-only op-WAL (temp → SHA-256 verify → atomic commit → journal, 040 shape) in `csharp/glp_crdtmsg/store/OpWal.cs` — DONE (self-verifying op files [sha256|op], atomic rename = commit point, journal audit, idempotent-by-dot)
+- [X] T023 [US2] Rebuildable projection + replay in `csharp/glp_crdtmsg/store/Projection.cs` — DONE (generic reducer; deterministic causal topo-order via Kahn, dot tiebreak → order-independent convergence)
+- [X] T024 [US2] Delta-state CRDT mutators + Merkle-tree anti-entropy reconciliation in `csharp/glp_crdtmsg/store/DeltaMerkle.cs` — DONE (dot-sorted Merkle tree root = convergence witness; join-irreducible delta = ops peer lacks; bidirectional Reconcile)
+- [X] T025 [US2] Seam wiring `op_id` (DVV dot) as store key, distinct from `msg_id` in `csharp/glp_crdtmsg/store/OpWal.cs` — DONE (op keyed by Dot; msg_id lives only in the header)
 
 **Checkpoint**: store converges and rebuilds zero-loss — the CRDT backbone is in place.
 
