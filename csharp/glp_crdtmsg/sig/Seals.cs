@@ -38,7 +38,7 @@ public sealed class SealSet
         byte[] prev = Array.Empty<byte>();
         for (int i = 0; i < blocks.Count; i++)
         {
-            byte[] sig = keys.Sign(Chain(blocks[i], prev));
+            byte[] sig = keys.Sign(Chain(blocks[i], i, blocks.Count, prev));
             seals.Add(new SubSeal(i, sig));
             prev = sig;
         }
@@ -58,17 +58,28 @@ public sealed class SealSet
         for (int i = 0; i < blocks.Count; i++)
         {
             if (SubSeals[i].BlockIndex != i) return false;                       // reorder
-            if (!keys.Verify(Signer, Chain(blocks[i], prev), SubSeals[i].Signature)) return false;
+            if (!keys.Verify(Signer, Chain(blocks[i], i, blocks.Count, prev), SubSeals[i].Signature)) return false;
             prev = SubSeals[i].Signature;
         }
         return true;
     }
 
-    private static byte[] Chain(byte[] block, byte[] prevSig)
+    // Each seal binds its block, its INDEX, the total block COUNT, and the previous seal. Binding the
+    // count makes the chain self-sufficient: dropping trailing block(s)+seal(s) (which keeps Count equal)
+    // still fails, because the surviving seals were signed with the original count (review finding #2 —
+    // defense-in-depth for a future seal-deserialization path; today WholeSig already spans all blocks).
+    private static byte[] Chain(byte[] block, int index, int count, byte[] prevSig)
     {
-        var buf = new byte[block.Length + prevSig.Length];
+        var buf = new byte[block.Length + 8 + prevSig.Length];
         Buffer.BlockCopy(block, 0, buf, 0, block.Length);
-        Buffer.BlockCopy(prevSig, 0, buf, block.Length, prevSig.Length);
+        WriteInt32LE(buf, block.Length, index);
+        WriteInt32LE(buf, block.Length + 4, count);
+        Buffer.BlockCopy(prevSig, 0, buf, block.Length + 8, prevSig.Length);
         return buf;
+    }
+
+    private static void WriteInt32LE(byte[] b, int off, int v)
+    {
+        b[off] = (byte)v; b[off + 1] = (byte)(v >> 8); b[off + 2] = (byte)(v >> 16); b[off + 3] = (byte)(v >> 24);
     }
 }

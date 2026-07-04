@@ -47,7 +47,10 @@ public static class TlvSection
         var sections = new List<Section>((int)Math.Min(count, 1024));
         for (ulong i = 0; i < count; i++)
         {
-            long typeNumber = checked((long)VarInt.ReadU64(r));
+            ulong rawType = VarInt.ReadU64(r);
+            if (rawType > long.MaxValue)
+                throw new CrdtMsgException($"section type_number {rawType} exceeds Int64 range");
+            long typeNumber = (long)rawType;
             ulong len = VarInt.ReadU64(r);
             if (len > (ulong)(r.Length - r.Position))
                 throw new CrdtMsgException(
