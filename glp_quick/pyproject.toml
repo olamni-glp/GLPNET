@@ -30,3 +30,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Put both the package (src/) and the tests package (.) on sys.path so `import glp_quick`
+# and `from tests._fakes import FakeHandle` both resolve without a manual PYTHONPATH.
+pythonpath = ["src", "."]

@@ -89,6 +89,46 @@
 
 ## [Unreleased]
 
+## [v2026.07.04.1] - 2026-07-04
+
+### Added
+- US9 Polish — SC coverage-map (SC-013) + help-completeness proxy + link_console parity + quickstart/help sync (T057-T060)
+- US6 rcopy wizard — pure exclusion filter + run_transfer core + LinkProxy/ResponderSession over-the-link + /rcopy tui (T048-T053)
+- US8 rcopy responder backend — file-WAL source-of-truth + rebuildable catalog/provenance, commit-on-complete, perm/quota/path (T039-T047)
+- US7 user-bindable PF keys — BindingRegistry (free-key/PF13-24/Ctrl-alt/typed-equiv) + /bind live legend (T054-T056)
+- US5 REPL-in-a-page — ReplBridge process bridge + /repl over link + agent-page /return (T034-T038)
+- US4 joint pinpoint + masks/forms — joint.py/forms.py + /joint /pin /undo-pin /mask /fill wiring (T028-T033)
+- US3 presentation — themes/OIA/splash to presentation.py, two-strip layout + /layout, reverse-video PF-legend (T024-T027)
+- US2 pages — /transmit owned-block, received page not merged/no focus-steal, /pages owner-by-name (T019-T023)
+- US1 MVP — type-only conversation hardened (state-backed tui, @name resolve, no-TTY gate, link-drop surface, one codec) (T009-T018)
+- US-MVP Phase 2 foundational — tmsg codec + terminal state + @name resolve (T004-T008)
+- US-MVP Phase 1 setup — terminal/rcopy skeletons, FakeHandle, two-tier tests (T001-T003)
+
+### Fixed
+- codexreview P1s — commit-time quota re-check (FR-038) + rcopy reply spoof-guard
+- drain host stdout at spawn to prevent pre-readiness pipe-fill hang (code-review #6)
+- demo records SC-001 FAIL on handshake timeout instead of AttributeError (code-review #5)
+- Gleam relay reassembles >1MiB lines instead of misrouting fragments to stderr (data-loss guard); erlc-verified via WSL
+- mesh dup-id no longer hijacks or evicts the incumbent link (routing/data-loss guard); regression test
+- @name routing (FR-006), --tui TTY fallback (FR-005), report link-drops; shared parse_addressed + 5 tests
+
+### Changed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- Merge pull request #74 from olamni-glp/037-virtual-3270-term
+- roadmap-sync export 20260703T213044Z for cross-host resume (13 epics, 74 features)
+- Merge pull request #73 from olamni-glp/037-virtual-3270-term
+- sweep session artifacts - deploy/guardian/roadmap-sync state, 038 retro mirror, crdt-multiformat-messaging research
+- Merge origin/develop into develop (integrate 036/037/040 work + PR #72)
+- plan+tasks+analyze for complete+hardened virtual-3270 terminal (Phase 0/1 artifacts + 60 tasks + top remedies)
+- Merge pull request #72 from olamni-glp/037-virtual-3270-term
+- specify+clarify complete+hardened virtual-3270 terminal (superset of 037: US1-9 / FR-001..046 / SC-001..013; 3 clarifications)
+- record buildkit v2026.07.03.1 deploy audit log
+- refresh restart pointer — 035+ audit outcome, link-completion fixes done, next=T019 then promote+specify 040
+- 035+ oblivion audit, 3-role-team method+dogfood, 040 complete-hardened-3270 capture, 2 codify notes
+- restore virtual-3270-term spec on develop base; renumber /rcopy backend refs 038 to 040 (038/039 shipped)
+- close-out retrospective report (4 root-cause findings) for v2026.07.02.3
+- Merge pull request #71 from olamni-glp/main
+
 ## [v2026.07.02.3] - 2026-07-02
 
 ### Added

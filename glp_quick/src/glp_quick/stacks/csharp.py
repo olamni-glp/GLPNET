@@ -83,17 +83,37 @@ def dotnet_path() -> str:
     return "dotnet"  # last resort — PATH lookup at exec time
 
 
+def _pump_stdout(stream, rx: "queue.Queue[Optional[bytes]]") -> None:
+    """Drain a host process's stdout into ``rx`` until EOF, then signal a graceful close.
+
+    Module-level so it can be started at process-spawn time (before a CSharpHandle exists) to avoid a
+    stdout-pipe-fill deadlock while blocked on the stderr readiness signal (A5 / code-review #6).
+    """
+    for raw in stream:
+        line = raw.rstrip(b"\r\n")
+        if line:
+            rx.put(line)
+    rx.put(None)  # EOF -> unblock recv with a graceful close
+
+
 class CSharpHandle(Handle):
     """Live link end backed by a supervised ``glp_quick_host`` process (the GLP-message I/O seam)."""
 
-    def __init__(self, proc: subprocess.Popen, link_label: str, peer_ids: Sequence[str]) -> None:
+    def __init__(self, proc: subprocess.Popen, link_label: str, peer_ids: Sequence[str],
+                 rx: "Optional[queue.Queue[Optional[bytes]]]" = None,
+                 reader: Optional[threading.Thread] = None) -> None:
         self._proc = proc
         self._link = link_label
         self._peers = list(peer_ids)
-        self._rx: "queue.Queue[Optional[bytes]]" = queue.Queue()
+        # A stdout reader may already be draining (started at spawn to avoid a pipe-fill deadlock
+        # before readiness — see spawn_handle); adopt it rather than start a second reader.
+        self._rx: "queue.Queue[Optional[bytes]]" = rx if rx is not None else queue.Queue()
         self._closed_reason: Optional[str] = None
-        self._reader = threading.Thread(target=self._read_stdout, daemon=True)
-        self._reader.start()
+        if reader is not None:
+            self._reader = reader
+        else:
+            self._reader = threading.Thread(target=self._read_stdout, daemon=True)
+            self._reader.start()
         self._errs = threading.Thread(target=self._drain_stderr, daemon=True)
         self._errs.start()
 
@@ -120,11 +140,7 @@ class CSharpHandle(Handle):
 
     def _read_stdout(self) -> None:
         assert self._proc.stdout is not None
-        for raw in self._proc.stdout:
-            line = raw.rstrip(b"\r\n")
-            if line:
-                self._rx.put(line)
-        self._rx.put(None)  # EOF → unblock recv with a graceful close
+        _pump_stdout(self._proc.stdout, self._rx)
 
     def _drain_stderr(self) -> None:
         assert self._proc.stderr is not None
@@ -222,7 +238,12 @@ def spawn_handle(
         cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
         env=env, cwd=cwd,
     )
-    assert proc.stderr is not None
+    assert proc.stderr is not None and proc.stdout is not None
+    # A5/#6: drain stdout the instant the process exists — otherwise the host can fill its stdout pipe
+    # (>~64 KB) before a reader attaches and block, never emitting READY on stderr (a startup hang).
+    rx: "queue.Queue[Optional[bytes]]" = queue.Queue()
+    reader = threading.Thread(target=_pump_stdout, args=(proc.stdout, rx), daemon=True)
+    reader.start()
     link_label = await_token
     while True:
         raw = proc.stderr.readline()
@@ -238,4 +259,4 @@ def spawn_handle(
         if line.startswith(await_token):
             link_label = line.split(" ", 1)[1] if " " in line else await_token
             break
-    return CSharpHandle(proc, link_label, peer_ids)
+    return CSharpHandle(proc, link_label, peer_ids, rx=rx, reader=reader)

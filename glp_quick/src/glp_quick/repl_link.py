@@ -23,9 +23,16 @@ shared contract those build on (FR-017 skeleton-before-behaviour).
 from __future__ import annotations
 
 import json
+import os
+import queue
+import shutil
+import subprocess
+import threading
+import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, Sequence
+from pathlib import Path
+from typing import Iterable, List, Optional, Sequence
 
 #: The mesh fan-out sentinel for the envelope ``to`` field (FR-008b).
 BROADCAST = "broadcast"
@@ -66,6 +73,20 @@ def assert_ground_relay(payload: str) -> str:
 def new_msg_id() -> str:
     """A fresh per-message id (dedup key, in concert with the 025 ``seq``)."""
     return uuid.uuid4().hex
+
+
+def parse_addressed(text: str, default_to: EndpointId) -> "tuple[EndpointId, str]":
+    """Route a composed message to a peer (FR-006): ``@<peer> body`` -> ``(peer, body)``; otherwise
+    ``(default_to, text)``.
+
+    The single source of truth for the ``@name`` directed-send convention, shared by the plain link
+    console and the ``--tui`` terminal so the two cannot drift. (The terminal previously advertised
+    ``@<to>`` in its help but never parsed it -- every message silently went to the default peer.)
+    """
+    if text.startswith("@"):
+        head, _, rest = text[1:].partition(" ")
+        return head, rest
+    return default_to, text
 
 
 @dataclass(frozen=True)
@@ -124,6 +145,131 @@ class GlpMessage:
             msg_id=obj["msg_id"],
             seq=obj.get("seq"),
         )
+
+
+# --------------------------------------------------------------------------------------
+# GLP-REPL ↔ link process bridge (US5 / T036 / R10)
+# --------------------------------------------------------------------------------------
+def _repo_root() -> Path:
+    # glp_quick/src/glp_quick/repl_link.py → repo root is three parents up.
+    return Path(__file__).resolve().parents[3]
+
+
+def _dotnet() -> str:
+    override = os.environ.get("GLPQUICK_DOTNET")
+    if override:
+        return override
+    return shutil.which("dotnet") or ("dotnet.exe" if os.name == "nt" else "dotnet")
+
+
+def default_repl_command() -> Optional[List[str]]:
+    """Resolve the command that launches the GLP REPL over stdio (``out/csharp/glp_repl``; ``dart`` on
+    demand), or ``None`` when none is available. Override with ``GLPQUICK_REPL_CMD`` (shell-split)."""
+    override = os.environ.get("GLPQUICK_REPL_CMD")
+    if override:
+        import shlex
+
+        return shlex.split(override)
+    base = _repo_root() / "out" / "csharp" / "glp_repl" / "bin"
+    for config in ("Release", "Debug"):
+        dll = base / config / "net10.0" / "glp_repl.dll"
+        if dll.exists():
+            return [_dotnet(), str(dll)]
+    return None
+
+
+class ReplBridge:
+    """A supervised GLP REPL subprocess driven over its stdio (US5 / FR-016).
+
+    ``start`` spawns the REPL (capturing any spawn failure rather than raising); ``evaluate`` feeds one
+    goal line and returns whatever the REPL renders (best-effort, bounded by a quiet-timeout). This is
+    the one component that turns a local GLP REPL into a "virtual REPL running over the link": a
+    receiver of ``repl_goal`` feeds the goal here and returns the rendering as ``repl_result``.
+    """
+
+    def __init__(self, command: Optional[List[str]] = None, *, quiet_timeout: float = 0.6,
+                 max_wait: float = 6.0) -> None:
+        self.command = command if command is not None else default_repl_command()
+        self.error: Optional[str] = None
+        self.quiet_timeout = quiet_timeout
+        self.max_wait = max_wait
+        self._proc: Optional[subprocess.Popen] = None
+        self._rx: "queue.Queue[Optional[str]]" = queue.Queue()
+
+    @property
+    def started(self) -> bool:
+        return self._proc is not None and self._proc.poll() is None
+
+    def start(self) -> bool:
+        """Spawn the REPL. Returns ``True`` on success; on failure records ``self.error`` and returns
+        ``False`` (spawn failure is reported on the page, never crashes the terminal — FR-016)."""
+        if self.command is None:
+            self.error = "no GLP REPL available (out/csharp/glp_repl not built; set GLPQUICK_REPL_CMD)"
+            return False
+        try:
+            self._proc = subprocess.Popen(
+                self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, text=True, bufsize=1,
+            )
+        except Exception as exc:  # noqa: BLE001 - report any spawn failure, do not raise
+            self.error = f"repl spawn failed: {exc}"
+            self._proc = None
+            return False
+        threading.Thread(target=self._pump, daemon=True).start()
+        self._drain(self.quiet_timeout, self.max_wait)  # swallow the startup banner
+        return True
+
+    def _pump(self) -> None:
+        assert self._proc is not None and self._proc.stdout is not None
+        for line in self._proc.stdout:
+            self._rx.put(line.rstrip("\r\n"))
+        self._rx.put(None)  # EOF
+
+    def _drain(self, quiet: float, cap: float) -> List[str]:
+        out: List[str] = []
+        deadline = time.monotonic() + cap
+        while True:
+            try:
+                item = self._rx.get(timeout=quiet)
+            except queue.Empty:
+                break
+            if item is None:  # process EOF
+                break
+            out.append(item)
+            if time.monotonic() >= deadline:
+                break
+        return out
+
+    def evaluate(self, goal: str) -> str:
+        """Feed ``goal`` to the REPL and return its rendered output (best-effort)."""
+        if not self.started:
+            return f"[repl error: {self.error or 'not started'}]"
+        assert self._proc is not None and self._proc.stdin is not None
+        try:
+            self._proc.stdin.write(goal.rstrip("\n") + "\n")
+            self._proc.stdin.flush()
+        except Exception as exc:  # noqa: BLE001
+            return f"[repl error: write failed: {exc}]"
+        lines = self._drain(self.quiet_timeout, self.max_wait)
+        return "\n".join(lines).strip() or "(no output)"
+
+    def stop(self) -> None:
+        if self._proc is None:
+            return
+        try:
+            if self._proc.stdin and not self._proc.stdin.closed:
+                self._proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            self._proc.terminate()
+            self._proc.wait(timeout=3)
+        except Exception:  # noqa: BLE001
+            try:
+                self._proc.kill()
+            except Exception:  # noqa: BLE001
+                pass
+        self._proc = None
 
 
 def route(message: GlpMessage, endpoints: Iterable[EndpointId]) -> list[EndpointId]:
