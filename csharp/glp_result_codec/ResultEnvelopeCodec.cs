@@ -20,8 +20,13 @@ public static class ResultEnvelopeCodec
     /// <summary>Codec format version (matches shipped 029 PayloadHeader.Version).</summary>
     public const byte EnvelopeVersion = 0x01;
 
-    /// <summary>Payload-type discriminant for a result envelope (029 IL program = 0x10; next = 0x11).</summary>
-    public const byte PayloadTypeResultEnvelope = 0x11;
+    /// <summary>
+    /// Payload-type discriminant for a result envelope (029 IL program = 0x10; next = 0x11).
+    /// Single-sourced from <c>glp_wire_registry</c> (SC-010, feature 041 T006) — this is a
+    /// const alias of the ONE table entry, not an independent literal. The byte value is
+    /// unchanged, so 038 wire byte-parity is preserved.
+    /// </summary>
+    public const byte PayloadTypeResultEnvelope = GlpRuntime.WireRegistry.PayloadType.ResultEnvelope;
 
     public static byte[] Encode(ResultEnvelope env)
     {

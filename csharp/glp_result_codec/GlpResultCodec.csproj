@@ -35,4 +35,12 @@
     <Compile Remove="tests/**/*.cs" />
   </ItemGroup>
 
+  <!-- Single ProjectReference: the ZERO-DEPENDENCY glp_wire_registry leaf (feature 041 T006).
+       The "NO ProjectReference" stance above is about the heavy runtime / il_codec / GlpLink,
+       which still holds — the registry is a pure constants leaf, so referencing it for the ONE
+       payload-type byte (SC-010) does NOT reintroduce a runtime dependency or alter any wire byte. -->
+  <ItemGroup>
+    <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -25,20 +25,25 @@ Two buildkit installs exist. Use the RIGHT one:
 - **Roadmap CRDT sync**: `roadmap import`→`export`→`import` (olamnit↔gavriellas), idempotent. Pulled in the 11
   features that looked "missing" pre-import (crdtmsg-*, glp-gleam-*, three-role-agent-team, cross-runtime tests).
 
-## NEXT (post-restart, in order) — per owner directive 2026-07-04
-0. **RESOLVE roadmap duplicate GUIDs** from the CRDT merge FIRST — many features doubled
-   (`abandon-operation` + `abandon-operation--01kwjqmh`, `zmq-comm-base` + `…--01kwjqmh`, etc.). The build order
-   lists both → marathon would double-run. Dedup/reconcile before driving.
-1. **`/bk-upgrade` project artifacts → buildkit latest** (source tag **v2026.07.03.2**, HEAD feat 047).
-   Only read-only `status` + `--help` ran this session — NO writes. Path = `apply` (installed_kind=buildkit),
-   dirty-tree gate needs a clean tree or `--yes`. Then **verify**.
-2. **`/bk-deploy` buildkit latest** into deploy-home (`C:\Users\smbuser\AppData\Local\buildkit\deploy-home`,
-   default currently **v2026.07.03.1** → advance to latest) + register this repo. Then **verify**.
-3. **Marathon the roadmap** (owner directive): per feature via **/bk-marathon**:
-   specify→clarify→plan→tasks→analyze(top remedies)→implement→codexreview→close→commit/push/merge, checkpointing
-   for safe restart after clarify/analyze/implement/close and after MVP within implement. First pending in the
-   owner's order: **abandon-operation**. **Host-blocked** (skip/defer here): `http3-quic-ws-link-full-acceptance`
+## NEXT (post-restart, in order) — per owner directive 2026-07-04 (rev. 083x)
+0. **✅ DONE — roadmap dedup.** The 55 dup-GUID groups from the olamnit↔gavriellas CRDT merge were
+   resolved via NEW buildkit soft-tombstone primitives (`delete/reject/supersede/merge` + epic
+   `delete`), landed on buildkit branch **`roadmap-dedup-primitives`** (commit `bcb866a`, 8 tests
+   green, regression-clean). 55 features superseded + 7 empty dup epics deleted → **0 dup groups,
+   78 live features, 18 epics**. Backup export `…083157Z.json` (pre) + `…083445Z.json` (post).
+   The tombstones are standard CRDT (`action='tombstoned'`), so the dedup **persists even without
+   merging the buildkit branch** (develop's fold already honours tombstones). `/bk-codify` note
+   `cn-20260704T083015-4ebcfa42` seeds the proper spec-driven `dedup` feature later.
+   **`/bk-upgrade` + `/bk-deploy` SKIPPED** per owner (2026-07-04).
+1. **Marathon the roadmap** via **/bk-marathon**: per feature run
+   specify→clarify→plan→tasks→analyze(top remedies)→implement→codexreview→close→commit/push/merge,
+   checkpointing for safe restart after clarify/analyze/implement/close and after MVP within implement.
+   **`roadmap next` now recommends `crdtmsg-mvp`** (CRDT multi-format messaging MVP, state=promoted) —
+   START HERE with `/bk-specify` (research already done: `docs/research/crdt-multiformat-messaging/`).
+   **Host-blocked** (skip/defer here): `http3-quic-ws-link-full-acceptance`
    (Profile C needs MSVC quicer NIF; two-host e2e needs the `gavri` host).
+   Buildkit branch `roadmap-dedup-primitives` is ready to ship to buildkit `develop` (optional; not
+   required for the dedup to hold).
 
 ## History (done — do not resume)
 - `037-virtual-3270-term` folded into **040** (shipped). `036-http3-quic-ws-link` shipped v2026.07.02.3;

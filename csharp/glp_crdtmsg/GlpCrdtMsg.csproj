@@ -1,0 +1,46 @@
+<!--
+  GlpCrdtMsg — the CRDT multi-format messaging feature (feature 041-crdtmsg-mvp, T001/T002).
+
+  CLOBBER-SAFE (same rule as GlpLink/GlpIlCodec/GlpResultCodec/GlpWireRegistry): no Dart preimage,
+  lives OUTSIDE out/csharp and the gitignored glp_runtime_net/, so the codeconv regen oracle never
+  names it as an output. Permanent home for the hand-authored messaging bodies.
+
+  References:
+    - glp_wire_registry : the single payload-type/functor table (SC-010).
+    - glp_result_codec  : Section-15 TermCodec + ByteReader/ByteWriter + loud-fail discipline (binary surface inner).
+    - glp_link          : FrameCodec / WS framing + the QUIC/WS transport leaf (transport of record, 036).
+  NOTE (T002 deviation, flagged): glp_quick_host is an OutputType=Exe stdio host, not a library. Per
+  contract C20 / quickstart, the SC-009 demonstrator LAUNCHES glp_quick_host.exe as a side-process
+  behind the ILinkTransport seam (route/, T052) — so it is intentionally NOT a compile-time
+  ProjectReference here (that would drag MsQuic native deps into every unit-test build).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.CrdtMsg</RootNamespace>
+    <AssemblyName>glp_crdtmsg</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />
+    <ProjectReference Include="..\glp_result_codec\GlpResultCodec.csproj" />
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+  </ItemGroup>
+
+  <!-- Surface + crypto deps (T002). System.Text.Json is in-box for net10 (no package). -->
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+    <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
+    <PackageReference Include="NSec.Cryptography" Version="24.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_crdtmsg.tests" />
+  </ItemGroup>
+
+</Project>

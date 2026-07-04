@@ -29,6 +29,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\out\csharp\glp_runtime_net.csproj" />
     <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+    <!-- Single-source payload-type constants (SC-010, feature 041 T006). -->
+    <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />
   </ItemGroup>
 
 </Project>
