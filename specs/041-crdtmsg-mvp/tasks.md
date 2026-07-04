@@ -112,16 +112,16 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: capability allow/fail-closed + refusal recorded; tamper/remove/reorder detected; transcode-survive.
 
 ### Tests (write first, must fail)
-- [ ] T035 [P] [US4] Capability tests (satisfy / unsatisfiable / un-understood; refusal recorded as provenance) in `csharp/glp_crdtmsg.tests/CapabilityTests.cs` (SC-006)
-- [ ] T036 [P] [US4] Signature tamper tests (byte flip, sub-block remove/reorder, transcode-survive) in `csharp/glp_crdtmsg.tests/SignatureTests.cs` (SC-005/011)
+- [X] T035 [P] [US4] Capability tests (satisfy / unsatisfiable / un-understood; refusal recorded as provenance) in `csharp/glp_crdtmsg.tests/CapabilityTests.cs` (SC-006) — DONE (+tamper, numeric expiry, amulet round-trip/legacy-reject)
+- [X] T036 [P] [US4] Signature tamper tests (byte flip, sub-block remove/reorder, transcode-survive) in `csharp/glp_crdtmsg.tests/SignatureTests.cs` (SC-005/011) — DONE (+two-distinct-classes)
 
 ### Implementation
-- [ ] T037 [US4] Macaroon (HMAC caveat chain, fail-closed) + verify-before-act in `csharp/glp_crdtmsg/cap/Macaroon.cs`
-- [ ] T038 [P] [US4] Amulet slot (Amoeba 4-field {Port,ObjNum,Rights,Check≥128b}) reserved in `csharp/glp_crdtmsg/cap/Amulet.cs`
-- [ ] T039 [US4] Ed25519 provider (NSec) + per-peer key enrol at mesh join, bound to peer-name in `csharp/glp_crdtmsg/sig/PeerKeys.cs`
-- [ ] T040 [US4] Whole + sub-content COSE/JWS seals + Biscuit-style append-only chain (canonical = deterministic binary term encoding) in `csharp/glp_crdtmsg/sig/Seals.cs`
-- [ ] T041 [US4] Enforce two distinct signature classes (content Ed25519 ≠ capability HMAC) in `csharp/glp_crdtmsg/sig/Seals.cs`
-- [ ] T042 [US4] Durable provenance records incl. refusals ({peer,target,timestamps,sha256,outcome∈enum}) in `csharp/glp_crdtmsg/cap/Provenance.cs`
+- [X] T037 [US4] Macaroon (HMAC caveat chain, fail-closed) + verify-before-act in `csharp/glp_crdtmsg/cap/Macaroon.cs` — DONE (HMAC-SHA256 chain; fail-closed on unsatisfiable/un-understood/tamper; =,>,>= ops)
+- [X] T038 [P] [US4] Amulet slot (Amoeba 4-field {Port,ObjNum,Rights,Check≥128b}) reserved in `csharp/glp_crdtmsg/cap/Amulet.cs` — DONE (48/24/8-bit + Check≥16B; legacy 16-byte rejected)
+- [X] T039 [US4] Ed25519 provider (NSec) + per-peer key enrol at mesh join, bound to peer-name in `csharp/glp_crdtmsg/sig/PeerKeys.cs` — DONE (NSec Ed25519; PeerKeyStore enrol/sign/verify; identity≠cert FR-019)
+- [X] T040 [US4] Whole + sub-content COSE/JWS seals + Biscuit-style append-only chain (canonical = deterministic binary term encoding) in `csharp/glp_crdtmsg/sig/Seals.cs` — DONE (whole=Ed25519 over MessageCodec.Canonical; sub-seals chain seal_i over block_i||prev_sig; COSE/CBOR framing = thin future wrapper over the Ed25519 core)
+- [X] T041 [US4] Enforce two distinct signature classes (content Ed25519 ≠ capability HMAC) in `csharp/glp_crdtmsg/sig/Seals.cs` — DONE (content=Ed25519 SealSet, capability=Macaroon HMAC; attenuation independent — tested)
+- [X] T042 [US4] Durable provenance records incl. refusals ({peer,target,timestamps,sha256,outcome∈enum}) in `csharp/glp_crdtmsg/cap/Provenance.cs` — DONE (append-only ProvenanceLog; closed outcome enum incl. Refused/DroppedNoRoute/Malformed/OverCapacity)
 
 **Checkpoint**: message is capability-gated and multi-signed; tampering is detected.
 
