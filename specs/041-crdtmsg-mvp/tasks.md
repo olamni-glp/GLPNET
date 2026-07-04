@@ -21,10 +21,10 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create new C# projects `csharp/glp_wire_registry/` + `csharp/glp_crdtmsg/` (internal dirs: model, envelope, header, cap, sig, crdt, crdt/richtext, store, route, schema) and add to the solution
-- [ ] T002 Add package references to `csharp/glp_crdtmsg/GlpCrdtMsg.csproj`: `System.Text.Json`, `YamlDotNet`, `System.Formats.Cbor`, `NSec.Cryptography`; project refs to `glp_result_codec`, `glp_link`, `glp_quick_host`
-- [ ] T003 [P] Create xUnit projects `csharp/glp_wire_registry.tests/` + `csharp/glp_crdtmsg.tests/` with a `goldens/` fixture dir (reuse `glp_result_codec` golden discipline)
-- [ ] T004 [P] Create `test/parity/` for Gleam/Dart codec parity vectors sharing the same goldens
+- [X] T001 Create new C# projects `csharp/glp_wire_registry/` + `csharp/glp_crdtmsg/` (internal dirs: model, envelope, header, cap, sig, crdt, crdt/richtext, store, route, schema) and add to the solution — DONE (projects build; dirs created on demand as files land: model/crdt/route present. NOTE: csharp/ feature projects are not in an aggregating .sln — repo builds them by direct csproj path, as quickstart.md does; no solution to add to.)
+- [X] T002 Add package references to `csharp/glp_crdtmsg/GlpCrdtMsg.csproj`: `System.Text.Json`, `YamlDotNet`, `System.Formats.Cbor`, `NSec.Cryptography`; project refs to `glp_result_codec`, `glp_link`, `glp_quick_host` — DONE (System.Text.Json in-box; YamlDotNet 16.2.1 + System.Formats.Cbor 9.0.0 + NSec.Cryptography 24.4.0 restored; refs to glp_result_codec/glp_link/glp_wire_registry. FLAG: glp_quick_host is an Exe launched as side-process behind ILinkTransport at T052 per C20/quickstart — not a core compile ref, to keep unit-test builds MsQuic-free.)
+- [X] T003 [P] Create xUnit projects `csharp/glp_wire_registry.tests/` + `csharp/glp_crdtmsg.tests/` with a `goldens/` fixture dir (reuse `glp_result_codec` golden discipline) — DONE
+- [X] T004 [P] Create `test/parity/` for Gleam/Dart codec parity vectors sharing the same goldens — DONE
 
 ---
 
@@ -32,11 +32,11 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 
 **⚠️ CRITICAL**: no user story may begin until this phase completes.
 
-- [ ] T005 Implement the single payloadType/functor registry table in `csharp/glp_wire_registry/WireRegistry.cs` (0x10 IL, 0x11 RESULT_ENVELOPE, 0x12+ messaging kinds; functor allocation; compat modes backward|forward|full|transitive)
-- [ ] T006 Repoint `csharp/glp_il_codec/PayloadHeader.cs` and `csharp/glp_result_codec/ResultEnvelope.cs`/`ResultEnvelopeCodec.cs` to reference `glp_wire_registry` — remove the duplicated constants (SC-010)
-- [ ] T007 Define the abstract message model (`Message`, `Header`, `Section`, `CrdtModel` enum) in `csharp/glp_crdtmsg/model/AbstractModel.cs`
-- [ ] T008 Wire reuse seams behind `ILinkTransport` in `csharp/glp_crdtmsg/route/LinkTransport.cs` — `glp_result_codec.TermCodec` (+ CycleGuard), `glp_link` FrameCodec, `glp_quick_host` QUIC/WS/SPKI; treat the SPKI-pin shared cert as **layer-0 membership ONLY** (FR-019) — per-peer identity comes from the enrolled Ed25519 key (T039), never the cert
-- [ ] T009 Implement DVV-dot + hash-chain primitives (`op_id = (peer_name, counter)`, `pred_hash`) in `csharp/glp_crdtmsg/crdt/Dot.cs` (foundational — store, crdt, sig all consume it)
+- [X] T005 Implement the single payloadType/functor registry table in `csharp/glp_wire_registry/WireRegistry.cs` (0x10 IL, 0x11 RESULT_ENVELOPE, 0x12+ messaging kinds; functor allocation; compat modes backward|forward|full|transitive) — DONE
+- [X] T006 Repoint `csharp/glp_il_codec/PayloadHeader.cs` and `csharp/glp_result_codec/ResultEnvelope.cs`/`ResultEnvelopeCodec.cs` to reference `glp_wire_registry` — remove the duplicated constants (SC-010) — DONE (const-aliased to registry; byte values unchanged so 029/038 parity preserved; baselines re-green: result_codec 131/131, il_codec 45/45)
+- [X] T007 Define the abstract message model (`Message`, `Header`, `Section`, `CrdtModel` enum) in `csharp/glp_crdtmsg/model/AbstractModel.cs` — DONE (also RoutingPolicy)
+- [X] T008 Wire reuse seams behind `ILinkTransport` in `csharp/glp_crdtmsg/route/LinkTransport.cs` — `glp_result_codec.TermCodec` (+ CycleGuard), `glp_link` FrameCodec, `glp_quick_host` QUIC/WS/SPKI; treat the SPKI-pin shared cert as **layer-0 membership ONLY** (FR-019) — per-peer identity comes from the enrolled Ed25519 key (T039), never the cert — DONE (ILinkTransport + InMemoryLinkFabric for single-host demo/tests; FrameCodec/TermCodec/QUIC adapters wired at their consuming tasks T013/T014/T052; FR-019 membership≠identity encoded)
+- [X] T009 Implement DVV-dot + hash-chain primitives (`op_id = (peer_name, counter)`, `pred_hash`) in `csharp/glp_crdtmsg/crdt/Dot.cs` (foundational — store, crdt, sig all consume it) — DONE (Dot + VersionVector + HashChain)
 
 **Checkpoint**: registry unified, model + transport seam + op-identity ready.
 
@@ -50,7 +50,7 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 ### Tests (write first, must fail)
 - [ ] T010 [P] [US1] Conformance-matrix test (16 surface pairs, golden corpus, unknown-field preservation) in `csharp/glp_crdtmsg.tests/ConformanceMatrixTests.cs` (SC-001)
 - [ ] T011 [P] [US1] Loud-fail fuzz test (bad version, unknown must-understand tag, truncation, trailing bytes) in `csharp/glp_crdtmsg.tests/LoudFailTests.cs` (SC-002)
-- [ ] T012 [P] [US1] Registry single-source test (zero duplicated constants across assemblies) in `csharp/glp_wire_registry.tests/SingleSourceTests.cs` (SC-010)
+- [X] T012 [P] [US1] Registry single-source test (zero duplicated constants across assemblies) in `csharp/glp_wire_registry.tests/SingleSourceTests.cs` (SC-010) — DONE (6/6 green; proves both former constant sites alias the one registry entry)
 
 ### Implementation
 - [ ] T013 [P] [US1] TLV section codec (LEB128, criticality ranges, skip-by-length, mandatory greasing) in `csharp/glp_crdtmsg/envelope/TlvSection.cs`

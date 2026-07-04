@@ -1,0 +1,33 @@
+<!--
+  GlpWireRegistry — the ONE wire payload-type / functor registry (feature 041-crdtmsg-mvp, T005).
+
+  WHY THIS PACKAGE EXISTS (same clobber-safe rule as GlpLink/GlpIlCodec/GlpResultCodec):
+    codeconv's dart_csharp mirror regenerates one .cs per source .dart under out/csharp/lib/**
+    and glp_runtime_net/. Hand-authored .cs at a path mapping to a Dart preimage is OVERWRITTEN
+    by the next mirror/scaffold. This package has NO Dart preimage and lives OUTSIDE out/csharp
+    and the gitignored glp_runtime_net/, so the regen oracle never names it as an output.
+
+  It is a PURE ZERO-DEPENDENCY LEAF: it takes NO ProjectReference on anything. This is what lets
+  the standalone, byte-parity-critical glp_result_codec reference it (SC-010, R10) WITHOUT
+  acquiring a dependency on the heavy runtime. The registry only re-homes the payload-type BYTES
+  (0x10 IL, 0x11 RESULT_ENVELOPE) that were previously duplicated across glp_il_codec and
+  glp_result_codec; the byte values are unchanged, so 038/029 wire byte-parity is preserved
+  (byte-parity is a property of the bytes, not of where the constant is declared).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.WireRegistry</RootNamespace>
+    <AssemblyName>glp_wire_registry</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_wire_registry.tests" />
+  </ItemGroup>
+
+</Project>

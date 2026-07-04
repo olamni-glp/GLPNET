@@ -12,8 +12,12 @@ public static class PayloadHeader
     /// <summary>Codec format version.</summary>
     public const byte Version = 0x01;
 
-    /// <summary>Payload-type discriminant: an IL/bytecode program (distinguishes it from result envelopes).</summary>
-    public const byte IlProgram = 0x10;
+    /// <summary>
+    /// Payload-type discriminant: an IL/bytecode program (distinguishes it from result envelopes).
+    /// Single-sourced from <c>glp_wire_registry</c> (SC-010, feature 041 T006) — a const alias of
+    /// the ONE table entry, not an independent literal. Byte value unchanged (029 parity preserved).
+    /// </summary>
+    public const byte IlProgram = GlpRuntime.WireRegistry.PayloadType.IlProgram;
 
     public static void Write(BinaryWriter w)
     {
