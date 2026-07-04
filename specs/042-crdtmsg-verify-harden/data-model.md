@@ -50,7 +50,8 @@ One per single-family survivor block (9, list derived per research.md R3.1).
 
 ## LedgerRederivation (FR-005)
 
-One per coverage artifact: F1 §12 matrix, F2 §11 table, F3 §3 matrix, F3 §4 closure ledger.
+One per coverage artifact: F1 §12 matrix, F2 §11 table, F3 §3 matrix, F3 §4 closure ledger
+(4 rows = the spec's "three coverage artifacts", F3 contributing two — spec FR-005/US2-AS2).
 
 | Field | Type | Notes |
 |---|---|---|

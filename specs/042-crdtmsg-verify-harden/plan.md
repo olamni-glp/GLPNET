@@ -147,8 +147,9 @@ Five work packages mapping 1:1 to the user stories + the report:
    verdicts, dispositions, and materialization outcomes, each finding baseline-labeled
    (FR-015); the three docs gain a reference to the report.
 
-Ordering: WP1 → WP2 → WP3 → WP4 → WP5 for report assembly, but WP4's pointer enumeration can
-start in parallel with WP1 (read-only sweep). All owner escalations are batched into the report
+Ordering: WP5 assembles last; WP1's conformance ledgers are the P1 MVP. Execution ordering and
+parallelism (e.g. WP2's ledger re-derivations and WP4's pointer census starting alongside WP1)
+are governed by tasks.md's dependency section, which is authoritative. All owner escalations are batched into the report
 (plus the FR-008 promotion batch-list); nothing self-ruled.
 
 ## Complexity Tracking

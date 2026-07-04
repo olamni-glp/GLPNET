@@ -19,7 +19,7 @@ never self-ruled — they land in report §9 (FR-013); all verification labor is
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `CORPUS/evidence/` with `evidence-index.md` skeleton (columns per data-model.md EvidencePointer) and `CORPUS/verification-report-042.md` skeleton with all 12 section headers + baselines table per `contracts/verification-report.md`
+- [ ] T001 Create `CORPUS/evidence/` with `evidence-index.md` skeleton (columns per data-model.md EvidencePointer) and `CORPUS/verification-report-042.md` skeleton with all 12 section headers + baselines table per `contracts/verification-report.md`; add the `## Change log — 042 verification pass` skeleton section to each of the three corpus docs per `contracts/amendment-changelog.md`, each with row 1 logging its own addition (contract rule 4) — so all later tasks append rows to one existing section
 - [ ] T002 Resolve the F3 scanner-C pinned repo view (branch `037-virtual-3270-term`, post-040-implement — F3 provenance L4) to an exact commit via git history; record it in the report baselines table; record current-HEAD commit likewise
 - [ ] T003 [P] Baseline checkpoint per Test Protocol: `git log -1`, run `bash test/run_all_tests.sh`, confirm green, note result in report frontmatter (docs-only feature — this pins the pre-change baseline)
 
@@ -88,7 +88,7 @@ rest re-affirmed; nothing stale (FR-008/FR-009).
 **Independent Test**: adjudicate the register alone — zero rows with already-met triggers still
 marked PROVISIONAL (spec US3 independent test; SC-003).
 
-- [ ] T021 [US3] Gather current-HEAD trigger evidence for the 8 rows (F3 §5) per research.md R5: 041 shipped surfaces (`csharp/glp_crdtmsg*`, `specs/041-crdtmsg-mvp/`, tag `v2026.07.04.4`) for BB-ENC-7 (also E3-promoted), BB-CRDT-7 (rich-text Fugue/Peritext), BB-VER-5 (restructuring migrations?), BB-SCH-3 (runtime-codec count); repo state for BB-ENC-8, BB-SIG-4, BB-CRDT-10, BB-RTE-4 — quoted artifact refs per row
+- [ ] T021 [US3] Gather current-HEAD trigger evidence for the 8 rows (F3 §5) per research.md R5: 041 shipped surfaces (`csharp/glp_crdtmsg*`, `specs/041-crdtmsg-mvp/`, tag `v2026.07.04.4`) for BB-ENC-7 (also E3-promoted), BB-CRDT-7 (rich-text Fugue/Peritext), BB-VER-5 (check whether 041 shipped any restructuring migration), BB-SCH-3 (runtime-codec count); repo state for BB-ENC-8, BB-SIG-4, BB-CRDT-10, BB-RTE-4 — quoted artifact refs per row
 - [ ] T022 [US3] Adjudicate all 8 rows: mechanically-met → self-promote (block status updated, register row resolved, evidence quoted); not-met → re-affirm with trigger restated against current reality (corrected wording where stale/ambiguous); ambiguous/judgment → escalate; apply edits to F3 §5 (+§1/§2 status echoes) + change-log rows
 - [ ] T023 [US3] Write report §7 with the two mandatory batch lists: §7a promotions-for-owner-review (every self-promoted row + evidence), §7b escalations; cross-check zero met-trigger rows remain PROV (SC-003)
 - [ ] T024 [P] [US3] Capture closures needing net-new implementation as proposed roadmap follow-ups in report §10 (named, one paragraph, explicitly NOT implemented — FR-009); include any drift-item follow-ups from T019
@@ -117,7 +117,7 @@ zero dangling (spec US4 independent test; SC-007).
 ## Phase 7: Polish & Report Assembly
 
 - [ ] T029 Assemble the report: §9 consolidated owner escalations (incl. any hardened-verdict-vs-041 contradictions per FR-013), §11 amendment index (per-doc change-log counts, every finding_id resolves into §1–§8), §12 SC-001..SC-009 checklist with measured values; add the `verification-report-042.md` reference to all three docs (+ change-log rows — SC-009)
-- [ ] T030 Self-check SC-008: sample 10 change-log rows across the three docs, verify each maps 1:1 to an actual applied edit and cites a report finding id; verify zero un-logged diffs by comparing `git diff` of the three docs against the union of change-log rows; then re-run `bash test/run_all_tests.sh` (Test Protocol re-test bracket)
+- [ ] T030 Self-check SC-008: sample min(10, all) change-log rows across the three docs, verify each maps 1:1 to an actual applied edit and cites a report finding id; verify zero un-logged diffs by comparing `git diff` of the three docs against the union of change-log rows; then re-run `bash test/run_all_tests.sh` (Test Protocol re-test bracket)
 - [ ] T031 Final commit of all pass artifacts by name (3 hardened docs, report, evidence/, spec-dir updates) per commit-scope discipline; verify report §12 shows all nine SC rows PASS (or the enumerated-and-corrected alternative for SC-004)
 
 ---
