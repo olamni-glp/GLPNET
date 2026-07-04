@@ -15,6 +15,15 @@
 
 Every functional requirement traces to at least one OC and to the building blocks (BB-*) named in the synthesis. The nine escalations E1–E9 are ruled (§6); this spec encodes those rulings as settled constraints, not open questions.
 
+## Clarifications
+
+### Session 2026-07-04
+
+- Q: Implementation runtime & cross-runtime scope for the MVP? → A: **C# is the MVP's primary implementation** (reuse shipped 036 mesh + 038/029 codecs); codec goldens keep Gleam/Dart parity vectors, but full multi-runtime execution (AtomVM/WASM Profile A, quicer Profile C) is deferred post-MVP.
+- Q: Concrete CRDT document type for the MVP? → A: **BB-CRDT-7 (sequence/rich-text) is promoted from PROV/OPT (synthesis §5/§1) to CRITICAL + MANDATORY MVP-CORE.** The op-based JSON-CRDT is the base model, and the MVP MUST generate/derive the **sequence + rich-text** case from it — **Fugue** (maximal non-interleaving) + **Peritext** formatting spans over stable IDs, **preserving unhandled formatting marks**; the end-to-end demonstrator carries a rich-text edit op. A scalar map/register CRDT that cannot yield the rich-text case is performance theater, of **zero value**, and **fails** the MVP (a block forward). This is the CRDT-native realization of OC-3 (transparent formatting transport) × OC-4.
+  - **Rationale (Gabi, 2026-07-04)**: the reversal is required because **many interfaces cannot start with, work with, or generate a pure op-based JSON-CRDT**. The sequence/rich-text CRDT (Fugue + Peritext) is the generalizable, interoperable form those interfaces can consume and produce; the pure op-based JSON-CRDT is only the base substrate, not the interoperable deliverable.
+- Q: How far does the experimental GLP policy-guard (E6) go in this MVP? → A: The policy DATA fields `{targets, waypoints, excludes}` + per-hop matcher are MVP-CORE; the experimental GLP guard is **designed and proposed within this feature**, but its **implementation is gated on Gabi's §1.14 approval** of the concrete guard signature/semantics — it does not land until approved.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The "users" of this feature are the **GLPNET runtime and its agents**. Each user story is an independently demonstrable capability slice of the single end-to-end goal: *one message, proven end-to-end — multi-format, multi-version, security-first, carrying a CRDT payload, over QUIC.* Stories are ordered by the dependency-ordered MVP cut (§7), honoring the E1 ruling that the **store layer ships first**.
@@ -53,9 +62,9 @@ A runtime records the operations that make up a message's CRDT payload into an *
 
 ### User Story 3 - Apply and converge message-level CRDT operations (Priority: P3)
 
-A runtime carries a message's CRDT payload as **pure op-based JSON-CRDT operations**, each expressed as a **ground term**, each stamped with a **DVV dot** `(authenticated-peer-name, counter)` that is its stable identity, and each bearing a **hash-chained op id** from day one. Concurrent operations from different peers, delivered over the reliability substrate, converge. A **semantic tombstone** removes an element with observed-remove semantics — it never resurrects concurrent, unobserved additions.
+A runtime carries a message's CRDT payload as **pure op-based JSON-CRDT operations**, each expressed as a **ground term**, each stamped with a **DVV dot** `(authenticated-peer-name, counter)` that is its stable identity, and each bearing a **hash-chained op id** from day one. Concurrent operations from different peers, delivered over the reliability substrate, converge. A **semantic tombstone** removes an element with observed-remove semantics — it never resurrects concurrent, unobserved additions. **MANDATORY (clarification 2026-07-04): the op-based JSON-CRDT MUST be expressive enough to generate/derive a sequence + rich-text document — Fugue (maximal non-interleaving) + Peritext formatting spans over stable IDs, preserving unhandled marks (FR-036/FR-037). This is a hard MVP acceptance bar, not the optional BB-CRDT-7 of synthesis §5; the end-to-end demonstrator carries a rich-text edit op.**
 
-**Why this priority**: This is the in-flight (message) face of CRDT-first (OC-4). It depends on US2's store seam (op_id = DVV dot, distinct from msg_id) and US1's encoding.
+**Why this priority**: This is the in-flight (message) face of CRDT-first (OC-4) and — through the rich-text case — the CRDT-native face of OC-3. It depends on US2's store seam (op_id = DVV dot, distinct from msg_id) and US1's encoding.
 
 **Independent Test**: Deliver concurrent operations from two peers in adversarial orderings and assert convergence. Issue a tombstone for an element concurrently with an add of the same element and assert observed-remove semantics (the concurrent add survives). Verify each op id chains to its predecessor (tamper of history is detectable).
 
@@ -65,6 +74,7 @@ A runtime carries a message's CRDT payload as **pure op-based JSON-CRDT operatio
 2. **Given** an element with a concurrent add and remove, **When** both operations are applied, **Then** observed-remove semantics hold — the unobserved concurrent add is not tombstoned.
 3. **Given** a duplicated operation (same DVV dot), **When** it is applied twice, **Then** the second application is idempotent (no double effect).
 4. **Given** a payload declared with a `crdt_model` discriminator, **When** an ordinary (non-CRDT) request/response message is sent, **Then** it travels unimpeded (CRDT-capable, not CRDT-mandatory).
+5. **Given** two peers concurrently inserting characters and applying overlapping formatting spans into the same rich-text document, **When** each applies the other's operations in any order, **Then** the sequence converges with no interleaving anomaly (Fugue) and every formatting span — including marks neither peer's build understands — is preserved (Peritext).
 
 ---
 
@@ -130,7 +140,7 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 - **FR-011**: The capability slot MUST be introduced as an additive envelope-version-2 field with per-message granularity; old readers MUST skip it per FR-006 (BB-HDR-1; E8).
 - **FR-012**: A directed @name address MUST resolve against the authenticated peer set and deliver to that peer only; an unknown name MUST raise a reported error and MUST NOT silently default-fallback (BB-RTE-3; 040-ruled).
 - **FR-013**: The system MUST provide a fixed declarative three-field routing policy `{must-reach targets, ordered waypoints, exclude list}` evaluated per hop; an unsatisfiable policy MUST fail loud (BB-RTE-1; E6).
-- **FR-014**: The system MUST deliver an **experimental GLP guard surface** for policy evaluation as a named deliverable. Its concrete guard signature/semantics remain propose-first under DISCIPLINE §1.14 — approval-in-principle is granted (E6), the concrete language change is not.
+- **FR-014**: The system MUST **design and propose** an **experimental GLP guard surface** for policy evaluation within this feature (approval-in-principle granted, E6). Its **implementation is gated on Gabi's §1.14 approval** of the concrete guard signature/semantics and MUST NOT land before that approval; the fixed policy DATA fields + per-hop matcher (FR-013) are the MVP-CORE that ships regardless (clarification 2026-07-04).
 - **FR-015**: Duplicates MUST be suppressed via `msg_id` (end-to-end) + per-link `seq` (FIFO), with idempotent apply at the store boundary (BB-HDR-3).
 - **FR-016**: The transport of record MUST be the shipped 036 QUIC/WS link (SPKI-pinned mutual TLS, RFC 6455 over one bidi stream), behind a link-transport abstraction; AtomVM/WASM runtimes delegate QUIC to a native side-process (Profile A) (BB-WIRE-3/4).
 
@@ -143,7 +153,7 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 - **FR-022**: The system MUST enroll a per-peer Ed25519 key at mesh join, bound to the peer's authenticated name, and use the deterministic binary term encoding as the canonical-for-signing form so signatures survive lossless transcode (BB-SIG-3, BB-ENC-4; E4).
 
 **CRDT convergence (OC-4)**
-- **FR-023**: The message-CRDT MUST be a pure op-based JSON-CRDT over causal delivery, with operations carried as **ground terms** (ground-terms-only law preserved) (BB-CRDT-1/3/9; E1).
+- **FR-023**: The message-CRDT MUST be a pure op-based JSON-CRDT over causal delivery, with operations carried as **ground terms** (ground-terms-only law preserved), AND it MUST be expressive enough to **generate/derive the sequence + rich-text document type** (see FR-036/FR-037). A scalar-only model is insufficient — the interoperable deliverable is the rich-text CRDT, because many interfaces cannot start with, work with, or generate a bare op-based JSON-CRDT (BB-CRDT-1/3/9; E1; clarification 2026-07-04).
 - **FR-024**: Causality MUST be tracked by dotted version vectors; the dot `(authenticated-peer-name, counter)` MUST be the stable operation identity that tombstones, repairs, and sub-signatures address (BB-CRDT-4).
 - **FR-025**: Every operation MUST bear a hash-chained op id from day one (benign-mesh MVP, blocklace/Byzantine upgrade path preserved without redesigning op identity) (BB-CRDT-4/8; E7).
 - **FR-026**: The store-CRDT MUST be delta-state CRDTs reconciled by Merkle-tree anti-entropy over an append-only op-WAL with rebuildable projections, ships first, and MUST rebuild with zero loss after interruption (BB-CRDT-2, BB-VER-6-store; E1).
@@ -161,6 +171,11 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 **Provenance (OC-1, OC-4)**
 - **FR-035**: The system MUST record durable provenance for 100% of operations **including refusals** — `{peer, target, timestamps, SHA-256, outcome ∈ closed enum}` keyed to authenticated identity (BB-CRDT-11).
 
+**CRDT rich-text (OC-3 × OC-4) — MANDATORY, promoted from synthesis §5 PROV/OPT by clarification 2026-07-04**
+- **FR-036**: The MVP MUST implement a **sequence CRDT with Fugue maximal-non-interleaving semantics** over stable element IDs, derived from the op-based JSON-CRDT base; concurrent insertions MUST converge with no interleaving anomaly (BB-CRDT-7; clarification 2026-07-04).
+- **FR-037**: The MVP MUST implement **Peritext-style formatting spans** over the stable sequence IDs and MUST **preserve formatting marks it does not understand** through convergence and lossless transcode (the CRDT-native face of BB-HDR-2 / OC-3) (BB-CRDT-7; clarification 2026-07-04).
+- **FR-038**: The rationale of record for FR-036/FR-037's mandatory status: **many interfaces cannot start with, work with, or generate a pure op-based JSON-CRDT** — the sequence/rich-text CRDT is the generalizable, interoperable deliverable (clarification 2026-07-04).
+
 ### Key Entities
 
 - **Abstract message model** — the single encoding-neutral definition of a message type; source of all surface encodings.
@@ -172,6 +187,7 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 - **Amulet** — Amoeba 4-field static token `{Port, ObjNum, Rights, Check≥128b}`; slot reserved.
 - **Signature seal** — per-block (sub-content) + whole-content signatures (Ed25519 in COSE/JWS + Biscuit chain).
 - **CRDT operation** — a ground-term op-based JSON-CRDT operation bearing a DVV dot and a hash-chained op id.
+- **Rich-text / sequence CRDT document** — the **mandatory** MVP CRDT payload type: a Fugue sequence over stable element IDs carrying Peritext formatting spans (preserves unhandled marks), derived from the op-based JSON-CRDT base; the interoperable deliverable that interfaces which cannot handle a bare JSON-CRDT can consume/produce.
 - **DVV dot** — `(authenticated-peer-name, counter)`: stable operation identity and causal coordinate; the store↔message seam (op_id).
 - **Op-WAL entry** — an append-only durable record from which store projections are rebuilt.
 - **Semantic tombstone** — a first-class observed-remove operation.
@@ -190,12 +206,16 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 - **SC-006**: 0% of unauthorized routed actions succeed silently — every capability failure is refused and recorded as a distinct provenance outcome.
 - **SC-007**: 0% silent default-fallback delivery — every @name to an unknown peer yields a reported error and no delivery.
 - **SC-008**: An older (v1) reader accepts a newer (v2) envelope carrying the additive capability slot, skipping the unknown field while processing 100% of known fields.
-- **SC-009**: The full slice is demonstrated at least once end-to-end: one message routed over QUIC between two runtime endpoints, its CRDT payload converging on both.
+- **SC-009**: The full slice is demonstrated at least once end-to-end: one message carrying a **rich-text CRDT edit op** routed over QUIC between two runtime endpoints, its CRDT payload converging on both.
 - **SC-010**: PayloadType constants exist in exactly one registry artifact (zero duplication across assemblies), with messaging kinds allocated at 0x12+.
 - **SC-011**: Signatures verify after lossless transcode across all four surfaces in 100% of signed-corpus cases.
+- **SC-012**: Concurrent character insertions from two peers into the same sequence CRDT converge with **zero interleaving anomalies** across randomized delivery orders (Fugue maximal non-interleaving).
+- **SC-013**: 100% of formatting spans — including marks neither peer's build understands — are preserved through convergence and lossless transcode across all four surfaces (Peritext × OC-3).
 
 ## Assumptions
 
+- **Runtime scope (clarification 2026-07-04)**: C# is the MVP's primary implementation (reusing the shipped 036 mesh + 038/029 codecs); codec goldens carry Gleam/Dart parity vectors, but full multi-runtime execution (AtomVM/WASM Profile A, quicer Profile C) is deferred post-MVP.
+- **Rich-text is mandatory, not optional (clarification 2026-07-04)**: BB-CRDT-7 is promoted from synthesis §5/§1 PROV/OPT to MVP-CORE (FR-036/FR-037). Only the *further* surfaces beyond Fugue+Peritext (e.g. richer document models) remain post-MVP.
 - **Benign mesh (E7)**: the MVP targets the shared-cert LAN family (benign peers), but hash-chained op ids are present from day one so the blocklace/Byzantine upgrade path needs no op-identity redesign. Full Byzantine (BB-CRDT-8) is deferred.
 - **Store-first, single-writer acceptable at MVP**: the store ships first (E1); multi-replica merge machinery is the delta-CRDT + Merkle engine; single-writer is acceptable for the initial slice.
 - **Ground-terms-only across the wire**: only ground terms cross the wire; reply variables are local pairs + ground CorrIds; distributed variables are gated on standing owner rulings/open proofs and are out of scope (BB-CRDT-9).
