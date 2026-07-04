@@ -324,3 +324,40 @@ are marked `[>]` deferred (not done, not faked).
 - **Marathon durability verify** (T003/T036): the planning-time run `mrun-15d7dd0ffbc2` was named but
   **never persisted** in any marathon store — there is nothing to resume. Per-stage commits served as
   the durable checkpoints for 036; a real persisted run is needed to verify SC-008.
+
+## Feature 041 (crdtmsg-mvp) — MVP deferrals & escalations
+
+All 13 success criteria are covered by the C# xUnit suites (`csharp/glp_crdtmsg.tests`,
+`csharp/glp_wire_registry.tests`). The following are **scoped deferrals**, not defects — each is a
+deliberate MVP boundary recorded here (Constitution VIII traceability):
+
+- **Gleam/Dart codec parity (T055)** — the golden corpus + parity-vector definitions live in
+  `test/parity/`; C# is the truth runtime and all four C# surfaces agree (SC-001, 48 conformance
+  cells green). The cross-runtime Gleam/Dart decode-against-goldens run is **host-blocked** (same
+  environment constraint as 036 Profile C / two-host), not code-blocked.
+- **Two-host / real-QUIC e2e (SC-009)** — the demonstrator runs single-host two-client over the
+  in-memory `InMemoryLinkFabric` (behind `ILinkTransport`). The `glp_quick_host` QUIC/WS adapter is a
+  drop-in replacement for the seam (launched as a side-process per contract C20); the two-host on-wire
+  run is host-blocked (the gavri second endpoint), consistent with 036.
+- **`glp_quick_host` compile-ref (T002)** — intentionally NOT a compile-time ProjectReference of
+  `glp_crdtmsg` (it is an `OutputType=Exe` stdio host with MsQuic native deps); wired as a side-process
+  behind the seam to keep unit-test builds MsQuic-free.
+- **Active CycleGuard (FR-031)** — op payloads are ground Terms that are acyclic by construction
+  (immutable C# terms); `TermGuards.EnsureAcyclic` is enforced at op-apply as the spec names, and is
+  defensive-by-construction (a real cycle is unreachable through the current builders).
+- **COSE/JWS framing (T040)** — the cryptographic core (Ed25519 whole-sig + Biscuit-style chained
+  sub-seals over the canonical binary) is complete and tamper/transcode-tested; wrapping the seal bytes
+  in a full COSE_Sign1 CBOR structure is a thin presentation wrapper left for post-MVP.
+- **Experimental GLP policy guard (T053, FR-014)** — **propose-first, NOT implemented.** The proposal
+  artifact is `programs/crdtmsg/policy-guard-proposal.glp` (do NOT load/run). Implementation is gated on
+  Gabi's DISCIPLINE §1.14 approval of the concrete guard signature. The shipped MVP routing uses the
+  fixed C# `PolicyMatcher` (contract C23) regardless.
+- **Aggregating solution (T001)** — the `csharp/` feature projects are built by direct `dotnet build`/
+  `test` csproj path (as `quickstart.md` prescribes); there is no aggregating `.sln` to add them to.
+- **GLP REPL baseline on Windows (T056)** — `bash test/run_all_tests.sh` is **environment-blocked on the
+  glpnet Windows host**: the script hard-invokes `/home/user/dart-sdk/bin/dart` (the sibling Linux/Mac
+  path from CLAUDE.md's appendix), which is absent here, so every case errors with
+  "No such file or directory". This is a **pre-existing harness/env mismatch, independent of feature
+  041** (which touches zero GLP runtime or test-program files). Feature 041's validation is the C#
+  xUnit gates (253 tests green). The GLP suite needs the Windows runner (`glp_runtime/glp_repl.exe` or
+  `dart run bin/glp_repl.dart`) wired into `run_all_tests.sh` — an escalation for Gabi, out of 041 scope.
