@@ -32,9 +32,9 @@ never self-ruled — they land in report §9 (FR-013); all verification labor is
 **Purpose**: FR-001 method reconstruction — US1 audits against it, US2's re-scans use its
 family manifests, US3/US4 cite its element refs.
 
-- [ ] T004 [P] Reconstruct F1's frozen method (5 elements, RECORDED/RECONSTRUCTED per data-model.md MethodElement) from `CORPUS/priorart-sibling-scan.md` at `DELIVERY(c20317ce)` + `docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md` as context; write report §1.1 (expect RECONSTRUCTED-heavy per research.md R2 — absent elements recorded as absent, not backfilled)
-- [ ] T005 [P] Reconstruct F2's frozen method likewise from `CORPUS/webresearch-corpus.md` at `DELIVERY(c20317ce)`; write report §1.2
-- [ ] T006 [P] Reconstruct F3's frozen method from `CORPUS/buildingblocks-synthesis.md` at `DELIVERY(6ecc975f)` (incl. authority order, corroboration rule, cycle/stop protocol as additional elements); note the claim-schema field list is external (research.md R2); write report §1.3
+- [X] T004 [P] Reconstruct F1's frozen method (5 elements, RECORDED/RECONSTRUCTED per data-model.md MethodElement) from `CORPUS/priorart-sibling-scan.md` at `DELIVERY(c20317ce)` + `docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md` as context; write report §1.1 (expect RECONSTRUCTED-heavy per research.md R2 — absent elements recorded as absent, not backfilled)
+- [X] T005 [P] Reconstruct F2's frozen method likewise from `CORPUS/webresearch-corpus.md` at `DELIVERY(c20317ce)`; write report §1.2
+- [X] T006 [P] Reconstruct F3's frozen method from `CORPUS/buildingblocks-synthesis.md` at `DELIVERY(6ecc975f)` (incl. authority order, corroboration rule, cycle/stop protocol as additional elements); note the claim-schema field list is external (research.md R2); write report §1.3
 
 **Checkpoint**: report §1 complete — 15+ MethodElement rows, each RECORDED or RECONSTRUCTED with inference stated.
 
