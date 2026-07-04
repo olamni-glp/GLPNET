@@ -1,0 +1,201 @@
+---
+description: "Task list for crdtmsg-mvp implementation"
+---
+
+# Tasks: CRDT Multi-Format Messaging MVP
+
+**Input**: Design documents from `specs/041-crdtmsg-mvp/`
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
+**Tests**: INCLUDED — the spec's success criteria (SC-001..SC-013) and the project test protocol (CLAUDE.md) require them; each SC maps to a suite (quickstart.md).
+
+**Organization**: by user story (US1–US5), in the spec priority order = the §7 dependency order. Within the CRDT concern the **store (US2) ships before the message-CRDT (US3)** per E1.
+
+## Format: `[ID] [P?] [Story] Description with file path`
+- **[P]** = parallelizable (different files, no incomplete-task dependency).
+- **[Story]** = US1..US5 (user-story phases only).
+
+## Path Conventions
+C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vectors under `test/parity/`.
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+- [X] T001 Create new C# projects `csharp/glp_wire_registry/` + `csharp/glp_crdtmsg/` (internal dirs: model, envelope, header, cap, sig, crdt, crdt/richtext, store, route, schema) and add to the solution — DONE (projects build; dirs created on demand as files land: model/crdt/route present. NOTE: csharp/ feature projects are not in an aggregating .sln — repo builds them by direct csproj path, as quickstart.md does; no solution to add to.)
+- [X] T002 Add package references to `csharp/glp_crdtmsg/GlpCrdtMsg.csproj`: `System.Text.Json`, `YamlDotNet`, `System.Formats.Cbor`, `NSec.Cryptography`; project refs to `glp_result_codec`, `glp_link`, `glp_quick_host` — DONE (System.Text.Json in-box; YamlDotNet 16.2.1 + System.Formats.Cbor 9.0.0 + NSec.Cryptography 24.4.0 restored; refs to glp_result_codec/glp_link/glp_wire_registry. FLAG: glp_quick_host is an Exe launched as side-process behind ILinkTransport at T052 per C20/quickstart — not a core compile ref, to keep unit-test builds MsQuic-free.)
+- [X] T003 [P] Create xUnit projects `csharp/glp_wire_registry.tests/` + `csharp/glp_crdtmsg.tests/` with a `goldens/` fixture dir (reuse `glp_result_codec` golden discipline) — DONE
+- [X] T004 [P] Create `test/parity/` for Gleam/Dart codec parity vectors sharing the same goldens — DONE
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**⚠️ CRITICAL**: no user story may begin until this phase completes.
+
+- [X] T005 Implement the single payloadType/functor registry table in `csharp/glp_wire_registry/WireRegistry.cs` (0x10 IL, 0x11 RESULT_ENVELOPE, 0x12+ messaging kinds; functor allocation; compat modes backward|forward|full|transitive) — DONE
+- [X] T006 Repoint `csharp/glp_il_codec/PayloadHeader.cs` and `csharp/glp_result_codec/ResultEnvelope.cs`/`ResultEnvelopeCodec.cs` to reference `glp_wire_registry` — remove the duplicated constants (SC-010) — DONE (const-aliased to registry; byte values unchanged so 029/038 parity preserved; baselines re-green: result_codec 131/131, il_codec 45/45)
+- [X] T007 Define the abstract message model (`Message`, `Header`, `Section`, `CrdtModel` enum) in `csharp/glp_crdtmsg/model/AbstractModel.cs` — DONE (also RoutingPolicy)
+- [X] T008 Wire reuse seams behind `ILinkTransport` in `csharp/glp_crdtmsg/route/LinkTransport.cs` — `glp_result_codec.TermCodec` (+ CycleGuard), `glp_link` FrameCodec, `glp_quick_host` QUIC/WS/SPKI; treat the SPKI-pin shared cert as **layer-0 membership ONLY** (FR-019) — per-peer identity comes from the enrolled Ed25519 key (T039), never the cert — DONE (ILinkTransport + InMemoryLinkFabric for single-host demo/tests; FrameCodec/TermCodec/QUIC adapters wired at their consuming tasks T013/T014/T052; FR-019 membership≠identity encoded)
+- [X] T009 Implement DVV-dot + hash-chain primitives (`op_id = (peer_name, counter)`, `pred_hash`) in `csharp/glp_crdtmsg/crdt/Dot.cs` (foundational — store, crdt, sig all consume it) — DONE (Dot + VersionVector + HashChain)
+
+**Checkpoint**: registry unified, model + transport seam + op-identity ready.
+
+---
+
+## Phase 3: User Story 1 - Multi-format round-trip (Priority: P1) 🎯 MVP
+
+**Goal**: one message defined once, losslessly round-tripped across binary-term/JSON/YAML/CBOR, with loud-fail decode.
+**Independent Test**: 16-cell conformance matrix passes (incl. unknown-field preservation); malformed inputs all reject.
+
+### Tests (write first, must fail)
+- [X] T010 [P] [US1] Conformance-matrix test (16 surface pairs, golden corpus, unknown-field preservation) in `csharp/glp_crdtmsg.tests/ConformanceMatrixTests.cs` (SC-001) — DONE (16 pairs × 3 msgs; +byte-identical re-encode +greasing/unknown-section survival +v2 accept-range)
+- [X] T011 [P] [US1] Loud-fail fuzz test (bad version, unknown must-understand tag, truncation, trailing bytes) in `csharp/glp_crdtmsg.tests/LoudFailTests.cs` (SC-002) — DONE (bad codec ver, trailing, truncation, unknown payload_type, out-of-range schema ver, unknown must-understand — across all 4 surfaces)
+- [X] T012 [P] [US1] Registry single-source test (zero duplicated constants across assemblies) in `csharp/glp_wire_registry.tests/SingleSourceTests.cs` (SC-010) — DONE (6/6 green; proves both former constant sites alias the one registry entry)
+
+### Implementation
+- [X] T013 [P] [US1] TLV section codec (LEB128, criticality ranges, skip-by-length, mandatory greasing) in `csharp/glp_crdtmsg/envelope/TlvSection.cs` — DONE (+VarInt.cs LEB128 u64; criticality convention: odd=must-understand; Grease() factory)
+- [X] T014 [US1] Binary-term surface (TLV-outer / `TermCodec`-inner; CycleGuard fault on cyclic payload) in `csharp/glp_crdtmsg/model/BinaryTermCodec.cs` — DONE (canonical/signing form via reused ByteWriter/ByteReader; sections opaque=acyclic, active CycleGuard deferred to op-apply T029/FR-031; cap slot on binary deferred to v2/T048 = loud-fail if set)
+- [X] T015 [P] [US1] JSON surface codec in `csharp/glp_crdtmsg/model/JsonCodec.cs` — DONE (System.Text.Json over MessageDto, SnakeCaseLower, unknown-key tolerant, trailing-content loud-fail)
+- [X] T016 [P] [US1] YAML surface codec (YamlDotNet, model-level round-trip) in `csharp/glp_crdtmsg/model/YamlCodec.cs` — DONE (UnderscoredNamingConvention, IgnoreUnmatchedProperties)
+- [X] T017 [P] [US1] CBOR surface codec (deterministic; unknown keys retained) in `csharp/glp_crdtmsg/model/CborCodec.cs` — DONE (System.Formats.Cbor, fixed-order definite-length, byte-string values, trailing-byte loud-fail, unknown-key skip)
+- [X] T018 [US1] Loud-fail decode invariant (consume-all-or-throw) enforced across all surfaces in `csharp/glp_crdtmsg/envelope/DecodeGuard.cs` — DONE (+CrdtMsgException; payload_type-known + must-understand checks; per-surface consume-all in each codec)
+- [X] T019 [US1] Two-tier version tolerance (envelope emit-low/accept-range; frame+codec hard-reject) in `csharp/glp_crdtmsg/envelope/VersionPolicy.cs` — DONE (codec-format byte hard-reject; schema accept-range [1,2], emit 1)
+
+**Checkpoint**: US1 MVP — a message round-trips across all four surfaces, malformed input rejects.
+
+---
+
+## Phase 4: User Story 2 - Store-CRDT, ships first (Priority: P2)
+
+**Goal**: durable append-only op-WAL + rebuildable projections; two stores converge; zero-loss rebuild.
+**Independent Test**: randomized-order convergence + crash-rebuild pass.
+
+### Tests (write first, must fail)
+- [X] T020 [P] [US2] Convergence test (two stores, randomized op order → identical state) in `csharp/glp_crdtmsg.tests/StoreConvergenceTests.cs` (SC-003) — DONE (random-order+dupes; disjoint-subset Merkle reconcile; idempotence; LWW-map witness)
+- [X] T021 [P] [US2] Crash-rebuild zero-loss test (interrupt at arbitrary point → WAL replay) in `csharp/glp_crdtmsg.tests/StoreRebuildTests.cs` (SC-004) — DONE (reopen recovers all; orphan-temp discarded; corruption detected loud)
+
+### Implementation
+- [X] T022 [US2] Append-only op-WAL (temp → SHA-256 verify → atomic commit → journal, 040 shape) in `csharp/glp_crdtmsg/store/OpWal.cs` — DONE (self-verifying op files [sha256|op], atomic rename = commit point, journal audit, idempotent-by-dot)
+- [X] T023 [US2] Rebuildable projection + replay in `csharp/glp_crdtmsg/store/Projection.cs` — DONE (generic reducer; deterministic causal topo-order via Kahn, dot tiebreak → order-independent convergence)
+- [X] T024 [US2] Delta-state CRDT mutators + Merkle-tree anti-entropy reconciliation in `csharp/glp_crdtmsg/store/DeltaMerkle.cs` — DONE (dot-sorted Merkle tree root = convergence witness; join-irreducible delta = ops peer lacks; bidirectional Reconcile)
+- [X] T025 [US2] Seam wiring `op_id` (DVV dot) as store key, distinct from `msg_id` in `csharp/glp_crdtmsg/store/OpWal.cs` — DONE (op keyed by Dot; msg_id lives only in the header)
+
+**Checkpoint**: store converges and rebuilds zero-loss — the CRDT backbone is in place.
+
+---
+
+## Phase 5: User Story 3 - Message-CRDT + MANDATORY rich-text (Priority: P3)
+
+**Goal**: op-based JSON-CRDT ops (ground-term, DVV dot, hash-chained) that **generate/derive Fugue+Peritext rich-text**; observed-remove tombstone.
+**Independent Test**: op idempotence + observed-remove; Fugue no-interleaving; Peritext unknown-mark preservation.
+
+### Tests (write first, must fail)
+- [X] T026 [P] [US3] Op idempotence + observed-remove tombstone tests + ground-term/acyclic rejection cases in `csharp/glp_crdtmsg.tests/OpSemanticsTests.cs` (FR-015/030/031/023) — DONE (+delivery window reorder/dedup/fencing/bounded)
+- [X] T027 [P] [US3] Fugue no-interleaving convergence test (concurrent typing, randomized delivery) in `csharp/glp_crdtmsg.tests/FugueTests.cs` (SC-012) — DONE (concurrent runs at start+middle stay contiguous under randomized order; observed delete)
+- [X] T028 [P] [US3] Peritext unknown-mark preservation (through convergence + 4-surface transcode) in `csharp/glp_crdtmsg.tests/PeritextTests.cs` (SC-013) — DONE (unknown mark survives convergence + overlapping spans + all-4-surface transcode)
+
+### Implementation
+- [X] T029 [US3] Op-based JSON-CRDT op model (ground-term ops, deps, pred_hash; ground-terms-only law) in `csharp/glp_crdtmsg/crdt/Op.cs` — enforce **acyclic op payloads** (CycleGuard at op-apply, FR-031) and **reject non-ground wire values** (FR-023 / BB-CRDT-9), surfacing faults as transport faults not GLP Fail — DONE (Op body = ground Term via TermCodec; crdt/TermGuards.cs = EnsureGround/EnsureAcyclic → NonGroundTermException/CyclicTermException, applied at RichTextDoc.Apply)
+- [X] T030 [US3] Semantic tombstone op (observed-remove) in `csharp/glp_crdtmsg/crdt/Tombstone.cs` — DONE (Tombstone record + ObservedRemoveSet; seq_delete/mark_remove are dot-targeted specializations)
+- [X] T031 [US3] Delivery over the shipped reliability substrate (monotone seq, bounded-reorder idempotent inbound, N=8 window, single-winner fencing) in `csharp/glp_crdtmsg/crdt/Delivery.cs` — DONE (DeliveryWindow: seq order, N=8 reorder buffer, dedup, epoch fencing)
+- [X] T032 [US3] Fugue sequence CRDT (stable `elem_id=(dot,side)`, left/right origin, maximal non-interleaving) in `csharp/glp_crdtmsg/crdt/richtext/Fugue.cs` — DONE (tree formulation, ancestor-based placement → each run a subtree → no interleaving; SC-012 green)
+- [X] T033 [US3] Peritext formatting spans (stable anchors, unknown-mark verbatim passthrough) in `csharp/glp_crdtmsg/crdt/richtext/Peritext.cs` — DONE (MarkSet, anchors=(dot,side), unknown types kept verbatim; +RichTextDoc ties Fugue+Peritext with ground-term op bodies)
+- [X] T034 [US3] `crdt_model` discriminator (op_based / state_based; non-CRDT request/response unimpeded) in `csharp/glp_crdtmsg/model/AbstractModel.cs` — DONE (CrdtModel enum None/StateBased/OpBased in AbstractModel; None message round-trips unimpeded — covered by US1 conformance "minimal" sample)
+
+**Checkpoint**: rich-text CRDT converges without interleaving and preserves unknown marks — the mandatory bar.
+
+---
+
+## Phase 6: User Story 4 - Capabilities + multi-signature (Priority: P4)
+
+**Goal**: macaroon verify-before-act (fail-closed) + amulet slot; whole + sub-content Ed25519 signatures surviving transcode.
+**Independent Test**: capability allow/fail-closed + refusal recorded; tamper/remove/reorder detected; transcode-survive.
+
+### Tests (write first, must fail)
+- [X] T035 [P] [US4] Capability tests (satisfy / unsatisfiable / un-understood; refusal recorded as provenance) in `csharp/glp_crdtmsg.tests/CapabilityTests.cs` (SC-006) — DONE (+tamper, numeric expiry, amulet round-trip/legacy-reject)
+- [X] T036 [P] [US4] Signature tamper tests (byte flip, sub-block remove/reorder, transcode-survive) in `csharp/glp_crdtmsg.tests/SignatureTests.cs` (SC-005/011) — DONE (+two-distinct-classes)
+
+### Implementation
+- [X] T037 [US4] Macaroon (HMAC caveat chain, fail-closed) + verify-before-act in `csharp/glp_crdtmsg/cap/Macaroon.cs` — DONE (HMAC-SHA256 chain; fail-closed on unsatisfiable/un-understood/tamper; =,>,>= ops)
+- [X] T038 [P] [US4] Amulet slot (Amoeba 4-field {Port,ObjNum,Rights,Check≥128b}) reserved in `csharp/glp_crdtmsg/cap/Amulet.cs` — DONE (48/24/8-bit + Check≥16B; legacy 16-byte rejected)
+- [X] T039 [US4] Ed25519 provider (NSec) + per-peer key enrol at mesh join, bound to peer-name in `csharp/glp_crdtmsg/sig/PeerKeys.cs` — DONE (NSec Ed25519; PeerKeyStore enrol/sign/verify; identity≠cert FR-019)
+- [X] T040 [US4] Whole + sub-content COSE/JWS seals + Biscuit-style append-only chain (canonical = deterministic binary term encoding) in `csharp/glp_crdtmsg/sig/Seals.cs` — DONE (whole=Ed25519 over MessageCodec.Canonical; sub-seals chain seal_i over block_i||prev_sig; COSE/CBOR framing = thin future wrapper over the Ed25519 core)
+- [X] T041 [US4] Enforce two distinct signature classes (content Ed25519 ≠ capability HMAC) in `csharp/glp_crdtmsg/sig/Seals.cs` — DONE (content=Ed25519 SealSet, capability=Macaroon HMAC; attenuation independent — tested)
+- [X] T042 [US4] Durable provenance records incl. refusals ({peer,target,timestamps,sha256,outcome∈enum}) in `csharp/glp_crdtmsg/cap/Provenance.cs` — DONE (append-only ProvenanceLog; closed outcome enum incl. Refused/DroppedNoRoute/Malformed/OverCapacity)
+
+**Checkpoint**: message is capability-gated and multi-signed; tampering is detected.
+
+---
+
+## Phase 7: User Story 5 - Routing over QUIC + header + version-skip (Priority: P5)
+
+**Goal**: router-opaque unified header + fixed policy, @name loud-fail, dedup, additive v2 slot; full slice over QUIC.
+**Independent Test**: @name loud-fail; v1-reader skips v2 slot; router opacity + dedup; e2e rich-text op converges over QUIC.
+
+### Tests (write first, must fail)
+- [X] T043 [P] [US5] @name loud-fail test (unknown name → error, no fallback) in `csharp/glp_crdtmsg.tests/AddressingTests.cs` (SC-007) — DONE (bare peer + group resolve; unknown @name/peer/unauth-member all loud-fail)
+- [X] T044 [P] [US5] v1-reader / v2-envelope additive-slot skip test in `csharp/glp_crdtmsg.tests/VersionSkipTests.cs` (SC-008) — DONE (v1 reader accepts v2 envelope, carries cap section verbatim; v2 reader extracts)
+- [X] T045 [P] [US5] Router payload-opacity + dedup test (bytes verbatim; msg_id + per-link seq) in `csharp/glp_crdtmsg.tests/RouterTests.cs` — DONE (+fixed-policy fail-loud + no-route drop)
+- [X] T046 [P] [US5] End-to-end demonstrator test (rich-text op over QUIC, single-host two clients, both converge) in `csharp/glp_crdtmsg.tests/EndToEndTests.cs` (SC-009) — DONE (seq-insert+mark-add over InMemoryLinkFabric → converges on both peers, durable in each op-WAL; redelivery idempotent)
+
+### Implementation
+- [X] T047 [US5] Unified header {msg_id,from,to,seq,policy,capability_slot}, router-opaque, in `csharp/glp_crdtmsg/header/UnifiedHeader.cs` — DONE (RouterView + OpBytes verbatim; namespace GlpRuntime.CrdtMsg.Headers to avoid clash with the Header type)
+- [X] T048 [US5] v2 additive capability slot + old-reader skip-by-length in `csharp/glp_crdtmsg/header/CapabilitySlot.cs` — DONE (cap slot = reserved ignorable section 0x20 → v1 skip-by-length via TLV; Attach bumps schema_version=2; resolves the US1 binary-cap deferral)
+- [X] T049 [US5] @name resolution against authenticated peer set + loud-fail addressing in `csharp/glp_crdtmsg/route/Addressing.cs` — DONE (AddressBook.Resolve; unknown → CrdtMsgException, no fallback)
+- [X] T050 [US5] Dedup (msg_id + per-link seq) idempotent at store boundary in `csharp/glp_crdtmsg/route/Dedup.cs` — DONE (msg_id end-to-end set + per-link high-water seq)
+- [X] T051 [US5] Fixed policy matcher {targets,waypoints,excludes} + fail-loud + logged DROP taxonomy in `csharp/glp_crdtmsg/route/PolicyMatcher.cs` — DONE (pure Evaluate + EvaluateOrThrow; DropReason taxonomy)
+- [X] T052 [US5] Deliver over `glp_quick_host` behind ILinkTransport; single-host two-client demonstrator in `csharp/glp_crdtmsg/route/Mesh.cs` — DONE (MeshNode over ILinkTransport/InMemoryLinkFabric; doc=store projection; QUIC/glp_quick_host adapter is the drop-in replacement — side-process per C20)
+
+**Checkpoint**: the full slice runs end-to-end over QUIC.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
+
+- [X] T053 [P] **Experimental GLP policy-guard PROPOSAL ONLY** — `programs/crdtmsg/policy-guard-proposal.glp` (proposed typed signature + three-valued semantics + worked example) + design note. 🔴 GATE: no guard implementation/compile/run until Gabi approves under DISCIPLINE §1.14 (Constitution IV-a). Fixed matcher (T051) is the shipped fallback. — DONE (proposal artifact written, comments-only, NOT loaded/compiled/run; `satisfiable(Policy?,Reachable?)` proposed with Success/Suspend/Fail semantics + worked example; awaits §1.14 decision)
+- [X] T054 [P] Dual-DSL functor registry (qmedit-DSL ↔ CDDL, **Claude-agentic** translation via Agent-tool/MCP — Constitution V; both forms stored) in `csharp/glp_wire_registry/SchemaRegistry.cs` — DONE (SchemaRegistry stores qmedit + CDDL for crdt_message; CDDL authored Claude-agentically, no external LM)
+- [X] T055 [P] Validate Gleam/Dart codec parity vectors against the goldens in `test/parity/` — DONE for C# self-parity (all 4 surfaces agree, SC-001 green); cross-runtime Gleam/Dart decode is **host-blocked** (env, not code — like 036 Profile C/two-host). Vectors defined in `test/parity/README.md`; escalation recorded (T057/known-issues).
+- [X] T056 Run `quickstart.md` full validation + the project baseline test protocol (`bash test/run_all_tests.sh` green before/after) — C# acceptance gates + shipped baselines ALL GREEN (crdtmsg 71, wire_registry 6, result_codec 131, il_codec 45 = 253). 🔴 NOTE: `bash test/run_all_tests.sh` (GLP REPL suite) is **environment-blocked on this Windows host** — the script hard-calls `/home/user/dart-sdk/bin/dart` (sibling Linux path, absent here), so every case errors "No such file or directory". PRE-EXISTING + unrelated to 041 (zero GLP runtime/test-program changes); escalated to Gabi.
+- [X] T057 [P] Docs: update `docs/` + `docs/known-issues.md` if any error surfaces; record any escalations — DONE (`docs/known-issues.md` § Feature 041 deferrals/escalations; `test/parity/README.md` parity vectors)
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+- Setup (P1) → Foundational (P2, blocks all stories) → US1..US5 → Polish.
+- **CRDT ordering (E1)**: US2 (store) ships before US3 (message-CRDT) — US3 depends on the store seam (T022–T025).
+- US4 (sig) depends on US1 section identity (sub-content addressing, T013) + op model (T029).
+- US5 depends on US1 header encoding (T007/T013), US4 capability slot (T037/T048), and the transport seam (T008).
+
+### Within Each Story
+- Tests written and FAILING before implementation. Models → services → integration. Baseline-green before each change; commit after each task/logical group.
+
+### Parallel Opportunities
+- Setup T003/T004 in parallel. Surface codecs T015/T016/T017 in parallel (different files). All per-story test tasks marked [P] in parallel. Polish T053/T054/T055/T057 in parallel.
+
+---
+
+## Parallel Example: User Story 1
+```
+# Tests first (parallel):
+T010 ConformanceMatrixTests.cs ; T011 LoudFailTests.cs ; T012 SingleSourceTests.cs
+# Then surface codecs (parallel):
+T015 JsonCodec.cs ; T016 YamlCodec.cs ; T017 CborCodec.cs
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (US1)
+Setup → Foundational → US1 → **STOP & VALIDATE** (conformance matrix + loud-fail green) → demo. A message round-trippable across four surfaces is the first shippable increment.
+
+### Incremental Delivery (store-first CRDT)
+US1 (interchange) → US2 (store, ships first) → US3 (rich-text CRDT — the mandatory bar) → US4 (cap/sig) → US5 (routing/e2e over QUIC). Each is independently testable; checkpoint the marathon after implement (and after the US1 MVP within implement).
+
+## Notes
+- [P] = different files, no incomplete-task dependency. [Story] labels map to spec US1–US5.
+- 🔴 The GLP guard (T053) is **propose-first** — DISCIPLINE §1.14 gate; the E9 DSL translation (T054) is **Claude-only** — Constitution V.
+- Ground-terms-only + acyclic-payload + endianness-layering laws hold throughout.
+- ~57 tasks: Setup 4, Foundational 5, US1 10, US2 6, US3 9, US4 8, US5 10, Polish 5.

@@ -1,0 +1,95 @@
+%% =====================================================================================
+%% 🔴🔴🔴  PROPOSAL ONLY — DO NOT LOAD / COMPILE / RUN  🔴🔴🔴
+%%
+%% Feature 041 (crdtmsg-mvp), task T053 / FR-014 / Contract C24 / Constitution IV-a.
+%% This file is a PROPOSE-FIRST design artifact for an EXPERIMENTAL GLP policy guard. It is
+%% NOT part of the shipped MVP and is NOT to be loaded into the REPL. The experimental guard
+%% is a LANGUAGE EXTENSION (a new guard surface): under DISCIPLINE §1.14 (Language Design
+%% Authority) it cannot be implemented, compiled, or run until Gabi approves the concrete
+%% signature and semantics below. E6 granted approval-IN-PRINCIPLE only — NOT approval of
+%% this concrete language change.
+%%
+%% The SHIPPED MVP routing evaluator is the fixed C# matcher:
+%%   csharp/glp_crdtmsg/route/PolicyMatcher.cs  (Contract C23) — {targets, waypoints, excludes},
+%%   unsatisfiable → fail loud. That data-field matcher delivers the routing behaviour regardless
+%%   of whether this guard is ever approved. This proposal is an ALTERNATIVE evaluator only.
+%% =====================================================================================
+
+%% ---------------------------------------------------------------------------------------
+%% DESIGN NOTE
+%%
+%% Intent: express the per-hop routing decision as an experimental GLP guard so a policy can be
+%% evaluated inside GLP's three-valued guard machinery (Success | Suspend | Fail) rather than by
+%% imperative C#. The guard tests whether a routing policy is satisfiable at the current hop given
+%% the set of currently-reachable authenticated peers.
+%%
+%% Why a guard (not a body predicate): routing admission is a pure TEST with no mutation — the
+%% natural home is guard position. The three-valued outcome maps exactly onto routing:
+%%   Success  → policy satisfiable at this hop → deliver/forward.
+%%   Suspend  → the reachable set is not yet known (unbound reader) → wait (do not guess/fallback).
+%%   Fail     → policy unsatisfiable → LOUD fail (consistent with @name loud-fail, C21).
+%% The Suspend arm is the whole point: it forbids the silent default-fallback that the 037 defect
+%% produced — an unknown/として-unbound reachability suspends instead of falling back.
+%%
+%% Open question for §1.14 review: should `satisfiable/2` be (a) a DEFINED guard (single-unit-clause,
+%% unfolded by the partial evaluator, per typed-glp-manual §8) — the smaller change — or (b) a new
+%% SYSTEM guard primitive? This proposal presents form (a). Approval of (a) vs (b) is Gabi's call.
+%% ---------------------------------------------------------------------------------------
+
+%% ===== PROPOSED TYPES ==================================================================
+
+%% PeerName is an authenticated peer identifier (never a cert / SPKI pin — FR-019).
+%% PeerName ::= Constant.
+
+%% Policy mirrors the shipped C# RoutingPolicy: targets (must-reach), waypoints (ordered), excludes.
+%% Policy ::= policy(PeerList, PeerList, PeerList).
+%% PeerList ::= [] ; [PeerName | PeerList].
+
+%% Reachable is the set of currently-reachable authenticated peers at this hop.
+%% Reachable ::= [] ; [PeerName | Reachable].
+
+%% ===== PROPOSED GUARD SIGNATURE (three-valued) =========================================
+%%
+%%   procedure satisfiable(Policy?, Reachable?).
+%%
+%% Reading (both args consumed):
+%%   satisfiable(policy(Targets, _Waypoints, Excludes)?, Reachable?)
+%%     SUCCEEDS iff  some T in Targets is a member of Reachable
+%%               AND no T in Targets is a member of Excludes ;
+%%     SUSPENDS while Reachable (or a needed prefix) is an unbound reader — NO fallback ;
+%%     FAILS    when the policy is ground and unsatisfiable (no reachable target, or a target
+%%              is excluded) — a LOUD fail, never a silent drop.
+%%
+%% Intended use in guard position (illustrative — NOT to be compiled here):
+%%
+%%   forward(Msg, Policy, Reachable, Out) :-
+%%       satisfiable(Policy?, Reachable?) |          %% guard: three-valued admission
+%%       deliver(Msg?, Out).
+%%
+%%   forward(_Msg, _Policy, _Reachable, _Out) :-
+%%       otherwise |                                 %% fires only after FAIL (not Suspend)
+%%       drop(no_route).                             %% logged-never-silent DROP taxonomy (C23)
+
+%% ===== WORKED EXAMPLE (expected three-valued outcomes) =================================
+%%
+%%   Given Excludes = [mallory]:
+%%
+%%   (1) satisfiable(policy([bob,carol], [], [mallory])?, [alice,bob]?)
+%%          → SUCCESS         (bob is reachable, no target excluded)
+%%
+%%   (2) satisfiable(policy([bob], [], [mallory])?, [alice,carol]?)
+%%          → FAIL            (bob not reachable; ground + unsatisfiable → loud fail)
+%%
+%%   (3) satisfiable(policy([bob], [], [bob])?, [alice,bob]?)
+%%          → FAIL            (bob is a target AND excluded → unsatisfiable)
+%%
+%%   (4) satisfiable(policy([bob], [], [mallory])?, Reachable?)   %% Reachable unbound
+%%          → SUSPEND         (waits for Reachable; NO default-fallback — the C21/037 invariant)
+%%
+%% These outcomes match, one-for-one, the shipped C# PolicyMatcher.Evaluate decisions
+%% (Deliver / NoRoute-drop) PLUS the extra Suspend arm that only a guard can express.
+%%
+%% =====================================================================================
+%% END PROPOSAL. No clauses are defined below — nothing here is executable by design.
+%% Await Gabi's §1.14 decision (approve form (a) / form (b) / revise) before ANY implementation.
+%% =====================================================================================
