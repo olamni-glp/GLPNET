@@ -133,18 +133,18 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: @name loud-fail; v1-reader skips v2 slot; router opacity + dedup; e2e rich-text op converges over QUIC.
 
 ### Tests (write first, must fail)
-- [ ] T043 [P] [US5] @name loud-fail test (unknown name → error, no fallback) in `csharp/glp_crdtmsg.tests/AddressingTests.cs` (SC-007)
-- [ ] T044 [P] [US5] v1-reader / v2-envelope additive-slot skip test in `csharp/glp_crdtmsg.tests/VersionSkipTests.cs` (SC-008)
-- [ ] T045 [P] [US5] Router payload-opacity + dedup test (bytes verbatim; msg_id + per-link seq) in `csharp/glp_crdtmsg.tests/RouterTests.cs`
-- [ ] T046 [P] [US5] End-to-end demonstrator test (rich-text op over QUIC, single-host two clients, both converge) in `csharp/glp_crdtmsg.tests/EndToEndTests.cs` (SC-009)
+- [X] T043 [P] [US5] @name loud-fail test (unknown name → error, no fallback) in `csharp/glp_crdtmsg.tests/AddressingTests.cs` (SC-007) — DONE (bare peer + group resolve; unknown @name/peer/unauth-member all loud-fail)
+- [X] T044 [P] [US5] v1-reader / v2-envelope additive-slot skip test in `csharp/glp_crdtmsg.tests/VersionSkipTests.cs` (SC-008) — DONE (v1 reader accepts v2 envelope, carries cap section verbatim; v2 reader extracts)
+- [X] T045 [P] [US5] Router payload-opacity + dedup test (bytes verbatim; msg_id + per-link seq) in `csharp/glp_crdtmsg.tests/RouterTests.cs` — DONE (+fixed-policy fail-loud + no-route drop)
+- [X] T046 [P] [US5] End-to-end demonstrator test (rich-text op over QUIC, single-host two clients, both converge) in `csharp/glp_crdtmsg.tests/EndToEndTests.cs` (SC-009) — DONE (seq-insert+mark-add over InMemoryLinkFabric → converges on both peers, durable in each op-WAL; redelivery idempotent)
 
 ### Implementation
-- [ ] T047 [US5] Unified header {msg_id,from,to,seq,policy,capability_slot}, router-opaque, in `csharp/glp_crdtmsg/header/UnifiedHeader.cs`
-- [ ] T048 [US5] v2 additive capability slot + old-reader skip-by-length in `csharp/glp_crdtmsg/header/CapabilitySlot.cs`
-- [ ] T049 [US5] @name resolution against authenticated peer set + loud-fail addressing in `csharp/glp_crdtmsg/route/Addressing.cs`
-- [ ] T050 [US5] Dedup (msg_id + per-link seq) idempotent at store boundary in `csharp/glp_crdtmsg/route/Dedup.cs`
-- [ ] T051 [US5] Fixed policy matcher {targets,waypoints,excludes} + fail-loud + logged DROP taxonomy in `csharp/glp_crdtmsg/route/PolicyMatcher.cs`
-- [ ] T052 [US5] Deliver over `glp_quick_host` behind ILinkTransport; single-host two-client demonstrator in `csharp/glp_crdtmsg/route/Mesh.cs`
+- [X] T047 [US5] Unified header {msg_id,from,to,seq,policy,capability_slot}, router-opaque, in `csharp/glp_crdtmsg/header/UnifiedHeader.cs` — DONE (RouterView + OpBytes verbatim; namespace GlpRuntime.CrdtMsg.Headers to avoid clash with the Header type)
+- [X] T048 [US5] v2 additive capability slot + old-reader skip-by-length in `csharp/glp_crdtmsg/header/CapabilitySlot.cs` — DONE (cap slot = reserved ignorable section 0x20 → v1 skip-by-length via TLV; Attach bumps schema_version=2; resolves the US1 binary-cap deferral)
+- [X] T049 [US5] @name resolution against authenticated peer set + loud-fail addressing in `csharp/glp_crdtmsg/route/Addressing.cs` — DONE (AddressBook.Resolve; unknown → CrdtMsgException, no fallback)
+- [X] T050 [US5] Dedup (msg_id + per-link seq) idempotent at store boundary in `csharp/glp_crdtmsg/route/Dedup.cs` — DONE (msg_id end-to-end set + per-link high-water seq)
+- [X] T051 [US5] Fixed policy matcher {targets,waypoints,excludes} + fail-loud + logged DROP taxonomy in `csharp/glp_crdtmsg/route/PolicyMatcher.cs` — DONE (pure Evaluate + EvaluateOrThrow; DropReason taxonomy)
+- [X] T052 [US5] Deliver over `glp_quick_host` behind ILinkTransport; single-host two-client demonstrator in `csharp/glp_crdtmsg/route/Mesh.cs` — DONE (MeshNode over ILinkTransport/InMemoryLinkFabric; doc=store projection; QUIC/glp_quick_host adapter is the drop-in replacement — side-process per C20)
 
 **Checkpoint**: the full slice runs end-to-end over QUIC.
 
