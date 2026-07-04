@@ -48,11 +48,11 @@ verbatim evidence (FR-002), deviations classified with affected claims (FR-003).
 **Independent Test**: pick F3 — its ledger has one row per §1.3 element, zero empty-evidence
 rows, every DEVIATION classified (spec US1 independent test; SC-001 arithmetic per ledger).
 
-- [ ] T007 [P] [US1] Audit F1 against report §1.1 elements at `DELIVERY(c20317ce)`; emit conformance ledger (finding ids CF-F1-*) per `contracts/conformance-ledger.md` into report §2.1
-- [ ] T008 [P] [US1] Audit F2 against §1.2 at `DELIVERY(c20317ce)`; ledger CF-F2-* into report §2.2 (expected GAP: no query manifest, undefined seminal/strong/ok tiers — research.md R2)
-- [ ] T009 [P] [US1] Audit F3 against §1.3 at `DELIVERY(6ecc975f)`; ledger CF-F3-* into report §2.3, adjudicating the planning-time anomalies as audit inputs: §8 names only 7 of 9 singletons; §8 family-count arithmetic vs actual §1 catalog row count (research.md R3.1/R3.2)
-- [ ] T010 [US1] Classify every DEVIATION across the three ledgers (harmless / weakens-a-claim / invalidates-a-claim) and enumerate affected downstream claims/blocks per FR-003; record execution-record GAP dispositions (what missing, where said to live, disposition chosen — e.g. FR-014 targeted re-execution, in-doc-summary baseline) in the ledger rows
-- [ ] T011 [US1] Verify SC-001 arithmetic (totals line per ledger: elements = PASS+GAP+DEVIATION, zero omitted) and write the per-ledger totals lines in report §2
+- [X] T007 [P] [US1] Audit F1 against report §1.1 elements at `DELIVERY(c20317ce)`; emit conformance ledger (finding ids CF-F1-*) per `contracts/conformance-ledger.md` into report §2.1
+- [X] T008 [P] [US1] Audit F2 against §1.2 at `DELIVERY(c20317ce)`; ledger CF-F2-* into report §2.2 (expected GAP: no query manifest, undefined seminal/strong/ok tiers — research.md R2)
+- [X] T009 [P] [US1] Audit F3 against §1.3 at `DELIVERY(6ecc975f)`; ledger CF-F3-* into report §2.3, adjudicating the planning-time anomalies as audit inputs: §8 names only 7 of 9 singletons; §8 family-count arithmetic vs actual §1 catalog row count (research.md R3.1/R3.2)
+- [X] T010 [US1] Classify every DEVIATION across the three ledgers (harmless / weakens-a-claim / invalidates-a-claim) and enumerate affected downstream claims/blocks per FR-003; record execution-record GAP dispositions (what missing, where said to live, disposition chosen — e.g. FR-014 targeted re-execution, in-doc-summary baseline) in the ledger rows
+- [X] T011 [US1] Verify SC-001 arithmetic (totals line per ledger: elements = PASS+GAP+DEVIATION, zero omitted) and write the per-ledger totals lines in report §2
 
 **Checkpoint**: SC-001 met — 3 complete conformance ledgers; the verification contract itself is discharged.
 
@@ -66,15 +66,15 @@ E1–E9 propagation consistent (FR-004..FR-007).
 **Independent Test**: the 9 singletons alone — each has confirmed/demoted/promoted verdict with
 independent-family evidence or an explicit no-further-evidence ruling (spec US2 independent test).
 
-- [ ] T012 [US2] Derive the authoritative 9-block single-family survivor list from F3 §1 Sources column at `DELIVERY(6ecc975f)` (only 7 named in §8 — research.md R3.1); reconcile against §8's "14/17/9" family histogram and the actual §1 row count; write the derivation into report §3 (discrepancies here are CF-F3 DEVIATION cross-refs from T009)
-- [ ] T013 [P] [US2] Re-derive F1 §12 signal×repo matrix from its sources at `DELIVERY(c20317ce)`; REPRODUCED-EXACTLY or full discrepancy enumeration (direction-labeled: missed-coverage vs overclaimed) into report §4.1; corrections applied to `CORPUS/priorart-sibling-scan.md` + change-log rows
-- [ ] T014 [P] [US2] Re-derive F2 §11 gap-coverage table (9 gaps × verdicts) at `DELIVERY(c20317ce)` likewise into report §4.2; corrections to `CORPUS/webresearch-corpus.md` + change-log rows
-- [ ] T015 [P] [US2] Re-derive F3 §3 constraint matrix + §4 closure ledger (28/28 claim) from S1–S8/gap1–9/OC-1..4/C1–7 sources at `DELIVERY(6ecc975f)` into report §4.3/§4.4; corrections to `CORPUS/buildingblocks-synthesis.md` + change-log rows (SC-004)
+- [X] T012 [US2] Derive the authoritative 9-block single-family survivor list from F3 §1 Sources column at `DELIVERY(6ecc975f)` (only 7 named in §8 — research.md R3.1); reconcile against §8's "14/17/9" family histogram and the actual §1 row count; write the derivation into report §3 (discrepancies here are CF-F3 DEVIATION cross-refs from T009)
+- [X] T013 [P] [US2] Re-derive F1 §12 signal×repo matrix from its sources at `DELIVERY(c20317ce)`; REPRODUCED-EXACTLY or full discrepancy enumeration (direction-labeled: missed-coverage vs overclaimed) into report §4.1; corrections applied to `CORPUS/priorart-sibling-scan.md` + change-log rows
+- [X] T014 [P] [US2] Re-derive F2 §11 gap-coverage table (9 gaps × verdicts) at `DELIVERY(c20317ce)` likewise into report §4.2; corrections to `CORPUS/webresearch-corpus.md` + change-log rows
+- [X] T015 [P] [US2] Re-derive F3 §3 constraint matrix + §4 closure ledger (28/28 claim) from S1–S8/gap1–9/OC-1..4/C1–7 sources at `DELIVERY(6ecc975f)` into report §4.3/§4.4; corrections to `CORPUS/buildingblocks-synthesis.md` + change-log rows (SC-004)
 - [ ] T016 [US2] Re-derive F3 merge decisions for all multi-family corroborated blocks from in-doc data only (§1 sources + §2 catalog + §4 ledger — FR-014 in-doc baseline); write `CORPUS/evidence/f3-merge-rederivation.md`; contested/discrepant blocks found here join the T017 re-scan queue
 - [ ] T017 [US2] Execute blind family-targeted re-scans per research.md R4 protocol: for each of the 9 singletons (+ any T016 contested), spawn one blind Claude scanner agent per non-corroborating family (given family manifest + claim TOPIC only, never F3's verdict); write per-block records to `CORPUS/evidence/f3-rescan-<block-id>.md`
 - [ ] T018 [US2] Curate the re-scan results into 9(+) SingletonAdjudication verdicts (confirmed/demoted/promoted/no-further-evidence, evidence-quoted, `HEAD` baseline) in report §3; genuine conflicts → report §9 escalation, never self-ruled; apply status changes to F3 §1/§2 rows + change-log rows (SC-002)
-- [ ] T019 [P] [US2] Disposition the 4 scanner-C drift items (F3 §8: mesh routes JSON-only; payloadType constants duplicated; spec-vs-plan store naming; 037 @name promise) against `HEAD`: corrected-in-corpus / roadmap-follow-up / obsolete, evidence-checked; report §5 + any doc corrections + change-log rows (SC-005)
-- [ ] T020 [P] [US2] Sweep E1–E9 propagation: for each ruling's touched blocks (F3 §6), check every appearance across all three docs for post-ruling status consistency (incl. §6's "ruled register supersedes §1 ESC bins" note L212); correct inconsistencies + change-log rows; report §6 with final count = 0 (SC-006)
+- [X] T019 [P] [US2] Disposition the 4 scanner-C drift items (F3 §8: mesh routes JSON-only; payloadType constants duplicated; spec-vs-plan store naming; 037 @name promise) against `HEAD`: corrected-in-corpus / roadmap-follow-up / obsolete, evidence-checked; report §5 + any doc corrections + change-log rows (SC-005)
+- [X] T020 [P] [US2] Sweep E1–E9 propagation: for each ruling's touched blocks (F3 §6), check every appearance across all three docs for post-ruling status consistency (incl. §6's "ruled register supersedes §1 ESC bins" note L212); correct inconsistencies + change-log rows; report §6 with final count = 0 (SC-006)
 
 **Checkpoint**: SC-002/004/005/006 met — a block's stated status is trustworthy at face value.
 
@@ -105,7 +105,7 @@ disposition (FR-010); the 86-claim transcript pointer superseded (FR-014).
 **Independent Test**: enumerate all pointers; each has exactly one resolution/disposition —
 zero dangling (spec US4 independent test; SC-007).
 
-- [ ] T025 [P] [US4] Enumerate every evidence pointer in the three docs (in-repo, sibling-repo, external-url, session-transcript, named-corpus classes per data-model.md) into `CORPUS/evidence/evidence-index.md` with EP-* ids (read-only — may start any time after T001)
+- [X] T025 [P] [US4] Enumerate every evidence pointer in the three docs (in-repo, sibling-repo, external-url, session-transcript, named-corpus classes per data-model.md) into `CORPUS/evidence/evidence-index.md` with EP-* ids (read-only — may start any time after T001)
 - [ ] T026 [US4] Resolve/disposition every EP row: verify in-repo refs at `HEAD`; sibling-repo refs → host-blocked disposition (spec Assumptions); materialize recoverable artifacts into `CORPUS/evidence/`; the "session transcripts" 86-claim pointer (F3 §8 L237) → unrecoverable disposition (what was lost, what survives in-doc, confidence impact) superseded by T016/T017 re-execution records; update doc pointer text + change-log rows
 - [ ] T027 [US4] F2 bibliographic re-verification per research.md R6: Tier 1 — every load-bearing paper in F2 §11 verified (title/authors/venue/URL resolve); Tier 2 — best-effort existence sweep of remaining ~148 entries (incl. the 2026-dated arXiv ids, R3.5); link-rot recorded as disposition, never silently fixed; results into evidence-index + report §8 + any F2 corrections with change-log rows
 - [ ] T028 [US4] Write report §8 census totals (class × resolution) and verify SC-007: 100% of pointers resolved or dispositioned, zero dangling transcript pointers
