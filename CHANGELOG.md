@@ -1,92 +1,3 @@
-## [v2026.06.03.1] - 2026-06-03
-
-### Added
-- clone GLP tutorial corpus into glpnet (olamni/tutorial, 47 .glp + 42 repl-trace.md, byte-identical to sibling) - self-contained equiv corpus, no sibling dependency
-- converge test/ harness to sibling (to_repl_path + run_aot_smoke/run_cross_mode_parity) - fixes suite vs converged loader; point equiv oracle tests at the cloned-in tutorial corpus
-- programs/.glp byte-identical to sibling (Gabi-approved) - self.glp +procedure tuple/is_list (completes runner is_list/tuple convergence) + 4 typed_book play sources (bonds/agent, cssg+cssn typed_social_agent, cssn typed_ui_mediator); programs .glp diff=0
-- add bin/triage_loader.dart from sibling (new file under gitignored bin/, force-added) - completes bin Dart convergence
-- glp_runtime lib+bin DART byte-identical to sibling GLP - 9 lib overwrites (runner+is_list/tuple, compiler x3, glp_engine, type_checker x3, repl_play_runner) + delete unify_result.dart + bin/glp_repl.dart (Windows/abs path fix) + triage_loader.dart; rebuilt golden exe; static diff=0, tutorials 77/88 (was regressed; remaining 8 are program-level)
-- comprehensive sweep driver (incr 3) - sweep() runs goal-bearing corpus through dual-REPL oracle, tallies equivalent/divergent/needs_agent_work/error + decision-2 outcome cross-check; 2 hermetic tests green
-- live dual-REPL capture backend (incr 2) - capture_pair/compare_goal spawn Dart golden(:trace+:debug)+C# candidate(GLP_EQUIV_TRACE), outcome cross-check (decision 2), strict verdict; injectable spawn; 8 tests green incl live append([1,2,3]) EQUIVALENT
-- goals.yml reviewed artifact (incr 1b) - to_yaml/load/write_artifacts serde + round-trip test; seed 88 ch01-06 goals for review (g1=c)
-- goal-bearing tutorial corpus parser (incr 1a) - GoalEntry + parse_trace_goals handles in-fence+prose formats w/ load-context source tracking; 88 goals from ch01-06; 6 pure tests green
-- T031 part-a - fidelity GEPA metric (SC-004 import identity) + optimize oracle seam
-- T022 - parse_dart adapter (Dart :trace/:debug -> canonical wire); 28/28 events match append fixture, only OUT pending finding-#3 deref
-- T022 - relabel goal ids in separate g-namespace (GoalId sentinel) instead of dropping goal; SUSPEND/REACTIVATE goal stays a (relabeled) fidelity signal. 34 equiv pure tests green
-- T017(ii) option-a - align BYTECODE_OP spine to Dart :debug-observable op set (14 ops; exclude conditionally-printed GetValue); append spine now matches golden except the isolated Ground->Commit divergence
-- Stage 5 T017(ii) - candidate-side canonical EV/OUT trace emission (equiv_trace.cs) at runner spine/commit/suspend seams + engine OUT; flag-gated (GLP_EQUIV_TRACE), no-op + behaviour-unchanged when off
-- Stage 5 T017(i) - wire glp_repl exe to converted REPL (delegating entrypoint); runs + matches Dart golden on true.
-- Stage 4 COMPLETE — goal_queue marked no_emit on canonical cluster (migrate 0009 applied; status no_emit:1/escalated:0/open_escalations:0); E1 escalation resolved (option-a no_emit)
-- Stage 4 CODE — first-class no_emit status (migration 0009 single-head off 0008; status() _classify_codegen_row precedence; mark-no-emit CLI; readiness satisfied; codegen_no_emit tombstone key); offline tests 19/19 green. Canonical migrate+mark PENDING Gabi OK.
-- Stage 3 runner ingest — build-gate pass → built; E1 escalation resolved (6-chunk conversion); frontier now 74/75 built, 1 escalated (goal_queue=Stage 4)
-- runner.cs Stage 3 chunk 6/6 — concurrency arms (Spawn/Requeue/Distribute/Transmit via GlpChannel) + guard arms (Guard/Ground/GroundEqual/Known/NoReaders) + all 6 helpers (_evaluateGuard 25-arm switch, _termsEqual cycle-detect, _dereferenceWithTracking, _evaluateArithmetic, _convertTentativeToStruct); runner.cs COMPLETE (5740 lines), full sln green 0 errors, zero stubs
-- runner.cs Stage 3 chunk 5/6 — clause control + Commit (ApplySigmaHatFCP) + env (Allocate/Deallocate) + Push/Pop/TailStep/Union/Reset/Proceed/Otherwise/Nop/Label/Halt; sln green
-- runner.cs Stage 3 chunk 4/6 — BODY-phase structure building (Put[Constant|Structure|Nil|List|BoundConst|BoundNil], SetConstant, BodySet[Const|ConstArg|StructConstArgs]); sln green
-- runner.cs Stage 3 chunk 3/6 — UNIFY arms (Constant/Void/Structure) + v1 Get[Variable|Value] + all 7 v2 arms; sln green
-- runner.cs Stage 3 chunk 2/6 — HEAD-phase arms (HeadConstant/Structure/Nil/List, HeadBindWriter[Arg], Require[Reader|Writer]Arg, GuardNeedReader[Arg]); sln green
-- runner.cs Stage 3 chunk 1/6 — skeleton (support types real + RunStep/RunWithStatus loop + 60-arm _Step dispatch + stub Exec/helpers); full sln green, downstream unbroken
-- Stage 2 — GEPA run on bytecode (build-only): generator regenerated opcodes->C# (1.0), build ceiling confirmed, bytecode.md frozen w/ measured provenance; gitignore covers per-subsystem candidate + GEPA scratch
-- Stage 1 — per-subsystem Claude-driven GEPA wiring (T032 dataset split, T033 program subsystem field, T034 prompt.load(subsystem), T035 codegen-opt skill loop + dataset/score CLI, T036 _base+5 subsystem prompts); build-only metric per 2026-06-03 decision; 24/24 targeted tests green
-- bulk codegen FINAL — 73/75 built (97.3%); 2 escalated (runner.dart 4863-line interpreter deferred; goal_queue Dart-export no-emit by design). codegen, compiler, glp_engine, isolate_manager, agent_runtime, bin/glp_repl all built against runner stub; full sln dotnet build GREEN (0 errors, 140 warnings); gitignore allows out/csharp/bin/*.cs source while still ignoring dotnet Debug/Release output.
-- bulk codegen batches 15-16 — 5 built (system_predicates_impl, result, asm, scheduler, linter; downstream files built against runner.cs stub)
-- bulk codegen batch 14 — pmt/validator built (added Module.ModeDeclarations() extension stub for missing dep)
-- bulk codegen batch 13 — SCC cg=36 + pmt/checker (6 built: pmt/checker, mad_context, body_kernels, glp_activation, runtime, system_predicates; class GlpRuntime renamed to GlpRuntimeEngine to disambiguate namespace; runner.cs stubbed + escalated — 4863-line WAM dispatch exceeds single-pass)
-- bulk codegen batch 12 — 5/5 built (occurrence, pmt/type_checker, commit, external_io, suspend_ops; ModedArg extended with TypeName/TypeParams + ModeDeclaration.Predicate to resolve pmt/type_checker E1/E2/E3)
-- resolve 2 escalations — heap_fcp (CellTag→HeapCellTag rename) + mode_table (new mode_declaration.cs stub); 50/75 built (Gabi-approved 2026-05-28)
-- bulk codegen batch 10 — 1/1 built (project_linker; manual patch for 2nd missing guards param)
-- bulk codegen batch 9 — 3/3 built first pass (type_checker, analyzer, module_hierarchy)
-- bulk codegen batch 8 — 2/2 built (type_env_builder, partial_evaluator; 1 repair)
-- bulk codegen batch 7 — 3/3 built (suspend, well_typed_clause, parser; parser needed long→int site missed by repair-agent)
-- bulk codegen batch 6 — 5 built (2 repairs) + 2 escalated (mode_table dep_missing, heap_fcp CellTag conflict)
-- bulk codegen batch 5 — 7/7 built (4 first-pass + 3 bounded repairs)
-- bulk codegen batch 4 — 7/7 built first pass (topo=1 mixed)
-- bulk codegen batch 3 — 6/7 built + 1 escalated (goal_queue Dart export-only, undecidable per spec)
-- bulk codegen batch 2 — 7/7 built first pass (compiler/engine/multiagent leaves)
-- bulk codegen batch 1 — 7/7 built (analysis/type_checker/bytecode/compiler leaves)
-- codegen Converted.props append hook + 12 pure tests (bulk-codegen pre-req B)
-- T025 + C# REPL infra (out/csharp .sln/.csproj/Converted.props + glp_repl placeholder, dotnet build green); safe-restart ledger for bulk codegen drive
-- US2 readiness + durable equiv-step pure core (T023/T024)
-- US1 capture/compare/bytecode-diff CLI (T018/T019) — standalone deterministic verdict over recorded artifacts; shared db.engine.connect; DB writes deferred to durable step (T024)
-- US1 corpus.py + reviewed corpus.yml enumeration + materialized split (T016; 256 sources, book 141 exact)
-- US1 oracle core — normalize/relation/bytecode_diff + SC-005 batteries (T013-T015, T020-T021, 21 pure green)
-- Setup + Foundational — migration 0008, equiv tool skeleton, pure trace/fidelity/manifest, tombstone keys (T001-T012, 14 pure tests green)
-
-### Fixed
-- capture uses repo-root-relative (../) load paths - current Dart REPL (glp_repl.dart:193-198) only honors / ./ ../ verbatim and roots else at glp/, so Windows-abs D:/ mis-resolved; sibling tutorials load as ../GLP/... (FR-006, no copy); 8 capture tests green
-- T022 finding-#3 - recursively deref OUT binding shape (candidate-side); re-captured append_csharp OUT now ./2(const(a),./2(const(c),const(nil)))
-- #2 resolved - emit Commit conditionally from ExecCommit (proceeding-commit only) to match Dart's conditional COMMIT print; NOT a runner bug. Append spine now matches golden exactly across all 3 goals
-- Stage 5 - scheduler.cs success-determination wires onReduction callback (was stub-era gap); converted REPL now matches Dart golden on append/reverse/quicksort
-- buildprops — ignore example Include in header comment (regression test added)
-
-### Changed
-- Merge pull request #12 from olamni-glp/020-trace-equivalence-fidelity
-- plan - top-priority Dart convergence mandate (glpnet glp_runtime <= sibling GLP, 100% byte-level, static+dynamic)
-- design - combined comprehensive equiv test driver + goal-bearing corpus (suites + sibling tutorials; ratified decisions 1-4)
-- back up frozen build-only bytecode.md (9506ac81) before T031 fidelity re-run can overwrite it; restore via cp
-- .codeconv updates
-- HANDOFF - turnkey T031 fidelity-metric-swap build spec (part-a metric rewrite mock-testable now; part-b GEPA re-run forces the T018-capture sequencing decision); T017/T022 marked done in S3
-- HANDOFF - T022 COMPLETE (parse_dart adapter + finding-#3 deref + e2e green); next = T031 fidelity-metric swap + GEPA re-run
-- T022 e2e - append strict-tier oracle equivalence over captured pair (Dart golden = C# candidate); finding-#3 + parse_dart regression guards + negative controls; 6 green
-- HANDOFF - one-line state points at T022 parse_dart as the immediate next (T017 complete)
-- HANDOFF - turnkey parse_dart build spec (line-by-line append mapping, shape canonicalizer incl list syntax, C# OUT deref fix); goal kept via relabeling done
-- T022 - capture matched append fixtures (C# canonical EV/OUT + Dart :trace+:debug) for the parse_dart adapter + e2e
-- HANDOFF - T022 scoping (parse_dart finalization plan + 3 normalization items; goal-field comparability decision teed up)
-- HANDOFF - #2 RESOLVED (conditional Commit emission, not a runner bug); append spine matches golden exactly
-- HANDOFF - finding #1 RESOLVED via option-a spine alignment; #2 (Ground->Commit) isolated as sole remaining append divergence
-- HANDOFF - T017(ii) done; record real-capture findings (Dart :debug partial-spine spec-gap, Ground soft-fail spine divergence, shallow OUT shape)
-- HANDOFF - Stage 5 progress: T017(i) wired + first fidelity bug (scheduler onReduction) fixed; carry-forward note
-- safe-restart prep - re-verify anchor green 2026-06-03; pure subset 40->36; note section-1c run-from-repo-root bridge trap
-- SAFE-RESTART handoff — Stages 1-4 DONE (incl Stage 4 canonical no_emit), only Stage 5 left; anti-drift facts (runner.cs compile-verified-only + semantic-risk list) + verified-green anchor + Stage-5 recipe; ledger RESTART pointer
-- ledger — Stage 3 DONE (runner.cs converted+built), Stage 4 code DONE (canonical migrate+mark GATED on Gabi OK), Stage 5 unblocked+mapped
-- spec(020-trace-equiv): gepa_optimizer contract — NO-API/Claude-driven GEPA revision (ruled 2026-06-03); the spec-first basis Stage 1 implements
-- ledger — Stages 1+2 DONE (72ca51d1, 9506ac81); runner.cs (Stage 3) is the gate, Stage 5 blocked on it, Stage 4 no_emit confirm-with-Gabi; precise restart maps recorded
-- ledger — Stage 1 (Claude-driven GEPA wiring) DONE at 72ca51d1; NEXT=Stage 2 GEPA on bytecode
-- mark bulk drive COMPLETE at 73/75 (97.3%); escalations resolved + final-surface analysis
-- bulk drive PAUSED at 48/75 — escalation cascade analysis + Gabi-decision request
-- checkpoint ledger at 47/75 built (mid bulk drive)
-- record bfd00a8a + flip POSITION to A in-progress
-- record dc997583 in safe-restart ledger
-
 ## [Unreleased]
 
 ## [v2026.07.04.2] - 2026-07-04
@@ -549,6 +460,95 @@
 - gated real-backend coverage for ch03 multi-compose + ch07 use-case (US2)
 - plan, research, data-model, contracts, tasks for /glptutorial-run
 - Merge pull request #19 from olamni-glp/main
+
+## [v2026.06.03.1] - 2026-06-03
+
+### Added
+- clone GLP tutorial corpus into glpnet (olamni/tutorial, 47 .glp + 42 repl-trace.md, byte-identical to sibling) - self-contained equiv corpus, no sibling dependency
+- converge test/ harness to sibling (to_repl_path + run_aot_smoke/run_cross_mode_parity) - fixes suite vs converged loader; point equiv oracle tests at the cloned-in tutorial corpus
+- programs/.glp byte-identical to sibling (Gabi-approved) - self.glp +procedure tuple/is_list (completes runner is_list/tuple convergence) + 4 typed_book play sources (bonds/agent, cssg+cssn typed_social_agent, cssn typed_ui_mediator); programs .glp diff=0
+- add bin/triage_loader.dart from sibling (new file under gitignored bin/, force-added) - completes bin Dart convergence
+- glp_runtime lib+bin DART byte-identical to sibling GLP - 9 lib overwrites (runner+is_list/tuple, compiler x3, glp_engine, type_checker x3, repl_play_runner) + delete unify_result.dart + bin/glp_repl.dart (Windows/abs path fix) + triage_loader.dart; rebuilt golden exe; static diff=0, tutorials 77/88 (was regressed; remaining 8 are program-level)
+- comprehensive sweep driver (incr 3) - sweep() runs goal-bearing corpus through dual-REPL oracle, tallies equivalent/divergent/needs_agent_work/error + decision-2 outcome cross-check; 2 hermetic tests green
+- live dual-REPL capture backend (incr 2) - capture_pair/compare_goal spawn Dart golden(:trace+:debug)+C# candidate(GLP_EQUIV_TRACE), outcome cross-check (decision 2), strict verdict; injectable spawn; 8 tests green incl live append([1,2,3]) EQUIVALENT
+- goals.yml reviewed artifact (incr 1b) - to_yaml/load/write_artifacts serde + round-trip test; seed 88 ch01-06 goals for review (g1=c)
+- goal-bearing tutorial corpus parser (incr 1a) - GoalEntry + parse_trace_goals handles in-fence+prose formats w/ load-context source tracking; 88 goals from ch01-06; 6 pure tests green
+- T031 part-a - fidelity GEPA metric (SC-004 import identity) + optimize oracle seam
+- T022 - parse_dart adapter (Dart :trace/:debug -> canonical wire); 28/28 events match append fixture, only OUT pending finding-#3 deref
+- T022 - relabel goal ids in separate g-namespace (GoalId sentinel) instead of dropping goal; SUSPEND/REACTIVATE goal stays a (relabeled) fidelity signal. 34 equiv pure tests green
+- T017(ii) option-a - align BYTECODE_OP spine to Dart :debug-observable op set (14 ops; exclude conditionally-printed GetValue); append spine now matches golden except the isolated Ground->Commit divergence
+- Stage 5 T017(ii) - candidate-side canonical EV/OUT trace emission (equiv_trace.cs) at runner spine/commit/suspend seams + engine OUT; flag-gated (GLP_EQUIV_TRACE), no-op + behaviour-unchanged when off
+- Stage 5 T017(i) - wire glp_repl exe to converted REPL (delegating entrypoint); runs + matches Dart golden on true.
+- Stage 4 COMPLETE — goal_queue marked no_emit on canonical cluster (migrate 0009 applied; status no_emit:1/escalated:0/open_escalations:0); E1 escalation resolved (option-a no_emit)
+- Stage 4 CODE — first-class no_emit status (migration 0009 single-head off 0008; status() _classify_codegen_row precedence; mark-no-emit CLI; readiness satisfied; codegen_no_emit tombstone key); offline tests 19/19 green. Canonical migrate+mark PENDING Gabi OK.
+- Stage 3 runner ingest — build-gate pass → built; E1 escalation resolved (6-chunk conversion); frontier now 74/75 built, 1 escalated (goal_queue=Stage 4)
+- runner.cs Stage 3 chunk 6/6 — concurrency arms (Spawn/Requeue/Distribute/Transmit via GlpChannel) + guard arms (Guard/Ground/GroundEqual/Known/NoReaders) + all 6 helpers (_evaluateGuard 25-arm switch, _termsEqual cycle-detect, _dereferenceWithTracking, _evaluateArithmetic, _convertTentativeToStruct); runner.cs COMPLETE (5740 lines), full sln green 0 errors, zero stubs
+- runner.cs Stage 3 chunk 5/6 — clause control + Commit (ApplySigmaHatFCP) + env (Allocate/Deallocate) + Push/Pop/TailStep/Union/Reset/Proceed/Otherwise/Nop/Label/Halt; sln green
+- runner.cs Stage 3 chunk 4/6 — BODY-phase structure building (Put[Constant|Structure|Nil|List|BoundConst|BoundNil], SetConstant, BodySet[Const|ConstArg|StructConstArgs]); sln green
+- runner.cs Stage 3 chunk 3/6 — UNIFY arms (Constant/Void/Structure) + v1 Get[Variable|Value] + all 7 v2 arms; sln green
+- runner.cs Stage 3 chunk 2/6 — HEAD-phase arms (HeadConstant/Structure/Nil/List, HeadBindWriter[Arg], Require[Reader|Writer]Arg, GuardNeedReader[Arg]); sln green
+- runner.cs Stage 3 chunk 1/6 — skeleton (support types real + RunStep/RunWithStatus loop + 60-arm _Step dispatch + stub Exec/helpers); full sln green, downstream unbroken
+- Stage 2 — GEPA run on bytecode (build-only): generator regenerated opcodes->C# (1.0), build ceiling confirmed, bytecode.md frozen w/ measured provenance; gitignore covers per-subsystem candidate + GEPA scratch
+- Stage 1 — per-subsystem Claude-driven GEPA wiring (T032 dataset split, T033 program subsystem field, T034 prompt.load(subsystem), T035 codegen-opt skill loop + dataset/score CLI, T036 _base+5 subsystem prompts); build-only metric per 2026-06-03 decision; 24/24 targeted tests green
+- bulk codegen FINAL — 73/75 built (97.3%); 2 escalated (runner.dart 4863-line interpreter deferred; goal_queue Dart-export no-emit by design). codegen, compiler, glp_engine, isolate_manager, agent_runtime, bin/glp_repl all built against runner stub; full sln dotnet build GREEN (0 errors, 140 warnings); gitignore allows out/csharp/bin/*.cs source while still ignoring dotnet Debug/Release output.
+- bulk codegen batches 15-16 — 5 built (system_predicates_impl, result, asm, scheduler, linter; downstream files built against runner.cs stub)
+- bulk codegen batch 14 — pmt/validator built (added Module.ModeDeclarations() extension stub for missing dep)
+- bulk codegen batch 13 — SCC cg=36 + pmt/checker (6 built: pmt/checker, mad_context, body_kernels, glp_activation, runtime, system_predicates; class GlpRuntime renamed to GlpRuntimeEngine to disambiguate namespace; runner.cs stubbed + escalated — 4863-line WAM dispatch exceeds single-pass)
+- bulk codegen batch 12 — 5/5 built (occurrence, pmt/type_checker, commit, external_io, suspend_ops; ModedArg extended with TypeName/TypeParams + ModeDeclaration.Predicate to resolve pmt/type_checker E1/E2/E3)
+- resolve 2 escalations — heap_fcp (CellTag→HeapCellTag rename) + mode_table (new mode_declaration.cs stub); 50/75 built (Gabi-approved 2026-05-28)
+- bulk codegen batch 10 — 1/1 built (project_linker; manual patch for 2nd missing guards param)
+- bulk codegen batch 9 — 3/3 built first pass (type_checker, analyzer, module_hierarchy)
+- bulk codegen batch 8 — 2/2 built (type_env_builder, partial_evaluator; 1 repair)
+- bulk codegen batch 7 — 3/3 built (suspend, well_typed_clause, parser; parser needed long→int site missed by repair-agent)
+- bulk codegen batch 6 — 5 built (2 repairs) + 2 escalated (mode_table dep_missing, heap_fcp CellTag conflict)
+- bulk codegen batch 5 — 7/7 built (4 first-pass + 3 bounded repairs)
+- bulk codegen batch 4 — 7/7 built first pass (topo=1 mixed)
+- bulk codegen batch 3 — 6/7 built + 1 escalated (goal_queue Dart export-only, undecidable per spec)
+- bulk codegen batch 2 — 7/7 built first pass (compiler/engine/multiagent leaves)
+- bulk codegen batch 1 — 7/7 built (analysis/type_checker/bytecode/compiler leaves)
+- codegen Converted.props append hook + 12 pure tests (bulk-codegen pre-req B)
+- T025 + C# REPL infra (out/csharp .sln/.csproj/Converted.props + glp_repl placeholder, dotnet build green); safe-restart ledger for bulk codegen drive
+- US2 readiness + durable equiv-step pure core (T023/T024)
+- US1 capture/compare/bytecode-diff CLI (T018/T019) — standalone deterministic verdict over recorded artifacts; shared db.engine.connect; DB writes deferred to durable step (T024)
+- US1 corpus.py + reviewed corpus.yml enumeration + materialized split (T016; 256 sources, book 141 exact)
+- US1 oracle core — normalize/relation/bytecode_diff + SC-005 batteries (T013-T015, T020-T021, 21 pure green)
+- Setup + Foundational — migration 0008, equiv tool skeleton, pure trace/fidelity/manifest, tombstone keys (T001-T012, 14 pure tests green)
+
+### Fixed
+- capture uses repo-root-relative (../) load paths - current Dart REPL (glp_repl.dart:193-198) only honors / ./ ../ verbatim and roots else at glp/, so Windows-abs D:/ mis-resolved; sibling tutorials load as ../GLP/... (FR-006, no copy); 8 capture tests green
+- T022 finding-#3 - recursively deref OUT binding shape (candidate-side); re-captured append_csharp OUT now ./2(const(a),./2(const(c),const(nil)))
+- #2 resolved - emit Commit conditionally from ExecCommit (proceeding-commit only) to match Dart's conditional COMMIT print; NOT a runner bug. Append spine now matches golden exactly across all 3 goals
+- Stage 5 - scheduler.cs success-determination wires onReduction callback (was stub-era gap); converted REPL now matches Dart golden on append/reverse/quicksort
+- buildprops — ignore example Include in header comment (regression test added)
+
+### Changed
+- Merge pull request #12 from olamni-glp/020-trace-equivalence-fidelity
+- plan - top-priority Dart convergence mandate (glpnet glp_runtime <= sibling GLP, 100% byte-level, static+dynamic)
+- design - combined comprehensive equiv test driver + goal-bearing corpus (suites + sibling tutorials; ratified decisions 1-4)
+- back up frozen build-only bytecode.md (9506ac81) before T031 fidelity re-run can overwrite it; restore via cp
+- .codeconv updates
+- HANDOFF - turnkey T031 fidelity-metric-swap build spec (part-a metric rewrite mock-testable now; part-b GEPA re-run forces the T018-capture sequencing decision); T017/T022 marked done in S3
+- HANDOFF - T022 COMPLETE (parse_dart adapter + finding-#3 deref + e2e green); next = T031 fidelity-metric swap + GEPA re-run
+- T022 e2e - append strict-tier oracle equivalence over captured pair (Dart golden = C# candidate); finding-#3 + parse_dart regression guards + negative controls; 6 green
+- HANDOFF - one-line state points at T022 parse_dart as the immediate next (T017 complete)
+- HANDOFF - turnkey parse_dart build spec (line-by-line append mapping, shape canonicalizer incl list syntax, C# OUT deref fix); goal kept via relabeling done
+- T022 - capture matched append fixtures (C# canonical EV/OUT + Dart :trace+:debug) for the parse_dart adapter + e2e
+- HANDOFF - T022 scoping (parse_dart finalization plan + 3 normalization items; goal-field comparability decision teed up)
+- HANDOFF - #2 RESOLVED (conditional Commit emission, not a runner bug); append spine matches golden exactly
+- HANDOFF - finding #1 RESOLVED via option-a spine alignment; #2 (Ground->Commit) isolated as sole remaining append divergence
+- HANDOFF - T017(ii) done; record real-capture findings (Dart :debug partial-spine spec-gap, Ground soft-fail spine divergence, shallow OUT shape)
+- HANDOFF - Stage 5 progress: T017(i) wired + first fidelity bug (scheduler onReduction) fixed; carry-forward note
+- safe-restart prep - re-verify anchor green 2026-06-03; pure subset 40->36; note section-1c run-from-repo-root bridge trap
+- SAFE-RESTART handoff — Stages 1-4 DONE (incl Stage 4 canonical no_emit), only Stage 5 left; anti-drift facts (runner.cs compile-verified-only + semantic-risk list) + verified-green anchor + Stage-5 recipe; ledger RESTART pointer
+- ledger — Stage 3 DONE (runner.cs converted+built), Stage 4 code DONE (canonical migrate+mark GATED on Gabi OK), Stage 5 unblocked+mapped
+- spec(020-trace-equiv): gepa_optimizer contract — NO-API/Claude-driven GEPA revision (ruled 2026-06-03); the spec-first basis Stage 1 implements
+- ledger — Stages 1+2 DONE (72ca51d1, 9506ac81); runner.cs (Stage 3) is the gate, Stage 5 blocked on it, Stage 4 no_emit confirm-with-Gabi; precise restart maps recorded
+- ledger — Stage 1 (Claude-driven GEPA wiring) DONE at 72ca51d1; NEXT=Stage 2 GEPA on bytecode
+- mark bulk drive COMPLETE at 73/75 (97.3%); escalations resolved + final-surface analysis
+- bulk drive PAUSED at 48/75 — escalation cascade analysis + Gabi-decision request
+- checkpoint ledger at 47/75 built (mid bulk drive)
+- record bfd00a8a + flip POSITION to A in-progress
+- record dc997583 in safe-restart ledger
 
 ## [v2026.06.03.3] - 2026-06-03
 
