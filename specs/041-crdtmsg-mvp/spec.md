@@ -174,7 +174,7 @@ A runtime sends the message over the **shipped 036 QUIC/WS transport**. The mess
 **CRDT rich-text (OC-3 × OC-4) — MANDATORY, promoted from synthesis §5 PROV/OPT by clarification 2026-07-04**
 - **FR-036**: The MVP MUST implement a **sequence CRDT with Fugue maximal-non-interleaving semantics** over stable element IDs, derived from the op-based JSON-CRDT base; concurrent insertions MUST converge with no interleaving anomaly (BB-CRDT-7; clarification 2026-07-04).
 - **FR-037**: The MVP MUST implement **Peritext-style formatting spans** over the stable sequence IDs and MUST **preserve formatting marks it does not understand** through convergence and lossless transcode (the CRDT-native face of BB-HDR-2 / OC-3) (BB-CRDT-7; clarification 2026-07-04).
-- **FR-038**: The rationale of record for FR-036/FR-037's mandatory status: **many interfaces cannot start with, work with, or generate a pure op-based JSON-CRDT** — the sequence/rich-text CRDT is the generalizable, interoperable deliverable (clarification 2026-07-04).
+- **FR-038** *(non-buildable rationale — no task expected)*: The rationale of record for FR-036/FR-037's mandatory status: **many interfaces cannot start with, work with, or generate a pure op-based JSON-CRDT** — the sequence/rich-text CRDT is the generalizable, interoperable deliverable (clarification 2026-07-04).
 
 ### Key Entities
 

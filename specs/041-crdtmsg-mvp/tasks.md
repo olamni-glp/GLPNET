@@ -35,7 +35,7 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 - [ ] T005 Implement the single payloadType/functor registry table in `csharp/glp_wire_registry/WireRegistry.cs` (0x10 IL, 0x11 RESULT_ENVELOPE, 0x12+ messaging kinds; functor allocation; compat modes backward|forward|full|transitive)
 - [ ] T006 Repoint `csharp/glp_il_codec/PayloadHeader.cs` and `csharp/glp_result_codec/ResultEnvelope.cs`/`ResultEnvelopeCodec.cs` to reference `glp_wire_registry` — remove the duplicated constants (SC-010)
 - [ ] T007 Define the abstract message model (`Message`, `Header`, `Section`, `CrdtModel` enum) in `csharp/glp_crdtmsg/model/AbstractModel.cs`
-- [ ] T008 Wire reuse seams behind `ILinkTransport` in `csharp/glp_crdtmsg/route/LinkTransport.cs` — `glp_result_codec.TermCodec` (+ CycleGuard), `glp_link` FrameCodec, `glp_quick_host` QUIC/WS/SPKI
+- [ ] T008 Wire reuse seams behind `ILinkTransport` in `csharp/glp_crdtmsg/route/LinkTransport.cs` — `glp_result_codec.TermCodec` (+ CycleGuard), `glp_link` FrameCodec, `glp_quick_host` QUIC/WS/SPKI; treat the SPKI-pin shared cert as **layer-0 membership ONLY** (FR-019) — per-peer identity comes from the enrolled Ed25519 key (T039), never the cert
 - [ ] T009 Implement DVV-dot + hash-chain primitives (`op_id = (peer_name, counter)`, `pred_hash`) in `csharp/glp_crdtmsg/crdt/Dot.cs` (foundational — store, crdt, sig all consume it)
 
 **Checkpoint**: registry unified, model + transport seam + op-identity ready.
@@ -90,12 +90,12 @@ C# workspace under `csharp/`; GLP proposal under `programs/crdtmsg/`; parity vec
 **Independent Test**: op idempotence + observed-remove; Fugue no-interleaving; Peritext unknown-mark preservation.
 
 ### Tests (write first, must fail)
-- [ ] T026 [P] [US3] Op idempotence + observed-remove tombstone tests in `csharp/glp_crdtmsg.tests/OpSemanticsTests.cs` (FR-015/030)
+- [ ] T026 [P] [US3] Op idempotence + observed-remove tombstone tests + ground-term/acyclic rejection cases in `csharp/glp_crdtmsg.tests/OpSemanticsTests.cs` (FR-015/030/031/023)
 - [ ] T027 [P] [US3] Fugue no-interleaving convergence test (concurrent typing, randomized delivery) in `csharp/glp_crdtmsg.tests/FugueTests.cs` (SC-012)
 - [ ] T028 [P] [US3] Peritext unknown-mark preservation (through convergence + 4-surface transcode) in `csharp/glp_crdtmsg.tests/PeritextTests.cs` (SC-013)
 
 ### Implementation
-- [ ] T029 [US3] Op-based JSON-CRDT op model (ground-term ops, deps, pred_hash; ground-terms-only law) in `csharp/glp_crdtmsg/crdt/Op.cs`
+- [ ] T029 [US3] Op-based JSON-CRDT op model (ground-term ops, deps, pred_hash; ground-terms-only law) in `csharp/glp_crdtmsg/crdt/Op.cs` — enforce **acyclic op payloads** (CycleGuard at op-apply, FR-031) and **reject non-ground wire values** (FR-023 / BB-CRDT-9), surfacing faults as transport faults not GLP Fail
 - [ ] T030 [US3] Semantic tombstone op (observed-remove) in `csharp/glp_crdtmsg/crdt/Tombstone.cs`
 - [ ] T031 [US3] Delivery over the shipped reliability substrate (monotone seq, bounded-reorder idempotent inbound, N=8 window, single-winner fencing) in `csharp/glp_crdtmsg/crdt/Delivery.cs`
 - [ ] T032 [US3] Fugue sequence CRDT (stable `elem_id=(dot,side)`, left/right origin, maximal non-interleaving) in `csharp/glp_crdtmsg/crdt/richtext/Fugue.cs`
