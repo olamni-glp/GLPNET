@@ -63,7 +63,7 @@ Bins: **ACC** accepted · **PROV** provisional · **ESC** escalated (owner decis
 | BB-CRDT-4 | Causality: dotted version vectors; dot = stable op identity | ACC | CORE | OC-4 | S6 gap6 C4 | B-21 A-25 C-21 |
 | BB-CRDT-5 | Delivery substrate reuse: ordering/dedup/fencing/backpressure | ACC | CORE | OC-4 | S6 S4 C4 | C-19 A-12 |
 | BB-CRDT-6 | Region-LWW-with-recovery register (040 ruled semantics) | ACC (tie-break open) | OPT | OC-4 | S6 gap6 C4 | C-21 |
-| BB-CRDT-7 | Sequence/rich-text CRDT: Fugue + Peritext spans | PROV | OPT | OC-3 OC-4 | S6 S4 gap3 C4 | B-20 (+F1 §14 rec) |
+| BB-CRDT-7 | Sequence/rich-text CRDT: Fugue + Peritext spans | ACC (041-shipped) | OPT | OC-3 OC-4 | S6 S4 gap3 C4 | B-20 (+F1 §14 rec) |
 | BB-CRDT-8 | Byzantine branch: hash-chained ops → blocklace | **ESC E7** | OPT | OC-4 OC-2 | S6 S3 gap5 C4 | B-19 |
 | BB-CRDT-9 | Ground-terms-only law + explicit CorrIds | ACC (D-B2 standing gates) | CORE | OC-4 | S6 gap6 C4 | C-27 |
 | BB-CRDT-10 | History compaction: columnar op-log encoding | PROV | POST | OC-4 | S1 S6 C4 | B-22 |
@@ -131,7 +131,7 @@ Bins: **ACC** accepted · **PROV** provisional · **ESC** escalated (owner decis
 - **BB-CRDT-4**: causality = dotted version vectors (O(actors) metadata; production lineage); the dot is the stable identity that tombstones, repairs, and sub-signatures address. Head-state warning (C-21): current region-LWW is arrival-order — NOT convergent under true concurrency without this. E7-ruled: op ids hash-chain their causal predecessors from day one (benign mesh for MVP; blocklace/Byzantine upgrade path preserved without redesigning op identity).
 - **BB-CRDT-5**: deliver ops over the shipped reliability sublayer: LinkSequencer (monotone), InboundOrdering (bounded reorder buffer, idempotent dedup), SendWindow (N=8 backpressure), FencingRegistry (stale writer → Fenced, single-winner). At-least-once + idempotent merge; no exactly-once machinery.
 - **BB-CRDT-6**: region edits: LWW-per-region with saved-original always recoverable + transient/permanent classification (040 owner-ruled). Needs a concurrency tie-break (dot order) — currently arrival-order.
-- **BB-CRDT-7** (PROV): ordered/rich content: Fugue (maximal non-interleaving) + Peritext formatting spans over stable IDs, preserving unhandled marks (the CRDT-native face of BB-HDR-2).
+- **BB-CRDT-7** (ACCEPTED — 041-shipped): ordered/rich content: Fugue (maximal non-interleaving) + Peritext formatting spans over stable IDs, preserving unhandled marks (the CRDT-native face of BB-HDR-2). Shipped by 041 (`csharp/glp_crdtmsg/crdt/richtext/` — `Fugue.cs`, `Peritext.cs`, `RichTextDoc.cs`; 041 SC-012/SC-013, tag `v2026.07.04.4`).
 - **BB-CRDT-8** (**E7**): IF the mesh is adversarial: hash-chained causal history in op ids from day one (cheap), blocklace as the target log model (equivocation exclusion; echoes the in-repo blocklace note). Owner threat-model declaration selects the branch.
 - **BB-CRDT-9**: ground-terms-only law: only GROUND terms cross the wire (025 GRL discipline, 036 L5 contract); reply variables = local pairs + ground CorrIds. Moving to distributed variables is gated on D-B2 rulings + the two OPEN proofs (writer-MGU, dist-deref) — standing owner gates.
 - **BB-CRDT-10** (PROV, POST): op-history storage/bulk transfer: Automerge-style columnar + RLE + LEB128 (~1.1 B/op).
@@ -187,14 +187,14 @@ Bins: **ACC** accepted · **PROV** provisional · **ESC** escalated (owner decis
 
 | Block | Promotes when |
 |---|---|
-| BB-ENC-7 CBOR surface | a non-term generic payload consumer appears; then goldens per BB-ENC-9 |
-| BB-ENC-8 markdown | owner picks lossless vs render-only; post-MVP |
-| BB-SIG-4 hop attestation | E4 base format ruled; nesting-growth bound designed |
-| BB-VER-5 lenses | first restructuring migration need; Avro path insufficient |
-| BB-CRDT-7 Fugue/Peritext | first ordered/rich-content document type ships |
-| BB-CRDT-10 columnar history | history sync becomes bandwidth-relevant |
-| BB-RTE-4 distance-vector | mesh grows beyond static topology |
-| BB-SCH-3 codegen | >2 runtimes hand-maintaining codecs |
+| BB-ENC-7 CBOR surface | **RESOLVED (042): promoted** — E3-ruled ACC/MVP-CORE; 041 shipped the surface (`CborCodec.cs`, four-surface conformance matrix with goldens per BB-ENC-9). Report §7 RG-042-1 |
+| BB-ENC-8 markdown | owner picks lossless vs render-only; post-MVP *(re-affirmed 042: no owner pick, nothing shipped — RG-042-2)* |
+| BB-SIG-4 hop attestation | nesting-growth bound designed *(restated 042: the E4 base-format condition was met by the 2026-07-04 ruling; this is the remaining condition — RG-042-3)* |
+| BB-VER-5 lenses | first restructuring migration need; Avro path insufficient *(re-affirmed 042: 041 shipped version handling, zero translation machinery — RG-042-4)* |
+| BB-CRDT-7 Fugue/Peritext | **RESOLVED (042): trigger met, self-promoted PROV → ACC** — 041 shipped Fugue + Peritext + RichTextDoc (SC-012/013, `v2026.07.04.4`). Report §7 RG-042-5 |
+| BB-CRDT-10 columnar history | history sync becomes bandwidth-relevant *(re-affirmed 042: no columnar/compaction machinery at HEAD; delta+Merkle is the current answer — RG-042-6)* |
+| BB-RTE-4 distance-vector | mesh grows beyond static topology *(re-affirmed 042: mesh still the 036 shared-cert static-peer LAN family — RG-042-7)* |
+| BB-SCH-3 codegen | >2 runtimes hand-maintaining parsers of the same wire formats *(clarified 042: count at HEAD = 2 — Dart + C#; the Python terminal JSON sub-envelope is a distinct format — RG-042-8)* |
 
 ## 6. Escalation register — RULED by Gabi 2026-07-04 (all nine)
 
@@ -279,3 +279,13 @@ Everything else marked PROV in §1: provisional/post-MVP per §5.
 | 32 | §7 item 9 | +experimental GLP guard surface (E6-mandated deliverable, §1.14 propose-first) | RP-042-10 | HEAD(6ff3a8c9) |
 | 33 | §7 item 10 + terminal line | E9 dual representation around the SCH-1 core; terminal line scoped to "marked PROV in §1" | RP-042-12 | HEAD(6ff3a8c9) |
 | 34 | §6 curator note | Supersession note extended to En-marked §2/§5/§7 passages | RP-042-15 | HEAD(6ff3a8c9) |
+| 35 | §1 BB-CRDT-7 row | Bin PROV → ACC (041-shipped); MVP tier unchanged (OPT) | RG-042-5 | HEAD(6ff3a8c9) |
+| 36 | §2 BB-CRDT-7 | "(PROV)" → "(ACCEPTED — 041-shipped)"; shipped richtext artifacts + SC refs appended | RG-042-5 | HEAD(6ff3a8c9) |
+| 37 | §5 BB-ENC-7 row | Row resolved: promoted (E3-ruled + 041-shipped CBOR surface); trigger text replaced by resolution | RG-042-1 | HEAD(6ff3a8c9) |
+| 38 | §5 BB-ENC-8 row | Re-affirmed annotation appended (no owner pick, nothing shipped) | RG-042-2 | HEAD(6ff3a8c9) |
+| 39 | §5 BB-SIG-4 row | Trigger restated to the remaining condition (E4 base-format condition met 2026-07-04) | RG-042-3 | HEAD(6ff3a8c9) |
+| 40 | §5 BB-VER-5 row | Re-affirmed annotation appended (no restructuring migration shipped or needed) | RG-042-4 | HEAD(6ff3a8c9) |
+| 41 | §5 BB-CRDT-7 row | Row resolved: trigger met (041 rich-text shipped), self-promoted PROV → ACC | RG-042-5 | HEAD(6ff3a8c9) |
+| 42 | §5 BB-CRDT-10 row | Re-affirmed annotation appended (bandwidth trigger unmet) | RG-042-6 | HEAD(6ff3a8c9) |
+| 43 | §5 BB-RTE-4 row | Re-affirmed annotation appended (static topology stands) | RG-042-7 | HEAD(6ff3a8c9) |
+| 44 | §5 BB-SCH-3 row | Trigger clarified: ">2 runtimes hand-maintaining parsers of the same wire formats"; HEAD count = 2 noted | RG-042-8 | HEAD(6ff3a8c9) |

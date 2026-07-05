@@ -351,15 +351,40 @@ propagation defect.
 
 ## 7. PROVISIONAL register closure (FR-008/FR-009, SC-003)
 
-*(pending T021–T023)*
+All 8 F3 §5 register rows adjudicated against current reality at HEAD(6ff3a8c9) — code state at
+check time identical (only 042 pass docs committed since). Trigger evidence per research.md R5:
+041 shipped surfaces (`csharp/glp_crdtmsg*`, `csharp/glp_wire_registry`, `specs/041-crdtmsg-mvp/`,
+tag `v2026.07.04.4`) + repo head state. Finding ids RG-042-1..8.
+
+| finding_id | row | trigger (as delivered) | current-HEAD evidence | verdict |
+|---|---|---|---|---|
+| RG-042-1 | BB-ENC-7 CBOR surface | "a non-term generic payload consumer appears; then goldens per BB-ENC-9" | Promotion already executed by owner ruling E3 (block ACC/MVP-CORE — change-log rows 24/25); independently, 041 shipped the surface: `csharp/glp_crdtmsg/model/CborCodec.cs` (041 FR-002) inside the four-surface conformance matrix with goldens per BB-ENC-9 discipline (SR-042-01) | **resolved — promoted** (E3-ruled + shipped); register row closed |
+| RG-042-2 | BB-ENC-8 markdown | "owner picks lossless vs render-only; post-MVP" | No owner pick recorded; zero markdown-surface code under `csharp/` (grep, case-insensitive); E3 explicitly deferred markdown ("markdown + further surfaces later"); SR-042-02 scans corroborate the absence | **re-affirmed** (trigger stands as written) |
+| RG-042-3 | BB-SIG-4 hop attestation | "E4 base format ruled; nesting-growth bound designed" | First condition MET 2026-07-04 (F3 §6 E4). Second UNMET: 041 shipped no hop/forwarding attestation — its only attestation surface is the content-signature class (041 spec FR-021); no nesting-growth-bound design exists anywhere at HEAD | **re-affirmed with restated trigger**: "nesting-growth bound designed" (E4 base-format condition met 2026-07-04) |
+| RG-042-4 | BB-VER-5 lenses | "first restructuring migration need; Avro path insufficient" | 041 shipped no restructuring migration (zero `migration`/`lens` matches in `specs/041-crdtmsg-mvp/spec.md`); SR-042-05: version HANDLING shipped, zero TRANSLATION machinery | **re-affirmed** (trigger stands) |
+| RG-042-5 | BB-CRDT-7 Fugue/Peritext | "first ordered/rich-content document type ships" | **MET**: 041 shipped `csharp/glp_crdtmsg/crdt/richtext/Fugue.cs` + `Peritext.cs` + `RichTextDoc.cs` (+ `FugueTests.cs`/`PeritextTests.cs`; 041 SC-012/SC-013, owner-mandated, tag `v2026.07.04.4`); SR-042-08 verified the ship | **self-promoted** PROV → ACC (041-shipped); §1/§2/§5 updated (change-log rows 35/36/41) |
+| RG-042-6 | BB-CRDT-10 columnar history | "history sync becomes bandwidth-relevant" | Not met: no columnar/RLE/compaction machinery at HEAD; delta+Merkle (E1) is the current sync answer (SR-042-11) | **re-affirmed** (trigger stands) |
+| RG-042-7 | BB-RTE-4 distance-vector | "mesh grows beyond static topology" | Not met: mesh remains the 036 shared-cert static-peer LAN family; zero distance-vector/routing-table code under `csharp/` or `glp_quick/` (grep) | **re-affirmed** (trigger stands) |
+| RG-042-8 | BB-SCH-3 codegen | ">2 runtimes hand-maintaining codecs" | Count at HEAD = 2: Dart (`glp_runtime/lib/codec/result_envelope_codec.dart`) + C# (`csharp/glp_result_codec/TermCodec.cs`, `glp_crdtmsg` codecs). The Python terminal JSON sub-envelope (`glp_quick/src/glp_quick/terminal/protocol.py`) encodes a distinct format, not a third hand-maintained copy of the wire codecs | **re-affirmed with clarified wording**: ">2 runtimes hand-maintaining parsers of the same wire formats" (2 at HEAD: Dart, C#) |
+
+**SC-003: met** — zero rows with already-met triggers remain PROVISIONAL. The two met/overtaken
+triggers (BB-ENC-7, BB-CRDT-7) are promoted with their rows resolved; the six others re-affirmed
+against current reality (two with corrected trigger wording), none ambiguous.
 
 ### 7a. Promotions for owner review
 
-*(pending T023)*
+1. **BB-CRDT-7 Fugue/Peritext — self-promoted PROV → ACC (041-shipped)** on the mechanically-met
+   trigger "first ordered/rich-content document type ships": 041 shipped Fugue + Peritext +
+   RichTextDoc with tests (SC-012/SC-013), owner-mandated, tag `v2026.07.04.4` (RG-042-5). MVP
+   tier left OPT — no ruling re-tiers it; the ship itself was the 041 owner mandate.
+2. **BB-ENC-7 CBOR surface — register-row closure only**: the promotion itself was Gabi's E3
+   ruling (propagated earlier, change-log rows 24/25), not a 042 self-promotion; the row is now
+   also evidenced by shipped code (RG-042-1).
 
 ### 7b. Escalations
 
-*(pending T023)*
+None — no register row required an owner ruling; every verdict is mechanical against recorded
+rulings and shipped artifacts.
 
 ## 8. Evidence-pointer census (FR-010, SC-007)
 
@@ -371,7 +396,23 @@ propagation defect.
 
 ## 10. Proposed roadmap follow-ups (FR-009)
 
-*(pending T024/T029)*
+Proposed only — explicitly NOT implemented by this pass (FR-009: the pass never touches
+`csharp/`, `glp_runtime/`, `codeconv/`, `programs/`).
+
+1. **`unified-wire-mesh-migration`** (from DD-042-1): migrate `glp_quick_host`'s `Mesh.TryRoute`
+   off `JsonDocument.Parse` onto the registry-typed binary payload header via 041's
+   `ILinkTransport`/`MeshNode` seam (`csharp/glp_crdtmsg/route/Mesh.cs` names the host adapter as
+   its drop-in replacement), preserving router payload-opacity (E2/BB-WIRE-1). Until then the
+   mesh routes JSON only and the shipped binary codecs are unused by the router.
+2. **`040-store-naming-closure`** (from DD-042-3): record the owner ruling the 040 plan flag
+   requested — either confirm file-WAL as the ruled store (amending the 040 spec's
+   "PGlite-backed DuckLake" wording) or schedule the deferred queryable projection store. Today
+   the spec-vs-shipped divergence persists with no confirmation record.
+
+Register closures added **no** follow-ups: the two promotions (RG-042-1/-5) are already shipped
+code; the six re-affirmed rows wait on their (restated) triggers, requiring no net-new work now.
+The E9 addendum's `crdtmsg-xsd-style-schema-language` capture predates this pass and is already
+on the roadmap — listed here only for completeness of the epic's open-follow-up picture.
 
 ## 11. Amendment index (FR-011, SC-008)
 

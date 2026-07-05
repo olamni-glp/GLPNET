@@ -88,10 +88,10 @@ rest re-affirmed; nothing stale (FR-008/FR-009).
 **Independent Test**: adjudicate the register alone — zero rows with already-met triggers still
 marked PROVISIONAL (spec US3 independent test; SC-003).
 
-- [ ] T021 [US3] Gather current-HEAD trigger evidence for the 8 rows (F3 §5) per research.md R5: 041 shipped surfaces (`csharp/glp_crdtmsg*`, `specs/041-crdtmsg-mvp/`, tag `v2026.07.04.4`) for BB-ENC-7 (also E3-promoted), BB-CRDT-7 (rich-text Fugue/Peritext), BB-VER-5 (check whether 041 shipped any restructuring migration), BB-SCH-3 (runtime-codec count); repo state for BB-ENC-8, BB-SIG-4, BB-CRDT-10, BB-RTE-4 — quoted artifact refs per row
-- [ ] T022 [US3] Adjudicate all 8 rows: mechanically-met → self-promote (block status updated, register row resolved, evidence quoted); not-met → re-affirm with trigger restated against current reality (corrected wording where stale/ambiguous); ambiguous/judgment → escalate; apply edits to F3 §5 (+§1/§2 status echoes) + change-log rows
-- [ ] T023 [US3] Write report §7 with the two mandatory batch lists: §7a promotions-for-owner-review (every self-promoted row + evidence), §7b escalations; cross-check zero met-trigger rows remain PROV (SC-003)
-- [ ] T024 [P] [US3] Capture closures needing net-new implementation as proposed roadmap follow-ups in report §10 (named, one paragraph, explicitly NOT implemented — FR-009); include any drift-item follow-ups from T019
+- [X] T021 [US3] Gather current-HEAD trigger evidence for the 8 rows (F3 §5) per research.md R5: 041 shipped surfaces (`csharp/glp_crdtmsg*`, `specs/041-crdtmsg-mvp/`, tag `v2026.07.04.4`) for BB-ENC-7 (also E3-promoted), BB-CRDT-7 (rich-text Fugue/Peritext), BB-VER-5 (check whether 041 shipped any restructuring migration), BB-SCH-3 (runtime-codec count); repo state for BB-ENC-8, BB-SIG-4, BB-CRDT-10, BB-RTE-4 — quoted artifact refs per row
+- [X] T022 [US3] Adjudicate all 8 rows: mechanically-met → self-promote (block status updated, register row resolved, evidence quoted); not-met → re-affirm with trigger restated against current reality (corrected wording where stale/ambiguous); ambiguous/judgment → escalate; apply edits to F3 §5 (+§1/§2 status echoes) + change-log rows
+- [X] T023 [US3] Write report §7 with the two mandatory batch lists: §7a promotions-for-owner-review (every self-promoted row + evidence), §7b escalations; cross-check zero met-trigger rows remain PROV (SC-003)
+- [X] T024 [P] [US3] Capture closures needing net-new implementation as proposed roadmap follow-ups in report §10 (named, one paragraph, explicitly NOT implemented — FR-009); include any drift-item follow-ups from T019
 
 **Checkpoint**: SC-003 met — register has zero already-met triggers still PROVISIONAL.
 
