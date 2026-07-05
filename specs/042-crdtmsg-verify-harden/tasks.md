@@ -106,9 +106,9 @@ disposition (FR-010); the 86-claim transcript pointer superseded (FR-014).
 zero dangling (spec US4 independent test; SC-007).
 
 - [X] T025 [P] [US4] Enumerate every evidence pointer in the three docs (in-repo, sibling-repo, external-url, session-transcript, named-corpus classes per data-model.md) into `CORPUS/evidence/evidence-index.md` with EP-* ids (read-only — may start any time after T001)
-- [ ] T026 [US4] Resolve/disposition every EP row: verify in-repo refs at `HEAD`; sibling-repo refs → host-blocked disposition (spec Assumptions); materialize recoverable artifacts into `CORPUS/evidence/`; the "session transcripts" 86-claim pointer (F3 §8 L237) → unrecoverable disposition (what was lost, what survives in-doc, confidence impact) superseded by T016/T017 re-execution records; update doc pointer text + change-log rows
-- [ ] T027 [US4] F2 bibliographic re-verification per research.md R6: Tier 1 — every load-bearing paper in F2 §11 verified (title/authors/venue/URL resolve); Tier 2 — best-effort existence sweep of remaining ~148 entries (incl. the 2026-dated arXiv ids, R3.5); link-rot recorded as disposition, never silently fixed; results into evidence-index + report §8 + any F2 corrections with change-log rows
-- [ ] T028 [US4] Write report §8 census totals (class × resolution) and verify SC-007: 100% of pointers resolved or dispositioned, zero dangling transcript pointers
+- [X] T026 [US4] Resolve/disposition every EP row: verify in-repo refs at `HEAD`; sibling-repo refs → host-blocked disposition (spec Assumptions); materialize recoverable artifacts into `CORPUS/evidence/`; the "session transcripts" 86-claim pointer (F3 §8 L237) → unrecoverable disposition (what was lost, what survives in-doc, confidence impact) superseded by T016/T017 re-execution records; update doc pointer text + change-log rows
+- [X] T027 [US4] F2 bibliographic re-verification per research.md R6: Tier 1 — every load-bearing paper in F2 §11 verified (title/authors/venue/URL resolve); Tier 2 — best-effort existence sweep of remaining ~148 entries (incl. the 2026-dated arXiv ids, R3.5); link-rot recorded as disposition, never silently fixed; results into evidence-index + report §8 + any F2 corrections with change-log rows
+- [X] T028 [US4] Write report §8 census totals (class × resolution) and verify SC-007: 100% of pointers resolved or dispositioned, zero dangling transcript pointers
 
 **Checkpoint**: SC-007 met — corpus stands on durable evidence.
 

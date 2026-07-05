@@ -388,7 +388,51 @@ rulings and shipped artifacts.
 
 ## 8. Evidence-pointer census (FR-010, SC-007)
 
-*(pending T025–T028; full census: [evidence/evidence-index.md](evidence/evidence-index.md))*
+All 231 censused pointers (T025) resolved or dispositioned (T026/T027); full per-pointer detail:
+[evidence/evidence-index.md](evidence/evidence-index.md). In-repo refs verified in the working
+tree at HEAD; sibling-repo refs existence-verified on this host (they remain outside glpnet —
+durable only while the sibling repos exist); external URLs verified per research.md R6 (Tier 1 =
+F2 §11 load-bearing papers, bibliography checked; Tier 2 = existence sweep).
+
+**Census totals (class × resolution):**
+
+| class | rows | resolves | host-blocked | link-rot | unrecoverable |
+|---|---|---|---|---|---|
+| in-repo | 32 | 32 | 0 | 0 | 0 |
+| sibling-repo | 46 | 44 | 2 (EP-F1-054/-055: repos absent from this host) | 0 | 0 |
+| external-url | 148 | 146 | 0 | 2 (EP-F2-030, EP-F2-095) | 0 |
+| session-transcript | 2 | 0 | 0 | 0 | 2 (EP-F3-012/-024, superseded by the 042 re-execution records) |
+| named-corpus | 3 | 3 | 0 | 0 | 0 |
+| **total** | **231** | **225** | **2** | **2** | **2** |
+
+**SC-007: met** — 100% of pointers carry exactly one resolution or explicit disposition; zero
+dangling; zero remaining transcript pointers without a disposition (the two are dispositioned
+unrecoverable and superseded — F3 change-log rows 45–46).
+
+Findings of note:
+
+1. **Link-rot / wrong-target (2, both corrected in F2 with change-log rows 6–7)**: EP-F2-030 —
+   the Rivest S-expressions MIT URL is 404 (IETF datatracker draft substituted); EP-F2-095 — the
+   Merkle Search Trees entry's arXiv id 1904.13396 resolves to an unrelated astrophysics paper
+   (mistranscribed; the paper's real home is HAL hal-02303490, substituted).
+2. **`buildkit-beacon` relocation (systematic, 13 pointers)**: the standalone repo
+   `D:/bstdev/research/buildkit-beacon` no longer exists on this host — every such cite
+   (EP-F1-014/-015/-019/-020/-024/-028/-035/-042/-043/-049/-050/-051, EP-F2-001) verified inside
+   `D:/bstdev/research/buildkit` at the same relative paths (one exception: `sign.py` lives at
+   `roadmap/crdt/sign.py`, not `beacon/sign.py`). Recorded per-row in the index; F1 text left as
+   delivered (the index is the resolution layer).
+3. **R3.5 2026-dated arXiv ids: all genuine.** EP-F2-105 (2606.31759), EP-F2-106 (2606.18966),
+   EP-F2-116 (2601.02254 Vouchsafe), EP-F2-136 (2603.24775 AIP) all have live arXiv abstract
+   pages with exact title matches.
+4. **Tier 1 bibliographic verification: 39/39 load-bearing entries confirmed** (titles/authors/
+   venues match), with only minor notes (superseded-edition URL on the ASN.1 ITU page; DFDL URL
+   serves GFD.207 as the corpus itself acknowledges; TCSB-vs-TRCB gloss on Pure Op-Based RDTs;
+   Blocklace first author is Almeida; KeyKOS URL is a paper collection; MTL-mode draft gained a
+   5th author). None rises to a wrong claim; none dispositioned.
+5. **EP-F3-005** (the roadmap brief's OC-1..OC-4 quote): not under `docs/roadmap-intake/` —
+   carried in-repo by the roadmap-sync export `.specify/roadmap-sync/exports/
+   gavriellas__glpnet__20260704T064252Z.json` (committed in d2689a71) and quoted in
+   `specs/041-crdtmsg-mvp/spec.md`.
 
 ## 9. Owner escalations (FR-013)
 

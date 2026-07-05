@@ -126,7 +126,7 @@ Bears on **S1** (interchange), **gap2** (≥3-way interchange), **gap8** (payloa
 13. **SFVInt: Fast Generic Variable-Length Integer Decoding using Bit-Manipulation Instructions** — Liao et al. (2024) — arXiv 2403.06898 — https://arxiv.org/abs/2403.06898
     - State-of-the-art branchless/SIMD varint decoding — evidence that length-prefix/varint framing need not bottleneck high-volume CRDT streams.
     - *concepts:* varint decoding, bit-manipulation, SIMD, throughput · *maps_to:* gap8 · **ok**
-14. **SPKI/SDSI S-Expressions** (draft-rivest-sexp) — Rivest (1997) — IETF I-D — https://people.csail.mit.edu/rivest/Sexp.txt `[INTERNAL-OVERLAP qmedit-50]`
+14. **SPKI/SDSI S-Expressions** (draft-rivest-sexp) — Rivest (1997) — IETF I-D — https://datatracker.ietf.org/doc/draft-rivest-sexp/ *(042: original MIT URL people.csail.mit.edu/rivest/Sexp.txt now 404 — link-rot, EP-F2-030)* `[INTERNAL-OVERLAP qmedit-50]`
     - Head-tagged, self-describing octet-string/list structure with a length-prefixed **canonical** form for signing — a minimal, spectrum-spanning model where the same tree has readable and canonical binary encodings.
     - *concepts:* head-tagged lists, canonical S-expression, length-prefixed strings, transport vs canonical form · *maps_to:* S1, S3, gap2, gap3 · **seminal**
 15. **A Type-Theoretic Model on NDN-TLV Encoding** — Ma, Afanasyev, Zhang (2022) — ACM ICN 2022 — https://dl.acm.org/doi/10.1145/3517212.3558093
@@ -358,7 +358,7 @@ Bears on **S6**, **gap3** (tombstone), **gap4** (repair via reconciliation), and
 2. **Introducing Support for Move Operations in Melda CRDT** — Brocco (2025) — arXiv 2503.04811 — https://arxiv.org/pdf/2503.04811
    - Practical move-operation support in the Melda delta-state JSON CRDT for document collections — a concrete system point for large composable CRDT documents with reorganization.
    - *concepts:* Melda, delta-state CRDT, move operations, document-collection sync · *maps_to:* S6, gap6 · **ok**
-3. **Merkle Search Trees: Efficient State-Based CRDTs in Open Networks** — Auvolat, Taïani (2019) — IEEE SRDS 2019 / arXiv 1904.13396 — https://arxiv.org/abs/1904.13396
+3. **Merkle Search Trees: Efficient State-Based CRDTs in Open Networks** — Auvolat, Taïani (2019) — IEEE SRDS 2019 / HAL hal-02303490 — https://inria.hal.science/hal-02303490 *(042: delivered arXiv id 1904.13396 resolves to an unrelated astrophysics paper — mistranscribed; the MST paper has no arXiv listing, EP-F2-095)*
    - Encodes CRDT state as an order-preserving balanced Merkle tree so open-network peers reconcile large key-value stores by hash comparison without a causal-broadcast primitive — the anti-entropy backbone for content stores.
    - *concepts:* Merkle search tree, state-based CRDT, anti-entropy, order-preserving hashing · *maps_to:* S6, gap4 · **seminal**
 4. **Merkle-CRDTs: Merkle-DAGs meet CRDTs** — Sanjuan, Pöyhtäri, Teixeira, Psaras (2020) — arXiv 2004.00107 (Protocol Labs) — https://arxiv.org/pdf/2004.00107
@@ -604,3 +604,5 @@ Legend: **well** = external literature richly covers the design space · **moder
 | 3 | §11 gap9 row | Dropped "Macaroons" from the load-bearing list (entry §8.1 maps_to S2 only; §8's own header excludes it from the amulet lineage) | LR-042-F2-2 | DELIVERY(c20317ce) |
 | 4 | §2 section header | Split the "S4/gap3 (self-describing skip)" gloss — gap3 is the message-level tombstone, not skip; header now glosses gap3 as canonical/deterministic encoding groundwork | LR-042-F2-3 | DELIVERY(c20317ce) |
 | 5 | §11 gap9 row | E5 supersession note: literal 16 B rejected, Check ≥128-bit, 4-field shape kept | RP-042-14 | HEAD(6ff3a8c9) |
+| 6 | §2.14 S-Expressions entry | Dead MIT URL → IETF datatracker URL, link-rot noted inline | EP-F2-030 (report §8) | HEAD(6ff3a8c9) |
+| 7 | §7.3 Merkle Search Trees entry | Mistranscribed arXiv id 1904.13396 (unrelated paper) → HAL hal-02303490, correction noted inline | EP-F2-095 (report §8) | HEAD(6ff3a8c9) |
