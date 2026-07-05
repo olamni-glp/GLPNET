@@ -78,7 +78,7 @@ Bins: **ACC** accepted · **PROV** provisional · **ESC** escalated (owner decis
 
 ---
 
-## 2. Block catalog — decisions (condensed; full per-claim field detail lived in the three scanners' claim sets, preserved only in the F3 run-record session transcripts — see §8; no in-doc appendix exists (042 report CF-F3-2))
+## 2. Block catalog — decisions (condensed; full per-claim field detail lived in the three scanners' claim sets, held only in the F3 run-record session transcripts, which were not persisted — dispositioned unrecoverable by the 042 pass, superseded as evidence-of-record by the 042 re-execution records in [evidence/](evidence/) — see §8; no in-doc appendix exists (042 report CF-F3-2))
 
 ### ENC — encodings & interchange
 - **BB-ENC-1**: Define every message type once in an encoding-neutral abstract model; each surface (binary/JSON/YAML/term/md) is an encoding rule against it (ASN.1 X.680 discipline; qmedit's 3-surface design is the built instance). Never per-surface independent schemas.
@@ -234,7 +234,7 @@ Everything else marked PROV in §1: provisional/post-MVP per §5.
 - **Conflicts NOT resolved** → §6 escalation register (9 items). Curator made zero self-decisions on genuine conflicts.
 - **Cycles**: 1 full cycle + targeted counter-queries; ledger closed 28/28 on cycle 1 → stop rule met, no cycle-3 re-scan.
 - **Known drift observed by scanner C** (feasibility veto duty): mesh routes JSON-only (binary codecs unused by the router); payloadType constants duplicated (corrected by 041 `glp_wire_registry`); spec-vs-plan store naming (PGlite-DuckLake vs file-WAL, owner-flagged in 040 plan); 037 @name promise shipped unimplemented once (origin of BB-RTE-3). All four items dispositioned 2026-07-04 by the 042 pass — verification-report-042.md §5.
-- **Full claim sets**: preserved in the F3 run records (session transcripts); the three scanners' complete 86-claim output is the evidence appendix of record, per-claim fields intact.
+- **Full claim sets**: were held only in the F3 run-record session transcripts, which were NOT persisted — dispositioned **unrecoverable** by the 042 pass (report §8, EP-F3-012/-024). Lost: per-claim verbatim quotes and per-claim confidence fields. Survives in-doc: every claim id, family, and attribution (§1 Sources cells). Superseded as evidence-of-record by the 042 targeted re-execution: [evidence/f3-merge-rederivation.md](evidence/f3-merge-rederivation.md) (all 37 multi-family merge decisions re-derived from in-doc data, 37/37 COHERENT) + 13 blind re-scan records under [evidence/](evidence/) (report §3). Confidence impact: bounded — every merged decision and singleton was re-verified without the transcripts.
 
 ---
 
@@ -289,3 +289,5 @@ Everything else marked PROV in §1: provisional/post-MVP per §5.
 | 42 | §5 BB-CRDT-10 row | Re-affirmed annotation appended (bandwidth trigger unmet) | RG-042-6 | HEAD(6ff3a8c9) |
 | 43 | §5 BB-RTE-4 row | Re-affirmed annotation appended (static topology stands) | RG-042-7 | HEAD(6ff3a8c9) |
 | 44 | §5 BB-SCH-3 row | Trigger clarified: ">2 runtimes hand-maintaining parsers of the same wire formats"; HEAD count = 2 noted | RG-042-8 | HEAD(6ff3a8c9) |
+| 45 | §2 header | Transcript clause → not-persisted/unrecoverable disposition + supersession by evidence/ re-execution records | EP-F3-012 (report §8) | HEAD(6ff3a8c9) |
+| 46 | §8 full-claim-sets bullet | "evidence appendix of record, per-claim fields intact" → unrecoverable disposition: what was lost, what survives, supersession + confidence impact | EP-F3-024 (report §8) | HEAD(6ff3a8c9) |
