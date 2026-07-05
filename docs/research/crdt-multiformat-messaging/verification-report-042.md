@@ -1,7 +1,13 @@
 # Verification Report — 042-crdtmsg-verify-harden
 
 > **Run date**: 2026-07-04 · **Pass executor**: Claude (feature `042-crdtmsg-verify-harden`, marathon run `mrun-5b9a5befaae8`; all verification labor Claude agents per Constitution V)
-> **Verdict summary**: PENDING — populated at report assembly (T029).
+> **Verdict summary**: **all nine success criteria PASS** (§12) — 18/18 method elements audited
+> (SC-001); 13/13 singletons re-adjudicated, 0 demoted (SC-002, exceeded); register closed, 2
+> promotions (SC-003); coverage ledgers re-derived, 28/28 stands after enumerated corrections
+> (SC-004); 4/4 drift items dispositioned (SC-005); E1–E9 propagation inconsistencies = 0
+> (SC-006); 231/231 evidence pointers resolved or dispositioned (SC-007); 61 amendments, zero
+> silent edits (SC-008); report referenced from all three docs (SC-009). Zero owner escalations
+> (§9); 2 promotions for owner review (§7a); 2 proposed roadmap follow-ups (§10).
 >
 > **Test-Protocol baseline note (T003)**: `bash test/run_all_tests.sh` is **environment-blocked on
 > this Windows host** — the script hard-invokes `/home/user/dart-sdk/bin/dart` (absent here), a
@@ -10,6 +16,8 @@
 > run aborts in Section B. This feature's diff is documentation-only (no code-test surface is
 > touched), so the bracketing baseline is recorded as ENV-BLOCKED (identical state expected at
 > re-test, T030), not green. Pre-change HEAD: `6ff3a8c9`.
+> **T030 re-test (2026-07-05)**: identical ENV-BLOCKED state reproduced — Section A 6/204 with
+> the same `/home/user/dart-sdk/bin/dart: No such file or directory` signature — bracket closed.
 
 ## Verification baselines (FR-005/FR-015 hybrid ruling; plan.md table, scanner-C row resolved by T002)
 
@@ -436,7 +444,22 @@ Findings of note:
 
 ## 9. Owner escalations (FR-013)
 
-*(pending T029)*
+**None.** The pass self-ruled no contested decision and found nothing requiring a ruling:
+
+- Conformance audits (§2): all deviations classified mechanically; none contested.
+- Singleton re-scans (§3): 0 of 13 verdicts escalated; the one CONTRASTING sibling design found
+  (olamnit degrade semantics vs BB-RTE-3's loud-fail law) is design-space context against an
+  explicit 040 owner ruling, not a conflict.
+- Register closure (§7b): 0 escalations; every verdict mechanical against recorded rulings and
+  shipped artifacts.
+- **Hardened-verdict-vs-041 contradictions: none.** The hardened corpus and shipped 041 agree
+  everywhere checked; the only 041-adjacent tension is that `glp_quick_host`'s mesh has not yet
+  adopted the 041 binary seam — already a recorded drift disposition (DD-042-1) and roadmap
+  follow-up (§10), not a contradiction.
+
+Queued for owner **attention** (not rulings): the §7a promotions-for-review batch (2 items) and
+the §10 proposed roadmap follow-ups (2 items, incl. the 040 store-naming ruling the 040 plan
+itself requested).
 
 ## 10. Proposed roadmap follow-ups (FR-009)
 
@@ -460,10 +483,31 @@ on the roadmap — listed here only for completeness of the epic's open-follow-u
 
 ## 11. Amendment index (FR-011, SC-008)
 
-*(pending T029. Note: the three `SETUP-042-*` change-log rows logging each doc's change-log-section
-addition (amendment-changelog contract rule 4) reference this report's baselines/setup header rather
-than a §1–§8 finding — a documented exception: no §1–§8 finding existed yet at setup time.)*
+Per-document change-log totals (every in-place edit has exactly one row; contract rule 1):
+
+| doc | rows | finding-id families used |
+|---|---|---|
+| F1 `priorart-sibling-scan.md` | 6 | SETUP-042-F1 · LR-042-F1-1/-2 (§4.1) · RP-042-13 (§6) · SC-009 (§12) |
+| F2 `webresearch-corpus.md` | 8 | SETUP-042-F2 · LR-042-F2-1/-2/-3 (§4.2) · RP-042-14 (§6) · EP-F2-030/-095 (§8) · SC-009 (§12) |
+| F3 `buildingblocks-synthesis.md` | 47 | SETUP-042-F3 · LR-042-F3-1/-2/-3 (§4.3/§4.4) · CF-F3-2/-7 (§2) · DD-042-2 (§5) · RP-042-01..15 (§6) · RG-042-1..8 (§7) · EP-F3-012/-024 (§8) · SC-009 (§12) |
+| **total** | **61** | |
+
+Every non-SETUP finding id in a Why column resolves into report §1–§8 (LR→§4, CF→§2, DD→§5,
+RP→§6, RG→§7, EP→§8) or, for the three SC-009 reference rows, into §12. The three `SETUP-042-*`
+rows (logging each doc's change-log-section addition per contract rule 4) reference this report's
+setup/baselines header rather than a §1–§8 finding — a documented exception: no finding existed
+yet at setup time.
 
 ## 12. Success-criteria checklist
 
-*(pending T029/T031: SC-001..SC-009 with measured values)*
+| SC | criterion (abbrev.) | measured | verdict |
+|---|---|---|---|
+| SC-001 | 3/3 deliverables have complete conformance ledgers, zero unexamined elements | 3/3 ledgers; 18/18 method elements (F1 5, F2 5, F3 8), zero empty-evidence rows; totals arithmetic verified per ledger (§2.4) | **PASS** |
+| SC-002 | 9/9 singletons re-adjudicated with evidence or explicit no-further-evidence | **13/13** (the derivation corrected the delivered "9" — §3.1); 11 confirmed · 2 no-further-evidence; 26 blind re-scans on record (§3.2) | **PASS (exceeded)** |
+| SC-003 | 8/8 register rows re-adjudicated; zero met-trigger rows still PROVISIONAL | 8/8; 2 promoted/resolved (BB-ENC-7, BB-CRDT-7), 6 re-affirmed (2 with corrected wording); zero met-trigger PROV rows remain (§7) | **PASS** |
+| SC-004 | closure ledger reproduces 28/28 or every discrepancy enumerated+corrected | Enumerated-and-corrected path: every discrepant §3/§4 row rebuilt to §1-derived carrier sets (F3 change-log rows 2–18); closure count stands 28/28; zero unresolved contradictions (§4.3/§4.4) | **PASS** |
+| SC-005 | 4/4 scanner-C drift items dispositioned, zero dangling | 4/4: 1 corrected-in-corpus, 2 roadmap-follow-up, 1 obsolete (§5) | **PASS** |
+| SC-006 | zero cross-doc inconsistencies in E1–E9-affected statuses | Final count 0 after 15 propagation corrections (§6) | **PASS** |
+| SC-007 | 100% evidence pointers resolve or carry explicit disposition; zero dangling transcript pointers | 231/231: 225 resolve, 2 host-blocked, 2 link-rot (corrected), 2 unrecoverable (superseded); both transcript pointers dispositioned (§8) | **PASS** |
+| SC-008 | every amendment change-logged; any-10 sample = 10/10; zero silent edits | Sample 10/10 (rows spanning F1/F2/F3 and the CF/DD/RG/EP/SC-009 families, each mapped to its applied edit); full `git diff 6ff3a8c9 → HEAD` of the three docs: every hunk falls in a change-logged region — zero un-logged diffs; 61 rows total (§11) | **PASS** |
+| SC-009 | report exists in the epic corpus and is referenced from all three docs | This report + header reference lines in F1/F2/F3 (change-log rows F1-6, F2-8, F3-47) | **PASS** |

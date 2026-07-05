@@ -2,6 +2,7 @@
 
 **Feature**: `crdtmsg-buildingblocks-synthesis` (F3). **Date**: 2026-07-04.
 **Provenance**: F1 `priorart-sibling-scan.md` + F2 `webresearch-corpus.md` (both in this directory) + live glpnet repo at head (branch `037-virtual-3270-term`, post-040-implement).
+**Verification**: audited & hardened by feature 042 — see [verification-report-042.md](verification-report-042.md) and the terminal change log.
 **Method**: three-role pattern (see `docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md`). Planning triad: Claude generator + blind codex validator + curator merge (8 recorded decisions; key: 3 scanners, one per evidence FAMILY — two same-family scanners cannot corroborate). Execution triad: 3 blind scanners (A=F1 doc only, B=F2 corpus only, C=live-repo pinned set only) emitted 86 schema-conformant claims (A:30, B:29, C:27); evaluator merged by design-slot clustering + family intersection + counter-queries; curator wrote this document. Conflicts are ESCALATED, never self-decided. Authority order (validator V-3.5, adopted): brief constraints > repo head > F1 > F2 > inference.
 
 ---
@@ -291,3 +292,4 @@ Everything else marked PROV in §1: provisional/post-MVP per §5.
 | 44 | §5 BB-SCH-3 row | Trigger clarified: ">2 runtimes hand-maintaining parsers of the same wire formats"; HEAD count = 2 noted | RG-042-8 | HEAD(6ff3a8c9) |
 | 45 | §2 header | Transcript clause → not-persisted/unrecoverable disposition + supersession by evidence/ re-execution records | EP-F3-012 (report §8) | HEAD(6ff3a8c9) |
 | 46 | §8 full-claim-sets bullet | "evidence appendix of record, per-claim fields intact" → unrecoverable disposition: what was lost, what survives, supersession + confidence impact | EP-F3-024 (report §8) | HEAD(6ff3a8c9) |
+| 47 | header block | Verification reference line added (SC-009) | SC-009 (report §12) | HEAD(6ff3a8c9) |

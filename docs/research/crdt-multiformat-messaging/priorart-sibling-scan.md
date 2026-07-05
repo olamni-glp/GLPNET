@@ -5,6 +5,7 @@
 > **Role:** Curating (three-role prior-art scan team) — consolidates raw findings from 8 per-repo readers
 > **Units scanned:** `glpnet` · `buildkit-beacon` · `mstack` (MSTACK + mstack-coop) · `olamnit` (olamnit + olamnit-assistant + coop) · `buildkit` · `crucible` · `qhstate` (qhstate + qhstate-Yngenios + qhstate-coop) · `research-loose` (_marathon-synthesis + syst-lit-rev-agentic-protocols)
 > **Status:** Advisory consolidation. Confidence + recency are carried on every claim; keyword-collision traps are called out explicitly.
+> **Verification:** audited & hardened by feature 042 — see [verification-report-042.md](verification-report-042.md) and the terminal change log.
 
 ---
 
@@ -321,3 +322,4 @@ Rank by (recency since cutoff × directness × confidence). All paths absolute.
 | 3 | §12 matrix, S5 × crucible | `·` → `W (WS)` — body L163 attributes WS/MCP transport to crucible identically to beacon's W (missed-coverage) | LR-042-F1-2 | DELIVERY(c20317ce) |
 | 4 | §10 "Fit" line | E1 supersession note appended (store engine = delta-CRDT + Merkle; roadmap_crdt demoted to concept reference) | RP-042-13 | HEAD(6ff3a8c9) |
 | 5 | §14 reuse item 4 | Same E1 supersession note appended to the roadmap_crdt reuse recommendation | RP-042-13 | HEAD(6ff3a8c9) |
+| 6 | header block | Verification reference line added (SC-009) | SC-009 (report §12) | HEAD(6ff3a8c9) |

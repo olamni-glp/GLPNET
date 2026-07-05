@@ -5,6 +5,7 @@
 > **Total papers (curated):** 148
 > **Scope:** External literature (peer-reviewed papers, standards, seminal works, authoritative reference specs). This corpus **EXTENDS the internal corpora** already cited in the F1 prior-art scan — **beacon-42** (42-paper CRDT index), **mstack-18** (18-entry capability-security corpus), **qmedit-50** (50-pattern synthesis / 7 corpus groups). Papers already present internally are tagged `[INTERNAL-OVERLAP <corpus>]`; they are kept here (not dropped) so F3 has one unified bibliography, but the tag flags that no NEW acquisition is needed.
 > **Mapping key:** `S1–S8` = the eight epic signals (§2 of the F1 scan); `gap1–gap9` = the nine net-new gaps (§13). The theme agents' own `maps_to` guesses were **re-mapped** to these canonical IDs during curation.
+> **Verification:** audited & hardened by feature 042 (incl. full bibliographic re-verification) — see [verification-report-042.md](verification-report-042.md) and the terminal change log.
 
 ## Canonical signal / gap legend
 
@@ -606,3 +607,4 @@ Legend: **well** = external literature richly covers the design space · **moder
 | 5 | §11 gap9 row | E5 supersession note: literal 16 B rejected, Check ≥128-bit, 4-field shape kept | RP-042-14 | HEAD(6ff3a8c9) |
 | 6 | §2.14 S-Expressions entry | Dead MIT URL → IETF datatracker URL, link-rot noted inline | EP-F2-030 (report §8) | HEAD(6ff3a8c9) |
 | 7 | §7.3 Merkle Search Trees entry | Mistranscribed arXiv id 1904.13396 (unrelated paper) → HAL hal-02303490, correction noted inline | EP-F2-095 (report §8) | HEAD(6ff3a8c9) |
+| 8 | header block | Verification reference line added (SC-009) | SC-009 (report §12) | HEAD(6ff3a8c9) |

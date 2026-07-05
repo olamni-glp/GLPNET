@@ -116,9 +116,9 @@ zero dangling (spec US4 independent test; SC-007).
 
 ## Phase 7: Polish & Report Assembly
 
-- [ ] T029 Assemble the report: §9 consolidated owner escalations (incl. any hardened-verdict-vs-041 contradictions per FR-013), §11 amendment index (per-doc change-log counts, every finding_id resolves into §1–§8), §12 SC-001..SC-009 checklist with measured values; add the `verification-report-042.md` reference to all three docs (+ change-log rows — SC-009)
-- [ ] T030 Self-check SC-008: sample min(10, all) change-log rows across the three docs, verify each maps 1:1 to an actual applied edit and cites a report finding id; verify zero un-logged diffs by comparing `git diff` of the three docs against the union of change-log rows; then re-run `bash test/run_all_tests.sh` (Test Protocol re-test bracket)
-- [ ] T031 Final commit of all pass artifacts by name (3 hardened docs, report, evidence/, spec-dir updates) per commit-scope discipline; verify report §12 shows all nine SC rows PASS (or the enumerated-and-corrected alternative for SC-004)
+- [X] T029 Assemble the report: §9 consolidated owner escalations (incl. any hardened-verdict-vs-041 contradictions per FR-013), §11 amendment index (per-doc change-log counts, every finding_id resolves into §1–§8), §12 SC-001..SC-009 checklist with measured values; add the `verification-report-042.md` reference to all three docs (+ change-log rows — SC-009)
+- [X] T030 Self-check SC-008: sample min(10, all) change-log rows across the three docs, verify each maps 1:1 to an actual applied edit and cites a report finding id; verify zero un-logged diffs by comparing `git diff` of the three docs against the union of change-log rows; then re-run `bash test/run_all_tests.sh` (Test Protocol re-test bracket)
+- [X] T031 Final commit of all pass artifacts by name (3 hardened docs, report, evidence/, spec-dir updates) per commit-scope discipline; verify report §12 shows all nine SC rows PASS (or the enumerated-and-corrected alternative for SC-004)
 
 ---
 
