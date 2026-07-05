@@ -174,7 +174,36 @@ alongside.
 
 ### 3.2 Singleton verdicts (T017/T018)
 
-*(pending T017 blind re-scans + T018 curation)*
+Protocol executed as ruled (research.md R4): per singleton, one blind Claude scanner agent per
+non-corroborating family, given the family manifest + claim TOPIC only — never F3's verdict —
+26 blind scans total (12×A, 8×B, 6×C). Curation by the pass's single writer. All records under
+[evidence/](evidence/) (`f3-rescan-<block-id>.md`). Additionally, T016 re-derived the merge
+decisions of all 37 multi-family blocks from in-doc data only: **37 COHERENT, 0 CONTESTED**
+([evidence/f3-merge-rederivation.md](evidence/f3-merge-rederivation.md)) — no blocks joined the
+re-scan queue. Baseline for all verdicts: HEAD(6ff3a8c9). Finding ids SR-042-01..13.
+
+| finding_id | block | original family | verdict | essence | record |
+|---|---|---|---|---|---|
+| SR-042-01 | BB-ENC-7 | B | **confirmed** (strengthened to 3-family) | A corroborates the qmedit CBOR-TLV family + recommendation; C holds the SHIPPED 041 CBOR surface (`CborCodec.cs`, FR-002, 48-cell matrix green) | [f3-rescan-BB-ENC-7.md](evidence/f3-rescan-BB-ENC-7.md) |
+| SR-042-02 | BB-ENC-8 | A | **no-further-evidence** | B: no markdown-encoding literature; C: nothing shipped — both confirm the block's own absence framing; PROV/POST stands | [f3-rescan-BB-ENC-8.md](evidence/f3-rescan-BB-ENC-8.md) |
+| SR-042-03 | BB-WIRE-5 | C | **confirmed** (weak external corroboration) | A corroborates BE headers in two units; B the LE-lineage payload varint family; no contradiction — primary authority stays the shipped goldens | [f3-rescan-BB-WIRE-5.md](evidence/f3-rescan-BB-WIRE-5.md) |
+| SR-042-04 | BB-HDR-4 | C | **confirmed** | A independently records the PeerId-keyed identity design; B grounds key-centric naming (SPKI/SDSI/UCAN/CONIKS); ownership rules stay 040-owner-ruled | [f3-rescan-BB-HDR-4.md](evidence/f3-rescan-BB-HDR-4.md) |
+| SR-042-05 | BB-VER-5 | B | **confirmed** (as PROV; trigger unmet) | A: lens machinery cited-not-built; C: version HANDLING shipped, zero TRANSLATION machinery — PROV standing + trigger wording valid | [f3-rescan-BB-VER-5.md](evidence/f3-rescan-BB-VER-5.md) |
+| SR-042-06 | BB-VER-6 | C | **confirmed** (partial corroboration) | B corroborates acyclicity-by-design (move-op cycle avoidance, grow-only DAGs); codec-boundary CycleGuard stays repo+D5-gate authority; A: no evidence | [f3-rescan-BB-VER-6.md](evidence/f3-rescan-BB-VER-6.md) |
+| SR-042-07 | BB-CRDT-6 | C | **confirmed** | A (beacon `(hlc,origin)` LWW, olamnit LWW-by-mutability) + B (LWW/MV catalogue, cr-sqlite, DVV detection) corroborate; tie-break stays the recorded open item | [f3-rescan-BB-CRDT-6.md](evidence/f3-rescan-BB-CRDT-6.md) |
+| SR-042-08 | BB-CRDT-7 | B | **confirmed** (strengthened; register trigger MET) | A corroborates at bibliography level; C holds SHIPPED Fugue+Peritext+RichTextDoc (SC-012/013) — promotion executed in §7 | [f3-rescan-BB-CRDT-7.md](evidence/f3-rescan-BB-CRDT-7.md) |
+| SR-042-09 | BB-CRDT-8 | B | **confirmed** | A holds the blocklace/nested-attestation lineage; C the SHIPPED day-one hash chain (`Dot.cs` pred_hash, FR-025) with full Byzantine deferred — exactly the E7 split | [f3-rescan-BB-CRDT-8.md](evidence/f3-rescan-BB-CRDT-8.md) |
+| SR-042-10 | BB-CRDT-9 | C | **confirmed** (strengthened) | A DIRECTLY corroborates the ground-relay law (F1 L43/L48/L18); B corroborates the value-only replication family; CorrIds half stays D-B2-gated | [f3-rescan-BB-CRDT-9.md](evidence/f3-rescan-BB-CRDT-9.md) |
+| SR-042-11 | BB-CRDT-10 | B | **no-further-evidence** | A: nothing; C: no columnar/RLE/compaction (delta+Merkle is the current answer) — block legitimately rests on B-22 alone; PROV/POST stands | [f3-rescan-BB-CRDT-10.md](evidence/f3-rescan-BB-CRDT-10.md) |
+| SR-042-12 | BB-CRDT-11 | C | **confirmed** (partial corroboration) | Both families corroborate the durable tamper-evident provenance substrate; the including-refusals clause stays 040-owner authority | [f3-rescan-BB-CRDT-11.md](evidence/f3-rescan-BB-CRDT-11.md) |
+| SR-042-13 | BB-RTE-3 | C | **confirmed** (no-further-corroborating-evidence; owner-ruled + shipped twice) | B: nothing; A: one CONTRASTING sibling design (olamnit degrade) — recorded as design-space context, not a conflict: the law is an explicit 040 owner ruling implemented at HEAD in `routing.py` + `Addressing.cs` | [f3-rescan-BB-RTE-3.md](evidence/f3-rescan-BB-RTE-3.md) |
+
+**SC-002: met and exceeded** — 13 of 13 derived singletons (⊇ the spec's 9) carry a recorded
+verdict with evidence or an explicit no-further-evidence ruling. Verdict census: 11 confirmed ·
+2 no-further-evidence · 0 demoted · 0 promoted-by-rescan (BB-CRDT-7's promotion comes from its
+register trigger, §7) · 0 escalated from re-scans. No F3 §1/§2 status changes arise from the
+verdicts themselves (statuses stand as corrected by §6-propagation); the F3 §8 corroboration
+bullet now points here (change-log row 20).
 
 ## 4. Coverage-ledger re-derivation (FR-005, SC-004)
 
