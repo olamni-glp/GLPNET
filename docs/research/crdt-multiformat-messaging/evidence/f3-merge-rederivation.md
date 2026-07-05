@@ -68,7 +68,7 @@ Cross-cutting observations (informational, not contested):
    the change log records that those rows were rebuilt to §1-derived carrier sets
    (LR-042-F3-1/2/3), and every §1 Signals/gaps cell of the 37 blocks was re-checked
    here against the corrected rows: no residual mismatch found.
-2. Eight ESC-binned §1 rows among the 37 (ENC-4, ENC-5 surface set, WIRE-1, HDR-1,
+2. Nine ESC-binned §1 rows among the 37 (ENC-4, ENC-5 surface set, WIRE-1, HDR-1,
    CAP-2, SIG-1, CRDT-1, RTE-1, SCH-1) are all covered by the §6 ruled register and the
    curator supersession note; none was marked contested for the stale bin label.
 3. The two FI blocks whose prose declares a build gap (BB-CAP-2 "built NOWHERE",

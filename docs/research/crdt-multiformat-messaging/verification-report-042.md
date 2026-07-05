@@ -10,14 +10,22 @@
 > (§9); 2 promotions for owner review (§7a); 2 proposed roadmap follow-ups (§10).
 >
 > **Test-Protocol baseline note (T003)**: `bash test/run_all_tests.sh` is **environment-blocked on
-> this Windows host** — the script hard-invokes `/home/user/dart-sdk/bin/dart` (absent here), a
+> this Windows host** — the script's dart resolver (L27: honour a `DART` env override, else a PATH
+> lookup via `which dart`, else fall back to `/home/user/dart-sdk/bin/dart`) resolves to the absent
+> fallback path here (no `dart` on PATH, no `DART` set), a
 > pre-existing harness/env mismatch recorded in `docs/known-issues.md` §"Feature 041 — GLP REPL
-> baseline on Windows (T056)". Section A errors 198/204 with "No such file or directory" and the
-> run aborts in Section B. This feature's diff is documentation-only (no code-test surface is
+> baseline on Windows (T056)". Section A: 198 failed / 6 passed of 204 checks, every failure with
+> "No such file or directory", and the run aborts in Section B. This feature's diff is
+> documentation-only (no code-test surface is
 > touched), so the bracketing baseline is recorded as ENV-BLOCKED (identical state expected at
 > re-test, T030), not green. Pre-change HEAD: `6ff3a8c9`.
-> **T030 re-test (2026-07-05)**: identical ENV-BLOCKED state reproduced — Section A 6/204 with
-> the same `/home/user/dart-sdk/bin/dart: No such file or directory` signature — bracket closed.
+> **T030 re-test (2026-07-05)**: identical ENV-BLOCKED state reproduced — Section A again
+> 198 failed / 6 passed of 204 with the same `/home/user/dart-sdk/bin/dart: No such file or
+> directory` signature — bracket closed. *(Reporting note: the bracket originally recorded the two
+> runs in complementary units — the baseline as its 198 failures, the re-test as its 6 passes, of
+> the same 204-check section. They describe one state: Section A has exactly 198 positive `check`
+> calls and 6 negative `check_not` calls; when every REPL invocation errors, the 198 fail and the
+> 6 pass vacuously. Reconciled here to a single failed/passed unit.)*
 
 ## Verification baselines (FR-005/FR-015 hybrid ruling; plan.md table, scanner-C row resolved by T002)
 
@@ -285,7 +293,7 @@ all seven surface in §4 rows, so nothing is orphaned.
 ### 4.4 F3 §4 closure ledger (28/28)
 
 **Result: the headline count REPRODUCES; the row lists are DISCREPANT (12 of 17 in-ledger
-S/gap rows + all 7 C-cluster mappings; 8 overclaim cells + 32 missed-coverage cells).**
+S/gap rows + all 7 C-cluster mappings; 8 overclaim cells + 44 missed-coverage cells).**
 Finding id **LR-042-F3-2** (S/gap rows) and **LR-042-F3-3** (C1..C7 line). Baseline
 DELIVERY(6ecc975f).
 
@@ -297,10 +305,11 @@ DELIVERY(6ecc975f).
 - Overclaims (block listed without carrying the id in §1): S1×SCH-1, S7×SCH-3, gap2×ENC-2,
   gap2×ENC-9, gap5×SIG-2, gap5×SIG-3, gap7×RTE-4, C1×ENC-7. The S1/S7 pair is a likely
   SCH-1↔SCH-3 transposition (one swap explains both plus a missed cell).
-- Missed coverage (32 cells) — largest: S2 (+WIRE-1, HDR-3, CAP-4, RTE-2, RTE-4),
+- Missed coverage (44 cells: 24 across the S/gap rows + 20 across the C1..C7 clusters) —
+  largest: S2 (+WIRE-1, HDR-3, CAP-4, RTE-2, RTE-4),
   S4 (+HDR-2, CRDT-5, CRDT-7, RTE-2, SCH-2), C3 (+ENC-3, ENC-6, HDR-2, VER-6, RTE-2).
-  Full per-row enumeration with §1 line evidence is preserved in the T015 agent record and is
-  reflected 1:1 in the corrected lists.
+  The full per-row enumeration is durable in-doc: each corrected §4 list is re-derivable from
+  the §1 Signals/gaps cells, and the per-row cell deltas are recorded in F3 change-log rows 6–18.
 
 **Correction applied**: every discrepant S/gap row and the C1..C7 line rewritten to the complete
 §1-derived carrier sets (change-log rows 6–18). The final closure count remains **28/28** —
