@@ -5,6 +5,7 @@
 > **Total papers (curated):** 148
 > **Scope:** External literature (peer-reviewed papers, standards, seminal works, authoritative reference specs). This corpus **EXTENDS the internal corpora** already cited in the F1 prior-art scan — **beacon-42** (42-paper CRDT index), **mstack-18** (18-entry capability-security corpus), **qmedit-50** (50-pattern synthesis / 7 corpus groups). Papers already present internally are tagged `[INTERNAL-OVERLAP <corpus>]`; they are kept here (not dropped) so F3 has one unified bibliography, but the tag flags that no NEW acquisition is needed.
 > **Mapping key:** `S1–S8` = the eight epic signals (§2 of the F1 scan); `gap1–gap9` = the nine net-new gaps (§13). The theme agents' own `maps_to` guesses were **re-mapped** to these canonical IDs during curation.
+> **Verification:** audited & hardened by feature 042 (incl. full bibliographic re-verification) — see [verification-report-042.md](verification-report-042.md) and the terminal change log.
 
 ## Canonical signal / gap legend
 
@@ -85,7 +86,7 @@ Bears on **S7** (schema architecture), **S1/gap2** (multi-encoding interchange),
 
 ## 2. Encodings spectrum (binary ↔ human-readable) — 19
 
-Bears on **S1** (interchange), **gap2** (≥3-way interchange), **gap8** (payload-type/TLV discriminator), **S4/gap3** (self-describing skip), determinism for signing (S3).
+Bears on **S1** (interchange), **gap2** (≥3-way interchange), **gap8** (payload-type/TLV discriminator), **S4** (self-describing skip), **gap3** (canonical/deterministic encoding groundwork — the tombstone artifact itself is §5/§7 territory), determinism for signing (S3).
 
 1. **A Survey of JSON-compatible Binary Serialization Specifications** — Viotti, Kinderkhedia (2022) — arXiv 2201.02089 (Oxford) — https://arxiv.org/abs/2201.02089
    - The single most complete comparative survey of schema-driven IDLs (ASN.1/Avro/Bond/Cap'n Proto/FlatBuffers/Protobuf/Thrift) vs schema-less formats (BSON/CBOR/MessagePack/…). The reference map for choosing a message schema language.
@@ -126,7 +127,7 @@ Bears on **S1** (interchange), **gap2** (≥3-way interchange), **gap8** (payloa
 13. **SFVInt: Fast Generic Variable-Length Integer Decoding using Bit-Manipulation Instructions** — Liao et al. (2024) — arXiv 2403.06898 — https://arxiv.org/abs/2403.06898
     - State-of-the-art branchless/SIMD varint decoding — evidence that length-prefix/varint framing need not bottleneck high-volume CRDT streams.
     - *concepts:* varint decoding, bit-manipulation, SIMD, throughput · *maps_to:* gap8 · **ok**
-14. **SPKI/SDSI S-Expressions** (draft-rivest-sexp) — Rivest (1997) — IETF I-D — https://people.csail.mit.edu/rivest/Sexp.txt `[INTERNAL-OVERLAP qmedit-50]`
+14. **SPKI/SDSI S-Expressions** (draft-rivest-sexp) — Rivest (1997) — IETF I-D — https://datatracker.ietf.org/doc/draft-rivest-sexp/ *(042: original MIT URL people.csail.mit.edu/rivest/Sexp.txt now 404 — link-rot, EP-F2-030)* `[INTERNAL-OVERLAP qmedit-50]`
     - Head-tagged, self-describing octet-string/list structure with a length-prefixed **canonical** form for signing — a minimal, spectrum-spanning model where the same tree has readable and canonical binary encodings.
     - *concepts:* head-tagged lists, canonical S-expression, length-prefixed strings, transport vs canonical form · *maps_to:* S1, S3, gap2, gap3 · **seminal**
 15. **A Type-Theoretic Model on NDN-TLV Encoding** — Ma, Afanasyev, Zhang (2022) — ACM ICN 2022 — https://dl.acm.org/doi/10.1145/3517212.3558093
@@ -358,7 +359,7 @@ Bears on **S6**, **gap3** (tombstone), **gap4** (repair via reconciliation), and
 2. **Introducing Support for Move Operations in Melda CRDT** — Brocco (2025) — arXiv 2503.04811 — https://arxiv.org/pdf/2503.04811
    - Practical move-operation support in the Melda delta-state JSON CRDT for document collections — a concrete system point for large composable CRDT documents with reorganization.
    - *concepts:* Melda, delta-state CRDT, move operations, document-collection sync · *maps_to:* S6, gap6 · **ok**
-3. **Merkle Search Trees: Efficient State-Based CRDTs in Open Networks** — Auvolat, Taïani (2019) — IEEE SRDS 2019 / arXiv 1904.13396 — https://arxiv.org/abs/1904.13396
+3. **Merkle Search Trees: Efficient State-Based CRDTs in Open Networks** — Auvolat, Taïani (2019) — IEEE SRDS 2019 / HAL hal-02303490 — https://inria.hal.science/hal-02303490 *(042: delivered arXiv id 1904.13396 resolves to an unrelated astrophysics paper — mistranscribed; the MST paper has no arXiv listing, EP-F2-095)*
    - Encodes CRDT state as an order-preserving balanced Merkle tree so open-network peers reconcile large key-value stores by hash comparison without a causal-broadcast primitive — the anti-entropy backbone for content stores.
    - *concepts:* Merkle search tree, state-based CRDT, anti-entropy, order-preserving hashing · *maps_to:* S6, gap4 · **seminal**
 4. **Merkle-CRDTs: Merkle-DAGs meet CRDTs** — Sanjuan, Pöyhtäri, Teixeira, Psaras (2020) — arXiv 2004.00107 (Protocol Labs) — https://arxiv.org/pdf/2004.00107
@@ -564,13 +565,13 @@ Legend: **well** = external literature richly covers the design space · **moder
 |-----|-------------------|---------------------|---------|
 | **gap1** unified wire | Header/envelope + framing design abundant (ASN.1 abstract/transfer syntax, CDDL, Protobuf editions, QUIC/WS framing) but **no paper does the specific 3-envelope reconciliation** | ASN.1 X.680, CDDL, RFC 9000, Symmetric Lenses | **moderate** (components rich; the unification is net-new) |
 | **gap2** ≥3-way interchange | The archetype (ASN.1: 1 abstract syntax → many encoding rules) + DFDL/Kaitai/CDDL multi-target + EverParse verified codegen | ASN.1 X.680, DFDL, Kaitai, CDDL, EverParse, Viotti survey | **well** (conceptually solved; the *specific* JSON+bin+YAML+md+Gleam-term matrix is integration work) |
-| **gap3** message-level tombstone | Store-level CRDT tombstones well covered (OR-Set, soft tombstones); Peritext preserves unhandled marks — **message-format** tombstone specifically not addressed | Optimized OR-Set, Peritext, Merkle-CRDTs | **moderate→thin** (store tombstones yes; in-the-message tombstone is net-new) |
+| **gap3** message-level tombstone | Store-level CRDT tombstones well covered (OR-Set, soft tombstones); Peritext preserves unhandled marks — **message-format** tombstone specifically not addressed | Optimized OR-Set, Peritext | **moderate→thin** (store tombstones yes; in-the-message tombstone is net-new) |
 | **gap4** repair segment | Transport/CRDT repair rich (erasure codes, range reconciliation, join-decomposition, delta-CRDTs) — but a **semantic per-element message repair segment** is undefined | LT Codes, RLNC, Range-Based Set Reconciliation, Join Decompositions, QUIC-FEC | **moderate** (repair primitives yes; message-level semantic repair is net-new) |
 | **gap5** multi-signature format | Very rich: EdDSA/COSE/JWS detached, BLS aggregate, Biscuit per-block chain, MTL amortized, CT/transparency, nested-attestation bloat analysis | JWS (detached+multi-sig), COSE, BLS multi-sig, Biscuit, MTL, AIP | **well** |
 | **gap6** CRDT-of-message vs store | Entire CRDT corpus (foundations+systems+messages-stores) + verified specs (OpSets, Gomes) + Byzantine family + the internal qmedit message-CRDT | Shapiro CvRDT/CmRDT, JSON CRDT, OpSets, Pure op-based, Blocklace | **well** |
 | **gap7** routing Policy DSL | Content-based pub/sub (SIENA/fast-forwarding) is the closest analogue; distance-vector (DSDV) is the nearest routing *behaviour*; but an **executable policy language for targets/waypoints/excludes** is not a paper | SIENA, Fast Forwarding, DSDV, Astrolabe | **thin** (analogues only; the policy DSL is net-new) |
 | **gap8** payload-type discriminator | Textbook TLV: NDN-TLV (formal + spec), Protobuf wire-type, CBOR tags, self-describing formats | NDN-TLV type-theory, Protobuf encoding, RFC 8949 CBOR, RFC 6709 | **well** |
-| **gap9** amulet as live token | The static-sparse-capability lineage is fully documented (Amoeba is the literal ancestor) + hardware/OS ocap grounding | Amoeba sparse capabilities, CHERI, KeyKOS, EROS, Macaroons | **well** (lineage solid; the concrete 16 B Amoeba amulet impl is the net-new build) |
+| **gap9** amulet as live token | The static-sparse-capability lineage is fully documented (Amoeba is the literal ancestor) + hardware/OS ocap grounding | Amoeba sparse capabilities, CHERI, KeyKOS, EROS | **well** (lineage solid; the concrete Amoeba-shape amulet impl is the net-new build *[E5-ruled 2026-07-04: 4-field shape kept, Check ≥128-bit — literal 16 B rejected; see F3 §6]*) |
 
 **Thin gaps needing the most net-new design work:** gap7 (routing Policy DSL), gap3 (message-level tombstone), gap4 (semantic repair segment), and the specific reconciliation in gap1 — exactly the items the F1 scan flagged as "defined nowhere / academic only." The external literature is strongest precisely where internal work is thinnest is NOT the case here: the external corpus is deep on gap5/gap6/gap8/gap9 (which internal work already partly builds) and correctly shallow on the four genuinely novel items — confirming the F1 gap list.
 
@@ -589,3 +590,21 @@ Legend: **well** = external literature richly covers the design space · **moder
 ---
 
 *End of curated web-research corpus. 148 papers · 10 themes · extends beacon-42 / mstack-18 / qmedit-50. Advisory input to F3 synthesis.*
+
+---
+
+## Change log — 042 verification pass (2026-07-04)
+
+> All amendments below were made by feature 042-crdtmsg-verify-harden; the finding ids
+> resolve in docs/research/crdt-multiformat-messaging/verification-report-042.md.
+
+| # | Section touched | Change | Why (finding id) | Baseline |
+|---|---|---|---|---|
+| 1 | (new terminal section) | Added this change-log section skeleton (contract rule 4) | SETUP-042-F2 | HEAD(6ff3a8c9) |
+| 2 | §11 gap3 row | Dropped "Merkle-CRDTs" from the load-bearing list (entry §7.4 maps_to S6/gap4 — does not bear on gap3) | LR-042-F2-1 | DELIVERY(c20317ce) |
+| 3 | §11 gap9 row | Dropped "Macaroons" from the load-bearing list (entry §8.1 maps_to S2 only; §8's own header excludes it from the amulet lineage) | LR-042-F2-2 | DELIVERY(c20317ce) |
+| 4 | §2 section header | Split the "S4/gap3 (self-describing skip)" gloss — gap3 is the message-level tombstone, not skip; header now glosses gap3 as canonical/deterministic encoding groundwork | LR-042-F2-3 | DELIVERY(c20317ce) |
+| 5 | §11 gap9 row | E5 supersession note: literal 16 B rejected, Check ≥128-bit, 4-field shape kept | RP-042-14 | HEAD(6ff3a8c9) |
+| 6 | §2.14 S-Expressions entry | Dead MIT URL → IETF datatracker URL, link-rot noted inline | EP-F2-030 (report §8) | HEAD(6ff3a8c9) |
+| 7 | §7.3 Merkle Search Trees entry | Mistranscribed arXiv id 1904.13396 (unrelated paper) → HAL hal-02303490, correction noted inline | EP-F2-095 (report §8) | HEAD(6ff3a8c9) |
+| 8 | header block | Verification reference line added (SC-009) | SC-009 (report §12) | HEAD(6ff3a8c9) |
