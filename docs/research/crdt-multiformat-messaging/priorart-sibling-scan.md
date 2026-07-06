@@ -5,6 +5,7 @@
 > **Role:** Curating (three-role prior-art scan team) — consolidates raw findings from 8 per-repo readers
 > **Units scanned:** `glpnet` · `buildkit-beacon` · `mstack` (MSTACK + mstack-coop) · `olamnit` (olamnit + olamnit-assistant + coop) · `buildkit` · `crucible` · `qhstate` (qhstate + qhstate-Yngenios + qhstate-coop) · `research-loose` (_marathon-synthesis + syst-lit-rev-agentic-protocols)
 > **Status:** Advisory consolidation. Confidence + recency are carried on every claim; keyword-collision traps are called out explicitly.
+> **Verification:** audited & hardened by feature 042 — see [verification-report-042.md](verification-report-042.md) and the terminal change log.
 
 ---
 
@@ -178,7 +179,7 @@ The **critical caveat**: these live in *different repos with different wires*. b
 - **mstack** — **NEGATIVE:** no CRDT; PGlite dual-store + delivery ledger (dedup/exactly-once); anti-entropy explicitly out of scope. Contrasts with, rather than provides, the substrate.
 - **research-loose** — academic definitions: Shapiro 2011 (commutative/associative/idempotent merge), Lasp/Meiklejohn (CRDT-over-actors, flags the "restricts expressible message types" tradeoff — directly bears on S1+S6 tension).
 
-**Fit:** the roadmap CRDT engines (buildkit/beacon) are the reusable convergence machinery; qmedit is the only design that puts CRDT *in the message*. The **message-vs-store CRDT distinction** is a key synthesis decision.
+**Fit:** the roadmap CRDT engines (buildkit/beacon) are the reusable convergence machinery; qmedit is the only design that puts CRDT *in the message*. The **message-vs-store CRDT distinction** is a key synthesis decision. *[Superseded 2026-07-04 by F3 §6 E1: store engine = delta-CRDT + Merkle anti-entropy; roadmap_crdt demoted to a concept reference (OR-Set/HLC machinery), not the store engine.]*
 
 ---
 
@@ -205,10 +206,10 @@ Legend: **S** strong (built/defined here since cutoff) · **P** partial · **W**
 | S2 header + macaroon/amulet | S (PeerId) | S | **S (amulet def)** | S (48B) | S (unify) | S | S | W (gap) |
 | S3 multi-signature | P (nested) | P (Ed25519) | P (2 layers) | W (AEAD) | P | W | **S (per-block)** | · |
 | S4 version tolerance / repair | S (skip) | S (add-super) | W | P (degrade) | P (parking) | W | **S (skip-len)** | · |
-| S5 QUIC/HTTP-3 framing | **S** | W (WS) | P (seam) | P (WAL/WS) | S (reuse) | · | · (oos) | W |
+| S5 QUIC/HTTP-3 framing | **S** | W (WS) | P (seam) | P (WAL/WS) | S (reuse) | W (WS) | · (oos) | W |
 | S6 CRDT substrate | W (deferred) | **S (roadmap)** | · (neg) | S (Automerge) | **S (roadmap)** | · | **S (message)** | W (academic) |
 | S7 schema architecture | S (tmsg) | S (registry) | P | S (seam) | S (D2 unify) | P | **S (DSL)** | · |
-| S8 roadmap/interview | **S (brief)** | S | **S (interview)** | P (colab) | **S (SOURCE)** | · | P (eng interview) | W |
+| S8 roadmap/interview | **S (brief)** | S | **S (interview)** | P (colab) | **S (SOURCE)** | · | · | W |
 
 ---
 
@@ -236,7 +237,7 @@ Legend: **S** strong (built/defined here since cutoff) · **P** partial · **W**
 1. **`buildkit` spec-047 D2 unification contract** — adopt as the reconciliation spec; it already enumerates the three envelopes and the merge rules.
 2. **`qhstate` spec-036 + qmedit** — adopt as the multi-format + per-block-seal + message-CRDT reference implementation; adopt its schema-definition DSL and 50-pattern synthesis.
 3. **`glpnet` spec-036 QUIC/WS transport + 038 FrameCodec (fix FR-006)** — the transport + cross-runtime binary layer of record.
-4. **`buildkit` / `buildkit-beacon` roadmap_crdt engine** — the convergence machinery (HLC/DVV/OR-Set/journal-fold) for any durable store.
+4. **`buildkit` / `buildkit-beacon` roadmap_crdt engine** — the convergence machinery (HLC/DVV/OR-Set/journal-fold) for any durable store. *[Superseded 2026-07-04 by F3 §6 E1: store engine = delta-CRDT + Merkle anti-entropy; roadmap_crdt demoted to a concept reference, not the store engine.]*
 5. **`mstack` + `buildkit-beacon` macaroon** + **mstack amulet definition** — the capability layer; `DuglexLink` port + `LinkId` as the transport seams.
 6. **Corpora to hand F2/F3 directly:** beacon 42-paper CRDT index, mstack 18-entry capability-security corpus, qmedit 50-pattern synthesis + 7 corpus groups, olamnit macaroon corpus.
 
@@ -306,3 +307,19 @@ Rank by (recency since cutoff × directness × confidence). All paths absolute.
 ---
 
 *End of consolidated prior-art scan. 33 ranked sources · 9 identified gaps · 8 units. Advisory, non-blocking.*
+
+---
+
+## Change log — 042 verification pass (2026-07-04)
+
+> All amendments below were made by feature 042-crdtmsg-verify-harden; the finding ids
+> resolve in docs/research/crdt-multiformat-messaging/verification-report-042.md.
+
+| # | Section touched | Change | Why (finding id) | Baseline |
+|---|---|---|---|---|
+| 1 | (new terminal section) | Added this change-log section skeleton (contract rule 4) | SETUP-042-F1 | HEAD(6ff3a8c9) |
+| 2 | §12 matrix, S8 × qhstate | `P (eng interview)` → `·` — annotation has zero body/§15 support (overclaimed) | LR-042-F1-1 | DELIVERY(c20317ce) |
+| 3 | §12 matrix, S5 × crucible | `·` → `W (WS)` — body L163 attributes WS/MCP transport to crucible identically to beacon's W (missed-coverage) | LR-042-F1-2 | DELIVERY(c20317ce) |
+| 4 | §10 "Fit" line | E1 supersession note appended (store engine = delta-CRDT + Merkle; roadmap_crdt demoted to concept reference) | RP-042-13 | HEAD(6ff3a8c9) |
+| 5 | §14 reuse item 4 | Same E1 supersession note appended to the roadmap_crdt reuse recommendation | RP-042-13 | HEAD(6ff3a8c9) |
+| 6 | header block | Verification reference line added (SC-009) | SC-009 (report §12) | HEAD(6ff3a8c9) |
