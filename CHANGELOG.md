@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [v2026.07.06.1] - 2026-07-06
+
+### Changed
+- Merge pull request #88 from olamni-glp/042-crdtmsg-verify-harden
+- refine(codexreview): cycle 4/3 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- commit crdtmsg-mvp draft retrospective artifact from close-out
+- impl(042): COMPLETE - report assembled s9/s11/s12 all nine SC PASS, SC-008 zero silent edits (61 rows), SC-009 refs in all 3 docs, T030 env-blocked bracket reproduced (T029-T031)
+- impl(042): US4 complete - 231/231 pointers resolved SC-007 met (225 resolve, 2 host-blocked, 2 link-rot corrected in F2, 2 transcript unrecoverable), Tier1 39/39 bib-verified, report s8 (T026-T028)
+- impl(042): T026 partial - 83/231 evidence pointers resolved (in-repo+sibling+transcript classes), transcript pointers superseded in F3 (rows 45-46); 148 F2 URLs pending web sweep
+- impl(042): US3 complete - register closure SC-003 met (2 promoted incl BB-CRDT-7 self-promotion, 6 re-affirmed, 0 escalations), report s7+s10, F3 change-log rows 35-44 (T021-T024)
+- impl(042): US2 complete - T016 merge rederivation 37/37 COHERENT, T017 26 blind rescans over 13 singletons, T018 curation SC-002 met (11 confirmed, 2 no-further-evidence, 0 escalations)
+- impl(042): US1 conformance ledgers complete (SC-001 3/3, 18 elements) + US2 ledger rederivations corrected + drift dispositions + E1-E9 propagation fixes + pointer census 231 rows (T007-T015,T019,T020,T025)
+- impl(042): Phase 2 foundational - report section 1 method reconstruction, 18 elements F1/F2/F3 RECORDED-vs-RECONSTRUCTED (T004-T006)
+- impl(042): Phase 1 setup - report+evidence skeletons, changelog sections, scanner-C view resolved d2689a71, env-blocked baseline recorded (T001-T003)
+- analyze(042-crdtmsg-verify-harden): 0 critical/high - applied 5 remediations (changelog skeletons in T001, tasks.md authoritative ordering, SC-008 min(10) sampling, T021 wording, 4-vs-3 ledger note)
+- tasks(042-crdtmsg-verify-harden): 31 tasks across 4 stories - US1 conformance MVP, US2 hardening w/ blind re-scans, US3 register closure, US4 evidence census; single-writer-per-doc rule
+- plan(042-crdtmsg-verify-harden): verification plan - 5 WPs, hybrid baselines pinned (c20317ce/6ecc975f/v2026.07.04.4), method-strength survey, report+ledger+changelog contracts
+- clarify(042-crdtmsg-verify-harden): 3 rulings encoded - targeted re-execution (FR-014), mechanical PROV promotions w/ batch review (FR-008), hybrid delivery-time/HEAD baseline (FR-005/FR-015)
+- spec(042-crdtmsg-verify-harden): verification+hardening spec for F1/F2/F3 against their frozen 3-role methods; 1 clarify fork (FR-014 evidence depth)
+- Merge pull request #87 from olamni-glp/main
+
 ## [v2026.07.04.4] - 2026-07-04
 
 ### Added
