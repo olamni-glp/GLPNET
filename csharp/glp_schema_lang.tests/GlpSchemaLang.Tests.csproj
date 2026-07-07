@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RootNamespace>GlpRuntime.SchemaLang.Tests</RootNamespace>
+    <!-- Must match the production project's InternalsVisibleTo. -->
+    <AssemblyName>glp_schema_lang.tests</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

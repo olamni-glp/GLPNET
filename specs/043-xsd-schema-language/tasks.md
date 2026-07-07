@@ -46,16 +46,16 @@ registration(s) accepted by existing registry conventions (US1 acceptance scenar
 
 ### Tests for User Story 1 (write first — must fail)
 
-- [ ] T012 [P] [US1] Golden lowering tests in `csharp/glp_schema_lang.tests/LoweringTests.cs` + `golden/chat.cddl` — quickstart `chat` schema lowers to byte-identical golden CDDL; double-run self-identity (FR-005); every contracts/lowering.md mapping row exercised; payload-type allocation 0x13-onwards in declaration order (R3); unlowerable-construct error lists every construct
-- [ ] T013 [P] [US1] Registration law tests in `csharp/glp_schema_lang.tests/RegistrationTests.cs` — success records {qmedit, cddl, xsd_source verbatim, sha256s} retrievable together (FR-004); functor collision vs seeded `crdt_message` and vs overlay entry → explicit LoweringError, nothing written (US1 AS-3); all-or-nothing on multi-message document with one colliding kind; mandatory CompatMode at registration
-- [ ] T014 [P] [US1] SC-002 seeded-defect suite in `csharp/glp_schema_lang.tests/SeededDefectSuiteTests.cs` — ≥20 invalid documents as `[Theory]` data covering unresolved references, facet contradictions (min>max, empty enum, empty-language pattern), name collisions, cycles (incl. self-reference); each asserts the error names offending construct AND location (SC-002: 100%)
+- [X] T012 [P] [US1] Golden lowering tests in `csharp/glp_schema_lang.tests/LoweringTests.cs` + `golden/chat.cddl` — quickstart `chat` schema lowers to byte-identical golden CDDL; double-run self-identity (FR-005); every contracts/lowering.md mapping row exercised; payload-type allocation 0x13-onwards in declaration order (R3); unlowerable-construct error lists every construct
+- [X] T013 [P] [US1] Registration law tests in `csharp/glp_schema_lang.tests/RegistrationTests.cs` — success records {qmedit, cddl, xsd_source verbatim, sha256s} retrievable together (FR-004); functor collision vs seeded `crdt_message` and vs overlay entry → explicit LoweringError, nothing written (US1 AS-3); all-or-nothing on multi-message document with one colliding kind; mandatory CompatMode at registration
+- [X] T014 [P] [US1] SC-002 seeded-defect suite in `csharp/glp_schema_lang.tests/SeededDefectSuiteTests.cs` — ≥20 invalid documents as `[Theory]` data covering unresolved references, facet contradictions (min>max, empty enum, empty-language pattern), name collisions, cycles (incl. self-reference); each asserts the error names offending construct AND location (SC-002: 100%)
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Canonical CDDL emitter in `csharp/glp_schema_lang/lower/CddlEmitter.cs` — full contracts/lowering.md mapping table, canonical ordering/indent/trailing-comma discipline matching the shipped `crdt_message` artifact idioms (R5; depends T004)
-- [ ] T016 [US1] Lowering + allocation in `csharp/glp_schema_lang/lower/Lowering.cs` — `Lower(SchemaDocument) → LoweringArtifactSet | LoweringError`; deterministic payload-type allocation (lowest free ≥ 0x13, declaration order); unlowerable detection (depends T015, T011)
-- [ ] T017 [US1] Registration in `csharp/glp_schema_lang/registry/SchemaLangRegistry.cs` — `Register(doc, artifacts, mode)`: collision checks over seed ∪ overlay, all-or-nothing write, RegistryRecord with sha256(cddl)+sha256(qmedit)+xsd_source (FR-004, R9 hashes; depends T016)
-- [ ] T018 [US1] Make T012–T014 green; then SC-006 walkthrough test in `csharp/glp_schema_lang.tests/EndToEndWalkthroughTests.cs` — scripted author→validate→lower→register→inspect flow with zero hand-written CDDL/functor text (quickstart steps 1–4)
+- [X] T015 [US1] Canonical CDDL emitter in `csharp/glp_schema_lang/lower/CddlEmitter.cs` — full contracts/lowering.md mapping table, canonical ordering/indent/trailing-comma discipline matching the shipped `crdt_message` artifact idioms (R5; depends T004)
+- [X] T016 [US1] Lowering + allocation in `csharp/glp_schema_lang/lower/Lowering.cs` — `Lower(SchemaDocument) → LoweringArtifactSet | LoweringError`; deterministic payload-type allocation (lowest free ≥ 0x13, declaration order); unlowerable detection (depends T015, T011)
+- [X] T017 [US1] Registration in `csharp/glp_schema_lang/registry/SchemaLangRegistry.cs` — `Register(doc, artifacts, mode)`: collision checks over seed ∪ overlay, all-or-nothing write, RegistryRecord with sha256(cddl)+sha256(qmedit)+xsd_source (FR-004, R9 hashes; depends T016)
+- [X] T018 [US1] Make T012–T014 green; then SC-006 walkthrough test in `csharp/glp_schema_lang.tests/EndToEndWalkthroughTests.cs` — scripted author→validate→lower→register→inspect flow with zero hand-written CDDL/functor text (quickstart steps 1–4)
 
 **Checkpoint**: US1 fully functional — the MVP. Commit.
 

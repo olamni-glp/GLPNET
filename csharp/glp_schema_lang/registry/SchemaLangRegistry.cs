@@ -39,6 +39,12 @@ public sealed record VersionChain(
     string Functor,
     IReadOnlyList<RegistryRecord> Versions);
 
+/// <summary>Union result of registration: records on success, a LoweringError otherwise.</summary>
+public sealed record RegisterResult(IReadOnlyList<RegistryRecord>? Records, LoweringError? Error)
+{
+    public bool IsSuccess => Error is null;
+}
+
 public sealed class SchemaLangRegistry
 {
     private readonly List<RegistryRecord> _seed = new();
@@ -111,6 +117,60 @@ public sealed class SchemaLangRegistry
     /// <summary>Payload-type bytes currently taken in seed ∪ overlay (allocation input, R3).</summary>
     public IReadOnlyCollection<byte> UsedPayloadTypes =>
         All.Select(r => r.PayloadType).ToHashSet();
+
+    // ------------------------------------------------------------------
+    // Registration (T017; lowering.md §Registration laws)
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// First registration of a schema document's lowered artifacts. All-or-nothing: any
+    /// collision over seed ∪ overlay registers NOTHING and never overwrites (US1 AS-3). The
+    /// declared CompatMode is mandatory (clarification 3 — the signature enforces it). Each
+    /// RegistryRecord stores {qmedit, cddl, xsd_source, sha256 hashes} together (FR-004, R9);
+    /// for 043-authored entries the document text is stored under BOTH the QmeditDsl and
+    /// XsdSource keys (registration law 3).
+    /// </summary>
+    public RegisterResult Register(SchemaDocument doc, LoweringArtifactSet artifacts, CompatMode mode)
+    {
+        var collisions = new List<string>();
+        foreach (var registration in artifacts.Registrations)
+        {
+            if (HasFunctor(registration.Functor))
+            {
+                var existing = LookupByFunctor(registration.Functor);
+                collisions.Add(
+                    $"functor '{registration.Functor}' is already registered " +
+                    $"(payload type 0x{existing.PayloadType:X2}, schema '{existing.SchemaName}' v{existing.Version}{(existing.IsSeeded ? ", seeded" : string.Empty)})");
+            }
+            if (HasPayloadType(registration.PayloadType))
+            {
+                var existing = LookupByPayloadType(registration.PayloadType);
+                collisions.Add(
+                    $"payload type 0x{registration.PayloadType:X2} requested for '{registration.Functor}' is already taken by functor '{existing.Functor}'");
+            }
+        }
+        if (collisions.Count > 0)
+            return new RegisterResult(null, new LoweringError(
+                LoweringErrorKind.Collision,
+                collisions,
+                $"registration of schema '{doc.Name}' collides with existing registry content — nothing was written"));
+
+        var records = artifacts.Registrations
+            .Select(registration => new RegistryRecord(
+                registration.PayloadType,
+                registration.Functor,
+                mode,
+                QmeditDsl: doc.Source,
+                Cddl: artifacts.Cddl,
+                XsdSource: doc.Source,
+                SchemaName: doc.Name,
+                Version: doc.Version,
+                CddlSha256: Sha256Hex(artifacts.Cddl),
+                QmeditSha256: Sha256Hex(doc.Source)))
+            .ToList();
+        _overlay.AddRange(records);
+        return new RegisterResult(records, null);
+    }
 
     internal void AppendOverlay(RegistryRecord record) => _overlay.Add(record);
 
