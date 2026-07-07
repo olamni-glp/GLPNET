@@ -15,9 +15,9 @@ is modified (FR-012); substrate suites stay green.
 
 ## Phase 1: Setup
 
-- [ ] T001 Create production project `csharp/glp_schema_lang/GlpSchemaLang.csproj` — net10.0, `LangVersion latest`, `Nullable enable`, `ImplicitUsings enable`, `RootNamespace GlpRuntime.SchemaLang`, `AssemblyName glp_schema_lang`, ProjectReference `..\glp_wire_registry\GlpWireRegistry.csproj` ONLY, `InternalsVisibleTo glp_schema_lang.tests`, clobber-safe comment block (plan Structure Decision); create empty dirs ast/ parser/ pattern/ validate/ lower/ lift/ evolve/ registry/
-- [ ] T002 Create test project `csharp/glp_schema_lang.tests/GlpSchemaLang.Tests.csproj` — xunit 2.9.3, Microsoft.NET.Test.Sdk 17.14.1, xunit.runner.visualstudio 3.1.4, coverlet.collector; ProjectReferences: glp_schema_lang, glp_wire_registry, glp_crdtmsg; `golden/` content dir copied to output (depends T001)
-- [ ] T003 Baseline checkpoint: run `dotnet test csharp/glp_wire_registry.tests` and `dotnet test csharp/glp_crdtmsg.tests` green, `dotnet build` both new projects, commit "Checkpoint: 043 project skeleton, substrate baseline green" (Test Protocol)
+- [X] T001 Create production project `csharp/glp_schema_lang/GlpSchemaLang.csproj` — net10.0, `LangVersion latest`, `Nullable enable`, `ImplicitUsings enable`, `RootNamespace GlpRuntime.SchemaLang`, `AssemblyName glp_schema_lang`, ProjectReference `..\glp_wire_registry\GlpWireRegistry.csproj` ONLY, `InternalsVisibleTo glp_schema_lang.tests`, clobber-safe comment block (plan Structure Decision); create empty dirs ast/ parser/ pattern/ validate/ lower/ lift/ evolve/ registry/
+- [X] T002 Create test project `csharp/glp_schema_lang.tests/GlpSchemaLang.Tests.csproj` — xunit 2.9.3, Microsoft.NET.Test.Sdk 17.14.1, xunit.runner.visualstudio 3.1.4, coverlet.collector; ProjectReferences: glp_schema_lang, glp_wire_registry, glp_crdtmsg; `golden/` content dir copied to output (depends T001)
+- [X] T003 Baseline checkpoint: run `dotnet test csharp/glp_wire_registry.tests` and `dotnet test csharp/glp_crdtmsg.tests` green, `dotnet build` both new projects, commit "Checkpoint: 043 project skeleton, substrate baseline green" (Test Protocol)
 
 ## Phase 2: Foundational (blocking prerequisites for ALL user stories)
 

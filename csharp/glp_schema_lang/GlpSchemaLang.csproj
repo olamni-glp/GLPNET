@@ -1,0 +1,37 @@
+<!--
+  GlpSchemaLang — the 043 XSD-style schema layer over the functor registry
+  (feature 043-xsd-schema-language).
+
+  WHY THIS PACKAGE EXISTS (same clobber-safe rule as GlpLink/GlpIlCodec/GlpWireRegistry):
+    codeconv's dart_csharp mirror regenerates one .cs per source .dart under out/csharp/lib/**
+    and glp_runtime_net/. Hand-authored .cs at a path mapping to a Dart preimage is OVERWRITTEN
+    by the next mirror/scaffold. This package has NO Dart preimage and lives OUTSIDE out/csharp
+    and the gitignored glp_runtime_net/, so the regen oracle never names it as an output.
+
+  Dependency law (plan Structure Decision / research R1): the production reference set is
+  glp_wire_registry ONLY — the same dependency arrow as glp_result_codec, keeping the
+  zero-dependency byte-parity leaf a leaf. The E9 static tables (WireRegistry, SchemaRegistry)
+  are read-only substrate (FR-012); this library consumes them through an additive seeded
+  in-memory overlay (SchemaLangRegistry, research R2) and never modifies them.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.SchemaLang</RootNamespace>
+    <AssemblyName>glp_schema_lang</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_schema_lang.tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />
+  </ItemGroup>
+
+</Project>
