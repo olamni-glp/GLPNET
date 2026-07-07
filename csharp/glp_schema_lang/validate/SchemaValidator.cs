@@ -274,6 +274,19 @@ public static class SchemaValidator
         Dictionary<string, NamedType> typesByName,
         List<SchemaValidationError> errors)
     {
+        foreach (var (cyclePath, entry) in FindReferenceCycles(doc, typesByName))
+            errors.Add(new SchemaValidationError(Operation, cyclePath, entry.Location,
+                $"cyclic type reference {cyclePath} — recursion is not supported; type references must form a DAG"));
+    }
+
+    /// <summary>Every distinct cycle in the named-type reference graph, as a full
+    /// "A → B → A" path plus the cycle-entry type as location witness. Shared by
+    /// schema-document validation (rule group 4) and InstanceValidator's explicit-document
+    /// acyclicity precondition check.</summary>
+    internal static List<(string CyclePath, NamedType Entry)> FindReferenceCycles(
+        SchemaDocument doc,
+        Dictionary<string, NamedType> typesByName)
+    {
         // Edges: complex type → every resolving named type it references.
         var adjacency = new Dictionary<string, List<string>>();
         foreach (var type in doc.Types)
@@ -288,9 +301,10 @@ public static class SchemaValidator
 
         // DFS with colors; a GRAY hit names the full cycle path (A → B → A). Roots are
         // visited in DOCUMENT order (FR-005/R11: no dictionary-enumeration ordering on any
-        // contract path), so error order is deterministic. The walk uses an EXPLICIT stack —
+        // contract path), so cycle order is deterministic. The walk uses an EXPLICIT stack —
         // recursion depth would otherwise be the reference-chain length, and adversarially
         // long chains must terminate without exhausting the call stack (spec edge case).
+        var cycles = new List<(string CyclePath, NamedType Entry)>();
         var color = adjacency.Keys.ToDictionary(n => n, _ => 0); // 0 white, 1 gray, 2 black
         var reported = new HashSet<string>();
         foreach (var type in doc.Types)
@@ -298,6 +312,7 @@ public static class SchemaValidator
             if (!color.TryGetValue(type.Name, out var c) || c != 0) continue;
             IterativeDfs(type.Name);
         }
+        return cycles;
 
         void IterativeDfs(string root)
         {
@@ -324,8 +339,7 @@ public static class SchemaValidator
                         // Report each distinct cycle once, canonicalized by its member set.
                         var key = string.Join(",", cycleNodes.SkipLast(1).OrderBy(n => n, StringComparer.Ordinal));
                         if (reported.Add(key))
-                            errors.Add(new SchemaValidationError(Operation, cyclePath, typesByName[target].Location,
-                                $"cyclic type reference {cyclePath} — recursion is not supported; type references must form a DAG"));
+                            cycles.Add((cyclePath, typesByName[target]));
                     }
                     else if (color[target] == 0)
                     {

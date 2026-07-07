@@ -281,4 +281,37 @@ public class InstanceValidationTests
         Assert.Contains("pattern", ex.Message);
         Assert.Contains("not validated", ex.Message);
     }
+
+    [Fact]
+    public void Unvalidated_cyclic_document_throws_a_named_error_not_a_stack_overflow()
+    {
+        // Parses but does NOT validate (type A references itself). Every reference resolves,
+        // so without the one-time acyclicity check the schema-directed traversal would
+        // recurse one call per instance level — a 5000-deep matching instance would overflow
+        // the call stack (uncatchable). The overload must refuse the cyclic document loudly
+        // (FR-014) before touching the instance.
+        var parsed = SchemaDslParser.Parse(
+            "schema s version 1\ntype A { sequence { a: A } }\nmessage m { sequence { a: A } }");
+        Assert.NotNull(parsed.Document);
+        InstanceValue deep = InstanceValue.OfStruct("a", ("a", new InstanceValue.Int(0)));
+        for (var i = 0; i < 5000; i++)
+            deep = InstanceValue.OfStruct("a", ("a", deep));
+        var ex = Assert.Throws<InvalidOperationException>(() => InstanceValidator.Validate(
+            parsed.Document!, "m", InstanceValue.OfStruct("m", ("a", deep))));
+        Assert.Contains("reference cycle", ex.Message);
+        Assert.Contains("A → A", ex.Message);
+        Assert.Contains("not validated", ex.Message);
+    }
+
+    [Fact]
+    public void Acyclic_document_through_explicit_overload_validates_as_before()
+    {
+        // The acyclicity precondition check must be invisible on the happy path: a validated
+        // (hence acyclic) document handed to the explicit overload still yields the same
+        // Pass/Fail verdicts.
+        var validated = SchemaValidator.Validate(SchemaValidatorTests.ChatSchema);
+        Assert.True(validated.IsValid);
+        Assert.True(InstanceValidator.Validate(validated.Document!, "chat_message", ChatInstance()).IsPass);
+        Assert.False(InstanceValidator.Validate(validated.Document!, "chat_message", ChatInstance(priority: 42)).IsPass);
+    }
 }

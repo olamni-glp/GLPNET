@@ -10,8 +10,11 @@
 //   3. facets — narrowing only.
 // Every Violation names the violated element/facet, its schema location, and its path in the
 // instance (US2 AS-2). Traversal is schema-directed: recursion depth is bounded by the schema
-// DAG (documents are validated, hence acyclic), NOT by the instance — adversarially deep
-// instances terminate with a located violation (spec edge case).
+// DAG, NOT by the instance — adversarially deep instances terminate with a located violation
+// (spec edge case). The registry path guarantees acyclicity by re-validating the stored
+// source; the explicit-document overload enforces it itself with a one-time (per Validate
+// call) iterative acyclicity check that refuses a cyclic document loudly (FR-014) — without
+// it, a cyclic document would make recursion depth attacker-controlled via instance depth.
 
 namespace GlpRuntime.SchemaLang;
 
@@ -32,13 +35,14 @@ public static class InstanceValidator
     }
 
     /// <summary>Validate against an explicit (already validated) schema document. Precondition
-    /// breaches (an unresolved reference, an unparsable pattern) throw a NAMED
-    /// InvalidOperationException — never a raw lookup exception or a silent skip (FR-014).</summary>
+    /// breaches (a reference cycle, an unresolved reference, an unparsable pattern) throw a
+    /// NAMED InvalidOperationException — never a raw lookup exception, a silent skip, or an
+    /// unbounded recursion (FR-014).</summary>
     public static ValidationVerdict Validate(SchemaDocument document, string functor, InstanceValue instance)
     {
         var message = document.Messages.FirstOrDefault(m => m.Functor == functor)
             ?? throw new NoSchemaRegisteredError(functor);
-        var context = new Context(document);
+        var context = new Context(document); // loud-fails on a cyclic document (once per call)
         var violations = new List<Violation>();
         CheckComposition(context, functor, message.Location, message.Body, instance, string.Empty, violations);
         return violations.Count == 0 ? ValidationVerdict.Pass : ValidationVerdict.Fail(violations);
@@ -50,7 +54,21 @@ public static class InstanceValidator
     {
         private readonly Dictionary<string, PatternNfa> _nfas = new();
 
-        public Context(SchemaDocument document) => Types = document.Types.ToDictionary(t => t.Name);
+        public Context(SchemaDocument document)
+        {
+            Types = document.Types.ToDictionary(t => t.Name);
+            // One-time acyclicity precondition check (per Validate call, not per node):
+            // CheckType→CheckComposition recursion is bounded by the schema DAG only when the
+            // document IS a DAG — on a cyclic document each recursion consumes one instance
+            // level, making stack depth instance-controlled. Loud refusal, matching
+            // Resolve/NfaOf (FR-014). Reuses the iterative walk of SchemaValidator rule
+            // group 4 — O(|types|), explicit stack, no call-stack recursion.
+            var cycles = SchemaValidator.FindReferenceCycles(document, Types);
+            if (cycles.Count > 0)
+                throw new InvalidOperationException(
+                    $"schema document contains a reference cycle ({string.Join("; ", cycles.Select(c => c.CyclePath))}) — " +
+                    "document was not validated");
+        }
 
         public Dictionary<string, NamedType> Types { get; }
 
