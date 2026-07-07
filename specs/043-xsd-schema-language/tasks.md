@@ -69,13 +69,13 @@ instances; every verdict correct, every failure construct-named (US2 acceptance 
 
 ### Tests for User Story 2 (write first — must fail)
 
-- [ ] T019 [P] [US2] Instance validation tests in `csharp/glp_schema_lang.tests/InstanceValidationTests.cs` — conforming instance → Pass; facet violation (out-of-range, length, pattern, enum) → Fail naming facet + instance path; composition violation (missing mandatory element, wrong choice-branch arity, occurs out of bounds, sequence order) → Fail naming element; unregistered functor → NoSchemaRegisteredError, never a silent pass (FR-008); deep instance bounded/deterministic (no stack overflow on adversarial nesting — edge case)
-- [ ] T020 [P] [US2] Corpus agreement tests in `csharp/glp_schema_lang.tests/CorpusAgreementTests.cs` — `Message → InstanceValue` adapter over `SampleMessages.All()`; run 041 golden messages + derived non-conforming mutations through `MessageCodec.Decode`+`DecodeGuard.Check` (registry level) AND `InstanceValidator` (XSD level, against the re-expressed `crdt_message` schema from T022 — no US3 dependency); assert zero polarity contradictions and narrowing-only (SC-003, FR-007, scoped per contracts/validation-api.md agreement law)
+- [X] T019 [P] [US2] Instance validation tests in `csharp/glp_schema_lang.tests/InstanceValidationTests.cs` — conforming instance → Pass; facet violation (out-of-range, length, pattern, enum) → Fail naming facet + instance path; composition violation (missing mandatory element, wrong choice-branch arity, occurs out of bounds, sequence order) → Fail naming element; unregistered functor → NoSchemaRegisteredError, never a silent pass (FR-008); deep instance bounded/deterministic (no stack overflow on adversarial nesting — edge case)
+- [X] T020 [P] [US2] Corpus agreement tests in `csharp/glp_schema_lang.tests/CorpusAgreementTests.cs` — `Message → InstanceValue` adapter over `SampleMessages.All()`; run 041 golden messages + derived non-conforming mutations through `MessageCodec.Decode`+`DecodeGuard.Check` (registry level) AND `InstanceValidator` (XSD level, against the re-expressed `crdt_message` schema from T022 — no US3 dependency); assert zero polarity contradictions and narrowing-only (SC-003, FR-007, scoped per contracts/validation-api.md agreement law)
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] InstanceValidator in `csharp/glp_schema_lang/validate/InstanceValidator.cs` — check order: kind resolution via overlay → structure → facets (narrowing only); Violation records with constructKind/name/schemaLocation/instancePath; iterative traversal bounded by the schema DAG (contracts/validation-api.md; depends T009, T011, T006)
-- [ ] T022 [US2] Make T019–T020 green, incl. authoring the `crdt_message` re-expression schema in the 043 DSL used by T020 (feeds SC-001; store under `csharp/glp_schema_lang.tests/schemas/crdt_message.043.txt`)
+- [X] T021 [US2] InstanceValidator in `csharp/glp_schema_lang/validate/InstanceValidator.cs` — check order: kind resolution via overlay → structure → facets (narrowing only); Violation records with constructKind/name/schemaLocation/instancePath; iterative traversal bounded by the schema DAG (contracts/validation-api.md; depends T009, T011, T006)
+- [X] T022 [US2] Make T019–T020 green, incl. authoring the `crdt_message` re-expression schema in the 043 DSL used by T020 (feeds SC-001; store under `csharp/glp_schema_lang.tests/schemas/crdt_message.043.txt`)
 
 **Checkpoint**: US1+US2 independently functional. Commit.
 
