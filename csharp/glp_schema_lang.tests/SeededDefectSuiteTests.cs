@@ -168,6 +168,22 @@ public class SeededDefectSuiteTests
             "schema s version 1\nmessage m { sequence { } }",
             "m", 2
         },
+        // --- out-of-int-range literals (loud parse errors, never silent truncation) ----
+        {
+            "version-out-of-int-range",
+            "schema s version 9999999999\nmessage m { sequence { a: int } }",
+            "9999999999", 1
+        },
+        {
+            "occurs-max-out-of-int-range",
+            "schema s version 1\nmessage m { sequence { a: int occurs 0..4294967296 } }",
+            "4294967296", 2
+        },
+        {
+            "maxlength-out-of-int-range",
+            "schema s version 1\ntype T: str { maxLength 4294967296 }\nmessage m { sequence { a: T } }",
+            "4294967296", 2
+        },
     };
 
     [Fact]

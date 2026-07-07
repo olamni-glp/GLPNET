@@ -2,13 +2,13 @@
 
 Normative mapping for FR-003/FR-004/FR-005 (research R3/R5). API:
 `Lowering.Lower(SchemaDocument) → LoweringArtifactSet | LoweringError`
-`SchemaLangRegistry.Register(SchemaDocument, LoweringArtifactSet, CompatMode per message) → RegistryRecord[] | LoweringError`
+`SchemaLangRegistry.Register(SchemaDocument, LoweringArtifactSet, one CompatMode per document — stamped on every registration it produces) → RegistryRecord[] | LoweringError`
 
 ## Construct mapping (canonical CDDL emitter)
 
 | DSL construct | CDDL |
 |---|---|
-| `message f { sequence {…} }` | `f-message = { fields… }` (rule name = functor with `_`→`-`) |
+| `message f { sequence {…} }` | `f = { fields… }` (rule name = functor with `_`→`-`, e.g. `my_kind` → `my-kind`) |
 | `type T { sequence {…} }` | `t = { fields… }` (rule name lowercased, `_`→`-`) |
 | `type T { choice {…} }` | `t = branch1 // branch2 // …` each branch a one-entry map `{ name: type }` |
 | element `e: T` (1..1) | `e: t,` |
@@ -16,7 +16,7 @@ Normative mapping for FR-003/FR-004/FR-005 (research R3/R5). API:
 | `e: T occurs a..b` | `e: [a*b t],` |
 | `e: T occurs a..*` | `e: [a* t],` |
 | `e: [T]` | `e: [* t],` |
-| `int` / `str` / `bytes` / `bool` | `int` (`uint` when `min ≥ 0`) / `tstr` / `bstr` / `bool` |
+| `int` / `str` / `bytes` / `bool` | `int` (`uint` when `min == 0` and no `max` — any other lone `min` widens and is unlowerable, FR-007) / `tstr` / `bstr` / `bool` |
 | `min a` + `max b` | base becomes `a..b` range type |
 | `minLength a` / `maxLength b` | `.size (a..b)` control (defaulting an absent bound to `0` / no upper) |
 | `pattern "p"` | `.regexp "p"` control |

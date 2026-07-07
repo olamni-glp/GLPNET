@@ -248,4 +248,37 @@ public class InstanceValidationTests
         Assert.False(verdict.IsPass);
         Assert.NotEmpty(verdict.Violations);
     }
+
+    // ------------------------------------------------------------------
+    // Precondition breaches on the explicit-document overload: NAMED errors (FR-014)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Unvalidated_document_with_unresolved_reference_throws_a_named_error()
+    {
+        // Parses but does NOT validate (unresolved reference) — handed to the explicit
+        // overload it must throw a named precondition error, never KeyNotFoundException.
+        var parsed = SchemaDslParser.Parse(
+            "schema s version 1\nmessage m { sequence { a: Missing } }");
+        Assert.NotNull(parsed.Document);
+        var ex = Assert.Throws<InvalidOperationException>(() => InstanceValidator.Validate(
+            parsed.Document!, "m", InstanceValue.OfStruct("m", ("a", new InstanceValue.Int(1)))));
+        Assert.Contains("Missing", ex.Message);
+        Assert.Contains("not validated", ex.Message);
+    }
+
+    [Fact]
+    public void Unvalidated_document_with_unparsable_pattern_throws_instead_of_skipping()
+    {
+        // A pattern outside the restricted subset would be rejected by schema validation;
+        // on an unvalidated document the check must loud-fail, never silently skip the
+        // pattern (silent skip = acceptance widening, contra FR-007/FR-014).
+        var parsed = SchemaDslParser.Parse(
+            "schema s version 1\ntype T: str { pattern \"\\d+\" }\nmessage m { sequence { a: T } }");
+        Assert.NotNull(parsed.Document);
+        var ex = Assert.Throws<InvalidOperationException>(() => InstanceValidator.Validate(
+            parsed.Document!, "m", InstanceValue.OfStruct("m", ("a", new InstanceValue.Str("7")))));
+        Assert.Contains("pattern", ex.Message);
+        Assert.Contains("not validated", ex.Message);
+    }
 }

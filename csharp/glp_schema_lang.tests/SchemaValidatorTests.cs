@@ -482,4 +482,32 @@ public class SchemaValidatorTests
         Assert.Equal(2, error.Location.Line);
         Assert.True(error.Location.Col > 0);
     }
+
+    // ------------------------------------------------------------------
+    // Bounded, deterministic behavior on adversarial schema TEXT (spec edge case)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Adversarially_long_reference_chain_validates_without_stack_overflow()
+    {
+        // A 50k-type chain A1 → A2 → … → A50000: the acyclicity walk must be iterative —
+        // recursion depth proportional to the chain length would kill the process.
+        var sb = new System.Text.StringBuilder("schema deep version 1\n");
+        for (var i = 1; i < 50000; i++)
+            sb.Append("type A").Append(i).Append(" { sequence { a: A").Append(i + 1).Append(" } }\n");
+        sb.Append("type A50000 { sequence { a: int } }\n");
+        sb.Append("message m { sequence { x: A1 } }\n");
+        ValidateOk(sb.ToString());
+    }
+
+    [Fact]
+    public void Type_reference_nesting_beyond_the_limit_is_a_located_parse_error()
+    {
+        var errors = ValidateErr(
+            "schema s version 1\nmessage m { sequence { a: "
+            + new string('[', 100) + "int" + new string(']', 100) + " } }");
+        var error = errors.First(e => e.Message.Contains("type reference nesting too deep"));
+        Assert.Equal(2, error.Location.Line);
+        Assert.True(error.Location.Col >= 1);
+    }
 }

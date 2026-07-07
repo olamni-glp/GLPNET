@@ -84,7 +84,10 @@ public static class Lifter
         return new LiftResult(doc, fidelity, drift);
     }
 
-    private static DriftReport? ComputeDrift(RegistryRecord record)
+    /// <summary>Drift check shared with the registry's evolution paths (FR-013). At most ONE
+    /// report per call: the CDDL form (the formal form) takes precedence over qmedit when both
+    /// have drifted (lift-fidelity.md §Drift detection).</summary>
+    internal static DriftReport? ComputeDrift(RegistryRecord record)
     {
         // Drift detection is defined over entries that carry stored XSD-level source (FR-013).
         if (record.XsdSource is null) return null;
@@ -206,9 +209,19 @@ public static class Lifter
                 facets.Add(new MinValueFacet(0, location));
             if (prim.Size is var (lo, hi) && prim.Size is not null)
             {
+                // Facet values are int; an out-of-range bound is UNEXPRESSIBLE — a per-construct
+                // fidelity entry (FR-009), never a crash and never a silent wrap (lift law 2).
+                if (lo > int.MaxValue)
+                    throw new UnexpressibleException($".size ({lo}..{hi})",
+                        ".size bound out of representable range");
                 if (lo > 0) facets.Add(new MinLengthFacet((int)lo, location));
                 if (hi.ToString() != CddlEmitter.NoUpperSizeBound)
-                    facets.Add(new MaxLengthFacet(checked((int)hi), location));
+                {
+                    if (hi > int.MaxValue)
+                        throw new UnexpressibleException($".size ({lo}..{hi})",
+                            ".size bound out of representable range");
+                    facets.Add(new MaxLengthFacet((int)hi, location));
+                }
             }
             if (prim.Regexp is not null)
                 facets.Add(new PatternFacet(prim.Regexp, location));

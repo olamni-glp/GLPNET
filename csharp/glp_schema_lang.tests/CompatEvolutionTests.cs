@@ -103,6 +103,28 @@ public class CompatEvolutionTests
             false, true, "occurs narrowing", "items"
         },
         {
+            // Boundary crossing 1..1 → 1..2: scalar becomes list (representation shift ‡) —
+            // breaking BOTH directions even though the bounds only "widened".
+            "occurs-representation-shift-widen",
+            "message evo_kind { sequence { items: int } }",
+            "message evo_kind { sequence { items: int occurs 1..2 } }",
+            false, false, "representation shift", "items"
+        },
+        {
+            // Boundary crossing 1..2 → 1..1: list becomes scalar — breaking BOTH directions.
+            "occurs-representation-shift-narrow",
+            "message evo_kind { sequence { items: int occurs 1..2 } }",
+            "message evo_kind { sequence { items: int } }",
+            false, false, "representation shift", "items"
+        },
+        {
+            // Boundary crossing 0..1 → 0..2: optional scalar becomes list.
+            "occurs-representation-shift-from-optional",
+            "message evo_kind { sequence { items?: int } }",
+            "message evo_kind { sequence { items: int occurs 0..2 } }",
+            false, false, "representation shift", "items"
+        },
+        {
             "add-choice-branch",
             "type Body { choice { a: int  b: str } }\nmessage evo_kind { sequence { body: Body } }",
             "type Body { choice { a: int  b: str  c: bytes } }\nmessage evo_kind { sequence { body: Body } }",
@@ -206,5 +228,44 @@ public class CompatEvolutionTests
         // Pairwise against v2 alone it is fully compatible.
         var v2Doc = Doc(2, "message evo_kind { sequence { id: int  new_field?: int } }");
         Assert.True(CompatChecker.Check(v2Doc, v3, CompatMode.Full).IsCompatible);
+    }
+
+    // ------------------------------------------------------------------
+    // † Pattern inclusion beyond the state cap → conservatively breaking, said explicitly
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Unestablishable_pattern_inclusion_is_conservatively_breaking_in_both_directions()
+    {
+        // Equal languages spelled differently: each product walk exceeds the inclusion state
+        // cap (≥ 2^17 subset pairs), so inclusion is Unknown in BOTH directions and the
+        // verdict must say so — never a silent Compatible.
+        var v1 = Doc(1,
+            "type Tag: str { pattern \"(a|b)*a(a|b){17}\" }\nmessage evo_kind { sequence { t: Tag } }");
+        var v2 = Doc(2,
+            "type Tag: str { pattern \"(a|b)*a(a|b){9}(a|b){8}\" }\nmessage evo_kind { sequence { t: Tag } }");
+
+        var verdict = CompatChecker.Check(v1, v2, CompatMode.Full);
+        Assert.False(verdict.IsCompatible);
+        Assert.Contains(verdict.Breaks, b => b.Direction == CompatDirection.Backward
+            && b.Rule.Contains("pattern inclusion not established (conservatively breaking)"));
+        Assert.Contains(verdict.Breaks, b => b.Direction == CompatDirection.Forward
+            && b.Rule.Contains("pattern inclusion not established (conservatively breaking)"));
+    }
+
+    // ------------------------------------------------------------------
+    // Precondition breach: compat checking is defined over VALIDATED documents (FR-014)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Unvalidated_document_with_unresolved_reference_is_a_named_error()
+    {
+        var v1 = Doc(1, "message evo_kind { sequence { id: int } }");
+        var v2 = SchemaDslParser.Parse(
+            "schema evo version 2\nmessage evo_kind { sequence { id: Gone } }").Document!;
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            CompatChecker.Check(v1, v2, CompatMode.Full));
+        Assert.Contains("Gone", ex.Message);
+        Assert.Contains("not validated", ex.Message);
     }
 }

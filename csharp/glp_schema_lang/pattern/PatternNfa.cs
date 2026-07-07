@@ -34,6 +34,15 @@ public sealed class PatternNfa
 {
     private const int InclusionStateCap = 100_000;
 
+    /// <summary>Hard cap on total constructed NFA states (spec edge case: bounded,
+    /// deterministic behavior on adversarial input). Counted-repeat totals are estimated from
+    /// the DECLARED counts BEFORE any expansion, so `a{100000}` fails loudly through the
+    /// pattern-error channel instead of exhausting the stack or memory (FR-014).</summary>
+    private const int BuildStateCap = 10_000;
+
+    /// <summary>Maximum group-nesting depth in the pattern parser (bounded recursion).</summary>
+    private const int MaxGroupNesting = 64;
+
     // States 0..N-1. A transition with Set == null is an epsilon transition.
     private readonly List<List<Transition>> _states;
     private readonly int _start;
@@ -61,6 +70,10 @@ public sealed class PatternNfa
         try
         {
             var node = new Parser(pattern).ParsePattern();
+            var estimate = EstimateStates(node);
+            if (estimate > BuildStateCap)
+                throw new PatternParseException(new PatternError(pattern, 0,
+                    $"unsupported or ill-formed pattern construct '{pattern}': expansion needs about {estimate} NFA states, exceeding the {BuildStateCap}-state build cap — reduce counted-repeat totals"));
             var builder = new Builder();
             var (start, accept) = builder.Build(node);
             return new PatternParseResult(new PatternNfa(builder.States, start, accept, pattern), null);
@@ -69,6 +82,53 @@ public sealed class PatternNfa
         {
             return new PatternParseResult(null, ex.Error);
         }
+    }
+
+    /// <summary>
+    /// Exact Thompson-construction state count, computed ITERATIVELY (explicit stack, no
+    /// recursion) from declared counted-repeat totals before any structural expansion, so the
+    /// <see cref="BuildStateCap"/> is enforced without ever touching the expanded form.
+    /// Multipliers are clamped to the cap, so nested repeats cannot overflow.
+    /// </summary>
+    private static long EstimateStates(Node node)
+    {
+        long total = 0;
+        var stack = new Stack<(Node Node, long Mult)>();
+        stack.Push((node, 1));
+        while (stack.Count > 0)
+        {
+            var (n, mult) = stack.Pop();
+            switch (n)
+            {
+                case EmptyNode or CharNode:
+                    total += 2 * mult;
+                    break;
+                case ConcatNode c:
+                    stack.Push((c.Left, mult));
+                    stack.Push((c.Right, mult));
+                    break;
+                case AltNode a:
+                    total += 2 * mult;
+                    stack.Push((a.Left, mult));
+                    stack.Push((a.Right, mult));
+                    break;
+                case StarNode s:
+                    total += 2 * mult;
+                    stack.Push((s.Inner, mult));
+                    break;
+                case RepeatNode r:
+                    // Expansion = min mandatory copies + (max-min) optional copies, each
+                    // optional wrapped as Alt(inner, Empty): 2 alt + 2 empty states per copy.
+                    total += 4L * Math.Max(r.Max - r.Min, 0) * mult;
+                    if (r.Max > 0)
+                        stack.Push((r.Inner, Math.Min(mult * r.Max, BuildStateCap + 1L)));
+                    else
+                        total += 2 * mult; // {0} builds a single empty node
+                    break;
+            }
+            if (total > BuildStateCap) return total; // early out — deterministic, bounded
+        }
+        return total;
     }
 
     // ------------------------------------------------------------------
@@ -286,6 +346,7 @@ public sealed class PatternNfa
     {
         private readonly string _text;
         private int _pos;
+        private int _groupDepth;
 
         public Parser(string text) => _text = text;
 
@@ -388,7 +449,9 @@ public sealed class PatternNfa
             while (!AtEnd && Peek is >= '0' and <= '9') _pos++;
             if (_pos == start)
                 throw Error(_text.Substring(open, Math.Min(_text.Length, _pos + 1) - open), open, "expected a number in counted repeat");
-            return int.Parse(_text.AsSpan(start, _pos - start));
+            if (!int.TryParse(_text.AsSpan(start, _pos - start), out var value))
+                throw Error(_text.Substring(open, _pos - open), open, "counted-repeat count is out of representable range");
+            return value;
         }
 
         private Node ParseAtom()
@@ -401,8 +464,12 @@ public sealed class PatternNfa
                 case '(':
                     if (_pos + 1 < _text.Length && _text[_pos + 1] == '?')
                         throw Error("(?", _pos, "lookaround / named / non-capturing groups are not in the restricted subset");
+                    if (_groupDepth >= MaxGroupNesting)
+                        throw Error("(", _pos, $"pattern group nesting too deep (limit {MaxGroupNesting})");
                     _pos++;
+                    _groupDepth++;
                     var inner = ParseAlternation();
+                    _groupDepth--;
                     if (AtEnd || Peek != ')')
                         throw Error("(", _pos, "unbalanced group — missing ')'");
                     _pos++;
@@ -503,6 +570,10 @@ public sealed class PatternNfa
 
         private int NewState()
         {
+            // Defense in depth behind the pre-expansion estimate (same error channel).
+            if (States.Count >= BuildStateCap)
+                throw new PatternParseException(new PatternError("pattern", 0,
+                    $"NFA construction exceeded the {BuildStateCap}-state build cap"));
             States.Add(new List<Transition>());
             return States.Count - 1;
         }

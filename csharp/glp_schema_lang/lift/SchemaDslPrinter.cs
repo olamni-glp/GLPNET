@@ -85,10 +85,14 @@ public static class SchemaDslPrinter
         _ => throw new InvalidOperationException($"unknown facet {facet.Keyword}"),
     };
 
+    /// <summary>An enum member prints unquoted ONLY when the DSL lexer tokenizes it as one
+    /// identifier (`[A-Za-z_][A-Za-z0-9_]*` — parser/SchemaDslParser.cs); anything else (a
+    /// `-`, a digit-leading name, …) is printed as a DSL string literal so the printed Source
+    /// always re-parses to the same member text.</summary>
     private static string MemberText(string member) =>
         member.Length > 0
-        && (char.IsLetter(member[0]) || member[0] == '_' || member[0] == '-' || char.IsDigit(member[0]))
-        && member.All(c => char.IsLetterOrDigit(c) || c is '_' or '-')
+        && (char.IsAsciiLetter(member[0]) || member[0] == '_')
+        && member.All(c => char.IsAsciiLetterOrDigit(c) || c == '_')
             ? member
             : $"\"{member.Replace("\"", "\\\"")}\"";
 }

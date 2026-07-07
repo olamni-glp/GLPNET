@@ -31,15 +31,50 @@ public static class InstanceValidator
         return Validate(validated.Document!, functor, instance);
     }
 
-    /// <summary>Validate against an explicit (already validated) schema document.</summary>
+    /// <summary>Validate against an explicit (already validated) schema document. Precondition
+    /// breaches (an unresolved reference, an unparsable pattern) throw a NAMED
+    /// InvalidOperationException — never a raw lookup exception or a silent skip (FR-014).</summary>
     public static ValidationVerdict Validate(SchemaDocument document, string functor, InstanceValue instance)
     {
         var message = document.Messages.FirstOrDefault(m => m.Functor == functor)
             ?? throw new NoSchemaRegisteredError(functor);
-        var types = document.Types.ToDictionary(t => t.Name);
+        var context = new Context(document);
         var violations = new List<Violation>();
-        CheckComposition(types, functor, message.Location, message.Body, instance, string.Empty, violations);
+        CheckComposition(context, functor, message.Location, message.Body, instance, string.Empty, violations);
         return violations.Count == 0 ? ValidationVerdict.Pass : ValidationVerdict.Fail(violations);
+    }
+
+    /// <summary>Per-validation state: the type table plus a parsed-NFA cache (one parse per
+    /// distinct pattern string per validation, not one per validated value).</summary>
+    private sealed class Context
+    {
+        private readonly Dictionary<string, PatternNfa> _nfas = new();
+
+        public Context(SchemaDocument document) => Types = document.Types.ToDictionary(t => t.Name);
+
+        public Dictionary<string, NamedType> Types { get; }
+
+        /// <summary>Loud precondition failure on an unresolved reference: instance validation
+        /// is defined over VALIDATED documents (validation-api.md).</summary>
+        public NamedType Resolve(NamedRef named) =>
+            Types.TryGetValue(named.Name, out var type)
+                ? type
+                : throw new InvalidOperationException(
+                    $"unresolved type reference '{named.Name}' — the document was not validated");
+
+        /// <summary>Loud precondition failure on an unparsable pattern facet: silently
+        /// skipping the check would widen acceptance (FR-007/FR-014).</summary>
+        public PatternNfa NfaOf(string typeName, PatternFacet pattern)
+        {
+            if (_nfas.TryGetValue(pattern.Pattern, out var cached)) return cached;
+            var parsed = PatternNfa.Parse(pattern.Pattern);
+            if (parsed.Nfa is null)
+                throw new InvalidOperationException(
+                    $"invariant broken: pattern \"{pattern.Pattern}\" on type '{typeName}' does not parse — " +
+                    $"the document was not validated ({parsed.Error!.Message})");
+            _nfas[pattern.Pattern] = parsed.Nfa;
+            return parsed.Nfa;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -47,7 +82,7 @@ public static class InstanceValidator
     // ------------------------------------------------------------------
 
     private static void CheckComposition(
-        Dictionary<string, NamedType> types,
+        Context context,
         string owner,
         SourceLocation ownerLocation,
         Composition composition,
@@ -63,13 +98,13 @@ public static class InstanceValidator
         }
 
         if (composition.Kind == CompositionKind.Sequence)
-            CheckSequence(types, owner, ownerLocation, composition, instance, path, violations);
+            CheckSequence(context, owner, ownerLocation, composition, instance, path, violations);
         else
-            CheckChoice(types, owner, ownerLocation, composition, instance, path, violations);
+            CheckChoice(context, owner, ownerLocation, composition, instance, path, violations);
     }
 
     private static void CheckSequence(
-        Dictionary<string, NamedType> types,
+        Context context,
         string owner,
         SourceLocation ownerLocation,
         Composition composition,
@@ -106,7 +141,7 @@ public static class InstanceValidator
                     $"sequence order violated in '{owner}': element '{field.Key}' appears after later-declared elements"));
             }
             lastIndex = Math.Max(lastIndex, index);
-            CheckElementValue(types, composition.Elements[index], field.Value, Join(path, field.Key), violations);
+            CheckElementValue(context, composition.Elements[index], field.Value, Join(path, field.Key), violations);
         }
 
         foreach (var element in composition.Elements)
@@ -116,7 +151,7 @@ public static class InstanceValidator
     }
 
     private static void CheckChoice(
-        Dictionary<string, NamedType> types,
+        Context context,
         string owner,
         SourceLocation ownerLocation,
         Composition composition,
@@ -138,12 +173,12 @@ public static class InstanceValidator
                     Join(path, field.Key), $"'{field.Key}' is not a branch of choice '{owner}'"));
                 continue;
             }
-            CheckElementValue(types, branch, field.Value, Join(path, field.Key), violations);
+            CheckElementValue(context, branch, field.Value, Join(path, field.Key), violations);
         }
     }
 
     private static void CheckElementValue(
-        Dictionary<string, NamedType> types,
+        Context context,
         ElementDecl element,
         InstanceValue value,
         string path,
@@ -152,7 +187,7 @@ public static class InstanceValidator
         var occurs = element.Occurs;
         if (occurs.IsDefault || occurs.IsOptional)
         {
-            CheckType(types, element.Type, value, path, violations);
+            CheckType(context, element.Type, value, path, violations);
             return;
         }
 
@@ -167,11 +202,11 @@ public static class InstanceValidator
             violations.Add(new Violation(ConstructKind.Element, element.Name, element.Location.ToString(),
                 path, $"element '{element.Name}' has {list.Items.Count} item(s), outside occurs {occurs}"));
         for (var i = 0; i < list.Items.Count; i++)
-            CheckType(types, element.Type, list.Items[i], $"{path}[{i}]", violations);
+            CheckType(context, element.Type, list.Items[i], $"{path}[{i}]", violations);
     }
 
     private static void CheckType(
-        Dictionary<string, NamedType> types,
+        Context context,
         TypeRef typeRef,
         InstanceValue value,
         string path,
@@ -190,18 +225,19 @@ public static class InstanceValidator
                     break;
                 }
                 for (var i = 0; i < items.Items.Count; i++)
-                    CheckType(types, list.Element, items.Items[i], $"{path}[{i}]", violations);
+                    CheckType(context, list.Element, items.Items[i], $"{path}[{i}]", violations);
                 break;
             case NamedRef named:
-                // Documents are validated, so the reference resolves and the graph is a DAG —
-                // this recursion is bounded by the schema, never by the instance.
-                switch (types[named.Name])
+                // Documents are validated, so the reference resolves (Resolve loud-fails on the
+                // unvalidated case) and the graph is a DAG — this recursion is bounded by the
+                // schema, never by the instance.
+                switch (context.Resolve(named))
                 {
                     case SimpleType simple:
-                        CheckSimple(simple, value, path, violations);
+                        CheckSimple(context, simple, value, path, violations);
                         break;
                     case ComplexType complex:
-                        CheckComposition(types, complex.Name, complex.Location, complex.Composition,
+                        CheckComposition(context, complex.Name, complex.Location, complex.Composition,
                             value, path, violations);
                         break;
                 }
@@ -214,6 +250,7 @@ public static class InstanceValidator
     // ------------------------------------------------------------------
 
     private static void CheckSimple(
+        Context context,
         SimpleType simple,
         InstanceValue value,
         string path,
@@ -240,8 +277,9 @@ public static class InstanceValidator
                     break;
                 case PatternFacet pattern when value is InstanceValue.Str s:
                 {
-                    var parsed = PatternNfa.Parse(pattern.Pattern);
-                    if (parsed.Nfa is not null && !parsed.Nfa.Matches(s.Value))
+                    // NfaOf loud-fails on an unparsable pattern (never a silent skip) and
+                    // caches the parse per distinct pattern string.
+                    if (!context.NfaOf(simple.Name, pattern).Matches(s.Value))
                         Facet(facet, $"value \"{s.Value}\" does not match pattern \"{pattern.Pattern}\" of type '{simple.Name}'");
                     break;
                 }

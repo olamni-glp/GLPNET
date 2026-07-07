@@ -161,3 +161,15 @@ public sealed record NoCompatModeDeclaredError(string Functor)
     public string Message =>
         $"no compatibility mode declared for '{Functor}' — declare a mode before checking or registering a new version";
 }
+
+/// <summary>
+/// Refusal record (FR-014): a proposed version's number must strictly exceed the latest
+/// stored version for every previously-registered kind in the document — re-registering the
+/// same version or a lower one would make the chain ordering (and "latest" lookups)
+/// ambiguous, never a silent append.
+/// </summary>
+public sealed record VersionNotMonotonicError(string Functor, int ProposedVersion, int LatestVersion)
+{
+    public string Message =>
+        $"proposed version {ProposedVersion} for '{Functor}' does not exceed the latest registered version {LatestVersion} — version numbers must be strictly increasing";
+}

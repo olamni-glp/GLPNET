@@ -192,6 +192,9 @@ public static class SchemaDslParser
     {
         private static readonly string[] Primitives = { "int", "str", "bytes", "bool" };
 
+        /// <summary>Maximum `[…]` type-reference nesting (bounded recursion, spec edge case).</summary>
+        private const int MaxTypeRefNesting = 64;
+
         private readonly string _source;
         private readonly List<Token> _tokens;
         private readonly List<SchemaValidationError> _errors;
@@ -234,6 +237,19 @@ public static class SchemaDslParser
 
         private string DescribeCurrent() => Current.Kind == TokenKind.Eof ? "end of document" : Current.Text;
 
+        /// <summary>Range-checked long→int narrowing: an out-of-int-range literal is a parse
+        /// error NAMING the construct and its location (FR-014) — never a silent truncation.</summary>
+        private int IntInRange(Token token, string what)
+        {
+            if (token.IntValue is > int.MaxValue or < int.MinValue)
+            {
+                Error(token.Text, token.Location,
+                    $"{what} {token.Text} is out of representable range");
+                throw new ParseAbort();
+            }
+            return (int)token.IntValue;
+        }
+
         public SchemaDocument? ParseDocument()
         {
             string name;
@@ -243,7 +259,7 @@ public static class SchemaDslParser
                 ExpectKeyword("schema");
                 name = Expect(TokenKind.Ident, "a schema name").Text;
                 ExpectKeyword("version");
-                version = (int)Expect(TokenKind.Int, "a version number").IntValue;
+                version = IntInRange(Expect(TokenKind.Int, "a version number"), "schema version");
             }
             catch (ParseAbort)
             {
@@ -373,7 +389,7 @@ public static class SchemaDslParser
             if (Current.Kind == TokenKind.Ident && Current.Text == "occurs")
             {
                 var occursTok = Next();
-                var min = (int)Expect(TokenKind.Int, "the occurs minimum").IntValue;
+                var min = IntInRange(Expect(TokenKind.Int, "the occurs minimum"), "occurs minimum");
                 Expect(TokenKind.DotDot, "'..'");
                 int? max;
                 if (Current.Kind == TokenKind.Star)
@@ -383,7 +399,7 @@ public static class SchemaDslParser
                 }
                 else
                 {
-                    max = (int)Expect(TokenKind.Int, "the occurs maximum or '*'").IntValue;
+                    max = IntInRange(Expect(TokenKind.Int, "the occurs maximum or '*'"), "occurs maximum");
                 }
                 if (optionalSugar)
                 {
@@ -400,12 +416,18 @@ public static class SchemaDslParser
             return new ElementDecl(nameTok.Text, typeRef, occurs, nameTok.Location);
         }
 
-        private TypeRef ParseTypeRef()
+        private TypeRef ParseTypeRef(int depth = 0)
         {
             if (Current.Kind == TokenKind.LBracket)
             {
+                if (depth >= MaxTypeRefNesting)
+                {
+                    Error(Current.Text, Current.Location,
+                        $"type reference nesting too deep (limit {MaxTypeRefNesting})");
+                    throw new ParseAbort();
+                }
                 var open = Next();
-                var inner = ParseTypeRef();
+                var inner = ParseTypeRef(depth + 1);
                 Expect(TokenKind.RBracket, "']'");
                 return new ListRef(inner, open.Location);
             }
@@ -449,10 +471,12 @@ public static class SchemaDslParser
                         facets.Add(new MaxValueFacet(Expect(TokenKind.Int, "the max value").IntValue, tok.Location));
                         break;
                     case "minLength":
-                        facets.Add(new MinLengthFacet((int)Expect(TokenKind.Int, "the minLength value").IntValue, tok.Location));
+                        facets.Add(new MinLengthFacet(
+                            IntInRange(Expect(TokenKind.Int, "the minLength value"), "minLength value"), tok.Location));
                         break;
                     case "maxLength":
-                        facets.Add(new MaxLengthFacet((int)Expect(TokenKind.Int, "the maxLength value").IntValue, tok.Location));
+                        facets.Add(new MaxLengthFacet(
+                            IntInRange(Expect(TokenKind.Int, "the maxLength value"), "maxLength value"), tok.Location));
                         break;
                     case "pattern":
                         facets.Add(new PatternFacet(Expect(TokenKind.Str, "the pattern string").StrValue, tok.Location));

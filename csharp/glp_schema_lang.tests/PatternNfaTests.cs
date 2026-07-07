@@ -152,6 +152,8 @@ public class PatternNfaTests
     [InlineData("a|b", "[a-b]", PatternInclusion.Subset)]
     [InlineData("[0-9]{2}", "[0-9]+", PatternInclusion.Subset)]
     [InlineData("[0-9]+", "[0-9]{2}", PatternInclusion.NotSubset)]
+    [InlineData("[^a-z]", ".", PatternInclusion.Subset)]    // negated class ⊆ any-char
+    [InlineData(".", "[^a-z]", PatternInclusion.NotSubset)] // any-char ⊄ negated class
     public void Language_inclusion(string a, string b, PatternInclusion expected) =>
         Assert.Equal(expected, PatternNfa.IsSubsetOf(ParseOk(a), ParseOk(b)));
 
@@ -160,5 +162,47 @@ public class PatternNfaTests
     {
         var nfa = ParseOk("[a-z][a-z0-9_]*");
         Assert.Equal(PatternInclusion.Subset, PatternNfa.IsSubsetOf(nfa, nfa));
+    }
+
+    [Fact]
+    public void Inclusion_beyond_the_state_cap_is_unknown_never_a_wrong_answer()
+    {
+        // Equal languages spelled differently: the product walk needs ≥ 2^17 subset pairs,
+        // exceeding the inclusion state cap — the answer must be the explicit Unknown.
+        var a = ParseOk("(a|b)*a(a|b){17}");
+        var b = ParseOk("(a|b)*a(a|b){9}(a|b){8}");
+        Assert.Equal(PatternInclusion.Unknown, PatternNfa.IsSubsetOf(a, b));
+    }
+
+    // ------------------------------------------------------------------
+    // Bounded construction: counted-repeat blowups fail loudly, never OOM/stack-overflow
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("a{100000}")]                // deep expansion → would stack-overflow unbounded
+    [InlineData("(a{1000}){1000}")]          // multiplicative expansion → would OOM unbounded
+    [InlineData("(a{500}){500}(b{500}){500}")]
+    public void Counted_repeat_blowups_are_rejected_at_the_state_cap(string pattern)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var error = ParseErr(pattern);
+        sw.Stop();
+        Assert.Contains("build cap", error.Message); // the loud, located error names the cap
+        Assert.True(sw.ElapsedMilliseconds < 2000,
+            $"rejection must be fast (pre-expansion), took {sw.ElapsedMilliseconds}ms");
+    }
+
+    [Fact]
+    public void Counted_repeat_count_beyond_int_range_is_an_error_not_an_overflow()
+    {
+        var error = ParseErr("a{99999999999}");
+        Assert.Contains("out of representable range", error.Message);
+    }
+
+    [Fact]
+    public void Group_nesting_beyond_the_limit_is_a_located_error()
+    {
+        var error = ParseErr(new string('(', 100) + "a" + new string(')', 100));
+        Assert.Contains("nesting too deep", error.Message);
     }
 }

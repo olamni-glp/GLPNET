@@ -165,6 +165,123 @@ public class LiftFidelityTests
     }
 
     // ------------------------------------------------------------------
+    // .size bounds beyond int range: fidelity entries, never a crash or a silent wrap (FR-009)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Size_bounds_beyond_int_range_are_fidelity_entries_not_crashes()
+    {
+        var registry = new SchemaLangRegistry();
+        var cddl = "big-kind = {\n  a: wide,\n  b: huge,\n}\n"
+            + "wide = tstr .size (0..4294967295)\n"
+            + "huge = tstr .size (4294967296..18446744073709551615)\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x20, "big_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "big", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "big_kind"); // must not throw
+        Assert.Equal(FidelityOutcome.Partial, result.Fidelity.Outcome);
+        // Upper bound above int.MaxValue (and not the no-upper sentinel): a NAMED entry.
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains(".size (0..4294967295)")
+                && u.Reason.Contains("out of representable range"));
+        // Lower bound above int.MaxValue: a NAMED entry, never a silently wrapped minLength.
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains(".size (4294967296..")
+                && u.Reason.Contains("out of representable range"));
+    }
+
+    // ------------------------------------------------------------------
+    // String-aware rule splitting: literal brackets/commas inside pattern strings are TEXT
+    // ------------------------------------------------------------------
+
+    private const string BracketPatternSchema = """
+        schema brkt version 1
+
+        type OpenParen: str { pattern "[(]" }
+        type NotClose: str { pattern "[^)]*" }
+        type Braces: str { pattern "[{][}]" }
+        type Squares: str { pattern "[[]" }
+
+        message brkt_kind {
+          sequence {
+            o: OpenParen
+            n: NotClose
+            b: Braces
+            s: Squares
+          }
+        }
+        """;
+
+    [Fact]
+    public void Patterns_with_literal_brackets_roundtrip_with_full_fidelity()
+    {
+        var doc = LoweringTests.Doc(BracketPatternSchema);
+        var registry = Registered(BracketPatternSchema);
+        var result = Lifter.Lift(registry, "brkt_kind");
+        Assert.Equal(FidelityOutcome.Full, result.Fidelity.Outcome);
+        SchemaEquivalence.AssertEquivalent(doc, result.Rendering!);
+    }
+
+    [Fact]
+    public void Out_of_subset_entry_with_string_delimiters_is_captured_whole()
+    {
+        var registry = new SchemaLangRegistry();
+        var cddl = "odd-kind = {\n  a: tstr .regexp \"a,b(\" .within x,\n  b: int,\n}\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x21, "odd_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "odd", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "odd_kind");
+        Assert.Equal(FidelityOutcome.Partial, result.Fidelity.Outcome);
+        // The captured span is the WHOLE entry value: the ',' and '(' inside the pattern
+        // string are text, not delimiters.
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains(".within x") && u.CddlConstruct.Contains("\"a,b(\""));
+        // The entry AFTER the string-bearing one still parses into the rendering.
+        var elements = result.Rendering!.Messages.Single().Body.Elements;
+        Assert.DoesNotContain(elements, e => e.Name == "a");
+        Assert.Contains(elements, e => e.Name == "b");
+    }
+
+    // ------------------------------------------------------------------
+    // Printer/lexer alphabet: non-identifier enum members print as DSL string literals
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Enum_members_outside_the_dsl_identifier_alphabet_print_as_string_literals()
+    {
+        var registry = new SchemaLangRegistry();
+        var cddl = "modey-kind = {\n  m: mode,\n  l: level,\n}\n"
+            + "mode = &( no-op: 0, run: 1 )\n"
+            + "level = 1 / 2\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x22, "modey_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "modey", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "modey_kind");
+        Assert.Equal(FidelityOutcome.Full, result.Fidelity.Outcome);
+        Assert.NotNull(result.Rendering);
+
+        // 'no-op' is liftable CDDL but NOT a DSL bareword; the digit-leading int-alternate
+        // members are not identifiers either — the printed Source must still re-parse.
+        var revalidated = SchemaValidator.Validate(result.Rendering!.Source);
+        Assert.True(revalidated.IsValid,
+            "printed lift source must re-validate: " +
+            string.Join("; ", revalidated.Errors.Select(e => e.ToString())));
+        SchemaEquivalence.AssertEquivalent(result.Rendering, revalidated.Document!);
+
+        var mode = Assert.IsType<SimpleType>(revalidated.Document!.Types.Single(t => t.Name == "Mode"));
+        Assert.Equal(new[] { "no-op", "run" }, mode.Facets.OfType<EnumerationFacet>().Single().Members);
+    }
+
+    // ------------------------------------------------------------------
     // FR-010 round-trip: Lift(Lower(doc)) ≍ doc
     // ------------------------------------------------------------------
 

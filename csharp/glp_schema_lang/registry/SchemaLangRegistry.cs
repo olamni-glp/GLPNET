@@ -45,15 +45,26 @@ public sealed record RegisterResult(IReadOnlyList<RegistryRecord>? Records, Lowe
     public bool IsSuccess => Error is null;
 }
 
-/// <summary>Union result of a version check: a verdict, or the refusal record (clarification 3).</summary>
-public sealed record CheckVersionResult(CompatVerdict? Verdict, NoCompatModeDeclaredError? NoModeError);
+/// <summary>Union result of a version check: a verdict, or a refusal record (clarification 3 /
+/// version-monotonicity law).</summary>
+public sealed record CheckVersionResult(
+    CompatVerdict? Verdict,
+    NoCompatModeDeclaredError? NoModeError,
+    VersionNotMonotonicError? VersionError = null);
 
 /// <summary>Union result of a version registration (contracts/compat-evolution.md §API).</summary>
 public sealed record RegisterVersionResult(
     IReadOnlyList<RegistryRecord>? Records,
     NoCompatModeDeclaredError? NoModeError,
-    CompatVerdict? RequiresOverride);
+    CompatVerdict? RequiresOverride,
+    VersionNotMonotonicError? VersionError = null);
 
+/// <summary>
+/// Seeded overlay registry over the static E9 tables.
+/// </summary>
+/// <remarks>Single-threaded by contract: instances mutate plain in-memory lists with no
+/// synchronization and are NOT safe for concurrent use — callers own any cross-thread
+/// coordination (matching the substrate's compile-time-closed, single-writer usage).</remarks>
 public sealed class SchemaLangRegistry
 {
     private readonly List<RegistryRecord> _seed = new();
@@ -141,22 +152,43 @@ public sealed class SchemaLangRegistry
     /// </summary>
     public RegisterResult Register(SchemaDocument doc, LoweringArtifactSet artifacts, CompatMode mode)
     {
+        // One combined lookup index per Register call (latest version wins, first row scanned
+        // breaks ties — the LookupByFunctor/LookupByPayloadType law) instead of re-materializing
+        // seed ∪ overlay once per registration.
+        var byFunctor = new Dictionary<string, RegistryRecord>();
+        var byPayloadType = new Dictionary<byte, RegistryRecord>();
+        foreach (var record in _seed.Concat(_overlay))
+        {
+            if (!byFunctor.TryGetValue(record.Functor, out var f) || record.Version > f.Version)
+                byFunctor[record.Functor] = record;
+            if (!byPayloadType.TryGetValue(record.PayloadType, out var p) || record.Version > p.Version)
+                byPayloadType[record.PayloadType] = record;
+        }
+
         var collisions = new List<string>();
+        var newFunctors = new HashSet<string>();
+        var newPayloadTypes = new HashSet<byte>();
         foreach (var registration in artifacts.Registrations)
         {
-            if (HasFunctor(registration.Functor))
+            if (byFunctor.TryGetValue(registration.Functor, out var existing))
             {
-                var existing = LookupByFunctor(registration.Functor);
                 collisions.Add(
                     $"functor '{registration.Functor}' is already registered " +
                     $"(payload type 0x{existing.PayloadType:X2}, schema '{existing.SchemaName}' v{existing.Version}{(existing.IsSeeded ? ", seeded" : string.Empty)})");
             }
-            if (HasPayloadType(registration.PayloadType))
+            if (byPayloadType.TryGetValue(registration.PayloadType, out var taken))
             {
-                var existing = LookupByPayloadType(registration.PayloadType);
                 collisions.Add(
-                    $"payload type 0x{registration.PayloadType:X2} requested for '{registration.Functor}' is already taken by functor '{existing.Functor}'");
+                    $"payload type 0x{registration.PayloadType:X2} requested for '{registration.Functor}' is already taken by functor '{taken.Functor}'");
             }
+            // Duplicates WITHIN one artifact set are the same collision class: registering both
+            // rows would create ambiguous lookups (all-or-nothing, US1 AS-3).
+            if (!newFunctors.Add(registration.Functor))
+                collisions.Add(
+                    $"functor '{registration.Functor}' appears more than once in the artifact set — duplicate registration within one document");
+            if (!newPayloadTypes.Add(registration.PayloadType))
+                collisions.Add(
+                    $"payload type 0x{registration.PayloadType:X2} requested for '{registration.Functor}' appears more than once in the artifact set");
         }
         if (collisions.Count > 0)
             return new RegisterResult(null, new LoweringError(
@@ -194,10 +226,19 @@ public sealed class SchemaLangRegistry
     /// </summary>
     public CheckVersionResult CheckVersion(SchemaDocument newDoc)
     {
+        // Version monotonicity (FR-014): the proposed version must strictly exceed the latest
+        // stored version of every previously-registered kind — refused before any comparison.
+        if (VersionMonotonicityError(newDoc) is { } versionError)
+            return new CheckVersionResult(null, null, versionError);
+
         CompatVerdict? lastVerdict = null;
         foreach (var message in newDoc.Messages)
         {
-            var chain = Versions(message.Functor); // throws NoSchemaRegisteredError on unknown kind
+            // A kind present only in the new document is additive — compatible by definition
+            // (the CompatChecker law); it enters the registry as a first registration.
+            if (!HasFunctor(message.Functor)) continue;
+
+            var chain = Versions(message.Functor);
             var latest = chain.Versions[^1];
             if (latest.CompatMode is not GlpRuntime.WireRegistry.CompatMode mode)
                 return new CheckVersionResult(null, new NoCompatModeDeclaredError(message.Functor));
@@ -214,8 +255,25 @@ public sealed class SchemaLangRegistry
             }
         }
         return new CheckVersionResult(
-            lastVerdict ?? throw new InvalidOperationException("CheckVersion requires a document with at least one message"),
+            lastVerdict ?? throw new InvalidOperationException(
+                newDoc.Messages.Count == 0
+                    ? "CheckVersion requires a document with at least one message"
+                    : $"no message kind in schema '{newDoc.Name}' has a registered version — use Register for a first registration"),
             null);
+    }
+
+    /// <summary>Non-null iff the proposed document's version does not strictly exceed the
+    /// latest stored version of some previously-registered kind it declares.</summary>
+    private VersionNotMonotonicError? VersionMonotonicityError(SchemaDocument newDoc)
+    {
+        foreach (var message in newDoc.Messages)
+        {
+            if (!HasFunctor(message.Functor)) continue;
+            var latest = LookupByFunctor(message.Functor);
+            if (newDoc.Version <= latest.Version)
+                return new VersionNotMonotonicError(message.Functor, newDoc.Version, latest.Version);
+        }
+        return null;
     }
 
     /// <summary>
@@ -226,6 +284,8 @@ public sealed class SchemaLangRegistry
     public RegisterVersionResult RegisterVersion(SchemaDocument newDoc, LoweringArtifactSet artifacts)
     {
         var check = CheckVersion(newDoc);
+        if (check.VersionError is not null)
+            return new RegisterVersionResult(null, null, null, check.VersionError);
         if (check.NoModeError is not null)
             return new RegisterVersionResult(null, check.NoModeError, null);
         if (!check.Verdict!.IsCompatible)
@@ -243,12 +303,21 @@ public sealed class SchemaLangRegistry
         LoweringArtifactSet artifacts,
         OverrideRecord overrideRecord)
     {
+        if (VersionMonotonicityError(newDoc) is { } versionError)
+            throw new InvalidOperationException(versionError.Message);
+        var anyRegistered = false;
         foreach (var message in newDoc.Messages)
         {
+            if (!HasFunctor(message.Functor)) continue; // additive new kind — first registration
+            anyRegistered = true;
             var latest = Versions(message.Functor).Versions[^1];
             if (latest.CompatMode is null)
                 throw new InvalidOperationException(new NoCompatModeDeclaredError(message.Functor).Message);
+            EnsureNoDrift(latest);
         }
+        if (!anyRegistered)
+            throw new InvalidOperationException(
+                $"no message kind in schema '{newDoc.Name}' has a registered version — use Register for a first registration");
         return AppendVersionRecords(newDoc, artifacts, overrideRecord);
     }
 
@@ -257,14 +326,31 @@ public sealed class SchemaLangRegistry
         LoweringArtifactSet artifacts,
         OverrideRecord? overrideRecord)
     {
+        // A kind added by this version enters as a first registration: it takes the byte the
+        // lowering artifact allocated against the live registry and inherits the document's
+        // declared mode — read from the first previously-registered kind in the document
+        // (all-new documents are refused upstream: they must go through Register).
+        GlpRuntime.WireRegistry.CompatMode? inheritedMode = null;
+        foreach (var registration in artifacts.Registrations)
+            if (HasFunctor(registration.Functor))
+            {
+                inheritedMode = LookupByFunctor(registration.Functor).CompatMode;
+                break;
+            }
+
         var records = artifacts.Registrations
             .Select(registration =>
             {
-                var existing = LookupByFunctor(registration.Functor);
+                var existing = HasFunctor(registration.Functor)
+                    ? LookupByFunctor(registration.Functor)
+                    : null;
+                if (existing is null && HasPayloadType(registration.PayloadType))
+                    throw new InvalidOperationException(
+                        $"payload type 0x{registration.PayloadType:X2} requested for new kind '{registration.Functor}' is already taken — lower the document against the live registry");
                 return new RegistryRecord(
-                    existing.PayloadType, // the kind keeps its byte across versions
+                    existing?.PayloadType ?? registration.PayloadType, // the kind keeps its byte across versions
                     registration.Functor,
-                    existing.CompatMode,
+                    existing?.CompatMode ?? inheritedMode,
                     QmeditDsl: doc.Source,
                     Cddl: artifacts.Cddl,
                     XsdSource: doc.Source,
@@ -285,11 +371,22 @@ public sealed class SchemaLangRegistry
             throw new InvalidOperationException(
                 $"cannot evolution-check '{record.Functor}' v{record.Version}: the stored entry has no " +
                 "XSD-level source — lift and re-register it through the 043 layer first");
+        EnsureNoDrift(record); // FR-013: drift refuses BEFORE any compat comparison
         var validated = SchemaValidator.Validate(record.XsdSource);
         if (!validated.IsValid)
             throw new InvalidOperationException(
                 $"registry invariant broken: stored XSD source for '{record.Functor}' v{record.Version} no longer validates");
         return validated.Document!;
+    }
+
+    /// <summary>FR-013 on the evolution path: a drifted stored form (out-of-band edit) refuses
+    /// loudly — evolution must never compare against stale registry truth.</summary>
+    private static void EnsureNoDrift(RegistryRecord record)
+    {
+        if (Lifter.ComputeDrift(record) is not { } drift) return;
+        throw new InvalidOperationException(
+            $"stored {(drift.Form == RegistryForm.Cddl ? "CDDL" : "qmedit")} form for '{record.Functor}' v{record.Version} has drifted out-of-band " +
+            $"(registration-time sha256 {drift.StoredSha256} != current {drift.CurrentSha256}) — resolve the drift before evolution-checking or registering a new version");
     }
 
     internal void AppendOverlay(RegistryRecord record) => _overlay.Add(record);

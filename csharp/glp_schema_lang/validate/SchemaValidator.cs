@@ -288,41 +288,61 @@ public static class SchemaValidator
 
         // DFS with colors; a GRAY hit names the full cycle path (A → B → A). Roots are
         // visited in DOCUMENT order (FR-005/R11: no dictionary-enumeration ordering on any
-        // contract path), so error order is deterministic.
+        // contract path), so error order is deterministic. The walk uses an EXPLICIT stack —
+        // recursion depth would otherwise be the reference-chain length, and adversarially
+        // long chains must terminate without exhausting the call stack (spec edge case).
         var color = adjacency.Keys.ToDictionary(n => n, _ => 0); // 0 white, 1 gray, 2 black
         var reported = new HashSet<string>();
         foreach (var type in doc.Types)
         {
             if (!color.TryGetValue(type.Name, out var c) || c != 0) continue;
-            var path = new List<string>();
-            Dfs(type.Name, path);
+            IterativeDfs(type.Name);
         }
 
-        void Dfs(string node, List<string> path)
+        void IterativeDfs(string root)
         {
-            color[node] = 1;
-            path.Add(node);
-            foreach (var target in adjacency[node])
+            var path = new List<string>();
+            var stack = new Stack<(string Node, int Next)>();
+            color[root] = 1;
+            path.Add(root);
+            stack.Push((root, 0));
+            while (stack.Count > 0)
             {
-                if (!color.ContainsKey(target)) continue;
-                if (color[target] == 1)
+                var (node, next) = stack.Pop();
+                var targets = adjacency[node];
+                var descended = false;
+                while (next < targets.Count)
                 {
-                    var start = path.IndexOf(target);
-                    var cycleNodes = path.Skip(start).Append(target).ToList();
-                    var cyclePath = string.Join(" → ", cycleNodes);
-                    // Report each distinct cycle once, canonicalized by its member set.
-                    var key = string.Join(",", cycleNodes.SkipLast(1).OrderBy(n => n, StringComparer.Ordinal));
-                    if (reported.Add(key))
-                        errors.Add(new SchemaValidationError(Operation, cyclePath, typesByName[target].Location,
-                            $"cyclic type reference {cyclePath} — recursion is not supported; type references must form a DAG"));
+                    var target = targets[next];
+                    next++;
+                    if (!color.ContainsKey(target)) continue;
+                    if (color[target] == 1)
+                    {
+                        var start = path.IndexOf(target);
+                        var cycleNodes = path.Skip(start).Append(target).ToList();
+                        var cyclePath = string.Join(" → ", cycleNodes);
+                        // Report each distinct cycle once, canonicalized by its member set.
+                        var key = string.Join(",", cycleNodes.SkipLast(1).OrderBy(n => n, StringComparer.Ordinal));
+                        if (reported.Add(key))
+                            errors.Add(new SchemaValidationError(Operation, cyclePath, typesByName[target].Location,
+                                $"cyclic type reference {cyclePath} — recursion is not supported; type references must form a DAG"));
+                    }
+                    else if (color[target] == 0)
+                    {
+                        stack.Push((node, next)); // resume this node after the child
+                        color[target] = 1;
+                        path.Add(target);
+                        stack.Push((target, 0));
+                        descended = true;
+                        break;
+                    }
                 }
-                else if (color[target] == 0)
+                if (!descended)
                 {
-                    Dfs(target, path);
+                    path.RemoveAt(path.Count - 1);
+                    color[node] = 2;
                 }
             }
-            path.RemoveAt(path.Count - 1);
-            color[node] = 2;
         }
     }
 

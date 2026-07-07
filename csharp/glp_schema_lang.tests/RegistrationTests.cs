@@ -149,6 +149,61 @@ public class RegistrationTests
     }
 
     // ------------------------------------------------------------------
+    // Duplicates WITHIN one artifact set: same collision refusal, nothing written
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Duplicate_functor_within_one_artifact_set_registers_nothing()
+    {
+        var registry = new SchemaLangRegistry();
+        var before = registry.All.Count;
+        var doc = LoweringTests.Doc("""
+            schema dup version 1
+            message dup_kind { sequence { a: int } }
+            """);
+        var artifacts = new LoweringArtifactSet("dup-kind = {\n  a: int,\n}\n", new[]
+        {
+            new FunctorRegistration("dup_kind", 0x13),
+            new FunctorRegistration("dup_kind", 0x14),
+        });
+        var result = registry.Register(doc, artifacts, CompatMode.Full);
+
+        Assert.Null(result.Records);
+        Assert.NotNull(result.Error);
+        Assert.Equal(LoweringErrorKind.Collision, result.Error!.Kind);
+        Assert.Contains(result.Error.Constructs, c => c.Contains("dup_kind") && c.Contains("more than once"));
+        Assert.Equal(before, registry.All.Count);
+        Assert.False(registry.HasFunctor("dup_kind")); // neither row registered
+    }
+
+    [Fact]
+    public void Duplicate_payload_type_within_one_artifact_set_registers_nothing()
+    {
+        var registry = new SchemaLangRegistry();
+        var before = registry.All.Count;
+        var doc = LoweringTests.Doc("""
+            schema dup version 1
+            message kind_a { sequence { a: int } }
+            message kind_b { sequence { b: int } }
+            """);
+        var artifacts = new LoweringArtifactSet(
+            "kind-a = {\n  a: int,\n}\nkind-b = {\n  b: int,\n}\n", new[]
+        {
+            new FunctorRegistration("kind_a", 0x13),
+            new FunctorRegistration("kind_b", 0x13),
+        });
+        var result = registry.Register(doc, artifacts, CompatMode.Full);
+
+        Assert.Null(result.Records);
+        Assert.NotNull(result.Error);
+        Assert.Equal(LoweringErrorKind.Collision, result.Error!.Kind);
+        Assert.Contains(result.Error.Constructs, c => c.Contains("0x13") && c.Contains("more than once"));
+        Assert.Equal(before, registry.All.Count);
+        Assert.False(registry.HasFunctor("kind_a"));
+        Assert.False(registry.HasFunctor("kind_b"));
+    }
+
+    // ------------------------------------------------------------------
     // Mandatory CompatMode (clarification 3)
     // ------------------------------------------------------------------
 

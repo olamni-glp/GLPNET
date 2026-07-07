@@ -70,7 +70,9 @@ internal static class CddlSubsetParser
         return new CddlParseOutput(rules, unexpressible);
     }
 
-    /// <summary>Split into rules: a rule starts at a line-leading `ident =` at bracket depth 0.</summary>
+    /// <summary>Split into rules: a rule starts at a line-leading `ident =` at bracket depth 0.
+    /// Depth counting is STRING-AWARE: brackets inside `"…"` literals (e.g. a `.regexp "[(]"`
+    /// pattern with unbalanced literal brackets) are text, not structure.</summary>
     private static IEnumerable<(string Name, string Rhs, int Line)> SplitRules(string cddl)
     {
         var lines = cddl.Split('\n');
@@ -78,11 +80,12 @@ internal static class CddlSubsetParser
         var rhs = new System.Text.StringBuilder();
         var startLine = 0;
         var depth = 0;
+        var inString = false;
 
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i];
-            if (depth == 0 && TryMatchRuleStart(line, out var newName, out var afterEq))
+            if (depth == 0 && !inString && TryMatchRuleStart(line, out var newName, out var afterEq))
             {
                 if (name is not null) yield return (name, rhs.ToString(), startLine);
                 name = newName;
@@ -94,8 +97,18 @@ internal static class CddlSubsetParser
             {
                 rhs.Append(line).Append('\n');
             }
-            foreach (var c in line)
-                depth += c is '{' or '[' or '(' ? 1 : c is '}' or ']' or ')' ? -1 : 0;
+            for (var j = 0; j < line.Length; j++)
+            {
+                var c = line[j];
+                if (inString)
+                {
+                    if (c == '\\' && j + 1 < line.Length && line[j + 1] == '"') j++; // \" escape
+                    else if (c == '"') inString = false;
+                    continue;
+                }
+                if (c == '"') inString = true;
+                else depth += c is '{' or '[' or '(' ? 1 : c is '}' or ']' or ')' ? -1 : 0;
+            }
         }
         if (name is not null) yield return (name, rhs.ToString(), startLine);
     }
@@ -249,15 +262,23 @@ internal static class CddlSubsetParser
             }
         }
 
-        /// <summary>Scan the raw value span forward to the entry delimiter (',' or '}' at depth 0).</summary>
+        /// <summary>Scan the raw value span forward to the entry delimiter (',' or '}' at depth 0).
+        /// String-aware: brackets and commas inside `"…"` literals are text, not structure.</summary>
         private string CaptureValueSpan()
         {
             var start = _pos;
             var depth = 0;
+            var inString = false;
             while (!AtEnd)
             {
                 var c = Peek;
-                if (c is '{' or '[' or '(') depth++;
+                if (inString)
+                {
+                    if (c == '\\' && _pos + 1 < _text.Length && _text[_pos + 1] == '"') _pos++; // \" escape
+                    else if (c == '"') inString = false;
+                }
+                else if (c == '"') inString = true;
+                else if (c is '{' or '[' or '(') depth++;
                 else if (c is ']' or ')') depth--;
                 else if (c == '}')
                 {

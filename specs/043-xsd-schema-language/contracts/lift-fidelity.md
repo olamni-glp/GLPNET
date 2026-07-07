@@ -30,3 +30,10 @@ Normative for FR-009, FR-010, FR-013 (research R9/R10).
 - Mismatch ⇒ `DriftReport{form, storedSha256, currentSha256}` attached to the result, and the
   rendering is produced from the **current registry truth**, never from the stale stored
   XSD-level source (spec edge case). The stale source remains retrievable, flagged as stale.
+- **Single-report precedence**: at most ONE `DriftReport` is attached per lift. When both
+  stored forms have drifted, the CDDL form is reported (the formal form takes precedence over
+  the qmedit surface); the qmedit divergence remains detectable by re-hashing the stored form.
+- **Evolution path**: `CheckVersion` / `RegisterVersion` / `RegisterVersionWithOverride`
+  re-hash the stored forms of every entry they compare against. A drifted entry **refuses**
+  (error naming the drifted form and both hashes) before any compatibility comparison —
+  evolution never checks a proposed version against stale registry truth.

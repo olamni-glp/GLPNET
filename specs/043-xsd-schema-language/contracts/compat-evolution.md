@@ -35,8 +35,9 @@ This matches spec US4 acceptance scenario 2 (removal of a mandatory element unde
 | Remove mandatory element | **breaks** (closed-world) | **breaks** |
 | Widen a facet (larger range/length, added enum member, superset pattern†) | compatible | **breaks** |
 | Narrow a facet (smaller range/length, removed enum member, subset pattern†) | **breaks** | compatible |
-| Widen `occurs` bounds | compatible | **breaks** |
-| Narrow `occurs` bounds | **breaks** | compatible |
+| Widen `occurs` bounds (within one representation‡) | compatible | **breaks** |
+| Narrow `occurs` bounds (within one representation‡) | **breaks** | compatible |
+| Change `occurs` across the scalar/list representation boundary‡ | **breaks** | **breaks** |
 | Add a choice branch | compatible | **breaks** |
 | Remove a choice branch | **breaks** | compatible |
 | Change an element's type to a non-equivalent type | **breaks** | **breaks** |
@@ -45,6 +46,15 @@ This matches spec US4 acceptance scenario 2 (removal of a mandatory element unde
 † Pattern subset/superset is decided on the R6 NFAs (language inclusion on the restricted
 subset); a pattern change whose inclusion cannot be established is conservatively **breaking**
 in both directions, with the verdict saying so explicitly.
+
+‡ **Representation-shift law**: instance validation (validation-api.md) represents an element
+with occurs `1..1` or `0..1` as a **scalar** value and an element with any other bounds as a
+**list**. An occurs change where exactly one side is in {`1..1`, `0..1`} therefore changes the
+value representation (scalar ↔ list): every old-valid instance is rejected by the new schema
+and every new-valid instance by the old one, so it is breaking in **both** directions
+regardless of whether the numeric bounds widened or narrowed, and the verdict names the rule
+"occurs representation shift". The widen/narrow rows apply only to changes that stay within
+one representation.
 
 - **Full** = Backward ∧ Forward — under the closed-world law this reduces to add-optional-only
   plus facet/occurs changes that are neither widening nor narrowing (matches the shipped

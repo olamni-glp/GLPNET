@@ -151,13 +151,29 @@ public static class CompatChecker
         {
             var oldOccurs = oldElement.Occurs;
             var newOccurs = newElement.Occurs;
-            if (newOccurs.Min < oldOccurs.Min || MaxGreater(newOccurs.Max, oldOccurs.Max))
-                Break(CompatDirection.Forward, path, newElement.Location, "occurs widening");
-            if (newOccurs.Min > oldOccurs.Min || MaxLess(newOccurs.Max, oldOccurs.Max))
-                Break(CompatDirection.Backward, path, newElement.Location, "occurs narrowing");
+            // Representation-shift law (compat-evolution.md ‡): instance validation represents
+            // occurs 1..1 / 0..1 values as scalars and any other bounds as lists, so an occurs
+            // change crossing that boundary changes the VALUE REPRESENTATION — every old-valid
+            // instance is rejected by the new schema and vice versa: breaking in BOTH directions.
+            if (IsScalar(oldOccurs) != IsScalar(newOccurs))
+            {
+                BreakBoth(path, newElement.Location,
+                    "occurs representation shift (scalar vs list boundary)");
+            }
+            else
+            {
+                if (newOccurs.Min < oldOccurs.Min || MaxGreater(newOccurs.Max, oldOccurs.Max))
+                    Break(CompatDirection.Forward, path, newElement.Location, "occurs widening");
+                if (newOccurs.Min > oldOccurs.Min || MaxLess(newOccurs.Max, oldOccurs.Max))
+                    Break(CompatDirection.Backward, path, newElement.Location, "occurs narrowing");
+            }
 
             CompareTypeRef(path, oldElement.Type, newElement.Type, newElement.Location);
         }
+
+        /// <summary>Scalar-representation occurs bounds (validate/InstanceValidator.cs law):
+        /// 1..1 and 0..1 validate a scalar value; every other bound validates a list.</summary>
+        private static bool IsScalar(Occurs occurs) => occurs.IsDefault || occurs.IsOptional;
 
         private static bool MaxGreater(int? a, int? b) => a is null ? b is not null : b is not null && a > b;
 
@@ -202,7 +218,7 @@ public static class CompatChecker
         {
             PrimitiveRef prim => new SimpleShape(prim.Kind, Array.Empty<Facet>()),
             ListRef list => new ListShape(list.Element),
-            NamedRef named => types[named.Name] switch
+            NamedRef named => ResolveNamed(named, types) switch
             {
                 SimpleType simple => new SimpleShape(simple.Base, simple.Facets),
                 ComplexType complex => new ComplexShape(complex.Name, complex.Composition, complex.Location),
@@ -210,6 +226,14 @@ public static class CompatChecker
             },
             _ => throw new InvalidOperationException($"unknown type-ref {typeRef.GetType().Name}"),
         };
+
+        /// <summary>Loud precondition failure on an unresolved reference (FR-014): compat
+        /// checking is defined over VALIDATED documents; never a raw lookup exception.</summary>
+        private static NamedType ResolveNamed(NamedRef named, Dictionary<string, NamedType> types) =>
+            types.TryGetValue(named.Name, out var type)
+                ? type
+                : throw new InvalidOperationException(
+                    $"unresolved type reference '{named.Name}' — the document was not validated");
 
         // --------------------------------------------------------------
         // Facets: widen → forward breaks; narrow → backward breaks
