@@ -111,14 +111,14 @@ changes) gets the expected verdict in 100% of cases (US4 acceptance scenarios 1�
 
 ### Tests for User Story 4 (write first — must fail)
 
-- [ ] T028 [P] [US4] SC-005 evolution suite in `csharp/glp_schema_lang.tests/CompatEvolutionTests.cs` — ≥10 `[Theory]` cases spanning every contracts/compat-evolution.md rule-table row (add optional/mandatory, remove optional/mandatory, facet widen/narrow incl. pattern-inclusion + conservative-breaking, occurs widen/narrow, choice add/remove, type change, reorder), each under backward/forward/full; transitive checked against a 3-version chain; verdicts name breaking construct + rule row
-- [ ] T029 [P] [US4] Refusal + override tests in `csharp/glp_schema_lang.tests/EvolutionRegistrationTests.cs` — no declared mode → NoCompatModeDeclaredError on check AND register (clarification 3); incompatible v2 registration without override → refused; with OverrideRecord{verdict, acknowledger, reason} → registered and record retrievable on the RegistryRecord (US4 AS-3)
+- [X] T028 [P] [US4] SC-005 evolution suite in `csharp/glp_schema_lang.tests/CompatEvolutionTests.cs` — ≥10 `[Theory]` cases spanning every contracts/compat-evolution.md rule-table row (add optional/mandatory, remove optional/mandatory, facet widen/narrow incl. pattern-inclusion + conservative-breaking, occurs widen/narrow, choice add/remove, type change, reorder), each under backward/forward/full; transitive checked against a 3-version chain; verdicts name breaking construct + rule row
+- [X] T029 [P] [US4] Refusal + override tests in `csharp/glp_schema_lang.tests/EvolutionRegistrationTests.cs` — no declared mode → NoCompatModeDeclaredError on check AND register (clarification 3); incompatible v2 registration without override → refused; with OverrideRecord{verdict, acknowledger, reason} → registered and record retrievable on the RegistryRecord (US4 AS-3)
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] CompatChecker in `csharp/glp_schema_lang/evolve/CompatChecker.cs` — construct-level rule table (contracts/compat-evolution.md), NFA language-inclusion for pattern changes with conservative-breaking fallback, transitive = full check over VersionChain (R8; depends T006, T011)
-- [ ] T031 [US4] Versioned registration in `csharp/glp_schema_lang/registry/SchemaLangRegistry.cs` — `RegisterVersion` / `RegisterVersionWithOverride`, refusal law, OverrideRecord storage, VersionChain maintenance (depends T030, T017)
-- [ ] T032 [US4] Make T028–T029 green
+- [X] T030 [US4] CompatChecker in `csharp/glp_schema_lang/evolve/CompatChecker.cs` — construct-level rule table (contracts/compat-evolution.md), NFA language-inclusion for pattern changes with conservative-breaking fallback, transitive = full check over VersionChain (R8; depends T006, T011)
+- [X] T031 [US4] Versioned registration in `csharp/glp_schema_lang/registry/SchemaLangRegistry.cs` — `RegisterVersion` / `RegisterVersionWithOverride`, refusal law, OverrideRecord storage, VersionChain maintenance (depends T030, T017)
+- [X] T032 [US4] Make T028–T029 green
 
 **Checkpoint**: all four stories independently functional. Commit.
 

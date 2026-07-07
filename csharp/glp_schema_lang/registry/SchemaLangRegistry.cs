@@ -45,6 +45,15 @@ public sealed record RegisterResult(IReadOnlyList<RegistryRecord>? Records, Lowe
     public bool IsSuccess => Error is null;
 }
 
+/// <summary>Union result of a version check: a verdict, or the refusal record (clarification 3).</summary>
+public sealed record CheckVersionResult(CompatVerdict? Verdict, NoCompatModeDeclaredError? NoModeError);
+
+/// <summary>Union result of a version registration (contracts/compat-evolution.md §API).</summary>
+public sealed record RegisterVersionResult(
+    IReadOnlyList<RegistryRecord>? Records,
+    NoCompatModeDeclaredError? NoModeError,
+    CompatVerdict? RequiresOverride);
+
 public sealed class SchemaLangRegistry
 {
     private readonly List<RegistryRecord> _seed = new();
@@ -170,6 +179,117 @@ public sealed class SchemaLangRegistry
             .ToList();
         _overlay.AddRange(records);
         return new RegisterResult(records, null);
+    }
+
+    // ------------------------------------------------------------------
+    // Versioned registration (T031; compat-evolution.md §API, FR-011)
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Evolution check of a proposed new version against the type's DECLARED mode. Refusal
+    /// law (clarification 3): a type with no declared mode refuses with an explicit
+    /// NoCompatModeDeclaredError — never a silently assumed default. Under Transitive the
+    /// check runs against EVERY stored version in the chain; the first failing pair is the
+    /// verdict returned.
+    /// </summary>
+    public CheckVersionResult CheckVersion(SchemaDocument newDoc)
+    {
+        CompatVerdict? lastVerdict = null;
+        foreach (var message in newDoc.Messages)
+        {
+            var chain = Versions(message.Functor); // throws NoSchemaRegisteredError on unknown kind
+            var latest = chain.Versions[^1];
+            if (latest.CompatMode is not GlpRuntime.WireRegistry.CompatMode mode)
+                return new CheckVersionResult(null, new NoCompatModeDeclaredError(message.Functor));
+
+            var toCheck = mode == GlpRuntime.WireRegistry.CompatMode.Transitive
+                ? chain.Versions
+                : new[] { latest };
+            foreach (var version in toCheck)
+            {
+                var verdict = CompatChecker.Check(ParseStoredXsd(version), newDoc, mode);
+                lastVerdict = verdict;
+                if (!verdict.IsCompatible)
+                    return new CheckVersionResult(verdict, null); // first failing pair named
+            }
+        }
+        return new CheckVersionResult(
+            lastVerdict ?? throw new InvalidOperationException("CheckVersion requires a document with at least one message"),
+            null);
+    }
+
+    /// <summary>
+    /// Register a new version: refuses without a declared mode; an incompatible verdict is
+    /// returned as RequiresOverride and NOTHING is written (US4 AS-3). A new version of a
+    /// kind keeps the kind's payload-type byte.
+    /// </summary>
+    public RegisterVersionResult RegisterVersion(SchemaDocument newDoc, LoweringArtifactSet artifacts)
+    {
+        var check = CheckVersion(newDoc);
+        if (check.NoModeError is not null)
+            return new RegisterVersionResult(null, check.NoModeError, null);
+        if (!check.Verdict!.IsCompatible)
+            return new RegisterVersionResult(null, null, check.Verdict);
+        return new RegisterVersionResult(AppendVersionRecords(newDoc, artifacts, null), null, null);
+    }
+
+    /// <summary>
+    /// Register an INCOMPATIBLE version with an explicit recorded override; the record is
+    /// stored on the RegistryRecord and retrievable with it. The no-declared-mode refusal
+    /// still applies — an override does not substitute for a declared mode.
+    /// </summary>
+    public IReadOnlyList<RegistryRecord> RegisterVersionWithOverride(
+        SchemaDocument newDoc,
+        LoweringArtifactSet artifacts,
+        OverrideRecord overrideRecord)
+    {
+        foreach (var message in newDoc.Messages)
+        {
+            var latest = Versions(message.Functor).Versions[^1];
+            if (latest.CompatMode is null)
+                throw new InvalidOperationException(new NoCompatModeDeclaredError(message.Functor).Message);
+        }
+        return AppendVersionRecords(newDoc, artifacts, overrideRecord);
+    }
+
+    private IReadOnlyList<RegistryRecord> AppendVersionRecords(
+        SchemaDocument doc,
+        LoweringArtifactSet artifacts,
+        OverrideRecord? overrideRecord)
+    {
+        var records = artifacts.Registrations
+            .Select(registration =>
+            {
+                var existing = LookupByFunctor(registration.Functor);
+                return new RegistryRecord(
+                    existing.PayloadType, // the kind keeps its byte across versions
+                    registration.Functor,
+                    existing.CompatMode,
+                    QmeditDsl: doc.Source,
+                    Cddl: artifacts.Cddl,
+                    XsdSource: doc.Source,
+                    SchemaName: doc.Name,
+                    Version: doc.Version,
+                    CddlSha256: Sha256Hex(artifacts.Cddl),
+                    QmeditSha256: Sha256Hex(doc.Source),
+                    Override: overrideRecord);
+            })
+            .ToList();
+        _overlay.AddRange(records);
+        return records;
+    }
+
+    private static SchemaDocument ParseStoredXsd(RegistryRecord record)
+    {
+        if (record.XsdSource is null)
+            throw new InvalidOperationException(
+                $"cannot evolution-check '{record.Functor}' v{record.Version}: the stored entry has no " +
+                "XSD-level source — lift and re-register it through the 043 layer first");
+        var validated = SchemaValidator.Validate(record.XsdSource);
+        if (!validated.IsValid)
+            throw new InvalidOperationException(
+                $"registry invariant broken: stored XSD source for '{record.Functor}' v{record.Version} no longer validates");
+        return validated.Document!;
     }
 
     internal void AppendOverlay(RegistryRecord record) => _overlay.Add(record);
