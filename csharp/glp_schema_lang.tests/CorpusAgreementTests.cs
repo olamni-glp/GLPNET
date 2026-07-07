@@ -26,7 +26,7 @@ public class CorpusAgreementTests
     private static readonly IReadOnlySet<long> Understood =
         new HashSet<long> { 0x12, 0x40, TlvSection.GreaseTypeNumber };
 
-    private static SchemaDocument ReExpressedCrdtMessage()
+    internal static SchemaDocument ReExpressedCrdtMessage()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "schemas", "crdt_message.043.txt");
         var result = SchemaValidator.Validate(File.ReadAllText(path));
@@ -92,7 +92,7 @@ public class CorpusAgreementTests
         "mut-invalid-crdt-model",
     };
 
-    private static Message CorpusMessage(string name) => name switch
+    internal static Message CorpusMessage(string name) => name switch
     {
         "mut-cap-slot-present" => Golden("v2-no-cap") with
         {
@@ -105,7 +105,7 @@ public class CorpusAgreementTests
         _ => Golden(name),
     };
 
-    private static bool RegistryLevelAccepts(Message message)
+    internal static bool RegistryLevelAccepts(Message message)
     {
         try
         {

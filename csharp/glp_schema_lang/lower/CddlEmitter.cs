@@ -54,17 +54,28 @@ internal static class CddlEmitter
 
     private static void CheckRuleNameCollisions(SchemaDocument doc, List<string> unlowerable)
     {
+        // Report order = declaration order of the first colliding name (FR-005: no
+        // dictionary-enumeration ordering on any contract path — research R11).
+        var declared = doc.Messages.Select(m => m.Functor).Concat(doc.Types.Select(t => t.Name)).ToList();
         var byRule = new Dictionary<string, List<string>>();
-        foreach (var name in doc.Messages.Select(m => m.Functor).Concat(doc.Types.Select(t => t.Name)))
+        var ruleOrder = new List<string>();
+        foreach (var name in declared)
         {
             var rule = RuleName(name);
-            if (!byRule.TryGetValue(rule, out var names)) byRule[rule] = names = new List<string>();
+            if (!byRule.TryGetValue(rule, out var names))
+            {
+                byRule[rule] = names = new List<string>();
+                ruleOrder.Add(rule);
+            }
             names.Add(name);
         }
-        foreach (var (rule, names) in byRule)
+        foreach (var rule in ruleOrder)
+        {
+            var names = byRule[rule];
             if (names.Count > 1)
                 unlowerable.Add(
                     $"names {string.Join(" and ", names.Select(n => $"'{n}'"))} all lower to CDDL rule '{rule}' — lowered rule names must be distinct");
+        }
     }
 
     // ------------------------------------------------------------------

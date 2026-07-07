@@ -22,11 +22,12 @@ Baseline both suites green before the first 043 change and after every change (T
 
 1. Author a schema in the 043 DSL (`contracts/schema-dsl.md` example: `chat` schema with
    `UserName`/`Priority` facets, `Attachment`/`Body` composition, `chat_message` kind).
-2. Validate: `SchemaValidator.Validate(text)` → `SchemaDocument` (or construct-located errors).
-3. Lower + register:
-   `var reg = new SchemaLangRegistry();  // seeded from WireRegistry + SchemaRegistry`
-   `var art = Lowering.Lower(doc);       // canonical CDDL + functor registrations (0x13+)`
-   `reg.Register(doc, art, CompatMode.Full);`
+2. Validate: `SchemaValidator.Validate(text)` → `SchemaValidationResult` — `.Document` on
+   success, else `.Errors` (ALL construct-located errors in one pass).
+3. Lower + register (both return result unions — success value or structured error, never both):
+   `var reg = new SchemaLangRegistry();            // seeded from WireRegistry + SchemaRegistry`
+   `var art = Lowering.Lower(doc, reg).Artifacts;  // canonical CDDL + functor registrations (0x13+), or .Error`
+   `var rec = reg.Register(doc, art, CompatMode.Full).Records;  // all-or-nothing, or .Error (collision)`
 4. Inspect: the new `RegistryRecord` holds qmedit-family source, canonical CDDL, XSD source
    verbatim, sha256 hashes — side by side with the seeded 041 `crdt_message` entry.
 5. Validate an instance:
@@ -34,7 +35,10 @@ Baseline both suites green before the first 043 change and after every change (T
    an unregistered functor throws `NoSchemaRegisteredError` (loud-fail law).
 6. Lift it back: `Lifter.Lift(reg, "chat_message")` → faithful rendering, `Full` fidelity.
 7. Evolve: author v2, `CompatChecker.Check(v1, v2, CompatMode.Full)` → verdict naming any
-   breaking construct; incompatible registration demands an `OverrideRecord`.
+   breaking construct; register via `reg.RegisterVersion(v2, art2)` — an incompatible verdict
+   comes back as `.RequiresOverride`, satisfied only by
+   `reg.RegisterVersionWithOverride(v2, art2, new OverrideRecord(verdict, who, why))`; a type
+   with no declared mode refuses with `NoCompatModeDeclaredError` (clarification 3).
 
 ## Consuming validation from other code
 

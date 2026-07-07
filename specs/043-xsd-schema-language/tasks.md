@@ -124,10 +124,10 @@ changes) gets the expected verdict in 100% of cases (US4 acceptance scenarios 1�
 
 ## Phase 7: Polish & Cross-Cutting Acceptance
 
-- [ ] T033 SC-001 re-expression acceptance in `csharp/glp_schema_lang.tests/ReExpressionTests.cs` — every kind in the 041 MVP set (the 3 seeded entries; DSL-formed = `crdt_message`) re-expressed in the 043 language lowers to entries with zero accept/reject divergence over the shared corpus; byte-only kinds recorded as fidelity-report-covered (ties SC-001 to the T022 schema + T020 corpus)
-- [ ] T034 [P] Determinism sweep: audit every contract-path type for unordered iteration/timestamps/randomness (FR-005, R11); add a repeated-run determinism test to `csharp/glp_schema_lang.tests/LoweringTests.cs` if any gap found
-- [ ] T035 [P] Update `specs/043-xsd-schema-language/quickstart.md` if any API drifted during implementation; verify the quickstart walkthrough compiles as written (SC-006 doc accuracy)
-- [ ] T036 Full re-test: `dotnet test csharp/glp_schema_lang.tests` green AND substrate suites (`glp_wire_registry.tests`, `glp_crdtmsg.tests`) still green with `git diff --stat` showing zero changes under `csharp/glp_wire_registry/` and `csharp/glp_crdtmsg/` (FR-012); commit final state
+- [X] T033 SC-001 re-expression acceptance in `csharp/glp_schema_lang.tests/ReExpressionTests.cs` — every kind in the 041 MVP set (the 3 seeded entries; DSL-formed = `crdt_message`) re-expressed in the 043 language lowers to entries with zero accept/reject divergence over the shared corpus; byte-only kinds recorded as fidelity-report-covered (ties SC-001 to the T022 schema + T020 corpus)
+- [X] T034 [P] Determinism sweep: audit every contract-path type for unordered iteration/timestamps/randomness (FR-005, R11); add a repeated-run determinism test to `csharp/glp_schema_lang.tests/LoweringTests.cs` if any gap found
+- [X] T035 [P] Update `specs/043-xsd-schema-language/quickstart.md` if any API drifted during implementation; verify the quickstart walkthrough compiles as written (SC-006 doc accuracy)
+- [X] T036 Full re-test: `dotnet test csharp/glp_schema_lang.tests` green AND substrate suites (`glp_wire_registry.tests`, `glp_crdtmsg.tests`) still green with `git diff --stat` showing zero changes under `csharp/glp_wire_registry/` and `csharp/glp_crdtmsg/` (FR-012); commit final state
 
 ---
 

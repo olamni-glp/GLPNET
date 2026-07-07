@@ -286,14 +286,16 @@ public static class SchemaValidator
             adjacency[type.Name] = targets;
         }
 
-        // Iterative DFS with colors; a GRAY hit names the full cycle path (A → B → A).
+        // DFS with colors; a GRAY hit names the full cycle path (A → B → A). Roots are
+        // visited in DOCUMENT order (FR-005/R11: no dictionary-enumeration ordering on any
+        // contract path), so error order is deterministic.
         var color = adjacency.Keys.ToDictionary(n => n, _ => 0); // 0 white, 1 gray, 2 black
         var reported = new HashSet<string>();
-        foreach (var root in adjacency.Keys)
+        foreach (var type in doc.Types)
         {
-            if (color[root] != 0) continue;
+            if (!color.TryGetValue(type.Name, out var c) || c != 0) continue;
             var path = new List<string>();
-            Dfs(root, path);
+            Dfs(type.Name, path);
         }
 
         void Dfs(string node, List<string> path)

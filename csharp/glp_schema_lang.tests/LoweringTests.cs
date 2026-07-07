@@ -108,6 +108,42 @@ public class LoweringTests
         Assert.Equal(expected, artifacts.Cddl);
     }
 
+    [Fact]
+    public void Determinism_sweep_repeated_runs_are_byte_identical()
+    {
+        // T034 (FR-005, research R11): lowering, unlowerable-error ordering, and
+        // schema-validation error ordering are all pure functions of their inputs — repeated
+        // runs (fresh parses each time) must produce identical outputs.
+        string LowerText(string text) => LowerOk(Doc(text)).Cddl;
+        var chatBaseline = LowerText(SchemaValidatorTests.ChatSchema);
+        var kitchenBaseline = LowerText(KitchenSchema);
+
+        const string defective = """
+            schema bad version 1
+            type A: int { min 5 }
+            type B: str { enum(ok, "not ok") }
+            type Loop { sequence { x: Loop } }
+            message bad_kind { sequence { a: A  b: B } }
+            """;
+        var errorBaseline = string.Join("|", SchemaValidator.Validate(defective).Errors);
+
+        const string clashing = """
+            schema clash version 1
+            type UserName: str { minLength 1 maxLength 4 }
+            type Username: str { minLength 2 maxLength 8 }
+            message clash_kind { sequence { a: UserName  b: Username } }
+            """;
+        var clashBaseline = string.Join("|", Lowering.Lower(Doc(clashing)).Error!.Constructs);
+
+        for (var run = 0; run < 50; run++)
+        {
+            Assert.Equal(chatBaseline, LowerText(SchemaValidatorTests.ChatSchema));
+            Assert.Equal(kitchenBaseline, LowerText(KitchenSchema));
+            Assert.Equal(errorBaseline, string.Join("|", SchemaValidator.Validate(defective).Errors));
+            Assert.Equal(clashBaseline, string.Join("|", Lowering.Lower(Doc(clashing)).Error!.Constructs));
+        }
+    }
+
     // ------------------------------------------------------------------
     // Payload-type allocation (research R3)
     // ------------------------------------------------------------------
