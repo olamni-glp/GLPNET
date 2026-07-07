@@ -194,6 +194,72 @@ public class LiftFidelityTests
     }
 
     // ------------------------------------------------------------------
+    // Array occurs bounds beyond int range: fidelity entries, never a silent wrap (lift law 2)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Array_occurs_bounds_beyond_int_range_are_fidelity_entries_not_silent_wraps()
+    {
+        var registry = new SchemaLangRegistry();
+        var cddl = "occ-kind = {\n  e: [0*4294967296 tstr],\n  f: [4294967297* tstr],\n  g: int,\n}\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x24, "occ_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "occ", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "occ_kind"); // must not wrap 2^32 to occurs 0
+        Assert.Equal(FidelityOutcome.Partial, result.Fidelity.Outcome);
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains("[0*4294967296")
+                && u.Reason.Contains("occurs bound out of representable range"));
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains("[4294967297*")
+                && u.Reason.Contains("occurs bound out of representable range"));
+
+        // The omissions are report entries; the in-range entry still lifts.
+        var elements = result.Rendering!.Messages.Single().Body.Elements;
+        Assert.DoesNotContain(elements, e => e.Name == "e");
+        Assert.DoesNotContain(elements, e => e.Name == "f");
+        Assert.Contains(elements, e => e.Name == "g");
+    }
+
+    // ------------------------------------------------------------------
+    // Sibling-functor exclusion is scoped to THIS record's artifact (FR-010 / lift law 1):
+    // an unrelated document's functor must not suppress a same-named helper rule here
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Helper_rule_named_like_a_foreign_functor_still_lifts_as_a_type()
+    {
+        // Doc B registers functor 'username' (CDDL rule 'username'); doc A has a helper TYPE
+        // 'Username' — also rule 'username' — inside A's OWN artifact. The helper must lift
+        // with A's functor: excluding it would leave an unresolved NamedRef and mis-report a
+        // legal in-subset artifact as Partial.
+        const string docB = """
+            schema audit version 1
+            message username { sequence { who: str } }
+            """;
+        const string docA = """
+            schema profile version 1
+
+            type Username: str { minLength 1  maxLength 64 }
+
+            message profile_kind {
+              sequence {
+                name: Username
+              }
+            }
+            """;
+        var registry = Registered(docB, docA);
+        var result = Lifter.Lift(registry, "profile_kind");
+
+        Assert.Equal(FidelityOutcome.Full, result.Fidelity.Outcome);
+        Assert.Contains(result.Rendering!.Types, t => t.Name == "Username");
+        SchemaEquivalence.AssertEquivalent(LoweringTests.Doc(docA), result.Rendering!);
+    }
+
+    // ------------------------------------------------------------------
     // String-aware rule splitting: literal brackets/commas inside pattern strings are TEXT
     // ------------------------------------------------------------------
 
@@ -246,6 +312,76 @@ public class LiftFidelityTests
         var elements = result.Rendering!.Messages.Single().Body.Elements;
         Assert.DoesNotContain(elements, e => e.Name == "a");
         Assert.Contains(elements, e => e.Name == "b");
+    }
+
+    // ------------------------------------------------------------------
+    // Symmetric string escaping: pattern text with literal backslashes (including a TRAILING
+    // one) round-trips through emitter/printer and all scanners — never a latched string
+    // ------------------------------------------------------------------
+
+    private const string BackslashPatternSchema = """
+        schema bslash version 1
+
+        type Tail: str { pattern "x\\\\" }
+        type Escaped: str { pattern "\\\\d[0-9]" }
+        type Dotted: str { pattern "[a-z]\\." }
+
+        message bslash_kind {
+          sequence {
+            t: Tail
+            e: Escaped
+            d: Dotted
+          }
+        }
+        """;
+
+    [Fact]
+    public void Patterns_with_literal_backslashes_roundtrip_with_full_fidelity()
+    {
+        var doc = LoweringTests.Doc(BackslashPatternSchema);
+        // DSL `"x\\\\"` unescapes to the pattern text `x\\` — regex 'x' + escaped literal
+        // backslash: the text ENDS in a backslash, the corner that used to swallow quotes.
+        var tail = Assert.IsType<SimpleType>(doc.Types.Single(t => t.Name == "Tail"));
+        Assert.Equal("x\\\\", tail.Facets.OfType<PatternFacet>().Single().Pattern);
+        var escaped = Assert.IsType<SimpleType>(doc.Types.Single(t => t.Name == "Escaped"));
+        Assert.Equal("\\\\d[0-9]", escaped.Facets.OfType<PatternFacet>().Single().Pattern);
+
+        var registry = Registered(BackslashPatternSchema);
+        var result = Lifter.Lift(registry, "bslash_kind");
+        Assert.Equal(FidelityOutcome.Full, result.Fidelity.Outcome);
+        SchemaEquivalence.AssertEquivalent(doc, result.Rendering!);
+
+        // The printed Source re-tokenizes and re-validates: the trailing literal backslash
+        // must not swallow the closing quote (printer/lexer escape symmetry).
+        var revalidated = SchemaValidator.Validate(result.Rendering!.Source);
+        Assert.True(revalidated.IsValid,
+            "printed lift source must re-validate: " +
+            string.Join("; ", revalidated.Errors.Select(e => e.ToString())));
+        SchemaEquivalence.AssertEquivalent(result.Rendering, revalidated.Document!);
+    }
+
+    [Fact]
+    public void Rule_after_a_trailing_backslash_pattern_still_splits_correctly()
+    {
+        // Hand-registered CDDL: `pat` carries `.regexp "x\\\\"` (escaped form of the pattern
+        // text `x\\`). The scanners must consume `\\` as a unit so the string CLOSES at its
+        // real quote and the following `after` rule still splits into its own rule.
+        var registry = new SchemaLangRegistry();
+        var cddl = "bs-kind = {\n  a: pat,\n  b: after,\n}\n"
+            + "pat = tstr .regexp \"x\\\\\\\\\"\n"
+            + "after = tstr .size (1..9)\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x23, "bs_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "bs", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "bs_kind");
+        Assert.Equal(FidelityOutcome.Full, result.Fidelity.Outcome);
+        var pat = Assert.IsType<SimpleType>(result.Rendering!.Types.Single(t => t.Name == "Pat"));
+        Assert.Equal("x\\\\", pat.Facets.OfType<PatternFacet>().Single().Pattern);
+        var after = Assert.IsType<SimpleType>(result.Rendering.Types.Single(t => t.Name == "After"));
+        Assert.Contains(after.Facets, f => f is MaxLengthFacet { Value: 9 });
     }
 
     // ------------------------------------------------------------------

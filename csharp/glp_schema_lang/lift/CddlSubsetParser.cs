@@ -102,7 +102,9 @@ internal static class CddlSubsetParser
                 var c = line[j];
                 if (inString)
                 {
-                    if (c == '\\' && j + 1 < line.Length && line[j + 1] == '"') j++; // \" escape
+                    // `\"` and `\\` are consumed as units, so a string ending in an escaped
+                    // literal backslash (`…\\"`) still closes at its real quote.
+                    if (c == '\\' && j + 1 < line.Length && (line[j + 1] is '"' or '\\')) j++;
                     else if (c == '"') inString = false;
                     continue;
                 }
@@ -274,7 +276,8 @@ internal static class CddlSubsetParser
                 var c = Peek;
                 if (inString)
                 {
-                    if (c == '\\' && _pos + 1 < _text.Length && _text[_pos + 1] == '"') _pos++; // \" escape
+                    // `\"` and `\\` consumed as units (same convention as SplitRules).
+                    if (c == '\\' && _pos + 1 < _text.Length && (_text[_pos + 1] is '"' or '\\')) _pos++;
                     else if (c == '"') inString = false;
                 }
                 else if (c == '"') inString = true;
@@ -464,13 +467,15 @@ internal static class CddlSubsetParser
 
         private string ParseString()
         {
+            // `\"` and `\\` unescape as units — the exact inverse of the emitter's escaping
+            // (CddlEmitter.PatternControl); any other backslash is verbatim text.
             Expect('"');
             var sb = new System.Text.StringBuilder();
             while (!AtEnd && Peek != '"')
             {
-                if (Peek == '\\' && _pos + 1 < _text.Length && _text[_pos + 1] == '"')
+                if (Peek == '\\' && _pos + 1 < _text.Length && (_text[_pos + 1] is '"' or '\\'))
                 {
-                    sb.Append('"');
+                    sb.Append(_text[_pos + 1]);
                     _pos += 2;
                     continue;
                 }

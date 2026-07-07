@@ -19,7 +19,7 @@ Normative mapping for FR-003/FR-004/FR-005 (research R3/R5). API:
 | `int` / `str` / `bytes` / `bool` | `int` (`uint` when `min == 0` and no `max` — any other lone `min` widens and is unlowerable, FR-007) / `tstr` / `bstr` / `bool` |
 | `min a` + `max b` | base becomes `a..b` range type |
 | `minLength a` / `maxLength b` | `.size (a..b)` control (defaulting an absent bound to `0` / no upper) |
-| `pattern "p"` | `.regexp "p"` control |
+| `pattern "p"` | `.regexp "p"` control (`\` and `"` in the pattern text are escaped as `\\` / `\"` in the emitted string literal — the lift parser unescapes symmetrically; text without them emits byte-identically) |
 | `enum(s1, s2, …)` on str (ident members) | `&( s1: 0, s2: 1, … )` (indices = declaration order — matches shipped `crdt-model`) |
 | `enum(i1, i2, …)` on int | `i1 / i2 / …` |
 | simple type `T` with facets | one named rule `t = <faceted base>` referenced by name |
@@ -37,9 +37,16 @@ registration (clarification 3 — no default is ever assumed).
 
 ## Registration laws
 
+0. **Validated documents only** (FR-002/FR-014): every registry entry point that accepts a
+   document (`Register`, `CheckVersion`, `RegisterVersion`, `RegisterVersionWithOverride`)
+   re-validates it; an invalid document refuses with the full schema-error list and writes
+   nothing — no unvalidated document ever reaches the overlay, and the error attribution names
+   schema validation, never a broken registry invariant.
 1. **All-or-nothing**: any collision or unlowerable construct registers NOTHING (spec edge case).
-2. **Collision** (US1 AS-3): functor or payload-type already in seed ∪ overlay with a different
-   shape ⇒ `LoweringError(collision, functor/byte, existing-entry identity)`. Never overwrite.
+2. **Collision** (US1 AS-3): functor, payload-type, or schema name already in seed ∪ overlay
+   with a different shape ⇒ `LoweringError(collision, functor/byte/name, existing-entry
+   identity)`. Never overwrite. The schema-name clause applies to FIRST registration only —
+   `RegisterVersion` legitimately re-uses the schema name to extend its version chains.
 3. **Stored forms** (FR-004): each `RegistryRecord` stores `{qmedit, cddl, xsd_source, sha256
    hashes}` so all representations are retrievable together, side by side with 041-authored
    entries. For 043-authored entries the 043 document text IS the qmedit-family authoring form:

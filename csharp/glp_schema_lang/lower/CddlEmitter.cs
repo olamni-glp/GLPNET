@@ -199,8 +199,13 @@ internal static class CddlEmitter
         return $" .size ({lo}..{hi})";
     }
 
+    // Symmetric string-literal escaping: backslash FIRST, then quote — the lift scanners
+    // consume `\\` and `\"` as units, so pattern text ending in a literal backslash cannot
+    // swallow the closing quote. Text without backslashes/quotes emits byte-identically.
     private static string PatternControl(PatternFacet? pattern) =>
-        pattern is null ? string.Empty : $" .regexp \"{pattern.Pattern.Replace("\"", "\\\"")}\"";
+        pattern is null
+            ? string.Empty
+            : $" .regexp \"{pattern.Pattern.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
 
     internal static bool IsCddlBareword(string name) =>
         name.Length > 0

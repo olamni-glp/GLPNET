@@ -168,6 +168,28 @@ public class SeededDefectSuiteTests
             "schema s version 1\nmessage m { sequence { } }",
             "m", 2
         },
+        // --- name alphabets (schema-dsl.md: UpperCamel [A-Z][A-Za-z0-9]*, lower_snake
+        //     [a-z][a-z0-9_]*, both ASCII) ------------------------------------------------
+        {
+            "type-name-underscore",
+            "schema s version 1\ntype Bad_name: int { }\nmessage m { sequence { a: Bad_name } }",
+            "Bad_name", 2
+        },
+        {
+            "type-name-trailing-underscore",
+            "schema s version 1\ntype A_: int { }\nmessage m { sequence { a: A_ } }",
+            "A_", 2
+        },
+        {
+            "type-name-non-ascii",
+            "schema s version 1\ntype Über: str { }\nmessage m { sequence { a: Über } }",
+            "Über", 2
+        },
+        {
+            "element-name-non-ascii",
+            "schema s version 1\nmessage m { sequence { über: int } }",
+            "über", 2
+        },
         // --- out-of-int-range literals (loud parse errors, never silent truncation) ----
         {
             "version-out-of-int-range",

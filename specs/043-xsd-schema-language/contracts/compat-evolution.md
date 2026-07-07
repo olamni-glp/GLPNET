@@ -9,6 +9,11 @@ Normative for FR-011 (research R8). Modes are the registry's existing
 `SchemaLangRegistry.RegisterVersion(newDoc, artifacts) → RegistryRecord[] | NoCompatModeDeclaredError | RequiresOverride(CompatVerdict)`
 `SchemaLangRegistry.RegisterVersionWithOverride(newDoc, artifacts, OverrideRecord) → RegistryRecord[]`
 
+All three registry entry points refuse an UNVALIDATED document with its schema-error list
+before any comparison (lowering.md registration law 0): the common-element comparison never
+resolves added elements or brand-new kinds, so entry validation is the only gate keeping an
+invalid document out of the version chains.
+
 ## Refusal law (clarification 3)
 
 A type with **no declared compatibility mode** refuses both the check and the registration of a

@@ -181,6 +181,73 @@ public class EvolutionRegistrationTests
     }
 
     // ------------------------------------------------------------------
+    // Document validation at the version entries (FR-002/FR-014): an invalid new-version
+    // document refuses with schema errors and writes nothing — the common-element comparison
+    // never resolves ADDED elements or brand-new kinds, so entry validation is the only gate
+    // ------------------------------------------------------------------
+
+    private static SchemaDocument ParsedOnly(string text)
+    {
+        var parsed = SchemaDslParser.Parse(text);
+        Assert.NotNull(parsed.Document);
+        return parsed.Document!;
+    }
+
+    [Fact]
+    public void Invalid_new_version_document_is_refused_with_schema_errors_and_writes_nothing()
+    {
+        var registry = RegisteredV1();
+        var before = registry.All.Count;
+        // Parses, but the ADDED optional element's type ref is unresolved — CompatChecker only
+        // type-checks COMMON elements, so this must refuse at the entry, not detonate later.
+        var v2 = ParsedOnly(
+            "schema evo version 2\nmessage evo_kind { sequence { id: int  name: str  extra?: Missing } }");
+
+        var check = registry.CheckVersion(v2);
+        Assert.Null(check.Verdict);
+        Assert.Null(check.NoModeError);
+        Assert.Null(check.VersionError);
+        Assert.NotNull(check.SchemaErrors);
+        Assert.Contains(check.SchemaErrors!, e => e.Construct == "Missing");
+
+        var result = registry.RegisterVersion(v2, Lowering.Lower(v2, registry).Artifacts!);
+        Assert.Null(result.Records);
+        Assert.NotNull(result.SchemaErrors);
+        Assert.Contains(result.SchemaErrors!, e => e.Construct == "Missing");
+        Assert.Equal(before, registry.All.Count);                 // nothing written
+        Assert.Equal(1, registry.LookupByFunctor("evo_kind").Version);
+    }
+
+    [Fact]
+    public void Invalid_brand_new_kind_in_a_version_document_is_refused_and_writes_nothing()
+    {
+        var registry = RegisteredV1();
+        var before = registry.All.Count;
+        // The brand-new kind is skipped by the compat comparison entirely (additive), so its
+        // unresolved ref is only caught by entry validation.
+        var v2 = ParsedOnly(
+            "schema evo version 2\n" + V1Body + "\nmessage side_kind { sequence { note: Missing } }");
+
+        var result = registry.RegisterVersion(v2, Lowering.Lower(v2, registry).Artifacts!);
+        Assert.Null(result.Records);
+        Assert.NotNull(result.SchemaErrors);
+        Assert.Contains(result.SchemaErrors!, e => e.Construct == "Missing");
+        Assert.Equal(before, registry.All.Count);
+        Assert.False(registry.HasFunctor("side_kind"));
+
+        // The override path refuses too — an override acknowledges an incompatibility, it
+        // does not license an invalid document.
+        var ex = Assert.Throws<InvalidOperationException>(() => registry.RegisterVersionWithOverride(
+            v2, Lowering.Lower(v2, registry).Artifacts!,
+            new OverrideRecord(
+                new CompatVerdict(CompatMode.Backward, CompatOutcome.Incompatible, Array.Empty<BreakingConstruct>()),
+                "gabi", "attempted invalid registration")));
+        Assert.Contains("does not validate", ex.Message);
+        Assert.Contains("Missing", ex.Message);
+        Assert.Equal(before, registry.All.Count);
+    }
+
+    // ------------------------------------------------------------------
     // Version monotonicity: same or lower version numbers are refused, never appended
     // ------------------------------------------------------------------
 

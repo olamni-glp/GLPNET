@@ -117,6 +117,19 @@ public class SchemaValidatorTests
     }
 
     [Fact]
+    public void Digit_embedded_upper_camel_type_name_is_valid()
+    {
+        // The UpperCamel alphabet is [A-Z][A-Za-z0-9]* (schema-dsl.md): digits are legal
+        // after the leading capital; underscores and non-ASCII letters are not (SC-002 rows).
+        var doc = ValidateOk("""
+            schema s version 1
+            type B2b: int { min 0 max 9 }
+            message m { sequence { a: B2b } }
+            """);
+        Assert.Equal("B2b", doc.Types.Single().Name);
+    }
+
+    [Fact]
     public void Optional_sugar_conflicting_with_occurs_is_a_parse_error()
     {
         var errors = ValidateErr("""

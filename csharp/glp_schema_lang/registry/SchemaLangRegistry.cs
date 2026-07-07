@@ -39,25 +39,31 @@ public sealed record VersionChain(
     string Functor,
     IReadOnlyList<RegistryRecord> Versions);
 
-/// <summary>Union result of registration: records on success, a LoweringError otherwise.</summary>
-public sealed record RegisterResult(IReadOnlyList<RegistryRecord>? Records, LoweringError? Error)
+/// <summary>Union result of registration: records on success, a LoweringError or the schema
+/// validation error list (FR-002/FR-014 — an invalid document never registers) otherwise.</summary>
+public sealed record RegisterResult(
+    IReadOnlyList<RegistryRecord>? Records,
+    LoweringError? Error,
+    IReadOnlyList<SchemaValidationError>? SchemaErrors = null)
 {
-    public bool IsSuccess => Error is null;
+    public bool IsSuccess => Error is null && SchemaErrors is null;
 }
 
 /// <summary>Union result of a version check: a verdict, or a refusal record (clarification 3 /
-/// version-monotonicity law).</summary>
+/// version-monotonicity law / schema validity — checks run over VALIDATED documents only).</summary>
 public sealed record CheckVersionResult(
     CompatVerdict? Verdict,
     NoCompatModeDeclaredError? NoModeError,
-    VersionNotMonotonicError? VersionError = null);
+    VersionNotMonotonicError? VersionError = null,
+    IReadOnlyList<SchemaValidationError>? SchemaErrors = null);
 
 /// <summary>Union result of a version registration (contracts/compat-evolution.md §API).</summary>
 public sealed record RegisterVersionResult(
     IReadOnlyList<RegistryRecord>? Records,
     NoCompatModeDeclaredError? NoModeError,
     CompatVerdict? RequiresOverride,
-    VersionNotMonotonicError? VersionError = null);
+    VersionNotMonotonicError? VersionError = null,
+    IReadOnlyList<SchemaValidationError>? SchemaErrors = null);
 
 /// <summary>
 /// Seeded overlay registry over the static E9 tables.
@@ -143,8 +149,10 @@ public sealed class SchemaLangRegistry
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// First registration of a schema document's lowered artifacts. All-or-nothing: any
-    /// collision over seed ∪ overlay registers NOTHING and never overwrites (US1 AS-3). The
+    /// First registration of a schema document's lowered artifacts. The document is
+    /// re-validated at entry — an invalid document refuses with its schema-error list and
+    /// writes nothing. All-or-nothing: any collision (functor, payload-type byte, or schema
+    /// name) over seed ∪ overlay registers NOTHING and never overwrites (US1 AS-3). The
     /// declared CompatMode is mandatory (clarification 3 — the signature enforces it). Each
     /// RegistryRecord stores {qmedit, cddl, xsd_source, sha256 hashes} together (FR-004, R9);
     /// for 043-authored entries the document text is stored under BOTH the QmeditDsl and
@@ -152,20 +160,37 @@ public sealed class SchemaLangRegistry
     /// </summary>
     public RegisterResult Register(SchemaDocument doc, LoweringArtifactSet artifacts, CompatMode mode)
     {
+        // No unvalidated document ever reaches the overlay (FR-002/FR-014): the registration
+        // entry point re-validates so a later ParseStoredXsd can never blame a "registry
+        // invariant broken" for what was a schema-validation failure at registration time.
+        if (SchemaErrorsOf(doc) is { } schemaErrors)
+            return new RegisterResult(null, null, schemaErrors);
+
         // One combined lookup index per Register call (latest version wins, first row scanned
         // breaks ties — the LookupByFunctor/LookupByPayloadType law) instead of re-materializing
         // seed ∪ overlay once per registration.
         var byFunctor = new Dictionary<string, RegistryRecord>();
         var byPayloadType = new Dictionary<byte, RegistryRecord>();
+        RegistryRecord? sameSchemaName = null;
         foreach (var record in _seed.Concat(_overlay))
         {
             if (!byFunctor.TryGetValue(record.Functor, out var f) || record.Version > f.Version)
                 byFunctor[record.Functor] = record;
             if (!byPayloadType.TryGetValue(record.PayloadType, out var p) || record.Version > p.Version)
                 byPayloadType[record.PayloadType] = record;
+            if (record.SchemaName == doc.Name && (sameSchemaName is null || record.Version > sameSchemaName.Version))
+                sameSchemaName = record;
         }
 
         var collisions = new List<string>();
+        // A schema name colliding with an already-registered one (spec edge case): first
+        // registration requires a fresh schema identity — new versions of an existing schema
+        // go through RegisterVersion, which legitimately re-uses the name.
+        if (sameSchemaName is not null)
+            collisions.Add(
+                $"schema name '{doc.Name}' is already registered " +
+                $"(functor '{sameSchemaName.Functor}' v{sameSchemaName.Version}{(sameSchemaName.IsSeeded ? ", seeded" : string.Empty)}) — " +
+                "a first registration requires a fresh schema name; use RegisterVersion to evolve an existing schema");
         var newFunctors = new HashSet<string>();
         var newPayloadTypes = new HashSet<byte>();
         foreach (var registration in artifacts.Registrations)
@@ -226,6 +251,13 @@ public sealed class SchemaLangRegistry
     /// </summary>
     public CheckVersionResult CheckVersion(SchemaDocument newDoc)
     {
+        // Schema validity first (FR-002/FR-014): evolution checks are defined over VALIDATED
+        // documents — an added element with an unresolved type ref or a brand-new invalid kind
+        // is never resolved by the common-element comparison below, so an unvalidated document
+        // must refuse HERE, before anything can be stored and later detonate downstream.
+        if (SchemaErrorsOf(newDoc) is { } schemaErrors)
+            return new CheckVersionResult(null, null, null, schemaErrors);
+
         // Version monotonicity (FR-014): the proposed version must strictly exceed the latest
         // stored version of every previously-registered kind — refused before any comparison.
         if (VersionMonotonicityError(newDoc) is { } versionError)
@@ -262,6 +294,16 @@ public sealed class SchemaLangRegistry
             null);
     }
 
+    /// <summary>Non-null iff the document fails schema validation (FR-002). Every document
+    /// entry point (Register / CheckVersion / RegisterVersion / RegisterVersionWithOverride)
+    /// refuses on these errors, so no unvalidated document can reach the overlay — the error
+    /// attribution names schema validation, never a broken registry invariant (FR-014).</summary>
+    private static IReadOnlyList<SchemaValidationError>? SchemaErrorsOf(SchemaDocument doc)
+    {
+        var validated = SchemaValidator.ValidateDocument(doc);
+        return validated.IsValid ? null : validated.Errors;
+    }
+
     /// <summary>Non-null iff the proposed document's version does not strictly exceed the
     /// latest stored version of some previously-registered kind it declares.</summary>
     private VersionNotMonotonicError? VersionMonotonicityError(SchemaDocument newDoc)
@@ -284,6 +326,8 @@ public sealed class SchemaLangRegistry
     public RegisterVersionResult RegisterVersion(SchemaDocument newDoc, LoweringArtifactSet artifacts)
     {
         var check = CheckVersion(newDoc);
+        if (check.SchemaErrors is not null)
+            return new RegisterVersionResult(null, null, null, null, check.SchemaErrors);
         if (check.VersionError is not null)
             return new RegisterVersionResult(null, null, null, check.VersionError);
         if (check.NoModeError is not null)
@@ -303,6 +347,11 @@ public sealed class SchemaLangRegistry
         LoweringArtifactSet artifacts,
         OverrideRecord overrideRecord)
     {
+        // An override acknowledges an INCOMPATIBILITY; it does not license an invalid document.
+        if (SchemaErrorsOf(newDoc) is { } schemaErrors)
+            throw new InvalidOperationException(
+                $"schema '{newDoc.Name}' does not validate — " +
+                $"{schemaErrors.Count} schema error(s): {string.Join("; ", schemaErrors)}");
         if (VersionMonotonicityError(newDoc) is { } versionError)
             throw new InvalidOperationException(versionError.Message);
         var anyRegistered = false;

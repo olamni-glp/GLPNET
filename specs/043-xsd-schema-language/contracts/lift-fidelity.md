@@ -10,7 +10,11 @@ Normative for FR-009, FR-010, FR-013 (research R9/R10).
 
 1. **Source of lift = the registered CDDL artifact** (E9: CDDL is the formal form; qmedit is the
    human surface). The parser covers exactly the lowering emitter subset (lowering.md) **plus**
-   the idioms of the shipped `crdt_message` CDDL (`SchemaRegistry.CrdtMessageCddl`).
+   the idioms of the shipped `crdt_message` CDDL (`SchemaRegistry.CrdtMessageCddl`). Sibling
+   message rules — other registered functors sharing THIS record's CDDL artifact — are their own
+   registry entries and are excluded from the rendering; the exclusion is scoped to the artifact,
+   so an unrelated document's functor whose rule name equals a helper rule of this artifact never
+   suppresses the helper.
 2. **Never approximate** (FR-009): a CDDL construct outside the expressible set produces an
    `UnexpressibleConstruct{cddl-construct verbatim, location, reason}` entry; the report outcome
    is `Partial`; the rendering omits nothing silently — every omission is a report entry.

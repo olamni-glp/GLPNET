@@ -48,9 +48,16 @@ public static class Lifter
             return new LiftResult(null, new FidelityReport(FidelityOutcome.Partial, unexpressible), drift);
         }
 
-        // Sibling message rules (other registered functors sharing this artifact) are their
-        // own registry entries, not constructs of THIS entry — excluded from the rendering.
-        var functorRuleNames = registry.All.Select(r => CddlEmitter.RuleName(r.Functor)).ToHashSet();
+        // Sibling message rules (other registered functors sharing THIS record's CDDL
+        // artifact) are their own registry entries, not constructs of THIS entry — excluded
+        // from the rendering. The exclusion is scoped to the artifact: an UNRELATED document's
+        // functor whose rule name happens to equal a helper rule here must not suppress the
+        // helper (that would fail re-validation and mis-report a legal artifact as Partial,
+        // violating lift law 1 / FR-010).
+        var functorRuleNames = registry.All
+            .Where(r => r.Cddl == record.Cddl)
+            .Select(r => CddlEmitter.RuleName(r.Functor))
+            .ToHashSet();
 
         var builder = new Builder(parsed.Rules, unexpressible);
         var message = builder.BuildMessage(functor, messageRule);
@@ -282,6 +289,12 @@ public static class Lifter
                     if (entry.Optional)
                         throw new UnexpressibleException(entry.Key,
                             "an optional entry with a bounded array has no 043 counterpart");
+                    // Occurs bounds are int; an out-of-range bound is UNEXPRESSIBLE — a
+                    // per-construct fidelity entry (FR-009), never a crash and never a silent
+                    // wrap (lift law 2 — the exact sibling of the .size range check).
+                    if (array.Min.Value > int.MaxValue || array.Max > int.MaxValue)
+                        throw new UnexpressibleException($"[{array.Min.Value}*{array.Max} …]",
+                            "occurs bound out of representable range");
                     var inner = TypeRefOf(array.Element, location);
                     return new ElementDecl(entry.Key, inner,
                         new Occurs((int)array.Min.Value, (int?)array.Max), location);

@@ -116,16 +116,19 @@ public static class SchemaDslParser
                 }
                 if (c == '"')
                 {
-                    // String literal: `\"` escapes a quote; every other character (including
-                    // backslashes) is verbatim, so regex pattern text passes through unmangled.
+                    // String literal: `\"` escapes a quote and `\\` escapes a backslash — both
+                    // consumed as units, so text ending in a literal backslash cannot swallow
+                    // the closing quote (symmetric with the printer/emitter escaping). Every
+                    // other character (including a lone backslash before e.g. `.`) is verbatim,
+                    // so regex pattern text passes through unmangled.
                     Advance();
                     var sb = new System.Text.StringBuilder();
                     var closed = false;
                     while (pos < text.Length && text[pos] != '\n')
                     {
-                        if (text[pos] == '\\' && pos + 1 < text.Length && text[pos + 1] == '"')
+                        if (text[pos] == '\\' && pos + 1 < text.Length && (text[pos + 1] is '"' or '\\'))
                         {
-                            sb.Append('"');
+                            sb.Append(text[pos + 1]);
                             Advance();
                             Advance();
                             continue;
@@ -313,8 +316,9 @@ public static class SchemaDslParser
         {
             ExpectKeyword("type");
             var nameTok = Expect(TokenKind.Ident, "a type name");
-            if (!char.IsUpper(nameTok.Text[0]))
-                Error(nameTok.Text, nameTok.Location, $"type name '{nameTok.Text}' must be UpperCamel");
+            if (!IsUpperCamel(nameTok.Text))
+                Error(nameTok.Text, nameTok.Location,
+                    $"type name '{nameTok.Text}' must be UpperCamel ([A-Z][A-Za-z0-9]*)");
 
             if (Current.Kind == TokenKind.Colon)
             {
@@ -338,7 +342,8 @@ public static class SchemaDslParser
             ExpectKeyword("message");
             var nameTok = Expect(TokenKind.Ident, "a functor name");
             if (!IsLowerSnake(nameTok.Text))
-                Error(nameTok.Text, nameTok.Location, $"functor name '{nameTok.Text}' must be lower_snake");
+                Error(nameTok.Text, nameTok.Location,
+                    $"functor name '{nameTok.Text}' must be lower_snake ([a-z][a-z0-9_]*)");
             Expect(TokenKind.LBrace, "'{'");
             var composition = ParseComposition();
             Expect(TokenKind.RBrace, "'}'");
@@ -374,7 +379,8 @@ public static class SchemaDslParser
         {
             var nameTok = Expect(TokenKind.Ident, "an element name");
             if (!IsLowerSnake(nameTok.Text))
-                Error(nameTok.Text, nameTok.Location, $"element name '{nameTok.Text}' must be lower_snake");
+                Error(nameTok.Text, nameTok.Location,
+                    $"element name '{nameTok.Text}' must be lower_snake ([a-z][a-z0-9_]*)");
 
             var optionalSugar = false;
             if (Current.Kind == TokenKind.Question)
@@ -514,7 +520,17 @@ public static class SchemaDslParser
             throw new ParseAbort();
         }
 
+        // Name alphabets are ASCII by contract (schema-dsl.md §Grammar): type names are
+        // UpperCamel [A-Z][A-Za-z0-9]* (no underscores — '_' lowers to '-' in CDDL rule names
+        // and would open cross-document rule-name overlap); functor/element names are
+        // lower_snake [a-z][a-z0-9_]*. char.IsUpper/IsLower are Unicode-wide, hence the
+        // explicit range checks.
+
+        private static bool IsUpperCamel(string name) =>
+            name[0] is >= 'A' and <= 'Z' && name.All(char.IsAsciiLetterOrDigit);
+
         private static bool IsLowerSnake(string name) =>
-            char.IsLower(name[0]) && name.All(c => char.IsLower(c) || char.IsDigit(c) || c == '_');
+            name[0] is >= 'a' and <= 'z'
+            && name.All(c => c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_');
     }
 }

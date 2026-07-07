@@ -80,7 +80,7 @@ public static class SchemaDslPrinter
         MaxValueFacet f => $"max {f.Value}",
         MinLengthFacet f => $"minLength {f.Value}",
         MaxLengthFacet f => $"maxLength {f.Value}",
-        PatternFacet f => $"pattern \"{f.Pattern.Replace("\"", "\\\"")}\"",
+        PatternFacet f => $"pattern {Quoted(f.Pattern)}",
         EnumerationFacet f => $"enum({string.Join(", ", f.Members.Select(MemberText))})",
         _ => throw new InvalidOperationException($"unknown facet {facet.Keyword}"),
     };
@@ -94,5 +94,11 @@ public static class SchemaDslPrinter
         && (char.IsAsciiLetter(member[0]) || member[0] == '_')
         && member.All(c => char.IsAsciiLetterOrDigit(c) || c == '_')
             ? member
-            : $"\"{member.Replace("\"", "\\\"")}\"";
+            : Quoted(member);
+
+    /// <summary>DSL string literal with symmetric escaping (backslash FIRST, then quote —
+    /// the lexer consumes `\\` and `\"` as units), so text ending in a literal backslash
+    /// re-tokenizes instead of swallowing the closing quote.</summary>
+    private static string Quoted(string text) =>
+        $"\"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
 }

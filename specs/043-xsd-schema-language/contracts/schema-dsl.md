@@ -37,7 +37,18 @@ facet         = "min"        integer                                (* int only 
 type-name     = UpperCamel ident ;      functor-name = lower_snake ident ;
 elem-name     = lower_snake ident ;     literal      = string-literal | integer | ident ;
 comment       = "//" to end-of-line ;
+
+UpperCamel ident  = [A-Z][A-Za-z0-9]* ;   (* ASCII only; no underscores — '_' lowers to '-'
+                                             in CDDL rule names and would open cross-document
+                                             rule-name overlap *)
+lower_snake ident = [a-z][a-z0-9_]* ;     (* ASCII only *)
 ```
+
+String literals: `\"` escapes a quote and `\\` escapes a backslash — both consumed as units,
+symmetric with the printer/emitter escaping (so text ending in a literal backslash re-tokenizes
+instead of swallowing the closing quote). Any other character, including a lone backslash
+before e.g. `.`, is verbatim — the R6 pattern escape `\.` is written directly as `"\."`; a
+literal backslash in pattern text (the R6 `\\` escape) is written `"\\\\"`.
 
 Defaults: omitted `occurs` = `1..1`. `elem?: T` ≡ `elem: T occurs 0..1` (matches the stored
 qmedit `capability_slot?:` style). `occurs a..*` = unbounded max. `[T]` ≡ unbounded list of `T`

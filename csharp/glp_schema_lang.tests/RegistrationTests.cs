@@ -204,6 +204,73 @@ public class RegistrationTests
     }
 
     // ------------------------------------------------------------------
+    // Schema-name collision (spec edge case: "a schema name colliding with an
+    // already-registered one") — first registration requires a fresh schema identity
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Duplicate_schema_name_at_first_registration_registers_nothing()
+    {
+        var (registry, _, _) = RegisterChat(); // schema 'chat' now in the overlay
+        var before = registry.All.Count;
+        var doc = LoweringTests.Doc("""
+            schema chat version 1
+            message other_kind { sequence { a: int } }
+            """);
+        var result = registry.Register(doc, Lowering.Lower(doc, registry).Artifacts!, CompatMode.Full);
+
+        Assert.Null(result.Records);
+        Assert.NotNull(result.Error);
+        Assert.Equal(LoweringErrorKind.Collision, result.Error!.Kind);
+        Assert.Contains(result.Error.Constructs, c => c.Contains("schema name 'chat'"));
+        Assert.Equal(before, registry.All.Count);            // nothing written
+        Assert.False(registry.HasFunctor("other_kind"));
+    }
+
+    [Fact]
+    public void Schema_name_colliding_with_a_seeded_entry_registers_nothing()
+    {
+        var registry = new SchemaLangRegistry();
+        var before = registry.All.Count;
+        var doc = LoweringTests.Doc("""
+            schema crdt_message version 1
+            message fresh_kind { sequence { a: int } }
+            """);
+        var result = registry.Register(doc, Lowering.Lower(doc, registry).Artifacts!, CompatMode.Full);
+
+        Assert.Null(result.Records);
+        Assert.NotNull(result.Error);
+        Assert.Equal(LoweringErrorKind.Collision, result.Error!.Kind);
+        Assert.Contains(result.Error.Constructs, c => c.Contains("schema name 'crdt_message'") && c.Contains("seeded"));
+        Assert.Equal(before, registry.All.Count);
+        Assert.False(registry.HasFunctor("fresh_kind"));
+    }
+
+    // ------------------------------------------------------------------
+    // Document validation at the registration entry (FR-002/FR-014): an invalid document
+    // refuses with schema errors and writes nothing — never a stored time bomb
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Invalid_document_is_refused_at_first_registration_and_writes_nothing()
+    {
+        var registry = new SchemaLangRegistry();
+        var before = registry.All.Count;
+        // Parses fine, but the type ref is unresolved — without entry validation the emitter
+        // would happily produce artifacts and the overlay would store an invalid document.
+        var doc = SchemaDslParser.Parse(
+            "schema fresh version 1\nmessage fresh_kind { sequence { a: Missing } }").Document!;
+        var result = registry.Register(doc, Lowering.Lower(doc, registry).Artifacts!, CompatMode.Full);
+
+        Assert.Null(result.Records);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.SchemaErrors);
+        Assert.Contains(result.SchemaErrors!, e => e.Construct == "Missing");
+        Assert.Equal(before, registry.All.Count);            // nothing written
+        Assert.False(registry.HasFunctor("fresh_kind"));
+    }
+
+    // ------------------------------------------------------------------
     // Mandatory CompatMode (clarification 3)
     // ------------------------------------------------------------------
 
