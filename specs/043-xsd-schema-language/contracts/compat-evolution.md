@@ -21,12 +21,18 @@ Direction vocabulary: **backward** = new readers understand old writers (new sch
 all old-valid data); **forward** = old readers tolerate new writers (old schema must accept all
 new-valid data). This matches the `CompatMode` XML-docs in `WireRegistry.cs`.
 
+**Closed-world law**: 043 instance validation is closed-world (validation-api.md — an element
+not declared in the composition is a violation). Therefore removing **any** element is
+backward-breaking: old-valid instances that carry the removed element are rejected by v(n+1).
+This matches spec US4 acceptance scenario 2 (removal of a mandatory element under backward mode
+⇒ incompatible); Avro-style ignore-unknown-field semantics do NOT apply here.
+
 | Change in v(n+1) | Backward | Forward |
 |---|---|---|
 | Add element with `occurs` min = 0 (optional) | compatible | compatible |
 | Add element with min ≥ 1 (mandatory) | **breaks** | compatible |
-| Remove optional element | compatible | compatible |
-| Remove mandatory element | compatible | **breaks** |
+| Remove optional element | **breaks** (closed-world) | compatible |
+| Remove mandatory element | **breaks** (closed-world) | **breaks** |
 | Widen a facet (larger range/length, added enum member, superset pattern†) | compatible | **breaks** |
 | Narrow a facet (smaller range/length, removed enum member, subset pattern†) | **breaks** | compatible |
 | Widen `occurs` bounds | compatible | **breaks** |
@@ -40,7 +46,9 @@ new-valid data). This matches the `CompatMode` XML-docs in `WireRegistry.cs`.
 subset); a pattern change whose inclusion cannot be established is conservatively **breaking**
 in both directions, with the verdict saying so explicitly.
 
-- **Full** = Backward ∧ Forward (additive-optional only — matches the shipped XML-doc).
+- **Full** = Backward ∧ Forward — under the closed-world law this reduces to add-optional-only
+  plus facet/occurs changes that are neither widening nor narrowing (matches the shipped
+  XML-doc: "additive-only evolution").
 - **Transitive** variants: the same check run against **every** stored version in the type's
   `VersionChain`, not only v(n); first failing pair is named in the verdict.
 

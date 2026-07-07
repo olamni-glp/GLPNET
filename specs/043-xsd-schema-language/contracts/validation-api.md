@@ -32,6 +32,13 @@ as the recursion bound — bounded and deterministic on attacker-supplied instan
 ## Agreement law (FR-007 / SC-003)
 
 For every shape expressible at both levels: `registry-level reject ⇒ XSD-level reject`.
+
+**Scope (analyze A1)**: the law quantifies over message kinds registered at BOTH levels.
+`DecodeGuard`/`MessageCodec` consult only the static `WireRegistry` table, so for
+043-overlay-registered kinds (payload types ≥ 0x13) "registry level" means the logical registry
+(seed ∪ overlay) — the codec path rejecting a byte the static table doesn't know is the
+expected FR-012 posture, not an FR-007 contradiction. The SC-003 corpus therefore runs on the
+dual-level kind (`crdt_message`).
 Test harness: run the shared corpus (041 `SampleMessages` conforming set + derived
 non-conforming mutations) through `MessageCodec.Decode + DecodeGuard.Check` (registry level)
 and through `InstanceValidator` (XSD level, via the tests-side `Message → InstanceValue`

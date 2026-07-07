@@ -131,9 +131,11 @@ production (inverts the dependency discipline of R1).
 **Decision**: evolution checking compares old/new schema ASTs construct-by-construct under a
 fixed rule table (Confluent-style semantics, `contracts/compat-evolution.md` is normative):
 **backward** (new reader, old data): adding elements requires `occurs` min 0 (optional);
-removing an element is compatible; facet **widening** is compatible, **narrowing** breaks;
-choice-branch removal breaks, branch addition is compatible. **forward** (old reader, new data):
-the mirror rules. **full** = backward ∧ forward (additive-optional only). **transitive**
+removing **any** element breaks (043 validation is closed-world — old instances carrying the
+removed element are rejected; matches spec US4 AS-2); facet **widening** is compatible,
+**narrowing** breaks; choice-branch removal breaks, branch addition is compatible.
+**forward** (old reader, new data): the mirror rules (optional-element removal is
+forward-compatible). **full** = backward ∧ forward (additive-optional only). **transitive**
 variants: the same check run against **every** stored prior version in the type's chain, not
 just the latest. Verdicts name each breaking construct with its location. Registration of an
 incompatible version requires an explicit recorded override `{verdict, acknowledger, reason}`

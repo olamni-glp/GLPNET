@@ -21,14 +21,18 @@ type-ref      = type-name | primitive | "[" , type-ref , "]" ;      (* [] = list
 occurs        = "occurs" , integer , ".." , ( integer | "*" )
               | "?" ;                                               (* sugar for occurs 0..1, suffix on elem-name *)
 
-primitive     = "int" | "str" | "bytes" | "bool" | "symbol" ;
+primitive     = "int" | "str" | "bytes" | "bool" ;
+                (* no standalone symbol primitive: symbolic constants are enum members on a
+                   str base — matches the shipped qmedit `enum(none, state_based, op_based)`
+                   idiom and keeps lift(lower) deterministic (str and symbol would both lower
+                   to tstr and be indistinguishable on lift) *)
 
 facet         = "min"        integer                                (* int only *)
               | "max"        integer                                (* int only *)
               | "minLength"  integer                                (* str, bytes *)
               | "maxLength"  integer                                (* str, bytes *)
               | "pattern"    string-literal                         (* str only; restricted subset, R6 *)
-              | "enum"       "(" , literal , { "," , literal } , ")" ;  (* str, symbol, int *)
+              | "enum"       "(" , literal , { "," , literal } , ")" ;  (* str, int *)
 
 type-name     = UpperCamel ident ;      functor-name = lower_snake ident ;
 elem-name     = lower_snake ident ;     literal      = string-literal | integer | ident ;

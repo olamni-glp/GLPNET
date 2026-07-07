@@ -70,7 +70,7 @@ instances; every verdict correct, every failure construct-named (US2 acceptance 
 ### Tests for User Story 2 (write first — must fail)
 
 - [ ] T019 [P] [US2] Instance validation tests in `csharp/glp_schema_lang.tests/InstanceValidationTests.cs` — conforming instance → Pass; facet violation (out-of-range, length, pattern, enum) → Fail naming facet + instance path; composition violation (missing mandatory element, wrong choice-branch arity, occurs out of bounds, sequence order) → Fail naming element; unregistered functor → NoSchemaRegisteredError, never a silent pass (FR-008); deep instance bounded/deterministic (no stack overflow on adversarial nesting — edge case)
-- [ ] T020 [P] [US2] Corpus agreement tests in `csharp/glp_schema_lang.tests/CorpusAgreementTests.cs` — `Message → InstanceValue` adapter over `SampleMessages.All()`; run 041 golden messages + derived non-conforming mutations through `MessageCodec.Decode`+`DecodeGuard.Check` (registry level) AND `InstanceValidator` (XSD level, against the lifted/re-expressed `crdt_message` schema); assert zero polarity contradictions and narrowing-only (SC-003, FR-007)
+- [ ] T020 [P] [US2] Corpus agreement tests in `csharp/glp_schema_lang.tests/CorpusAgreementTests.cs` — `Message → InstanceValue` adapter over `SampleMessages.All()`; run 041 golden messages + derived non-conforming mutations through `MessageCodec.Decode`+`DecodeGuard.Check` (registry level) AND `InstanceValidator` (XSD level, against the re-expressed `crdt_message` schema from T022 — no US3 dependency); assert zero polarity contradictions and narrowing-only (SC-003, FR-007, scoped per contracts/validation-api.md agreement law)
 
 ### Implementation for User Story 2
 

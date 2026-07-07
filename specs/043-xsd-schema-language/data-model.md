@@ -16,7 +16,7 @@ the only store is the in-memory seeded overlay (research R2).
 | `ElementDecl` | `Name`, `TypeRef: TypeRef`, `Occurs: Occurs`, `Location` | named slot |
 | `TypeRef` | `Name` (named type) **or** `Primitive: PrimitiveKind` | must resolve (FR-002) |
 | `Occurs` | `Min:int`, `Max:int?` (`null` = unbounded `*`) | default `1..1`; `0..1` = optional |
-| `PrimitiveKind` | `Int, Str, Bytes, Bool, Symbol` | aligns with qmedit/CDDL primitives (R5) |
+| `PrimitiveKind` | `Int, Str, Bytes, Bool` | aligns with qmedit/CDDL primitives (R5); no standalone symbol — symbolic constants are str-base enum members (analyze I2: str and symbol would both lower to `tstr`, breaking deterministic lift) |
 | `MessageDecl` | `Functor`, `Body: Composition`, `Location` | one per message kind; lowers to one functor registration |
 
 ### Facets (on `SimpleType` only)
@@ -26,7 +26,7 @@ the only store is the in-memory seeded overlay (research R2).
 | `MinValue(long)` / `MaxValue(long)` | Int | `min ≤ max` |
 | `MinLength(int)` / `MaxLength(int)` | Str, Bytes | `0 ≤ minLength ≤ maxLength` |
 | `Pattern(string)` | Str | parses in the restricted regex subset (R6); NFA non-empty |
-| `Enumeration(IReadOnlyList<string>)` | Str, Symbol, Int | non-empty; members distinct; each member satisfies co-facets |
+| `Enumeration(IReadOnlyList<string>)` | Str, Int | non-empty; members distinct; each member satisfies co-facets |
 
 **Validation rules (FR-002)**: every `TypeRef.Name` resolves within the document; type names
 unique; element names unique per composition; facet consistency per table; the type-reference
@@ -60,7 +60,7 @@ Unlowerable construct ⇒ `LoweringError` listing every offending construct; not
 
 | Entity | Fields | Notes |
 |---|---|---|
-| `InstanceValue` (union) | `Int(long)`, `Str(string)`, `Bytes(byte[])`, `Bool(bool)`, `Symbol(string)`, `List(IReadOnlyList<InstanceValue>)`, `Struct(name, ordered fields name→InstanceValue)` | neutral ground-term tree (R7) |
+| `InstanceValue` (union) | `Int(long)`, `Str(string)`, `Bytes(byte[])`, `Bool(bool)`, `List(IReadOnlyList<InstanceValue>)`, `Struct(name, ordered fields name→InstanceValue)` | neutral ground-term tree (R7); adapters map decoded symbolic enums to `Str` (or `Int` for numeric enums) |
 | `ValidationVerdict` | `Pass` **or** `Fail(Violations: IReadOnlyList<Violation>)` | never silent |
 | `Violation` | `ConstructKind: {Element, Facet, Composition, Kind}`, `ConstructName`, `SchemaLocation`, `InstancePath` (e.g. `header.policy.targets[2]`), `Message` | FR-006 localization |
 

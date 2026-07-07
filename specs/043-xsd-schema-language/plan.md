@@ -50,9 +50,12 @@ randomness, or unordered iteration on any contract path); loud-fail with constru
 localization everywhere (FR-014); all-or-nothing registration; cycles rejected at
 schema-validation (clarification 2); evolution refuses without a declared compat mode
 (clarification 3).
-**Scale/Scope**: 3 seeded registry kinds (one with dual-DSL forms); schema documents of tens of
-types; instance corpus = 3 golden messages + derived conforming/non-conforming mutations;
-~7 production source areas (ast, parser, validate, pattern, lower, lift, evolve/registry).
+**Scale/Scope**: 3 seeded registry kinds — SC-001's re-expression denominator is the one
+DSL-formed kind (`crdt_message`); the two byte-only kinds (`il_program`, `result_envelope`)
+carry no shape to re-express and are covered by explicit partial-fidelity reports (SC-004
+path). Schema documents of tens of types; instance corpus = 3 golden messages + derived
+conforming/non-conforming mutations; 8 production source areas (ast, parser, pattern,
+validate, lower, lift, evolve, registry).
 
 ## Constitution Check
 
