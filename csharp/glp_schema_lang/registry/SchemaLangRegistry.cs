@@ -174,6 +174,26 @@ public sealed class SchemaLangRegistry
 
     internal void AppendOverlay(RegistryRecord record) => _overlay.Add(record);
 
+    /// <summary>TEST SEAM (T024): mimic an out-of-band E9-level CDDL edit — the stored text
+    /// changes but the registration-time hash record does not (drift detection input, R9).</summary>
+    internal void MutateOverlayCddlOutOfBand(string functor, string newCddl) =>
+        MutateOverlay(functor, r => r with { Cddl = newCddl });
+
+    /// <summary>TEST SEAM (T024): mimic an out-of-band qmedit-form edit.</summary>
+    internal void MutateOverlayQmeditOutOfBand(string functor, string newQmedit) =>
+        MutateOverlay(functor, r => r with { QmeditDsl = newQmedit });
+
+    private void MutateOverlay(string functor, Func<RegistryRecord, RegistryRecord> mutate)
+    {
+        for (var i = _overlay.Count - 1; i >= 0; i--)
+        {
+            if (_overlay[i].Functor != functor) continue;
+            _overlay[i] = mutate(_overlay[i]);
+            return;
+        }
+        throw new NoSchemaRegisteredError(functor);
+    }
+
     internal static string Sha256Hex(string text) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 }

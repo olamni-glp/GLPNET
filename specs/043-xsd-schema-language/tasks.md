@@ -89,14 +89,14 @@ rendering or an explicit fidelity report (US3 acceptance scenarios 1–2; SC-004
 
 ### Tests for User Story 3 (write first — must fail)
 
-- [ ] T023 [P] [US3] Lift + fidelity tests in `csharp/glp_schema_lang.tests/LiftFidelityTests.cs` — lift seeded `crdt_message` → rendering; re-lower and assert accept/reject equivalence over the T020 corpus (SC-004 lower-then-compare); lift `il_program`/`result_envelope` → whole-entry Partial "no CDDL artifact" report; a CDDL construct outside the subset → per-construct UnexpressibleConstruct, outcome Partial, zero silent approximation; round-trip Lift(Lower(doc)) structural equivalence for the `chat` schema (FR-010)
-- [ ] T024 [P] [US3] Drift tests in `csharp/glp_schema_lang.tests/DriftTests.cs` — register via 043, then mutate the overlay entry's CDDL out-of-band (test seam); lift/view → DriftReport naming the diverged form + rendering reflects CURRENT registry truth, stale XSD source flagged not shown as current (FR-013)
+- [X] T023 [P] [US3] Lift + fidelity tests in `csharp/glp_schema_lang.tests/LiftFidelityTests.cs` — lift seeded `crdt_message` → rendering; re-lower and assert accept/reject equivalence over the T020 corpus (SC-004 lower-then-compare); lift `il_program`/`result_envelope` → whole-entry Partial "no CDDL artifact" report; a CDDL construct outside the subset → per-construct UnexpressibleConstruct, outcome Partial, zero silent approximation; round-trip Lift(Lower(doc)) structural equivalence for the `chat` schema (FR-010)
+- [X] T024 [P] [US3] Drift tests in `csharp/glp_schema_lang.tests/DriftTests.cs` — register via 043, then mutate the overlay entry's CDDL out-of-band (test seam); lift/view → DriftReport naming the diverged form + rendering reflects CURRENT registry truth, stale XSD source flagged not shown as current (FR-013)
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] CDDL-subset parser in `csharp/glp_schema_lang/lift/CddlSubsetParser.cs` — recursive-descent over the emitter subset + shipped `crdt_message` idioms (`&(…)` enums, `? key`, `[* t]`, `[a*b t]`, ranges, `.size`, `.regexp`, named rule refs); out-of-subset constructs captured verbatim with location (R10; depends T004)
-- [ ] T026 [US3] Lifter + fidelity + drift in `csharp/glp_schema_lang/lift/Lifter.cs` — `Lift(registry, functor) → LiftResult{rendering, FidelityReport, DriftReport?}`; hash-compare drift detection per R9; current-truth rendering law (contracts/lift-fidelity.md; depends T025, T017)
-- [ ] T027 [US3] Make T023–T024 green
+- [X] T025 [US3] CDDL-subset parser in `csharp/glp_schema_lang/lift/CddlSubsetParser.cs` — recursive-descent over the emitter subset + shipped `crdt_message` idioms (`&(…)` enums, `? key`, `[* t]`, `[a*b t]`, ranges, `.size`, `.regexp`, named rule refs); out-of-subset constructs captured verbatim with location (R10; depends T004)
+- [X] T026 [US3] Lifter + fidelity + drift in `csharp/glp_schema_lang/lift/Lifter.cs` — `Lift(registry, functor) → LiftResult{rendering, FidelityReport, DriftReport?}`; hash-compare drift detection per R9; current-truth rendering law (contracts/lift-fidelity.md; depends T025, T017)
+- [X] T027 [US3] Make T023–T024 green
 
 **Checkpoint**: lift closes the round-trip over the whole seeded registry. Commit.
 
