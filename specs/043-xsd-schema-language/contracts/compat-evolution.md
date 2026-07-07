@@ -6,13 +6,16 @@ Normative for FR-011 (research R8). Modes are the registry's existing
 ## API
 
 `CompatChecker.Check(oldDoc, newDoc, CompatMode) → CompatVerdict`
-`SchemaLangRegistry.RegisterVersion(newDoc, artifacts) → RegistryRecord[] | NoCompatModeDeclaredError | RequiresOverride(CompatVerdict)`
+`SchemaLangRegistry.CheckVersion(newDoc) → CompatVerdict | NoCompatModeDeclaredError | VersionNotMonotonicError | SchemaValidationError[]`
+`SchemaLangRegistry.RegisterVersion(newDoc, artifacts) → RegistryRecord[] | NoCompatModeDeclaredError | RequiresOverride(CompatVerdict) | VersionNotMonotonicError | SchemaValidationError[]`
 `SchemaLangRegistry.RegisterVersionWithOverride(newDoc, artifacts, OverrideRecord) → RegistryRecord[]`
 
-All three registry entry points refuse an UNVALIDATED document with its schema-error list
+All three registry entry points — `CheckVersion`, `RegisterVersion`,
+`RegisterVersionWithOverride` — refuse an UNVALIDATED document with its schema-error list
 before any comparison (lowering.md registration law 0): the common-element comparison never
 resolves added elements or brand-new kinds, so entry validation is the only gate keeping an
-invalid document out of the version chains.
+invalid document out of the version chains. (`CompatChecker.Check` is a pure checker over
+already-validated documents; it performs no validation itself.)
 
 ## Refusal law (clarification 3)
 

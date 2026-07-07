@@ -153,6 +153,12 @@ public static class Lifter
             var location = Location(rule.Line);
             try
             {
+                // The sibling of the element-name check: a rule name whose canonical form is
+                // not a DSL type name (rule starts may carry '.', '@', '$' — CddlSubsetParser
+                // .TryMatchRuleStart) would print as an unparseable `type` declaration.
+                if (!IsDslTypeName(name))
+                    throw new UnexpressibleException(rule.Name,
+                        $"rule name does not canonicalize to a DSL type name ('{name}' is not UpperCamel [A-Z][A-Za-z0-9]*, schema-dsl.md)");
                 switch (rule.Type)
                 {
                     case CddlMap or CddlChoice:
@@ -282,6 +288,14 @@ public static class Lifter
             var location = Location(line);
             try
             {
+                // A map key outside the DSL elem-name alphabet (a dashed key, an uppercase
+                // key, …) cannot be printed as a re-parsable element name — it is
+                // UNEXPRESSIBLE, a per-construct fidelity entry (lift law 2 / FR-010), exactly
+                // like an out-of-range .size bound; never a Full-fidelity rendering whose
+                // printed Source fails to re-parse (printer invariant).
+                if (!IsDslElementName(entry.Key))
+                    throw new UnexpressibleException(entry.Key,
+                        "element name not expressible in the schema DSL (elem-name is lower_snake [a-z][a-z0-9_]*, schema-dsl.md)");
                 var occurs = entry.Optional ? Occurs.Optional : Occurs.One;
                 if (entry.Value is CddlArray array && array.Min is not null)
                 {
@@ -360,6 +374,18 @@ public static class Lifter
         }
 
         private static SourceLocation Location(int line) => new(line, 1);
+
+        /// <summary>The DSL elem-name alphabet (schema-dsl.md: lower_snake `[a-z][a-z0-9_]*`).</summary>
+        private static bool IsDslElementName(string name) =>
+            name.Length > 0
+            && char.IsAsciiLetterLower(name[0])
+            && name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_');
+
+        /// <summary>The DSL type-name alphabet (schema-dsl.md: UpperCamel `[A-Z][A-Za-z0-9]*`).</summary>
+        private static bool IsDslTypeName(string name) =>
+            name.Length > 0
+            && char.IsAsciiLetterUpper(name[0])
+            && name.All(char.IsAsciiLetterOrDigit);
 
         /// <summary>Canonical naming: 'crdt-model' → 'CrdtModel', 'username' → 'Username'.</summary>
         private static string CanonicalTypeName(string ruleName) =>

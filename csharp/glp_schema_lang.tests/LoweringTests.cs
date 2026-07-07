@@ -185,6 +185,30 @@ public class LoweringTests
         Assert.Equal(0x14, next.Artifacts!.Registrations[0].PayloadType);
     }
 
+    [Fact]
+    public void Version_document_reuses_registered_bytes_and_new_kinds_get_the_lowest_free_byte()
+    {
+        // Allocation reuse law (lowering.md §Functor registrations): a functor already in
+        // seed ∪ overlay REUSES its registered byte, so a v2 declaring the existing kind
+        // BEFORE a new kind gives the new kind the LOWEST free byte, not the second-lowest.
+        var registry = new SchemaLangRegistry();
+        var v1 = Doc("""
+            schema evo version 1
+            message evo_kind { sequence { id: int } }
+            """);
+        Assert.Null(registry.Register(v1, Lowering.Lower(v1, registry).Artifacts!, CompatMode.Backward).Error);
+        Assert.Equal(0x13, registry.LookupByFunctor("evo_kind").PayloadType);
+
+        var v2 = Doc("""
+            schema evo version 2
+            message evo_kind { sequence { id: int  extra?: int } }
+            message side_kind { sequence { note: str } }
+            """);
+        var artifacts = Lowering.Lower(v2, registry).Artifacts!;
+        Assert.Equal(new (string, byte)[] { ("evo_kind", 0x13), ("side_kind", 0x14) },
+            artifacts.Registrations.Select(r => (r.Functor, r.PayloadType)));
+    }
+
     // ------------------------------------------------------------------
     // Unlowerable constructs — the error lists EVERY offending construct
     // ------------------------------------------------------------------

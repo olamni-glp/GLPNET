@@ -181,6 +181,44 @@ public class EvolutionRegistrationTests
     }
 
     // ------------------------------------------------------------------
+    // Allocation reuse on the version path: a pure version bump consumes NO free bytes
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Pure_version_bump_succeeds_with_zero_free_bytes_remaining()
+    {
+        var registry = RegisteredV1(); // evo_kind at 0x13
+        // Exhaust the byte space: every remaining candidate 0x14..0xFF taken (internal seam).
+        for (var b = 0x14; b <= byte.MaxValue; b++)
+            registry.AppendOverlay(new RegistryRecord(
+                (byte)b, $"filler_{b:x2}", CompatMode.Full,
+                QmeditDsl: null, Cddl: null, XsdSource: null,
+                SchemaName: $"filler_{b:x2}", Version: 1,
+                CddlSha256: null, QmeditSha256: null));
+
+        // A brand-new kind genuinely has no byte left: ByteSpaceExhausted.
+        var fresh = LoweringTests.Doc("""
+            schema fresh version 1
+            message fresh_kind { sequence { a: int } }
+            """);
+        var exhausted = Lowering.Lower(fresh, registry);
+        Assert.NotNull(exhausted.Error);
+        Assert.Equal(LoweringErrorKind.ByteSpaceExhausted, exhausted.Error!.Kind);
+
+        // A PURE version bump of the registered kind needs no free byte: it lowers (reusing
+        // the kind's byte) and registers end-to-end — never a spurious ByteSpaceExhausted.
+        var v2 = Doc(2, CompatibleV2Body);
+        var lowered = Lowering.Lower(v2, registry);
+        Assert.Null(lowered.Error);
+        Assert.Equal(0x13, Assert.Single(lowered.Artifacts!.Registrations).PayloadType);
+
+        var result = registry.RegisterVersion(v2, lowered.Artifacts);
+        Assert.NotNull(result.Records);
+        Assert.Equal(0x13, Assert.Single(result.Records!).PayloadType); // the kind keeps its byte
+        Assert.Equal(new[] { 1, 2 }, registry.Versions("evo_kind").Versions.Select(r => r.Version));
+    }
+
+    // ------------------------------------------------------------------
     // Document validation at the version entries (FR-002/FR-014): an invalid new-version
     // document refuses with schema errors and writes nothing — the common-element comparison
     // never resolves ADDED elements or brand-new kinds, so entry validation is the only gate

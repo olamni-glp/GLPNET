@@ -3,8 +3,10 @@
 // Contract: specs/043-xsd-schema-language/contracts/lowering.md.
 // `Lowering.Lower(doc[, registry])` → LoweringArtifactSet | LoweringError. One CDDL artifact
 // per schema document; one FunctorRegistration per `message` declaration. Payload types
-// allocate deterministically: lowest free byte ≥ 0x13 (MessagingBase + 1) in seed ∪ overlay,
-// in message declaration order. Unlowerable constructs produce a LoweringError listing EVERY
+// allocate deterministically: a functor already registered in seed ∪ overlay REUSES its
+// registered byte (a kind keeps its byte across versions, compat-evolution.md); genuinely new
+// functors take the lowest free byte ≥ 0x13 (MessagingBase + 1) in seed ∪ overlay, in message
+// declaration order. Unlowerable constructs produce a LoweringError listing EVERY
 // offending construct; nothing is emitted partially (all-or-nothing, FR-003 edge case).
 // Lowering is a pure function of (document, registry state) — no timestamps, no randomness,
 // no unordered iteration (FR-005, research R11).
@@ -46,6 +48,17 @@ public static class Lowering
         var registrations = new List<FunctorRegistration>();
         foreach (var message in doc.Messages)
         {
+            // A functor already registered keeps its byte across versions (compat-evolution.md:
+            // "A new version of a kind keeps the kind's payload-type byte") — reuse it instead
+            // of consuming a fresh candidate, so (a) the genuinely NEW kinds of a version
+            // document get the true lowest free bytes, and (b) a pure version bump needs no
+            // free bytes at all (no spurious ByteSpaceExhausted near exhaustion).
+            if (registry.HasFunctor(message.Functor))
+            {
+                registrations.Add(new FunctorRegistration(
+                    message.Functor, registry.LookupByFunctor(message.Functor).PayloadType));
+                continue;
+            }
             byte? allocated = null;
             for (var candidate = PayloadType.MessagingBase + 1; candidate <= byte.MaxValue; candidate++)
             {

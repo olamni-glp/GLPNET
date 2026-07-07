@@ -31,9 +31,12 @@ shipped `crdt_message` artifact. **Same document ⇒ byte-identical CDDL** (FR-0
 ## Functor registrations
 
 One `FunctorRegistration` per `message` declaration: `{functor, payload_type, compat_mode}`.
-Payload types allocated deterministically: lowest free byte ≥ 0x13 (`MessagingBase + 1`) in
-seed ∪ overlay, in message declaration order (R3). The declared `CompatMode` is mandatory at
-registration (clarification 3 — no default is ever assumed).
+Payload types allocated deterministically: a functor already registered in seed ∪ overlay
+**reuses** its registered byte (a kind keeps its payload-type byte across versions,
+compat-evolution.md) — so in a version document only the genuinely new functors consume free
+bytes, and a pure version bump allocates none; a new functor takes the lowest free byte ≥ 0x13
+(`MessagingBase + 1`) in seed ∪ overlay, in message declaration order (R3). The declared
+`CompatMode` is mandatory at registration (clarification 3 — no default is ever assumed).
 
 ## Registration laws
 
@@ -44,9 +47,10 @@ registration (clarification 3 — no default is ever assumed).
    schema validation, never a broken registry invariant.
 1. **All-or-nothing**: any collision or unlowerable construct registers NOTHING (spec edge case).
 2. **Collision** (US1 AS-3): functor, payload-type, or schema name already in seed ∪ overlay
-   with a different shape ⇒ `LoweringError(collision, functor/byte/name, existing-entry
-   identity)`. Never overwrite. The schema-name clause applies to FIRST registration only —
-   `RegisterVersion` legitimately re-uses the schema name to extend its version chains.
+   ⇒ `LoweringError(collision, functor/byte/name, existing-entry identity)`. Never overwrite —
+   even a byte-identical re-registration refuses. The schema-name clause applies to FIRST
+   registration only — `RegisterVersion` legitimately re-uses the schema name to extend its
+   version chains.
 3. **Stored forms** (FR-004): each `RegistryRecord` stores `{qmedit, cddl, xsd_source, sha256
    hashes}` so all representations are retrievable together, side by side with 041-authored
    entries. For 043-authored entries the 043 document text IS the qmedit-family authoring form:

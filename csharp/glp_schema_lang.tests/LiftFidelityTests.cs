@@ -385,6 +385,71 @@ public class LiftFidelityTests
     }
 
     // ------------------------------------------------------------------
+    // DSL name alphabet on lift: CDDL names outside the DSL grammar are fidelity entries,
+    // never a Full rendering whose printed Source cannot re-parse (printer invariant)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Map_key_outside_the_dsl_elem_name_alphabet_is_a_fidelity_entry()
+    {
+        // 'foo-bar' is a legal CDDL map key but no DSL elem-name (lower_snake, schema-dsl.md):
+        // lifting it verbatim would claim Full while the printed Source fails to re-parse.
+        var registry = new SchemaLangRegistry();
+        var cddl = "dash-kind = {\n  foo-bar: tstr,\n  ok_key: int,\n}\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x25, "dash_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "dash", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "dash_kind");
+        Assert.Equal(FidelityOutcome.Partial, result.Fidelity.Outcome);
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains("foo-bar")
+                && u.Reason.Contains("element name not expressible in the schema DSL"));
+
+        // The lower_snake entry still lifts; the omission is the report entry; the printed
+        // Source re-parses and re-validates.
+        var elements = result.Rendering!.Messages.Single().Body.Elements;
+        Assert.DoesNotContain(elements, e => e.Name == "foo-bar");
+        Assert.Contains(elements, e => e.Name == "ok_key");
+        var revalidated = SchemaValidator.Validate(result.Rendering!.Source);
+        Assert.True(revalidated.IsValid,
+            "printed lift source must re-validate: " +
+            string.Join("; ", revalidated.Errors.Select(e => e.ToString())));
+        SchemaEquivalence.AssertEquivalent(result.Rendering, revalidated.Document!);
+    }
+
+    [Fact]
+    public void Rule_name_that_does_not_canonicalize_to_a_dsl_type_name_is_a_fidelity_entry()
+    {
+        // Rule STARTS may carry '.', '@', '$' (CddlSubsetParser.TryMatchRuleStart); such a
+        // name canonicalizes to no DSL type name and would print as an unparseable `type`.
+        var registry = new SchemaLangRegistry();
+        var cddl = "dotty-kind = {\n  a: int,\n}\nweird.rule = int\n";
+        registry.AppendOverlay(new RegistryRecord(
+            0x26, "dotty_kind", CompatMode.Full,
+            QmeditDsl: "-", Cddl: cddl, XsdSource: null,
+            SchemaName: "dotty", Version: 1,
+            CddlSha256: SchemaLangRegistry.Sha256Hex(cddl), QmeditSha256: SchemaLangRegistry.Sha256Hex("-")));
+
+        var result = Lifter.Lift(registry, "dotty_kind");
+        Assert.Equal(FidelityOutcome.Partial, result.Fidelity.Outcome);
+        Assert.Contains(result.Fidelity.Unexpressible,
+            u => u.CddlConstruct.Contains("weird.rule")
+                && u.Reason.Contains("does not canonicalize to a DSL type name"));
+
+        // The in-alphabet content still lifts and prints re-parsably.
+        var elements = result.Rendering!.Messages.Single().Body.Elements;
+        Assert.Contains(elements, e => e.Name == "a");
+        Assert.Empty(result.Rendering.Types);
+        var revalidated = SchemaValidator.Validate(result.Rendering!.Source);
+        Assert.True(revalidated.IsValid,
+            "printed lift source must re-validate: " +
+            string.Join("; ", revalidated.Errors.Select(e => e.ToString())));
+    }
+
+    // ------------------------------------------------------------------
     // Printer/lexer alphabet: non-identifier enum members print as DSL string literals
     // ------------------------------------------------------------------
 
