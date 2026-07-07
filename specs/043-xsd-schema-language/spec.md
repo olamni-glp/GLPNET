@@ -20,6 +20,14 @@ validatable, and translatable down to the registry's existing CDDL + functor reg
 This feature adds that layer. It sits strictly ABOVE the E9 core: the functor registry and its
 dual-DSL round-trip remain the authoritative registration substrate, unchanged.
 
+## Clarifications
+
+### Session 2026-07-07
+
+- Q: Is the authoring syntax literal XML/XSD, or a plaintext DSL carrying the XSD concepts? → A: Plaintext DSL in the qmedit family carrying the XSD concepts (named types, facets, sequence/choice, cardinality) — no XML anywhere.
+- Q: Are cyclic type references supported or rejected? → A: Reject all cyclic type references at schema-validation time with a precise error naming the cycle.
+- Q: What happens when a new schema version is submitted for a type with no declared compatibility mode? → A: Explicit error — evolution check/registration of a new version refuses until a compatibility mode is declared for the type.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Author a rich schema and land it in the registry (Priority: P1)
@@ -133,8 +141,9 @@ narrowings, choice-branch changes) and confirm each case gets the expected verdi
 
 ### Edge Cases
 
-- Cyclic type references (type A composed of B, B of A): must be detected and either supported
-  with well-defined semantics or rejected with a precise error — never a hang or stack overflow.
+- Cyclic type references (type A composed of B, B of A, including self-reference): detected and
+  rejected at schema-validation time with a precise error naming the cycle — never a hang or
+  stack overflow (clarified 2026-07-07: recursion is not supported in this feature).
 - Facet contradictions (min > max, empty enumeration, pattern that matches nothing) rejected at
   schema-validation time, not discovered at instance-validation time.
 - Name collisions: two named types with the same name in one schema document; a schema name
@@ -157,8 +166,9 @@ narrowings, choice-branch changes) and confirm each case gets the expected verdi
   named elements; per-element optionality and repetition bounds; and reuse of named types across
   definitions within a schema document.
 - **FR-002**: The system MUST validate a schema document itself (well-formedness of definitions,
-  resolvability of every type reference, facet consistency, name uniqueness) and reject invalid
-  documents with errors naming the offending construct and its location.
+  resolvability of every type reference, facet consistency, name uniqueness, acyclicity of type
+  references) and reject invalid documents with errors naming the offending construct and its
+  location; cyclic type references are rejected with an error naming the cycle.
 - **FR-003**: The system MUST lower a valid schema document into the registry's existing
   registered forms — a CDDL artifact and the functor registration(s) per message kind — such that
   the lowered entries are accepted by the existing registry tooling unchanged.
@@ -184,7 +194,9 @@ narrowings, choice-branch changes) and confirm each case gets the expected verdi
 - **FR-011**: The system MUST evaluate a proposed new version of a registered schema against the
   type's declared compatibility mode (backward, forward, full, transitive variants) and report a
   verdict naming any breaking construct; registering an incompatible version MUST require an
-  explicit recorded override.
+  explicit recorded override. If the type has no declared compatibility mode, the evolution check
+  and registration of the new version MUST refuse with an explicit error until a mode is declared
+  — never a silently assumed default mode.
 - **FR-012**: The XSD layer MUST NOT modify the E9 core's semantics or data: the functor registry
   and its dual-DSL (qmedit ↔ CDDL) round-trip remain authoritative and continue to work unchanged
   for entries never touched by this layer.
@@ -241,11 +253,9 @@ narrowings, choice-branch changes) and confirm each case gets the expected verdi
 - The 041 functor registry and its dual-DSL (qmedit ↔ CDDL) round-trip are the substrate and
   remain authoritative; this feature layers on top and changes none of their semantics (E9 stays
   settled; 041's shipped behavior is untouched).
-- "XML-Schema-style" is taken as concept-level fidelity — named types, facets, composition,
-  optionality/cardinality, versioned evolution — not a commitment to XML as the authoring
-  syntax; the concrete notation is chosen at design time in keeping with the corpus's plaintext
-  authoring discipline (qmedit family). If Gabi intends literal XML/XSD syntax, that surfaces in
-  clarification.
+- "XML-Schema-style" is concept-level fidelity — named types, facets, composition,
+  optionality/cardinality, versioned evolution. The authoring syntax is a plaintext DSL in the
+  qmedit family; no XML appears anywhere in the feature (clarified 2026-07-07).
 - Instance validation (US2) operates on message instances as the registry layer already
   understands them; this feature adds no new wire formats or codecs.
 - Schema-driven code generation and verified parser generation remain out of scope (that is
