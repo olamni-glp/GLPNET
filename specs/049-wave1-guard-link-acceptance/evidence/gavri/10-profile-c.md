@@ -150,6 +150,46 @@ gavri; an earlier revision wrote "msquic 2.5.7" here — that version belongs to
 quicer-0.4.3 attempt; the 0.2.15 tree builds `libmsquic.so.2.3.8`, verified on disk).
 FR-009 satisfied; FR-010 provisioning path documented above and reproducible.
 
+## Windows-native (MSVC) provisioning attempt — engineer-directed, 2026-07-08
+
+Executed after the MSVC correction (VS Community 2026 Insiders 18.4, MSVC 14.50, `cl` 19.50.35725
+x64 — verified live via `vcvars64.bat`). Additional installs, all user-scope, no admin:
+
+| # | What | How |
+|---|---|---|
+| 7 | Erlang/OTP **27.3.4.14** (Erts 15.2.7.10) | official portable **zip** (`otp_win64_27.3.4.14.zip`) → `C:\Users\gavri\tools\otp27` |
+| 8 | gleam **1.17.0** (x86_64-pc-windows-msvc) | GitHub release zip → `C:\Users\gavri\tools\gleam` |
+| 9 | rebar3 **3.27.0** | release escript + `rebar3.cmd` wrapper → `C:\Users\gavri\tools\rebar3` |
+| 10 | Strawberry Perl **5.42.2.1** portable | release zip → `C:\Users\gavri\tools\strawberry` (for the OpenSSL/MSVC build) |
+| — | nasm 2.x, ninja 1.13.2 | already present (`C:\qp\qtools\qtools\mingw32\bin`) |
+
+Steps + results (build dir `c_build_win`, `QUICER_TLS_VER=openssl` matching the Linux artifact's
+`QUIC_TLS:STRING=openssl`; msquic v2.3.8 source tree reused from the WSL build, patches applied):
+
+1. `rebar3 compile` (Windows): quicer **0.2.15 Erlang code compiles clean on OTP 27** ✓
+2. **quictls/OpenSSL 1.1.1 built completely under MSVC** (perl+nasm; `libssl.lib`, `libcrypto.lib`) ✓
+3. msquic 2.3.8 C build: one new-compiler diagnostic (C5287, `datapath_win.c:719`, fatal via
+   `/WX`) resolved with the MSVC-recommended `-DCMAKE_C_FLAGS="/Wv:18"` — **`msquic.dll` compiled
+   and LINKED** ✓
+4. quicer's CMakeLists has **no Windows branch** (link rules only for Linux/Darwin; unix-layout
+   OpenSSL include path; forced `.so` suffix; POST_BUILD symlink) — minimally patched locally;
+   the delta is committed as `gleam_quic/profile_c/windows-msvc-cmake.patch` (the `_build/` dep
+   tree itself is gitignored).
+5. **BLOCKER — quicer's own NIF C sources are unix-only**: unconditional `#include <dlfcn.h>`
+   (`quicer_nif.c:19`), `<unistd.h>` (`quicer_connection.c:24`), `<netinet/in.h>`
+   (`quicer_listener.c:21`), plus MSVC-illegal non-constant `case` labels (C2051 ×6+,
+   `quicer_config.c:2675-2697`). Verified upstream: quicer **0.4.3 (latest) carries the same
+   unconditional `dlfcn.h` include and the same `(linux|darwin|solaris)` build gate** — no
+   released quicer supports Windows at the C-source level.
+
+**Verdict (FR-010 blocked-state record)**: gavri's MSVC toolchain is NOT the blocker — it built
+quictls and linked `msquic.dll` natively. The blocker is an **upstream quicer support gap**
+(unix-only NIF source). Porting a third-party NIF's C layer is upstream development, outside this
+task's minimal-fix scope → recorded here with evidence and **escalated to the engineer**. The US2
+in-process acceptance stands on the Linux/WSL run above (the profile_c/README-sanctioned "target
+Linux" path); a Windows-native Profile C needs either an upstream quicer Windows port or an
+engineer-scoped port task.
+
 ### Observations (not fixed — recorded for the primary session)
 
 1. Relative `--cert` breaks `--stack gleam` (cwd re-resolution) — see the baseline section.
