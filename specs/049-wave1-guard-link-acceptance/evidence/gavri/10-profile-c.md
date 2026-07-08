@@ -145,7 +145,9 @@ run shows exactly ONE `glp_quick_host.dll` process (`--role server`, the referen
 | SC-006 cross-stack equivalence | PASS | PASS | ✓ |
 
 **US2 / SC-005 verdict: PASS** — Profile C conformance equals the Profile A baseline, QUIC
-in-process on the full BEAM (quicer 0.2.15 / msquic 2.5.7 / OTP 25, WSL2 Ubuntu 24.04 on gavri).
+in-process on the full BEAM (quicer 0.2.15 / msquic **2.3.8** / OTP 25, WSL2 Ubuntu 24.04 on
+gavri; an earlier revision wrote "msquic 2.5.7" here — that version belongs to the discarded
+quicer-0.4.3 attempt; the 0.2.15 tree builds `libmsquic.so.2.3.8`, verified on disk).
 FR-009 satisfied; FR-010 provisioning path documented above and reproducible.
 
 ### Observations (not fixed — recorded for the primary session)
