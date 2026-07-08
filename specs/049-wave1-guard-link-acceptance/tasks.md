@@ -99,10 +99,10 @@
 
 **Purpose**: the four lower-severity 036 findings, each fix + regression test (constitution II: spec'd defects, not workarounds).
 
-- [ ] T025 [P] Fix #3 duplicate `endpoint_id` eviction in `csharp/glp_quick_host/Program.cs` (unregister removes from `_byId` only when `_byId[id] == link`) + xUnit regression; `dotnet test`
-- [ ] T026 [P] Fix #5 demo harness AttributeError on handshake timeout in `glp_quick/demo.py` (line ~79: `None` recv records `SC-001 FAIL` instead of raising on `.sender`) + pytest regression
-- [ ] T027 [P] Fix #6 latent pre-readiness stdout-pipe hang in `glp_quick/stacks/csharp.py` `spawn_handle` (attach stdout reader BEFORE the readiness wait) + pytest regression
-- [ ] T028 Fix #7 gleam relay >1 MiB line-mode misroute in `gleam_quic/src/glpq_ffi.erl` (replace `{line, 1048576}` with a length-framed read) + Erlang-side regression; run with the documented full tool paths on this host, or delegate the test run to gavri per contract D2.5
+- [X] T025 [P] Fix #3 duplicate `endpoint_id` eviction — VERIFIED PRE-EXISTING: fix + regression landed 036 commit `bdab8585` (`test_mesh.py::test_duplicate_announced_id_never_evicts_the_incumbent`; end-to-end pytest — the host has no xUnit project); `dotnet test` 114/114 + pytest green at baseline (evidence/baseline.md)
+- [X] T026 [P] Fix #5 (pre-existing, 036 commit `d0acab2f`) + pytest regression ADDED: `test_review_regressions.py::test_demo_handshake_timeout_records_sc001_fail_not_attributeerror` — suite 180 passed
+- [X] T027 [P] Fix #6 (pre-existing, 036 commit `b8c474b1`) + pytest regression ADDED: `test_review_regressions.py::test_spawn_handle_drains_stdout_before_readiness_wait` (real 300 KB pre-READY flood child) — suite 180 passed
+- [X] T028 Fix #7 (pre-existing, 036 commit `28db9e5b` — noeol/eol fragment REASSEMBLY rather than the parenthetical length-framed read; outcome equivalent, deviation recorded for Gabi) + Erlang regression ADDED: `gleam_quic/test/run_glpq_ffi_reassembly_test.sh` (2 MiB envelope whole on stdout, control on stderr) — PASS locally on OTP 29 full paths, no gavri delegation needed
 
 ---
 

@@ -109,3 +109,6 @@ reviews/
 
 # 036/049 shared-cert material (SPKI-pinned; .pfx must never be committed)
 glpquick-cert/
+
+# 049 T028 erlang regression scratch output
+gleam_quic/test/_build_test/
