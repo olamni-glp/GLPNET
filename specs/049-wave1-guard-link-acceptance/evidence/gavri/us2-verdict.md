@@ -23,3 +23,14 @@
 - **Carried observations for the wave close-out (recorded, not fixed — bug protocol)**:
   1. relative `--cert` re-resolves under `gleam_quic/` cwd for `--stack gleam` (docs nuance);
   2. `terminate_tree` on Linux does not kill grandchildren (gleam→erl→dotnet) — Windows path unaffected.
+
+## Follow-up record — gavri evidence correction (2026-07-08, gavri commit `8facff21`)
+
+The environment claim this verdict relayed ("Windows MSVC blocker honestly re-confirmed") was
+**corrected on the gavri branch**: gavri HAS MSVC 14.50 (VS Community 2026 Insiders 18.4,
+`cl.exe` on disk, vswhere-visible); the original "MSVC-less" finding misread a 2022-BuildTools-only
+probe. Impact on this verdict: **none to the PASS** — the WSL run stands as the sanctioned
+"target Linux" path of `gleam_quic/profile_c/README.md` and the conformance results are unaffected;
+only the *justification* ("no native option existed on gavri") was wrong. Olamnit's own MSVC absence
+(the 036 blocker on THIS host) is unchanged. A Windows-native quicer build on gavri is now a viable
+future path, not a wave-1 requirement.
