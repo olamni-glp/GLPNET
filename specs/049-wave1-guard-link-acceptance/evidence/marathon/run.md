@@ -11,3 +11,5 @@
   mid-flight (T023), resume from a fresh session; then exercise the durable-first/commit re-drive (T024).
 
 **Checkpoint 1 (us4-step-1)**: checkpoint_id 6, commit `66e31e35`, durable row complete.
+
+**Checkpoint 2 (us4-step-2)**: checkpoint_id 7, commit `415cbff5`. Step-3 in-flight kill probe follows (T023).
