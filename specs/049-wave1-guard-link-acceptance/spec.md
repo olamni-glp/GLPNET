@@ -94,6 +94,7 @@ An engineer using the marathon harness wants proof that a real persisted maratho
 - Parity divergence between the approved guard and the shipped C# matcher on any shared vector: treated as a defect in the guard (the shipped matcher is the reference), reported via the bug protocol before any fix.
 - Native QUIC library version drifts from the shipped host's QUIC dialect: conformance flow must fail loudly on version mismatch, not degrade.
 - Two-host clock/cert path differences (Windows ↔ gavri): certificate distribution follows the 036 trust model exactly; any deviation is recorded, never worked around ad hoc.
+- Empty-targets policy (`targets = []`) and excluded-target-with-unbound-reachability: FR-002's "some target is reachable" reading fails an empty-targets policy while the shipped C# matcher delivers vacuously (parity conflict with FR-005); and when a target is excluded (unsatisfiable regardless of reachability) while the reachable-set is unbound, FR-003 (suspend) and FR-004 (fail loud) intersect without a stated precedence. Both outcomes are OPEN questions fixed by the language authority at the T003 §1.14 realization checkpoint (decision vectors v05 / v12) BEFORE the shared vector file is created — recorded here, not guessed.
 
 ## Requirements *(mandatory)*
 
