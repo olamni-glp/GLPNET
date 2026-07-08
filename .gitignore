@@ -106,3 +106,6 @@ reviews/
 # buildkit-co observability lake (DuckDB/parquet; regenerable, per-machine)
 .specify/co-lake/
 .specify/deploy-ledger.jsonl
+
+# 036/049 shared-cert material (SPKI-pinned; .pfx must never be committed)
+glpquick-cert/

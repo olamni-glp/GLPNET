@@ -13,8 +13,8 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Create evidence tree `specs/049-wave1-guard-link-acceptance/evidence/{guard,gavri,two-host,marathon}/` with `.gitkeep` files, per contracts/acceptance-evidence.md
-- [ ] T002 Record pre-change baselines (constitution VII): run `bash test/run_all_tests.sh` (expect 524/525 — the 1 failure is the pre-existing AOT-smoke case), `dotnet test csharp/glp_crdtmsg.tests`, `pytest glp_quick`; write results to `specs/049-wave1-guard-link-acceptance/evidence/baseline.md`; commit as baseline checkpoint
+- [X] T001 Create evidence tree `specs/049-wave1-guard-link-acceptance/evidence/{guard,gavri,two-host,marathon}/` with `.gitkeep` files, per contracts/acceptance-evidence.md
+- [X] T002 Record pre-change baselines (constitution VII): run `bash test/run_all_tests.sh` (expect 524/525 — the 1 failure is the pre-existing AOT-smoke case), `dotnet test csharp/glp_crdtmsg.tests`, `pytest glp_quick`; write results to `specs/049-wave1-guard-link-acceptance/evidence/baseline.md`; commit as baseline checkpoint
 
 ---
 
@@ -23,7 +23,7 @@
 **⚠️ T003 is the §1.14 HARD GATE for ALL US1 guard work (no guard implementation/compile/run before its addendum is recorded). T004 gates US2+US3 (delegation artifact). US4 has no foundational dependency.**
 
 - [ ] T003 R1 realization checkpoint with Gabi: present research.md R1 evidence (typed-glp-manual §8 + `glp_runtime/lib/compiler/partial_evaluator.dart` compile-time-only defined guards) with candidates (a1) compiler-extension vs (a3) re-stage-direct-to-form-(b), PLUS the empty-targets outcome for vectors v05/v12 (C# matcher delivers vacuously; proposal text fails); record his answer as a Clarifications addendum in `specs/049-wave1-guard-link-acceptance/spec.md`. STOP-and-wait task — no guard code before the addendum exists (FR-001, SC-001)
-- [ ] T004 [P] Produce the FR-016 delegation artifact `specs/049-wave1-guard-link-acceptance/gavri-task-prompt.md` per contracts/gavri-delegation.md (self-contained: branch off `049-wave1-guard-link-acceptance`, push-only-own-branch, environment discovery, quicer provisioning per `gleam_quic/profile_c/README.md`, in-process conformance, two-host pairing with Olamnit server at 192.168.0.143, evidence to `evidence/gavri/` pushed early + continuously, BLOCKED-record protocol)
+- [X] T004 [P] Produce the FR-016 delegation artifact `specs/049-wave1-guard-link-acceptance/gavri-task-prompt.md` per contracts/gavri-delegation.md (self-contained: branch off `049-wave1-guard-link-acceptance`, push-only-own-branch, environment discovery, quicer provisioning per `gleam_quic/profile_c/README.md`, in-process conformance, two-host pairing with Olamnit server at 192.168.0.143, evidence to `evidence/gavri/` pushed early + continuously, BLOCKED-record protocol)
 
 **Checkpoint**: T003 addendum recorded → US1 unlocked; T004 handed to Gabi → US2/US3 delegation can start; US4 can start any time.
 
@@ -57,7 +57,7 @@
 
 **⚠️ Execution semantics**: a local (Olamnit) `/bk-implement` session NEVER executes *(gavri)* tasks (T015–T017) — its local actions are delegation tracking (T014) and evidence integration (T018). *(gavri)* tasks complete only via evidence pushed on the gavri branch; while waiting, proceed with other lanes.
 
-- [ ] T014 [US2] Hand `gavri-task-prompt.md` to Gabi for posting in a gavri session; record delegation start (gavri branch name, date) in `specs/049-wave1-guard-link-acceptance/evidence/gavri/delegation.md`
+- [X] T014 [US2] Hand `gavri-task-prompt.md` to Gabi for posting in a gavri session; record delegation start (gavri branch name, date) in `specs/049-wave1-guard-link-acceptance/evidence/gavri/delegation.md`
 - [ ] T015 [US2] *(gavri)* Environment discovery FIRST commit: OS, Erlang/OTP, rebar3, gleam, cmake, C/C++ toolchain, LAN address → `specs/049-wave1-guard-link-acceptance/evidence/gavri/environment.md` (contract D2.1)
 - [ ] T016 [US2] *(gavri)* Provision Profile C reproducibly (FR-010): build quicer NIF per `gleam_quic/profile_c/README.md`, wire `quic_link` module mirroring the C# QuicTransport contract, flip `GleamStackAdapter(profile="c")` capabilities to `in_process`; document every step; on exhausted provisioning → BLOCKED record + escalate (contract D4, FR-010)
 - [ ] T017 [US2] *(gavri)* Run in-process conformance (connect, TLS pin verify, full-duplex) with pass criteria equal to Profile A baseline; per-criterion records to `evidence/gavri/` (acceptance-evidence format), pushed continuously
