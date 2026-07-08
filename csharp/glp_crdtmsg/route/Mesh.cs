@@ -27,9 +27,9 @@ public sealed class MeshNode
     private int _msgCounter;
 
     public string Peer => _link.LocalPeer;
-    public OpWal Store { get; }
+    public IOpWal Store { get; }
 
-    public MeshNode(ILinkTransport link, OpWal store)
+    public MeshNode(ILinkTransport link, IOpWal store)
     {
         _link = link;
         Store = store;

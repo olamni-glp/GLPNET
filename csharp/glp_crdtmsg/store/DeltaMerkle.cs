@@ -65,7 +65,7 @@ public sealed class MerkleTree
 public static class AntiEntropy
 {
     /// <summary>The join-irreducible delta: ops in <paramref name="source"/> whose dot the peer lacks.</summary>
-    public static IReadOnlyList<Op> Delta(OpWal source, IReadOnlySet<Dot> peerDots) =>
+    public static IReadOnlyList<Op> Delta(IOpWal source, IReadOnlySet<Dot> peerDots) =>
         source.Ops.Where(o => !peerDots.Contains(o.Id)).ToList();
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class AntiEntropy
     /// comparing dot sets — the Merkle-root inequality is the trigger). Idempotent; converges the op
     /// sets so both Merkle roots match. Returns (appliedToA, appliedToB).
     /// </summary>
-    public static (int toA, int toB) Reconcile(OpWal a, OpWal b)
+    public static (int toA, int toB) Reconcile(IOpWal a, IOpWal b)
     {
         if (MerkleTree.Build(a.Ops).RootEquals(MerkleTree.Build(b.Ops)))
             return (0, 0); // already converged — no delta to exchange
