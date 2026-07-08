@@ -58,10 +58,10 @@
 **⚠️ Execution semantics**: a local (Olamnit) `/bk-implement` session NEVER executes *(gavri)* tasks (T015–T017) — its local actions are delegation tracking (T014) and evidence integration (T018). *(gavri)* tasks complete only via evidence pushed on the gavri branch; while waiting, proceed with other lanes.
 
 - [X] T014 [US2] Hand `gavri-task-prompt.md` to Gabi for posting in a gavri session; record delegation start (gavri branch name, date) in `specs/049-wave1-guard-link-acceptance/evidence/gavri/delegation.md`
-- [ ] T015 [US2] *(gavri)* Environment discovery FIRST commit: OS, Erlang/OTP, rebar3, gleam, cmake, C/C++ toolchain, LAN address → `specs/049-wave1-guard-link-acceptance/evidence/gavri/environment.md` (contract D2.1)
-- [ ] T016 [US2] *(gavri)* Provision Profile C reproducibly (FR-010): build quicer NIF per `gleam_quic/profile_c/README.md`, wire `quic_link` module mirroring the C# QuicTransport contract, flip `GleamStackAdapter(profile="c")` capabilities to `in_process`; document every step; on exhausted provisioning → BLOCKED record + escalate (contract D4, FR-010)
-- [ ] T017 [US2] *(gavri)* Run in-process conformance (connect, TLS pin verify, full-duplex) with pass criteria equal to Profile A baseline; per-criterion records to `evidence/gavri/` (acceptance-evidence format), pushed continuously
-- [ ] T018 [US2] Integrate on Olamnit: pull the gavri branch, verify every US2 criterion has a PASS (or BLOCKED-escalated) record per contracts/acceptance-evidence.md; record SC-005 verdict in `evidence/gavri/us2-verdict.md`
+- [X] T015 [US2] *(gavri — done, `72127ce4` on 049a-gavri-us2-us3)* Environment discovery FIRST commit: OS, Erlang/OTP, rebar3, gleam, cmake, C/C++ toolchain, LAN address → `specs/049-wave1-guard-link-acceptance/evidence/gavri/environment.md` (contract D2.1)
+- [X] T016 [US2] *(gavri — done, quicer 0.2.15/msquic 2.5.7 WSL, `ef2c6981`+`6bb9a891`)* Provision Profile C reproducibly (FR-010): build quicer NIF per `gleam_quic/profile_c/README.md`, wire `quic_link` module mirroring the C# QuicTransport contract, flip `GleamStackAdapter(profile="c")` capabilities to `in_process`; document every step; on exhausted provisioning → BLOCKED record + escalate (contract D4, FR-010)
+- [X] T017 [US2] *(gavri — done, demo --profile c PASS = Profile A baseline, `6bb9a891`)* Run in-process conformance (connect, TLS pin verify, full-duplex) with pass criteria equal to Profile A baseline; per-criterion records to `evidence/gavri/` (acceptance-evidence format), pushed continuously
+- [X] T018 [US2] (evidence/gavri/us2-verdict.md — PASS SC-005; branch merge deferred to US3 close) Integrate on Olamnit: pull the gavri branch, verify every US2 criterion has a PASS (or BLOCKED-escalated) record per contracts/acceptance-evidence.md; record SC-005 verdict in `evidence/gavri/us2-verdict.md`
 
 **Checkpoint**: US2 independently verified (or BLOCKED-escalated with gate closed).
 
