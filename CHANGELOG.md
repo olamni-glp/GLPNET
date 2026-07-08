@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+## [v2026.07.08.1] - 2026-07-08
+
+### Added
+- polish T033-T036 - SC-001 re-expression acceptance, determinism sweep fixes + repeated-run test, quickstart API accuracy, full re-test green (218/218 + substrate 6/6+86/86, zero substrate diff)
+- US4 T028-T032 - CompatChecker rule table with NFA pattern inclusion, transitive chain check, refusal law, override registration (212/212)
+- US3 T023-T027 - CDDL-subset parser, Lifter with per-construct fidelity + hash drift detection, DSL printer, round-trip equivalence (188/188)
+- US2 T019-T022 - InstanceValidator (kind-structure-facets order, closed-world), crdt_message 043 re-expression, SC-003 corpus agreement harness (175/175)
+- US1 MVP T012-T018 - canonical CDDL emitter, lowering+allocation, all-or-nothing registration, SC-002 defect suite, SC-006 walkthrough (142/142, substrate 6/6+86/86)
+- T008-T011 DSL parser, schema validator (6 rule groups, all-errors-one-pass), compat records, seeded overlay registry skeleton (94/94 green)
+- T004-T007 AST records, verdict/error records, restricted-regex NFA engine tests-first (62/62 green)
+
+### Changed
+- Merge pull request #91 from olamni-glp/043-xsd-schema-language
+- refine(codexreview): cycle 5/6 [diff/general]
+- refine(codexreview): cycle 4/5 [diff/general]
+- refine(codexreview): cycle 3/4 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- Checkpoint: 043 project skeleton, substrate baseline green (wire_registry 6/6, crdtmsg 86/86)
+- analyze(043-xsd-schema-language): apply remediations I1 I2 A1 A2 U1 T1 W1 - closed-world compat rows per spec US4-AS2, drop symbol primitive, scope FR-007 agreement law, pin QmeditDsl=XsdSource for 043 entries
+- tasks(043-xsd-schema-language): 36 tasks, tests-first per story - setup 3, foundational 8, US1 7 MVP, US2 4, US3 5, US4 5, polish 4
+- plan(043-xsd-schema-language): plan + research R1-R12 + data-model + 5 contracts + quickstart - new csharp/glp_schema_lang over seeded overlay, E9 tables untouched
+- clarify(043-xsd-schema-language): 3 clarifications - plaintext qmedit-family DSL (no XML), cycles rejected at schema-validation, evolution refuses without declared compatibility mode
+- specify(043-xsd-schema-language): spec + quality checklist - XSD-style schema layer over E9 dual-DSL functor registry, 4 stories, 14 FRs, 6 SCs, zero markers (2 open choices routed to clarify)
+- commit crdtmsg-verify-harden retrospective artifact from close-out
+- Merge pull request #90 from olamni-glp/main
+
 ## [v2026.07.06.1] - 2026-07-06
 
 ### Changed
