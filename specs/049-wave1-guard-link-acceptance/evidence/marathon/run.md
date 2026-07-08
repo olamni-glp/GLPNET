@@ -9,3 +9,5 @@
   `us4-step-1`, `us4-step-2`, `us4-step-3` (expansion-with-lineage)
 - **Plan**: checkpoint steps 1–2 (≥2 durable checkpoints), leave step 3 running, kill the owning process
   mid-flight (T023), resume from a fresh session; then exercise the durable-first/commit re-drive (T024).
+
+**Checkpoint 1 (us4-step-1)**: checkpoint_id 6, commit `66e31e35`, durable row complete.
