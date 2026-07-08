@@ -87,9 +87,9 @@
 
 **Independent Test**: create/use a persisted run, kill the owning process, resume fresh, verify position derives from durable rows alone (spec US4).
 
-- [ ] T022 [US4] Create (or adopt) a REAL marathon run for this wave via the installed buildkit (`D:\bstdev\research\buildkit\.venv313\Scripts\`, Python 3.13 venv — system 3.14 breaks DBOS); checkpoint ≥2 steps; record run id + durable-store location in `specs/049-wave1-guard-link-acceptance/evidence/marathon/run.md`
-- [ ] T023 [US4] Kill the owning process mid-flight (taskkill; record pid + timestamp), resume from a FRESH session, assert: reported position == durable rows, completed checkpoints NOT re-executed, zero recorded state lost (US4 scenario 1, SC-007); full MarathonDurabilityRecord to `evidence/marathon/kill-resume.md`
-- [ ] T024 [US4] Exercise the durable-first/commit re-drive path: checkpoint written durable-first with its scoped commit withheld, resume, verify the re-drive completes the commit exactly once (US4 scenario 2, FR-012); record to `evidence/marathon/redrive.md`
+- [X] T022 [US4] (evidence/marathon/run.md — run mrun-9724364d684a) Create (or adopt) a REAL marathon run for this wave via the installed buildkit (`D:\bstdev\research\buildkit\.venv313\Scripts\`, Python 3.13 venv — system 3.14 breaks DBOS); checkpoint ≥2 steps; record run id + durable-store location in `specs/049-wave1-guard-link-acceptance/evidence/marathon/run.md`
+- [X] T023 [US4] (evidence/marathon/kill-resume.md — PASS) Kill the owning process mid-flight (taskkill; record pid + timestamp), resume from a FRESH session, assert: reported position == durable rows, completed checkpoints NOT re-executed, zero recorded state lost (US4 scenario 1, SC-007); full MarathonDurabilityRecord to `evidence/marathon/kill-resume.md`
+- [X] T024 [US4] (evidence/marathon/redrive.md — PASS) Exercise the durable-first/commit re-drive path: checkpoint written durable-first with its scoped commit withheld, resume, verify the re-drive completes the commit exactly once (US4 scenario 2, FR-012); record to `evidence/marathon/redrive.md`
 
 **Checkpoint**: US4 independently verified — all four stories done.
 
