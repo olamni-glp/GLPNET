@@ -23,15 +23,26 @@ import gleam/io
 @external(erlang, "glpq_ffi", "relay")
 fn relay(dotnet: String, dll: String, host_args: List(String)) -> Int
 
+/// Profile C (feature 049 US2, completing 036 T032): the client data plane runs IN-PROCESS on
+/// this BEAM via the `quicer` NIF (`glpq_quic.erl`) — genuine QUIC, no side-process. Requires the
+/// quicer build under profile_c/ (see profile_c/README.md); the Python adapter gates on it.
+@external(erlang, "glpq_quic", "client")
+fn quic_client(host_args: List(String)) -> Int
+
 pub fn main() {
   case argv.load().arguments {
+    ["profile-c", ..host_args] -> {
+      let status = quic_client(host_args)
+      halt(status)
+    }
     [dotnet, dll, ..host_args] -> {
       let status = relay(dotnet, dll, host_args)
       halt(status)
     }
     _ -> {
       io.println_error(
-        "usage: glp_quick_gleam <dotnet> <host-dll> --role <server|client> --addr A --port P --cert DIR ...",
+        "usage: glp_quick_gleam <dotnet> <host-dll> --role <server|client> --addr A --port P --cert DIR ...\n"
+        <> "       glp_quick_gleam profile-c --role client --addr A --port P --cert DIR [--retry]",
       )
       halt(2)
     }
