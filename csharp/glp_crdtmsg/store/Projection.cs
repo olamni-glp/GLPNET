@@ -1,10 +1,15 @@
-// Rebuildable projection (feature 041-crdtmsg-mvp, T023).
+// Rebuildable projection (feature 041-crdtmsg-mvp, T023; per-box projection 048 T011).
 //
 // Contract C10 / data-model §9: live state is a rebuildable PROJECTION over the op-WAL; crash → replay
 // → zero loss (SC-004). The replay order is a DETERMINISTIC linear extension of the causal DAG (Kahn's
 // algorithm, ties broken by dot order), so two replicas holding the same op SET fold to identical state
 // regardless of arrival order (the convergence backbone for SC-003). CRDT op-body semantics plug in via
 // the supplied reducer; the store guarantees the deterministic order + the op set.
+//
+// 048 (bk-colab-yngenios-transport, T011 / net-new C1): the box is the unit of convergence — box state
+// is projected by folding ONLY that box's ops (048 data-model §1; op-wal-schema "projection, not
+// storage": list/read project box state by folding the journal for a box; HEAD is rebuildable by
+// replay, SC-008 byte-identical).
 
 using GlpRuntime.CrdtMsg.Crdt;
 
@@ -28,6 +33,29 @@ public sealed class Projection<TState>
         foreach (var op in CanonicalOrder(ops))
             state = _apply(state, op);
         return state;
+    }
+
+    /// <summary>
+    /// Per-box projection (048 T011 / C1): fold ONLY the ops owned by <paramref name="box"/> — the
+    /// box is the unit of convergence, so one box's state never depends on another box's ops.
+    /// </summary>
+    public TState RebuildBox(IReadOnlyCollection<Op> ops, string box) =>
+        Rebuild(ops.Where(o => o.Box == box).ToList());
+
+    /// <summary>The distinct boxes present in an op set, ordinal-sorted (deterministic enumeration).</summary>
+    public static IReadOnlyList<string> Boxes(IReadOnlyCollection<Op> ops) =>
+        ops.Select(o => o.Box).Distinct().OrderBy(b => b, StringComparer.Ordinal).ToList();
+
+    /// <summary>
+    /// Partition an op set by box (048 T011): each box's ops in canonical causal order, ready to fold
+    /// independently (per-box projection = per-box QUIC stream = per-box convergence unit).
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<Op>> PartitionByBox(IReadOnlyCollection<Op> ops)
+    {
+        var byBox = new Dictionary<string, IReadOnlyList<Op>>(StringComparer.Ordinal);
+        foreach (var group in ops.GroupBy(o => o.Box, StringComparer.Ordinal))
+            byBox[group.Key] = CanonicalOrder(group.ToList());
+        return byBox;
     }
 
     /// <summary>
