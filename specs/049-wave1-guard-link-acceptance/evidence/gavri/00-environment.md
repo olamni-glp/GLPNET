@@ -34,15 +34,22 @@
 
 ### MSVC status (decisive for a Windows-native quicer build)
 
-Chocolatey lists `visualstudio2022buildtools 117.14.24` + `visualstudio2022-workload-vctools 1.0.0`
-as installed, **but**:
-- `vswhere -all -products *` returns **no instances**;
-- neither `C:\Program Files (x86)\Microsoft Visual Studio\2022` nor
-  `C:\Program Files\Microsoft Visual Studio\2022` exists;
-- no `cl.exe` found under any BuildTools path.
+**🔴 CORRECTED 2026-07-08 (engineer correction — the first record below was WRONG): MSVC IS
+INSTALLED on gavri.**
 
-Verdict: the choco packages are registered but the VC toolset is **not actually on disk** —
-gavri is effectively MSVC-less, the same blocker that stopped Profile C on Olamnit (036).
+- **Visual Studio Community 2026 Insiders 18.4** (`18.4.11519.219`, installed 2026-02-23) at
+  `C:\Program Files\Microsoft Visual Studio\18\Insiders`
+- **MSVC toolset 14.50.35717** with `VC\Tools\MSVC\14.50.35717\bin\Hostx64\x64\cl.exe` (all four
+  host/target combinations present)
+- `vswhere -all -products * -prerelease -format json` reports the instance
+  (`isComplete: true`, `isLaunchable: true`; preview `expirationDate` 2026-05-20 noted — the
+  command-line toolset still runs)
+
+The initial discovery pass wrongly concluded "MSVC-less": it probed only the VS **2022
+BuildTools** directory layout and misread an empty (mis-piped) vswhere invocation as "no
+instances". The separately-registered choco `visualstudio2022buildtools` package (whose VC tools
+are indeed absent) reinforced the wrong conclusion. gavri is **NOT** MSVC-less — a Windows-native
+quicer/msquic build is a viable provisioning path here (unlike Olamnit in 036).
 
 ## WSL2 Ubuntu 24.04 toolchain (pre-provisioned)
 
@@ -64,12 +71,12 @@ installed 10.0.200-preview SDK and runnable on the 10.0.2 runtime.
 
 ## Provisioning decision (FR-010 path, recorded before acting)
 
-- **US2 / Profile C**: Windows-native quicer is blocked (no MSVC; MinGW is not a supported
-  quicer/msquic path — `gleam_quic/profile_c/README.md`). The README's sanctioned alternative is
-  **"target Linux where quicer builds cleanly"** → provision the full stack (erlang+gleam+rebar3
-  already present; add dotnet SDK 10 + python venv) inside **WSL2 Ubuntu 24.04** on gavri and run
-  the Profile A baseline + Profile C acceptance there. quicer provisioning order per task prompt:
-  prebuilt/hex artifact for OTP 25 first, source build (cmake+gcc) second.
+- **US2 / Profile C**: ~~Windows-native quicer is blocked (no MSVC)~~ **CORRECTED — MSVC 14.50
+  (VS 2026 Insiders) IS present**, so the Windows-native quicer/msquic build is viable on gavri.
+  The WSL2 Ubuntu 24.04 run recorded in `10-profile-c.md` remains a valid execution of the
+  profile_c/README's "target Linux" path, but its "MSVC-less" justification was false; a native
+  Windows provisioning attempt is additionally warranted (erlang+rebar3+gleam on Windows + MSVC).
+  quicer provisioning order per task prompt: prebuilt/hex artifact first, source build second.
 - **US3 / two-host**: runs **Windows-native** (python 3.14 + dotnet 10 SDK, csharp stack per
   quickstart §7) — no WSL dependency for the LAN acceptance; WSL2 NAT is thereby avoided for the
   cross-host wire evidence.

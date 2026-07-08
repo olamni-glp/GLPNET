@@ -72,8 +72,13 @@ Per the task prompt order: **prebuilt/hex artifact first, source build second**.
 
 Provisioning artifact (committed): `gleam_quic/profile_c/rebar.config` +
 `src/glpq_profile_c.app.src` — a minimal rebar3 app whose only job is carrying the quicer dep.
-Reproduce with: `cd gleam_quic/profile_c && rebar3 compile` (Linux/WSL; **not** buildable on
-MSVC-less Windows — the same 036 blocker, unchanged).
+Reproduce with: `cd gleam_quic/profile_c && rebar3 compile`.
+
+**🔴 CORRECTION 2026-07-08 (engineer)**: an earlier revision of this file justified the WSL path
+with "MSVC-less Windows — the same 036 blocker". That was WRONG — gavri has **MSVC 14.50 (VS
+Community 2026 Insiders 18.4)**; see the corrected MSVC section in `00-environment.md`. The WSL
+run stands as a valid "target Linux" execution, and a Windows-native provisioning attempt is
+recorded below.
 
 ## Profile C — implementation (what was wired, per profile_c/README step 2)
 
