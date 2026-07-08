@@ -128,6 +128,26 @@ An engineer using the marathon harness wants proof that a real persisted maratho
 - **FR-015**: The four lower-severity codexreview findings carried into this feature by the 036 follow-up brief MUST be fixed with regression coverage: #3 mesh duplicate `endpoint_id` eviction guard, #5 demo harness AttributeError on handshake timeout, #6 latent pre-readiness stdout-pipe hang, #7 gleam relay >1 MiB line-mode misroute (length-framed read).
 - **FR-016**: A self-contained gavri task prompt MUST be produced as a feature artifact (`gavri-task-prompt.md`) delegating US2 + US3 to a session on the gavri host: own branch off this feature branch (push-only-own-branch), environment discovery, Profile C provisioning + in-process conformance, the two-host LAN run paired with this host, and evidence committed under `specs/049-wave1-guard-link-acceptance/evidence/gavri/` — pushed early and continuously so results feed back into this repo before the sub-task completes.
 
+**Deliverable C — remote test-control over the acceptance link (US5)**
+
+- **FR-017**: A **bounded** test-control channel MUST be provided over the already-mutual-pin-authenticated glp-quick link, so the Olamnit assistant can drive the two-host acceptance testing on gavri without a separate control plane. The channel reuses the shipped `GlpMessage` envelope and mesh routing (no transport/server change): a **control agent** (runs on the controlled host, announces a reserved endpoint id `ctl`) and a **driver** (runs on the controlling host, sends to `ctl`, prints the reply). The mutual-pin link is the sole trust boundary — only holders of the shared cert can drive it.
+- **FR-018**: The control agent MUST dispatch ONLY a fixed, whitelisted command set — `ping`, `status`, `mesh_selftest`, `echo`. It MUST NOT expose arbitrary shell/command/code execution, file access, or any operation outside that table (dual-use safety: a network-reachable control channel is bounded to declared test operations, never a remote shell). An unknown command returns a typed `unsupported` error, never executes.
+- **FR-019**: The capability MUST be **merge-loadable on gavri** — pure-Python under `glp_quick/`, requiring only a branch pull (no build/toolchain step) — and MUST be proven on loopback on the controlling host before any cross-host drive, so a green local self-test precedes the real two-host control run.
+
+### Additional User Story
+
+### User Story 5 - Remote test-control over the safe link (Priority: P5)
+
+The Olamnit assistant wants to drive the two-host acceptance testing on gavri (start a mesh self-test, query link/mesh status, ping endpoints) **through the same mutual-pin QUIC link under test**, rather than needing a shell on gavri — with the command surface bounded to declared test operations so the network-reachable control channel can never become a remote shell.
+
+**Independent Test**: on one host, run the control agent against a local server; from a driver, send `ping` / `status` / `mesh_selftest` and observe typed replies over the link; confirm an unknown command returns `unsupported` without executing.
+
+**Acceptance Scenarios**:
+
+1. **Given** a running glp-quick server and a control agent announced as `ctl`, **When** the driver sends `ping`, **Then** it receives a typed pong (host id + agent version) over the link.
+2. **Given** the control agent, **When** the driver sends `mesh_selftest`, **Then** the agent runs the bounded local mesh self-test and returns its per-criterion pass/fail over the link.
+3. **Given** the control agent, **When** the driver sends any command outside the whitelist, **Then** the agent returns `unsupported` and executes nothing.
+
 ### Key Entities
 
 - **Routing Policy**: `{targets, waypoints, excludes}` over authenticated peer names (never certificates/pins) — mirrors the shipped C# RoutingPolicy.
