@@ -1,0 +1,84 @@
+diff --git orig/CMakeLists.txt win/CMakeLists.txt
+index 2f1aed2f..aa097154 100644
+--- orig/CMakeLists.txt
++++ win/CMakeLists.txt
+@@ -174,10 +174,17 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
+   target_link_libraries(quicer_static PRIVATE core platform inc warnings logging ${ATOMIC} ${MY_NUMA} "-Wl,--no-gc-sections")
+ elseif (CMAKE_SYSTEM_NAME MATCHES Darwin)
+   target_link_libraries(quicer_static PRIVATE core platform inc warnings "-Wl,-undefined,dynamic_lookup -Wl,-dead_strip")
++elseif (CMAKE_SYSTEM_NAME MATCHES Windows)
++  # feature 049 US2 (glpnet): quicer 0.2.15 ships no Windows branch — minimal MSVC port.
++  target_link_libraries(quicer_static PRIVATE core platform inc warnings logging)
++  # the msquic openssl build copies headers under <bin>/_deps/opensslquic-build/<tls>/release/ on Windows
++  target_include_directories(quicer_static PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/_deps/opensslquic-build/${QUIC_TLS}/release/include")
+ endif()
+ 
+ # @todo clean compiler warnings in the code
+-target_compile_options(quicer_static PUBLIC "-ggdb3")
++if (NOT MSVC)
++  target_compile_options(quicer_static PUBLIC "-ggdb3")
++endif()
+ 
+ if (DEFINED ENV{QUICER_TEST_COVER})
+   add_compile_options("-fprofile-arcs" "-ftest-coverage")
+@@ -189,6 +196,8 @@ add_library(quicer_nif SHARED ${SOURCES})
+ if (OPENSSL_INCLUDE_DIR)
+   # for sys crypto
+   target_include_directories(quicer_nif PUBLIC ${OPENSSL_INCLUDE_DIR})
++elseif (CMAKE_SYSTEM_NAME MATCHES Windows)
++  target_include_directories(quicer_nif PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/_deps/opensslquic-build/${QUIC_TLS}/release/include")
+ else()
+   target_include_directories(quicer_nif PUBLIC "c_build/_deps/opensslquic-build/${QUIC_TLS}/include")
+ endif()
+@@ -197,12 +206,31 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
+   target_link_libraries(quicer_nif PRIVATE quicer_static "-Wl,--no-gc-sections -pthread") # no gc because of erlang nif symbols
+ elseif (CMAKE_SYSTEM_NAME MATCHES Darwin)
+   target_link_libraries(quicer_nif PRIVATE quicer_static "-Wl,-undefined,dynamic_lookup -Wl,-dead_strip") # link enif lib
++elseif (CMAKE_SYSTEM_NAME MATCHES Windows)
++  # PE has no undefined-symbol linking: pull msquic static libs + openssl + the win32 platform libs.
++  # (erl_nif symbols need no import lib — erl_nif.h on WIN32 routes enif_* through a callback table.)
++  target_link_libraries(quicer_nif PRIVATE quicer_static core platform inc warnings logging
++    "${CMAKE_CURRENT_BINARY_DIR}/_deps/opensslquic-build/${QUIC_TLS}/release/lib/libssl.lib"
++    "${CMAKE_CURRENT_BINARY_DIR}/_deps/opensslquic-build/${QUIC_TLS}/release/lib/libcrypto.lib"
++    ws2_32 secur32 ncrypt crypt32 bcrypt iphlpapi advapi32 userenv winmm)
+ endif()
+ target_include_directories(quicer_nif PRIVATE ${Erlang_OTP_ROOT_DIR}/usr/include/ msquic/src/inc/)
+ 
+ add_dependencies(quicer_nif quicer_static)
+ add_dependencies(quicer_static msquic)
+ 
++if (CMAKE_SYSTEM_NAME MATCHES Windows)
++  # erlang:load_nif expects priv/libquicer_nif(.dll); no versioned-symlink machinery on NTFS.
++  set_target_properties(quicer_nif
++      PROPERTIES
++          OUTPUT_NAME libquicer_nif${LIBNAME_SUFFIX}
++  )
++  add_custom_command(
++      TARGET quicer_nif POST_BUILD
++      COMMAND ${CMAKE_COMMAND} -E copy_if_different
++      $<TARGET_FILE:quicer_nif>
++      ${PROJECT_SOURCE_DIR}/priv/libquicer_nif.dll)
++else()
+ set_target_properties(quicer_nif
+     PROPERTIES
+         LIBRARY_OUTPUT_NAME quicer_nif${LIBNAME_SUFFIX}
+@@ -214,8 +242,8 @@ include(GNUInstallDirs)
+ install(TARGETS quicer_nif LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/priv/)
+ 
+ # Calculate relative path for symlink to avoid absolute path issues during packaging
+-file(RELATIVE_PATH QUICER_NIF_RELATIVE_PATH 
+-     "${PROJECT_SOURCE_DIR}/priv" 
++file(RELATIVE_PATH QUICER_NIF_RELATIVE_PATH
++     "${PROJECT_SOURCE_DIR}/priv"
+      "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libquicer_nif.so")
+ 
+ add_custom_command(
+@@ -223,6 +251,7 @@ add_custom_command(
+     COMMAND ${CMAKE_COMMAND} -E create_symlink
+     ${QUICER_NIF_RELATIVE_PATH}
+     ${PROJECT_SOURCE_DIR}/priv/libquicer_nif.so)
++endif()
+ 
+ ## workaround for emqx forked rebar3
+ ## For none-emqx rebar3, it should be just a noop of 'Up-to-date' instead of 'installing'
+

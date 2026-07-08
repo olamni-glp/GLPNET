@@ -1,0 +1,3 @@
+# rebar3 build output (the fetched quicer dep + NIF build trees) — never committed;
+# reproduce with `rebar3 compile` (+ the Windows CMake patch, see windows-msvc-cmake.patch).
+_build/
