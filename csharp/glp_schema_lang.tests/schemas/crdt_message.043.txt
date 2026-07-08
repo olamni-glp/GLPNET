@@ -1,0 +1,37 @@
+// The 041 crdt_message kind re-expressed in the 043 DSL (feature 043, T022; feeds SC-001).
+// Source of truth for the shape: SchemaRegistry.CrdtMessageQmedit / CrdtMessageCddl (041 E9).
+// Facets narrow to the registry-level decode checks so the FR-007 agreement law holds over
+// the shared corpus:
+//   - schema_version 1..2  = VersionPolicy accept range (TIER 1)
+//   - payload_type enum(18) = 0x12, the registered crdt_message byte (WireRegistry)
+// The must-understand section policy (odd type_number + receiver set) is receiver-dependent
+// and NOT expressible at the XSD level — it is outside the agreement law's quantification
+// (contracts/validation-api.md §Agreement law scope).
+
+schema crdt_message_reexpression version 1
+
+type SchemaVersion: int { min 1 max 2 }
+type PayloadTypeByte: int { enum(18) }
+type CrdtModelTag: str { enum(none, state_based, op_based) }
+type Policy { sequence { targets: [str]  waypoints: [str]  excludes: [str] } }
+type MsgHeader {
+  sequence {
+    msg_id: str
+    from: str
+    to: str
+    seq: int
+    policy: Policy
+    capability_slot?: bytes
+  }
+}
+type TlvSection { sequence { type_number: int  value: bytes } }
+
+message crdt_message {
+  sequence {
+    schema_version: SchemaVersion
+    payload_type: PayloadTypeByte
+    crdt_model: CrdtModelTag
+    header: MsgHeader
+    sections: [TlvSection]
+  }
+}

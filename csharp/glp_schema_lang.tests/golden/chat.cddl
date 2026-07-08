@@ -1,0 +1,12 @@
+chat-message = {
+  from: username,
+  ? priority: priority,
+  body: body,
+}
+username = tstr .size (1..64) .regexp "[a-z][a-z0-9_]*"
+priority = 0..9
+attachment = {
+  name: username,
+  size: int,
+}
+body = { text: tstr } // { attachments: [1*8 attachment] }

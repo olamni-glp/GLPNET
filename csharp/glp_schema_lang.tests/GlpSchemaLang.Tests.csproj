@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>GlpRuntime.SchemaLang.Tests</RootNamespace>
+    <!-- Must match the production project's InternalsVisibleTo. -->
+    <AssemblyName>glp_schema_lang.tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Golden CDDL files (FR-005 determinism) travel with the test binary. -->
+  <ItemGroup>
+    <None Include="golden\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="schemas\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_schema_lang\GlpSchemaLang.csproj" />
+    <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />
+    <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
+  </ItemGroup>
+
+</Project>
