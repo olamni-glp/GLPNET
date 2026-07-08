@@ -73,7 +73,7 @@
 
 **Independent Test**: 036 quickstart §7 with server on Olamnit, client(s) on gavri; full-duplex + mesh criteria pass across the wire (spec US3).
 
-- [ ] T019 [US3] Prepare Olamnit server side per 036 quickstart §7: cert material present (`glpquick-cert`, distributed to gavri out-of-band — `.pfx` never committed), firewall UDP 8443 open, server command verified: `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 4`; readiness note to `specs/049-wave1-guard-link-acceptance/evidence/two-host/prep.md`
+- [X] T019 [US3] Prepare Olamnit server side (addr corrected to 192.168.0.136 — see evidence/two-host/prep.md; firewall rule + server start are engineer-held) per 036 quickstart §7: cert material present (`glpquick-cert`, distributed to gavri out-of-band — `.pfx` never committed), firewall UDP 8443 open, server command verified: `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 4`; readiness note to `specs/049-wave1-guard-link-acceptance/evidence/two-host/prep.md`
 - [ ] T020 [US3] Execute the two-host run paired with gavri: connect, pin-verify, full-duplex, ≥4-client mesh; capture on-wire confirmation (UDP/QUIC capture note — not loopback); Olamnit-side records to `evidence/two-host/`, gavri-side records to `evidence/gavri/` (contract D2.4)
 - [ ] T021 [US3] Verify every 036 quickstart criterion has a per-criterion record; second-host-unavailable attempts recorded + rescheduled with gate closed (US3 scenario 2); record SC-006 verdict in `evidence/two-host/us3-verdict.md`
 
