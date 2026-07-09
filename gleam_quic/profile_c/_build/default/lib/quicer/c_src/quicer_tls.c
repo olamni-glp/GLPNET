@@ -1,0 +1,674 @@
+/*--------------------------------------------------------------------
+Copyright (c) 2023-2024 EMQ Technologies Co., Ltd. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-------------------------------------------------------------------*/
+#include "quicer_tls.h"
+
+/*
+** Build QUIC_CREDENTIAL_CONFIG from options with an in-memory Certificate and
+*Private Key.
+** Should not be called directly, use `parse_cert_options` instead.
+*/
+BOOLEAN
+parse_cert_options_in_memory(ErlNifEnv *env,
+                             ERL_NIF_TERM options,
+                             QUIC_CREDENTIAL_CONFIG *CredConfig)
+{
+  ERL_NIF_TERM asn1_term;
+  ERL_NIF_TERM password_term;
+  ErlNifBinary asn1_bin;
+  QUIC_CERTIFICATE_PKCS12 *CertInMem = NULL;
+
+  if (!CredConfig)
+    {
+      return FALSE;
+    }
+
+  if (!enif_get_map_value(env, options, ATOM_CERTKEYASN1, &asn1_term))
+    {
+      goto error;
+    }
+
+  if (enif_get_map_value(env, options, ATOM_PASSWORD, &password_term))
+    {
+      // @TODO add password support:
+      // https://github.com/microsoft/msquic/blob/9610803b6eed56f6b8e9506f2fb8cc702195a3a2/src/inc/msquic.h#L339
+      goto error;
+    }
+
+  if (!enif_inspect_binary(env, asn1_term, &asn1_bin))
+    {
+      goto error;
+    }
+
+  CertInMem = (QUIC_CERTIFICATE_PKCS12 *)CXPLAT_ALLOC_NONPAGED(
+      sizeof(QUIC_CERTIFICATE_PKCS12), QUICER_CERTIFICATE_PKCS12);
+  if (!CertInMem)
+    {
+      goto error;
+    }
+
+  char *allocated_asn1
+      = (char *)CXPLAT_ALLOC_NONPAGED(asn1_bin.size, QUIC_POOL_TEST);
+  if (!allocated_asn1)
+    {
+      goto error;
+    }
+  CxPlatCopyMemory(allocated_asn1, asn1_bin.data, asn1_bin.size);
+
+  // Tie it all together:
+  CertInMem->Asn1BlobLength = asn1_bin.size;
+  CertInMem->Asn1Blob = (uint8_t const *)allocated_asn1;
+  CertInMem->PrivateKeyPassword = NULL;
+  CredConfig->CertificatePkcs12 = CertInMem;
+  CredConfig->Type = QUIC_CREDENTIAL_TYPE_CERTIFICATE_PKCS12;
+
+  return TRUE;
+error:
+  CXPLAT_FREE(CertInMem, QUICER_CERTIFICATE_PKCS12);
+  return FALSE;
+}
+
+/*
+** Build QUIC_CREDENTIAL_CONFIG from options with file based Certificate and
+*Private Key.
+** Should not be called directly, use `parse_cert_options` instead.
+*/
+BOOLEAN
+parse_cert_options_file(ErlNifEnv *env,
+                        ERL_NIF_TERM options,
+                        QUIC_CREDENTIAL_CONFIG *CredConfig)
+{
+  char *password = NULL;
+  char *certfile = NULL;
+  char *keyfile = NULL;
+  ERL_NIF_TERM tmp_term;
+
+  if (!CredConfig)
+    {
+      return FALSE;
+    }
+
+  if (!(certfile
+        = str_from_map(env, ATOM_CERTFILE, &options, NULL, PATH_MAX + 1)))
+    {
+      goto error;
+    }
+  if (!(keyfile
+        = str_from_map(env, ATOM_KEYFILE, &options, NULL, PATH_MAX + 1)))
+    {
+      goto error;
+    }
+
+  // Get password for Server CertFile
+  if (enif_get_map_value(env, options, ATOM_PASSWORD, &tmp_term))
+    {
+      if (!(password = str_from_map(env, ATOM_PASSWORD, &options, NULL, 256)))
+        {
+          goto error;
+        }
+
+      QUIC_CERTIFICATE_FILE_PROTECTED *CertFile
+          = (QUIC_CERTIFICATE_FILE_PROTECTED *)CXPLAT_ALLOC_NONPAGED(
+              sizeof(QUIC_CERTIFICATE_FILE_PROTECTED),
+              QUICER_CERTIFICATE_FILE);
+
+      if (!CertFile)
+        {
+          goto error;
+        }
+      CertFile->CertificateFile = certfile;
+      CertFile->PrivateKeyFile = keyfile;
+      CertFile->PrivateKeyPassword = password;
+      CredConfig->CertificateFileProtected = CertFile;
+      CredConfig->Type = QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE_PROTECTED;
+    }
+  else
+    {
+      QUIC_CERTIFICATE_FILE *CertFile
+          = (QUIC_CERTIFICATE_FILE *)CXPLAT_ALLOC_NONPAGED(
+              sizeof(QUIC_CERTIFICATE_FILE), QUICER_CERTIFICATE_FILE);
+      if (!CertFile)
+        {
+          goto error;
+        }
+      CertFile->CertificateFile = certfile;
+      CertFile->PrivateKeyFile = keyfile;
+      CredConfig->CertificateFile = CertFile;
+      CredConfig->Type = QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE;
+    }
+
+  return TRUE;
+error:
+  free(certfile);
+  free(keyfile);
+  free(password);
+  return FALSE;
+}
+
+/*
+** Build QUIC_CREDENTIAL_CONFIG from options, certfile, keyfile and password.
+**
+** This function parses some options and then delegates to either
+** `parse_cert_options_in_memory` or `parse_cert_options_file`.
+*/
+BOOLEAN
+parse_cert_options(ErlNifEnv *env,
+                   ERL_NIF_TERM options,
+                   QUIC_CREDENTIAL_CONFIG *CredConfig)
+{
+  ERL_NIF_TERM dummy;
+  BOOLEAN result = FALSE;
+
+  if (!CredConfig)
+    {
+      return FALSE;
+    }
+
+  BOOLEAN has_keyfile = enif_get_map_value(env, options, ATOM_KEYFILE, &dummy);
+  BOOLEAN has_certfile
+      = enif_get_map_value(env, options, ATOM_CERTFILE, &dummy);
+  BOOLEAN has_certkeyasn1
+      = enif_get_map_value(env, options, ATOM_CERTKEYASN1, &dummy);
+
+  if (!has_certkeyasn1)
+    {
+      // No certkeyasn1, use certfile and keyfile.
+      result = parse_cert_options_file(env, options, CredConfig);
+    }
+  else if (has_certfile || has_keyfile)
+    {
+      // certkeyasn1 AND (certfile OR keyfile); error.
+      return FALSE;
+    }
+  else
+    {
+      // Only certkeyasn1.
+      result = parse_cert_options_in_memory(env, options, CredConfig);
+    }
+
+  return result;
+}
+
+/*
+ * Parse verify option for listener (server)
+ *  verify : boolean() | undefined
+ *  output *is_verify if is_verify is not NULL
+ */
+BOOLEAN
+parse_verify_options(ErlNifEnv *env,
+                     ERL_NIF_TERM options,
+                     QUIC_CREDENTIAL_CONFIG *CredConfig,
+                     BOOLEAN is_server,
+                     _Out_ BOOLEAN *is_verify)
+{
+
+  BOOLEAN verify = load_verify(env, &options, FALSE);
+  ERL_NIF_TERM tmp_term;
+  BOOLEAN custom_verify = FALSE;
+
+  if (enif_get_map_value(env, options, ATOM_CUSTOM_VERIFY, &tmp_term))
+    {
+      if (IS_SAME_TERM(tmp_term, ATOM_TRUE))
+        {
+          custom_verify = TRUE;
+        }
+    }
+
+  if (is_verify)
+    {
+      *is_verify = verify;
+    }
+
+  if (custom_verify)
+    {
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED;
+      if (is_server)
+        {
+          CredConfig->Flags
+              |= QUIC_CREDENTIAL_FLAG_REQUIRE_CLIENT_AUTHENTICATION;
+        }
+      if (is_verify)
+        {
+          *is_verify = TRUE; // custom verify is always enabled
+        }
+    }
+
+  if (!verify)
+    {
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+    }
+  else
+    {
+      // Verify peer is enabled
+      if (is_server)
+        {
+          CredConfig->Flags
+              |= QUIC_CREDENTIAL_FLAG_REQUIRE_CLIENT_AUTHENTICATION;
+        }
+      else
+        {
+          ERL_NIF_TERM tmp;
+          if (enif_get_map_value(env, options, ATOM_CACERTFILE, &tmp))
+            {
+#if defined(QUICER_USE_TRUSTED_STORE)
+              // cacertfile is set, use it for self validation.
+              CredConfig->Flags
+                  |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+#else
+              // cacertfile is set, use it for OpenSSL validation.
+              CredConfig->Flags
+                  |= QUIC_CREDENTIAL_FLAG_SET_CA_CERTIFICATE_FILE;
+              CredConfig->CaCertificateFile = str_from_map(
+                  env, ATOM_CACERTFILE, &options, NULL, PATH_MAX + 1);
+#endif // QUICER_USE_TRUSTED_STORE
+              CredConfig->Flags
+                  |= QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED;
+            }
+          CredConfig->Flags
+              |= QUIC_CREDENTIAL_FLAG_USE_TLS_BUILTIN_CERTIFICATE_VALIDATION;
+        }
+    }
+  return TRUE;
+}
+
+/*
+** Parse optional cacertfile option
+** @NOTE we alloc buffer for cacertfile, caller should free it
+*/
+BOOLEAN
+parse_cacertfile_option(ErlNifEnv *env,
+                        ERL_NIF_TERM options,
+                        char **cacertfile)
+{
+  ERL_NIF_TERM ecacertfile;
+  char *tmp = NULL;
+
+  if (!enif_is_map(env, options))
+    {
+      return FALSE;
+    }
+
+  if (enif_get_map_value(env, options, ATOM_CACERTFILE, &ecacertfile))
+    {
+      tmp = str_from_map(env, ATOM_CACERTFILE, &options, NULL, PATH_MAX + 1);
+      if (!tmp)
+        {
+          return FALSE;
+        }
+    }
+  *cacertfile = tmp;
+  return TRUE;
+}
+
+#if defined(QUICER_USE_TRUSTED_STORE)
+BOOLEAN
+build_trustedstore(const char *cacertfile, X509_STORE **trusted_store)
+{
+  X509_STORE *store = NULL;
+  X509_LOOKUP *lookup = NULL;
+
+  if (cacertfile == NULL)
+    {
+      return FALSE;
+    }
+
+  store = X509_STORE_new();
+  if (store == NULL)
+    {
+      return FALSE;
+    }
+
+  lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+  if (lookup == NULL)
+    {
+      X509_STORE_free(store);
+      return FALSE;
+    }
+
+  if (!X509_LOOKUP_load_file(lookup, cacertfile, X509_FILETYPE_PEM))
+    {
+      X509_STORE_free(store);
+      return FALSE;
+    }
+
+  *trusted_store = store;
+  return TRUE;
+}
+#endif // QUICER_USE_TRUSTED_STORE
+
+void
+free_certificate(QUIC_CREDENTIAL_CONFIG *cc)
+{
+  if (!cc)
+    {
+      return;
+    }
+
+  if (QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE == cc->Type)
+    {
+      free((char *)cc->CertificateFile->CertificateFile);
+      free((char *)cc->CertificateFile->PrivateKeyFile);
+      CxPlatFree(cc->CertificateFile, QUICER_CERTIFICATE_FILE);
+      cc->CertificateFile = NULL;
+    }
+  else if (QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE_PROTECTED == cc->Type)
+    {
+      free((char *)cc->CertificateFileProtected->CertificateFile);
+      free((char *)cc->CertificateFileProtected->PrivateKeyFile);
+      free((char *)cc->CertificateFileProtected->PrivateKeyPassword);
+      CxPlatFree(cc->CertificateFileProtected,
+                 QUICER_CERTIFICATE_FILE_PROTECTED);
+      cc->CertificateFileProtected = NULL;
+    }
+  else if (QUIC_CREDENTIAL_TYPE_CERTIFICATE_PKCS12 == cc->Type
+           && cc->CertificatePkcs12)
+    {
+      free((char *)cc->CertificatePkcs12->Asn1Blob);
+      free((char *)cc->CertificatePkcs12->PrivateKeyPassword);
+      CxPlatFree(cc->CertificatePkcs12, QUICER_CERTIFICATE_PKCS12);
+      cc->CertificatePkcs12 = NULL;
+    }
+
+  if (cc->CaCertificateFile)
+    {
+      free((char *)cc->CaCertificateFile);
+      cc->CaCertificateFile = NULL;
+    }
+}
+
+/*
+ * Parse 'sslkeylogfile' option and set QUIC_PARAM_CONN_TLS_SECRETS conn
+ * options for sslkeylogfile dump.
+ *
+ * alloc and update:
+ * c_ctx->TlsSecrets = TlsSecrets;
+ * c_ctx->ssl_keylogfile = keylogfile;
+ *
+ * usually they are not inuse (NULL), so we use heap memory.
+ * Caller should ensure they are freed after use.
+ *
+ */
+void
+parse_sslkeylogfile_option(ErlNifEnv *env,
+                           ERL_NIF_TERM eoptions,
+                           QuicerConnCTX *c_ctx)
+{
+
+  char *keylogfile
+      = str_from_map(env, ATOM_SSL_KEYLOGFILE_NAME, &eoptions, NULL, PATH_MAX);
+
+  if (!keylogfile)
+    {
+      return;
+    }
+  set_conn_sslkeylogfile(c_ctx, keylogfile);
+}
+
+void
+set_conn_sslkeylogfile(QuicerConnCTX *c_ctx, char *keylogfile)
+{
+  QUIC_STATUS Status;
+
+  // Allocate the TLS secrets
+  QUIC_TLS_SECRETS *TlsSecrets
+      = CXPLAT_ALLOC_NONPAGED(sizeof(QUIC_TLS_SECRETS), QUICER_TLS_SECRETS);
+
+  if (!TlsSecrets)
+    {
+      return;
+    }
+
+  CxPlatZeroMemory(TlsSecrets, sizeof(QUIC_TLS_SECRETS));
+
+  // Set conn opt QUIC_PARAM_CONN_TLS_SECRETS
+  if (QUIC_FAILED(Status = MsQuic->SetParam(c_ctx->Connection,
+                                            QUIC_PARAM_CONN_TLS_SECRETS,
+                                            sizeof(QUIC_TLS_SECRETS),
+                                            TlsSecrets)))
+    {
+      // unlikely
+      CXPLAT_FREE(keylogfile, QUICER_TRACE);
+      keylogfile = NULL;
+      CXPLAT_FREE(TlsSecrets, QUICER_TLS_SECRETS);
+      TlsSecrets = NULL;
+      fprintf(stderr,
+              "failed to enable secret logging: %s",
+              QuicStatusToString(Status));
+    }
+
+  // @TODO: check if old ssl_keylogfile/TlsSecrets is set, free it?
+  c_ctx->TlsSecrets = TlsSecrets;
+  c_ctx->ssl_keylogfile = keylogfile;
+}
+
+/*
+** Convert eterm options (a map) to QUIC_CREDENTIAL_CONFIG
+**
+** @NOTE We zero reset CredConfig
+** @NOTE Also build trusted store if needed
+*/
+ERL_NIF_TERM
+eoptions_to_cred_config(ErlNifEnv *env,
+                        ERL_NIF_TERM eoptions,
+                        QUIC_CREDENTIAL_CONFIG *CredConfig,
+                        X509_STORE **trusted_store)
+{
+  BOOLEAN is_verify = FALSE;
+  char *cacertfile = NULL;
+  ERL_NIF_TERM ret = ATOM_OK;
+
+  CXPLAT_FRE_ASSERT(CredConfig);
+
+#if defined(QUICER_USE_TRUSTED_STORE)
+  CXPLAT_FRE_ASSERT(trusted_store);
+#else
+  CXPLAT_FRE_ASSERT(trusted_store == NULL);
+#endif // QUICER_USE_TRUSTED_STORE
+
+  CxPlatZeroMemory(CredConfig, sizeof(QUIC_CREDENTIAL_CONFIG));
+
+  CredConfig->Flags = QUIC_CREDENTIAL_FLAG_NONE;
+
+  // Handle the certificate, key, password options
+  if (!parse_cert_options(env, eoptions, CredConfig))
+    {
+      ret = ATOM_QUIC_TLS;
+      goto exit;
+    }
+
+  // Handle the `verify` options
+  if (!parse_verify_options(env, eoptions, CredConfig, TRUE, &is_verify))
+    {
+      ret = ATOM_VERIFY;
+      goto exit;
+      ;
+    }
+
+  // Hanlde the `cacertfile` options
+  if (!parse_cacertfile_option(env, eoptions, &cacertfile))
+    {
+      // TLS opt error not file content error
+      ret = ATOM_CACERTFILE;
+      goto exit;
+    }
+
+  // Set flags for certificate verification
+  if (is_verify && cacertfile)
+    { // === START of verify peer with cacertfile === //
+
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED;
+
+#if defined(QUICER_USE_TRUSTED_STORE)
+      // We do our own verification with the cacert in trusted_store
+      // @see QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+      if (!build_trustedstore(cacertfile, trusted_store))
+        {
+          ret = ATOM_CERT_ERROR;
+          goto exit;
+        }
+      free(cacertfile);
+      cacertfile = NULL;
+#else
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_SET_CA_CERTIFICATE_FILE;
+      CredConfig->CaCertificateFile = cacertfile;
+#if defined(__APPLE__)
+      // This seems only needed for macOS
+      CredConfig->Flags
+          |= QUIC_CREDENTIAL_FLAG_USE_TLS_BUILTIN_CERTIFICATE_VALIDATION;
+#endif // __APPLE__
+#endif // QUICER_USE_TRUSTED_STORE
+    }  // === END of verify peer with cacertfile === //
+  else
+    { // NO verify peer
+#if !defined(QUICER_USE_TRUSTED_STORE)
+      CredConfig->Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
+#endif // QUICER_USE_TRUSTED_STORE
+      // since we don't use cacertfile, free it
+      free(cacertfile);
+      cacertfile = NULL;
+    }
+  return ATOM_OK;
+
+exit:
+#if defined(QUICER_USE_TRUSTED_STORE)
+  free(cacertfile);
+  cacertfile = NULL;
+#endif // QUICER_USE_TRUSTED_STORE
+  free_certificate(CredConfig);
+  return ret;
+}
+
+ERL_NIF_TERM
+complete_cert_validation(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+  QuicerConnCTX *c_ctx;
+  QUIC_STATUS Status;
+  BOOLEAN result = FALSE;
+  int alert_code = 0;
+
+  if (argc != 3)
+    {
+      return enif_make_badarg(env);
+    }
+
+  if (!enif_get_resource(env, argv[0], ctx_connection_t, (void **)&c_ctx))
+    {
+      return ERROR_TUPLE_2(ATOM_BADARG);
+    }
+
+  if (!c_ctx->Connection)
+    {
+      // already closed
+      return ERROR_TUPLE_2(ATOM_CLOSED);
+    }
+
+  if (IS_SAME_TERM(argv[1], ATOM_TRUE))
+    {
+      result = TRUE;
+    }
+  else if (IS_SAME_TERM(argv[1], ATOM_FALSE))
+    {
+      result = FALSE;
+    }
+  else
+    {
+      return ERROR_TUPLE_2(ATOM_BADARG);
+    }
+
+  if (!enif_get_int(env, argv[2], &alert_code))
+    {
+      return ERROR_TUPLE_2(ATOM_BADARG);
+    }
+
+  if (get_conn_handle(c_ctx))
+    {
+      Status = MsQuic->ConnectionCertificateValidationComplete(
+          c_ctx->Connection, result, (QUIC_TLS_ALERT_CODES)alert_code);
+      put_conn_handle(c_ctx);
+      if (QUIC_FAILED(Status))
+        {
+          return ERROR_TUPLE_2(ATOM_STATUS(Status));
+        }
+      return ATOM_OK;
+    }
+  else
+    {
+      return ERROR_TUPLE_2(ATOM_CLOSED);
+    }
+}
+
+/*
+** Return a cert in binary eterm or atom for error
+** This is a helper
+*/
+ERL_NIF_TERM
+x509_cert_to_ebinary(ErlNifEnv *env, X509 *x)
+{
+  ERL_NIF_TERM cert;
+  unsigned char *tmp;
+
+  // Validation and Getting the len for binary alloc
+  int len = i2d_X509(x, NULL);
+
+  if (len < 0)
+    {
+      // Should not happen, maybe dead code here
+      CXPLAT_FRE_ASSERT(true);
+      return ATOM_QUIC_STATUS_BAD_CERTIFICATE;
+    }
+
+  unsigned char *data = enif_make_new_binary(env, len, &cert);
+
+  if (!data)
+    {
+      // unlikely
+      return ATOM_QUIC_STATUS_OUT_OF_MEMORY;
+    }
+
+  // note, using tmp is mandatory, see doc for i2d_X509
+  tmp = data;
+
+  // no return val check, already checked above.
+  i2d_X509(x, &tmp);
+
+  return cert;
+}
+
+/*
+** Return a list of TLS cert from x509 store ctx
+**
+** @NOTE, assuming caller will clean the eterms in env for errors
+*/
+ERL_NIF_TERM
+x509_ctx_to_cert_chain(ErlNifEnv *env, X509_STORE_CTX *ctx)
+{
+  CXPLAT_FRE_ASSERT(ctx);
+
+  STACK_OF(X509) *chain = X509_STORE_CTX_get0_chain(ctx);
+  ERL_NIF_TERM echains = enif_make_list(env, 0);
+
+  int cnt = sk_X509_num(chain);
+
+  for (int i = 0; i < cnt; i++)
+    {
+      X509 *curr = sk_X509_value(chain, i);
+      CXPLAT_FRE_ASSERT(curr);
+      ERL_NIF_TERM cert = x509_cert_to_ebinary(env, curr);
+      echains = enif_make_list_cell(env, cert, echains);
+    }
+
+  return echains;
+}

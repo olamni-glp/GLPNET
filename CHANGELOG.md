@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [v2026.07.09.1] - 2026-07-09
+
+### Added
+- box partitioning + PGlite op-WAL + real MsQuic link adapter (buildkit spec-048 T011-T013)
+
+### Changed
+- Merge pull request #95 from olamni-glp/049-wave1-guard-link-acceptance
+- roadmap-sync import manifest - applied 6 olamnit exports (1031 journal lines) on gavriellas host
+- clarify - 1.14 approved staged a-to-b, hard ship gate, gavri delegation prompt (buildkit spec-049)
+- specify wave-1 consolidated - GLP policy-guard (1.14-gated) + 036 link full acceptance (buildkit spec-049)
+- Merge pull request #94 from olamni-glp/048-colab-foundations
+- scan-reconcile 042/043 released, dedup A-I closed with engineer approval, CRDT migration 0022, double export-import idempotent (0 dup groups, 86 features)
+- codify bounded-behavior cap+error+test rule (act-62c7bf6a99)
+- spec(043): additive-optional carve-out - optional additions stay forward-compatible per engineer decision, closing review escalation
+- post-ship close-out retrospective for v2026.07.08.1
+- Merge pull request #93 from olamni-glp/main
+
 ## [v2026.07.08.1] - 2026-07-08
 
 ### Added
