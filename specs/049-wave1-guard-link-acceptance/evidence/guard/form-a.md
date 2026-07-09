@@ -47,8 +47,10 @@
 ## repl_baseline
 - Pre-change baseline on this host: **524/525** (single failure = the pre-existing Section Q
   AOT-smoke case; scratchpad `baseline-repl.txt`).
-- Post-change full-suite run (with new A29 block: worked + vectors ordered-outcome asserts):
-  recorded in the follow-up entry below once the run completes.
+- Post-change full-suite run (with the new A29 block): **526/527** — baseline preserved
+  (identical single AOT-smoke failure) + `A29 worked examples (S/F/F/Susp)` PASS +
+  `A29 vectors (12/12 outcome map)` PASS. Command:
+  `DART=<win dart> bash test/run_all_tests.sh` @ `7884fbbb`, 2026-07-09.
 
 ## Realization notes (deviations recorded, no semantics changed)
 
