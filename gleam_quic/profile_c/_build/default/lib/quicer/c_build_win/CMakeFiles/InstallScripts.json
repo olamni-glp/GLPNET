@@ -1,0 +1,14 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-build/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/src/inc/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/src/generated/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/src/core/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/src/platform/cmake_install.cmake",
+		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/msquic/src/bin/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,27 @@
+{
+"documents": {
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\*" : "https://raw.githubusercontent.com/microsoft/msquic/e453ade8d9b35f53290fdbd111738f86150253a1/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\clog\\*" : "https://raw.githubusercontent.com/microsoft/CLOG/ca6e640fbf7f53ec9de915f1f4d852c10d874d13/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\googletest\\*" : "https://raw.githubusercontent.com/google/googletest/563ebf1769af08d448765c31064260e1a16fcced/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl\\*" : "https://raw.githubusercontent.com/quictls/openssl/612d8e44d687e4b71c4724319d7aa27a733bcbca/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl\\*" : "https://raw.githubusercontent.com/quictls/openssl/612d8e44d687e4b71c4724319d7aa27a733bcbca/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl\\krb5\\*" : "https://raw.githubusercontent.com/krb5/krb5/890ca2f401924cdcb88f493950b04700bbe52db3/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl\\pyca-cryptography\\*" : "https://raw.githubusercontent.com/pyca/cryptography/fa84d185c0fefa7d612759e02a26def2f948fe34/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl\\wycheproof\\*" : "https://raw.githubusercontent.com/google/wycheproof/2196000605e45d91097147c9c71f26b72af58003/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\*" : "https://raw.githubusercontent.com/quictls/openssl/330feef3dcb69d95cd752d54cb9254b366bdc7cf/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\gost-engine\\*" : "https://raw.githubusercontent.com/gost-engine/engine/2a8a5e0ecaa3e3d6f4ec722a49aa72476755c2b7/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\gost-engine\\libprov\\*" : "https://raw.githubusercontent.com/provider-corner/libprov/8a126e09547630ef900177625626b6156052f0ee/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\krb5\\*" : "https://raw.githubusercontent.com/krb5/krb5/aa9b4a2a64046afd2fab7cb49c346295874a5fb6/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\oqs-provider\\*" : "https://raw.githubusercontent.com/open-quantum-safe/oqs-provider/3f3d8a8cf331c73a26fe93a598273997cb54eb4f/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\pyca-cryptography\\*" : "https://raw.githubusercontent.com/pyca/cryptography/c18d0567386414efa3caef7ed586c4ca75bf3a8b/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\python-ecdsa\\*" : "https://raw.githubusercontent.com/tlsfuzzer/python-ecdsa/4de8d5bf89089d1140eb99aa5d7eb2dc8e6337b6/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\tlsfuzzer\\*" : "https://raw.githubusercontent.com/tlsfuzzer/tlsfuzzer/dbd56c149072e656ca8d6a43a59588f3e7513da2/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\tlslite-ng\\*" : "https://raw.githubusercontent.com/tlsfuzzer/tlslite-ng/771e9f59d639dbb0e2fa8e646c8e588405d3903e/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\openssl3\\wycheproof\\*" : "https://raw.githubusercontent.com/google/wycheproof/2196000605e45d91097147c9c71f26b72af58003/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\xdp-for-windows\\*" : "https://raw.githubusercontent.com/microsoft/xdp-for-windows/51bba848b1a7c571c7eb7226977a6f24c0abffd3/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\xdp-for-windows\\submodules\\ndis-driver-library\\*" : "https://raw.githubusercontent.com/microsoft/ndis-driver-library/6bf878da1a54bf471d4d934cef6e26355860d386/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\xdp-for-windows\\submodules\\net-offloads\\*" : "https://raw.githubusercontent.com/microsoft/net-offloads/02dbf4e58e3b7f752ba3d97d17c36d4cd5fdc490/*",
+"D:\\BSTDEV\\research\\GLP\\GLPNET\\gleam_quic\\profile_c\\_build\\default\\lib\\quicer\\msquic\\submodules\\xdp-for-windows\\submodules\\wil\\*" : "https://raw.githubusercontent.com/microsoft/wil/ae986e12b2fa722ba70e9761ae6897565293cbea/*"
+}
+}
+
