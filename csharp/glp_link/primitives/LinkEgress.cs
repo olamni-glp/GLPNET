@@ -1,5 +1,4 @@
 using GlpRuntime.Link.Reliability;
-using GlpRuntime.Multiagent;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -31,9 +30,10 @@ internal static class LinkEgress
         // ground gate: an unbound cell at any depth throws here, never on the wire.
         Term ground = ResolveGround(heap, msg);
 
-        // Empty origin: the per-link endpoint identity, not a global-name stamp, keys
-        // delivery on the base relay (consistent with the T030 Out-stream drainer).
-        byte[] payload = new PayloadSerializer(string.Empty).SerializeAgentMessage(ground);
+        // Encode via the link's payload codec (feature 050): loopback/tcp keep the default
+        // ground-relay blob byte-for-byte; a "quic" link encodes an 041 crdtmsg envelope. The
+        // FrameCodec framing below wraps the codec bytes unchanged (FR-016 preserved).
+        byte[] payload = handle.Codec.Encode(ground);
 
         uint seq = handle.Sequencer.Next();
         // NOTE: SendWindow backpressure (FR-025) is intentionally NOT gated here yet —

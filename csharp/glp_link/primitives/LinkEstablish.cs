@@ -48,7 +48,8 @@ public static class LinkEstablish
         LinkHandle handle;
         try
         {
-            handle = link.Links.GetOrEstablish(id, () => new LinkHandle(id, establish(), LinkOptions.Default));
+            handle = link.Links.GetOrEstablish(id, () => new LinkHandle(
+                id, establish(), LinkOptions.Default, link.PayloadCodecs.Select(id.Scheme)));
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or AggregateException)
         {

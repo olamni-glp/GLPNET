@@ -24,6 +24,14 @@ public sealed class LinkRuntime
     /// <summary>Scheme→transport-leaf selection (FR-013); register leaves before setup.</summary>
     public TransportRegistry Transports { get; } = new();
 
+    /// <summary>
+    /// Scheme→payload-codec selection (feature 050, FR-005). Register a codec for a scheme at the
+    /// composition root (the <c>"quic"</c> crdtmsg codec); any unregistered scheme resolves to the
+    /// default ground-relay blob, so loopback/tcp are unchanged. The selected codec is stamped onto
+    /// each <see cref="LinkHandle"/> at establishment.
+    /// </summary>
+    public PayloadCodecRegistry PayloadCodecs { get; } = new();
+
     /// <summary>Idempotent-at-identity LinkId→handle registry (FR-007).</summary>
     public LinkRegistry Links { get; } = new();
 

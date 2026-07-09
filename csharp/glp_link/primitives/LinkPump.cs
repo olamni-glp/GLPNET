@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 
 using GlpRuntime.Link.Reliability;
 using GlpRuntime.Link.Seam;
-using GlpRuntime.Multiagent;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -134,7 +133,6 @@ public sealed class LinkPump : IInboundPump, IDisposable
     /// </summary>
     private async Task RecvLoopAsync(LinkHandle handle, CancellationToken ct)
     {
-        var deserializer = new PayloadSerializer(string.Empty);
         try
         {
             while (!ct.IsCancellationRequested)
@@ -153,10 +151,10 @@ public sealed class LinkPump : IInboundPump, IDisposable
 
                 foreach (var ordered in handle.Ordering.Accept(parsed.MessageId, payload))
                 {
-                    Term term = deserializer.DeserializeAgentMessagePayload(
-                        ordered,
-                        allocateImportedVar: _ => throw new InvalidOperationException(
-                            "ground-relay base received a non-ground payload (embedded variable)"));
+                    // Decode via the link's payload codec (feature 050): the default ground-relay
+                    // blob for loopback/tcp; the 041 crdtmsg envelope for a "quic" link. Loud-fail
+                    // on a malformed payload is the codec's contract (FR-007).
+                    Term term = handle.Codec.Decode(ordered);
                     _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
                 }
             }
