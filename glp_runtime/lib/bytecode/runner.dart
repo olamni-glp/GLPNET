@@ -278,6 +278,91 @@ class BytecodeRunner {
   final BytecodeProgram prog;
   BytecodeRunner(this.prog);
 
+  /// 049 policy-guard form selector: 'b' (default) dispatches satisfiable/2
+  /// to the system guard primitive below; 'a' leaves it to the user-program
+  /// definedGuards table (the form-(a) reference, kept selectable for the
+  /// SC-009 (a) ≡ (b) equivalence verification). Set from the
+  /// GLP_POLICY_GUARD_FORM environment variable by GlpEngine.
+  static String policyGuardForm = 'b';
+
+  /// 049 form (b): satisfiable/2 as a SYSTEM guard primitive (per the recorded
+  /// §1.14 ruling) — the same clauses-as-spec three-valued semantics as
+  /// programs/crdtmsg/policy_guard.glp, embedded natively so no user clauses
+  /// are needed. Helper names are '$sat:'-namespaced: they exist only inside
+  /// this table and can never collide with (or be called from) user programs.
+  /// The GLP source's []-coverage arms (decidable-fail `~ground(a)` guards,
+  /// required by the type checker) are represented here by clause ABSENCE —
+  /// no head matches [] ⇒ FAIL, the identical outcome.
+  static const Map<String, GuardProcSpec> systemDefinedGuards = {
+    'satisfiable/2': GuardProcSpec('satisfiable', 2, [
+      // v05: empty targets = vacuous policy — satisfiable regardless of R.
+      GuardClauseSpec([
+        GStruct('policy', [GConst('nil'), GVar('_', false), GVar('_', false)]),
+        GVar('_', false),
+      ], []),
+      // Some target reachable AND no target excluded; exclusion decidable
+      // without R (v12 — fail dominates a suspended intersects).
+      GuardClauseSpec([
+        GStruct('policy', [GVar('Ts', false), GVar('_', false), GVar('Es', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec('ground', [GVar('Ts', true)]),
+        GGuardSpec('ground', [GVar('Es', true)]),
+        GGuardSpec(r'$sat:disjoint', [GVar('Ts', true), GVar('Es', true)]),
+        GGuardSpec(r'$sat:intersects', [GVar('Ts', true), GVar('R', true)]),
+      ]),
+    ]),
+    r'$sat:disjoint/2': GuardProcSpec(r'$sat:disjoint', 2, [
+      GuardClauseSpec([GConst('nil'), GVar('_', false)], []),
+      GuardClauseSpec([
+        GStruct('.', [GVar('T', false), GVar('Ts', false)]),
+        GVar('Es', false),
+      ], [
+        GGuardSpec('ground', [GVar('Es', true)]),
+        GGuardSpec(r'$sat:not_in', [GVar('T', true), GVar('Es', true)]),
+        GGuardSpec(r'$sat:disjoint', [GVar('Ts', true), GVar('Es', true)]),
+      ]),
+    ]),
+    r'$sat:not_in/2': GuardProcSpec(r'$sat:not_in', 2, [
+      GuardClauseSpec([GVar('_', false), GConst('nil')], []),
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('E', false), GVar('Es', false)]),
+      ], [
+        GGuardSpec('=?=', [GVar('X', true), GVar('E', true)], negated: true),
+        GGuardSpec(r'$sat:not_in', [GVar('X', true), GVar('Es', true)]),
+      ]),
+    ]),
+    r'$sat:intersects/2': GuardProcSpec(r'$sat:intersects', 2, [
+      GuardClauseSpec([
+        GStruct('.', [GVar('T', false), GVar('_', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec(r'$sat:in_list', [GVar('T', true), GVar('R', true)]),
+      ]),
+      GuardClauseSpec([
+        GStruct('.', [GVar('_', false), GVar('Ts', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec(r'$sat:intersects', [GVar('Ts', true), GVar('R', true)]),
+      ]),
+    ]),
+    r'$sat:in_list/2': GuardProcSpec(r'$sat:in_list', 2, [
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('E', false), GVar('_', false)]),
+      ], [
+        GGuardSpec('=?=', [GVar('X', true), GVar('E', true)]),
+      ]),
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('_', false), GVar('Es', false)]),
+      ], [
+        GGuardSpec(r'$sat:in_list', [GVar('X', true), GVar('Es', true)]),
+      ]),
+    ]),
+  };
+
   void run(RunnerContext cx) { runWithStatus(cx); }
 
   /// Helper: find next ClauseTry instruction after current PC
@@ -373,8 +458,9 @@ class BytecodeRunner {
   /// we throw a named error instead of overflowing the stack).
   static const int _definedGuardMaxDepth = 100000;
 
-  (GuardResult, Set<int>) _evalDefinedGuardCall(
-      GuardProcSpec spec, List<Object?> callArgs, RunnerContext cx, int depth) {
+  (GuardResult, Set<int>) _evalDefinedGuardCall(GuardProcSpec spec,
+      List<Object?> callArgs, RunnerContext cx, int depth,
+      Map<String, GuardProcSpec> table) {
     if (depth > _definedGuardMaxDepth) {
       throw StateError(
           'Runtime-defined guard ${spec.key} exceeded recursion depth '
@@ -406,7 +492,8 @@ class BytecodeRunner {
       var clauseFailed = false;
       final clauseReaders = <int>{};
       for (final g in clause.guards) {
-        final (result, readers) = _evalDefinedGuardConjunct(g, frame, cx, depth);
+        final (result, readers) =
+            _evalDefinedGuardConjunct(g, frame, cx, depth, table);
         if (result == GuardResult.failure) {
           clauseFailed = true;
           break;
@@ -430,7 +517,8 @@ class BytecodeRunner {
   /// guard (verdict matrices mirror the dedicated Ground/Known/GroundEqual
   /// opcodes) or a recursive runtime-defined guard call.
   (GuardResult, Set<int>) _evalDefinedGuardConjunct(
-      GGuardSpec g, Map<String, Object?> frame, RunnerContext cx, int depth) {
+      GGuardSpec g, Map<String, Object?> frame, RunnerContext cx, int depth,
+      Map<String, GuardProcSpec> table) {
     final resolved = [for (final a in g.args) _dgResolve(a, frame, cx)];
 
     switch (g.key) {
@@ -473,12 +561,12 @@ class BytecodeRunner {
         }
       default:
         {
-          final spec = prog.definedGuards[g.key];
+          final spec = table[g.key];
           if (spec == null || g.negated) {
             throw StateError(
                 'Runtime-defined guard admitted an unsupported conjunct: $g');
           }
-          return _evalDefinedGuardCall(spec, resolved, cx, depth + 1);
+          return _evalDefinedGuardCall(spec, resolved, cx, depth + 1, table);
         }
     }
   }
@@ -3470,12 +3558,24 @@ class BytecodeRunner {
           }
         }
 
-        // 049 form (a1): runtime-defined guard — evaluate its clause specs
-        // three-valued BEFORE the blanket unbound-reader pre-suspend below:
-        // a defined guard may FAIL decidably while an argument reader is
-        // still unbound (v12: an excluded target makes the policy
-        // unsatisfiable without consulting reachability).
-        final definedGuard = prog.definedGuards['$predicateName/$arity'];
+        // 049 runtime-defined guards — evaluate clause specs three-valued
+        // BEFORE the blanket unbound-reader pre-suspend below: a defined
+        // guard may FAIL decidably while an argument reader is still unbound
+        // (v12: an excluded target makes the policy unsatisfiable without
+        // consulting reachability). Form (b): satisfiable/2 dispatches to the
+        // system guard primitive (bypassing the user-program table); form (a)
+        // and all other test-only procedures use the program's own table.
+        GuardProcSpec? definedGuard;
+        Map<String, GuardProcSpec> definedGuardTable;
+        if (policyGuardForm != 'a' &&
+            predicateName == 'satisfiable' &&
+            arity == 2) {
+          definedGuard = systemDefinedGuards['satisfiable/2'];
+          definedGuardTable = systemDefinedGuards;
+        } else {
+          definedGuard = prog.definedGuards['$predicateName/$arity'];
+          definedGuardTable = prog.definedGuards;
+        }
         if (definedGuard != null) {
           if (op.negated) {
             throw StateError(
@@ -3483,7 +3583,7 @@ class BytecodeRunner {
                 '(compile-time admission should have rejected this)');
           }
           final (dgResult, dgReaders) =
-              _evalDefinedGuardCall(definedGuard, args, cx, 0);
+              _evalDefinedGuardCall(definedGuard, args, cx, 0, definedGuardTable);
           if (cx.debugOutput) {
             print('[DEBUG] DefinedGuard $predicateName/$arity → $dgResult'
                 '${dgResult == GuardResult.suspend ? " readers=$dgReaders" : ""}');

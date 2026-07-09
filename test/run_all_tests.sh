@@ -914,6 +914,54 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# SC-009 (a) ≡ (b) equivalence: the same vector goals re-run under form (a)
+# (GLP_POLICY_GUARD_FORM=a routes satisfiable/2 to the user-program defined-guard
+# table instead of the form-(b) system primitive) must produce the identical map.
+a29a=$(GLP_POLICY_GUARD_FORM=a $DART run "$REPL" <<HEREDOC
+$TYPED/policy_guard_vectors.glp
+test_wx1.
+test_wx2.
+test_wx3.
+test_wx4(Rwx4?).
+test_v05.
+test_v06.
+test_v07.
+test_v08.
+test_v09.
+test_v10.
+test_v11(Tv11?).
+test_v12(Rv12?).
+:quit
+HEREDOC
+2>&1)
+a29a_seq=$(echo "$a29a" | grep -oE '→ (succeeds|failed|suspended)' | tr '\n' ' ')
+if [ "$a29a_seq" = "$a29v_expected" ]; then
+    echo "  PASS: policy guard vectors form (a) reference (12/12, SC-009 equivalence)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: policy guard vectors form (a) reference (got: $a29a_seq)"
+    FAIL=$((FAIL + 1))
+fi
+
+# --- A30: 049 policy guard form (b) system primitive (declaration-only caller) ---
+echo "--- A30: 049 policy guard (form b system primitive) ---"
+a30=$($DART run "$REPL" <<HEREDOC
+$TYPED/policy_guard_formb.glp
+test_b1.
+test_b2(Rb2?).
+test_b3(Rb3?).
+:quit
+HEREDOC
+2>&1)
+a30_seq=$(echo "$a30" | grep -oE '→ (succeeds|failed|suspended)' | tr '\n' ' ')
+if [ "$a30_seq" = "→ succeeds → failed → suspended " ]; then
+    echo "  PASS: form (b) satisfiable/2 with no user clauses (S/F/Susp)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: form (b) satisfiable/2 with no user clauses (got: $a30_seq)"
+    FAIL=$((FAIL + 1))
+fi
+
 SECTION_A_PASS=$PASS
 SECTION_A_FAIL=$FAIL
 
