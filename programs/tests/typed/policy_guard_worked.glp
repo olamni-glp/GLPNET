@@ -1,0 +1,56 @@
+%% 049 T007 — the four proposal worked examples for satisfiable/2 (FR-007, SC-002).
+%% Expected REPL outcomes: test_wx1 → succeeds; test_wx2 → failed; test_wx3 → failed;
+%% test_wx4(Rwx4?) → suspended (step-limited — the C21/037 no-fallback invariant, NOT a hang).
+%% Guard definitions are included directly (single source: programs/crdtmsg/policy_guard.glp).
+
+Policy ::= policy(PeerList, PeerList, PeerList).
+PeerList ::= [] ; [Constant | PeerList].
+
+procedure satisfiable(Policy?, PeerList?).
+satisfiable(policy([], _, _), _).
+satisfiable(policy(Ts, _, Es), R) :-
+    ground(Ts?), ground(Es?), disjoint(Ts?, Es?), intersects(Ts?, R?) | true.
+
+procedure disjoint(PeerList?, PeerList?).
+disjoint([], _).
+disjoint([T|Ts], Es) :-
+    ground(Es?), not_in(T?, Es?), disjoint(Ts?, Es?) | true.
+
+procedure not_in(Constant?, PeerList?).
+not_in(_, []).
+not_in(X, [E|Es]) :-
+    ~(X? =?= E?), not_in(X?, Es?) | true.
+
+procedure intersects(PeerList?, PeerList?).
+intersects([], _) :-
+    ~ground(a) | true.
+intersects([T|_], R) :-
+    in_list(T?, R?) | true.
+intersects([_|Ts], R) :-
+    intersects(Ts?, R?) | true.
+
+procedure in_list(Constant?, PeerList?).
+in_list(_, []) :-
+    ~ground(a) | true.
+in_list(X, [E|_]) :-
+    X? =?= E? | true.
+in_list(X, [_|Es]) :-
+    in_list(X?, Es?) | true.
+
+%% wx1: bob reachable, none excluded → SUCCESS
+procedure test_wx1.
+test_wx1 :- satisfiable(policy([bob, carol], [], [mallory]), [alice, bob]) | true.
+
+%% wx2: bob not reachable, ground → FAIL (loud)
+procedure test_wx2.
+test_wx2 :- satisfiable(policy([bob], [], [mallory]), [alice, carol]) | true.
+
+%% wx3: bob is a target AND excluded → FAIL (unsatisfiable)
+procedure test_wx3.
+test_wx3 :- satisfiable(policy([bob], [], [bob]), [alice, bob]) | true.
+
+%% wx4: reachable unknown → SUSPEND (no default fallback fires). The unbound
+%% reachable set arrives as a goal argument; its writer is held by the REPL
+%% goal environment and never bound (goal: test_wx4(Rwx4?).)
+procedure test_wx4(PeerList?).
+test_wx4(R) :- satisfiable(policy([bob], [], [mallory]), R?) | true.

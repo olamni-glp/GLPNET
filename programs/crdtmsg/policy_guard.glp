@@ -1,0 +1,60 @@
+%% Policy guard — satisfiable/2 (feature 049 Deliverable A, form (a) via the ruled (a1) mechanism).
+%%
+%% §1.14 ruling recorded in specs/049-wave1-guard-link-acceptance/spec.md Clarifications
+%% (2026-07-08): approved staged form (a) → form (b); realization (a1); v05 success-on-empty;
+%% v12 fail (exclusion decidable without reachability). Design SSOT:
+%% programs/crdtmsg/policy-guard-proposal.glp. Contract: specs/049.../contracts/guard-three-valued.md.
+%%
+%% Three-valued reading of satisfiable(Policy?, Reachable?):
+%%   SUCCESS  — targets empty (vacuous, v05) OR (no target excluded AND some target reachable);
+%%   SUSPEND  — the reachable set (or a needed prefix) is an unbound reader — never a fallback;
+%%   FAIL     — ground-decidably unsatisfiable (a target excluded — even with reachability unknown,
+%%              v12 — or no target reachable in a ground reachable set) — loud, drops only via an
+%%              explicit otherwise clause at the caller (C23 taxonomy).
+
+Policy ::= policy(PeerList, PeerList, PeerList).
+PeerList ::= [] ; [Constant | PeerList].
+
+procedure satisfiable(Policy?, PeerList?).
+
+%% v05 (T003-ruled): empty targets = vacuous policy — satisfiable regardless of reachability.
+satisfiable(policy([], _, _), _).
+
+%% Some target reachable AND no target excluded. The policy sides are ground data by contract
+%% (ground/1 guards make the multiple reads SRSW-legal and suspend on a non-ground policy);
+%% exclusion (disjoint) is decidable without Reachable — fail dominates a suspended intersects (v12).
+satisfiable(policy(Ts, _, Es), R) :-
+    ground(Ts?), ground(Es?), disjoint(Ts?, Es?), intersects(Ts?, R?) | true.
+
+%% disjoint(Ts, Es): no element of Ts occurs in Es.
+procedure disjoint(PeerList?, PeerList?).
+disjoint([], _).
+disjoint([T|Ts], Es) :-
+    ground(Es?), not_in(T?, Es?), disjoint(Ts?, Es?) | true.
+
+%% not_in(X, L): X occurs nowhere in L (X is a Constant — multiple reads permitted).
+procedure not_in(Constant?, PeerList?).
+not_in(_, []).
+not_in(X, [E|Es]) :-
+    ~(X? =?= E?), not_in(X?, Es?) | true.
+
+%% intersects(Ts, R): some element of Ts occurs in R. Suspends exactly when membership of a
+%% target is undecided because R (or its needed suffix) is unbound. The [] arm covers the
+%% type's empty alternative and fails decidably (~ground on a constant never holds).
+procedure intersects(PeerList?, PeerList?).
+intersects([], _) :-
+    ~ground(a) | true.
+intersects([T|_], R) :-
+    in_list(T?, R?) | true.
+intersects([_|Ts], R) :-
+    intersects(Ts?, R?) | true.
+
+%% in_list(X, L): X occurs in L. Head match against an unbound suffix of L suspends (v11/wx4).
+%% The [] arm covers the type's empty alternative and fails decidably.
+procedure in_list(Constant?, PeerList?).
+in_list(_, []) :-
+    ~ground(a) | true.
+in_list(X, [E|_]) :-
+    X? =?= E? | true.
+in_list(X, [_|Es]) :-
+    in_list(X?, Es?) | true.

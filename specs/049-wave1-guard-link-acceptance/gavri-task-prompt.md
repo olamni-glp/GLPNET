@@ -48,13 +48,13 @@ TASK B — US3, two-host LAN acceptance (paired with Olamnit):
 1. The shared certificate comes from Olamnit OUT-OF-BAND (the 036 trust model — manual pin,
    no CA). Ask the engineer to place the `glpquick-cert` dir (pem + fingerprint + pfx) on
    gavri, or confirm its path if already copied. Never commit certificate material.
-2. Olamnit runs the server: `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 3`.
+2. Olamnit runs the server: `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 4`.
    When the engineer confirms it is up, connect:
    `glp-quick --client --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --retry`
    (machine-name addressing `--addr Olamnit` is an acceptable variant; open the UDP port in
    gavri's firewall first).
 3. Verify: genuine cross-host QUIC handshake + full-duplex exchange (type messages both
-   ways), ≥3-client mesh with additional clients (extra clients may run on either host),
+   ways), ≥4-client mesh with additional clients (extra clients may run on either host),
    kill-one-client resilience, and SPKI pin acceptance. Capture on-wire UDP evidence
    (tcpdump/wireshark snippet) to prove it is not loopback. Expected failure tokens if
    something is wrong: udp_blocked / cert_mismatch / alpn_version_mismatch / server_not_ready
@@ -88,7 +88,7 @@ reality disagree, STOP and report the discrepancy in the evidence file and to th
 
 - Generate/locate the shared cert dir; the engineer copies it to gavri out-of-band.
 - Start the server for TASK B when gavri signals ready:
-  `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 3`
+  `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 4`
   (firewall: UDP 8443 inbound open).
 - Pull `049a-gavri-us2-us3` regularly; integrate evidence + any flagged fixes into
   `049-wave1-guard-link-acceptance` via merge after review.

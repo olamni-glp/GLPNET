@@ -161,6 +161,11 @@ class GlpEngine {
   GlpEngine({required String rootSelfGlpPath}) {
     _rootSelfGlpPath = rootSelfGlpPath;
 
+    // 049 policy-guard form selector (default 'b' = system guard primitive;
+    // 'a' re-enables the user-program table for the SC-009 equivalence runs).
+    BytecodeRunner.policyGuardForm =
+        Platform.environment['GLP_POLICY_GUARD_FORM'] ?? 'b';
+
     // Set prelude sources from programs/self.glp for PE and type checker
     final rootSelfFile = File(_rootSelfGlpPath);
     if (rootSelfFile.existsSync()) {
@@ -444,10 +449,12 @@ class GlpEngine {
   /// entry points.
   BytecodeProgram get combinedProgram {
     final allOps = <dynamic>[];
+    final allDefinedGuards = <String, GuardProcSpec>{};
     for (final loaded in _loadedPrograms.values) {
       allOps.addAll(loaded.ops);
+      allDefinedGuards.addAll(loaded.definedGuards);
     }
-    final combined = BytecodeProgram(allOps);
+    final combined = BytecodeProgram(allOps, definedGuards: allDefinedGuards);
 
     // Build the set of allowed labels: root self.glp + project + exported procedures
     final allowedLabels = <String>{};

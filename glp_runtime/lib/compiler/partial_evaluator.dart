@@ -66,6 +66,74 @@ Map<String, List<Term>> getPreludeUnitClauses() {
 }
 
 // ============================================================================
+// RUNTIME-DEFINED GUARDS (feature 049 form (a1))
+// ============================================================================
+
+/// Builtin guards a runtime-defined guard clause may use — kept conservative:
+/// exactly the subset the runner's interpretive evaluator implements.
+const Set<String> definedGuardBuiltins = {'ground/1', 'known/1', '=?=/2'};
+
+bool _bodyEmptyOrTrue(List<Goal>? body) {
+  if (body == null || body.isEmpty) return true;
+  return body.length == 1 &&
+      body[0].functor == 'true' &&
+      body[0].args.isEmpty;
+}
+
+bool _isUnitClauseProcedure(Procedure p) {
+  if (p.clauses.length != 1) return false;
+  final clause = p.clauses.first;
+  final noGuards = clause.guards == null || clause.guards!.isEmpty;
+  return noGuards && _bodyEmptyOrTrue(clause.body);
+}
+
+/// Collect runtime-defined guard procedures (049 (a1) admission rule).
+///
+/// A procedure is a runtime-defined guard iff EVERY clause is test-only:
+/// body empty or `true`, and every guard is a builtin from
+/// [definedGuardBuiltins] or (recursively) a runtime-defined guard call
+/// (never negated). Single-clause no-guard procedures are excluded — they
+/// keep the existing §8 compile-time unfolding unchanged; the extension only
+/// admits calls that were previously a CompileError.
+Set<String> collectTestOnlyProcedures(Program program) {
+  final procsByKey = <String, Procedure>{
+    for (final p in program.procedures) '${p.name}/${p.arity}': p,
+  };
+
+  // Optimistically admit every body-free multi-clause/guarded candidate, then
+  // iteratively evict procedures whose guards reference anything outside the
+  // builtin subset or the surviving candidate set (greatest fixpoint).
+  final candidates = <String>{};
+  for (final p in program.procedures) {
+    if (_isUnitClauseProcedure(p)) continue;
+    if (p.clauses.every((c) => _bodyEmptyOrTrue(c.body))) {
+      candidates.add('${p.name}/${p.arity}');
+    }
+  }
+
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (final key in candidates.toList()) {
+      final p = procsByKey[key]!;
+      final admissible = p.clauses.every((c) {
+        final guards = c.guards ?? const <Guard>[];
+        return guards.every((g) {
+          final gKey = '${g.predicate}/${g.args.length}';
+          if (definedGuardBuiltins.contains(gKey)) return true;
+          return !g.negated && candidates.contains(gKey);
+        });
+      });
+      if (!admissible) {
+        candidates.remove(key);
+        changed = true;
+      }
+    }
+  }
+  return candidates;
+}
+
+// ============================================================================
 // UNIFICATION RESULTS
 // ============================================================================
 
@@ -102,6 +170,7 @@ class PartialEvaluator {
     // User definitions override prelude (spread order: prelude first, user second).
     final unitClauses = {...getPreludeUnitClauses(), ..._collectUnitClauses(program)};
     final allProcedures = _collectAllProcedures(program);
+    final testOnlyProcedures = collectTestOnlyProcedures(program);
 
     List<Procedure> transformedProcedures = [];
 
@@ -109,7 +178,8 @@ class PartialEvaluator {
       List<Clause> transformedClauses = [];
 
       for (final clause in procedure.clauses) {
-        final transformed = _transformClause(clause, unitClauses, allProcedures);
+        final transformed =
+            _transformClause(clause, unitClauses, allProcedures, testOnlyProcedures);
         transformedClauses.add(transformed);
       }
 
@@ -427,6 +497,7 @@ class PartialEvaluator {
     Clause clause,
     Map<String, List<Term>> unitClauses,
     Set<String> allProcedures,
+    Set<String> testOnlyProcedures,
   ) {
     if (clause.guards == null || clause.guards!.isEmpty) {
       return clause; // No guards, nothing to transform
@@ -520,16 +591,35 @@ class PartialEvaluator {
             // Builtin guard (like integer/1, ground/1) - keep it
             remainingGuards.add(guard);
           } else if (allProcedures.contains(key)) {
-            // Procedure exists but is NOT a single unit clause
-            // This is an error - can't call non-unit-clause procedures in guards
-            throw CompileError(
-              'Cannot call "${guard.predicate}/${guard.args.length}" in guard position.\n'
-              '  Only builtin guards and single-unit-clause procedures can appear in guards.\n'
-              '  The procedure "${guard.predicate}" has multiple clauses or non-unit clauses.',
-              guard.line,
-              guard.column,
-              phase: 'partial_evaluator'
-            );
+            if (testOnlyProcedures.contains(key)) {
+              // 049 form (a1): a test-only procedure is a runtime-defined
+              // guard — pass the call through untouched. Codegen emits the
+              // generic Guard opcode plus a definedGuards side-table entry;
+              // the runner evaluates it three-valued (suspend on unbound
+              // readers) per the recorded §1.14 ruling.
+              if (guard.negated) {
+                throw CompileError(
+                  'Runtime-defined guard "${guard.predicate}" cannot be negated',
+                  guard.line,
+                  guard.column,
+                  phase: 'partial_evaluator'
+                );
+              }
+              remainingGuards.add(guard);
+            } else {
+              // Procedure exists but is NOT a single unit clause
+              // This is an error - can't call non-unit-clause procedures in guards
+              throw CompileError(
+                'Cannot call "${guard.predicate}/${guard.args.length}" in guard position.\n'
+                '  Only builtin guards, single-unit-clause procedures, and test-only\n'
+                '  (runtime-defined guard) procedures can appear in guards.\n'
+                '  The procedure "${guard.predicate}" has clauses with real bodies or\n'
+                '  guards outside the admitted subset.',
+                guard.line,
+                guard.column,
+                phase: 'partial_evaluator'
+              );
+            }
           } else {
             // Unknown guard - could be undefined, let later phases handle it
             // For now, keep it (type checker will catch undefined procedures)
