@@ -1,5 +1,49 @@
 ## [Unreleased]
 
+## [v2026.07.09.2] - 2026-07-09
+
+### Added
+- T011 form (b) system guard primitive satisfiable/2 - native clause-spec table in runner, builtin+analyzer registration, GLP_POLICY_GUARD_FORM toggle for SC-009; A29 form-a reference + A30 pure-b probe wired
+- T009+T010 form (a) via ruled a1 runtime-defined guards - PE pass-through, codegen definedGuards side table, runner three-valued evaluator; wx1-wx4 + 12/12 vectors green; suite A29 wired
+- US5 bounded remote test-control over the link - control agent+driver, fixed whitelist (no remote shell), loopback-proven, 184 pytest green (FR-017..019)
+- US1 vectors.json SSOT + C# parity tests 124/124 + guard GLP sources + a1 runtime-defined-guard design (T005-T008)
+- US2 Profile C - in-process BEAM QUIC client via quicer NIF, demo PASS equal to Profile A baseline (milestone: Profile C verdict)
+
+### Fixed
+- codexreview non-blocking fixes — control-agent typed-error hardening (US5 FR-018), quicer ALPN code-6 token parity + WS total-reassembly cap (US2), defined-guard StackOverflow backstop (US1)
+- gavri evidence - correct msquic version for the 0.2.15 build (2.3.8, not 2.5.7)
+- gavri evidence CORRECTION - MSVC 14.50 (VS Community 2026 Insiders) IS installed; earlier MSVC-less claim was false
+
+### Changed
+- Merge pull request #100 from olamni-glp/049-wave1-guard-link-acceptance
+- Merge pull request #99 from olamni-glp/main
+- Merge pull request #97 from olamni-glp/049a-gavri-us2-us3
+- T012+T013+T029-T031 - SC-009 equivalence both forms, parity+gate audit PASS, final baselines green, ship-gate audit ALL FOUR US PASS
+- T020/T021 US3 two-host records + us3-verdict PASS; T010 form-a EquivalenceRun evidence
+- mark T003 realization-checkpoint gate discharged in tasks.md
+- ship-plan handoff to primary session - full-wave ship runs there on the canonical branch, gated on all 4 US
+- Merge pull request #96 from olamni-glp/049a-gavri-us2-us3
+- Merge remote-tracking branch 'origin/049-wave1-guard-link-acceptance' into 049a-gavri-us2-us3
+- gavri US2+US3 evidence complete - SC-005 + SC-006 both PASS, 90-summary completion signal, transport-soak footnoted as out-of-scope
+- gavri MSVC-native quicer attempt - toolchain proven (quictls+msquic.dll link), blocker is upstream unix-only quicer C source (0.2.15 and 0.4.3), escalated per FR-010
+- T003 vector addendum - v05 success-on-empty (parity), v12 fail (decidable) per Gabi ruling; 1.14 gate fully discharged
+- T003 realization addendum - form (a) via (a1) compiler extension then form (b), per Gabi ruling; v05/v12 outcomes still to be ruled
+- us2-verdict follow-up - gavri MSVC correction 8facff21 relayed, PASS unaffected (WSL path stands)
+- US2 Profile C verdict PASS SC-005 - gavri evidence reviewed and integrated (T015-T018)
+- FR-015 regression coverage - #5 timeout-FAIL + #6 pre-readiness flood pytest, #7 >1MiB reassembly erlang harness PASS local OTP29 (T025-T028)
+- US4 marathon durability VERIFIED - kill-resume PASS + durable-first commit re-drive exactly-once PASS (T022-T024, SC-007)
+- step-3 checkpoint durable-first, commit withheld by index.lock (T024)
+- us4-step-2 checkpoint - marathon durability probe
+- marathon durability run record mrun-9724364d684a (T022)
+- US3 Olamnit prep - cert generated, addr corrected 192.168.0.143 -> 192.168.0.136, firewall+server handed to engineer (T019)
+- baseline checkpoint 524/525 REPL + 114 xUnit + 178 pytest, evidence tree, gavri prompt mesh>=4 fix, delegation record (T001/T002/T004/T014)
+- analyze remediations - empty-targets and excluded-vs-unbound edge recorded for T003 ruling, gavri-lane execution semantics, T009 protocol wording (buildkit spec-049)
+- tasks - 32 tasks in 4 story lanes, T003 1.14 realization gate, gavri delegation lane, marathon+fixes parallel (buildkit spec-049)
+- plan - R1 form-(a) realization checkpoint, shared decision vectors, gavri delegation + evidence contracts (buildkit spec-049)
+- gavri evidence - two-host prep done, awaiting cert + Olamnit server (milestone: US3 prep)
+- gavri evidence - WSL provisioning + gleam Profile A baseline PASS (milestone: baseline)
+- gavri evidence - environment discovery (US2/US3 delegation, milestone: environment done)
+
 ## [v2026.07.09.1] - 2026-07-09
 
 ### Added

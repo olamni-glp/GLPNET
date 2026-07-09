@@ -1,0 +1,18 @@
+%% 049 T011 — form (b) system guard primitive: satisfiable/2 called WITHOUT any user
+%% clauses (declaration-only) — proves the guard is native to the runtime (§1.14 ruling,
+%% staged (a) → (b)). Expected REPL outcomes: test_b1 → succeeds; test_b2(Rb2?) → failed
+%% (v12 shape: exclusion decidable with reachability unbound); test_b3(Rb3?) → suspended.
+
+Policy ::= policy(PeerList, PeerList, PeerList).
+PeerList ::= [] ; [Constant | PeerList].
+
+procedure satisfiable(Policy?, PeerList?).
+
+procedure test_b1.
+test_b1 :- satisfiable(policy([bob], [], [mallory]), [bob]) | true.
+
+procedure test_b2(PeerList?).
+test_b2(R) :- satisfiable(policy([bob], [], [bob]), R?) | true.
+
+procedure test_b3(PeerList?).
+test_b3(R) :- satisfiable(policy([bob], [], [mallory]), R?) | true.

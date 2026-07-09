@@ -24,6 +24,11 @@
     <None Include="goldens\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- 049 shared decision vectors (SSOT in specs/ — linked, never copied by hand). -->
+  <ItemGroup>
+    <None Include="..\..\specs\049-wave1-guard-link-acceptance\contracts\vectors.json" Link="vectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
     <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />

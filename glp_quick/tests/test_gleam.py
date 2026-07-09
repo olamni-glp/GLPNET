@@ -16,7 +16,13 @@ import pytest
 from glp_quick import cert as cert_mod
 from glp_quick.repl_link import GlpMessage
 from glp_quick.stacks.csharp import CSharpStackAdapter, LinkError, host_dll_path
-from glp_quick.stacks.gleam import GleamStackAdapter, _erlang_bin, gleam_exe, gleam_project_dir
+from glp_quick.stacks.gleam import (
+    GleamStackAdapter,
+    _erlang_bin,
+    gleam_exe,
+    gleam_project_dir,
+    profile_c_built,
+)
 
 
 def _gleam_available() -> bool:
@@ -53,11 +59,53 @@ def test_capabilities_honest():
     assert gl.capabilities() == {"real_quic": True, "quic_termination": "side_process"}
 
 
+@pytest.mark.skipif(profile_c_built(), reason="Profile C IS built here — the not-built guard cannot fire")
 def test_profile_c_not_built_is_clear():
     gl = GleamStackAdapter(profile="c")
     with pytest.raises(LinkError) as ei:
         gl.start_client("127.0.0.1", 1, Path("."), "csharp")
     assert ei.value.token == "profile_c_not_built"
+
+
+@pytest.mark.skipif(not profile_c_built(), reason="Profile C not built (quicer NIF absent)")
+def test_profile_c_client_in_process_to_csharp_server(cert_dir):
+    """Profile C (feature 049 US2 / 036 T032): the BEAM client terminates QUIC IN-PROCESS via the
+    quicer NIF (no C# side-process on the client data plane) against the C# reference server —
+    connect, SPKI pin verify, and full-duplex exchange (FR-009)."""
+    port = _free_udp_port()
+    cs = CSharpStackAdapter()
+    gl = GleamStackAdapter(profile="c")
+    assert gl.capabilities() == {"real_quic": True, "quic_termination": "in_process"}
+    server = cs.start_server("127.0.0.1", port, cert_dir, 3, "csharp")
+    client = gl.start_client("127.0.0.1", port, cert_dir, "csharp")
+    try:
+        client.send(GlpMessage(sender="beam-c", to="server", payload="ping(inproc)"))
+        got = server.recv(timeout=20)
+        assert got is not None and got.payload == "ping(inproc)" and got.sender == "beam-c"
+        server.send(GlpMessage(sender="server", to="beam-c", payload="pong(inproc)"))
+        back = client.recv(timeout=20)
+        assert back is not None and back.payload == "pong(inproc)"
+    finally:
+        gl.stop(client)
+        cs.stop(server)
+
+
+@pytest.mark.skipif(not profile_c_built(), reason="Profile C not built (quicer NIF absent)")
+def test_profile_c_pin_mismatch_rejected(cert_dir, tmp_path_factory):
+    """A wrong shared cert must fail the Profile C handshake loudly (cert_mismatch), never
+    silently accept — the SPKI pin is the only trust anchor (FR-003/SC-005)."""
+    other = tmp_path_factory.mktemp("othercert")
+    cert_mod.generate_shared_cert(other, days=2)
+    port = _free_udp_port()
+    cs = CSharpStackAdapter()
+    gl = GleamStackAdapter(profile="c")
+    server = cs.start_server("127.0.0.1", port, cert_dir, 3, "csharp")
+    try:
+        with pytest.raises(LinkError) as ei:
+            gl.start_client("127.0.0.1", port, other, "csharp")
+        assert ei.value.token == "cert_mismatch"
+    finally:
+        cs.stop(server)
 
 
 def test_gleam_client_to_csharp_server(cert_dir):

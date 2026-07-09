@@ -1,0 +1,90 @@
+%% 049 T008 — vector-driven satisfiable/2 programs: EVERY entry of
+%% specs/049-wave1-guard-link-acceptance/contracts/vectors.json (guard side runs all, incl.
+%% guard_only). Expected REPL outcomes (expected_guard): success → succeeds, fail → failed,
+%% suspend → suspended (step-limited). v05/v12 values are the recorded T003 rulings.
+%% Guard definitions included directly (single source: programs/crdtmsg/policy_guard.glp).
+
+Policy ::= policy(PeerList, PeerList, PeerList).
+PeerList ::= [] ; [Constant | PeerList].
+
+procedure satisfiable(Policy?, PeerList?).
+satisfiable(policy([], _, _), _).
+satisfiable(policy(Ts, _, Es), R) :-
+    ground(Ts?), ground(Es?), disjoint(Ts?, Es?), intersects(Ts?, R?) | true.
+
+procedure disjoint(PeerList?, PeerList?).
+disjoint([], _).
+disjoint([T|Ts], Es) :-
+    ground(Es?), not_in(T?, Es?), disjoint(Ts?, Es?) | true.
+
+procedure not_in(Constant?, PeerList?).
+not_in(_, []).
+not_in(X, [E|Es]) :-
+    ~(X? =?= E?), not_in(X?, Es?) | true.
+
+procedure intersects(PeerList?, PeerList?).
+intersects([], _) :-
+    ~ground(a) | true.
+intersects([T|_], R) :-
+    in_list(T?, R?) | true.
+intersects([_|Ts], R) :-
+    intersects(Ts?, R?) | true.
+
+procedure in_list(Constant?, PeerList?).
+in_list(_, []) :-
+    ~ground(a) | true.
+in_list(X, [E|_]) :-
+    X? =?= E? | true.
+in_list(X, [_|Es]) :-
+    in_list(X?, Es?) | true.
+
+%% wx1 → succeeds
+procedure test_wx1.
+test_wx1 :- satisfiable(policy([bob, carol], [], [mallory]), [alice, bob]) | true.
+
+%% wx2 → failed
+procedure test_wx2.
+test_wx2 :- satisfiable(policy([bob], [], [mallory]), [alice, carol]) | true.
+
+%% wx3 → failed
+procedure test_wx3.
+test_wx3 :- satisfiable(policy([bob], [], [bob]), [alice, bob]) | true.
+
+%% wx4 → suspended (unbound reachable arrives as the goal argument;
+%% goal: test_wx4(Rwx4?).)
+procedure test_wx4(PeerList?).
+test_wx4(R) :- satisfiable(policy([bob], [], [mallory]), R?) | true.
+
+%% v05 (T003-RULED) → succeeds: empty targets = vacuous policy (parity with the C# matcher)
+procedure test_v05.
+test_v05 :- satisfiable(policy([], [], []), [alice]) | true.
+
+%% v06 → failed: excluded target trumps its own reachability
+procedure test_v06.
+test_v06 :- satisfiable(policy([bob, carol], [], [carol]), [carol]) | true.
+
+%% v07 → succeeds: one of several targets reachable suffices
+procedure test_v07.
+test_v07 :- satisfiable(policy([bob, carol], [], [mallory]), [carol]) | true.
+
+%% v08 → succeeds: waypoints advisory — present, must not affect the decision
+procedure test_v08.
+test_v08 :- satisfiable(policy([bob], [alice, carol], [mallory]), [bob]) | true.
+
+%% v09 → failed: waypoints cannot save an unreachable target
+procedure test_v09.
+test_v09 :- satisfiable(policy([bob], [alice], [mallory]), [carol]) | true.
+
+%% v10 → failed: empty (ground) reachable set
+procedure test_v10.
+test_v10 :- satisfiable(policy([bob], [], [mallory]), []) | true.
+
+%% v11 → suspended: needed prefix unbound — alice known, bob undecided
+%% (the unbound tail arrives as the goal argument; goal: test_v11(Tv11?).)
+procedure test_v11(PeerList?).
+test_v11(T) :- satisfiable(policy([bob], [], [mallory]), [alice | T?]) | true.
+
+%% v12 (T003-RULED) → failed: exclusion decidable without reachability — fail, not suspend
+%% (goal: test_v12(Rv12?). — fails even though the argument is unbound)
+procedure test_v12(PeerList?).
+test_v12(R) :- satisfiable(policy([bob], [], [bob]), R?) | true.
