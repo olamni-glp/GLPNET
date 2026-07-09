@@ -2,10 +2,12 @@ import 'package:glp_runtime/bytecode/opcodes.dart' as bc;
 import 'package:glp_runtime/bytecode/opcodes_v2.dart' as bcv2;
 import 'package:glp_runtime/bytecode/asm.dart';
 import 'package:glp_runtime/bytecode/runner.dart' show BytecodeProgram;
+import 'package:glp_runtime/bytecode/guard_defs.dart';
 import 'package:glp_runtime/runtime/terms.dart' as rt;
 import 'ast.dart';
 import 'analyzer.dart';
 import 'error.dart';
+import 'partial_evaluator.dart' show collectTestOnlyProcedures;
 import 'result.dart';
 
 // ============================================================================
@@ -127,9 +129,64 @@ class CodeGenerator {
 
     // Build final bytecode program using runner's BytecodeProgram
     // It will auto-index labels from Label instructions
-    final bytecode = BytecodeProgram(ctx.instructions);
+    final bytecode = BytecodeProgram(ctx.instructions,
+        definedGuards: _collectDefinedGuardSpecs(program.ast));
 
     return CompilationResult(bytecode, variableMap);
+  }
+
+  /// 049 form (a1): encode every test-only (runtime-defined guard) procedure
+  /// as a clause-spec side table for the runner's three-valued interpretive
+  /// evaluator. The procedures also compile to ordinary bytecode above —
+  /// the side table is additive.
+  Map<String, GuardProcSpec> _collectDefinedGuardSpecs(Program ast) {
+    final keys = collectTestOnlyProcedures(ast);
+    if (keys.isEmpty) return const <String, GuardProcSpec>{};
+
+    final specs = <String, GuardProcSpec>{};
+    for (final proc in ast.procedures) {
+      final key = '${proc.name}/${proc.arity}';
+      if (!keys.contains(key)) continue;
+      final clauses = [
+        for (final clause in proc.clauses)
+          GuardClauseSpec(
+            [for (final arg in clause.head.args) _termToGTerm(arg)],
+            [
+              for (final g in clause.guards ?? const <Guard>[])
+                GGuardSpec(g.predicate,
+                    [for (final arg in g.args) _termToGTerm(arg)],
+                    negated: g.negated),
+            ],
+          ),
+      ];
+      specs[key] = GuardProcSpec(proc.name, proc.arity, clauses);
+    }
+    return specs;
+  }
+
+  /// Convert an AST term to the neutral guard-spec shape. Lists become
+  /// '.'/2 structures with 'nil' terminators, matching the runtime rep.
+  GTerm _termToGTerm(Term term) {
+    if (term is VarTerm) return GVar(term.name, term.isReader);
+    if (term is UnderscoreTerm) return const GVar('_', false);
+    if (term is ConstTerm) return GConst(term.value);
+    if (term is ListTerm) {
+      if (term.isNil) return const GConst('nil');
+      final head =
+          term.head != null ? _termToGTerm(term.head!) : const GConst('nil');
+      final tail =
+          term.tail != null ? _termToGTerm(term.tail!) : const GConst('nil');
+      return GStruct('.', [head, tail]);
+    }
+    if (term is StructTerm) {
+      return GStruct(
+          term.functor, [for (final arg in term.args) _termToGTerm(arg)]);
+    }
+    throw CompileError(
+        'Unsupported term in runtime-defined guard spec: $term',
+        term.line,
+        term.column,
+        phase: 'codegen');
   }
 
   void _generateProcedure(AnnotatedProcedure proc, CodeGenContext ctx) {

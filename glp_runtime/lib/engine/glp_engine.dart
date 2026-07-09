@@ -444,10 +444,12 @@ class GlpEngine {
   /// entry points.
   BytecodeProgram get combinedProgram {
     final allOps = <dynamic>[];
+    final allDefinedGuards = <String, GuardProcSpec>{};
     for (final loaded in _loadedPrograms.values) {
       allOps.addAll(loaded.ops);
+      allDefinedGuards.addAll(loaded.definedGuards);
     }
-    final combined = BytecodeProgram(allOps);
+    final combined = BytecodeProgram(allOps, definedGuards: allDefinedGuards);
 
     // Build the set of allowed labels: root self.glp + project + exported procedures
     final allowedLabels = <String>{};
