@@ -84,11 +84,11 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Define `IPayloadCodec` (term-in/bytes-out, host-side, below GLP) in `csharp/glp_link/seam/IPayloadCodec.cs`; default impl preserves current `PayloadSerializer` behaviour byte-for-byte.
+- [X] T016 [US2] Define `IPayloadCodec` (term-in/bytes-out, host-side, below GLP) in `csharp/glp_link/seam/IPayloadCodec.cs`; default impl preserves current `PayloadSerializer` behaviour byte-for-byte.
 - [ ] T017 [US2] Implement `CrdtMsgPayloadCodec` over `GlpRuntime.CrdtMsg.MessageCodec` in `csharp/glp_crdtmsg/` (which already references `glp_link`), injected at the composition root — the reference-cycle resolution in research D-1. Carries the rich-text model (FR-006).
 - [ ] T018 [US2] Wire per-link codec selection in `csharp/glp_link/primitives/LinkEstablish.cs`: the quic link gets `CrdtMsgPayloadCodec`; loopback/tcp keep the default. (Depends on T016, T017.)
-- [ ] T019 [US2] Edit `csharp/glp_link/primitives/LinkEgress.cs` `ShipGround` (line ~36) to encode via the link's `IPayloadCodec` instead of the hard-coded `PayloadSerializer`.
-- [ ] T020 [US2] Edit `csharp/glp_link/primitives/LinkPump.cs` inbound decode to use the link's `IPayloadCodec` before extending the `In` stream.
+- [X] T019 [US2] Edit `csharp/glp_link/primitives/LinkEgress.cs` `ShipGround` (line ~36) to encode via the link's `IPayloadCodec` instead of the hard-coded `PayloadSerializer`.
+- [X] T020 [US2] Edit `csharp/glp_link/primitives/LinkPump.cs` inbound decode to use the link's `IPayloadCodec` before extending the `In` stream.
 - [ ] T021 [US2] Confirm the 025 `FrameCodec` (length+CRC+seq) still wraps the crdtmsg bytes unchanged (FR-016 reliability preserved); resolve research D-1 SC-002 reading (L5-payload-is-envelope) and record it in `research.md`.
 
 **Checkpoint**: US1 + US2 — genuine QUIC carrying crdtmsg envelopes.
