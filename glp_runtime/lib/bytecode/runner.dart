@@ -10,6 +10,9 @@ import 'package:glp_runtime/runtime/body_kernels.dart';
 import 'package:glp_runtime/multiagent/variable_table.dart' show VariableEntry;
 import 'opcodes.dart';
 import 'opcodes_v2.dart' as opv2;
+import 'guard_defs.dart';
+
+export 'guard_defs.dart';
 
 enum RunResult { terminated, suspended, yielded, outOfReductions }
 
@@ -45,12 +48,22 @@ enum GuardResult {
   suspend,  // Would suspend, but we handle this before evaluation
 }
 
+/// Per-argument outcome of a runtime-defined guard head match (049 (a1))
+enum _DGMatch { ok, fail, suspend }
+
 typedef LabelName = String;
 
 class BytecodeProgram {
   final List<dynamic> ops;  // Can hold both v1 (Op) and v2 (OpV2) instructions
   final Map<LabelName, int> labels;
-  BytecodeProgram(this.ops) : labels = _indexLabels(ops);
+
+  /// Runtime-defined guard side table (feature 049 form (a1)), keyed
+  /// "name/arity". Additive: empty for programs without defined guards.
+  final Map<String, GuardProcSpec> definedGuards;
+
+  BytecodeProgram(this.ops, {Map<String, GuardProcSpec>? definedGuards})
+      : labels = _indexLabels(ops),
+        definedGuards = definedGuards ?? const <String, GuardProcSpec>{};
   static Map<LabelName, int> _indexLabels(List<dynamic> ops) {
     final m = <LabelName,int>{};
     for (var i = 0; i < ops.length; i++) {
@@ -67,7 +80,8 @@ class BytecodeProgram {
   /// Returns a new BytecodeProgram with all ops from both
   BytecodeProgram merge(BytecodeProgram other) {
     final mergedOps = [...other.ops, ...ops];
-    return BytecodeProgram(mergedOps);
+    return BytecodeProgram(mergedOps,
+        definedGuards: {...other.definedGuards, ...definedGuards});
   }
 
   /// Generate human-readable disassembly of bytecode
@@ -264,6 +278,91 @@ class BytecodeRunner {
   final BytecodeProgram prog;
   BytecodeRunner(this.prog);
 
+  /// 049 policy-guard form selector: 'b' (default) dispatches satisfiable/2
+  /// to the system guard primitive below; 'a' leaves it to the user-program
+  /// definedGuards table (the form-(a) reference, kept selectable for the
+  /// SC-009 (a) ≡ (b) equivalence verification). Set from the
+  /// GLP_POLICY_GUARD_FORM environment variable by GlpEngine.
+  static String policyGuardForm = 'b';
+
+  /// 049 form (b): satisfiable/2 as a SYSTEM guard primitive (per the recorded
+  /// §1.14 ruling) — the same clauses-as-spec three-valued semantics as
+  /// programs/crdtmsg/policy_guard.glp, embedded natively so no user clauses
+  /// are needed. Helper names are '$sat:'-namespaced: they exist only inside
+  /// this table and can never collide with (or be called from) user programs.
+  /// The GLP source's []-coverage arms (decidable-fail `~ground(a)` guards,
+  /// required by the type checker) are represented here by clause ABSENCE —
+  /// no head matches [] ⇒ FAIL, the identical outcome.
+  static const Map<String, GuardProcSpec> systemDefinedGuards = {
+    'satisfiable/2': GuardProcSpec('satisfiable', 2, [
+      // v05: empty targets = vacuous policy — satisfiable regardless of R.
+      GuardClauseSpec([
+        GStruct('policy', [GConst('nil'), GVar('_', false), GVar('_', false)]),
+        GVar('_', false),
+      ], []),
+      // Some target reachable AND no target excluded; exclusion decidable
+      // without R (v12 — fail dominates a suspended intersects).
+      GuardClauseSpec([
+        GStruct('policy', [GVar('Ts', false), GVar('_', false), GVar('Es', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec('ground', [GVar('Ts', true)]),
+        GGuardSpec('ground', [GVar('Es', true)]),
+        GGuardSpec(r'$sat:disjoint', [GVar('Ts', true), GVar('Es', true)]),
+        GGuardSpec(r'$sat:intersects', [GVar('Ts', true), GVar('R', true)]),
+      ]),
+    ]),
+    r'$sat:disjoint/2': GuardProcSpec(r'$sat:disjoint', 2, [
+      GuardClauseSpec([GConst('nil'), GVar('_', false)], []),
+      GuardClauseSpec([
+        GStruct('.', [GVar('T', false), GVar('Ts', false)]),
+        GVar('Es', false),
+      ], [
+        GGuardSpec('ground', [GVar('Es', true)]),
+        GGuardSpec(r'$sat:not_in', [GVar('T', true), GVar('Es', true)]),
+        GGuardSpec(r'$sat:disjoint', [GVar('Ts', true), GVar('Es', true)]),
+      ]),
+    ]),
+    r'$sat:not_in/2': GuardProcSpec(r'$sat:not_in', 2, [
+      GuardClauseSpec([GVar('_', false), GConst('nil')], []),
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('E', false), GVar('Es', false)]),
+      ], [
+        GGuardSpec('=?=', [GVar('X', true), GVar('E', true)], negated: true),
+        GGuardSpec(r'$sat:not_in', [GVar('X', true), GVar('Es', true)]),
+      ]),
+    ]),
+    r'$sat:intersects/2': GuardProcSpec(r'$sat:intersects', 2, [
+      GuardClauseSpec([
+        GStruct('.', [GVar('T', false), GVar('_', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec(r'$sat:in_list', [GVar('T', true), GVar('R', true)]),
+      ]),
+      GuardClauseSpec([
+        GStruct('.', [GVar('_', false), GVar('Ts', false)]),
+        GVar('R', false),
+      ], [
+        GGuardSpec(r'$sat:intersects', [GVar('Ts', true), GVar('R', true)]),
+      ]),
+    ]),
+    r'$sat:in_list/2': GuardProcSpec(r'$sat:in_list', 2, [
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('E', false), GVar('_', false)]),
+      ], [
+        GGuardSpec('=?=', [GVar('X', true), GVar('E', true)]),
+      ]),
+      GuardClauseSpec([
+        GVar('X', false),
+        GStruct('.', [GVar('_', false), GVar('Es', false)]),
+      ], [
+        GGuardSpec(r'$sat:in_list', [GVar('X', true), GVar('Es', true)]),
+      ]),
+    ]),
+  };
+
   void run(RunnerContext cx) { runWithStatus(cx); }
 
   /// Helper: find next ClauseTry instruction after current PC
@@ -335,6 +434,333 @@ class BytecodeRunner {
     // Note: _softFailToNextClause merges Si into U before clearing
     _softFailToNextClause(cx, currentPc);
     return _findNextClauseTry(currentPc);
+  }
+
+  // ==========================================================================
+  // RUNTIME-DEFINED GUARDS (feature 049 form (a1))
+  //
+  // Interpretive three-valued evaluation of test-only guard procedures
+  // against the prog.definedGuards side table. Pure test: head patterns match
+  // against the CALLER's dereferenced runtime terms with bindings going only
+  // into a clause-local frame — the caller heap is never touched.
+  //
+  // Per clause: head match (mismatch → clause FAILS; unbound reader where
+  // structure/constant is required → clause SUSPENDS on that reader; an
+  // unbound writer can never be awaited nor bound by a test → FAILS), then
+  // the guard conjunction evaluated order-independently with FAIL dominating
+  // SUSPEND (this is what makes v12 = fail). Across clauses: any SUCCESS ⇒
+  // guard SUCCESS; else any suspended clause ⇒ SUSPEND on the union of
+  // collected readers; else FAIL.
+  // ==========================================================================
+
+  /// Loud backstop against unbounded Dart recursion on malformed cyclic data
+  /// (the GLP-level equivalent would diverge under the REPL step limit; here
+  /// we throw a named error instead of overflowing the stack).
+  static const int _definedGuardMaxDepth = 5000;
+
+  (GuardResult, Set<int>) _evalDefinedGuardCall(GuardProcSpec spec,
+      List<Object?> callArgs, RunnerContext cx, int depth,
+      Map<String, GuardProcSpec> table) {
+    if (depth > _definedGuardMaxDepth) {
+      throw StateError(
+          'Runtime-defined guard ${spec.key} exceeded recursion depth '
+          '$_definedGuardMaxDepth (cyclic data?)');
+    }
+
+    final suspendReaders = <int>{};
+    for (final clause in spec.clauses) {
+      final frame = <String, Object?>{};
+      final headReaders = <int>{};
+
+      var headOutcome = _DGMatch.ok;
+      for (var i = 0; i < clause.headArgs.length; i++) {
+        final value = i < callArgs.length ? callArgs[i] : null;
+        final m = _dgMatchTerm(clause.headArgs[i], value, frame, headReaders, cx);
+        if (m == _DGMatch.fail) {
+          headOutcome = _DGMatch.fail;
+          break; // fail dominates suspend within the head match
+        }
+        if (m == _DGMatch.suspend) headOutcome = _DGMatch.suspend;
+      }
+      if (headOutcome == _DGMatch.fail) continue;
+      if (headOutcome == _DGMatch.suspend) {
+        suspendReaders.addAll(headReaders);
+        continue;
+      }
+
+      // Head matched — evaluate the guard conjunction (fail dominates suspend)
+      var clauseFailed = false;
+      final clauseReaders = <int>{};
+      for (final g in clause.guards) {
+        final (result, readers) =
+            _evalDefinedGuardConjunct(g, frame, cx, depth, table);
+        if (result == GuardResult.failure) {
+          clauseFailed = true;
+          break;
+        }
+        if (result == GuardResult.suspend) clauseReaders.addAll(readers);
+      }
+      if (clauseFailed) continue;
+      if (clauseReaders.isNotEmpty) {
+        suspendReaders.addAll(clauseReaders);
+        continue;
+      }
+      return (GuardResult.success, const <int>{});
+    }
+
+    return suspendReaders.isNotEmpty
+        ? (GuardResult.suspend, suspendReaders)
+        : (GuardResult.failure, const <int>{});
+  }
+
+  /// Evaluate one guard conjunct of a test-only clause: a builtin-subset
+  /// guard (verdict matrices mirror the dedicated Ground/Known/GroundEqual
+  /// opcodes) or a recursive runtime-defined guard call.
+  (GuardResult, Set<int>) _evalDefinedGuardConjunct(
+      GGuardSpec g, Map<String, Object?> frame, RunnerContext cx, int depth,
+      Map<String, GuardProcSpec> table) {
+    final resolved = [for (final a in g.args) _dgResolve(a, frame, cx)];
+
+    switch (g.key) {
+      case 'ground/1':
+        {
+          // Verdict matrix mirrors the Ground opcode: writer presence
+          // dominates (fail / negated-success); readers only → suspend.
+          final readers = <int>{};
+          final hasUnboundWriter = _dgCollectUnbound(resolved[0], cx, readers);
+          if (readers.isNotEmpty && !hasUnboundWriter) {
+            return (GuardResult.suspend, readers);
+          }
+          final isGround = !hasUnboundWriter && readers.isEmpty;
+          final success = g.negated ? !isGround : isGround;
+          return (success ? GuardResult.success : GuardResult.failure, const <int>{});
+        }
+      case 'known/1':
+        {
+          final v = _dgDeref(resolved[0], cx);
+          if (v is VarRef && cx.rt.heap.isReader(v.addr)) {
+            return (GuardResult.suspend, {v.addr}); // may become known
+          }
+          final isKnown = v is! VarRef; // unbound writer → not known
+          final success = g.negated ? !isKnown : isKnown;
+          return (success ? GuardResult.success : GuardResult.failure, const <int>{});
+        }
+      case '=?=/2':
+        {
+          final readers = <int>{};
+          var hasUnboundWriter = _dgCollectUnbound(resolved[0], cx, readers);
+          hasUnboundWriter =
+              _dgCollectUnbound(resolved[1], cx, readers) || hasUnboundWriter;
+          if (hasUnboundWriter) return (GuardResult.failure, const <int>{});
+          if (readers.isNotEmpty) return (GuardResult.suspend, readers);
+          final (left, _) = _dereferenceWithTracking(resolved[0], cx);
+          final (right, _) = _dereferenceWithTracking(resolved[1], cx);
+          final equal = _termsEqual(left, right, cx);
+          final success = g.negated ? !equal : equal;
+          return (success ? GuardResult.success : GuardResult.failure, const <int>{});
+        }
+      default:
+        {
+          final spec = table[g.key];
+          if (spec == null || g.negated) {
+            throw StateError(
+                'Runtime-defined guard admitted an unsupported conjunct: $g');
+          }
+          return _evalDefinedGuardCall(spec, resolved, cx, depth + 1, table);
+        }
+    }
+  }
+
+  /// Head-pattern match against a caller term. Bindings go only into [frame].
+  _DGMatch _dgMatchTerm(GTerm pat, Object? value, Map<String, Object?> frame,
+      Set<int> readers, RunnerContext cx) {
+    final v = _dgDeref(value, cx);
+
+    if (pat is GVar) {
+      if (pat.isAnonymous) return _DGMatch.ok;
+      if (frame.containsKey(pat.name)) {
+        // Repeated head variable (constant-type SRSW relaxation): the second
+        // occurrence is a ground-equality test against the first capture.
+        return _dgTestEqual(frame[pat.name], v, readers, cx);
+      }
+      frame[pat.name] = v;
+      return _DGMatch.ok;
+    }
+
+    // A structure/constant is required below: an unbound reader suspends,
+    // an unbound writer fails (a pure test never binds the caller's writer).
+    if (v is VarRef) {
+      if (cx.rt.heap.isReader(v.addr)) {
+        readers.add(v.addr);
+        return _DGMatch.suspend;
+      }
+      return _DGMatch.fail;
+    }
+    if (v == null) return _DGMatch.fail;
+
+    if (pat is GConst) {
+      if (v is StructTerm || v is _TentativeStruct) return _DGMatch.fail;
+      return v == pat.value ? _DGMatch.ok : _DGMatch.fail;
+    }
+
+    final struct = pat as GStruct;
+    String functor;
+    List<Object?> structArgs;
+    if (v is StructTerm) {
+      functor = v.functor;
+      structArgs = v.args;
+    } else if (v is _TentativeStruct) {
+      functor = v.functor;
+      structArgs = v.args;
+    } else {
+      return _DGMatch.fail;
+    }
+    if (functor != struct.functor || structArgs.length != struct.args.length) {
+      return _DGMatch.fail;
+    }
+    var outcome = _DGMatch.ok;
+    for (var i = 0; i < struct.args.length; i++) {
+      final m = _dgMatchTerm(struct.args[i], structArgs[i], frame, readers, cx);
+      if (m == _DGMatch.fail) return _DGMatch.fail;
+      if (m == _DGMatch.suspend) outcome = _DGMatch.suspend;
+    }
+    return outcome;
+  }
+
+  /// Ground-equality discipline for repeated head variables:
+  /// unbound writer anywhere → fail; unbound reader(s) → suspend; else compare.
+  _DGMatch _dgTestEqual(
+      Object? a, Object? b, Set<int> readers, RunnerContext cx) {
+    final localReaders = <int>{};
+    var hasUnboundWriter = _dgCollectUnbound(a, cx, localReaders);
+    hasUnboundWriter = _dgCollectUnbound(b, cx, localReaders) || hasUnboundWriter;
+    if (hasUnboundWriter) return _DGMatch.fail;
+    if (localReaders.isNotEmpty) {
+      readers.addAll(localReaders);
+      return _DGMatch.suspend;
+    }
+    final (left, _) = _dereferenceWithTracking(a, cx);
+    final (right, _) = _dereferenceWithTracking(b, cx);
+    return _termsEqual(left, right, cx) ? _DGMatch.ok : _DGMatch.fail;
+  }
+
+  /// Resolve a guard-conjunct argument against the clause-local frame.
+  Object? _dgResolve(GTerm t, Map<String, Object?> frame, RunnerContext cx) {
+    if (t is GConst) return t.value;
+    if (t is GVar) {
+      if (!frame.containsKey(t.name)) {
+        throw StateError(
+            'Runtime-defined guard conjunct references unbound clause variable '
+            '${t.name} (SRSW should pair every guard reader with a head writer)');
+      }
+      return frame[t.name];
+    }
+    final s = t as GStruct;
+    return StructTerm(s.functor, [
+      for (final a in s.args) _dgWrap(_dgResolve(a, frame, cx)),
+    ]);
+  }
+
+  Term _dgWrap(Object? v) => v is Term ? v : ConstTerm(v);
+
+  /// Dereference a runtime term through σ̂w and the heap to a primitive value
+  /// (ConstTerm unwrapped), a structure, or an unbound VarRef.
+  Object? _dgDeref(Object? term, RunnerContext cx) {
+    var t = term;
+    while (true) {
+      if (t is ConstTerm) return t.value;
+      if (t is int) t = VarRef(t);
+      if (t is VarRef) {
+        final addr = t.addr;
+        if (cx.rt.heap.isReader(addr)) {
+          final writerAddr = cx.rt.heap.tryWriterForReader(addr);
+          if (writerAddr != null && cx.sigmaHat.containsKey(writerAddr)) {
+            t = cx.sigmaHat[writerAddr];
+            continue;
+          }
+          if (cx.sigmaHat.containsKey(addr)) {
+            t = cx.sigmaHat[addr];
+            continue;
+          }
+          if (cx.rt.heap.isReaderBound(addr)) {
+            t = cx.rt.heap.getReaderValue(addr);
+            continue;
+          }
+          return t;
+        } else {
+          if (cx.sigmaHat.containsKey(addr)) {
+            t = cx.sigmaHat[addr];
+            continue;
+          }
+          if (cx.rt.heap.isFullyBound(addr)) {
+            t = cx.rt.heap.getValue(addr);
+            continue;
+          }
+          return t;
+        }
+      }
+      return t;
+    }
+  }
+
+  /// Collect every unbound reader nested anywhere inside [term] into
+  /// [readers]; returns true iff an unbound writer occurs anywhere.
+  /// Structural mirror of the GroundEqual opcode's collectUnbound (visited
+  /// set guarantees termination on cyclic compounds).
+  bool _dgCollectUnbound(Object? term, RunnerContext cx, Set<int> readers) {
+    var hasUnboundWriter = false;
+    final visited = <int>{};
+    void walk(Object? t) {
+      if (t is VarRef && cx.rt.heap.isWriter(t.addr)) {
+        if (!visited.add(t.addr)) return;
+        final sigmaBinding = cx.sigmaHat[t.addr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (!cx.rt.heap.isFullyBound(t.addr)) {
+          hasUnboundWriter = true;
+        } else {
+          walk(cx.rt.heap.getValue(t.addr));
+        }
+      } else if (t is VarRef && cx.rt.heap.isReader(t.addr)) {
+        if (!visited.add(t.addr)) return;
+        final sigmaBinding = cx.sigmaHat[t.addr];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (!cx.rt.heap.isReaderBound(t.addr)) {
+          readers.add(t.addr);
+        } else {
+          walk(cx.rt.heap.getReaderValue(t.addr));
+        }
+      } else if (t is StructTerm) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is _TentativeStruct) {
+        for (final arg in t.args) {
+          walk(arg);
+        }
+      } else if (t is int) {
+        if (!visited.add(t)) return;
+        final sigmaBinding = cx.sigmaHat[t];
+        if (sigmaBinding != null) {
+          walk(sigmaBinding);
+        } else if (cx.rt.heap.isWriter(t)) {
+          if (!cx.rt.heap.isFullyBound(t)) {
+            hasUnboundWriter = true;
+          } else {
+            walk(cx.rt.heap.getValue(t));
+          }
+        } else if (!cx.rt.heap.isReaderBound(t)) {
+          readers.add(t);
+        } else {
+          walk(cx.rt.heap.getReaderValue(t));
+        }
+      }
+      // Constants and other leaves contribute nothing.
+    }
+
+    walk(term);
+    return hasUnboundWriter;
   }
 
   /// Format a term for display
@@ -3130,6 +3556,59 @@ class BytecodeRunner {
           } else {
             args.add(null);
           }
+        }
+
+        // 049 runtime-defined guards — evaluate clause specs three-valued
+        // BEFORE the blanket unbound-reader pre-suspend below: a defined
+        // guard may FAIL decidably while an argument reader is still unbound
+        // (v12: an excluded target makes the policy unsatisfiable without
+        // consulting reachability). Form (b): satisfiable/2 dispatches to the
+        // system guard primitive (bypassing the user-program table); form (a)
+        // and all other test-only procedures use the program's own table.
+        GuardProcSpec? definedGuard;
+        Map<String, GuardProcSpec> definedGuardTable;
+        if (policyGuardForm != 'a' &&
+            predicateName == 'satisfiable' &&
+            arity == 2) {
+          definedGuard = systemDefinedGuards['satisfiable/2'];
+          definedGuardTable = systemDefinedGuards;
+        } else {
+          definedGuard = prog.definedGuards['$predicateName/$arity'];
+          definedGuardTable = prog.definedGuards;
+        }
+        if (definedGuard != null) {
+          if (op.negated) {
+            throw StateError(
+                'Runtime-defined guard "$predicateName/$arity" cannot be negated '
+                '(compile-time admission should have rejected this)');
+          }
+          GuardResult dgResult;
+          Set<int> dgReaders;
+          try {
+            final r =
+                _evalDefinedGuardCall(definedGuard, args, cx, 0, definedGuardTable);
+            dgResult = r.$1;
+            dgReaders = r.$2;
+          } on StackOverflowError {
+            // Pathological/cyclic data can overflow the native stack before the depth backstop
+            // fires; surface it as the same loud, named guard error instead of crashing the VM.
+            throw StateError(
+                'Runtime-defined guard "$predicateName/$arity" exceeded the native stack '
+                '(cyclic/pathological data?)');
+          }
+          if (cx.debugOutput) {
+            print('[DEBUG] DefinedGuard $predicateName/$arity → $dgResult'
+                '${dgResult == GuardResult.suspend ? " readers=$dgReaders" : ""}');
+          }
+          if (dgResult == GuardResult.success) {
+            pc++;
+          } else if (dgResult == GuardResult.suspend) {
+            pc = _suspendAndFailMulti(cx, dgReaders, pc);
+          } else {
+            _softFailToNextClause(cx, pc);
+            pc = _findNextClauseTry(pc);
+          }
+          continue;
         }
 
         // If any arguments have unbound readers, suspend

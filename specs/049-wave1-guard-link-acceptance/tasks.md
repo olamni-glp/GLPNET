@@ -22,7 +22,7 @@
 
 **⚠️ T003 is the §1.14 HARD GATE for ALL US1 guard work (no guard implementation/compile/run before its addendum is recorded). T004 gates US2+US3 (delegation artifact). US4 has no foundational dependency.**
 
-- [ ] T003 R1 realization checkpoint with Gabi: present research.md R1 evidence (typed-glp-manual §8 + `glp_runtime/lib/compiler/partial_evaluator.dart` compile-time-only defined guards) with candidates (a1) compiler-extension vs (a3) re-stage-direct-to-form-(b), PLUS the empty-targets outcome for vectors v05/v12 (C# matcher delivers vacuously; proposal text fails); record his answer as a Clarifications addendum in `specs/049-wave1-guard-link-acceptance/spec.md`. STOP-and-wait task — no guard code before the addendum exists (FR-001, SC-001)
+- [X] T003 R1 realization checkpoint with Gabi: present research.md R1 evidence (typed-glp-manual §8 + `glp_runtime/lib/compiler/partial_evaluator.dart` compile-time-only defined guards) with candidates (a1) compiler-extension vs (a3) re-stage-direct-to-form-(b), PLUS the empty-targets outcome for vectors v05/v12 (C# matcher delivers vacuously; proposal text fails); record his answer as a Clarifications addendum in `specs/049-wave1-guard-link-acceptance/spec.md`. STOP-and-wait task — no guard code before the addendum exists (FR-001, SC-001)
 - [X] T004 [P] Produce the FR-016 delegation artifact `specs/049-wave1-guard-link-acceptance/gavri-task-prompt.md` per contracts/gavri-delegation.md (self-contained: branch off `049-wave1-guard-link-acceptance`, push-only-own-branch, environment discovery, quicer provisioning per `gleam_quic/profile_c/README.md`, in-process conformance, two-host pairing with Olamnit server at 192.168.0.143, evidence to `evidence/gavri/` pushed early + continuously, BLOCKED-record protocol)
 
 **Checkpoint**: T003 addendum recorded → US1 unlocked; T004 handed to Gabi → US2/US3 delegation can start; US4 can start any time.
@@ -39,11 +39,11 @@
 - [X] T006 [P] [US1] (124/124 green, matcher untouched) Add `csharp/glp_crdtmsg.tests/PolicyVectorParityTests.cs` reading vectors.json and driving `PolicyMatcher.Evaluate` on all `guard_only=false` vectors (characterization — green against the shipped matcher; `csharp/glp_crdtmsg/route/PolicyMatcher.cs` is READ-ONLY per FR-006); run `dotnet test csharp/glp_crdtmsg.tests`
 - [X] T007 [P] [US1] (written first; loads only after the T009 a1 seat) Write worked-example regression programs (typed, with `procedure` declarations) in `programs/tests/typed/policy_guard_worked.glp` asserting wx1 `→ succeeds`, wx2/wx3 `→ failed`, wx4 `→ suspended` under the REPL step limit (written FIRST; expected not to load until T009)
 - [X] T008 [US1] (all 12 vectors incl. guard_only) Write vector-driven guard programs in `programs/tests/typed/policy_guard_vectors.glp` covering every vectors.json entry (guard side runs ALL vectors incl. guard_only)
-- [ ] T009 [US1] Implement form (a) per the T003-ruled mechanism: guard + types in `programs/crdtmsg/policy_guard.glp` (+ the ruled compiler seat in `glp_runtime/lib/compiler/partial_evaluator.dart`/codegen ONLY if (a1) was ruled — additive, preserve working internals); follow typed-glp-manual §0.2/§0.3: show the proposed GLP and the goal before any load/run, using pre-approved suite invocations where available
-- [ ] T010 [US1] Wire T007/T008 programs into `test/run_all_tests.sh` (Section A runtime; suspend cases distinguished from hangs by step limit per research R6); run full REPL suite — baseline 524/525 preserved + new tests green; record form-(a) EquivalenceRun in `specs/049-wave1-guard-link-acceptance/evidence/guard/form-a.md`
-- [ ] T011 [US1] Evolve to form (b) system guard primitive per the T003/base ruling: additive guard registration in `glp_runtime/lib/compiler/analyzer.dart` guard tables + three-valued evaluation in `glp_runtime/lib/bytecode/runner.dart`; kernel-level blocker ⇒ record + escalate, ship gate stays closed (FR-008)
-- [ ] T012 [US1] Re-run the ENTIRE guard suite (worked examples + all vectors) under form (b); record form-(b) EquivalenceRun in `evidence/guard/form-b.md`; SC-009: outcome maps identical to form-(a) — any divergence is a defect in form (b), bug protocol BEFORE any fix (form (a) is reference)
-- [ ] T013 [US1] Final parity + gate audit: 100% guard-vs-matcher agreement on shared vectors (SC-003), `git diff` of `csharp/glp_crdtmsg/route/PolicyMatcher.cs` empty since baseline (FR-006), feature history shows zero guard code preceding the T003 addendum (SC-001); record verdicts in `evidence/guard/audit.md`
+- [X] T009 [US1] (gavri `7884fbbb`, 2026-07-09 — a1 seat: PE test-only pass-through + codegen `definedGuards` side table + runner three-valued evaluator + engine merge; `policy_guard.glp` loads; wx1–wx4 = S/F/F/Susp) Implement form (a) per the T003-ruled mechanism: guard + types in `programs/crdtmsg/policy_guard.glp` (+ the ruled compiler seat in `glp_runtime/lib/compiler/partial_evaluator.dart`/codegen ONLY if (a1) was ruled — additive, preserve working internals); follow typed-glp-manual §0.2/§0.3: show the proposed GLP and the goal before any load/run, using pre-approved suite invocations where available
+- [X] T010 [US1] (A29 block; full suite 526/527 = baseline 524/525 preserved + 2 new green; evidence/guard/form-a.md) Wire T007/T008 programs into `test/run_all_tests.sh` (Section A runtime; suspend cases distinguished from hangs by step limit per research R6); run full REPL suite — baseline 524/525 preserved + new tests green; record form-(a) EquivalenceRun in `specs/049-wave1-guard-link-acceptance/evidence/guard/form-a.md`
+- [X] T011 [US1] (gavri `06aaec6e` — native systemDefinedGuards clause-spec table in runner + analyzer non-negatable + builtinProcedures registration; pure-(b) declaration-only caller proven S/F/Susp; no kernel blocker) Evolve to form (b) system guard primitive per the T003/base ruling: additive guard registration in `glp_runtime/lib/compiler/analyzer.dart` guard tables + three-valued evaluation in `glp_runtime/lib/bytecode/runner.dart`; kernel-level blocker ⇒ record + escalate, ship gate stays closed (FR-008)
+- [X] T012 [US1] (full suite 529/528-pass @ 06aaec6e; SC-009 12/12+4/4 identical maps both forms, form-(a) env reference wired permanently; evidence/guard/form-b.md) Re-run the ENTIRE guard suite (worked examples + all vectors) under form (b); record form-(b) EquivalenceRun in `evidence/guard/form-b.md`; SC-009: outcome maps identical to form-(a) — any divergence is a defect in form (b), bug protocol BEFORE any fix (form (a) is reference)
+- [X] T013 [US1] (evidence/guard/audit.md — SC-003 PASS via shared vectors.json both suites green, FR-006 PolicyMatcher diff EMPTY since baseline, SC-001 addenda ancestry verified) Final parity + gate audit: 100% guard-vs-matcher agreement on shared vectors (SC-003), `git diff` of `csharp/glp_crdtmsg/route/PolicyMatcher.cs` empty since baseline (FR-006), feature history shows zero guard code preceding the T003 addendum (SC-001); record verdicts in `evidence/guard/audit.md`
 
 **Checkpoint**: US1 fully functional and independently verified — MVP delivered.
 
@@ -74,8 +74,8 @@
 **Independent Test**: 036 quickstart §7 with server on Olamnit, client(s) on gavri; full-duplex + mesh criteria pass across the wire (spec US3).
 
 - [X] T019 [US3] Prepare Olamnit server side (addr corrected to 192.168.0.136 — see evidence/two-host/prep.md; firewall rule + server start are engineer-held) per 036 quickstart §7: cert material present (`glpquick-cert`, distributed to gavri out-of-band — `.pfx` never committed), firewall UDP 8443 open, server command verified: `glp-quick --server --addr 192.168.0.143 --port 8443 --cert ./glpquick-cert --max-clients 4`; readiness note to `specs/049-wave1-guard-link-acceptance/evidence/two-host/prep.md`
-- [ ] T020 [US3] Execute the two-host run paired with gavri: connect, pin-verify, full-duplex, ≥4-client mesh; capture on-wire confirmation (UDP/QUIC capture note — not loopback); Olamnit-side records to `evidence/two-host/`, gavri-side records to `evidence/gavri/` (contract D2.4)
-- [ ] T021 [US3] Verify every 036 quickstart criterion has a per-criterion record; second-host-unavailable attempts recorded + rescheduled with gate closed (US3 scenario 2); record SC-006 verdict in `evidence/two-host/us3-verdict.md`
+- [X] T020 [US3] (run executed 2026-07-08 roles-flipped, gavri=server; records `evidence/two-host/run.md` + `evidence/gavri/20-two-host.md`; packet-capture line staged-not-taken, non-loopback proven by two-machine consoles — deviation recorded in run.md) Execute the two-host run paired with gavri: connect, pin-verify, full-duplex, ≥4-client mesh; capture on-wire confirmation (UDP/QUIC capture note — not loopback); Olamnit-side records to `evidence/two-host/`, gavri-side records to `evidence/gavri/` (contract D2.4)
+- [X] T021 [US3] (evidence/two-host/us3-verdict.md — SC-006 PASS, all five quickstart criteria per-criterion records; scenario 2 never arose) Verify every 036 quickstart criterion has a per-criterion record; second-host-unavailable attempts recorded + rescheduled with gate closed (US3 scenario 2); record SC-006 verdict in `evidence/two-host/us3-verdict.md`
 
 **Checkpoint**: US3 independently verified across physical hosts.
 
@@ -108,10 +108,25 @@
 
 ## Phase 8: Close-out & ship gate
 
-- [ ] T029 Evidence completeness sweep (FR-013): every FR-009..FR-012 criterion and every SC has at least one record under `specs/049-wave1-guard-link-acceptance/evidence/`; add the record-path references into this tasks.md against T010/T012/T013/T017/T018/T020/T021/T022–T024
-- [ ] T030 Final baselines (SC-004): `bash test/run_all_tests.sh` (baseline 524/525 + new guard tests green; delete stale `glp_runtime/.dart_tool/repl.dill` if unexpected failures), `dotnet test` (glp_crdtmsg.tests + glp_quick_host), `pytest glp_quick`; results to `evidence/final-baselines.md`
-- [ ] T031 Ship-gate audit (SC-010, Clarifications hard-gate): ALL FOUR user stories PASS their acceptance scenarios with zero deferred gate items; any BLOCKED record ⇒ ship stays closed pending Gabi's express re-ruling; audit note to `evidence/ship-gate.md`
-- [ ] T032 At wave close (with ship): advance roadmap features `glp-policy-guard` and `http3-quic-ws-link-full-acceptance` to shipped/closed with traceability to this feature recorded (FR-014, SC-008) via `buildkit-roadmap`; then ship via `buildkit ship --skip-preflight` (suites already run in T030)
+- [X] T029 (2026-07-09; reference table below) Evidence completeness sweep (FR-013): every FR-009..FR-012 criterion and every SC has at least one record under `specs/049-wave1-guard-link-acceptance/evidence/`; add the record-path references into this tasks.md against T010/T012/T013/T017/T018/T020/T021/T022–T024
+- [X] T030 (evidence/final-baselines.md — REPL 528/529 baseline-preserved, dotnet 124/124, quick-host builds, pytest 181+6skip) Final baselines (SC-004): `bash test/run_all_tests.sh` (baseline 524/525 + new guard tests green; delete stale `glp_runtime/.dart_tool/repl.dill` if unexpected failures), `dotnet test` (glp_crdtmsg.tests + glp_quick_host), `pytest glp_quick`; results to `evidence/final-baselines.md`
+- [X] T031 (evidence/ship-gate.md — ALL FOUR US PASS; sole BLOCKED record = MSVC-native quicer, non-gating with SC-005 met via WSL path, surfaced for Gabi's express nod at ship) Ship-gate audit (SC-010, Clarifications hard-gate): ALL FOUR user stories PASS their acceptance scenarios with zero deferred gate items; any BLOCKED record ⇒ ship stays closed pending Gabi's express re-ruling; audit note to `evidence/ship-gate.md`
+- [ ] T032 At wave close (with ship): advance roadmap features `glp-policy-guard` and `http3-quic-ws-link-full-acceptance` to shipped/closed with traceability to this feature recorded (FR-014, SC-008) via `buildkit-roadmap`; then ship via `buildkit ship --skip-preflight` (suites already run in T030) — **runs from the primary session on the canonical branch after PR #97 merges (SHIP-HANDOFF)**
+
+### Evidence record references (T029 / FR-013)
+
+| Criterion | Record |
+|---|---|
+| FR-009 / SC-005 (Profile C) | `evidence/gavri/10-profile-c.md`, `evidence/gavri/us2-verdict.md` (T017/T018) |
+| FR-010 (provisioning + BLOCKED escalation) | `evidence/gavri/10-profile-c.md`, `evidence/gavri/90-summary.md` |
+| FR-011 / SC-006 (two-host) | `evidence/two-host/run.md`, `evidence/two-host/us3-verdict.md`, `evidence/gavri/20-two-host.md` (T020/T021) |
+| FR-012 / SC-007 (marathon) | `evidence/marathon/run.md`, `evidence/marathon/kill-resume.md`, `evidence/marathon/redrive.md` (T022–T024) |
+| SC-001 / SC-003 / FR-006 | `evidence/guard/audit.md` (T013) |
+| SC-002 / form (a) | `evidence/guard/form-a.md` (T010) |
+| SC-009 / form (b) | `evidence/guard/form-b.md` (T012) |
+| SC-004 | `evidence/baseline.md` (T002), `evidence/final-baselines.md` (T030) |
+| SC-010 | `evidence/ship-gate.md` (T031) |
+| SC-008 | recorded at T032 (roadmap advance at wave close) |
 
 ---
 

@@ -119,6 +119,11 @@ const Set<String> builtinProcedures = {
   '@>=/2',
   // Structural equality guard
   '=?=/2',
+  // 049 form (b) system guard primitive (§1.14 ruling 2026-07-08): three-valued
+  // policy-satisfiability guard, implemented natively in the runner
+  // (BytecodeRunner.systemDefinedGuards). Registered here so a declaration-only
+  // caller parses/type-checks (same mechanism as atom/@<; no GLP clauses needed).
+  'satisfiable/2',
   // Univ operations
   '=../2',
   '..=/2',

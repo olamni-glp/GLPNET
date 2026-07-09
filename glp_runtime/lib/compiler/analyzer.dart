@@ -623,6 +623,9 @@ class Analyzer {
     'otherwise',
     // Time
     'wait', 'wait_until',
+    // 049 form (b) system guard primitive (§1.14 ruling 2026-07-08):
+    // three-valued satisfiable/2 — negation is not part of the ruling
+    'satisfiable',
   };
 
   // Body-only constructs that are NOT valid guards
