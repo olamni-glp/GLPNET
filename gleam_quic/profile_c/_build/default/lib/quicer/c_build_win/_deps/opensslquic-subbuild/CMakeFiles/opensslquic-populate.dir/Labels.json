@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/CMakeFiles/opensslquic-populate"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/CMakeFiles/opensslquic-populate.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/CMakeFiles/opensslquic-populate-complete.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-build.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-configure.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-download.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-install.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-patch.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-test.rule"
+		},
+		{
+			"file" : "D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/opensslquic-populate-prefix/src/opensslquic-populate-stamp/opensslquic-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"opensslquic-populate"
+		],
+		"name" : "opensslquic-populate"
+	}
+}

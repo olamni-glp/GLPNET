@@ -10,6 +10,10 @@
 //
 // The op is keyed by its DVV DOT (op_id) — the store seam, DISTINCT from any message msg_id (T025).
 // Appending an op whose dot is already present is a no-op (idempotent, FR-015).
+//
+// 048 (bk-colab-yngenios-transport, T012): this file WAL now implements the extracted IOpWal seam and
+// remains AS-IS alongside the PGlite-backed PgliteOpWal (048 D1/K1 — the colab journal-of-record in
+// PGlite); callers choose the backend, the seam is identical.
 
 using System.Security.Cryptography;
 using GlpRuntime.CrdtMsg.Crdt;
@@ -17,7 +21,7 @@ using GlpRuntime.CrdtMsg.Envelope;
 
 namespace GlpRuntime.CrdtMsg.Store;
 
-public sealed class OpWal
+public sealed class OpWal : IOpWal
 {
     private const int ShaLen = 32;
 

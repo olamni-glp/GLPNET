@@ -54,8 +54,8 @@ internal static class LwwMap
         string.Join("|", state.OrderBy(kv => kv.Key, StringComparer.Ordinal)
                               .Select(kv => $"{kv.Key}={kv.Value.Val}@{kv.Value.Dot}"));
 
-    /// <summary>Rebuild + canonicalize the projected state from a store.</summary>
-    public static string StateOf(OpWal wal) => Canonicalize(Projection().Rebuild(wal.Ops));
+    /// <summary>Rebuild + canonicalize the projected state from a store (any IOpWal backend, 048 T012).</summary>
+    public static string StateOf(IOpWal wal) => Canonicalize(Projection().Rebuild(wal.Ops));
 
     /// <summary>A deterministic op pool: two peers, overlapping keys incl. concurrent writes.</summary>
     public static List<Op> Pool()

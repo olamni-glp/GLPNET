@@ -15,10 +15,16 @@
 
 using System.Threading.Channels;
 
+using GlpRuntime.CrdtMsg.Crdt;
+
 namespace GlpRuntime.CrdtMsg.Route;
 
-/// <summary>One inbound link delivery: the authenticated sender's peer-name + the raw frame bytes.</summary>
-public readonly record struct LinkInbound(string FromPeer, byte[] Bytes);
+/// <summary>
+/// One inbound link delivery: the authenticated sender's peer-name + the raw frame bytes. 048 T013:
+/// deliveries are additionally tagged with the owning <see cref="Box"/> (defaulting to
+/// <see cref="Op.DefaultBox"/> so pre-048 construction sites are unchanged).
+/// </summary>
+public readonly record struct LinkInbound(string FromPeer, byte[] Bytes, string Box = Op.DefaultBox);
 
 /// <summary>
 /// The transport seam every routing path talks to. Sends opaque frame bytes to a named peer and
@@ -39,6 +45,18 @@ public interface ILinkTransport
 
     /// <summary>Inbound frames addressed to this endpoint, in arrival order.</summary>
     ChannelReader<LinkInbound> Inbound { get; }
+}
+
+/// <summary>
+/// The box-partitioned transport seam (048 T013 / contracts/peer-link.md): a transport that carries
+/// each box on its own lane — one QUIC stream per box on the real adapter — so a box's traffic never
+/// head-of-line-blocks another's. The plain <see cref="ILinkTransport.SendAsync"/> rides the
+/// <see cref="Op.DefaultBox"/> lane (back-compat with pre-048 callers).
+/// </summary>
+public interface IBoxLinkTransport : ILinkTransport
+{
+    /// <summary>Send opaque frame bytes to <paramref name="toPeer"/> on <paramref name="box"/>'s lane.</summary>
+    ValueTask SendAsync(string toPeer, string box, ReadOnlyMemory<byte> frameBytes, CancellationToken ct = default);
 }
 
 /// <summary>

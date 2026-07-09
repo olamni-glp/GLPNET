@@ -35,9 +35,22 @@ backward-breaking: old-valid instances that carry the removed element are reject
 This matches spec US4 acceptance scenario 2 (removal of a mandatory element under backward mode
 ⇒ incompatible); Avro-style ignore-unknown-field semantics do NOT apply here.
 
+**Additive-optional carve-out (engineer decision, 2026-07-08)**: adding an element with
+`occurs` min = 0 is deliberately **forward-compatible**§ even though, under the closed-world
+law, a new-valid instance that carries the new optional element is rejected by the old schema.
+Forward tolerance for additions is judged over the old schema's value space — new writers
+remain able to produce every instance shape old readers accept, and instances that use the new
+element are addressed to new readers by construction. This is the shipped
+`CompatMode.Forward` semantics ("old readers tolerate new writers — additive-optional",
+`WireRegistry.cs` XML-doc) and is what makes `Full` mean "additive-only evolution" rather than
+"no evolution at all". The asymmetry with removal is intended: a removed optional element is
+backward-breaking because old writers **actively produce** it, whereas an added optional
+element burdens old readers only when a writer opts into the new field. The strict acceptance-set
+reading of "forward" does NOT override this row.
+
 | Change in v(n+1) | Backward | Forward |
 |---|---|---|
-| Add element with `occurs` min = 0 (optional) | compatible | compatible |
+| Add element with `occurs` min = 0 (optional) | compatible | compatible§ |
 | Add element with min ≥ 1 (mandatory) | **breaks** | compatible |
 | Remove optional element | **breaks** (closed-world) | compatible |
 | Remove mandatory element | **breaks** (closed-world) | **breaks** |
@@ -50,6 +63,9 @@ This matches spec US4 acceptance scenario 2 (removal of a mandatory element unde
 | Remove a choice branch | **breaks** | compatible |
 | Change an element's type to a non-equivalent type | **breaks** | **breaks** |
 | Reorder sequence elements | **breaks** | **breaks** |
+
+§ See the additive-optional carve-out above — deliberate, decided over the strict
+acceptance-set reading of the forward definition.
 
 † Pattern subset/superset is decided on the R6 NFAs (language inclusion on the restricted
 subset); a pattern change whose inclusion cannot be established is conservatively **breaking**
