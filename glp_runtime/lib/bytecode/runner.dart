@@ -456,7 +456,7 @@ class BytecodeRunner {
   /// Loud backstop against unbounded Dart recursion on malformed cyclic data
   /// (the GLP-level equivalent would diverge under the REPL step limit; here
   /// we throw a named error instead of overflowing the stack).
-  static const int _definedGuardMaxDepth = 100000;
+  static const int _definedGuardMaxDepth = 5000;
 
   (GuardResult, Set<int>) _evalDefinedGuardCall(GuardProcSpec spec,
       List<Object?> callArgs, RunnerContext cx, int depth,
@@ -3582,8 +3582,20 @@ class BytecodeRunner {
                 'Runtime-defined guard "$predicateName/$arity" cannot be negated '
                 '(compile-time admission should have rejected this)');
           }
-          final (dgResult, dgReaders) =
-              _evalDefinedGuardCall(definedGuard, args, cx, 0, definedGuardTable);
+          GuardResult dgResult;
+          Set<int> dgReaders;
+          try {
+            final r =
+                _evalDefinedGuardCall(definedGuard, args, cx, 0, definedGuardTable);
+            dgResult = r.$1;
+            dgReaders = r.$2;
+          } on StackOverflowError {
+            // Pathological/cyclic data can overflow the native stack before the depth backstop
+            // fires; surface it as the same loud, named guard error instead of crashing the VM.
+            throw StateError(
+                'Runtime-defined guard "$predicateName/$arity" exceeded the native stack '
+                '(cyclic/pathological data?)');
+          }
           if (cx.debugOutput) {
             print('[DEBUG] DefinedGuard $predicateName/$arity → $dgResult'
                 '${dgResult == GuardResult.suspend ? " readers=$dgReaders" : ""}');

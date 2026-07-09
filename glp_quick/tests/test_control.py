@@ -38,3 +38,12 @@ def test_no_arbitrary_payload_is_ever_run_as_code() -> None:
     a = _agent()
     r = a.handle("__import__('os').system('echo pwned')", {})
     assert r["ok"] is False and r["error"] == "unsupported"
+
+
+def test_malformed_args_to_valid_command_returns_typed_error_not_crash() -> None:
+    # FR-018: a whitelisted command with malformed args must return a typed error, never raise —
+    # a raise would propagate out of run_agent's loop and tear down the long-running control agent.
+    a = _agent()
+    for bad in ("x", [1, 2], {"a": 1}, None):
+        r = a.handle("mesh_selftest", {"clients": bad})
+        assert r["ok"] is False and r["error"] == "bad_args", f"clients={bad!r} must be a typed error"

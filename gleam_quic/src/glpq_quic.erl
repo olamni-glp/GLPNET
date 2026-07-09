@@ -23,7 +23,7 @@
 -define(IDLE_MS, 7200000).     %% 2 h — same as both C# endpoints (idle chat links stay up)
 -define(TLS_ALERT_BAD_CERT, 42).
 
--record(s, {conn, stream, buf = <<>>, acc = none}).
+-record(s, {conn, stream, buf = <<>>, acc = none, acc_size = 0}).
 
 %% Entry from the Gleam main: Args are the host CLI args as binaries. Returns the exit status.
 client(Args) ->
@@ -147,7 +147,7 @@ map_transport_down(Reason) ->
         cert_no_cert -> {cert_mismatch, "cert_no_cert", 3};
         handshake_failure -> {cert_mismatch, "tls handshake_failure", 3};
         tls_error -> {cert_mismatch, "tls_error", 3};
-        alpn_neg_failure -> {alpn_version_mismatch, "alpn_neg_failure", 6};
+        alpn_neg_failure -> {quic_unsupported, "alpn_neg_failure", 6};
         unreachable -> {udp_blocked, "unreachable", 5};
         _ -> {udp_blocked, io_lib:format("transport_down: ~p", [Reason]), 5}
     end.
@@ -260,14 +260,24 @@ handle_frame(_Fin, 9, Payload, #s{stream = Stream} = S) ->  %% ping -> pong (tra
     {continue, S};
 handle_frame(_Fin, 10, _Payload, S) ->             %% unsolicited pong — ignore
     {continue, S};
-handle_frame(Fin, Op, Payload, #s{acc = Acc} = S) when Op =:= 0; Op =:= 1; Op =:= 2 ->
-    Acc1 = case Acc of none -> [Payload]; L -> [Payload | L] end,
-    case Fin of
+handle_frame(Fin, Op, Payload, #s{acc = Acc, acc_size = Sz} = S) when Op =:= 0; Op =:= 1; Op =:= 2 ->
+    Sz1 = Sz + byte_size(Payload),
+    if
+        Sz1 > ?MAX_FRAME ->
+            %% Total reassembled message exceeds the envelope bound: an authenticated peer streaming
+            %% endless non-FIN fragments (each under the per-frame cap) must not grow BEAM memory
+            %% without bound. Fault + tear down, matching the per-frame MAX_FRAME ceiling.
+            ctl("FAULT Transient quic/ws recv failed: reassembled message ~b exceeds max ~b", [Sz1, ?MAX_FRAME]),
+            {halt, closed(0)};
         true ->
-            deliver(iolist_to_binary(lists:reverse(Acc1))),
-            {continue, S#s{acc = none}};
-        false ->
-            {continue, S#s{acc = Acc1}}
+            Acc1 = case Acc of none -> [Payload]; L -> [Payload | L] end,
+            case Fin of
+                true ->
+                    deliver(iolist_to_binary(lists:reverse(Acc1))),
+                    {continue, S#s{acc = none, acc_size = 0}};
+                false ->
+                    {continue, S#s{acc = Acc1, acc_size = Sz1}}
+            end
     end;
 handle_frame(_Fin, Op, _Payload, _S) ->
     ctl("FAULT Transient quic/ws recv failed: unsupported opcode 0x~.16b", [Op]),

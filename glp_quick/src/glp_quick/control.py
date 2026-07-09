@@ -63,7 +63,11 @@ class ControlAgent:
         if cmd == "mesh_selftest":
             # Bounded: run the shipped local mesh self-test on THIS host, per-criterion pass/fail.
             from glp_quick.demo import run_demo
-            n = max(3, min(int(args.get("clients", 3)), 6))
+            try:
+                n = max(3, min(int(args.get("clients", 3)), 6))
+            except (TypeError, ValueError):
+                return {"ok": False, "cmd": "mesh_selftest", "error": "bad_args",
+                        "detail": "clients must be an integer"}
             rep = run_demo("127.0.0.1", None, self.cert_dir, stack="csharp", clients=n)
             return {"ok": bool(rep.ok), "cmd": "mesh_selftest",
                     "result": {"clients": n, "criteria": dict(rep.results)}}
@@ -92,7 +96,12 @@ def run_agent(addr: str, port: int, cert_dir: Path, agent_id: str = CTL_ID,
             except Exception:
                 reply, cmd = {"ok": False, "error": "bad_request"}, None
             else:
-                reply = agent.handle(cmd, cargs)
+                try:
+                    reply = agent.handle(cmd, cargs)
+                except Exception as exc:
+                    # A whitelisted command with malformed args (or a run_demo failure) must yield a
+                    # typed error, never tear down the long-running agent (FR-018; mirror the driver).
+                    reply = {"ok": False, "cmd": cmd, "error": "internal_error", "detail": str(exc)}
             h.send(GlpMessage(sender=agent_id, to=m.sender, payload=json.dumps(reply)))
             print(f"[ctl-agent] {cmd!r} from {m.sender} -> ok={reply.get('ok')}", flush=True)
     finally:
