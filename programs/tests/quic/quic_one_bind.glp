@@ -1,0 +1,44 @@
+% quic_one_bind.glp — feature 050 US1 (MVP). Role-parameterized producer/consumer split over a
+% GENUINE QUIC+WS link: link_id scheme "quic" selects the 036 real-QUIC transport (System.Net.Quic
+% / MsQuic, ALPN h3, mutual shared-cert SPKI pin) registered into the 025 LinkRuntime. ONE source,
+% role chosen by a ground AgentId (the @/boot idiom, FR-003). The producer (connector) streams
+% ground terms out then graceful-closes; the consumer (listener) receives each value, collects
+% them, and stops at stream-end. Every link is opened BY A GLP GOAL (FR-003/FR-012) — no external
+% harness. The kernels + wrappers (server_listener/client_connector/consume/produce) are reused
+% UNCHANGED (FR-019); "quic" is data.
+%
+% Run split across the two C# REPL hosts over the real LAN wire (the listener binds on Olamnit
+% 192.168.0.136; the connector dials it from gavri 192.168.0.108) — the consumer goal prints the
+% collected list. The hermetic same-host proof (real MsQuic loopback handshake, one-bind
+% exactly-once reactivation) lives in xUnit QuicLinkOneBindTests (SC-001).
+%
+%   Consumer (on Olamnit):   main(consumer, Got).   → Got = [10, 20, 30]
+%   Producer (on gavri):     main(producer, R).     → R = [], streams 10, 20, 30 then graceful-closes
+%   (Use a named var R, not `_`, at the C# REPL top level — the REPL goal parser rejects a bare `_`.)
+-mode(system).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Got?) :- Me? =?= consumer |
+    server_listener(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
+    consume_link(Link?, Got).
+main(Me, []) :- Me? =?= producer |
+    client_connector(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
+    produce_link(Link?, [10, 20, 30]).
+
+% Decompose the established Link, then consume just the inbound stream. The consumer sends nothing,
+% so it head-constructs [] on its outbound (canonical graceful close); In captures inbound.
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+% Decompose the established Link, then produce onto the outbound stream (the egress drainer ships
+% each ground value over the real QUIC wire; the [] base case graceful-closes). Inbound ignored.
+procedure produce_link(Link(_, _)?, Stream(_)?).
+produce_link(ch(_, Out?), Vals) :- produce(Vals?, Out).
+
+procedure produce(Stream(_)?, Stream(_)).
+produce([V|Vs], [V?|Out?]) :- ground(V?) | produce(Vs?, Out).
+produce([], []).

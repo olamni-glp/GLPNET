@@ -32,6 +32,13 @@ internal static class EntryPoint
             var link = LinkKernels.Install(engine.Runtime);
             link.Transports.Register(new TcpTransport());        // first real cross-process leaf (127.0.0.1)
             link.Transports.Register(new LoopbackTransport());   // in-process hermetic substrate
+            // feature 050 — register the genuine QUIC+WS leaf (036) so a GLP goal over a "quic"
+            // link_id reaches it through the unchanged 025 kernels. Load the PERMANENT shared trust
+            // material (cert + SPKI pin) from glpquick-cert/; fail-closed at startup if absent
+            // (FR-010/FR-011). No TCP/loopback fallback — QuicTransport refuses loudly on a host
+            // without QUIC (FR-002).
+            var (quicCert, quicPin) = SharedCertMaterial.LoadFromRepo();
+            link.Transports.Register(new QuicTransport(quicCert, quicPin));
         };
         return GlpRuntime.Repl.Program.Main(args);
     }

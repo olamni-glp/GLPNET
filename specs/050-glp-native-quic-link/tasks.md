@@ -30,9 +30,9 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 **Purpose**: known-good baseline + environment readiness.
 
-- [ ] T001 Baseline: run `dotnet test csharp/glp_link.tests` + `dotnet test csharp/glp_crdtmsg.tests` and `bash test/run_all_tests.sh`; confirm green (REPL baseline 524/525, 1 pre-existing AOT-smoke fail), then commit a baseline checkpoint (scoped to no changes — record the SHA).
-- [ ] T002 [P] Probe `QuicTransport.IsSupported` on this host (a throwaway `dotnet` probe or an xUnit skip-guard) and confirm `glpquick-cert/{glpquick.pfx,glpquick.fingerprint}` load: `X509CertificateLoader.LoadPkcs12` succeeds and `QuicTransport.SpkiPin(cert)` equals the fingerprint file. Record findings in `specs/050-glp-native-quic-link/research.md` (D-5 note).
-- [ ] T003 [P] Create `programs/tests/quic/` and confirm the reused wrappers `server_listener`/`client_connector`/`link_send`/`link_close`/`link_monitor` exist in `programs/self.glp` (no edits) — record the line anchors.
+- [X] T001 Baseline: run `dotnet test csharp/glp_link.tests` + `dotnet test csharp/glp_crdtmsg.tests` and `bash test/run_all_tests.sh`; confirm green (REPL baseline 524/525, 1 pre-existing AOT-smoke fail), then commit a baseline checkpoint (scoped to no changes — record the SHA).
+- [X] T002 [P] Probe `QuicTransport.IsSupported` on this host (a throwaway `dotnet` probe or an xUnit skip-guard) and confirm `glpquick-cert/{glpquick.pfx,glpquick.fingerprint}` load: `X509CertificateLoader.LoadPkcs12` succeeds and `QuicTransport.SpkiPin(cert)` equals the fingerprint file. Record findings in `specs/050-glp-native-quic-link/research.md` (D-5 note).
+- [X] T003 [P] Create `programs/tests/quic/` and confirm the reused wrappers `server_listener`/`client_connector`/`link_send`/`link_close`/`link_monitor` exist in `programs/self.glp` (no edits) — record the line anchors.
 
 ---
 
@@ -40,8 +40,8 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 **Purpose**: prerequisites shared by every story. ⚠️ No user-story work begins until this phase is complete.
 
-- [ ] T004 Reconciliation (READ-ONLY, no code): study `csharp/glp_crdtmsg/route/QuicLinkTransport.cs` + `route/LinkTransport.cs` vs `csharp/glp_link/transports/QuicTransport.cs`; write into `research.md` D-4 exactly how the crdtmsg router relates to the 025 link path, confirm 050 drives the in-process `glp_link` leaf, and flag any risk of double-wiring. If the router already carries a reusable crdtmsg envelope surface, note it for T017.
-- [ ] T005 Implement the cert/pin loader helper (composition-root scope): load `glpquick-cert/glpquick.pfx` → `X509Certificate2` (with private key, for mutual presentation) and `glpquick-cert/glpquick.fingerprint` → expected SPKI pin string; **fail-closed** (loud startup error) on missing/unreadable material — never a degraded no-pin mode. Place in the REPL shim area or a small `glp_link` helper consumed at the root.
+- [X] T004 Reconciliation (READ-ONLY, no code): study `csharp/glp_crdtmsg/route/QuicLinkTransport.cs` + `route/LinkTransport.cs` vs `csharp/glp_link/transports/QuicTransport.cs`; write into `research.md` D-4 exactly how the crdtmsg router relates to the 025 link path, confirm 050 drives the in-process `glp_link` leaf, and flag any risk of double-wiring. If the router already carries a reusable crdtmsg envelope surface, note it for T017.
+- [X] T005 Implement the cert/pin loader helper (composition-root scope): load `glpquick-cert/glpquick.pfx` → `X509Certificate2` (with private key, for mutual presentation) and `glpquick-cert/glpquick.fingerprint` → expected SPKI pin string; **fail-closed** (loud startup error) on missing/unreadable material — never a degraded no-pin mode. Place in the REPL shim area or a small `glp_link` helper consumed at the root.
 
 **Checkpoint**: foundation ready — user stories can begin (in priority order or parallel).
 
@@ -55,16 +55,16 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Tests for User Story 1 ⚠️ (write first, must fail before impl)
 
-- [ ] T006 [P] [US1] xUnit: registering `QuicTransport` → `Transports.Select(LinkScheme.Quic)` returns it; `Select` on an unregistered scheme throws — `csharp/glp_link.tests/QuicRegistrationTests.cs`.
-- [ ] T007 [P] [US1] xUnit: real QUIC link established via the kernel path; a writer→reader bind crosses; the reader suspends until the value arrives and reactivates **exactly once** — `csharp/glp_link.tests/QuicLinkOneBindTests.cs` (skip-guarded on `QuicTransport.IsSupported`).
-- [ ] T008 [P] [US1] xUnit: `IsSupported == false` path → loud fault (no TCP/loopback fallback, FR-002) — `csharp/glp_link.tests/QuicLinkOneBindTests.cs`.
+- [X] T006 [P] [US1] xUnit: registering `QuicTransport` → `Transports.Select(LinkScheme.Quic)` returns it; `Select` on an unregistered scheme throws — `csharp/glp_link.tests/QuicRegistrationTests.cs`.
+- [X] T007 [P] [US1] xUnit: real QUIC link established via the kernel path; a writer→reader bind crosses; the reader suspends until the value arrives and reactivates **exactly once** — `csharp/glp_link.tests/QuicLinkOneBindTests.cs` (skip-guarded on `QuicTransport.IsSupported`).
+- [X] T008 [P] [US1] xUnit: `IsSupported == false` path → loud fault (no TCP/loopback fallback, FR-002) — `csharp/glp_link.tests/QuicLinkOneBindTests.cs`.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Register `new QuicTransport(cert, pin)` in `out/csharp/glp_repl/Program.cs` (composition root, after tcp/loopback) per `contracts/transport-registration.md`; use the T005 loader. (Depends on T005.)
-- [ ] T010 [US1] Confirm the kernels reach the quic leaf UNCHANGED — trace `LinkTerms.ParseLinkId` → `LinkScheme.Of("quic")` → `TransportRegistry.Select` in `LinkSetupKernel`/`LinkListenKernel`; assert no kernel/wrapper edit was needed (FR-001/FR-019).
-- [ ] T011 [US1] Author `programs/tests/quic/quic_one_bind.glp` — role-parameterized listener/connector opening one `"quic"` link and crossing one bind; SRSW-clean, `procedure`-declared.
-- [ ] T012 [US1] Add a REPL regression to `test/run_all_tests.sh` that loads `quic_one_bind.glp` and asserts the one-bind reactivation (against a hermetic real-QUIC endpoint where available; otherwise gate on host QUIC support).
+- [X] T009 [US1] Register `new QuicTransport(cert, pin)` in `out/csharp/glp_repl/Program.cs` (composition root, after tcp/loopback) per `contracts/transport-registration.md`; use the T005 loader. (Depends on T005.)
+- [X] T010 [US1] Confirm the kernels reach the quic leaf UNCHANGED — trace `LinkTerms.ParseLinkId` → `LinkScheme.Of("quic")` → `TransportRegistry.Select` in `LinkSetupKernel`/`LinkListenKernel`; assert no kernel/wrapper edit was needed (FR-001/FR-019).
+- [X] T011 [US1] Author `programs/tests/quic/quic_one_bind.glp` — role-parameterized listener/connector opening one `"quic"` link and crossing one bind; SRSW-clean, `procedure`-declared.
+- [X] T012 [US1] Add a REPL regression to `test/run_all_tests.sh` that loads `quic_one_bind.glp` and asserts the one-bind reactivation (against a hermetic real-QUIC endpoint where available; otherwise gate on host QUIC support).
 
 **Checkpoint**: MVP — a GLP goal brings up one genuine QUIC link and a bind crosses it. STOP and VALIDATE.
 

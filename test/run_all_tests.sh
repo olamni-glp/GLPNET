@@ -44,6 +44,7 @@ TYPED="$(to_repl_path "$GLP_DIR/programs/tests/typed")"
 BOOK="$(to_repl_path "$GLP_DIR/programs/typed_book")"
 TC_DIR="$(to_repl_path "$GLP_RUNTIME/test/programs/typechecker")"
 MODED="$(to_repl_path "$GLP_RUNTIME/test/programs/moded_types")"
+QUIC="$(to_repl_path "$GLP_DIR/programs/tests/quic")"
 
 cd "$GLP_RUNTIME"
 
@@ -1021,6 +1022,11 @@ POSITIVE_FILES=(
     "$TYPED/param_stream_integer.glp"
     "$TYPED/param_channel.glp"
     "$TYPED/param_procedure_inference.glp"
+
+    # --- feature 050: GLP-native true-QUIC link (US1) — the one-bind program over a "quic"
+    #     link_id loads clean (SRSW + type-check + compile). The genuine one-bind wire crossing
+    #     is proven by xUnit QuicLinkOneBindTests (real MsQuic) + the two-host acceptance run. ---
+    "$QUIC/quic_one_bind.glp"
 )
 
 # Build REPL input: load each positive file with :clear between

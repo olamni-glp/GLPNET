@@ -361,3 +361,10 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   041** (which touches zero GLP runtime or test-program files). Feature 041's validation is the C#
   xUnit gates (253 tests green). The GLP suite needs the Windows runner (`glp_runtime/glp_repl.exe` or
   `dart run bin/glp_repl.dart`) wired into `run_all_tests.sh` — an escalation for Gabi, out of 041 scope.
+- **C# REPL rejects a bare `_` in a top-level goal (feature 050)** — a query argument that is the
+  anonymous writer `_` fails with `System.InvalidOperationException: Unsupported argument type:
+  UnderscoreTerm` (`out/csharp/.../glp_engine.cs` `_SetupArgument`), before any goal work runs. Use a
+  named variable instead: `main(producer, R).`, not `main(producer, _).` (the clause head still binds
+  `R = []`). Affects only the interactive REPL goal parser — `_` inside a loaded `.glp` clause is fine.
+  Relevant to the 050 two-host acceptance run (T043): drive the producer/consumer goals with named
+  vars. The Dart REPL is not affected in the same way.
