@@ -1,0 +1,203 @@
+//// glp/analysis/type_ast — AST for GLP type declarations (Yardeni-Shapiro),
+//// feature 050, T008.
+////
+//// Types are first-class syntactic elements parsed alongside clauses; the parser
+//// stores them in the `SourceModule` (glp/parser/ast) and the type checker (T018)
+//// consumes them.
+////
+//// Dart source of truth: glp_runtime/lib/analysis/type_checker/type_ast.dart.
+//// The Dart `TypeEnvironment` is checker machinery and lands with T018, not here.
+
+import gleam/int
+import gleam/list
+import gleam/option.{type Option, Some}
+
+/// Source position carried by every node (Dart AstNode line/column).
+pub type Pos {
+  Pos(line: Int, column: Int)
+}
+
+/// Classification of types by mode structure (type-environment.md): `Output` =
+/// no complementation in the definition; `Input` = complement of an output type
+/// (not directly defined); `Interactive` = contains internal complementation
+/// (`_?` or `T?` in alternatives).
+pub type TypeClassification {
+  Output
+  Input
+  Interactive
+}
+
+/// A type expression — a named reference or one alternative shape of a
+/// definition.
+pub type TypeExpr {
+  /// Reference to a named type, optionally input-moded (`Type?`), optionally
+  /// parameterized (`Stream(Integer)`).
+  TypeRef(name: String, is_input: Bool, type_args: List(TypeExpr), pos: Pos)
+  /// A constant alternative: `0`, `[]`, `foo`.
+  ConstantAlt(value: ConstValue, pos: Pos)
+  /// A structure alternative: `s(Nat)`, `tree(Nat, Tree, Tree)`.
+  StructAlt(functor: String, args: List(TypeExpr), pos: Pos)
+  /// Empty-list alternative: `[]`.
+  ListNilAlt(pos: Pos)
+  /// List-cons alternative: `[Head | Tail]`.
+  ListConsAlt(head: TypeExpr, tail: TypeExpr, pos: Pos)
+  /// Primitive mode alternative: `_` (output) or `_?` (input) — e.g.
+  /// `Any ::= _ ; _?.`
+  PrimitiveModeAlt(is_input: Bool, pos: Pos)
+  /// Difference-list alternative: `List \ List?`.
+  DiffListAlt(content: TypeExpr, hole: TypeExpr, pos: Pos)
+}
+
+/// A constant in a type alternative (Dart `Object value` — atom, int, or real;
+/// the Gleam port keeps the lexer's constant kind explicit).
+pub type ConstValue {
+  CvAtom(String)
+  CvInt(Int)
+  CvReal(Float)
+  CvString(String)
+}
+
+/// Primitive types (not defined via `::=`, handled specially by the compiler —
+/// Dart `TypeRef.builtins`).
+pub fn is_builtin_type(name: String) -> Bool {
+  case name {
+    "Integer" | "Real" | "Number" | "String" -> True
+    _ -> False
+  }
+}
+
+/// System types (defined via `::=` but not redefinable by the user — Dart
+/// `TypeRef.systemTypes`).
+pub fn is_system_type(name: String) -> Bool {
+  case name {
+    "Any" | "List" -> True
+    _ -> False
+  }
+}
+
+/// Mode dual per Definition 5.1 — the same reference with inverted mode
+/// (meaningful for `TypeRef`/`PrimitiveModeAlt`; identity otherwise).
+pub fn dual(expr: TypeExpr) -> TypeExpr {
+  case expr {
+    TypeRef(name, is_input, type_args, pos) ->
+      TypeRef(name, !is_input, type_args, pos)
+    PrimitiveModeAlt(is_input, pos) -> PrimitiveModeAlt(!is_input, pos)
+    _ -> expr
+  }
+}
+
+/// Whether a procedure-argument type expression is input (consume) mode
+/// (Dart `ProcArgTypeExpr.isInputMode`).
+pub fn is_input_mode(expr: TypeExpr) -> Bool {
+  case expr {
+    TypeRef(_, is_input, _, _) -> is_input
+    PrimitiveModeAlt(is_input, _) -> is_input
+    _ -> False
+  }
+}
+
+/// The type name of a procedure-argument expression, `None` for primitives
+/// (Dart `ProcArgTypeExpr.typeName`).
+pub fn type_name(expr: TypeExpr) -> Option(String) {
+  case expr {
+    TypeRef(name, _, _, _) -> Some(name)
+    _ -> option.None
+  }
+}
+
+/// A type definition `TypeName ::= alt1 ; alt2 ; … .`; parameterized types
+/// carry non-empty `type_params` (`Stream(X) ::= [] ; [X | Stream(X)].`).
+pub type TypeDef {
+  TypeDef(
+    name: String,
+    type_params: List(String),
+    alternatives: List(TypeExpr),
+    pos: Pos,
+  )
+}
+
+pub fn is_parameterized_def(def: TypeDef) -> Bool {
+  def.type_params != []
+}
+
+/// Classify a definition by mode structure (type-environment.md v0.5): any
+/// alternative containing complementation makes the type `Interactive`, else
+/// `Output`. (`Input` types are never directly defined.)
+pub fn classification(def: TypeDef) -> TypeClassification {
+  case list.any(def.alternatives, contains_complement) {
+    True -> Interactive
+    False -> Output
+  }
+}
+
+/// Does a type expression contain any complementation (`T?` or `_?`)?
+pub fn contains_complement(expr: TypeExpr) -> Bool {
+  case expr {
+    TypeRef(_, is_input, _, _) -> is_input
+    PrimitiveModeAlt(is_input, _) -> is_input
+    ListConsAlt(head, tail, _) ->
+      contains_complement(head) || contains_complement(tail)
+    StructAlt(_, args, _) -> list.any(args, contains_complement)
+    DiffListAlt(content, hole, _) ->
+      contains_complement(content) || contains_complement(hole)
+    ConstantAlt(_, _) | ListNilAlt(_) -> False
+  }
+}
+
+/// A procedure declaration `procedure name(Type1, Type2, …).` — argument types
+/// are `TypeRef` or `PrimitiveModeAlt`. Parameterized declarations
+/// (`procedure gethead(Stream(X)?, X).`) carry `type_params` and are templates
+/// instantiated per call site by the type checker.
+pub type ProcDecl {
+  ProcDecl(
+    name: String,
+    arg_types: List(TypeExpr),
+    type_params: List(String),
+    pos: Pos,
+    /// Implemented by the runtime (no GLP clauses).
+    is_builtin: Bool,
+    /// Declared `exported procedure`.
+    exported: Bool,
+    /// Declared `imported procedure`.
+    imported: Bool,
+    /// For imported procedures: module path (`social`, `ui#actors`); `None`
+    /// for ancestor scope.
+    module_path: Option(String),
+  )
+}
+
+pub fn arity(decl: ProcDecl) -> Int {
+  list.length(decl.arg_types)
+}
+
+pub fn is_parameterized_decl(decl: ProcDecl) -> Bool {
+  decl.type_params != []
+}
+
+/// "name/arity" lookup key (Dart `ProcDecl.key`).
+pub fn key(decl: ProcDecl) -> String {
+  decl.name <> "/" <> int.to_string(arity(decl))
+}
+
+/// The full qualified name — module path prefix for imported procedures
+/// (Dart `ProcDecl.qualifiedName`).
+pub fn qualified_name(decl: ProcDecl) -> String {
+  case decl.module_path {
+    Some(path) -> path <> "#" <> decl.name
+    option.None -> decl.name
+  }
+}
+
+/// TypeEnvironment lookup key including the module path for imported
+/// procedures: `factorial/2`, `math#factorial/2` (Dart `ProcDecl.qualifiedKey`).
+pub fn qualified_key(decl: ProcDecl) -> String {
+  qualified_name(decl) <> "/" <> int.to_string(arity(decl))
+}
+
+/// Mode of argument `i` (`True` = input mode; Dart `ProcDecl.isInputArg`).
+pub fn is_input_arg(decl: ProcDecl, i: Int) -> Bool {
+  case list.drop(decl.arg_types, i) {
+    [arg, ..] -> is_input_mode(arg)
+    [] -> False
+  }
+}

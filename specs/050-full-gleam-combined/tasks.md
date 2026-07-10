@@ -32,13 +32,13 @@
 
 **⚠️ CRITICAL**: No user story work until this phase is done
 
-- [ ] T006 Implement v2.16 opcode definitions in `glp_gleam/src/glp/bytecode/opcodes.gleam` per `docs/glp-bytecode-v216-complete.md` (no additions/renumbering — D4 discipline; port refs `glp_runtime/lib/bytecode/opcodes*.dart`)
-- [ ] T007 Implement bytecode program model + loader types in `glp_gleam/src/glp/bytecode/program.gleam` (procedure table, instruction stream, positional X-register file — FR-006; ref `asm.dart`/`asm.cs`)
-- [ ] T008 [P] Define AST types in `glp_gleam/src/glp/parser/ast.gleam` (SourceModule: types, procedure decls, clauses, directives — from Dart compiler AST)
-- [ ] T009 [P] Define engine core types in `glp_gleam/src/glp/engine/types.gleam` (Goal/Activation with goal_id + suspension_generation, run queue, states per data-model.md)
-- [ ] T010 Extend `glp_gleam/src/glp/runtime/suspension.gleam` (034 module) with generation-scoped wake: writer id → set of (goal_id, generation); atomic consume on bind (no double-wake)
-- [ ] T011 [P] Define staged-diagnostic type in `glp_gleam/src/glp/diagnostics.gleam` (stage name + location + reason; rejection classes matching reference: parse/SRSW/type/guard)
-- [ ] T012 Foundational gleeunit tests in `glp_gleam/test/glp/bytecode/opcodes_test.gleam` and `glp_gleam/test/glp/engine/dedup_key_test.gleam` (opcode table integrity; (goal_id, generation) dedup key drops stale wakes); plus dependency-policy assertion in `glp_gleam/test/glp/deps_policy_test.gleam` — fail if an OTP-abstraction package appears in `glp_gleam/gleam.toml`/`manifest.toml` (FR-007; analyze C1)
+- [X] T006 Implement v2.16 opcode definitions in `glp_gleam/src/glp/bytecode/opcodes.gleam` per `docs/glp-bytecode-v216-complete.md` (no additions/renumbering — D4 discipline; port refs `glp_runtime/lib/bytecode/opcodes*.dart`)
+- [X] T007 Implement bytecode program model + loader types in `glp_gleam/src/glp/bytecode/program.gleam` (procedure table, instruction stream, positional X-register file — FR-006; ref `asm.dart`/`asm.cs`)
+- [X] T008 [P] Define AST types in `glp_gleam/src/glp/parser/ast.gleam` (SourceModule: types, procedure decls, clauses, directives — from Dart compiler AST)
+- [X] T009 [P] Define engine core types in `glp_gleam/src/glp/engine/types.gleam` (Goal/Activation with goal_id + suspension_generation, run queue, states per data-model.md)
+- [X] T010 Extend `glp_gleam/src/glp/runtime/suspension.gleam` (034 module) with generation-scoped wake: writer id → set of (goal_id, generation); atomic consume on bind (no double-wake)
+- [X] T011 [P] Define staged-diagnostic type in `glp_gleam/src/glp/diagnostics.gleam` (stage name + location + reason; rejection classes matching reference: parse/SRSW/type/guard)
+- [X] T012 Foundational gleeunit tests in `glp_gleam/test/glp/bytecode/opcodes_test.gleam` and `glp_gleam/test/glp/engine/dedup_key_test.gleam` (opcode table integrity; (goal_id, generation) dedup key drops stale wakes); plus dependency-policy assertion in `glp_gleam/test/glp/deps_policy_test.gleam` — fail if an OTP-abstraction package appears in `glp_gleam/gleam.toml`/`manifest.toml` (FR-007; analyze C1)
 
 **Checkpoint**: foundation compiles + tests green (WSL) — user stories can begin
 
