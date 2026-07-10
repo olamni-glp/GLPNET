@@ -18,11 +18,11 @@
 
 **Purpose**: skeleton, baselines, toolchain checks — build stays green throughout
 
-- [ ] T001 Replace 033 placeholder modules with real subsystem skeletons (`glp_gleam/src/glp/{parser,analysis,compiler,bytecode,engine,repl,link}/` dirs + module stubs that compile); keep `gleam build --target erlang` green
-- [ ] T002 [P] Create `test/parity/` skeleton: `lib/normalize.sh` (shared normalization lib, empty rules to start), `goldens/` dir, runner stubs with host-requirement headers
-- [ ] T003 [P] Record baseline: run `bash test/run_all_tests.sh` (Dart) and `bash test/link/run_link_tests_cross.sh` (Dart↔C#), confirm green, note counts in `specs/050-full-gleam-combined/baseline.md`
-- [ ] T004 [P] Scaffold Lean Lake projects `glp_gleam/lean/WriterMguBindsOnlyWriters/` and `glp_gleam/lean/DistDerefConvergence/` (lakefile.lean + empty Basic.lean, `lake build` green) per repo convention
-- [ ] T005 Verify `gleam test` green under WSL on the skeleton (`cd /mnt/d/.../glp_gleam && gleam test`)
+- [X] T001 Replace 033 placeholder modules with real subsystem skeletons (`glp_gleam/src/glp/{parser,analysis,compiler,bytecode,engine,repl,link}/` dirs + module stubs that compile); keep `gleam build --target erlang` green
+- [X] T002 [P] Create `test/parity/` skeleton: `lib/normalize.sh` (shared normalization lib, empty rules to start), `goldens/` dir, runner stubs with host-requirement headers
+- [X] T003 [P] Record baseline: run `bash test/run_all_tests.sh` (Dart) and `bash test/link/run_link_tests_cross.sh` (Dart↔C#), confirm green, note counts in `specs/050-full-gleam-combined/baseline.md`
+- [X] T004 [P] Scaffold Lean Lake projects `glp_gleam/lean/WriterMguBindsOnlyWriters/` and `glp_gleam/lean/DistDerefConvergence/` (lakefile.lean + empty Basic.lean, `lake build` green) per repo convention
+- [X] T005 Verify `gleam test` green under WSL on the skeleton (`cd /mnt/d/.../glp_gleam && gleam test`)
 
 ---
 
