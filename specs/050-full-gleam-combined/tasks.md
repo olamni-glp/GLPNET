@@ -38,7 +38,7 @@
 - [ ] T009 [P] Define engine core types in `glp_gleam/src/glp/engine/types.gleam` (Goal/Activation with goal_id + suspension_generation, run queue, states per data-model.md)
 - [ ] T010 Extend `glp_gleam/src/glp/runtime/suspension.gleam` (034 module) with generation-scoped wake: writer id → set of (goal_id, generation); atomic consume on bind (no double-wake)
 - [ ] T011 [P] Define staged-diagnostic type in `glp_gleam/src/glp/diagnostics.gleam` (stage name + location + reason; rejection classes matching reference: parse/SRSW/type/guard)
-- [ ] T012 Foundational gleeunit tests in `glp_gleam/test/glp/bytecode/opcodes_test.gleam` and `glp_gleam/test/glp/engine/dedup_key_test.gleam` (opcode table integrity; (goal_id, generation) dedup key drops stale wakes)
+- [ ] T012 Foundational gleeunit tests in `glp_gleam/test/glp/bytecode/opcodes_test.gleam` and `glp_gleam/test/glp/engine/dedup_key_test.gleam` (opcode table integrity; (goal_id, generation) dedup key drops stale wakes); plus dependency-policy assertion in `glp_gleam/test/glp/deps_policy_test.gleam` — fail if an OTP-abstraction package appears in `glp_gleam/gleam.toml`/`manifest.toml` (FR-007; analyze C1)
 
 **Checkpoint**: foundation compiles + tests green (WSL) — user stories can begin
 
@@ -96,7 +96,7 @@
 
 **Independent Test**: `bash test/parity/run_gleam_corpus.sh` exits 0 with 100% agreement and wall-clock summary
 
-- [ ] T037 [US3] Implement `test/parity/record_dart_goldens.sh` (runs Dart REPL per corpus case, records normalized outcome + wall-clock into `test/parity/goldens/`; explicit re-record only — contracts/corpus-parity.md)
+- [ ] T037 [US3] Implement `test/parity/record_dart_goldens.sh` (runs Dart REPL per corpus case, records normalized outcome + wall-clock into `test/parity/goldens/`; explicit re-record only — contracts/corpus-parity.md). FIRST emit a reviewed `test/parity/corpus-manifest.md` pinning the case list (per-section include/exclude rationale over `test/run_all_tests.sh` sections A–K); goldens and parity (SC-001) are measured against the manifest (analyze A1)
 - [ ] T038 [US3] Implement shared normalization rules in `test/parity/lib/normalize.sh` (strip prompts/timing noise, stabilize variable numbering; sourced by recorder AND comparator)
 - [ ] T039 [US3] Implement `test/parity/run_gleam_corpus.sh` (drives Gleam REPL over the same case list, diffs vs goldens, asserts suite-level `gleam ≤ 10× dart` wall-clock, prints agreement summary)
 - [ ] T040 [P] [US3] Author GAP-G1/G2/G3/G8 + FORK-1 cases as named programs in `programs/tests/typed/` (per register definitions in `docs/research/glp-gleam-baseline/pipelines/P2-concerns/REGISTER.md`; single corpus home — no copies)
@@ -154,7 +154,7 @@
 
 - [ ] T064 [P] Update docs: `docs/known-issues.md` (new instance quirks), `glp_gleam/README` usage; run quickstart.md end-to-end as written and fix drift
 - [ ] T065 [P] Dossier bookkeeping in `docs/research/glp-gleam-baseline/pipelines/`: PROOFS/INDEX.md rows final, FB-M1-*/FB-M2-* obligations swept against PARITY-BAR.md, delivered D-refs annotated in RECONFIGURATION.md
-- [ ] T066 Full acceptance sweep: verify SC-001..SC-009 one by one; record evidence in `specs/050-full-gleam-combined/acceptance.md`
+- [ ] T066 Full acceptance sweep: verify SC-001..SC-009 one by one; record evidence in `specs/050-full-gleam-combined/acceptance.md` (record SC-008 interpretation: loopback applies to same-instance links (US4); cross-runtime coverage is TCP + QUIC-WS — analyze I1)
 - [ ] T067 [P] Cleanup: remove dead 033 placeholder remnants, `gleam format`, lint pass across `glp_gleam/`
 - [ ] T068 Final regression: Dart REPL suite, C# suites + Dart↔C# rig, `gleam test` (WSL), corpus parity, C#↔Gleam rig, both `lake build`s — all green in one recorded run
 
