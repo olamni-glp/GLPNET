@@ -13,7 +13,9 @@
 
 using System.Threading.Tasks;
 
+using GlpRuntime.CrdtMsg.Bridge;
 using GlpRuntime.Link.Primitives;
+using GlpRuntime.Link.Seam;
 using GlpRuntime.Link.Transports;
 
 namespace GlpRuntime.Repl.Host;
@@ -39,6 +41,11 @@ internal static class EntryPoint
             // without QUIC (FR-002).
             var (quicCert, quicPin) = SharedCertMaterial.LoadFromRepo();
             link.Transports.Register(new QuicTransport(quicCert, quicPin));
+            // feature 050 US2 (T018) — the "quic" link's L5 wire payload is a 041 crdtmsg envelope
+            // (FR-005). Inject the CrdtMsgPayloadCodec for the Quic scheme; loopback/tcp keep the
+            // default ground-relay blob (byte-for-byte unchanged). The kernels stay codec-agnostic —
+            // LinkEstablish selects the per-link codec from this registry at establishment.
+            link.PayloadCodecs.Register(LinkScheme.Quic, new CrdtMsgPayloadCodec());
         };
         return GlpRuntime.Repl.Program.Main(args);
     }

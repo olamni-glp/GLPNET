@@ -25,6 +25,10 @@
          composition root that wires it into the REPL engine; the dependency flows
          exe -> GlpLink -> glp_runtime_net (a DAG; the library never references GlpLink). -->
     <ProjectReference Include="..\..\..\csharp\glp_link\GlpLink.csproj" />
+    <!-- feature 050 US2: the crdtmsg payload codec (glp_crdtmsg → GlpLink). The composition root
+         is the sanctioned place to reference both leaves (research D-1 cycle resolution): it injects
+         CrdtMsgPayloadCodec for the "quic" scheme so glp_link stays codec-agnostic. -->
+    <ProjectReference Include="..\..\..\csharp\glp_crdtmsg\GlpCrdtMsg.csproj" />
   </ItemGroup>
 
 </Project>

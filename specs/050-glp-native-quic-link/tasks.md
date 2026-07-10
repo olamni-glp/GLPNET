@@ -78,18 +78,18 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Tests for User Story 2 ⚠️ (write first, must fail before impl)
 
-- [ ] T013 [P] [US2] xUnit: crdtmsg round-trip over a real quic link incl. one rich-text edit op; lossless incl. unknown-ignorable sections (using `csharp/glp_crdtmsg.tests` `SampleMessages.All()` incl. `"rich"`) — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
-- [ ] T014 [P] [US2] xUnit: malformed inputs (bad codec version byte, unknown must-understand tag, truncation, trailing bytes) rejected loud-fail — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
-- [ ] T015 [P] [US2] xUnit: the L5 payload observed on the wire is a crdtmsg envelope (SC-002), zero ad-hoc strings — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
+- [X] T013 [P] [US2] xUnit: crdtmsg round-trip over a real quic link incl. one rich-text edit op; lossless incl. unknown-ignorable sections (using `csharp/glp_crdtmsg.tests` `SampleMessages.All()` incl. `"rich"`) — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
+- [X] T014 [P] [US2] xUnit: malformed inputs (bad codec version byte, unknown must-understand tag, truncation, trailing bytes) rejected loud-fail — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
+- [X] T015 [P] [US2] xUnit: the L5 payload observed on the wire is a crdtmsg envelope (SC-002), zero ad-hoc strings — `csharp/glp_link.tests/CrdtMsgOnLinkTests.cs`.
 
 ### Implementation for User Story 2
 
 - [X] T016 [US2] Define `IPayloadCodec` (term-in/bytes-out, host-side, below GLP) in `csharp/glp_link/seam/IPayloadCodec.cs`; default impl preserves current `PayloadSerializer` behaviour byte-for-byte.
-- [ ] T017 [US2] Implement `CrdtMsgPayloadCodec` over `GlpRuntime.CrdtMsg.MessageCodec` in `csharp/glp_crdtmsg/` (which already references `glp_link`), injected at the composition root — the reference-cycle resolution in research D-1. Carries the rich-text model (FR-006).
-- [ ] T018 [US2] Wire per-link codec selection in `csharp/glp_link/primitives/LinkEstablish.cs`: the quic link gets `CrdtMsgPayloadCodec`; loopback/tcp keep the default. (Depends on T016, T017.)
+- [X] T017 [US2] Implement `CrdtMsgPayloadCodec` over `GlpRuntime.CrdtMsg.MessageCodec` in `csharp/glp_crdtmsg/` (which already references `glp_link`), injected at the composition root — the reference-cycle resolution in research D-1. Carries the rich-text model (FR-006). [`csharp/glp_crdtmsg/bridge/CrdtMsgPayloadCodec.cs`; grammar per contract Addendum A1.]
+- [X] T018 [US2] Wire per-link codec selection: the quic link gets `CrdtMsgPayloadCodec`; loopback/tcp keep the default. [Per-link selection rides the `PayloadCodecRegistry` consulted in `LinkEstablish` (US2a); the quic→codec registration is at the composition root `out/csharp/glp_repl/Program.cs`.] (Depends on T016, T017.)
 - [X] T019 [US2] Edit `csharp/glp_link/primitives/LinkEgress.cs` `ShipGround` (line ~36) to encode via the link's `IPayloadCodec` instead of the hard-coded `PayloadSerializer`.
 - [X] T020 [US2] Edit `csharp/glp_link/primitives/LinkPump.cs` inbound decode to use the link's `IPayloadCodec` before extending the `In` stream.
-- [ ] T021 [US2] Confirm the 025 `FrameCodec` (length+CRC+seq) still wraps the crdtmsg bytes unchanged (FR-016 reliability preserved); resolve research D-1 SC-002 reading (L5-payload-is-envelope) and record it in `research.md`.
+- [X] T021 [US2] Confirm the 025 `FrameCodec` (length+CRC+seq) still wraps the crdtmsg bytes unchanged (FR-016 reliability preserved); resolve research D-1 SC-002 reading (L5-payload-is-envelope) and record it in `research.md`. [Confirmed structurally (`LinkEgress.cs:36→43`) + empirically (T015 reassembles the framed wire bytes → decodes a valid envelope); recorded in `research.md`.]
 
 **Checkpoint**: US1 + US2 — genuine QUIC carrying crdtmsg envelopes.
 

@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+    <!-- feature 050 US2: CrdtMsgOnLinkTests drives the crdtmsg payload codec (glp_crdtmsg → glp_link);
+         the test project may reference both leaves (no cycle: test → {glp_link, glp_crdtmsg}). -->
+    <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
   </ItemGroup>
 
 </Project>
