@@ -11,6 +11,16 @@ The Full-Gleam chain is currently split across six interdependent refined roadma
 
 Folded constituent features (roadmap rows stay `refined`; advance/close them when this ships): `glp-gleam-compiler-and-loader`, `glp-gleam-bytecode-runner`, `glp-gleam-repl`, `glp-test-corpus-port-and-runner`, `glp-gleam-link-layer`, `cross-runtime-csharp-gleam-distributed-tests`. The `antlr4-shared-grammar-spike` scope decision is absorbed here (hand-ported recursive-descent parser conforming to the canonical shared grammar; no ANTLR-generated parser on BEAM — no hard dependency kept).
 
+## Clarifications
+
+### Session 2026-07-10
+
+- Q: Gleam link-layer transport scope for this feature? → A: Full multi-protocol parity with the shipped C# layer — in-process loopback, TCP, and QUIC-WS/HTTP3 are all in scope and gating.
+- Q: AtomVM/Profile-C acceptance scope? → A: BEAM-only acceptance; AtomVM compatibility preserved by construction (FR-007), not an acceptance gate.
+- Q: Cross-runtime capstone acceptance bar? → A: Full suite required — all 16 pair scenarios split C#↔Gleam must pass (16/16); hard gate.
+- Q: Performance expectation for the Gleam instance? → A: Sanity bound — the full shared corpus completes within 10× the Dart reference wall-clock; no stricter optimization goal.
+- Q: Discharge form for the two OPEN proof obligations? → A: Both mechanized and written — Lean proofs AND prose proofs in the feature dossier, plus targeted adversarial tests, for writer-MGU-under-value-copy and distributed-dereference convergence.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Load and run GLP programs on a standalone Gleam instance (Priority: P1)
@@ -67,7 +77,7 @@ A distributed-GLP operator connects a Gleam instance to a peer instance using th
 
 **Why this priority**: Networking (M2) extends the standalone instance to distributed use; it depends on the instance existing (P1/P2) and proven (P2 corpus).
 
-**Independent Test**: Bring up two instances on one host (loopback first, then socket transport), establish a link, exchange terms, and verify the received terms and the on-wire bytes.
+**Independent Test**: Bring up two instances on one host, establish a link over each in-scope transport (loopback, TCP, QUIC-WS/HTTP3), exchange terms, and verify the received terms and the on-wire bytes.
 
 **Acceptance Scenarios**:
 
@@ -133,16 +143,16 @@ GLP test/CI runs one side of a role-parameterized pair program on the shipped C#
 **Multi-protocol link layer**
 
 - **FR-013**: The link primitives (`link_send`, `link_recv`, and companions) MUST be ported so a Gleam instance can hold peer-to-peer links, using the shipped byte-for-byte TLV term codec and frame envelope (codec parity with the delivered codec feature).
-- **FR-014**: Distributed unification MUST use deferred-local-assignment; variables MUST globalize/localize on `known/1`; link faults MUST surface as data to the program rather than crashing the instance; transports MUST include in-process loopback first and socket transport after.
+- **FR-014**: Distributed unification MUST use deferred-local-assignment; variables MUST globalize/localize on `known/1`; link faults MUST surface as data to the program rather than crashing the instance; transports MUST reach full multi-protocol parity with the shipped C#/Dart layer — in-process loopback, TCP, and the QUIC-WS/HTTP3 channel protocol (clarified 2026-07-10: all gating, none deferred).
 - **FR-015**: Incoming frames MUST be treated as untrusted input per the owner wire-framing and deserialization-threat decisions (D11/D12): malformed input is rejected safely and reported.
 
 **Cross-runtime distributed tests**
 
-- **FR-016**: Role-parameterized pair programs MUST run split across the shipped C# instance and the Gleam instance over the link layer, and the adversarial-corpus verdicts MUST be identical to single-runtime reference runs (mirroring the Dart↔C# 16/16 suite).
+- **FR-016**: Role-parameterized pair programs MUST run split across the shipped C# instance and the Gleam instance over the link layer, and the adversarial-corpus verdicts MUST be identical to single-runtime reference runs across the **full** pair suite — all 16 scenarios (16/16), a hard acceptance gate (clarified 2026-07-10).
 
 **Proof and gate obligations**
 
-- **FR-017**: The two OPEN proof obligations — writer-MGU safety under value-copy semantics (gates M1) and distributed-dereference convergence (gates M2) — MUST be discharged and recorded within this feature before the corresponding milestone is declared; the quiescence oracle (GAP-G6) MUST exist before distributed acceptance is judged.
+- **FR-017**: The two OPEN proof obligations — writer-MGU safety under value-copy semantics (gates M1) and distributed-dereference convergence (gates M2) — MUST be discharged and recorded within this feature before the corresponding milestone is declared. Discharge form (clarified 2026-07-10): a mechanized Lean proof AND a written prose proof in the feature dossier, plus targeted adversarial tests, for each obligation. The quiescence oracle (GAP-G6) MUST exist before distributed acceptance is judged.
 
 ### Key Entities
 
@@ -164,16 +174,19 @@ GLP test/CI runs one side of a role-parameterized pair program on the shipped C#
 - **SC-002**: The ported corpus (including GAP-G1/G2/G3/G8 and FORK-1 as explicit cases) runs green on the Gleam instance.
 - **SC-003**: A user can load a corpus program and run a goal end-to-end in the standalone REPL, including `:trace` and `:limit`, with outcome reporting equivalent to the reference REPLs.
 - **SC-004**: For the codec test corpus, term encodings produced by the Gleam instance are byte-for-byte identical to the shipped reference encodings.
-- **SC-005**: The split-pair suite (one role on C#, one on Gleam) completes with verdicts identical to the single-runtime reference — target parity with the existing 16/16 cross-runtime result.
+- **SC-005**: The split-pair suite (one role on C#, one on Gleam) passes in full — all 16 pair scenarios (16/16) with verdicts identical to the single-runtime reference, matching the existing Dart↔C# result.
+- **SC-008**: Link-layer scenarios pass over each in-scope transport — loopback, TCP, and QUIC-WS/HTTP3 — with identical outcomes per scenario across transports.
+- **SC-009**: The full shared corpus run on the Gleam instance completes within 10× the recorded Dart reference wall-clock time (pathological-slowdown sanity bound, not an optimization target).
 - **SC-006**: Both OPEN proof obligations (writer-MGU under value-copy; distributed-dereference convergence) are recorded as discharged, and the quiescence oracle exists, before their gated milestones are declared.
 - **SC-007**: All existing Dart and C# suites remain green after this feature lands (no regressions to shipped runtimes).
 
 ## Assumptions
 
-- **Platform**: BEAM (Erlang/OTP) is the acceptance platform for this feature. Lightweight-platform (AtomVM / Profile-C) compatibility is preserved by construction (FR-007: no OTP-abstraction dependency; plain spawn), but AtomVM execution is not an acceptance gate here — the Profile-C runtime remains WSL-only as established by feature 049.
+- **Platform** (confirmed in clarification 2026-07-10): BEAM (Erlang/OTP) is the acceptance platform for this feature. Lightweight-platform (AtomVM / Profile-C) compatibility is preserved by construction (FR-007: no OTP-abstraction dependency; plain spawn), but AtomVM execution is not an acceptance gate here — the Profile-C runtime remains WSL-only as established by feature 049.
 - **Toolchain**: Windows-native builds work (`gleam build --target erlang`; OTP 29 / Gleam 1.17 / rebar3 3.27 on user PATH); Gleam unit tests run under WSL due to the known test-framework path-separator defect on Windows.
 - **Delivered prerequisites** (in place, relied upon, not re-delivered): Gleam subtree scaffold (specs/033), core terms + immutable heap (specs/034), codeconv Gleam language pair (specs/032), result codec + frame codec (specs/038), result envelope + deep-resolve, structured output-capture seam, monitor-primitive verification (specs/039, M2-0), multi-protocol link layer on C#/Dart (specs/025), HTTP3/QUIC-WS channel link proto.
 - **Authoritative decision record**: the 036 baseline-program dossier (decisions D1–D16, obligation sets FB-M1-*/FB-M2-*, outcome-equivalence Thm 3.34 / Rem 3.35) backs this spec; obligations cited here (PI:13, RISK-PROOF-writerMGU, RISK-PROOF-distDeref, GAP-G*, FORK-1, MISS-04, M2-0) are defined there and in specs/030-era contracts.
 - **Grammar conformance reference**: the canonical shared grammar file is the parser-conformance reference; conformance is by corpus-driven testing, not by generated code.
+- **QUIC groundwork**: QUIC-WS/HTTP3 transport parity on BEAM builds on the existing `gleam_quic` groundwork in this repo (quicer/msquic), delivered with the QUIC-WS channel link proto prerequisite.
 - **Roadmap reconciliation**: the six constituent roadmap rows remain `refined` during this feature and are advanced/closed when it ships; the `wave-3-consolidated-full-gleam-chain` ordering row is superseded.
 - **Parity definition**: M2 parity means observable outcome/wire parity, not instruction-set identity between runtimes.
