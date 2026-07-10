@@ -4,7 +4,7 @@ description: "Advisory pipeline status, switch, history, and team coordinator fo
 argument-hint: "[status|coordinator|switch <feature_id>|history [--stage <s>] [--status <s>]]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-builder.md"
 user-invocable: true
 disable-model-invocation: false

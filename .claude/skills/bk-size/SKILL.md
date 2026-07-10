@@ -4,7 +4,7 @@ description: "Advisory story-point sizing & per-stage token tracking across the 
 argument-hint: "[init | set | show | history | confirm | decline | prompt | config-item [suggest|list|confirm|remove] | rollup | tokens [record|report] | scheme [list|show|define|set-active] | summary]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-size.md"
 user-invocable: true
 disable-model-invocation: false

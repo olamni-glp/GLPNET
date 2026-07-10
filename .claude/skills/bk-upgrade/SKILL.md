@@ -4,7 +4,7 @@ description: "Migrate a legacy speckit-branded project to buildkit naming, and u
 argument-hint: "[status|migrate|apply] [--target <dir>] [--dry-run] [--source repo|local|in-place] [--ref <git-ref>] [--source-path <dir>] [--yes]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-upgrade.md"
 user-invocable: true
 disable-model-invocation: false

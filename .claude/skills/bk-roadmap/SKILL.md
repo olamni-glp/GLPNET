@@ -4,7 +4,7 @@ description: "Durable, per-repo roadmap at the front of the buildkit pipeline. C
 argument-hint: "[init | add-epic | add-feature | edit-feature | review [propose-scores|set-score|rank|override|signoff|deps] | add-dependency | confirm-dependency | promote | brief | next | link | status]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-roadmap.md"
 user-invocable: true
 disable-model-invocation: false
@@ -65,6 +65,24 @@ Sub-commands (all reachable as `python -m buildkit_cli.roadmap <subcommand>`):
   the top of every subcommand.
 - `status` — advisory snapshot: epics → grouped features → state, WSJF/RICE,
   rank, and dependency flags (FR-016).
+- `export [--out-dir <path>] [--stdout] [--quiet]` — write the full roadmap as a
+  deterministic, secret-redacted, GitHub-trackable JSON snapshot to
+  `.specify/roadmap-sync/exports/<hostname>__<repo>__<timestamp>.json` (spec-043
+  FR-001…FR-005a). Re-exporting unchanged state is byte-identical (timestamp is
+  filename-only). The journal is the system of record; HEAD is rebuildable.
+- `import [--in-dir <path>] [--file <p> …] [--dry-run] [--rebuild-manifest]
+  [--quiet]` — apply not-yet-imported export files, merging idempotently by
+  `guid` (CRDT union). Slot (slug) collisions resolve first-claim-wins with the
+  loser non-destructively re-sequenced; applied files are dual-tracked in PGlite
+  + a gitignored JSON manifest (FR-007, FR-012…FR-019).
+- `replay [--from-files <dir>] [--verify] [--quiet]` — rebuild HEAD
+  deterministically from the journal (disaster recovery / new-host bootstrap).
+  `--from-files` imports first; `--verify` asserts HEAD matches the projection
+  without mutating it (FR-008, FR-009). Order-independent.
+
+These three are **advisory & additive** like the rest of the roadmap CLI — none
+auto-invokes a `/bk-*` command, and the CRDT schema evolution is a strictly
+additive, idempotent migration (no roadmap row is ever deleted).
 
 ## Outline
 
