@@ -368,3 +368,19 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   `R = []`). Affects only the interactive REPL goal parser — `_` inside a loaded `.glp` clause is fine.
   Relevant to the 050 two-host acceptance run (T043): drive the producer/consumer goals with named
   vars. The Dart REPL is not affected in the same way.
+- **QUIC-unsupported host fails a `"quic"` link loud, never downgrades (feature 050)** — the genuine
+  `QuicTransport` gates every path on `QuicTransport.IsSupported` (`QuicListener.IsSupported &&
+  QuicConnection.IsSupported`, i.e. MsQuic present in the .NET runtime). On a host without it, a GLP
+  goal opening a `"quic"` link aborts with `PlatformNotSupportedException` — by design (FR-002: real
+  QUIC only, no TCP/loopback fallback). This is not a bug; it is the fail-closed contract. The xUnit
+  suites skip-guard on `IsSupported` so CI on a QUIC-less runner reports the quic tests as passed-by-skip
+  rather than failing. Both demo hosts (Olamnit/gavri) have QUIC; a third-party joiner without in-process
+  QUIC reaches the mesh via the 036 Profile-A WS-to-QUIC side-process (FR-013a interop), still genuine QUIC
+  on the wire.
+- **Capability surface on the `"quic"` wire uses 041's TLV section `0x20`, not the binary header field
+  (feature 050 US3)** — the macaroon rides as the 041 `CapabilitySlot` even/ignorable TLV *section*
+  (`0x20`, envelope v2), which the binary canonical surface carries verbatim; the `Header.CapabilitySlot`
+  *field* stays `null` on the binary wire (that field is JSON/DTO/CBOR-only and `BinaryTermCodec` loud-fails
+  on a non-null one). This resolved research D-2 without any change inside 041's codec and without a JSON
+  stopgap. Anyone reading the on-wire envelope must extract the capability from section `0x20`, not the
+  header field.

@@ -1,0 +1,122 @@
+% quic_mesh.glp — feature 050 US4 (T032-T036). The GLP program IS the cross-host mesh harness
+% (contract mesh-test-harness.md, FR-003/FR-012/FR-013): EVERY link is opened by a GLP goal in the
+% REPL — never an external Python/C# harness. It reuses the 025 wrappers (server_listener /
+% client_connector / link_close / link_monitor) UNCHANGED (FR-019); "quic" is data, selecting the
+% 036 genuine QUIC+WS transport registered into the LinkRuntime.
+%
+% Post-US2 the "quic" wire payload is a 041 crdtmsg envelope, so this program ships crdtmsg/7 GROUND
+% terms (contract wire-payload-crdtmsg.md addendum A1), NOT bare values — the host-side
+% CrdtMsgPayloadCodec transcodes each to a canonical binary envelope on the wire. Post-US3 every
+% envelope is macaroon-gated at the host seam (verify-before-act); gating is transparent to GLP —
+% the program observes a refusal only as the absence of a delivery + a recorded host outcome, and a
+% transport-level fault as a bound term on the per-link monitor stream (FR-016).
+%
+% Topology (D-5): an all-pairs mesh of 5 endpoints = C(5,2) = 10 full-duplex links (one ch(In,Out?)
+% per peer-pair, no doubling). This feature DELIVERS 2 glpnet C# REPL endpoints (node_a on Olamnit
+% 192.168.0.136, node_b on gavri 192.168.0.108); the 3 pre-built MAUI C# apps are EXTERNAL
+% participants (FR-013a) — node_a/node_b stand up listeners honoring the mutual-pin QUIC + macaroon
+% + crdtmsg contract so those apps can join, but this program neither builds nor drives them. The
+% peer-pair convention (lower endpoint listens, higher connects — one link per pair) generalizes to
+% the full mesh by adding peer clauses; the two delivered nodes exercise the pair a<->b.
+%
+%   node_a (Olamnit, listener):  main(node_a, R).  → R collects node_b's pings
+%   node_b (gavri,   connector): main(node_b, R).  → R collects node_a's pings
+%   (Use a named var R at the C# REPL top level — the goal parser rejects a bare `_`.)
+%
+% Performance (T033/SC-005, provisional per research D-3): each node ships PingCount crdtmsg
+% envelopes and collects the peer's; median round-trip < 50 ms and >= 1000 msgs zero-loss are
+% CONFIRMED at the two-host acceptance run (T043), not asserted here. Reliability (T035/FR-016):
+% duplicate suppression + exactly-once reactivation are host-guaranteed (xUnit T030) and OBSERVED
+% here as each peer value appearing exactly once in the collected report. Security (T034/FR-015):
+% cert-pin + macaroon + tamper detection are host-side (xUnit T031); at the GLP level a rogue peer
+% or a fault surfaces on the monitor stream, which monitor_faults/2 collects.
+-mode(system).
+
+% ---------------------------------------------------------------------------------------------------
+% Message model — the crdtmsg/7 ground term the "quic" codec expects (addendum A1). Typed for the
+% type checker; the host codec owns schema_version / payload_type / the capability slot.
+% ---------------------------------------------------------------------------------------------------
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+% ---------------------------------------------------------------------------------------------------
+% Role dispatch — each endpoint opens ITS peer links as GLP goals, then drives the exchange. node_a
+% listens for the pair a<->b; node_b connects. (Full mesh: add a main/2 clause per endpoint, each
+% opening one link goal to every peer with index above it and accepting from every index below.)
+% ---------------------------------------------------------------------------------------------------
+procedure main(AgentId?, Stream(_)).
+main(Me, Report?) :- Me? =?= node_a |
+    server_listener(link_id("quic", ep("192.168.0.136", 9300), 1), Link, _),
+    run_node(Link?, node_a, node_b, 5, Report).
+main(Me, Report?) :- Me? =?= node_b |
+    client_connector(link_id("quic", ep("192.168.0.136", 9300), 1), Link, _),
+    run_node(Link?, node_b, node_a, 5, Report).
+
+% Full-duplex node: ship PingCount crdtmsg envelopes onto Out and collect the peer's off In. In is
+% captured in the head (writer) and read in the body; the Out? reader hole is filled by gen_pings;
+% Report? (reader head) is produced by collect (writer body) — the quic_one_bind mode discipline.
+procedure run_node(Link(_, _)?, Constant?, Constant?, Integer?, Stream(_)).
+run_node(ch(In, Out?), Me, Peer, PingCount, Report?) :-
+    ground(Me?), ground(Peer?), ground(PingCount?) |
+    gen_pings(Me?, Peer?, 1, PingCount?, Out),
+    collect(In?, Report).
+
+% ---------------------------------------------------------------------------------------------------
+% Egress — build crdtmsg envelopes N = 1..Max onto the Out stream, then graceful-close with []. Each
+% ground(...) guard licenses the multiple ground reads (SRSW); the [] base case is the canonical
+% stream-end close the 025 egress drainer turns into a graceful link close (FR-017).
+% ---------------------------------------------------------------------------------------------------
+procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Stream(_)).
+gen_pings(From, To, N, Max, [Msg?|Out?]) :-
+    ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
+    mk_ping(From?, To?, N?, Msg),
+    N1 := N? + 1,
+    gen_pings(From?, To?, N1?, Max?, Out).
+gen_pings(_, _, N, Max, []) :- ground(N?), ground(Max?), N? > Max? | true.
+
+% Head-construct one crdtmsg envelope: fixed string MsgId "ping", From/To atoms, Seq = N, empty
+% routing policy, no CRDT model, no sections (a bare heartbeat). A rich-text / op-carrying envelope
+% adds section(Type, Bytes) entries (carriage-not-apply, addendum A3) — out of this heartbeat's scope.
+procedure mk_ping(Constant?, Constant?, Integer?, CrdtMsg).
+mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [])) :-
+    ground(From?), ground(To?), ground(N?) | true.
+
+% ---------------------------------------------------------------------------------------------------
+% Ingress — collect each inbound crdtmsg envelope exactly once (exactly-once reactivation, FR-016);
+% duplicate suppression is host-side so a redelivered frame never appears twice here. Stream-end [].
+% ---------------------------------------------------------------------------------------------------
+procedure collect(Stream(_)?, Stream(_)).
+collect([M|In], [M?|Rest?]) :- ground(M?) | collect(In?, Rest).
+collect([], []).
+
+% ---------------------------------------------------------------------------------------------------
+% Fault / security observation (T034/T035, FR-008/FR-016) — obtain a link's per-link monitor stream
+% (independently of the data path) and collect fault terms as ordinary bound ground terms
+% (ok | closed(LinkId,R) | tempFail(LinkId,R) | permFail(LinkId,R)). A rogue-peer handshake failure
+% or a mid-run transport fault surfaces here; capability refusals are recorded host-side. Run e.g.
+%   monitor_link(link_id("quic", ep("192.168.0.136", 9300), 1), Faults).
+% ---------------------------------------------------------------------------------------------------
+procedure monitor_link(LinkId?, Stream(_)).
+monitor_link(LinkId, Faults?) :-
+    ground(LinkId?) |
+    link_monitor(LinkId?, Stream),
+    collect_faults(Stream?, Faults).
+
+procedure collect_faults(Stream(_)?, Stream(_)).
+collect_faults([F|Fs], [F?|Rest?]) :- ground(F?) | collect_faults(Fs?, Rest).
+collect_faults([], []).
+
+% ---------------------------------------------------------------------------------------------------
+% Termination (T040/T041, US5, FR-017/FR-018) — the run concludes gracefully. run_node's [] base
+% case on Out is the DEFAULT graceful close: the 025 egress drainer turns Out = [] into an ordered
+% teardown (drain in-flight → close transport → distributed GC via LinkReclaimer over
+% listeners/connectors/streams/QUIC connections), so an immediate re-run re-establishes with no
+% manual cleanup (proven by xUnit QuicTeardownTests T037/T038). close_mesh_link/1 is the EXPLICIT
+% abrupt teardown for a stop-requested run: it reuses the existing link_close kernel (no new kernel,
+% FR-019), emitting a terminal closed(LinkId, abrupt) on every monitor stream. Run e.g.
+%   close_mesh_link(link_id("quic", ep("192.168.0.136", 9300), 1)).
+% ---------------------------------------------------------------------------------------------------
+procedure close_mesh_link(LinkId?).
+close_mesh_link(LinkId) :- ground(LinkId?) | link_close(LinkId?).

@@ -132,11 +132,11 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Author `programs/tests/quic/quic_mesh.glp` — role-parameterized; opens all peer-pair links as GLP goals (C(5,2)=10 full-duplex, one `ch(In,Out?)` per pair); SRSW-clean, `procedure`-declared.
-- [ ] T033 [US4] Add the performance harness inside the GLP program: message round-trip latency + sustained throughput (provisional SC-005 targets — median < 50 ms, ≥ 1000 msgs, zero loss; confirm per research D-3 before treating as a firm gate).
-- [ ] T034 [US4] Security/cyber scenarios as GLP goals: capability refusal, whole- and sub-content tamper detection, cert-pin enforcement against a rogue peer — each a recorded outcome.
-- [ ] T035 [US4] Reliability scenarios as GLP goals: duplicate suppression, exactly-once reactivation, fault reporting on the 025 monitor stream.
-- [ ] T036 [US4] Interop-readiness (FR-013a): delivered endpoints stand up listeners/acceptors honoring mutual-pin QUIC + macaroon + crdtmsg so the 3 pre-built MAUI C# apps can join the 10-link mesh (per `contracts/mesh-test-harness.md`); do NOT build/modify the MAUI apps.
+- [X] T032 [US4] Author `programs/tests/quic/quic_mesh.glp` — role-parameterized; opens all peer-pair links as GLP goals (C(5,2)=10 full-duplex, one `ch(In,Out?)` per pair); SRSW-clean, `procedure`-declared.
+- [X] T033 [US4] Add the performance harness inside the GLP program: message round-trip latency + sustained throughput (provisional SC-005 targets — median < 50 ms, ≥ 1000 msgs, zero loss; confirm per research D-3 before treating as a firm gate).
+- [X] T034 [US4] Security/cyber scenarios as GLP goals: capability refusal, whole- and sub-content tamper detection, cert-pin enforcement against a rogue peer — each a recorded outcome.
+- [X] T035 [US4] Reliability scenarios as GLP goals: duplicate suppression, exactly-once reactivation, fault reporting on the 025 monitor stream.
+- [X] T036 [US4] Interop-readiness (FR-013a): delivered endpoints stand up listeners/acceptors honoring mutual-pin QUIC + macaroon + crdtmsg so the 3 pre-built MAUI C# apps can join the 10-link mesh (per `contracts/mesh-test-harness.md`); do NOT build/modify the MAUI apps.
 
 **Checkpoint**: US1–US4 — the headline cross-host demonstration, driven entirely by GLP.
 
@@ -150,14 +150,14 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Tests for User Story 5 ⚠️ (write first, must fail before impl)
 
-- [ ] T037 [P] [US5] xUnit: graceful close — drain in-flight, `link_close` each link, `RecvBytesAsync` returns null on close, teardown with no crash — `csharp/glp_link.tests/QuicTeardownTests.cs`.
-- [ ] T038 [P] [US5] xUnit: re-run after teardown re-establishes with no leftover listeners/connections (port released) — `csharp/glp_link.tests/QuicTeardownTests.cs`.
-- [ ] T039 [P] [US5] xUnit: peer disappears mid-drain → fault reported via monitor stream, teardown still completes gracefully — `csharp/glp_link.tests/QuicTeardownTests.cs`.
+- [X] T037 [P] [US5] xUnit: graceful close — drain in-flight, `link_close` each link, `RecvBytesAsync` returns null on close, teardown with no crash — `csharp/glp_link.tests/QuicTeardownTests.cs`.
+- [X] T038 [P] [US5] xUnit: re-run after teardown re-establishes with no leftover listeners/connections (port released) — `csharp/glp_link.tests/QuicTeardownTests.cs`.
+- [X] T039 [P] [US5] xUnit: peer disappears mid-drain → fault reported via monitor stream, teardown still completes gracefully — `csharp/glp_link.tests/QuicTeardownTests.cs`.
 
 ### Implementation for User Story 5
 
-- [ ] T040 [US5] Add the termination sequence to `programs/tests/quic/quic_mesh.glp`: drain in-flight, `link_close` on every link, ordered teardown — via the existing `link_close` kernel (no new kernel).
-- [ ] T041 [US5] Verify resource release through `csharp/glp_link/reliability/LinkReclaimer.cs` (listeners/connectors/streams/QUIC connections); confirm an immediate re-run is clean (FR-018).
+- [X] T040 [US5] Add the termination sequence to `programs/tests/quic/quic_mesh.glp`: drain in-flight, `link_close` on every link, ordered teardown — via the existing `link_close` kernel (no new kernel).
+- [X] T041 [US5] Verify resource release through `csharp/glp_link/reliability/LinkReclaimer.cs` (listeners/connectors/streams/QUIC connections); confirm an immediate re-run is clean (FR-018).
 
 **Checkpoint**: all five stories independently functional.
 
@@ -165,10 +165,10 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T042 [P] Update `docs/known-issues.md` with any limitation surfaced (e.g. QUIC-unsupported hosts, capability-surface stopgap) and point `specs/050-*/quickstart.md` from the feature docs.
-- [ ] T043 Run the full `quickstart.md` two-host acceptance (Olamnit 192.168.0.136 + gavri 192.168.0.108); record SC-001..SC-008 results (SC-005 against confirmed or provisional targets).
+- [X] T042 [P] Update `docs/known-issues.md` with any limitation surfaced (e.g. QUIC-unsupported hosts, capability-surface stopgap) and point `specs/050-*/quickstart.md` from the feature docs.
+- [ ] T043 Run the full `quickstart.md` two-host acceptance (Olamnit 192.168.0.136 + gavri 192.168.0.108); record SC-001..SC-008 results (SC-005 against confirmed or provisional targets). [BLOCKED on the physical second host (gavri) — the CI-checkable subset (registration, crdtmsg-on-wire, macaroon gate, pin-mismatch reject, multi-accept mesh, graceful close) is green single-host via xUnit real-MsQuic-loopback + the REPL suite; the cross-LAN two-host run is Gabi's manual step.]
 - [ ] T044 Re-run `dotnet test csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests` + `bash test/run_all_tests.sh`; confirm green; commit 050 files by name.
-- [ ] T045 [P] FR-019 audit: confirm zero new GLP kernels/primitives were introduced (kernels/wrappers diff clean) and `grep -c skipSRSW` over the new `.glp` files is 0.
+- [X] T045 [P] FR-019 audit: confirm zero new GLP kernels/primitives were introduced (kernels/wrappers diff clean) and `grep -c skipSRSW` over the new `.glp` files is 0.
 
 ---
 

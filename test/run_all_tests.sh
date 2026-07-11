@@ -1027,6 +1027,13 @@ POSITIVE_FILES=(
     #     link_id loads clean (SRSW + type-check + compile). The genuine one-bind wire crossing
     #     is proven by xUnit QuicLinkOneBindTests (real MsQuic) + the two-host acceptance run. ---
     "$QUIC/quic_one_bind.glp"
+
+    # --- feature 050 US4: the role-parameterized cross-host MESH program — opens every peer-pair
+    #     link as a GLP goal (FR-003/FR-012), ships crdtmsg/7 envelopes (post-US2 wire), and
+    #     collects faults on the per-link monitor stream. Loads clean (SRSW + type-check + compile);
+    #     the genuine multi-accept mesh / reliability / cyber behaviour is proven by xUnit
+    #     QuicMeshTests/QuicReliabilityTests/QuicCyberTests + the two-host acceptance run (T043). ---
+    "$QUIC/quic_mesh.glp"
 )
 
 # Build REPL input: load each positive file with :clear between

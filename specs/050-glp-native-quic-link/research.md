@@ -134,5 +134,48 @@ by the gate (fail-closed on any other key): `action` ∈ {establish, deliver}, `
 (the 041 `CapabilityTests` numeric-clock idiom; the gate's clock is injectable for deterministic
 tests). xUnit: glp_link.tests 129/129 (8 new), glp_crdtmsg.tests 114/114.
 
+### T029–T041 — full mesh + graceful termination (US4/US5, /bk-implement 2026-07-11)
+
+**US4 host capability (T029–T031)**, all over a genuine MsQuic handshake (skip-guarded):
+- **T029 mesh** (`QuicMeshTests`): `QuicTransport.CreateListenerAsync` → `QuicListenerHandle.AcceptAsync`
+  brings up N isolated client links from ONE UDP port; each is its own `QuicConnection` + bidi stream,
+  so killing client 0's link leaves every sibling exchanging both directions untouched (FR-013 isolation).
+- **T030 reliability** (`QuicReliabilityTests`): a redelivered framed message (same `msg_id`/seq) is an
+  idempotent no-op at `InboundOrdering`'s high-water — the reader extends `In` EXACTLY ONCE
+  (exactly-once reactivation, FR-016); and a send into a vanished peer surfaces
+  `tempFail(LinkId, Reason)` on the establishment `Faults` stream (reported, never swallowed).
+- **T031 cyber** (`QuicCyberTests`): a rogue peer presenting its own (non-pinned) cert is rejected at the
+  mutual SPKI-pin handshake and the listener stays healthy for a genuine member (zero false accepts,
+  two-sided); a tampered SIGNED block that crossed the real wire fails `SealSet.Verify` (041 Ed25519
+  whole + Biscuit-chained sub-seals) while its untampered counterpart verifies — the refusal recorded as
+  `ProvenanceOutcome.Refused` (zero false accepts, zero false rejects).
+
+**US4 GLP program (T032–T036)** — `programs/tests/quic/quic_mesh.glp`: role-parameterized
+(`main(node_a|node_b, Report)`), opens each peer-pair link as a GLP goal via the UNCHANGED 025 wrappers
+(`server_listener`/`client_connector`), and — because post-US2 the `"quic"` wire is a crdtmsg envelope —
+ships `crdtmsg/7` GROUND terms (a `mk_ping` head-constructor over the addendum-A1 grammar), NOT bare
+values. Full-duplex per node (`gen_pings` onto `Out`, `collect` off `In`); `monitor_link` collects the
+per-link fault stream (T034/T035 GLP-level observation of security/reliability, with the crypto proven
+host-side in T031/T030). Loads clean through the full REPL pipeline (SRSW + type-check + compile) — added
+to `test/run_all_tests.sh` Section B. Perf targets (T033/SC-005) are structural + provisional (research
+D-3), confirmed at the T043 two-host run. Interop-readiness (T036/FR-013a): the delivered node_a/node_b
+stand up listeners honoring the mutual-pin QUIC + macaroon + crdtmsg contract so the 3 pre-built MAUI apps
+can join; this program neither builds nor drives them. FR-019 respected — no new kernel/primitive; `"quic"`
+is data, the mesh reuses `link_close`/`link_monitor` unchanged.
+
+**US5 graceful termination (T037–T041)** — `QuicTeardownTests` over genuine QUIC:
+- **T037**: in-flight envelopes drain, then `Out = []` (the canonical graceful stream-end) runs an ordered
+  teardown — the peer reads `null`, distributed GC reclaims (`LinkReclaimer.IsReclaimed`), registry back to
+  baseline, zero crashes.
+- **T038**: an abrupt `link_close` kernel teardown releases the UDP port so an immediate re-run
+  re-establishes on the same port with no leftover listener/connection (FR-018).
+- **T039**: a peer that vanishes mid-drain surfaces the fault on the monitor stream (walk past the `ok`
+  baseline to the `closed`/`tempFail`/`permFail` term) and teardown still completes (idempotent GC, no
+  crash). Note: `DisposeAsync` is a GRACEFUL WS close (no fault) — the fault is driven by the failed
+  egress SEND into the dead connection, mirroring T030. The program's `close_mesh_link/1` wraps the
+  existing `link_close` for a stop-requested run (no new kernel). Gotcha recorded: the registry/reclaimer
+  key is the GROUND establishment LinkId (nonce from the term), NOT the transport endpoint's internal
+  per-connection nonce.
+
 ### T010 — kernels reach the quic leaf UNCHANGED (FR-001/FR-019)
 Traced: `LinkSetupKernel.LinkSetup` → `LinkTerms.ParseLinkId` (`LinkScheme.Of("quic")` → `LinkScheme.Quic`) → `LinkEstablish.WireEstablishedLink` → `Establish` → `link.Transports.Select(id.Scheme)` → the registered `QuicTransport` (`LinkSetupKernel.cs:51`). No kernel or GLP-wrapper edit was needed — the only US1 production changes are the additive `SharedCertMaterial` loader and the composition-root registration in `out/csharp/glp_repl/Program.cs`. `_link_setup` blocks the runner thread on the real handshake via `ConnectAsync().GetAwaiter().GetResult()` (bounded by `ConnectTimeout`); the parked listener accepts on the thread pool — no self-deadlock (verified green by `QuicLinkOneBindTests`).
