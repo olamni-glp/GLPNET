@@ -52,8 +52,8 @@
 
 - [X] T013 [US1] Port lexer to `glp_gleam/src/glp/parser/lexer.gleam` (from `glp_runtime/lib/compiler/` lexer; R1 hand-port, no parser generator)
 - [X] T014 [US1] Port recursive-descent parser to `glp_gleam/src/glp/parser/parser.gleam` producing `ast.SourceModule` (Dart parser behaviour is the conformance oracle — R1)
-- [ ] T015 [P] [US1] Parser tests incl. corpus negative parse cases in `glp_gleam/test/glp/parser/parser_test.gleam`
-- [ ] T016 [US1] Port SRSW checker to `glp_gleam/src/glp/analysis/srsw.gleam` — unchanged semantics incl. constant-type and ground-guard relaxations (typed-glp-manual §3; ruling D6); no escape mechanism of any kind
+- [X] T015 [P] [US1] Parser tests incl. corpus negative parse cases in `glp_gleam/test/glp/parser/parser_test.gleam`
+- [X] T016 [US1] Port SRSW checker to `glp_gleam/src/glp/analysis/srsw.gleam` — unchanged semantics incl. constant-type and ground-guard relaxations (typed-glp-manual §3; ruling D6); no escape mechanism of any kind
 - [ ] T017 [US1] Port partial evaluator to `glp_gleam/src/glp/compiler/partial_eval.gleam` (unit-clause/defined-guard unfolding; SRSW-preserving per PI:13 — add conformance note referencing the dossier row)
 - [ ] T018 [US1] Port type checker to `glp_gleam/src/glp/analysis/type_checker.gleam` (modes ↓/↑ with `?`-flip rule, parameterized types, type union — manual §2A/§17/§20)
 - [ ] T019 [US1] Port codegen to `glp_gleam/src/glp/compiler/codegen.gleam` emitting v2.16 bytecode (ref `glp_runtime/lib/compiler/` codegen; byte-comparable output on the P5 merge example as a smoke check)
