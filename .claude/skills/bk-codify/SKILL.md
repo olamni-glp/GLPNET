@@ -4,7 +4,7 @@ description: "Advisory in-the-moment win/improvement capture. Records one note w
 argument-hint: "[the win/improvement to capture, e.g. 'implement re-ran completed tasks']"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-codify.md"
 user-invocable: true
 disable-model-invocation: false

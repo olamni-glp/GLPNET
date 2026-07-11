@@ -4,7 +4,7 @@ description: "Maintained, reviewed, dual-persisted capability registry + documen
 argument-hint: "[a request, e.g. 'what drifted this cycle?'] | seed [--force] | review [--json] [--strict] | export [--check] [--strict] | status [--json] [--version <v>] | reconcile [--strict] | touch --tool <name>"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-registry.md"
 user-invocable: true
 disable-model-invocation: false

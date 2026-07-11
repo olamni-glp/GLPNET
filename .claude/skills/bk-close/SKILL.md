@@ -4,7 +4,7 @@ description: "Post-ship close-out: one guided pass that runs the feature's retro
 argument-hint: "[feature_id of a shipped feature, e.g. 033-unified-ship-close]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-close.md"
 user-invocable: true
 disable-model-invocation: false

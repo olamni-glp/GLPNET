@@ -4,7 +4,7 @@ description: "Shared team information radiator (PoC demonstrator). A single free
 argument-hint: "[a goal, e.g. 'stand up a beacon' or 'switch the radiator to the roadmap'] | doctor | init <name> [location] | host [--ws-port <n>] | web [--port <n>] | join [--repo <r>] [--machine <m>] [--version <v>] | update [--version <v>] | list | worker | mcp"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-beacon.md"
 user-invocable: true
 disable-model-invocation: false
