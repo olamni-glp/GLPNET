@@ -1,11 +1,15 @@
 //// glp/analysis/prelude — prelude knowledge shared by the load pipeline
 //// (feature 050; started for T014, extended by the type-checker port T018).
 ////
-//// Dart source of truth: glp_runtime/lib/analysis/type_checker/prelude.dart.
-//// This module currently ports `builtinProcedures` — the "name/arity" set of
-//// procedures implemented by the runtime with NO GLP clauses. The parser
-//// consults it so a declaration-only builtin (e.g. `procedure ground(_?).`)
-//// does not trigger the "declaration has no clauses" parse error.
+//// Dart source of truth: glp_runtime/lib/analysis/type_checker/prelude.dart,
+//// ported 1:1 (D4 discipline: no additions): `builtinProcedures` (procedures
+//// implemented by the runtime with NO GLP clauses — the parser consults it so
+//// a declaration-only builtin does not trigger the "declaration has no
+//// clauses" parse error), `predefinedTypeNames`/`predefinedProcedureNames`
+//// (not redefinable by user modules; library-level types like DiffList and
+//// Channel are deliberately NOT protected), and `builtinGoals` (goals that
+//// skip type checking). The Dart `typePrelude` constant is the empty string —
+//// all prelude definitions live in programs/self.glp via the scope chain.
 
 /// True builtins: procedures implemented by the runtime with no GLP clauses
 /// (Dart `builtinProcedures`, ported 1:1 — D4 discipline: no additions).
@@ -67,6 +71,60 @@ pub fn is_builtin_procedure(name_arity: String) -> Bool {
     "_link_accept/5" -> True
     "_link_monitor/2" -> True
     "_link_close/2" -> True
+    _ -> False
+  }
+}
+
+/// Predefined types that cannot be redefined by user modules (Dart
+/// `predefinedTypeNames` / `isPredefinedType`) — only fundamental primitives
+/// are protected.
+pub fn is_predefined_type(name: String) -> Bool {
+  case name {
+    // Primitive builtins
+    "Number" | "Integer" | "Real" | "String" -> True
+    // Constant (Number ; String)
+    "Constant" -> True
+    // Arithmetic expression type
+    "Exp" -> True
+    // Fundamental collection types
+    "Stream" | "OpenStream" -> True
+    // DiffList, Channel are NOT protected — library-level.
+    _ -> False
+  }
+}
+
+/// Predefined procedures (by bare name) that cannot be redefined by user
+/// modules (Dart `predefinedProcedureNames` / `isPredefinedProcedure`) —
+/// only fundamental runtime guards/operations; library-level operations
+/// (dl_append, dl_to_list, new_channel, send, receive) are NOT protected.
+pub fn is_predefined_procedure(name: String) -> Bool {
+  case name {
+    // Type guards
+    "integer" | "number" | "string" | "atom" | "constant" | "compound"
+    | "tuple" | "list" | "is_list" | "module" -> True
+    // Groundness guards
+    "ground" | "known" | "unknown" | "no_readers" -> True
+    // Time guards
+    "wait" | "wait_until" -> True
+    // Comparison guards
+    "<" | ">" | "=<" | ">=" | "=:=" | "=\\=" -> True
+    // Standard-order term comparison (T011/FR-037, OQ-G1)
+    "@<" | "@>" | "@=<" | "@>=" -> True
+    // Equality
+    "=?=" -> True
+    // Univ operations
+    "=.." | "..=" -> True
+    _ -> False
+  }
+}
+
+/// Built-in goals that don't need type checking (Dart `builtinGoals` /
+/// `isBuiltinGoal`): 0-arity control (`true`, `otherwise`) and `:=`
+/// (arithmetic assignment, handled specially). `#` (remote module call) is
+/// handled as a RemoteGoal before the builtin check.
+pub fn is_builtin_goal(name: String) -> Bool {
+  case name {
+    "true" | "otherwise" | ":=" -> True
     _ -> False
   }
 }

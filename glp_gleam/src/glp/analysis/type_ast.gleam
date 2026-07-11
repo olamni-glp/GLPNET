@@ -5,9 +5,11 @@
 //// stores them in the `SourceModule` (glp/parser/ast) and the type checker (T018)
 //// consumes them.
 ////
-//// Dart source of truth: glp_runtime/lib/analysis/type_checker/type_ast.dart.
-//// The Dart `TypeEnvironment` is checker machinery and lands with T018, not here.
+//// Dart source of truth: glp_runtime/lib/analysis/type_checker/type_ast.dart
+//// (including `TypeEnvironment`, ported here with T018 — Dart's mutating
+//// addType/addProcedure become insert functions returning a new environment).
 
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, Some}
@@ -200,4 +202,85 @@ pub fn is_input_arg(decl: ProcDecl, i: Int) -> Bool {
     [arg, ..] -> is_input_mode(arg)
     [] -> False
   }
+}
+
+/// The base type name of argument `i`, `None` for primitives (`_`/`_?`;
+/// Dart `ProcDecl.getTypeName`).
+pub fn get_type_name(decl: ProcDecl, i: Int) -> Option(String) {
+  case list.drop(decl.arg_types, i) {
+    [arg, ..] -> type_name(arg)
+    [] -> option.None
+  }
+}
+
+/// The type environment: all type definitions and procedure declarations in a
+/// module (Dart `TypeEnvironment`).
+pub type TypeEnvironment {
+  TypeEnvironment(
+    types: Dict(String, TypeDef),
+    /// Keyed by "name/arity" (qualified key for imported procedures).
+    procedures: Dict(String, ProcDecl),
+    /// Parameterized procedure declaration templates, keyed by "name/arity" —
+    /// used for call-site type parameter inference (Case B).
+    param_proc_decls: Dict(String, ProcDecl),
+    /// Parameterized type templates from prelude/ancestors, passed to
+    /// downstream expansions so references to templates defined in ancestor
+    /// scopes can expand.
+    type_templates: Dict(String, TypeDef),
+  )
+}
+
+pub fn empty_environment() -> TypeEnvironment {
+  TypeEnvironment(dict.new(), dict.new(), dict.new(), dict.new())
+}
+
+/// Merge another environment into this one (the other's entries win).
+pub fn merge(env: TypeEnvironment, other: TypeEnvironment) -> TypeEnvironment {
+  TypeEnvironment(
+    types: dict.merge(env.types, other.types),
+    procedures: dict.merge(env.procedures, other.procedures),
+    param_proc_decls: dict.merge(env.param_proc_decls, other.param_proc_decls),
+    type_templates: dict.merge(env.type_templates, other.type_templates),
+  )
+}
+
+/// Look up a type definition (Dart `getType`).
+pub fn get_type(env: TypeEnvironment, name: String) -> Result(TypeDef, Nil) {
+  dict.get(env.types, name)
+}
+
+/// Look up a procedure declaration by name/arity (Dart `getProcedure`).
+pub fn get_procedure(
+  env: TypeEnvironment,
+  name: String,
+  procedure_arity: Int,
+) -> Result(ProcDecl, Nil) {
+  dict.get(env.procedures, name <> "/" <> int.to_string(procedure_arity))
+}
+
+/// Is a type name defined (including built-ins)? (Dart `hasType`.)
+pub fn has_type(env: TypeEnvironment, name: String) -> Bool {
+  dict.has_key(env.types, name) || is_builtin_type(name)
+}
+
+/// Is a procedure declared? (Dart `hasProcedure`.)
+pub fn has_procedure(
+  env: TypeEnvironment,
+  name: String,
+  procedure_arity: Int,
+) -> Bool {
+  dict.has_key(env.procedures, name <> "/" <> int.to_string(procedure_arity))
+}
+
+/// Add a type definition (Dart `addType`).
+pub fn add_type(env: TypeEnvironment, type_def: TypeDef) -> TypeEnvironment {
+  TypeEnvironment(..env, types: dict.insert(env.types, type_def.name, type_def))
+}
+
+/// Add a procedure declaration under its qualified key (Dart `addProcedure`).
+pub fn add_procedure(env: TypeEnvironment, decl: ProcDecl) -> TypeEnvironment {
+  TypeEnvironment(
+    ..env,
+    procedures: dict.insert(env.procedures, qualified_key(decl), decl),
+  )
 }
