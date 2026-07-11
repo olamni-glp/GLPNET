@@ -120,3 +120,14 @@ pub fn lone_colon_is_an_error_test() {
   lexer.tokenize("p : q")
   |> should.equal(Error(LexError("Unexpected character :", 1, 3)))
 }
+
+pub fn crlf_line_endings_test() {
+  // CRLF is one grapheme cluster in Gleam; the Dart code-unit oracle skips
+  // '\r' as whitespace and bumps the line on '\n' — net line+1, column 1.
+  let assert Ok([p, _dot, q, ..]) = lexer.tokenize("p.\r\n  q. % c\r\nr.")
+  p.line |> should.equal(1)
+  q.line |> should.equal(2)
+  q.column |> should.equal(3)
+  let assert Ok(tokens) = lexer.tokenize("p.\r\n% comment\r\nq.")
+  types_of(tokens) |> should.equal([TokAtom, Dot, TokAtom, Dot, Eof])
+}

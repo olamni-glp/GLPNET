@@ -62,15 +62,18 @@ pub fn atom_arity(atom: Atom) -> Int {
 pub type Goal {
   Goal(functor: String, args: List(Term), pos: Pos)
   /// Cross-module call `Module # Goal`; module is a `ConstTerm` atom (static)
-  /// or `VarTerm` (dynamic).
-  RemoteGoal(module: Term, goal: InnerGoal, pos: Pos)
+  /// or `VarTerm` (dynamic). The wrapped goal is a full `Goal` (Dart
+  /// `RemoteGoal.goal`): hierarchical calls like `ui # actors # render(X)`
+  /// nest a `RemoteGoal` inside a `RemoteGoal`.
+  RemoteGoal(module: Term, goal: Goal, pos: Pos)
   /// Isolate spawn `Goal@AgentId` (boot clauses). dGLP mode ignores the
-  /// annotation; madGLP spawns the goal in an isolate named `agent_id`.
+  /// annotation; madGLP spawns the goal in an isolate named `agent_id`. The
+  /// Dart parser only ever wraps a plain functor/args goal here.
   SpawnGoal(inner: InnerGoal, agent_id: String, pos: Pos)
 }
 
-/// The plain call wrapped by `RemoteGoal`/`SpawnGoal` (Dart stores a `Goal`;
-/// the wrapped form is always the plain functor/args shape).
+/// The plain call wrapped by `SpawnGoal` (the Dart parser builds `SpawnGoal`
+/// only around a plain functor/args goal).
 pub type InnerGoal {
   InnerGoal(functor: String, args: List(Term), pos: Pos)
 }
@@ -90,12 +93,29 @@ pub fn goal_functor(goal: Goal) -> String {
 pub fn goal_args(goal: Goal) -> List(Term) {
   case goal {
     Goal(_, args, _) -> args
-    RemoteGoal(module, inner, _) -> [module, inner_to_term(inner)]
+    RemoteGoal(module, wrapped, _) -> [module, goal_to_term(wrapped)]
     SpawnGoal(inner, agent_id, pos) -> [
       inner_to_term(inner),
       ConstTerm(terms.ConstAtom(agent_id), pos),
     ]
   }
+}
+
+/// The source position of a goal (Dart `AstNode.line`/`column`).
+pub fn goal_pos(goal: Goal) -> Pos {
+  case goal {
+    Goal(_, _, pos) -> pos
+    RemoteGoal(_, _, pos) -> pos
+    SpawnGoal(_, _, pos) -> pos
+  }
+}
+
+/// A goal as a `StructTerm` over its uniform functor/args view (Dart
+/// `_goalToTerm`: `StructTerm(g.functor, g.args)` — for a `RemoteGoal` the
+/// args already carry the term-encoded wrapped goal, so this is one level,
+/// not a deep conversion).
+pub fn goal_to_term(goal: Goal) -> Term {
+  StructTerm(goal_functor(goal), goal_args(goal), goal_pos(goal))
 }
 
 /// A wrapped goal as a `StructTerm` (Dart `_goalToTerm`).

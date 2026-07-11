@@ -452,6 +452,11 @@ fn string_body(lx: Lx, quote: String, acc: List(String)) -> Result(#(Lx, String)
       let #(lx, _) = advance(lx)
       case lx.rest {
         [] -> Error(Nil)
+        // Backslash before CRLF: Dart appends the '\r' via the escape
+        // default, then the '\n' as a newline (line++) — net "\r\n" content
+        // plus the line bump, in one grapheme here.
+        ["\r\n", ..rest] ->
+          string_body(Lx(rest, lx.line + 1, 1), quote, ["\r\n", ..acc])
         [esc, ..] -> {
           let translated = case esc {
             "n" -> "\n"
@@ -468,6 +473,10 @@ fn string_body(lx: Lx, quote: String, acc: List(String)) -> Result(#(Lx, String)
       // Newline inside a string: line++, column resets (Dart sets 0, then
       // advance makes it 1).
       string_body(Lx(rest, lx.line + 1, 1), quote, ["\n", ..acc])
+    ["\r\n", ..rest] ->
+      // CRLF inside a string: Dart appends '\r' as a regular character and
+      // '\n' as the newline — content "\r\n" plus the line bump.
+      string_body(Lx(rest, lx.line + 1, 1), quote, ["\r\n", ..acc])
     [c, ..] -> {
       let #(lx, _) = advance(lx)
       string_body(lx, quote, [c, ..acc])
@@ -481,7 +490,10 @@ fn skip_whitespace_and_comments(lx: Lx) -> Lx {
   case lx.rest {
     [" ", ..rest] | ["\t", ..rest] | ["\r", ..rest] ->
       skip_whitespace_and_comments(Lx(rest, lx.line, lx.column + 1))
-    ["\n", ..rest] -> skip_whitespace_and_comments(Lx(rest, lx.line + 1, 1))
+    // CRLF is a single grapheme cluster; the Dart code-unit lexer nets
+    // line+1, column reset for '\r'+'\n' — same effect in one step.
+    ["\n", ..rest] | ["\r\n", ..rest] ->
+      skip_whitespace_and_comments(Lx(rest, lx.line + 1, 1))
     ["%", ..] -> skip_whitespace_and_comments(skip_line_comment(lx))
     ["/", "*", ..rest] ->
       skip_whitespace_and_comments(skip_block_comment(Lx(
@@ -496,7 +508,9 @@ fn skip_whitespace_and_comments(lx: Lx) -> Lx {
 fn skip_line_comment(lx: Lx) -> Lx {
   case lx.rest {
     [] -> lx
-    ["\n", ..] -> lx
+    // Stop at the newline (the whitespace skipper does the line bump);
+    // "\r\n" is one grapheme, so it must stop here like "\n".
+    ["\n", ..] | ["\r\n", ..] -> lx
     [_, ..rest] -> skip_line_comment(Lx(rest, lx.line, lx.column + 1))
   }
 }
@@ -505,7 +519,8 @@ fn skip_block_comment(lx: Lx) -> Lx {
   case lx.rest {
     [] -> lx
     ["*", "/", ..rest] -> Lx(rest, lx.line, lx.column + 2)
-    ["\n", ..rest] -> skip_block_comment(Lx(rest, lx.line + 1, 1))
+    ["\n", ..rest] | ["\r\n", ..rest] ->
+      skip_block_comment(Lx(rest, lx.line + 1, 1))
     [_, ..rest] -> skip_block_comment(Lx(rest, lx.line, lx.column + 1))
   }
 }
