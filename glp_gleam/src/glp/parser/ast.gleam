@@ -10,9 +10,11 @@
 //// the Gleam port keeps the constant kind the lexer already distinguishes, via
 //// glp/runtime/terms.Constant (atom/int/real/string) — same information, typed.
 
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
+import gleam/string
 import glp/analysis/type_ast.{type Pos, type ProcDecl, type TypeDef}
 import glp/runtime/terms.{type Constant}
 
@@ -43,6 +45,67 @@ pub fn is_nil(term: Term) -> Bool {
   case term {
     ListTerm(option.None, option.None, _) -> True
     _ -> False
+  }
+}
+
+/// Dart `Term.toString()` — reference diagnostics embed this rendering
+/// verbatim (partial-evaluator and type-checker error messages), so the port
+/// must be byte-identical. Dart stores string literals quote-wrapped in
+/// `ConstTerm.value` and atoms bare, then double-quotes any bare value; the
+/// typed `Constant` carries the same distinction, so: strings and atoms both
+/// render double-quoted, unless the atom itself is quote-wrapped already.
+/// (Float rendering uses `float.to_string`, which agrees with Dart
+/// `double.toString()` on the plain decimal forms diagnostics contain.)
+pub fn term_to_string(term: Term) -> String {
+  case term {
+    VarTerm(name, True, _) -> name <> "?"
+    VarTerm(name, False, _) -> name
+    StructTerm(functor, args, _) ->
+      functor <> "(" <> terms_to_string(args) <> ")"
+    ListTerm(option.None, option.None, _) -> "[]"
+    ListTerm(head, option.None, _) -> "[" <> option_term_to_string(head) <> "]"
+    ListTerm(head, option.Some(tail), _) ->
+      "[" <> option_term_to_string(head) <> "|" <> term_to_string(tail) <> "]"
+    ConstTerm(value, _) ->
+      case value {
+        terms.ConstAtom(name) ->
+          case looks_quoted(name) {
+            True -> name
+            False -> "\"" <> name <> "\""
+          }
+        _ -> const_value_to_string(value)
+      }
+    UnderscoreTerm(True, _) -> "_?"
+    UnderscoreTerm(False, _) -> "_"
+  }
+}
+
+/// A term list joined `", "` (Dart `args.join(", ")`).
+pub fn terms_to_string(args: List(Term)) -> String {
+  args |> list.map(term_to_string) |> string.join(", ")
+}
+
+/// Dart `ConstTerm.value.toString()` — the raw value rendering (atoms bare,
+/// strings quote-wrapped, numbers plain) used by unification-failure reasons.
+pub fn const_value_to_string(value: Constant) -> String {
+  case value {
+    terms.ConstAtom(name) -> name
+    terms.ConstString(s) -> "\"" <> s <> "\""
+    terms.ConstInt(i) -> int.to_string(i)
+    terms.ConstReal(r) -> float.to_string(r)
+  }
+}
+
+fn looks_quoted(s: String) -> Bool {
+  { string.starts_with(s, "\"") && string.ends_with(s, "\"") }
+  || { string.starts_with(s, "'") && string.ends_with(s, "'") }
+}
+
+fn option_term_to_string(term: Option(Term)) -> String {
+  case term {
+    option.Some(t) -> term_to_string(t)
+    // Dart interpolates a null head as "null" (unreachable from the parser).
+    option.None -> "null"
   }
 }
 
@@ -131,7 +194,12 @@ pub type Guard {
 /// A clause `Head :- Guards | Body.` — `guards`/`body` are `None` when the
 /// section is absent (unit clause `foo(X).` has neither; Dart nullable lists).
 pub type Clause {
-  Clause(head: Atom, guards: Option(List(Guard)), body: Option(List(Goal)), pos: Pos)
+  Clause(
+    head: Atom,
+    guards: Option(List(Guard)),
+    body: Option(List(Goal)),
+    pos: Pos,
+  )
 }
 
 /// All clauses with the same functor/arity.
