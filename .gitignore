@@ -106,3 +106,8 @@ reviews/
 # buildkit-co observability lake (DuckDB/parquet; regenerable, per-machine)
 .specify/co-lake/
 .specify/deploy-ledger.jsonl
+
+# feature 050: local QUIC cert material (private keys) — provision locally, never commit
+glpquick-cert/
+# gleam_quic test build artifacts
+gleam_quic/test/_build_test/
