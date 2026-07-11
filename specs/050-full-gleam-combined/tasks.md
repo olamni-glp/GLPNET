@@ -64,8 +64,8 @@
 - [ ] T024 [US1] Implement body kernels in `glp_gleam/src/glp/engine/kernels.gleam` (`:=`/arithmetic, assignment `=`, remaining reference kernels needed by the corpus)
 - [ ] T025 [P] [US1] Engine semantics tests in `glp_gleam/test/glp/engine/runner_test.gleam` (three-phase ordering, suspend/reactivate-exactly-once, otherwise-after-failure-not-suspension)
 - [ ] T026 [P] [US1] Adversarial writer-MGU suite in `glp_gleam/test/glp/engine/writer_mgu_adversarial_test.gleam` (reader/reader, writer/writer, nested structures, tentative-HEAD paths — contracts/proof-obligations.md)
-- [ ] T027 [US1] Author Lean proof PI:14 in `glp_gleam/lean/WriterMguBindsOnlyWriters/` (binding-step preserves writer-only invariant; `lake build` green)
-- [ ] T028 [US1] Author prose proof `docs/research/glp-gleam-baseline/pipelines/P4-faithfulness/PROOFS/writer_mgu_binds_only_writers/PROOF.md` + flip INDEX.md row OPEN→discharged with artifact links
+- [X] T027 [US1] Author Lean proof PI:14 in `glp_gleam/lean/WriterMguBindsOnlyWriters/` (binding-step preserves writer-only invariant; `lake build` green)
+- [ ] T028 [US1] Author prose proof `docs/research/glp-gleam-baseline/pipelines/P4-faithfulness/PROOFS/writer_mgu_binds_only_writers/PROOF.md` + flip INDEX.md row OPEN→discharged with artifact links ◇ 2026-07-11: PROOF.md authored; INDEX flip deliberately deferred to the T026 four-artifact discharge commit (contracts/proof-obligations.md bookkeeping: Lean + prose + tests + INDEX in ONE checkpointed commit)
 - [ ] T029 [US1] Implement engine-value facade in `glp_gleam/src/glp/engine.gleam` (`new/load/run/step` — opaque Engine, no global state; replaces the 033 placeholder)
 - [ ] T030 [US1] US1 acceptance: smoke set of corpus programs (incl. one suspension case, one SRSW negative, one type negative) run via engine API with Dart-identical outcomes; record in `specs/050-full-gleam-combined/baseline.md`
 
