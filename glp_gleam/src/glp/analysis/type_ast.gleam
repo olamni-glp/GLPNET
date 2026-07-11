@@ -10,9 +10,11 @@
 //// addType/addProcedure become insert functions returning a new environment).
 
 import gleam/dict.{type Dict}
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, Some}
+import gleam/string
 
 /// Source position carried by every node (Dart AstNode line/column).
 pub type Pos {
@@ -104,6 +106,59 @@ pub fn type_name(expr: TypeExpr) -> Option(String) {
   case expr {
     TypeRef(name, _, _, _) -> Some(name)
     _ -> option.None
+  }
+}
+
+/// Dart `TypeExpr.toString()` — used verbatim in expanded-name canonicalization
+/// (param_expansion) and checker diagnostics, so the rendering must be
+/// byte-identical: `TypeRef` renders `Name(Args…)?` with args joined `", "`;
+/// constants render via the Dart value toString (atoms bare, strings
+/// quote-wrapped, numbers plain).
+pub fn type_expr_to_string(expr: TypeExpr) -> String {
+  case expr {
+    TypeRef(name, is_input, type_args, _) -> {
+      let args_str = case type_args {
+        [] -> ""
+        _ ->
+          "("
+          <> {
+            type_args |> list.map(type_expr_to_string) |> string.join(", ")
+          }
+          <> ")"
+      }
+      case is_input {
+        True -> name <> args_str <> "?"
+        False -> name <> args_str
+      }
+    }
+    ConstantAlt(value, _) -> const_value_to_string(value)
+    StructAlt(functor, args, _) ->
+      functor
+      <> "("
+      <> { args |> list.map(type_expr_to_string) |> string.join(", ") }
+      <> ")"
+    ListNilAlt(_) -> "[]"
+    ListConsAlt(head, tail, _) ->
+      "["
+      <> type_expr_to_string(head)
+      <> " | "
+      <> type_expr_to_string(tail)
+      <> "]"
+    PrimitiveModeAlt(True, _) -> "_?"
+    PrimitiveModeAlt(False, _) -> "_"
+    DiffListAlt(content, hole, _) ->
+      type_expr_to_string(content) <> " \\ " <> type_expr_to_string(hole)
+  }
+}
+
+/// Dart `ConstantAlt.value.toString()` — the Dart value space carries string
+/// literals quote-wrapped and atoms bare.
+pub fn const_value_to_string(value: ConstValue) -> String {
+  case value {
+    CvAtom(name) -> name
+    CvString(s) -> "\"" <> s <> "\""
+    CvInt(i) -> int.to_string(i)
+    CvReal(r) -> float.to_string(r)
   }
 }
 
