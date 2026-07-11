@@ -35,6 +35,9 @@ public sealed class LinkPump : IInboundPump, IDisposable
     private readonly BlockingCollection<InboundItem> _inbox = new(new ConcurrentQueue<InboundItem>());
     private readonly CancellationTokenSource _cts = new();
     private readonly List<Task> _recvLoops = new();
+    // Every OnFault subscription, so Dispose can detach it (review-fix): otherwise the closure keeps
+    // this pump — and the engine — reachable via a long-lived endpoint's event.
+    private readonly List<(ILinkEndpoint Endpoint, Action<LinkFaultSignal> Handler)> _faultSubs = new();
     private int _liveLinks;
 
     public LinkPump(GlpRuntimeEngine engine) =>
@@ -55,7 +58,9 @@ public sealed class LinkPump : IInboundPump, IDisposable
         // lattice term and enqueue it for runner-thread fan-out onto the monitor
         // cursors. The handler runs on the transport's thread but only touches the
         // thread-safe inbox — never the heap (T034).
-        handle.Endpoint.OnFault += signal => EnqueueFault(handle, signal);
+        Action<LinkFaultSignal> onFault = signal => EnqueueFault(handle, signal);
+        handle.Endpoint.OnFault += onFault;
+        lock (_faultSubs) _faultSubs.Add((handle.Endpoint, onFault));
         _recvLoops.Add(Task.Run(() => RecvLoopAsync(handle, _cts.Token)));
     }
 
@@ -168,6 +173,19 @@ public sealed class LinkPump : IInboundPump, IDisposable
                         Console.WriteLine($"[link capability] inbound gated action refused on {handle.Id}: {ex.Message}");
                         continue;
                     }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        // A malformed / undecodable inbound payload (e.g. a truncated or tampered
+                        // crdtmsg envelope). The codec loud-fails by contract (FR-007); glp_link is
+                        // codec-agnostic so it cannot name the codec's concrete exception type. Surface
+                        // the fault as a recorded, OBSERVABLE permanent fault on the link's monitor
+                        // stream (FR-016 — faults reported, never swallowed) instead of letting it
+                        // escape the fire-and-forget receive task and silently kill the link. Refuse
+                        // just this frame; the link/pump/run stay graceful.
+                        EnqueueFault(handle, new LinkFaultSignal(handle.Id, LinkFaultKind.Permanent,
+                            $"malformed inbound payload: {ex.Message}"));
+                        continue;
+                    }
                     _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
                 }
             }
@@ -186,6 +204,21 @@ public sealed class LinkPump : IInboundPump, IDisposable
     {
         _cts.Cancel();
         _inbox.CompleteAdding();
+
+        // Detach every OnFault subscription so no endpoint keeps this pump alive (review-fix).
+        lock (_faultSubs)
+        {
+            foreach (var (endpoint, handler) in _faultSubs)
+                endpoint.OnFault -= handler;
+            _faultSubs.Clear();
+        }
+
+        // Join the background receive loops (bounded) so none outlives the pump — they observe the
+        // cancelled token / completed inbox and exit. Their cancellation faults are expected.
+        try { Task.WaitAll(_recvLoops.ToArray(), TimeSpan.FromSeconds(5)); }
+        catch (AggregateException) { /* loops ending on cancellation/teardown — expected */ }
+
+        _inbox.Dispose();
         _cts.Dispose();
     }
 }

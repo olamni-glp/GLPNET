@@ -89,9 +89,16 @@ public class MacaroonGateTests
 
     private static readonly byte[] RootKey = RandomNumberGenerator.GetBytes(32);
 
-    /// <summary>The 041 numeric-expiry idiom: valid while the gate's clock exceeds 100.</summary>
+    /// <summary>A not-before caveat (valid only once the gate's clock exceeds 100) — used for the
+    /// satisfied-caveat establishment cases (clock 150 &gt; 100).</summary>
     private static Macaroon TimeCaveatedCap() =>
         Macaroon.Create(RootKey, "glpquick", "cap-link").AddCaveat(new Caveat("expires", ">", "100"));
+
+    /// <summary>A genuine expiry caveat (valid UNTIL 100): <c>expires &lt; 100</c> is satisfied while
+    /// the clock is below 100 and FAILS CLOSED once it reaches 100 — a real elapsed-token expiry
+    /// (FR-009/SC-003), which the not-before <c>&gt;</c> idiom could not express.</summary>
+    private static Macaroon ExpiringCap() =>
+        Macaroon.Create(RootKey, "glpquick", "cap-link").AddCaveat(new Caveat("expires", "<", "100"));
 
     private static MacaroonLinkGate Gate(Macaroon? presented, long nowUnixSeconds = 150) =>
         new(RootKey, presented, () => nowUnixSeconds);
@@ -180,7 +187,7 @@ public class MacaroonGateTests
         {
             "absent" => Gate(presented: null),
             "tampered" => Gate(Tampered(TimeCaveatedCap())),
-            "expired" => Gate(TimeCaveatedCap(), nowUnixSeconds: 50),      // 50 > 100 fails (041 idiom)
+            "expired" => Gate(ExpiringCap(), nowUnixSeconds: 150),         // elapsed: 150 < 100 fails (genuine expiry)
             "unsatisfiable" => Gate(Macaroon.Create(RootKey, "glpquick", "cap-x")
                 .AddCaveat(new Caveat("action", "=", "never-this-action"))),
             "un-understood" => Gate(Macaroon.Create(RootKey, "glpquick", "cap-y")
@@ -196,6 +203,23 @@ public class MacaroonGateTests
         Assert.Equal(BodyKernelResult.Abort, result);
         Assert.Single(gate.Provenance.Refusals);                            // distinct recorded outcome
         Assert.Equal(0, rig.Link.Links.Count);                              // nothing was wired
+    }
+
+    [Fact] // review-fix — a genuine expiry (`expires < T`) is satisfied before T and FAILS CLOSED once elapsed
+    public void ExpiresCaveat_UpperBound_IsSatisfiedBeforeExpiryAndFailsClosedAfter()
+    {
+        var understood = new HashSet<string> { "expires" };
+        var cap = ExpiringCap(); // expires < 100
+
+        // Before expiry: now = 50 < 100 ⇒ satisfied.
+        Assert.True(cap.Verify(RootKey,
+            new Dictionary<string, string> { ["expires"] = "50" }, understood));
+        // At/after expiry: now = 100 and now = 150 are NOT < 100 ⇒ fail closed (the case the `>`
+        // idiom could never express — an elapsed token used to be accepted forever).
+        Assert.False(cap.Verify(RootKey,
+            new Dictionary<string, string> { ["expires"] = "100" }, understood));
+        Assert.False(cap.Verify(RootKey,
+            new Dictionary<string, string> { ["expires"] = "150" }, understood));
     }
 
     private static Macaroon Tampered(Macaroon m)

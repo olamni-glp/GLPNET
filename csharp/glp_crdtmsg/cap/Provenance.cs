@@ -24,20 +24,32 @@ public sealed record ProvenanceRecord(
     string Sha256Hex,
     ProvenanceOutcome Outcome);
 
-/// <summary>Append-only provenance log. Every routed action (incl. every refusal) appends exactly one row.</summary>
+/// <summary>Append-only provenance log. Every routed action (incl. every refusal) appends exactly one
+/// row. Thread-safe (feature 050 review-fix): in a mesh, multiple per-link receive-loop threads call
+/// <see cref="Record"/> on the one shared log (via <c>MacaroonLinkGate.VerifyInbound</c>), so the
+/// backing list is guarded by a lock and readers return a snapshot — otherwise concurrent
+/// <c>List.Add</c>/enumeration could lose or corrupt the "exactly one row per action" guarantee.</summary>
 public sealed class ProvenanceLog
 {
     private readonly List<ProvenanceRecord> _records = new();
+    private readonly object _gate = new();
 
-    public IReadOnlyList<ProvenanceRecord> Records => _records;
+    /// <summary>A point-in-time snapshot of the recorded rows (safe to enumerate off-thread).</summary>
+    public IReadOnlyList<ProvenanceRecord> Records
+    {
+        get { lock (_gate) return _records.ToArray(); }
+    }
 
     public ProvenanceRecord Record(string peer, string target, DateTimeOffset at, string sha256Hex, ProvenanceOutcome outcome)
     {
         var rec = new ProvenanceRecord(peer, target, at, sha256Hex, outcome);
-        _records.Add(rec);
+        lock (_gate) _records.Add(rec);
         return rec;
     }
 
-    /// <summary>All recorded refusals — provably never silent (SC-006).</summary>
-    public IEnumerable<ProvenanceRecord> Refusals => _records.Where(r => r.Outcome == ProvenanceOutcome.Refused);
+    /// <summary>All recorded refusals — provably never silent (SC-006). Snapshot under the lock.</summary>
+    public IEnumerable<ProvenanceRecord> Refusals
+    {
+        get { lock (_gate) return _records.Where(r => r.Outcome == ProvenanceOutcome.Refused).ToArray(); }
+    }
 }

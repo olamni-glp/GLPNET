@@ -115,7 +115,16 @@ public sealed class CrdtMsgPayloadCodec : IPayloadCodec
         {
             if (e is not StructTerm sec || sec.Functor != SectionFunctor || sec.Args.Count != 2)
                 throw new CrdtMsgException($"each section must be {SectionFunctor}/2, got {Describe(e)}");
-            sections.Add(new Section(IntOf(sec.Args[0], "section type"), BytesOf(sec.Args[1])));
+            long type = IntOf(sec.Args[0], "section type");
+            // The capability slot (section 0x20) is codec-owned carriage, NEVER term-visible (review-fix,
+            // contract wire-payload-crdtmsg.md): a GLP program supplying its own section(0x20) would be
+            // appended BEFORE the real slot and, since the receiver extracts the FIRST 0x20, would shadow
+            // the genuine capability and refuse an otherwise-valid message. Fail closed loudly (FR-005).
+            if (type == CapabilitySlot.SectionType)
+                throw new CrdtMsgException(
+                    $"section type 0x{CapabilitySlot.SectionType:X} is the reserved capability slot — "
+                    + "codec-owned carriage, never term-visible (FR-005)");
+            sections.Add(new Section(type, BytesOf(sec.Args[1])));
         }
         return sections;
     }

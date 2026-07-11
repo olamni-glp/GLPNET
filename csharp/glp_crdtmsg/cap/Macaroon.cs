@@ -105,6 +105,12 @@ public sealed class Macaroon
             "=" => actual == c.Value,
             ">" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a > v,
             ">=" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a >= v,
+            // Upper-bound operators (feature 050 review-fix): a genuine expiry is "valid UNTIL T" —
+            // `expires < T` fails closed once the clock (context["expires"] = now) reaches T. Without
+            // these, only not-before lower bounds were expressible and an elapsed token could not be
+            // refused (FR-009/SC-003: an expired macaroon MUST fail closed).
+            "<" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a < v,
+            "<=" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a <= v,
             _ => false, // unknown operator ⇒ fail-closed
         };
     }
