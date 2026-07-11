@@ -111,3 +111,6 @@ reviews/
 glpquick-cert/
 # gleam_quic test build artifacts
 gleam_quic/test/_build_test/
+
+# codexreview advisory artifacts (local, per-run; excluded from review scope FR-003)
+reviews/
