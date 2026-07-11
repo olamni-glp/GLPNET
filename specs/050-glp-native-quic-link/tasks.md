@@ -126,9 +126,9 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Tests for User Story 4 ⚠️ (write first, must fail before impl)
 
-- [ ] T029 [P] [US4] xUnit: multi-accept mesh via `QuicTransport.CreateListenerAsync`/`QuicListenerHandle` — N isolated client links from one UDP port, one link's fault never touches a sibling — `csharp/glp_link.tests/QuicMeshTests.cs`.
-- [ ] T030 [P] [US4] xUnit: reliability — duplicate suppression (`msg_id` + per-link `seq`), exactly-once remote reader reactivation, fault reporting via the monitor stream — `csharp/glp_link.tests/QuicReliabilityTests.cs`.
-- [ ] T031 [P] [US4] xUnit: cyber — rogue/non-pinned peer rejected (pin-mismatch handshake fail), tampered signed block rejected (`csharp/glp_crdtmsg/sig/Seals.cs`), zero false accepts — `csharp/glp_link.tests/QuicCyberTests.cs`.
+- [X] T029 [P] [US4] xUnit: multi-accept mesh via `QuicTransport.CreateListenerAsync`/`QuicListenerHandle` — N isolated client links from one UDP port, one link's fault never touches a sibling — `csharp/glp_link.tests/QuicMeshTests.cs`.
+- [X] T030 [P] [US4] xUnit: reliability — duplicate suppression (`msg_id` + per-link `seq`), exactly-once remote reader reactivation, fault reporting via the monitor stream — `csharp/glp_link.tests/QuicReliabilityTests.cs`.
+- [X] T031 [P] [US4] xUnit: cyber — rogue/non-pinned peer rejected (pin-mismatch handshake fail), tampered signed block rejected (`csharp/glp_crdtmsg/sig/Seals.cs`), zero false accepts — `csharp/glp_link.tests/QuicCyberTests.cs`.
 
 ### Implementation for User Story 4
 
