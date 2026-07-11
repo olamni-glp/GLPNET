@@ -20,8 +20,15 @@
 //     policy lists  : list of atoms      CrdtModel : atom in {none, state_based, op_based}
 //     Sections      : list of section(Type:int, Bytes:list of int 0..255)
 //   GLP list = StructTerm(".", [H, T]) terminated by ConstTerm("nil") (025 convention).
-//   Codec-fixed (not in the term): schema_version = EmitSchemaVersion; payload_type = CrdtMessage;
-//   capability slot = null in US2 (the macaroon lands via the capability slot in US3 / research D-2).
+//   Codec-fixed (not in the term): schema_version = EmitSchemaVersion; payload_type = CrdtMessage.
+//
+// Capability slot (feature 050 US3, T026/T027 — research D-2 RESOLVED): when constructed with a
+// MacaroonLinkGate, the capability is codec-fixed carriage, never term-visible — Encode attaches the
+// gate's presented static macaroon as the 041 CapabilitySlot TLV SECTION 0x20 (envelope v2,
+// additive-optional; the binary canonical surface carries TLV sections verbatim, so NO 041 codec
+// change and NO JSON stopgap is needed — Header.CapabilitySlot stays null on the wire); Decode
+// verify-before-acts the inbound slot via the gate (record + strip on success; record Refused +
+// CapabilityRefusedException on failure, FR-009). Without a gate the US2 behaviour is unchanged.
 
 using GlpRuntime.CrdtMsg.Envelope;
 using GlpRuntime.CrdtMsg.Headers;
@@ -48,11 +55,32 @@ public sealed class CrdtMsgPayloadCodec : IPayloadCodec
     /// decode (FR-005). Even/ignorable sections are always carried verbatim by the TLV codec.</summary>
     private static readonly IReadOnlySet<long> Understood = new HashSet<long> { UnifiedHeader.OpSectionType };
 
-    /// <inheritdoc/>
-    public byte[] Encode(Term ground) => MessageCodec.Canonical(ToMessage(ground));
+    private readonly MacaroonLinkGate? _gate;
+
+    /// <summary>Ungated (US2) codec: no capability slot attached or required.</summary>
+    public CrdtMsgPayloadCodec() { }
+
+    /// <summary>Capability-gated codec (US3): outbound envelopes carry the gate's presented static
+    /// macaroon in the slot section <c>0x20</c>; inbound envelopes are verify-before-act gated.</summary>
+    public CrdtMsgPayloadCodec(MacaroonLinkGate? gate) => _gate = gate;
 
     /// <inheritdoc/>
-    public Term Decode(byte[] payload) => ToTerm(MessageCodec.Decode(MessageCodec.Binary, payload, Understood));
+    public byte[] Encode(Term ground)
+    {
+        Message msg = ToMessage(ground);
+        if (_gate?.PresentedCapability is byte[] capability)
+            msg = CapabilitySlot.Attach(msg, capability);   // stamps SchemaVersion = 2 (additive-optional)
+        return MessageCodec.Canonical(msg);
+    }
+
+    /// <inheritdoc/>
+    public Term Decode(byte[] payload)
+    {
+        Message msg = MessageCodec.Decode(MessageCodec.Binary, payload, Understood);
+        if (_gate is not null)
+            msg = _gate.VerifyInbound(msg);                 // record + strip, or record Refused + throw
+        return ToTerm(msg);
+    }
 
     // ---------------------------------------------------------------- Term → Message
 

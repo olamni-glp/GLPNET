@@ -89,5 +89,50 @@ The D-1 Term↔Message mapping gap (flagged at the earlier `/bk-implement` STOP)
 ### T021 — FrameCodec wraps the crdtmsg bytes UNCHANGED; SC-002 reading confirmed (L5-payload-is-envelope)
 `LinkEgress.ShipGround` (`LinkEgress.cs:36→43`) computes `payload = handle.Codec.Encode(ground)` then `FrameCodec.Encode(payload, seq, MaxFrameBytes)` — the 025 reliability sublayer (length + CRC + seq, reassembly, ordering) frames the codec's bytes **verbatim**; the codec never touches the frame header and the frame layer never touches the payload (FR-016 duplicate-suppression/ordering preserved). **Empirical confirmation** (T015): the peer captured the framed wire bytes, `FrameCodec.ParseFrame` + `FrameReassembler.Accept` stripped the framing, and the recovered payload decoded cleanly as a well-formed crdtmsg `Message` — so the crdtmsg envelope is exactly the **L5 application payload inside each frame**. This settles the D-1 residual clarification in favour of the recommended reading (crdtmsg envelope at L5, NOT bare QUIC-stream bytes bypassing 025 framing); the alternative would have discarded FR-016. No `FrameCodec`/reliability change was needed.
 
+### T022–T028 — macaroon gate (US3, /bk-implement 2026-07-11); D-2 RESOLVED
+
+**D-2 resolution (T025): the dichotomy was false — no 041 codec change and no JSON stopgap.** D-2
+framed the choice as "extend the binary surface to carry `Header.CapabilitySlot` at v2
+(041-coordinated, propose-first) vs. ship on the JSON surface (stopgap)". Verified on disk: 041's own
+shipped capability-slot design (`header/CapabilitySlot.cs`, 041 T048) does **not** use the
+`Header.CapabilitySlot` field on the wire — `CapabilitySlot.Attach` rides the capability as a
+**reserved even/ignorable TLV *section*** (`SectionType = 0x20`) and stamps `SchemaVersion = 2`. The
+binary canonical surface (`BinaryTermCodec`) carries TLV sections verbatim and `VersionPolicy`
+accepts schema `[1,2]`, so the binary wire **already** carries the v2 additive-optional capability
+slot with zero 041 codec changes; a v1 reader skips `0x20` by length (BB-VER-2). The
+`Header.CapabilitySlot` **field** (whose non-null case `BinaryTermCodec.WriteHeader` loud-fails)
+remains the JSON/DTO+CBOR-only representation and stays `null` on the binary wire. Confirmed
+empirically by `MacaroonGateTests.CapabilitySlot_RidesBinaryCanonicalSurface_AsSection0x20`
+(decodes the gated wire bytes with the UNTOUCHED `MessageCodec.Binary`: slot present, v2, header
+field null). The propose-first / 041-coordination concern therefore does not arise — nothing in
+041's codec changed. (One **additive** edit inside `cap/Macaroon.cs`: a `FromWire` rehydration
+factory so `MacaroonCodec` can reconstruct a received macaroon with its wire-claimed signature;
+`Verify` still detects tampering via the HMAC chain. Minting/verification semantics untouched.)
+
+**Gate architecture (T026/T027)**: mirrors the D-1 codec seam. `ICapabilityGate` +
+`CapabilityRefusedException` + allow-all `DefaultCapabilityGate` live in `glp_link/seam/`;
+`CapabilityGateRegistry` (scheme→gate, default allow-all — loopback/tcp unchanged) on
+`LinkRuntime`; the one concrete `MacaroonLinkGate` lives in `glp_crdtmsg/bridge/` and is injected
+for `LinkScheme.Quic` at the REPL composition root. **Establishment (FR-008)**:
+`LinkEstablish.WireEstablishedLink` consults the gate BEFORE any transport endpoint is opened
+(verify-before-act; a refused establishment opens nothing) and fails closed through the existing
+graceful Abort path. **Maintenance (FR-009, T027)**: every outbound envelope's slot is attached
+codec-side (capability is codec-fixed carriage, never term-visible — extends the Addendum A1
+"codec-fixed" list); every inbound delivery is a gated action — the gated `CrdtMsgPayloadCodec`
+extracts + `Macaroon.Verify()`s the slot, records the outcome, strips the slot, and on failure
+(absent/malformed/tampered/expired/unsatisfiable/un-understood) records
+`ProvenanceOutcome.Refused` and throws `CapabilityRefusedException`, which `LinkPump` catches to
+refuse JUST that action — the link, pump, and run stay graceful (proven by
+`GatedActionMidSession_…_RunStaysGraceful`: two refused actions, then a valid one still delivers).
+100% of gated actions record a provenance row (041 C19), refusals as the distinct `Refused`.
+
+**Root material (T028)**: `glpquick-cert/glpquick.macaroon.key` (base64, 32-byte minimum) loaded
+fail-closed by `StaticMacaroonMaterial.LoadFromRepo()` (reuses the `SharedCertMaterial` walk-up);
+the presented static macaroon is minted from it at boot (`location "glpquick"`, identifier
+`"glpnet-mesh"` — the beacon static-macaroon model, not per-session). Caveat vocabulary understood
+by the gate (fail-closed on any other key): `action` ∈ {establish, deliver}, `peer`, `expires`
+(the 041 `CapabilityTests` numeric-clock idiom; the gate's clock is injectable for deterministic
+tests). xUnit: glp_link.tests 129/129 (8 new), glp_crdtmsg.tests 114/114.
+
 ### T010 — kernels reach the quic leaf UNCHANGED (FR-001/FR-019)
 Traced: `LinkSetupKernel.LinkSetup` → `LinkTerms.ParseLinkId` (`LinkScheme.Of("quic")` → `LinkScheme.Quic`) → `LinkEstablish.WireEstablishedLink` → `Establish` → `link.Transports.Select(id.Scheme)` → the registered `QuicTransport` (`LinkSetupKernel.cs:51`). No kernel or GLP-wrapper edit was needed — the only US1 production changes are the additive `SharedCertMaterial` loader and the composition-root registration in `out/csharp/glp_repl/Program.cs`. `_link_setup` blocks the runner thread on the real handshake via `ConnectAsync().GetAwaiter().GetResult()` (bounded by `ConnectTimeout`); the parked listener accepts on the thread pool — no self-deadlock (verified green by `QuicLinkOneBindTests`).

@@ -103,16 +103,16 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 
 ### Tests for User Story 3 ⚠️ (write first, must fail before impl)
 
-- [ ] T022 [P] [US3] xUnit: valid macaroon, all caveats satisfied → establishment proceeds — `csharp/glp_link.tests/MacaroonGateTests.cs`.
-- [ ] T023 [P] [US3] xUnit: absent/tampered/expired/unsatisfiable/un-understood → fail closed, refusal recorded (`ProvenanceOutcome.Refused`), zero crashes — `csharp/glp_link.tests/MacaroonGateTests.cs`.
-- [ ] T024 [P] [US3] xUnit: gated action mid-session with an invalid capability → verify-before-act refuses + records, run stays graceful — `csharp/glp_link.tests/MacaroonGateTests.cs`.
+- [X] T022 [P] [US3] xUnit: valid macaroon, all caveats satisfied → establishment proceeds — `csharp/glp_link.tests/MacaroonGateTests.cs`.
+- [X] T023 [P] [US3] xUnit: absent/tampered/expired/unsatisfiable/un-understood → fail closed, refusal recorded (`ProvenanceOutcome.Refused`), zero crashes — `csharp/glp_link.tests/MacaroonGateTests.cs`.
+- [X] T024 [P] [US3] xUnit: gated action mid-session with an invalid capability → verify-before-act refuses + records, run stays graceful — `csharp/glp_link.tests/MacaroonGateTests.cs`.
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Resolve research D-2 (capability-on-wire surface: extend binary to v2 — 041-coordinated, propose-first — vs. JSON-surface stopgap) and record the decision; carry the macaroon in the crdtmsg capability slot (`header/CapabilitySlot.cs`, section `0x20`) accordingly.
-- [ ] T026 [US3] Gate `LinkEstablish` on `Macaroon.Verify(rootKey, context, understoodKeys)` BEFORE wiring the link; on failure record via `cap/Provenance.cs` and surface a distinct refusal outcome (no crash, no silent drop).
-- [ ] T027 [US3] Re-verify capability on gated actions during an established session (maintenance path); same fail-closed + record semantics.
-- [ ] T028 [US3] Load the static-macaroon root key out-of-band alongside the cert (beacon static-macaroon model); fail-closed if absent.
+- [X] T025 [US3] Resolve research D-2 (capability-on-wire surface: extend binary to v2 — 041-coordinated, propose-first — vs. JSON-surface stopgap) and record the decision; carry the macaroon in the crdtmsg capability slot (`header/CapabilitySlot.cs`, section `0x20`) accordingly. [RESOLVED 2026-07-11: false dichotomy — 041's shipped slot IS a TLV *section* (0x20) the binary canonical surface already carries verbatim; zero 041 codec change, no JSON stopgap. Recorded in `research.md` + `contracts/capability-gating.md` addendum.]
+- [X] T026 [US3] Gate `LinkEstablish` on `Macaroon.Verify(rootKey, context, understoodKeys)` BEFORE wiring the link; on failure record via `cap/Provenance.cs` and surface a distinct refusal outcome (no crash, no silent drop).
+- [X] T027 [US3] Re-verify capability on gated actions during an established session (maintenance path); same fail-closed + record semantics.
+- [X] T028 [US3] Load the static-macaroon root key out-of-band alongside the cert (beacon static-macaroon model); fail-closed if absent.
 
 **Checkpoint**: US1–US3 — genuine QUIC + crdtmsg + capability control.
 

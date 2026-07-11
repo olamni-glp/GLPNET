@@ -41,11 +41,22 @@ internal static class EntryPoint
             // without QUIC (FR-002).
             var (quicCert, quicPin) = SharedCertMaterial.LoadFromRepo();
             link.Transports.Register(new QuicTransport(quicCert, quicPin));
+            // feature 050 US3 (T026-T028) — macaroon capability gate, verify-before-act (FR-008/9).
+            // Load the static-macaroon root key out-of-band alongside the cert (beacon model,
+            // fail-closed if absent) and mint this endpoint's presented static macaroon. The gate
+            // runs in LinkEstablish BEFORE any "quic" endpoint is opened; every outbound envelope
+            // carries the macaroon in the capability slot (section 0x20, envelope v2); inbound
+            // gated actions re-verify it. Refusals are recorded (ProvenanceOutcome.Refused) and
+            // fail closed — never a crash, never a silent drop.
+            var (macaroonRootKey, staticMacaroon) = StaticMacaroonMaterial.LoadFromRepo();
+            var quicGate = new MacaroonLinkGate(macaroonRootKey, staticMacaroon);
+            link.CapabilityGates.Register(LinkScheme.Quic, quicGate);
             // feature 050 US2 (T018) — the "quic" link's L5 wire payload is a 041 crdtmsg envelope
             // (FR-005). Inject the CrdtMsgPayloadCodec for the Quic scheme; loopback/tcp keep the
             // default ground-relay blob (byte-for-byte unchanged). The kernels stay codec-agnostic —
             // LinkEstablish selects the per-link codec from this registry at establishment.
-            link.PayloadCodecs.Register(LinkScheme.Quic, new CrdtMsgPayloadCodec());
+            // US3: the codec is capability-gated — it attaches/verifies the macaroon slot.
+            link.PayloadCodecs.Register(LinkScheme.Quic, new CrdtMsgPayloadCodec(quicGate));
         };
         return GlpRuntime.Repl.Program.Main(args);
     }

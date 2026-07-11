@@ -22,3 +22,28 @@
 ## Tests
 - xUnit `csharp/glp_crdtmsg.tests/CapabilityTests.cs` (existing) covers `Verify` fail-closed + refusal recording.
 - NEW `csharp/glp_link.tests/`: open a quic link with a valid macaroon (succeeds); with absent/tampered/expired (fails closed, refusal recorded, no crash); present a gated action mid-session with an invalid capability (refused + recorded, run stays graceful).
+
+## Addendum (2026-07-11, /bk-implement — as built, T022–T028; research D-2 resolved)
+
+- **On-wire surface (D-2)**: the macaroon rides as 041's own shipped capability-slot **TLV section**
+  `0x20` (`CapabilitySlot.Attach`, envelope v2 additive-optional, even/ignorable). The binary
+  canonical surface carries TLV sections verbatim — **no 041 codec change, no JSON stopgap**;
+  `Header.CapabilitySlot` stays `null` on the binary wire. Slot bytes = `cap/MacaroonCodec.cs`
+  (ByteWriter/ByteReader conventions, consume-all-or-throw; rehydrates via the additive
+  `Macaroon.FromWire`).
+- **Seam shape**: `glp_link/seam/ICapabilityGate.cs` (+ `CapabilityRefusedException`, allow-all
+  `DefaultCapabilityGate`) and `glp_link/primitives/CapabilityGateRegistry.cs` (scheme→gate on
+  `LinkRuntime.CapabilityGates`); the one concrete `MacaroonLinkGate` lives in
+  `glp_crdtmsg/bridge/` and is injected for `"quic"` at the composition root — same
+  no-reference-cycle shape as the D-1 payload-codec seam.
+- **Establishment gate**: `LinkEstablish.WireEstablishedLink` calls `GateEstablish(id)` BEFORE any
+  transport endpoint is opened; refusal → recorded `ProvenanceOutcome.Refused` + graceful Abort.
+- **Maintenance gate**: capability is **codec-fixed carriage, never term-visible** — the gated
+  `CrdtMsgPayloadCodec` attaches the presented static macaroon to every outbound envelope and, on
+  every inbound delivery, extracts + verifies + records + strips the slot; failure records
+  `Refused` and throws `CapabilityRefusedException`, which `LinkPump` catches to refuse just that
+  action (link/pump/run stay graceful).
+- **Root material**: `glpquick-cert/glpquick.macaroon.key` (base64, ≥32 bytes), loaded fail-closed
+  by `StaticMacaroonMaterial.LoadFromRepo()`; presented static macaroon minted at boot
+  (`"glpquick"` / `"glpnet-mesh"`). Understood caveat keys (fail-closed on others): `action`
+  (`establish`/`deliver`), `peer`, `expires` (numeric clock idiom; injectable clock).

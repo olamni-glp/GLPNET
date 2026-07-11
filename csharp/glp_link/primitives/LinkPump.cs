@@ -154,7 +154,20 @@ public sealed class LinkPump : IInboundPump, IDisposable
                     // Decode via the link's payload codec (feature 050): the default ground-relay
                     // blob for loopback/tcp; the 041 crdtmsg envelope for a "quic" link. Loud-fail
                     // on a malformed payload is the codec's contract (FR-007).
-                    Term term = handle.Codec.Decode(ordered);
+                    Term term;
+                    try
+                    {
+                        term = handle.Codec.Decode(ordered);
+                    }
+                    catch (CapabilityRefusedException ex)
+                    {
+                        // Verify-before-act refused this inbound gated action (feature 050 US3,
+                        // FR-009): the gate RECORDED the distinct refusal before throwing. Refuse
+                        // just this action — deliver nothing — and keep the link, the pump, and
+                        // the run graceful (never a crash, never a torn-down sibling).
+                        Console.WriteLine($"[link capability] inbound gated action refused on {handle.Id}: {ex.Message}");
+                        continue;
+                    }
                     _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
                 }
             }

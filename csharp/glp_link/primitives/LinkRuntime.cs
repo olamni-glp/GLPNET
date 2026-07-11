@@ -32,6 +32,14 @@ public sealed class LinkRuntime
     /// </summary>
     public PayloadCodecRegistry PayloadCodecs { get; } = new();
 
+    /// <summary>
+    /// Scheme→capability-gate selection (feature 050 US3, FR-008/FR-009). Register a gate for a
+    /// scheme at the composition root (the <c>"quic"</c> macaroon gate); any unregistered scheme
+    /// resolves to the allow-all default, so loopback/tcp establishment is unchanged. The establish
+    /// core consults the gate BEFORE opening the transport endpoint (verify-before-act).
+    /// </summary>
+    public CapabilityGateRegistry CapabilityGates { get; } = new();
+
     /// <summary>Idempotent-at-identity LinkId→handle registry (FR-007).</summary>
     public LinkRegistry Links { get; } = new();
 
