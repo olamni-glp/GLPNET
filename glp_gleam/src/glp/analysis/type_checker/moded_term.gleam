@@ -304,6 +304,48 @@ pub fn paths(term: ModedTerm) -> Set(ModedPath) {
   extract_paths(term, [root_step], set.new())
 }
 
+/// All moded paths from root to leaves in depth-first order (Dart `paths`
+/// iterated in `Set` insertion order). `paths/1` returns the same paths as an
+/// unordered `Set`; the well-typed-term/clause checkers need the DFS order so
+/// their diagnostics come out in the same order as the Dart oracle. No leaf
+/// yields a duplicate path (siblings differ in `arg_index`, depths differ in
+/// length), so this list carries exactly the members of `paths/1`.
+pub fn paths_ordered(term: ModedTerm) -> List(ModedPath) {
+  let root_step =
+    PathStep(
+      symbol_of(term),
+      0,
+      mode_of(term),
+      is_variable(term),
+      reader_flag(term),
+    )
+  extract_paths_ordered(term, [root_step], [])
+}
+
+/// Recursively extract paths in DFS order (Dart `_extractPaths` with a list
+/// accumulator). `prefix` is root→current; completed paths are appended at leaves.
+fn extract_paths_ordered(
+  term: ModedTerm,
+  prefix: List(PathStep),
+  result: List(ModedPath),
+) -> List(ModedPath) {
+  case term {
+    ModedCompound(_, _, _, args) ->
+      list.index_fold(args, result, fn(acc, child, i) {
+        let child_step =
+          PathStep(
+            symbol_of(child),
+            i + 1,
+            mode_of(child),
+            is_variable(child),
+            reader_flag(child),
+          )
+        extract_paths_ordered(child, list.append(prefix, [child_step]), acc)
+      })
+    _ -> list.append(result, [ModedPath(prefix)])
+  }
+}
+
 /// Recursively extract paths (Dart `_extractPaths`). `prefix` is root→current.
 fn extract_paths(
   term: ModedTerm,

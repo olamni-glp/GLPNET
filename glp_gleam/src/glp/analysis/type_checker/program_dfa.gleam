@@ -19,6 +19,7 @@
 ////   same way rather than threading a Result (matching type_conversion.gleam).
 
 import gleam/dict.{type Dict}
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -165,10 +166,26 @@ pub fn transition_label_functor(
   TransitionLabel(name, arity, arg_index, mode)
 }
 
-/// Dart `TransitionLabel.constant(value)` — symbol is the Dart value toString
-/// (type_ast.const_value_to_string keeps that rendering).
+/// Dart `TransitionLabel.constant(value)` — symbol is the Dart `value.toString()`,
+/// which is BARE for strings (a Dart `String`'s `toString` is itself, unquoted).
+/// Dart therefore conflates atom `x` and quoted string `'x'` (both become the
+/// bare label `x`); a `CvString` leaf built from an atom (well_typed_term's
+/// Bug-1 rule) must match a `CvAtom` alternative. This differs from
+/// `type_ast.const_value_to_string`, which quote-wraps `CvString` for display,
+/// so a dedicated bare renderer is used for label symbols.
 pub fn transition_label_constant_value(value: ConstValue) -> TransitionLabel {
-  TransitionLabel(type_ast.const_value_to_string(value), 0, 0, None)
+  TransitionLabel(const_label_symbol(value), 0, 0, None)
+}
+
+/// Bare constant-label symbol (Dart `Object.toString()`): unquoted for atoms and
+/// strings alike.
+fn const_label_symbol(value: ConstValue) -> String {
+  case value {
+    type_ast.CvAtom(name) -> name
+    type_ast.CvString(s) -> s
+    type_ast.CvInt(i) -> int.to_string(i)
+    type_ast.CvReal(r) -> float.to_string(r)
+  }
 }
 
 /// Dart `TransitionLabel.constant('[]')` — a constant label from a raw symbol.
