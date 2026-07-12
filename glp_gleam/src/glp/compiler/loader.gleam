@@ -86,6 +86,34 @@ pub fn load(
   Ok(LoadOutcome(prog, warnings))
 }
 
+/// Compile the prelude (programs/self.glp) to bytecode, WITHOUT the fatal
+/// type-check stage: parse → SRSW → PE → codegen.
+///
+/// Dart oracle: `GlpEngine._loadRootSelf` compiles the root self.glp with
+/// `GlpCompiler.compile` under the default `CompileOptions()` — where
+/// `typeCheck = false` (compiler.dart:27). The prelude is therefore NEVER
+/// type-checked as a module: its clauses call host kernels (`_now/1`, `_add/3`,
+/// `_list_to_tuple/2`, …) that are deliberately absent from `builtinProcedures`,
+/// so a user-style type check would (spuriously) reject it. The stage order and
+/// error mapping here reuse `load`'s stage functions; only the type-check stage
+/// is elided.
+///
+/// The prelude source is a trusted engine invariant (FR-009 threads it in from
+/// the facade, which reads programs/self.glp from disk). A parse / SRSW / PE
+/// rejection of self.glp is a bug in the prelude, surfaced as a staged
+/// diagnostic exactly as `load` would — the facade fails loudly (Dart
+/// `_loadRootSelf` throws a `StateError` on the same conditions).
+pub fn compile_prelude(
+  prelude_source: String,
+) -> Result(BytecodeProgram, StagedError) {
+  use module <- result.try(parse_stage(prelude_source))
+  use _ <- result.try(srsw_stage(module))
+  let prelude_units = prelude_unit_clauses(prelude_source)
+  use transformed <- result.try(pe_stage(module, prelude_units))
+  let compiled_module = ast.SourceModule(..module, procedures: transformed)
+  Ok(codegen.generate(compiled_module))
+}
+
 // ── Stage 1: parse ──────────────────────────────────────────────────────────
 
 fn parse_stage(source: String) -> Result(ast.SourceModule, StagedError) {
