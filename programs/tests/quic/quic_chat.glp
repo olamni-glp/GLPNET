@@ -1,0 +1,74 @@
+% quic_chat.glp — feature 050 follow-on: interactive two-way chat between two C# REPL hosts over
+% genuine QUIC (dogfood of the 036/050 link). Reuses ONLY proven pieces (FR-019: server_listener /
+% client_connector unchanged; "quic" is data): each chat message rides its OWN one-bind link cycle —
+% the exact quic_one_bind.glp acceptance shape, whose rapid re-establishment the 2026-07-12 soak
+% verified (8/8 consecutive cycles). No new kernels, no host-code changes.
+%
+% Full duplex at the host level: each host runs an RX loop (re-armed listener one-binds on its own
+% IP/port) and sends via one-shot TX dials to the peer's RX port.
+%
+%   Olamnit RX: 192.168.0.136:9200 (inbound UDP allowed by rule "GLP QUIC 9200")
+%   gavri   RX: 192.168.0.108:9201 (needs the matching inbound UDP allow on gavri)
+%
+% RX loop one-liner (run from repo root; HOST = your own IP, PORT = your RX port):
+%   while true; do echo 'load ./programs/tests/quic/quic_chat.glp
+%   recv("HOST", PORT, Got).' | dotnet run --no-build --project out/csharp/glp_repl 2>&1 \
+%     | grep -E 'Got =|failed|Error' >> quic_chat_rx.log; done
+%
+% TX one-shot (dial the PEER's RX endpoint):
+%   echo 'load ./programs/tests/quic/quic_chat.glp
+%   send("PEER_IP", PEER_PORT, me, peer, "text of the message", R).' \
+%     | dotnet run --no-build --project out/csharp/glp_repl
+%
+% Wire payload: crdtmsg/7 GROUND envelopes only (contract wire-payload-crdtmsg.md addendum A1) —
+% the chat line travels in the MsgId Constant slot; macaroon-gated at the host seam like every
+% other envelope. Seq is 1 on every message: each message is its own link, and duplicate
+% suppression is per-link (FR-016).
+-mode(system).
+
+% ---------------------------------------------------------------------------------------------------
+% Message model — the crdtmsg/7 ground term the "quic" codec expects (addendum A1), as in
+% quic_one_bind.glp / quic_mesh.glp.
+% ---------------------------------------------------------------------------------------------------
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+% ---------------------------------------------------------------------------------------------------
+% RX — bind one listener one-bind on MY endpoint and collect whatever the peer ships (normally one
+% chat envelope, then the peer's graceful close). Identical shape to quic_one_bind's consumer side.
+% Re-arm by re-running the goal (the RX loop) — teardown/re-establish is host-proven (T037/T038).
+% ---------------------------------------------------------------------------------------------------
+procedure recv(Constant?, Integer?, Stream(_)).
+recv(Host, Port, Got?) :- ground(Host?), ground(Port?) |
+    server_listener(link_id("quic", ep(Host?, Port?), 1), Link, _),
+    consume_link(Link?, Got).
+
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+% ---------------------------------------------------------------------------------------------------
+% TX — dial the PEER's RX endpoint, ship exactly one chat envelope, graceful-close ([] tail).
+% Identical shape to quic_one_bind's producer side with a single-message stream.
+% ---------------------------------------------------------------------------------------------------
+procedure send(Constant?, Integer?, Constant?, Constant?, Constant?, Stream(_)).
+send(Host, Port, From, To, Text, []) :-
+    ground(Host?), ground(Port?), ground(From?), ground(To?), ground(Text?) |
+    client_connector(link_id("quic", ep(Host?, Port?), 1), Link, _),
+    ship_one(Link?, From?, To?, Text?).
+
+procedure ship_one(Link(_, _)?, Constant?, Constant?, Constant?).
+ship_one(ch(_, Out?), From, To, Text) :-
+    ground(From?), ground(To?), ground(Text?) |
+    mk_chat(From?, To?, Text?, Out).
+
+% One-element CLOSED stream: the envelope, then the canonical [] stream-end the egress drainer
+% turns into a graceful link close (FR-017).
+procedure mk_chat(Constant?, Constant?, Constant?, Stream(_)).
+mk_chat(From, To, Text, [crdtmsg(Text?, From?, To?, 1, policy([], [], []), none, [])]) :-
+    ground(From?), ground(To?), ground(Text?) | true.
