@@ -330,6 +330,22 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.SetConstant(value) -> body_element_const(ctx, value)
     opcodes.Spawn(label, arity) -> spawn(program, ctx, label, arity)
 
+    // ── GUARD phase: pure three-valued tests (slice 21e / T023) ─────────────
+    opcodes.Otherwise ->
+      case set.is_empty(ctx.u) {
+        True -> Advance(ctx)
+        False -> soft_fail(program, ctx, pc)
+      }
+    opcodes.Ground(var_index, negated) ->
+      guard_ground(program, ctx, pc, var_index, negated)
+    opcodes.Known(var_index, negated) ->
+      guard_known(program, ctx, pc, var_index, negated)
+    opcodes.Unknown(var_index) -> guard_unknown(program, ctx, pc, var_index)
+    opcodes.NoReaders(var_index, negated) ->
+      guard_no_readers(program, ctx, pc, var_index, negated)
+    opcodes.GroundEqual(left, right, negated) ->
+      guard_ground_equal(program, ctx, pc, left, right, negated)
+
     // ── Not yet ported (surfaced, never silently skipped) ───────────────────
     _ -> Stop(RunnerError(Unimplemented(opcodes.mnemonic(op))))
   }
@@ -1794,6 +1810,305 @@ fn build_spawn_regs(arg_slots: Dict(Int, Term), arity: Int) -> XRegs {
       False -> regs
     }
   })
+}
+
+// ── GUARD phase: pure three-valued tests (T023) ──────────────────────────────
+//
+// Guards are pure over σ̂w + the heap: SUCCEED (advance), SUSPEND (defer on the
+// unbound readers' writers → U, soft-fail), or FAIL (soft-fail). Negation inverts
+// success↔failure; suspension is unchanged. Implemented in the runner rather than
+// a separate `guards.gleam` because they read the runner's σ̂w/clause-var state —
+// a separate module would need those types and would import-cycle with the
+// runner's dispatch (the shared-state extraction to `state.gleam` is a follow-up).
+
+/// The accumulator for the cycle-safe collect-unbound walk (Dart `collectUnbound`
+/// / `collectReaders`): whether an unbound writer was seen, the set of terminal
+/// writers of unbound readers (the addresses to suspend on — writer-keyed
+/// adaptation), and the visited set.
+type Collect {
+  Collect(has_writer: Bool, readers: Set(Int), visited: Set(Int))
+}
+
+fn empty_collect() -> Collect {
+  Collect(has_writer: False, readers: set.new(), visited: set.new())
+}
+
+fn collect_cvar(ctx: RunnerContext, cvar: CVar, c: Collect) -> Collect {
+  case cvar {
+    CVAddr(addr) -> collect_addr(ctx, addr, c)
+    CVTerm(t) -> collect_term(ctx, t, c)
+    CVTentative(tent) -> collect_tent(ctx, tent, c)
+    CVState(_, _, _, _) -> c
+  }
+}
+
+fn collect_term(ctx: RunnerContext, term: Term, c: Collect) -> Collect {
+  case term {
+    VarRef(addr) -> collect_addr(ctx, addr, c)
+    StructTerm(_, args) ->
+      list.fold(args, c, fn(c, a) { collect_term(ctx, a, c) })
+    ConstTerm(_) -> c
+  }
+}
+
+fn collect_addr(ctx: RunnerContext, addr: Int, c: Collect) -> Collect {
+  case set.contains(c.visited, addr) {
+    True -> c
+    False -> {
+      let c = Collect(..c, visited: set.insert(c.visited, addr))
+      case dict.get(ctx.sigma_hat, addr) {
+        Ok(SVTerm(t)) -> collect_term(ctx, t, c)
+        Ok(SVTentative(tent)) -> collect_tent(ctx, tent, c)
+        Error(_) ->
+          case heap.is_writer(ctx.heap, addr) {
+            True ->
+              case dval(ctx.heap, addr) {
+                Bound(v) -> collect_term(ctx, v, c)
+                Unbound(_) -> Collect(..c, has_writer: True)
+              }
+            False ->
+              case dval(ctx.heap, addr) {
+                Bound(v) -> collect_term(ctx, v, c)
+                Unbound(terminal) ->
+                  Collect(..c, readers: set.insert(c.readers, terminal))
+              }
+          }
+      }
+    }
+  }
+}
+
+fn collect_tent(ctx: RunnerContext, tent: TentStruct, c: Collect) -> Collect {
+  list.fold(tent.args, c, fn(c, slot) {
+    case slot {
+      TSTerm(t) -> collect_term(ctx, t, c)
+      TSNested(nested) -> collect_tent(ctx, nested, c)
+      TSVoid -> c
+      TSClauseVar(_, _) -> c
+    }
+  })
+}
+
+/// `ground(X)` (Dart runner.dart:3656): unbound writer → FAIL, unbound readers →
+/// SUSPEND, else SUCCEED. Negation inverts success↔failure.
+fn guard_ground(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  var_index: Int,
+  negated: Bool,
+) -> Step {
+  case dict.get(ctx.clause_vars, var_index) {
+    Error(_) -> soft_fail(program, ctx, pc)
+    Ok(cvar) -> {
+      let c = collect_cvar(ctx, cvar, empty_collect())
+      let has_readers = !set.is_empty(c.readers)
+      case negated, c.has_writer, has_readers {
+        _, _, True -> guard_suspend(program, ctx, pc, c.readers)
+        False, True, _ -> soft_fail(program, ctx, pc)
+        False, False, _ -> Advance(ctx)
+        True, True, _ -> Advance(ctx)
+        True, False, _ -> soft_fail(program, ctx, pc)
+      }
+    }
+  }
+}
+
+/// The known/unknown classification of X itself (not subterms).
+type Knownness {
+  KKnown
+  KUnboundReader(terminal: Int)
+  KUnboundWriter
+}
+
+fn classify(ctx: RunnerContext, cvar: CVar) -> Knownness {
+  case cvar {
+    CVTerm(ConstTerm(_)) -> KKnown
+    CVTerm(StructTerm(_, _)) -> KKnown
+    CVTentative(_) -> KKnown
+    CVState(_, _, _, _) -> KKnown
+    CVTerm(VarRef(addr)) -> classify_addr(ctx, addr)
+    CVAddr(addr) -> classify_addr(ctx, addr)
+  }
+}
+
+fn classify_addr(ctx: RunnerContext, addr: Int) -> Knownness {
+  case dict.has_key(ctx.sigma_hat, addr) {
+    True -> KKnown
+    False ->
+      case heap.is_writer(ctx.heap, addr) {
+        True ->
+          case dval(ctx.heap, addr) {
+            Bound(_) -> KKnown
+            Unbound(_) -> KUnboundWriter
+          }
+        False ->
+          case dval(ctx.heap, addr) {
+            Bound(_) -> KKnown
+            Unbound(terminal) -> KUnboundReader(terminal)
+          }
+      }
+  }
+}
+
+/// `known(X)` (Dart runner.dart:3796): bound → SUCCEED, unbound reader → SUSPEND,
+/// unbound writer → FAIL. Negation inverts success↔failure.
+fn guard_known(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  var_index: Int,
+  negated: Bool,
+) -> Step {
+  case dict.get(ctx.clause_vars, var_index) {
+    Error(_) -> soft_fail(program, ctx, pc)
+    Ok(cvar) ->
+      case classify(ctx, cvar), negated {
+        KUnboundReader(w), _ ->
+          guard_suspend(program, ctx, pc, set.insert(set.new(), w))
+        KKnown, False -> Advance(ctx)
+        KKnown, True -> soft_fail(program, ctx, pc)
+        KUnboundWriter, False -> soft_fail(program, ctx, pc)
+        KUnboundWriter, True -> Advance(ctx)
+      }
+  }
+}
+
+/// `unknown(X)` (Dart opv2.Unknown, runner.dart:1017): SUCCEED iff X is unbound.
+/// (Never emitted by the current codegen — `unknown` routes through the generic
+/// Guard — but kept for completeness.)
+fn guard_unknown(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  var_index: Int,
+) -> Step {
+  case dict.get(ctx.clause_vars, var_index) {
+    Error(_) -> Advance(ctx)
+    Ok(cvar) ->
+      case classify(ctx, cvar) {
+        KKnown -> soft_fail(program, ctx, pc)
+        _ -> Advance(ctx)
+      }
+  }
+}
+
+/// `no_readers(X)` (Dart runner.dart:3918): readers present → SUSPEND on them,
+/// never fails; none → SUCCEED. Negation inverts.
+fn guard_no_readers(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  var_index: Int,
+  negated: Bool,
+) -> Step {
+  case dict.get(ctx.clause_vars, var_index) {
+    Error(_) ->
+      case negated {
+        True -> soft_fail(program, ctx, pc)
+        False -> Advance(ctx)
+      }
+    Ok(cvar) -> {
+      let c = collect_cvar(ctx, cvar, empty_collect())
+      case set.is_empty(c.readers), negated {
+        True, False -> Advance(ctx)
+        False, False -> guard_suspend(program, ctx, pc, c.readers)
+        False, True -> Advance(ctx)
+        True, True -> soft_fail(program, ctx, pc)
+      }
+    }
+  }
+}
+
+/// `X =?= Y` (Dart runner.dart:4049): unbound writer → FAIL, unbound readers →
+/// SUSPEND, else compare ground values. Negation inverts equality.
+fn guard_ground_equal(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  left: Int,
+  right: Int,
+  negated: Bool,
+) -> Step {
+  case dict.get(ctx.clause_vars, left), dict.get(ctx.clause_vars, right) {
+    Ok(lc), Ok(rc) -> {
+      let c = collect_cvar(ctx, rc, collect_cvar(ctx, lc, empty_collect()))
+      case c.has_writer, set.is_empty(c.readers) {
+        True, _ -> soft_fail(program, ctx, pc)
+        False, False -> guard_suspend(program, ctx, pc, c.readers)
+        False, True -> {
+          let eq = resolve_cvar(ctx, lc) == resolve_cvar(ctx, rc)
+          case eq == !negated {
+            True -> Advance(ctx)
+            False -> soft_fail(program, ctx, pc)
+          }
+        }
+      }
+    }
+    _, _ -> soft_fail(program, ctx, pc)
+  }
+}
+
+fn guard_suspend(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  writers: Set(Int),
+) -> Step {
+  soft_fail_with(
+    program,
+    RunnerContext(..ctx, u: set.union(ctx.u, writers)),
+    pc,
+  )
+}
+
+// Fully resolve a value to a ground term for `=?=` comparison (σ̂w + heap).
+fn resolve_cvar(ctx: RunnerContext, cvar: CVar) -> Term {
+  case cvar {
+    CVTerm(t) -> resolve_term(ctx, t)
+    CVAddr(a) -> resolve_addr(ctx, a)
+    CVTentative(tent) -> resolve_tent(ctx, tent)
+    CVState(_, _, _, _) -> ConstTerm(ConstAtom("$state"))
+  }
+}
+
+fn resolve_term(ctx: RunnerContext, term: Term) -> Term {
+  case term {
+    VarRef(addr) -> resolve_addr(ctx, addr)
+    StructTerm(f, args) ->
+      StructTerm(f, list.map(args, fn(a) { resolve_term(ctx, a) }))
+    ConstTerm(_) -> term
+  }
+}
+
+fn resolve_addr(ctx: RunnerContext, addr: Int) -> Term {
+  case dict.get(ctx.sigma_hat, addr) {
+    Ok(SVTerm(t)) -> resolve_term(ctx, t)
+    Ok(SVTentative(tent)) -> resolve_tent(ctx, tent)
+    Error(_) ->
+      case dval(ctx.heap, addr) {
+        Bound(v) -> resolve_term(ctx, v)
+        Unbound(w) -> VarRef(w)
+      }
+  }
+}
+
+fn resolve_tent(ctx: RunnerContext, tent: TentStruct) -> Term {
+  StructTerm(
+    tent.functor,
+    list.map(tent.args, fn(slot) {
+      case slot {
+        TSTerm(t) -> resolve_term(ctx, t)
+        TSNested(n) -> resolve_tent(ctx, n)
+        TSVoid -> ConstTerm(ConstAtom("$void"))
+        TSClauseVar(vi, _) ->
+          case dict.get(ctx.clause_vars, vi) {
+            Ok(cv) -> resolve_cvar(ctx, cv)
+            Error(_) -> ConstTerm(ConstAtom("$unresolved"))
+          }
+      }
+    }),
+  )
 }
 
 // ── Commit (Dart runner.dart:2703) ───────────────────────────────────────────
