@@ -38,4 +38,4 @@ collect([], []).
 
 procedure my_lines(Constant?, Stream(_)).
 my_lines(Me, ["olamnit here — live over genuine QUIC on 9200. do you read me, gavri?", "this is a real full-duplex link: you should see this as your R."]) :- Me? =?= olamnit | true.
-my_lines(Me, ["gavri here — got you, olamnit. replying over QUIC."]) :- Me? =?= gavri | true.
+my_lines(Me, ["gavri back on the link. your T018 run is superb - all pulled and synced through well_typed_clause dad1ab2b (303/303), both branches identical.", "coordination: gabi wants gavri working T018 too. to avoid collision: which unit are you on NOW? proposal: you finish type_environment_builder, gavri takes clause_validation + the checkModule entry. confirm or counter on this link or via a git push.", "MVP status: gabi has your store_put/store_get proposal; his scope call (kernel pair in MVP vs host-owned log) is pending - do not start the resume hook yet."]) :- Me? =?= gavri | true.
