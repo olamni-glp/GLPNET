@@ -42,7 +42,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/set.{type Set}
 import gleam/string
-import glp/bytecode/opcodes.{type Op}
+import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
@@ -50,12 +50,20 @@ import glp/runtime/terms.{
   type Constant, type Term, ConstAtom, ConstTerm, StructTerm, VarRef,
 }
 
+/// A body-spawned goal: a request for the scheduler (T022) to mint a fresh goal
+/// id, register `regs`, and enqueue an `Activation` at `entry_pc` for procedure
+/// `procedure`. The runner deliberately does NOT own the goal-id counter (Dart
+/// `rt.nextGoalId`); it emits the request and the scheduler assigns identity.
+pub type SpawnReq {
+  SpawnReq(procedure: LabelName, entry_pc: Int, regs: XRegs)
+}
+
 /// The outcome of one goal reduction, handed back to the scheduler (T022).
 pub type ReduceOutcome {
-  /// A clause committed: the goal reduced. `heap` is post-commit; `spawned`
-  /// carries goals to enqueue — reactivations woken by the commit binding plus
-  /// (once BODY lands) body-spawned goals.
-  Reduced(heap: Heap, spawned: List(GoalRef))
+  /// A clause committed: the goal reduced. `heap` is post-commit; `woken`
+  /// carries reactivation signals (goal id + resume pc) from writers the commit
+  /// bound; `spawned` carries the body's freshly-built goals.
+  Reduced(heap: Heap, woken: List(GoalRef), spawned: List(SpawnReq))
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
   Suspended(heap: Heap, on: Set(Int))
@@ -127,13 +135,20 @@ pub type CVar {
 }
 
 /// The structure currently being traversed (READ) or built (WRITE); Dart
-/// `cx.currentStructure`.
+/// `cx.currentStructure`. `BTStruct` doubles as a real `StructTerm` under READ
+/// traversal (HEAD) and a BODY structure being filled slot-by-slot.
 pub type BuildTarget {
   BTNone
-  /// READ-mode traversal over a real structure's args.
   BTStruct(functor: String, args: List(Term))
   /// WRITE-mode HEAD building.
   BTTentative(TentStruct)
+}
+
+/// A saved parent context for nested BODY structure building (Dart
+/// `_ParentContext`): the parent structure, its S pointer, its mode, and its
+/// target writer.
+pub type ParentCtx {
+  ParentCtx(structure: BuildTarget, s: Int, mode: Mode, writer: Option(Int))
 }
 
 /// Per-reduction execution context (Dart `RunnerContext`, the fields this slice
@@ -151,8 +166,11 @@ pub type RunnerContext {
     /// Goal-level suspension set (writer addresses), accumulated across clause
     /// attempts; consumed by NoMoreClauses. Survives clause clears.
     u: Set(Int),
-    /// Goals to enqueue once the reduction succeeds.
-    spawned: List(GoalRef),
+    /// Reactivation signals from writers bound at Commit / in BODY (Dart
+    /// `rt.gq.enqueue` of woken `GoalRef`s).
+    woken: List(GoalRef),
+    /// Body-spawned goal requests (Dart Spawn), handed to the scheduler.
+    spawn_reqs: List(SpawnReq),
     /// Clause-variable bindings Xi → value (Dart `clauseVars`).
     clause_vars: Dict(Int, CVar),
     /// READ/WRITE mode for structure traversal.
@@ -164,6 +182,17 @@ pub type RunnerContext {
     /// σ̂w key of the top-level tentative in `current` (see `put_current`);
     /// `None` while a nested structure is being built or during READ traversal.
     current_writer: Option(Int),
+    /// BODY output argument registers for the next Spawn (Dart `argSlots`).
+    arg_slots: Dict(Int, Term),
+    /// The target writer of the BODY structure under construction (Dart
+    /// `clauseVars[-1]`).
+    build_writer: Option(Int),
+    /// The target arg slot of the outermost BODY structure (Dart
+    /// `clauseVars[-2]`).
+    build_slot: Option(Int),
+    /// Saved parent contexts for nested BODY structure building (Dart
+    /// `parentStack`).
+    parent_stack: List(ParentCtx),
     /// Phase flag: `False` = HEAD/GUARD, `True` = BODY (set at Commit).
     in_body: Bool,
   )
@@ -179,12 +208,17 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     sigma_hat: dict.new(),
     si: set.new(),
     u: set.new(),
-    spawned: [],
+    woken: [],
+    spawn_reqs: [],
     clause_vars: dict.new(),
     mode: ReadMode,
     s: 0,
     current: BTNone,
     current_writer: None,
+    arg_slots: dict.new(),
+    build_writer: None,
+    build_slot: None,
+    parent_stack: [],
     in_body: False,
   )
 }
@@ -254,8 +288,8 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.TryNextClause -> soft_fail(program, ctx, pc)
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
-    opcodes.Proceed -> Stop(Reduced(ctx.heap, ctx.spawned))
-    opcodes.Halt -> Stop(Reduced(ctx.heap, ctx.spawned))
+    opcodes.Proceed -> Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs))
+    opcodes.Halt -> Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -280,6 +314,21 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.Pop(reg_index) -> pop(ctx, reg_index)
     opcodes.UnifyStructure(functor, arity) ->
       unify_structure(program, ctx, pc, functor, arity)
+
+    // ── BODY phase: argument construction + spawn (slice 21d) ───────────────
+    opcodes.PutVariable(var_index, arg_slot, is_reader) ->
+      put_variable(ctx, var_index, arg_slot, is_reader)
+    opcodes.PutConstant(value, arg_slot)
+    | opcodes.PutBoundConst(value, arg_slot) ->
+      put_bound_const(ctx, value, arg_slot)
+    opcodes.PutNil(arg_slot) | opcodes.PutBoundNil(arg_slot) ->
+      put_bound_const(ctx, ConstAtom("nil"), arg_slot)
+    opcodes.PutStructure(functor, arity, arg_slot) ->
+      put_structure(ctx, functor, arity, arg_slot)
+    opcodes.SetVariable(var_index, is_reader) ->
+      body_element_var(ctx, var_index, is_reader)
+    opcodes.SetConstant(value) -> body_element_const(ctx, value)
+    opcodes.Spawn(label, arity) -> spawn(program, ctx, label, arity)
 
     // ── Not yet ported (surfaced, never silently skipped) ───────────────────
     _ -> Stop(RunnerError(Unimplemented(opcodes.mnemonic(op))))
@@ -860,8 +909,9 @@ fn unify_variable(
       unify_variable_write(ctx, struct, var_index, is_reader)
     ReadMode, BTStruct(_, args) ->
       unify_variable_read(program, ctx, pc, args, var_index, is_reader)
-    // WRITE into a real StructTerm is BODY construction (slice 21d).
-    WriteMode, _ -> Stop(RunnerError(Unimplemented("unify_variable (body)")))
+    // WRITE into a real StructTerm is BODY construction — same as SetVariable.
+    WriteMode, BTStruct(_, _) -> body_element_var(ctx, var_index, is_reader)
+    WriteMode, BTNone -> Advance(ctx)
     ReadMode, _ -> Advance(ctx)
   }
 }
@@ -1181,7 +1231,9 @@ fn unify_constant(
         RunnerContext(..put_current(ctx, BTTentative(struct)), s: ctx.s + 1),
       )
     }
-    WriteMode, _ -> Stop(RunnerError(Unimplemented("unify_constant (body)")))
+    // WRITE into a real StructTerm is BODY construction — same as SetConstant.
+    WriteMode, BTStruct(_, _) -> body_element_const(ctx, value)
+    WriteMode, BTNone -> Advance(ctx)
     // READ: verify the value at S matches the constant.
     ReadMode, BTStruct(_, args) ->
       case list_at(args, ctx.s) {
@@ -1378,6 +1430,372 @@ fn unify_structure_read(
   }
 }
 
+// ── BODY argument construction + spawn (slice 21d) ───────────────────────────
+//
+// After Commit (`in_body`), the body builds each goal's argument registers
+// (`arg_slots`) and spawns goals. Structures are built on the heap incrementally
+// (`current` = a real `BTStruct`, filled by SetVariable/SetConstant and the
+// top-level UnifyVariable/UnifyConstant), binding the target writer on
+// completion and unwinding nested `parent_stack` frames.
+
+/// A transient placeholder for an unfilled BODY structure slot (Dart
+/// `ConstTerm(null)`); always overwritten before the structure completes (S
+/// walks every position), so it never reaches a bound term.
+fn body_placeholder() -> Term {
+  ConstTerm(ConstAtom("$unset"))
+}
+
+fn set_arg(ctx: RunnerContext, slot: Int, term: Term) -> RunnerContext {
+  RunnerContext(..ctx, arg_slots: dict.insert(ctx.arg_slots, slot, term))
+}
+
+// PutVariable (Dart opv2.PutVariable, runner.dart:2971) — place clause var Xi
+// into arg_slots[argSlot] (mode-corrected); alloc fresh on first occurrence.
+fn put_variable(
+  ctx: RunnerContext,
+  var_index: Int,
+  arg_slot: Int,
+  is_reader: Bool,
+) -> Step {
+  case dict.get(ctx.clause_vars, var_index) {
+    Ok(CVTerm(VarRef(addr))) ->
+      Advance(set_arg(ctx, arg_slot, VarRef(mode_addr(ctx, addr, is_reader))))
+    Ok(CVAddr(v)) -> {
+      let a = case is_reader {
+        True -> heap.paired_reader(ctx.heap, v)
+        False -> v
+      }
+      Advance(set_arg(ctx, arg_slot, VarRef(a)))
+    }
+    Ok(CVTerm(ground)) ->
+      case is_reader {
+        // Reader mode: alloc a fresh var bound to the ground term, pass its
+        // reader (CallEnv arguments are VarRefs — Dart runner.dart:2987).
+        True ->
+          case heap.allocate_variable(ctx.heap) {
+            #(h, w, r) ->
+              case heap.bind_writer(h, w, ground) {
+                Ok(#(h2, fired)) ->
+                  Advance(set_arg(
+                    RunnerContext(
+                      ..ctx,
+                      heap: h2,
+                      woken: list.append(ctx.woken, fired),
+                    ),
+                    arg_slot,
+                    VarRef(r),
+                  ))
+                Error(e) ->
+                  Stop(RunnerError(StructuralViolation(heap_error_detail(e))))
+              }
+          }
+        False -> Advance(set_arg(ctx, arg_slot, ground))
+      }
+    // First occurrence: allocate a fresh variable, store the writer base.
+    Error(_) -> {
+      let #(h, w, r) = heap.allocate_variable(ctx.heap)
+      let ctx =
+        RunnerContext(
+          ..ctx,
+          heap: h,
+          clause_vars: dict.insert(
+            ctx.clause_vars,
+            var_index,
+            CVTerm(VarRef(w)),
+          ),
+        )
+      let a = case is_reader {
+        True -> r
+        False -> w
+      }
+      Advance(set_arg(ctx, arg_slot, VarRef(a)))
+    }
+    _ -> Advance(ctx)
+  }
+}
+
+/// The address for a VarRef in `is_reader` mode: a writer viewed as a reader
+/// yields its paired reader; a reader viewed as a writer yields its paired
+/// writer; a value cell is used as-is (Dart PutVariable/SetVariable mode logic).
+fn mode_addr(ctx: RunnerContext, addr: Int, is_reader: Bool) -> Int {
+  case
+    is_reader,
+    heap.is_writer(ctx.heap, addr),
+    heap.is_reader(ctx.heap, addr)
+  {
+    True, True, _ -> heap.paired_reader(ctx.heap, addr)
+    False, _, True ->
+      case heap.paired_writer(ctx.heap, addr) {
+        Ok(w) -> w
+        Error(_) -> addr
+      }
+    _, _, _ -> addr
+  }
+}
+
+// PutConstant / PutBoundConst / PutNil / PutBoundNil (Dart 3048/4470/4458/4480) —
+// alloc a fresh var bound to the constant, store its reader in arg_slots.
+fn put_bound_const(ctx: RunnerContext, value: Constant, arg_slot: Int) -> Step {
+  let #(h, w, r) = heap.allocate_variable(ctx.heap)
+  case heap.bind_writer(h, w, ConstTerm(value)) {
+    Ok(#(h2, fired)) ->
+      Advance(set_arg(
+        RunnerContext(..ctx, heap: h2, woken: list.append(ctx.woken, fired)),
+        arg_slot,
+        VarRef(r),
+      ))
+    Error(e) -> Stop(RunnerError(StructuralViolation(heap_error_detail(e))))
+  }
+}
+
+// PutStructure (Dart runner.dart:3058) — begin a BODY structure. Alloc a fresh
+// target writer, push the parent frame if nested, record the target slot.
+fn put_structure(
+  ctx: RunnerContext,
+  functor: String,
+  arity: Int,
+  arg_slot: Int,
+) -> Step {
+  let #(h, w, _r) = heap.allocate_variable(ctx.heap)
+  let ctx = RunnerContext(..ctx, heap: h)
+  // Nested (arg_slot == -1) or a structure already in progress → push parent.
+  let ctx = case arg_slot == -1 || ctx.current != BTNone {
+    True ->
+      RunnerContext(..ctx, parent_stack: [
+        ParentCtx(ctx.current, ctx.s, ctx.mode, ctx.build_writer),
+        ..ctx.parent_stack
+      ])
+    False -> ctx
+  }
+  let ctx = RunnerContext(..ctx, build_writer: Some(w))
+  let ctx = case arg_slot >= 0 && arg_slot < 10, arg_slot >= 10 {
+    True, _ -> RunnerContext(..ctx, build_slot: Some(arg_slot))
+    _, True ->
+      RunnerContext(
+        ..ctx,
+        clause_vars: dict.insert(ctx.clause_vars, arg_slot, CVTerm(VarRef(w))),
+      )
+    _, _ -> ctx
+  }
+  Advance(
+    RunnerContext(
+      ..ctx,
+      current: BTStruct(functor, list.repeat(body_placeholder(), arity)),
+      s: 0,
+      mode: WriteMode,
+    ),
+  )
+}
+
+// SetVariable / body UnifyVariable (Dart opv2.SetVariable, runner.dart:2522) —
+// place clause var Xi into the current BODY structure at S; complete on fill.
+fn body_element_var(
+  ctx: RunnerContext,
+  var_index: Int,
+  is_reader: Bool,
+) -> Step {
+  case ctx.current {
+    BTStruct(f, args) -> {
+      let #(ctx, term) = body_var_term(ctx, var_index, is_reader)
+      let ctx =
+        RunnerContext(
+          ..ctx,
+          current: BTStruct(f, list_set(args, ctx.s, term)),
+          s: ctx.s + 1,
+        )
+      maybe_complete_body(ctx)
+    }
+    _ -> Advance(ctx)
+  }
+}
+
+/// The term to place for clause var `var_index` in a BODY structure slot,
+/// allocating a fresh variable on first occurrence (Dart SetVariable cases).
+fn body_var_term(
+  ctx: RunnerContext,
+  var_index: Int,
+  is_reader: Bool,
+) -> #(RunnerContext, Term) {
+  case dict.get(ctx.clause_vars, var_index) {
+    Ok(CVTerm(VarRef(addr))) -> #(ctx, VarRef(mode_addr(ctx, addr, is_reader)))
+    Ok(CVAddr(v)) -> {
+      let a = case is_reader {
+        True -> heap.paired_reader(ctx.heap, v)
+        False -> v
+      }
+      #(ctx, VarRef(a))
+    }
+    // Ground term: embed directly.
+    Ok(CVTerm(ground)) -> #(ctx, ground)
+    _ -> {
+      let #(h, w, r) = heap.allocate_variable(ctx.heap)
+      let ctx =
+        RunnerContext(
+          ..ctx,
+          heap: h,
+          clause_vars: dict.insert(
+            ctx.clause_vars,
+            var_index,
+            CVTerm(VarRef(w)),
+          ),
+        )
+      let a = case is_reader {
+        True -> r
+        False -> w
+      }
+      #(ctx, VarRef(a))
+    }
+  }
+}
+
+// SetConstant / body UnifyConstant (Dart runner.dart:3109) — place a constant
+// into the current BODY structure at S; complete on fill.
+fn body_element_const(ctx: RunnerContext, value: Constant) -> Step {
+  case ctx.current {
+    BTStruct(f, args) -> {
+      let ctx =
+        RunnerContext(
+          ..ctx,
+          current: BTStruct(f, list_set(args, ctx.s, ConstTerm(value))),
+          s: ctx.s + 1,
+        )
+      maybe_complete_body(ctx)
+    }
+    _ -> Advance(ctx)
+  }
+}
+
+fn maybe_complete_body(ctx: RunnerContext) -> Step {
+  case ctx.current {
+    BTStruct(_, args) ->
+      case ctx.s >= list.length(args) {
+        True -> complete_body_struct(ctx)
+        False -> Advance(ctx)
+      }
+    _ -> Advance(ctx)
+  }
+}
+
+/// A completed BODY structure: bind its target writer to the `StructTerm`, then
+/// unwind the parent stack (recursively completing ancestors), finally storing
+/// the outermost structure's reader into `arg_slots` (Dart Set* completion).
+fn complete_body_struct(ctx: RunnerContext) -> Step {
+  case ctx.build_writer, ctx.current {
+    Some(wid), BTStruct(f, args) ->
+      case bind_body_writer(ctx, wid, f, args) {
+        Error(fault) -> Stop(RunnerError(fault))
+        Ok(ctx) -> unwind_body(ctx, wid)
+      }
+    _, _ -> Advance(ctx)
+  }
+}
+
+fn bind_body_writer(
+  ctx: RunnerContext,
+  wid: Int,
+  functor: String,
+  args: List(Term),
+) -> Result(RunnerContext, RunnerFault) {
+  case heap.bind_writer(ctx.heap, wid, StructTerm(functor, args)) {
+    Ok(#(h, fired)) ->
+      Ok(RunnerContext(..ctx, heap: h, woken: list.append(ctx.woken, fired)))
+    Error(e) -> Error(StructuralViolation(heap_error_detail(e)))
+  }
+}
+
+fn unwind_body(ctx: RunnerContext, completed_writer: Int) -> Step {
+  case ctx.parent_stack {
+    // Outermost structure done — store its reader in arg_slots, reset.
+    [] -> {
+      let ctx = case ctx.build_slot {
+        Some(slot) ->
+          set_arg(
+            ctx,
+            slot,
+            VarRef(heap.paired_reader(ctx.heap, completed_writer)),
+          )
+        None -> ctx
+      }
+      Advance(
+        RunnerContext(
+          ..ctx,
+          current: BTNone,
+          mode: ReadMode,
+          s: 0,
+          build_writer: None,
+          build_slot: None,
+        ),
+      )
+    }
+    // Place the completed structure's reader into the parent slot, restore the
+    // parent, and (if it is now complete) recurse.
+    [parent, ..rest] -> {
+      let reader = VarRef(heap.paired_reader(ctx.heap, completed_writer))
+      let parent_struct = case parent.structure {
+        BTStruct(pf, pargs) -> BTStruct(pf, list_set(pargs, parent.s, reader))
+        other -> other
+      }
+      let ctx =
+        RunnerContext(
+          ..ctx,
+          current: parent_struct,
+          s: parent.s + 1,
+          mode: parent.mode,
+          build_writer: parent.writer,
+          parent_stack: rest,
+        )
+      case ctx.current, ctx.build_writer {
+        BTStruct(pf, pargs), Some(pw) ->
+          case ctx.s >= list.length(pargs) {
+            True ->
+              case bind_body_writer(ctx, pw, pf, pargs) {
+                Error(fault) -> Stop(RunnerError(fault))
+                Ok(ctx) -> unwind_body(ctx, pw)
+              }
+            False -> Advance(ctx)
+          }
+        _, _ -> Advance(ctx)
+      }
+    }
+  }
+}
+
+// Spawn (Dart runner.dart:3220) — emit a spawn request for the scheduler with
+// the body-built argument registers. A missing procedure label is a body kernel
+// (T024) — surfaced, not silently dropped.
+fn spawn(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  label: LabelName,
+  arity: Int,
+) -> Step {
+  case program.label_pc(program, label) {
+    Ok(entry_pc) -> {
+      let regs = build_spawn_regs(ctx.arg_slots, arity)
+      Advance(
+        RunnerContext(
+          ..ctx,
+          spawn_reqs: list.append(ctx.spawn_reqs, [
+            SpawnReq(label, entry_pc, regs),
+          ]),
+          arg_slots: dict.new(),
+        ),
+      )
+    }
+    Error(_) ->
+      Stop(RunnerError(Unimplemented("spawn -> body kernel " <> label)))
+  }
+}
+
+fn build_spawn_regs(arg_slots: Dict(Int, Term), arity: Int) -> XRegs {
+  dict.fold(arg_slots, program.new_regs(), fn(regs, slot, term) {
+    case slot >= 0 && slot < arity {
+      True -> program.set_reg(regs, slot, term)
+      False -> regs
+    }
+  })
+}
+
 // ── Commit (Dart runner.dart:2703) ───────────────────────────────────────────
 //
 // Two-phase Si resolution, convert tentative structures → StructTerms (resolving
@@ -1415,8 +1833,12 @@ fn commit(program: BytecodeProgram, ctx: RunnerContext, pc: Int) -> Step {
                   current_writer: None,
                   mode: ReadMode,
                   s: 0,
+                  arg_slots: dict.new(),
+                  parent_stack: [],
+                  build_writer: None,
+                  build_slot: None,
                   in_body: True,
-                  spawned: list.append(ctx.spawned, woken),
+                  woken: list.append(ctx.woken, woken),
                 ),
               )
           }
@@ -1617,6 +2039,10 @@ fn clear_clause(ctx: RunnerContext) -> RunnerContext {
     s: 0,
     current: BTNone,
     current_writer: None,
+    arg_slots: dict.new(),
+    build_writer: None,
+    build_slot: None,
+    parent_stack: [],
     in_body: False,
   )
 }

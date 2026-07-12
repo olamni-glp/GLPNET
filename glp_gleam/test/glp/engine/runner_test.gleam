@@ -37,7 +37,7 @@ pub fn flip_first_clause_binds_writer_test() {
     |> program.set_reg(1, VarRef(x_writer))
   let outcome = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, spawned: _) = outcome
+  let assert runner.Reduced(heap: h2, ..) = outcome
   let assert Ok(#(_, heap.Bound(ConstTerm(ConstAtom("one"))))) =
     heap.deref(h2, x_writer)
 }
@@ -54,7 +54,7 @@ pub fn flip_second_clause_binds_writer_test() {
     |> program.set_reg(1, VarRef(x_writer))
   let outcome = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, spawned: _) = outcome
+  let assert runner.Reduced(heap: h2, ..) = outcome
   let assert Ok(#(_, heap.Bound(ConstTerm(ConstAtom("zero"))))) =
     heap.deref(h2, x_writer)
 }
@@ -127,7 +127,7 @@ pub fn swap_builds_output_structure_test() {
     |> program.set_reg(1, VarRef(r_writer))
   let out = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, spawned: _) = out
+  let assert runner.Reduced(heap: h2, ..) = out
   let assert Ok(#(_, heap.Bound(result))) = heap.deref(h2, r_writer)
   resolve(h2, result)
   |> should.equal(
@@ -162,7 +162,7 @@ pub fn first_bit_reads_list_head_test() {
     |> program.set_reg(1, VarRef(r_writer))
   let out = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, spawned: _) = out
+  let assert runner.Reduced(heap: h2, ..) = out
   let assert Ok(#(_, heap.Bound(result))) = heap.deref(h2, r_writer)
   resolve(h2, result)
   |> should.equal(StructTerm("some", [ConstTerm(ConstAtom("one"))]))
@@ -181,7 +181,7 @@ pub fn first_bit_empty_list_test() {
     |> program.set_reg(1, VarRef(r_writer))
   let out = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, spawned: _) = out
+  let assert runner.Reduced(heap: h2, ..) = out
   let assert Ok(#(_, heap.Bound(ConstTerm(ConstAtom("none"))))) =
     heap.deref(h2, r_writer)
 }
@@ -202,4 +202,35 @@ pub fn first_bit_suspends_on_unbound_list_test() {
 
   let assert runner.Suspended(heap: _, on: on) = out
   should.be_true(set.contains(on, xs_writer))
+}
+
+// ── Slice 21d: BODY construction + Spawn ─────────────────────────────────────
+
+const spawn_source = "Bit ::= zero ; one.
+G ::= g(Bit).
+procedure start(Bit?).
+start(X) :- sink(g(X?)).
+procedure sink(G?).
+sink(g(_))."
+
+// start(zero) commits, then its body builds `g(X?)` on the heap (PutStructure +
+// a body element + structure completion) and spawns sink/1 with that structure
+// as argument 0. Exercises the whole BODY-construction + Spawn path; the spawn
+// request's built register resolves to g(zero).
+pub fn body_spawns_goal_with_built_structure_test() {
+  let assert Ok(outcome) = loader.load(spawn_source, "")
+  let prog = outcome.program
+  let assert Ok(kappa) = program.label_pc(prog, "start/1")
+  let regs =
+    program.new_regs()
+    |> program.set_reg(0, ConstTerm(ConstAtom("zero")))
+  let out =
+    runner.reduce(prog, runner.new_context(heap.new(), regs), kappa, 1000)
+
+  let assert runner.Reduced(heap: h2, woken: _, spawned: [req]) = out
+  req.procedure
+  |> should.equal("sink/1")
+  let assert Ok(arg0) = program.get_reg(req.regs, 0)
+  resolve(h2, arg0)
+  |> should.equal(StructTerm("g", [ConstTerm(ConstAtom("zero"))]))
 }
