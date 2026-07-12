@@ -42,13 +42,23 @@ public static class LinkEstablish
         if (faultsArg is not VarRef faultsVr || !heap.IsWriter(faultsVr.Addr))
             return Abort(who, "Faults must be an unbound writer cell");
 
+        // Capability gate (feature 050 US3, FR-008): verify-before-act — the scheme's gate runs
+        // BEFORE any transport endpoint is opened or the link wired. A refusal has already been
+        // RECORDED by the gate as a distinct outcome (ProvenanceOutcome.Refused); establishment
+        // fails closed through the graceful Abort path — never a crash, never a silent drop
+        // (FR-009). Schemes with no registered gate resolve to the allow-all default (loopback/tcp
+        // unchanged).
+        if (!link.CapabilityGates.Select(id.Scheme).GateEstablish(id))
+            return Abort(who, $"capability refused for {id} — establishment fails closed (FR-008)");
+
         // Idempotency at link-identity (FR-007): re-establishment of the same ground
         // LinkId reuses the handle rather than opening a duplicate.
         bool firstEstablishment = !link.Links.Contains(id);
         LinkHandle handle;
         try
         {
-            handle = link.Links.GetOrEstablish(id, () => new LinkHandle(id, establish(), LinkOptions.Default));
+            handle = link.Links.GetOrEstablish(id, () => new LinkHandle(
+                id, establish(), LinkOptions.Default, link.PayloadCodecs.Select(id.Scheme)));
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or AggregateException)
         {

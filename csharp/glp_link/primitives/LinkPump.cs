@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 
 using GlpRuntime.Link.Reliability;
 using GlpRuntime.Link.Seam;
-using GlpRuntime.Multiagent;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -36,6 +35,9 @@ public sealed class LinkPump : IInboundPump, IDisposable
     private readonly BlockingCollection<InboundItem> _inbox = new(new ConcurrentQueue<InboundItem>());
     private readonly CancellationTokenSource _cts = new();
     private readonly List<Task> _recvLoops = new();
+    // Every OnFault subscription, so Dispose can detach it (review-fix): otherwise the closure keeps
+    // this pump — and the engine — reachable via a long-lived endpoint's event.
+    private readonly List<(ILinkEndpoint Endpoint, Action<LinkFaultSignal> Handler)> _faultSubs = new();
     private int _liveLinks;
 
     public LinkPump(GlpRuntimeEngine engine) =>
@@ -56,8 +58,14 @@ public sealed class LinkPump : IInboundPump, IDisposable
         // lattice term and enqueue it for runner-thread fan-out onto the monitor
         // cursors. The handler runs on the transport's thread but only touches the
         // thread-safe inbox — never the heap (T034).
-        handle.Endpoint.OnFault += signal => EnqueueFault(handle, signal);
-        _recvLoops.Add(Task.Run(() => RecvLoopAsync(handle, _cts.Token)));
+        Action<LinkFaultSignal> onFault = signal => EnqueueFault(handle, signal);
+        handle.Endpoint.OnFault += onFault;
+        // _faultSubs + _recvLoops share one lock: Dispose reads both to detach handlers and join loops.
+        lock (_faultSubs)
+        {
+            _faultSubs.Add((handle.Endpoint, onFault));
+            _recvLoops.Add(Task.Run(() => RecvLoopAsync(handle, _cts.Token)));
+        }
     }
 
     /// <summary>
@@ -134,7 +142,6 @@ public sealed class LinkPump : IInboundPump, IDisposable
     /// </summary>
     private async Task RecvLoopAsync(LinkHandle handle, CancellationToken ct)
     {
-        var deserializer = new PayloadSerializer(string.Empty);
         try
         {
             while (!ct.IsCancellationRequested)
@@ -146,18 +153,57 @@ public sealed class LinkPump : IInboundPump, IDisposable
                     return;
                 }
 
-                var parsed = FrameCodec.ParseFrame(frame);
-                byte[]? payload = handle.Reassembler.Accept(parsed);
-                if (payload is null)
-                    continue; // awaiting more fragments
-
-                foreach (var ordered in handle.Ordering.Accept(parsed.MessageId, payload))
+                try
                 {
-                    Term term = deserializer.DeserializeAgentMessagePayload(
-                        ordered,
-                        allocateImportedVar: _ => throw new InvalidOperationException(
-                            "ground-relay base received a non-ground payload (embedded variable)"));
-                    _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
+                    // The FRAME-processing layers below all consume UNTRUSTED remote bytes and loud-fail
+                    // on a malformed/adversarial frame (CRC/length mismatch, reorder-buffer overflow,
+                    // too-many-in-flight) — all remote-triggerable through the QUIC AEAD. Guard the WHOLE
+                    // parse→reassemble→reorder→decode pipeline so any such fault becomes an OBSERVABLE
+                    // recorded fault (FR-007/FR-016), never a silent death of the fire-and-forget task.
+                    var parsed = FrameCodec.ParseFrame(frame);
+                    byte[]? payload = handle.Reassembler.Accept(parsed);
+                    if (payload is null)
+                        continue; // awaiting more fragments
+
+                    foreach (var ordered in handle.Ordering.Accept(parsed.MessageId, payload))
+                    {
+                        // Decode via the link's payload codec (feature 050): the default ground-relay
+                        // blob for loopback/tcp; the 041 crdtmsg envelope for a "quic" link. Loud-fail
+                        // on a malformed payload is the codec's contract (FR-007).
+                        Term term;
+                        try
+                        {
+                            term = handle.Codec.Decode(ordered);
+                        }
+                        catch (CapabilityRefusedException ex)
+                        {
+                            // Verify-before-act refused this inbound gated action (feature 050 US3,
+                            // FR-009): the gate RECORDED the distinct refusal before throwing. Refuse
+                            // just this action — deliver nothing — and keep the link, the pump, and
+                            // the run graceful (never a crash, never a torn-down sibling).
+                            Console.WriteLine($"[link capability] inbound gated action refused on {handle.Id}: {ex.Message}");
+                            continue;
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // A malformed / undecodable inbound payload (truncated/tampered envelope).
+                            // Surface a recorded, OBSERVABLE fault for just this item (FR-016) and keep
+                            // decoding the rest of the ordered batch.
+                            EnqueueFault(handle, new LinkFaultSignal(handle.Id, LinkFaultKind.Permanent,
+                                $"malformed inbound payload: {ex.Message}"));
+                            continue;
+                        }
+                        _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false), ct);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // A malformed FRAME at the parse / reassembly / ordering layer — surface it as an
+                    // observable permanent fault instead of letting it escape and silently kill the
+                    // receive task, then keep the link alive for subsequent frames.
+                    EnqueueFault(handle, new LinkFaultSignal(handle.Id, LinkFaultKind.Permanent,
+                        $"malformed inbound frame: {ex.Message}"));
+                    continue;
                 }
             }
         }
@@ -175,6 +221,24 @@ public sealed class LinkPump : IInboundPump, IDisposable
     {
         _cts.Cancel();
         _inbox.CompleteAdding();
+
+        // Detach every OnFault subscription so no endpoint keeps this pump alive (review-fix), and
+        // snapshot the receive loops — both under the shared lock.
+        Task[] loops;
+        lock (_faultSubs)
+        {
+            foreach (var (endpoint, handler) in _faultSubs)
+                endpoint.OnFault -= handler;
+            _faultSubs.Clear();
+            loops = _recvLoops.ToArray();
+        }
+
+        // Join the background receive loops (bounded) so none outlives the pump — they observe the
+        // cancelled token / completed inbox and exit. Their cancellation faults are expected.
+        try { Task.WaitAll(loops, TimeSpan.FromSeconds(5)); }
+        catch (AggregateException) { /* loops ending on cancellation/teardown — expected */ }
+
+        _inbox.Dispose();
         _cts.Dispose();
     }
 }

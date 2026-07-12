@@ -62,6 +62,16 @@ public sealed class Macaroon
         return new Macaroon(location, identifier, Array.Empty<Caveat>(), sig);
     }
 
+    /// <summary>
+    /// Rehydrate a macaroon received over a transport (feature 050 US3, <c>MacaroonCodec</c>): the
+    /// signature is the WIRE'S CLAIM, carried verbatim — never recomputed here — so <see cref="Verify"/>
+    /// detects tampering by failing the HMAC-chain <c>FixedTimeEquals</c>. Additive; minting stays
+    /// <see cref="Create"/> + <see cref="AddCaveat"/>.
+    /// </summary>
+    public static Macaroon FromWire(
+        string location, string identifier, IReadOnlyList<Caveat> caveats, byte[] signature) =>
+        new(location, identifier, caveats, signature);
+
     /// <summary>Attenuate: append a first-party caveat, extending the HMAC chain (a NEW macaroon).</summary>
     public Macaroon AddCaveat(Caveat caveat)
     {
@@ -95,6 +105,12 @@ public sealed class Macaroon
             "=" => actual == c.Value,
             ">" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a > v,
             ">=" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a >= v,
+            // Upper-bound operators (feature 050 review-fix): a genuine expiry is "valid UNTIL T" —
+            // `expires < T` fails closed once the clock (context["expires"] = now) reaches T. Without
+            // these, only not-before lower bounds were expressible and an elapsed token could not be
+            // refused (FR-009/SC-003: an expired macaroon MUST fail closed).
+            "<" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a < v,
+            "<=" => long.TryParse(actual, out var a) && long.TryParse(c.Value, out var v) && a <= v,
             _ => false, // unknown operator ⇒ fail-closed
         };
     }

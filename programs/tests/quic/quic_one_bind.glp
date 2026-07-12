@@ -1,0 +1,73 @@
+% quic_one_bind.glp — feature 050 US1 (MVP), review-fixed for US2+ wiring. Role-parameterized
+% producer/consumer split over a GENUINE QUIC+WS link: link_id scheme "quic" selects the 036
+% real-QUIC transport (System.Net.Quic / MsQuic, ALPN h3, mutual shared-cert SPKI pin) registered
+% into the 025 LinkRuntime. ONE source, role chosen by a ground AgentId (the @/boot idiom, FR-003).
+% Every link is opened BY A GLP GOAL (FR-003/FR-012) — no external harness. The kernels + wrappers
+% (server_listener/client_connector/consume/produce) are reused UNCHANGED (FR-019); "quic" is data.
+%
+% Wire payload (review-fix): post-US2 the composition root wires the "quic" scheme to the
+% CrdtMsgPayloadCodec, which accepts ONLY crdtmsg/7 GROUND terms (contract wire-payload-crdtmsg.md
+% addendum A1). This program therefore ships crdtmsg/7 envelopes — NOT bare integers, which would
+% loud-fail on encode under the production wiring. Each envelope transcodes to a canonical binary
+% 041 envelope on the wire; post-US3 it is macaroon-gated transparently at the host seam.
+%
+% Run split across the two C# REPL hosts over the real LAN wire (the listener binds on Olamnit
+% 192.168.0.136; the connector dials it from gavri 192.168.0.108). The hermetic same-host proof
+% (real MsQuic loopback handshake, one-bind exactly-once reactivation) lives in xUnit
+% QuicLinkOneBindTests (SC-001).
+%
+%   Consumer (on Olamnit):   main(consumer, Got).  → Got = [crdtmsg("ping",producer,consumer,1,...), ...2, ...3]
+%   Producer (on gavri):     main(producer, R).    → R = [], streams 3 crdtmsg pings then graceful-closes
+%   (Use a named var R, not `_`, at the C# REPL top level — the REPL goal parser rejects a bare `_`.)
+-mode(system).
+
+% ---------------------------------------------------------------------------------------------------
+% Message model — the crdtmsg/7 ground term the "quic" codec expects (addendum A1). Typed for the
+% type checker; the host codec owns schema_version / payload_type / the capability slot.
+% ---------------------------------------------------------------------------------------------------
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Got?) :- Me? =?= consumer |
+    server_listener(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
+    consume_link(Link?, Got).
+main(Me, []) :- Me? =?= producer |
+    client_connector(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
+    produce_link(Link?, producer, consumer, 3).
+
+% Decompose the established Link, then consume just the inbound stream. The consumer sends nothing,
+% so it head-constructs [] on its outbound (canonical graceful close); In captures inbound.
+procedure consume_link(Link(_, _)?, Stream(_)).
+consume_link(ch(In, []), Got?) :- consume(In?, Got).
+
+procedure consume(Stream(_)?, Stream(_)).
+consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
+consume([], []).
+
+% Decompose the established Link, then produce crdtmsg envelopes onto the outbound stream (the egress
+% drainer ships each ground envelope over the real QUIC wire; the [] base case graceful-closes).
+% Inbound ignored.
+procedure produce_link(Link(_, _)?, Constant?, Constant?, Integer?).
+produce_link(ch(_, Out?), From, To, Count) :-
+    ground(From?), ground(To?), ground(Count?) |
+    gen_pings(From?, To?, 1, Count?, Out).
+
+% Build crdtmsg envelopes N = 1..Max onto the Out stream, then graceful-close with []. Each ground(...)
+% guard licenses the multiple ground reads (SRSW); the [] base case is the canonical stream-end close
+% the 025 egress drainer turns into a graceful link close (FR-017).
+procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Stream(_)).
+gen_pings(From, To, N, Max, [Msg?|Out?]) :-
+    ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
+    mk_ping(From?, To?, N?, Msg),
+    N1 := N? + 1,
+    gen_pings(From?, To?, N1?, Max?, Out).
+gen_pings(_, _, N, Max, []) :- ground(N?), ground(Max?), N? > Max? | true.
+
+% Head-construct one crdtmsg envelope: fixed string MsgId "ping", From/To atoms, Seq = N, empty
+% routing policy, no CRDT model, no sections (a bare heartbeat).
+procedure mk_ping(Constant?, Constant?, Integer?, CrdtMsg).
+mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [])) :-
+    ground(From?), ground(To?), ground(N?) | true.

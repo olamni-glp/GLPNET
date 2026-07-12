@@ -1,7 +1,7 @@
 {
   "integration": "claude",
-  "version": "2026.07.09.1",
-  "installed_at": "2026-07-10T09:44:18.709873+00:00",
+  "version": "2026.07.10.1",
+  "installed_at": "2026-07-10T10:28:19.258486+00:00",
   "files": {
     ".claude/skills/bk-analyze/SKILL.md": "0d65dbeb2c92852c03a7a2d441852ffbd3e2103f48015ebfa6ccdb535e52d168",
     ".claude/skills/bk-3rtask/SKILL.md": "4f97d92e7aa3fdcacd9fa91e291eac3cf7d949524178466e3d4d1c1f19fbd1b8",
