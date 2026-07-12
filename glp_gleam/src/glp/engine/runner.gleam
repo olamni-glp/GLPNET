@@ -40,14 +40,19 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/order
+import gleam/result
 import gleam/set.{type Set}
 import gleam/string
 import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
+import glp/engine/arith.{type NumV, NInt, NReal}
+import glp/engine/kernels
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
 import glp/runtime/terms.{
-  type Constant, type Term, ConstAtom, ConstTerm, StructTerm, VarRef,
+  type Constant, type Term, ConstAtom, ConstInt, ConstReal, ConstString,
+  ConstTerm, StructTerm, VarRef,
 }
 
 /// A body-spawned goal: a request for the scheduler (T022) to mint a fresh goal
@@ -345,6 +350,10 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
       guard_no_readers(program, ctx, pc, var_index, negated)
     opcodes.GroundEqual(left, right, negated) ->
       guard_ground_equal(program, ctx, pc, left, right, negated)
+
+    // ── GUARD phase: the generic Guard opcode (T024) ────────────────────────
+    opcodes.Guard(predicate, arity, negated) ->
+      guard_generic(program, ctx, pc, predicate, arity, negated)
 
     // ── Not yet ported (surfaced, never silently skipped) ───────────────────
     _ -> Stop(RunnerError(Unimplemented(opcodes.mnemonic(op))))
@@ -1798,8 +1807,48 @@ fn spawn(
         ),
       )
     }
-    Error(_) ->
-      Stop(RunnerError(Unimplemented("spawn -> body kernel " <> label)))
+    // Label miss → a BODY kernel executed INLINE (Dart runner.dart:3226-3252):
+    // strip any `/arity` suffix, dispatch heap-only, bind the output writer.
+    Error(_) -> {
+      let proc_name = case string.split(label, "/") {
+        [head, ..] -> head
+        [] -> label
+      }
+      let args =
+        upto(arity)
+        |> list.map(fn(i) {
+          case dict.get(ctx.arg_slots, i) {
+            Ok(t) -> t
+            Error(_) -> ConstTerm(ConstAtom("$missing"))
+          }
+        })
+      case kernels.dispatch(ctx.heap, proc_name, arity, args) {
+        Ok(kernels.KSuccess(heap, woken)) ->
+          Advance(
+            RunnerContext(
+              ..ctx,
+              heap: heap,
+              woken: list.append(ctx.woken, woken),
+              arg_slots: dict.new(),
+            ),
+          )
+        // A kernel abort is a fatal type error (Dart RunResult.terminated) —
+        // guards should have prevented it; surface it, never swallow.
+        Ok(kernels.KAbort(detail)) ->
+          Stop(
+            RunnerError(Malformed(
+              "body kernel " <> label <> " aborted: " <> detail,
+            )),
+          )
+        // Neither a program label nor a registered kernel.
+        Error(_) ->
+          Stop(
+            RunnerError(Malformed(
+              "spawn: unresolved procedure/kernel " <> label,
+            )),
+          )
+      }
+    }
   }
 }
 
@@ -2109,6 +2158,395 @@ fn resolve_tent(ctx: RunnerContext, tent: TentStruct) -> Term {
       }
     }),
   )
+}
+
+// ── GUARD phase: the generic `Guard` opcode (T024) ───────────────────────────
+//
+// The codegen routes every non-structural guard — arithmetic comparisons
+// (`< > =< >= =:= =\=`), standard-order term comparators (`@< @> @=< @>=`), type
+// tests (`integer/atom/string/constant/number/list/compound/...`), `=?=`, and
+// `unknown` — to `Guard(predicate, arity, negated)`, after emitting a `put_arg`
+// per operand (Dart `generic_guard`; the operands land in `arg_slots`). This is
+// the general Guard handler (Dart runner.dart:3503 `if (op is Guard)`):
+//   1. resolve each `arg_slots[i]` (σ̂w + heap, deep) collecting nested unbound
+//      READER terminals for suspension — Dart `_dereferenceWithTracking` +
+//      `_collectUnboundReaders`;
+//   2. any unbound reader (and predicate ≠ `unknown`) → SUSPEND on it;
+//   3. else evaluate the predicate over the resolved (ground) operands
+//      (Dart `_evaluateGuard`); NEGATION inverts success↔failure, suspend
+//      unchanged (Dart runner.dart:3628).
+// Semantics frozen (Constitution IV-a / Language Authority §1.14) — an unknown
+// predicate FAILS as in the Dart `default` arm (`[WARN]`), and the effectful
+// `wait`/`wait_until` timer guards are surfaced as `Unimplemented` (they need
+// the scheduler's timer infrastructure, out of the pure-engine MVP; escalate if
+// the corpus hits them rather than invent wall-clock semantics). Runtime-defined
+// guards (049, Dart runner.dart:461-764) are out of T024 scope: a user guard
+// predicate not in the builtin set takes the unknown→FAIL arm.
+
+/// The two-valued outcome of evaluating a guard predicate over ground operands
+/// (suspension is decided upstream, in the deref pass). `GUnsupported` marks an
+/// effectful/unported predicate that must be surfaced, never guessed.
+type GuardVerdict {
+  GSuccess
+  GFailure
+  GUnsupported(name: String)
+}
+
+fn guard_generic(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  predicate: String,
+  arity: Int,
+  negated: Bool,
+) -> Step {
+  let #(args, c) = guard_gather(ctx, arity)
+  case !set.is_empty(c.readers) && predicate != "unknown" {
+    True -> guard_suspend(program, ctx, pc, c.readers)
+    False ->
+      case eval_guard(predicate, args) {
+        GUnsupported(name) -> Stop(RunnerError(Unimplemented("guard " <> name)))
+        verdict -> {
+          let succeeded = case verdict {
+            GSuccess -> True
+            _ -> False
+          }
+          case succeeded == !negated {
+            True -> Advance(ctx)
+            False -> soft_fail(program, ctx, pc)
+          }
+        }
+      }
+  }
+}
+
+/// Gather `arg_slots[0..arity-1]` (Dart falls back to `clauseVars[i]`), deeply
+/// resolving each through σ̂w + heap and accumulating unbound-reader terminals
+/// (the suspension set) via the shared cycle-safe walker.
+fn guard_gather(ctx: RunnerContext, arity: Int) -> #(List(Term), Collect) {
+  list.fold(upto(arity), #([], empty_collect()), fn(acc, i) {
+    let #(args, c) = acc
+    let arg = case dict.get(ctx.arg_slots, i) {
+      Ok(t) -> t
+      Error(_) ->
+        case dict.get(ctx.clause_vars, i) {
+          Ok(cv) -> resolve_cvar(ctx, cv)
+          Error(_) -> ConstTerm(ConstAtom("$missing"))
+        }
+    }
+    let #(resolved, c2) = g_walk(ctx, arg, c, set.new())
+    #(list.append(args, [resolved]), c2)
+  })
+}
+
+/// Deep-resolve `term` through σ̂w + heap into a ground term, collecting unbound
+/// READER terminals (→ suspend) and noting an unbound writer (→ comparator
+/// FAILs, per Dart's verdict matrix). Mirrors `_dereferenceWithTracking`'s
+/// reader→paired-writer→σ̂w lookup by consulting σ̂w on the deref TERMINAL writer.
+fn g_walk(
+  ctx: RunnerContext,
+  term: Term,
+  c: Collect,
+  visited: Set(Int),
+) -> #(Term, Collect) {
+  case term {
+    ConstTerm(_) -> #(term, c)
+    StructTerm(functor, args) -> {
+      let #(rev, c2) =
+        list.fold(args, #([], c), fn(a, arg) {
+          let #(acc, cc) = a
+          let #(r, cc2) = g_walk(ctx, arg, cc, visited)
+          #([r, ..acc], cc2)
+        })
+      #(StructTerm(functor, list.reverse(rev)), c2)
+    }
+    VarRef(addr) -> g_walk_addr(ctx, addr, c, visited)
+  }
+}
+
+fn g_walk_addr(
+  ctx: RunnerContext,
+  addr: Int,
+  c: Collect,
+  visited: Set(Int),
+) -> #(Term, Collect) {
+  case set.contains(visited, addr) {
+    True -> #(VarRef(addr), c)
+    False -> {
+      let visited = set.insert(visited, addr)
+      case dval(ctx.heap, addr) {
+        Bound(v) -> g_walk(ctx, v, c, visited)
+        Unbound(terminal) ->
+          case dict.get(ctx.sigma_hat, terminal) {
+            Ok(SVTerm(t)) -> g_walk(ctx, t, c, visited)
+            Ok(SVTentative(tent)) ->
+              g_walk(ctx, resolve_tent(ctx, tent), c, visited)
+            Error(_) ->
+              case terminal == addr {
+                // unbound WRITER (deref terminal is itself): comparator FAILs.
+                True -> #(VarRef(terminal), Collect(..c, has_writer: True))
+                // unbound READER chain ending at `terminal`: suspend on it.
+                False -> #(
+                  VarRef(terminal),
+                  Collect(..c, readers: set.insert(c.readers, terminal)),
+                )
+              }
+          }
+      }
+    }
+  }
+}
+
+/// Evaluate a guard predicate over already-resolved ground operands (Dart
+/// `_evaluateGuard`). An unbound writer arrives as a bare `VarRef`.
+fn eval_guard(predicate: String, args: List(Term)) -> GuardVerdict {
+  case predicate {
+    "<" -> num_cmp(args, fn(o) { o == order.Lt })
+    ">" -> num_cmp(args, fn(o) { o == order.Gt })
+    "=<" -> num_cmp(args, fn(o) { o != order.Gt })
+    ">=" -> num_cmp(args, fn(o) { o != order.Lt })
+    "=:=" -> num_cmp(args, fn(o) { o == order.Eq })
+    "=\\=" -> num_cmp(args, fn(o) { o != order.Eq })
+    "@<" -> term_cmp(args, fn(r) { r < 0 })
+    "@>" -> term_cmp(args, fn(r) { r > 0 })
+    "@=<" -> term_cmp(args, fn(r) { r <= 0 })
+    "@>=" -> term_cmp(args, fn(r) { r >= 0 })
+    "=?=" ->
+      case args {
+        [a, b] ->
+          case is_unbound(a) || is_unbound(b) {
+            True -> GFailure
+            False -> verdict(compare_terms(a, b) == 0)
+          }
+        _ -> GFailure
+      }
+    "integer" -> type_test(args, is_integer)
+    "number" -> type_test(args, is_number)
+    "atom" | "string" -> type_test(args, is_string_atom)
+    "constant" -> type_test(args, is_constant)
+    "list" | "is_list" -> type_test(args, is_list_term)
+    "compound" | "tuple" -> type_test(args, is_compound)
+    "unknown" -> type_test(args, is_unbound)
+    // `known`/`ground` are normally specialized (Known/Ground opcodes); the
+    // generic arms mirror Dart's `_evaluateGuard` for the fallback path.
+    "known" -> type_test(args, fn(t) { !is_unbound(t) })
+    "ground" -> GSuccess
+    "otherwise" -> GSuccess
+    // Effectful timer guards — need scheduler timer infra (out of pure-engine
+    // MVP). Surface, do not invent (Language Authority §1.14).
+    "wait" | "wait_until" -> GUnsupported(predicate)
+    // Unknown predicate → FAIL (Dart `_evaluateGuard` default `[WARN]` arm).
+    // Also the fall-through for unported runtime-defined guards (049).
+    _ -> GFailure
+  }
+}
+
+fn verdict(b: Bool) -> GuardVerdict {
+  case b {
+    True -> GSuccess
+    False -> GFailure
+  }
+}
+
+/// `[0, 1, …, n-1]` (`gleam/list` has no `range` in this stdlib version).
+fn upto(n: Int) -> List(Int) {
+  upto_loop(n - 1, [])
+}
+
+fn upto_loop(i: Int, acc: List(Int)) -> List(Int) {
+  case i < 0 {
+    True -> acc
+    False -> upto_loop(i - 1, [i, ..acc])
+  }
+}
+
+fn type_test(args: List(Term), pred: fn(Term) -> Bool) -> GuardVerdict {
+  case args {
+    [a, ..] -> verdict(pred(a))
+    [] -> GFailure
+  }
+}
+
+/// Arithmetic comparison: evaluate both operands numerically; unless BOTH are
+/// numeric, FAIL (Dart returns failure when either `evaluateNumeric` is null).
+fn num_cmp(args: List(Term), ok: fn(order.Order) -> Bool) -> GuardVerdict {
+  case args {
+    [a, b, ..] ->
+      case evaluate_numeric(a), evaluate_numeric(b) {
+        Ok(na), Ok(nb) -> verdict(ok(arith.compare(na, nb)))
+        _, _ -> GFailure
+      }
+    _ -> GFailure
+  }
+}
+
+fn term_cmp(args: List(Term), ok: fn(Int) -> Bool) -> GuardVerdict {
+  case args {
+    [a, b, ..] -> verdict(ok(compare_terms(a, b)))
+    _ -> GFailure
+  }
+}
+
+/// Evaluate a fully-resolved term numerically (Dart `evaluateNumeric` over the
+/// already-dereferenced operand): a numeric constant, or an arithmetic
+/// StructTerm (`+ - * / // mod neg`) combined via the shared `arith` core. An
+/// unbound writer (`VarRef`) or non-numeric leaf → not numeric.
+fn evaluate_numeric(term: Term) -> Result(NumV, Nil) {
+  case term {
+    ConstTerm(ConstInt(i)) -> Ok(NInt(i))
+    ConstTerm(ConstReal(f)) -> Ok(NReal(f))
+    ConstTerm(_) -> Error(Nil)
+    VarRef(_) -> Error(Nil)
+    StructTerm(functor, args) ->
+      case result.all(list.map(args, evaluate_numeric)) {
+        Ok(nums) -> arith.combine(functor, nums)
+        Error(_) -> Error(Nil)
+      }
+  }
+}
+
+// ── type-test predicates (Dart `_evaluateGuard` getValue-based arms) ──────────
+
+fn is_unbound(t: Term) -> Bool {
+  case t {
+    VarRef(_) -> True
+    _ -> False
+  }
+}
+
+fn is_integer(t: Term) -> Bool {
+  case t {
+    ConstTerm(ConstInt(_)) -> True
+    _ -> False
+  }
+}
+
+fn is_number(t: Term) -> Bool {
+  case t {
+    ConstTerm(ConstInt(_)) | ConstTerm(ConstReal(_)) -> True
+    _ -> False
+  }
+}
+
+/// `atom`/`string` — a String-valued constant that is not `nil` (Dart erases
+/// atoms and strings to `String`; both pass, `[]`/`nil` excluded).
+fn is_string_atom(t: Term) -> Bool {
+  case t {
+    ConstTerm(ConstString(_)) -> True
+    ConstTerm(ConstAtom(a)) -> a != "nil"
+    _ -> False
+  }
+}
+
+/// `constant` — any ground constant (Dart: String incl. `nil`, or a number).
+fn is_constant(t: Term) -> Bool {
+  case t {
+    ConstTerm(_) -> True
+    _ -> False
+  }
+}
+
+fn is_list_term(t: Term) -> Bool {
+  case t {
+    ConstTerm(ConstAtom("nil")) -> True
+    StructTerm(".", [_, _]) -> True
+    _ -> False
+  }
+}
+
+fn is_compound(t: Term) -> Bool {
+  case t {
+    StructTerm(_, [_, ..]) -> True
+    _ -> False
+  }
+}
+
+// ── standard order of terms (Dart `_orderRank` / `_compareTerms`) ─────────────
+//
+// Total order Number < String(atom) < compound; within numbers by value, within
+// strings by code-point, within compounds by arity, then functor, then args.
+// MUST stay behaviour-identical to the C# port (FR-060). Operands are ground.
+
+fn order_rank(t: Term) -> Int {
+  case t {
+    ConstTerm(ConstInt(_)) | ConstTerm(ConstReal(_)) -> 0
+    ConstTerm(ConstAtom(_)) | ConstTerm(ConstString(_)) -> 1
+    StructTerm(_, _) -> 2
+    VarRef(_) -> 3
+  }
+}
+
+fn compare_terms(a: Term, b: Term) -> Int {
+  let ra = order_rank(a)
+  let rb = order_rank(b)
+  case ra == rb {
+    False ->
+      case ra < rb {
+        True -> -1
+        False -> 1
+      }
+    True ->
+      case ra {
+        0 ->
+          case evaluate_numeric(a), evaluate_numeric(b) {
+            Ok(na), Ok(nb) -> order_to_int(arith.compare(na, nb))
+            _, _ -> 0
+          }
+        1 -> order_to_int(string.compare(const_string(a), const_string(b)))
+        2 -> compare_structs(a, b)
+        _ -> order_to_int(string.compare(string.inspect(a), string.inspect(b)))
+      }
+  }
+}
+
+fn compare_structs(a: Term, b: Term) -> Int {
+  case a, b {
+    StructTerm(fa, aargs), StructTerm(fb, bargs) -> {
+      let la = list.length(aargs)
+      let lb = list.length(bargs)
+      case la == lb {
+        False ->
+          case la < lb {
+            True -> -1
+            False -> 1
+          }
+        True ->
+          case order_to_int(string.compare(fa, fb)) {
+            0 -> compare_args(aargs, bargs)
+            fc -> fc
+          }
+      }
+    }
+    _, _ -> 0
+  }
+}
+
+fn compare_args(a: List(Term), b: List(Term)) -> Int {
+  case a, b {
+    [], [] -> 0
+    [x, ..xs], [y, ..ys] ->
+      case compare_terms(x, y) {
+        0 -> compare_args(xs, ys)
+        c -> c
+      }
+    _, _ -> 0
+  }
+}
+
+fn const_string(t: Term) -> String {
+  case t {
+    ConstTerm(ConstAtom(s)) -> s
+    ConstTerm(ConstString(s)) -> s
+    _ -> ""
+  }
+}
+
+fn order_to_int(o: order.Order) -> Int {
+  case o {
+    order.Lt -> -1
+    order.Eq -> 0
+    order.Gt -> 1
+  }
 }
 
 // ── Commit (Dart runner.dart:2703) ───────────────────────────────────────────
