@@ -1,10 +1,17 @@
-# 050 full-Gleam — T024 restart note (2026-07-12)
+# 050 full-Gleam — T024/T029 restart note (2026-07-12)
+
+> ## ⚠️ STATUS 2026-07-12 — **T024 DONE**, RESUME AT **T029**
+> - **Safe restart point.** Branch `050-full-gleam-combined`, tree **clean**, **pushed** @ **`78dd7ef9`** (HEAD == origin). Native gleam **365 / 365**, warning-free.
+> - **T024 CLOSED** (generic `Guard` opcode + native body kernels + shared `arith.gleam`): commit `78dd7ef9`. Marathon **`mrun-d96119d59d07`** discharge item T024 **satisfied (1/6)**.
+> - **NEXT = T029** engine facade (see "## NEXT — T029" below) → T030 acceptance; plus T025/T026 suites + T028 INDEX flip. T024/T023 sections below are now HISTORICAL (kept for the runner/guard internals).
+> - **Resume:** `cd glp_gleam && gleam test` (expect 365/365) · `git fetch origin 050-full-gleam-combined` (compare HEAD vs origin; a concurrent QUIC session shares this branch) · read tasks.md T024 ◇-note + this doc's "## NEXT — T029".
+> - **Marathon resume:** `PYTHONUTF8=1 D:/bstdev/research/buildkit/.venv313/Scripts/buildkit-marathon.exe resume --feature 050` (position derives from durable rows; do not trust a summary).
 
 **Objective restart bootstrap** for continuing feature `050-full-gleam-combined` on
-**Olamnit** at **T024** (body kernels + the generic `Guard` opcode). Source of truth
-is git + `specs/050-full-gleam-combined/tasks.md` checkboxes/◇-notes — this doc is the
-bootstrap + next-slice plan, not a work ledger. Supersedes the T021 restart note for
-"what's next" (that note remains valid for the runner internals).
+**Olamnit**. Source of truth is git + `specs/050-full-gleam-combined/tasks.md`
+checkboxes/◇-notes + the marathon rows — this doc is the bootstrap + next-slice plan,
+not a work ledger. Supersedes the T021 restart note for "what's next" (that note
+remains valid for the runner internals).
 
 ## Where things stand (objective)
 
@@ -74,13 +81,49 @@ compound) must stay **byte-identical to the C# port** (dossier). Unknown predica
 - Spawn body-kernel path: **L3220–3256**; runtime-defined-guard interpreter (049): **L461–764**
 - Porting map: `docs/research/glp-gleam-baseline/runner-dart-architecture-map.md` §5–§7.
 
-## After T024 → MVP close (US1)
-- **T029** engine facade `glp_gleam/src/glp/engine.gleam` (`new`/`load`/`run`/`step` — opaque
-  Engine wrapping `loader.load` + `scheduler`; replaces the 033 placeholder). Thin: the
-  scheduler is already the engine; add goal-term→regs boot + a real prelude thread.
-- **T030** MVP acceptance: smoke set (one suspension, one SRSW-neg, one type-neg — the
-  negatives are load-time rejections that already work) via the engine API → `baseline.md`.
-- T025/T026 engine + adversarial writer-MGU suites; T028 prose PROOF + INDEX flip (with T026).
+## NEXT — T029 (resume here) — engine facade + REAL PRELUDE THREAD
+
+`glp_gleam/src/glp/engine.gleam` (`new`/`load`/`run`/`step` — opaque `Engine` wrapping
+`loader.load` + `scheduler`; replaces the 033 placeholder). The scheduler IS already the
+engine (T022), so the facade is thin — EXCEPT for the one real piece of work T024 surfaced:
+
+🔴 **The prelude gap (the crux of T029).** `loader.load(source, prelude_source)` today
+compiles **only `source`**; `prelude_source` feeds (a) PE unit-clause unfolding (so `=`,
+`send`, `receive` unfold) and (b) type-check declarations — but the prelude's **multi-clause
+procedures are NOT compiled into the program**. So `Spawn(":=/2")`, `Spawn("merge/3")`, etc.
+miss `label_pc`, and (for `:=`) fall to the kernel dispatch which correctly reports
+`unresolved` (`:=` is not a kernel — it is self.glp GLP clauses that CALL the `'_add'`…
+kernels). T029 must **thread + compile `programs/self.glp`** into the engine's program so
+`:=`/`=`/`merge`/`send`/`receive`/etc. resolve at runtime. Design decisions to make:
+- WHERE prelude compilation happens: extend `loader.load` to also compile the prelude's
+  clauses and merge their labels into the program, OR do it in the engine facade
+  (read self.glp from disk once, compile, merge). The loader module header (lines 22-27)
+  says "the engine facade (T029) owns reading programs/self.glp from disk" — so the facade
+  reads the file; the compilation-into-the-program is the new plumbing.
+- self.glp is large — expect the FIRST full-prelude compile to surface gaps (opcodes/parse
+  cases the corpus didn't hit). Port each faithfully; STOP + escalate on any frozen-semantics
+  gap (Constitution IV-a / §1.14). Assess scope first: try compiling self.glp through the
+  pipeline and triage what fails before committing to the facade shape.
+- Boot: goal-term → argument registers (Dart `CallEnv`/`argSlots`); the scheduler's `boot`
+  already seeds a RunQueue — the facade wraps `loader` + `scheduler.new`/`boot`/`run`.
+
+## After T029 → MVP close (US1)
+- **T030** MVP acceptance: smoke set — one suspension, one SRSW-neg, one type-neg (the
+  negatives are load-time rejections that already work), **plus a real `:=` arithmetic goal**
+  (the end-to-end validation of T024's kernels, now reachable once T029 threads the prelude) —
+  via the engine API, Dart-identical outcomes → `specs/050-full-gleam-combined/baseline.md`.
+- **T025/T026** engine semantics + adversarial writer-MGU suites (`runner_test.gleam`,
+  `writer_mgu_adversarial_test.gleam`); **T028** prose PROOF + flip the flip INDEX row
+  OPEN→discharged (co-committed with T026's four-artifact discharge per
+  `contracts/proof-obligations.md`).
+- These four (T025/T026/T028/T030) are the remaining marathon discharge items after T029.
+
+## T024 evidence (HISTORICAL — done @ 78dd7ef9)
+- New: `glp_gleam/src/glp/engine/arith.gleam` (shared NumV core), `…/engine/kernels.gleam`
+  (native `_add/_sub/_mul/_div/_idiv/_mod/_neg`), `test/glp/engine/arith_guards_kernels_test.gleam`
+  (15 tests). Modified: `…/engine/runner.gleam` (generic `Guard` opcode + `spawn()` kernel dispatch).
+- `wait`/`wait_until` surfaced as `Unimplemented` (effectful timers, out of pure-engine MVP).
+- The `## NEXT — T024` section below is now HISTORICAL; it documents the guard/kernel internals.
 
 ## Environment (Olamnit)
 - **NO WSL.** Native-Windows **gleam 1.17.0** via the **Bash tool** (Git Bash; NOT PowerShell
