@@ -32,6 +32,23 @@ durable mailbox). The two tiers are NEVER merged (FR-024 / tier-boundary invaria
       - Durable exactly-once messaging above the wire (qhstate mailbox).
 -->
 
+## Clarifications
+
+### Session 2026-07-13
+
+- Q: Relay-forward mechanism (cycle-2 §5.2)? → A: **Hybrid by traffic class** — **libp2p
+  circuit-relay-v2** (voucher-gated, aligns with 056 macaroon admission) for **most mesh traffic**;
+  **Tor-style cell relay** as the **default for internet traffic and for critical message flows /
+  workspaces**.
+- Q: DHT ownership (cycle-2 §2 dht-store REFINE)? → A: **Build an embedded S-Kademlia** DHT — a
+  curated overlay with self-certified records and Sybil-by-gating; **not** a public/external DHT.
+- Q: Rendezvous mechanism for hole-punch coordination (cycle-2 §5.3)? → A: **DHT-address rendezvous**
+  as the general standard; **hidden-service-style rendezvous** for **internet circuits** — a standard
+  option, selectable / optional per user default.
+- Q: Mix / anonymity trust model for sealed routes (cycle-2 §5.5)? → A: **Stake-weighted nodes via
+  the new `057-yngenios-pocw-coin` (proof-of-cooperative-work) mechanism as the standard**, with
+  **Loopix semi-trusted providers as the fallback** option.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A consolidated native QUIC link authenticated by node key (Priority: P1)
@@ -92,9 +109,11 @@ transport transparently falls back to a relay path and still delivers frames.
    **Then** the transport falls back to a relay path (US4) without losing the pending frames and
    surfaces which path type (direct vs relayed) is in use.
 3. **Given** a hole-punch attempt, **When** it exceeds its bounded time budget, **Then** it fails
-   deterministically to the relay fallback rather than hanging. [NEEDS CLARIFICATION: rendezvous
-   mechanism — DHT-address rendezvous vs NAT-signaling rendezvous vs hidden-service-style rendezvous
-   (cycle-2 §5.3); the three sit at different layers and imply different rendezvous infrastructure.]
+   deterministically to the relay fallback rather than hanging.
+4. **Given** peers coordinating a punch, **When** they rendezvous, **Then** the general standard is
+   **DHT-address rendezvous** (over the embedded S-Kademlia DHT, US3); for **internet circuits** a
+   **hidden-service-style rendezvous** is available as a selectable/optional-per-user-default mode
+   (Clarifications 2026-07-13; cycle-2 §5.3).
 
 ---
 
@@ -124,9 +143,9 @@ its signature verifies against the claimed node key, and that a tampered record 
 3. **Given** the discovery surface, **When** a name beyond self-certified key→record resolution is
    requested (human-memorable naming), **Then** the transport returns an explicit "further resolver
    required" and does not fabricate a resolution (cycle-2 §6 — decentralized naming unsolved in the
-   corpus; ties to the mstack R9 gap). [NEEDS CLARIFICATION: does YNET **build** an embedded DHT
-   (Kademlia/S-Kademlia) or **consume** an external one (iroh consumes Pkarr/Mainline rather than
-   building) — cycle-2 §2 dht-store REFINE surfaces this consume-vs-build option.]
+   corpus; ties to the mstack R9 gap). YNET **builds an embedded S-Kademlia DHT** (a curated overlay
+   with self-certified records and Sybil-by-gating, **not** a public/external DHT) — Clarifications
+   2026-07-13; cycle-2 §2 dht-store REFINE.
 
 ---
 
@@ -156,9 +175,11 @@ relay refuses to forward.
    forwarding hop, **Then** the transport does not select it and any live path through it is handled
    per the revocation contract.
 3. **Given** a relay node, **When** it forwards sealed traffic (US5), **Then** it forwards ciphertext
-   only and cannot read the payload it relays. [NEEDS CLARIFICATION: relay-forward mechanism — Tor
-   cell relay vs libp2p circuit-relay-v2 (voucher-gated) vs TURN/WebRTC relay (cycle-2 §5.2); each
-   implies different trust, addressing, and visibility properties.]
+   only and cannot read the payload it relays.
+4. **Given** the relay-forward mechanism, **When** a path is built, **Then** **libp2p
+   circuit-relay-v2** (voucher-gated) carries **most mesh traffic**, while **Tor-style cell relay** is
+   the **default for internet traffic and for critical message flows / workspaces** (Clarifications
+   2026-07-13; cycle-2 §5.2). TURN/WebRTC relay is scoped to the browser tier (US7) only.
 
 ---
 
@@ -189,10 +210,12 @@ the path characteristics (hop count / route stability).
    properties (hop count / sequencing) per the SafetySelection model.
 3. **Given** an unspecified selection, **When** traffic flows, **Then** it resolves to the declared
    safe default and the mechanism never silently downgrades a requested seal to a clear route.
-   [NEEDS CLARIFICATION: mix trust model — Loopix semi-trusted providers vs Nym stake-weighted nodes
-   (cycle-2 §5.5); the curated-node model is closest to Loopix's semi-trusted providers, but the
-   reputation/trust weighting must be pinned. Also §5.1: does `sealed` routing select paths for
-   privacy while `normal` selects for latency (divergent routing objectives)?]
+4. **Given** the mix / anonymity trust model, **When** sealed-route relays are selected, **Then** the
+   standard is **stake-weighted node selection via the new `057-yngenios-pocw-coin`
+   (proof-of-cooperative-work) mechanism**, with **Loopix-style semi-trusted providers as the
+   fallback** when the pocw-coin signal is unavailable (Clarifications 2026-07-13; cycle-2 §5.5).
+   `sealed` routing optimizes path selection for privacy; `normal` optimizes for latency
+   (§5.1 — natural reading, confirmable at `/bk-plan`).
 
 ---
 
@@ -330,19 +353,24 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
   `CapabilityType.Udp`/`Socket`) for connect/send/receive, and MUST NOT implement any service-embed,
   macaroon-admission, or durable-mailbox logic (owned by 056; tier boundary).
 - **FR-005**: The transport MUST **hole-punch** out of NAT'd/firewalled networks using in-handshake
-  candidate exchange + coordinated simultaneous open (ICE/DCUtR, absorbing iroh), and MUST **fall
-  back to a relay path** deterministically (within a bounded time budget) when a direct punch cannot
-  be achieved — surfacing whether the active path is direct or relayed (R2; cycle-2 §2
-  `nat-holepunch`).
-- **FR-006**: The transport MUST provide **DHT store and lookup** (Kademlia iterative lookup, XOR
-  metric) of **self-certified** key→record entries (nodeId = H(pubkey), signed records), such that a
-  lookup result is verifiable independently of the DHT node that served it and a tampered record is
-  rejected (cycle-2 §2 `dht-store`/`dht-lookup`).
+  candidate exchange + coordinated simultaneous open (ICE/DCUtR, absorbing iroh), coordinating
+  rendezvous by **DHT-address rendezvous** over the embedded DHT as the general standard and by
+  **hidden-service-style rendezvous** for internet circuits (selectable / optional per user default),
+  and MUST **fall back to a relay path** deterministically (within a bounded time budget) when a
+  direct punch cannot be achieved — surfacing whether the active path is direct or relayed (R2;
+  cycle-2 §2 `nat-holepunch` / §5.3; Clarifications 2026-07-13).
+- **FR-006**: The transport MUST provide **DHT store and lookup** over an **embedded S-Kademlia** DHT
+  (iterative lookup, XOR metric; a curated overlay, **not** a public/external DHT) of
+  **self-certified** key→record entries (nodeId = H(pubkey), signed records), such that a lookup
+  result is verifiable independently of the DHT node that served it and a tampered record is rejected
+  (cycle-2 §2 `dht-store`/`dht-lookup` REFINE; Clarifications 2026-07-13).
 - **FR-007**: The transport MUST forward traffic through **relay nodes** when no direct path exists,
-  MUST enforce the qhstate-056 relay-**admission** decision at the forwarding hop (this tier owns the
-  relay *mechanism*, 056 owns *who is admitted*), and MUST ensure a relay forwarding sealed traffic
-  carries **ciphertext only** and cannot read the payload (R4; cycle-2 §2 `relay-forward` /
-  `trusted-relay-node`).
+  using **libp2p circuit-relay-v2 (voucher-gated) for most mesh traffic** and **Tor-style cell relay
+  as the default for internet traffic and for critical message flows / workspaces** (TURN/WebRTC
+  relay is scoped to the browser tier, US7). It MUST enforce the qhstate-056 relay-**admission**
+  decision at the forwarding hop (this tier owns the relay *mechanism*, 056 owns *who is admitted*),
+  and MUST ensure a relay forwarding sealed traffic carries **ciphertext only** and cannot read the
+  payload (R4; cycle-2 §2 `relay-forward` / `trusted-relay-node` / §5.2; Clarifications 2026-07-13).
 - **FR-008**: The transport MUST achieve Sybil/DoS resistance **by curated-node gating** (the trusted
   / trustable-but-not-well-known node set as the authority), not by crypto-puzzles (cycle-2
   `sybil-dos-resistance` INSIGHT; Douceur impossibility).
@@ -354,6 +382,11 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
   **Veilid's `SafetySelection`** model (tunable hop count / stability / sequencing; explicit Safe vs
   Unsafe), consumed via a per-invocation selection surfaced by 056 (R5; cycle-2 §2
   `selectable-anonymity` REFINE).
+- **FR-010a**: For sealed-route relay selection the transport MUST use **stake-weighted node
+  selection via the `057-yngenios-pocw-coin` (proof-of-cooperative-work) mechanism** as the standard,
+  degrading to **Loopix-style semi-trusted-provider** selection as the fallback when the pocw-coin
+  signal is unavailable — and MUST NOT fabricate a trust weighting when neither is available
+  (cycle-2 §5.5; Clarifications 2026-07-13; depends on feature 057).
 - **FR-011**: The transport MUST make **routing a CHOICE** between **`normal`** (more-encrypted but
   clear mesh routes) and **`sealed`** (encoded stable routes), resolve an unspecified selection to a
   declared **safe default**, and MUST **fail closed** — never silently downgrade a requested seal to
@@ -476,10 +509,17 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
   and is the authority backing Sybil/DoS resistance-by-gating (cycle-2 `sybil-dos-resistance`).
 - "mstack" here means the internal yngenios/Ingenious NATO-DIANA narrative corpus consumed into
   qhstate specs 034/035 — **not** the unrelated on-disk open-source "gstack" toolkit.
-- The five **mechanism-divergent choices** handed to TASK 3 (cycle-2 §5: dynamic-routing objective,
-  relay-forward mechanism, rendezvous mechanism, crypto-envelope signature property, mix trust model)
-  are the cycle-2 analog of D1–D6 and are resolved at `/bk-clarify` / `/bk-plan` time — carried here
-  as explicit `[NEEDS CLARIFICATION]` markers, not silently defaulted.
+- The **mechanism-divergent choices** handed to TASK 3 (cycle-2 §5) are the cycle-2 analog of D1–D6.
+  Four were resolved at `/bk-clarify` (see Clarifications 2026-07-13): relay-forward (hybrid
+  circuit-relay-v2 + Tor-cell by traffic class), DHT ownership (embedded S-Kademlia), rendezvous
+  (DHT-address + hidden-service for internet circuits), and mix trust (057-pocw-coin stake-weighted +
+  Loopix fallback). Crypto-envelope is decided by D2 (FR-003). The residual operational unknowns
+  (hole-punch success-rate target SC-002, exit-abuse policy content US6, relay revocation semantics,
+  per-node-keying migration sequencing) are deferred to `/bk-plan`, not silently defaulted.
+- **Feature `057-yngenios-pocw-coin`** (proof-of-cooperative-work coin) provides the stake-weighting
+  signal used for standard sealed-route relay/node selection (FR-010a). This feature depends on 057
+  for the standard path and degrades to the Loopix-style semi-trusted-provider fallback when the
+  pocw-coin signal is unavailable; until 057 lands, the fallback path is exercised in tests.
 
 ## Out of Scope *(owned by qhstate 056 `ynet-service`, or honestly deferred)*
 

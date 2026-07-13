@@ -31,29 +31,28 @@
 
 ## Notes
 
-- **Open [NEEDS CLARIFICATION] markers (retained by design for `/bk-clarify` / `/bk-plan`).** They
-  are more than the usual ≤3 because this transport tier is where the **cycle-2 §5 mechanism-divergent
-  choices** land — those five are the cycle-2 analog of cycle-1's D1–D6, explicitly *handed to TASK 3*
-  by the external cross-verification (they are engineer mechanism-choices, not spec defects). Mapped:
-  1. **Rendezvous mechanism** (US2 AS3) — DHT-address vs NAT-signaling vs hidden-service (cycle-2 §5.3).
-  2. **DHT build-vs-consume** (US3 AS3) — build embedded Kademlia/S-Kademlia vs consume external
-     Pkarr/Mainline like iroh (cycle-2 §2 dht-store REFINE).
-  3. **Relay-forward mechanism** (US4 AS3) — Tor cell vs libp2p circuit-relay-v2 vs TURN/WebRTC
-     (cycle-2 §5.2).
-  4. **Mix trust model + routing objective** (US5 AS3) — Loopix semi-trusted vs Nym stake-weighted
-     (cycle-2 §5.5); and whether `sealed` optimizes for privacy while `normal` optimizes for latency
-     (§5.1 divergent routing objectives).
-  5. **Exit-abuse policy content** (US6 AS4) — what a curated trusted gate refuses and who administers
+- **[NEEDS CLARIFICATION] markers — status after `/bk-clarify` (Session 2026-07-13).** The high-impact
+  **cycle-2 §5 mechanism-divergent choices** (the cycle-2 analog of cycle-1's D1–D6, engineer
+  mechanism-choices explicitly handed to TASK 3) are **RESOLVED** and recorded in the spec's
+  `## Clarifications` section + the affected FRs:
+  1. **Relay-forward mechanism** (§5.2) → RESOLVED: hybrid by traffic class — libp2p circuit-relay-v2
+     for most mesh traffic; Tor-style cell relay default for internet traffic + critical/workspace
+     flows (FR-007).
+  2. **DHT build-vs-consume** (§2 REFINE) → RESOLVED: build an embedded **S-Kademlia** curated DHT
+     (FR-006).
+  3. **Rendezvous mechanism** (§5.3) → RESOLVED: DHT-address rendezvous standard + hidden-service-style
+     for internet circuits (FR-005).
+  4. **Mix trust model** (§5.5) → RESOLVED: stake-weighted via the new **`057-yngenios-pocw-coin`**
+     mechanism (standard) + Loopix semi-trusted fallback (FR-010a; new 057 dependency).
+  The **crypto-envelope** choice (§5.4) was already **decided** by D2 (FR-003).
+- **Residual markers DEFERRED to `/bk-plan`** (operational, lower architectural impact — appropriate to
+  resolve with plan-level detail, not blocking):
+  1. **Exit-abuse policy content** (US6 AS4) — what a curated trusted gate refuses and who administers
      it (D5 BUILD-NEW, no corpus reference).
-  6. **Hole-punch success-rate target** (SC-002) — the measurable NAT-class success bar.
-  7. **Relay revocation semantics** (Edge Cases) — tear down in-flight paths vs prevent new selection
-     (mirrors the 056 US3 revocation-race question).
-  8. **Per-node-keying migration sequencing** (Edge Cases) — how a node transitions off GLPNET's
-     shared cert to per-node keying (the one D1 tension `decisions-D1-D6.md` left explicitly open).
-  The **crypto-envelope** choice (cycle-2 §5.4) is treated as **decided** by D2 (olamnit AES-256-GCM
-  baseline + H2/H3 hardening, adopting Veilid's whole-envelope-signature property) — FR-003 — so it is
-  not carried as a marker. `/bk-clarify` will resolve the highest-impact of the above (its ≤5 question
-  budget) and later stages absorb the rest.
+  2. **Hole-punch success-rate target** (SC-002) — the measurable NAT-class success bar.
+  3. **Relay revocation semantics** (Edge Cases) — tear down in-flight paths vs prevent new selection.
+  4. **Per-node-keying migration sequencing** (Edge Cases) — transition off GLPNET's shared cert
+     (the one D1 tension `decisions-D1-D6.md` left explicitly open).
 - **Naming caveat**: the spec names concrete GLPNET/olamnit/qhstate seams (`QuicTransport`,
   `ICapability`/`CapabilityType.Udp`, `DistanceVectorRouter`/`MeshRelayRoute`, `EgressService`,
   amulet/AES-256-GCM, iroh/`noq`, Veilid `SafetySelection`). These are **architectural anchors carried
