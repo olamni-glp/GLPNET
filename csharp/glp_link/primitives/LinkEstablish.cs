@@ -70,8 +70,14 @@ public static class LinkEstablish
             handle = link.Links.GetOrEstablish(id, () => new LinkHandle(
                 id, establish(), LinkOptions.Default, link.PayloadCodecs.Select(id.Scheme)));
         }
-        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or AggregateException)
+        catch (Exception ex)
         {
+            // ANY transport-establishment failure fails CLOSED GRACEFULLY (Abort + logged), never an
+            // uncaught crash of the runtime (FR-009). E.g. a "quic" link opened on a host WITHOUT
+            // MsQuic throws PlatformNotSupportedException from QuicTransport.RequireQuicSupported
+            // (codexreview 20260713T084300Z P2); connect/listen timeouts (OperationCanceledException),
+            // transport faults, a missing per-scheme codec, etc. all take the same documented graceful
+            // path rather than each needing to be enumerated in a narrow filter.
             return Abort(who, $"transport establishment failed for {id}: {Unwrap(ex).Message}");
         }
 

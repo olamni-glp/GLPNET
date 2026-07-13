@@ -38,6 +38,17 @@ public class PathBGateOrderingTests
         public bool GateEstablish(LinkId id) => throw new FileNotFoundException("lazy trust material missing");
     }
 
+    /// <summary>A transport whose establishment throws PlatformNotSupportedException — mirrors a "quic"
+    /// link opened on a host without MsQuic (QuicTransport.RequireQuicSupported).</summary>
+    private sealed class UnsupportedTransport : ILinkTransport
+    {
+        public IReadOnlyCollection<LinkScheme> SupportedSchemes { get; } = new[] { LinkScheme.Loopback };
+        public Task<ILinkEndpoint> ConnectAsync(LinkScheme scheme, LinkAddress remote, LinkOptions opts, CancellationToken ct = default)
+            => throw new PlatformNotSupportedException("QUIC unavailable on this host");
+        public Task<ILinkEndpoint> ListenAsync(LinkScheme scheme, LinkAddress local, LinkOptions opts, CancellationToken ct = default)
+            => throw new PlatformNotSupportedException("QUIC unavailable on this host");
+    }
+
     /// <summary>A transport that records whether a connect/listen was attempted and refuses to
     /// perform one — so a test fails FAST (never hangs) if the gate is bypassed on a refusal.</summary>
     private sealed class ConnectRecordingTransport : ILinkTransport
@@ -160,5 +171,28 @@ public class PathBGateOrderingTests
         Assert.Null(ex);                              // graceful, not a crash
         Assert.Equal(BodyKernelResult.Abort, result);
         Assert.Equal(0, transport.ConnectCalls);      // gate threw before any connect
+    }
+
+    [Fact] // establishment that throws PlatformNotSupportedException (QUIC-unsupported host) fails closed gracefully.
+    public void Setup_EstablishmentThrowsUnsupported_FailsClosedGracefully()
+    {
+        var engine = new GlpRuntimeEngine();
+        var link = LinkKernels.Install(engine);
+        link.Transports.Register(new UnsupportedTransport());   // no gate registered → allow, so establish() runs
+
+        var (inW, _) = engine.Heap.AllocateVariable();
+        var (_, outR) = engine.Heap.AllocateVariable();
+        var (faultsW, _) = engine.Heap.AllocateVariable();
+        var setup = engine.BodyKernels.Lookup(LinkKernels.LinkSetupName, LinkKernels.LinkSetupArity)!;
+
+        BodyKernelResult result = default;
+        var ex = Record.Exception(() => result = setup(engine, new List<object?>
+        {
+            LinkIdTerm(), new ConstTerm("connector"), new VarRef(inW), new VarRef(outR), new VarRef(faultsW),
+        }));
+
+        Assert.Null(ex);                              // PlatformNotSupportedException does NOT escape the kernel
+        Assert.Equal(BodyKernelResult.Abort, result); // graceful fail-closed (codexreview review#4 P2)
+        Assert.Equal(0, link.Links.Count);
     }
 }
