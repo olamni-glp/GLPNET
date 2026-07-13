@@ -44,6 +44,10 @@ import gleam/order
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import glp/bytecode/guard_defs.{
+  type GGuardSpec, type GTerm, type GuardClauseSpec, type GuardProcSpec, GConst,
+  GGuardSpec, GStruct, GVar, GuardClauseSpec, GuardProcSpec,
+}
 import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/arith.{type NumV, NInt, NReal}
@@ -2245,6 +2249,25 @@ fn guard_generic(
   arity: Int,
   negated: Bool,
 ) -> Step {
+  // A runtime-defined guard (049 multi-clause test procedure, e.g. `satisfiable/2`
+  // + its `$sat:*` helpers) is interpreted three-valued over its clause spec —
+  // Dart `_evalDefinedGuardCall`. A negated defined-guard call is not admitted
+  // (Dart throws); it never occurs in practice, so fall through to the builtins.
+  let table = defined_guard_table(program)
+  case negated, dict.get(table, predicate <> "/" <> int.to_string(arity)) {
+    False, Ok(spec) -> dg_call_guard(program, ctx, pc, spec, arity, table)
+    _, _ -> guard_generic_builtin(program, ctx, pc, predicate, arity, negated)
+  }
+}
+
+fn guard_generic_builtin(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  predicate: String,
+  arity: Int,
+  negated: Bool,
+) -> Step {
   let #(args, c) = guard_gather(ctx, arity)
   case !set.is_empty(c.readers) && predicate != "unknown" {
     True -> guard_suspend(program, ctx, pc, c.readers)
@@ -2453,6 +2476,447 @@ fn evaluate_numeric(term: Term) -> Result(NumV, Nil) {
         Ok(nums) -> arith.combine(functor, nums)
         Error(_) -> Error(Nil)
       }
+  }
+}
+
+// ── Runtime-defined guards (049) — three-valued interpretation of multi-clause
+//    test procedures over the defined-guard side table (Dart
+//    `_evalDefinedGuardCall` + `_dgMatchTerm`/`_dgResolve`/`_dgCollectUnbound`). ──
+
+/// A defined-guard clause/conjunct verdict.
+type DGVerdict {
+  DGSuccess
+  DGFailure
+  DGSuspendV(readers: Set(Int))
+}
+
+/// A head-pattern match outcome.
+type DGMatch {
+  DGMOk
+  DGMFail
+  DGMSuspend
+}
+
+/// The merged defined-guard table: the program's user-defined guards + the system
+/// `satisfiable/2` + `$sat:*` primitives (049 form (b), the default). System
+/// entries win on a key clash (form (b) uses the native spec even if the user also
+/// defines satisfiable).
+fn defined_guard_table(program: BytecodeProgram) -> Dict(String, GuardProcSpec) {
+  dict.merge(program.defined_guards(program), system_defined_guards())
+}
+
+fn gc_nil() -> GTerm {
+  GConst(ConstAtom("nil"))
+}
+
+/// The 049 form-(b) system defined guards (Dart `systemDefinedGuards`).
+fn system_defined_guards() -> Dict(String, GuardProcSpec) {
+  dict.from_list([
+    #(
+      "satisfiable/2",
+      GuardProcSpec("satisfiable", 2, [
+        GuardClauseSpec(
+          [GStruct("policy", [gc_nil(), GVar("_", False), GVar("_", False)]), GVar("_", False)],
+          [],
+        ),
+        GuardClauseSpec(
+          [
+            GStruct("policy", [GVar("Ts", False), GVar("_", False), GVar("Es", False)]),
+            GVar("R", False),
+          ],
+          [
+            GGuardSpec("ground", [GVar("Ts", True)], False),
+            GGuardSpec("ground", [GVar("Es", True)], False),
+            GGuardSpec("$sat:disjoint", [GVar("Ts", True), GVar("Es", True)], False),
+            GGuardSpec("$sat:intersects", [GVar("Ts", True), GVar("R", True)], False),
+          ],
+        ),
+      ]),
+    ),
+    #(
+      "$sat:disjoint/2",
+      GuardProcSpec("$sat:disjoint", 2, [
+        GuardClauseSpec([gc_nil(), GVar("_", False)], []),
+        GuardClauseSpec(
+          [GStruct(".", [GVar("T", False), GVar("Ts", False)]), GVar("Es", False)],
+          [
+            GGuardSpec("ground", [GVar("Es", True)], False),
+            GGuardSpec("$sat:not_in", [GVar("T", True), GVar("Es", True)], False),
+            GGuardSpec("$sat:disjoint", [GVar("Ts", True), GVar("Es", True)], False),
+          ],
+        ),
+      ]),
+    ),
+    #(
+      "$sat:not_in/2",
+      GuardProcSpec("$sat:not_in", 2, [
+        GuardClauseSpec([GVar("_", False), gc_nil()], []),
+        GuardClauseSpec(
+          [GVar("X", False), GStruct(".", [GVar("E", False), GVar("Es", False)])],
+          [
+            GGuardSpec("=?=", [GVar("X", True), GVar("E", True)], True),
+            GGuardSpec("$sat:not_in", [GVar("X", True), GVar("Es", True)], False),
+          ],
+        ),
+      ]),
+    ),
+    #(
+      "$sat:intersects/2",
+      GuardProcSpec("$sat:intersects", 2, [
+        GuardClauseSpec(
+          [GStruct(".", [GVar("T", False), GVar("_", False)]), GVar("R", False)],
+          [GGuardSpec("$sat:in_list", [GVar("T", True), GVar("R", True)], False)],
+        ),
+        GuardClauseSpec(
+          [GStruct(".", [GVar("_", False), GVar("Ts", False)]), GVar("R", False)],
+          [GGuardSpec("$sat:intersects", [GVar("Ts", True), GVar("R", True)], False)],
+        ),
+      ]),
+    ),
+    #(
+      "$sat:in_list/2",
+      GuardProcSpec("$sat:in_list", 2, [
+        GuardClauseSpec(
+          [GVar("X", False), GStruct(".", [GVar("E", False), GVar("_", False)])],
+          [GGuardSpec("=?=", [GVar("X", True), GVar("E", True)], False)],
+        ),
+        GuardClauseSpec(
+          [GVar("X", False), GStruct(".", [GVar("_", False), GVar("Es", False)])],
+          [GGuardSpec("$sat:in_list", [GVar("X", True), GVar("Es", True)], False)],
+        ),
+      ]),
+    ),
+  ])
+}
+
+/// Interpret a defined-guard call from the Guard opcode: gather the operands
+/// (`arg_slots`, deref'd) and run the three-valued clause evaluation.
+fn dg_call_guard(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  pc: Int,
+  spec: GuardProcSpec,
+  arity: Int,
+  table: Dict(String, GuardProcSpec),
+) -> Step {
+  let args =
+    list.map(upto(arity), fn(i) {
+      let raw = case dict.get(ctx.arg_slots, i) {
+        Ok(t) -> t
+        Error(_) ->
+          case dict.get(ctx.clause_vars, i) {
+            Ok(cv) -> resolve_cvar(ctx, cv)
+            Error(_) -> ConstTerm(ConstAtom("$missing"))
+          }
+      }
+      dg_deref(ctx, raw)
+    })
+  case dg_eval_call(ctx, spec, args, table, 0) {
+    DGSuccess -> Advance(ctx)
+    DGFailure -> soft_fail(program, ctx, pc)
+    DGSuspendV(readers) -> guard_suspend(program, ctx, pc, readers)
+  }
+}
+
+/// Three-valued evaluation of a defined-guard spec against `call_args` (Dart
+/// `_evalDefinedGuardCall`): any clause SUCCEEDS ⇒ success; else any clause
+/// SUSPENDS ⇒ suspend on the union; else FAIL. Fail dominates suspend within a
+/// clause. Depth-limited against cyclic data (returns fail at the cap).
+fn dg_eval_call(
+  ctx: RunnerContext,
+  spec: GuardProcSpec,
+  call_args: List(Term),
+  table: Dict(String, GuardProcSpec),
+  depth: Int,
+) -> DGVerdict {
+  case depth > 5000 {
+    True -> DGFailure
+    False -> dg_try_clauses(ctx, spec.clauses, call_args, table, depth, set.new())
+  }
+}
+
+fn dg_try_clauses(
+  ctx: RunnerContext,
+  clauses: List(GuardClauseSpec),
+  call_args: List(Term),
+  table: Dict(String, GuardProcSpec),
+  depth: Int,
+  susp: Set(Int),
+) -> DGVerdict {
+  case clauses {
+    [] ->
+      case set.is_empty(susp) {
+        True -> DGFailure
+        False -> DGSuspendV(susp)
+      }
+    [clause, ..rest] -> {
+      let #(head, frame, head_readers) =
+        dg_match_head(ctx, clause.head_args, call_args, dict.new(), set.new())
+      case head {
+        DGMFail -> dg_try_clauses(ctx, rest, call_args, table, depth, susp)
+        DGMSuspend ->
+          dg_try_clauses(ctx, rest, call_args, table, depth, set.union(susp, head_readers))
+        DGMOk ->
+          case dg_eval_conjuncts(ctx, clause.guards, frame, table, depth) {
+            DGSuccess -> DGSuccess
+            DGFailure -> dg_try_clauses(ctx, rest, call_args, table, depth, susp)
+            DGSuspendV(r) ->
+              dg_try_clauses(ctx, rest, call_args, table, depth, set.union(susp, r))
+          }
+      }
+    }
+  }
+}
+
+/// Match head patterns against caller values (fail dominates suspend), threading
+/// the clause-local frame + suspend readers.
+fn dg_match_head(
+  ctx: RunnerContext,
+  pats: List(GTerm),
+  values: List(Term),
+  frame: Dict(String, Term),
+  readers: Set(Int),
+) -> #(DGMatch, Dict(String, Term), Set(Int)) {
+  case pats, values {
+    [], _ -> #(DGMOk, frame, readers)
+    [p, ..ps], [v, ..vs] -> {
+      let #(m, frame2, r2) = dg_match(ctx, p, v, frame, readers)
+      case m {
+        DGMFail -> #(DGMFail, frame2, r2)
+        _ -> {
+          let #(rest_m, frame3, r3) = dg_match_head(ctx, ps, vs, frame2, r2)
+          case rest_m, m {
+            DGMFail, _ -> #(DGMFail, frame3, r3)
+            _, DGMSuspend -> #(DGMSuspend, frame3, r3)
+            _, _ -> #(rest_m, frame3, r3)
+          }
+        }
+      }
+    }
+    _, _ -> #(DGMFail, frame, readers)
+  }
+}
+
+fn dg_match(
+  ctx: RunnerContext,
+  pat: GTerm,
+  value: Term,
+  frame: Dict(String, Term),
+  readers: Set(Int),
+) -> #(DGMatch, Dict(String, Term), Set(Int)) {
+  let v = dg_deref(ctx, value)
+  case pat {
+    GVar(name, _) ->
+      case string.starts_with(name, "_") {
+        True -> #(DGMOk, frame, readers)
+        False ->
+          case dict.get(frame, name) {
+            Ok(prev) -> {
+              let #(m, r2) = dg_test_equal(ctx, prev, v, readers)
+              #(m, frame, r2)
+            }
+            Error(_) -> #(DGMOk, dict.insert(frame, name, v), readers)
+          }
+      }
+    _ ->
+      case v {
+        VarRef(addr) ->
+          case heap.is_reader(ctx.heap, addr) {
+            True -> #(DGMSuspend, frame, set.insert(readers, dg_writer_of(ctx, addr)))
+            False -> #(DGMFail, frame, readers)
+          }
+        ConstTerm(c) ->
+          case pat {
+            GConst(pv) ->
+              case c == pv {
+                True -> #(DGMOk, frame, readers)
+                False -> #(DGMFail, frame, readers)
+              }
+            _ -> #(DGMFail, frame, readers)
+          }
+        StructTerm(f, args) ->
+          case pat {
+            GStruct(pf, pargs) ->
+              case f == pf && list.length(args) == list.length(pargs) {
+                True -> dg_match_head(ctx, pargs, args, frame, readers)
+                False -> #(DGMFail, frame, readers)
+              }
+            _ -> #(DGMFail, frame, readers)
+          }
+      }
+  }
+}
+
+/// Ground-equality of two already-deref'd terms (repeated head var / `=?=`):
+/// unbound writer ⇒ fail; unbound reader(s) ⇒ suspend; else structural compare.
+fn dg_test_equal(
+  ctx: RunnerContext,
+  a: Term,
+  b: Term,
+  readers: Set(Int),
+) -> #(DGMatch, Set(Int)) {
+  let ca = collect_term(ctx, a, empty_collect())
+  let cb = collect_term(ctx, b, ca)
+  case cb.has_writer {
+    True -> #(DGMFail, readers)
+    False ->
+      case set.is_empty(cb.readers) {
+        False -> #(DGMSuspend, set.union(readers, cb.readers))
+        True ->
+          case resolve_term(ctx, a) == resolve_term(ctx, b) {
+            True -> #(DGMOk, readers)
+            False -> #(DGMFail, readers)
+          }
+      }
+  }
+}
+
+/// The writer to suspend on for an unbound reader `addr` (U carries writers).
+fn dg_writer_of(ctx: RunnerContext, addr: Int) -> Int {
+  case heap.paired_writer(ctx.heap, addr) {
+    Ok(w) -> w
+    Error(_) -> addr
+  }
+}
+
+/// Evaluate a clause's guard conjunction (fail dominates suspend).
+fn dg_eval_conjuncts(
+  ctx: RunnerContext,
+  guards: List(GGuardSpec),
+  frame: Dict(String, Term),
+  table: Dict(String, GuardProcSpec),
+  depth: Int,
+) -> DGVerdict {
+  case guards {
+    [] -> DGSuccess
+    [g, ..rest] ->
+      case dg_eval_conjunct(ctx, g, frame, table, depth) {
+        DGFailure -> DGFailure
+        v ->
+          case dg_eval_conjuncts(ctx, rest, frame, table, depth) {
+            DGFailure -> DGFailure
+            rv -> {
+              let a = case v {
+                DGSuspendV(r) -> r
+                _ -> set.new()
+              }
+              let b = case rv {
+                DGSuspendV(r) -> r
+                _ -> set.new()
+              }
+              let both = set.union(a, b)
+              case set.is_empty(both) {
+                True -> DGSuccess
+                False -> DGSuspendV(both)
+              }
+            }
+          }
+      }
+  }
+}
+
+/// One guard conjunct: the builtin subset `ground`/`known`/`=?=` (verdict
+/// matrices mirroring the dedicated opcodes) or a recursive defined-guard call.
+fn dg_eval_conjunct(
+  ctx: RunnerContext,
+  g: GGuardSpec,
+  frame: Dict(String, Term),
+  table: Dict(String, GuardProcSpec),
+  depth: Int,
+) -> DGVerdict {
+  let resolved = list.map(g.args, fn(a) { dg_resolve(frame, a) })
+  case g.predicate, resolved {
+    "ground", [x] -> {
+      let c = collect_term(ctx, x, empty_collect())
+      case !set.is_empty(c.readers) && !c.has_writer {
+        True -> DGSuspendV(c.readers)
+        False -> {
+          let is_ground = !c.has_writer && set.is_empty(c.readers)
+          dg_bool(case g.negated {
+            True -> !is_ground
+            False -> is_ground
+          })
+        }
+      }
+    }
+    "known", [x] ->
+      case dg_deref(ctx, x) {
+        VarRef(addr) ->
+          case heap.is_reader(ctx.heap, addr) {
+            True -> DGSuspendV(set.from_list([dg_writer_of(ctx, addr)]))
+            False -> dg_bool(g.negated)
+            // unbound writer → not known
+          }
+        _ -> dg_bool(!g.negated)
+      }
+    "=?=", [a, b] -> {
+      let #(m, r) = dg_test_equal(ctx, dg_deref(ctx, a), dg_deref(ctx, b), set.new())
+      case m {
+        DGMSuspend -> DGSuspendV(r)
+        DGMOk -> dg_bool(!g.negated)
+        DGMFail -> dg_bool(g.negated)
+      }
+    }
+    _, _ ->
+      case dict.get(table, g.predicate <> "/" <> int.to_string(list.length(g.args))), g.negated {
+        Ok(spec), False -> dg_eval_call(ctx, spec, resolved, table, depth + 1)
+        _, _ -> DGFailure
+      }
+  }
+}
+
+fn dg_bool(b: Bool) -> DGVerdict {
+  case b {
+    True -> DGSuccess
+    False -> DGFailure
+  }
+}
+
+/// Resolve a guard-conjunct GTerm against the clause-local frame into a runtime
+/// Term (Dart `_dgResolve`). A missing frame var is an internal invariant break —
+/// yield `$missing` (the caller then fails rather than crashing).
+fn dg_resolve(frame: Dict(String, Term), t: GTerm) -> Term {
+  case t {
+    GConst(v) -> ConstTerm(v)
+    GVar(name, _) ->
+      case dict.get(frame, name) {
+        Ok(term) -> term
+        Error(_) -> ConstTerm(ConstAtom("$missing"))
+      }
+    GStruct(f, args) ->
+      StructTerm(f, list.map(args, fn(a) { dg_resolve(frame, a) }))
+  }
+}
+
+/// Deref a runtime term ONE level through σ̂w + heap to a value/struct or an
+/// unbound VarRef (Dart `_dgDeref`). Leaves an unbound reader/writer as its
+/// `VarRef` so the caller can distinguish suspend (reader) from fail (writer).
+fn dg_deref(ctx: RunnerContext, term: Term) -> Term {
+  case term {
+    VarRef(addr) -> {
+      let sv = case dict.get(ctx.sigma_hat, addr) {
+        Ok(v) -> Ok(v)
+        Error(_) ->
+          case heap.is_reader(ctx.heap, addr) {
+            True ->
+              case heap.paired_writer(ctx.heap, addr) {
+                Ok(w) -> dict.get(ctx.sigma_hat, w)
+                Error(_) -> Error(Nil)
+              }
+            False -> Error(Nil)
+          }
+      }
+      case sv {
+        Ok(SVTerm(t)) -> dg_deref(ctx, t)
+        Ok(SVTentative(tent)) -> resolve_tent(ctx, tent)
+        Error(_) ->
+          case dval(ctx.heap, addr) {
+            Bound(v) -> dg_deref(ctx, v)
+            Unbound(_) -> term
+          }
+      }
+    }
+    _ -> term
   }
 }
 
