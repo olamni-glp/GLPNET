@@ -1594,14 +1594,20 @@ fn put_structure(
 ) -> Step {
   let #(h, w, _r) = heap.allocate_variable(ctx.heap)
   let ctx = RunnerContext(..ctx, heap: h)
-  // Nested (arg_slot == -1) or a structure already in progress → push parent.
-  let ctx = case arg_slot == -1 || ctx.current != BTNone {
+  // A NESTED structure element (arg_slot == -1) pushes the in-progress parent so
+  // the completed child is placed back into the parent slot on unwind. A TOP-LEVEL
+  // argument (arg_slot >= 0) starts a FRESH structure: any `current`/`parent_stack`
+  // is stale build state left over from the HEAD phase (e.g. reading a `[X|Xs]` head
+  // leaves `current = BTStruct(".")`), and must NOT be treated as a parent — else the
+  // completed operand's reader is redirected into the stale head structure instead of
+  // `arg_slots[slot]` (the guard-operand `mod(X,P)` bug: it resolved to just `P`).
+  let ctx = case arg_slot == -1 {
     True ->
       RunnerContext(..ctx, parent_stack: [
         ParentCtx(ctx.current, ctx.s, ctx.mode, ctx.build_writer),
         ..ctx.parent_stack
       ])
-    False -> ctx
+    False -> RunnerContext(..ctx, parent_stack: [])
   }
   let ctx = RunnerContext(..ctx, build_writer: Some(w))
   let ctx = case arg_slot >= 0 && arg_slot < 10, arg_slot >= 10 {
@@ -2238,7 +2244,7 @@ fn guard_generic(
 fn guard_gather(ctx: RunnerContext, arity: Int) -> #(List(Term), Collect) {
   list.fold(upto(arity), #([], empty_collect()), fn(acc, i) {
     let #(args, c) = acc
-    let arg = case dict.get(ctx.arg_slots, i) {
+      let arg = case dict.get(ctx.arg_slots, i) {
       Ok(t) -> t
       Error(_) ->
         case dict.get(ctx.clause_vars, i) {
