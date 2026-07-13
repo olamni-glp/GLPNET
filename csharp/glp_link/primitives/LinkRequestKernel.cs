@@ -68,7 +68,11 @@ public static class LinkRequestKernel
             foreach (var frame in FrameCodec.Encode(payload, messageId: 0u))
                 endpoint.SendBytesAsync(frame).GetAwaiter().GetResult();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or KeyNotFoundException or AggregateException)
+        // ANY connect/handshake failure fails CLOSED GRACEFULLY (Abort), never an uncaught crash —
+        // e.g. a "quic" link on a host without MsQuic throws PlatformNotSupportedException, and a
+        // connect-timeout throws OperationCanceledException; neither was in the old narrow filter
+        // (codexreview 20260713T110357Z P2). Same root fix as the LinkEstablish establishment catch.
+        catch (Exception ex)
         {
             return LinkEstablish.Abort(Who, $"connect/handshake failed for {id}: {ex.Message}");
         }

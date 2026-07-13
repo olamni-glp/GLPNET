@@ -195,4 +195,26 @@ public class PathBGateOrderingTests
         Assert.Equal(BodyKernelResult.Abort, result); // graceful fail-closed (codexreview review#4 P2)
         Assert.Equal(0, link.Links.Count);
     }
+
+    [Fact] // path-B '_link_request': a transport ConnectAsync throw (QUIC unsupported) fails closed gracefully.
+    public void Request_ConnectThrowsUnsupported_FailsClosedGracefully()
+    {
+        var engine = new GlpRuntimeEngine();
+        var link = LinkKernels.Install(engine);
+        link.Transports.Register(new UnsupportedTransport());   // no gate → allow, so ConnectAsync is reached and throws
+
+        var (inW, _) = engine.Heap.AllocateVariable();
+        var (_, outR) = engine.Heap.AllocateVariable();
+        var (faultsW, _) = engine.Heap.AllocateVariable();
+        var request = engine.BodyKernels.Lookup(LinkKernels.LinkRequestName, LinkKernels.LinkRequestArity)!;
+
+        BodyKernelResult result = default;
+        var ex = Record.Exception(() => result = request(engine, new List<object?>
+        {
+            LinkIdTerm(), new ConstTerm("serverB"), new VarRef(inW), new VarRef(outR), new VarRef(faultsW),
+        }));
+
+        Assert.Null(ex);                              // PlatformNotSupportedException does NOT escape (review#7 P2)
+        Assert.Equal(BodyKernelResult.Abort, result); // graceful fail-closed
+    }
 }
