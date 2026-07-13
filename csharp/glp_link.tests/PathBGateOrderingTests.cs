@@ -1,3 +1,5 @@
+using System.IO;
+
 using GlpRuntime.Link.Primitives;
 using GlpRuntime.Link.Seam;
 using GlpRuntime.Runtime;
@@ -27,6 +29,13 @@ public class PathBGateOrderingTests
     {
         public int Calls;
         public bool GateEstablish(LinkId id) { Calls++; return false; }
+    }
+
+    /// <summary>A gate whose evaluation THROWS — mirrors a LazyMacaroonLinkGate whose first use loads
+    /// missing/invalid trust material (StaticMacaroonMaterial.LoadFromRepo throws).</summary>
+    private sealed class ThrowingGate : ICapabilityGate
+    {
+        public bool GateEstablish(LinkId id) => throw new FileNotFoundException("lazy trust material missing");
     }
 
     /// <summary>A transport that records whether a connect/listen was attempted and refuses to
@@ -102,5 +111,54 @@ public class PathBGateOrderingTests
         Assert.Equal(BodyKernelResult.Abort, result);
         Assert.Equal(1, gate.Calls);          // consulted BEFORE the pending-adopt check (the P1)
         Assert.Equal(0, link.Links.Count);
+    }
+
+    [Fact] // path-A ('_link_setup'): a gate that THROWS on evaluation (lazy material missing) fails closed GRACEFULLY.
+    public void Setup_GateEvaluationThrows_FailsClosedGracefully()
+    {
+        var engine = new GlpRuntimeEngine();
+        var link = LinkKernels.Install(engine);
+        link.Transports.Register(new ConnectRecordingTransport());
+        link.CapabilityGates.Register(LinkScheme.Loopback, new ThrowingGate());
+
+        var (inW, _) = engine.Heap.AllocateVariable();
+        var (_, outR) = engine.Heap.AllocateVariable();
+        var (faultsW, _) = engine.Heap.AllocateVariable();
+        var setup = engine.BodyKernels.Lookup(LinkKernels.LinkSetupName, LinkKernels.LinkSetupArity)!;
+
+        BodyKernelResult result = default;
+        var ex = Record.Exception(() => result = setup(engine, new List<object?>
+        {
+            LinkIdTerm(), new ConstTerm("connector"), new VarRef(inW), new VarRef(outR), new VarRef(faultsW),
+        }));
+
+        Assert.Null(ex);                              // no uncaught exception escapes the kernel (P2, review#3)
+        Assert.Equal(BodyKernelResult.Abort, result); // fails closed gracefully
+        Assert.Equal(0, link.Links.Count);
+    }
+
+    [Fact] // path-B ('_link_request'): same graceful fail-closed, and still no connect is attempted.
+    public void Request_GateEvaluationThrows_FailsClosedGracefully_NoConnect()
+    {
+        var engine = new GlpRuntimeEngine();
+        var link = LinkKernels.Install(engine);
+        var transport = new ConnectRecordingTransport();
+        link.Transports.Register(transport);
+        link.CapabilityGates.Register(LinkScheme.Loopback, new ThrowingGate());
+
+        var (inW, _) = engine.Heap.AllocateVariable();
+        var (_, outR) = engine.Heap.AllocateVariable();
+        var (faultsW, _) = engine.Heap.AllocateVariable();
+        var request = engine.BodyKernels.Lookup(LinkKernels.LinkRequestName, LinkKernels.LinkRequestArity)!;
+
+        BodyKernelResult result = default;
+        var ex = Record.Exception(() => result = request(engine, new List<object?>
+        {
+            LinkIdTerm(), new ConstTerm("serverB"), new VarRef(inW), new VarRef(outR), new VarRef(faultsW),
+        }));
+
+        Assert.Null(ex);                              // graceful, not a crash
+        Assert.Equal(BodyKernelResult.Abort, result);
+        Assert.Equal(0, transport.ConnectCalls);      // gate threw before any connect
     }
 }

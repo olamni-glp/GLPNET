@@ -176,9 +176,26 @@ public static class LinkEstablish
     /// with no registered gate resolve to the allow-all default.
     /// </summary>
     internal static BodyKernelResult? CapabilityRefusal(LinkRuntime link, LinkId id, string who)
-        => link.CapabilityGates.Select(id.Scheme).GateEstablish(id)
+    {
+        bool allowed;
+        try
+        {
+            allowed = link.CapabilityGates.Select(id.Scheme).GateEstablish(id);
+        }
+        catch (Exception ex)
+        {
+            // The gate could not even be EVALUATED — e.g. a LazyMacaroonLinkGate whose first use
+            // materializes StaticMacaroonMaterial.LoadFromRepo() and finds glpquick-cert/ missing or
+            // invalid (it throws). A gate that cannot decide must fail CLOSED GRACEFULLY (Abort) exactly
+            // like an explicit refusal — never an uncaught exception that crashes the run (FR-008/FR-009,
+            // codexreview 20260713T083603Z P2). This is fail-closed: any evaluation failure denies.
+            return Abort(who, $"capability gate could not be evaluated for {id} " +
+                              $"(trust material missing or invalid?) — establishment fails closed (FR-008): {Unwrap(ex).Message}");
+        }
+        return allowed
             ? null
             : Abort(who, $"capability refused for {id} — establishment fails closed (FR-008)");
+    }
 
     internal static BodyKernelResult Abort(string who, string why)
     {
