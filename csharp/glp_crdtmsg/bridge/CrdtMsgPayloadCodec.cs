@@ -33,6 +33,7 @@
 using GlpRuntime.CrdtMsg.Envelope;
 using GlpRuntime.CrdtMsg.Headers;
 using GlpRuntime.CrdtMsg.Model;
+using GlpRuntime.CrdtMsg.Route;
 using GlpRuntime.Link.Seam;
 using GlpRuntime.Runtime;
 using GlpRuntime.WireRegistry;
@@ -49,11 +50,14 @@ public sealed class CrdtMsgPayloadCodec : IPayloadCodec
     private const string Cons = ".";
     private const string Nil = "nil";
 
-    /// <summary>The must-understand (odd) section types the link CARRIES: the reserved CRDT op section
-    /// (<see cref="UnifiedHeader.OpSectionType"/>). The link forwards it verbatim — carriage, not apply
-    /// (addendum A3). Any OTHER odd/must-understand section the codec does not understand fails loud on
-    /// decode (FR-005). Even/ignorable sections are always carried verbatim by the TLV codec.</summary>
-    private static readonly IReadOnlySet<long> Understood = new HashSet<long> { UnifiedHeader.OpSectionType };
+    /// <summary>The must-understand (odd) section types the link CARRIES verbatim — carriage, not apply
+    /// (addendum A3): the reserved CRDT op section (<see cref="UnifiedHeader.OpSectionType"/>) and the
+    /// 057 E3PC control section (<see cref="E3pcCtrlCodec.SectionType"/>), so an E3PC control frame can
+    /// ride a "quic" link without the codec loud-rejecting it (codexreview 20260713T110357Z). Any OTHER
+    /// odd/must-understand section the codec does not understand still fails loud on decode (FR-005).
+    /// Even/ignorable sections are always carried verbatim by the TLV codec.</summary>
+    private static readonly IReadOnlySet<long> Understood =
+        new HashSet<long> { UnifiedHeader.OpSectionType, E3pcCtrlCodec.SectionType };
 
     private readonly MacaroonLinkGate? _gate;
 

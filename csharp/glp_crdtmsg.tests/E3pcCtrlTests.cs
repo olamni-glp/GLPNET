@@ -159,6 +159,26 @@ public class E3pcCtrlTests
             DecodeGuard.CheckMustUnderstand(decodedMsg, new HashSet<long> { UnifiedHeader.OpSectionType }));
     }
 
+    [Fact] // the "quic"-link payload codec understands E3PC (0x15) and carries it without loud-rejecting.
+    public void CrdtMsgPayloadCodec_Understands_E3pc_And_Carries_It()
+    {
+        var keys = new PeerKeyStore("coordinator");
+        var frame = NewFrame(keys, E3pcPhase.Prepare);
+        var msg = new Message(
+            SchemaVersion: 1,
+            PayloadType: PayloadType.CrdtMessage,
+            Header: new Header("coordinator#0", "coordinator", "w1", 0, RoutingPolicy.Empty),
+            Sections: new[] { E3pcCtrlCodec.SectionOf(frame) },
+            CrdtModel: CrdtModel.None);
+        byte[] wire = MessageCodec.Binary.Encode(msg);
+
+        // Before the fix the quic payload codec's Understood set was {OpSectionType} only, so it
+        // loud-rejected the odd/must-understand 0x15 E3PC section (codexreview 20260713T110357Z).
+        var codec = new GlpRuntime.CrdtMsg.Bridge.CrdtMsgPayloadCodec();
+        var ex = Record.Exception(() => codec.Decode(wire));
+        Assert.Null(ex);
+    }
+
     [Fact]
     public void Reliability_FifoAndDedup_ViaDeliveryWindow()
     {
