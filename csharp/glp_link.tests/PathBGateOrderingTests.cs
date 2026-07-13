@@ -217,4 +217,24 @@ public class PathBGateOrderingTests
         Assert.Null(ex);                              // PlatformNotSupportedException does NOT escape (review#7 P2)
         Assert.Equal(BodyKernelResult.Abort, result); // graceful fail-closed
     }
+
+    [Fact] // path-B '_link_listen': a transport ListenAsync throw (QUIC unsupported / lazy material missing) fails closed gracefully.
+    public void Listen_ListenThrowsUnsupported_FailsClosedGracefully()
+    {
+        var engine = new GlpRuntimeEngine();
+        var link = LinkKernels.Install(engine);
+        link.Transports.Register(new UnsupportedTransport());   // ListenAsync throws PlatformNotSupportedException
+
+        var (reqW, _) = engine.Heap.AllocateVariable();
+        var listen = engine.BodyKernels.Lookup(LinkKernels.LinkListenName, LinkKernels.LinkListenArity)!;
+
+        BodyKernelResult result = default;
+        var ex = Record.Exception(() => result = listen(engine, new List<object?>
+        {
+            new ConstTerm("loopback"), new ConstTerm(Chan), new VarRef(reqW),
+        }));
+
+        Assert.Null(ex);                              // does NOT escape the kernel (review#8 P2)
+        Assert.Equal(BodyKernelResult.Abort, result); // graceful fail-closed
+    }
 }
