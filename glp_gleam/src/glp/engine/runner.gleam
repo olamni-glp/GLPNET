@@ -2368,9 +2368,13 @@ fn eval_guard(predicate: String, args: List(Term)) -> GuardVerdict {
     "known" -> type_test(args, fn(t) { !is_unbound(t) })
     "ground" -> GSuccess
     "otherwise" -> GSuccess
-    // Effectful timer guards — need scheduler timer infra (out of pure-engine
-    // MVP). Surface, do not invent (Language Authority §1.14).
-    "wait" | "wait_until" -> GUnsupported(predicate)
+    // Timer guards (Dart `wait`/`wait_until`): a bound number succeeds (Dart
+    // `Duration <= 0` succeeds immediately; `> 0` suspends on a timer that then
+    // fires → succeeds — both OUTCOMES are success). The pure standalone engine has
+    // no wall-clock, so a bound duration succeeds immediately (outcome-equivalent);
+    // an UNBOUND duration is already handled upstream (guard_gather adds the reader
+    // to the suspension set); a non-number FAILs (Dart's non-number arm).
+    "wait" | "wait_until" -> type_test(args, is_number)
     // Unknown predicate → FAIL (Dart `_evaluateGuard` default `[WARN]` arm).
     // Also the fall-through for unported runtime-defined guards (049).
     _ -> GFailure
