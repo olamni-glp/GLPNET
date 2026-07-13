@@ -145,14 +145,29 @@ pub fn warnings(engine: Engine) -> List(TypeWarning) {
 /// build error yields a `Failed` envelope carrying the reason (Dart catches these
 /// into `ExecutionResult(status: failed, error: …)`).
 pub fn run(engine: Engine, goal: String) -> #(Engine, ResultEnvelope) {
-  let envelope = case run_goal(engine, goal) {
+  run_with_limit(engine, goal, default_fuel)
+}
+
+/// As `run`, but with an explicit total-reduction budget (`fuel`) — the seam the
+/// REPL `:limit <n>` sets (Dart `engine.maxCycles`). Exhaustion surfaces as an
+/// `OutOfFuel` run → a `Failed` envelope carrying the exhaustion reason.
+pub fn run_with_limit(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> #(Engine, ResultEnvelope) {
+  let envelope = case run_goal(engine, goal, fuel) {
     Ok(env) -> env
     Error(reason) -> failed_envelope(reason)
   }
   #(engine, envelope)
 }
 
-fn run_goal(engine: Engine, goal: String) -> Result(ResultEnvelope, String) {
+fn run_goal(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> Result(ResultEnvelope, String) {
   use atom <- result.try(parse_goal(goal))
   let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
   use entry <- result.try(
@@ -163,8 +178,7 @@ fn run_goal(engine: Engine, goal: String) -> Result(ResultEnvelope, String) {
 
   let sched = scheduler.new(engine.program, boot.heap)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
-  let #(sched, status) =
-    scheduler.run(sched, default_reduction_budget, default_fuel)
+  let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
 
   let #(exec_status, blocking_readers, error) = map_status(status)
   case
