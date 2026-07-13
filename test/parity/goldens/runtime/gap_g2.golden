@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block gap_g2 (feature 050 T037)
+# files: programs/tests/typed/gap_g2_standardize_apart.glp
+## goal: g2_copy([10,20,30], R).
+R = [10, 20, 30]
+→ succeeds
+
+## goal: g2_pair_copies([1,2], [3], R2).
+R2 = [1, 2, 3]
+→ succeeds
+

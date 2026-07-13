@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block gap_g1 (feature 050 T037)
+# files: programs/tests/typed/gap_g1_ground_relax.glp
+## goal: g1_triple(foo, R).
+R = t(foo, foo, foo)
+→ succeeds
+
+## goal: g1_single(bar, R2).
+R2 = bar
+→ succeeds
+

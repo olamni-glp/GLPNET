@@ -384,6 +384,40 @@ goal test_b1.
 goal test_b2(Rb2?).
 goal test_b3(Rb3?).
 
+# --- GAP / FORK named cases (T040, FR-011) ---
+block gap_g1
+file programs/tests/typed/gap_g1_ground_relax.glp
+goal g1_triple(foo, R).
+goal g1_single(bar, R2).
+
+block gap_g2
+file programs/tests/typed/gap_g2_standardize_apart.glp
+goal g2_copy([10,20,30], R).
+goal g2_pair_copies([1,2], [3], R2).
+
+block gap_g3
+file programs/tests/typed/gap_g3_fairness.glp
+goal g3_fair_merge([1,2,3], [10,20,30], R).
+
+block gap_g8
+file programs/tests/typed/gap_g8_guard_three_valued.glp
+goal g8_eq(5, 5, R).
+goal g8_eq(5, 3, R2).
+goal g8_lt(3, 5, R3).
+goal g8_lt(5, 3, R4).
+goal g8_int(42, R5).
+goal g8_int(foo, R6).
+goal g8_known(hi, R7).
+goal g8_lt(Wg?, 5, R8).
+
+# FORK-1: circular-term deref/display discriminator — an OPEN owner-gated fork.
+# RECORDED, never forced to agree (expected.list marks it `fork`).
+block fork_1
+file programs/tests/typed/fork_1_circular_deref.glp
+goal wrap(base, R0).
+goal X = f(X?).
+goal Y = pair(a, Y?).
+
 # =============================================================================
 # SECTION B — positive load-outcome cases (must load clean -> LOADED)
 # =============================================================================

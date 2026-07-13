@@ -8,6 +8,11 @@
 #                             divergence: compared + surfaced, not counted against SC-001.
 #   fork <block> <reason>     Owner-gated FORK (e.g. FORK-1). Recorded, never forced to agree.
 #
-# T039 seeds only the three VERIFIED blocked blocks (concat proven to fail on shared
-# predicates). GAP/FORK rows are added at T042 as divergences are observed + classified.
+# T039 seeded verified-blocked blocks (since fixed & removed at T042). GAP/FORK rows
+# are added as divergences are observed + classified.
+
+# FORK-1 (T040): the circular-term deref/display discriminator is an OPEN owner-gated
+# fork (Dart detects the cycle -> `<circular>`; Gleam depth-truncates -> `$truncated`).
+# RECORDED side-by-side, NEVER forced to agree, not Claude-decided (manifest §4 / C-19).
+fork fork_1 circular-term deref/display discriminator (Dart <circular> vs Gleam $truncated); OPEN owner-gated fork, recorded not forced to agree
 

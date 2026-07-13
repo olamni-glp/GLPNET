@@ -1,0 +1,18 @@
+% fork_1_circular_deref.glp - FORK-1 (C-19 / GAP-G5 C-15): the circular-term
+% deref/display discriminator boundary is an OPEN owner-gated fork (Option A
+% loud-all vs Option B structural-vs-cycle) that must NOT be Claude-decided.
+%
+% A self-referential term is formed by the REPL goal `X = f(X?)` (SRSW-valid: one
+% writer on the left, one reader inside `f`; the runtime deref then loops on the
+% shared cell). The two instances discriminate differently:
+%   * Dart DETECTS the cycle and renders `<circular>` (structural-vs-cycle).
+%   * the Gleam instance depth-truncates and renders `$truncated()`.
+% Both goals SUCCEED — the divergence is purely the deref/display discriminator.
+% This file names the FORK case and provides a loadable NON-circular baseline
+% (`wrap`). The FORK outcome is RECORDED side-by-side, never forced to agree and
+% never golden-fudged (corpus-manifest.md §4 / Bug Protocol).
+
+SelfRef ::= f(SelfRef) ; base.
+
+exported procedure wrap(SelfRef?, SelfRef).
+wrap(X, f(X?)).
