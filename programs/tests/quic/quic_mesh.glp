@@ -77,7 +77,7 @@ gen_pings(From, To, N, Max, Done, [Msg?|Out?]) :-
     ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
     mk_ping(From?, To?, N?, Msg),
     N1 := N? + 1,
-    gen_pings(From?, To?, N1?, Max?, Done, Out).
+    gen_pings(From?, To?, N1?, Max?, Done?, Out).
 gen_pings(_, _, N, Max, Done, []) :- ground(N?), ground(Max?), N? > Max?, Done? =?= ok | true.
 
 % Head-construct one crdtmsg envelope: fixed string MsgId "ping", From/To atoms, Seq = N, empty
@@ -95,8 +95,8 @@ mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [
 % bind Out = []. The []-inbound clause is a defensive early-EOS guard (peer closed before PingCount)
 % that still raises Done so a short run cannot deadlock the close.
 % ---------------------------------------------------------------------------------------------------
-procedure collect_n(Stream(_)?, Integer?, Stream(_), Constant?).
-collect_n([M?|In], K, [M?|Rest?], Done?) :- ground(M?), ground(K?), K? > 0 |
+procedure collect_n(Stream(_)?, Integer?, Stream(_), Constant).
+collect_n([M|In], K, [M?|Rest?], Done?) :- ground(M?), ground(K?), K? > 0 |
     K1 := K? - 1,
     collect_n(In?, K1?, Rest, Done).
 collect_n(_, K, [], ok) :- ground(K?), K? =< 0 | true.
