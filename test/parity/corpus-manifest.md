@@ -155,7 +155,10 @@ both sides:
   from the live heap and may show `?`); Dart also prints a fully-unbound result as
   `<unbound>` where Gleam prints `X<id>` — the normalizer canonicalizes both.
 - (b) bound vs unbound query vars are split-ordered in the envelope (`resolved_bindings`
-  then `var_to_writer`); variable **numbering** is stabilized by the normalizer.
+  then `var_to_writer`), so a mixed multi-var goal lists the same bindings in a different
+  order than Dart's single ordered map — the normalizer **sorts the binding lines** (set +
+  status is the parity signal, not order) and **stabilizes variable numbering** (internal
+  ids `X<n>`/`_G<n>` → consistent `_V<k>`, preserving sharing like `ch(_V1,_V2)/ch(_V2,_V1)`).
 - (c) `:trace` lines are best-effort reference shape and are **not** part of a recorded
   goal outcome (traces are a REPL affordance, not an envelope field).
 

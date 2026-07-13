@@ -47,6 +47,21 @@ normalize_outcome() {
             print lhs out rhs
           } else { print line }
         }' \
+    | awk '
+        # Canonicalize binding ORDER within a goal outcome (restart-note item 5b):
+        # Gleam splits bound (resolved_bindings) then unbound (var_to_writer) while Dart
+        # emits one ordered map, so a mixed multi-var goal lists the same bindings in a
+        # different order. The binding SET + the status are the parity signal, not the
+        # order -- so sort the "<name> = <value>" lines, keeping the "-> status" line last.
+        /^(→|->)/ { status = status $0 "\n"; next }
+        /=/       { b[++n]=$0; next }
+        { other = other $0 "\n" }          # any non-binding, non-status line: keep as-is
+        END {
+          for (i=1;i<=n;i++) for (j=i+1;j<=n;j++) if (b[j]<b[i]) { t=b[i]; b[i]=b[j]; b[j]=t }
+          printf "%s", other
+          for (i=1;i<=n;i++) print b[i]
+          printf "%s", status
+        }' \
     | awk '{ln[NR]=$0} END{last=NR; while(last>0 && ln[last]=="") last--; s=1; while(s<=last && ln[s]=="") s++; for(i=s;i<=last;i++) print ln[i]}'
 }
 

@@ -112,3 +112,7 @@ glpquick-cert/
 
 # 049 T028 erlang regression scratch output
 gleam_quic/test/_build_test/
+
+# feature 050 US3: regenerable Gleam corpus-runner output (goldens are Dart-side)
+test/parity/goldens/gleam/
+glp_gleam/.parity_run.glp

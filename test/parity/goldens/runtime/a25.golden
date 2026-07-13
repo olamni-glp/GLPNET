@@ -9,7 +9,7 @@ Rqb1 = 10
 → succeeds
 
 ## goal: X = '_equator'(E, stop).
-X = _equator(_V1, stop)
 E = <unbound>
+X = _equator(_V1, stop)
 → succeeds
 

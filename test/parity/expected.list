@@ -1,0 +1,16 @@
+# expected.list — parity classifications for the Gleam corpus runner (feature 050).
+# Read by run_gleam_corpus.sh. Entries are VERIFIED classifications (Bug Protocol), not
+# pre-judgements: a case is added here only after its divergence is actually observed and
+# root-caused. Grammar (first token):
+#   blocked <block> <reason>  Gleam cannot RUN this case (engine limitation). Excluded from
+#                             the agreement denominator, but SURFACED in the report.
+#   gap <block> <reason>      Verified semantic GAP (out-of-MVP predicate/feature). Expected
+#                             divergence: compared + surfaced, not counted against SC-001.
+#   fork <block> <reason>     Owner-gated FORK (e.g. FORK-1). Recorded, never forced to agree.
+#
+# T039 seeds only the three VERIFIED blocked blocks (concat proven to fail on shared
+# predicates). GAP/FORK rows are added at T042 as divergences are observed + classified.
+
+blocked a1 multi-file co-load of files that share a predicate (merge/3 in merge_simple + run1); Gleam engine.load REPLACES (no program-accumulate) vs Dart accumulate -> concat gives non-contiguous clauses. Pending engine-accumulate decision.
+blocked a2 multi-file co-load sharing a helper predicate (append/3 across append+reverse); same root cause as a1.
+blocked a9 multi-file co-load sharing a helper predicate; same root cause as a1.
