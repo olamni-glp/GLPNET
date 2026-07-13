@@ -11,6 +11,3 @@
 # T039 seeds only the three VERIFIED blocked blocks (concat proven to fail on shared
 # predicates). GAP/FORK rows are added at T042 as divergences are observed + classified.
 
-blocked a1 multi-file co-load of files that share a predicate (merge/3 in merge_simple + run1); Gleam engine.load REPLACES (no program-accumulate) vs Dart accumulate -> concat gives non-contiguous clauses. Pending engine-accumulate decision.
-blocked a2 multi-file co-load sharing a helper predicate (append/3 across append+reverse); same root cause as a1.
-blocked a9 multi-file co-load sharing a helper predicate; same root cause as a1.

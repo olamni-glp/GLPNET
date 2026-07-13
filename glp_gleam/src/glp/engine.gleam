@@ -125,16 +125,26 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
   }
 }
 
-/// Run the full load pipeline over `source` and, on success, prepend the prelude
-/// to get the runnable program (Dart `program.merge(rootSelf)` — user labels win).
-/// A staged rejection (parse / SRSW / type / guard) propagates unchanged; the
-/// engine is left untouched on failure.
+/// Run the full load pipeline over `source` and, on success, ACCUMULATE it onto the
+/// engine's current runnable program (Dart `GlpEngine.loadSource` stores each file in
+/// `_loadedPrograms[name]` and `combinedProgram` concatenates them all). Merging into
+/// `engine.program` (prelude + any prior loads) rather than the bare prelude means a
+/// second `load` no longer discards the first — so a multi-file Dart REPL session
+/// (Section-A blocks that co-load several files) reproduces on the Gleam instance.
+///
+/// Op/label order is `[prelude, file1, …, fileN]` and `from_ops` is first-occurrence-
+/// wins, matching Dart `combinedProgram`'s insertion order (a predicate defined in an
+/// earlier-loaded file wins over a later redefinition — e.g. a1's `merge/3` from
+/// `merge_simple` loaded before `run1`). Each file is still type-checked independently
+/// against the prelude (Dart checks each `loadSource` against its self.glp ancestor
+/// scope, not against other loaded files), so self-contained corpus files load cleanly.
+/// A staged rejection propagates unchanged; the engine is left untouched on failure.
 pub fn load(engine: Engine, source: String) -> Result(Engine, StagedError) {
   use outcome <- result.try(loader.load(source, engine.prelude_source))
   Ok(
     Engine(
       ..engine,
-      program: program.merge(outcome.program, engine.prelude_program),
+      program: program.merge(outcome.program, engine.program),
       warnings: outcome.warnings,
     ),
   )

@@ -57,13 +57,11 @@ record_and_diff_block() {
     local golden="$GOLDENS/runtime/$id.golden"
     [ -f "$golden" ] || { echo "  MISSING golden for $id" >&2; DIVERGE=$((DIVERGE+1)); return 0; }
 
-    # Build the Gleam session: concat files -> scratch, load it, run goals.
+    # Build the Gleam session: load each file separately (engine.load ACCUMULATES,
+    # Dart-faithful), then run goals. No concatenation -- that would put a shared
+    # predicate's clauses non-contiguous; separate loads mirror the Dart REPL session.
     local input="" f g nload=0
-    if [ "${#files[@]}" -gt 0 ]; then
-        : > "$TMP_GLP"
-        for f in "${files[@]}"; do cat "$REPO_ROOT/$f" >> "$TMP_GLP"; printf '\n' >> "$TMP_GLP"; done
-        input+="load .parity_run.glp"$'\n'; nload=1
-    fi
+    for f in "${files[@]}"; do input+="load ../$f"$'\n'; nload=$((nload+1)); done
     for g in "${goals[@]}"; do input+="$g"$'\n'; done
     input+=":quit"$'\n'
 
