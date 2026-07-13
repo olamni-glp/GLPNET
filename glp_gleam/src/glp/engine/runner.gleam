@@ -1463,13 +1463,19 @@ fn unify_structure_read(
             ),
           )
         }
-        // Unbound reader where a structure is expected: suspend (Dart adds to U).
-        _, True ->
-          soft_fail_with(
-            program,
-            RunnerContext(..ctx, u: set.insert(ctx.u, addr)),
-            pc,
-          )
+        // Unbound reader where a structure is expected: suspend on its PAIRED
+        // WRITER. U carries writer addresses (module header; `no_more_clauses`
+        // filters U to writers), and the goal must wake when that writer binds —
+        // inserting the raw reader would be dropped by the writer-filter, turning a
+        // lawful suspension into a spurious failure (a24 `level2([X?|_])` /
+        // `level3([wrapper(X?)|_])` head-match-on-unbound-reader).
+        _, True -> {
+          let w = case heap.paired_writer(ctx.heap, addr) {
+            Ok(w) -> w
+            Error(_) -> addr
+          }
+          soft_fail_with(program, RunnerContext(..ctx, u: set.insert(ctx.u, w)), pc)
+        }
         _, _ -> soft_fail(program, ctx, pc)
       }
     _ -> soft_fail(program, ctx, pc)
