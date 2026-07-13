@@ -1,0 +1,34 @@
+# golden: Dart reference outcomes for block a2 (feature 050 T037)
+# files: programs/typed_book/recursive/list_processing/append.glp programs/typed_book/recursive/list_processing/reverse.glp programs/typed_book/recursive/list_processing/copy.glp
+## goal: append([a,b], [c,d], Zs).
+Zs = [a, b, c, d]
+→ succeeds
+
+## goal: append([], [x,y], Zs2).
+Zs2 = [x, y]
+→ succeeds
+
+## goal: append([a,b], [], Zs3).
+Zs3 = [a, b]
+→ succeeds
+
+## goal: reverse([a,b,c], Ys).
+Ys = [c, b, a]
+→ succeeds
+
+## goal: reverse([], Ys2).
+Ys2 = []
+→ succeeds
+
+## goal: reverse([x], Ys3).
+Ys3 = [x]
+→ succeeds
+
+## goal: copy([a,b,c], Yc).
+Yc = [a, b, c]
+→ succeeds
+
+## goal: copy([], Yc2).
+Yc2 = []
+→ succeeds
+

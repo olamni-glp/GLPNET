@@ -1,0 +1,8 @@
+# golden: Dart reference outcomes for block a27 (feature 050 T037)
+# files: programs/tests/typed/test_befriend_intro_bug.glp
+## goal: med(charlie, ch([msg(agent, _user, befriend_intro(bob, alice, X?)) | Xs], Y), ch(Us?, Vs), [], 2).
+Vs = <unbound>
+Xs = <unbound>
+Y = <unbound>
+→ failed
+

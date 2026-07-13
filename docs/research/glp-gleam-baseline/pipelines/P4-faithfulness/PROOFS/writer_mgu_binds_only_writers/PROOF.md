@@ -97,7 +97,7 @@ No mismatch between the contract claim and the delivered `unify.gleam`/`heap.gle
 
 ## Status
 
-- **Lean:** green — `lake build` exit 0, zero `sorry`, zero warnings (toolchain `leanprover/lean4:v4.30.0`, 2026-07-11, T027).
+- **Lean:** green — `lake build` exit 0, zero `sorry`, zero warnings (toolchain `leanprover/lean4:v4.30.0`, 2026-07-11, T027). **Re-verified 2026-07-13 on Olamnit** (elan 4.2.3 installed fresh, Lean v4.30.0 auto-fetched, `lake build` exit 0, `Built WriterMguBindsOnlyWriters.Basic` in 2.2s, no warnings) — kernel-checked on the delivery machine, not a relayed status.
 - **Prose:** this dossier (T028).
 - **Tests:** the discharge is completed by the **T026 adversarial gleeunit suite** (`glp_gleam/test/glp/engine/writer_mgu_adversarial_test.gleam`: reader/reader, writer/writer, nested-structure, tentative-HEAD cases asserting the invariant and the rejection paths).
 - **INDEX flip:** the `../INDEX.md` row OPEN → discharged is **deliberately not performed here** — per the contract's bookkeeping rule, all four artifacts (Lean green, this PROOF.md, test suite green, INDEX row update) land in **one checkpointed commit**, traceable from `specs/050-full-gleam-combined/tasks.md`; the flip happens at that checkpoint.

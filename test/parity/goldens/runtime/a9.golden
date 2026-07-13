@@ -1,0 +1,58 @@
+# golden: Dart reference outcomes for block a9 (feature 050 T037)
+# files: programs/typed_book/recursive/list_processing/inner_product.glp programs/typed_book/recursive/arithmetic_trees/fibonacci.glp programs/typed_book/recursive/arithmetic_trees/factorial.glp programs/typed_book/recursive/arithmetic_trees/hanoi.glp programs/typed_book/recursive/arithmetic_trees/primes.glp
+## goal: inner_product([1,2,3], [4,5,6], Sipf).
+Sipf = 32
+→ succeeds
+
+## goal: fib(0, Ff0).
+Ff0 = 0
+→ succeeds
+
+## goal: fib(1, Ff1).
+Ff1 = 1
+→ succeeds
+
+## goal: fib(3, Ff3).
+Ff3 = 2
+→ succeeds
+
+## goal: fib(10, Ff10).
+Ff10 = 55
+→ succeeds
+
+## goal: factorial(1, Fac1).
+Fac1 = 1
+→ succeeds
+
+## goal: factorial(2, Fac2).
+Fac2 = 2
+→ succeeds
+
+## goal: factorial(3, Fac3).
+Fac3 = 6
+→ succeeds
+
+## goal: factorial(5, Fac5).
+Fac5 = 120
+→ succeeds
+
+## goal: hanoi(0, a, c, Mh0).
+Mh0 = []
+→ succeeds
+
+## goal: hanoi(1, a, c, Mh1).
+Mh1 = [move(a, c)]
+→ succeeds
+
+## goal: hanoi(2, a, c, Mh2).
+Mh2 = [move(a, b), move(a, c), move(b, c)]
+→ succeeds
+
+## goal: primes(20, Ps20).
+Ps20 = [2, 3, 5, 7, 11, 13, 17, 19]
+→ succeeds
+
+## goal: primes(10, Ps10).
+Ps10 = [2, 3, 5, 7]
+→ succeeds
+

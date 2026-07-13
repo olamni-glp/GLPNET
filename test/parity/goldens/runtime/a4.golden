@@ -1,0 +1,18 @@
+# golden: Dart reference outcomes for block a4 (feature 050 T037)
+# files: programs/typed_book/recursive/list_processing/insertion_sort.glp
+## goal: insertion_sort([],Xi1).
+Xi1 = []
+→ succeeds
+
+## goal: insertion_sort([3],Xi2).
+Xi2 = [3]
+→ succeeds
+
+## goal: insertion_sort([3,4],Xi3).
+Xi3 = [3, 4]
+→ succeeds
+
+## goal: insertion_sort([3,4,2,3,6,1,2],Xi4).
+Xi4 = [1, 2, 2, 3, 3, 4, 6]
+→ succeeds
+

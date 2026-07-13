@@ -1,0 +1,6 @@
+# golden: Dart reference outcomes for block a22 (feature 050 T037)
+# files: programs/tests/typed/test_time.glp
+## goal: wait_test(Xwait).
+Xwait = done
+→ succeeds
+

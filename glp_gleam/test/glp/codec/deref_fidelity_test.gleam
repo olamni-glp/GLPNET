@@ -1,4 +1,5 @@
 //// US3 deref + var→writer fidelity (T033/T034/T037) — Gleam reproduces the Dart-
+import gleam/set
 //// referenced resolved outcomes (deref-corpus.md, T035) over the real 034 heap. Pins the
 //// depth-32 boundary EXACTLY: a 32-deep struct chain resolves; a 33-deep chain yields the
 //// explicit $truncated marker at depth 33. var→writer identity preserved by GlobalVarId.
@@ -78,7 +79,7 @@ pub fn t033_bound_nested_struct_resolves_fully_test() {
       sw,
       terms.StructTerm("point", [terms.VarRef(w1), terms.VarRef(w2)]),
     )
-  let assert Ok(#(_, r)) = deep_resolve(h6, terms.VarRef(sw), inst, 0)
+  let assert Ok(#(_, r)) = deep_resolve(h6, terms.VarRef(sw), inst, 0, set.new())
   r
   |> should.equal(
     StructTerm("point", [ConstTerm(ConstInt(1)), ConstTerm(ConstInt(2))]),
@@ -87,7 +88,7 @@ pub fn t033_bound_nested_struct_resolves_fully_test() {
 
 pub fn t033_depth32_leaf_resolves_no_truncation_test() {
   let #(h, top) = chain(32)
-  let assert Ok(#(_, r)) = deep_resolve(h, terms.VarRef(top), inst, 0)
+  let assert Ok(#(_, r)) = deep_resolve(h, terms.VarRef(top), inst, 0, set.new())
   contains_truncated(r) |> should.equal(False)
   depth_to_marker(r) |> should.equal(-1)
 }
@@ -96,7 +97,7 @@ pub fn t033_depth32_leaf_resolves_no_truncation_test() {
 
 pub fn t037_depth33_truncated_marker_at_exact_depth_test() {
   let #(h, top) = chain(33)
-  let assert Ok(#(_, r)) = deep_resolve(h, terms.VarRef(top), inst, 0)
+  let assert Ok(#(_, r)) = deep_resolve(h, terms.VarRef(top), inst, 0, set.new())
   contains_truncated(r) |> should.equal(True)
   depth_to_marker(r) |> should.equal(33)
 }
@@ -151,7 +152,7 @@ pub fn t034_unbound_var_in_bound_struct_keeps_global_id_test() {
       sw,
       terms.StructTerm("pair", [terms.VarRef(wa), terms.VarRef(wu)]),
     )
-  let assert Ok(#(_, r)) = deep_resolve(h5, terms.VarRef(sw), inst, 0)
+  let assert Ok(#(_, r)) = deep_resolve(h5, terms.VarRef(sw), inst, 0, set.new())
   let assert StructTerm("pair", [
     ConstTerm(ConstAtom("a")),
     VarRef(GlobalVarId(agent, _local)),

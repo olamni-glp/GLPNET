@@ -1,0 +1,103 @@
+# golden: Dart reference outcomes for block a12 (feature 050 T037)
+# files: programs/tests/typed/arith_guard_ground.glp programs/tests/typed/arith_comparison.glp programs/tests/typed/otherwise_guard.glp programs/tests/typed/guard_reader.glp
+## goal: compare_and_use(3, 5, Rag1).
+Rag1 = pair(3, 5)
+→ succeeds
+
+## goal: max(7, 4, M1).
+M1 = 7
+→ succeeds
+
+## goal: in_range(5, 1, 10, Rir1).
+Rir1 = yes
+→ succeeds
+
+## goal: in_range(15, 1, 10, Rir2).
+Rir2 = no
+→ succeeds
+
+## goal: compare_expr(1, 5, Rce1).
+Rce1 = pair(1, 5)
+→ succeeds
+
+## goal: arith_eq(5, 5, Raeq1).
+Raeq1 = equal
+→ succeeds
+
+## goal: arith_eq(5, 3, Raeq2).
+Raeq2 = not_equal
+→ succeeds
+
+## goal: arith_neq(5, 3, Raneq1).
+Raneq1 = not_equal
+→ succeeds
+
+## goal: arith_neq(5, 5, Raneq2).
+Raneq2 = equal
+→ succeeds
+
+## goal: expr_eq(4, 6, Reeq1).
+Reeq1 = equal
+→ succeeds
+
+## goal: test_lt(3, 5, Rlt1).
+Rlt1 = yes
+→ succeeds
+
+## goal: test_gt(5, 3, Rgt1).
+Rgt1 = yes
+→ succeeds
+
+## goal: test_le(5, 5, Rle1).
+Rle1 = yes
+→ succeeds
+
+## goal: test_ge(3, 5, Rge1).
+Rge1 = no
+→ succeeds
+
+## goal: classify(5, Rcl1).
+Rcl1 = positive
+→ succeeds
+
+## goal: classify(-3, Rcl2).
+Rcl2 = negative
+→ succeeds
+
+## goal: classify(0, Rcl3).
+Rcl3 = zero
+→ succeeds
+
+## goal: grade(95, G1).
+G1 = a
+→ succeeds
+
+## goal: grade(75, G2).
+G2 = c
+→ succeeds
+
+## goal: grade(55, G3).
+G3 = f
+→ succeeds
+
+## goal: type_of(42, T1).
+T1 = integer
+→ succeeds
+
+## goal: type_of(hello, T2).
+T2 = string
+→ succeeds
+
+## goal: guard_ground(42).
+→ succeeds
+
+## goal: guard_int(7).
+→ succeeds
+
+## goal: guard_compare(3, 5).
+→ succeeds
+
+## goal: guard_known_valid(hello, Ygr).
+Ygr = hello
+→ succeeds
+

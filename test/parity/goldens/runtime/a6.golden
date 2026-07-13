@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a6 (feature 050 T037)
+# files: programs/typed_book/recursive/list_processing/merge_ordered.glp
+## goal: merge([1,3,5], [2,4,6], Zop).
+Zop = [1, 2, 3, 4, 5, 6]
+→ succeeds
+
+## goal: merge([1,2,3], [2,3,4], Zop2).
+Zop2 = [1, 2, 2, 3, 3, 4]
+→ succeeds
+
+## goal: merge([], [1,2], Zop3).
+Zop3 = [1, 2]
+→ succeeds
+

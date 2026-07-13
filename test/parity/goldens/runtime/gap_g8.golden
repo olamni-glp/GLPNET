@@ -1,0 +1,34 @@
+# golden: Dart reference outcomes for block gap_g8 (feature 050 T037)
+# files: programs/tests/typed/gap_g8_guard_three_valued.glp
+## goal: g8_eq(5, 5, R).
+R = yes
+→ succeeds
+
+## goal: g8_eq(5, 3, R2).
+R2 = no
+→ succeeds
+
+## goal: g8_lt(3, 5, R3).
+R3 = yes
+→ succeeds
+
+## goal: g8_lt(5, 3, R4).
+R4 = no
+→ succeeds
+
+## goal: g8_int(42, R5).
+R5 = yes
+→ succeeds
+
+## goal: g8_int(foo, R6).
+R6 = no
+→ succeeds
+
+## goal: g8_known(hi, R7).
+R7 = yes
+→ succeeds
+
+## goal: g8_lt(Wg?, 5, R8).
+R8 = <unbound>
+→ suspended
+

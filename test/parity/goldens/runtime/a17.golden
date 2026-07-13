@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a17 (feature 050 T037)
+# files: programs/tests/typed/test_guards_comprehensive.glp
+## goal: test_list_ok([1,2,3], Rgc1).
+Rgc1 = ok
+→ succeeds
+
+## goal: test_string_ok("hello", Rgc2).
+Rgc2 = ok
+→ succeeds
+
+## goal: test_constant_ok(foo, Rgc3).
+Rgc3 = ok
+→ succeeds
+

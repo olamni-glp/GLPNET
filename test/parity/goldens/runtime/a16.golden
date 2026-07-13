@@ -1,0 +1,26 @@
+# golden: Dart reference outcomes for block a16 (feature 050 T037)
+# files: programs/tests/typed/test_arithmetic_kernels.glp
+## goal: test_idiv(10, 3, Rak1).
+Rak1 = 3
+→ succeeds
+
+## goal: test_abs(-5, Rak2).
+Rak2 = 5
+→ succeeds
+
+## goal: test_sqrt(16, Rak3).
+Rak3 = 4.0
+→ succeeds
+
+## goal: test_pow(2, 10, Rak4).
+Rak4 = 1024
+→ succeeds
+
+## goal: test_floor(3.7, Rak5).
+Rak5 = 3
+→ succeeds
+
+## goal: test_ceil(3.2, Rak6).
+Rak6 = 4
+→ succeeds
+

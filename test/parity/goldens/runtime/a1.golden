@@ -1,0 +1,33 @@
+# golden: Dart reference outcomes for block a1 (feature 050 T037)
+# files: programs/tests/typed/p.glp programs/typed_book/streams/producers_consumers/merge_simple.glp programs/tests/typed/merge_standalone.glp programs/tests/typed/run1.glp
+## goal: p(X).
+X = a
+→ succeeds
+
+## goal: merge([1,2,3], [a,b], Xs).
+Xs = [1, a, 2, b, 3]
+→ succeeds
+
+## goal: merge2([c,d], Out).
+Out = [a, c, b, d]
+→ succeeds
+
+## goal: clause(p(a), B).
+B = true
+→ succeeds
+
+## goal: run(true).
+→ succeeds
+
+## goal: run(merge([a,b],[b],X)).
+X = [a, b, b]
+→ succeeds
+
+## goal: runA(X2).
+X2 = []
+→ succeeds
+
+## goal: run2(Xr2).
+Xr2 = []
+→ succeeds
+

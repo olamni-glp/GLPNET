@@ -26,6 +26,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
+import gleam/set.{type Set}
 import glp/codec/result_envelope
 import glp/codec/term_codec
 import glp/runtime/heap.{type Heap}
@@ -44,6 +45,14 @@ pub type BuildError {
 /// a normal decodable term, deterministic + parity-stable, never a silent cut.
 pub fn truncated_marker() -> term_codec.Term {
   term_codec.StructTerm("$truncated", [])
+}
+
+/// The circular-reference marker emitted when the deep-resolve revisits a variable
+/// address already on the current deref path (Dart REPL `_formatTerm` / trace
+/// deep-resolve renders a cyclic subterm as the atom `<circular>`). Renders bare
+/// (no `()`), matching the reference; distinct from the depth-bound `$truncated`.
+pub fn circular_marker() -> term_codec.Term {
+  term_codec.ConstTerm(term_codec.ConstAtom("<circular>"))
 }
 
 /// Map a 034 runtime constant to the codec Constant model (structural; 034 already
@@ -66,6 +75,7 @@ pub fn deep_resolve(
   term: terms.Term,
   agent_id: String,
   depth: Int,
+  visited: Set(Int),
 ) -> Result(#(Heap, term_codec.Term), BuildError) {
   case depth > deep_resolve_depth {
     True -> Ok(#(h, truncated_marker()))
@@ -78,19 +88,31 @@ pub fn deep_resolve(
             args,
             agent_id,
             depth + 1,
+            visited,
             [],
           ))
           Ok(#(h2, term_codec.StructTerm(functor, rargs)))
         }
         terms.VarRef(addr) ->
-          case heap.deref(h, addr) {
-            // A bound writer/reader resolves to its value term; resolve that term
-            // at the SAME depth (the deref itself is not a structural descent).
-            Ok(#(h2, heap.Bound(inner))) ->
-              deep_resolve(h2, inner, agent_id, depth)
-            Ok(#(h2, heap.Unbound(writer))) ->
-              Ok(#(h2, term_codec.VarRef(term_codec.GlobalVarId(agent_id, writer))))
-            Error(e) -> Error(DerefFailed(e))
+          // Cycle detection (Dart REPL deref): a variable already on the current
+          // deref path resolves to `<circular>`, matching the reference's cyclic
+          // rendering (e.g. `f(f(<circular>))`) rather than depth-truncating.
+          case set.contains(visited, addr) {
+            True -> Ok(#(h, circular_marker()))
+            False ->
+              case heap.deref(h, addr) {
+                // A bound writer/reader resolves to its value term; resolve that
+                // term at the SAME depth (the deref itself is not a structural
+                // descent), with `addr` now marked as an ancestor on the path.
+                Ok(#(h2, heap.Bound(inner))) ->
+                  deep_resolve(h2, inner, agent_id, depth, set.insert(visited, addr))
+                Ok(#(h2, heap.Unbound(writer))) ->
+                  Ok(#(
+                    h2,
+                    term_codec.VarRef(term_codec.GlobalVarId(agent_id, writer)),
+                  ))
+                Error(e) -> Error(DerefFailed(e))
+              }
           }
       }
   }
@@ -101,13 +123,16 @@ fn resolve_args(
   args: List(terms.Term),
   agent_id: String,
   depth: Int,
+  visited: Set(Int),
   acc: List(term_codec.Term),
 ) -> Result(#(Heap, List(term_codec.Term)), BuildError) {
   case args {
     [] -> Ok(#(h, list.reverse(acc)))
     [a, ..rest] -> {
-      use #(h2, r) <- result.try(deep_resolve(h, a, agent_id, depth))
-      resolve_args(h2, rest, agent_id, depth, [r, ..acc])
+      // Each argument is a sibling branch: it inherits the ancestors' `visited`
+      // set (immutable copy), so a cycle through one arg does not mask another.
+      use #(h2, r) <- result.try(deep_resolve(h, a, agent_id, depth, visited))
+      resolve_args(h2, rest, agent_id, depth, visited, [r, ..acc])
     }
   }
 }
@@ -177,6 +202,7 @@ fn collect_writers(
             terms.VarRef(writer),
             agent_id,
             0,
+            set.new(),
           ))
           collect_writers(h3, rest, agent_id, [#(name, t), ..bindings_acc], vars_acc)
         }

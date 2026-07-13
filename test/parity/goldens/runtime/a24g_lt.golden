@@ -1,0 +1,5 @@
+# golden: Dart reference outcomes for block a24g_lt (feature 050 T037)
+# files: programs/tests/typed/order_guards.glp
+## goal: run_lt_wake.
+→ succeeds
+

@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a24h (feature 050 T037)
+# files: programs/tests/typed/arith_diseq.glp
+## goal: ne(1, 2, Rne1).
+Rne1 = yes
+→ succeeds
+
+## goal: ne(3, 3, Rne2).
+Rne2 = no
+→ succeeds
+
+## goal: ne_strict(Wne?, 2, Rne3).
+Rne3 = <unbound>
+→ suspended
+

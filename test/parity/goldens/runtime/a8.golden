@@ -1,0 +1,18 @@
+# golden: Dart reference outcomes for block a8 (feature 050 T037)
+# files: programs/typed_book/constants/gates.glp
+## goal: and([one,zero,one], [one,one,zero], OutA).
+OutA = [one, zero, zero]
+→ succeeds
+
+## goal: or([one,zero,one], [one,one,zero], OutO).
+OutO = [one, one, one]
+→ succeeds
+
+## goal: and([one,one], [one,one], OutA2).
+OutA2 = [one, one]
+→ succeeds
+
+## goal: or([zero,zero], [zero,zero], OutO2).
+OutO2 = [zero, zero]
+→ succeeds
+

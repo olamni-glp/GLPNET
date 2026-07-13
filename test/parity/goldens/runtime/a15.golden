@@ -1,0 +1,18 @@
+# golden: Dart reference outcomes for block a15 (feature 050 T037)
+# files: programs/tests/typed/arithmetic_fixed.glp
+## goal: add(5, 3, Xadd).
+Xadd = 8
+→ succeeds
+
+## goal: multiply(4, 7, Ymul).
+Ymul = 28
+→ succeeds
+
+## goal: compute(Zcomp).
+Zcomp = 10
+→ succeeds
+
+## goal: subtract(10, 3, Xsub).
+Xsub = 7
+→ succeeds
+

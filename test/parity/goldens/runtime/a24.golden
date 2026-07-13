@@ -1,0 +1,19 @@
+# golden: Dart reference outcomes for block a24 (feature 050 T037)
+# files: programs/tests/typed/test_bob.glp programs/tests/typed/test_nested_suspend.glp programs/tests/typed/test_guard_suspend.glp
+## goal: bob(Xbob?).
+→ suspended
+
+## goal: level1(Xlv1?).
+→ suspended
+
+## goal: level2([Xlv2?|Rlv2]).
+Rlv2 = <unbound>
+→ suspended
+
+## goal: level3([wrapper(Xlv3?)|Rlv3]).
+Rlv3 = <unbound>
+→ suspended
+
+## goal: wait_ground(Xwg?).
+→ suspended
+
