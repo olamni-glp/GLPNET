@@ -1,7 +1,9 @@
-% quic_chat.glp — feature 050 follow-on: genuine FULL-DUPLEX two-way chat over one QUIC link.
-% Both hosts share this file; each EXECUTES ONLY its own role clause, so each edits ONLY its own
-% my_lines/2 clause per round. olamnit (192.168.0.136) LISTENS on 9200; gavri (192.168.0.108) dials
-% it. Each side ships its my_lines onto Out AND collects the peer's off In on the same ch(In, Out).
+% quic_chat.glp — CANONICAL interactive full-duplex two-way chat between the two C# REPL hosts over
+% ONE genuine QUIC link (Olamnit+Gabi reconciliation 2026-07-12 — the per-message one-bind variant is
+% preserved as quic_chat_onebind.glp). Both hosts share this file; each EXECUTES ONLY its own role
+% clause, so each edits ONLY its own my_lines/2 clause per round. olamnit (192.168.0.136) LISTENS on
+% 9200; gavri (192.168.0.108) dials it. Each side ships its my_lines onto Out AND collects the peer's
+% off In on the same ch(In, Out).
 %
 %   olamnit (listener):  main(olamnit, R).  → R = gavri's lines this round
 %   gavri   (connector): main(gavri,   R).  → R = olamnit's lines this round
@@ -64,5 +66,5 @@ collect_n([], K, [], ok) :- ground(K?), K? > 0 | true.
 % --- THIS ROUND'S OUTBOUND LINES — each host edits ONLY its own clause locally each round, to
 % LineCount (default 3) lines. -----------------------------------------------------------------------
 procedure my_lines(Constant?, Stream(_)).
-my_lines(Me, ["Gabi — here is the MVP-box first step, scoped to actually ship: do NOT snapshot FCP continuations yet. Treat 'state' as just the append-only message log.", "Three concrete pieces: (1) a resume-goal hook so the REPL auto-arms the listener goal on launch; (2) a PGlite-backed persistence predicate pair (store_put/2, store_get/2) that appends each received crdtmsg and replays the log on boot; (3) re-bind-on-boot of the QUIC listener via that same hook.", "That yields a listener surviving REPL restarts with full history and zero deep continuation-capture, supervised as a YngeniOS service box (spec-047). If you agree, I will spec it as a feature and start on the resume hook — your call on the split of work."]) :- Me? =?= olamnit | true.
-my_lines(Me, ["gavri here — placeholder line 1; gavri overwrites this clause locally before running main(gavri, R).", "gavri placeholder line 2 (edit to your real line; keep LineCount lines per round).", "gavri placeholder line 3."]) :- Me? =?= gavri | true.
+my_lines(Me, ["olamnit here — live over genuine QUIC on 9200. do you read me, gavri?", "this is a real full-duplex link over one QUIC connection: you should see this as your R.", "bounded round: each side sends LineCount lines and collects the peer's before closing (no teardown race)."]) :- Me? =?= olamnit | true.
+my_lines(Me, ["gavri back on the link — reading you clear.", "T018 type-checker port is in and green; parser mode-annotation fix landed too.", "confirm the bounded-chat close-after-collect on your end and we ship 050."]) :- Me? =?= gavri | true.
