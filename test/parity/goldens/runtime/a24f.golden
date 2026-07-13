@@ -1,0 +1,38 @@
+# golden: Dart reference outcomes for block a24f (feature 050 T037)
+# files: programs/tests/typed/order_guards.glp
+## goal: lt(1, 2, R1).
+R1 = yes
+→ succeeds
+
+## goal: le(1, foo, R2).
+R2 = yes
+→ succeeds
+
+## goal: lt(f(1), g(1,2), R3).
+R3 = yes
+→ succeeds
+
+## goal: lt(apple, banana, R4).
+R4 = yes
+→ succeeds
+
+## goal: le(5, 5, R5).
+R5 = yes
+→ succeeds
+
+## goal: lt(5, 5, R6).
+R6 = no
+→ succeeds
+
+## goal: gt(banana, apple, R7).
+R7 = yes
+→ succeeds
+
+## goal: lt_strict(Wf?, 5, R8).
+R8 = <unbound>
+→ suspended
+
+## goal: order_pair(1, 2, R9).
+R9 = pair(1, 2)
+→ succeeds
+

@@ -1,0 +1,15 @@
+# golden: Dart reference outcomes for block a25 (feature 050 T037)
+# files: programs/tests/typed/quoted_functor_test.glp programs/tests/typed/quoted_body_test.glp
+## goal: '_test_kernel'(5, Rqf1).
+Rqf1 = 6
+→ succeeds
+
+## goal: double(5, Rqb1).
+Rqb1 = 10
+→ succeeds
+
+## goal: X = '_equator'(E, stop).
+X = _equator(X47, stop)
+E = <unbound>
+→ succeeds
+

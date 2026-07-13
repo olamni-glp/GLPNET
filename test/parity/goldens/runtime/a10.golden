@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block a10 (feature 050 T037)
+# files: programs/tests/typed/multiply.glp
+## goal: multiply(3, [1,2,3,4], Ym1).
+Ym1 = [3, 6, 9, 12]
+→ succeeds
+
+## goal: multiply(5, [], Ym2).
+Ym2 = []
+→ succeeds
+

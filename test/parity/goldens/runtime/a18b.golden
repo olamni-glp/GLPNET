@@ -1,0 +1,6 @@
+# golden: Dart reference outcomes for block a18b (feature 050 T037)
+# files: programs/tests/typed/param_bare_typevar.glp
+## goal: test_gethead_param(Rpbt1).
+Rpbt1 = a
+→ succeeds
+

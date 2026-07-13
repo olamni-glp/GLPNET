@@ -1,0 +1,567 @@
+# corpus.list — pinned parity case list (feature 050, US3 T037).
+# Single source of truth for record_dart_goldens.sh (recorder) AND
+# run_gleam_corpus.sh (comparator). See corpus-manifest.md for rationale.
+#
+# Record grammar (first token per line; blank lines and #-comments ignored):
+#   block <id>            begin a runtime case (Section A). id is the golden stem.
+#   file  <relpath>       a source file co-loaded for the current block (repeatable;
+#                         Dart loads sequentially, Gleam loads them concatenated).
+#   goal  <text>          a goal to run in the current block (repeatable; text is
+#                         verbatim, incl. spaces/backslashes — read with `read -r`).
+#   loadcase <section> <relpath>   a load-outcome case (sections B/C/D). The golden
+#                         stem is derived from <relpath> (/=>__ , .glp stripped).
+#   guardcase <id> <clause...>     an inline load-outcome case (section E); the
+#                         remainder is a one-line .glp source written to a temp file.
+#
+# Paths are repo-relative (POSIX). The scripts resolve REPO_ROOT and apply the
+# Windows-path conversion the Dart REPL needs (cygpath -m), same as run_all_tests.sh.
+
+# =============================================================================
+# SECTION A — runtime goal-outcome cases
+# =============================================================================
+
+block a1
+file programs/tests/typed/p.glp
+file programs/typed_book/streams/producers_consumers/merge_simple.glp
+file programs/tests/typed/merge_standalone.glp
+file programs/tests/typed/run1.glp
+goal p(X).
+goal merge([1,2,3], [a,b], Xs).
+goal merge2([c,d], Out).
+goal clause(p(a), B).
+goal run(true).
+goal run(merge([a,b],[b],X)).
+goal runA(X2).
+goal run2(Xr2).
+
+block a2
+file programs/typed_book/recursive/list_processing/append.glp
+file programs/typed_book/recursive/list_processing/reverse.glp
+file programs/typed_book/recursive/list_processing/copy.glp
+goal append([a,b], [c,d], Zs).
+goal append([], [x,y], Zs2).
+goal append([a,b], [], Zs3).
+goal reverse([a,b,c], Ys).
+goal reverse([], Ys2).
+goal reverse([x], Ys3).
+goal copy([a,b,c], Yc).
+goal copy([], Yc2).
+
+block a3
+file programs/typed_book/recursive/list_processing/quicksort.glp
+goal quicksort([],Xq1).
+goal quicksort([1],Xq2).
+goal quicksort([1,2],Xq3).
+goal quicksort([1,6,4,2,7,4,2,6],Xq4).
+goal quicksort([1,3,4,2,5],Xq5).
+goal quicksort([a],Xq6).
+goal quicksort([1|X?],Xq7).
+
+block a4
+file programs/typed_book/recursive/list_processing/insertion_sort.glp
+goal insertion_sort([],Xi1).
+goal insertion_sort([3],Xi2).
+goal insertion_sort([3,4],Xi3).
+goal insertion_sort([3,4,2,3,6,1,2],Xi4).
+
+block a6
+file programs/typed_book/recursive/list_processing/merge_ordered.glp
+goal merge([1,3,5], [2,4,6], Zop).
+goal merge([1,2,3], [2,3,4], Zop2).
+goal merge([], [1,2], Zop3).
+
+block a7
+file programs/typed_book/streams/producers_consumers/fair_merge.glp
+goal merge([a,b,c], [x,y,z], Zfs).
+goal merge([a,b], [x,y,z], Zfs2).
+
+block a8
+file programs/typed_book/constants/gates.glp
+goal and([one,zero,one], [one,one,zero], OutA).
+goal or([one,zero,one], [one,one,zero], OutO).
+goal and([one,one], [one,one], OutA2).
+goal or([zero,zero], [zero,zero], OutO2).
+
+block a9
+file programs/typed_book/recursive/list_processing/inner_product.glp
+file programs/typed_book/recursive/arithmetic_trees/fibonacci.glp
+file programs/typed_book/recursive/arithmetic_trees/factorial.glp
+file programs/typed_book/recursive/arithmetic_trees/hanoi.glp
+file programs/typed_book/recursive/arithmetic_trees/primes.glp
+goal inner_product([1,2,3], [4,5,6], Sipf).
+goal fib(0, Ff0).
+goal fib(1, Ff1).
+goal fib(3, Ff3).
+goal fib(10, Ff10).
+goal factorial(1, Fac1).
+goal factorial(2, Fac2).
+goal factorial(3, Fac3).
+goal factorial(5, Fac5).
+goal hanoi(0, a, c, Mh0).
+goal hanoi(1, a, c, Mh1).
+goal hanoi(2, a, c, Mh2).
+goal primes(20, Ps20).
+goal primes(10, Ps10).
+
+block a10
+file programs/tests/typed/multiply.glp
+goal multiply(3, [1,2,3,4], Ym1).
+goal multiply(5, [], Ym2).
+
+block a11
+file programs/tests/typed/struct_demo.glp
+file programs/tests/typed/depth_test.glp
+file programs/tests/typed/paa.glp
+file programs/tests/typed/no_guard.glp
+file programs/tests/typed/with_guard.glp
+file programs/tests/typed/two_struct_list.glp
+file programs/tests/typed/nonground_list.glp
+file programs/tests/typed/reader_output.glp
+file programs/tests/typed/assign_reader_test.glp
+goal build_person(P).
+goal bin_nest(val, Xbn).
+goal ter_all(a, b, c, Xta).
+goal tree3(val, Xtr3).
+goal multi_w(p, q, Xmw).
+goal p(Xpaa1, Xpaa1?).
+goal no_guard([5,x,y], Xng).
+goal with_guard([5,x,y], Xwg).
+goal test([foo(a), bar(b)]).
+goal test_list_in_body([1,2,3,4], Xngl).
+goal build_list(a, b, Xbld).
+goal unwrap([hello,world], Xunw).
+goal identity(foo, Xid).
+goal assign_reader(hello, Xar).
+
+block a12
+file programs/tests/typed/arith_guard_ground.glp
+file programs/tests/typed/arith_comparison.glp
+file programs/tests/typed/otherwise_guard.glp
+file programs/tests/typed/guard_reader.glp
+goal compare_and_use(3, 5, Rag1).
+goal max(7, 4, M1).
+goal in_range(5, 1, 10, Rir1).
+goal in_range(15, 1, 10, Rir2).
+goal compare_expr(1, 5, Rce1).
+goal arith_eq(5, 5, Raeq1).
+goal arith_eq(5, 3, Raeq2).
+goal arith_neq(5, 3, Raneq1).
+goal arith_neq(5, 5, Raneq2).
+goal expr_eq(4, 6, Reeq1).
+goal test_lt(3, 5, Rlt1).
+goal test_gt(5, 3, Rgt1).
+goal test_le(5, 5, Rle1).
+goal test_ge(3, 5, Rge1).
+goal classify(5, Rcl1).
+goal classify(-3, Rcl2).
+goal classify(0, Rcl3).
+goal grade(95, G1).
+goal grade(75, G2).
+goal grade(55, G3).
+goal type_of(42, T1).
+goal type_of(hello, T2).
+goal guard_ground(42).
+goal guard_int(7).
+goal guard_compare(3, 5).
+goal guard_known_valid(hello, Ygr).
+
+block a13
+file programs/tests/typed/test_ground_equal.glp
+file programs/tests/typed/test_guard_negation.glp
+goal test(a, a, R1).
+goal test(a, b, R2).
+goal test(foo(1,2), foo(1,2), R3).
+goal test(foo(1,2), foo(1,3), R4).
+goal test([1,2,3], [1,2,3], R5).
+goal test([1,2], [1,3], R6).
+goal test_neg_int(5, Rn1).
+goal test_neg_int(hello, Rn2).
+goal test_neg_number(3.14, Rn3).
+goal test_neg_number(hello, Rn4).
+goal test_neg_eq(5, 5, Rn5).
+goal test_neg_eq(5, 3, Rn6).
+
+block a14
+file programs/tests/typed/circular_test.glp
+goal is_ground(foo, Rc1).
+goal is_ground(f(a,b), Rc2).
+goal test_equal(foo, foo, Rc3).
+goal test_equal(foo, bar, Rc4).
+goal test_self_equal(f(a,b), Rc5).
+goal show(hello, Xshow).
+
+block a15
+file programs/tests/typed/arithmetic_fixed.glp
+goal add(5, 3, Xadd).
+goal multiply(4, 7, Ymul).
+goal compute(Zcomp).
+goal subtract(10, 3, Xsub).
+
+block a16
+file programs/tests/typed/test_arithmetic_kernels.glp
+goal test_idiv(10, 3, Rak1).
+goal test_abs(-5, Rak2).
+goal test_sqrt(16, Rak3).
+goal test_pow(2, 10, Rak4).
+goal test_floor(3.7, Rak5).
+goal test_ceil(3.2, Rak6).
+
+block a17
+file programs/tests/typed/test_guards_comprehensive.glp
+goal test_list_ok([1,2,3], Rgc1).
+goal test_string_ok("hello", Rgc2).
+goal test_constant_ok(foo, Rgc3).
+
+block a18
+file programs/tests/typed/constant_ground_test.glp
+file programs/tests/typed/gethead_test.glp
+goal test_constant(foo, Rcgt1).
+goal test_gethead(Rgh1).
+
+block a18b
+file programs/tests/typed/param_bare_typevar.glp
+goal test_gethead_param(Rpbt1).
+
+block a19
+file programs/tests/typed/test_defined_guards.glp
+goal test(ch(Adg?, Bdg), Rdg1).
+goal test(foo, Rdg2).
+goal test(Xdg?, Rdg3).
+
+block a20
+file programs/tests/typed/test_channel_guards.glp
+goal make_pair(MpC1, MpC2).
+
+block a21
+file programs/tests/typed/test_defined_guards_all.glp
+goal make_pair(Call1, Call2).
+goal bind_response(yes, RespYes, LocalYes).
+goal bind_response(no, RespNo, LocalNo).
+goal test_channel(ch(TchA?, TchB), TchR1).
+goal test_channel(foo, TchR2).
+goal test_channel(p(TpaA, TpaB), TchR3).
+goal test_pair(p(TprA, TprB), TprR1).
+goal test_pair(foo, TprR2).
+goal test_wrapper(w(TwrX), TwrR1).
+goal test_wrapper(foo, TwrR2).
+goal test_nested(w(p(TnA, TnB)), TnR1).
+goal test_nested(w(hello), TnR2).
+goal test_nested(foo, TnR3).
+goal test_wrap(hello, TwpR).
+goal test_deep(foo, TdpR).
+goal test_triple(1, 2, TtrR).
+
+block a22
+file programs/tests/typed/test_time.glp
+goal wait_test(Xwait).
+
+block a23
+file programs/tests/typed/diff_list.glp
+file programs/tests/typed/bb_diff.glp
+goal Xdl = foo\bar.
+goal test_dl_to_list([1,2,3]\[], Ldtl).
+
+block a24
+file programs/tests/typed/test_bob.glp
+file programs/tests/typed/test_nested_suspend.glp
+file programs/tests/typed/test_guard_suspend.glp
+goal bob(Xbob?).
+goal level1(Xlv1?).
+goal level2([Xlv2?|Rlv2]).
+goal level3([wrapper(Xlv3?)|Rlv3]).
+goal wait_ground(Xwg?).
+
+block a24b
+file programs/tests/typed/compound_suspend.glp
+goal eq_compound(pair(a, X?), R).
+goal run_eq_wake.
+
+block a24c
+file programs/tests/typed/compound_suspend.glp
+goal eq_compound(pair(a, W), R2).
+
+block a24d
+file programs/tests/typed/atom_guard.glp
+goal is_atom(hello, R).
+goal is_atom(Yd?, R5).
+goal echo_atom(world, R6).
+
+block a24e
+file programs/tests/typed/atom_guard.glp
+goal is_atom(42, Rn).
+goal is_atom(foo(1), Rc).
+goal is_atom([], Rb).
+
+block a24f
+file programs/tests/typed/order_guards.glp
+goal lt(1, 2, R1).
+goal le(1, foo, R2).
+goal lt(f(1), g(1,2), R3).
+goal lt(apple, banana, R4).
+goal le(5, 5, R5).
+goal lt(5, 5, R6).
+goal gt(banana, apple, R7).
+goal lt_strict(Wf?, 5, R8).
+goal order_pair(1, 2, R9).
+
+block a24g_lt
+file programs/tests/typed/order_guards.glp
+goal run_lt_wake.
+
+block a24g_atom
+file programs/tests/typed/atom_guard.glp
+goal run_atom_wake.
+
+block a24h
+file programs/tests/typed/arith_diseq.glp
+goal ne(1, 2, Rne1).
+goal ne(3, 3, Rne2).
+goal ne_strict(Wne?, 2, Rne3).
+
+block a25
+file programs/tests/typed/quoted_functor_test.glp
+file programs/tests/typed/quoted_body_test.glp
+goal '_test_kernel'(5, Rqf1).
+goal double(5, Rqb1).
+goal X = '_equator'(E, stop).
+
+block a26
+goal T1 =.. [foo].
+goal T2 =.. [bar, x, y].
+goal foo(a, b) =.. L1.
+goal bar(1, 2, 3) =.. L2.
+goal Xu1 = foo.
+goal Xu2 = 42.
+goal Xu3 = foo(a, b).
+goal Xu4 = [1, 2, 3].
+goal Xu5 = foo(bar(a)).
+goal Xu6 = Y?.
+goal Xa1 := 3.
+goal Xa2 := 5 + 3.
+goal Xa3 := 10 - 4.
+goal Xa4 := 4 * 7.
+goal Xa5 := 20 / 4.
+goal Xa6 := 5 + 3 * 2.
+goal Xa7 := (5 + 3) * 2.
+goal Xa8 := -5.
+goal mwm([], Xmwm1).
+goal mwm([stream([1,2,3])], Xmwm2).
+goal mwm([stream([a,b]), stream([1,2])], Xmwm3).
+
+block a27
+file programs/tests/typed/test_befriend_intro_bug.glp
+goal med(charlie, ch([msg(agent, _user, befriend_intro(bob, alice, X?)) | Xs], Y), ch(Us?, Vs), [], 2).
+
+block a28
+file programs/tests/typed/module_guard.glp
+goal test_not_module(42, Rm1).
+
+block a29w
+file programs/tests/typed/policy_guard_worked.glp
+goal test_wx1.
+goal test_wx2.
+goal test_wx3.
+goal test_wx4(Rwx4?).
+
+block a29v
+file programs/tests/typed/policy_guard_vectors.glp
+goal test_wx1.
+goal test_wx2.
+goal test_wx3.
+goal test_wx4(Rwx4?).
+goal test_v05.
+goal test_v06.
+goal test_v07.
+goal test_v08.
+goal test_v09.
+goal test_v10.
+goal test_v11(Tv11?).
+goal test_v12(Rv12?).
+
+block a30
+file programs/tests/typed/policy_guard_formb.glp
+goal test_b1.
+goal test_b2(Rb2?).
+goal test_b3(Rb3?).
+
+# =============================================================================
+# SECTION B — positive load-outcome cases (must load clean -> LOADED)
+# =============================================================================
+
+loadcase B glp_runtime/test/programs/typechecker/positive/merge_basic.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/append_list.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/copy_stream.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/dl_append.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/new_channel.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/monitor.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/int_list_sum.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/nat_operations.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/process_complete.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/disjoint_primitives.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/universal_structured_term.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/guards_all.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/merge_variable_coverage_base.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/merge_variable_coverage_mixed.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/merge_variable_coverage_recursive.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/book/universal_accepts_structured.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/append.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/counter.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/simple_io.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/merge.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/union_alias_basic.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/union_alias_simple.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/union_alias_three.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/embedded/counter_show.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/embedded/input_with_input_embedded.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/embedded/output_with_input_embedded.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/embedded/output_with_output_embedded.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/any_copy.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/any_multi_clause.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/list_with_any_element.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/any_constant_at_output.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/any_constant_at_input.glp
+loadcase B glp_runtime/test/programs/moded_types/valid/universal/any_empty_list.glp
+loadcase B programs/typed_book/constants/circuits.glp
+loadcase B programs/typed_book/constants/gates.glp
+loadcase B programs/typed_book/constants/gates_simple.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/ackermann.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/exp.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/factorial.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/fibonacci.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/gcd_integer.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/lesseq.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/min.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/natural_numbers.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/plus.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/primes.glp
+loadcase B programs/typed_book/recursive/arithmetic_trees/times.glp
+loadcase B programs/typed_book/recursive/list_processing/append.glp
+loadcase B programs/typed_book/recursive/list_processing/copy.glp
+loadcase B programs/typed_book/recursive/list_processing/delete.glp
+loadcase B programs/typed_book/recursive/list_processing/dl_append.glp
+loadcase B programs/typed_book/recursive/list_processing/filter_even.glp
+loadcase B programs/typed_book/recursive/list_processing/inner_product.glp
+loadcase B programs/typed_book/recursive/list_processing/inner_product_iter.glp
+loadcase B programs/typed_book/recursive/list_processing/insertion_sort.glp
+loadcase B programs/typed_book/recursive/list_processing/length.glp
+loadcase B programs/typed_book/recursive/list_processing/map_inc.glp
+loadcase B programs/typed_book/recursive/list_processing/maxlist.glp
+loadcase B programs/typed_book/recursive/list_processing/member.glp
+loadcase B programs/typed_book/recursive/list_processing/merge_ordered.glp
+loadcase B programs/typed_book/recursive/list_processing/merge_sort.glp
+loadcase B programs/typed_book/recursive/list_processing/nth.glp
+loadcase B programs/typed_book/recursive/list_processing/polygon_area.glp
+loadcase B programs/typed_book/recursive/list_processing/quicksort.glp
+loadcase B programs/typed_book/recursive/list_processing/reverse.glp
+loadcase B programs/typed_book/recursive/list_processing/reverse_naive.glp
+loadcase B programs/typed_book/recursive/list_processing/translate.glp
+loadcase B programs/typed_book/recursive/list_processing/variants/quicksort_original.glp
+loadcase B programs/typed_book/recursive/structure_processing/binary_tree.glp
+loadcase B programs/typed_book/recursive/structure_processing/list_to_bst.glp
+loadcase B programs/typed_book/recursive/structure_processing/substitute.glp
+loadcase B programs/typed_book/recursive/structure_processing/traversals.glp
+loadcase B programs/typed_book/recursive/structure_processing/tree_sum.glp
+loadcase B programs/typed_book/social_graph/channel.glp
+loadcase B programs/typed_book/social_graph/typed_social_agent.glp
+loadcase B programs/typed_book/social_networks/broadcast.glp
+loadcase B programs/typed_book/social_networks/replicate.glp
+loadcase B programs/typed_book/social_networks/replicate2.glp
+loadcase B programs/typed_book/social_networks/replicate3.glp
+loadcase B programs/typed_book/streams/buffered_communication/hollow_integers.glp
+loadcase B programs/typed_book/streams/producers_consumers/biased_merge.glp
+loadcase B programs/typed_book/streams/producers_consumers/cooperative.glp
+loadcase B programs/typed_book/streams/producers_consumers/distribute.glp
+loadcase B programs/typed_book/streams/producers_consumers/distribute_binary.glp
+loadcase B programs/typed_book/streams/producers_consumers/distribute_ground.glp
+loadcase B programs/typed_book/streams/producers_consumers/distribute_indexed.glp
+loadcase B programs/typed_book/streams/producers_consumers/fair_merge.glp
+loadcase B programs/typed_book/streams/producers_consumers/merge_dynamic.glp
+loadcase B programs/typed_book/streams/producers_consumers/merge_simple.glp
+loadcase B programs/typed_book/streams/producers_consumers/merge_tree.glp
+loadcase B programs/typed_book/streams/producers_consumers/mwm.glp
+loadcase B programs/typed_book/streams/producers_consumers/producer_consumer.glp
+loadcase B programs/typed_book/streams/producers_consumers/producer_consumer_countdown.glp
+loadcase B programs/typed_book/test_bug.glp
+loadcase B programs/typed_book/test_friend.glp
+loadcase B programs/typed_book/test_lookup2.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/subtyping/basic_readop_fileop.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/subtyping/constants_fewer_alternatives.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/subtyping/contravariant_response_slot.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/subtyping/direct_constant_subtype.glp
+loadcase B glp_runtime/test/programs/typechecker/positive/subtyping/struct_fewer_functors.glp
+loadcase B programs/tests/typed/module_guard.glp
+loadcase B programs/tests/typed/order_guards.glp
+loadcase B programs/tests/typed/atom_guard.glp
+loadcase B programs/tests/typed/param_stream_integer.glp
+loadcase B programs/tests/typed/param_channel.glp
+loadcase B programs/tests/typed/param_procedure_inference.glp
+loadcase B programs/tests/quic/quic_one_bind.glp
+loadcase B programs/tests/quic/quic_mesh.glp
+
+# =============================================================================
+# SECTION C — negative type-check cases (must be rejected -> REJECTED:type/parse)
+# =============================================================================
+
+loadcase C glp_runtime/test/programs/typechecker/negative/coverage/merge_missing_both_nil.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/coverage/merge_missing_first_nil.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/coverage/merge_missing_cons.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/head/merge_wrong_constant.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/head/merge_wrong_functor.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/body/merge_undefined_proc.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/body/merge_wrong_mode.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/complementarity/merge_type_mismatch.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/complementarity/merge_swapped_vars.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/type_def/merge_undefined_type.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/merge_incomplete.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/missing_coverage.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/non_complementary_types.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/append_bad_type.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/constant_at_wrong_type.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/functor_mismatch.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/channel_non_complementary.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/reader_at_input.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/writer_at_output.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/call_mode_mismatch.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/embedded_mode_error.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/union_alias_overlap.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/union_alias_refs_alias.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/embedded/counter_wrong_mode.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/accumulator_wrong_mode.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/channel_wrong_inversion.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/correct_type_wrong_annotation.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/double_nesting_error.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/list_tail_mode_error.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/mixed_clauses.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/nested_struct_wrong_mode.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/pair_list_wrong_mode.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/recursive_type_deep_error.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/deep/response_slot_no_embedded.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/universal/any_list_cons.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/universal/any_mixed_clauses.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/universal/any_reduce_pattern.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/universal/any_struct_at_input.glp
+loadcase C glp_runtime/test/programs/moded_types/invalid/universal/any_struct_at_output.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/subtyping/wrong_direction_fileop_readop.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/subtyping/contravariant_wrong_direction.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/subtyping/disjoint_types.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/subtyping/arg_type_mismatch.glp
+loadcase C programs/tests/typed/param_arity_mismatch.glp
+loadcase C glp_runtime/test/programs/typechecker/negative/body/param_merge_wrong_mode.glp
+loadcase C programs/tests/typed/decline_eq_bad.glp
+loadcase C programs/tests/typed/decline_neq_bad.glp
+loadcase C programs/tests/typed/decline_struct_diseq_bad.glp
+loadcase C programs/tests/typed/decline_reader_bad.glp
+
+# =============================================================================
+# SECTION D — SRSW-violation cases (must be rejected -> REJECTED:srsw)
+# =============================================================================
+
+loadcase D glp_runtime/test/programs/typechecker/negative/head/merge_reader_at_input.glp
+loadcase D glp_runtime/test/programs/typechecker/negative/head/merge_writer_at_output.glp
+loadcase D programs/tests/archive/repl/merge_with_reader.glp
+
+# =============================================================================
+# SECTION E — invalid-guard case (inline; `true` in guard -> REJECTED:guard)
+# =============================================================================
+
+guardcase true_in_guard bad_guard(X?) :- true | X = done.

@@ -1,0 +1,6 @@
+# golden: Dart reference outcomes for block a28 (feature 050 T037)
+# files: programs/tests/typed/module_guard.glp
+## goal: test_not_module(42, Rm1).
+Rm1 = not_module
+→ succeeds
+

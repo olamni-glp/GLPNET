@@ -1,0 +1,7 @@
+# golden: Dart reference outcomes for block a20 (feature 050 T037)
+# files: programs/tests/typed/test_channel_guards.glp
+## goal: make_pair(MpC1, MpC2).
+MpC1 = ch(X7, X9)
+MpC2 = ch(X9, X7)
+→ succeeds
+

@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a24d (feature 050 T037)
+# files: programs/tests/typed/atom_guard.glp
+## goal: is_atom(hello, R).
+R = yes
+→ succeeds
+
+## goal: is_atom(Yd?, R5).
+R5 = <unbound>
+→ suspended
+
+## goal: echo_atom(world, R6).
+R6 = wrap(world)
+→ succeeds
+
