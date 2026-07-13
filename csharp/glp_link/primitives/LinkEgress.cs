@@ -1,5 +1,5 @@
 using GlpRuntime.Link.Reliability;
-using GlpRuntime.Multiagent;
+using GlpRuntime.Link.Seam;
 using GlpRuntime.Runtime;
 
 namespace GlpRuntime.Link.Primitives;
@@ -31,9 +31,25 @@ internal static class LinkEgress
         // ground gate: an unbound cell at any depth throws here, never on the wire.
         Term ground = ResolveGround(heap, msg);
 
-        // Empty origin: the per-link endpoint identity, not a global-name stamp, keys
-        // delivery on the base relay (consistent with the T030 Out-stream drainer).
-        byte[] payload = new PayloadSerializer(string.Empty).SerializeAgentMessage(ground);
+        // Encode via the link's payload codec (feature 050): loopback/tcp keep the default
+        // ground-relay blob byte-for-byte; a "quic" link encodes an 041 crdtmsg envelope. The
+        // FrameCodec framing below wraps the codec bytes unchanged (FR-016 preserved).
+        //
+        // A codec loud-fail (e.g. a non-crdtmsg/7 term on a "quic" link — CrdtMsgPayloadCodec throws,
+        // FR-005/FR-009) is a CONTROLLED egress failure, never a crash: surface it as the seam's
+        // PayloadCodecException (an InvalidOperationException) so the '_link_send' / Out-drainer
+        // controlled-failure path drops/aborts the bad frame. glp_link is codec-agnostic — the
+        // concrete codec exception lives below the seam — so we convert whatever it threw here.
+        byte[] payload;
+        try
+        {
+            payload = handle.Codec.Encode(ground);
+        }
+        catch (Exception ex) when (ex is not PayloadCodecException)
+        {
+            throw new PayloadCodecException(
+                $"payload codec rejected the outbound term for {handle.Id}: {ex.Message}", ex);
+        }
 
         uint seq = handle.Sequencer.Next();
         // NOTE: SendWindow backpressure (FR-025) is intentionally NOT gated here yet —

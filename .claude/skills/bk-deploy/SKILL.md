@@ -4,7 +4,7 @@ description: "Out-of-repo deployment + per-machine install registry. Owns a sing
 argument-hint: "[a request, e.g. 'deploy this repo' or 'where is my home?'] | deploy [--version <v>] [--source-mode artifact|checkout|source_ref] [--note <t>] | list [--json] | version [--json] | home [--set <path>] [--json] | latest all|<repo> [--json] | tidy [<repo>] [--remove-data] [--apply] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-deploy.md"
 user-invocable: true
 disable-model-invocation: false

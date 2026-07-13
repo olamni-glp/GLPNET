@@ -4,7 +4,7 @@ description: "End-to-end shipping conductor: commit any pending work, run prefli
 argument-hint: "[-m <msg>] [--force] [--skip-preflight] [--allow-secrets] [--no-edit] [--dry-run] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-ship.md"
 user-invocable: true
 disable-model-invocation: false
@@ -122,6 +122,56 @@ buildkit ship --json $ARGUMENTS 2>ship.json
 ```
 
 JSON envelope is in `specs/016-shipping-skills/contracts/ship-cli.md`.
+
+## Post-ship reconciliation — offer-and-apply (spec-042, advisory)
+
+**Only after a fully-successful ship** (exit `0`, or exit `5` which is still success). A ship that
+failed (exit `2`/`3`/`4`) or a `--dry-run` offers **nothing**. A successful ship already surfaces the
+three reconciliation gaps in its report (and the `--json` envelope's `reconciliation` array) for the
+record; this step lets the engineer act on them. It is **advisory and additive**: declining any offer,
+or any failure within it, never changes the ship's reported success.
+
+Re-detect the same gaps (one shared engine, read-only — zero mutations):
+
+```bash
+buildkit ship reconcile --json
+```
+
+For each gap with `status == "present"`, present it to the engineer (AskUserQuestion: **Run now** /
+**Decline**) and, on accept, run that gap's `recommended_command`, then record the decision:
+
+- **close_out** — run `buildkit-retrospective run <feature_id>` then
+  `buildkit-retrospective report <retro_id>` (deterministic capture), and **recommend** the full
+  guided `/bk-close` for interactive action reconciliation. **Never** auto-invoke `/bk-close`
+  (Constitution I / FR-002).
+- **roadmap_advance** — run `python -m buildkit_cli.roadmap advance <roadmap_feature_id> --to released`
+  (the `recommended_command` carries the resolved id). A `not_applicable` gap (no roadmap entry, e.g. a
+  hotfix) is skipped with a one-line note.
+- **sidecar_implement** — run `python -m buildkit_cli.pipeline.sidecar reconcile implement`. An
+  `unknown` gap (pipeline bridge unavailable) is skipped (US3.3).
+
+Record each engineer decision (fail-safe; never blocks):
+
+```bash
+buildkit ship reconcile record --gap <close_out|roadmap_advance|sidecar_implement> \
+  --decision <accepted|declined|skipped|errored> [--note "<why>"]
+```
+
+If every gap is `already_done`/`not_applicable`, report **"nothing to reconcile"** and continue.
+A **non-interactive** ship (no engineer to confirm) is **surface-only** — the gaps are reported but
+nothing is applied (declining is the safe default). The standalone `buildkit ship reconcile` (and
+manual `/bk-close` + `roadmap advance`) remain the do-it-later fallback (FR-012).
+
+### Reconciliation advisory boundaries (non-negotiable)
+
+- **Offer, never auto-apply**: each reconciliation runs **only on explicit engineer confirmation**;
+  the `buildkit ship` CLI never prompts and never auto-applies (FR-011).
+- **Never auto-invoke** a `/buildkit-*` pipeline command; `/bk-close` is **recommended**, never run
+  (Constitution I / FR-007).
+- **Additive only** — all writes go through the existing additive CLIs and the additive
+  `sidecar reconcile implement`; no existing record is mutated or removed (Constitution II / FR-006).
+- Idempotent — re-running on an already-reconciled feature is a no-op (FR-008); secrets are redacted
+  before the decision audit is persisted (Constitution V / FR-009).
 
 ## Exit codes
 

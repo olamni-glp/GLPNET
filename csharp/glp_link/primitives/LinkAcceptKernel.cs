@@ -41,10 +41,21 @@ public static class LinkAcceptKernel
         if (heap.Dereference((Term)args[1]!) is VarRef)
             return LinkEstablish.Abort(Who, "arg 2 (FromPeer) must be a ground peer id");
 
+        // Verify-before-act (FR-008, P1 fix 2026-07-13): gate BEFORE adopting the pending connection.
+        // The inbound connection was already accepted by the request_listener, but a refused peer must
+        // never have its link ESTABLISHED/wired — and its pending connection is disposed so it does not
+        // linger half-open. WireEstablishedLink is told preGated:true (record the outcome once, SC-006).
+        if (LinkEstablish.CapabilityRefusal(link, id, Who) is BodyKernelResult refusal)
+        {
+            if (link.Pending.Remove(id, out var refused))
+                refused.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            return refusal;
+        }
+
         if (!link.Pending.Remove(id, out var endpoint))
             return LinkEstablish.Abort(Who, $"no pending request for {id} — request_listener must surface it first");
 
         return LinkEstablish.WireEstablishedLink(
-            rt, link, id, () => endpoint, args[2], args[3], args[4], Who);
+            rt, link, id, () => endpoint, args[2], args[3], args[4], Who, preGated: true);
     }
 }

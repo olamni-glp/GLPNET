@@ -4,7 +4,7 @@ description: "Advisory post-cycle retrospective. Turns one completed per-feature
 argument-hint: "[feature_id of a completed cycle, e.g. 022-buildkit-retrospective] | run <feature_id> | list | show <retro_id> | finding/proposal/action/skillify/feedback ... | report <retro_id>"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-retrospective.md"
 user-invocable: true
 disable-model-invocation: false

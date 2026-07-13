@@ -64,7 +64,12 @@ public static class LinkListenKernel
             Term token = ReadOneGroundMessage(endpoint, cts.Token);
             (id, fromPeer) = LinkTerms.ParseRequestToken(token);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or KeyNotFoundException or AggregateException or OperationCanceledException)
+        // ANY rendezvous/listen/handshake failure fails CLOSED GRACEFULLY (Abort), never an uncaught
+        // crash — e.g. a deferred "quic" trust-material load (LazyQuicTransport → LoadFromRepo throws
+        // FileNotFoundException on missing glpquick-cert/) or a host without MsQuic
+        // (PlatformNotSupportedException); neither was in the old narrow filter (codexreview
+        // 20260713T111017Z P2). Same root fix as the setup/request establishment catches.
+        catch (Exception ex)
         {
             return LinkEstablish.Abort(Who, $"rendezvous/handshake on {scheme}:{endpointAddr} failed: {ex.Message}");
         }

@@ -4,7 +4,7 @@ description: "Perform a non-destructive cross-artifact consistency and quality a
 argument-hint: "Optional focus areas for analysis"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/analyze.md"
 user-invocable: true
 disable-model-invocation: false

@@ -13,7 +13,9 @@
 
 using System.Threading.Tasks;
 
+using GlpRuntime.CrdtMsg.Bridge;
 using GlpRuntime.Link.Primitives;
+using GlpRuntime.Link.Seam;
 using GlpRuntime.Link.Transports;
 
 namespace GlpRuntime.Repl.Host;
@@ -32,6 +34,42 @@ internal static class EntryPoint
             var link = LinkKernels.Install(engine.Runtime);
             link.Transports.Register(new TcpTransport());        // first real cross-process leaf (127.0.0.1)
             link.Transports.Register(new LoopbackTransport());   // in-process hermetic substrate
+            // feature 050 — register the genuine QUIC+WS leaf (036) so a GLP goal over a "quic"
+            // link_id reaches it through the unchanged 025 kernels. The PERMANENT shared trust
+            // material (cert + SPKI pin) is loaded from glpquick-cert/ fail-closed if absent
+            // (FR-010/FR-011). The load is DEFERRED to first actual QUIC use (LazyQuicTransport):
+            // a host without glpquick-cert/ still starts the REPL for non-QUIC (loopback/tcp) links,
+            // and a QUIC link still fails closed LOUDLY the moment it is opened (P1 fix 2026-07-13,
+            // codexreview 20260713T070618Z). No TCP/loopback fallback — QuicTransport refuses loudly
+            // on a host without QUIC (FR-002).
+            link.Transports.Register(new LazyQuicTransport(() =>
+            {
+                var (quicCert, quicPin) = SharedCertMaterial.LoadFromRepo();
+                return new QuicTransport(quicCert, quicPin);
+            }));
+            // feature 050 US3 (T026-T028) — macaroon capability gate, verify-before-act (FR-008/9).
+            // The static-macaroon root key is loaded out-of-band alongside the cert (beacon model,
+            // fail-closed if absent) and this endpoint's presented static macaroon minted — DEFERRED
+            // to first gated action (LazyMacaroonLinkGate), same rationale as the transport above.
+            // The gate runs in LinkEstablish BEFORE any "quic" endpoint is opened; every outbound
+            // envelope carries the macaroon in the capability slot (section 0x20, envelope v2);
+            // inbound gated actions re-verify it. Refusals are recorded (ProvenanceOutcome.Refused)
+            // and fail closed — never a crash, never a silent drop.
+            var quicGate = new LazyMacaroonLinkGate(() =>
+            {
+                var (macaroonRootKey, staticMacaroon) = StaticMacaroonMaterial.LoadFromRepo();
+                return new MacaroonLinkGate(macaroonRootKey, staticMacaroon);
+            });
+            link.CapabilityGates.Register(LinkScheme.Quic, quicGate);
+            // feature 050 US2 (T018) — the "quic" link's L5 wire payload is a 041 crdtmsg envelope
+            // (FR-005). Inject the CrdtMsgPayloadCodec for the Quic scheme; loopback/tcp keep the
+            // default ground-relay blob (byte-for-byte unchanged). The kernels stay codec-agnostic —
+            // LinkEstablish selects the per-link codec from this registry at establishment.
+            // US3: the codec is capability-gated — it attaches/verifies the macaroon slot. Deferred
+            // (LazyCrdtMsgPayloadCodec) so the gate's macaroon load happens on first wire use, not
+            // startup; quicGate.Value materializes the real gate at that point.
+            link.PayloadCodecs.Register(LinkScheme.Quic,
+                new LazyCrdtMsgPayloadCodec(() => new CrdtMsgPayloadCodec(quicGate.Value)));
         };
         return GlpRuntime.Repl.Program.Main(args);
     }

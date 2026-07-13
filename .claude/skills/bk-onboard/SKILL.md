@@ -4,7 +4,7 @@ description: "Guided clone→first-green-spec onboarding. Runs ordered environme
 argument-hint: "(no arguments)"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-onboard.md"
 user-invocable: true
 disable-model-invocation: false

@@ -4,7 +4,7 @@ description: "BK-OpsKit: advisory entry point + integration document for porting
 argument-hint: "[info|doc|where] or a question about the OpsKit→buildkit integration; [--sections] [--json] [--project-root <path>]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-opskit.md"
 user-invocable: true
 disable-model-invocation: false

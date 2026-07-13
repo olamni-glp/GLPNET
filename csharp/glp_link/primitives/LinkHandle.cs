@@ -29,6 +29,14 @@ public sealed class LinkHandle
     /// <summary>Inbound FIFO reconstruction + transport-level dedup.</summary>
     public InboundOrdering Ordering { get; }
 
+    /// <summary>
+    /// The per-link payload codec (feature 050, FR-005): egress encodes / ingress decodes the L5
+    /// application payload through it (loopback/tcp = the default ground-relay blob; <c>"quic"</c> =
+    /// the 041 crdtmsg envelope). Selected by scheme at establishment; defaults to
+    /// <see cref="DefaultPayloadCodec"/> so pre-050 construction sites are unchanged.
+    /// </summary>
+    public IPayloadCodec Codec { get; }
+
     // --- heap stream cursors, set by '_link_setup' during establishment ---
 
     /// <summary>The writer the host extends as inbound frames arrive (the program reads <c>In</c>).</summary>
@@ -50,11 +58,12 @@ public sealed class LinkHandle
     /// </summary>
     public List<int> MonitorCursors { get; } = new();
 
-    public LinkHandle(LinkId id, ILinkEndpoint endpoint, LinkOptions options)
+    public LinkHandle(LinkId id, ILinkEndpoint endpoint, LinkOptions options, IPayloadCodec? codec = null)
     {
         Id = id;
         Endpoint = endpoint;
         Options = options;
+        Codec = codec ?? DefaultPayloadCodec.Instance;
         Sequencer = new LinkSequencer();
         Window = new SendWindow(options.BackpressureWindow);
         Reassembler = new FrameReassembler();
