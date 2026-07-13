@@ -41,7 +41,7 @@ import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/output_capture
 import glp/runtime/heap.{type Heap, Bound}
 import glp/runtime/suspension.{type GoalRef}
-import glp/runtime/terms.{type Term, ConstTerm, StructTerm, VarRef}
+import glp/runtime/terms.{type Term, ConstAtom, ConstTerm, StructTerm, VarRef}
 
 /// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying the
 /// updated heap, any goals reactivated by binding the output writer, and any
@@ -75,6 +75,8 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_round", 2
     | "_floor", 2
     | "_ceil", 2 -> True
+    // Univ (=../2) — list↔compound (Dart listToTupleKernel / tupleToListKernel).
+    "_list_to_tuple", 2 | "_tuple_to_list", 2 -> True
     "_output", 1 -> True
     _, _ -> False
   }
@@ -126,6 +128,32 @@ pub fn dispatch(
     "_ceil", 2, [a, out] ->
       Ok(unary(heap, a, out, fn(x) { Ok(NInt(ceil_num(x))) }))
     "_pow", 3, [a, b, out] -> Ok(binary(heap, a, b, out, pow_num))
+    // ── univ (=../2): list↔compound (Dart list/tuple kernels) ─────────────────
+    // Compose: [Functor, Arg1, …] → Functor(Arg1, …). First element must be an
+    // atom; the list must be non-empty.
+    "_list_to_tuple", 2, [lst, out] ->
+      case glp_list_to_terms(heap, lst) {
+        Ok([ConstTerm(ConstAtom(functor)), ..sargs]) ->
+          Ok(bind_term(heap, out, StructTerm(functor, sargs)))
+        _ ->
+          Ok(KAbort(
+            "_list_to_tuple: first element must be an atom functor of a non-empty list",
+          ))
+      }
+    // Decompose: Functor(Arg1, …) → [Functor, Arg1, …].
+    "_tuple_to_list", 2, [tup, out] ->
+      case deref_term(heap, tup) {
+        StructTerm(functor, sargs) ->
+          Ok(bind_term(
+            heap,
+            out,
+            terms_to_glp_list([
+              ConstTerm(ConstAtom(functor)),
+              ..list.map(sargs, fn(t) { deref_term(heap, t) })
+            ]),
+          ))
+        _ -> Ok(KAbort("_tuple_to_list: first argument must be a structure"))
+      }
     // '_output'(T): render the ground term to one captured line; heap unchanged,
     // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
     // the output, threaded as data here rather than `print`ed inline).
@@ -173,17 +201,58 @@ fn binary(
 /// Bind the output writer to the numeric result (Dart `_bindResult`); enqueue
 /// any reactivations. A non-writer / already-bound output aborts.
 fn bind_result(heap: Heap, out: Term, value: NumV) -> KernelOutcome {
+  bind_term(heap, out, arith.to_term(value))
+}
+
+/// Bind the output writer to an arbitrary result term (Dart `_bindResult` for a
+/// `Term` value); enqueue any reactivations. Non-writer / already-bound aborts.
+fn bind_term(heap: Heap, out: Term, value: Term) -> KernelOutcome {
   case out {
     VarRef(addr) ->
       case heap.is_writer(heap, addr) {
         True ->
-          case heap.bind_writer(heap, addr, arith.to_term(value)) {
+          case heap.bind_writer(heap, addr, value) {
             Ok(#(h2, woken)) -> KSuccess(h2, woken, [])
             Error(_) -> KAbort("body kernel: output writer already bound")
           }
         False -> KAbort("body kernel: output argument is not a writer")
       }
     _ -> KAbort("body kernel: output argument is not a writer")
+  }
+}
+
+/// Deref a term through the heap to its bound value (Dart `_deref`); an unbound
+/// or non-var term is returned as-is.
+fn deref_term(heap: Heap, term: Term) -> Term {
+  case term {
+    VarRef(addr) ->
+      case heap.deref(heap, addr) {
+        Ok(#(_, Bound(v))) -> deref_term(heap, v)
+        _ -> term
+      }
+    _ -> term
+  }
+}
+
+/// Walk a GLP list (`'.'/2` cells terminated by `nil`) into a Gleam list of its
+/// deref'd element terms (Dart `_glpListToDartList`). A non-list → `Error`.
+fn glp_list_to_terms(heap: Heap, term: Term) -> Result(List(Term), Nil) {
+  case deref_term(heap, term) {
+    ConstTerm(ConstAtom("nil")) -> Ok([])
+    StructTerm(".", [h, t]) ->
+      result.map(glp_list_to_terms(heap, t), fn(rest) {
+        [deref_term(heap, h), ..rest]
+      })
+    _ -> Error(Nil)
+  }
+}
+
+/// Build a GLP list (`'.'/2` cells + `nil`) from a Gleam list of terms (Dart
+/// `_dartListToGlpList`).
+fn terms_to_glp_list(items: List(Term)) -> Term {
+  case items {
+    [] -> ConstTerm(ConstAtom("nil"))
+    [h, ..t] -> StructTerm(".", [h, terms_to_glp_list(t)])
   }
 }
 
