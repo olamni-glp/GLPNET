@@ -1,0 +1,15 @@
+% gap_g1_ground_relax.glp - GAP-G1 (C-11): ground/1 SRSW relaxation.
+% A variable made ground by a ground(X?) guard may be READ MULTIPLE TIMES without
+% an SRSW violation (typed-glp-manual §3.2 / cheat-sheet §3). The SRSW checker MUST
+% accept the multi-read, and the goal MUST run — the concern is that a lens which
+% omits the relaxation would wrongly reject a valid program.
+
+Triple ::= t(Constant, Constant, Constant).
+
+exported procedure g1_triple(Constant?, Triple).
+g1_triple(X, t(X?, X?, X?)) :- ground(X?) | true.
+
+% A negative control: no ground/1 guard here, so the SAME term with a single read
+% is unremarkable — kept to show the relaxation is what licenses the multi-read.
+exported procedure g1_single(Constant?, Constant).
+g1_single(X, X?) :- ground(X?) | true.

@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a24e (feature 050 T037)
+# files: programs/tests/typed/atom_guard.glp
+## goal: is_atom(42, Rn).
+Rn = <unbound>
+→ failed
+
+## goal: is_atom(foo(1), Rc).
+Rc = <unbound>
+→ failed
+
+## goal: is_atom([], Rb).
+Rb = <unbound>
+→ failed
+

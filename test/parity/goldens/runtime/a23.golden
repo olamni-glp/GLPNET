@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block a23 (feature 050 T037)
+# files: programs/tests/typed/diff_list.glp programs/tests/typed/bb_diff.glp
+## goal: Xdl = foo\bar.
+Xdl = \(foo, bar)
+→ succeeds
+
+## goal: test_dl_to_list([1,2,3]\[], Ldtl).
+Ldtl = [1, 2, 3]
+→ succeeds
+

@@ -1,4 +1,5 @@
 //// T022/T023 acceptance — Gleam deep-resolve + envelope builder over the real 034
+import gleam/set
 //// heap (glp/runtime/heap). Mirrors the Dart reference behaviour in
 //// glp_runtime/lib/codec/result_envelope_builder.dart.
 ////
@@ -22,7 +23,7 @@ pub fn deep_resolve_bound_int_test() {
   let #(h1, w, _r) = heap.allocate_variable(h0)
   let assert Ok(#(h2, _)) =
     heap.bind_writer(h1, w, terms.ConstTerm(terms.ConstInt(42)))
-  let assert Ok(#(_, got)) = deep_resolve(h2, terms.VarRef(w), inst, 0)
+  let assert Ok(#(_, got)) = deep_resolve(h2, terms.VarRef(w), inst, 0, set.new())
   got |> should.equal(ConstTerm(ConstInt(42)))
 }
 
@@ -32,14 +33,14 @@ pub fn deep_resolve_string_is_atom_faithful_test() {
   let #(h1, w, _r) = heap.allocate_variable(h0)
   let assert Ok(#(h2, _)) =
     heap.bind_writer(h1, w, terms.ConstTerm(terms.ConstAtom("foo")))
-  let assert Ok(#(_, got)) = deep_resolve(h2, terms.VarRef(w), inst, 0)
+  let assert Ok(#(_, got)) = deep_resolve(h2, terms.VarRef(w), inst, 0, set.new())
   got |> should.equal(ConstTerm(term_codec.ConstAtom("foo")))
 }
 
 pub fn deep_resolve_unbound_var_test() {
   let h0 = heap.new()
   let #(h1, w, _r) = heap.allocate_variable(h0)
-  let assert Ok(#(_, got)) = deep_resolve(h1, terms.VarRef(w), inst, 0)
+  let assert Ok(#(_, got)) = deep_resolve(h1, terms.VarRef(w), inst, 0, set.new())
   got |> should.equal(VarRef(GlobalVarId(inst, w)))
 }
 
@@ -56,7 +57,7 @@ pub fn deep_resolve_nested_struct_with_unbound_arg_test() {
         terms.VarRef(w2),
       ]),
     )
-  let assert Ok(#(_, got)) = deep_resolve(h3, terms.VarRef(w1), inst, 0)
+  let assert Ok(#(_, got)) = deep_resolve(h3, terms.VarRef(w1), inst, 0, set.new())
   got
   |> should.equal(
     StructTerm("f", [ConstTerm(ConstInt(1)), VarRef(GlobalVarId(inst, w2))]),
@@ -65,10 +66,10 @@ pub fn deep_resolve_nested_struct_with_unbound_arg_test() {
 
 pub fn deep_resolve_depth_bound_truncates_test() {
   let deep = build_nested(40, terms.ConstTerm(terms.ConstInt(0)))
-  let assert Ok(#(_, got)) = deep_resolve(heap.new(), deep, inst, 0)
+  let assert Ok(#(_, got)) = deep_resolve(heap.new(), deep, inst, 0, set.new())
   contains_truncated(got) |> should.equal(True)
   let assert Ok(#(_, shallow)) =
-    deep_resolve(heap.new(), terms.ConstTerm(terms.ConstInt(0)), inst, 0)
+    deep_resolve(heap.new(), terms.ConstTerm(terms.ConstInt(0)), inst, 0, set.new())
   contains_truncated(shallow) |> should.equal(False)
 }
 

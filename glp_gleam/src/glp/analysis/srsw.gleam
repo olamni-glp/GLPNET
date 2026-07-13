@@ -97,6 +97,34 @@ pub fn check(module: ast.SourceModule) -> Result(Nil, SrswError) {
   }
 }
 
+/// Per-clause variable → register-index map: the Dart Analyzer's
+/// `VariableTable` + `_assignRegisters` output, exposed for codegen (T019).
+///
+/// Register index = the variable's position in first-occurrence order across
+/// the clause traversal HEAD → GUARDS → BODY (Dart `_analyzeClause` order;
+/// `getAllVars()` iterates `_vars` in insertion order, `_assignRegisters`
+/// numbers them 0,1,2,…). Anonymous `_`-prefixed variables are excluded (Dart
+/// skips them in the table; codegen allocates temp registers ≥10 for them).
+/// Reader `X?` and writer `X` share one register (both keyed by base name).
+///
+/// Grounding does not affect register ORDER (Dart `markTypeGrounded` touches
+/// only the grounded set, never `_vars`), so proc-decls are irrelevant here and
+/// an empty set is passed. Codegen runs after the loader's SRSW/type stages
+/// have already passed, so for well-formed input `check_clause` does not surface
+/// a rejection; a residual guard/reserved-constant error is propagated
+/// unchanged rather than swallowed.
+pub fn clause_register_map(
+  clause: ast.Clause,
+  compile_mode: ast.CompileMode,
+) -> Result(Dict(String, Int), SrswError) {
+  use table <- result.map(check_clause(clause, "", dict.new(), compile_mode))
+  table.order
+  |> list.reverse
+  |> list.index_fold(dict.new(), fn(acc, name, index) {
+    dict.insert(acc, name, index)
+  })
+}
+
 /// Collect SRSW violations for one procedure (Dart
 /// `_collectSRSWViolationsForProcedure`), each prefixed `name/arity: `.
 fn check_procedure(

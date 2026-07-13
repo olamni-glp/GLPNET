@@ -1,0 +1,19 @@
+% gap_g2_standardize_apart.glp - GAP-G2 (C-12): clause-head standardize-apart per
+% reduction + recursion non-aliasing. Each reduction gets FRESH clause variables:
+% the recursive clause is reused at every list level and its head/tail variables
+% (X/Xs/Ys) must be renamed apart per level — otherwise a later element's cell
+% would clash with an earlier one. A correct element-wise copy over a many-element
+% list witnesses the per-reduction renaming.
+
+NumList ::= [] ; [Number | NumList].
+
+exported procedure g2_copy(NumList?, NumList).
+g2_copy([], []).
+g2_copy([X|Xs], [X?|Ys?]) :- g2_copy(Xs?, Ys).
+
+% Non-aliasing across two independent recursive calls in one body: each call gets a
+% fresh frame, so the two output tails are distinct (append proves the levels do not
+% share Y). [1,2] ++ [3] via a helper.
+exported procedure g2_pair_copies(NumList?, NumList?, NumList).
+g2_pair_copies([], Ys, Ys?).
+g2_pair_copies([X|Xs], Ys, [X?|Zs?]) :- g2_pair_copies(Xs?, Ys?, Zs).

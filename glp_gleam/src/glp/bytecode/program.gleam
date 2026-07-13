@@ -57,6 +57,12 @@ pub fn size(program: BytecodeProgram) -> Int {
   program.size
 }
 
+/// The runtime-defined guard side table (Dart `prog.definedGuards`) — the
+/// multi-clause test-only guard procedures the runner interprets three-valued.
+pub fn defined_guards(program: BytecodeProgram) -> Dict(String, GuardProcSpec) {
+  program.defined_guards
+}
+
 /// Fetch the instruction at `pc` (Dart `ops[pc]`); `Error(Nil)` past the end.
 pub fn op_at(program: BytecodeProgram, pc: Int) -> Result(Op, Nil) {
   dict.get(program.by_pc, pc)

@@ -1,0 +1,23 @@
+% gap_g8_guard_three_valued.glp - GAP-G8 (C-18): guard three-valued coverage.
+% =:=, < (arithmetic comparison), integer/1 (type test), and known/1 each expose an
+% observable SUCCEED and FAIL verdict; the third value, SUSPEND, is witnessed by
+% running any of these on an unbound reader (a separate REPL goal shows
+% `-> suspended`). Together they cover the succeed / suspend / fail matrix.
+
+YN ::= yes ; no.
+
+exported procedure g8_eq(Number?, Number?, YN).
+g8_eq(A, B, yes) :- A? =:= B? | true.
+g8_eq(A, B, no) :- A? =\= B? | true.
+
+exported procedure g8_lt(Number?, Number?, YN).
+g8_lt(A, B, yes) :- A? < B? | true.
+g8_lt(A, B, no) :- A? >= B? | true.
+
+exported procedure g8_int(_?, YN).
+g8_int(X, yes) :- integer(X?) | true.
+g8_int(_, no) :- otherwise | true.
+
+exported procedure g8_known(_?, YN).
+g8_known(X, yes) :- known(X?) | true.
+g8_known(_, no) :- otherwise | true.

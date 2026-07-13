@@ -89,6 +89,29 @@ pub fn allocate_variable(heap: Heap) -> #(Heap, Int, Int) {
   #(Heap(cells: cells, hp: heap.hp + 2), writer_addr, reader_addr)
 }
 
+/// The paired reader address of a writer (← Dart `pairedReaderAddr`,
+/// heap_fcp.dart:236). An unbound `WriterCell` carries its reader; for a
+/// bound/non-writer cell, fall back to the allocation adjacency `writer + 1`
+/// exactly as the reference does (heap_fcp.dart:242). Role stays tag-derived —
+/// this reads the stored pairing, never assumes it (FR-002).
+pub fn paired_reader(heap: Heap, writer: Int) -> Int {
+  case dict.get(heap.cells, writer) {
+    Ok(WriterCell(reader_addr, _)) -> reader_addr
+    _ -> writer + 1
+  }
+}
+
+/// The paired writer of a reader, if it is a local reader (← Dart
+/// `tryWriterForReader`, heap_fcp.dart:181). A `ReaderCell` points back to its
+/// writer; anything else yields `Error(Nil)` (the Dart returns null — e.g. an
+/// imported reader, which the local Gleam foundation does not have).
+pub fn paired_writer(heap: Heap, reader: Int) -> Result(Int, Nil) {
+  case dict.get(heap.cells, reader) {
+    Ok(ReaderCell(writer_addr)) -> Ok(writer_addr)
+    _ -> Error(Nil)
+  }
+}
+
 fn has_tag(heap: Heap, addr: Int, want: CellTag) -> Bool {
   case dict.get(heap.cells, addr) {
     Ok(cell) -> tag(cell) == want
@@ -175,7 +198,8 @@ fn deref_walk(
               }
             WriterCell(_, _) ->
               Ok(#(compress(heap, readers, current), Unbound(current)))
-            ValueCell(term) -> Ok(#(compress(heap, readers, current), Bound(term)))
+            ValueCell(term) ->
+              Ok(#(compress(heap, readers, current), Bound(term)))
           }
       }
     }
@@ -260,14 +284,16 @@ fn forward_to_terminal(
       case deref(heap, reader) {
         Error(e) -> Error(e)
         Ok(#(heap, Unbound(terminal))) ->
-          Ok(#(
-            forward_suspensions(
-              set_cell(heap, writer, WriterBound(reader)),
-              terminal,
-              armed,
+          Ok(
+            #(
+              forward_suspensions(
+                set_cell(heap, writer, WriterBound(reader)),
+                terminal,
+                armed,
+              ),
+              [],
             ),
-            [],
-          ))
+          )
         // Target chain already resolves to a ground value — not the intended use of
         // bind_writer_to_var (its precondition is an unbound reader); record the binding,
         // fire nothing (the verdict carries no activation here).

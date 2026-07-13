@@ -1,0 +1,7 @@
+# golden: Dart reference outcomes for block a24c (feature 050 T037)
+# files: programs/tests/typed/compound_suspend.glp
+## goal: eq_compound(pair(a, W), R2).
+R2 = <unbound>
+W = <unbound>
+→ failed
+

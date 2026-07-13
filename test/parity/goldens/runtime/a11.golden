@@ -1,0 +1,57 @@
+# golden: Dart reference outcomes for block a11 (feature 050 T037)
+# files: programs/tests/typed/struct_demo.glp programs/tests/typed/depth_test.glp programs/tests/typed/paa.glp programs/tests/typed/no_guard.glp programs/tests/typed/with_guard.glp programs/tests/typed/two_struct_list.glp programs/tests/typed/nonground_list.glp programs/tests/typed/reader_output.glp programs/tests/typed/assign_reader_test.glp
+## goal: build_person(P).
+P = person(alice, age(thirty), city(seattle))
+→ succeeds
+
+## goal: bin_nest(val, Xbn).
+Xbn = outer(inner(val, b), c)
+→ succeeds
+
+## goal: ter_all(a, b, c, Xta).
+Xta = triple(a, b, c)
+→ succeeds
+
+## goal: tree3(val, Xtr3).
+Xtr3 = node(node(leaf(val), leaf(a)), leaf(b))
+→ succeeds
+
+## goal: multi_w(p, q, Xmw).
+Xmw = pair(wrap(p), wrap(q))
+→ succeeds
+
+## goal: p(Xpaa1, Xpaa1?).
+Xpaa1 = a
+→ succeeds
+
+## goal: no_guard([5,x,y], Xng).
+Xng = [5, a, b, x, y]
+→ succeeds
+
+## goal: with_guard([5,x,y], Xwg).
+Xwg = [5, a, b, x, y]
+→ succeeds
+
+## goal: test([foo(a), bar(b)]).
+→ succeeds
+
+## goal: test_list_in_body([1,2,3,4], Xngl).
+Xngl = [1, 2, 3, 4]
+→ succeeds
+
+## goal: build_list(a, b, Xbld).
+Xbld = [a, b]
+→ succeeds
+
+## goal: unwrap([hello,world], Xunw).
+Xunw = hello
+→ succeeds
+
+## goal: identity(foo, Xid).
+Xid = foo
+→ succeeds
+
+## goal: assign_reader(hello, Xar).
+Xar = hello
+→ succeeds
+
