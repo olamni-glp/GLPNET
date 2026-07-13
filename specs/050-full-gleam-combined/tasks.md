@@ -100,14 +100,14 @@
 
 **Independent Test**: `bash test/parity/run_gleam_corpus.sh` exits 0 with 100% agreement and wall-clock summary
 
-- [ ] T037 [US3] Implement `test/parity/record_dart_goldens.sh` (runs Dart REPL per corpus case, records normalized outcome + wall-clock into `test/parity/goldens/`; explicit re-record only — contracts/corpus-parity.md). FIRST emit a reviewed `test/parity/corpus-manifest.md` pinning the case list (per-section include/exclude rationale over `test/run_all_tests.sh` sections A–K); goldens and parity (SC-001) are measured against the manifest (analyze A1)
-- [ ] T038 [US3] Implement shared normalization rules in `test/parity/lib/normalize.sh` (strip prompts/timing noise, stabilize variable numbering; sourced by recorder AND comparator)
-- [ ] T039 [US3] Implement `test/parity/run_gleam_corpus.sh` (drives Gleam REPL over the same case list, diffs vs goldens, asserts suite-level `gleam ≤ 10× dart` wall-clock, prints agreement summary)
-- [ ] T040 [P] [US3] Author GAP-G1/G2/G3/G8 + FORK-1 cases as named programs in `programs/tests/typed/` (per register definitions in `docs/research/glp-gleam-baseline/pipelines/P2-concerns/REGISTER.md`; single corpus home — no copies)
-- [ ] T041 [US3] Implement `test/parity/run_differential.sh <program> <goal>` (Dart+C#+Gleam, three-column diff on divergence, exit = divergent pairs — closes MISS-04/FR-012)
-- [ ] T042 [US3] Drive full corpus to 100% agreement (iterate port fixes; divergences handled per Bug Protocol three-way classification — never adjust a golden to pass)
-- [ ] T043 [US3] Verify the 10× wall-clock bound (SC-009) and record both sums in the runner summary + `specs/050-full-gleam-combined/baseline.md`
-- [ ] T044 [US3] Regression guard (SC-007): `bash test/run_all_tests.sh` + C# suites + `bash test/link/run_link_tests_cross.sh` all green after corpus work (shared-file changes in `programs/tests/`)
+- [X] T037 [US3] Implement `test/parity/record_dart_goldens.sh` (runs Dart REPL per corpus case, records normalized outcome + wall-clock into `test/parity/goldens/`; explicit re-record only — contracts/corpus-parity.md). FIRST emit a reviewed `test/parity/corpus-manifest.md` pinning the case list (per-section include/exclude rationale over `test/run_all_tests.sh` sections A–K); goldens and parity (SC-001) are measured against the manifest (analyze A1)
+- [X] T038 [US3] Implement shared normalization rules in `test/parity/lib/normalize.sh` (strip prompts/timing noise, stabilize variable numbering; sourced by recorder AND comparator)
+- [X] T039 [US3] Implement `test/parity/run_gleam_corpus.sh` (drives Gleam REPL over the same case list, diffs vs goldens, asserts suite-level `gleam ≤ 10× dart` wall-clock, prints agreement summary)
+- [X] T040 [P] [US3] Author GAP-G1/G2/G3/G8 + FORK-1 cases as named programs in `programs/tests/typed/` (per register definitions in `docs/research/glp-gleam-baseline/pipelines/P2-concerns/REGISTER.md`; single corpus home — no copies)
+- [X] T041 [US3] Implement `test/parity/run_differential.sh <program> <goal>` (Dart+C#+Gleam, three-column diff on divergence, exit = divergent pairs — closes MISS-04/FR-012)
+- [X] T042 [US3] Drive full corpus to 100% agreement (iterate port fixes; divergences handled per Bug Protocol three-way classification — never adjust a golden to pass)
+- [X] T043 [US3] Verify the 10× wall-clock bound (SC-009) and record both sums in the runner summary + `specs/050-full-gleam-combined/baseline.md`
+- [X] T044 [US3] Regression guard (SC-007): `bash test/run_all_tests.sh` + C# suites + `bash test/link/run_link_tests_cross.sh` all green after corpus work (shared-file changes in `programs/tests/`)
 
 **Checkpoint**: M1 LOCK — parity declared (goldens + GAP/FORK green + PI:14 discharged)
 

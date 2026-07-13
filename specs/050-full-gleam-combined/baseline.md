@@ -82,3 +82,18 @@ each committed with 443/443 green + re-verified vs the Dart oracle:
   (`$mutual_ref`) made immutable-safe by walking the cons chain in `stream_append`/`close` → a26.
 - **049 runtime-defined-guard interpreter** (`_evalDefinedGuardCall`): three-valued
   multi-clause evaluation + system `satisfiable/2` + `$sat:*` table (form-b default) → a29w/a29v/a30.
+
+## T040/T041/T044 — M1 LOCK verification — 2026-07-13
+
+- **T040 GAP/FORK (FR-011):** GAP-G1/G2/G3/G8 authored in `programs/tests/typed/` and
+  AGREE vs Dart; FORK-1 (`fork_1_circular_deref.glp`) recorded as the owner-gated
+  circular-deref discriminator fork (Dart/C# `<circular>` vs Gleam `$truncated`).
+  Corpus: 205 agree / 0 diverge / 1 fork = 100% in-scope agreement.
+- **T041 differential (FR-012, MISS-04):** `run_differential.sh` runs Dart+C#+Gleam,
+  exit = #divergent pairs. Validated: agree on `X:=2+3` + `primes(10)`; FORK-1
+  `X=f(X?)` → 2 pairs (dart/gleam, csharp/gleam) — Dart & C# both detect the cycle.
+- **T044 regression guard (SC-007):** Dart REPL suite **530/531** (the 1 fail is the
+  documented pre-existing Section-Q AOT-exe smoke, stale prebuilt exe — not a
+  regression); Dart↔C# link rig **16/16** (with `DART` pointed at the local SDK — the
+  rig's default path is the sibling host's); all 7 C# suites **727/727**. `gleam test`
+  443/443. No regression from the (Gleam-only) parity work.
