@@ -1,0 +1,30 @@
+<!--
+  ynet_transport — YNET consolidated transport/overlay tier (feature 051).
+
+  TIER BOUNDARY (FR-024): this library owns the transport/overlay MECHANISM. It NEVER
+  implements the qhstate 056 service-embed, macaroon minting, admission DECISION, or the
+  durable mailbox — those are consumed/enforced-on-behalf-of only.
+
+  Standalone by design: depends on the BCL crypto surface only (AesGcm, ECDsa, SHA256) so it
+  builds without the out/csharp regen product. FR-002 specifies Ed25519 as the node identity;
+  the identity ALGORITHM is pluggable behind INodeSigner (the reference impl is ECDsa/P-256 —
+  a documented seam, see NodeIdentity.cs). Network-I/O leaves (MsQuic wire, ICE/DCUtR, Tor
+  cells, WebRTC) are compiling seams pending the harvest of csharp/glp_link (FR-001/FR-019).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ynet.Transport</RootNamespace>
+    <AssemblyName>ynet_transport</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ynet_transport.tests" />
+  </ItemGroup>
+
+</Project>
