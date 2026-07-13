@@ -229,7 +229,7 @@ pub fn body_spawns_goal_with_built_structure_test() {
   let out =
     runner.reduce(prog, runner.new_context(heap.new(), regs), kappa, 1000)
 
-  let assert runner.Reduced(heap: h2, woken: _, spawned: [req]) = out
+  let assert runner.Reduced(heap: h2, woken: _, spawned: [req], ..) = out
   req.procedure
   |> should.equal("sink/1")
   let assert Ok(arg0) = program.get_reg(req.regs, 0)

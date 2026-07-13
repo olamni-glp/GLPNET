@@ -64,6 +64,9 @@ pub opaque type Engine {
     goals: Dict(Int, Activation),
     blocking: Dict(Int, Set(Int)),
     next_id: Int,
+    /// Captured `_output/1` program-output lines accumulated across reductions, in
+    /// emission order (T034). Read after `run` via `captured_output`.
+    output: List(String),
   )
 }
 
@@ -119,12 +122,18 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     goals: dict.new(),
     blocking: dict.new(),
     next_id: 1,
+    output: [],
   )
 }
 
 /// The engine's current heap (query outputs are read from here after `run`).
 pub fn heap(engine: Engine) -> Heap {
   engine.heap
+}
+
+/// The captured `_output/1` program-output lines, in emission order (T034).
+pub fn captured_output(engine: Engine) -> List(String) {
+  engine.output
 }
 
 /// The next goal id the engine would mint (test/inspection hook).
@@ -187,12 +196,13 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.new_context(engine.heap, act.regs)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned) -> {
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out) -> {
           let engine =
             Engine(
               ..engine,
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
             )
           let #(engine, spawned_ids) =
             list.map_fold(spawned, engine, spawn_goal)

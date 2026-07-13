@@ -156,18 +156,33 @@ pub fn run_with_limit(
   goal: String,
   fuel: Int,
 ) -> #(Engine, ResultEnvelope) {
-  let envelope = case run_goal(engine, goal, fuel) {
-    Ok(env) -> env
-    Error(reason) -> failed_envelope(reason)
-  }
+  let #(engine, envelope, _output) =
+    run_with_limit_capturing(engine, goal, fuel)
   #(engine, envelope)
+}
+
+/// As `run_with_limit`, but ALSO returns the captured `_output/1` program-output
+/// lines in emission order (T034 — the REPL prints them ahead of the outcome
+/// block; they are NOT placed in the R4-excluded envelope `captured` field). The
+/// engine is unchanged (the run's scheduler state, including its output buffer, is
+/// internal to the one-shot run).
+pub fn run_with_limit_capturing(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> #(Engine, ResultEnvelope, List(String)) {
+  let #(envelope, output) = case run_goal(engine, goal, fuel) {
+    Ok(#(env, out)) -> #(env, out)
+    Error(reason) -> #(failed_envelope(reason), [])
+  }
+  #(engine, envelope, output)
 }
 
 fn run_goal(
   engine: Engine,
   goal: String,
   fuel: Int,
-) -> Result(ResultEnvelope, String) {
+) -> Result(#(ResultEnvelope, List(String)), String) {
   use atom <- result.try(parse_goal(goal))
   let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
   use entry <- result.try(
@@ -181,6 +196,7 @@ fn run_goal(
   let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
 
   let #(exec_status, blocking_readers, error) = map_status(status)
+  let output = scheduler.captured_output(sched)
   case
     builder.build_result_envelope(
       scheduler.heap(sched),
@@ -192,7 +208,7 @@ fn run_goal(
       error,
     )
   {
-    Ok(#(_heap, envelope)) -> Ok(envelope)
+    Ok(#(_heap, envelope)) -> Ok(#(envelope, output))
     Error(build_error) ->
       Error("result-envelope build failed: " <> string.inspect(build_error))
   }

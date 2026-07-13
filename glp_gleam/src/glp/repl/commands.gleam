@@ -133,9 +133,15 @@ pub fn execute(
     LimitUsage(msg) -> #(session, [msg], False)
     Load(path) -> execute_load(session, path)
     Goal(text) -> {
-      let #(_engine, env) =
-        engine.run_with_limit(session.engine, text, session.limit)
-      #(session, list.append(results.render_outcome(env), [""]), False)
+      let #(_engine, env, output) =
+        engine.run_with_limit_capturing(session.engine, text, session.limit)
+      // Program output (`_output/1`) prints ahead of the outcome block (Dart emits
+      // it inline during the run), then the bindings/status, then a blank line.
+      #(
+        session,
+        list.flatten([output, results.render_outcome(env), [""]]),
+        False,
+      )
     }
   }
 }

@@ -68,7 +68,12 @@ pub type ReduceOutcome {
   /// A clause committed: the goal reduced. `heap` is post-commit; `woken`
   /// carries reactivation signals (goal id + resume pc) from writers the commit
   /// bound; `spawned` carries the body's freshly-built goals.
-  Reduced(heap: Heap, woken: List(GoalRef), spawned: List(SpawnReq))
+  Reduced(
+    heap: Heap,
+    woken: List(GoalRef),
+    spawned: List(SpawnReq),
+    output: List(String),
+  )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
   Suspended(heap: Heap, on: Set(Int))
@@ -200,6 +205,9 @@ pub type RunnerContext {
     parent_stack: List(ParentCtx),
     /// Phase flag: `False` = HEAD/GUARD, `True` = BODY (set at Commit).
     in_body: Bool,
+    /// Captured `_output/1` program-output lines accumulated during this reduction
+    /// (T034), handed to the scheduler on `Reduced` (never touches the heap).
+    output: List(String),
   )
 }
 
@@ -225,6 +233,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     build_slot: None,
     parent_stack: [],
     in_body: False,
+    output: [],
   )
 }
 
@@ -293,8 +302,10 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.TryNextClause -> soft_fail(program, ctx, pc)
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
-    opcodes.Proceed -> Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs))
-    opcodes.Halt -> Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs))
+    opcodes.Proceed ->
+      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output))
+    opcodes.Halt ->
+      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -1823,12 +1834,13 @@ fn spawn(
           }
         })
       case kernels.dispatch(ctx.heap, proc_name, arity, args) {
-        Ok(kernels.KSuccess(heap, woken)) ->
+        Ok(kernels.KSuccess(heap, woken, output)) ->
           Advance(
             RunnerContext(
               ..ctx,
               heap: heap,
               woken: list.append(ctx.woken, woken),
+              output: list.append(ctx.output, output),
               arg_slots: dict.new(),
             ),
           )

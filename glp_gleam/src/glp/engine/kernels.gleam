@@ -18,23 +18,32 @@
 //// `glp/engine/arith`.
 ////
 //// The extended math kernels (`_abs`/`_sqrt`/trig/`_exp`/`_log*`/`_pow`),
-//// type-conversions, and the effectful `_now`/`_send`/`_output` kernels are NOT
-//// registered here: they are outside the pure-arithmetic MVP (some need a math
-//// library or wall-clock/IO the standalone engine does not have). A BODY Spawn
-//// to an unregistered kernel surfaces as a runner error — loud, never guessed
-//// (Language Authority §1.14) — rather than a wrong result.
+//// type-conversions, and the effectful `_now`/`_send` kernels are NOT registered
+//// here: they are outside the pure-arithmetic MVP (some need a math library or
+//// wall-clock/IO the standalone engine does not have). A BODY Spawn to an
+//// unregistered kernel surfaces as a runner error — loud, never guessed (Language
+//// Authority §1.14) — rather than a wrong result.
+////
+//// `_output`/1 (T034) IS registered: it renders its ground argument (Dart
+//// `formatGroundTerm`, glp/engine/output_capture) into a captured output LINE that
+//// `KSuccess` threads out as data (→ runner.Reduced → scheduler → engine → REPL),
+//// leaving the heap untouched. This is a faithful port of an already-approved
+//// system predicate (self.glp `procedure _output(_?)`, Dart `bodyKernels` `_output`
+//// /1), not a §1.14 language extension.
 
 import gleam/list
 import gleam/result
 import glp/engine/arith.{type NumV, NInt}
+import glp/engine/output_capture
 import glp/runtime/heap.{type Heap, Bound}
 import glp/runtime/suspension.{type GoalRef}
 import glp/runtime/terms.{type Term, ConstTerm, StructTerm, VarRef}
 
-/// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying
-/// the updated heap and any goals reactivated by binding the output writer.
+/// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying the
+/// updated heap, any goals reactivated by binding the output writer, and any
+/// captured program-output lines (`_output`/1 — empty for the arithmetic kernels).
 pub type KernelOutcome {
-  KSuccess(heap: Heap, woken: List(GoalRef))
+  KSuccess(heap: Heap, woken: List(GoalRef), output: List(String))
   KAbort(detail: String)
 }
 
@@ -44,6 +53,7 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     "_add", 3 | "_sub", 3 | "_mul", 3 | "_div", 3 | "_idiv", 3 | "_mod", 3 ->
       True
     "_neg", 2 -> True
+    "_output", 1 -> True
     _, _ -> False
   }
 }
@@ -71,6 +81,11 @@ pub fn dispatch(
         Ok(x) -> Ok(bind_result(heap, out, arith.neg(x)))
         Error(_) -> Ok(KAbort(name <> ": operand must be a number"))
       }
+    // '_output'(T): render the ground term to one captured line; heap unchanged,
+    // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
+    // the output, threaded as data here rather than `print`ed inline).
+    "_output", 1, [t] ->
+      Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)]))
     _, _, _ -> Error(Nil)
   }
 }
@@ -118,7 +133,7 @@ fn bind_result(heap: Heap, out: Term, value: NumV) -> KernelOutcome {
       case heap.is_writer(heap, addr) {
         True ->
           case heap.bind_writer(heap, addr, arith.to_term(value)) {
-            Ok(#(h2, woken)) -> KSuccess(h2, woken)
+            Ok(#(h2, woken)) -> KSuccess(h2, woken, [])
             Error(_) -> KAbort("body kernel: output writer already bound")
           }
         False -> KAbort("body kernel: output argument is not a writer")
