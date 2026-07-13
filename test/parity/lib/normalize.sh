@@ -26,9 +26,27 @@
 normalize_outcome() {
   tr -d '\r' \
     | sed -E 's/^GLP> //' \
-    | sed -E 's/= [A-Z][A-Za-z_]*[0-9]+([[:space:]]|$)/= <unbound>\1/g' \
-    | sed -E 's/_G[0-9]+/_Gn/g; s/_[0-9]+/_Gn/g' \
+    | sed -E '/^Error:/d' \
     | sed -E 's/([A-Za-z_][A-Za-z0-9_]*)\?([[:space:],)]|\]|$)/\1\2/g' \
+    | sed -E 's/= [A-Z][A-Za-z_]*[0-9]+[[:space:]]*$/= <unbound>/' \
+    | awk '
+        # Renumber internal variable ids (X<n> / _G<n> / _<n>) that appear in the
+        # VALUE part of a "<name> = <value>" line to stable _V<k> tokens, first-seen
+        # order, CONSISTENT across the goal (so shared ids -- e.g. the two ends of a
+        # channel, ch(X7,X9)/ch(X9,X7) -- keep their sharing pattern). The left-hand
+        # query-var NAME is protected (only the substring after " = " is rewritten).
+        {
+          line=$0; eq=index(line," = ")
+          if (eq>0) {
+            lhs=substr(line,1,eq+2); rhs=substr(line,eq+3); out=""
+            while (match(rhs, /X[0-9]+|_G[0-9]+|_[0-9]+/)) {
+              tok=substr(rhs,RSTART,RLENGTH); pre=substr(rhs,1,RSTART-1)
+              if (!(tok in map)) map[tok]="_V" (++k)
+              out=out pre map[tok]; rhs=substr(rhs,RSTART+RLENGTH)
+            }
+            print lhs out rhs
+          } else { print line }
+        }' \
     | awk '{ln[NR]=$0} END{last=NR; while(last>0 && ln[last]=="") last--; s=1; while(s<=last && ln[s]=="") s++; for(i=s;i<=last;i++) print ln[i]}'
 }
 

@@ -218,9 +218,18 @@ record_load_section B "${LOAD_B[@]}"
 record_load_section C "${LOAD_C[@]}"
 record_load_section D "${LOAD_D[@]}"
 
-# Commit the batched outputs (sorted for stable diffs).
-sort "$GOLDENS/load.golden.tmp"       -o "$GOLDENS/load.golden"        && rm -f "$GOLDENS/load.golden.tmp"
-sort "$GOLDENS/loadstage.dart.tsv.tmp" -o "$GOLDENS/loadstage.dart.tsv" && rm -f "$GOLDENS/loadstage.dart.tsv.tmp"
-sort "$GOLDENS/timings.dart.tsv.tmp"   -o "$GOLDENS/timings.dart.tsv"   && rm -f "$GOLDENS/timings.dart.tsv.tmp"
+# Commit the batched load/timing outputs ONLY on a full run (empty FILTER) or a
+# section filter (B/C/D/E). A runtime-block filter (e.g. "a20") must NOT clobber the
+# committed load.golden / timings with its partial data — leave those files intact.
+case "$FILTER" in
+    ''|B|C|D|E)
+        sort "$GOLDENS/load.golden.tmp"        -o "$GOLDENS/load.golden"        && rm -f "$GOLDENS/load.golden.tmp"
+        sort "$GOLDENS/loadstage.dart.tsv.tmp" -o "$GOLDENS/loadstage.dart.tsv" && rm -f "$GOLDENS/loadstage.dart.tsv.tmp"
+        sort "$GOLDENS/timings.dart.tsv.tmp"   -o "$GOLDENS/timings.dart.tsv"   && rm -f "$GOLDENS/timings.dart.tsv.tmp"
+        ;;
+    *)
+        rm -f "$GOLDENS/load.golden.tmp" "$GOLDENS/loadstage.dart.tsv.tmp" "$GOLDENS/timings.dart.tsv.tmp"
+        ;;
+esac
 
 echo "record_dart_goldens.sh: done." >&2
