@@ -127,11 +127,14 @@ Parity may **not** be declared until these exist as named programs in
 | **GAP-G2** | C-12 | clause-head standardize-apart per reduction + recursion non-aliasing | `gap_g2_standardize_apart.glp` |
 | **GAP-G3** | C-13 | fairness/liveness — a perpetually-reducible goal is eventually reduced | `gap_g3_fairness.glp` |
 | **GAP-G8** | C-18 | guard three-valued coverage (`=:=`, `<`, type tests, `known`) — succeed/suspend/fail each observable | `gap_g8_guard_three_valued.glp` |
-| **FORK-1** | C-19 / C-15 | circular-term deref discriminator boundary — an **OPEN owner-gated** fork (loud-all vs structural-vs-cycle); recorded as a **FORK**, its behaviour captured but **not** forced to agree, and **never** golden-fudged | `fork_1_circular_deref.glp` |
+| **FORK-1** | C-19 / C-15 | circular-term deref discriminator — was an **OPEN owner-gated** fork (loud-all vs structural-vs-cycle); **RESOLVED owner-directed 2026-07-13** to structural cycle detection. All three runtimes now render `<circular>` at the revisit — an **AGREEING** block | `fork_1_circular_deref.glp` |
 
-FORK-1 is owner-gated (must NOT be Claude-decided). Its case records both instances'
-observed behaviour side by side; a divergence there is the *expected* recorded fork, not a
-parity failure.
+FORK-1 was owner-gated (must NOT be Claude-decided). It was **RESOLVED owner-directed
+2026-07-13** in favour of structural cycle detection: the Gleam envelope deep-resolve now
+detects a revisited variable on the deref path and emits a `<circular>` marker (the Dart/C#
+REPL deref behaviour), so all three runtimes converge on `f(f(<circular>))` /
+`pair(a, pair(a, <circular>))`. `fork_1` is therefore an ordinary **agreeing** corpus block;
+`test/parity/expected.list` carries no classification.
 
 ---
 
