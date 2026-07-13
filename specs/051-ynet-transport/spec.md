@@ -245,9 +245,9 @@ an egress violating the exit-abuse policy is refused.
 3. **Given** the default-deny posture (from olamnit `EgressService`), **When** egress is not
    explicitly elected/authorized, **Then** it is denied by default.
 4. **Given** the exit-abuse policy, **When** an egress request violates it, **Then** the gate refuses
-   and the refusal is observable. [NEEDS CLARIFICATION: the exit-abuse policy is BUILD-NEW with no
-   corpus reference (cycle-2 §4 D5) — what classes of egress does a curated gate refuse (destination
-   allow/deny lists, rate/volume caps, content classes), and who administers them?]
+   and the refusal is observable. The exit-abuse policy (BUILD-NEW, no corpus reference) enforces, in
+   order, **destination allow/deny lists → per-caller rate/volume caps → egress-class filters**,
+   expressed as gate-operator-signed policy records, default-deny when unauthorized (research.md R2).
 
 ---
 
@@ -316,8 +316,9 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
   relay yields a path, the transport MUST report a distinct **unreachable** reason (not an auth
   failure and not a silent drop) so the consuming 056 service can surface authorized-but-unreachable.
 - **Relay revoked mid-path**: A relay's 056-side admission is revoked while a path through it is
-  live. [NEEDS CLARIFICATION: does revocation tear down in-flight paths immediately, or only prevent
-  new path selection through that relay? — mirror of the 056 US3 revocation-race question.]
+  live. Revocation is **fail-safe immediate for new path selection** and **tears down in-flight paths
+  at the next frame boundary** (graceful bounded drain, not mid-frame), surfacing
+  `authorized-but-unreachable` so the caller re-paths (research.md R3; kept identical to 056 US3).
 - **Sealed route requested but only clear paths available**: The transport MUST fail closed rather
   than silently downgrade a requested seal to a clear route (never weaken the requested anonymity).
 - **GLPNET `QuicTransport` co-existence during migration**: While the dual-leaf transition is live
@@ -325,8 +326,10 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
   the single authority and GLPNET native-QUIC is harvested, not run as a competing permanent owner.
 - **Per-node keying vs GLPNET shared-cert**: GLPNET's one club-wide certificate conflicts with YNET
   per-node keying (nodeId = H(pubkey)). Per-node keying wins in the YNET-owned transport; the
-  migration path off the shared cert MUST be explicit. [NEEDS CLARIFICATION: migration sequencing —
-  does a node run both identities during transition, and how is the cutover authorized?]
+  migration path off the shared cert MUST be explicit: a node runs **dual identity** during
+  transition (peers prefer the per-node key when both verify) and cuts over to per-node-only via an
+  **operator-signed per-node migration record**, after which the shared-cert path is refused
+  (monotonic, no downgrade) — research.md R4.
 - **Browser tier asked for a native-only capability**: A browser-tier endpoint requests a capability
   only the native tier provides (e.g. serving as a hole-punch relay). The transport MUST refuse
   cleanly with a tier-capability reason rather than attempt an impossible native path.
@@ -464,10 +467,10 @@ forwarding hook (so the 056 policy has a real enforcement surface, not a heurist
 - **SC-001**: Two reachable nodes establish a YNET QUIC link in which each verified peer identity
   equals its node public key, and complete an end-to-end `connect → send → receive`; a key/identity
   mismatch is rejected **100%** of the time before any application frame (US1).
-- **SC-002**: For the punchable NAT class, **≥ a defined success rate** of direct hole-punches
-  succeed; for the non-punchable class, **100%** of connections fall back to a relay path with **zero
-  lost pending frames** and a correctly reported path type (US2). [NEEDS CLARIFICATION: target direct
-  hole-punch success rate per NAT class.]
+- **SC-002**: For the endpoint-independent/cone NAT class, **≥ 90%** of direct hole-punches succeed
+  within the **≤ 5 s** budget; for the symmetric/non-punchable class, **100%** of connections fall
+  back to a relay path with **zero lost pending frames** and a correctly reported path type
+  (US2; research.md R1).
 - **SC-003**: A self-certified DHT record stored by one node is returned by an iterative lookup from
   an unrelated node, and **100%** of records whose signature does not match the claimed key are
   rejected (US3).
