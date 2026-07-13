@@ -323,6 +323,13 @@ fn terminal_status(engine: Engine) -> RunStatus {
   }
 }
 
+/// The terminal status for the engine's CURRENT drained state (Success vs
+/// Suspended) — the facade `step` seam builds the result envelope from this once
+/// the queue is idle (T029 cap 3 completion).
+pub fn status(engine: Engine) -> RunStatus {
+  terminal_status(engine)
+}
+
 /// The sorted, deduped reader addresses that the still-suspended goals are blocked
 /// on (Dart `rt.suspended.keys`). Entries are dropped as they empty, so every key
 /// is a live blocking reader.

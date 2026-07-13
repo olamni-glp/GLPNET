@@ -68,7 +68,32 @@ pub opaque type Engine {
     prelude_source: String,
     program: BytecodeProgram,
     warnings: List(TypeWarning),
+    /// An in-progress interactive run (the `start`/`step` seam), or `None` between
+    /// runs. One-shot `run` never touches it (its scheduler state is internal).
+    session: Option(RunSession),
   )
+}
+
+/// A live, steppable run: the in-progress scheduler + the query variables to
+/// deep-resolve once it reaches quiescence (facade `step`, contract Engine
+/// surface). Held on the `Engine` as the "live run-state" the interactive step
+/// needs (deferred from T029 to US2).
+type RunSession {
+  RunSession(sched: scheduler.Engine, query_var_writers: List(#(String, Int)))
+}
+
+/// One `step` of an interactive run — the stepping counterpart to one-shot `run`
+/// (contract `step(Engine) -> #(Engine, Event)`). `Reduced`/`Suspended` are
+/// intermediate per-goal outcomes (the run continues); `Done` carries the finished
+/// run's envelope + captured output (the queue drained, or a goal failed — read
+/// `envelope.status`); `Idle` means no active session (call `start` first);
+/// `Errored` is a surfaced runner fault.
+pub type Event {
+  Reduced(procedure: String, woken: List(Int), spawned: List(Int))
+  Suspended(procedure: String, on: List(Int))
+  Done(envelope: ResultEnvelope, output: List(String))
+  Idle
+  Errored(detail: String)
 }
 
 /// A fresh engine reading the root `programs/self.glp` from disk. A missing /
@@ -90,6 +115,7 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
         prelude_source: prelude_source,
         program: prelude_program,
         warnings: [],
+        session: None,
       )
     Error(staged) ->
       panic as {
@@ -212,13 +238,29 @@ fn run_goal(
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
 
+  use #(envelope, output) <- result.try(finish_run(
+    sched,
+    boot.query_var_writers,
+    status,
+  ))
+  Ok(#(envelope, output, scheduler.trace_lines(sched)))
+}
+
+/// Build the result envelope + captured output from a finished scheduler run
+/// (shared by one-shot `run` and the interactive `step` at quiescence). `status`
+/// is the run's terminal status (map_status derives the envelope status + blocking
+/// readers + error).
+fn finish_run(
+  sched: scheduler.Engine,
+  query_var_writers: List(#(String, Int)),
+  status: scheduler.RunStatus,
+) -> Result(#(ResultEnvelope, List(String)), String) {
   let #(exec_status, blocking_readers, error) = map_status(status)
   let output = scheduler.captured_output(sched)
-  let traces = scheduler.trace_lines(sched)
   case
     builder.build_result_envelope(
       scheduler.heap(sched),
-      boot.query_var_writers,
+      query_var_writers,
       exec_status,
       blocking_readers,
       instance_id,
@@ -226,9 +268,73 @@ fn run_goal(
       error,
     )
   {
-    Ok(#(_heap, envelope)) -> Ok(#(envelope, output, traces))
+    Ok(#(_heap, envelope)) -> Ok(#(envelope, output))
     Error(build_error) ->
       Error("result-envelope build failed: " <> string.inspect(build_error))
+  }
+}
+
+// ── interactive stepping: start / step / Event (contract Engine surface) ──────
+
+/// Boot `goal` into an interactive run session on the engine (the `step`
+/// counterpart to one-shot `run`). A parse / missing-predicate / goal-boot failure
+/// returns `Error(reason)` with the engine's session unchanged. Any prior session
+/// is replaced.
+pub fn start(engine: Engine, goal: String) -> Result(Engine, String) {
+  use atom <- result.try(parse_goal(goal))
+  let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
+  use entry <- result.try(
+    program.label_pc(engine.program, label)
+    |> result.replace_error("predicate " <> label <> " not found"),
+  )
+  use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
+  let sched = scheduler.new(engine.program, boot.heap)
+  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+  Ok(Engine(..engine, session: Some(RunSession(sched, boot.query_var_writers))))
+}
+
+/// Advance an interactive run one reduction (contract `step`). Without a session,
+/// returns `Idle`. `Reduced`/`Suspended` continue the session; a drained queue or a
+/// failed goal ends it, clearing the session and returning `Done(envelope, output)`
+/// (inspect `envelope.status` for success vs suspended vs failed).
+pub fn step(engine: Engine) -> #(Engine, Event) {
+  case engine.session {
+    None -> #(engine, Idle)
+    Some(session) -> {
+      let #(sched, outcome) =
+        scheduler.step(session.sched, default_reduction_budget)
+      case outcome {
+        scheduler.StepReduced(_, procedure, woken, spawned) -> #(
+          Engine(..engine, session: Some(RunSession(..session, sched: sched))),
+          Reduced(procedure, woken, spawned),
+        )
+        scheduler.StepSuspended(_, procedure, on) -> #(
+          Engine(..engine, session: Some(RunSession(..session, sched: sched))),
+          Suspended(procedure, on),
+        )
+        scheduler.StepFailed(_, _procedure) ->
+          finish_step(engine, sched, session, scheduler.Failed)
+        scheduler.StepIdle ->
+          finish_step(engine, sched, session, scheduler.status(sched))
+        scheduler.StepErrored(fault) -> #(
+          Engine(..engine, session: None),
+          Errored(string.inspect(fault)),
+        )
+      }
+    }
+  }
+}
+
+fn finish_step(
+  engine: Engine,
+  sched: scheduler.Engine,
+  session: RunSession,
+  status: scheduler.RunStatus,
+) -> #(Engine, Event) {
+  let cleared = Engine(..engine, session: None)
+  case finish_run(sched, session.query_var_writers, status) {
+    Ok(#(envelope, output)) -> #(cleared, Done(envelope, output))
+    Error(reason) -> #(cleared, Errored(reason))
   }
 }
 
