@@ -2360,6 +2360,8 @@ fn eval_guard(predicate: String, args: List(Term)) -> GuardVerdict {
     "constant" -> type_test(args, is_constant)
     "list" | "is_list" -> type_test(args, is_list_term)
     "compound" | "tuple" -> type_test(args, is_compound)
+    // MutualRef sentinel test (Dart `is_mutual_ref`); also ground-implying.
+    "is_mutual_ref" -> type_test(args, kernels.is_mutual_ref)
     "unknown" -> type_test(args, is_unbound)
     // `known`/`ground` are normally specialized (Known/Ground opcodes); the
     // generic arms mirror Dart's `_evaluateGuard` for the fallback path.

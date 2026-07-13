@@ -41,7 +41,17 @@ import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/output_capture
 import glp/runtime/heap.{type Heap, Bound}
 import glp/runtime/suspension.{type GoalRef}
-import glp/runtime/terms.{type Term, ConstAtom, ConstTerm, StructTerm, VarRef}
+import glp/runtime/terms.{
+  type Term, ConstAtom, ConstInt, ConstTerm, StructTerm, VarRef,
+}
+
+/// The functor of the GLP mutual-reference (O(1) stream append) sentinel term.
+/// The Dart runtime has a dedicated `MutualRefTerm` variant; Gleam's `Term` has
+/// no custom cell, so a mutual ref is `'$mutual_ref'(<currentWriterAddr:int>)` —
+/// a ground struct threaded immutably through the GLP `stream_append` chain (the
+/// Dart mutation of `currentWriterAddr` is an optimization the GLP code does not
+/// rely on: `mwm_copy` threads `Ref → Ref1`).
+const mutual_ref_functor = "$mutual_ref"
 
 /// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying the
 /// updated heap, any goals reactivated by binding the output writer, and any
@@ -77,6 +87,10 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_ceil", 2 -> True
     // Univ (=../2) — list↔compound (Dart listToTupleKernel / tupleToListKernel).
     "_list_to_tuple", 2 | "_tuple_to_list", 2 -> True
+    // Mutual-reference (O(1) stream append; mwm/2) — Dart mutualRef kernels.
+    "_allocate_mutual_reference", 2
+    | "_stream_append", 3
+    | "_close_mutual_reference", 1 -> True
     "_output", 1 -> True
     _, _ -> False
   }
@@ -153,6 +167,57 @@ pub fn dispatch(
             ]),
           ))
         _ -> Ok(KAbort("_tuple_to_list: first argument must be a structure"))
+      }
+    // ── mutual reference (O(1) stream append) — Dart mutualRef kernels ────────
+    // allocate(Ref, Out): Out is the (unbound writer) stream head; Ref becomes a
+    // sentinel capturing Out's writer addr as the current append point.
+    "_allocate_mutual_reference", 2, [ref_out, stream_w] ->
+      case deref_term(heap, stream_w) {
+        VarRef(addr) ->
+          case heap.is_writer(heap, addr) {
+            True -> Ok(bind_term(heap, ref_out, make_mutual_ref(addr)))
+            False ->
+              Ok(KAbort(
+                "_allocate_mutual_reference: 2nd arg must be an unbound writer",
+              ))
+          }
+        _ ->
+          Ok(KAbort(
+            "_allocate_mutual_reference: 2nd arg must be an unbound writer",
+          ))
+      }
+    // stream_append(RefIn, Value, RefOut): bind the current writer to a cons cell
+    // '.'(Value, NewTail?), then RefOut is a fresh sentinel at NewTail's writer.
+    "_stream_append", 3, [ref_in, value, ref_out] ->
+      case mutual_ref_addr(heap, ref_in) {
+        Ok(cur) -> {
+          let v = deref_term(heap, value)
+          let #(h1, w2, r2) = heap.allocate_variable(heap)
+          let cons = StructTerm(".", [v, VarRef(r2)])
+          case heap.bind_writer(h1, cur, cons) {
+            Ok(#(h2, woken1)) ->
+              Ok(carry_woken(
+                woken1,
+                bind_term(h2, ref_out, make_mutual_ref(w2)),
+              ))
+            Error(_) ->
+              Ok(KAbort("_stream_append: current writer already bound"))
+          }
+        }
+        Error(_) ->
+          Ok(KAbort("_stream_append: 1st arg must be a mutual reference"))
+      }
+    // close(Ref): bind the current writer to nil (terminate the stream).
+    "_close_mutual_reference", 1, [ref] ->
+      case mutual_ref_addr(heap, ref) {
+        Ok(cur) ->
+          case heap.bind_writer(heap, cur, ConstTerm(ConstAtom("nil"))) {
+            Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, []))
+            Error(_) ->
+              Ok(KAbort("_close_mutual_reference: current writer already bound"))
+          }
+        Error(_) ->
+          Ok(KAbort("_close_mutual_reference: argument must be a mutual reference"))
       }
     // '_output'(T): render the ground term to one captured line; heap unchanged,
     // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
@@ -253,6 +318,38 @@ fn terms_to_glp_list(items: List(Term)) -> Term {
   case items {
     [] -> ConstTerm(ConstAtom("nil"))
     [h, ..t] -> StructTerm(".", [h, terms_to_glp_list(t)])
+  }
+}
+
+/// The mutual-ref sentinel capturing `addr` as its current append point.
+fn make_mutual_ref(addr: Int) -> Term {
+  StructTerm(mutual_ref_functor, [ConstTerm(ConstInt(addr))])
+}
+
+/// Extract the current-writer addr from a mutual-ref sentinel term.
+fn mutual_ref_addr(heap: Heap, term: Term) -> Result(Int, Nil) {
+  case deref_term(heap, term) {
+    StructTerm(f, [ConstTerm(ConstInt(a))]) if f == mutual_ref_functor -> Ok(a)
+    _ -> Error(Nil)
+  }
+}
+
+/// Is `term` a mutual-ref sentinel? (the `is_mutual_ref/1` guard; exported so the
+/// runner's guard evaluator can test it without duplicating the representation).
+pub fn is_mutual_ref(term: Term) -> Bool {
+  case term {
+    StructTerm(f, [ConstTerm(ConstInt(_))]) if f == mutual_ref_functor -> True
+    _ -> False
+  }
+}
+
+/// Prepend earlier reactivations to a kernel outcome (threading `bind_writer`
+/// wakes across the two binds `_stream_append` performs).
+fn carry_woken(earlier: List(GoalRef), outcome: KernelOutcome) -> KernelOutcome {
+  case outcome {
+    KSuccess(h, woken, output) ->
+      KSuccess(h, list.append(earlier, woken), output)
+    KAbort(_) -> outcome
   }
 }
 
