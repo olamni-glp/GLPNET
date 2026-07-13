@@ -17,12 +17,14 @@
 //// `_evaluateArithmetic`, `_bindResult`), sharing the numeric core in
 //// `glp/engine/arith`.
 ////
-//// The extended math kernels (`_abs`/`_sqrt`/trig/`_exp`/`_log*`/`_pow`),
-//// type-conversions, and the effectful `_now`/`_send` kernels are NOT registered
-//// here: they are outside the pure-arithmetic MVP (some need a math library or
-//// wall-clock/IO the standalone engine does not have). A BODY Spawn to an
-//// unregistered kernel surfaces as a runner error — loud, never guessed (Language
-//// Authority §1.14) — rather than a wrong result.
+//// The extended math kernels (`_abs`/`_sqrt`/trig/`_exp`/`_log*`/`_pow`) and the
+//// type-conversions (`_integer`/`_real`/`_round`/`_floor`/`_ceil`) ARE registered
+//// here — faithful ports of the Dart `body_kernels.dart` math/conversion kernels,
+//// with the transcendental functions bridged to Erlang `:math` (a BEAM builtin, no
+//// external package). The effectful `_now`/`_send` kernels remain unregistered
+//// (they need wall-clock/IO the standalone engine does not have); a BODY Spawn to
+//// an unregistered kernel surfaces as a runner error — loud, never guessed
+//// (Language Authority §1.14) — rather than a wrong result.
 ////
 //// `_output`/1 (T034) IS registered: it renders its ground argument (Dart
 //// `formatGroundTerm`, glp/engine/output_capture) into a captured output LINE that
@@ -31,9 +33,11 @@
 //// system predicate (self.glp `procedure _output(_?)`, Dart `bodyKernels` `_output`
 //// /1), not a §1.14 language extension.
 
+import gleam/float
+import gleam/int
 import gleam/list
 import gleam/result
-import glp/engine/arith.{type NumV, NInt}
+import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/output_capture
 import glp/runtime/heap.{type Heap, Bound}
 import glp/runtime/suspension.{type GoalRef}
@@ -53,6 +57,24 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     "_add", 3 | "_sub", 3 | "_mul", 3 | "_div", 3 | "_idiv", 3 | "_mod", 3 ->
       True
     "_neg", 2 -> True
+    "_pow", 3 -> True
+    // Unary math + type-conversion kernels (Dart body_kernels.dart math/conv).
+    "_abs", 2
+    | "_sqrt", 2
+    | "_sin", 2
+    | "_cos", 2
+    | "_tan", 2
+    | "_exp", 2
+    | "_ln", 2
+    | "_log10", 2
+    | "_asin", 2
+    | "_acos", 2
+    | "_atan", 2
+    | "_integer", 2
+    | "_real", 2
+    | "_round", 2
+    | "_floor", 2
+    | "_ceil", 2 -> True
     "_output", 1 -> True
     _, _ -> False
   }
@@ -81,6 +103,29 @@ pub fn dispatch(
         Ok(x) -> Ok(bind_result(heap, out, arith.neg(x)))
         Error(_) -> Ok(KAbort(name <> ": operand must be a number"))
       }
+    // ── math + type-conversion kernels (Dart body_kernels.dart) ───────────────
+    "_abs", 2, [a, out] -> Ok(unary(heap, a, out, fn(x) { Ok(abs_num(x)) }))
+    "_sqrt", 2, [a, out] -> Ok(unary(heap, a, out, sqrt_num))
+    "_sin", 2, [a, out] -> Ok(unary(heap, a, out, real_fn(erl_sin)))
+    "_cos", 2, [a, out] -> Ok(unary(heap, a, out, real_fn(erl_cos)))
+    "_tan", 2, [a, out] -> Ok(unary(heap, a, out, real_fn(erl_tan)))
+    "_exp", 2, [a, out] -> Ok(unary(heap, a, out, real_fn(erl_exp)))
+    "_ln", 2, [a, out] -> Ok(unary(heap, a, out, ln_num))
+    "_log10", 2, [a, out] -> Ok(unary(heap, a, out, log10_num))
+    "_asin", 2, [a, out] -> Ok(unary(heap, a, out, arc_fn(erl_asin)))
+    "_acos", 2, [a, out] -> Ok(unary(heap, a, out, arc_fn(erl_acos)))
+    "_atan", 2, [a, out] -> Ok(unary(heap, a, out, real_fn(erl_atan)))
+    "_integer", 2, [a, out] ->
+      Ok(unary(heap, a, out, fn(x) { Ok(NInt(arith_trunc(x))) }))
+    "_real", 2, [a, out] ->
+      Ok(unary(heap, a, out, fn(x) { Ok(NReal(num_to_float(x))) }))
+    "_round", 2, [a, out] ->
+      Ok(unary(heap, a, out, fn(x) { Ok(NInt(round_num(x))) }))
+    "_floor", 2, [a, out] ->
+      Ok(unary(heap, a, out, fn(x) { Ok(NInt(floor_num(x))) }))
+    "_ceil", 2, [a, out] ->
+      Ok(unary(heap, a, out, fn(x) { Ok(NInt(ceil_num(x))) }))
+    "_pow", 3, [a, b, out] -> Ok(binary(heap, a, b, out, pow_num))
     // '_output'(T): render the ground term to one captured line; heap unchanged,
     // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
     // the output, threaded as data here rather than `print`ed inline).
@@ -141,6 +186,170 @@ fn bind_result(heap: Heap, out: Term, value: NumV) -> KernelOutcome {
     _ -> KAbort("body kernel: output argument is not a writer")
   }
 }
+
+/// A unary math/conversion kernel (Dart `absKernel`/`sqrtKernel`/… `_getNum` +
+/// `_bindResult`). A domain error (`Error` from `op`) aborts, as Dart does for
+/// `sqrt(x<0)` / `ln(x<=0)` / `asin`|`acos`(|x|>1).
+fn unary(
+  heap: Heap,
+  a: Term,
+  out: Term,
+  op: fn(NumV) -> Result(NumV, Nil),
+) -> KernelOutcome {
+  case eval_num(heap, a) {
+    Ok(x) ->
+      case op(x) {
+        Ok(r) -> bind_result(heap, out, r)
+        Error(_) -> KAbort("math kernel: domain error / bad operand")
+      }
+    Error(_) -> KAbort("math kernel: operand must be a number")
+  }
+}
+
+fn num_to_float(n: NumV) -> Float {
+  case n {
+    NInt(i) -> int.to_float(i)
+    NReal(f) -> f
+  }
+}
+
+/// `abs` preserves int/float (Dart `x.abs()`).
+fn abs_num(n: NumV) -> NumV {
+  case n {
+    NInt(i) -> NInt(int.absolute_value(i))
+    NReal(f) -> NReal(float.absolute_value(f))
+  }
+}
+
+/// `sqrt` → double; aborts on a negative operand (Dart `x < 0`).
+fn sqrt_num(n: NumV) -> Result(NumV, Nil) {
+  let x = num_to_float(n)
+  case x <. 0.0 {
+    True -> Error(Nil)
+    False -> Ok(NReal(erl_sqrt(x)))
+  }
+}
+
+/// `ln` → double; aborts on a non-positive operand (Dart `x <= 0`).
+fn ln_num(n: NumV) -> Result(NumV, Nil) {
+  let x = num_to_float(n)
+  case x <=. 0.0 {
+    True -> Error(Nil)
+    False -> Ok(NReal(erl_log(x)))
+  }
+}
+
+/// `log10` → double; aborts on a non-positive operand (Dart `x <= 0`).
+fn log10_num(n: NumV) -> Result(NumV, Nil) {
+  let x = num_to_float(n)
+  case x <=. 0.0 {
+    True -> Error(Nil)
+    False -> Ok(NReal(erl_log10(x)))
+  }
+}
+
+/// A total real→real function (`sin`/`cos`/`tan`/`exp`/`atan`).
+fn real_fn(f: fn(Float) -> Float) -> fn(NumV) -> Result(NumV, Nil) {
+  fn(n) { Ok(NReal(f(num_to_float(n)))) }
+}
+
+/// `asin`/`acos`: aborts when |x| > 1 (Dart `x < -1 || x > 1`).
+fn arc_fn(f: fn(Float) -> Float) -> fn(NumV) -> Result(NumV, Nil) {
+  fn(n) {
+    let x = num_to_float(n)
+    case x <. -1.0 || x >. 1.0 {
+      True -> Error(Nil)
+      False -> Ok(NReal(f(x)))
+    }
+  }
+}
+
+/// `pow`: int base ^ non-negative int exp → int (Dart `math.pow(int,int>=0)`),
+/// else float (Dart promotes to double).
+fn pow_num(a: NumV, b: NumV) -> Result(NumV, Nil) {
+  case a, b {
+    NInt(base), NInt(exp) ->
+      case exp >= 0 {
+        True -> Ok(NInt(int_pow(base, exp)))
+        False -> Ok(NReal(erl_pow(int.to_float(base), int.to_float(exp))))
+      }
+    _, _ -> Ok(NReal(erl_pow(num_to_float(a), num_to_float(b))))
+  }
+}
+
+fn int_pow(base: Int, exp: Int) -> Int {
+  case exp <= 0 {
+    True -> 1
+    False -> base * int_pow(base, exp - 1)
+  }
+}
+
+/// `integer` truncates toward zero (Dart `x.toInt()`).
+fn arith_trunc(n: NumV) -> Int {
+  case n {
+    NInt(i) -> i
+    NReal(f) -> float.truncate(f)
+  }
+}
+
+/// `round` (Dart `x.round()`); an int is unchanged.
+fn round_num(n: NumV) -> Int {
+  case n {
+    NInt(i) -> i
+    NReal(f) -> float.round(f)
+  }
+}
+
+/// `floor`/`ceil` → int (Dart `x.floor()`/`x.ceil()`); an int is unchanged. The
+/// `floor`/`ceiling` result is already whole, so `float.round` converts exactly.
+fn floor_num(n: NumV) -> Int {
+  case n {
+    NInt(i) -> i
+    NReal(f) -> float.round(float.floor(f))
+  }
+}
+
+fn ceil_num(n: NumV) -> Int {
+  case n {
+    NInt(i) -> i
+    NReal(f) -> float.round(float.ceiling(f))
+  }
+}
+
+// Erlang `:math` FFI for the transcendental functions Gleam's stdlib lacks
+// (BEAM builtin — no external package, so the deps-policy guard is unaffected).
+@external(erlang, "math", "sqrt")
+fn erl_sqrt(x: Float) -> Float
+
+@external(erlang, "math", "sin")
+fn erl_sin(x: Float) -> Float
+
+@external(erlang, "math", "cos")
+fn erl_cos(x: Float) -> Float
+
+@external(erlang, "math", "tan")
+fn erl_tan(x: Float) -> Float
+
+@external(erlang, "math", "exp")
+fn erl_exp(x: Float) -> Float
+
+@external(erlang, "math", "log")
+fn erl_log(x: Float) -> Float
+
+@external(erlang, "math", "log10")
+fn erl_log10(x: Float) -> Float
+
+@external(erlang, "math", "asin")
+fn erl_asin(x: Float) -> Float
+
+@external(erlang, "math", "acos")
+fn erl_acos(x: Float) -> Float
+
+@external(erlang, "math", "atan")
+fn erl_atan(x: Float) -> Float
+
+@external(erlang, "math", "pow")
+fn erl_pow(x: Float, y: Float) -> Float
 
 /// Evaluate an operand numerically (Dart `_getNum`): a numeric constant, a heap
 /// VarRef dereferenced to a number, or an arithmetic StructTerm.
