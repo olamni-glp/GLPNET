@@ -45,7 +45,9 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/set.{type Set}
+import gleam/string
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
+import glp/engine/goal_format
 import glp/engine/runner.{type RunnerFault, type SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
 import glp/runtime/heap.{type Heap}
@@ -67,6 +69,11 @@ pub opaque type Engine {
     /// Captured `_output/1` program-output lines accumulated across reductions, in
     /// emission order (T034). Read after `run` via `captured_output`.
     output: List(String),
+    /// Reduction-trace mode (`:trace`). When on, each step appends a reference-shape
+    /// trace line (`head :- body` / `goal → suspended` / `goal → failed`).
+    trace: Bool,
+    /// Accumulated trace lines in emission order (empty unless `trace`).
+    trace_lines: List(String),
   )
 }
 
@@ -123,7 +130,68 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     blocking: dict.new(),
     next_id: 1,
     output: [],
+    trace: False,
+    trace_lines: [],
   )
+}
+
+/// Enable/disable reduction tracing (`:trace`). Set before `run`/`step`.
+pub fn with_trace(engine: Engine, on: Bool) -> Engine {
+  Engine(..engine, trace: on)
+}
+
+/// The accumulated reduction-trace lines, in emission order (T-US2 `:trace`).
+pub fn trace_lines(engine: Engine) -> List(String) {
+  engine.trace_lines
+}
+
+/// Trace a committed reduction as `head :- body` (Dart `onReduction`): the reduced
+/// goal's head over the post-commit heap, and its body goals (the spawned goals)
+/// or `true` for a unit clause. No-op unless tracing.
+fn trace_reduction(
+  engine: Engine,
+  act: Activation,
+  spawned: List(SpawnReq),
+  heap: Heap,
+) -> Engine {
+  case engine.trace {
+    False -> engine
+    True -> {
+      let head = goal_format.format_goal(act.procedure, act.regs, heap)
+      let body = case spawned {
+        [] -> "true"
+        _ ->
+          spawned
+          |> list.map(fn(req) {
+            goal_format.format_goal(req.procedure, req.regs, heap)
+          })
+          |> string.join(", ")
+      }
+      append_trace(engine, head <> " :- " <> body)
+    }
+  }
+}
+
+/// Trace a terminal step (`goal → suspended` / `goal → failed`). No-op unless
+/// tracing.
+fn trace_terminal(
+  engine: Engine,
+  act: Activation,
+  heap: Heap,
+  suffix: String,
+) -> Engine {
+  case engine.trace {
+    False -> engine
+    True ->
+      append_trace(
+        engine,
+        goal_format.format_goal(act.procedure, act.regs, heap) <> suffix,
+      )
+  }
+}
+
+fn append_trace(engine: Engine, line: String) -> Engine {
+  Engine(..engine, trace_lines: list.append(engine.trace_lines, [line]))
 }
 
 /// The engine's current heap (query outputs are read from here after `run`).
@@ -204,6 +272,8 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
               goals: dict.delete(engine.goals, act.goal_id),
               output: list.append(engine.output, out),
             )
+          // Trace the committed reduction as `head :- body` (Dart onReduction).
+          let engine = trace_reduction(engine, act, spawned, h)
           let #(engine, spawned_ids) =
             list.map_fold(spawned, engine, spawn_goal)
           let engine = list.fold(woken, engine, reactivate)
@@ -215,17 +285,20 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
         }
         runner.Suspended(heap: h, on: on) -> {
           let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+          let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
           let on_list = on |> set.to_list |> list.sort(int.compare)
           #(engine, StepSuspended(act.goal_id, act.procedure, on_list))
         }
-        runner.Failed(heap: h) -> #(
-          Engine(
-            ..engine,
-            heap: h,
-            goals: dict.delete(engine.goals, act.goal_id),
-          ),
-          StepFailed(act.goal_id, act.procedure),
-        )
+        runner.Failed(heap: h) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+            )
+          let engine = trace_terminal(engine, act, h, " \u{2192} failed")
+          #(engine, StepFailed(act.goal_id, act.procedure))
+        }
         runner.BudgetExhausted(heap: h) -> #(
           Engine(..engine, heap: h),
           StepErrored(runner.Malformed(

@@ -171,18 +171,33 @@ pub fn run_with_limit_capturing(
   goal: String,
   fuel: Int,
 ) -> #(Engine, ResultEnvelope, List(String)) {
-  let #(envelope, output) = case run_goal(engine, goal, fuel) {
-    Ok(#(env, out)) -> #(env, out)
-    Error(reason) -> #(failed_envelope(reason), [])
-  }
+  let #(engine, envelope, output, _traces) =
+    run_with_limit_traced(engine, goal, fuel, False)
   #(engine, envelope, output)
+}
+
+/// As `run_with_limit_capturing`, but ALSO returns the reduction-trace lines
+/// (`head :- body` / `→ suspended` / `→ failed`) when `trace` is on — the REPL
+/// `:trace` seam. Trace lines are empty when `trace` is off.
+pub fn run_with_limit_traced(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+  trace: Bool,
+) -> #(Engine, ResultEnvelope, List(String), List(String)) {
+  let #(envelope, output, traces) = case run_goal(engine, goal, fuel, trace) {
+    Ok(#(env, out, tr)) -> #(env, out, tr)
+    Error(reason) -> #(failed_envelope(reason), [], [])
+  }
+  #(engine, envelope, output, traces)
 }
 
 fn run_goal(
   engine: Engine,
   goal: String,
   fuel: Int,
-) -> Result(#(ResultEnvelope, List(String)), String) {
+  trace: Bool,
+) -> Result(#(ResultEnvelope, List(String), List(String)), String) {
   use atom <- result.try(parse_goal(goal))
   let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
   use entry <- result.try(
@@ -191,12 +206,15 @@ fn run_goal(
   )
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
 
-  let sched = scheduler.new(engine.program, boot.heap)
+  let sched =
+    scheduler.new(engine.program, boot.heap)
+    |> scheduler.with_trace(trace)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
 
   let #(exec_status, blocking_readers, error) = map_status(status)
   let output = scheduler.captured_output(sched)
+  let traces = scheduler.trace_lines(sched)
   case
     builder.build_result_envelope(
       scheduler.heap(sched),
@@ -208,7 +226,7 @@ fn run_goal(
       error,
     )
   {
-    Ok(#(_heap, envelope)) -> Ok(#(envelope, output))
+    Ok(#(_heap, envelope)) -> Ok(#(envelope, output, traces))
     Error(build_error) ->
       Error("result-envelope build failed: " <> string.inspect(build_error))
   }

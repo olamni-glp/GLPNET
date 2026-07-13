@@ -133,13 +133,18 @@ pub fn execute(
     LimitUsage(msg) -> #(session, [msg], False)
     Load(path) -> execute_load(session, path)
     Goal(text) -> {
-      let #(_engine, env, output) =
-        engine.run_with_limit_capturing(session.engine, text, session.limit)
-      // Program output (`_output/1`) prints ahead of the outcome block (Dart emits
-      // it inline during the run), then the bindings/status, then a blank line.
+      let #(_engine, env, output, traces) =
+        engine.run_with_limit_traced(
+          session.engine,
+          text,
+          session.limit,
+          session.trace,
+        )
+      // Reference order: reduction-trace lines (`:trace`) during the run, then any
+      // `_output/1` program output, then the bindings/status block, then a blank.
       #(
         session,
-        list.flatten([output, results.render_outcome(env), [""]]),
+        list.flatten([traces, output, results.render_outcome(env), [""]]),
         False,
       )
     }
