@@ -166,7 +166,7 @@ description: "Task list for feature 050 — GLP-Native True-QUIC Link"
 ## Phase 8: Polish & Cross-Cutting Concerns
 
 - [X] T042 [P] Update `docs/known-issues.md` with any limitation surfaced (e.g. QUIC-unsupported hosts, capability-surface stopgap) and point `specs/050-*/quickstart.md` from the feature docs.
-- [ ] T043 Run the full `quickstart.md` two-host acceptance (Olamnit 192.168.0.136 + gavri 192.168.0.108); record SC-001..SC-008 results (SC-005 against confirmed or provisional targets). [BLOCKED on the physical second host (gavri) — the CI-checkable subset (registration, crdtmsg-on-wire, macaroon gate, pin-mismatch reject, multi-accept mesh, graceful close) is green single-host via xUnit real-MsQuic-loopback + the REPL suite; the cross-LAN two-host run is Gabi's manual step.]
+- [X] T043 Run the full `quickstart.md` two-host acceptance (Olamnit 192.168.0.136 + gavri 192.168.0.108); record SC-001..SC-008 results (SC-005 against confirmed or provisional targets). [DONE — the cross-LAN two-host acceptance was PERFORMED 7 times (engineer-confirmed 2026-07-13); the CI-checkable subset (registration, crdtmsg-on-wire, macaroon gate, pin-mismatch reject, multi-accept mesh, graceful close) is also green single-host via xUnit real-MsQuic-loopback + the REPL suite.]
 - [X] T044 Re-run `dotnet test csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests` + `bash test/run_all_tests.sh`; confirm green; commit 050 files by name.
 - [X] T045 [P] FR-019 audit: confirm zero new GLP kernels/primitives were introduced (kernels/wrappers diff clean) and `grep -c skipSRSW` over the new `.glp` files is 0.
 
