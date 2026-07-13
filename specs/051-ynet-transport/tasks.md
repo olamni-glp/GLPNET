@@ -85,6 +85,7 @@ service-embed + admission/leaf POLICY. Never merged (FR-024). Tests requested (c
 - [ ] T029 [US4] Implement libp2p circuit-relay-v2 (voucher-gated) forward for `mesh` traffic in `csharp/ynet_transport/Relay/CircuitRelayV2.cs` (FR-007, clarify §5.2)
 - [ ] T030 [US4] Implement Tor-style cell relay as default for `internet`/`critical` traffic classes in `csharp/ynet_transport/Relay/TorCellRelay.cs` (FR-007, clarify §5.2)
 - [ ] T031 [US4] Implement relay-admission enforcement at the forwarding hop consuming the 056 AdmissionProof (enforce, don't decide) + Sybil-by-gating in `csharp/ynet_transport/Relay/AdmissionEnforcer.cs` (FR-007/FR-008)
+- [ ] T031a [US4] Extend olamnit DSDV `DistanceVectorRouter` + durable `MeshRelayRoute` from LAN-only into the NAT-piercing internet overlay (the routing substrate the BUILD-NEW overlay sits above) in `csharp/ynet_transport/Relay/DsdvInternetRoute.cs` (FR-021, D3)
 - [ ] T032 [US4] Implement revocation semantics: block new selection immediately; tear down live paths at next frame boundary → `authorized_but_unreachable`, in `csharp/ynet_transport/Relay/RevocationHandler.cs` (research R3, FR-018)
 - [ ] T033 [P] [US4] Integration test: relayed path end-to-end; revocation mid-path; ciphertext-only forwarding, in `csharp/ynet_transport.tests/integration/RelayForwardTests.cs` (SC-004)
 
@@ -156,7 +157,7 @@ service-embed + admission/leaf POLICY. Never merged (FR-024). Tests requested (c
 
 - [ ] T054 [P] Implement dual-leaf migration + per-node-keying cutover (dual identity → operator-signed per-node cutover; monotonic; GLPNET `QuicTransport` harvested until all cut over) in `csharp/ynet_transport/Link/Migration.cs` (FR-019/FR-020, research R4)
 - [ ] T055 [P] Wire auditability: every path establishment, relay select/refuse, seal setup, exit decision, leaf refusal → yngenios append-only journal in `csharp/ynet_transport/Capability/AuditEmit.cs` (FR-023)
-- [ ] T056 [P] Tier-boundary self-check test: grep delivered surface for zero service-embed / macaroon-minting / admission-deciding / durable-mailbox implementations (SC-011, FR-024) in `csharp/ynet_transport.tests/contract/TierBoundaryTests.cs`
+- [ ] T056 [P] Tier-boundary + reuse self-check test: grep delivered surface for zero service-embed / macaroon-minting / admission-deciding / durable-mailbox implementations, and assert reuse-not-reinvent of olamnit crypto/DSDV/egress + glp_link QUIC seams (no duplicated substrate) (SC-011, FR-024, FR-022) in `csharp/ynet_transport.tests/contract/TierBoundaryTests.cs`
 - [ ] T057 [P] GLP demonstration program (SRSW-clean, positive-load `test/run_all_tests.sh` §B) exercising a YNET link goal (Constitution III)
 - [ ] T058 [P] Extend `gleam_quic/` with the BEAM services-tier transport impl sharing the `ICapability` contract (FR-015, research R7)
 - [ ] T059 Full baseline green: `dotnet test` (native), `gleam test` (BEAM), browser tier tests, GLP load-check, migration single-head; re-confirm before ship (Constitution VII)
@@ -181,5 +182,6 @@ service-embed + admission/leaf POLICY. Never merged (FR-024). Tests requested (c
 **Phase 1 + Phase 2 + US1 + US2** (T001–T022): a key-authenticated, NAT-piercing native QUIC leaf
 consumed as an `ICapability`. Everything after is incremental overlay/tier delivery.
 
-**Total: 59 tasks** — Setup 4, Foundational 5, US1 7, US2 6, US3 5, US4 6, US5 6, US6 5, US7 5,
-US8 4, Polish 6.
+**Total: 60 tasks** — Setup 4, Foundational 5, US1 7, US2 6, US3 5, US4 7 (incl. T031a DSDV
+internet-extension, FR-021), US5 6, US6 5, US7 5, US8 4, Polish 6. (T056 also covers the FR-022
+reuse mandate per /bk-analyze N1/N2.)
