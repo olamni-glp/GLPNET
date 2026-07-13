@@ -62,6 +62,12 @@ public static class LinkSendKernel
         {
             LinkEgress.ShipGround(heap, handle, (Term)args[0]!);
         }
+        catch (PayloadCodecException ex)
+        {
+            // The link's payload codec loud-failed the term (e.g. a non-crdtmsg/7 term on a "quic"
+            // link) — a controlled Abort, never an uncaught crash of the runner (feature 050 P1 fix).
+            return Abort($"arg 1 (Msg) rejected by the payload codec: {ex.Message}");
+        }
         catch (InvalidOperationException ex)
         {
             // The ground(Msg?) guard should have excluded this; a non-ground payload

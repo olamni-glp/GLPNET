@@ -1,41 +1,70 @@
-% quic_chat.glp — CANONICAL interactive two-way chat between the two C# REPL hosts over ONE
-% full-duplex genuine QUIC link (authored by the Olamnit session; ratified canonical by Gabi,
-% 2026-07-12 reconciliation — the per-message one-bind variant is preserved as
-% quic_chat_onebind.glp). Turn-based: each round, each host edits its OWN my_lines clause, the
-% listener re-arms main(olamnit, R). and the connector dials main(gavri, R). — each side's R
-% returns the peer's lines for the round.
+% quic_chat.glp — CANONICAL interactive full-duplex two-way chat between the two C# REPL hosts over
+% ONE genuine QUIC link (Olamnit+Gabi reconciliation 2026-07-12 — the per-message one-bind variant is
+% preserved as quic_chat_onebind.glp). Both hosts share this file; each EXECUTES ONLY its own role
+% clause, so each edits ONLY its own my_lines/2 clause per round. olamnit (192.168.0.136) LISTENS on
+% 9200; gavri (192.168.0.108) dials it. Each side ships its my_lines onto Out AND collects the peer's
+% off In on the same ch(In, Out).
+%
+%   olamnit (listener):  main(olamnit, R).  → R = gavri's lines this round
+%   gavri   (connector): main(gavri,   R).  → R = olamnit's lines this round
+%   (Named var R at the C# REPL top level — the goal parser rejects a bare `_`.)
+%
+% BOUNDED exchange (review-fix, codexreview 20260713T110357Z): the outbound close (Out=[]) is a FULL
+% link teardown, so closing it before the peer's lines arrive raced inbound collection. Each side now
+% closes its Out ONLY after it has collected the round's LineCount inbound lines (a Done token gates
+% the close), exactly the quic_mesh discipline. Each host therefore edits my_lines to LineCount lines
+% per round (default 3); a short/absent peer degrades gracefully via the inbound-EOS collect clause —
+% never a deadlock, never a lost-line race.
 -mode(system).
+
+% --- Message model — crdtmsg/7 ground term the "quic" codec expects (addendum A1). --------------
 CrdtModel ::= none ; state_based ; op_based.
 Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
 Section   ::= section(Integer, Stream(Integer)).
 CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
 
+% --- Role dispatch — olamnit listens, gavri connects; both drive the full-duplex exchange. -------
 procedure main(AgentId?, Stream(_)).
 main(Me, Report?) :- Me? =?= olamnit |
     server_listener(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
-    run_chat(Link?, olamnit, gavri, Report).
+    run_chat(Link?, olamnit, gavri, 3, Report).
 main(Me, Report?) :- Me? =?= gavri |
     client_connector(link_id("quic", ep("192.168.0.136", 9200), 1), Link, _),
-    run_chat(Link?, gavri, olamnit, Report).
+    run_chat(Link?, gavri, olamnit, 3, Report).
 
-procedure run_chat(Link(_, _)?, Constant?, Constant?, Stream(_)).
-run_chat(ch(In, Out?), Me, Peer, Report?) :-
-    ground(Me?), ground(Peer?) |
+% --- Full-duplex node: ship MY lines onto Out and collect the peer's off In (quic_mesh discipline). -
+% Sends are unconditional and complete BEFORE send_chat's base clause suspends on Done, so both peers'
+% lines flow regardless of close timing; each node's close waits only on its OWN collect (deadlock-free).
+procedure run_chat(Link(_, _)?, Constant?, Constant?, Integer?, Stream(_)).
+run_chat(ch(In, Out?), Me, Peer, LineCount, Report?) :-
+    ground(Me?), ground(Peer?), ground(LineCount?) |
     my_lines(Me?, Lines),
-    send_lines(Me?, Peer?, 1, Lines?, Out),
-    collect(In?, Report).
+    send_chat(Me?, Peer?, 1, Lines?, Done?, Out),
+    collect_n(In?, LineCount?, Report, Done).
 
-procedure send_lines(Constant?, Constant?, Integer?, Stream(_)?, Stream(_)).
-send_lines(From, To, N, [Text|Rest], [crdtmsg(Text?, From?, To?, N?, policy([], [], []), none, [])|Out?]) :-
+% --- Egress — one crdtmsg per outbound text line (Seq = 1..); the terminal [] that the 025 egress
+% drainer turns into a FULL link teardown is DEFERRED until Done? =?= ok (collect_n raised it after
+% collecting the peer's LineCount lines), so send-done never tears the link down under collect. -------
+procedure send_chat(Constant?, Constant?, Integer?, Stream(_)?, Constant?, Stream(_)).
+send_chat(From, To, N, [Text|Rest], Done, [crdtmsg(Text?, From?, To?, N?, policy([], [], []), none, [])|Out?]) :-
     ground(From?), ground(To?), ground(N?), ground(Text?) |
     N1 := N? + 1,
-    send_lines(From?, To?, N1?, Rest?, Out).
-send_lines(_, _, _, [], []) :- true.
+    send_chat(From?, To?, N1?, Rest?, Done?, Out).
+send_chat(_, _, _, [], Done, []) :- Done? =?= ok | true.
 
-procedure collect(Stream(_)?, Stream(_)).
-collect([M|In], [M?|Rest?]) :- ground(M?) | collect(In?, Rest).
-collect([], []).
+% --- Ingress — collect the peer's LineCount inbound crdtmsg lines exactly once (host-side
+% exactly-once); on the K =< 0 base case signal Done = ok, releasing send_chat to close. The
+% []-inbound clause is a defensive early-EOS guard (peer sent fewer / closed early) that still raises
+% Done so a short round cannot deadlock the close. -------------------------------------------------
+procedure collect_n(Stream(_)?, Integer?, Stream(_), Constant).
+collect_n([M|In], K, [M?|Rest?], Done?) :- ground(M?), ground(K?), K? > 0 |
+    K1 := K? - 1,
+    collect_n(In?, K1?, Rest, Done).
+collect_n(_, K, [], ok) :- ground(K?), K? =< 0 | true.
+collect_n([], K, [], ok) :- ground(K?), K? > 0 | true.
 
+% --- THIS ROUND'S OUTBOUND LINES — each host edits ONLY its own clause locally each round, to
+% LineCount (default 3) lines. -----------------------------------------------------------------------
 procedure my_lines(Constant?, Stream(_)).
-my_lines(Me, ["olamnit here — live over genuine QUIC on 9200. do you read me, gavri?", "this is a real full-duplex link: you should see this as your R."]) :- Me? =?= olamnit | true.
-my_lines(Me, ["gavri back on the link. your T018 run is superb - all pulled and synced through well_typed_clause dad1ab2b (303/303), both branches identical.", "coordination: gabi wants gavri working T018 too. to avoid collision: which unit are you on NOW? proposal: you finish type_environment_builder, gavri takes clause_validation + the checkModule entry. confirm or counter on this link or via a git push.", "MVP status: gabi has your store_put/store_get proposal; his scope call (kernel pair in MVP vs host-owned log) is pending - do not start the resume hook yet."]) :- Me? =?= gavri | true.
+my_lines(Me, ["olamnit here — live over genuine QUIC on 9200. do you read me, gavri?", "this is a real full-duplex link over one QUIC connection: you should see this as your R.", "bounded round: each side sends LineCount lines and collects the peer's before closing (no teardown race)."]) :- Me? =?= olamnit | true.
+my_lines(Me, ["gavri back on the link — reading you clear.", "T018 type-checker port is in and green; parser mode-annotation fix landed too.", "confirm the bounded-chat close-after-collect on your end and we ship 050."]) :- Me? =?= gavri | true.

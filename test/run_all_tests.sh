@@ -1132,6 +1132,11 @@ POSITIVE_FILES=(
     #     the genuine multi-accept mesh / reliability / cyber behaviour is proven by xUnit
     #     QuicMeshTests/QuicReliabilityTests/QuicCyberTests + the two-host acceptance run (T043). ---
     "$QUIC/quic_mesh.glp"
+
+    # --- feature 050 follow-on: the full-duplex CHAT demo — bounded symmetric exchange (each side
+    #     sends LineCount lines and collects the peer's before closing, so send-done never tears the
+    #     link down under collect). Loads clean (SRSW + type-check + compile). ---
+    "$QUIC/quic_chat.glp"
 )
 
 # Build REPL input: load each positive file with :clear between

@@ -2,6 +2,9 @@ glp_runtime/glp_repl_new
 glp_runtime/build/
 .DS_Store
 
+# bk-guardian local backup artifacts (never committed)
+.specify/guardian/backups/
+
 # Build artefacts (bin/obj — generic; tools/d2net/ removed feature 016)
 **/bin/
 **/obj/

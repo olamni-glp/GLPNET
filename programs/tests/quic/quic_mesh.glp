@@ -60,21 +60,25 @@ main(Me, Report?) :- Me? =?= node_b |
 procedure run_node(Link(_, _)?, Constant?, Constant?, Integer?, Stream(_)).
 run_node(ch(In, Out?), Me, Peer, PingCount, Report?) :-
     ground(Me?), ground(Peer?), ground(PingCount?) |
-    gen_pings(Me?, Peer?, 1, PingCount?, Out),
-    collect(In?, Report).
+    gen_pings(Me?, Peer?, 1, PingCount?, Done?, Out),
+    collect_n(In?, PingCount?, Report, Done).
 
 % ---------------------------------------------------------------------------------------------------
-% Egress — build crdtmsg envelopes N = 1..Max onto the Out stream, then graceful-close with []. Each
-% ground(...) guard licenses the multiple ground reads (SRSW); the [] base case is the canonical
-% stream-end close the 025 egress drainer turns into a graceful link close (FR-017).
-% ---------------------------------------------------------------------------------------------------
-procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Stream(_)).
-gen_pings(From, To, N, Max, [Msg?|Out?]) :-
+% Egress — build crdtmsg envelopes N = 1..Max onto the Out stream. The pings ship IMMEDIATELY (the
+% drainer ships each ground head as it is bound); the terminal [] that the 025 egress drainer turns
+% into a FULL link teardown (drain → close transport → reclaim, FR-017) is DEFERRED until Done? =?= ok
+% — the signal collect_n raises once this node has collected the peer's PingCount envelopes. Closing
+% on the [] base case eagerly raced collect: finishing SEND first tore the link down under collect and
+% dropped not-yet-arrived inbound (review-fix, codexreview 20260713T103422Z P1). Deadlock-free: the
+% sends are unconditional and complete BEFORE the base clause suspends on Done, so both peers' pings
+% flow regardless of close timing; each node's close waits only on its OWN collect.
+procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Constant?, Stream(_)).
+gen_pings(From, To, N, Max, Done, [Msg?|Out?]) :-
     ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
     mk_ping(From?, To?, N?, Msg),
     N1 := N? + 1,
-    gen_pings(From?, To?, N1?, Max?, Out).
-gen_pings(_, _, N, Max, []) :- ground(N?), ground(Max?), N? > Max? | true.
+    gen_pings(From?, To?, N1?, Max?, Done?, Out).
+gen_pings(_, _, N, Max, Done, []) :- ground(N?), ground(Max?), N? > Max?, Done? =?= ok | true.
 
 % Head-construct one crdtmsg envelope: fixed string MsgId "ping", From/To atoms, Seq = N, empty
 % routing policy, no CRDT model, no sections (a bare heartbeat). A rich-text / op-carrying envelope
@@ -84,12 +88,19 @@ mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [
     ground(From?), ground(To?), ground(N?) | true.
 
 % ---------------------------------------------------------------------------------------------------
-% Ingress — collect each inbound crdtmsg envelope exactly once (exactly-once reactivation, FR-016);
-% duplicate suppression is host-side so a redelivered frame never appears twice here. Stream-end [].
+% Ingress — collect the peer's PingCount inbound crdtmsg envelopes exactly once (exactly-once
+% reactivation, FR-016; duplicate suppression is host-side so a redelivered frame never appears twice
+% here). Collecting by COUNT (not by inbound EOS) is what lets gen_pings defer its close until AFTER
+% this node has its full report: on the K =< 0 base case we signal Done = ok, releasing gen_pings to
+% bind Out = []. The []-inbound clause is a defensive early-EOS guard (peer closed before PingCount)
+% that still raises Done so a short run cannot deadlock the close.
 % ---------------------------------------------------------------------------------------------------
-procedure collect(Stream(_)?, Stream(_)).
-collect([M|In], [M?|Rest?]) :- ground(M?) | collect(In?, Rest).
-collect([], []).
+procedure collect_n(Stream(_)?, Integer?, Stream(_), Constant).
+collect_n([M|In], K, [M?|Rest?], Done?) :- ground(M?), ground(K?), K? > 0 |
+    K1 := K? - 1,
+    collect_n(In?, K1?, Rest, Done).
+collect_n(_, K, [], ok) :- ground(K?), K? =< 0 | true.
+collect_n([], K, [], ok) :- ground(K?), K? > 0 | true.
 
 % ---------------------------------------------------------------------------------------------------
 % Fault / security observation (T034/T035, FR-008/FR-016) — obtain a link's per-link monitor stream
@@ -109,11 +120,13 @@ collect_faults([F|Fs], [F?|Rest?]) :- ground(F?) | collect_faults(Fs?, Rest).
 collect_faults([], []).
 
 % ---------------------------------------------------------------------------------------------------
-% Termination (T040/T041, US5, FR-017/FR-018) — the run concludes gracefully. run_node's [] base
-% case on Out is the DEFAULT graceful close: the 025 egress drainer turns Out = [] into an ordered
-% teardown (drain in-flight → close transport → distributed GC via LinkReclaimer over
+% Termination (T040/T041, US5, FR-017/FR-018) — the run concludes gracefully. gen_pings' [] on Out is
+% the DEFAULT graceful close: the 025 egress drainer turns Out = [] into an ordered teardown (drain
+% in-flight → close transport → distributed GC via LinkReclaimer over
 % listeners/connectors/streams/QUIC connections), so an immediate re-run re-establishes with no
-% manual cleanup (proven by xUnit QuicTeardownTests T037/T038). close_mesh_link/1 is the EXPLICIT
+% manual cleanup (proven by xUnit QuicTeardownTests T037/T038). That [] is now DEFERRED until this
+% node has collected the peer's PingCount (Done = ok), so teardown never races inbound collection
+% (review-fix, codexreview 20260713T103422Z P1). close_mesh_link/1 is the EXPLICIT
 % abrupt teardown for a stop-requested run: it reuses the existing link_close kernel (no new kernel,
 % FR-019), emitting a terminal closed(LinkId, abrupt) on every monitor stream. Run e.g.
 %   close_mesh_link(link_id("quic", ep("192.168.0.136", 9300), 1)).
