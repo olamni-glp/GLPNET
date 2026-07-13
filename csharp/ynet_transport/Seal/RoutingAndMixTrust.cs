@@ -68,7 +68,9 @@ public sealed class MixTrustSelector
         }
 
         var hops = ranked.Take(hopCount).Select(c => c.Node).ToList();
-        return hops.Count == 0 ? null : hops; // fabricate nothing if the pool is empty
+        // Fail closed: an undersized hop set silently weakens the requested anonymity level, so
+        // refuse rather than return fewer hops than requested (codexreview finding, FR-011/SC-005).
+        return hops.Count < hopCount ? null : hops;
     }
 
     public MixTrustSource ActiveSource => _pocwAvailable ? MixTrustSource.Pocw057 : MixTrustSource.LoopixFallback;

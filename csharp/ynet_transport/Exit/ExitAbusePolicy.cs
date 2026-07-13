@@ -20,6 +20,7 @@ public sealed class ExitAbusePolicy
     private readonly HashSet<EgressClass> _blockedClasses;
     private readonly long _perCallerVolumeCap;
     private readonly Dictionary<NodeId, long> _consumed = new();
+    private readonly object _gate = new();
 
     public ExitAbusePolicy(
         IEnumerable<string> allowList,
@@ -39,18 +40,24 @@ public sealed class ExitAbusePolicy
     /// </summary>
     public RefusalReason? Evaluate(EgressRequest req)
     {
-        // (1) destination allow/deny
+        // (1) destination allow/deny — DEFAULT-DENY: a destination MUST be on the allow list to
+        // pass, regardless of the list's size. An empty allow list therefore denies everything
+        // (never allow-all) per FR-012/FR-013 (codexreview finding).
         if (_deny.Contains(req.Destination)) return RefusalReason.EgressDenied;
-        if (_allow.Count > 0 && !_allow.Contains(req.Destination)) return RefusalReason.EgressDenied; // default-deny
+        if (!_allow.Contains(req.Destination)) return RefusalReason.EgressDenied;
 
-        // (2) per-caller rate/volume caps
-        long consumed = _consumed.GetValueOrDefault(req.Caller) + req.Bytes;
-        if (_perCallerVolumeCap > 0 && consumed > _perCallerVolumeCap) return RefusalReason.EgressDenied;
-
-        // (3) egress-class filters
+        // (3) egress-class filters (order-independent of the cap; check before taking the lock)
         if (_blockedClasses.Contains(req.Class)) return RefusalReason.EgressDenied;
 
-        _consumed[req.Caller] = consumed; // commit the volume only on an allowed egress
+        // (2) per-caller rate/volume caps — the check-and-commit MUST be atomic per caller, else two
+        // concurrent egresses both pass the cap and both commit, bypassing FR-013 (codexreview
+        // finding: a transport egress gate is inherently concurrent).
+        lock (_gate)
+        {
+            long consumed = _consumed.GetValueOrDefault(req.Caller) + req.Bytes;
+            if (_perCallerVolumeCap > 0 && consumed > _perCallerVolumeCap) return RefusalReason.EgressDenied;
+            _consumed[req.Caller] = consumed; // commit the volume only on an allowed egress
+        }
         return null;
     }
 }

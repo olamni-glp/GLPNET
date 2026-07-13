@@ -10,9 +10,14 @@ namespace Ynet.Transport.Relay;
 /// </summary>
 public static class AdmissionEnforcer
 {
-    /// <summary>A relay is selectable only if 056 admitted it and it is not revoked (FR-007/FR-008).</summary>
-    public static bool IsSelectable(AdmissionProof proof)
-        => proof.Admitted && !proof.Revoked;
+    /// <summary>
+    /// A relay is selectable only if 056 admitted it, it is not revoked, AND the proof was issued
+    /// for THIS relay (FR-007/FR-008). Binding proof.Relay to the target defeats a confused-deputy
+    /// where a valid proof for admitted relay X is replayed to authorize a different relay M
+    /// (codexreview finding, SC-004).
+    /// </summary>
+    public static bool IsSelectable(NodeId targetRelay, AdmissionProof proof)
+        => proof.Admitted && !proof.Revoked && proof.Relay == targetRelay;
 
     /// <summary>
     /// Map a traffic class to the relay mechanism (clarify §5.2): circuit-relay-v2 (voucher-gated)

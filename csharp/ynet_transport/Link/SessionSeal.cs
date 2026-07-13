@@ -28,11 +28,32 @@ public sealed class SessionSeal : IDisposable
         _salt = salt;
     }
 
-    /// <summary>Derive a 256-bit session key via HKDF-SHA256 (H3) from a shared secret + context.</summary>
-    public static SessionSeal Derive(ReadOnlySpan<byte> sharedSecret, ReadOnlySpan<byte> context, uint salt)
+    /// <summary>Directionality of a one-way seal — each direction derives a DISTINCT key.</summary>
+    public enum Direction : byte { Initiator = 1, Responder = 2 }
+
+    /// <summary>
+    /// Derive a 256-bit session key via HKDF-SHA256 (H3) from a shared secret + context. The uint
+    /// salt AND the direction are mixed into BOTH the HKDF salt and info (codexreview finding): two
+    /// seals derived with the same (secret, context) but a different salt/direction therefore get
+    /// DISTINCT keys, so even if their nonce streams coincide there is no (key, nonce) reuse. A seal
+    /// instance is strictly one-directional; never re-derive with the same (secret, context, salt,
+    /// direction).
+    /// </summary>
+    public static SessionSeal Derive(
+        ReadOnlySpan<byte> sharedSecret, ReadOnlySpan<byte> context, uint salt,
+        Direction direction = Direction.Initiator)
     {
+        Span<byte> hkdfSalt = stackalloc byte[5];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(hkdfSalt, salt);
+        hkdfSalt[4] = (byte)direction;
+
+        // info = context || direction, so the derived key is bound to the direction too.
+        Span<byte> info = stackalloc byte[context.Length + 1];
+        context.CopyTo(info);
+        info[^1] = (byte)direction;
+
         Span<byte> key = stackalloc byte[32];
-        HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, key, salt: default, info: context);
+        HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, key, salt: hkdfSalt, info: info);
         return new SessionSeal(key.ToArray(), salt);
     }
 

@@ -100,10 +100,10 @@ public class SignedRecordTests
     private static readonly DateTimeOffset Now = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
 
     [Fact]
-    public void Signed_record_verifies_self_certified()
+    public void Signed_reachability_record_verifies_self_certified()
     {
         using var owner = NodeIdentity.Generate();
-        var rec = SignedRecord.Create(owner, "key"u8.ToArray(), RecordKind.Reachability, "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        var rec = SignedRecord.CreateReachability(owner, "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
         Assert.True(rec.VerifySelfCertified());
         Assert.Equal(owner.NodeId, rec.SignerNodeId);
     }
@@ -112,9 +112,31 @@ public class SignedRecordTests
     public void Tampered_record_is_rejected_regardless_of_serving_hop()
     {
         using var owner = NodeIdentity.Generate();
-        var rec = SignedRecord.Create(owner, "key"u8.ToArray(), RecordKind.Reachability, "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        var rec = SignedRecord.CreateReachability(owner, "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
         var tampered = rec with { Payload = "evil"u8.ToArray() };
         Assert.False(tampered.VerifySelfCertified());
+    }
+
+    // codexreview: a validly-signed reachability record under ANOTHER node's key must be rejected.
+    [Fact]
+    public void Reachability_record_spoofing_a_victim_key_is_rejected()
+    {
+        using var victim = NodeIdentity.Generate();
+        using var attacker = NodeIdentity.Generate();
+        var victimKey = System.Text.Encoding.ASCII.GetBytes(victim.NodeId.Value);
+        // attacker signs a record stored under the victim's DHT key with the attacker's own key
+        var spoof = SignedRecord.Create(attacker, victimKey, RecordKind.Reachability, "evil-addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        Assert.False(spoof.VerifySelfCertified()); // key != H(signer pubkey) -> rejected
+    }
+
+    // codexreview: an expired record must not verify when a clock is supplied.
+    [Fact]
+    public void Expired_record_is_rejected_when_clock_supplied()
+    {
+        using var owner = NodeIdentity.Generate();
+        var rec = SignedRecord.CreateReachability(owner, "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        Assert.True(rec.VerifySelfCertified(Now + TimeSpan.FromMinutes(30)));
+        Assert.False(rec.VerifySelfCertified(Now + TimeSpan.FromHours(2)));
     }
 }
 
@@ -124,9 +146,19 @@ public class RelayPolicyTests
     [Fact]
     public void Only_admitted_non_revoked_relays_are_selectable()
     {
-        Assert.True(AdmissionEnforcer.IsSelectable(new AdmissionProof(new("r"), Admitted: true, "mesh", Revoked: false)));
-        Assert.False(AdmissionEnforcer.IsSelectable(new AdmissionProof(new("r"), Admitted: false, "mesh", Revoked: false)));
-        Assert.False(AdmissionEnforcer.IsSelectable(new AdmissionProof(new("r"), Admitted: true, "mesh", Revoked: true)));
+        var r = new NodeId("r");
+        Assert.True(AdmissionEnforcer.IsSelectable(r, new AdmissionProof(r, Admitted: true, "mesh", Revoked: false)));
+        Assert.False(AdmissionEnforcer.IsSelectable(r, new AdmissionProof(r, Admitted: false, "mesh", Revoked: false)));
+        Assert.False(AdmissionEnforcer.IsSelectable(r, new AdmissionProof(r, Admitted: true, "mesh", Revoked: true)));
+    }
+
+    // codexreview: a valid proof issued for relay X must not authorize a different relay M.
+    [Fact]
+    public void Proof_for_one_relay_does_not_authorize_another()
+    {
+        var proofForX = new AdmissionProof(new("X"), Admitted: true, "mesh", Revoked: false);
+        Assert.True(AdmissionEnforcer.IsSelectable(new("X"), proofForX));
+        Assert.False(AdmissionEnforcer.IsSelectable(new("M"), proofForX)); // confused-deputy blocked
     }
 
     [Theory]
@@ -209,6 +241,15 @@ public class RoutingAndMixTrustTests
         var cands = new[] { new RelayCandidate(new("a"), PocwStake: 0, LoopixSemiTrusted: false) };
         Assert.Null(sel.Select(cands, hopCount: 1));
     }
+
+    // codexreview: an undersized hop set must fail closed, never silently weaken anonymity.
+    [Fact]
+    public void Mix_trust_fails_closed_when_fewer_hops_than_requested()
+    {
+        var sel = new MixTrustSelector(pocwSignalAvailable: false);
+        var cands = new[] { new RelayCandidate(new("a"), PocwStake: 0, LoopixSemiTrusted: true) };
+        Assert.Null(sel.Select(cands, hopCount: 3)); // only 1 eligible, 3 requested -> null
+    }
 }
 
 // ---- T043: exit-abuse policy (FR-012/013) ----
@@ -238,6 +279,16 @@ public class ExitAbusePolicyTests
     public void Blocked_class_is_refused() =>
         Assert.Equal(RefusalReason.EgressDenied,
             Policy().Evaluate(new EgressRequest(new("c"), "good.example", EgressClass.Smtp, 1)));
+
+    // codexreview: an empty allow list must be default-deny, never allow-all.
+    [Fact]
+    public void Empty_allow_list_denies_everything()
+    {
+        var deny = new ExitAbusePolicy(allowList: Array.Empty<string>(), denyList: Array.Empty<string>(),
+            blockedClasses: Array.Empty<EgressClass>(), perCallerVolumeCap: 0);
+        Assert.Equal(RefusalReason.EgressDenied,
+            deny.Evaluate(new EgressRequest(new("c"), "anything.example", EgressClass.Http, 1)));
+    }
 
     [Fact]
     public void Volume_cap_is_enforced_per_caller()

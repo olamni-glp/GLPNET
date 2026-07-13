@@ -46,11 +46,39 @@ public sealed record SignedRecord(
     }
 
     /// <summary>
-    /// Verify self-certification: the signature validates against the embedded public key. Rejects
-    /// tampered records regardless of the serving DHT hop (FR-006 / SC-003).
+    /// Create a reachability record whose DHT key is bound to the signer's node id (the only form
+    /// that self-certifies against key-spoofing — see VerifySelfCertified).
     /// </summary>
-    public bool VerifySelfCertified()
+    public static SignedRecord CreateReachability(
+        NodeIdentity signer, byte[] payload, DateTimeOffset now, TimeSpan ttl)
     {
+        var key = System.Text.Encoding.ASCII.GetBytes(signer.NodeId.Value);
+        return Create(signer, key, RecordKind.Reachability, payload, now, ttl);
+    }
+
+    /// <summary>
+    /// Verify self-certification: the signature validates against the embedded public key AND, for a
+    /// reachability record, the DHT key equals the signer's H(pubkey) node id — so a malicious node
+    /// cannot publish a validly-signed reachability record under ANOTHER node's key (codexreview
+    /// finding, FR-006 / SC-003 / data-model). Rejects tampered records regardless of serving hop.
+    /// </summary>
+    public bool VerifySelfCertified() => VerifySelfCertified(now: null);
+
+    /// <summary>
+    /// As <see cref="VerifySelfCertified()"/>, but also rejects an expired record when a clock is
+    /// supplied (codexreview finding — a replayed expired reachability record must not verify).
+    /// ExpiresAt is inside the signed canonical bytes, so it is tamper-evident.
+    /// </summary>
+    public bool VerifySelfCertified(DateTimeOffset? now)
+    {
+        if (now is { } clock && clock >= ExpiresAt) return false; // expired — no replay
+
+        // A reachability record's DHT key IS the signer's node id; anything else is a spoof attempt.
+        if (Kind == RecordKind.Reachability &&
+            !Key.AsSpan().SequenceEqual(System.Text.Encoding.ASCII.GetBytes(SignerNodeId.Value)))
+        {
+            return false;
+        }
         try
         {
             using var ecdsa = ECDsa.Create();
