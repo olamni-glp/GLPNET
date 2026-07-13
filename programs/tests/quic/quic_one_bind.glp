@@ -39,13 +39,17 @@ main(Me, []) :- Me? =?= producer |
     produce_link(Link?, producer, consumer, 3).
 
 % Decompose the established Link, then consume just the inbound stream. The consumer sends nothing,
-% so it head-constructs [] on its outbound (canonical graceful close); In captures inbound.
+% so its outbound carries ONLY the terminal graceful close ([]) — but that close is DEFERRED until
+% inbound EOS. Binding Out=[] eagerly on establishment races the producer's pings, because the 025
+% egress drainer turns Out=[] into a FULL link teardown (close transport + reclaim), so the consumer
+% could close before the pings arrive (review-fix, codexreview 20260713T103422Z P1). Threading Out
+% through consume keeps the link open until In is fully collected, then head-constructs [] to close.
 procedure consume_link(Link(_, _)?, Stream(_)).
-consume_link(ch(In, []), Got?) :- consume(In?, Got).
+consume_link(ch(In, Out?), Got?) :- consume(In?, Got, Out).
 
-procedure consume(Stream(_)?, Stream(_)).
-consume([V|In], [V?|Rest?]) :- ground(V?) | consume(In?, Rest).
-consume([], []).
+procedure consume(Stream(_)?, Stream(_), Stream(_)).
+consume([V|In], [V?|Rest?], Out?) :- ground(V?) | consume(In?, Rest, Out).
+consume([], [], []).
 
 % Decompose the established Link, then produce crdtmsg envelopes onto the outbound stream (the egress
 % drainer ships each ground envelope over the real QUIC wire; the [] base case graceful-closes).
