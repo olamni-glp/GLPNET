@@ -39,7 +39,7 @@ import gleam/list
 import gleam/result
 import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/output_capture
-import glp/runtime/heap.{type Heap, Bound}
+import glp/runtime/heap.{type Heap, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
 import glp/runtime/terms.{
   type Term, ConstAtom, ConstInt, ConstTerm, StructTerm, VarRef,
@@ -186,35 +186,52 @@ pub fn dispatch(
             "_allocate_mutual_reference: 2nd arg must be an unbound writer",
           ))
       }
-    // stream_append(RefIn, Value, RefOut): bind the current writer to a cons cell
-    // '.'(Value, NewTail?), then RefOut is a fresh sentinel at NewTail's writer.
+    // stream_append(RefIn, Value, RefOut): WALK to the stream's open tail and bind
+    // it to a cons cell '.'(Value, NewTail?). RefOut is the SAME ref (the head addr)
+    // — the sentinel is immutable and always walked from, so a ref shared across
+    // streams (mwm1 passes the original Ref to each stream's mwm_copy) keeps
+    // appending after the previous stream, matching Dart's in-place mutation.
     "_stream_append", 3, [ref_in, value, ref_out] ->
       case mutual_ref_addr(heap, ref_in) {
-        Ok(cur) -> {
-          let v = deref_term(heap, value)
-          let #(h1, w2, r2) = heap.allocate_variable(heap)
-          let cons = StructTerm(".", [v, VarRef(r2)])
-          case heap.bind_writer(h1, cur, cons) {
-            Ok(#(h2, woken1)) ->
-              Ok(carry_woken(
-                woken1,
-                bind_term(h2, ref_out, make_mutual_ref(w2)),
-              ))
-            Error(_) ->
-              Ok(KAbort("_stream_append: current writer already bound"))
+        Ok(cur) ->
+          case find_open_tail(heap, cur) {
+            Ok(tail) -> {
+              let v = deref_term(heap, value)
+              let #(h1, _w2, r2) = heap.allocate_variable(heap)
+              let cons = StructTerm(".", [v, VarRef(r2)])
+              case heap.bind_writer(h1, tail, cons) {
+                Ok(#(h2, woken1)) ->
+                  Ok(carry_woken(
+                    woken1,
+                    bind_term(h2, ref_out, make_mutual_ref(cur)),
+                  ))
+                Error(_) ->
+                  Ok(KAbort("_stream_append: open tail already bound"))
+              }
+            }
+            Error(_) -> Ok(KAbort("_stream_append: not an open stream"))
           }
-        }
         Error(_) ->
           Ok(KAbort("_stream_append: 1st arg must be a mutual reference"))
       }
-    // close(Ref): bind the current writer to nil (terminate the stream).
+    // close(Ref): terminate the stream by binding its OPEN tail to nil. The Dart
+    // MutualRefTerm mutates `currentWriterAddr` in place, so `close_when_done` —
+    // which holds the ORIGINAL ref, not the threaded one — sees the final tail. The
+    // Gleam `$mutual_ref` is immutable, so `close` instead WALKS the cons chain from
+    // the ref's (original) addr to the still-open tail and binds THAT (outcome-
+    // identical: the final open writer becomes nil).
     "_close_mutual_reference", 1, [ref] ->
       case mutual_ref_addr(heap, ref) {
-        Ok(cur) ->
-          case heap.bind_writer(heap, cur, ConstTerm(ConstAtom("nil"))) {
-            Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, []))
+        Ok(start) ->
+          case find_open_tail(heap, start) {
+            Ok(tail) ->
+              case heap.bind_writer(heap, tail, ConstTerm(ConstAtom("nil"))) {
+                Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, []))
+                Error(_) ->
+                  Ok(KAbort("_close_mutual_reference: open tail already bound"))
+              }
             Error(_) ->
-              Ok(KAbort("_close_mutual_reference: current writer already bound"))
+              Ok(KAbort("_close_mutual_reference: not an open stream"))
           }
         Error(_) ->
           Ok(KAbort("_close_mutual_reference: argument must be a mutual reference"))
@@ -340,6 +357,19 @@ pub fn is_mutual_ref(term: Term) -> Bool {
   case term {
     StructTerm(f, [ConstTerm(ConstInt(_))]) if f == mutual_ref_functor -> True
     _ -> False
+  }
+}
+
+/// Walk a partially-built stream (`'.'/2` cons cells) from `addr` to the terminal
+/// writer of its still-open tail (Dart's mutated `currentWriterAddr`). An empty
+/// stream (addr itself unbound) returns addr's terminal; a non-cons/closed value
+/// is an error.
+fn find_open_tail(heap: Heap, addr: Int) -> Result(Int, Nil) {
+  case heap.deref(heap, addr) {
+    Ok(#(_, Bound(StructTerm(".", [_, VarRef(tail)])))) ->
+      find_open_tail(heap, tail)
+    Ok(#(_, Unbound(terminal))) -> Ok(terminal)
+    _ -> Error(Nil)
   }
 }
 

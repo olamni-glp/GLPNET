@@ -556,7 +556,18 @@ fn get_variable_writer(
                   Advance(set_cvar(ctx, var_index, CVTerm(VarRef(addr))))
               }
           }
-        _, _ -> Advance(ctx)
+        // Neither writer nor reader: a VarRef to a bound VALUE cell (e.g. a body
+        // goal passing a writer that a prior kernel already bound — mwm's Ref).
+        // Capture the deref'd value; a truly unbound non-pair cell is a no-op.
+        _, _ ->
+          case dval(ctx.heap, addr) {
+            Bound(v) ->
+              case existing_writer(ctx, existing) {
+                Ok(e) -> Advance(bind_sigma(ctx, e, v))
+                Error(_) -> Advance(set_cvar(ctx, var_index, CVTerm(v)))
+              }
+            Unbound(_) -> Advance(ctx)
+          }
       }
     // Ground term.
     _ ->
