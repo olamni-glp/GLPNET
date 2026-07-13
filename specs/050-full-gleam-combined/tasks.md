@@ -119,7 +119,7 @@
 
 **Independent Test**: two Gleam instances exchange terms over each transport; received terms equivalent; wire bytes match reference codec; hostile frames rejected as fault terms
 
-- [ ] T045 [US4] Define transport seam in `glp_gleam/src/glp/link/seam/transport.gleam` (port of `i_link_transport`: connect/accept/send/recv/close; scheme-agnostic layer above — contracts/link-parity.md)
+- [X] T045 [US4] Define transport seam in `glp_gleam/src/glp/link/seam/transport.gleam` (port of `i_link_transport`: connect/accept/send/recv/close; scheme-agnostic layer above — contracts/link-parity.md)
 - [ ] T046 [US4] Port FrameCodec + CRC32 to `glp_gleam/src/glp/link/reliability/frame_codec.gleam` (byte parity with `frame_codec.dart`/`FrameCodec.cs`: header/flags/sequence/CRC32)
 - [ ] T047 [P] [US4] Frame-codec parity tests vs golden vectors in `glp_gleam/test/glp/link/frame_codec_test.gleam` (vectors from `specs/038-result-codec-and-framecodec-ride/contracts/golden/`)
 - [ ] T048 [US4] Implement loopback transport in `glp_gleam/src/glp/link/transports/loopback.gleam` (in-BEAM message passing behind the seam)
