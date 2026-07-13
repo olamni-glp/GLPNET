@@ -58,3 +58,27 @@ the scheduler layer (`scheduler_test.suspended_boot_reports_blocking_readers_tes
 at the envelope layer only the shape (count/roles) is asserted because heap addresses are excluded
 from parity (FR-009). `step`/`Event` (REPL `:trace` seam) is deferred to the US2 REPL slice; the
 faithful single-step primitive it wraps (`scheduler.step`) is delivered + tested in Slice 0.
+
+---
+
+## T042/T043 — US3 corpus parity DRIVEN TO 100% (SC-001 + SC-009) — 2026-07-13
+
+`bash test/parity/run_gleam_corpus.sh` → **201 / 201 agree, 0 diverge, 0 blocked** —
+**100% agreement** vs the recorded Dart goldens (39 Section-A runtime blocks + 162
+B/C/D/E load-outcome cases). **SC-009 10× bound PASS**: suite wall-clock
+gleam ≈ 35.3s vs dart ≈ 26.1s (~1.35×, well within 10×). `gleam test` 443/443,
+warning-free throughout.
+
+Reaching 100% required 13 engine fixes (Gabi-directed "fix all, complete the ports"),
+each committed with 443/443 green + re-verified vs the Dart oracle:
+- **engine.load ACCUMULATES** multi-file loads (Dart `combinedProgram` parity) — a2, unblocks a1/a9.
+- **runner put_structure**: a top-level arg starts a FRESH structure (stale HEAD build-state
+  no longer pushed as a parent) — guard/body operand structs like `X mod P` stop collapsing → a9.
+- **unify_structure_read follows a BOUND READER** via `dval` (nested-struct head match) → a21, a1.
+- **reader-suspend inserts the PAIRED WRITER into U** (U carries writers) → a24.
+- **math + type-conversion kernels** (`_abs/_sqrt/_pow/_floor/_ceil/…`, Erlang `:math`) → a16.
+- **univ (`=..`) kernels** `_list_to_tuple`/`_tuple_to_list` + **wait guards** → a26 (=..), a22.
+- **mwm**: `get_variable_writer` captures a VarRef to a bound VALUE cell; the mutable-ref
+  (`$mutual_ref`) made immutable-safe by walking the cons chain in `stream_append`/`close` → a26.
+- **049 runtime-defined-guard interpreter** (`_evalDefinedGuardCall`): three-valued
+  multi-clause evaluation + system `satisfiable/2` + `$sat:*` table (form-b default) → a29w/a29v/a30.
