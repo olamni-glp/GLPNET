@@ -43,6 +43,13 @@ public static class LinkRequestKernel
         if (heap.Dereference((Term)args[1]!) is VarRef)
             return LinkEstablish.Abort(Who, "arg 2 (ToPeer) must be a ground peer id");
 
+        // Verify-before-act (FR-008, P1 fix 2026-07-13): gate BEFORE opening the QUIC connection or
+        // shipping the request token. The gate keys only on the (already-parsed) ground LinkId, so a
+        // refused requester never establishes a transport connection or exchanges the pre-data
+        // handshake. WireEstablishedLink below is told preGated:true so the outcome is recorded once.
+        if (LinkEstablish.CapabilityRefusal(link, id, Who) is BodyKernelResult refusal)
+            return refusal;
+
         // Connect to the peer's rendezvous (blocks until the request_listener is there;
         // bounded by ConnectTimeout), then ship the in-band request token. The endpoint
         // is captured so the establish-core adopts the SAME connection it handshook on.
@@ -67,6 +74,6 @@ public static class LinkRequestKernel
         }
 
         return LinkEstablish.WireEstablishedLink(
-            rt, link, id, () => endpoint, args[2], args[3], args[4], Who);
+            rt, link, id, () => endpoint, args[2], args[3], args[4], Who, preGated: true);
     }
 }

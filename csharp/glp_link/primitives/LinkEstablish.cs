@@ -28,7 +28,7 @@ public static class LinkEstablish
     /// </summary>
     public static BodyKernelResult WireEstablishedLink(
         GlpRuntimeEngine rt, LinkRuntime link, LinkId id, Func<ILinkEndpoint> establish,
-        object? inArg, object? outArg, object? faultsArg, string who)
+        object? inArg, object? outArg, object? faultsArg, string who, bool preGated = false)
     {
         var heap = rt.Heap;
 
@@ -48,8 +48,18 @@ public static class LinkEstablish
         // fails closed through the graceful Abort path — never a crash, never a silent drop
         // (FR-009). Schemes with no registered gate resolve to the allow-all default (loopback/tcp
         // unchanged).
-        if (!link.CapabilityGates.Select(id.Scheme).GateEstablish(id))
-            return Abort(who, $"capability refused for {id} — establishment fails closed (FR-008)");
+        //
+        // For path-A ('_link_setup') `establish` is LAZY — the endpoint opens inside GetOrEstablish
+        // below, so gating here is genuinely before-open. The path-B kernels ('_link_request' /
+        // '_link_accept') open/adopt the transport connection BEFORE reaching this core, so THEY gate
+        // first (verify-before-act, P1 fix 2026-07-13) and pass `preGated: true` to avoid a second
+        // GateEstablish (which would double-record the outcome, SC-006).
+        if (!preGated)
+        {
+            var refusal = CapabilityRefusal(link, id, who);
+            if (refusal is BodyKernelResult r)
+                return r;
+        }
 
         // Idempotency at link-identity (FR-007): re-establishment of the same ground
         // LinkId reuses the handle rather than opening a duplicate.
@@ -131,6 +141,11 @@ public static class LinkEstablish
         {
             LinkEgress.ShipGround(heap, handle, cons.Args[0]);
         }
+        catch (PayloadCodecException)
+        {
+            Console.WriteLine("[link egress] outbound term rejected by the payload codec — dropped");
+            return;
+        }
         catch (InvalidOperationException)
         {
             Console.WriteLine("[link egress] non-ground term reached Out — ground-relay gate violated; dropped");
@@ -151,6 +166,19 @@ public static class LinkEstablish
 
     private static Exception Unwrap(Exception ex) =>
         ex is AggregateException agg && agg.InnerException is { } inner ? inner : ex;
+
+    /// <summary>
+    /// Run the scheme's capability gate for <paramref name="id"/> (verify-before-act, FR-008). The
+    /// gate keys only on the ground <see cref="LinkId"/>, so a path-B kernel can call this BEFORE it
+    /// opens/adopts the transport connection — a refused peer never establishes a connection or
+    /// exchanges a handshake (P1 fix 2026-07-13). Returns an <see cref="Abort"/> result on refusal
+    /// (the gate has already RECORDED it as a distinct outcome), or <c>null</c> to proceed. Schemes
+    /// with no registered gate resolve to the allow-all default.
+    /// </summary>
+    internal static BodyKernelResult? CapabilityRefusal(LinkRuntime link, LinkId id, string who)
+        => link.CapabilityGates.Select(id.Scheme).GateEstablish(id)
+            ? null
+            : Abort(who, $"capability refused for {id} — establishment fails closed (FR-008)");
 
     internal static BodyKernelResult Abort(string who, string why)
     {
