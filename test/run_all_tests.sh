@@ -44,6 +44,7 @@ TYPED="$(to_repl_path "$GLP_DIR/programs/tests/typed")"
 BOOK="$(to_repl_path "$GLP_DIR/programs/typed_book")"
 TC_DIR="$(to_repl_path "$GLP_RUNTIME/test/programs/typechecker")"
 MODED="$(to_repl_path "$GLP_RUNTIME/test/programs/moded_types")"
+QUIC="$(to_repl_path "$GLP_DIR/programs/tests/quic")"
 
 cd "$GLP_RUNTIME"
 
@@ -1119,6 +1120,23 @@ POSITIVE_FILES=(
     "$TYPED/param_stream_integer.glp"
     "$TYPED/param_channel.glp"
     "$TYPED/param_procedure_inference.glp"
+
+    # --- feature 050: GLP-native true-QUIC link (US1) — the one-bind program over a "quic"
+    #     link_id loads clean (SRSW + type-check + compile). The genuine one-bind wire crossing
+    #     is proven by xUnit QuicLinkOneBindTests (real MsQuic) + the two-host acceptance run. ---
+    "$QUIC/quic_one_bind.glp"
+
+    # --- feature 050 US4: the role-parameterized cross-host MESH program — opens every peer-pair
+    #     link as a GLP goal (FR-003/FR-012), ships crdtmsg/7 envelopes (post-US2 wire), and
+    #     collects faults on the per-link monitor stream. Loads clean (SRSW + type-check + compile);
+    #     the genuine multi-accept mesh / reliability / cyber behaviour is proven by xUnit
+    #     QuicMeshTests/QuicReliabilityTests/QuicCyberTests + the two-host acceptance run (T043). ---
+    "$QUIC/quic_mesh.glp"
+
+    # --- feature 050 follow-on: the full-duplex CHAT demo — bounded symmetric exchange (each side
+    #     sends LineCount lines and collects the peer's before closing, so send-done never tears the
+    #     link down under collect). Loads clean (SRSW + type-check + compile). ---
+    "$QUIC/quic_chat.glp"
 )
 
 # Build REPL input: load each positive file with :clear between

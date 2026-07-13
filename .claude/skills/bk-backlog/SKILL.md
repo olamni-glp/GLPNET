@@ -4,7 +4,7 @@ description: "Durable, per-repo backlog at the front of the front — upstream o
 argument-hint: "[init | add-season | capture | edit | link | legitimate | split | combine | recombine | allocate | status | history]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-backlog.md"
 user-invocable: true
 disable-model-invocation: false

@@ -4,7 +4,7 @@ description: "Standalone release cut — release-branch → pyproject bump (diff
 argument-hint: "[--from-branch <branch>] [--no-edit] [--allow-empty-changelog] [--dry-run] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-release.md"
 user-invocable: true
 disable-model-invocation: false

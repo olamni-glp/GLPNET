@@ -1,3 +1,14 @@
+# test/parity — two parity toolsets share this directory
+
+1. **Codec parity vectors — crdtmsg-mvp** (below, original README).
+2. **Feature 050 corpus parity** (Full-Gleam instance): `corpus-manifest.md` (pinned case
+   list), `goldens/` (recorded Dart reference outcomes — the ONE recording location),
+   `record_dart_goldens.sh`, `run_gleam_corpus.sh`, `run_differential.sh` (MISS-04),
+   `lib/normalize.sh` (shared normalization). See
+   `specs/050-full-gleam-combined/contracts/corpus-parity.md`.
+
+---
+
 # Codec parity vectors — crdtmsg-mvp (T004 / T055)
 
 Gleam/Dart codec parity vectors that share the **same golden corpus** as

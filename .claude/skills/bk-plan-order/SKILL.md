@@ -4,7 +4,7 @@ description: "Advisory, catalog-backed cross-feature dependency + ordering analy
 argument-hint: "run <feature_id>... [--integration-branch <branch>] [--json] | history | init"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-plan-order.md"
 user-invocable: true
 disable-model-invocation: false

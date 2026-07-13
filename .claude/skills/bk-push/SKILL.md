@@ -4,7 +4,7 @@ description: "Push primitive: commits any uncommitted work via /bk-commit then p
 argument-hint: "[-m <msg>] [--allow-secrets] [--allow-skip-hooks] [--dry-run] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-push.md"
 user-invocable: true
 disable-model-invocation: false

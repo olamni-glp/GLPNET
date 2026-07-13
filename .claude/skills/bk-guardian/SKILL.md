@@ -4,7 +4,7 @@ description: "Self-managed per-repo repo-health/integrity daemon. A single auto-
 argument-hint: "[a situation, e.g. 'is my catalog protected?'] | ensure-running | status | report | module [list|enable|disable|run|opt-out|opt-in] | coverage | findings | resolve <id> --note | gate status | override <finding_id> [--ack --rationale --scope] | backup [now|list|verify|restore|prune] | config [show|set|relocate|init] | install-hook"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-guardian.md"
 user-invocable: true
 disable-model-invocation: false

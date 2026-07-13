@@ -4,7 +4,7 @@ description: "Advisory tool inventory & guided invocation for the buildkit toolc
 argument-hint: "[a situation, e.g. 'what order do I build these features in?'] | info <tool> | list | reconcile"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-help.md"
 user-invocable: true
 disable-model-invocation: false

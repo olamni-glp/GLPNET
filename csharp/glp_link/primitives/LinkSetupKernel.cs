@@ -52,8 +52,10 @@ public static class LinkSetupKernel
         var opts = LinkOptions.Default;
         // The establishment rendezvous blocks the runner thread until the peer appears
         // (you genuinely cannot proceed until connected); the peer runs in another
-        // engine/process, so this is not a self-deadlock. Bounded by ConnectTimeout.
-        using var cts = new CancellationTokenSource(opts.ConnectTimeout);
+        // engine/process, so this is not a self-deadlock. Cross-host rendezvous needs
+        // more than the 15s LinkOptions default: listener 180s, connector 120s.
+        using var cts = new CancellationTokenSource(
+            role == LinkRole.Listener ? TimeSpan.FromSeconds(180) : TimeSpan.FromSeconds(120));
         var endpointTask = role == LinkRole.Listener
             ? transport.ListenAsync(id.Scheme, id.Endpoint, opts, cts.Token)
             : transport.ConnectAsync(id.Scheme, id.Endpoint, opts, cts.Token);

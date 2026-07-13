@@ -1,9 +1,10 @@
 ---
 name: "bk-marathon"
 description: "Durable, resumable run harness layered over the per-feature buildkit pipeline (specify→plan→tasks→implement→ship) for bigger features: a pre-organized in-flight backlog (park now / sequence later via fractional order keys), forward-looking fine-grained step intake + expansion-with-lineage at ANY stage, objective resume-from-state, invocation-time crash recovery + scoped-commit re-drive, append-only verification traces, approval gates, and a HARD discharge gate with a recorded informed-consent override (briefing + ack + rationale). Workflow state lives as additive marathon_* rows in the shared out-of-repo machine catalog under the deploy home (survives repo deletion/re-clone on the same machine), mirrored to a per-run Markdown file + the DuckLake lake so CO feeds CO. Single participant now; the participant-aware model is the multi-participant foundation. Advisory & passive: never auto-invokes a /buildkit-* command and is NOT a canonical pipeline stage; secrets are redacted before any persist/send; persistence is additive-only and never touches DBOS/pipeline-state."
+argument-hint: "[a natural-language request, or a subcommand: open|resume|status|position|doctor|discharge|capture|expand|park|sequence|backlog|step-start|checkpoint|trace|gate|discharge-item|override|version]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-marathon.md"
 user-invocable: true
 disable-model-invocation: false

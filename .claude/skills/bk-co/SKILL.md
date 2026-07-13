@@ -4,7 +4,7 @@ description: "Native continuous-observability framework. One fail-safe, non-bloc
 argument-hint: "[a situation, e.g. 'what failed in the last plan?'] | capture | query | detail | case status | route [list|add|check] | session [show|archive] | import-co | stream tail | mcp serve | relocate | backend | init | replay"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-co.md"
 user-invocable: true
 disable-model-invocation: false

@@ -4,7 +4,7 @@ description: "Single-commit primitive: derives a feat/fix/docs/test/chore commit
 argument-hint: "[-m <msg>] [--allow-secrets] [--allow-skip-hooks] [--dry-run] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-commit.md"
 user-invocable: true
 disable-model-invocation: false

@@ -4,7 +4,7 @@ description: "Strategy-driven, plan-first, scored code review. By DEFAULT a team
 argument-hint: "[--review-only] [--scope diff|<path>|repo] [--aspect <descriptor>] [--max-cycles <n>] [--reviewers <n>] [--confirm-protected] [--base <ref>] [--reasoning-effort low|medium|high] [--allow-secrets-in-diff] [--max-seconds <n>]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
+  author: "buildkit"
   source: "templates/commands/buildkit-codexreview.md"
 user-invocable: true
 disable-model-invocation: false

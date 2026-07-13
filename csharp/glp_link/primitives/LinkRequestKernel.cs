@@ -43,6 +43,13 @@ public static class LinkRequestKernel
         if (heap.Dereference((Term)args[1]!) is VarRef)
             return LinkEstablish.Abort(Who, "arg 2 (ToPeer) must be a ground peer id");
 
+        // Verify-before-act (FR-008, P1 fix 2026-07-13): gate BEFORE opening the QUIC connection or
+        // shipping the request token. The gate keys only on the (already-parsed) ground LinkId, so a
+        // refused requester never establishes a transport connection or exchanges the pre-data
+        // handshake. WireEstablishedLink below is told preGated:true so the outcome is recorded once.
+        if (LinkEstablish.CapabilityRefusal(link, id, Who) is BodyKernelResult refusal)
+            return refusal;
+
         // Connect to the peer's rendezvous (blocks until the request_listener is there;
         // bounded by ConnectTimeout), then ship the in-band request token. The endpoint
         // is captured so the establish-core adopts the SAME connection it handshook on.
@@ -61,12 +68,16 @@ public static class LinkRequestKernel
             foreach (var frame in FrameCodec.Encode(payload, messageId: 0u))
                 endpoint.SendBytesAsync(frame).GetAwaiter().GetResult();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or KeyNotFoundException or AggregateException)
+        // ANY connect/handshake failure fails CLOSED GRACEFULLY (Abort), never an uncaught crash —
+        // e.g. a "quic" link on a host without MsQuic throws PlatformNotSupportedException, and a
+        // connect-timeout throws OperationCanceledException; neither was in the old narrow filter
+        // (codexreview 20260713T110357Z P2). Same root fix as the LinkEstablish establishment catch.
+        catch (Exception ex)
         {
             return LinkEstablish.Abort(Who, $"connect/handshake failed for {id}: {ex.Message}");
         }
 
         return LinkEstablish.WireEstablishedLink(
-            rt, link, id, () => endpoint, args[2], args[3], args[4], Who);
+            rt, link, id, () => endpoint, args[2], args[3], args[4], Who, preGated: true);
     }
 }
