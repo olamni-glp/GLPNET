@@ -1,5 +1,78 @@
 ## [Unreleased]
 
+## [v2026.07.13.1] - 2026-07-13
+
+### Added
+- E3pcCtrl frame kind - CBOR codec, must-understand section, reliability conformance (T034)
+- quic_chat.glp — genuine full-duplex single-link chat
+- ratify quic_chat reconciliation - full-duplex chat canonical, one-bind preserved as quic_chat_onebind.glp
+- quic_chat.glp - two-way chat over per-message QUIC one-binds (loopback-verified)
+- US4 mesh program + US5 graceful teardown + polish - quic_mesh.glp (crdtmsg/7 over quic, all links as GLP goals, SRSW-clean load), QuicTeardownTests T037-T039, known-issues + FR-019 audit (T032-T042,T045); REPL 526/527 (mesh loads, 1 pre-existing AOT baseline)
+- US3 - macaroon gate (verify-before-act) on the quic link; ICapabilityGate seam + MacaroonLinkGate + slot-as-section-0x20 (D-2 resolved, no 041 codec change); T022-T028 green (129/129 xUnit, REPL 525/526 baseline)
+- US2 - crdtmsg envelopes on the "quic" wire (CrdtMsgPayloadCodec + composition-root inject); T013-T021 green
+- US1 MVP - register genuine QUIC transport into REPL LinkRuntime (fail-closed cert loader, one-bind kernel-path tests, GLP program, REPL regression)
+
+### Fixed
+- bounded full-duplex quic_chat — close after collect, no teardown race
+- preserve trailing mode annotation on compound type alternatives (codexreview P2)
+- quic payload codec understands the E3pcCtrl section (0x15) - carries E3PC frames instead of loud-rejecting (T034 follow-up)
+- path-B listen failure fails closed gracefully — establishment class complete (codexreview P2)
+- path-B request connect failure fails closed gracefully (codexreview P2)
+- correct quic_mesh.glp GLP mode/SRSW so it loads clean (codexreview P1)
+- defer QUIC link close until inbound collection completes (codexreview P1)
+- any transport-establishment failure fails closed gracefully (codexreview P2)
+- capability-gate evaluation failure fails closed gracefully (codexreview P2)
+- verify-before-act on path-B + controlled codec-failure on egress (codexreview P1/P2)
+- defer QUIC trust-material load to first use (codexreview P1)
+- per-role rendezvous timeouts in LinkSetupKernel (listener 180s, connector 120s) for cross-host soak
+- widen pump fault-guard to the frame parse/reassembly/ordering layer (not just decode) so a malformed/adversarial frame surfaces an observable fault instead of silently killing the receive task; lock _recvLoops with _faultSubs
+- codexreview fixes — genuine macaroon expiry (</<=  operators + real elapsed-token test), pump surfaces malformed-payload fault instead of silent link death, codec rejects term-visible cap slot 0x20, thread-safe ProvenanceLog, LinkPump.Dispose detaches OnFault + joins loops, quic_one_bind ships crdtmsg/7 (production wiring)
+
+### Changed
+- Merge pull request #105 from olamni-glp/050-glp-native-quic-link
+- Merge remote-tracking branch 'origin/050-glp-native-quic-link' into 050-glp-native-quic-link
+- mark T043 done — two-host acceptance performed 7x (engineer-confirmed)
+- gitignore guardian backups; point active feature at 050-glp-native-quic-link for ship
+- T018 complete - tick type-checker port task (native gleam test 331/331)
+- impl(050): T018 type_checker checkModule - type_checker.gleam + tests port; covariance+contravariance, checkModule wiring (closes T018, native gleam test 331/331)
+- impl(050): T018 clause_validation - clause_validation.gleam + tests port; anonymous-reader rejection as Result (native gleam test 322/322)
+- impl(050): T018 type_environment_builder - builder.gleam + tests port; alias resolution, determinism, errors-as-Result, prelude-source param (native gleam test 313/313)
+- quic_chat round lines - T018 split coordination with Olamnit
+- impl(050): T018 well_typed_clause - well_typed_clause.gleam + tests port; counter-threaded, Case-B inference, clause duality (native gleam test 303/303)
+- impl(050): T018 well_typed_term - well_typed_term.gleam + tests port; fix program_dfa bare const-label (Dart parity) (native gleam test 288/288)
+- impl(050): T018 moded_head - moded_head.gleam + tests port (native gleam test 275/275)
+- impl(050): T018 moded_term - moded_term.gleam + tests port (native gleam test 268/268)
+- T018 restart note for moded_term/moded_head (Olamnit native-gleam, position @ subtyping done 252/252)
+- impl(050): T018 subtyping - subtyping.gleam + tests port (native gleam test 252/252)
+- Merge origin/050-full-gleam-combined (T018 chunk C from Olamnit) into local
+- impl(050): T018 chunk C - program_dfa.gleam + tests port (native gleam test 246/246; WSL absent on Olamnit, Gabi-approved native run)
+- Merge origin/050-glp-native-quic-link into 050-full-gleam-combined
+- commit outstanding tree state (manifest churn, EOL normalization, T027 lake manifest)
+- T018 handover note for Olamnit workstation
+- gitignore reviews/ (codexreview advisory artifacts, never shipped)
+- mark T044 done; gitignore glpquick-cert (private keys) + gleam_quic test build artifacts
+- install buildkit skills 2026.07.10.1 (rebrand author->buildkit, +bk-3rtask/bk-guards/bk-owo; trim BUILDKIT block)
+- US4 T029-T031 - multi-accept mesh isolation, dup-suppression/exactly-once/fault-report, rogue-pin reject + tampered-seal detect over real QUIC (134/134 green)
+- impl(050): T018 chunk B - param_expansion.gleam port + TypeExpr toString in type_ast (WSL gleam test 227/227)
+- impl(050): T018 chunk A - type-checker foundations (mode.gleam, TypeEnvironment in type_ast, prelude sets; WSL gleam test 221/221)
+- impl(050): T017 partial evaluator port to compiler/partial_eval.gleam (both live Dart PE copies; WSL gleam test 212/212; 5 error channels byte-identical to Dart REPL)
+- impl(050): T015 parser tests + T016 SRSW checker port (WSL gleam test 184/184; SRSW messages byte-identical to Dart REPL)
+- impl(050): T027 Lean PI:14 writer-MGU proof (lake build green, sorry-free) + T028 prose PROOF.md (INDEX flip deferred to T026 discharge commit)
+- impl(050): T014 parser hand-port to parser/parser.gleam + T013 CRLF lexer fix (WSL gleam test 120/120; corpus sweep 70/70 Dart-conformant)
+- impl(050): T013 lexer hand-port to parser/lexer.gleam (WSL gleam test 119/119)
+- impl(050): Phase 2 foundational complete - T006-T012 (v2.16 opcodes, program model, AST, engine types, generation-scoped wake, staged diagnostics; WSL gleam test 104/104)
+- impl(050): Phase 1 complete - T001-T005 verified (lake build x2, WSL gleam test 91/91, cross-rig 16/16)
+- impl(050): Phase 1 setup scaffolds + baseline record (WIP checkpoint)
+- tasks(050): tasks stage complete - 68 dependency-ordered tasks
+- plan(050): plan stage complete - research, data model, contracts, quickstart
+- spec(050): clarify stage complete - 5 clarifications integrated
+- spec(050): specify stage complete for combined Full-Gleam feature
+- upgrade buildkit skills to 2026.07.09.1 (buildkit-deploy)
+- Merge pull request #104 from olamni-glp/main
+- mark US2a tasks done (T016/T019/T020 - IPayloadCodec seam + egress/ingress rewire)
+- US2a - per-link IPayloadCodec seam; egress/ingress route through it; default codec preserves ground-relay byte-for-byte (118/118 green)
+- plan+tasks+analyze - quic link integration pipeline (register QuicTransport, crdtmsg payload seam, macaroon gate, GLP mesh test); analyze remediations U1/A1/A2/I1/C1 applied
+
 ## [v2026.07.10.1] - 2026-07-10
 
 ### Changed
