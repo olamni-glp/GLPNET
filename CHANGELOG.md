@@ -1,5 +1,851 @@
 ## [Unreleased]
 
+## [v2026.07.13.2] - 2026-07-13
+
+### Added
+- E3pcCtrl frame kind - CBOR codec, must-understand section, reliability conformance (T034)
+- quic_chat.glp — genuine full-duplex single-link chat
+- ratify quic_chat reconciliation - full-duplex chat canonical, one-bind preserved as quic_chat_onebind.glp
+- quic_chat.glp - two-way chat over per-message QUIC one-binds (loopback-verified)
+- US4 mesh program + US5 graceful teardown + polish - quic_mesh.glp (crdtmsg/7 over quic, all links as GLP goals, SRSW-clean load), QuicTeardownTests T037-T039, known-issues + FR-019 audit (T032-T042,T045); REPL 526/527 (mesh loads, 1 pre-existing AOT baseline)
+- US3 - macaroon gate (verify-before-act) on the quic link; ICapabilityGate seam + MacaroonLinkGate + slot-as-section-0x20 (D-2 resolved, no 041 codec change); T022-T028 green (129/129 xUnit, REPL 525/526 baseline)
+- US2 - crdtmsg envelopes on the "quic" wire (CrdtMsgPayloadCodec + composition-root inject); T013-T021 green
+- T011 form (b) system guard primitive satisfiable/2 - native clause-spec table in runner, builtin+analyzer registration, GLP_POLICY_GUARD_FORM toggle for SC-009; A29 form-a reference + A30 pure-b probe wired
+- T009+T010 form (a) via ruled a1 runtime-defined guards - PE pass-through, codegen definedGuards side table, runner three-valued evaluator; wx1-wx4 + 12/12 vectors green; suite A29 wired
+- US1 MVP - register genuine QUIC transport into REPL LinkRuntime (fail-closed cert loader, one-bind kernel-path tests, GLP program, REPL regression)
+- US5 bounded remote test-control over the link - control agent+driver, fixed whitelist (no remote shell), loopback-proven, 184 pytest green (FR-017..019)
+- US1 vectors.json SSOT + C# parity tests 124/124 + guard GLP sources + a1 runtime-defined-guard design (T005-T008)
+- US2 Profile C - in-process BEAM QUIC client via quicer NIF, demo PASS equal to Profile A baseline (milestone: Profile C verdict)
+- box partitioning + PGlite op-WAL + real MsQuic link adapter (buildkit spec-048 T011-T013)
+- polish T033-T036 - SC-001 re-expression acceptance, determinism sweep fixes + repeated-run test, quickstart API accuracy, full re-test green (218/218 + substrate 6/6+86/86, zero substrate diff)
+- US4 T028-T032 - CompatChecker rule table with NFA pattern inclusion, transitive chain check, refusal law, override registration (212/212)
+- US3 T023-T027 - CDDL-subset parser, Lifter with per-construct fidelity + hash drift detection, DSL printer, round-trip equivalence (188/188)
+- US2 T019-T022 - InstanceValidator (kind-structure-facets order, closed-world), crdt_message 043 re-expression, SC-003 corpus agreement harness (175/175)
+- US1 MVP T012-T018 - canonical CDDL emitter, lowering+allocation, all-or-nothing registration, SC-002 defect suite, SC-006 walkthrough (142/142, substrate 6/6+86/86)
+- T008-T011 DSL parser, schema validator (6 rule groups, all-errors-one-pass), compat records, seeded overlay registry skeleton (94/94 green)
+- T004-T007 AST records, verdict/error records, restricted-regex NFA engine tests-first (62/62 green)
+- implement (041) Polish - dual-DSL schema registry, GLP guard PROPOSAL (propose-only, §1.14 gate), parity vectors, docs; C# gates 253 green (T053-T057)
+- implement (041) US5 routing+e2e - unified header, v2 additive cap slot, @name loud-fail, dedup, policy matcher, mesh demonstrator; SC-007/008/009 green (T043-T052)
+- implement (041) US4 cap/sig - macaroon fail-closed + amulet slot + Ed25519 whole/sub-content seals + provenance; SC-005/006/011 green (T035-T042)
+- implement (041) US3 MANDATORY rich-text - Fugue no-interleaving + Peritext unknown-mark preservation, op semantics/tombstone/delivery (T026-T034)
+- implement (041) US2 store-first - op-WAL (040 shape) + rebuildable projection + Merkle anti-entropy; convergence+crash-rebuild green (T020-T025)
+- implement (041) US1 MVP - TLV+4 surface codecs, loud-fail, version tolerance; 16-cell conformance matrix green (T010-T019)
+- implement (041) foundational - wire registry (SC-010), abstract model, DVV/hash-chain, transport seam; T001-T009,T012 green
+- E1-E9 rulings encoded in buildingblocks-synthesis section 6 + new feature crdtmsg-xsd-style-schema-language + export 20260704T072850Z
+- F3 buildingblocks-synthesis delivered - 86 claims to 40 blocks, 9 escalations + roadmap 040 shipped/F3 released + export
+- US9 Polish — SC coverage-map (SC-013) + help-completeness proxy + link_console parity + quickstart/help sync (T057-T060)
+- US6 rcopy wizard — pure exclusion filter + run_transfer core + LinkProxy/ResponderSession over-the-link + /rcopy tui (T048-T053)
+- US8 rcopy responder backend — file-WAL source-of-truth + rebuildable catalog/provenance, commit-on-complete, perm/quota/path (T039-T047)
+- US7 user-bindable PF keys — BindingRegistry (free-key/PF13-24/Ctrl-alt/typed-equiv) + /bind live legend (T054-T056)
+- US5 REPL-in-a-page — ReplBridge process bridge + /repl over link + agent-page /return (T034-T038)
+- US4 joint pinpoint + masks/forms — joint.py/forms.py + /joint /pin /undo-pin /mask /fill wiring (T028-T033)
+- US3 presentation — themes/OIA/splash to presentation.py, two-strip layout + /layout, reverse-video PF-legend (T024-T027)
+- US2 pages — /transmit owned-block, received page not merged/no focus-steal, /pages owner-by-name (T019-T023)
+- US1 MVP — type-only conversation hardened (state-backed tui, @name resolve, no-TTY gate, link-drop surface, one codec) (T009-T018)
+- US-MVP Phase 2 foundational — tmsg codec + terminal state + @name resolve (T004-T008)
+- US-MVP Phase 1 setup — terminal/rcopy skeletons, FakeHandle, two-tier tests (T001-T003)
+- T042 (optional) Lean decode∘encode=id proof for term sub-codec — mirrors verified 029 IlCodecRoundTrip (flat ground-term model, no mathlib/sorry); authored, machine-verification pending Lean toolchain (auto-install sandbox-blocked)
+- T039/T040 GATED corpus RUN on real AtomVM 0.7.999 via Node/WASM wrapper — real Gleam codec, float 0x03 + int64 edges byte-identical + round-trip (PASS); T043 #36 handoff note (verified FrameCodec offsets)
+- T031 cross-runtime golden byte-parity harness + quickstart wiring — Dart==C#==Gleam==corpus.hex; harness PASS on dev box
+- T032 V5 oracle cross-check — result-codec term bytes byte-identical to 029 ConstantCodec (int64/double/string/struct-header); models diverge at 0x05 wrapper by design; C# 131
+- T038 loud-fail fuzz (0 silent accepts) + T041 cyclic-term depth-bounded no-loop — all 3 runtimes; D5/FORK-1 policy left OPEN (test only)
+- US3 T033-T037 — deref+var->writer fidelity (all 3 runtimes): exact depth-32/33 boundary + $truncated marker, var->writer identity, canonical-order determinism; deref-corpus.md reference; Dart/C#-builder/Gleam green
+- US1 T025 — suspended-status acceptance (all 3 runtimes): Status=suspended + blocking-reader set + no heap-addr leak; Dart+2/C#113/Gleam79 green
+- US2 T027/T028 — C#+Gleam golden byte-identity + cross-decode against pinned corpus.hex (encode(corpus)==golden, decode(golden)==corpus, all 13 non-gated); C# 111, Gleam 77 green
+- Gleam result-envelope builder (T022/T023) — new result_envelope_builder.gleam; heap-threaded deep-resolve (depth-32 + $truncated) over 034 heap.deref, build from query writers, round-trips shipped codec; 74 gleam tests green
+- C# result-envelope builder (T020/T021) — new glp_result_codec_builder project w/ IHeapView seam (owner A+B); deep-resolve depth-32 + $truncated, build from queryVarWriters/DrainResult, round-trips shipped codec; 7/7 tests green
+- RDP-robust command mode in 3270 TUI — transmit via '//'+Enter or Alt-Enter (no F-keys needed); slash-commands /help /theme /pages /new /next /prev /goto /focus /quit /send; F-keys still work where passed through
+- 3270 TUI enhancements — 5 colour themes (F2/Ctrl-T), F1 help page, F10 page list w/ owners, startup screen art, configurable command lines (GLPQUICK_CMDLINES), Ctrl-key alternates for swallowed F-keys; record PF-key activation reqs
+- prototype virtual IBM-3270 full-screen chat TUI (--tui) — block-mode compose (F9 transmit), green-screen transcript, pages (PF7/8/6), OIA status line; web-researched 3270 model
+- prompt_toolkit REPL for interactive chat (input pinned at bottom, incoming renders cleanly above via patch_stdout); plain stdin/outbox path retained for background/file-driven use; GLPQUICK_QUIET send-only mode
+- interactive --server/--client link console (real cross-process QUIC, both directions) + quickstart runbook (machine-name + gavri two-host steps); 18 pytest green
+- US3 Gleam Profile A — Gleam/BEAM channel-link + C# genuine-QUIC side-process (real_quic side_process); gleam StackAdapter; demo --stack gleam SC-001..006 PASS; 18 pytest green (T030-T034). Profile C honestly build-blocked (no MSVC)
+- US2 multi-accept mesh server — QuicListenerHandle (N isolated links/port) + Mesh router (to/broadcast, over_capacity, isolation); demo --clients 4 PASS SC-001..005+mesh; 14 pytest + 104 xUnit green (T023-T029)
+- US1 demo + CLI wiring — genuine same-host conformance (SC-001/002/005 PASS, SC-003/004/006+two-host honestly NOT-RUN); 12 pytest + 104 xUnit green; tasks.md status (T014-T022, US2/US3 notes)
+- US1 C# host exe + csharp StackAdapter — two-process genuine QUIC+WS GLP-message exchange, full-duplex + cert-mismatch reject; 11 pytest green (T018/T019/T020 message-level)
+- US1 genuine QUIC+WS leaf — real System.Net.Quic handshake (IsSupported-gated, mutual SPKI pin, ALPN h3) + RFC6455 over QuicStream + minimal CONNECT bootstrap; 5 xUnit + 9 cert pytest green (T014/T015/T016/T017)
+- US0 Setup+Foundational — glp_quick scaffold (cert/SPKI pin, GLP-msg envelope, CLI skeleton), /GLP-Quick skill, C# QUIC+WS leaf stubs (LinkScheme.Quic); IV-a gate PASS, real-QUIC probes PASS
+- polish — additive-only + quickstart walkthrough + artifact hygiene green (T023-T025)
+- WSL smoke gate + config-only conversion recognition + README (US3, T019-T022)
+- 8 subsystem placeholders 1:1 with glp_runtime/lib (US2, T009-T018)
+- glp_gleam MVP — buildable+testable Gleam/BEAM subtree (US1, T001-T008)
+- Dart->Gleam codeconv langpair (dart,gleam) + R3-b generic collision seam
+- Phase 7 US5 (T040-T050) - gate/orchestrate/trace/escalation ported onto stage+checkpoint rows, reconcile (in_sync/fast-forward/fork escalation, resume reconciles first), budget_exceeded kind, CLI gate/rerun/trace/reconcile; US5 6/6, full marathon set 26/26
+- Phase 6 US4 (T033-T039) - scoped commit+push folded onto checkpoint rows (named paths only, hooks run, never force), push_blocked escalation, rule-2a re-drive guard + redrive_commit, status line grammar + emit_status at every boundary, CLI status/--emit + exit 2 on push_blocked; tests 4/4
+- Phase 5 US3 keeper (T026-T032) - start/stop/recover over bridge_client, kernel-fd single-writer lock with ConcurrentWriter refusal distinct from stale residue, read-only doctor, keeper CLI; FIX latent bridge_client.request_force_shutdown marker path (inside data_dir -> sibling, matching bridge poll + 012 sibling convention); tests 2/2
+- Phases 3+4 US1+US2 (T012-T025) - data-driven stages register/append/finalize, start_stage+checkpoint, pure derive_position resume, emergent intake with 5-stage mini-pipeline + fractional routing + prereq escalation, CLI register/append-stage/stage-start/checkpoint/resume/position/finalize/capture; tests 11/11
+- Phase 2 Foundational (T005-T011) - per-run isolated store: resolve_env off-repo guard, idempotent 9-table schema, bridge-composed single-writer repository CRUD, JSON-mirror dual-write, monotonic sequencing; foundation tests 3/3
+- Phase 1 scaffold (T001-T004) — verify greenfield precondition, rewrite models data-driven, new module stubs, drop obsolete 024 tests/modules
+- plan + tasks + analyze marathon-refinement; resolve VI-b via constitution v1.1.0
+- clarify marathon-refinement — resolve 4 forks (hybrid store, codeconv-module now+extract-later, 5-stage mini-pipeline→marathon implement, greenfield)
+- specify marathon-refinement (spec + requirements checklist; 29 FRs, 5 user stories, 3 clarify forks)
+- polish — pin Typed-Datalog-IR citation, KEEP decision + findings to seed/quickstart, FR-012 baseline re-check green (T026-T028)
+- part B — Lean 4 formal gate, sorry-free decode∘encode=id (propext only); install elan/lean 4.30
+- phase-b heap-embedded ModuleTerm round-trip + execute-equivalence (3/3)
+- US2 contract gates + US3 coverage/completeness (41/41); reconcile contract drift (7 v2 classes, Decode record, status-based execute-equiv)
+- IL codec core + harness MVP — US1 round-trip identity + execute-equivalence green (14/14)
+- clarify+plan+tasks+analyze il-codec-spike (3 forks resolved; 5 analyze remediations folded)
+- populate evidence-based constitution v1.0.0 (8 principles) + plan/tasks/analyze + before/after baseline & negative-control evidence
+- block 07 — Polish/close-out (T025-T028); feature 28/28 complete
+- block 06 — real-tool spike RUNS: SPIN (T024) + Lean tactic loop (T014/T015)
+- block 05 — US1 template+interactive-spec, US2 loop-seam+no-API gate, US3/US5 docs+subjects (parallel author batch wf_17e57fd5-646)
+- block 04 — US4/MLIR vertical slice complete (T016 MLIR-GLP-DIALECT.md + T018 ILFRAG-1 + T019 harness + T020 real-MLIR round-trip PASS, mlir-python-bindings 22.0.0/WSL2)
+- block 03 complete — T017 real MLIR bindings via option A (mlir-python-bindings 22.0.0.2025112901, mlir.ir round-trip verified); escalation #1 resolved
+- block 03 partial — real SPIN 6.5.1 (T022) + Lean 4.30.0/lean-lsp-mcp (T012) provisioned in WSL2; MLIR (T017) escalated #1 (no real wheel)
+- marathon block 02 — finalize REFINEMENT-METHOD §4 six formal-tooling slots (T004) + DECISIONS-FOR-OWNER cross-link to ratified R1-R15 (T005)
+- marathon block 01 — spike subtree skeleton (T001) + Python baseline (T002) + 026 input gate (T003)
+- GATE D Dart<->Dart 8/8 green — path-B listen-driver fix + clean link shutdown
+- Phase D layer 2 complete — async-aware link establish + 7 kernels + boot + engine async pump-driver
+- Phase D layer 1 — Dart mirror of link seam+reliability+transports
+- WORKING two-process producer/consumer over real TCP (C# REPL x2, 127.0.0.1) - Got=[10,20,30] byte-identical. Fixes: TcpTransport connect-retry (timing-independent rendezvous) + LinkTerms.Unquote (GLP string constants carry quotes by design for type-checker string-vs-atom; kernels must strip for host interop - xUnit used bare ConstTerms, hiding it). pc.glp role-boot demo (T037)
+- relocate link types+wrappers link.glp -> root self.glp (Gabi-approved A, callable universally like send/receive) + deep-deref kernels for real compiler terms (LinkTerms.GroundResolve across all 7 kernels; xUnit used ground ConstTerms, hiding the nested-VarRef bug); Dart baseline 524/525, 99 xUnit, wrapper->kernel chain proven on C# REPL
+- T038 wire link kernels into C# REPL boot (exe composition-root hook -> LinkKernels.Install + register TcpTransport/LoopbackTransport) + TcpTransport (raw TCP/IPv4 localhost, first real cross-process leaf) + C# builtinProcedures mirror; link.glp loads on C# REPL; 99/99 xUnit
+- T036 programs/lib/link.glp - link-layer types + 12 GLP wrappers over the host kernels (H1/H2/H3/M1 mode fixes applied); register 7 ratified link kernels in type-checker builtinProcedures allowlist; loads clean via dart REPL, baseline 524/525 unchanged
+- T035 link_close - '_link_close'/2 + graceful [] close converge on LinkTeardown core (emit closed(LinkId,Reason) on every monitor + end-stream + CloseAsync + live T024 GC via LinkRuntime.Reclaimer); data path untouched (FR-024/044); 95/95 xUnit
+- T034 per-link fault monitor - '_link_monitor'/2 + LinkFaults fan-out core + LinkHandle.MonitorCursors + pump OnFault->inbox delivery; fault = bound term on per-link stream (never 4th verdict/never Fail; FR-008/043-046); 85/85 xUnit
+- T033 path-B handshake (Option A) - request/listen/accept kernels + explicit request_listener + rendezvous term; shared LinkEstablish core converges all paths on T030 registry (FR-002/R-5); 79/79 xUnit
+- T031 '_link_send'/3 kernel + shared LinkEgress ground-relay ship (LinkId face backs out_relay/3; deep ground-resolve gate; 72/72 xUnit)
+- T030 '_link_setup'/5 kernel + Option-B LinkPump (setup/egress/ingress wiring over loopback; idempotent-at-identity; 66/66 xUnit)
+- Option-B inbound-pump seam (IInboundPump + engine.InboundPump + run-to-quiescence driver loop in both goal paths); null-guarded = zero change for non-link runs; out/csharp builds clean, glp_link.tests 62/62
+- T030 infra - LinkTerms mapping + TransportRegistry + idempotent LinkRegistry + LinkHandle (FR-007/013); 62/62 xUnit green
+- T026 deterministic loopback transport + full Phase-2-stack round-trip test (FR-002/004/018/020); Phase 2 complete, 52/52 xUnit green
+- T025 bounded backpressure SendWindow N=8 (FR-025); 44/44 xUnit green
+- T024 distributed GC framework - LinkReclaimer + ResourceSnapshot (FR-024); 36/36 xUnit green
+- T023 epoch/fencing token split-brain defense (FR-047); 30/30 xUnit green
+- T022 per-link sequence/dedup + FIFO + reorder buffer (FR-020/023/053); 22/22 xUnit green
+- T021 wire format - version+length/CRC32+fragmentation/reassembly+cycle-guard (FR-022); 15 xUnit tests green
+- T020 LinkTransport seam (ILinkTransport/ILinkEndpoint + value types) in clobber-safe csharp/glp_link/ (FR-058); T002-T004 bookkeeping
+- FR-037/SC-006 @< @> @=< @>= standard-order term-comparison guards (lexer+parser+runner _compareTerms+analyzer+prelude+self.glp; Dart + C# mirror; Section A24f tests)
+- FR-033/SC-005 atom/1 guard = string/1 synonym (runner arm + prelude reg + self.glp decl + C# mirror + Section A24d/e tests)
+- polish — auto-mode policy, stage-hook skill, docs, multi-session e2e (marathon complete)
+- US2 gate + US3 rerun + US5 status/budget + US6 gitblock + US7 trace
+- US4 verify-spike + US1 restart-safe resume MVP (resume/reconcile, gate reader, budget, trace)
+- marathon harness foundation — 0010 schema, dual store, cadence, start/doctor
+- US5 backend choice + dart fallback, exit-codes 6/11 (exec-path+drift), JSON/parity tests, docs
+- /glptutorial-run unified run-model (preview/run/explain/propose) + shape-classifier + skill
+- /glptutorial-list GLP tutorial browser (bridge-free codeconv tutorials list)
+- clone GLP tutorial corpus into glpnet (olamni/tutorial, 47 .glp + 42 repl-trace.md, byte-identical to sibling) - self-contained equiv corpus, no sibling dependency
+- converge test/ harness to sibling (to_repl_path + run_aot_smoke/run_cross_mode_parity) - fixes suite vs converged loader; point equiv oracle tests at the cloned-in tutorial corpus
+- programs/.glp byte-identical to sibling (Gabi-approved) - self.glp +procedure tuple/is_list (completes runner is_list/tuple convergence) + 4 typed_book play sources (bonds/agent, cssg+cssn typed_social_agent, cssn typed_ui_mediator); programs .glp diff=0
+- add bin/triage_loader.dart from sibling (new file under gitignored bin/, force-added) - completes bin Dart convergence
+- glp_runtime lib+bin DART byte-identical to sibling GLP - 9 lib overwrites (runner+is_list/tuple, compiler x3, glp_engine, type_checker x3, repl_play_runner) + delete unify_result.dart + bin/glp_repl.dart (Windows/abs path fix) + triage_loader.dart; rebuilt golden exe; static diff=0, tutorials 77/88 (was regressed; remaining 8 are program-level)
+- comprehensive sweep driver (incr 3) - sweep() runs goal-bearing corpus through dual-REPL oracle, tallies equivalent/divergent/needs_agent_work/error + decision-2 outcome cross-check; 2 hermetic tests green
+- live dual-REPL capture backend (incr 2) - capture_pair/compare_goal spawn Dart golden(:trace+:debug)+C# candidate(GLP_EQUIV_TRACE), outcome cross-check (decision 2), strict verdict; injectable spawn; 8 tests green incl live append([1,2,3]) EQUIVALENT
+- goals.yml reviewed artifact (incr 1b) - to_yaml/load/write_artifacts serde + round-trip test; seed 88 ch01-06 goals for review (g1=c)
+- goal-bearing tutorial corpus parser (incr 1a) - GoalEntry + parse_trace_goals handles in-fence+prose formats w/ load-context source tracking; 88 goals from ch01-06; 6 pure tests green
+- T031 part-a - fidelity GEPA metric (SC-004 import identity) + optimize oracle seam
+- T022 - parse_dart adapter (Dart :trace/:debug -> canonical wire); 28/28 events match append fixture, only OUT pending finding-#3 deref
+- T022 - relabel goal ids in separate g-namespace (GoalId sentinel) instead of dropping goal; SUSPEND/REACTIVATE goal stays a (relabeled) fidelity signal. 34 equiv pure tests green
+- T017(ii) option-a - align BYTECODE_OP spine to Dart :debug-observable op set (14 ops; exclude conditionally-printed GetValue); append spine now matches golden except the isolated Ground->Commit divergence
+- Stage 5 T017(ii) - candidate-side canonical EV/OUT trace emission (equiv_trace.cs) at runner spine/commit/suspend seams + engine OUT; flag-gated (GLP_EQUIV_TRACE), no-op + behaviour-unchanged when off
+- Stage 5 T017(i) - wire glp_repl exe to converted REPL (delegating entrypoint); runs + matches Dart golden on true.
+- Stage 4 COMPLETE — goal_queue marked no_emit on canonical cluster (migrate 0009 applied; status no_emit:1/escalated:0/open_escalations:0); E1 escalation resolved (option-a no_emit)
+- Stage 4 CODE — first-class no_emit status (migration 0009 single-head off 0008; status() _classify_codegen_row precedence; mark-no-emit CLI; readiness satisfied; codegen_no_emit tombstone key); offline tests 19/19 green. Canonical migrate+mark PENDING Gabi OK.
+- Stage 3 runner ingest — build-gate pass → built; E1 escalation resolved (6-chunk conversion); frontier now 74/75 built, 1 escalated (goal_queue=Stage 4)
+- runner.cs Stage 3 chunk 6/6 — concurrency arms (Spawn/Requeue/Distribute/Transmit via GlpChannel) + guard arms (Guard/Ground/GroundEqual/Known/NoReaders) + all 6 helpers (_evaluateGuard 25-arm switch, _termsEqual cycle-detect, _dereferenceWithTracking, _evaluateArithmetic, _convertTentativeToStruct); runner.cs COMPLETE (5740 lines), full sln green 0 errors, zero stubs
+- runner.cs Stage 3 chunk 5/6 — clause control + Commit (ApplySigmaHatFCP) + env (Allocate/Deallocate) + Push/Pop/TailStep/Union/Reset/Proceed/Otherwise/Nop/Label/Halt; sln green
+- runner.cs Stage 3 chunk 4/6 — BODY-phase structure building (Put[Constant|Structure|Nil|List|BoundConst|BoundNil], SetConstant, BodySet[Const|ConstArg|StructConstArgs]); sln green
+- runner.cs Stage 3 chunk 3/6 — UNIFY arms (Constant/Void/Structure) + v1 Get[Variable|Value] + all 7 v2 arms; sln green
+- runner.cs Stage 3 chunk 2/6 — HEAD-phase arms (HeadConstant/Structure/Nil/List, HeadBindWriter[Arg], Require[Reader|Writer]Arg, GuardNeedReader[Arg]); sln green
+- runner.cs Stage 3 chunk 1/6 — skeleton (support types real + RunStep/RunWithStatus loop + 60-arm _Step dispatch + stub Exec/helpers); full sln green, downstream unbroken
+- Stage 2 — GEPA run on bytecode (build-only): generator regenerated opcodes->C# (1.0), build ceiling confirmed, bytecode.md frozen w/ measured provenance; gitignore covers per-subsystem candidate + GEPA scratch
+- Stage 1 — per-subsystem Claude-driven GEPA wiring (T032 dataset split, T033 program subsystem field, T034 prompt.load(subsystem), T035 codegen-opt skill loop + dataset/score CLI, T036 _base+5 subsystem prompts); build-only metric per 2026-06-03 decision; 24/24 targeted tests green
+- bulk codegen FINAL — 73/75 built (97.3%); 2 escalated (runner.dart 4863-line interpreter deferred; goal_queue Dart-export no-emit by design). codegen, compiler, glp_engine, isolate_manager, agent_runtime, bin/glp_repl all built against runner stub; full sln dotnet build GREEN (0 errors, 140 warnings); gitignore allows out/csharp/bin/*.cs source while still ignoring dotnet Debug/Release output.
+- bulk codegen batches 15-16 — 5 built (system_predicates_impl, result, asm, scheduler, linter; downstream files built against runner.cs stub)
+- bulk codegen batch 14 — pmt/validator built (added Module.ModeDeclarations() extension stub for missing dep)
+- bulk codegen batch 13 — SCC cg=36 + pmt/checker (6 built: pmt/checker, mad_context, body_kernels, glp_activation, runtime, system_predicates; class GlpRuntime renamed to GlpRuntimeEngine to disambiguate namespace; runner.cs stubbed + escalated — 4863-line WAM dispatch exceeds single-pass)
+- bulk codegen batch 12 — 5/5 built (occurrence, pmt/type_checker, commit, external_io, suspend_ops; ModedArg extended with TypeName/TypeParams + ModeDeclaration.Predicate to resolve pmt/type_checker E1/E2/E3)
+- resolve 2 escalations — heap_fcp (CellTag→HeapCellTag rename) + mode_table (new mode_declaration.cs stub); 50/75 built (Gabi-approved 2026-05-28)
+- bulk codegen batch 10 — 1/1 built (project_linker; manual patch for 2nd missing guards param)
+- bulk codegen batch 9 — 3/3 built first pass (type_checker, analyzer, module_hierarchy)
+- bulk codegen batch 8 — 2/2 built (type_env_builder, partial_evaluator; 1 repair)
+- bulk codegen batch 7 — 3/3 built (suspend, well_typed_clause, parser; parser needed long→int site missed by repair-agent)
+- bulk codegen batch 6 — 5 built (2 repairs) + 2 escalated (mode_table dep_missing, heap_fcp CellTag conflict)
+- bulk codegen batch 5 — 7/7 built (4 first-pass + 3 bounded repairs)
+- bulk codegen batch 4 — 7/7 built first pass (topo=1 mixed)
+- bulk codegen batch 3 — 6/7 built + 1 escalated (goal_queue Dart export-only, undecidable per spec)
+- bulk codegen batch 2 — 7/7 built first pass (compiler/engine/multiagent leaves)
+- bulk codegen batch 1 — 7/7 built (analysis/type_checker/bytecode/compiler leaves)
+- codegen Converted.props append hook + 12 pure tests (bulk-codegen pre-req B)
+- T025 + C# REPL infra (out/csharp .sln/.csproj/Converted.props + glp_repl placeholder, dotnet build green); safe-restart ledger for bulk codegen drive
+- US2 readiness + durable equiv-step pure core (T023/T024)
+- US1 capture/compare/bytecode-diff CLI (T018/T019) — standalone deterministic verdict over recorded artifacts; shared db.engine.connect; DB writes deferred to durable step (T024)
+- US1 corpus.py + reviewed corpus.yml enumeration + materialized split (T016; 256 sources, book 141 exact)
+- US1 oracle core — normalize/relation/bytecode_diff + SC-005 batteries (T013-T015, T020-T021, 21 pure green)
+- Setup + Foundational — migration 0008, equiv tool skeleton, pure trace/fidelity/manifest, tombstone keys (T001-T012, 14 pure tests green)
+- build-gated codegen tool + offline GEPA optimizer (decision B; R11 commit out/csharp; migration 0007)
+- planagents complete — 130 per-file conversion plans + 129 plan-stamped tombstones (plan_started/completed_at, plan_path); 2 open escalations recorded in conversion-plans/_escalations-report.md (bin/glp_repl.dart convspec-absent, type_ast.dart getType/object.GetType shadowing) pending engineer decision before conversion
+- US3+US4 — status via status.py projection (T045), unified aggregate-escalations (T042 delegates to convspec), retry/redrive (T046), tombstone<->DB divergence exit-4 (T047); +T043/T044/T048/T049/T058 tests, capability-preservation 25/25
+- US1 FULLY GREEN (T024/T025/T026/T054/T055/T057/smoke all pass — init fix landed) + T039 convspec skill (analysis + SEPARATE research sub-agent contracts, escalate-don't-guess, official-docs-authoritative) + US2 idiom-KB/conflict/provenance/ingest/both-bases tests
+- R12 step-transaction fix (process engine cache + bootstrap pre-warm — f405 forbidden-rollback ELIMINATED, T024/T025/T054 green) + US2 convspec tool (readiness/idioms/artefact/workflow/CLI, convspec stage wired scaffold->convspec->plan) + T030 4/4; T057 git-head fix; helper adds init
+- T054 GATE GREEN — R12 cleared. DBOS in-process bootstrap (engine pre_launch hook, decorate-before-launch) + drive-to-completion + deterministic resume fix; 22-file durable run on single-writer PGLite completes, status<5s, idempotent recovery. +T024/T025/T055/T057 e2e tests
+- US1 — T023 frontier-order test (4/4 green: dep-order+SCC-indivisible+determinism), T026 nothing-to-convert test, T027 builder skill (durable loop + needs_agent_work handler)
+- Phase 2 COMPLETE (T005/T006 bridge-verified 6/6 green) + US1 builder tool T019-T022 (Typer run/resume/status/trace/retry/redrive/aggregate, orchestrate frontier over read-only 015 depgraph, register->durable.activate); discovered, full surface
+- T012-T015 — durable workflows/queue/trace + activate(); 6 tools' register() delegate to durable activation (D2: run_* unchanged); imports+pure smoke green, plan_units SCC-collapse verified
+- T011 — durable/steps.py @DBOS.step wrappers calling discover/depgraph/scaffold/plan entrypoints VERBATIM (D2, signatures verified against real defs); lazy DBOS, replay-safe, registry smoke OK
+- T009/T010 — durable/ workflow-id derivation (SHA-256, deterministic) + step registry; pure determinism test 4/4 incl. cross-process stability (R9/FR-004/SC-002)
+- T007/T008 — shared workspace.py read-facade (D2: mirrors 016 SQL, no behaviour change) + pure status.py state projection (data-model §5, smoke 9/9)
+- T016 — append-only feature-018 tombstone keys (convspec/builder state) into _FIELD_ORDER + _PRESERVED_APPENDED_KEYS; test_tombstone 4/4 green
+- codeconv mirror stage (spec Amendment 1, Option 1) + init scope overrides (FR-042/043) + depgraph option-A' filter restore
+- Phase 8 polish — remove tools/d2net + D2NET-* skills (FR-022/D1/D2), doc+gitignore de-brand, SQL-safety scan (T032-T035)
+- US2 codeconv scaffold (T018-T023) — mirror tree+target_path+phase, managed-target idempotence (contract reconciled), e2e-verified
+- US1 codeconv init (T013-T017) — workspace config + delegated discover, e2e-verified on side cluster
+- T011 repoint discover to source Dart-specifics via langpairs (byte-identical; Phase 2 foundational complete)
+- planagents foundation — 0003 migration, pure readiness predicate (17 unit tests green), workflow/CLI/artefact/tombstone-writer, SKILL orchestration loop; _FIELD_ORDER+round-trip extended (Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>)
+- Phase 6 stamp/rebuild tests (8/8 green) + codeconv-depgraph SKILL.md (T037)
+- Phase 5/US3 cycle fixture (A->B->C->A + D->A) + test_depgraph_cycle_fixture (6/6 green)
+- Phase 4/US2 mark-* + status lifecycle — tombstone_writer 6th-key (target_path) preservation fix + test_depgraph_mark (13) + 2 lifecycle tests (15/15 green)
+- checkpoint codeconv-depgraph WIP (migration 0002 + tools/depgraph + tests) before merging pglite 0.4.5 fix
+- codeconv-discover resolves package:glp_runtime/... self-imports (US1+US2)
+- --data-dir override for PGLite cluster + ship initial glp_runtime_net/ tombstones (128 files, 146 import edges). Routes PGLite around exFAT-hostile filesystem of repo's home volume. cli.py / bridge_client.acquire_or_discover / workflow.run_discover all accept the override; sidecar / lock / consumers / shutdown-marker derive from <data-dir>. known-issues Issue 8 documents detection + usage.
+- T080-T092 — Phase 7 polish. SC-011/SC-012 schema-isolation + caller-graph-inside-only tests; SC-003 full two-stack (Python psycopg + .NET Npgsql, 100 cycles each); phase7_verification_report.md maps every flow + SC to test/evidence; CLAUDE.md adds .pgdb/ + .codeconv/ + Migration to unified bridge; known-issues Issue 7 documents the four DBOS-on-PGLite hooks. 39/42 codeconv tests pass (2 perf + 1 Windows-symlink skipped). FR-026 + FR-027 greps clean.
+- T060-T076 — Phase 6 US4 codeconv-discover (walker / parse / tombstone / workflow + Typer app + SKILL). DBOS-on-PGLite launch fixed: postgres-DB role override + pool_size 5 + uuid-ossp rewrite preserves semicolon + listen_notify off. 36/39 tests pass (2 perf opt-in + 1 Windows-symlink skipped).
+- T050-T059 — Phase 5 codeconv runner + experimental bridge daemon coordination protocol (heartbeat / orphan poll / linger / force-shutdown). 12/12 tests + 1 xfail. Deep coordination investigation deferred to follow-up feature; artefacts under docs/research/bridge-daemon-coordination/.
+- T030-T039,T042-T043 — Phase 4 BridgeClient + PgdbMigrate + skill; T040-T041 deferred
+- T020-T026 — Phase 3 US1 bridge cross-process lock + sidecar + log rotation; sibling lock path
+- T010-T014 — Phase 2 vendored loaders + D2NET schema audit + bridge description
+- T001-T005 — Phase 1 skeletons + .gitignore + npm/dotnet wiring
+- prereq-patterns catalog — 8 patterns, 6 format contracts, merged pglite bridge, conformance gate (C1..C6 PASS); v2026.05.09
+- author local-secrets-store + secure-signatures (T021-T023); Phase 3 / US1 complete
+- import format contracts (Phase 2) + author governance + 5 non-pglite patterns (T013-T020)
+- /D2NET-scaffold skill ship — SKILL.md + tasks closeout + validation + CHANGELOG v2026.05.01
+
+### Fixed
+- bounded full-duplex quic_chat — close after collect, no teardown race
+- preserve trailing mode annotation on compound type alternatives (codexreview P2)
+- quic payload codec understands the E3pcCtrl section (0x15) - carries E3PC frames instead of loud-rejecting (T034 follow-up)
+- path-B listen failure fails closed gracefully — establishment class complete (codexreview P2)
+- path-B request connect failure fails closed gracefully (codexreview P2)
+- correct quic_mesh.glp GLP mode/SRSW so it loads clean (codexreview P1)
+- defer QUIC link close until inbound collection completes (codexreview P1)
+- any transport-establishment failure fails closed gracefully (codexreview P2)
+- capability-gate evaluation failure fails closed gracefully (codexreview P2)
+- verify-before-act on path-B + controlled codec-failure on egress (codexreview P1/P2)
+- defer QUIC trust-material load to first use (codexreview P1)
+- per-role rendezvous timeouts in LinkSetupKernel (listener 180s, connector 120s) for cross-host soak
+- widen pump fault-guard to the frame parse/reassembly/ordering layer (not just decode) so a malformed/adversarial frame surfaces an observable fault instead of silently killing the receive task; lock _recvLoops with _faultSubs
+- codexreview fixes — genuine macaroon expiry (</<=  operators + real elapsed-token test), pump surfaces malformed-payload fault instead of silent link death, codec rejects term-visible cap slot 0x20, thread-safe ProvenanceLog, LinkPump.Dispose detaches OnFault + joins loops, quic_one_bind ships crdtmsg/7 (production wiring)
+- codexreview non-blocking fixes — control-agent typed-error hardening (US5 FR-018), quicer ALPN code-6 token parity + WS total-reassembly cap (US2), defined-guard StackOverflow backstop (US1)
+- gavri evidence - correct msquic version for the 0.2.15 build (2.3.8, not 2.5.7)
+- gavri evidence CORRECTION - MSVC 14.50 (VS Community 2026 Insiders) IS installed; earlier MSVC-less claim was false
+- apply code-review findings - LEB128 overlong/overflow loud-fail, seal count-binding, section type_number CrdtMsgException, injective caveat encoding (+NUL cleanup); 86 tests green
+- CHANGELOG ordering - stray v2026.06.03.1 block moved to chronological slot, Unreleased restored to top
+- E1 store side confirmed delta-CRDT+Merkle (option b both layers) - doc + mvp notes + export
+- codexreview P1s — commit-time quota re-check (FR-038) + rcopy reply spoof-guard
+- drain host stdout at spawn to prevent pre-readiness pipe-fill hang (code-review #6)
+- demo records SC-001 FAIL on handshake timeout instead of AttributeError (code-review #5)
+- Gleam relay reassembles >1MiB lines instead of misrouting fragments to stderr (data-loss guard); erlc-verified via WSL
+- mesh dup-id no longer hijacks or evicts the incumbent link (routing/data-loss guard); regression test
+- @name routing (FR-006), --tui TTY fallback (FR-005), report link-drops; shared parse_addressed + 5 tests
+- codexreview fixes #1/#2/#4 — bound WS frame size + surface FrameException as clean fault (FR-019); default gleam profile A; exit-code 6 -> quic_unsupported; +regression tests
+- codexreview cycle-2 — golden harness rejects zero-match C# filter (dotnet test --filter exits 0 on no matches; a renamed class would false-pass); guard on non-zero Passed count
+- codexreview cycle-1 — AtomVM gate hard-fails on gleam build error + missing beam (was unchecked, could false-pass on stale beams); output-content stays the success signal (AtomVM exits 1 benignly on success)
+- process-tree kill on stop (no orphaned QUIC hosts incl. gleam->erl->dotnet); REPL polish (incoming on its own line); restore _spawn method
+- client stays alive for the link lifetime (not stdin) + disable QUIC idle timeout; link console survives EOF, auto-announces, file-outbox (GLPQUICK_OUTBOX), @to grammar
+- strip placeholder export markers -> doc-only (codexreview: T009-T016 'no exported definitions')
+- per-run marathon bridge resolves script from toolchain checkout, not the off-repo store (Fix A) - T057 e2e drive found the primary PGLite store never started via the real CLI; decouple repo_root(script source) from store_root(cluster) and commit-target repo_dir; junction-free fixture + regression test
+- flip stale T017 checkbox to [X] (MLIR bindings done block 03, used block 04) — tasks.md now 28/28
+- codexreview cycle 1 — loopback cancel busy-loop + _rendezvous socket leak + clean recv-loop teardown
+- LinkTerms.ToTerm re-quotes string components + path-B example
+- core runner heap-addr/register-index deref conflation (Dart + C# mirror)
+- FR-035/SC-009 imported-reader reactivation via bindAny ingress seam (heap_fcp.dart + mad_context wiring + C# mirror + regression test)
+- FR-034/SC-009 compound-operand guard suspends on nested unbound reader (runner.dart generic-guard recursion + C# mirror + Section A24b/c regression test)
+- FR-021/SC-008 redelivered madGLP assignment is a verified no-op (mad_context Dart + C# mirror + regression test)
+- harden marathon harness pre-marathon (rerun runId echo, resume commit/push crash guard, budget-halt escalation, live-spike recorder)
+- guard rerun_subagent against sibling-block units (FR-007) + regression test
+- converge C# arithmetic to Dart num (int-preservation) + Dart double printing; A5 convergence record
+- converge C# moded-path rendering to Dart lowercase mode words (AsModeString)
+- converge C# runner constant matching to Dart num== (NumEquals) — fixes recursive base-clause selection
+- converge C# runner guard dispatch — add is_list/tuple guard aliases per runner.dart
+- converge C# type DFA — add Any builtin type (states/automata/leaf arms) per program_dfa.dart
+- converge C# REPL to Dart — self.glp path resolver + tuple/is_list builtins
+- capture uses repo-root-relative (../) load paths - current Dart REPL (glp_repl.dart:193-198) only honors / ./ ../ verbatim and roots else at glp/, so Windows-abs D:/ mis-resolved; sibling tutorials load as ../GLP/... (FR-006, no copy); 8 capture tests green
+- T022 finding-#3 - recursively deref OUT binding shape (candidate-side); re-captured append_csharp OUT now ./2(const(a),./2(const(c),const(nil)))
+- #2 resolved - emit Commit conditionally from ExecCommit (proceeding-commit only) to match Dart's conditional COMMIT print; NOT a runner bug. Append spine now matches golden exactly across all 3 goals
+- Stage 5 - scheduler.cs success-determination wires onReduction callback (was stub-era gap); converted REPL now matches Dart golden on append/reverse/quicksort
+- buildprops — ignore example Include in header comment (regression test added)
+- resolve 2 plan escalations — bin/glp_repl retroactive convspec + project-wide getType→LookupType rename; gitignore !.codeconv/**/bin/ so FR-029 inventory tracks the lone bin/ file; E1 (convspec absent) closed via hybrid (best-effort plan accepted + convspec generated/ingested, specced 0-esc); E2 (getType shadows object.GetType) resolved by getX→LookupX idiom recorded in KB, applied to both definition sites (TypeEnvironment in type_ast, TypeTable in type_table) + callers (pmt/type_checker ×6, module_hierarchy_test) across convspecs AND plans; convspec 130/130 specced 0-esc, planagents 130 planned 0-esc 0-stale, both escalation reports 0
+- close escalations #5 + #6 — isolate_manager Channel<T> actor mailbox + rpc_routing_test auto-resolved (Gabi 2026-05-21, Option C); each agent is a single Task.Run consuming a per-agent Channel.CreateUnbounded<IsolateMessage> via 'await foreach (var msg in reader.ReadAllAsync())', one-for-one with Dart isolate ports: Isolate.spawn→Channel+Task.Run, SendPort.send→writer.TryWrite, ReceivePort→ChannelReader, await for→await foreach, port.close→writer.Complete (preserves Dart no-Isolate.kill contract verbatim), Completer<void>→TaskCompletionSource (cached idiom); composes with heap_fcp #4 single-owning-context (consumer Task IS the agent's owning execution context, heap accessed only inside await-foreach body, Channel is the only cross-context primitive, no lock/Interlocked/ConcurrentDictionary in per-agent state); rejected A (Thread-per-agent: OS-thread budget), B (ConcurrentExclusiveSchedulerPair: serialisation not mailbox), D (SynchronizationContext: UI-affinity not headless actors); #6 (rpc_routing_test same(channel) reference-identity) auto-resolves under Channel<T> since IsolateMessage + GlpChannelHandle are in-process .NET references never marshalled across boundaries; isolate_manager + rpc_routing_test both escalated→scaffolded; ALL 6 ESCALATIONS NOW CLOSED, aggregate files_blocked=0; final: scaffolded=128 specced=1 blocked_on_deps=1 (bin/glp_repl.dart) escalated=0 total=130
+- close escalation #4 — heap_fcp single-owning-context (Gabi 2026-05-21, Option A); .NET port preserves Dart's single-owner-thread invariant verbatim (HeapFCP fields stay plain int/List/Dictionary, NO lock/Interlocked/ConcurrentDictionary/volatile); rationale: Dart HeapFCP has zero concurrency primitives by language invariant + FCP itself is single-thread emulator + DerefAddr hot path runs lock-free + multi-step read-modify-write sequences (derefAddr chain-follow, bindWriterToReader cross-cell suspension forwarding) cannot be made safe by concurrent collections alone + 7 dependent multiagent specs already pre-committed to single-owning-thread invariant in their nuance sections; atomicity enforced at agent-mailbox boundary (isolate_manager.dart owns it — #5 gates on this); heap_fcp escalated→scaffolded, aggregate now 2 blocked (isolate_manager + rpc_routing_test)
+- close escalation #3 — lift UnifyResult to lib/compiler/unify_result.dart (byte-identical ADT was duplicated in analyzer.dart + partial_evaluator.dart) + rename analyzer's strict PartialEvaluator class → DefinedGuardEvaluator (semantically distinct from partial_evaluator.dart's lenient version: throws on suspend/fail rather than returning failure); Gabi-chosen Option (b) compiler.dart now explicitly imports partial_evaluator.dart so its PartialEvaluator() call resolves to the lenient version (semantic change: non-reducing defined guards now return failure rather than throwing CompileError at compile time — prior coupling via 'import analyzer.dart' alone was deemed accidental); Dart tests 350/5/3 pre/post identical (3 pre-existing module_hierarchy Windows-path fails unrelated); workspace excluded_directories add-exclude'd lib/multiagent/archive-irma-2026-01-30/ + test_archive/ per Gabi (130 inventory total: 124 scaffolded + 4 escalated + 1 specced unify_result + 1 blocked_on_deps bin/glp_repl); 4 convspec re-spec'd: analyzer.dart (escalated→scaffolded, 22 constructs / 0 escalations; was 23/2), partial_evaluator.dart + compiler.dart (manual sha-bump + imports update), unify_result.dart (NEW, 6 constructs / 0 escalations); aggregate now 3 blocked (heap_fcp, isolate_manager, rpc_routing_test)
+- close escalation #2 — no bug in glp_printer._isAtom (Gabi 2026-05-20); prior convspec sub-agents misread regex semantics (claimed anchored ^...*...$ via String.contains always matches via empty prefix at pos 0; wrong — $ requires cursor at end-of-input, fails for non-empty inputs); Python-verified 13/13 expected/actual; re-spec produced (12 constructs, 0 escalations) with Regex.IsMatch faithful translation + char-range loop as performance alternative; glp_printer escalated→scaffolded, aggregate now 4 blocked
+- close escalation #1 — keep CompileError verbatim in C# port (Gabi 2026-05-20); project-wide policy: all Dart *Error types retain source names, .editorconfig suppresses CA1710 (off by default in .NET 10); 16 sibling specs already committed to CompileError, zero re-spec churn; error.dart escalated→specced, aggregate now 5 blocked
+- facet-1/2/3 remediation — Option-4 agent-gate split (PRE deterministic + content-addressed POST), migration 0006 widens builder_runs.outcome to allow needs_agent_work, _resume_epoch mints new epoch on awaiting-agent so plain re-drive ingests agent-written specs (FR-044); spec.md Amendment 2; dbos_workflow_model.md taxonomy/protocol rewrite (the infeasible same-child-recover voided); test re-baseline + stage_convspec_artifacts helper; pure 17/17, real-bridge builder suite 23/23, facet-3 acceptance gate test_agent_gate_traversal.py GREEN (plain re-drive ingests agent spec end-to-end)
+- US3/US4 e2e — status query column (dart_conversions.completed_at not conversion_completed_at) + builder trace bootstraps DBOS in-process (same launch-gap as run/resume); T052 scope-clean, T053 memory updated
+- update stale 017 downgrade test to the linear chain (downgrade 0003 not -1) — consequence of spec-mandated T003 linearization; Gabi-approved; verified 1 passed, full suite regression-free 264/264
+- resolve pre-existing @needs_bridge suite contention — isolated_repo per-test teardown via kill_bridge (proven discover_repo pattern) + operator progress hook; 2 parallel agents verify 30/30 together, 0 BridgeStartupTimeout
+- T003/T004 — linearize migration chain (0003_dart_plans->0004, new 0005_codeconv_builder); single head 0005 offline-verified, dual-0003 defect resolved (FR-015/SC-004)
+- correct bridge-test data-dir note — isolated_repo fixture uses pytest tmp_path (OS temp), not <repo>/.pgdb; drops contested NTFS claim (re-review P1)
+- apply codex review — P1 needs_agent_work returned-not-raised (DBOS step failed-vs-pending), P2 pytest --data-dir removed, P2 research_findings.construct_key UNIQUE; +review artefact
+- two SCC-batch bugs found by bridge tests
+- correct tombstone under A' — test/debug_negative.dart faithfully retains its dangling import dep (supersedes 18e232d0's destructive-option-A removal)
+- option A' — non-destructive referential completeness (codex P2): keep dangling edges in dart_imports, filter at depgraph compute (self-healing) instead of deleting (which lost edges across idempotent runs)
+- normal-mode discover drops+warns dangling dart_imports edges (Amendment v3, option A) — unblocks depgraph compute on live inventory
+- codexreview triage — P2 verify-tombstones aborts exit 65 on missing/invalid sha256 (not stale/0); P3 verify is read-only (no .codeconv/tombstones mkdir) +2 regression tests
+- bump bridge READY_TIMEOUT 30->60s for PGLite 0.4.5 first-WASM-load variance (measured cold-init ~5s)
+- upgrade to 0.4.5 + coalesce doubled error-path ReadyForQuery (fixes aborted-txn extended-ROLLBACK hang)
+- bridge data-dir exFAT guard + 10s->30s cold-spawn timeout
+
+### Changed
+- Merge pull request #108 from olamni-glp/050-full-gleam-combined
+- Merge remote-tracking branch 'origin/develop' into 050-full-gleam-combined
+- M1 LOCK restart banner - safe-restart doc for M2 (US4 links T045-T058 + US5 cross-runtime capstone T059-T063 + polish T064-T068); NEW-SESSION START PROCEDURE, contracts, Olamnit env (QUIC-WS WSL-only likely host-blocked, link-rig DART override), M2 watch-outs
+- impl(050): FORK-1 RESOLVED (owner-directed 2026-07-13) - deep_resolve now detects a revisited variable on the deref path (path-based visited set) and emits <circular>, matching the Dart/C# REPL cycle rendering (f(f(<circular>)) / pair(a,pair(a,<circular>))); depth-bound $truncated retained for deep non-cyclic terms. All 3 runtimes converge -> corpus 206 agree / 0 diverge / 0 fork = 100%; differential all-agree; gleam test 443/443 warning-free
+- substantive close-out retrospective — 4 root-cause findings (bk-close)
+- T040/T041/T044 M1 LOCK verification - corpus 205 agree/1 fork=100%, differential harness validated, regression guard green (Dart 530/531 baseline, link 16/16, C# 727/727, gleam 443/443); mark T037-T044 done
+- post-ship retrospective report (bk-close)
+- Merge pull request #107 from olamni-glp/main
+- Merge pull request #106 from olamni-glp/release/v2026.07.13.1
+- release: v2026.07.13.1
+- Merge pull request #105 from olamni-glp/050-glp-native-quic-link
+- Merge remote-tracking branch 'origin/050-glp-native-quic-link' into 050-glp-native-quic-link
+- mark T043 done — two-host acceptance performed 7x (engineer-confirmed)
+- impl(050): T041 three-way differential harness run_differential.sh <prog|-> <goal> (Dart+C#+Gleam, shared normalize, per-runtime + agree/diverge with divergent-pair count; exit = #divergent pairs) — closes MISS-04/FR-012; validated: agree on X:=2+3 + primes(10); FORK-1 X=f(X?) reports dart/gleam+csharp/gleam (Dart&C# both detect the cycle, Gleam truncates)
+- impl(050): T040 GAP-G1/G2/G3/G8 + FORK-1 named programs (FR-011) in programs/tests/typed/ + corpus.list blocks + Dart goldens; G1 ground/1 multi-read, G2 standardize-apart, G3 fair-merge, G8 =:=/</integer/known three-valued (incl. suspend) all AGREE; FORK-1 circular-deref discriminator (Dart <circular> vs Gleam $truncated) recorded as owner-gated fork (expected.list). Corpus 205 agree / 0 diverge / 1 fork = 100% in-scope agreement
+- T042/T043 baseline - US3 corpus parity DRIVEN TO 100% (201/201 agree, 10x PASS gleam~35s vs dart~26s); 13 engine fixes summarized
+- impl(050): T042 Fix 3e - port the 049 runtime-defined-guard interpreter (Dart _evalDefinedGuardCall): three-valued multi-clause evaluation (any-success/else-suspend-union/else-fail, fail dominates suspend) with head-pattern matching into a clause-local frame + ground/known/=?= conjuncts + recursive :* calls, over the merged program + system defined-guard table (satisfiable/2 form-b default); a29w/a29v/a30 policy guards agree -> CORPUS 201/201 100% AGREEMENT; gleam test 443/443, warning-free
+- impl(050): T042 Fix 3c-complete mwm - (1) runner get_variable_writer now captures a VarRef to a bound VALUE cell (a body goal passing a writer a prior kernel bound) instead of the no-op that lost it; (2) mwm mutable-ref made immutable-safe: stream_append + close WALK the cons chain to the open tail and keep the ref at the head addr, so a ref shared across streams (mwm1) keeps appending -> matches Dart in-place currentWriterAddr mutation; a26 mwm agrees (198/201); gleam test 443/443
+- impl(050): T042 Fix 3d - wait/wait_until guards: a bound number succeeds (Dart Duration<=0 immediate + Duration>0 timer-then-success are both success outcomes; pure engine has no wall-clock so succeeds immediately, outcome-equivalent), non-number fails, unbound suspends upstream; a22 agrees; gleam test 443/443
+- impl(050): T042 Fix 3c - port mutual-reference body kernels (_allocate_mutual_reference/_stream_append/_close_mutual_reference) + is_mutual_ref guard for mwm/2; MutualRef repr = $mutual_ref(addr) struct (Gleam Term has no custom cell; GLP threads RefOut immutably); gleam test 443/443. mwm reactivation across concurrent kernel-bind still WIP
+- impl(050): T042 Fix 3b - port univ (=../2) body kernels _list_to_tuple/_tuple_to_list (list<->compound) faithful to Dart; a26 =.. cases agree; gleam test 443/443
+- impl(050): T042 Fix 3a - port math + type-conversion body kernels (_abs/_sqrt/_sin/_cos/_tan/_exp/_ln/_log10/_pow/_asin/_acos/_atan/_integer/_real/_round/_floor/_ceil) faithful to Dart body_kernels.dart; transcendentals via Erlang :math FFI (BEAM builtin); int^int>=0 pow -> int, sqrt/ln/asin domain aborts; a16 agrees; gleam test 443/443
+- impl(050): T042 Fix 2c - unify_structure_read reader-suspend inserts the PAIRED WRITER into U (U carries writers; no_more_clauses filters to writers), not the raw reader which was dropped -> spurious fail; fixes a24 level2/level3 head-match-on-unbound-reader suspension; gleam test 443/443
+- impl(050): T042 Fix 2b - runner unify_structure_read follows a BOUND READER via dval (not deref_value's is_value-only gate); goal-boot materialises a nested struct arg (p(a,b) in w(p(a,b))) as a bound reader, so nested head matching (w(p(_,_))) wrongly soft-failed; fixes a21 test_nested + a1 metainterpreter reduce; gleam test 443/443
+- impl(050): T042 Fix 2a - runner put_structure: a TOP-LEVEL arg (arg_slot>=0) starts a FRESH structure instead of pushing stale HEAD build-state (current=BTStruct from a [X|Xs] head read) as a parent; fixes guard/body operand structures (e.g. X mod P) collapsing to their last element -> a9 primes/sieve now correct; gleam test 443/443
+- impl(050): T042 Fix 1 - engine.load ACCUMULATES multi-file loads (Dart combinedProgram parity, merge into engine.program; first-occurrence-wins matches insertion order); runner loads block files sequentially (no concat); a2 now agrees, a1/a9 unblocked (reveal deeper arith/reduce bugs); gleam test 443/443
+- impl(050): T039 Gleam corpus runner (concat-block load, per-goal diff vs goldens, 10x wall-clock) + binding-order normalize; RESULT 190 agree / 8 diverge / 3 blocked, 10x PASS (gleam 27.4s vs dart 28.0s); expected.list seeds 3 verified-blocked (engine load-replace)
+- impl(050): T038 finalize shared normalize.sh - RHS-scoped internal-var renumber (_V<k>, preserves channel-end sharing ch(_V1,_V2)/ch(_V2,_V1)) + Gleam Error-line strip + unbound fold; fix recorder filtered-run clobber of load.golden; restore load.golden 162 + timings
+- impl(050): T037 corpus parity manifest + pinned corpus.list + Dart goldens recorder; 39 runtime blocks (A) + 162 load cases (B/C/D/E) recorded to goldens/, shared normalize.sh rules (T038 substance); concatenated-case model over frozen engine.load; stable re-record verified
+- US2 polish DONE (:trace lines @8dd46c34, facade step/Event @fd8dba7c); restart banner rewritten for /bk-marathon resume + /bk-implement US3 (T037-T044) w/ parity watch-outs; marathon reconciled -> next T037
+- impl(050): US2 polish item 2 - facade engine.start/step/Event (contract Engine surface); RunSession live run-state, shared finish_run, scheduler.status; step envelope == run envelope; 443/443
+- impl(050): US2 polish item 1 - :trace line emission (head :- body / -> suspended / -> failed, Dart onReduction shape); goal_format.gleam + scheduler trace + run_with_limit_traced; 439/439
+- restart banner - US1+US2 DONE (T034 output-capture @96078234, 432/432); 2 US2 thin spots flagged (:trace lines, facade step/Event); NEXT = US3 corpus parity
+- impl(050): T034 output capture - _output/1 kernel port + formatGroundTerm seam, threaded as data (KSuccess->Reduced->scheduler->engine->REPL) not envelope; run_with_limit_capturing; US2 COMPLETE; 432/432
+- impl(050): T031/T032/T035/T036 - REPL loop+commands+main+stdin FFI, run_with_limit for :limit; scripted + envelope-identity tests; gleam run verified end-to-end; 424/424
+- gitignore guardian backups; point active feature at 050-glp-native-quic-link for ship
+- impl(050): T033 slice - repl/results.gleam render_outcome + format_term (ED-1 envelope->reference-REPL text, Dart _formatTerm/_printStatus parity); 14 tests, 406/406
+- restart banner - US1 FULLY DONE (T025 @64d0a2a3, T026+T028 PI:14 discharge @06e0427f, 392/392, lake build re-verified on Olamnit); NEXT = US2 REPL T031-T036
+- proof(050): T026+T028 discharge PI:14 writer-MGU - adversarial suite (10 tests, 392/392) + INDEX OPEN->proved + PARITY-BAR refs + lake build re-verified exit 0 on Olamnit
+- T025 engine-semantics tests - three-phase HEAD/GUARD/BODY ordering, reactivate-exactly-once (FR-005), otherwise-after-failure-not-suspension (382/382)
+- restart doc - NEW-SESSION START PROCEDURE for US1 hardening (T025/T026+T028) then US2 REPL (T031-T036)
+- T029 + T030 DONE - baseline.md smoke-set record, tasks.md T029/T030 checked, restart banner (US1 acceptance complete, X:=2+3 Dart-verified)
+- impl(050): T029 Slice 2 - goal-boot + engine.run + T030 (X:=2+3 e2e -> Success X=5; suspension; list-of-consts)
+- impl(050): T029 Slice 1 - engine.gleam facade (new/new_with_prelude/load over loader; disk self.glp via FFI; captured deferred per R4)
+- T029 Slice 0 DONE + Slice 0b (output capture) DEFERRED per R4 (captured excluded from parity, no Dart oracle) - Gabi-approved
+- impl(050): T029 Slice 0 - scheduler refinement (caps 1-3): faithful RunStatus + blocking-readers + single-step
+- T029 safe-restart doc - scheduler refinement (Slice 0/0b) + goal-boot + facade + signaling protocol
+- impl(050): T029 slice - loader.compile_prelude (type-check-skipping prelude compile per Dart _loadRootSelf)
+- T024 DONE restart banner + T029 bootstrap (resume from 365/365 @ 78dd7ef9)
+- impl(050): T024 generic Guard opcode + native body kernels + shared arith; native gleam 365/365
+- T024 restart note - kernels + generic Guard plan (resume from 350/350)
+- impl(050): T023 structural guards (ground/known/otherwise/=?=/no_readers) in runner; native gleam 350/350
+- impl(050): T022 scheduler - run loop + suspend/reactivation; native gleam 346/346
+- impl(050): T021 slice 21d - BODY construction + spawn; T021 closed; native gleam 344/344
+- impl(050): T021 slice 21c - HEAD structures (writer-MGU crux); native gleam 343/343
+- T021 restart note + verified Dart runner.dart architecture map (porting reference for slices 21c/21d)
+- impl(050): T021 slice 21a/b - three-phase runner control spine + HEAD-constant + Commit + suspend; immutable stepper porting Dart runWithStatus; writer-keyed Si/U; 3 e2e gleeunit tests run flip end-to-end (native gleam 339/339)
+- impl(050): T020 loader - single-entry load pipeline (parse->SRSW->PE->typecheck->codegen->load) with staged diagnostics; prelude threaded as param (no global state, FR-009); 4 gleeunit tests (native gleam 336/336)
+- impl(050): T019 codegen - codegen.gleam faithful port of Dart CodeGenerator + P5 merge byte-parity smoke test; additive srsw.clause_register_map (register alloc, option a); native gleam test 332/332
+- T018 complete - tick type-checker port task (native gleam test 331/331)
+- impl(050): T018 type_checker checkModule - type_checker.gleam + tests port; covariance+contravariance, checkModule wiring (closes T018, native gleam test 331/331)
+- impl(050): T018 clause_validation - clause_validation.gleam + tests port; anonymous-reader rejection as Result (native gleam test 322/322)
+- impl(050): T018 type_environment_builder - builder.gleam + tests port; alias resolution, determinism, errors-as-Result, prelude-source param (native gleam test 313/313)
+- quic_chat round lines - T018 split coordination with Olamnit
+- impl(050): T018 well_typed_clause - well_typed_clause.gleam + tests port; counter-threaded, Case-B inference, clause duality (native gleam test 303/303)
+- impl(050): T018 well_typed_term - well_typed_term.gleam + tests port; fix program_dfa bare const-label (Dart parity) (native gleam test 288/288)
+- impl(050): T018 moded_head - moded_head.gleam + tests port (native gleam test 275/275)
+- impl(050): T018 moded_term - moded_term.gleam + tests port (native gleam test 268/268)
+- T018 restart note for moded_term/moded_head (Olamnit native-gleam, position @ subtyping done 252/252)
+- impl(050): T018 subtyping - subtyping.gleam + tests port (native gleam test 252/252)
+- Merge origin/050-full-gleam-combined (T018 chunk C from Olamnit) into local
+- impl(050): T018 chunk C - program_dfa.gleam + tests port (native gleam test 246/246; WSL absent on Olamnit, Gabi-approved native run)
+- Merge origin/050-glp-native-quic-link into 050-full-gleam-combined
+- commit outstanding tree state (manifest churn, EOL normalization, T027 lake manifest)
+- T018 handover note for Olamnit workstation
+- gitignore reviews/ (codexreview advisory artifacts, never shipped)
+- mark T044 done; gitignore glpquick-cert (private keys) + gleam_quic test build artifacts
+- install buildkit skills 2026.07.10.1 (rebrand author->buildkit, +bk-3rtask/bk-guards/bk-owo; trim BUILDKIT block)
+- US4 T029-T031 - multi-accept mesh isolation, dup-suppression/exactly-once/fault-report, rogue-pin reject + tampered-seal detect over real QUIC (134/134 green)
+- impl(050): T018 chunk B - param_expansion.gleam port + TypeExpr toString in type_ast (WSL gleam test 227/227)
+- impl(050): T018 chunk A - type-checker foundations (mode.gleam, TypeEnvironment in type_ast, prelude sets; WSL gleam test 221/221)
+- impl(050): T017 partial evaluator port to compiler/partial_eval.gleam (both live Dart PE copies; WSL gleam test 212/212; 5 error channels byte-identical to Dart REPL)
+- impl(050): T015 parser tests + T016 SRSW checker port (WSL gleam test 184/184; SRSW messages byte-identical to Dart REPL)
+- impl(050): T027 Lean PI:14 writer-MGU proof (lake build green, sorry-free) + T028 prose PROOF.md (INDEX flip deferred to T026 discharge commit)
+- impl(050): T014 parser hand-port to parser/parser.gleam + T013 CRLF lexer fix (WSL gleam test 120/120; corpus sweep 70/70 Dart-conformant)
+- impl(050): T013 lexer hand-port to parser/lexer.gleam (WSL gleam test 119/119)
+- impl(050): Phase 2 foundational complete - T006-T012 (v2.16 opcodes, program model, AST, engine types, generation-scoped wake, staged diagnostics; WSL gleam test 104/104)
+- impl(050): Phase 1 complete - T001-T005 verified (lake build x2, WSL gleam test 91/91, cross-rig 16/16)
+- impl(050): Phase 1 setup scaffolds + baseline record (WIP checkpoint)
+- tasks(050): tasks stage complete - 68 dependency-ordered tasks
+- plan(050): plan stage complete - research, data model, contracts, quickstart
+- spec(050): clarify stage complete - 5 clarifications integrated
+- spec(050): specify stage complete for combined Full-Gleam feature
+- upgrade buildkit skills to 2026.07.09.1 (buildkit-deploy)
+- Merge pull request #104 from olamni-glp/main
+- Merge pull request #103 from olamni-glp/release/v2026.07.10.1
+- release: v2026.07.10.1
+- import olamnit 20260708 export and re-export merged journal
+- Merge pull request #102 from olamni-glp/main
+- Merge pull request #101 from olamni-glp/release/v2026.07.09.2
+- release: v2026.07.09.2
+- Merge pull request #100 from olamni-glp/049-wave1-guard-link-acceptance
+- Merge pull request #99 from olamni-glp/main
+- Merge pull request #98 from olamni-glp/release/v2026.07.09.1
+- release: v2026.07.09.1
+- Merge pull request #97 from olamni-glp/049a-gavri-us2-us3
+- T012+T013+T029-T031 - SC-009 equivalence both forms, parity+gate audit PASS, final baselines green, ship-gate audit ALL FOUR US PASS
+- T020/T021 US3 two-host records + us3-verdict PASS; T010 form-a EquivalenceRun evidence
+- mark US2a tasks done (T016/T019/T020 - IPayloadCodec seam + egress/ingress rewire)
+- US2a - per-link IPayloadCodec seam; egress/ingress route through it; default codec preserves ground-relay byte-for-byte (118/118 green)
+- mark T003 realization-checkpoint gate discharged in tasks.md
+- plan+tasks+analyze - quic link integration pipeline (register QuicTransport, crdtmsg payload seam, macaroon gate, GLP mesh test); analyze remediations U1/A1/A2/I1/C1 applied
+- ship-plan handoff to primary session - full-wave ship runs there on the canonical branch, gated on all 4 US
+- Merge pull request #96 from olamni-glp/049a-gavri-us2-us3
+- Merge remote-tracking branch 'origin/049-wave1-guard-link-acceptance' into 049a-gavri-us2-us3
+- gavri US2+US3 evidence complete - SC-005 + SC-006 both PASS, 90-summary completion signal, transport-soak footnoted as out-of-scope
+- gavri MSVC-native quicer attempt - toolchain proven (quictls+msquic.dll link), blocker is upstream unix-only quicer C source (0.2.15 and 0.4.3), escalated per FR-010
+- T003 vector addendum - v05 success-on-empty (parity), v12 fail (decidable) per Gabi ruling; 1.14 gate fully discharged
+- T003 realization addendum - form (a) via (a1) compiler extension then form (b), per Gabi ruling; v05/v12 outcomes still to be ruled
+- us2-verdict follow-up - gavri MSVC correction 8facff21 relayed, PASS unaffected (WSL path stands)
+- US2 Profile C verdict PASS SC-005 - gavri evidence reviewed and integrated (T015-T018)
+- FR-015 regression coverage - #5 timeout-FAIL + #6 pre-readiness flood pytest, #7 >1MiB reassembly erlang harness PASS local OTP29 (T025-T028)
+- US4 marathon durability VERIFIED - kill-resume PASS + durable-first commit re-drive exactly-once PASS (T022-T024, SC-007)
+- step-3 checkpoint durable-first, commit withheld by index.lock (T024)
+- us4-step-2 checkpoint - marathon durability probe
+- marathon durability run record mrun-9724364d684a (T022)
+- US3 Olamnit prep - cert generated, addr corrected 192.168.0.143 -> 192.168.0.136, firewall+server handed to engineer (T019)
+- baseline checkpoint 524/525 REPL + 114 xUnit + 178 pytest, evidence tree, gavri prompt mesh>=4 fix, delegation record (T001/T002/T004/T014)
+- analyze remediations - empty-targets and excluded-vs-unbound edge recorded for T003 ruling, gavri-lane execution semantics, T009 protocol wording (buildkit spec-049)
+- tasks - 32 tasks in 4 story lanes, T003 1.14 realization gate, gavri delegation lane, marathon+fixes parallel (buildkit spec-049)
+- plan - R1 form-(a) realization checkpoint, shared decision vectors, gavri delegation + evidence contracts (buildkit spec-049)
+- gavri evidence - two-host prep done, awaiting cert + Olamnit server (milestone: US3 prep)
+- gavri evidence - WSL provisioning + gleam Profile A baseline PASS (milestone: baseline)
+- gavri evidence - environment discovery (US2/US3 delegation, milestone: environment done)
+- Merge pull request #95 from olamni-glp/049-wave1-guard-link-acceptance
+- roadmap-sync import manifest - applied 6 olamnit exports (1031 journal lines) on gavriellas host
+- clarify - 1.14 approved staged a-to-b, hard ship gate, gavri delegation prompt (buildkit spec-049)
+- specify wave-1 consolidated - GLP policy-guard (1.14-gated) + 036 link full acceptance (buildkit spec-049)
+- Merge pull request #94 from olamni-glp/048-colab-foundations
+- scan-reconcile 042/043 released, dedup A-I closed with engineer approval, CRDT migration 0022, double export-import idempotent (0 dup groups, 86 features)
+- codify bounded-behavior cap+error+test rule (act-62c7bf6a99)
+- spec(043): additive-optional carve-out - optional additions stay forward-compatible per engineer decision, closing review escalation
+- post-ship close-out retrospective for v2026.07.08.1
+- Merge pull request #93 from olamni-glp/main
+- Merge pull request #92 from olamni-glp/release/v2026.07.08.1
+- release: v2026.07.08.1
+- Merge pull request #91 from olamni-glp/043-xsd-schema-language
+- refine(codexreview): cycle 5/6 [diff/general]
+- refine(codexreview): cycle 4/5 [diff/general]
+- refine(codexreview): cycle 3/4 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- Checkpoint: 043 project skeleton, substrate baseline green (wire_registry 6/6, crdtmsg 86/86)
+- analyze(043-xsd-schema-language): apply remediations I1 I2 A1 A2 U1 T1 W1 - closed-world compat rows per spec US4-AS2, drop symbol primitive, scope FR-007 agreement law, pin QmeditDsl=XsdSource for 043 entries
+- tasks(043-xsd-schema-language): 36 tasks, tests-first per story - setup 3, foundational 8, US1 7 MVP, US2 4, US3 5, US4 5, polish 4
+- plan(043-xsd-schema-language): plan + research R1-R12 + data-model + 5 contracts + quickstart - new csharp/glp_schema_lang over seeded overlay, E9 tables untouched
+- clarify(043-xsd-schema-language): 3 clarifications - plaintext qmedit-family DSL (no XML), cycles rejected at schema-validation, evolution refuses without declared compatibility mode
+- specify(043-xsd-schema-language): spec + quality checklist - XSD-style schema layer over E9 dual-DSL functor registry, 4 stories, 14 FRs, 6 SCs, zero markers (2 open choices routed to clarify)
+- commit crdtmsg-verify-harden retrospective artifact from close-out
+- Merge pull request #90 from olamni-glp/main
+- Merge pull request #89 from olamni-glp/release/v2026.07.06.1
+- release: v2026.07.06.1
+- Merge pull request #88 from olamni-glp/042-crdtmsg-verify-harden
+- refine(codexreview): cycle 4/3 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- commit crdtmsg-mvp draft retrospective artifact from close-out
+- impl(042): COMPLETE - report assembled s9/s11/s12 all nine SC PASS, SC-008 zero silent edits (61 rows), SC-009 refs in all 3 docs, T030 env-blocked bracket reproduced (T029-T031)
+- impl(042): US4 complete - 231/231 pointers resolved SC-007 met (225 resolve, 2 host-blocked, 2 link-rot corrected in F2, 2 transcript unrecoverable), Tier1 39/39 bib-verified, report s8 (T026-T028)
+- impl(042): T026 partial - 83/231 evidence pointers resolved (in-repo+sibling+transcript classes), transcript pointers superseded in F3 (rows 45-46); 148 F2 URLs pending web sweep
+- impl(042): US3 complete - register closure SC-003 met (2 promoted incl BB-CRDT-7 self-promotion, 6 re-affirmed, 0 escalations), report s7+s10, F3 change-log rows 35-44 (T021-T024)
+- impl(042): US2 complete - T016 merge rederivation 37/37 COHERENT, T017 26 blind rescans over 13 singletons, T018 curation SC-002 met (11 confirmed, 2 no-further-evidence, 0 escalations)
+- impl(042): US1 conformance ledgers complete (SC-001 3/3, 18 elements) + US2 ledger rederivations corrected + drift dispositions + E1-E9 propagation fixes + pointer census 231 rows (T007-T015,T019,T020,T025)
+- impl(042): Phase 2 foundational - report section 1 method reconstruction, 18 elements F1/F2/F3 RECORDED-vs-RECONSTRUCTED (T004-T006)
+- impl(042): Phase 1 setup - report+evidence skeletons, changelog sections, scanner-C view resolved d2689a71, env-blocked baseline recorded (T001-T003)
+- analyze(042-crdtmsg-verify-harden): 0 critical/high - applied 5 remediations (changelog skeletons in T001, tasks.md authoritative ordering, SC-008 min(10) sampling, T021 wording, 4-vs-3 ledger note)
+- tasks(042-crdtmsg-verify-harden): 31 tasks across 4 stories - US1 conformance MVP, US2 hardening w/ blind re-scans, US3 register closure, US4 evidence census; single-writer-per-doc rule
+- plan(042-crdtmsg-verify-harden): verification plan - 5 WPs, hybrid baselines pinned (c20317ce/6ecc975f/v2026.07.04.4), method-strength survey, report+ledger+changelog contracts
+- clarify(042-crdtmsg-verify-harden): 3 rulings encoded - targeted re-execution (FR-014), mechanical PROV promotions w/ batch review (FR-008), hybrid delivery-time/HEAD baseline (FR-005/FR-015)
+- spec(042-crdtmsg-verify-harden): verification+hardening spec for F1/F2/F3 against their frozen 3-role methods; 1 clarify fork (FR-014 evidence depth)
+- Merge pull request #87 from olamni-glp/main
+- Merge pull request #86 from olamni-glp/release/v2026.07.04.4
+- release: v2026.07.04.4
+- Merge pull request #85 from olamni-glp/041-crdtmsg-mvp
+- analyze (041) - apply top remedies (FR-019/031/023 coverage, FR-038 relabel)
+- tasks (041) - 57 tasks by user story, store-first, tests-first
+- plan (041) - design artifacts, C# workspace, store-first, constitution PASS
+- clarify (041) - rich-text CRDT mandatory, C# primary, guard gated on 1.14
+- specify crdtmsg-mvp (041) - CRDT multi-format messaging MVP spec
+- dedup 55 dup-GUID groups from cross-host merge (0 dups; 78 feats/18 epics) + restart pointer
+- restart pointer for 2026-07-04 — ship v2026.07.04.1 done, roadmap synced; NEXT=dedup dup-GUIDs, bk-upgrade+deploy, marathon
+- roadmap-sync import+export (olamnit↔gavriellas cross-host merge, idempotent)
+- bk-close retro for F3 cycle - 3 findings (agent-teams win, release-planner creatordate gotcha, retro-inputs gap)
+- Merge pull request #83 from olamni-glp/main
+- Merge pull request #82 from olamni-glp/release/v2026.07.04.3
+- release: v2026.07.04.3
+- roadmap export 20260704 pre-release
+- promote crdtmsg-mvp + export 20260704
+- roadmap - virtual-3270-term released (superseded via 040) + export 20260704
+- roadmap export 20260704T070059Z post-ship (13 epics, 75 features, 1003 journal lines)
+- bk-close retrospective - 4 findings (2 systematic: ship-state visibility, review-ledger) + CLAUDE.md update
+- Merge pull request #81 from olamni-glp/main
+- Merge pull request #80 from olamni-glp/release/v2026.07.04.2
+- release: v2026.07.04.2
+- Merge pull request #79 from olamni-glp/037-virtual-3270-term
+- Merge pull request #78 from olamni-glp/037-virtual-3270-term
+- roadmap fold - crdtmsg-verify-and-harden feature + 3-role dogfood win note + codify notes + exports 20260704
+- Merge pull request #77 from olamni-glp/037-virtual-3270-term
+- roadmap capture fix - crdtmsg F1/F2 released with doc pointers + export 20260704T063315Z
+- Merge pull request #76 from olamni-glp/main
+- Merge pull request #75 from olamni-glp/release/v2026.07.04.1
+- release: v2026.07.04.1
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- Merge pull request #74 from olamni-glp/037-virtual-3270-term
+- roadmap-sync export 20260703T213044Z for cross-host resume (13 epics, 74 features)
+- Merge pull request #73 from olamni-glp/037-virtual-3270-term
+- sweep session artifacts - deploy/guardian/roadmap-sync state, 038 retro mirror, crdt-multiformat-messaging research
+- Merge origin/develop into develop (integrate 036/037/040 work + PR #72)
+- plan+tasks+analyze for complete+hardened virtual-3270 terminal (Phase 0/1 artifacts + 60 tasks + top remedies)
+- Merge pull request #72 from olamni-glp/037-virtual-3270-term
+- specify+clarify complete+hardened virtual-3270 terminal (superset of 037: US1-9 / FR-001..046 / SC-001..013; 3 clarifications)
+- record buildkit v2026.07.03.1 deploy audit log
+- refresh restart pointer — 035+ audit outcome, link-completion fixes done, next=T019 then promote+specify 040
+- 035+ oblivion audit, 3-role-team method+dogfood, 040 complete-hardened-3270 capture, 2 codify notes
+- restore virtual-3270-term spec on develop base; renumber /rcopy backend refs 038 to 040 (038/039 shipped)
+- close-out retrospective report (4 root-cause findings) for v2026.07.02.3
+- Merge pull request #71 from olamni-glp/main
+- Merge pull request #70 from olamni-glp/release/v2026.07.02.3
+- release: v2026.07.02.3
+- Merge pull request #69 from olamni-glp/036-http3-quic-ws-link
+- T037 done — single-host quickstart validated (csharp SC-001..005+mesh, gleam Profile A SC-001..006 all PASS); record deferred acceptance as known-issues Issue 11
+- Merge origin/develop into 036-http3-quic-ws-link (integrate 130 commits: bk-* skill rename, gleam-port 031-039, engine-split); resolve feature.json/CLAUDE.md/current_plan.md to 036 + preserve gleam-baseline T015 pointer
+- carve deferred acceptance (T003/T032/T036/T040) into roadmap feature http3-quic-ws-link-full-acceptance + follow-up brief
+- Merge pull request #68 from olamni-glp/main
+- Merge pull request #67 from olamni-glp/release/v2026.07.02.2
+- release: v2026.07.02.2
+- Merge pull request #66 from olamni-glp/038-result-codec-and-framecodec-ride
+- 8 codify notes from 2026-07-02 roadmap history reconciliation (reconcile bug, post-ship stall, backfill gap, number collisions, scan-method win)
+- Merge pull request #65 from olamni-glp/main
+- Merge pull request #64 from olamni-glp/release/v2026.07.02.1
+- release: v2026.07.02.1
+- Merge pull request #63 from olamni-glp/038-result-codec-and-framecodec-ride
+- Merge remote-tracking branch 'origin/develop' into 038-result-codec-and-framecodec-ride
+- T044 doc audit + T045 end-to-end validation — Dart 83/C# 131/builder 14/Gleam 91 + golden harness PASS + AtomVM gated PASS; all 44 tasks done (+T042 optional authored)
+- T038/T039 verified green — REPL 524/525 (1 unrelated AOT-smoke fail, no 036 regression), glp_quick 18 pytest + glp_link 104 xUnit
+- 038(impl): US2 golden corpus authored from Dart + Dart byte-identity test (T004/T026/T029/T030); 69 Dart codec tests green
+- 038(impl): C# + Gleam result-codec fan-out — byte-identical to Dart source of truth (T002/3/5/6/8/9/11/13/24); C# 84/84, Gleam 68/68 green
+- 038(impl): Dart engine->envelope builder + depth-32 deep-resolve (T017/T018/T019); MVP sub-checkpoint green (55 codec tests)
+- 038(impl): Dart codec foundation — value types + term sub-codec + envelope frame codec; US1 round-trip/no-heap/in-process green (T001/T007/T010/T012/T014/T015/T016)
+- 038(analyze): cross-artifact analysis — 0 critical/high, 100% coverage; applied U1 remedy (Gleam GlobalVarId agentId = explicit builder param, no Gleam engine yet)
+- 038(tasks): 45 tasks across 6 phases by US1/US2/US3; MVP=US1 Dart envelope round-trip+no-heap; gated float/64bit/cyclic quarantined
+- 038(plan): result-envelope codec plan — rides Section-15 term codec (029 conventions), buildable on 034 w/o F5; D4=A/ED-6=A encoded; float/64-bit-edge/cyclic-term gated
+- Merge pull request #62 from olamni-glp/main
+- Merge pull request #61 from olamni-glp/release/v2026.06.30.1
+- release: v2026.06.30.1
+- Merge pull request #60 from olamni-glp/039-m2-0-verify-erlang-monitor-atomvm
+- 039(implement): VERDICT=works — erlang:monitor/2+DOWN faithful on AtomVM 0.6.6 (vs OTP-25); spawn_monitor/1 absent (use spawn+monitor); D10 fork not triggered
+- 039(implement MVP): monitor_probe + OTP-25 reference (normal/boom/noproc); AtomVM 0.6.6 run blocked on host provisioning (not present in WSL)
+- 039 tasks: T001-T007, MVP=T001-T003 (toolchain, probe, run+observe normal-exit DOWN).
+- 039 plan: Erlang monitor probe built+run on AtomVM 0.6.6 via F1 WSL toolchain; 5 phases (toolchain confirm, MVP normal-exit DOWN, abnormal exit, edge+fallback, verdict).
+- 039 m2-0 specify: gating spike to verify erlang:monitor + DOWN on AtomVM 0.6.6; gate-free (D10 fork only on negative result). sidecar specify=complete; marathon mrun-117a92c4eea7.
+- 038 clarify: owner-ruled D4=A (freeze toward v2, author Section-15 in the freeze) and ED-6=A (authorize AtomVM float-decode spike); NEEDS CLARIFICATION resolved. clarify=complete; plan next.
+- 038 specify: result-envelope codec spec (rides ED-6 Section-15 codec; framing/transport split to #36). 2 owner gates marked NEEDS CLARIFICATION: D4 ISA-freeze, ED-6 float-decode-on-AtomVM. Pipeline sidecar specify=complete; marathon run mrun-67d510b22e34.
+- Merge pull request #59 from olamni-glp/036-glp-gleam-baseline-program
+- 036: program complete — P1/P5/spike research artifacts + spec/plan/contracts; T015 two-epic roadmap reconfiguration applied & marathon mrun-5611c436ba95 discharged (also sweeps 034/035 retros + BEACON-JOIN.md per commit-all)
+- 036: restart pointer — T014 approved, T015 migration next in new session
+- 036(T013): completeness-critic pass + folded gap fixes
+- 036(T007): P8 two-epic reconfiguration synthesis
+- 036(T012): P3 opportunities register (70; saturated)
+- 036(T011): P2 concerns register (218 concerns; loop not yet saturated -> T013)
+- 036(T010): P7 QHSM/YngeniOS integration dossier
+- 036(T006): P1b corrected realignment dispositions
+- 036(T009): P6 Gleam/AtomVM implementation-strategy dossier
+- 036(T008): ANTLR-integration deep-dive dossier (FR-005 verified via spike)
+- 036(T005): P4 proof artifact register (3 proved / 2 open)
+- 036(T004): P4 faithfulness parity bar (M1+M2, primary-source-cited)
+- 036(T003): pipeline status index for the glp-gleam-baseline research machinery
+- 036(T002): proof-harness wiring for the glp-gleam-baseline research machinery
+- 036(T001): corpus index for the glp-gleam-baseline research machinery
+- fold RDP command-mode hard requirement + prototype learnings into virtual-3270-term reqs
+- intake briefs for virtual-3270-term (full 3270 reqs), durable-mesh-messaging-protocol, and HTTP3-QUIC-WS (036 record + re-specify prompt + restart prep)
+- commit gleam_quic dependency lockfile (manifest.toml)
+- rework plan/tasks/analyze to 2026-06-28 clarifications (genuine WS-over-QUIC, cross-platform C#, two Gleam profiles)
+- correct WS-over-QUIC framing (first-class, de-facto) + cross-platform .NET QUIC; encode 2026-06-28 clarifications
+- research corpus (106 sources) + distillation; resolve RFC 9220 + AtomVM-QUIC feasibility
+- plan + research + data-model + contracts + tasks; analyze remediations (constitution tokens, addressing/mid-drop coverage, scenario numbering)
+- clarify GLP-over-link (REPL mesh), C#-first build order, concurrency, cert distribution
+- specify HTTP/3 QUIC + WebSocket channel-link prototype
+- Merge pull request #58 from olamni-glp/main
+- Merge pull request #57 from olamni-glp/release/v2026.06.26.1
+- release: v2026.06.26.1
+- Merge pull request #56 from olamni-glp/035-semantic-tombstone-enrichment
+- 035(fix): --from-tombstones rebuild carries purpose_source/key_idea_source (FR-008) — was resetting inferred/doc to absent; pre-035 derives from blank-ness; +regression test
+- 035(corpus): enrich glp_runtime_net tombstones via Claude seam — 68 inferred (9 compiler + 59), 104 doc, 7 stubs left blank; gitignore enrich-runs logs
+- 035(enrich): mark T023 (consolidated feature gate 22/22 green) — all 24 tasks complete
+- 035(enrich polish): T022 isolated quickstart e2e (dry-run + scoped enrich + FR-014 git-diff); T024 SC-004 grep guard verified
+- 035(enrich US3): --path scope + per-file fault isolation + low-confidence + run summary/durable log; T018 green
+- 035(enrich US2): discover provenance-aware seed + conditional inferred-preservation (FR-008); enrich idempotence/stale-guard; T013/T014 green
+- 035(enrich US1/MVP): run_enrich candidate scan + Claude-seam infer/write + non-candidate stamping + no-API exit-2; T007/T008 green
+- 035(enrich P1-2): tool skeleton + no-API seam + migration 0011 + frontmatter provenance keys + head tests
+- 035(plan/tasks/analyze): semantic tombstone enrichment pipeline artifacts + analyze remediations (B1 len-caps, C1 file run-log, D1/E1/F1)
+- Merge pull request #55 from olamni-glp/main
+- Merge pull request #54 from olamni-glp/release/v2026.06.25.1
+- release: v2026.06.25.1
+- Merge pull request #53 from olamni-glp/034-glp-gleam-core-terms-and-heap
+- 034(F4): codexreview fixes — deref self-bind->Unbound (Dart parity), forward suspensions to terminal writer (FR-008), correct R-007/parity-evidence claims, +4 tests (54 green)
+- 034: implement glp_gleam core terms+heap+unify (F4) — immutable threaded store, 50 tests green on BEAM
+- 034: plan/tasks/analyze for glp_gleam core terms+heap+unify (F4) — immutable threaded store; 4 analyze remediations
+- Merge pull request #52 from olamni-glp/main
+- Merge pull request #51 from olamni-glp/release/v2026.06.24.2
+- release: v2026.06.24.2
+- Merge pull request #50 from olamni-glp/033-glp-gleam-subtree-scaffold
+- upgrade installed artifacts to v2026.06.24.3
+- analyze(033): apply top remediations — clarify FR-007/SC-005 wired-in wording; strengthen T021 (FR-008 establish+verify) and T018 (FR-006 segment legality)
+- tasks(033): 25 tasks for glp_gleam subtree scaffold (US1 MVP build+test, US2 8 placeholders, US3 smoke+recognition)
+- plan(033): glp_gleam subtree scaffold — plan, research, data-model, contracts, quickstart
+- Merge pull request #48 from olamni-glp/main
+- Merge pull request #47 from olamni-glp/release/v2026.06.24.1
+- release: v2026.06.24.1
+- Merge pull request #46 from olamni-glp/032-codeconv-gleam-langpair
+- refine(codexreview): cycle 2/10 [diff/general]
+- refine(codexreview): cycle 1/10 [diff/general]
+- analyze(032): remediate F3 (add PairMismatch coverage to T008); F1/R-003 owner decision pending
+- tasks(032): 20 tasks across 3 user stories; R-003 owner-decision gate flagged before implement
+- plan(032): Dart->Gleam langpair plan + Phase0/1 artifacts; flag FR-005<->FR-008 collision tension (R-003)
+- clarify Gleam target path policy (verbatim mirror, F3 owns layout)
+- add codeconv-gleam-langpair (Dart-to-Gleam) feature spec + checklist
+- Merge pull request #45 from olamni-glp/main
+- Merge pull request #44 from olamni-glp/release/v2026.06.22.1
+- release: v2026.06.22.1
+- Merge pull request #43 from olamni-glp/031-gleam-port-spike
+- fix codexreview cycle-2 evidence findings (correct C# inventory counts, record JS-probe output)
+- fix codexreview cycle-2 residual (stale gleam_otp mention in js-probe comment)
+- fix codexreview cycle-1 findings (gleam_otp stale listing x2, JS actor citation, inventory JS-build, AtomVM packaging note)
+- gitignore buildkit refine cache (.specify/.refine-cache/, regenerable)
+- full Gleam smoke runs on AtomVM (raw erlang:spawn, no gleam_otp) + codex-review fixes
+- Gleam port spike deliverables - dossier, toolchain inventory, hello-glp-term smoke
+- spec(031): plan, tasks, analyze remediations for Gleam port spike
+- Merge develop (bk-* aliases, pinned CLI) into 031-gleam-port-spike
+- Merge pull request #42 from olamni-glp/chore-bk-aliases-pin-v2026.06.17.1
+- pin CLI v2026.06.17.1, apply /bk-* aliases, register deploy
+- spec(031): Gleam port source+toolchain / AtomVM feasibility spike
+- Merge pull request #41 from olamni-glp/main
+- Merge pull request #40 from olamni-glp/release/v2026.06.19.1
+- release: v2026.06.19.1
+- Merge pull request #39 from olamni-glp/030-marathon-refinement
+- T058 full-suite gate done + T057 addendum (Fix A supersedes the prereq-patterns junction workaround; 34/34 marathon on reconciled tree, real-CLI primary-store smoke green)
+- T057 quickstart e2e validated + tasks.md T051-T057 DONE notes (Phase 8 complete except T058 full-suite gate, held for the Sunday 2026-06-14 ~01:00 intensive-regression window)
+- T056 /marathon-stage-harness skill drives the refined CLI - canonical --run, data-driven register/append-stage/capture intake, keeper lifecycle + hygiene, rule-2a re-drive in Restart-Resume step 4, gate/rerun by stage NAME, full contracts/cli.md command table, preauth grants documented as library-level Repository.update_run
+- T055 point marathon-stage-harness references at the refined model - CLAUDE.md + current_plan.md now describe the data-driven per-run isolated store (default C:/pglite/marathon/<run-id>, keeper, JSON mirror), canonical --run resume (--feature deprecated alias), 030 contracts pointer; 024 shared-cluster schema noted inert history (VIII)
+- T054 Constitution V guard - zero OPENAI_API_KEY/litellm/openai tokens anywhere in the marathon package source; bridge-free 1/1
+- T053 shared-cluster no-new-head guard - Alembic head stays exactly 0010, no versions/ file beyond 0010, only marathon migration is 024's inert 0010_marathon_schema, per-run store schema imports no Alembic machinery (VI-a, D2); bridge-free 4/4
+- T052 resume-position byte-identity (SC-008) - pure derive_position over reconstructed+reshuffled rows (incl. rule-2a re-drive branch) and live three-way check (session env / fresh env / fresh CLI subprocess) all canonical-JSON byte-equal; 2/2
+- T051 CLI parity guard - registered Typer surface == contracts/cli.md table, declared lib functions importable, callback wiring references its declared function, no function owns two subcommands (position->resume alias folded); bridge-free 4/4
+- Merge pull request #38 from olamni-glp/main
+- Merge pull request #37 from olamni-glp/release/v2026.06.12.1
+- release: v2026.06.12.1
+- Merge pull request #36 from olamni-glp/030-marathon-refinement
+- Merge pull request #35 from olamni-glp/main
+- Merge pull request #34 from olamni-glp/release/v2026.06.11.1
+- release: v2026.06.11.1
+- Merge pull request #33 from olamni-glp/029-il-codec-spike
+- refine(codexreview): cycle 1/10 [csharp/glp_il_codec/general]
+- specify evidence-based-constitution feature (spec + requirements checklist)
+- Merge pull request #32 from olamni-glp/main
+- Merge pull request #31 from olamni-glp/release/v2026.06.10.1
+- release: v2026.06.10.1
+- Merge pull request #30 from olamni-glp/027-refinement-verification-framework
+- refine(codexreview): cycle 1/10 [diff/general]
+- commit marathon m57f4c46e durable JSON-mirror state for block 07 (open+approve, checkpoints 13-14, git block) — feature complete 28/28
+- commit marathon m57f4c46e durable JSON-mirror state for block 06 (open+approve, checkpoints 11-12, git block)
+- commit marathon m57f4c46e durable JSON-mirror state for block 05 (open+approve, checkpoints 9-10, git block, run-linkage)
+- commit marathon m57f4c46e durable JSON-mirror state for block 04 (open+approve, checkpoints 7-8, git block, status)
+- commit marathon m57f4c46e durable JSON-mirror state + spin scratch ahead of safe restart
+- pipeline artifacts (plan/research/data-model/quickstart/contracts/tasks) + marathon launch prompt; buildkit pointer 026->027
+- spec #1a refinement-verification-framework (Option D + real-tool validation spikes: Lean/MLIR/SPIN; protocol-verification armoury) + ratify R13-R15 + DEF-A3
+- ratify 12 MVP-critical decisions (DECISIONS-LOG R1-R12) + anchored deferral register (DEFERRALS.md, stages A-H + pickup protocol); seed notes carry PRE-SPECIFY pointers
+- apply reconciliation corrections - D3 FrameCodec payload-type-prefix-byte (header Kind is fragmentation-only), shallow-vs-deep Bindings clarification, LingoDB citation candidate; (§7 note was provenance, not a typo)
+- 17-seed reconciliation memos + README index + DECISIONS-FOR-OWNER + REFINEMENT-METHOD (GEPA/DSPy + formal/pragmatic metrics, per-seed Lean4-vs-Rocq, monolith supersession)
+- record owner decision - evaluate Lean4 + Rocq per seed, pick best-fit primary, keep alternative only where identified
+- add #1a iterative-refinement-and-verification-framework seed; complete reconciliation brief with formal+pragmatic verification methodology (MLIR IL-dialect, model-agnostic Lean/Rocq via Claude, ANTLR4 grammar-verifier, Shapiro-criteria pragmatic anchor, no-API resolution)
+- dossier seed cross-refs (in-situ §1-§9 + Appendix B registry) + reconciliation brief with GEPA/DSPy metrics methodology and formal-verification research
+- engine-separation design dossier (§0-§12, re-verified citations); complete tasks; verify roadmap seeds
+- plan + Phase-1 artifacts + tasks + analyze remediations for engine-review-dossier
+- engine review + refactoring design dossier spec (specify + clarify)
+- Merge pull request #29 from olamni-glp/main
+- Merge pull request #28 from olamni-glp/release/v2026.06.08.1
+- release: v2026.06.08.1
+- Merge pull request #27 from olamni-glp/025-multi-protocol-link-layer
+- codexreview cycle 1 — per-peer timeout guard on link harnesses (fail-fast, never hang the gate)
+- marathon status checkpoint row 100 (GATE D + cross-runtime green)
+- cross-runtime Dart<->C# link rig — 16/16 both directions (release gate T042/T081)
+- persistent-embeddable-engine epic dossier (REPL/engine separation)
+- wip(025): Phase D async-correctness fixes — Dart<->Dart 6/8 two-process GATE-D green
+- wip(025): Phase D layer 2 partial — link primitives infra+glue + null-guarded core inbound-pump seam
+- fault-monitor + graceful-close two-process link example (FR-008/044)
+- bidirectional (FR-003) + link_recv-chain two-process link examples
+- checkpoint WIP — requirements edit, design dossier (docx/pdf), transport-runtime-feasibility research, buildkit-codexreview skill, marathon harness state
+- refresh restart resume pointers - CURRENT STATUS block in runtime-integration-plan.md (Phase A/B done, Phase C 4/4 two-process examples + driver, next = link_recv-chain debug -> monitor/path-B/bidir -> Dart mirror -> regression); tasks.md points to it
+- add link_send/3 wrapper producer (producer_ls) to pc.glp + driver - 4/4 two-process examples PASS (integers, strings, compound terms, link_send wrapper over real TCP). Isolated: explicit link_recv-chain consumer has a separate runtime issue (link_recv alone suspends correctly; the 3-recv concurrent-body variant fails) - next debug batch
+- scripted 2-process real-TCP link integration driver (test/link/run_link_tests.sh) + pc.glp integer/string/compound-term producers; 3/3 PASS over 127.0.0.1 (Got byte-identical to produced values); results captured to test/link/results/
+- T032 recv-ingress contract proof (suspend/reactivate-once/dup-no-op/reorder on the T030+T022 ingress; link_recv composable; 76/76 xUnit)
+- resume pointer + T030 status (infra+Option-B done, kernel next); marathon-checkpoint-stale caveat
+- inbound-pump + isolate_manager design reference (md/docx/pdf) + Option-B decision record
+- T013 FR-032 consolidate guards-reference.md as single authoritative guard spec (fold in @< @> @=< @>= standard-order family + atom/1=string synonym + decline == \== \= reader/1 with canonical forms; =\= unchanged; nested-compound suspend note)
+- T012 FR-033/036/037/038 guard three-valued + decline + =\= regression (@< & atom reactivate-exactly-once Section A24g; =\= untouched A24h; declines == \== \= reader/1 rejected Section C; @< & atom SRSW-relaxation Section B; +13 checks, suite 524/525)
+- correct exemplar GLP per REPL-verified canonical forms (channel-head modes, send-shape, output-holes, bare-_ singletons, body-= -> head-construct, Fault/Link types); add adversarial GLP review (2 passes) + canonical-forms card
+- plan block - plan/tasks/analyze + design dossier, contracts, per-transport tutorials, integration-harness + coverage matrix (gate ruled: 9 primitives + guard set + 3 core fixes)
+- clarify block — resolve peer-id ordering (ruling B: compound/totally-ordered, @</@> family in scope)
+- specify block - spec.md (67 FR/17 SC/4 stories) + requirements checklist
+- Merge pull request #26 from olamni-glp/marathon-harness-hardening
+- lock B2/B3/G rulings — C#-first reference, base-primitives-before-glink, keep+implement comparison-guards, keep BLE BIS, cross-runtime Dart<->C#
+- B2/B3/G decision doc + 18-source provenanced corpus (multi-protocol-link-layer design study)
+- end-to-end marathon kickoff prompt for multi-protocol-link-layer (fresh-session launch template)
+- SKILL.md — honor rerun workflow_run_id (resumeFromRunId) + resume commit_push_pending crash-window on resume
+- Merge pull request #25 from olamni-glp/main
+- Merge pull request #24 from olamni-glp/release/v2026.06.05.1
+- release: v2026.06.05.1
+- Merge pull request #23 from olamni-glp/024-marathon-stage-harness
+- refine(codexreview): cycle 1/5 [diff/general]
+- plan + tasks + analyze for marathon-stage-harness (one logical block)
+- specify + clarify marathon-stage-harness spec
+- roadmap + buildkit pipeline state as the restart-resume source of truth; current_plan.md → thin pointer
+- add buildkit-roadmap skill forwarder
+- mark comparison guards implemented in glp-bytecode-v216 11.7 (was stale Planned)
+- Merge pull request #22 from olamni-glp/main
+- Merge pull request #21 from olamni-glp/release/v2026.06.04.1
+- release: v2026.06.04.1
+- Merge pull request #20 from olamni-glp/023-glptutorial-run
+- add buildkit-ship + buildkit-release skill forwarders (CLI was installed; skills were missing)
+- gated real-backend coverage for ch03 multi-compose + ch07 use-case (US2)
+- plan, research, data-model, contracts, tasks for /glptutorial-run
+- Merge pull request #19 from olamni-glp/main
+- Merge pull request #18 from olamni-glp/release/v2026.06.03.3
+- release: v2026.06.03.3
+- Merge pull request #17 from olamni-glp/main
+- Merge pull request #16 from olamni-glp/release/v2026.06.03.2
+- release: v2026.06.03.2
+- Merge pull request #15 from olamni-glp/021-buildkit-gitflow-adoption
+- adapt glpnet branching/versioning to canonical buildkit GitFlow (feature->develop->release->main, CalVer vYYYY.MM.DD.N via buildkit release; CLAUDE.md branch rules + end-of-task ship)
+- Merge pull request #14 from olamni-glp/main
+- Merge pull request #13 from olamni-glp/release/v2026.06.03.1
+- release: v2026.06.03.1
+- Merge pull request #12 from olamni-glp/020-trace-equivalence-fidelity
+- plan - top-priority Dart convergence mandate (glpnet glp_runtime <= sibling GLP, 100% byte-level, static+dynamic)
+- design - combined comprehensive equiv test driver + goal-bearing corpus (suites + sibling tutorials; ratified decisions 1-4)
+- back up frozen build-only bytecode.md (9506ac81) before T031 fidelity re-run can overwrite it; restore via cp
+- .codeconv updates
+- HANDOFF - turnkey T031 fidelity-metric-swap build spec (part-a metric rewrite mock-testable now; part-b GEPA re-run forces the T018-capture sequencing decision); T017/T022 marked done in S3
+- HANDOFF - T022 COMPLETE (parse_dart adapter + finding-#3 deref + e2e green); next = T031 fidelity-metric swap + GEPA re-run
+- T022 e2e - append strict-tier oracle equivalence over captured pair (Dart golden = C# candidate); finding-#3 + parse_dart regression guards + negative controls; 6 green
+- HANDOFF - one-line state points at T022 parse_dart as the immediate next (T017 complete)
+- HANDOFF - turnkey parse_dart build spec (line-by-line append mapping, shape canonicalizer incl list syntax, C# OUT deref fix); goal kept via relabeling done
+- T022 - capture matched append fixtures (C# canonical EV/OUT + Dart :trace+:debug) for the parse_dart adapter + e2e
+- HANDOFF - T022 scoping (parse_dart finalization plan + 3 normalization items; goal-field comparability decision teed up)
+- HANDOFF - #2 RESOLVED (conditional Commit emission, not a runner bug); append spine matches golden exactly
+- HANDOFF - finding #1 RESOLVED via option-a spine alignment; #2 (Ground->Commit) isolated as sole remaining append divergence
+- HANDOFF - T017(ii) done; record real-capture findings (Dart :debug partial-spine spec-gap, Ground soft-fail spine divergence, shallow OUT shape)
+- HANDOFF - Stage 5 progress: T017(i) wired + first fidelity bug (scheduler onReduction) fixed; carry-forward note
+- safe-restart prep - re-verify anchor green 2026-06-03; pure subset 40->36; note section-1c run-from-repo-root bridge trap
+- SAFE-RESTART handoff — Stages 1-4 DONE (incl Stage 4 canonical no_emit), only Stage 5 left; anti-drift facts (runner.cs compile-verified-only + semantic-risk list) + verified-green anchor + Stage-5 recipe; ledger RESTART pointer
+- ledger — Stage 3 DONE (runner.cs converted+built), Stage 4 code DONE (canonical migrate+mark GATED on Gabi OK), Stage 5 unblocked+mapped
+- spec(020-trace-equiv): gepa_optimizer contract — NO-API/Claude-driven GEPA revision (ruled 2026-06-03); the spec-first basis Stage 1 implements
+- ledger — Stages 1+2 DONE (72ca51d1, 9506ac81); runner.cs (Stage 3) is the gate, Stage 5 blocked on it, Stage 4 no_emit confirm-with-Gabi; precise restart maps recorded
+- ledger — Stage 1 (Claude-driven GEPA wiring) DONE at 72ca51d1; NEXT=Stage 2 GEPA on bytecode
+- mark bulk drive COMPLETE at 73/75 (97.3%); escalations resolved + final-surface analysis
+- bulk drive PAUSED at 48/75 — escalation cascade analysis + Gabi-decision request
+- checkpoint ledger at 47/75 built (mid bulk drive)
+- record bfd00a8a + flip POSITION to A in-progress
+- record dc997583 in safe-restart ledger
+- handoff for /buildkit-implement (safe restart) — pipeline through analyze green, Next=/buildkit-implement, MVP=US1, resolve R11 out/csharp git policy first
+- tasks(019-codeconv-codegen): 46 tasks across 7 phases (Setup→Foundational→US1 MVP→US2 GEPA→US3 review/test→US4 durable→Polish); migration 0007, dual-tool split, codegen DBOS stage; R11 git-policy gate (T045) before bulk gen
+- plan(019-codeconv-codegen): impl plan + Phase 0 research (R1-R12) + Phase 1 data-model/quickstart/7 contracts — (C) hybrid (deterministic codegen tool + offline DSPy/GEPA optimizer), composite metric, dart_codegen + migration 0007, codegen DBOS stage after plan; agent-context → 019 plan
+- gitignore buildkit pipeline pgdb/ (local PGLite+DBOS cluster state, regenerable)
+- migrate spec-kit → buildkit (local source v2026.05.20-9) — 14 buildkit-* skills replace speckit-*; .specify scripts/templates/extensions/workflows/manifests + CLAUDE.md token-rewritten speckit→buildkit; specs/ (incl. in-flight 019) and constitution.md preserved verbatim; later upgrades via buildkit upgrade apply --ref <tag>; backup at .buildkit-upgrade-backup/ (gitignored)
+- spec(019): tidy stale 'to confirm in clarify' phrase — architecture (C) is confirmed
+- clarify(019-codeconv-codegen): resolve 5 clarifications (Session 2026-05-23) — (C) hybrid confirmed; composite metric 0.6 tests/0.4 human + build hard-gate + sampled review + median≥4/5 gate; staged test-scope; OpenAI-via-litellm offline-only optimizer + GEPA budget cap; dart_codegen table + migration 0007 + codegen builder stage; 0 markers remain
+- spec(019-codeconv-codegen): initial spec — GEPA/DSPy-optimized Dart→C# codegen stage; (C) hybrid + composite metric proposed; 3 NEEDS CLARIFICATION deferred to /speckit-clarify
+- archive planagents frontier scratch (all-scoped/completed/remaining/scoped path-lists) into .codeconv/archive/
+- snapshot(018-live-pass): COMPLETE — 128/128, 122 specced+scaffolded + 6 escalated (4 pre-existing + isolate_manager.dart + rpc_routing_test.dart), naw=0; 20 batch-of-5 specs ingested clean, single new load-bearing escalation = .NET execution-context choice on isolate_manager (heap_fcp-dependent), rpc_routing_test inherits + adds a same(channel) reference-identity sub-escalation; aggregate-escalations report at .codeconv/conversion-idioms/_escalations-report.md; docs/current_plan.md retired
+- resume protocol for paused live-pass — 108/128 done, 20 remain, 4 escalations awaiting Gabi's ruling, exact next-session steps + 20-file frontier
+- snapshot(018-live-pass): 108/128 specced+scaffolded — 104 specced + 4 escalated; 20 analysed remaining (paused at Anthropic rate-limit ~4:20am Europe/London); escalations on compiler/error.dart (exception-naming policy), compiler/glp_printer.dart (latent _isAtom Dart-source bug), runtime/heap_fcp.dart (threading model — inherited by runner/body_kernels/scheduler/system_predicates_impl/mad_context), compiler/analyzer.dart (duplicate UnifyResult/PartialEvaluator vs partial_evaluator.dart); protective snapshot of agent-produced conversion-spec artifacts + tombstone stamps so the genuine-pass state survives the pause
+- remove stale 017 current_plan.md (017 merged to main); track 018 codex review artifact
+- Polish complete — T050 full re-baseline (324/325 green; 1 isolated transient bridge-cold-init flake, passes 1/1 isolated, ZERO 018 regressions vs T001), T051 quickstart smokes covered by green e2e, T052 scope-clean, T053 memory. Feature 018 IMPLEMENTATION COMPLETE
+- T005/T006/T017/T018 Phase-2 tests — single-head+linear (offline green), schema isolation, tombstone stamp/rebuild fixed-point + capability/signature preservation (29 bridge-free PASS; T005/T006 bridge-verify in flight)
+- phase-1 checkpoint — T001 baseline recorded (no-bridge guard 62p/1s/0f; bridge per-test green, full-suite contention pre-existing), T002 dbos 2.21.0 verified
+- cleanup stale exFAT premise — D: verified NTFS (Gabi-approved); CLAUDE.md data-dir now convention not necessity, known-issues Issue 8 marked premise-void
+- spec(018): codeconv-builder spec/plan/tasks checkpoint (58 tasks, E1-E5 remedies); point .specify+CLAUDE at 018
+- release(v2026.05.17): integrate codeconv 015/016/017 into main; PG17 cluster rebuild
+- Merge 017-conversion-plan-agents into main (codeconv-planagents: orchestrated per-tombstone Dart->C#/.NET plan generation)
+- Merge 015-codeconv-depgraph into main (depgraph + readiness oracle, option-A', .dbsnapshots ignore, specs/017 scaffolding)
+- Merge 016-codeconv-init-scaffold-langpair into main (init/scaffold/mirror Dart->C# pipeline + tombstone refresh)
+- commit-all per Gabi — refreshed .codeconv tombstones; pre-integration snapshot
+- commit-all per Gabi — .gitignore (.dbsnapshots ignore), specs/017 spec edits, .agents/ AGENTS.md reviews/ docs/current_plan.md; pre-integration snapshot
+- Merge main into 016 (reconcile: take 015 depgraph option-A'; drop 016 re-add; accept current_plan deletion)
+- final verification — 72/72 green per-group serial; 2 combined-run flakes confirmed isolation-green (PGLite cold-init exhaustion, known flakiness class, not a defect); zero regressions
+- final serial verification — 72/72 feature tests green; tick T002/T025-T044/T046; annotate T003/T004/T005/T045 BLOCKED (empty glp_runtime_net + LLM-loop forbidden, mirrors 015 parked live tasks)
+- US5 full Dart→C# pipeline regression (T030-T031) — init→depgraph→scaffold cross-stage consistency e2e-verified, no 015 regression
+- US3 registry extensibility (T024-T026) — 15 unit tests pass, SC-003 zero-stage-tool-edit proven
+- fix aggregate-report back-link assertion to spec-correct <rel>.dart.md#e<n> (conversion_plan_artefact_format.md); SCC-batch reds were bridge-contention not logic
+- add downgrade-then-upgrade idempotence test (T011 obligation); discover round-trip comment accuracy for feature-017 keys; tick T001/T006-T024
+- Phase 1 setup T001-T004 — substrate+contract confirmed, schema snapshot
+- US1 bridge tests green (13 passed) + US2-US5/Polish test suites + SCC fixture
+- checkpoint WIP from stalled agent (langpairs registry + 0003 migration)
+- schema isolation + FR-020 runtime write-surface (T011) — 6 green; migration 0003 verified on fresh PG17 cluster
+- plan+tasks+analyze(017): Phase0/1 (plan/research/data-model/5 contracts/quickstart) + 46 tasks + analyze remedies C1 (FR-002 reword: thin-wrapper vs mandated orchestration loop) + C2 (T011 FR-020 runtime write-surface assertion); SPECKIT marker 015->017
+- Merge 015-codeconv-depgraph into main
+- tick T045 (full suite 116 passed/3 skipped; 4 flakes confirmed isolation-green, 0 regressions); remove completed current_plan
+- tick T039-T044; known-issues Issue 9 (PG16/PG17 cluster split + quickstart staleness)
+- Stamp tombstones with depgraph + conversion state (feature 015)
+- analyze(016): apply 2 MEDIUM remedies — F1 FR-026/-027 numbering collision reworded (T035+plan); F2 spec FR-004 discover back-compat-default carve-out
+- tasks(016): 37 tasks US1-US5 — setup/foundational(registry+dart_csharp+0003+pair-generic discover)/init/scaffold/registry/exclusions/pipeline/polish-removal
+- plan(016): Phase 0/1 — plan/research/data-model/contracts/quickstart + SPECKIT marker repoint (constitution N/A, zero clarifications)
+- tick tasks.md — Phases 2-6 + T041/T042 verified green (T039/T040/T043/T045 pending)
+- Phase 7 polish — T041 depgraph FR-026/027 grep test + T042 .gitignore .codeconv/depgraph.json
+- spec(016): codeconv init+scaffold behind pluggable language-pair registry (Dart->C#); D1-D6 encoded, checklist pass, zero clarifications
+- feat+fix(015): #16 from-tombstones preflight+Option-B single-txn+exit-code plumbing; #17 --verify-tombstones read-only audit (+tests, suite green 87)
+- spec+fix(015): Amendment v2 (codex-reviewed) + Bug1 compute --json exit2 + target_path 6th tombstone key end-to-end round-trip
+- Merge origin/main (pglite 0.4.5 fix) into 015-codeconv-depgraph
+- spec(015): codeconv-depgraph spec/plan/tasks + Phase 1 baseline (128/443/6)
+- Merge pull request #9 from olamni-glp/014-package-self-import-resolution
+- Refresh tombstones after feature 014 self-package rewrite (SC-007)
+- spec(014): plan, tasks, analyze + top-3 remediations applied (no code yet)
+- Merge pull request #8 from olamni-glp/followup/014-package-import-docs
+- file 014 follow-up — codeconv-discover should resolve package:glp_runtime/... as in-subtree edges. Includes prepared /speckit-specify prompt.
+- Merge pull request #7 from olamni-glp/013-data-dir-override
+- Merge pull request #6 from olamni-glp/012-codeconv-runner
+- Phase 7 done — feature ready to ship; update next-session pointers.
+- update current_plan.md — Phase 6 done; Phase 7 next. Document the four DBOS-on-PGLite hooks.
+- update current_plan.md mid-flight — phases 1-4 done, resume at phase 5
+- spec(012): /speckit-plan + tasks + analyze + remediations — implement-ready
+- spec(012): /speckit-clarify — 5 clarifications (perf SLO, edge uniqueness, gitignore policy, orphan revival, bridge log)
+- spec(012): /speckit-specify — codeconv-runner with unified .pgdb / cross-process lock / D2NET migration / dart inventory + tombstones
+- Merge pull request #5 from olamni-glp/011-prereq-patterns-catalog
+- gitignore .claude/settings.local.json (per-machine permission accumulation)
+- record speckit permissions accumulated during 011; gitignore .D2NET workspace dir
+- spec(011): /speckit-plan + /speckit-tasks + /speckit-analyze; 4 MEDIUM remeds applied; ready for /speckit-implement
+- validate(010): T012 PASS + T029 PASS* + T022 PARTIAL; document gated walks
+- release(010): v2026.05.02 — validation walkthrough recorded; T013 misstatement fixed
+- allow d2net-scaffold smoke-walk commands and check-prerequisites
+- validate(010): in-session smoke walks 1/2/3/4/5/8 + T013; correct T013 misstatement (recap conflated total writes with net deltas)
+- spec(010): /D2NET-scaffold skill wrapper — spec + plan + research + data-model + contracts + quickstart + tasks (5 clarifications, 4 remediations applied)
+- D2NET.Scaffold: source-tree mirror with per-dart workdirs (009)
+- spec(009): plan + research + data-model + contracts + quickstart + tasks + handoff
+- spec(009): D2NET.Scaffold source-tree mirror with per-dart working dirs (post-clarify)
+- D2NET.Init: --remove-exclude with --allow-system-exclusions safety override
+- D2NET.Init: --add-exclude for non-destructive incremental exclusions
+- Make --non-interactive init-only; binary rejects it on inspection commands
+- Consolidate and deduplicate CLAUDE.md, retarget to glpnet (Gabi)
+- Add /D2NET-init Claude Code skill wrapping the d2net-init CLI
+- Add main_AofGLP.pdf reference document to repo root
+- D2NET.Init: swap storage from SQLite to PGLite WASM via direct bridge
+- Merge pull request #4 from olamni-glp/004-changelog-checkpoint
+- Add CHANGELOG.md summarising v2026.04.30 / -2 / -3
+- Merge pull request #3 from olamni-glp/003-pglite-bridge-rca
+- Root-cause analysis: PGLite + pg-gateway + ODBC stack failures
+- Merge pull request #2 from olamni-glp/002-d2net-init
+- Add D2NET.Init companion command + 002-d2net-init spec/plan
+- Merge pull request #1 from olamni-glp/001-d2net-scaffold
+- Add d2net-scaffold MVP toolkit + speckit workflow + CalVer branching
+
 ## [v2026.07.13.1] - 2026-07-13
 
 ### Added
