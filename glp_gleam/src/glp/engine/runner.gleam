@@ -1421,13 +1421,23 @@ fn unify_structure_read(
   arity: Int,
   raw: Term,
 ) -> Step {
-  // Prefer a σ̂w tentative binding, then the heap (Dart runner.dart:942).
+  // Prefer a σ̂w tentative binding, then the heap (Dart runner.dart:942). The heap
+  // fallback must use `dval` (full deref), NOT `deref_value` — a nested struct arg
+  // (e.g. the `p(a,b)` inside a goal `w(p(a,b))`) is materialised by goal-boot as a
+  // BOUND READER, which `deref_value`'s `is_value`-only gate leaves as a bare `VarRef`,
+  // making a nested head match (`w(p(_,_))`) wrongly soft-fail. `dval` follows a bound
+  // reader/writer/value cell to its term (an unbound cell stays a `VarRef`, so the
+  // writer→mode-convert / reader→suspend logic below is unchanged).
   let value = case raw {
     VarRef(addr) ->
       case dict.get(ctx.sigma_hat, addr) {
         Ok(SVTerm(v)) -> v
         Ok(SVTentative(_)) -> raw
-        Error(_) -> deref_value(ctx, raw)
+        Error(_) ->
+          case dval(ctx.heap, addr) {
+            Bound(v) -> v
+            Unbound(_) -> raw
+          }
       }
     _ -> raw
   }
