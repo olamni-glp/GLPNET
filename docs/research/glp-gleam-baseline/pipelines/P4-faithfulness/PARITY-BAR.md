@@ -65,8 +65,8 @@ Only criteria the P4 review marked **CONFIRM** appear here. Each is observable v
 | FB-M1-11 | Guards are pure tests; `Otherwise` succeeds iff both Si and U are empty, else it suspends | RUN:450-460; OPS:174-177 | — (cite only) |
 | FB-M1-12 | System tests `no_readers` / `=?=` are three-valued (Success/Suspend/Fail) | OPS:242-272 | — (cite only) |
 | FB-M1-13 | v2 HEAD ops carry an `isReader` flag selecting writer-mode (tentative σ̂w bind) vs reader-mode (add to Si if unbound) | OPS2:24-94 | — (cite only) |
-| FB-M1-14 | Writer-MGU assigns ONLY writers; readers are left unchanged | PDF p.4 Def 3.7 / Ex 3.9; core:52-58 | PROOFS/INDEX.md — writer-MGU (OPEN) |
-| FB-M1-15 | Writer→writer binding (direct or discovered via deref) is reported loudly (Dart `StateError`), never silent | HEAP:274-276,671-682; core:78-82 | PROOFS/INDEX.md — writer-MGU (OPEN) |
+| FB-M1-14 | Writer-MGU assigns ONLY writers; readers are left unchanged | PDF p.4 Def 3.7 / Ex 3.9; core:52-58 | PROOFS/INDEX.md — writer-MGU (proved, PI:14) |
+| FB-M1-15 | Writer→writer binding (direct or discovered via deref) is reported loudly (Dart `StateError`), never silent | HEAP:274-276,671-682; core:78-82 | PROOFS/INDEX.md — writer-MGU (proved, PI:14) |
 | FB-M1-16 | Reader×Reader match fails (neither can be assigned without violating SO) | core:78-82; PDF p.5 Def 3.8 | — (cite only) |
 | FB-M1-17 | `deref` returns exactly one of {Bound(Term), Unbound-local VarRef, Unbound-imported VariableEntry} | HEAP:259-336 | — (cite only) |
 | FB-M1-18 | deref of a fresh (just-allocated) var = Unbound(writer) i.e. `VarRef(writerAddr)` | HEAP:307-310; BPT:167 | — (cite only) |
@@ -143,7 +143,7 @@ Each item below is a first-class risk: a criterion refuted for cause, an open/re
 - **RISK-RUBRIC-M2 (FB-M2-R1)** — Theorem 5.7 N-agent correctness is the governing M2 yardstick, not a test point; its supporting lemmas C.41/C.45 are truncated in the arXiv HTML. *Needed:* re-ground the proof from a complete primary (arXiv 2602.06934 App. C source / `docs/ma/madGLP-spec.md`) before relying on it; meanwhile judge M2 per-invariant.
 
 ### Open / refuted proof obligations
-- **RISK-PROOF-writerMGU** — `writer-MGU binds only writers` (FB-M1-14, FB-M1-15) has **no constructed proof** (outcome OPEN); only a code-cited invariant + the 034 parity audit exist. *Needed:* author `WriterMguBindsOnlyWriters.lean` modelling bindWriter/bindWriterToReader/bindWriterToWriter, discharge via the Lean harness (`spikes/lean/run.sh`), record under `PROOFS/writer_mgu_binds_only_writers/`.
+- **RISK-PROOF-writerMGU** — ✅ **RESOLVED 2026-07-13** (PI:14 discharged, gates M1). `writer-MGU binds only writers` (FB-M1-14, FB-M1-15) now carries the three-artifact proof: Lean `glp_gleam/lean/WriterMguBindsOnlyWriters/` (theorem `writer_mgu_binds_only_writers` + tentative-HEAD `head_unify_step_preserves_writer_only`, T027), prose `PROOFS/writer_mgu_binds_only_writers/PROOF.md` (T028), and adversarial gleeunit `glp_gleam/test/glp/engine/writer_mgu_adversarial_test.gleam` (T026, green). See `PROOFS/INDEX.md` — writer-MGU (proved).
 - **RISK-PROOF-distDeref** — `distributed-deref M2 faithfulness` (FB-M2-01, FB-M2-04) is **OPEN**: only a minimal single-message front↔back SPIN handshake passes; no Promela model of the multi-message, bidirectional, suspend/reactivate deref protocol with a no-lost/no-duplicated-binding safety property exists. *Needed:* build the full Promela model (5 steps recorded in `PROOFS/INDEX.md` note), model-check `errors: 0`, record outcome.
 
 ### Weak / contested live cites
