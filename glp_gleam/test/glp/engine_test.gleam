@@ -6,10 +6,18 @@
 //// code (user labels win); staged rejections propagate unchanged. The load-time
 //// negatives here are the SRSW-neg + type-neg half of T030's smoke set.
 
+import gleam/option.{None, Some}
 import gleeunit/should
+import glp/analysis/type_ast.{Pos}
 import glp/bytecode/program
+import glp/codec/result_envelope
+import glp/codec/term_codec
 import glp/diagnostics
 import glp/engine
+import glp/engine/goal_boot
+import glp/parser/ast
+import glp/runtime/heap
+import glp/runtime/terms
 
 // Reuse the loader's pinned corpus sources (loader_test.gleam) so the facade is
 // shown to propagate the SAME staged classification the pipeline produces.
@@ -69,4 +77,72 @@ pub fn load_type_negative_rejects_test() {
   |> should.equal(diagnostics.TypeCheckStage)
   err.class
   |> should.equal(diagnostics.TypeError)
+}
+
+// ── T030: X := 2+3 end-to-end through the engine API ─────────────────────────
+
+// The headline parity gate: a prelude-only arithmetic goal runs against the real
+// on-disk self.glp (`:=/2` + the `_add` kernel), reducing to Success with X = 5,
+// reported as a deep-resolved binding — Dart-identical.
+pub fn run_assignment_binds_result_test() {
+  let #(_eng, env) = engine.run(engine.new(), "X := 2+3")
+
+  env.status
+  |> should.equal(result_envelope.Success)
+  env.resolved_bindings
+  |> should.equal([#("X", term_codec.ConstTerm(term_codec.ConstInt(5)))])
+  env.var_to_writer
+  |> should.equal([])
+  env.suspended
+  |> should.equal([])
+}
+
+// A goal that reads an unbound input suspends: status Suspended, no bindings, the
+// produced query var (Out) reported as a var→writer, exactly one blocking reader.
+pub fn run_suspended_goal_reports_suspension_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, good_source)
+  let #(_eng, env) = engine.run(eng, "flip(In?, Out)")
+
+  env.status
+  |> should.equal(result_envelope.Suspended)
+  env.resolved_bindings
+  |> should.equal([])
+  let assert [#("Out", _)] = env.var_to_writer
+  let assert [_blocking_reader] = env.suspended
+}
+
+// A missing predicate is a Failed envelope carrying the reason (not a crash).
+pub fn run_unknown_predicate_fails_test() {
+  let #(_eng, env) = engine.run(engine.new(), "no_such_pred(1, 2)")
+  env.status
+  |> should.equal(result_envelope.Failed)
+  let assert Some(_reason) = env.error
+}
+
+// ── goal-boot: proper list-of-consts materialises to a cons chain ────────────
+
+// [1, 2, 3] in argument position builds `.(1, .(2, .(3, nil)))` bound to one
+// writer, with const heads placed inline (Dart `_buildListTerm`).
+pub fn goal_boot_builds_const_list_test() {
+  let p = Pos(0, 0)
+  let ci = fn(n) { ast.ConstTerm(terms.ConstInt(n), p) }
+  let list123 =
+    ast.ListTerm(
+      Some(ci(1)),
+      Some(ast.ListTerm(
+        Some(ci(2)),
+        Some(ast.ListTerm(Some(ci(3)), None, p)),
+        p,
+      )),
+      p,
+    )
+  let atom = ast.Atom("foo", [list123], p)
+
+  let assert Ok(boot) = goal_boot.setup_goal(heap.new(), atom)
+  let assert Ok(terms.VarRef(addr)) = program.get_reg(boot.regs, 0)
+  let assert Ok(#(_, heap.Bound(cell))) = heap.deref(boot.heap, addr)
+  // Head is the inline constant 1; tail is a further cons (structural check).
+  let assert terms.StructTerm(".", [terms.ConstTerm(terms.ConstInt(1)), _tail]) =
+    cell
 }

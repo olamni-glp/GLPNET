@@ -22,17 +22,40 @@
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
+import gleam/int
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import glp/analysis/type_checker/type_checker.{type TypeWarning}
 import glp/bytecode/program.{type BytecodeProgram}
+import glp/codec/result_envelope.{type ResultEnvelope}
+import glp/codec/result_envelope_builder as builder
 import glp/compiler/loader
 import glp/diagnostics.{type StagedError}
+import glp/engine/goal_boot
+import glp/engine/scheduler
+import glp/parser/ast
+import glp/parser/lexer
+import glp/parser/parser
+import glp/runtime/heap
 
 /// The root prelude path, relative to the `glp_gleam/` package root (the CWD both
 /// `gleam test` and `gleam run` use — the same convention as `golden_corpus_test`
 /// reading `../specs/...`).
 const prelude_path = "../programs/self.glp"
+
+/// Per-instance id stamped on every `GlobalVarId` this engine mints (the C#
+/// `GlobalVarId.agentId` — a per-glpnet-instance unique id). PROVISIONAL: the Dart
+/// `buildResultEnvelope` is uncalled (no live oracle) and it appears only in
+/// var→writer / suspended entries (never in a bound-only envelope such as `X := 2+3`);
+/// pin a parity value here if a suspended-var corpus case is later recorded.
+const instance_id = "gleam"
+
+/// Instruction budget per goal reduction (REPL `:limit` overrides this later).
+const default_reduction_budget = 1_000_000
+
+/// Total-reduction backstop for one `run` (loop non-termination guard).
+const default_fuel = 1_000_000
 
 /// The engine as an opaque typed value (FR-009). Holds the compiled prelude
 /// (kept for re-merge on each `load`), the prelude source (the load pipeline
@@ -107,6 +130,122 @@ pub fn prelude_source(engine: Engine) -> String {
 /// surface renders these.
 pub fn warnings(engine: Engine) -> List(TypeWarning) {
   engine.warnings
+}
+
+// ── run: goal → ResultEnvelope (T029 Slice 2) ────────────────────────────────
+
+/// Execute `goal` against the engine's runnable program and return the result
+/// envelope (the ED-1 seam — every goal result is a `ResultEnvelope`). One-shot: a
+/// fresh heap is populated by goal-boot, the goal reduced to quiescence, and the
+/// query variables deep-resolved (Dart `_runSingleGoal`). The engine is returned
+/// unchanged (the run's scheduler state is internal). `captured` is `<<>>` —
+/// output capture is deferred (R4 excludes it from parity; see the restart note).
+///
+/// A parse failure, a missing predicate, an unsupported argument shape, or a heap
+/// build error yields a `Failed` envelope carrying the reason (Dart catches these
+/// into `ExecutionResult(status: failed, error: …)`).
+pub fn run(engine: Engine, goal: String) -> #(Engine, ResultEnvelope) {
+  let envelope = case run_goal(engine, goal) {
+    Ok(env) -> env
+    Error(reason) -> failed_envelope(reason)
+  }
+  #(engine, envelope)
+}
+
+fn run_goal(engine: Engine, goal: String) -> Result(ResultEnvelope, String) {
+  use atom <- result.try(parse_goal(goal))
+  let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
+  use entry <- result.try(
+    program.label_pc(engine.program, label)
+    |> result.replace_error("predicate " <> label <> " not found"),
+  )
+  use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
+
+  let sched = scheduler.new(engine.program, boot.heap)
+  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+  let #(sched, status) =
+    scheduler.run(sched, default_reduction_budget, default_fuel)
+
+  let #(exec_status, blocking_readers, error) = map_status(status)
+  case
+    builder.build_result_envelope(
+      scheduler.heap(sched),
+      boot.query_var_writers,
+      exec_status,
+      blocking_readers,
+      instance_id,
+      <<>>,
+      error,
+    )
+  {
+    Ok(#(_heap, envelope)) -> Ok(envelope)
+    Error(build_error) ->
+      Error("result-envelope build failed: " <> string.inspect(build_error))
+  }
+}
+
+/// Parse a goal string into its head atom. The goal is a unit-clause head (Dart
+/// `_runSingleGoal`: strip any trailing `.`, re-append exactly one, then take
+/// `procedures[0].clauses[0].head`). Only `parse_module` exists — a goal is a
+/// one-clause module.
+fn parse_goal(goal: String) -> Result(ast.Atom, String) {
+  let trimmed = string.trim(goal)
+  let base = case string.ends_with(trimmed, ".") {
+    True -> string.drop_end(trimmed, 1)
+    False -> trimmed
+  }
+  use tokens <- result.try(
+    lexer.tokenize(base <> ".")
+    |> result.map_error(fn(e) { "parse: " <> string.inspect(e) }),
+  )
+  use module <- result.try(
+    parser.parse_module(tokens)
+    |> result.map_error(fn(e) { "parse: " <> string.inspect(e) }),
+  )
+  case module.procedures {
+    [ast.Procedure(clauses: [clause, ..], ..), ..] -> Ok(clause.head)
+    [ast.Procedure(clauses: [], ..), ..] -> Error("no clauses in goal")
+    [] -> Error("no goal found")
+  }
+}
+
+/// Map the scheduler run status to the envelope status + blocking readers + error
+/// (Dart `_mapStatus`; the envelope's `error` is present iff status is Failed —
+/// C# `ResultEnvelope` invariant). Blocking readers are non-empty only on Suspended.
+fn map_status(
+  status: scheduler.RunStatus,
+) -> #(result_envelope.ExecutionStatus, List(Int), Option(String)) {
+  case status {
+    scheduler.Success -> #(result_envelope.Success, [], None)
+    scheduler.Suspended(readers) -> #(result_envelope.Suspended, readers, None)
+    scheduler.Failed -> #(
+      result_envelope.Failed,
+      [],
+      Some("goal failed: no matching clause"),
+    )
+    scheduler.OutOfFuel -> #(
+      result_envelope.Failed,
+      [],
+      Some("reduction fuel exhausted"),
+    )
+    scheduler.Errored(fault) -> #(
+      result_envelope.Failed,
+      [],
+      Some("runner error: " <> string.inspect(fault)),
+    )
+  }
+}
+
+/// A `Failed` envelope carrying `reason` (the goal-setup / parse failure path).
+fn failed_envelope(reason: String) -> ResultEnvelope {
+  result_envelope.ResultEnvelope(
+    status: result_envelope.Failed,
+    resolved_bindings: [],
+    var_to_writer: [],
+    suspended: [],
+    captured: <<>>,
+    error: Some(reason),
+  )
 }
 
 // ── prelude read (038 FFI pattern) ───────────────────────────────────────────
