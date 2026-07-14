@@ -1,3 +1,4 @@
+using System.Net.Quic;
 using Ynet.Transport.Capability;
 using Ynet.Transport.Dht;
 using Ynet.Transport.Exit;
@@ -5,6 +6,8 @@ using Ynet.Transport.Link;
 using Ynet.Transport.Path;
 using Ynet.Transport.Relay;
 using Ynet.Transport.Seal;
+
+#pragma warning disable CA1416 // QUIC tests gate on QuicWireChannel.IsSupported at runtime
 
 namespace Ynet.Transport.Tests;
 
@@ -195,6 +198,47 @@ public class YnetSessionTests
         Assert.Equal(payload, listener.Receive().Value.ToArray());
         dialer.Dispose();
         listener.Dispose();
+    }
+}
+
+// ---- T011 / US1: real MsQuic wire (FR-001, SC-001) — gated on platform QUIC support ----
+public class QuicWireTests
+{
+    [Fact]
+    public async Task Two_nodes_handshake_and_exchange_over_real_quic_loopback()
+    {
+        if (!QuicWireChannel.IsSupported) return; // honest skip where msquic is unavailable
+
+        using var a = NodeIdentity.Generate();
+        using var b = NodeIdentity.Generate();
+
+        var listener = await QuicWireChannel.BindListenerAsync(0);
+        int port = listener.LocalEndPoint.Port;
+
+        var acceptChanTask = QuicWireChannel.AcceptAsync(listener);
+        var clientChan = await QuicWireChannel.ConnectAsync(port);
+
+        // The client session writes hello first — that realizes the outbound stream and unblocks the
+        // server's inbound-stream accept; run it concurrently while the server side handshakes.
+        var clientSessTask = Task.Run(() => YnetSession.Connect(clientChan, a, b.NodeId, RoutingSelection.SafeDefault));
+        var serverChan = await acceptChanTask;
+        var serverSess = YnetSession.Accept(serverChan, b, RoutingSelection.SafeDefault);
+        var clientSess = await clientSessTask;
+
+        Assert.True(clientSess.Ok);
+        Assert.True(serverSess.Ok);
+        Assert.Equal(b.NodeId, clientSess.Value!.Peer); // identity verified over the real wire
+        Assert.Equal(a.NodeId, serverSess.Value!.Peer);
+
+        var payload = "over real quic"u8.ToArray();
+        Assert.True(clientSess.Value!.Send(payload).Ok);
+        var recv = serverSess.Value!.Receive();
+        Assert.True(recv.Ok);
+        Assert.Equal(payload, recv.Value.ToArray());
+
+        clientSess.Value!.Dispose();  // disposes the underlying QuicWireChannel
+        serverSess.Value!.Dispose();
+        await listener.DisposeAsync();
     }
 }
 

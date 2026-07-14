@@ -105,17 +105,23 @@ public sealed class YnetSession : IDisposable
         using var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         var myEcdhSpki = ecdh.PublicKey.ExportSubjectPublicKeyInfo();
 
-        // Hello = [u16 identitySpkiLen][identitySpki][u16 ecdhSpkiLen][ecdhSpki]. Send then read.
-        channel.WriteFrame(EncodeHello(self.PublicKeySpki, myEcdhSpki));
+        // Hello binds the ephemeral ECDH key to the node identity: the identity key SIGNS the ECDH
+        // SPKI (authenticated DH — a MITM cannot substitute its own ephemeral key under a victim's
+        // known identity SPKI, FR-002). Send our hello, then read the peer's.
+        var mySig = self.Sign(myEcdhSpki);
+        channel.WriteFrame(EncodeHello(self.PublicKeySpki, myEcdhSpki, mySig));
 
         var peerHello = channel.ReadFrame();
         if (peerHello is null)
             return Result<YnetSession>.Refuse(RefusalReason.AuthorizedButUnreachable);
-        if (!TryDecodeHello(peerHello, out var peerIdentitySpki, out var peerEcdhSpki))
+        if (!TryDecodeHello(peerHello, out var peerIdentitySpki, out var peerEcdhSpki, out var peerSig))
             return Result<YnetSession>.Refuse(RefusalReason.IdentityMismatch);
 
-        // FR-002: the presented node id must be H(its handshake identity key). A dialer additionally
-        // pins the expected peer; a listener learns (and returns) the verified peer id.
+        // FR-002: the ephemeral ECDH key MUST be signed by the presented identity (no unauthenticated
+        // DH), and the presented node id MUST be H(its identity key). A dialer additionally pins the
+        // expected peer; a listener learns (and returns) the verified peer id.
+        if (!NodeIdentity.VerifySpki(peerIdentitySpki, peerEcdhSpki, peerSig))
+            return Result<YnetSession>.Refuse(RefusalReason.IdentityMismatch);
         var peerId = NodeIdentity.DeriveNodeId(peerIdentitySpki);
         if (expectedPeer is { } exp && exp != peerId)
             return Result<YnetSession>.Refuse(RefusalReason.IdentityMismatch);
@@ -183,31 +189,38 @@ public sealed class YnetSession : IDisposable
     public PathInfo Info(RoutingSelection selection) =>
         new(Handle.PathType, selection.Mode, selection.AnonymityLevel, RelayHops: 0);
 
-    private static byte[] EncodeHello(ReadOnlySpan<byte> identitySpki, ReadOnlySpan<byte> ecdhSpki)
+    // Hello = [u16 idLen][identitySpki][u16 ecLen][ecdhSpki][u16 sigLen][signature over ecdhSpki].
+    private static byte[] EncodeHello(ReadOnlySpan<byte> identitySpki, ReadOnlySpan<byte> ecdhSpki, ReadOnlySpan<byte> signature)
     {
-        var buf = new byte[2 + identitySpki.Length + 2 + ecdhSpki.Length];
+        var buf = new byte[2 + identitySpki.Length + 2 + ecdhSpki.Length + 2 + signature.Length];
         var s = buf.AsSpan();
-        BinaryPrimitives.WriteUInt16BigEndian(s, (ushort)identitySpki.Length);
-        identitySpki.CopyTo(s[2..]);
-        var off = 2 + identitySpki.Length;
-        BinaryPrimitives.WriteUInt16BigEndian(s[off..], (ushort)ecdhSpki.Length);
-        ecdhSpki.CopyTo(s[(off + 2)..]);
+        int o = 0;
+        BinaryPrimitives.WriteUInt16BigEndian(s[o..], (ushort)identitySpki.Length); o += 2;
+        identitySpki.CopyTo(s[o..]); o += identitySpki.Length;
+        BinaryPrimitives.WriteUInt16BigEndian(s[o..], (ushort)ecdhSpki.Length); o += 2;
+        ecdhSpki.CopyTo(s[o..]); o += ecdhSpki.Length;
+        BinaryPrimitives.WriteUInt16BigEndian(s[o..], (ushort)signature.Length); o += 2;
+        signature.CopyTo(s[o..]);
         return buf;
     }
 
-    private static bool TryDecodeHello(byte[] frame, out byte[] identitySpki, out byte[] ecdhSpki)
+    private static bool TryDecodeHello(byte[] frame, out byte[] identitySpki, out byte[] ecdhSpki, out byte[] signature)
     {
         identitySpki = Array.Empty<byte>();
         ecdhSpki = Array.Empty<byte>();
+        signature = Array.Empty<byte>();
         var s = frame.AsSpan();
-        if (s.Length < 4) return false;
-        int idLen = BinaryPrimitives.ReadUInt16BigEndian(s);
-        if (2 + idLen + 2 > s.Length) return false;
-        identitySpki = s.Slice(2, idLen).ToArray();
-        var off = 2 + idLen;
-        int ecLen = BinaryPrimitives.ReadUInt16BigEndian(s[off..]);
-        if (off + 2 + ecLen > s.Length) return false;
-        ecdhSpki = s.Slice(off + 2, ecLen).ToArray();
+        int o = 0;
+        if (s.Length < 2) return false;
+        int idLen = BinaryPrimitives.ReadUInt16BigEndian(s[o..]); o += 2;
+        if (o + idLen + 2 > s.Length) return false;
+        identitySpki = s.Slice(o, idLen).ToArray(); o += idLen;
+        int ecLen = BinaryPrimitives.ReadUInt16BigEndian(s[o..]); o += 2;
+        if (o + ecLen + 2 > s.Length) return false;
+        ecdhSpki = s.Slice(o, ecLen).ToArray(); o += ecLen;
+        int sigLen = BinaryPrimitives.ReadUInt16BigEndian(s[o..]); o += 2;
+        if (o + sigLen > s.Length) return false;
+        signature = s.Slice(o, sigLen).ToArray();
         return true;
     }
 
