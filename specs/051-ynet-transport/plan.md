@@ -30,6 +30,7 @@ tier (`gleam_quic` extension). JavaScript/WASM for the browser/edge tier (WebRTC
 WebTransport). Python 3.12 for cert/record tooling (`glp_quick`, already shipped). GLP (`.glp`) only
 for demonstration/test programs — **no new GLP kernel/primitive** (Constitution IV-a; propose-first).
 **Primary Dependencies**: `System.Net.Quic` (MsQuic); `csharp/glp_link` (harvested → YNET link);
+`BouncyCastle.Cryptography` 2.4.0 (DEC-CRYPTO-1 — Ed25519 node identity, pure-managed, P-256 fallback);
 olamnit **reused** (Ed25519 amulet crypto-envelope / AES-256-GCM sealed link, DSDV
 `DistanceVectorRouter` + `MeshRelayRoute`, default-deny `EgressService`) — **hardened H2/H3**;
 **NEW**: an ICE/DCUtR hole-punch capability, an embedded **S-Kademlia** DHT, a hybrid relay-forward
@@ -132,3 +133,4 @@ extends `gleam_quic/`; the **browser tier** is a separate `ynet_browser/` JS/WAS
 | Hybrid relay-forward (circuit-relay-v2 + Tor-cell) | FR-007 clarify decision — traffic-class trust split | A single relay model can't serve both curated-mesh voucher trust and internet/critical anonymity |
 | Browser WebRTC + WebTransport tier | FR-014/FR-015 — MsQuic can't target the browser | Reusing the native QUIC in-browser is impossible (Veilid-WASM/iroh/libp2p all confirm) |
 | Dep on `057-yngenios-pocw-coin` | FR-010a standard mix-trust stake signal | Building a parallel stake mechanism duplicates 057; Loopix fallback covers 057-absent |
+| **`BouncyCastle.Cryptography` 2.4.0** (DEC-CRYPTO-1, 2026-07-14) | FR-002 Ed25519 node identity — .NET BCL has no native Ed25519 | Rolling our own Ed25519 is unacceptable for a security primitive; BouncyCastle is pure-managed (no native binary, preserves standalone posture) with an ECDsa/P-256 BCL fallback behind `INodeSigner`. **First third-party crypto dep in this lib.** |
