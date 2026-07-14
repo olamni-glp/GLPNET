@@ -53,11 +53,14 @@ useful".
   length-prefixed frames, sync-bridged; ephemeral self-signed cert; gates on `IsSupported`, refuses
   never simulates) — verified by a real QUIC loopback test (~200 ms handshake, not a skip). Handshake
   hardened to **authenticated ECDH** (identity signs the ephemeral key; MITM-resistant, FR-002).
-  44/44 green. **REMAINING P2:** T015 = wire `IYnetTransport.Connect(NodeId)/Send/Receive/Close` via a
-  `NodeId→endpoint` resolver seam (full NodeId→address resolution needs the DHT/rendezvous of US2/US3;
-  land the resolver seam now, back it with the in-process fabric, swap to DHT in P3/P4). ← **RESUME HERE.**
+  44/44 green. **T015 DONE — P2 COMPLETE:** `YnetTransportCapability` (real `IYnetTransport` over
+  live `YnetSession`s) + `CapabilityRegistration` (056-token exposure, `Udp`/`Socket` strings — zero
+  056 coupling) + `INodeEndpointResolver` seam backed by the real `InProcessFabric`; DHT/relay ops
+  are honest NotSupported seams (T025/T028+). 49/49 green incl. 056-stub first-class resolution +
+  full capability-level connect→send→receive→close (T014/T016 also [X]).
 - **P3 — US2 hole-punch + DHT foundation (T017–T022).** ICE/DCUtR; embedded S-Kademlia DHT;
   DHT-address + hidden-service rendezvous; ≤5 s punch budget → deterministic relay fallback.
+  ← **RESUME HERE.**
 - **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject;
   `further_resolver_required` for human-memorable naming (fabricate nothing).
 - **P5 — US4 relay forward (T028–T033).** circuit-relay-v2 (mesh) + Tor-cell (internet/critical) +

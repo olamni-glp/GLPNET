@@ -72,9 +72,9 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 - [~] T011 [US1] Harvest `glp_link` MsQuic setup (per-scheme registries, reliability sublayer, `IPayloadCodec`/`ICapabilityGate` seams, 050 robustness fixes) into `csharp/ynet_transport/Link/YnetLink.cs` (FR-001, research R5)
 - [~] T012 [US1] Replace SPKI-pin identity with **Ed25519-key-as-TLS-identity** (iroh/`noq` model) in `csharp/ynet_transport/Link/YnetLink.cs`; keep 050 `IsSupported`-gate-and-refuse posture (FR-002, `transport_unsupported`)
 - [X] T013 [US1] Implement AES-256-GCM session seal on the link (reuse hardened olamnit envelope, T008) in `csharp/ynet_transport/Link/SessionSeal.cs` (FR-003)
-- [~] T014 [US1] Implement `connect`/`send`/`receive`/`close` (graceful close-after-collect, 050 discipline) in `csharp/ynet_transport/Capability/YnetTransportCapability.cs` (US1 AS1–2)
-- [ ] T015 [US1] Expose the capability so a 056 stub resolves it as first-class `ICapability` (`CapabilityType.Udp`/`Socket`) with no embed logic here in `csharp/ynet_transport/Capability/CapabilityRegistration.cs` (FR-004, US1 AS4)
-- [ ] T016 [P] [US1] Integration test: full `connect → send → receive` between two in-process nodes over the sealed session in `csharp/ynet_transport.tests/integration/DirectLinkTests.cs` (SC-001)
+- [X] T014 [US1] Implement `connect`/`send`/`receive`/`close` (graceful close-after-collect, 050 discipline) in `csharp/ynet_transport/Capability/YnetTransportCapability.cs` (US1 AS1–2)
+- [X] T015 [US1] Expose the capability so a 056 stub resolves it as first-class `ICapability` (`CapabilityType.Udp`/`Socket`) with no embed logic here in `csharp/ynet_transport/Capability/CapabilityRegistration.cs` (FR-004, US1 AS4)
+- [X] T016 [P] [US1] Integration test: full `connect → send → receive` between two in-process nodes over the sealed session in `csharp/ynet_transport.tests/integration/DirectLinkTests.cs` (SC-001)
 
 **Checkpoint**: US1 independently testable — a key-authenticated sealed link works end-to-end.
 
