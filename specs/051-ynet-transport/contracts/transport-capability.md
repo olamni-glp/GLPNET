@@ -48,6 +48,8 @@ capability YnetTransport {
 | `leaf_transit_refused` | leaf asked to forward third-party transit (FR-016) |
 | `egress_denied` | exit-abuse policy / default-deny (FR-012/FR-013) |
 | `further_resolver_required` | name beyond self-certified key→record (FR-017) |
+| `record_not_found` | `dht_lookup` of a valid self-certified key with no live record (the NotFound outcome) |
+| `record_rejected` | `dht_store` of a record that fails self-certification — tamper / key-spoof / expiry (FR-006) |
 | `transport_unsupported` | native QUIC unavailable — refuse, never downgrade (050 gate) |
 
 ## Invariants (tested at contract tier)

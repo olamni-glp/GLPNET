@@ -25,21 +25,27 @@ public interface INodeEndpointResolver
 /// service-embed, macaroon-minting, admission-deciding, or durable-mailbox logic (FR-004/FR-024) —
 /// 056 binds its policy to this surface from the other side of the tier boundary.
 ///
-/// Honest seams (Constitution II): the DHT (T025) and relay-forward (T028+) operations throw a
-/// clear NotSupportedException until their tasks land — they never pretend to succeed.
+/// Honest seams (Constitution II): the DHT discovery slice (US3) is REAL when a <see
+/// cref="Dht.DhtCapability"/> is attached (T025 — wired onto the embedded S-Kademlia node); the
+/// relay-forward (T028+) operations still throw a clear NotSupportedException until their tasks land
+/// — they never pretend to succeed.
 /// </summary>
 public sealed class YnetTransportCapability : IYnetTransport, IDisposable
 {
     private readonly NodeIdentity _self;
     private readonly INodeEndpointResolver _resolver;
+    private readonly Dht.DhtCapability? _dht;
     private readonly ConcurrentDictionary<Guid, (YnetSession Session, RoutingSelection Selection)> _sessions = new();
     private readonly BlockingCollection<LinkHandle> _acceptedLinks = new(new ConcurrentQueue<LinkHandle>());
     private volatile NodeMode _mode = NodeMode.Full;
 
-    public YnetTransportCapability(NodeIdentity self, INodeEndpointResolver resolver)
+    /// <param name="dht">The discovery slice over this node's S-Kademlia participant (US3). When
+    /// absent, the node exposes no DHT and the discovery operations refuse honestly.</param>
+    public YnetTransportCapability(NodeIdentity self, INodeEndpointResolver resolver, Dht.DhtCapability? dht = null)
     {
         _self = self;
         _resolver = resolver;
+        _dht = dht;
     }
 
     /// <summary>This node's self-certified identity (nodeId = H(pubkey), FR-002).</summary>
@@ -111,16 +117,19 @@ public sealed class YnetTransportCapability : IYnetTransport, IDisposable
     public bool TryAcceptLink(TimeSpan timeout, out LinkHandle link)
         => _acceptedLinks.TryTake(out link, timeout);
 
-    // --- discovery (US3) — honest seam pending T025 (DhtCapability wire) ---
+    // --- discovery (US3) — REAL over the embedded S-Kademlia node (T025) ---
 
     public Result<Unit> DhtStore(Dht.SignedRecord record)
-        => throw new NotSupportedException(
-            "DhtStore is a compiling seam pending the DHT capability wire (051 T025). SignedRecord " +
-            "sign/verify itself is real + tested (T024); only the store/lookup transport is outstanding.");
+        => _dht is { } dht
+            ? dht.Store(record)
+            : throw new NotSupportedException(
+                "no DHT overlay attached to this node — construct with a Dht.DhtCapability (051 T025).");
 
     public Result<Dht.SignedRecord> DhtLookup(ReadOnlyMemory<byte> key)
-        => throw new NotSupportedException(
-            "DhtLookup is a compiling seam pending the DHT capability wire (051 T025/T019).");
+        => _dht is { } dht
+            ? dht.Lookup(key)
+            : throw new NotSupportedException(
+                "no DHT overlay attached to this node — construct with a Dht.DhtCapability (051 T025).");
 
     // --- relay mechanism (US4) — honest seam pending T028+ (relay-forward wire) ---
 

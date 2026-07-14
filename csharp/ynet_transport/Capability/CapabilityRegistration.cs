@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Ynet.Transport.Dht;
 using Ynet.Transport.Link;
 
 namespace Ynet.Transport.Capability;
@@ -66,14 +67,47 @@ public sealed class CapabilityRegistration
 public sealed class InProcessFabric : INodeEndpointResolver
 {
     private readonly ConcurrentDictionary<NodeId, YnetTransportCapability> _nodes = new();
+    private readonly ConcurrentDictionary<NodeId, SKademliaNode> _dht = new();
+    private readonly Func<DateTimeOffset> _clock;
 
-    /// <summary>Attach a node to the fabric, returning its first-class transport capability.</summary>
+    /// <param name="clock">Time source for DHT TTL/expiry checks; defaults to wall clock.</param>
+    public InProcessFabric(Func<DateTimeOffset>? clock = null)
+        => _clock = clock ?? (() => DateTimeOffset.UtcNow);
+
+    /// <summary>
+    /// Attach a node to the fabric, returning its first-class transport capability. Each node gets a
+    /// live S-Kademlia participant in the shared curated overlay (the DHT resolve seam maps across
+    /// the fabric's other nodes — UDP RPC swaps in behind it in prod), so the US3 discovery slice is
+    /// REAL over co-hosted nodes. Call <see cref="FormOverlay"/> once all nodes are attached.
+    /// </summary>
     public YnetTransportCapability AttachNode(NodeIdentity identity)
     {
-        var capability = new YnetTransportCapability(identity, this);
+        var kad = new SKademliaNode(
+            identity.NodeId,
+            $"inproc://{identity.NodeId.Value}",
+            id => _dht.TryGetValue(id, out var n) ? n : null);
+        var capability = new YnetTransportCapability(identity, this, new DhtCapability(kad, _clock));
         if (!_nodes.TryAdd(identity.NodeId, capability))
             throw new InvalidOperationException($"node {identity.NodeId} already attached");
+        _dht[identity.NodeId] = kad;
         return capability;
+    }
+
+    /// <summary>
+    /// Bootstrap every attached node into one S-Kademlia overlay through the first-attached node, so
+    /// a record stored at any node is discoverable by iterative lookup from any other (SC-003). A
+    /// no-op for a fabric with fewer than two nodes.
+    /// </summary>
+    public void FormOverlay()
+    {
+        var nodes = _dht.Values.ToList();
+        if (nodes.Count < 2) return;
+        var bootstrap = nodes[0];
+        foreach (var n in nodes.Skip(1))
+        {
+            n.Join(bootstrap.Self);       // learner discovers the bootstrap's neighbourhood
+            bootstrap.Join(n.Self);        // bootstrap learns the joiner (curated overlay, mutual)
+        }
     }
 
     public Result<IWireChannel> OpenChannel(NodeId peer)

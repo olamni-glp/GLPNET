@@ -44,9 +44,18 @@ store/lookup (`SKademlia.cs`), DHT-address + hidden-service rendezvous (`Rendezv
 ≤5 s punch → deterministic relay fallback surfacing path type (`PunchOrchestrator.cs`); NAT
 simulation proves cone→direct ≥90% + symmetric→relay zero-loss. UDP/STUN sockets remain injected
 seams (honest, per Constitution II). 61/61 green.
+**P4 complete (US3 DHT discovery, 2026-07-14):** T023–T027 — `IYnetTransport.DhtStore/DhtLookup` are
+now REAL over the embedded S-Kademlia node (`Dht/DhtCapability.cs`), replacing the honest seams; the
+`InProcessFabric` attaches a live overlay participant per node (`FormOverlay` bootstrap) so the
+resolver seam serves co-hosted nodes; `Dht/NameResolution.cs` classifies a self-certified key
+(nodeId = 64-hex) vs a human-memorable name → `further_resolver_required` (fabricates nothing,
+FR-017); two additive distinct `RefusalReason`s (`RecordNotFound`, `RecordRejected`) close the
+contract's NotFound / store-rejection gap (co #218). New tests: `contract/DhtRecordTests.cs` (T023,
+round-trip + tamper/spoof reject + naming refusal + not-found) and `integration/DhtDiscoveryTests.cs`
+(T027, N=12 store + iterative lookup + tamper-rejection + TTL expiry). 70/70 green. UDP RPC still
+swaps in behind the same `resolve` seam (physical wire, later).
 
 **Not started (network-I/O heavy / other runtimes / later phases):** T004 migration; T007 wire;
-T023/T025/T026/T027 (DHT capability wire — `IYnetTransport.DhtStore/DhtLookup` still honest seams);
 T028–T033/T031a (relay forward wire, DSDV internet);
 T034–T039 (sealed-route/SafetySelection wire); T040–T044 (exit wire); T045–T049 (browser tier);
 T050/T053 (leaf integ); T054 migration wire; T055 audit; T056 tier-boundary test; T057 GLP demo;
@@ -109,11 +118,11 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 **Goal**: self-certified DHT store/lookup; verifiable independent of the serving hop.
 **Independent test**: store record, look up from unrelated node, reject tampered record.
 
-- [ ] T023 [P] [US3] Contract test: signed record round-trips; signature mismatch rejected; name beyond key→record → `further_resolver_required`, in `csharp/ynet_transport.tests/contract/DhtRecordTests.cs` (FR-006/FR-017, SC-003)
+- [X] T023 [P] [US3] Contract test: signed record round-trips; signature mismatch rejected; name beyond key→record → `further_resolver_required`, in `csharp/ynet_transport.tests/contract/DhtRecordTests.cs` (FR-006/FR-017, SC-003)
 - [X] T024 [US3] Implement self-certified `SignedRecord` (sign/verify against `signer_node_id`) + persistence in the additive migration tables in `csharp/ynet_transport/Dht/SignedRecord.cs` (data-model DHT record)
-- [ ] T025 [US3] Implement `dht_store`/`dht_lookup` on the capability, rejecting signature-invalid records regardless of serving hop, in `csharp/ynet_transport/Dht/DhtCapability.cs` (FR-006, SC-003)
-- [ ] T026 [US3] Return `further_resolver_required` for human-memorable naming (fabricate nothing; mstack tie) in `csharp/ynet_transport/Dht/NameResolution.cs` (FR-017, US3 AS3)
-- [ ] T027 [P] [US3] Integration test: N-node DHT store + iterative lookup + tamper-rejection in `csharp/ynet_transport.tests/integration/DhtDiscoveryTests.cs` (SC-003)
+- [X] T025 [US3] Implement `dht_store`/`dht_lookup` on the capability, rejecting signature-invalid records regardless of serving hop, in `csharp/ynet_transport/Dht/DhtCapability.cs` (FR-006, SC-003)
+- [X] T026 [US3] Return `further_resolver_required` for human-memorable naming (fabricate nothing; mstack tie) in `csharp/ynet_transport/Dht/NameResolution.cs` (FR-017, US3 AS3)
+- [X] T027 [P] [US3] Integration test: N-node DHT store + iterative lookup + tamper-rejection in `csharp/ynet_transport.tests/integration/DhtDiscoveryTests.cs` (SC-003)
 
 **Checkpoint**: discovery works; rendezvous (US2) can use real DHT reachability.
 

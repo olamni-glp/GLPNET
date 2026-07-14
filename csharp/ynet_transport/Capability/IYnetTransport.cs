@@ -40,6 +40,8 @@ public enum RefusalReason
     LeafTransitRefused,        // leaf asked to forward third-party transit (FR-016)
     EgressDenied,              // exit-abuse policy / default-deny (FR-012/FR-013)
     FurtherResolverRequired,   // name beyond self-certified key->record (FR-017)
+    RecordNotFound,            // DHT lookup: no self-certified record for a valid key (contract NotFound)
+    RecordRejected,            // DHT store: record does not self-certify — tamper/spoof/expiry (FR-006)
     TransportUnsupported,      // native QUIC unavailable — refuse, never downgrade (050 gate)
 }
 

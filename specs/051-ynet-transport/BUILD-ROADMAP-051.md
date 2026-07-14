@@ -65,12 +65,17 @@ useful".
   deterministic relay fallback, surfaces direct|relayed, `Unreachable` when no admitted relay,
   FR-018). Deterministic NAT simulation: cone→direct ≥90% within 5 s + symmetric→relay with a real
   YnetSession proving zero pending-frame loss. UDP/STUN sockets = injected seams. 61/61 green.
-- **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject
-  (`SKademliaNode` foundation now landed — wire `IYnetTransport.DhtStore/DhtLookup` onto it, replacing
-  the honest NotSupported seams); `further_resolver_required` for human-memorable naming (fabricate
-  nothing). ← **RESUME HERE.**
+- **P4 — US3 DHT records + naming (T023–T027).** ✅ **DONE (2026-07-14).**
+  `IYnetTransport.DhtStore/DhtLookup` wired REAL onto the landed `SKademliaNode` via
+  `Dht/DhtCapability.cs` (honest seams replaced); `InProcessFabric` attaches a live overlay
+  participant per node + `FormOverlay` bootstrap so the resolve seam serves co-hosted nodes;
+  `Dht/NameResolution.cs` routes human-memorable names → `further_resolver_required` (fabricates
+  nothing, FR-017); additive distinct `RecordNotFound`/`RecordRejected` refusal reasons close the
+  contract NotFound/store-reject gap (co #218). `DhtRecordTests` (contract) + `DhtDiscoveryTests`
+  (integration, N=12 store + iterative lookup + tamper-reject + TTL). 70/70 green.
 - **P5 — US4 relay forward (T028–T033).** circuit-relay-v2 (mesh) + Tor-cell (internet/critical) +
   DSDV internet route; ciphertext-only forwarding; only 056-admitted relays selected.
+  ← **RESUME HERE.**
 - **P6 — US5 sealed routes + anonymity (T034–T039).** garlic bundling (no fixed 3-hop); Veilid
   `SafetySelection`; zero silent downgrades (`seal_unavailable` fail-closed).
 - **P7 — US6 trusted-gate exit (T040–T044).** internal in-mesh reach (no egress) + curated-gate exit
