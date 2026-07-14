@@ -58,11 +58,17 @@ useful".
   056 coupling) + `INodeEndpointResolver` seam backed by the real `InProcessFabric`; DHT/relay ops
   are honest NotSupported seams (T025/T028+). 49/49 green incl. 056-stub first-class resolution +
   full capability-level connect→send→receive→close (T014/T016 also [X]).
-- **P3 — US2 hole-punch + DHT foundation (T017–T022).** ICE/DCUtR; embedded S-Kademlia DHT;
-  DHT-address + hidden-service rendezvous; ≤5 s punch budget → deterministic relay fallback.
-  ← **RESUME HERE.**
-- **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject;
-  `further_resolver_required` for human-memorable naming (fabricate nothing).
+- **P3 — US2 hole-punch + DHT foundation (T017–T022).** ✅ **DONE (2026-07-14).** `IceDcutrAgent`
+  (RFC-8445 candidate priority + DCUtR coordinated open); embedded `SKademliaNode` (secure self-cert
+  node-ids, iterative XOR store/lookup, reject-invalid-regardless-of-hop, curated overlay);
+  `RendezvousService` (DHT-address + hidden-service modes); `PunchOrchestrator` (≤5 s budget →
+  deterministic relay fallback, surfaces direct|relayed, `Unreachable` when no admitted relay,
+  FR-018). Deterministic NAT simulation: cone→direct ≥90% within 5 s + symmetric→relay with a real
+  YnetSession proving zero pending-frame loss. UDP/STUN sockets = injected seams. 61/61 green.
+- **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject
+  (`SKademliaNode` foundation now landed — wire `IYnetTransport.DhtStore/DhtLookup` onto it, replacing
+  the honest NotSupported seams); `further_resolver_required` for human-memorable naming (fabricate
+  nothing). ← **RESUME HERE.**
 - **P5 — US4 relay forward (T028–T033).** circuit-relay-v2 (mesh) + Tor-cell (internet/critical) +
   DSDV internet route; ciphertext-only forwarding; only 056-admitted relays selected.
 - **P6 — US5 sealed routes + anonymity (T034–T039).** garlic bundling (no fixed 3-hop); Veilid

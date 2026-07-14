@@ -37,9 +37,17 @@ real+tested; `Dial` throws a clear NotSupported, no fake robustness) — T011, T
 
 **Setup done:** T001 (project skeleton), T002 (test project), T003 (build wiring).
 
-**Not started (network-I/O heavy / other runtimes / later phases):** T004 migration; T007/T009 wire;
-T015; T018–T022 (ICE/DCUtR, S-Kademlia wire, rendezvous, punch orchestrator, NAT integ);
-T023/T025/T026/T027 (DHT capability wire); T028–T033/T031a (relay forward wire, DSDV internet);
+**P2 complete (2026-07-14):** T014/T015/T016 — `YnetTransportCapability` (real `IYnetTransport`) +
+`CapabilityRegistration` (056-token exposure) + `INodeEndpointResolver`/`InProcessFabric` seam.
+**P3 complete (2026-07-14):** T017–T022 — ICE/DCUtR agent (`IceDcutr.cs`), embedded S-Kademlia
+store/lookup (`SKademlia.cs`), DHT-address + hidden-service rendezvous (`Rendezvous.cs`), bounded
+≤5 s punch → deterministic relay fallback surfacing path type (`PunchOrchestrator.cs`); NAT
+simulation proves cone→direct ≥90% + symmetric→relay zero-loss. UDP/STUN sockets remain injected
+seams (honest, per Constitution II). 61/61 green.
+
+**Not started (network-I/O heavy / other runtimes / later phases):** T004 migration; T007 wire;
+T023/T025/T026/T027 (DHT capability wire — `IYnetTransport.DhtStore/DhtLookup` still honest seams);
+T028–T033/T031a (relay forward wire, DSDV internet);
 T034–T039 (sealed-route/SafetySelection wire); T040–T044 (exit wire); T045–T049 (browser tier);
 T050/T053 (leaf integ); T054 migration wire; T055 audit; T056 tier-boundary test; T057 GLP demo;
 T058 BEAM tier; T059 baseline green. These are the next build sessions.
@@ -85,12 +93,12 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 **Goal**: hole-punch across NAT with deterministic relay fallback.
 **Independent test**: direct path for punchable NAT class; relay fallback (zero loss) for symmetric.
 
-- [ ] T017 [P] [US2] Contract test: punch within ≤5 s or deterministic relay fallback; `path_info.path_type` reports direct|relayed, in `csharp/ynet_transport.tests/contract/HolePunchTests.cs` (SC-002, US2 AS3)
-- [ ] T018 [US2] Implement ICE/DCUtR candidate exchange + coordinated simultaneous open in `csharp/ynet_transport/HolePunch/IceDcutr.cs` (FR-005, research R1; absorb iroh — do not invent)
-- [ ] T019 [US2] Implement embedded S-Kademlia DHT store/lookup of self-certified records for reachability rendezvous in `csharp/ynet_transport/Dht/SKademlia.cs` (FR-006 — foundation for DHT-address rendezvous)
-- [ ] T020 [US2] Implement DHT-address rendezvous (standard) + hidden-service-style rendezvous option for internet circuits in `csharp/ynet_transport/HolePunch/Rendezvous.cs` (FR-005, clarify §5.3)
-- [ ] T021 [US2] Implement bounded punch budget (≤5 s) → deterministic relay fallback, surfacing path type, in `csharp/ynet_transport/HolePunch/PunchOrchestrator.cs` (FR-005/FR-018, US2 AS2–3)
-- [ ] T022 [P] [US2] Integration test: two simulated cone NATs → direct punch (≥90% within 5 s); symmetric NAT → relay fallback with zero pending-frame loss, in `csharp/ynet_transport.tests/integration/NatTraversalTests.cs` (SC-002)
+- [X] T017 [P] [US2] Contract test: punch within ≤5 s or deterministic relay fallback; `path_info.path_type` reports direct|relayed, in `csharp/ynet_transport.tests/contract/HolePunchTests.cs` (SC-002, US2 AS3)
+- [X] T018 [US2] Implement ICE/DCUtR candidate exchange + coordinated simultaneous open in `csharp/ynet_transport/HolePunch/IceDcutr.cs` (FR-005, research R1; absorb iroh — do not invent)
+- [X] T019 [US2] Implement embedded S-Kademlia DHT store/lookup of self-certified records for reachability rendezvous in `csharp/ynet_transport/Dht/SKademlia.cs` (FR-006 — foundation for DHT-address rendezvous)
+- [X] T020 [US2] Implement DHT-address rendezvous (standard) + hidden-service-style rendezvous option for internet circuits in `csharp/ynet_transport/HolePunch/Rendezvous.cs` (FR-005, clarify §5.3)
+- [X] T021 [US2] Implement bounded punch budget (≤5 s) → deterministic relay fallback, surfacing path type, in `csharp/ynet_transport/HolePunch/PunchOrchestrator.cs` (FR-005/FR-018, US2 AS2–3)
+- [X] T022 [P] [US2] Integration test: two simulated cone NATs → direct punch (≥90% within 5 s); symmetric NAT → relay fallback with zero pending-frame loss, in `csharp/ynet_transport.tests/integration/NatTraversalTests.cs` (SC-002)
 
 **Checkpoint**: US1+US2 = MVP. Nodes reach each other across NAT; native leaf is complete.
 
