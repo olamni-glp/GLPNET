@@ -49,10 +49,13 @@ useful".
   `YnetSession` = real handshake (identity-verified, ECDH → per-direction `SessionSeal`) +
   sealed send/receive/close over `IWireChannel`; `InProcessDuplexChannel` (real loopback) proves
   two-in-process connect→send→receive→close (43/43 green; Ed25519↔P-256 interop).
-  **REMAINING P2:** T011 = MsQuic `IWireChannel` harvested from `csharp/glp_link/transports/QuicTransport`
-  (TLS identity = node key; 050 IsSupported-gate-and-refuse) so `YnetLink.Dial` resolves a real socket
-  and hands it to `YnetSession`; T015 = wire `IYnetTransport.Connect/Send/Receive/Close` via a
-  NodeId→channel fabric. ← **RESUME HERE.**
+  **T011 DONE** (commit `c2fadaa3`): real `QuicWireChannel` (MsQuic connection + bidi stream +
+  length-prefixed frames, sync-bridged; ephemeral self-signed cert; gates on `IsSupported`, refuses
+  never simulates) — verified by a real QUIC loopback test (~200 ms handshake, not a skip). Handshake
+  hardened to **authenticated ECDH** (identity signs the ephemeral key; MITM-resistant, FR-002).
+  44/44 green. **REMAINING P2:** T015 = wire `IYnetTransport.Connect(NodeId)/Send/Receive/Close` via a
+  `NodeId→endpoint` resolver seam (full NodeId→address resolution needs the DHT/rendezvous of US2/US3;
+  land the resolver seam now, back it with the in-process fabric, swap to DHT in P3/P4). ← **RESUME HERE.**
 - **P3 — US2 hole-punch + DHT foundation (T017–T022).** ICE/DCUtR; embedded S-Kademlia DHT;
   DHT-address + hidden-service rendezvous; ≤5 s punch budget → deterministic relay fallback.
 - **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject;
