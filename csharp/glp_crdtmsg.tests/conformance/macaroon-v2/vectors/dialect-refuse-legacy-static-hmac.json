@@ -1,0 +1,10 @@
+{
+  "decoded": null,
+  "description": "buildkit/qhstate static-HMAC PoC token must refuse with a dialect diagnostic",
+  "expect": "refuse:DialectMismatch",
+  "id": "dialect-refuse-legacy-static-hmac",
+  "input": {
+    "token_hex": "424b5148313a31333436623930613662613733326634663435366332343362626464616338393437313738356134306165666539363164396330333063613661643636383531"
+  },
+  "surface": "macaroon-v2-wire"
+}

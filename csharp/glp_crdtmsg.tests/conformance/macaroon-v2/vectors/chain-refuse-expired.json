@@ -1,0 +1,34 @@
+{
+  "description": "time< caveat with now >= expiry",
+  "expect": "refuse:CaveatFailed:time_before",
+  "id": "chain-refuse-expired",
+  "input": {
+    "attenuations": [],
+    "context": {
+      "key": "objects/alpha",
+      "keyspace": "ks-main",
+      "now": 1752451200,
+      "op": "get",
+      "resource": "sha256:00ff"
+    },
+    "identifier": "cap-058-test",
+    "location": "glp://mint.test",
+    "mint_caveats": [
+      {
+        "expiry": 1752451200,
+        "kind": "time_before"
+      }
+    ],
+    "presented_caveats": [
+      {
+        "expiry": 1752451200,
+        "kind": "time_before"
+      }
+    ],
+    "presented_tail_hex": "9a4e73c82c7484411ce92678dec8c8daca3ccd99c3d058eb7046a771a0d34a3c",
+    "root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "verify_root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "surface": "macaroon-v2-chain",
+  "tail_hex": "9a4e73c82c7484411ce92678dec8c8daca3ccd99c3d058eb7046a771a0d34a3c"
+}
