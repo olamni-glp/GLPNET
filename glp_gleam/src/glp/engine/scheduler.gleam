@@ -264,7 +264,9 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.new_context(engine.heap, act.regs)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out) -> {
+        // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
+        // pure scheduler — always `None` on this path, ignored here.
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
           let engine =
             Engine(
               ..engine,

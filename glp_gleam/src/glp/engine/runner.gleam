@@ -52,6 +52,7 @@ import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/kernels
+import glp/mad/mad_kernels.{type MadState}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
 import glp/runtime/terms.{
@@ -77,6 +78,9 @@ pub type ReduceOutcome {
     woken: List(GoalRef),
     spawned: List(SpawnReq),
     output: List(String),
+    /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
+    /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
+    mad: Option(MadState),
   )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
@@ -212,6 +216,11 @@ pub type RunnerContext {
     /// Captured `_output/1` program-output lines accumulated during this reduction
     /// (T034), handed to the scheduler on `Reduced` (never touches the heap).
     output: List(String),
+    /// madGLP effect state (W_p + M_p + reader-spawns), present only in madGLP mode
+    /// (T050.A2). The effectful `_send` kernel reads/updates it deep inside `reduce`;
+    /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
+    /// a `_send` in a non-mad reduction fails non-fatally (the goal fails).
+    mad: Option(MadState),
   )
 }
 
@@ -238,7 +247,15 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     parent_stack: [],
     in_body: False,
     output: [],
+    mad: None,
   )
+}
+
+/// Inject madGLP effect state into a reduction context (the A3 MadEngine / a test
+/// seam sets this before `reduce` so the effectful `_send` kernel is reachable and
+/// its updated `MadState` returns on `Reduced`).
+pub fn with_mad(ctx: RunnerContext, state: MadState) -> RunnerContext {
+  RunnerContext(..ctx, mad: Some(state))
 }
 
 /// Run one reduction of the goal whose procedure entry PC is `kappa`, over
@@ -307,9 +324,9 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
     opcodes.Proceed ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output))
+      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
     opcodes.Halt ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output))
+      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -1889,15 +1906,51 @@ fn spawn(
               "body kernel " <> label <> " aborted: " <> detail,
             )),
           )
-        // Neither a program label nor a registered kernel.
-        Error(_) ->
-          Stop(
-            RunnerError(Malformed(
-              "spawn: unresolved procedure/kernel " <> label,
-            )),
-          )
+        // Not a pure kernel → try the madGLP effectful seam (`_send`; T050.A2).
+        Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
       }
     }
+  }
+}
+
+/// The madGLP effectful dispatch at a BODY Spawn label-miss (T050.A2), reached after
+/// the pure `kernels.dispatch` misses. When the reduction carries a `MadState`, run
+/// the mad kernel: `MadEffect` threads the updated W_p/M_p/heap forward; `MadAbort`
+/// FAILS the goal NON-FATALLY (spec-v5.3-PURE — never the fatal `RunnerError` path). A
+/// mad kernel outside madGLP mode (`ctx.mad == None`) also fails non-fatally; a genuine
+/// unknown label stays a loud `RunnerError`, exactly as before.
+fn mad_spawn(
+  ctx: RunnerContext,
+  label: LabelName,
+  proc_name: String,
+  arity: Int,
+  args: List(Term),
+) -> Step {
+  case ctx.mad {
+    Some(state) ->
+      case mad_kernels.mad_dispatch(ctx.heap, state, proc_name, arity, args) {
+        Ok(mad_kernels.MadEffect(heap, state, woken)) ->
+          Advance(
+            RunnerContext(
+              ..ctx,
+              heap: heap,
+              woken: list.append(ctx.woken, woken),
+              mad: Some(state),
+              arg_slots: dict.new(),
+            ),
+          )
+        Ok(mad_kernels.MadAbort(_detail)) -> Stop(Failed(ctx.heap))
+        Error(_) ->
+          Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
+      }
+    None ->
+      case mad_kernels.mad_is_kernel(proc_name, arity) {
+        // A madGLP kernel invoked outside madGLP mode fails non-fatally (Dart: no
+        // MadContext → abort), never crashes the standalone engine.
+        True -> Stop(Failed(ctx.heap))
+        False ->
+          Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
+      }
   }
 }
 
