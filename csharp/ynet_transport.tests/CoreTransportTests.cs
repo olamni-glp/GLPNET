@@ -112,6 +112,92 @@ public class NodeIdentityAlgorithmTests
     }
 }
 
+// ---- T014 / T016 / US1: real link session over an in-process wire (FR-001/FR-002, SC-001) ----
+public class YnetSessionTests
+{
+    private static (YnetSession dialer, YnetSession listener) Connect(NodeIdentity a, NodeIdentity b)
+    {
+        var (ca, cb) = InProcessDuplexChannel.CreatePair();
+        var acceptTask = System.Threading.Tasks.Task.Run(
+            () => YnetSession.Accept(cb, b, RoutingSelection.SafeDefault));
+        var dial = YnetSession.Connect(ca, a, b.NodeId, RoutingSelection.SafeDefault);
+        var accepted = acceptTask.GetAwaiter().GetResult();
+        Assert.True(dial.Ok);
+        Assert.True(accepted.Ok);
+        return (dial.Value!, accepted.Value!);
+    }
+
+    [Fact]
+    public void Two_in_process_nodes_connect_send_receive_over_the_sealed_session()
+    {
+        using var a = NodeIdentity.Generate();
+        using var b = NodeIdentity.Generate();
+        var (dialer, listener) = Connect(a, b);
+
+        Assert.Equal(b.NodeId, dialer.Peer);   // dialer verified the listener's identity
+        Assert.Equal(a.NodeId, listener.Peer);  // listener learned the dialer's verified identity
+
+        var payload = "hello over sealed ynet"u8.ToArray();
+        Assert.True(dialer.Send(payload).Ok);
+        var recv = listener.Receive();
+        Assert.True(recv.Ok);
+        Assert.Equal(payload, recv.Value.ToArray());
+
+        // reverse direction uses the other per-direction key
+        var reply = "ack"u8.ToArray();
+        Assert.True(listener.Send(reply).Ok);
+        var back = dialer.Receive();
+        Assert.True(back.Ok);
+        Assert.Equal(reply, back.Value.ToArray());
+
+        dialer.Close();
+        listener.Close();
+        dialer.Dispose();
+        listener.Dispose();
+    }
+
+    [Fact]
+    public void Dialer_refuses_when_peer_identity_does_not_match_expected()
+    {
+        using var a = NodeIdentity.Generate();
+        using var b = NodeIdentity.Generate();
+        using var wrong = NodeIdentity.Generate();
+
+        var (ca, cb) = InProcessDuplexChannel.CreatePair();
+        _ = System.Threading.Tasks.Task.Run(() => YnetSession.Accept(cb, b, RoutingSelection.SafeDefault));
+        var dial = YnetSession.Connect(ca, a, wrong.NodeId, RoutingSelection.SafeDefault); // expect 'wrong', peer is b
+        Assert.False(dial.Ok);
+        Assert.Equal(RefusalReason.IdentityMismatch, dial.Reason);
+    }
+
+    [Fact]
+    public void Send_after_close_is_refused_not_silently_dropped()
+    {
+        using var a = NodeIdentity.Generate();
+        using var b = NodeIdentity.Generate();
+        var (dialer, listener) = Connect(a, b);
+        dialer.Close();
+        var r = dialer.Send("late"u8.ToArray());
+        Assert.False(r.Ok);
+        Assert.Equal(RefusalReason.AuthorizedButUnreachable, r.Reason);
+        listener.Dispose();
+        dialer.Dispose();
+    }
+
+    [Fact]
+    public void Ed25519_and_p256_nodes_interoperate_on_the_handshake()
+    {
+        using var a = NodeIdentity.Generate(SignatureAlgorithm.Ed25519);
+        using var b = NodeIdentity.Generate(SignatureAlgorithm.EcdsaP256);
+        var (dialer, listener) = Connect(a, b);
+        var payload = "cross-algo"u8.ToArray();
+        Assert.True(dialer.Send(payload).Ok);
+        Assert.Equal(payload, listener.Receive().Value.ToArray());
+        dialer.Dispose();
+        listener.Dispose();
+    }
+}
+
 // ---- T008 / T013: AES-256-GCM seal with H2 atomic nonce + H3 HKDF (FR-003) ----
 public class SessionSealTests
 {

@@ -29,12 +29,20 @@ public sealed class YnetLink
             ? Result<Unit>.Success(Unit.Value)
             : Result<Unit>.Refuse(RefusalReason.IdentityMismatch);
 
-    /// <summary>SEAM: dial a peer over consolidated QUIC. Pending glp_link harvest (T011/T012).</summary>
+    /// <summary>
+    /// SEAM: dial a peer over the consolidated QUIC socket. The real link handshake + sealed
+    /// send/receive/close is implemented and tested in <see cref="YnetSession"/> over an
+    /// <see cref="IWireChannel"/> (US1/T014/T016 — see the in-process channel). What remains here is
+    /// the MsQuic <see cref="IWireChannel"/> impl harvested from csharp/glp_link (T011) so `Dial`
+    /// resolves a real socket to <paramref name="peer"/> and hands it to <see cref="YnetSession"/>.
+    /// Until then this refuses honestly (050 gate) rather than pretending to connect (Constitution II).
+    /// </summary>
     public Result<LinkHandle> Dial(NodeId peer, RoutingSelection selection)
     {
         if (!IsSupported) return Result<LinkHandle>.Refuse(RefusalReason.TransportUnsupported);
         throw new NotSupportedException(
-            "YnetLink.Dial is a compiling seam pending the csharp/glp_link MsQuic harvest (051 T011/T012). " +
-            "It does not open a real QUIC connection in this pass — see spec FR-001/FR-002.");
+            "YnetLink.Dial is a compiling seam pending the csharp/glp_link MsQuic IWireChannel harvest " +
+            "(051 T011). The link session itself is real + tested in YnetSession over an IWireChannel " +
+            "(in-process today); only the QUIC socket channel is outstanding — see FR-001/FR-002.");
     }
 }
