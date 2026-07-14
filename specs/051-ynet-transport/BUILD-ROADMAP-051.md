@@ -45,9 +45,14 @@ useful".
 - **P1 — Ed25519 identity foundation (T012).** BouncyCastle dep; `Ed25519NodeSigner`; `Generate()`
   Ed25519-primary + P-256 fallback; algorithm-agnostic verify; keep 34 green + add Ed25519 tests.
   ← **START HERE.**
-- **P2 — US1 native wire (T011,T014,T015,T016).** Harvest `csharp/glp_link` MsQuic into `Link/YnetLink`;
-  `connect/send/receive/close` (050 close-after-collect discipline); expose `ICapability`
-  (`Udp`/`Socket`); integration test two in-process nodes over the sealed session (SC-001).
+- **P2 — US1 native wire (T011,T014,T015,T016).** ~PARTIAL~ **T014+T016 DONE** (commit `282c9226`):
+  `YnetSession` = real handshake (identity-verified, ECDH → per-direction `SessionSeal`) +
+  sealed send/receive/close over `IWireChannel`; `InProcessDuplexChannel` (real loopback) proves
+  two-in-process connect→send→receive→close (43/43 green; Ed25519↔P-256 interop).
+  **REMAINING P2:** T011 = MsQuic `IWireChannel` harvested from `csharp/glp_link/transports/QuicTransport`
+  (TLS identity = node key; 050 IsSupported-gate-and-refuse) so `YnetLink.Dial` resolves a real socket
+  and hands it to `YnetSession`; T015 = wire `IYnetTransport.Connect/Send/Receive/Close` via a
+  NodeId→channel fabric. ← **RESUME HERE.**
 - **P3 — US2 hole-punch + DHT foundation (T017–T022).** ICE/DCUtR; embedded S-Kademlia DHT;
   DHT-address + hidden-service rendezvous; ≤5 s punch budget → deterministic relay fallback.
 - **P4 — US3 DHT records + naming (T023–T027).** signed-record store/lookup w/ tamper-reject;
