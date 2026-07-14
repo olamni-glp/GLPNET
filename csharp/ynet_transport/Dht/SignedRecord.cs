@@ -79,16 +79,9 @@ public sealed record SignedRecord(
         {
             return false;
         }
-        try
-        {
-            using var ecdsa = ECDsa.Create();
-            ecdsa.ImportSubjectPublicKeyInfo(SignerPublicKeySpki, out _);
-            return ecdsa.VerifyData(
-                CanonicalBytes(Key, Kind, Payload, ExpiresAt), Signature, HashAlgorithmName.SHA256);
-        }
-        catch (CryptographicException)
-        {
-            return false;
-        }
+        // Algorithm-agnostic verify (DEC-CRYPTO-1): the signer may be Ed25519 (primary) or P-256
+        // (fallback); dispatch is by the SPKI key type, not hardcoded to ECDsa.
+        return NodeIdentity.VerifySpki(
+            SignerPublicKeySpki, CanonicalBytes(Key, Kind, Payload, ExpiresAt), Signature);
     }
 }

@@ -55,6 +55,63 @@ public class NodeIdentityTests
     }
 }
 
+// ---- T012 / DEC-CRYPTO-1: Ed25519-primary identity + P-256 exceptional fallback (FR-002) ----
+public class NodeIdentityAlgorithmTests
+{
+    [Fact]
+    public void Generate_defaults_to_ed25519_primary()
+    {
+        using var id = NodeIdentity.Generate();
+        Assert.Equal(SignatureAlgorithm.Ed25519, id.Algorithm);
+    }
+
+    [Fact]
+    public void Ed25519_identity_sign_verify_round_trips_and_rejects_tamper()
+    {
+        using var id = NodeIdentity.Generate(SignatureAlgorithm.Ed25519);
+        var data = "ed25519 payload"u8.ToArray();
+        var sig = id.Sign(data);
+        Assert.True(id.Verify(data, sig));
+        data[0] ^= 0xFF;
+        Assert.False(id.Verify(data, sig));
+    }
+
+    [Fact]
+    public void P256_fallback_identity_still_works_and_is_algorithm_agnostic_verifiable()
+    {
+        using var id = NodeIdentity.Generate(SignatureAlgorithm.EcdsaP256);
+        Assert.Equal(SignatureAlgorithm.EcdsaP256, id.Algorithm);
+        var data = "p256 payload"u8.ToArray();
+        var sig = id.Sign(data);
+        // Verified through the same agnostic path used by self-cert records.
+        Assert.True(NodeIdentity.VerifySpki(id.PublicKeySpki, data, sig));
+    }
+
+    [Fact]
+    public void Both_algorithms_self_cert_a_reachability_record_over_one_verify_path()
+    {
+        foreach (var algo in new[] { SignatureAlgorithm.Ed25519, SignatureAlgorithm.EcdsaP256 })
+        {
+            using var owner = NodeIdentity.Generate(algo);
+            var now = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
+            var rec = Ynet.Transport.Dht.SignedRecord.CreateReachability(owner, "addr"u8.ToArray(), now, TimeSpan.FromHours(1));
+            Assert.True(rec.VerifySelfCertified(now));
+            Assert.Equal(owner.NodeId, rec.SignerNodeId);
+        }
+    }
+
+    [Fact]
+    public void Cross_algorithm_signature_does_not_verify_under_a_foreign_key()
+    {
+        using var ed = NodeIdentity.Generate(SignatureAlgorithm.Ed25519);
+        using var ec = NodeIdentity.Generate(SignatureAlgorithm.EcdsaP256);
+        var data = "x"u8.ToArray();
+        var edSig = ed.Sign(data);
+        // ed's signature must not verify against ec's P-256 SPKI.
+        Assert.False(NodeIdentity.VerifySpki(ec.PublicKeySpki, data, edSig));
+    }
+}
+
 // ---- T008 / T013: AES-256-GCM seal with H2 atomic nonce + H3 HKDF (FR-003) ----
 public class SessionSealTests
 {
