@@ -73,11 +73,23 @@ useful".
   nothing, FR-017); additive distinct `RecordNotFound`/`RecordRejected` refusal reasons close the
   contract NotFound/store-reject gap (co #218). `DhtRecordTests` (contract) + `DhtDiscoveryTests`
   (integration, N=12 store + iterative lookup + tamper-reject + TTL). 70/70 green.
-- **P5 — US4 relay forward (T028–T033).** circuit-relay-v2 (mesh) + Tor-cell (internet/critical) +
-  DSDV internet route; ciphertext-only forwarding; only 056-admitted relays selected.
-  ← **RESUME HERE.**
+- **P5 — US4 relay forward (T028–T033). DONE (relay mechanism), 89/89 green.** `OfferRelay` is real
+  (honest seam replaced): `Relay/RelayCapability.cs` enforces the 056 `AdmissionProof` (admit only on
+  a proof issued for that exact relay; a revoking proof removes it and tears live paths down at the
+  next frame boundary → `authorized_but_unreachable`, R3), binds the traffic class to the mechanism,
+  and gates third-party transit on the leaf hook (`SetMode` now drives it, FR-016).
+  `Relay/CircuitRelayV2.cs` = voucher-gated mesh forward (HMAC-bound reservation: not forgeable, not
+  transplantable to another relay, expires). `Relay/TorCellRelay.cs` + `CellChannel` = fixed-512B
+  cells for internet/critical (pads the payload LENGTH away; fragments + reassembles at the
+  endpoints). The relay holds no session key — the end-to-end handshake runs THROUGH it, so it
+  forwards ciphertext only (SC-004, proved on a tapped wire). `InProcessFabric` gained
+  `IRelayChannelResolver`; `YnetSession` threads `PathType` so a relayed link reports 1 relay hop
+  (FR-023). `RelayAdmissionTests` (contract, 11) + `RelayForwardTests` (integration, 8).
+  **T031a (DSDV internet route, FR-021) NOT done — blocked on an engineer decision, see co #220 and
+  the note in tasks.md Phase 6.** It is the routing substrate, independent of the relay mechanism above.
 - **P6 — US5 sealed routes + anonymity (T034–T039).** garlic bundling (no fixed 3-hop); Veilid
   `SafetySelection`; zero silent downgrades (`seal_unavailable` fail-closed).
+  ← **RESUME HERE.**
 - **P7 — US6 trusted-gate exit (T040–T044).** internal in-mesh reach (no egress) + curated-gate exit
   (never volunteer exits); default-deny abuse policy.
 - **P8 — US7 browser tier (T045–T049).** separate `ynet_browser/` JS/WASM: WebRTC datachannel +

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Ynet.Transport.Dht;
 using Ynet.Transport.Link;
+using Ynet.Transport.Relay;
 
 namespace Ynet.Transport.Capability;
 
@@ -63,8 +64,12 @@ public sealed class CapabilityRegistration
 /// a genuine transport for two in-process nodes (the same fabric the T016 integration test rides).
 /// The QUIC endpoint resolver (DHT/rendezvous-backed, US2/US3) swaps in behind the same
 /// <see cref="INodeEndpointResolver"/> seam in P3/P4 without touching the capability above it.
+///
+/// It also backs the US4 relay mechanism (<see cref="IRelayChannelResolver"/>, T029/T030): a
+/// co-hosted relay node really forwards ciphertext between two other nodes — the relay pump, the
+/// voucher gate, and the cell framing are the production ones.
 /// </summary>
-public sealed class InProcessFabric : INodeEndpointResolver
+public sealed class InProcessFabric : INodeEndpointResolver, IRelayChannelResolver
 {
     private readonly ConcurrentDictionary<NodeId, YnetTransportCapability> _nodes = new();
     private readonly ConcurrentDictionary<NodeId, SKademliaNode> _dht = new();
@@ -78,7 +83,8 @@ public sealed class InProcessFabric : INodeEndpointResolver
     /// Attach a node to the fabric, returning its first-class transport capability. Each node gets a
     /// live S-Kademlia participant in the shared curated overlay (the DHT resolve seam maps across
     /// the fabric's other nodes — UDP RPC swaps in behind it in prod), so the US3 discovery slice is
-    /// REAL over co-hosted nodes. Call <see cref="FormOverlay"/> once all nodes are attached.
+    /// REAL over co-hosted nodes, and a relay slice (US4) so it can both use and BE a relay. Call
+    /// <see cref="FormOverlay"/> once all nodes are attached.
     /// </summary>
     public YnetTransportCapability AttachNode(NodeIdentity identity)
     {
@@ -86,7 +92,8 @@ public sealed class InProcessFabric : INodeEndpointResolver
             identity.NodeId,
             $"inproc://{identity.NodeId.Value}",
             id => _dht.TryGetValue(id, out var n) ? n : null);
-        var capability = new YnetTransportCapability(identity, this, new DhtCapability(kad, _clock));
+        var capability = new YnetTransportCapability(
+            identity, this, new DhtCapability(kad, _clock), new RelayCapability(identity.NodeId, clock: _clock));
         if (!_nodes.TryAdd(identity.NodeId, capability))
             throw new InvalidOperationException($"node {identity.NodeId} already attached");
         _dht[identity.NodeId] = kad;
@@ -117,6 +124,40 @@ public sealed class InProcessFabric : INodeEndpointResolver
 
         var (dialerEnd, listenerEnd) = InProcessDuplexChannel.CreatePair();
         _ = Task.Run(() => listener.AcceptInbound(listenerEnd));
+        return Result<IWireChannel>.Success(dialerEnd);
+    }
+
+    /// <summary>
+    /// Open a relayed channel <c>dialer → relay → target</c> (US4, T029/T030). The relay node
+    /// re-enforces the 056 proof and its own leaf policy before a single byte is forwarded — the
+    /// dialer's claim is never trusted (FR-007/FR-016) — and then forwards ciphertext only: the
+    /// end-to-end handshake runs THROUGH it, so the session seal is the two endpoints' and the relay
+    /// holds no key for the traffic it carries (SC-004).
+    /// </summary>
+    public Result<IWireChannel> OpenRelayedChannel(
+        NodeId dialer, NodeId relay, NodeId target, AdmissionProof proof, Guid circuitId)
+    {
+        if (!_nodes.TryGetValue(relay, out var relayNode) || relayNode.RelaySlice is not { } relaySlice)
+            return Result<IWireChannel>.Refuse(RefusalReason.Unreachable); // no such relay — nothing sent
+        if (!_nodes.TryGetValue(target, out var targetNode))
+            return Result<IWireChannel>.Refuse(RefusalReason.Unreachable);
+
+        var grant = relaySlice.AcceptTransit(dialer, proof);
+        if (!grant.Ok)
+            return Result<IWireChannel>.Refuse(grant.Reason); // leaf / not-admitted — zero side-effects
+
+        var (dialerRaw, relayUpstream) = InProcessDuplexChannel.CreatePair();
+        var (relayDownstream, targetRaw) = InProcessDuplexChannel.CreatePair();
+
+        // A Tor-style circuit terminates its cell layer at the ENDPOINTS, so every cell crossing the
+        // relay is a fixed 512 bytes; circuit-relay-v2 forwards whole frames verbatim under its
+        // voucher gate. Either way the relay only moves opaque bytes.
+        var (dialerEnd, targetEnd) = grant.Value.Mechanism == RelayMechanism.TorCell
+            ? ((IWireChannel)new CellChannel(dialerRaw, circuitId), (IWireChannel)new CellChannel(targetRaw, circuitId))
+            : (dialerRaw, targetRaw);
+
+        relaySlice.StartTransit(circuitId, relayUpstream, relayDownstream, grant.Value);
+        _ = Task.Run(() => targetNode.AcceptInbound(targetEnd));
         return Result<IWireChannel>.Success(dialerEnd);
     }
 }

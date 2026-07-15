@@ -93,14 +93,21 @@ public sealed class YnetSession : IDisposable
 
     /// <summary>Dial: run the handshake as initiator, refusing if the peer's presented identity does
     /// not match <paramref name="expectedPeer"/> (FR-002 pre-frame gate).</summary>
-    public static Result<YnetSession> Connect(IWireChannel channel, NodeIdentity self, NodeId expectedPeer, RoutingSelection selection)
-        => Handshake(channel, self, expectedPeer, Role.Dialer, selection);
+    /// <param name="pathType">How this session reaches the peer. A relayed circuit (US4) carries the
+    /// SAME end-to-end seal — the relay only moves ciphertext — but reports its path honestly for
+    /// FR-023 auditability.</param>
+    public static Result<YnetSession> Connect(
+        IWireChannel channel, NodeIdentity self, NodeId expectedPeer, RoutingSelection selection,
+        PathType pathType = PathType.Direct)
+        => Handshake(channel, self, expectedPeer, Role.Dialer, selection, pathType);
 
-    /// <summary>Accept: run the handshake as listener (the peer id is learned from the handshake).</summary>
+    /// <summary>Accept: run the handshake as listener (the peer id is learned from the handshake).
+    /// A listener cannot tell a relayed dialer from a direct one — that opacity is the point of a
+    /// relay — so it reports the path it observes.</summary>
     public static Result<YnetSession> Accept(IWireChannel channel, NodeIdentity self, RoutingSelection selection)
-        => Handshake(channel, self, expectedPeer: null, Role.Listener, selection);
+        => Handshake(channel, self, expectedPeer: null, Role.Listener, selection, PathType.Direct);
 
-    private static Result<YnetSession> Handshake(IWireChannel channel, NodeIdentity self, NodeId? expectedPeer, Role role, RoutingSelection selection)
+    private static Result<YnetSession> Handshake(IWireChannel channel, NodeIdentity self, NodeId? expectedPeer, Role role, RoutingSelection selection, PathType pathType)
     {
         using var ecdh = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         var myEcdhSpki = ecdh.PublicKey.ExportSubjectPublicKeyInfo();
@@ -147,8 +154,8 @@ public sealed class YnetSession : IDisposable
         var recv = SessionSeal.Derive(shared, "ynet-link"u8, salt, peerDir);
 
         var path = new PathState();
-        path.Established(PathType.Direct);
-        var handle = new LinkHandle(Guid.NewGuid(), peerId, PathType.Direct);
+        path.Established(pathType);
+        var handle = new LinkHandle(Guid.NewGuid(), peerId, pathType);
         return Result<YnetSession>.Success(new YnetSession(channel, send, recv, handle, path));
     }
 
@@ -186,8 +193,11 @@ public sealed class YnetSession : IDisposable
         _channel.Close();
     }
 
+    /// <summary>Path introspection (FR-023). A relayed circuit reports its one forwarding hop; a
+    /// direct path reports none.</summary>
     public PathInfo Info(RoutingSelection selection) =>
-        new(Handle.PathType, selection.Mode, selection.AnonymityLevel, RelayHops: 0);
+        new(Handle.PathType, selection.Mode, selection.AnonymityLevel,
+            RelayHops: Handle.PathType == PathType.Relayed ? 1 : 0);
 
     // Hello = [u16 idLen][identitySpki][u16 ecLen][ecdhSpki][u16 sigLen][signature over ecdhSpki].
     private static byte[] EncodeHello(ReadOnlySpan<byte> identitySpki, ReadOnlySpan<byte> ecdhSpki, ReadOnlySpan<byte> signature)

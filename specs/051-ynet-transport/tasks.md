@@ -133,15 +133,26 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 **Goal**: hybrid relay-forward enforcing 056 admission; ciphertext-only forwarding.
 **Independent test**: admitted relay forwards; non-admitted/revoked refused; relay can't read payload.
 
-- [ ] T028 [P] [US4] Contract test: only 056-admitted relays selected; revoked never selected; sealed payload undecryptable at relay, in `csharp/ynet_transport.tests/contract/RelayAdmissionTests.cs` (FR-007, SC-004)
-- [ ] T029 [US4] Implement libp2p circuit-relay-v2 (voucher-gated) forward for `mesh` traffic in `csharp/ynet_transport/Relay/CircuitRelayV2.cs` (FR-007, clarify §5.2)
-- [ ] T030 [US4] Implement Tor-style cell relay as default for `internet`/`critical` traffic classes in `csharp/ynet_transport/Relay/TorCellRelay.cs` (FR-007, clarify §5.2)
+- [X] T028 [P] [US4] Contract test: only 056-admitted relays selected; revoked never selected; sealed payload undecryptable at relay, in `csharp/ynet_transport.tests/contract/RelayAdmissionTests.cs` (FR-007, SC-004)
+- [X] T029 [US4] Implement libp2p circuit-relay-v2 (voucher-gated) forward for `mesh` traffic in `csharp/ynet_transport/Relay/CircuitRelayV2.cs` (FR-007, clarify §5.2)
+- [X] T030 [US4] Implement Tor-style cell relay as default for `internet`/`critical` traffic classes in `csharp/ynet_transport/Relay/TorCellRelay.cs` (FR-007, clarify §5.2)
 - [X] T031 [US4] Implement relay-admission enforcement at the forwarding hop consuming the 056 AdmissionProof (enforce, don't decide) + Sybil-by-gating in `csharp/ynet_transport/Relay/AdmissionEnforcer.cs` (FR-007/FR-008)
 - [ ] T031a [US4] Extend olamnit DSDV `DistanceVectorRouter` + durable `MeshRelayRoute` from LAN-only into the NAT-piercing internet overlay (the routing substrate the BUILD-NEW overlay sits above) in `csharp/ynet_transport/Relay/DsdvInternetRoute.cs` (FR-021, D3)
+      — **BLOCKED on an engineer decision, not started (co #220).** Its premise is unverified: the substrate lives in
+      another repo (`D:/bstdev/research/olamnit/.../Kernel/Mesh/`, no project reference from GLPNET) → harvest-vs-reference
+      is an architectural call; olamnit's DSDV keys nodes by `ushort` LAN mesh ids whereas YNET `NodeId` is a
+      self-certified 64-hex SHA-256(pubkey) (FR-002) → the id mapping must be declared; and `MeshRelayRoute.cs` carries an
+      explicit *"R1 (a) OPEN JOINT CALL — this Route binding is the **proposed** shape"*. Writing a from-scratch DSDV here
+      and calling it "extended olamnit DSDV" would fabricate the reuse FR-021 specifies (Constitution II). Deliberately
+      left with **no seam file**: any API shape would bake in the open decisions. The NAT-piercing leg needs real
+      UDP/QUIC/STUN wire → an injected seam once the above is settled. **T028–T033 do not depend on it.**
 - [X] T032 [US4] Implement revocation semantics: block new selection immediately; tear down live paths at next frame boundary → `authorized_but_unreachable`, in `csharp/ynet_transport/Relay/RevocationHandler.cs` (research R3, FR-018)
-- [ ] T033 [P] [US4] Integration test: relayed path end-to-end; revocation mid-path; ciphertext-only forwarding, in `csharp/ynet_transport.tests/integration/RelayForwardTests.cs` (SC-004)
+- [X] T033 [P] [US4] Integration test: relayed path end-to-end; revocation mid-path; ciphertext-only forwarding, in `csharp/ynet_transport.tests/integration/RelayForwardTests.cs` (SC-004)
 
-**Checkpoint**: relay fallback (US2) now backed by real admitted relays.
+**Checkpoint**: relay fallback (US2) now backed by real admitted relays — reached for the relay
+MECHANISM (`dotnet test` 89/89 green). `OfferRelay` is real: admission enforced from the 056 proof,
+revocation tears live paths down to `authorized_but_unreachable`, and a relay forwards ciphertext it
+holds no key for. The FR-021 DSDV internet ROUTING substrate (T031a) remains open — see above.
 
 ---
 
