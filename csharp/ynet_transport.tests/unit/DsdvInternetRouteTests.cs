@@ -397,6 +397,98 @@ public class DsdvInternetRouteTests
         Assert.Empty(core.Ingested);
     }
 
+    // ---- codex review cycle 2 findings ----
+
+    [Fact]
+    public void An_advert_via_a_neighbour_whose_link_is_DOWN_is_refused()
+    {
+        // Cycle 2 exposed a gap the cycle-1 fix created: keeping the link's kind across an outage (right)
+        // also kept it in the set Ingest tested (wrong), so a down link became a valid ingress. Kind and
+        // up-state are now separate facts.
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("flaky"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.SetLinkState(N("flaky"), up: false).Ok);
+
+        var refused = route.Ingest(new InternetRouteAdvertisement(
+            Origin: N("R"), Dest: N("R"), Cost: 1, Seq: 7, Via: N("flaky")));
+
+        Assert.False(refused.Ok);
+        Assert.Equal(RefusalReason.Unreachable, refused.Reason);
+        Assert.Empty(core.Ingested);
+
+        // ...but the kind survived the outage, so recovery still costs it correctly.
+        Assert.NotNull(route.LinkTo(N("flaky")));
+        Assert.False(route.IsLinkUp(N("flaky")));
+        Assert.True(route.SetLinkState(N("flaky"), up: true).Ok);
+        Assert.True(route.IsLinkUp(N("flaky")));
+        Assert.True(route.Ingest(new InternetRouteAdvertisement(N("R"), N("R"), 1, 8, N("flaky"))).Ok);
+    }
+
+    [Fact]
+    public void Adverts_are_only_emitted_over_a_link_that_is_actually_up()
+    {
+        // The egress side of the same rule — symmetric with Ingest.
+        var (route, _) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("peer"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.AdvertsFor(N("peer")).Ok);
+
+        Assert.True(route.Index.TryGetOrAssign(N("merely-known"), out _));
+        var merelyKnown = route.AdvertsFor(N("merely-known"));
+        Assert.False(merelyKnown.Ok);
+        Assert.Equal(RefusalReason.Unreachable, merelyKnown.Reason); // never a link — nothing to send over
+
+        Assert.True(route.SetLinkState(N("peer"), up: false).Ok);
+        var down = route.AdvertsFor(N("peer"));
+        Assert.False(down.Ok);
+        Assert.Equal(RefusalReason.Unreachable, down.Reason);        // down — we could not deliver them
+
+        Assert.True(route.ForgetNeighbor(N("peer")).Ok);
+        Assert.False(route.AdvertsFor(N("peer")).Ok);
+    }
+
+    [Fact]
+    public void The_cost_model_preserves_the_signals_the_core_supplies_instead_of_dropping_them()
+    {
+        // Rebuilding LinkCostInputs from scratch dropped the core's Period/Event penalties, so an
+        // event-penalised path could be selected as if it were cheap.
+        LinkCostInputs? seen = null;
+        var capturing = new CapturingCostModel(i => seen = i);
+        var links = new Dictionary<ushort, InternetLink> { [7] = new(InternetLinkKind.Relayed, Quality: 3, Load: 2) };
+        var model = new InternetLinkCostModel(idx => links.TryGetValue(idx, out var l) ? l : null, capturing);
+
+        model.CostFor(7, new LinkCostInputs(Base: 1, Quality: 10, Load: 20, Period: 5, Event: 9));
+
+        Assert.NotNull(seen);
+        Assert.Equal(InternetLinkCostModel.RelayedBase, seen!.Value.Base); // kind overrides the base floor
+        Assert.Equal(13u, seen.Value.Quality);                             // ours + the core's, not ours alone
+        Assert.Equal(22u, seen.Value.Load);
+        Assert.Equal(5u, seen.Value.Period);                               // passed through, not dropped
+        Assert.Equal(9u, seen.Value.Event);
+    }
+
+    [Fact]
+    public void Combining_cost_signals_saturates_rather_than_wrapping_into_a_cheap_link()
+    {
+        LinkCostInputs? seen = null;
+        var capturing = new CapturingCostModel(i => seen = i);
+        var links = new Dictionary<ushort, InternetLink> { [1] = new(InternetLinkKind.Direct, Quality: uint.MaxValue) };
+        var model = new InternetLinkCostModel(idx => links.TryGetValue(idx, out var l) ? l : null, capturing);
+
+        model.CostFor(1, new LinkCostInputs(Quality: 100));
+
+        // A wrapped sum would become a spuriously CHEAP link and win routes it should never win.
+        Assert.Equal(uint.MaxValue, seen!.Value.Quality);
+    }
+
+    private sealed class CapturingCostModel(Action<LinkCostInputs> capture) : ILinkCostModel
+    {
+        public uint CostFor(ushort neighbor, in LinkCostInputs inputs)
+        {
+            capture(inputs);
+            return inputs.Base + inputs.Quality;
+        }
+    }
+
     [Fact]
     public void Assigning_a_group_needs_room_for_every_newcomer_or_none_is_assigned()
     {

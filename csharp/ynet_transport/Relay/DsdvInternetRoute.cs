@@ -191,9 +191,24 @@ public sealed class InternetLinkCostModel : ILinkCostModel
         if (_linkFor(neighbor) is not { } link)
             return _layered.CostFor(neighbor, inputs); // not an internet link — the model's own default
 
+        // Override only the BASE floor (that is what the link kind means) and ADD our measured signals to
+        // whatever the core supplied. Rebuilding the inputs from scratch would silently discard the
+        // core's Period/Event penalties, so an event-penalised path could be chosen as if it were cheap.
         return _layered.CostFor(
             neighbor,
-            new LinkCostInputs(Base: BaseFor(link.Kind), Quality: link.Quality, Load: link.Load));
+            new LinkCostInputs(
+                Base: BaseFor(link.Kind),
+                Quality: Saturating(link.Quality, inputs.Quality),
+                Load: Saturating(link.Load, inputs.Load),
+                Period: inputs.Period,   // not modelled by the link kind — pass the core's through
+                Event: inputs.Event));
+    }
+
+    // Additive metric, but never wrap: a wrapped sum would become a spuriously CHEAP link and win routes.
+    private static uint Saturating(uint a, uint b)
+    {
+        ulong sum = (ulong)a + b;
+        return sum > uint.MaxValue ? uint.MaxValue : (uint)sum;
     }
 }
 
@@ -242,7 +257,14 @@ public sealed class DsdvInternetRoute
     private readonly NodeId _self;
     private readonly IDistanceVectorRouter _core;
     private readonly NodeIndex _index;
+
+    // Two DIFFERENT facts about a link, deliberately kept apart:
+    //   _links = what KIND of link this is — durable. It survives an outage, because a relay is still a
+    //            relay while it is down; losing it would let recovery re-cost it as the cheapest link.
+    //   _up    = whether it is USABLE right now — transient. This, not mere indexing and not the kind,
+    //            is what makes a neighbour a valid ingress/egress for adverts.
     private readonly ConcurrentDictionary<ushort, InternetLink> _links = new();
+    private readonly ConcurrentDictionary<ushort, bool> _up = new();
 
     /// <param name="self">This node's self-certified id.</param>
     /// <param name="core">The DSDV core — olamnit's <c>DistanceVectorRouter</c> once the shared package
@@ -282,9 +304,18 @@ public sealed class DsdvInternetRoute
     public InternetLink? LinkFor(ushort neighborIndex)
         => _links.TryGetValue(neighborIndex, out var link) ? link : null;
 
-    /// <summary>The internet link to a neighbour, or null if it is not a known direct link.</summary>
+    /// <summary>The internet link to a neighbour, or null if it is not a known direct link. A link that
+    /// is currently DOWN still reports its kind — the kind is what it is either way.</summary>
     public InternetLink? LinkTo(NodeId neighbor)
         => _index.TryGetIndex(neighbor, out var idx) ? LinkFor(idx) : null;
+
+    /// <summary>Is this a link of ours that is usable right now? The test for a valid advert ingress or
+    /// egress — being merely indexed (a node we have heard of) is not enough, and neither is having a
+    /// kind on record for a link that is down.</summary>
+    public bool IsLinkUp(NodeId neighbor)
+        => _index.TryGetIndex(neighbor, out var idx) && IsUp(idx);
+
+    private bool IsUp(ushort idx) => _up.TryGetValue(idx, out var up) && up;
 
     /// <summary>
     /// Register (or re-cost) a directly-linked internet neighbour. The link kind reaches the metric
@@ -301,6 +332,7 @@ public sealed class DsdvInternetRoute
             return Result<Unit>.Refuse(RefusalReason.RoutingCapacityExhausted);
 
         _links[idx] = link;              // visible to the cost model BEFORE the core resolves the cost
+        _up[idx] = true;
         _core.SetLinkState(idx, up: true);
         return Result<Unit>.Success(Unit.Value);
     }
@@ -328,6 +360,7 @@ public sealed class DsdvInternetRoute
         if (!_links.ContainsKey(idx))
             return Result<bool>.Refuse(RefusalReason.Unreachable); // indexed, but never one of our links
 
+        _up[idx] = up;                                  // the kind stays put; only usability changes
         return Result<bool>.Success(_core.SetLinkState(idx, up));
     }
 
@@ -344,6 +377,7 @@ public sealed class DsdvInternetRoute
         if (!_index.TryGetIndex(neighbor, out var idx) || !_links.TryRemove(idx, out _))
             return Result<bool>.Refuse(RefusalReason.Unreachable);
 
+        _up.TryRemove(idx, out _);
         return Result<bool>.Success(_core.SetLinkState(idx, up: false));
     }
 
@@ -395,12 +429,13 @@ public sealed class DsdvInternetRoute
     /// </summary>
     public Result<bool> Ingest(InternetRouteAdvertisement advert)
     {
-        // The neighbour test is the LINK SET, not the index. Being indexed only means we have heard of a
-        // node — a destination learned from someone else's advert, a neighbour whose link is down, even
-        // self, are all indexed but are NOT links we can receive over. Testing the index would let those
-        // adverts through and make this method's refusal contract a lie (the core would reject them
-        // anyway, but the caller would see Ok/no-change instead of a distinct refusal).
-        if (!_index.TryGetIndex(advert.Via, out var viaIdx) || !_links.ContainsKey(viaIdx))
+        // The neighbour test is an UP LINK, not the index. Being indexed only means we have heard of a
+        // node — a destination learned from someone else's advert, a forgotten neighbour, even self, are
+        // all indexed but are NOT links we can receive over; and a link that is down is not an ingress
+        // either. Testing the index would let those adverts through and make this method's refusal
+        // contract a lie (the core rejects them anyway, but the caller would see Ok/no-change instead of
+        // a distinct refusal).
+        if (!_index.TryGetIndex(advert.Via, out var viaIdx) || !IsUp(viaIdx))
             return Result<bool>.Refuse(RefusalReason.Unreachable); // advert over a non-neighbour link
 
         // Index Dest and Origin together: assigning them one at a time lets the first take the last free
@@ -417,10 +452,14 @@ public sealed class DsdvInternetRoute
     /// The advertisements to emit to <paramref name="neighbor"/>, NodeId-keyed for the wire. Split-horizon
     /// and poison-reverse are the core's — this only translates. Caller-driven, exactly like olamnit's
     /// router (no thread-per-route).
+    ///
+    /// Egress is gated on an UP LINK, symmetrically with <see cref="Ingest"/>: a node that is merely
+    /// indexed, forgotten, or down is not something we can send over, so asking for its adverts is a
+    /// distinct refusal rather than a list we could never deliver.
     /// </summary>
     public Result<IReadOnlyList<InternetRouteAdvertisement>> AdvertsFor(NodeId neighbor)
     {
-        if (!_index.TryGetIndex(neighbor, out var idx))
+        if (!_index.TryGetIndex(neighbor, out var idx) || !IsUp(idx))
             return Result<IReadOnlyList<InternetRouteAdvertisement>>.Refuse(RefusalReason.Unreachable);
 
         var core = _core.AdvertsFor(idx);
