@@ -257,8 +257,9 @@ public class DsdvInternetRouteTests
         Assert.Contains(adverts.Value!, ad => ad.Dest == N("C"));
 
         // B ingests them and translates into ITS OWN index space — C lands on B's index for C, not A's.
+        // The ingress is the authenticated peer (A), not the wire's claim.
         foreach (var ad in adverts.Value!)
-            Assert.True(b.Ingest(ad).Ok);
+            Assert.True(b.Ingest(N("A"), ad).Ok);
 
         var forC = Assert.Single(bCore.Ingested, i => i.Dest == cAtB);
         Assert.Equal(cAtB, forC.Dest);
@@ -270,7 +271,7 @@ public class DsdvInternetRouteTests
     {
         var (route, core) = Build(N("self"));
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("a-stranger"), new InternetRouteAdvertisement(
             Origin: N("X"), Dest: N("X"), Cost: 1, Seq: 5, Via: N("a-stranger")));
 
         Assert.False(refused.Ok);
@@ -290,7 +291,7 @@ public class DsdvInternetRouteTests
         Assert.True(route.AddNeighbor(N("real-link"), new InternetLink(InternetLinkKind.Direct)).Ok);
         Assert.True(route.Index.TryGetOrAssign(N("merely-known"), out _)); // indexed, never a link
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("merely-known"), new InternetRouteAdvertisement(
             Origin: N("Z"), Dest: N("Z"), Cost: 1, Seq: 9, Via: N("merely-known")));
 
         Assert.False(refused.Ok);
@@ -306,7 +307,7 @@ public class DsdvInternetRouteTests
         Assert.True(route.AddNeighbor(N("flaky"), new InternetLink(InternetLinkKind.Direct)).Ok);
         Assert.True(route.ForgetNeighbor(N("flaky")).Ok);
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("flaky"), new InternetRouteAdvertisement(
             Origin: N("Q"), Dest: N("Q"), Cost: 1, Seq: 3, Via: N("flaky")));
 
         Assert.False(refused.Ok);
@@ -320,7 +321,7 @@ public class DsdvInternetRouteTests
         // [P1] self is always indexed; it is never a link we receive over.
         var (route, core) = Build(N("self"));
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("self"), new InternetRouteAdvertisement(
             Origin: N("W"), Dest: N("W"), Cost: 1, Seq: 2, Via: N("self")));
 
         Assert.False(refused.Ok);
@@ -384,7 +385,7 @@ public class DsdvInternetRouteTests
             Assert.True(index.TryGetOrAssign(N($"filler{i}"), out _));
         Assert.Equal(NodeIndex.MaxNodes - 1, index.Count);
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("via"), new InternetRouteAdvertisement(
             Origin: N("brand-new-origin"), Dest: N("brand-new-dest"), Cost: 1, Seq: 4, Via: N("via")));
 
         Assert.False(refused.Ok);
@@ -394,6 +395,48 @@ public class DsdvInternetRouteTests
         Assert.Equal(NodeIndex.MaxNodes - 1, index.Count);
         Assert.False(index.TryGetIndex(N("brand-new-dest"), out _));
         Assert.False(index.TryGetIndex(N("brand-new-origin"), out _));
+        Assert.Empty(core.Ingested);
+    }
+
+    // ---- codex review cycle 3: route spoofing (the security finding) ----
+
+    [Fact]
+    public void A_neighbour_cannot_inject_routes_as_another_neighbour()
+    {
+        // [P1] Trusting advert.Via — a value the SENDER controls — let any linked peer poison or inject
+        // routes as another live neighbour. The ingress must come from the authenticated session peer
+        // (FR-002: the node key IS the identity, verified pre-frame).
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("attacker"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.AddNeighbor(N("victim"), new InternetLink(InternetLinkKind.Direct)).Ok);
+
+        // The attacker is a legitimate, authenticated, up neighbour — it just lies about Via.
+        var spoofed = route.Ingest(N("attacker"), new InternetRouteAdvertisement(
+            Origin: N("target"), Dest: N("target"), Cost: 1, Seq: 99, Via: N("victim")));
+
+        Assert.False(spoofed.Ok);
+        Assert.Equal(RefusalReason.IdentityMismatch, spoofed.Reason);
+        Assert.Empty(core.Ingested); // nothing reached the core attributed to the victim
+
+        // The same advert from the peer it actually claims to be from is fine.
+        Assert.True(route.Ingest(N("victim"), new InternetRouteAdvertisement(
+            Origin: N("target"), Dest: N("target"), Cost: 1, Seq: 99, Via: N("victim"))).Ok);
+    }
+
+    [Fact]
+    public void A_spoofed_advert_cannot_poison_a_route_as_another_neighbour()
+    {
+        // The poisoning direction of the same attack: claim to be the victim and withdraw its routes.
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("attacker"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.AddNeighbor(N("victim"), new InternetLink(InternetLinkKind.Direct)).Ok);
+
+        var poison = route.Ingest(N("attacker"), new InternetRouteAdvertisement(
+            Origin: N("target"), Dest: N("target"),
+            Cost: RouteAdvertisement.Infinity, Seq: 1000, Via: N("victim")));
+
+        Assert.False(poison.Ok);
+        Assert.Equal(RefusalReason.IdentityMismatch, poison.Reason);
         Assert.Empty(core.Ingested);
     }
 
@@ -409,7 +452,7 @@ public class DsdvInternetRouteTests
         Assert.True(route.AddNeighbor(N("flaky"), new InternetLink(InternetLinkKind.Direct)).Ok);
         Assert.True(route.SetLinkState(N("flaky"), up: false).Ok);
 
-        var refused = route.Ingest(new InternetRouteAdvertisement(
+        var refused = route.Ingest(N("flaky"), new InternetRouteAdvertisement(
             Origin: N("R"), Dest: N("R"), Cost: 1, Seq: 7, Via: N("flaky")));
 
         Assert.False(refused.Ok);
@@ -421,7 +464,7 @@ public class DsdvInternetRouteTests
         Assert.False(route.IsLinkUp(N("flaky")));
         Assert.True(route.SetLinkState(N("flaky"), up: true).Ok);
         Assert.True(route.IsLinkUp(N("flaky")));
-        Assert.True(route.Ingest(new InternetRouteAdvertisement(N("R"), N("R"), 1, 8, N("flaky"))).Ok);
+        Assert.True(route.Ingest(N("flaky"), new InternetRouteAdvertisement(N("R"), N("R"), 1, 8, N("flaky"))).Ok);
     }
 
     [Fact]

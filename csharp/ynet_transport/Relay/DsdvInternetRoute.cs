@@ -423,19 +423,34 @@ public sealed class DsdvInternetRoute
 
     /// <summary>
     /// Apply an inbound advertisement from the overlay. NodeId-keyed on the wire, translated into this
-    /// node's local index space here. Returns whether the table changed (a triggered update). Refuses an
-    /// advert arriving over a link we do not have (the core rejects it anyway — this is the honest,
-    /// distinct reason) or when the table cannot index the destination (co #221).
+    /// node's local index space here. Returns whether the table changed (a triggered update).
+    ///
+    /// <paramref name="fromPeer"/> is the <b>authenticated</b> session peer this advert actually arrived
+    /// from (FR-002 — the node key IS the identity, verified pre-frame), NOT the wire's self-report. The
+    /// caller must supply it from the link/session, never from the payload.
+    ///
+    /// Refuses with <see cref="RefusalReason.IdentityMismatch"/> when the advert claims a different
+    /// ingress than the peer it came from, <see cref="RefusalReason.Unreachable"/> when it arrives over a
+    /// link we do not have up, and <see cref="RefusalReason.RoutingCapacityExhausted"/> when the table
+    /// cannot index the destination (co #221).
     /// </summary>
-    public Result<bool> Ingest(InternetRouteAdvertisement advert)
+    public Result<bool> Ingest(NodeId fromPeer, InternetRouteAdvertisement advert)
     {
+        // Bind the ingress to the AUTHENTICATED peer. Trusting advert.Via — a value the sender controls —
+        // would let any linked peer inject or poison routes AS ANOTHER NEIGHBOUR: A sends Via=B and the
+        // core attributes B's routes to A's claim. A LAN mesh can lean on the radio link for this; an
+        // internet overlay cannot, and this tier already has a verified peer identity, so it must be
+        // used. The mismatch is a distinct, auditable refusal rather than a silent drop (FR-023).
+        if (advert.Via != fromPeer)
+            return Result<bool>.Refuse(RefusalReason.IdentityMismatch);
+
         // The neighbour test is an UP LINK, not the index. Being indexed only means we have heard of a
         // node — a destination learned from someone else's advert, a forgotten neighbour, even self, are
         // all indexed but are NOT links we can receive over; and a link that is down is not an ingress
         // either. Testing the index would let those adverts through and make this method's refusal
         // contract a lie (the core rejects them anyway, but the caller would see Ok/no-change instead of
         // a distinct refusal).
-        if (!_index.TryGetIndex(advert.Via, out var viaIdx) || !IsUp(viaIdx))
+        if (!_index.TryGetIndex(fromPeer, out var viaIdx) || !IsUp(viaIdx))
             return Result<bool>.Refuse(RefusalReason.Unreachable); // advert over a non-neighbour link
 
         // Index Dest and Origin together: assigning them one at a time lets the first take the last free
