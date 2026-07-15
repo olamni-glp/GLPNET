@@ -89,10 +89,15 @@ Raise a `co issue` before any lossy fallback. Open: **#219** (category enum gap)
 
 ## Traps that cost time this session (do not relearn these)
 
-1. **`/bk-codexreview` lies about the count — read the artifact, never the summary line (co #222).**
-   The review-only pass printed **"0 finding(s)"** four times while `reviews/<branch>/<ts>/codex.md`
-   held **6 real findings**, including a P1 route-spoofing security bug. Its parser does not recognise
-   codex's `- [P1]/[P2] <title> — <file>:<lines>` bullets. **Always `cat` the artifact.**
+1. **`/bk-codexreview` under-reported the count — FIXED (co #222 → buildkit `a1723bb9`), but read the
+   artifact anyway (co #223).** The review-only pass printed **"0 finding(s)"** four times while
+   `reviews/<branch>/<ts>/codex.md` held **6 real findings**, including a P1 route-spoofing security bug.
+   *(The original diagnosis "its parser can't read the bullets" was **wrong** — `parse_codex_prose`
+   existed all along; the review-only path just never called it. It now mirrors `codex-pass`: prose
+   recovery + an `UNCONFIRMED` line that never implies 0/clean.)*
+   **Residual (co #223, needs an engineer decision):** the vanilla `base` form sends no prompt, so codex
+   is never asked for a machine-readable block → a review-only count can never be *authoritative*, only
+   recovered. Expect `findings UNCONFIRMED — … read <artifact>`. **Still `cat` the artifact.**
 2. **The full plan-first `/bk-codexreview` flow refuses `dirty_tree`** because of the two pre-existing
    untracked `.specify/roadmap-sync/` files — which the guardrail above forbids committing. Use the
    documented review-only single-shot (`buildkit-codexreview --scope diff --base <ref>`, no subcommand)
