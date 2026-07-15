@@ -16,10 +16,11 @@
 
 ## State at handoff (2026-07-15)
 
-- **Clean baseline**: HEAD = `21effaf5` "P6 US4: real relay forward — circuit-relay-v2 + Tor-cell, ciphertext-only (T028-T033)". `dotnet test` = **89/89 green** (70 baseline + 19 new).
-- Working tree clean except **pre-existing untracked** files under `.specify/roadmap-sync/` (NOT ours — leave them, never commit them in a scoped checkpoint) and the RESTART notes.
-- **P5 / US4 DONE** — T028, T029, T030, T033 landed real + tested. RESUME marker in BUILD-ROADMAP-051.md now points at **P6**.
-- Marathon run: `mrun-4056c02754bd` [open], steps **2/2 complete**, **1 outstanding item** (T031a, parked — see below). Stays open until `pipeline:ship` (correct — don't try to discharge).
+- **Clean baseline**: HEAD = `4b66741d`. `dotnet test` = **121/121 green**. **Pushed — in sync with `origin/051-ynet-transport`.**
+- Working tree clean except **pre-existing untracked** files under `.specify/roadmap-sync/` (NOT ours — leave them, never commit them in a scoped checkpoint). `reviews/` is gitignored.
+- **P5 / US4 DONE, including T031a** — T028–T033 all landed. RESUME marker in BUILD-ROADMAP-051.md now points at **P6**.
+- Marathon run: `mrun-4056c02754bd` [open], steps **3/3 complete**, **0 outstanding items**. Stays open until `pipeline:ship` (correct — don't try to discharge).
+- Open co issues from that work: **#220** (T031a premise — *ruled*, solution #67), **#221** (inherited DSDV ceilings), **#222** (codexreview miscount — see below), **#219** (co category enum gap).
 
 ### What US4 landed (build ON these — do not rewrite)
 
@@ -33,18 +34,24 @@
 - **`YnetSession`** threads `PathType` (additive, default `Direct`) so a relayed link reports `RelayHops: 1` (FR-023).
 - Tests: `contract/RelayAdmissionTests.cs` (11), `integration/RelayForwardTests.cs` (8).
 
-### ⚠️ OPEN ENGINEER DECISION — T031a (do not resolve autonomously)
+### T031a — DONE (extension), with ONE follow-up you must action
 
-**T031a (DSDV internet route, FR-021) is parked/blocked — raised as `co #220`.** It is the routing
-substrate; the relay mechanism above does not depend on it. It needs a ruling on:
+**T031a shipped** under engineer ruling **DEC-DSDV-1** (recorded in BUILD-ROADMAP §2; co #220 / solution #67):
+*make the olamnit DSDV mesh **packable/shared*** — the only option satisfying FR-021's *"extend (not
+duplicate)"* + FR-022's de-dup while keeping `ynet_transport` standalone-buildable. `Relay/DsdvInternetRoute.cs`
+is the extension (real + 32 tests); `Relay/DsdvCoreContract.cs` mirrors the olamnit **contract only, zero
+algebra**. Adversarially reviewed — `/bk-codexreview` **converged@4**, 6 real findings fixed.
 
-1. **Harvest vs reference** — the substrate is cross-repo at `D:/bstdev/research/olamnit/Olamnit/Olamnit.Kernel/Mesh/` (`DistanceVectorRouter.cs` 280L, `MeshRelayRoute.cs` 86L). No project reference exists from GLPNET.
-2. **Identity mapping** — olamnit DSDV keys nodes by `ushort` LAN mesh ids; YNET `NodeId` is a self-certified 64-hex SHA-256(pubkey) (FR-002). The mapping must be *declared*, not improvised.
-3. **olamnit's own open joint call** — `MeshRelayRoute.cs` says: *"R1 (a) OPEN JOINT CALL: this Route binding is the **proposed** shape … if the radio-back joint call rebinds onto `MeshRouter`, only this registration changes."*
-4. **Wire** — the NAT-piercing leg needs real UDP/QUIC/STUN → an injected honest seam (Constitution II).
+> **⚠️ THE FOLLOW-UP (not code — release engineering, outside this repo):**
+> Make `Olamnit.Kernel.Mesh` consumable (it is `IsPackable=false` in `olamni-research/olamnit-assistant`).
+> When it lands: **delete `Relay/DsdvCoreContract.cs`**, add `using Olamnit.Kernel.Mesh;` to
+> `DsdvInternetRoute.cs`, and pass `LayeredLinkCostModel` as `InternetLinkCostModel`'s `layered` arg.
+> That is the *whole* swap — **proven** by dogfooding the real `DistanceVectorRouter` behind the mirror
+> through a purely mechanical adapter. Also still open: FR-021's ***durable*** `MeshRelayRoute` half
+> (exactly-once across a relay kill) rides olamnit's `RouterEngine` and lands with the same package.
 
-Deliberately **no seam file was written**: any API shape would prejudge (1)–(3). A from-scratch DSDV
-named "extended olamnit DSDV" would fabricate the reuse FR-021 specifies.
+**Inherited ceilings (documented, co #221):** ≤65535 nodes per table (`ushort` key) → refuses with
+`RoutingCapacityExhausted`; ≤~15-hop metric diameter (`MaxCost=16`). Lifting either is an olamnit-side change.
 
 ## What P6 is (US5 — Waylet-seal + selectable anonymity, P2)
 
@@ -77,9 +84,25 @@ Suggested order: **T034 (contract, red) → T036 SafetySelection (pure mapping, 
 ## co (continuous observation)
 
 `python D:/bstdev/lang/hatzinor/src/co.py init` (idempotent). Log errors/issues per hatzinor CLAUDE.md.
-Raise a `co issue` before any lossy fallback. Open from this session: **#220** (T031a premise — needs
-an engineer ruling), **#219** (the `co issue --category` enum lacks values for 3 of the 6 raise-triggers
-CLAUDE.md mandates, and `co issue` has no `--detail` flag).
+Raise a `co issue` before any lossy fallback. Open: **#219** (category enum gap), **#220** (T031a premise —
+*ruled*, solution #67), **#221** (inherited DSDV ceilings), **#222** (codexreview 0-findings miscount).
+
+## Traps that cost time this session (do not relearn these)
+
+1. **`/bk-codexreview` lies about the count — read the artifact, never the summary line (co #222).**
+   The review-only pass printed **"0 finding(s)"** four times while `reviews/<branch>/<ts>/codex.md`
+   held **6 real findings**, including a P1 route-spoofing security bug. Its parser does not recognise
+   codex's `- [P1]/[P2] <title> — <file>:<lines>` bullets. **Always `cat` the artifact.**
+2. **The full plan-first `/bk-codexreview` flow refuses `dirty_tree`** because of the two pre-existing
+   untracked `.specify/roadmap-sync/` files — which the guardrail above forbids committing. Use the
+   documented review-only single-shot (`buildkit-codexreview --scope diff --base <ref>`, no subcommand)
+   and drive the cycles yourself. It is read-only, which is what you want anyway.
+3. **Never put markdown backticks in a double-quoted `-m "…"`** — bash runs them as command substitution
+   and *silently deletes* the text from the commit message (co error #129/#130). Use `git commit -F -`
+   with a single-quoted heredoc (`<<'MSG'`), which is also how to pass any multi-line message safely.
+4. **`co issue --category`** only accepts `{data_loss, schema_gap, process_bug, decision_quality, other}`
+   and has **no `--detail` flag** — three of CLAUDE.md's six mandated raise-triggers have no faithful
+   category (co #219). Put the evidence in `--message`.
 
 ## Marathon checkpoint ceremony (the CLI needs a real step id — verified again this session)
 
@@ -112,9 +135,9 @@ Checkpoint runs git hooks (good) and commits ONLY the listed paths — never `-A
 
 ```bash
 cd D:/bstdev/glp/GLPNET.worktrees/051-ynet-transport/
-git status && git log --oneline -1                      # expect clean, HEAD=21effaf5
-buildkit-marathon status --feature 051-ynet-transport   # expect mrun-4056c02754bd [open], steps 2/2, 1 outstanding
-cd csharp/ynet_transport.tests && dotnet test --nologo -v q   # expect 89/89 green
+git status && git log --oneline -1                      # expect clean, HEAD=4b66741d (pushed)
+buildkit-marathon status --feature 051-ynet-transport   # expect mrun-4056c02754bd [open], steps 3/3, 0 outstanding
+cd csharp/ynet_transport.tests && dotnet test --nologo -v q   # expect 121/121 green
 ```
 
 Then start P6:
