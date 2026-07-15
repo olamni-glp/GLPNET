@@ -1,0 +1,43 @@
+{
+  "description": "mint [op=get] then holder-attenuates [key_prefix=objects/]; verify ok",
+  "expect": "ok",
+  "id": "chain-attenuate-narrowing",
+  "input": {
+    "attenuations": [
+      {
+        "kind": "key_prefix",
+        "prefix": "objects/"
+      }
+    ],
+    "context": {
+      "key": "objects/alpha",
+      "keyspace": "ks-main",
+      "now": 1752451200,
+      "op": "get",
+      "resource": "sha256:00ff"
+    },
+    "identifier": "cap-058-test",
+    "location": "glp://mint.test",
+    "mint_caveats": [
+      {
+        "kind": "op",
+        "op": "get"
+      }
+    ],
+    "presented_caveats": [
+      {
+        "kind": "op",
+        "op": "get"
+      },
+      {
+        "kind": "key_prefix",
+        "prefix": "objects/"
+      }
+    ],
+    "presented_tail_hex": "03130e3f6d2b44cf10ad891ce626e059ec9b6048aacaf5a13835c429181d39c0",
+    "root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "verify_root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "surface": "macaroon-v2-chain",
+  "tail_hex": "03130e3f6d2b44cf10ad891ce626e059ec9b6048aacaf5a13835c429181d39c0"
+}

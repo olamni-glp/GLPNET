@@ -1,0 +1,34 @@
+{
+  "description": "key_prefix caveat mismatch",
+  "expect": "refuse:CaveatFailed:key_prefix",
+  "id": "chain-refuse-prefix-miss",
+  "input": {
+    "attenuations": [],
+    "context": {
+      "key": "objects/alpha",
+      "keyspace": "ks-main",
+      "now": 1752451200,
+      "op": "get",
+      "resource": "sha256:00ff"
+    },
+    "identifier": "cap-058-test",
+    "location": "glp://mint.test",
+    "mint_caveats": [
+      {
+        "kind": "key_prefix",
+        "prefix": "archive/"
+      }
+    ],
+    "presented_caveats": [
+      {
+        "kind": "key_prefix",
+        "prefix": "archive/"
+      }
+    ],
+    "presented_tail_hex": "abbde2e55ef9c09b8fe1cef2a8bfc81d53bc0dbdefd414b4e806932bd5cf7744",
+    "root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "verify_root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "surface": "macaroon-v2-chain",
+  "tail_hex": "abbde2e55ef9c09b8fe1cef2a8bfc81d53bc0dbdefd414b4e806932bd5cf7744"
+}

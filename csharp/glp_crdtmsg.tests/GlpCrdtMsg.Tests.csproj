@@ -29,6 +29,13 @@
     <None Include="..\..\specs\049-wave1-guard-link-acceptance\contracts\vectors.json" Link="vectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- 058 shared macaroon-v2 conformance corpus (copied byte-exact from buildkit
+       specs/058-yngenios-4service-dogfood/vectors/macaroon-v2; manifest pins sha256 of exact bytes,
+       .gitattributes -text guards against EOL re-rendering — the 057 parity-drift lesson). -->
+  <ItemGroup>
+    <None Include="conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
     <ProjectReference Include="..\glp_wire_registry\GlpWireRegistry.csproj" />

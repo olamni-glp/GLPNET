@@ -1,0 +1,74 @@
+{
+  "description": "verifier holds a different root key",
+  "expect": "refuse:BadSignature",
+  "id": "chain-refuse-wrong-root",
+  "input": {
+    "attenuations": [],
+    "context": {
+      "key": "objects/alpha",
+      "keyspace": "ks-main",
+      "now": 1752451200,
+      "op": "get",
+      "resource": "sha256:00ff"
+    },
+    "identifier": "cap-058-test",
+    "location": "glp://mint.test",
+    "mint_caveats": [
+      {
+        "expiry": 1893456000,
+        "kind": "time_before"
+      },
+      {
+        "content_hash": "sha256:00ff",
+        "kind": "resource"
+      },
+      {
+        "key": "objects/alpha",
+        "kind": "key"
+      },
+      {
+        "kind": "key_prefix",
+        "prefix": "objects/"
+      },
+      {
+        "kind": "op",
+        "op": "get"
+      },
+      {
+        "kind": "keyspace_scope",
+        "scope": "ks-main"
+      }
+    ],
+    "presented_caveats": [
+      {
+        "expiry": 1893456000,
+        "kind": "time_before"
+      },
+      {
+        "content_hash": "sha256:00ff",
+        "kind": "resource"
+      },
+      {
+        "key": "objects/alpha",
+        "kind": "key"
+      },
+      {
+        "kind": "key_prefix",
+        "prefix": "objects/"
+      },
+      {
+        "kind": "op",
+        "op": "get"
+      },
+      {
+        "kind": "keyspace_scope",
+        "scope": "ks-main"
+      }
+    ],
+    "presented_tail_hex": "bafdf3f6ea3b703d26b53c2ec02499111e1a5db3c5d206fc4dd1c590a5c6c96c",
+    "root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "verify_root_key_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+  },
+  "surface": "macaroon-v2-chain",
+  "tail_hex": "bafdf3f6ea3b703d26b53c2ec02499111e1a5db3c5d206fc4dd1c590a5c6c96c"
+}

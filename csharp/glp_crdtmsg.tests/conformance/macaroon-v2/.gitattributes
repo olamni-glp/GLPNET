@@ -1,0 +1,4 @@
+# Pinned golden-vector payloads: byte-exact, never EOL-rewritten on checkout.
+# (057-corpus parity root cause: hashes pinned over bytes git later re-rendered.)
+vectors/*.json -text
+manifest.json -text
