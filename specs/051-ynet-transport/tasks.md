@@ -138,7 +138,7 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 - [X] T030 [US4] Implement Tor-style cell relay as default for `internet`/`critical` traffic classes in `csharp/ynet_transport/Relay/TorCellRelay.cs` (FR-007, clarify §5.2)
 - [X] T031 [US4] Implement relay-admission enforcement at the forwarding hop consuming the 056 AdmissionProof (enforce, don't decide) + Sybil-by-gating in `csharp/ynet_transport/Relay/AdmissionEnforcer.cs` (FR-007/FR-008)
 - [~] T031a [US4] Extend olamnit DSDV `DistanceVectorRouter` + durable `MeshRelayRoute` from LAN-only into the NAT-piercing internet overlay (the routing substrate the BUILD-NEW overlay sits above) in `csharp/ynet_transport/Relay/DsdvInternetRoute.cs` (FR-021, D3)
-      — **Extension REAL + tested (18 tests); DSDV core binding is the seam (DEC-DSDV-1, co #220/#221).**
+      — **Extension REAL + tested (32 tests); DSDV core binding is the seam (DEC-DSDV-1, co #220/#221).**
       Unblocked by the engineer ruling: **make the olamnit DSDV mesh packable/shared** (both repos consume it). Rejected —
       path ProjectReference (machine-local, breaks CI), submodule (pulls `olamnit-assistant` in for one router), harvest/port
       (**duplicates** the algebra, which FR-021's deliberate *"extend (not duplicate)"* — vs FR-001's *"harvest"* for
@@ -153,6 +153,14 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
       (cost 2) over a 1-hop relay (cost 3), interoperates with divergent local indices (C = 3@A, 4@B, 1@self), and reroutes
       to the relay on link loss — and the real router bound behind the mirror via a purely mechanical adapter, proving the
       package swap is a `using` change. Dogfooding also found the missing core-`Self`-vs-registry guard (now enforced).
+      **Adversarially reviewed — `/bk-codexreview`, converged@4** (6 findings across 3 cycles, all real, all fixed;
+      cycle 4 clean). The review earned its keep: **[P1] route spoofing** — `Ingest` trusted the wire's self-reported
+      `Via`, so any authenticated neighbour could inject/poison routes *as another neighbour*; ingest is now bound to the
+      **authenticated session peer** (FR-002) and refuses a mismatch with `IdentityMismatch`. **[P2] link kind vs state
+      conflated** — a relay recovering from an outage was silently re-costed as the *cheapest* link (FR-018 inverted);
+      kind (durable) and up-state (transient) are now separate facts. Plus: `Ingest`/`AdvertsFor` tested the index rather
+      than the link set; a refused `Ingest` mutated the registry; the cost model dropped the core's `Period`/`Event`
+      signals.
       **Still open:** the *durable* `MeshRelayRoute` half of FR-021 (exactly-once across a relay kill) rides olamnit's
       `RouterEngine` journal and lands with the same package; inherited ceilings documented (65535 nodes/table; ≤15-hop
       metric diameter) — co #221.

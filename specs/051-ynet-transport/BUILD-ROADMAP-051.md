@@ -117,7 +117,10 @@ useful".
   mirrors the olamnit contract (zero algebra) and is deleted for `using Olamnit.Kernel.Mesh;` once the
   shared package lands. Dogfooded against the REAL olamnit router — routes, prefers direct over relay,
   interoperates across divergent indices, reroutes on link loss. Additive `RoutingCapacityExhausted`
-  refusal reason (co #221). Still open: FR-021's *durable* `MeshRelayRoute` half (olamnit `RouterEngine`).
+  refusal reason (co #221). **Adversarially reviewed (`/bk-codexreview`, converged@4)** — 6 real findings
+  fixed, notably **route spoofing** (ingest now binds to the authenticated peer, FR-002) and **link kind
+  vs state** (a recovering relay was re-costed as the cheapest link). Still open: FR-021's *durable*
+  `MeshRelayRoute` half (olamnit `RouterEngine`).
 - **P6 — US5 sealed routes + anonymity (T034–T039).** garlic bundling (no fixed 3-hop); Veilid
   `SafetySelection`; zero silent downgrades (`seal_unavailable` fail-closed).
   ← **RESUME HERE.**
