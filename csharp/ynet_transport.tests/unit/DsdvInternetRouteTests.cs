@@ -278,6 +278,143 @@ public class DsdvInternetRouteTests
         Assert.Empty(core.Ingested); // refused before touching the core — zero side-effects
     }
 
+    // ---- codex review findings (be8a8cbb): all three were live bugs the first test pass missed ----
+
+    [Fact]
+    public void An_advert_via_a_merely_INDEXED_node_that_is_not_a_link_is_refused()
+    {
+        // [P1] Being indexed only means we have heard of a node. A destination learned from someone
+        // else's advert is indexed but is NOT a link we can receive over; testing the index instead of
+        // the link set let those adverts into the core.
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("real-link"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.Index.TryGetOrAssign(N("merely-known"), out _)); // indexed, never a link
+
+        var refused = route.Ingest(new InternetRouteAdvertisement(
+            Origin: N("Z"), Dest: N("Z"), Cost: 1, Seq: 9, Via: N("merely-known")));
+
+        Assert.False(refused.Ok);
+        Assert.Equal(RefusalReason.Unreachable, refused.Reason);
+        Assert.Empty(core.Ingested);
+    }
+
+    [Fact]
+    public void An_advert_via_a_neighbour_whose_link_is_down_is_refused_not_silently_accepted()
+    {
+        // [P1] A downed neighbour stays indexed — it must still not be a valid ingress.
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("flaky"), new InternetLink(InternetLinkKind.Direct)).Ok);
+        Assert.True(route.ForgetNeighbor(N("flaky")).Ok);
+
+        var refused = route.Ingest(new InternetRouteAdvertisement(
+            Origin: N("Q"), Dest: N("Q"), Cost: 1, Seq: 3, Via: N("flaky")));
+
+        Assert.False(refused.Ok);
+        Assert.Equal(RefusalReason.Unreachable, refused.Reason);
+        Assert.Empty(core.Ingested);
+    }
+
+    [Fact]
+    public void An_advert_via_self_is_refused()
+    {
+        // [P1] self is always indexed; it is never a link we receive over.
+        var (route, core) = Build(N("self"));
+
+        var refused = route.Ingest(new InternetRouteAdvertisement(
+            Origin: N("W"), Dest: N("W"), Cost: 1, Seq: 2, Via: N("self")));
+
+        Assert.False(refused.Ok);
+        Assert.Equal(RefusalReason.Unreachable, refused.Reason);
+        Assert.Empty(core.Ingested);
+    }
+
+    [Fact]
+    public void A_link_recovering_from_down_keeps_its_kind_and_is_never_re_costed_as_cheapest()
+    {
+        // [P2] The sharp one: dropping the link metadata on down let a later up re-admit a RELAY with no
+        // kind, so the cost model fell through to the unit base and made the relay the CHEAPEST link —
+        // FR-018 exactly inverted.
+        var (route, core) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("relay"), new InternetLink(InternetLinkKind.Relayed, Quality: 1)).Ok);
+        Assert.True(route.Index.TryGetIndex(N("relay"), out var idx));
+        var costWhenFirstUp = core.ResolvedCosts[idx];
+
+        Assert.True(route.SetLinkState(N("relay"), up: false).Ok);   // transient outage
+        Assert.True(route.SetLinkState(N("relay"), up: true).Ok);    // ...and it comes back
+
+        Assert.Equal(costWhenFirstUp, core.ResolvedCosts[idx]);       // same cost as before the outage
+        Assert.Equal(InternetLinkCostModel.RelayedBase + 1, core.ResolvedCosts[idx]);
+        Assert.NotEqual(InternetLinkCostModel.DirectBase, core.ResolvedCosts[idx]); // NOT re-costed cheap
+
+        // ...and the route is usable again, reporting the kind it always had.
+        Assert.True(route.Index.TryGetOrAssign(N("dest"), out var destIdx));
+        core.SetRoute(dest: destIdx, nextHop: idx);
+        var routed = route.TryRoute(N("dest"));
+        Assert.True(routed.Ok);
+        Assert.Equal(InternetLinkKind.Relayed, routed.Value.Link.Kind);
+    }
+
+    [Fact]
+    public void Forgetting_a_neighbour_drops_its_link_for_good_unlike_a_transient_down()
+    {
+        var (route, _) = Build(N("self"));
+        Assert.True(route.AddNeighbor(N("gone"), new InternetLink(InternetLinkKind.HolePunched)).Ok);
+
+        Assert.True(route.ForgetNeighbor(N("gone")).Ok);
+        Assert.Null(route.LinkTo(N("gone")));                          // kind is gone too
+
+        var again = route.ForgetNeighbor(N("gone"));
+        Assert.False(again.Ok);
+        Assert.Equal(RefusalReason.Unreachable, again.Reason);         // idempotent, distinct refusal
+    }
+
+    [Fact]
+    public void A_refused_ingest_leaves_the_node_index_untouched()
+    {
+        // [P2] With exactly one free slot and two new distinct nodes, assigning one at a time consumed
+        // the slot for Dest and then refused on Origin — a refusal with a lasting side effect, and
+        // order-dependent capacity (invariant 2).
+        var index = new NodeIndex();
+        var core = new DsdvCoreDouble(self: 1);
+        var route = new DsdvInternetRoute(N("self"), core, index);
+        Assert.True(route.AddNeighbor(N("via"), new InternetLink(InternetLinkKind.Direct)).Ok);
+
+        // Fill until exactly ONE slot remains.
+        for (int i = index.Count; i < NodeIndex.MaxNodes - 1; i++)
+            Assert.True(index.TryGetOrAssign(N($"filler{i}"), out _));
+        Assert.Equal(NodeIndex.MaxNodes - 1, index.Count);
+
+        var refused = route.Ingest(new InternetRouteAdvertisement(
+            Origin: N("brand-new-origin"), Dest: N("brand-new-dest"), Cost: 1, Seq: 4, Via: N("via")));
+
+        Assert.False(refused.Ok);
+        Assert.Equal(RefusalReason.RoutingCapacityExhausted, refused.Reason);
+
+        // The refusal consumed nothing: neither newcomer was indexed, and the slot is still free.
+        Assert.Equal(NodeIndex.MaxNodes - 1, index.Count);
+        Assert.False(index.TryGetIndex(N("brand-new-dest"), out _));
+        Assert.False(index.TryGetIndex(N("brand-new-origin"), out _));
+        Assert.Empty(core.Ingested);
+    }
+
+    [Fact]
+    public void Assigning_a_group_needs_room_for_every_newcomer_or_none_is_assigned()
+    {
+        var index = new NodeIndex();
+        for (int i = 0; i < NodeIndex.MaxNodes - 1; i++)
+            Assert.True(index.TryGetOrAssign(N($"n{i}"), out _));
+
+        // Two newcomers, one slot: all-or-nothing.
+        Assert.False(index.TryGetOrAssignAll([N("newA"), N("newB")], out _));
+        Assert.Equal(NodeIndex.MaxNodes - 1, index.Count);
+        Assert.False(index.TryGetIndex(N("newA"), out _));
+
+        // The same node twice needs ONE slot, not two — so this fits.
+        Assert.True(index.TryGetOrAssignAll([N("newA"), N("newA")], out var same));
+        Assert.Equal(same[0], same[1]);
+        Assert.Equal(NodeIndex.MaxNodes, index.Count);
+    }
+
     // ---- routing decisions the overlay above consumes ----
 
     [Fact]

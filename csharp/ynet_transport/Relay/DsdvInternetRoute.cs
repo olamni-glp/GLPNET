@@ -91,6 +91,39 @@ public sealed class NodeIndex
         }
     }
 
+    /// <summary>
+    /// Resolve several nodes at once, assigning fresh indices only if EVERY new node fits. Either all
+    /// of them come back indexed, or none is newly assigned — so a caller that refuses on exhaustion
+    /// leaves the registry exactly as it found it (contract invariant 2: no side effects on the refusal
+    /// path). Assigning them one at a time would let the first consume the last free slot and the second
+    /// fail, making capacity order-dependent and a refusal lossy.
+    /// </summary>
+    public bool TryGetOrAssignAll(IReadOnlyList<NodeId> nodes, out ushort[] indices)
+    {
+        indices = new ushort[nodes.Count];
+
+        lock (_assign)
+        {
+            // Count the DISTINCT new arrivals first — the same node twice needs one slot, not two.
+            var newcomers = new HashSet<NodeId>();
+            foreach (var node in nodes)
+                if (!_toIndex.ContainsKey(node)) newcomers.Add(node);
+
+            if (_toIndex.Count + newcomers.Count > MaxNodes || _next + newcomers.Count - 1 > ushort.MaxValue)
+            {
+                indices = [];
+                return false; // refuse before assigning anything
+            }
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (!TryGetOrAssign(nodes[i], out var idx)) { indices = []; return false; }
+                indices[i] = idx;
+            }
+            return true;
+        }
+    }
+
     /// <summary>Look up an already-assigned index; false if this node was never indexed.</summary>
     public bool TryGetIndex(NodeId node, out ushort index) => _toIndex.TryGetValue(node, out index);
 
@@ -276,6 +309,13 @@ public sealed class DsdvInternetRoute
     /// Mark a neighbour's link up or down. Down poisons every route through it — the core's own
     /// withdrawal semantics — so the overlay re-paths instead of blackholing (FR-018). Returns whether
     /// the routing table changed (a triggered update: the caller re-emits <see cref="AdvertsFor"/>).
+    ///
+    /// A down link KEEPS its <see cref="InternetLink"/>: the kind is what it is whether the link is
+    /// currently usable or not, and dropping it would let a later <c>SetLinkState(…, up: true)</c>
+    /// re-admit the neighbour with no kind — the cost model would then fall through to the unit base and
+    /// silently re-cost a relay as the CHEAPEST link, inverting FR-018. Down state lives in the core's
+    /// table (it stops handing out the route); the kind lives here. Use <see cref="ForgetNeighbor"/> to
+    /// drop a link for good.
     /// </summary>
     public Result<bool> SetLinkState(NodeId neighbor, bool up)
     {
@@ -285,8 +325,26 @@ public sealed class DsdvInternetRoute
         if (!_index.TryGetIndex(neighbor, out var idx))
             return Result<bool>.Refuse(RefusalReason.Unreachable); // never was a link
 
-        if (!up) _links.TryRemove(idx, out _);
+        if (!_links.ContainsKey(idx))
+            return Result<bool>.Refuse(RefusalReason.Unreachable); // indexed, but never one of our links
+
         return Result<bool>.Success(_core.SetLinkState(idx, up));
+    }
+
+    /// <summary>
+    /// Drop a neighbour's link for good: withdraw it from the core AND forget its kind. Distinct from
+    /// <see cref="SetLinkState"/> with <c>up: false</c>, which is a transient outage the link can
+    /// recover from with its kind intact.
+    /// </summary>
+    public Result<bool> ForgetNeighbor(NodeId neighbor)
+    {
+        if (neighbor == _self)
+            throw new ArgumentException("a node cannot be its own neighbour.", nameof(neighbor));
+
+        if (!_index.TryGetIndex(neighbor, out var idx) || !_links.TryRemove(idx, out _))
+            return Result<bool>.Refuse(RefusalReason.Unreachable);
+
+        return Result<bool>.Success(_core.SetLinkState(idx, up: false));
     }
 
     /// <summary>
@@ -337,15 +395,22 @@ public sealed class DsdvInternetRoute
     /// </summary>
     public Result<bool> Ingest(InternetRouteAdvertisement advert)
     {
-        if (!_index.TryGetIndex(advert.Via, out var viaIdx))
+        // The neighbour test is the LINK SET, not the index. Being indexed only means we have heard of a
+        // node — a destination learned from someone else's advert, a neighbour whose link is down, even
+        // self, are all indexed but are NOT links we can receive over. Testing the index would let those
+        // adverts through and make this method's refusal contract a lie (the core would reject them
+        // anyway, but the caller would see Ok/no-change instead of a distinct refusal).
+        if (!_index.TryGetIndex(advert.Via, out var viaIdx) || !_links.ContainsKey(viaIdx))
             return Result<bool>.Refuse(RefusalReason.Unreachable); // advert over a non-neighbour link
 
-        if (!_index.TryGetOrAssign(advert.Dest, out var destIdx)
-            || !_index.TryGetOrAssign(advert.Origin, out var originIdx))
+        // Index Dest and Origin together: assigning them one at a time lets the first take the last free
+        // slot and the second refuse, leaving a refused ingest having mutated the registry (invariant 2)
+        // and making capacity order-dependent.
+        if (!_index.TryGetOrAssignAll([advert.Dest, advert.Origin], out var indices))
             return Result<bool>.Refuse(RefusalReason.RoutingCapacityExhausted);
 
         return Result<bool>.Success(
-            _core.Ingest(new RouteAdvertisement(originIdx, destIdx, advert.Cost, advert.Seq, viaIdx)));
+            _core.Ingest(new RouteAdvertisement(indices[1], indices[0], advert.Cost, advert.Seq, viaIdx)));
     }
 
     /// <summary>
