@@ -42,6 +42,7 @@ public enum RefusalReason
     FurtherResolverRequired,   // name beyond self-certified key->record (FR-017)
     RecordNotFound,            // DHT lookup: no self-certified record for a valid key (contract NotFound)
     RecordRejected,            // DHT store: record does not self-certify — tamper/spoof/expiry (FR-006)
+    RoutingCapacityExhausted,  // DSDV node index full — the overlay cannot admit another node (FR-021, co #221)
     TransportUnsupported,      // native QUIC unavailable — refuse, never downgrade (050 gate)
 }
 

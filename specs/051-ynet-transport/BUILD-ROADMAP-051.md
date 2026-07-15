@@ -23,6 +23,30 @@ merge → release PR #111. Sibling: qhstate `056-ynet-service` (embed/policy tie
 
 ## 2. ENGINEER DECISIONS (recorded — do not re-litigate autonomously)
 
+### DEC-DSDV-1 — How T031a binds olamnit's DSDV core (2026-07-15)
+**Ruling:** **Make the olamnit DSDV mesh packable/shared** — flip `IsPackable` / extract
+`Olamnit.Kernel.Mesh` into a library both `olamnit` and `ynet_transport` consume. Meanwhile
+`ynet_transport` builds the **internet-extension layer** against a seam mirroring
+`Olamnit.Kernel.Mesh.IDistanceVectorRouter`.
+- **Why:** FR-021 says *"extend (**not duplicate**)"* and FR-022 mandates de-dup — deliberately different
+  wording from FR-001's *"harvest"* for `glp_link`. A from-scratch port would duplicate the algebra;
+  this is the only option that satisfies both FRs **and** keeps `ynet_transport` standalone-buildable.
+- **Rejected:** path `ProjectReference` (machine-local — builds only on the authoring box, breaks CI);
+  git submodule (drags `olamni-research/olamnit-assistant` in for one router; breaks "standalone by
+  design"); harvest/port (duplicates; would need FR-021 amended).
+- **Evidence:** `Olamnit.Kernel` targets **net10.0** (compatible), sole dep `System.IO.Hashing`, pure
+  managed — but `IsPackable=false` and it lives in a **separate repo**, so it cannot be referenced today.
+- **Extension point:** olamnit's own **`ILinkCostModel`** (its FR-017 seam, built so "on hardware the same
+  seam is fed by real measurements with no routing-logic change") — an internet overlay is exactly that
+  case, so YNET plugs in there rather than forking the router.
+- **Id bridge:** a bijective **registry**, never a hash (256→16 bits collides at ~256 nodes by the
+  birthday bound and would silently merge two nodes' route rows), and **NodeId-keyed adverts** on the wire
+  (a node's `ushort` index is local to its own table).
+- **Proven:** dogfooded against the REAL `DistanceVectorRouter` — it binds behind the mirror via a purely
+  mechanical adapter, so the package swap is a `using` change. See co #220 (solution #67) and co #221.
+- **Open:** the *durable* `MeshRelayRoute` half of FR-021 (exactly-once across a relay kill) rides
+  olamnit's `RouterEngine` and lands with the same package.
+
 ### DEC-CRYPTO-1 — Node identity algorithm (2026-07-14)
 **Ruling:** **Ed25519 primary** (via a third-party dep) with **ECDsa/P-256 (BCL-native) fallback in
 exceptional cases**, both behind the existing pluggable **`INodeSigner`** seam (option 3 "where
@@ -85,8 +109,15 @@ useful".
   forwards ciphertext only (SC-004, proved on a tapped wire). `InProcessFabric` gained
   `IRelayChannelResolver`; `YnetSession` threads `PathType` so a relayed link reports 1 relay hop
   (FR-023). `RelayAdmissionTests` (contract, 11) + `RelayForwardTests` (integration, 8).
-  **T031a (DSDV internet route, FR-021) NOT done — blocked on an engineer decision, see co #220 and
-  the note in tasks.md Phase 6.** It is the routing substrate, independent of the relay mechanism above.
+  **T031a (DSDV internet route, FR-021) — extension REAL + tested, DSDV core binding is the seam
+  (DEC-DSDV-1).** `Relay/DsdvInternetRoute.cs` extends olamnit's DSDV into the NAT-piercing internet
+  overlay: a bijective `NodeIndex` (registry, never a hash), NodeId-keyed adverts (local index spaces
+  never cross the wire), and `InternetLinkCostModel` steering direct < hole-punched < relayed through
+  olamnit's own `ILinkCostModel` seam so relays stay the fallback (FR-018). `Relay/DsdvCoreContract.cs`
+  mirrors the olamnit contract (zero algebra) and is deleted for `using Olamnit.Kernel.Mesh;` once the
+  shared package lands. Dogfooded against the REAL olamnit router — routes, prefers direct over relay,
+  interoperates across divergent indices, reroutes on link loss. Additive `RoutingCapacityExhausted`
+  refusal reason (co #221). Still open: FR-021's *durable* `MeshRelayRoute` half (olamnit `RouterEngine`).
 - **P6 — US5 sealed routes + anonymity (T034–T039).** garlic bundling (no fixed 3-hop); Veilid
   `SafetySelection`; zero silent downgrades (`seal_unavailable` fail-closed).
   ← **RESUME HERE.**

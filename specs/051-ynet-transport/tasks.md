@@ -137,15 +137,25 @@ T058 BEAM tier; T059 baseline green. These are the next build sessions.
 - [X] T029 [US4] Implement libp2p circuit-relay-v2 (voucher-gated) forward for `mesh` traffic in `csharp/ynet_transport/Relay/CircuitRelayV2.cs` (FR-007, clarify §5.2)
 - [X] T030 [US4] Implement Tor-style cell relay as default for `internet`/`critical` traffic classes in `csharp/ynet_transport/Relay/TorCellRelay.cs` (FR-007, clarify §5.2)
 - [X] T031 [US4] Implement relay-admission enforcement at the forwarding hop consuming the 056 AdmissionProof (enforce, don't decide) + Sybil-by-gating in `csharp/ynet_transport/Relay/AdmissionEnforcer.cs` (FR-007/FR-008)
-- [ ] T031a [US4] Extend olamnit DSDV `DistanceVectorRouter` + durable `MeshRelayRoute` from LAN-only into the NAT-piercing internet overlay (the routing substrate the BUILD-NEW overlay sits above) in `csharp/ynet_transport/Relay/DsdvInternetRoute.cs` (FR-021, D3)
-      — **BLOCKED on an engineer decision, not started (co #220).** Its premise is unverified: the substrate lives in
-      another repo (`D:/bstdev/research/olamnit/.../Kernel/Mesh/`, no project reference from GLPNET) → harvest-vs-reference
-      is an architectural call; olamnit's DSDV keys nodes by `ushort` LAN mesh ids whereas YNET `NodeId` is a
-      self-certified 64-hex SHA-256(pubkey) (FR-002) → the id mapping must be declared; and `MeshRelayRoute.cs` carries an
-      explicit *"R1 (a) OPEN JOINT CALL — this Route binding is the **proposed** shape"*. Writing a from-scratch DSDV here
-      and calling it "extended olamnit DSDV" would fabricate the reuse FR-021 specifies (Constitution II). Deliberately
-      left with **no seam file**: any API shape would bake in the open decisions. The NAT-piercing leg needs real
-      UDP/QUIC/STUN wire → an injected seam once the above is settled. **T028–T033 do not depend on it.**
+- [~] T031a [US4] Extend olamnit DSDV `DistanceVectorRouter` + durable `MeshRelayRoute` from LAN-only into the NAT-piercing internet overlay (the routing substrate the BUILD-NEW overlay sits above) in `csharp/ynet_transport/Relay/DsdvInternetRoute.cs` (FR-021, D3)
+      — **Extension REAL + tested (18 tests); DSDV core binding is the seam (DEC-DSDV-1, co #220/#221).**
+      Unblocked by the engineer ruling: **make the olamnit DSDV mesh packable/shared** (both repos consume it). Rejected —
+      path ProjectReference (machine-local, breaks CI), submodule (pulls `olamnit-assistant` in for one router), harvest/port
+      (**duplicates** the algebra, which FR-021's deliberate *"extend (not duplicate)"* — vs FR-001's *"harvest"* for
+      glp_link — forbids). `Relay/DsdvCoreContract.cs` mirrors `Olamnit.Kernel.Mesh` **contract only, zero algebra**; delete
+      it for `using Olamnit.Kernel.Mesh;` when the package lands. The extension adds exactly what a LAN mesh lacks:
+      a bijective `NodeIndex` (a REGISTRY — hashing 256→16 bits collides at ~256 nodes and would silently merge two nodes'
+      route rows), **NodeId-keyed adverts** (a node's `ushort` index is local to its own table, so an index on the wire
+      would misroute), and `InternetLinkCostModel` mapping direct/hole-punched/relayed onto olamnit's own FR-017
+      `ILinkCostModel` seam so relays stay the fallback (FR-018). No new network I/O — the router is caller-driven and the
+      links it costs come from the existing US2/US4 machinery.
+      **Verified by dogfooding against the REAL olamnit `DistanceVectorRouter`**: it routes, prefers a 2-hop direct path
+      (cost 2) over a 1-hop relay (cost 3), interoperates with divergent local indices (C = 3@A, 4@B, 1@self), and reroutes
+      to the relay on link loss — and the real router bound behind the mirror via a purely mechanical adapter, proving the
+      package swap is a `using` change. Dogfooding also found the missing core-`Self`-vs-registry guard (now enforced).
+      **Still open:** the *durable* `MeshRelayRoute` half of FR-021 (exactly-once across a relay kill) rides olamnit's
+      `RouterEngine` journal and lands with the same package; inherited ceilings documented (65535 nodes/table; ≤15-hop
+      metric diameter) — co #221.
 - [X] T032 [US4] Implement revocation semantics: block new selection immediately; tear down live paths at next frame boundary → `authorized_but_unreachable`, in `csharp/ynet_transport/Relay/RevocationHandler.cs` (research R3, FR-018)
 - [X] T033 [P] [US4] Integration test: relayed path end-to-end; revocation mid-path; ciphertext-only forwarding, in `csharp/ynet_transport.tests/integration/RelayForwardTests.cs` (SC-004)
 

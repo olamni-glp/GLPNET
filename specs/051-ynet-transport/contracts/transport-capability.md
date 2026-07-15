@@ -50,6 +50,7 @@ capability YnetTransport {
 | `further_resolver_required` | name beyond self-certified key→record (FR-017) |
 | `record_not_found` | `dht_lookup` of a valid self-certified key with no live record (the NotFound outcome) |
 | `record_rejected` | `dht_store` of a record that fails self-certification — tamper / key-spoof / expiry (FR-006) |
+| `routing_capacity_exhausted` | the DSDV node index is full — the overlay cannot admit another node (FR-021; the inherited `ushort` node key caps an overlay at 65535 nodes, co #221) |
 | `transport_unsupported` | native QUIC unavailable — refuse, never downgrade (050 gate) |
 
 ## Invariants (tested at contract tier)
