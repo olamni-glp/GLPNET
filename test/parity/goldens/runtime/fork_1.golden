@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block fork_1 (feature 050 T037)
+# files: programs/tests/typed/fork_1_circular_deref.glp
+## goal: wrap(base, R0).
+R0 = f(base)
+→ succeeds
+
+## goal: X = f(X?).
+X = f(f(<circular>))
+→ succeeds
+
+## goal: Y = pair(a, Y?).
+Y = pair(a, pair(a, <circular>))
+→ succeeds
+

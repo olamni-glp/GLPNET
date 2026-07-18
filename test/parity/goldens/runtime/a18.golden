@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block a18 (feature 050 T037)
+# files: programs/tests/typed/constant_ground_test.glp programs/tests/typed/gethead_test.glp
+## goal: test_constant(foo, Rcgt1).
+Rcgt1 = foo
+→ succeeds
+
+## goal: test_gethead(Rgh1).
+Rgh1 = a
+→ succeeds
+

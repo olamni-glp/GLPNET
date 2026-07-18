@@ -1,0 +1,11 @@
+# golden: Dart reference outcomes for block a30 (feature 050 T037)
+# files: programs/tests/typed/policy_guard_formb.glp
+## goal: test_b1.
+→ succeeds
+
+## goal: test_b2(Rb2?).
+→ failed
+
+## goal: test_b3(Rb3?).
+→ suspended
+

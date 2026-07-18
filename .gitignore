@@ -2,6 +2,9 @@ glp_runtime/glp_repl_new
 glp_runtime/build/
 .DS_Store
 
+# bk-guardian local backup artifacts (never committed)
+.specify/guardian/backups/
+
 # Build artefacts (bin/obj — generic; tools/d2net/ removed feature 016)
 **/bin/
 **/obj/
@@ -112,3 +115,7 @@ glpquick-cert/
 
 # 049 T028 erlang regression scratch output
 gleam_quic/test/_build_test/
+
+# feature 050 US3: regenerable Gleam corpus-runner output (goldens are Dart-side)
+test/parity/goldens/gleam/
+glp_gleam/.parity_run.glp

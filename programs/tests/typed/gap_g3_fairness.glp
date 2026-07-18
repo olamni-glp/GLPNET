@@ -1,0 +1,12 @@
+% gap_g3_fairness.glp - GAP-G3 (C-13): fairness / liveness. A fair merge interleaves
+% both input streams one element at a time, so neither producer starves — both
+% perpetually-reducible producers are eventually reduced. The strictly-alternating
+% output ([a,x,b,y,...]) witnesses fair scheduling; a starving (biased) merge would
+% drain one stream before touching the other.
+
+NumList ::= [] ; [Number | NumList].
+
+exported procedure g3_fair_merge(NumList?, NumList?, NumList).
+g3_fair_merge([], Ys, Ys?).
+g3_fair_merge(Xs, [], Xs?) :- otherwise | true.
+g3_fair_merge([X|Xs], [Y|Ys], [X?, Y?|Zs?]) :- g3_fair_merge(Xs?, Ys?, Zs).

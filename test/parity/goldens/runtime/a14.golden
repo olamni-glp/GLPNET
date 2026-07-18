@@ -1,0 +1,26 @@
+# golden: Dart reference outcomes for block a14 (feature 050 T037)
+# files: programs/tests/typed/circular_test.glp
+## goal: is_ground(foo, Rc1).
+Rc1 = yes
+→ succeeds
+
+## goal: is_ground(f(a,b), Rc2).
+Rc2 = yes
+→ succeeds
+
+## goal: test_equal(foo, foo, Rc3).
+Rc3 = yes
+→ succeeds
+
+## goal: test_equal(foo, bar, Rc4).
+Rc4 = no
+→ succeeds
+
+## goal: test_self_equal(f(a,b), Rc5).
+Rc5 = yes
+→ succeeds
+
+## goal: show(hello, Xshow).
+Xshow = hello
+→ succeeds
+

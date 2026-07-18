@@ -1,0 +1,77 @@
+# golden: Dart reference outcomes for block a21 (feature 050 T037)
+# files: programs/tests/typed/test_defined_guards_all.glp
+## goal: make_pair(Call1, Call2).
+Call1 = ch(_V1, _V2)
+Call2 = ch(_V2, _V1)
+→ succeeds
+
+## goal: bind_response(yes, RespYes, LocalYes).
+LocalYes = ch(_V2, _V1)
+RespYes = accept(ch(_V1, _V2))
+→ succeeds
+
+## goal: bind_response(no, RespNo, LocalNo).
+LocalNo = none
+RespNo = no
+→ succeeds
+
+## goal: test_channel(ch(TchA?, TchB), TchR1).
+TchB = <unbound>
+TchR1 = ok
+→ succeeds
+
+## goal: test_channel(foo, TchR2).
+TchR2 = not_channel
+→ succeeds
+
+## goal: test_channel(p(TpaA, TpaB), TchR3).
+TchR3 = not_channel
+TpaA = <unbound>
+TpaB = <unbound>
+→ succeeds
+
+## goal: test_pair(p(TprA, TprB), TprR1).
+TprA = <unbound>
+TprB = <unbound>
+TprR1 = ok
+→ succeeds
+
+## goal: test_pair(foo, TprR2).
+TprR2 = not_pair
+→ succeeds
+
+## goal: test_wrapper(w(TwrX), TwrR1).
+TwrR1 = ok
+TwrX = <unbound>
+→ succeeds
+
+## goal: test_wrapper(foo, TwrR2).
+TwrR2 = not_wrapper
+→ succeeds
+
+## goal: test_nested(w(p(TnA, TnB)), TnR1).
+TnA = <unbound>
+TnB = <unbound>
+TnR1 = wrapper_with_pair
+→ succeeds
+
+## goal: test_nested(w(hello), TnR2).
+TnR2 = just_wrapper
+→ succeeds
+
+## goal: test_nested(foo, TnR3).
+TnR3 = neither
+→ succeeds
+
+## goal: test_wrap(hello, TwpR).
+TwpR = wrapped(hello)
+→ succeeds
+
+## goal: test_deep(foo, TdpR).
+TdpR = outer(inner(foo))
+→ succeeds
+
+## goal: test_triple(1, 2, TtrR).
+TtrR = pair(1, 2)
+→ succeeds
+

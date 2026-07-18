@@ -1,0 +1,14 @@
+# golden: Dart reference outcomes for block a29w (feature 050 T037)
+# files: programs/tests/typed/policy_guard_worked.glp
+## goal: test_wx1.
+→ succeeds
+
+## goal: test_wx2.
+→ failed
+
+## goal: test_wx3.
+→ failed
+
+## goal: test_wx4(Rwx4?).
+→ suspended
+

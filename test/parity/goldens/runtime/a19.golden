@@ -1,0 +1,15 @@
+# golden: Dart reference outcomes for block a19 (feature 050 T037)
+# files: programs/tests/typed/test_defined_guards.glp
+## goal: test(ch(Adg?, Bdg), Rdg1).
+Bdg = <unbound>
+Rdg1 = ok
+→ succeeds
+
+## goal: test(foo, Rdg2).
+Rdg2 = not_channel
+→ succeeds
+
+## goal: test(Xdg?, Rdg3).
+Rdg3 = <unbound>
+→ suspended
+

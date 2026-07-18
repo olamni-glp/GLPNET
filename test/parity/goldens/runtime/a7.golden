@@ -1,0 +1,10 @@
+# golden: Dart reference outcomes for block a7 (feature 050 T037)
+# files: programs/typed_book/streams/producers_consumers/fair_merge.glp
+## goal: merge([a,b,c], [x,y,z], Zfs).
+Zfs = [a, x, b, y, c, z]
+→ succeeds
+
+## goal: merge([a,b], [x,y,z], Zfs2).
+Zfs2 = [a, x, b, y, z]
+→ succeeds
+

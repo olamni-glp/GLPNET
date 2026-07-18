@@ -1,0 +1,6 @@
+# golden: Dart reference outcomes for block gap_g3 (feature 050 T037)
+# files: programs/tests/typed/gap_g3_fairness.glp
+## goal: g3_fair_merge([1,2,3], [10,20,30], R).
+R = [1, 10, 2, 20, 3, 30]
+→ succeeds
+

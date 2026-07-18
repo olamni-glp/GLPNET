@@ -1918,8 +1918,34 @@ fn parse_type_alt_expression(
     left,
     min_precedence,
   ))
-  let #(ps, _) = match_tok(ps, lexer.Question)
+  // A trailing `?` marks the whole alternative as a reader (explicit dual). Apply it to `left`
+  // instead of discarding it, so a compound alternative like a difference-list `A\B?` is not
+  // parsed identically to `A\B`, dropping the mode before type conversion (codexreview
+  // 20260713T111017Z).
+  let #(ps, has_question) = match_tok(ps, lexer.Question)
+  let left = case has_question {
+    True -> apply_type_alt_reader(left)
+    False -> left
+  }
   Ok(#(ps, left))
+}
+
+/// Apply a trailing reader `?` to a type-alternative term, encoded per Term variant the way the
+/// primary parser and `type_conversion` already expect: `VarTerm`/`UnderscoreTerm` carry an
+/// `is_reader` flag; a `StructTerm` (including the difference-list `\` and operator structs) encodes
+/// it as a trailing `?` on the functor. `ListTerm`/`ConstTerm` carry no reader annotation in the AST
+/// (the primary list parser likewise drops a trailing `?` on a list), so they are returned as-is.
+fn apply_type_alt_reader(term: Term) -> Term {
+  case term {
+    ast.VarTerm(name, _, pos) -> ast.VarTerm(name, True, pos)
+    ast.UnderscoreTerm(_, pos) -> ast.UnderscoreTerm(True, pos)
+    ast.StructTerm(functor, args, pos) ->
+      case string.ends_with(functor, "?") {
+        True -> term
+        False -> ast.StructTerm(functor <> "?", args, pos)
+      }
+    _ -> term
+  }
 }
 
 fn type_alt_expression_loop(
