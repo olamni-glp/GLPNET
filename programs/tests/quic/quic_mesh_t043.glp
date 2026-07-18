@@ -1,0 +1,43 @@
+% quic_mesh_t043.glp — T043 two-host acceptance volume run (SC-005): quic_mesh.glp with
+% PingCount raised 5 → 1000. Each node ships 1000 crdtmsg envelopes and collects the peer's
+% 1000 off the SAME full-duplex link; zero-loss = each side's Report holds exactly 1000
+% envelopes seq 1..1000; timing is taken by the driving host as wall-clock around the goal.
+%
+%   node_a (Olamnit, listener):  :limit 5000000  then  main(node_a, R).
+%   node_b (gavri,   connector): :limit 5000000  then  main(node_b, R).
+-mode(system).
+
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Report?) :- Me? =?= node_a |
+    server_listener(link_id("quic", ep("192.168.0.136", 9300), 1), Link, _),
+    run_node(Link?, node_a, node_b, 1000, Report).
+main(Me, Report?) :- Me? =?= node_b |
+    client_connector(link_id("quic", ep("192.168.0.136", 9300), 1), Link, _),
+    run_node(Link?, node_b, node_a, 1000, Report).
+
+procedure run_node(Link(_, _)?, Constant?, Constant?, Integer?, Stream(_)).
+run_node(ch(In, Out?), Me, Peer, PingCount, Report?) :-
+    ground(Me?), ground(Peer?), ground(PingCount?) |
+    gen_pings(Me?, Peer?, 1, PingCount?, Out),
+    collect(In?, Report).
+
+procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Stream(_)).
+gen_pings(From, To, N, Max, [Msg?|Out?]) :-
+    ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
+    mk_ping(From?, To?, N?, Msg),
+    N1 := N? + 1,
+    gen_pings(From?, To?, N1?, Max?, Out).
+gen_pings(_, _, N, Max, []) :- ground(N?), ground(Max?), N? > Max? | true.
+
+procedure mk_ping(Constant?, Constant?, Integer?, CrdtMsg).
+mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [])) :-
+    ground(From?), ground(To?), ground(N?) | true.
+
+procedure collect(Stream(_)?, Stream(_)).
+collect([M|In], [M?|Rest?]) :- ground(M?) | collect(In?, Rest).
+collect([], []).
