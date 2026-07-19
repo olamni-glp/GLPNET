@@ -1,4 +1,10 @@
 #!/usr/bin/env pwsh
+
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 6d69515b-a614-4251-bb6c-edf18186b8a8
+
 # Common PowerShell functions analogous to common.sh
 
 # Find repository root by searching upward for .specify directory
@@ -129,7 +135,7 @@ function Test-HasGit {
 
 # Strip a single optional path segment (e.g. gitflow "feat/004-name" -> "004-name").
 # Only when the full name is exactly two slash-free segments; otherwise returns the raw name.
-function Get-SpecKitEffectiveBranchName {
+function Get-BuildKitEffectiveBranchName {
     param([string]$Branch)
     if ($Branch -match '^([^/]+)/([^/]+)$') {
         return $Matches[2]
@@ -150,7 +156,7 @@ function Test-FeatureBranch {
     }
 
     $raw = $Branch
-    $Branch = Get-SpecKitEffectiveBranchName $raw
+    $Branch = Get-BuildKitEffectiveBranchName $raw
     
     # Accept sequential prefix (3+ digits) but exclude malformed timestamps
     # Malformed: 7-or-8 digit date + 6-digit time with no trailing slug (e.g. "2026031-143022" or "20260319-143022")
@@ -165,7 +171,7 @@ function Test-FeatureBranch {
 }
 
 # True when .specify/feature.json pins an existing feature directory that matches the
-# active FEATURE_DIR from Get-FeaturePathsEnv (so /speckit.plan can skip git branch pattern checks).
+# active FEATURE_DIR from Get-FeaturePathsEnv (so /buildkit.plan can skip git branch pattern checks).
 function Test-FeatureJsonMatchesFeatureDir {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,
@@ -239,7 +245,7 @@ function Find-FeatureDirByPrefix {
         [Parameter(Mandatory = $true)][string]$Branch
     )
     $specsDir = Join-Path $RepoRoot 'specs'
-    $branchName = Get-SpecKitEffectiveBranchName $Branch
+    $branchName = Get-BuildKitEffectiveBranchName $Branch
 
     $prefix = $null
     if ($branchName -match '^(\d{8}-\d{6})-') {
@@ -288,7 +294,7 @@ function Get-FeaturePathsEnv {
 
     # Resolve feature directory.  Priority:
     #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
-    #   2. .specify/feature.json "feature_directory" key (persisted by /speckit.specify)
+    #   2. .specify/feature.json "feature_directory" key (persisted by /buildkit.specify)
     #   3. Branch-name-based prefix lookup (same as scripts/bash/common.sh)
     $featureJson = Join-Path $repoRoot '.specify/feature.json'
     if ($env:SPECIFY_FEATURE_DIRECTORY) {

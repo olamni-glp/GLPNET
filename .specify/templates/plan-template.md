@@ -1,9 +1,16 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+
+SPDX-License-Identifier: MIT
+buildkit-file-id: 57a8b9fc-2569-4312-9cb0-17b9be75ff62
+-->
+
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit-plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
+**Note**: This template is filled in by the `/bk-plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
@@ -39,12 +46,12 @@
 
 ```text
 specs/[###-feature]/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md        # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-└── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+├── plan.md              # This file (/bk-plan command output)
+├── research.md          # Phase 0 output (/bk-plan command)
+├── data-model.md        # Phase 1 output (/bk-plan command)
+├── quickstart.md        # Phase 1 output (/bk-plan command)
+├── contracts/           # Phase 1 output (/bk-plan command)
+└── tasks.md             # Phase 2 output (/bk-tasks command - NOT created by /bk-plan)
 ```
 
 ### Source Code (repository root)
