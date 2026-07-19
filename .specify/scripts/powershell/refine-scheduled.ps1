@@ -1,5 +1,10 @@
 #!/usr/bin/env pwsh
 
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 24cad5bc-a710-4847-8aa0-148d47e9b0dd
+
 # Opt-in scheduled refinement trigger (spec-007 FR-018c). OFF by default:
 # this is a no-op unless `.specify/refine.json` sets
 # triggers.scheduled = true. Single-flight + fail-safe are enforced in the

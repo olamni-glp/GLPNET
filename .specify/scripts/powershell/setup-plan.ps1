@@ -1,4 +1,10 @@
 #!/usr/bin/env pwsh
+
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 44f705ef-98ac-4201-b09c-a1f92ea74cf5
+
 # Setup implementation plan for a feature
 
 [CmdletBinding()]

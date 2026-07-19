@@ -1,5 +1,10 @@
 #!/usr/bin/env pwsh
 
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 3b25260d-85f4-4239-a795-9d2b684866e2
+
 # Consolidated prerequisite checking script (PowerShell)
 #
 # This script provides unified prerequisite checking for Spec-Driven Development workflow.

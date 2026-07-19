@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "method_id": "method-20260719T134320Z-544f",
+  "elements": [
+    {
+      "id": "E1",
+      "kind": "procedure",
+      "text": "WP claim schema. Every claim is one work package (WP) with: wp_id — kebab-case, deterministic naming rule '<kind-prefix>-<subsystem-noun>[-<missing-part-or-batch-slug>]' where kind-prefix maps freeze→'freeze', guard→'guard', verify→'verify', close→'close', build→'build', rule-request→'rule'; subsystem-noun is the inventory's subsystem name lowercased/kebabed; the third segment is MANDATORY whenever more than one WP of the same kind could exist for a subsystem, and is derived deterministically from the inventory itself: for close WPs, the kebab-cased name of the inventory's named missing part (e.g. 'close-bytecode-runner-missing-opcodes'); for verify WPs covering a batch, the batch slug = the lexicographically lowest detail_id in the batch (e.g. 'verify-module-system-d7-101'); for build WPs, the requirement noun from the feature brief (e.g. 'build-fe-be-process-split', 'build-yngenios-embeddability'). Two blind builders naming the SAME underlying work must collide on the same wp_id (that is the point); distinct missing parts or distinct batches must NOT collide because their slugs differ. Fields: kind ∈ {freeze,guard,verify,close,build,rule-request,accept}; the accept kind exists solely for wave-5 whole-feature integration/acceptance WPs, named 'accept-<scope-noun>' (e.g. 'accept-full-scope-regression', 'accept-fe-be-e2e'); backing_detail_ids[] — ≥1 inventory detail_id per WP (a WP with zero detail_ids is invalid); deliverable — one sentence stating the artifact/behavior produced; acceptance_evidence — the exact test path, command, or checked-in artifact a fresh restart session runs/inspects to PROVE the WP done (never conversational state); depends_on[] — wp_ids, which MAY reference plausible WPs another builder should emit, constructed via this same naming rule (dangling refs are surfaced at merge, not fabricated around); wave 1–5 — semantics: wave 1 = freeze + guard, wave 2 = verify + rule-request filings, wave 3 = close, wave 4 = build (FE/BE process split + yngenios embeddability), wave 5 = integration + whole-feature acceptance (kind=accept WPs only); effort ∈ {S,M,L}; risk — one sentence on what could invalidate or force re-scoping the WP."
+    },
+    {
+      "id": "E2",
+      "kind": "procedure",
+      "text": "Coverage rule (no-silent-deferral). Each builder must account for 100% of the detail_ids in its own slice: every detail_id appears in ≥1 WP's backing_detail_ids OR as an explicit out-of-scope-proposed entry with an engineer-rulable reason (duplicate-of:<detail_id>, superseded, post-feature-follow-on, external-dependency, already-covered-by:<wp_id>). The coverage_map — structured per E7 — is a mandatory top-level output every cycle; a missing, partial, or schema-invalid coverage_map fails the cycle. Out-of-scope is always a PROPOSAL for the engineer's ruling, never a decision — the merge carries proposals forward verbatim."
+    },
+    {
+      "id": "E3",
+      "kind": "procedure",
+      "text": "Drift controls the merged plan must carry as first-class artifacts: (a) frozen-interface register — builder-1 derives from the 44 DELIVERED capabilities the interfaces/contracts (codecs, wire formats, module boundaries, test-visible APIs) the feature builds ON and must not change; each entry becomes or backs a freeze-kind WP; (b) regression-guard WPs — builder-1 emits guard-kind WPs pinning every existing suite exercising delivered capabilities to stay green across all waves, invocation command as acceptance evidence; (c) escalation register — the 2 open escalations (multiagent-runtime, mesh-ring) become rule-request WPs owned by builder-2, carried in the register until the engineer rules; no builder may resolve, absorb, or drop an escalation silently; merge-found conflicts append to the same register; (d) restart-safety — every WP's acceptance_evidence must be checkable from a fresh session with zero conversational memory (a command, a file/artifact path, a marathon-tracked checkpoint row); any WP failing this is invalid and must be tightened in cycle 2; (e) single-feature constraint, no scope-shrink escape hatch — all WPs compose exactly ONE roadmap feature with internal waves 1–5; no WP may propose a second feature; ANY 'post-feature-follow-on' proposal is not a coverage terminal state: it MUST be filed as a rule-request escalation WP naming the detail_ids and the proposed deferral, and until the engineer explicitly rules it out, the affected detail_ids DEFAULT to in-feature verify/close WPs in the merged plan. Nothing leaves the feature's scope without a recorded engineer ruling."
+    },
+    {
+      "id": "E4",
+      "kind": "procedure",
+      "text": "Builder role emphasis by slice (blind — each builder sees ONLY its own slice, never another slice or merge output): builder-1 (slice-delivered-foundation, sections 1–2, 44 DELIVERED) emits primarily freeze + guard WPs, the frozen-interface register, and reuse notes identifying which delivered capabilities form the dependency spine for downstream build WPs; builder-2 (slice-partials-gaps-escalations, sections 3–6 + open items) emits close WPs for each of the 9 PARTIALs' named missing parts (one close WP per named missing part, slugged per E1), confirms the 2 resolved gaps need no WP (or a guard WP if regression-prone), and emits the 2 rule-request WPs for the named open escalations; builder-3 (slice-unconfirmed-gaps, section 7, 97 UNCONFIRMED-GAPS) must give EVERY unconfirmed gap detail_id a verify WP first — verify WPs may batch by subsystem (batch slug per E1) but the union of verify WPs' backing_detail_ids must equal the 97; paired conditional close WPs ('close-<subsystem>-<slug>' depends_on the corresponding verify WP) cover the build path. Builder-3 may propose out-of-scope ONLY for a detail_id whose verify WP defines a concrete existence/scope check AND where the proposal carries an engineer-rulable reason per E2/E3e — deferral-by-default is prohibited; an out-of-scope proposal without a preceding verify WP for the same detail_id is invalid. Builders may reference plausible cross-builder WPs in depends_on via the E1 naming rule; they must never invent detail_ids outside their slice. ANY builder (including builder-3) MUST emit its own rule-request WP for each of its out-of-scope proposals per E3e - rule-request authorship is not restricted to builder-2; builder-2 owns only the two named escalation rule-requests."
+    },
+    {
+      "id": "E5",
+      "kind": "procedure",
+      "text": "Verification cycle (cycle 2) + provisionality gate. Each builder re-checks its OWN cycle-1 output with no merge-derived information: self-select the weakest WPs — any WP missing concrete acceptance_evidence, any slice detail_id absent from the coverage_map, any depends_on naming a WP the E1 naming rule says should not exist, any wave/kind mismatch, any WP violating restart-safety (E3d), the single-feature constraint (E3e), or the verify-before-out-of-scope rule (E4). Actions: tighten (rewrite acceptance_evidence to a runnable command/path), retract (list retracted claim_ids in 'retractions' with reason), re-map (complete the coverage_map to 100%), re-issue corrected claims with new claim_ids; cycle-2 output uses the E7 contract with cycle:2, unchanged claims re-stated by claim_id reference only. Because cycle 2 is self-review only, it does NOT by itself confirm any claim across slices: at merge, every claim supported by only one slice is marked PROVISIONAL and is not promoted into the final plan. Promotion requires either (i) cross-slice corroboration — backing detail_id overlap with another builder's claim, or another builder's depends_on naming this wp_id exactly (dependency confirmation) — or (ii) the non-blind Critic's explicit CONFIRM during E10 adjudication. PROVISIONAL claims that gain neither remain in the output labeled PROVISIONAL with the reason recorded. E10 MUST adjudicate every single-slice claim required for 100% coverage (not only mechanically surfaced candidate/provisional rows), so no coverage-necessary WP can be lost to the provisionality gate by construction."
+    },
+    {
+      "id": "E6",
+      "kind": "procedure",
+      "text": "MECHANICAL merge — set-ops and joins ONLY, no judgment, no unification, no acceptance decisions. Inputs: the three builders' final-cycle claim sets + coverage_maps. Operations: (1) join by exact wp_id — identical wp_id from different builders → emit a merge-candidate row containing both claims verbatim; (2) join by backing_detail_id overlap — cross-builder WPs sharing ≥1 detail_id → emit an overlap-candidate row verbatim; (3) resolve every cross-builder depends_on by exact wp_id match against the union; unmatched refs → 'dangling-deps' list; (4) compute the coverage union across the three structured coverage_maps; inventory detail_ids absent from the union → 'uncovered' list; detail_ids with conflicting statuses across builders (covered vs out-of-scope-proposed) → 'status-conflict' list; (5) tag every claim PROVISIONAL or corroborated per the E5 gate, mechanically (overlap/dependency-confirmation checks only); (6) detect dependency-graph cycles → 'dep-cycle' list. The mechanical merge emits ONLY these candidate/conflict/dangling/uncovered/provisional lists plus the raw joined table — it never unifies two claims, never resolves a conflict, never assigns final waves. All adjudication is deferred to E10."
+    },
+    {
+      "id": "E7",
+      "kind": "output-contract",
+      "text": "Per-builder output, one JSON object per cycle, persisted to the run dir as builder-N.cycle-n.json: {\"builder\":\"builder-N\",\"cycle\":n,\"claims\":[{\"claim_id\":\"bN-cM-###\" (zero-padded, unique per builder+cycle),\"wp_id\":\"...\",\"kind\":\"freeze|guard|verify|close|build|rule-request\",\"backing_detail_ids\":[\"...\"],\"deliverable\":\"one sentence\",\"acceptance_evidence\":\"test path/command/artifact checkable from a fresh session\",\"depends_on\":[\"wp_id\"],\"wave\":1,\"effort\":\"S|M|L\",\"risk\":\"one sentence\",\"statement\":\"one sentence\",\"claim\":\"<wp_id> — <one sentence>\",\"source_citation\":\"<slice file section/detail_id anchors>\",\"confidence\":0.0,\"builder_id\":\"builder-N\",\"slice_id\":\"slice-...\"}],\"coverage_map\":{\"<detail_id>\":{\"status\":\"covered|out-of-scope-proposed\",\"wp_ids\":[\"<wp_id>\",...],\"reason\":\"required non-empty engineer-rulable reason when status=out-of-scope-proposed; empty string when covered\"}},\"retractions\":[{\"claim_id\":\"...\",\"reason\":\"...\"}]}. The coverage_map value is ALWAYS this structured object — machine-validatable: status must be one of the two literals; wp_ids non-empty iff status=covered; reason non-empty iff status=out-of-scope-proposed; a separate field verify_wp (string) carries, for builder-3 out-of-scope-proposed entries, the wp_id of the verify WP that performed the existence check - MANDATORY for builder-3 out-of-scope entries, absent otherwise. Claims or coverage entries failing schema validation are rejected at merge and listed as malformed, not repaired."
+    },
+    {
+      "id": "E8",
+      "kind": "rubric",
+      "text": "plan-review rubric applied at adjudication/synthesis and self-applied by builders in cycle 2. Per-WP: (R1) back-traceable — ≥1 valid slice detail_id; (R2) forward-traceable — acceptance_evidence is a concrete runnable command, test path, or artifact path; (R3) restart-safe — evidence checkable with zero conversational memory, marathon-trackable; (R4) dependency-sound — depends_on refs conform to the E1 naming rule and form no cycle; (R5) wave-coherent — kind↔wave per E1 semantics (freeze/guard early, verify before its paired close, build after its spine dependencies); (R6) right-sized — S/M/L honest, L WPs carry a risk note naming the split point if they slip. Plan-level: (R7) 100% coverage union, (R8) zero silent deferrals (every unplanned detail_id has an explicit out-of-scope proposal with a ruling path), (R9) both escalations present as rule-request WPs, (R10) single-feature composition, (R11) FE/BE split + yngenios embeddability reachable via an explicit dependency spine from wave-1 frozen foundation."
+    },
+    {
+      "id": "E9",
+      "kind": "budget",
+      "text": "Budget: 3 builders, exactly 2 cycles, 350k-token hard cap for the whole run. Allocation: 90k per builder in cycle 1, 20k per builder in cycle 2, 30k for merge + adjudication + synthesis. Each cycle's outputs are persisted to the run dir before the next role starts (restart-safe: a fresh session resumes from the last persisted cycle file, never from memory). At the cap: hard stop, persist whatever is complete, and record unprocessed detail_ids, unmerged claims, and unadjudicated candidates in an 'open-items' file appended to the escalation register — never silently truncate coverage. A cap-hit run's output is NON-FINAL: synthesis from a capped run MUST NOT be accepted as the feature plan unless either (i) a resumed session completes the interrupted cycle from the persisted state, or (ii) the engineer records an explicit written waiver accepting the capped output as-is; the waiver (or its absence) is recorded in the run dir alongside the open-items file."
+    },
+    {
+      "id": "E10",
+      "kind": "procedure",
+      "text": "ADJUDICATION + SYNTHESIS (separate roles, downstream of the E6 mechanical merge). Adjudication (Critic, non-blind): reviews every merge-candidate, overlap-candidate, status-conflict, dangling-dep, dep-cycle, and PROVISIONAL row from E6 and marks each claim CONFIRM, NOT-ACCEPTED, or ESCALATE — CONFIRM promotes a PROVISIONAL claim per E5(ii); status-conflicts (same detail_id covered vs out-of-scope-proposed) and freeze-vs-build collisions on the same interface are always ESCALATE to the engineer via the escalation register, never auto-resolved; candidate pairs judged genuinely identical are recorded as one accepted WP with both claim_ids attributed. Synthesis (Curator): assembles the final dependency-ordered wave plan, frozen-interface register, escalation register, out-of-scope-proposed list (each entry paired with its rule-request per E3e), and the full detail_id→WP traceability table USING ONLY accepted (CONFIRM/corroborated) rows. Unresolved candidates and NOT-ACCEPTED claims are listed verbatim in a separate BLOCKED section of the output (never interleaved with accepted plan rows, never counted as accepted); each BLOCKED row names the unresolved candidate/conflict it awaits. Accepted-row subsystems whose dependencies land in the BLOCKED section carry wave:'blocked-pending-adjudication' rather than a number until the blocker is adjudicated. Final wave assignment for accepted rows = max over duplicate proposals unless a depends_on edge forces later. The Critic additionally adjudicates EVERY single-slice claim needed for 100% coverage per E5, row by row."
+    }
+  ],
+  "source_partition": {
+    "slice-delivered-foundation": "builder-1",
+    "slice-partials-gaps-escalations": "builder-2",
+    "slice-unconfirmed-gaps": "builder-3"
+  },
+  "questions": [
+    "What is the minimal dependency spine from the 44 delivered capabilities to the FE/BE process-split and yngenios-embeddability build WPs — which frozen interfaces lie on that spine and must be registered in wave 1?",
+    "For each of the 97 unconfirmed gaps, what concrete existence/scope check does its verify WP run, and which subsystem batches let one verify WP cover many detail_ids without hiding any individual gap?",
+    "What concrete acceptance evidence proves each wave complete from a fresh restart session — which test suites, commands, or checked-in artifacts, and where do marathon checkpoints record them?",
+    "Which detail_ids warrant an out-of-scope proposal AFTER their verify check, under which engineer-rulable reason, and what rule-request WP carries each such proposal to a recorded ruling?",
+    "Which of the 9 PARTIALs' named missing parts sit on the FE/BE-split critical path (must close in wave 3) versus which can run parallel or late without blocking wave-4 build WPs?",
+    "What exactly do the two open escalations (multiagent-runtime, mesh-ring) block in this plan, and what is the minimal engineer ruling each rule-request WP must obtain to unblock its dependents?",
+    "Which delivered capabilities need dedicated regression-guard WPs versus which are already exercised by existing green suites that a single pinned guard WP can cover?"
+  ],
+  "rubric_id": "plan-review",
+  "cycle_cap": 2,
+  "min_cycles": 2,
+  "token_budget": 350000,
+  "critic_adjudications": [
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    }
+  ],
+  "frozen_at": "20260719T135400Z",
+  "frozen_by": "curator"
+}

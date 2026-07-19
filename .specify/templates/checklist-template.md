@@ -1,3 +1,10 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+
+SPDX-License-Identifier: MIT
+buildkit-file-id: 71075994-cd92-45a1-9886-9b6de9001528
+-->
+
 # [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 
 **Purpose**: [Brief description of what this checklist covers]

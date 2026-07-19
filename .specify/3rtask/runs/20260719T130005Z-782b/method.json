@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "method_id": "method-20260719T130005Z-782b",
+  "elements": [
+    {
+      "id": "E1",
+      "kind": "question",
+      "text": "Core question: for the glpnet Gleam GLP implementation, which feature details (interfaces, user stories, patterns, protocols) are ALREADY DELIVERED, and which remain GAPS versus (a) the roadmap's full-Gleam ambitions including front-end/back-end separation and (b) the Dart/C# reference runtimes? yngenios embeddability is requirements-level: no yngenios sources exist in-repo, so it is a gap-by-definition unless in-repo evidence shows a delivered embeddability surface."
+    },
+    {
+      "id": "E2",
+      "kind": "procedure",
+      "text": "Enumeration procedure (all builders, cycle 1): sweep your OWN corpus only. Step 1 — terminal file inventory: produce a complete recursive listing of every in-corpus file (declaring vendored/build artifacts such as _build, .dart_tool, package caches out-of-corpus in the manifest, not inventoried); no area is 'touched' until its terminal files are listed. Step 2 — four explicit extraction passes over the inventoried files: (P1) exported/public symbols (public functions, types, CLI/REPL commands, module exports); (P2) tests (test files, suite sections, golden/corpus fixtures — record what behavior each locks); (P3) specs/user stories (spec.md/plan.md/tasks.md sections, handover docs, doc sections stating what a user/agent accomplishes); (P4) protocol artifacts (wire formats, framing constants, handshake sequences, bytecode/opcode tables, generated protocol files). Step 3 — from the passes, emit claims at four grains: interface, user-story, pattern (architectural mechanisms: suspension, SRSW, three-phase execution, process split, supervision), protocol. One claim per feature-detail. Never infer content of another corpus; testify only to what your corpus shows."
+    },
+    {
+      "id": "E3",
+      "kind": "rubric",
+      "text": "Claim format discipline: every claim carries separate evidence fields — impl_citation (absolute path[:lines] or spec section inside the builder's own slice showing the detail exists/is stated), test_citation (absolute path[:lines] of a test locking the behavior, or the literal string 'no-test: <one-line note>' when a systematic P2 pass found none), and status_basis (one sentence stating WHY this status follows from the cited evidence). Status vocabulary: designed|delivered|partial|absent|deferred, always as seen FROM THIS CORPUS. A 'delivered' status is REJECTED by the merger unless test_citation is a real test path OR an explicit no-test note is present (a no-test note downgrades merge confidence, never silently passes as fully locked). 'partial' must name the present part and the missing part in the statement. 'absent' claims must follow E6's absent-after-sweep rule. Claims missing impl_citation or status_basis are invalid and dropped by the merger with a dropped-claims log entry."
+    },
+    {
+      "id": "E4",
+      "kind": "rubric",
+      "text": "Dedup-key naming rule (deterministic, so blind builders converge): detail_id is lowercase kebab-case; subsystem noun first, then capability; no version numbers, no corpus-specific or runtime-name prefixes (never 'gleam-' or 'dart-'); singular nouns; prefer the shortest widely-used term. Canonical seed vocabulary all builders MUST reuse when applicable: term-representation, term-heap-unification, suspension-scheduler, srsw-check, three-phase-execution, guard-kernel, body-kernel, frame-codec, crc32-checksum, loopback-transport, tcp-transport, quic-transport, link-layer, mesh-ring, repl-loop, compiler-pipeline, bytecode-runner, partial-evaluator, type-checker, module-system, prelude-library, multiagent-runtime, fe-be-process-split, embeddability-api, distribution-protocol, test-harness. Derive new keys by the same rule (e.g. frame-codec-length-prefix, quic-transport-profile-c). Because blind convergence is imperfect, every claim MUST also carry aliases[] (other plausible names the builder considered, including the raw in-corpus name of the thing) and components[] (sub-capabilities bundled under this detail_id, so the merger can detect one builder's single claim matching another's several). The merger maintains a canonicalization table mapping raw keys and aliases to canonical detail_ids; every table entry records which claims it unified. Key collisions the table cannot resolve mechanically (two claims sharing a key but describing different capabilities per their components[]) are ESCALATED, never force-merged."
+    },
+    {
+      "id": "E5",
+      "kind": "procedure",
+      "text": "Coverage rule: each builder must account for 100% of its corpus areas. Cycle-1 output must include a coverage manifest: every top-level area of the slice, each marked swept|partially-swept|not-swept, with per-area coverage totals (files_seen/files_in_area from the E2 terminal inventory) and a one-line reason for anything not fully swept (size, unreadable, binary, out of budget). Nothing may be silently dropped — an unswept area is itself reportable so the Curator can see the blind spot. Vendored/build artifacts (_build, .dart_tool, package caches) are declared out-of-corpus in the manifest, not swept."
+    },
+    {
+      "id": "E6",
+      "kind": "rubric",
+      "text": "Tagging and absence rule, fitted to what each corpus can testify: builder-2 (impl corpus) asserts delivered-gleam (code + test evidence per E3) or partial; builder-2 MAY additionally assert explicit 'absent-after-sweep' claims (status=absent, tag=gap-gleam) for a scoped list of searched capabilities — permitted ONLY when a systematic search of the ENTIRE corpus (grep patterns + inventory review) found nothing, and the claim's impl_citation field records the search scope and terms used. builder-1 (specs corpus) asserts design-promise (promised, WIP, promoted, deferred per the roadmap snapshot and spec dirs) and may mark a promise claimed-delivered only when the spec/handover corpus itself records completion. builder-3 (reference corpus) asserts reference-capability (a capability the full-scope Dart/C# runtimes + normative docs deliver, hence required for parity). Gap derivation at merge is NOT bare set-difference: a candidate gap (reference-capability or design-promise with no matching delivered-gleam claim) becomes a resolved GAP only after (a) the E4 canonicalization/alias/components review confirms no differently-named delivered claim matches, and (b) it is corroborated by a builder-2 absent-after-sweep claim where one exists; candidate gaps with neither remain flagged 'unconfirmed-gap' and are listed as such, never promoted to resolved GAP. yngenios embeddability-api enters the merge as gap-by-definition per E1 unless a delivered-gleam claim for it exists."
+    },
+    {
+      "id": "E7",
+      "kind": "procedure",
+      "text": "Cycle-2 procedure (strictly within own corpus, composable from this method alone — builders NEVER receive merge-derived information of any kind, not merge output, not sibling claims, not which of their own claims are singletons): each builder (a) re-verifies its own weakest-cited claims, self-selected by rule: any claim whose impl_citation lacks file:line precision, any delivered claim carrying a no-test note, and any claim whose status_basis the builder itself flags as inference-heavy — tighten citations, upgrade/downgrade status where the closer read warrants, and explicitly retract anything that does not survive re-reading; (b) sweeps the areas its OWN cycle-1 coverage manifest marked partially-swept or not-swept, updating the manifest totals; (c) performs targeted re-sweeps wherever its own coverage confidence is low (e.g. an extraction pass P1-P4 it under-ran in an area), and answers any E9-routed standing questions it left uncovered. Additional cycles (up to the E10 cap) may be commissioned by the coordinator; builders receive only this same procedure again, with no explanation that could leak merge state."
+    },
+    {
+      "id": "E8",
+      "kind": "procedure",
+      "text": "Mechanical merge contract (executed by the deterministic merge primitive/coordinator — set operations and table lookups only, never judgment; the reviewing Critic separately adjudicates the resulting merge rows and never performs the merge itself): join claims across corpora via the E4 canonicalization table (exact detail_id, then alias/components matching); near-miss keys are surfaced as merge-candidates, never silently unified, and any UNRESOLVED merge-candidate BLOCKS final verdicts for every subsystem it touches (those subsystems are reported 'verdict-blocked: pending key resolution', not guessed). Verdicts are reported on THREE SEPARATE AXES per detail_id, never collapsed: delivery axis (delivered|partial|absent in Gleam, from builder-2 claims under E3 evidence gates), parity axis (matches|falls-short-of|exceeds the reference capability, from builder-3 vs builder-2), promise axis (fulfills|partially-fulfills|breaks|not-promised vs roadmap/specs, from builder-1 vs builder-2). A delivered-gleam claim NEVER mechanically overrides a spec/reference incompatibility: if builder-2 says delivered but builder-1/builder-3 evidence is incompatible with what was delivered (deferred, differently specified, semantically divergent), that is a CONFLICT → ESCALATE verbatim with all citations. Singletons are kept visible per axis, never averaged away. Gap resolution follows E6."
+    },
+    {
+      "id": "E9",
+      "kind": "rubric",
+      "text": "Per-builder question routing: builder-1 answers Q3, Q5, Q6 from specs/roadmap only (what was promised, deferred, and what FE/BE separation and embeddability were DESIGNED to be); builder-2 answers Q1, Q4, Q5, Q6 from code only (what runtime/transport surfaces EXIST in Gleam, what FE/BE or embeddability surfaces exist in code); builder-3 answers Q2, Q7 from the reference runtimes and normative docs only (what full scope requires). Q8 (test-parity) is answered by builder-2 for Gleam and builder-3 for the reference suites."
+    },
+    {
+      "id": "E10",
+      "kind": "budget",
+      "text": "Budget, ledger, and restart: 3 builders, 2 cycles standard, hard cap 3 cycles; 600k tokens total, indicative split 140k per builder cycle-1, 40k per builder cycle-2, 60k merge+synthesis reserve. Durable ledger: per-role/per-cycle token rows are recorded in the spec-020 tokens ledger via the buildkit CLI, and all run artifacts live in the 3rtask run directory for this run (under the marathon/3rtask run store anchored to mrun-8bda036d9e9b). Restart behavior: every builder's claims JSON and coverage manifest are persisted to the run dir at the END of each cycle; a restarted or crashed session resumes from the LAST PERSISTED cycle artifacts in the run dir, never from conversational memory, and re-runs only the unpersisted cycle. Hard stop rule: on reaching 600k total tokens or the cycle cap, STOP — persist current state, record every unresolved merge-candidate, unconfirmed-gap, verdict-blocked subsystem, and unswept area as named open items in the final report — never silently continue past the cap."
+    },
+    {
+      "id": "E11",
+      "kind": "output-contract",
+      "text": "Output contract: each builder emits one JSON object {\"builder\": \"builder-N\", \"cycle\": n, \"claims\": [{\"claim_id\": \"bN-cM-###\" (builder-cycle-sequence, stable and never reused), \"detail_id\": \"kebab-key per E4\", \"aliases\": [\"...\"], \"components\": [\"...\"], \"grain\": \"interface|user-story|pattern|protocol\", \"status\": \"designed|delivered|partial|absent|deferred\", \"tag\": \"delivered-gleam|gap-gleam|reference-capability|design-promise\", \"evidence_type\": \"code|test|spec|doc\", \"impl_citation\": \"absolute path[:lines] or spec section within own slice; for absent-after-sweep: search scope + terms\", \"test_citation\": \"absolute path[:lines] or 'no-test: <note>'\", \"status_basis\": \"one sentence: why this status follows from the evidence\", \"statement\": \"one sentence; for partial, names present part and missing part\"}], \"coverage_manifest\": [{\"area\": \"path-or-doc\", \"state\": \"swept|partially-swept|not-swept\", \"files_seen\": 0, \"files_in_area\": 0, \"note\": \"...\"}], \"questions_answered\": [\"Q1\"], \"retractions\": [{\"claim_id\": \"...\", \"reason\": \"...\"}]} — retractions present from cycle 2 onward. All cycle outputs are persisted per E10. The final Curator report groups entries by the three E8 axes plus escalations and open items (unconfirmed-gaps, verdict-blocked subsystems, unswept areas), and EVERY entry references the source claim_ids it rests on."
+    }
+  ],
+  "source_partition": {
+    "slice-roadmap-specs": "builder-1",
+    "slice-gleam-impl": "builder-2",
+    "slice-reference-runtimes": "builder-3"
+  },
+  "questions": [
+    "Q1: Which GLP runtime surfaces exist in the Gleam implementation today (term representation, heap/unification, suspension scheduling, guard/body kernels, codec, transports), and with what test evidence?",
+    "Q2: Which capabilities exist ONLY in the Dart/C# reference runtimes — compiler pipeline, bytecode runner, REPL loop, type checker, partial evaluator, SRSW check, module system, prelude, multiagent runtime — that a full-scope Gleam GLP would have to match?",
+    "Q3: Which roadmap/spec promises for full-Gleam (per the frozen snapshot and spec dirs) are recorded as delivered, WIP, promoted-but-unstarted, or explicitly deferred?",
+    "Q4: What transport and link-layer protocols are delivered in Gleam (frame codec, length-prefix framing, CRC32, loopback, TCP, QUIC profile work, mesh/ring), and which are partial or stubbed?",
+    "Q5: What front-end/back-end process-split surfaces exist — as designed in the roadmap/specs versus as actual code seams in the Gleam implementation?",
+    "Q6: What embeddability hooks (host-embedding API, service/box boundary, store kernels, external control surface) exist in design or in code, given yngenios embeddability is gap-by-definition absent in-repo evidence?",
+    "Q7: Which normative-doc requirements (bytecode v216 instruction set, runtime spec semantics, typed-GLP manual behaviors) define full-scope conformance targets that any Gleam runtime must eventually satisfy?",
+    "Q8: What is the test-coverage parity picture — which behaviors are locked by tests in the Gleam corpus versus the reference suites (REPL suite sections, Dart unit tests, program corpus)?"
+  ],
+  "rubric_id": "research-review",
+  "cycle_cap": 3,
+  "min_cycles": 2,
+  "token_budget": 600000,
+  "critic_adjudications": [
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    }
+  ],
+  "frozen_at": "20260719T131216Z",
+  "frozen_by": "curator"
+}

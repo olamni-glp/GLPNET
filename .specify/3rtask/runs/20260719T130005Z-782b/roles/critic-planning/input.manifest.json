@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "role_id": "critic-planning",
+  "role_kind": "critic",
+  "cycle": 0,
+  "parts": [
+    {
+      "part": "subject_brief",
+      "sha256": "ddecb4dab592bef7991318c29e843062f51026502ce9ae221a95935f9b4982f7"
+    },
+    {
+      "part": "own_slice",
+      "sha256": "c8b5221a246b20ae5dfc1d98a75c16d128b19ec488f832adcd721e39800e1f19"
+    }
+  ],
+  "content_path": "D:\\BSTDEV\\research\\GLP\\GLPNET\\.specify\\3rtask\\runs\\20260719T130005Z-782b\\roles\\critic-planning\\input.md",
+  "input_sha256": "9ae6448dbe14e51c9f4d1020ccc61571d7ca8159e4d11026e850f09ebd83bdde"
+}

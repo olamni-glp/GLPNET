@@ -1,0 +1,28 @@
+{
+  "slices": [
+    {
+      "slice_id": "slice-delivered-foundation",
+      "description": "Phase-1 inventory sections 1-2: the 44 DELIVERED Gleam capabilities. Plan input for: what the feature builds ON, which interfaces are frozen, what must not regress.",
+      "sources": [
+        "docs/research/fullscope-gleam/phase2-slices/sliceA-delivered-foundation.md"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-partials-gaps-escalations",
+      "description": "Phase-1 inventory sections 3-6 + open items: 9 PARTIALs with named missing parts, 2 resolved gaps, 2 open escalations, run residuals. Plan input for: concrete closure work packages.",
+      "sources": [
+        "docs/research/fullscope-gleam/phase2-slices/sliceB-partials-gaps-escalations.md"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-unconfirmed-gaps",
+      "description": "Phase-1 inventory section 7: the 97 UNCONFIRMED-GAPS (promised/required with no Gleam code testimony). Plan input for: verification-then-closure work packages and scope rulings.",
+      "sources": [
+        "docs/research/fullscope-gleam/phase2-slices/sliceC-unconfirmed-gaps.md"
+      ],
+      "assigned_to": null
+    }
+  ]
+}

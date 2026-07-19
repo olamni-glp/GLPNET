@@ -1,0 +1,2203 @@
+{
+  "builder": "builder-3",
+  "cycle": 1,
+  "claims": [
+    {
+      "claim_id": "b3-c1-001",
+      "detail_id": "term-representation",
+      "aliases": [
+        "HeapCell",
+        "ConstTerm",
+        "StructTerm",
+        "VarRef",
+        "terms.dart"
+      ],
+      "components": [
+        "heap-only-terms",
+        "cell-tags",
+        "value-tag"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/heap_fcp.dart:15-65",
+      "test_citation": "programs/tests/test_struct.glp",
+      "status_basis": "Heap cell model with WrtTag/RoTag/ValueTag and heap-only term discipline is implemented and normatively required by docs/glp-bytecode-v216-complete.md section 0.",
+      "statement": "The reference runtime represents all terms heap-only via tagged cells (writer/reader/value) per the normative ISA convention, which any full-scope Gleam runtime must reproduce.",
+      "claim": "term-representation — The reference runtime represents all terms heap-only via tagged cells (writer/reader/value) per the normative ISA convention, which any full-scope Gleam runtime must reproduce.",
+      "source_citation": "glp_runtime/lib/runtime/heap_fcp.dart:15-65",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-002",
+      "detail_id": "term-heap-unification",
+      "aliases": [
+        "HeapFCP",
+        "heap_fcp.dart",
+        "WriterContent",
+        "Pointer"
+      ],
+      "components": [
+        "two-cell-variable",
+        "reader-points-to-writer",
+        "allocate-variable-pair",
+        "bind-callbacks",
+        "suspensions-on-writer"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/heap_fcp.dart:1-80",
+      "test_citation": "programs/tests/test_reader_binding.glp",
+      "status_basis": "FCP two-cell heap (per heap-pointer-architecture-spec v3.0) is fully implemented: reader cells point to writer cells, writers hold null/suspensions/pointer, allocateVariable returns a (writerAddr, readerAddr) pair.",
+      "statement": "Unification runs over an FCP two-cell heap where each variable is a paired writer+reader cell, suspensions live on writer cells, and binding fires observation callbacks.",
+      "claim": "term-heap-unification — Unification runs over an FCP two-cell heap where each variable is a paired writer+reader cell, suspensions live on writer cells, and binding fires observation callbacks.",
+      "source_citation": "glp_runtime/lib/runtime/heap_fcp.dart:1-80",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-003",
+      "detail_id": "suspension-scheduler",
+      "aliases": [
+        "SuspensionRecord",
+        "suspend.dart",
+        "suspendGoal",
+        "wake-and-retry"
+      ],
+      "components": [
+        "one-record-per-goal",
+        "writer-cell-suspension-list",
+        "reactivation-at-kappa",
+        "suspension-forwarding"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-runtime-spec.txt:227-249 (with lib/runtime/suspend.dart, suspension.dart)",
+      "test_citation": "programs/tests/test_nested_suspend.glp",
+      "status_basis": "Runtime spec v2.19 normatively defines suspend (one SuspensionRecord, records hung on writers) and reactivation (resume at kappa first clause, forwarding on var-to-var binds); the Dart runtime files implement it.",
+      "statement": "Goal suspension/reactivation semantics — one suspension record per goal on writer cells, wake-and-retry from the procedure entry point kappa, and suspension forwarding when a writer binds to another variable — are a locked conformance target.",
+      "claim": "suspension-scheduler — Goal suspension/reactivation semantics — one suspension record per goal on writer cells, wake-and-retry from the procedure entry point kappa, and suspension forwarding when a writer binds to another variable — are a locked conformance target.",
+      "source_citation": "docs/glp-runtime-spec.txt:227-249",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-004",
+      "detail_id": "three-phase-execution",
+      "aliases": [
+        "ClauseTry",
+        "Commit",
+        "UnionSiAndGoto",
+        "ResetAndGoto",
+        "sigmaHat"
+      ],
+      "components": [
+        "head-tentative-unification",
+        "guard-evaluation",
+        "body-mutation",
+        "si-union-on-clause-fail",
+        "commit"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md sections 3-4 (with glp_runtime/lib/bytecode/opcodes.dart:11-43)",
+      "test_citation": "programs/tests/test_toplevel.glp",
+      "status_basis": "The normative ISA defines commit and head/guard vs body phase discipline, and the opcode set (ClauseTry/Commit/UnionSiAndGoto/ResetAndGoto/SuspendEnd) implements it.",
+      "statement": "Three-phase clause execution (HEAD tentative bindings, pure GUARDs, BODY mutations after commit, with Si unioned into U on clause failure) is the core execution model any Gleam runtime must match.",
+      "claim": "three-phase-execution — Three-phase clause execution (HEAD tentative bindings, pure GUARDs, BODY mutations after commit, with Si unioned into U on clause failure) is the core execution model any Gleam runtime must match.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md sections 3-4",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-005",
+      "detail_id": "bytecode-runner",
+      "aliases": [
+        "BytecodeRunner",
+        "BytecodeProgram",
+        "runner.dart",
+        "RunResult"
+      ],
+      "components": [
+        "label-index",
+        "v1-v2-mixed-ops",
+        "defined-guards-side-table",
+        "run-result-enum"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/bytecode/runner.dart:17-70",
+      "test_citation": "no-test: Dart unit tests live at glp_runtime/test/ outside this slice; behavior exercised by programs/tests/ corpus",
+      "status_basis": "BytecodeRunner (5570 lines) executes BytecodeProgram objects holding mixed v1/v2 instructions with a label map and a runtime-defined-guard side table, returning terminated/suspended/yielded/outOfReductions.",
+      "statement": "The reference delivers a bytecode interpreter whose public surface is BytecodeProgram (ops + labels + definedGuards) executed to a four-valued RunResult.",
+      "claim": "bytecode-runner — The reference delivers a bytecode interpreter whose public surface is BytecodeProgram (ops + labels + definedGuards) executed to a four-valued RunResult.",
+      "source_citation": "glp_runtime/lib/bytecode/runner.dart:17-70",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-006",
+      "detail_id": "bytecode-instruction-set",
+      "aliases": [
+        "opcodes.dart",
+        "opcodes_v2.dart",
+        "v2.16.3 ISA"
+      ],
+      "components": [
+        "control-instructions",
+        "commit",
+        "head-instructions",
+        "put-instructions",
+        "unify-instructions",
+        "spawn-requeue-proceed",
+        "allocate-deallocate",
+        "guard-instructions"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md sections 2-14 (with glp_runtime/lib/bytecode/opcodes.dart)",
+      "test_citation": "csharp/glp_il_codec.tests/DiscriminantCompletenessTests.cs",
+      "status_basis": "The v2.16.3 spec is marked Normative and the Dart opcodes file implements the full family (ClauseTry through Transmit); the C# il-codec discriminant tests lock family completeness.",
+      "statement": "The normative v2.16 bytecode instruction set (control, commit, head/put/unify, spawn/requeue/proceed, allocate/deallocate, guard instructions) is the conformance target for any bytecode-level Gleam runner.",
+      "claim": "bytecode-instruction-set — The normative v2.16 bytecode instruction set (control, commit, head/put/unify, spawn/requeue/proceed, allocate/deallocate, guard instructions) is the conformance target for any bytecode-level Gleam runner.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md sections 2-14",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-007",
+      "detail_id": "bytecode-mode-conversion",
+      "aliases": [
+        "GetVariable",
+        "GetValue",
+        "isReader",
+        "mode conversion table"
+      ],
+      "components": [
+        "writer-first-occurrence",
+        "reader-first-occurrence",
+        "subsequent-occurrence",
+        "wxw-restriction",
+        "srsw-enforcement"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md sections 12 and 16",
+      "test_citation": "programs/tests/test_wxw.glp",
+      "status_basis": "Section 12 defines FCP-style mode-aware argument loading with a mode conversion table and section 16 defines SRSW enforcement plus the no-writer-to-writer-binding restriction.",
+      "statement": "Mode-aware argument loading (GetVariable/GetValue with isReader polarity) and the WxW no-writer-to-writer restriction are normative instruction-level semantics.",
+      "claim": "bytecode-mode-conversion — Mode-aware argument loading (GetVariable/GetValue with isReader polarity) and the WxW no-writer-to-writer restriction are normative instruction-level semantics.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md sections 12 and 16",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-008",
+      "detail_id": "suspension-abandonment",
+      "aliases": [
+        "abandon.dart",
+        "abandonment"
+      ],
+      "components": [
+        "explicit-abandon-operation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md section 10.2 (with glp_runtime/lib/runtime/abandon.dart)",
+      "test_citation": "no-test: no in-slice test program identified for abandonment",
+      "status_basis": "Section 10.2 defines abandonment as an explicit runtime operation and a dedicated runtime module exists.",
+      "statement": "Explicit suspension abandonment is a defined runtime operation alongside automatic reactivation.",
+      "claim": "suspension-abandonment — Explicit suspension abandonment is a defined runtime operation alongside automatic reactivation.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md section 10.2",
+      "confidence": 0.7,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-009",
+      "detail_id": "scheduler-fairness",
+      "aliases": [
+        "fairness.dart",
+        "tailRecursionBudget",
+        "Timer.run"
+      ],
+      "components": [
+        "fifo-goal-queue",
+        "tail-recursion-budget",
+        "event-queue-yield"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-runtime-spec.txt:432-434 (with glp_runtime/lib/runtime/fairness.dart)",
+      "test_citation": "no-test: fairness locked by spec text; no in-slice test program",
+      "status_basis": "The runtime spec mandates FIFO scheduling among goals plus a tail-recursion budget that yields to the host event queue, and fairness.dart implements the budget arithmetic.",
+      "statement": "Goal scheduling requires FIFO fairness between concurrent goals and a bounded tail-recursion budget that yields to the host event loop to avoid starving I/O and timers.",
+      "claim": "scheduler-fairness — Goal scheduling requires FIFO fairness between concurrent goals and a bounded tail-recursion budget that yields to the host event loop to avoid starving I/O and timers.",
+      "source_citation": "docs/glp-runtime-spec.txt:432-434",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-010",
+      "detail_id": "suspension-diagnostics",
+      "aliases": [
+        "DrainResult",
+        "blockingReaders",
+        "ExecutionStatus"
+      ],
+      "components": [
+        "succeeded-failed-suspended-status",
+        "suspended-goal-list",
+        "blocking-reader-addresses"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/scheduler.dart:6-21",
+      "test_citation": "no-test: consumed by engine/REPL status printing; unit tests outside slice",
+      "status_basis": "DrainResult carries ExecutionStatus (succeeded/failed/suspended), the suspended goal list, and the blocking reader addresses per spec 8.4.",
+      "statement": "The scheduler's drain result exposes three-valued execution status plus suspended-goal and blocking-reader diagnostics that the REPL and hosts report.",
+      "claim": "suspension-diagnostics — The scheduler's drain result exposes three-valued execution status plus suspended-goal and blocking-reader diagnostics that the REPL and hosts report.",
+      "source_citation": "glp_runtime/lib/runtime/scheduler.dart:6-21",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-011",
+      "detail_id": "guard-kernel",
+      "aliases": [
+        "Guard",
+        "Ground",
+        "Known",
+        "Otherwise",
+        "guard_defs.dart"
+      ],
+      "components": [
+        "ground",
+        "known",
+        "unknown",
+        "otherwise",
+        "arithmetic-comparison-guards",
+        "type-guards",
+        "guard-negation",
+        "guard-arithmetic-evaluation"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md sections 11 and 20 (with glp_runtime/lib/bytecode/opcodes.dart:217-262)",
+      "test_citation": "programs/tests/test_defined_guards_all.glp; programs/tests/test_guard_negation.glp",
+      "status_basis": "The ISA defines the guard instruction family and section 20 enumerates guard predicates including negation and in-guard arithmetic evaluation, all present in the opcode set and exercised by corpus tests.",
+      "statement": "The builtin guard set — ground/known/unknown/otherwise, arithmetic comparisons, type guards, guard negation, and arithmetic expression evaluation in guards — is a required kernel surface.",
+      "claim": "guard-kernel — The builtin guard set — ground/known/unknown/otherwise, arithmetic comparisons, type guards, guard negation, and arithmetic expression evaluation in guards — is a required kernel surface.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md sections 11 and 20",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-012",
+      "detail_id": "guard-defined",
+      "aliases": [
+        "GuardProcSpec",
+        "definedGuards",
+        "form (a1)"
+      ],
+      "components": [
+        "test-only-clause-compilation",
+        "side-table",
+        "three-valued-runtime-evaluation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/bytecode/guard_defs.dart:1-10 (with runner.dart:56-66)",
+      "test_citation": "programs/tests/test_defined_guards.glp",
+      "status_basis": "Declared guard procedures with test-only clauses compile to a GuardProcSpec side table on BytecodeProgram, evaluated three-valued (with suspension on unbound readers) by the Guard opcode handler.",
+      "statement": "Runtime-defined guards (user-declared test-only guard procedures compiled to a side table and evaluated three-valued) are part of the delivered guard system.",
+      "claim": "guard-defined — Runtime-defined guards (user-declared test-only guard procedures compiled to a side table and evaluated three-valued) are part of the delivered guard system.",
+      "source_citation": "glp_runtime/lib/bytecode/guard_defs.dart:1-10",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-013",
+      "detail_id": "guard-purity",
+      "aliases": [
+        "Guard Purity",
+        "no assignment in guards"
+      ],
+      "components": [
+        "pure-test-guards",
+        "no-guard-mutation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-bytecode-v216-complete.md section 5; docs/typed-glp-manual.md section 6",
+      "test_citation": "no-test: negative-guard suite (unified section E) harness is outside this slice",
+      "status_basis": "Both the ISA spec and the typed manual normatively forbid mutation in guards; guards are pure tests only.",
+      "statement": "Guard purity (guards may test but never bind or mutate) is a normative behavioral requirement.",
+      "claim": "guard-purity — Guard purity (guards may test but never bind or mutate) is a normative behavioral requirement.",
+      "source_citation": "docs/glp-bytecode-v216-complete.md section 5",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-014",
+      "detail_id": "body-kernel",
+      "aliases": [
+        "BodyKernelRegistry",
+        "body_kernels.dart",
+        "registerStandardBodyKernels"
+      ],
+      "components": [
+        "arithmetic-kernels",
+        "math-function-kernels",
+        "type-conversion-kernels",
+        "tuple-list-kernels",
+        "copy-kernel",
+        "now-kernel",
+        "mutual-reference-kernels",
+        "send-kernel",
+        "output-kernel",
+        "activate-kernel"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/body_kernels.dart:52-106",
+      "test_citation": "programs/tests/test_mutual_ref.glp",
+      "status_basis": "The registry registers the full standard kernel set (_add.._atan, _integer/_real/_round/_floor/_ceil, _list_to_tuple/_tuple_to_list, _copy, _now, mutual-ref trio, _send, _output, _activate) with two-valued success/abort semantics.",
+      "statement": "The reference delivers a body-kernel registry of two-valued (success/abort) inline kernels covering arithmetic, math, conversion, structure, stream-append, messaging, output, and module-activation operations.",
+      "claim": "body-kernel — The reference delivers a body-kernel registry of two-valued (success/abort) inline kernels covering arithmetic, math, conversion, structure, stream-append, messaging, output, and module-activation operations.",
+      "source_citation": "glp_runtime/lib/runtime/body_kernels.dart:52-106",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-015",
+      "detail_id": "system-predicate-registry",
+      "aliases": [
+        "SystemPredicateRegistry",
+        "registerStandardPredicates",
+        "SystemResult"
+      ],
+      "components": [
+        "evaluate",
+        "current-time",
+        "unique-id",
+        "variable-name",
+        "copy-term",
+        "file-io-predicates",
+        "directory-list",
+        "read",
+        "link",
+        "load-module",
+        "distribute-stream",
+        "copy-term-multi"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/system_predicates.dart:16-79 (registration list at system_predicates_impl.dart:16-47)",
+      "test_citation": "programs/tests/test_time_guard.glp",
+      "status_basis": "A three-valued (success/failure/suspend) system-predicate mechanism with a standard registered set (evaluate, time, ids, copy_term, seven file predicates, directory_list, read, link, load_module, distribute_stream) is implemented.",
+      "statement": "Host-side system predicates with three-valued results (including suspension on unbound readers) and a standard I/O/arithmetic/module set are a required runtime extension surface.",
+      "claim": "system-predicate-registry — Host-side system predicates with three-valued results (including suspension on unbound readers) and a standard I/O/arithmetic/module set are a required runtime extension surface.",
+      "source_citation": "glp_runtime/lib/runtime/system_predicates.dart:16-79",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-016",
+      "detail_id": "stream-mutual-reference",
+      "aliases": [
+        "_allocate_mutual_reference",
+        "_stream_append",
+        "_close_mutual_reference",
+        "MutualRef"
+      ],
+      "components": [
+        "o1-stream-append",
+        "mutual-reference-allocation",
+        "stream-close"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/body_kernels.dart:93-96",
+      "test_citation": "programs/tests/test_mutual_ref.glp",
+      "status_basis": "The three mutual-reference kernels implementing O(1) stream append are registered as standard kernels and exercised by a dedicated corpus test.",
+      "statement": "O(1) stream append via mutual-reference kernels is a delivered runtime capability the stream-heavy corpus depends on.",
+      "claim": "stream-mutual-reference — O(1) stream append via mutual-reference kernels is a delivered runtime capability the stream-heavy corpus depends on.",
+      "source_citation": "glp_runtime/lib/runtime/body_kernels.dart:93-96",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-017",
+      "detail_id": "arithmetic-expression",
+      "aliases": [
+        "Exp",
+        "evaluate",
+        "_evaluateArithmetic"
+      ],
+      "components": [
+        "exp-type",
+        "in-guard-evaluation",
+        "kernel-evaluation",
+        "division-by-zero-abort"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "programs/self.glp:22 (Exp type) with glp_runtime/lib/runtime/body_kernels.dart:108-134",
+      "test_citation": "programs/tests/typed/arith_comparison.glp",
+      "status_basis": "The prelude declares the Exp expression type and the runtime evaluates arithmetic structures recursively in guards and kernels, with null/abort on division by zero.",
+      "statement": "Arithmetic expression trees (Exp) evaluated in guards and body kernels are part of the language's delivered numeric semantics.",
+      "claim": "arithmetic-expression — Arithmetic expression trees (Exp) evaluated in guards and body kernels are part of the language's delivered numeric semantics.",
+      "source_citation": "programs/self.glp:22",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-018",
+      "detail_id": "external-io",
+      "aliases": [
+        "InputInjector",
+        "external_io.dart",
+        "External Channel"
+      ],
+      "components": [
+        "input-injection",
+        "output-observation",
+        "bind-callback-bridge"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/external_io.dart:1-15",
+      "test_citation": "no-test: exercised through multiagent plays at programs/multiagent/",
+      "status_basis": "External bidirectional channels let the host inject terms into GLP input streams and observe GLP output streams, per docs/glp-io-spec.md.",
+      "statement": "A host I/O bridge (inject input terms, observe output streams) is a delivered runtime seam required for any embedded or interactive use.",
+      "claim": "external-io — A host I/O bridge (inject input terms, observe output streams) is a delivered runtime seam required for any embedded or interactive use.",
+      "source_citation": "glp_runtime/lib/runtime/external_io.dart:1-15",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-019",
+      "detail_id": "compiler-pipeline",
+      "aliases": [
+        "GlpCompiler",
+        "compiler.dart",
+        "compileWithMetadata"
+      ],
+      "components": [
+        "lexer",
+        "parser",
+        "defined-guard-partial-evaluation",
+        "type-check",
+        "analyzer-srsw",
+        "reduce-generation",
+        "codegen"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/compiler.dart:56-133",
+      "test_citation": "no-test: unified REPL suite (test/run_all_tests.sh) outside slice; every load of programs/tests/ runs the full pipeline",
+      "status_basis": "GlpCompiler runs lex, parseModule, defined-guard partial evaluation, optional type checking, semantic analysis (SRSW plus reduce/2 generation), then code generation, returning bytecode with variable metadata.",
+      "statement": "The full compiler pipeline — lexer, parser, defined-guard partial evaluation, type check, SRSW analysis with reduce/2 generation, and codegen to bytecode — is the delivered compilation surface a Gleam implementation must match.",
+      "claim": "compiler-pipeline — The full compiler pipeline — lexer, parser, defined-guard partial evaluation, type check, SRSW analysis with reduce/2 generation, and codegen to bytecode — is the delivered compilation surface a Gleam implementation must match.",
+      "source_citation": "glp_runtime/lib/compiler/compiler.dart:56-133",
+      "confidence": 0.95,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-020",
+      "detail_id": "compiler-strict-mode",
+      "aliases": [
+        "CompileOptions",
+        "strictTypes",
+        "typeCheck"
+      ],
+      "components": [
+        "optional-type-check",
+        "abort-on-type-error"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/compiler.dart:19-30",
+      "test_citation": "programs/tests/type_errors/ (3 negative programs)",
+      "status_basis": "CompileOptions exposes typeCheck and strictTypes flags controlling whether type errors are reported or abort compilation.",
+      "statement": "Compilation offers a strict-types gate (report vs abort on type errors) as part of its public options.",
+      "claim": "compiler-strict-mode — Compilation offers a strict-types gate (report vs abort on type errors) as part of its public options.",
+      "source_citation": "glp_runtime/lib/compiler/compiler.dart:19-30",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-021",
+      "detail_id": "partial-evaluator",
+      "aliases": [
+        "PartialEvaluator",
+        "partial_evaluator.dart",
+        "transformDefinedGuards"
+      ],
+      "components": [
+        "defined-guard-unfolding",
+        "reduce-call-unfolding",
+        "prelude-unit-clauses"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/partial_evaluator.dart:1-20",
+      "test_citation": "programs/tests/test_defined_guards_correct.glp",
+      "status_basis": "A two-stage source-to-source partial evaluator (unfold defined guards; unfold reduce/2 calls against facts) runs before type checking, seeded with prelude unit clauses from self.glp.",
+      "statement": "A partial evaluator that unfolds defined guards and reduce/2 calls as a pre-typecheck source transform is a delivered compiler stage.",
+      "claim": "partial-evaluator — A partial evaluator that unfolds defined guards and reduce/2 calls as a pre-typecheck source transform is a delivered compiler stage.",
+      "source_citation": "glp_runtime/lib/compiler/partial_evaluator.dart:1-20",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-022",
+      "detail_id": "srsw-check",
+      "aliases": [
+        "PMT SRSW Checker",
+        "pmt/checker.dart",
+        "skipGlobalSRSW"
+      ],
+      "components": [
+        "one-writer-rule",
+        "reader-requirement",
+        "grounded-multi-reader-relaxation",
+        "mode-alternatives",
+        "type-based-relaxation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/pmt/checker.dart:1-14 (relaxation via compiler.dart:114-122)",
+      "test_citation": "programs/tests/srsw_multi_error.glp",
+      "status_basis": "The SRSW checker enforces exactly one writer and at least one reader per variable, allows multiple readers only when grounded by a guard, supports mode alternatives, and is relaxed by procedure type declarations.",
+      "statement": "Compile-time SRSW checking with guard-groundedness and type-declaration relaxations is a mandatory delivered analysis.",
+      "claim": "srsw-check — Compile-time SRSW checking with guard-groundedness and type-declaration relaxations is a mandatory delivered analysis.",
+      "source_citation": "glp_runtime/lib/compiler/pmt/checker.dart:1-14",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-023",
+      "detail_id": "type-checker",
+      "aliases": [
+        "checkModule",
+        "type_checker.dart",
+        "well-typed program"
+      ],
+      "components": [
+        "covariance-clause-check",
+        "contravariance-input-path-coverage",
+        "moded-heads",
+        "subtyping",
+        "program-dfa",
+        "param-expansion",
+        "clause-validation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/analysis/type_checker/type_checker.dart:1-30 (14-file package at glp_runtime/lib/analysis/type_checker/)",
+      "test_citation": "programs/tests/typed/ (65 positive programs) and programs/tests/type_errors/",
+      "status_basis": "The type checker implements well-typed program checking per Definition 4.10 — every clause well-typed (covariance) and every input path covered by some clause (contravariance) — over moded heads, subtyping, and a program DFA.",
+      "statement": "A full well-typed-program checker (covariance plus input-path coverage contravariance, with modes, subtyping, and parameterized-type expansion) is delivered and locked by the typed corpus.",
+      "claim": "type-checker — A full well-typed-program checker (covariance plus input-path coverage contravariance, with modes, subtyping, and parameterized-type expansion) is delivered and locked by the typed corpus.",
+      "source_citation": "glp_runtime/lib/analysis/type_checker/type_checker.dart:1-30",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-024",
+      "detail_id": "type-parameterized",
+      "aliases": [
+        "param_expansion.dart",
+        "parameterized types",
+        "Stream(X)"
+      ],
+      "components": [
+        "parameterized-type-definitions",
+        "parameterized-procedure-declarations",
+        "module-declaration-usage"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/typed-glp-manual.md section 17 (with glp_runtime/lib/analysis/type_checker/param_expansion.dart)",
+      "test_citation": "programs/tests/typed/ corpus",
+      "status_basis": "The manual normatively defines parameterized types in type definitions, procedure declarations, and module declarations, implemented by the param-expansion module and used pervasively in self.glp.",
+      "statement": "Parameterized types (in definitions, procedure declarations, and modules) are a delivered and mandated type-system feature.",
+      "claim": "type-parameterized — Parameterized types (in definitions, procedure declarations, and modules) are a delivered and mandated type-system feature.",
+      "source_citation": "docs/typed-glp-manual.md section 17",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-025",
+      "detail_id": "type-guard-set",
+      "aliases": [
+        "integer/1",
+        "ground/1",
+        "known/1",
+        "self.glp builtins"
+      ],
+      "components": [
+        "integer",
+        "number",
+        "string",
+        "atom",
+        "constant",
+        "compound",
+        "tuple",
+        "list",
+        "is-list",
+        "module",
+        "ground",
+        "known"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "programs/self.glp:28-40",
+      "test_citation": "programs/tests/test_ground.glp; programs/tests/test_channel_guards.glp",
+      "status_basis": "The root prelude declares the builtin type and groundness guard procedures that the runtime implements natively.",
+      "statement": "The builtin type/groundness guard vocabulary (integer, number, string, atom, constant, compound, tuple, list, is_list, module, ground, known) is fixed by the root prelude.",
+      "claim": "type-guard-set — The builtin type/groundness guard vocabulary (integer, number, string, atom, constant, compound, tuple, list, is_list, module, ground, known) is fixed by the root prelude.",
+      "source_citation": "programs/self.glp:28-40",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-026",
+      "detail_id": "prelude-library",
+      "aliases": [
+        "self.glp",
+        "root prelude",
+        "prelude.dart"
+      ],
+      "components": [
+        "stream-type",
+        "openstream-type",
+        "difflist-type",
+        "channel-type",
+        "constant-type",
+        "exp-type",
+        "builtin-procedure-declarations"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "programs/self.glp:1-40 (loading noted at glp_runtime/lib/analysis/type_checker/prelude.dart:10-12)",
+      "test_citation": "no-test: every REPL/engine boot loads it (glp_repl.dart:80-102)",
+      "status_basis": "All prelude types (Stream, OpenStream, DiffList, Channel, Constant, Exp) and builtin procedure declarations live in programs/self.glp, loaded via the scope chain at every engine boot; the compiled-in prelude source is intentionally empty.",
+      "statement": "A root prelude (programs/self.glp) supplying core types and builtin declarations via the scope chain is a delivered, load-bearing library every conforming runtime must serve.",
+      "claim": "prelude-library — A root prelude (programs/self.glp) supplying core types and builtin declarations via the scope chain is a delivered, load-bearing library every conforming runtime must serve.",
+      "source_citation": "programs/self.glp:1-40",
+      "confidence": 0.95,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-027",
+      "detail_id": "module-system",
+      "aliases": [
+        "module_hierarchy.dart",
+        "discoverSelfChain",
+        "self.glp chain"
+      ],
+      "components": [
+        "directory-hierarchy",
+        "ancestor-scoping",
+        "shadowing",
+        "sibling-isolation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/module_hierarchy.dart:1-9",
+      "test_citation": "programs/tests/module_self_shadow/; programs/tests/module_self_local_shadow/; programs/tests/module_self_type_error/",
+      "status_basis": "Directory-based module scoping (self.glp chain with implicit ancestor scoping, shadowing, sibling isolation) is implemented per the module-system spec and locked by four dedicated test directories.",
+      "statement": "The directory-based self.glp module scope chain (ancestor scoping, shadowing, sibling isolation) is a delivered module-system capability.",
+      "claim": "module-system — The directory-based self.glp module scope chain (ancestor scoping, shadowing, sibling isolation) is a delivered module-system capability.",
+      "source_citation": "glp_runtime/lib/runtime/module_hierarchy.dart:1-9",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-028",
+      "detail_id": "module-static-linking",
+      "aliases": [
+        "project_linker.dart",
+        "linkProject",
+        "loadProject"
+      ],
+      "components": [
+        "module-discovery",
+        "per-module-typecheck",
+        "procedure-renaming",
+        "flat-program-emission"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/project_linker.dart:1-9",
+      "test_citation": "programs/tests/modules/ (8 module files)",
+      "status_basis": "The project linker discovers all modules under a root, type-checks each independently, and emits one flat program with inter-module calls resolved to renamed local procedures.",
+      "statement": "Static linking of multi-module projects into a single flat bytecode program (with per-module typecheck and renaming) is a delivered compiler capability.",
+      "claim": "module-static-linking — Static linking of multi-module projects into a single flat bytecode program (with per-module typecheck and renaming) is a delivered compiler capability.",
+      "source_citation": "glp_runtime/lib/compiler/project_linker.dart:1-9",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-029",
+      "detail_id": "module-dynamic-dispatch",
+      "aliases": [
+        "serve/2",
+        "_activate",
+        "_select/1",
+        "glp_activation.dart"
+      ],
+      "components": [
+        "serve-loop",
+        "activate-kernel",
+        "select-dispatch-table",
+        "repl-activate-command"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/engine/glp_engine.dart:66-82 (with glp_runtime/lib/runtime/glp_activation.dart:1-7 and body_kernels.dart:105)",
+      "test_citation": "programs/tests/dynamic_dispatch/ (4 programs)",
+      "status_basis": "Dynamic module dispatch is delivered end-to-end: an embedded serve/2 loop reads goals from a channel and dispatches via the '_activate' kernel against the module's _select/1 table, surfaced through the REPL :activate command.",
+      "statement": "Dynamic module activation (channel-served goal dispatch through '_activate' and _select/1) is a delivered runtime capability alongside static linking.",
+      "claim": "module-dynamic-dispatch — Dynamic module activation (channel-served goal dispatch through '_activate' and _select/1) is a delivered runtime capability alongside static linking.",
+      "source_citation": "glp_runtime/lib/engine/glp_engine.dart:66-82",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-030",
+      "detail_id": "compile-mode-directive",
+      "aliases": [
+        "-mode(system)",
+        "CompileMode.system"
+      ],
+      "components": [
+        "reserved-constant-access",
+        "reduce-generation-suppression"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/compiler/compiler.dart:111-122 (usage at glp_engine.dart:71-89; manual section 12)",
+      "test_citation": "programs/system/mad_predicates.glp",
+      "status_basis": "The -mode(system) directive gates reserved constants (e.g. '_w', '_send') and suppresses reduce/2 generation for stdlib code, used by all embedded system sources.",
+      "statement": "A system compile mode granting reserved-constant access and skipping reduce/2 generation is part of the delivered compiler directive surface.",
+      "claim": "compile-mode-directive — A system compile mode granting reserved-constant access and skipping reduce/2 generation is part of the delivered compiler directive surface.",
+      "source_citation": "glp_runtime/lib/compiler/compiler.dart:111-122",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-031",
+      "detail_id": "reduce-metainterpreter",
+      "aliases": [
+        "reduce/2",
+        "metainterpreter"
+      ],
+      "components": [
+        "reduce-clause-generation",
+        "metainterpreter-idiom"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/typed-glp-manual.md section 13 (generation at glp_runtime/lib/compiler/compiler.dart:111-122)",
+      "test_citation": "programs/tests/tracing_meta.glp",
+      "status_basis": "The compiler auto-generates reduce/2 for non-system modules and the manual locks the standard metainterpreter written against it, with tracing metainterpreters in the corpus.",
+      "statement": "Auto-generated reduce/2 clauses plus the standard metainterpreter idiom are delivered and required for meta-level programs.",
+      "claim": "reduce-metainterpreter — Auto-generated reduce/2 clauses plus the standard metainterpreter idiom are delivered and required for meta-level programs.",
+      "source_citation": "docs/typed-glp-manual.md section 13",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-032",
+      "detail_id": "repl-loop",
+      "aliases": [
+        "glp_repl.dart",
+        "glp_repl.exe",
+        "GLP> prompt"
+      ],
+      "components": [
+        "goal-entry",
+        "file-load",
+        "project-directory-load",
+        "command-set",
+        "binding-printout",
+        "status-printout",
+        "aot-exe-deployment"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:62-318",
+      "test_citation": "no-test: unified REPL suite harness (test/run_all_tests.sh) outside slice; driven by programs/tests/ corpus",
+      "status_basis": "The REPL is a thin CLI over GlpEngine offering goal execution, .glp/file and project-directory loading, the command set (:quit/:help/:trace/:debug/:strict/:clear/:limit/:activate/:boot/:bytecode), and binding/status printing, with a prebuilt Windows exe.",
+      "statement": "The interactive REPL — the single unified compile/typecheck/run tool with its full command set and binding/status display — is the primary delivered user-facing surface.",
+      "claim": "repl-loop — The interactive REPL — the single unified compile/typecheck/run tool with its full command set and binding/status display — is the primary delivered user-facing surface.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:62-318",
+      "confidence": 0.95,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-033",
+      "detail_id": "repl-trace-command",
+      "aliases": [
+        ":trace",
+        ":debug",
+        "debugTrace"
+      ],
+      "components": [
+        "trace-toggle",
+        "debug-output-toggle"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:133-143",
+      "test_citation": "programs/tests/test_tracing.glp",
+      "status_basis": ":trace and :debug toggle per-reduction tracing and debug output on the engine.",
+      "statement": "Per-reduction tracing and debug-output toggles are delivered REPL commands.",
+      "claim": "repl-trace-command — Per-reduction tracing and debug-output toggles are delivered REPL commands.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:133-143",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-034",
+      "detail_id": "repl-bytecode-command",
+      "aliases": [
+        ":bytecode",
+        ":bc"
+      ],
+      "components": [
+        "opcode-dump-per-loaded-program"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:203-217",
+      "test_citation": "no-test: inspection-only command",
+      "status_basis": "The :bytecode command dumps the numbered opcode listing of every loaded program.",
+      "statement": "Bytecode disassembly of loaded programs is a delivered REPL inspection command.",
+      "claim": "repl-bytecode-command — Bytecode disassembly of loaded programs is a delivered REPL inspection command.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:203-217",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-035",
+      "detail_id": "repl-limit-command",
+      "aliases": [
+        ":limit",
+        "maxCycles"
+      ],
+      "components": [
+        "reduction-budget"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:157-171",
+      "test_citation": "no-test: exercised by long-running plays requiring :limit",
+      "status_basis": ":limit sets the engine's goal-reduction budget (maxCycles).",
+      "statement": "A settable goal-reduction limit is a delivered REPL/engine control.",
+      "claim": "repl-limit-command — A settable goal-reduction limit is a delivered REPL/engine control.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:157-171",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-036",
+      "detail_id": "repl-boot-command",
+      "aliases": [
+        ":boot",
+        "repl_play_runner.dart"
+      ],
+      "components": [
+        "boot-file-run",
+        "timeout-parameter"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:189-201",
+      "test_citation": "programs/multiagent/play_alice_bob.glp",
+      "status_basis": ":boot runs a multiagent boot file with a timeout, wiring the isolate-based multiagent runtime from the REPL.",
+      "statement": "Multiagent boot execution from the REPL (:boot with timeout) is a delivered interface.",
+      "claim": "repl-boot-command — Multiagent boot execution from the REPL (:boot with timeout) is a delivered interface.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:189-201",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-037",
+      "detail_id": "embeddability-api",
+      "aliases": [
+        "GlpEngine",
+        "glp_engine.dart",
+        "ExecutionResult"
+      ],
+      "components": [
+        "load-file",
+        "load-project",
+        "run-goal",
+        "clear",
+        "activate-dynamic-module",
+        "enable-madglp",
+        "max-cycles",
+        "strict-types",
+        "execution-result"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/engine/glp_engine.dart:1-48,115-120",
+      "test_citation": "no-test: engine unit tests at glp_runtime/test/ outside slice; consumed by REPL, IsolateManager, and C# equivalence harness",
+      "status_basis": "GlpEngine is the documented single embeddable execution core ('the ONE way to run GLP programs') used by the REPL, agent isolates, and tests, exposing load/run/clear/activate plus ExecutionResult.",
+      "statement": "An embeddable engine API (host-callable load/run/configure surface decoupled from any UI) is delivered in the Dart reference and is the embeddability baseline a Gleam implementation must provide.",
+      "claim": "embeddability-api — An embeddable engine API (host-callable load/run/configure surface decoupled from any UI) is delivered in the Dart reference and is the embeddability baseline a Gleam implementation must provide.",
+      "source_citation": "glp_runtime/lib/engine/glp_engine.dart:1-48",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-038",
+      "detail_id": "engine-composition-root",
+      "aliases": [
+        "afterEngineCreated",
+        "FR-057",
+        "composition-root seam"
+      ],
+      "components": [
+        "host-kernel-installation",
+        "transport-registration",
+        "engine-never-references-link"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:51-101 (seam contract at glp_runtime/lib/link/primitives/link_kernels.dart:12-22)",
+      "test_citation": "csharp/glp_link.tests/LinkInfraTests.cs",
+      "status_basis": "An afterEngineCreated hook lets the outer host install link kernels and register transports on the live engine so the dependency stays link-to-runtime only (FR-057), with the engine never referencing the link layer.",
+      "statement": "Host-side composition-root wiring (kernels and transports injected onto a live engine, never referenced by it) is the delivered extension discipline.",
+      "claim": "engine-composition-root — Host-side composition-root wiring (kernels and transports injected onto a live engine, never referenced by it) is the delivered extension discipline.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:51-101",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-039",
+      "detail_id": "engine-csharp-parity",
+      "aliases": [
+        "GlpRuntimeEngine",
+        "glp_runtime_net",
+        "GlpExecutor.cs"
+      ],
+      "components": [
+        "csharp-bytecode-runner",
+        "csharp-scheduler",
+        "csharp-execution-status",
+        "public-runner-seam"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_il_codec.tests/GlpExecutor.cs:1-25 (project reference at csharp/glp_il_codec.tests/GlpIlCodec.Tests.csproj:24)",
+      "test_citation": "csharp/glp_il_codec.tests/ExecuteEquivalenceTests.cs",
+      "status_basis": "In-slice C# code drives a full C# engine (GlpRuntimeEngine + BytecodeRunner + Scheduler + ExecutionStatus, namespaces GlpRuntime.Bytecode/GlpRuntime.Runtime) via its public runner seam; the engine source itself lives at out/csharp/glp_runtime_net.csproj outside this slice.",
+      "statement": "A second, C# reference runtime exists (engine, bytecode runner, scheduler) and is exercised through a public seam by the in-slice codec equivalence tests, establishing cross-runtime parity as a full-scope requirement.",
+      "claim": "engine-csharp-parity — A second, C# reference runtime exists (engine, bytecode runner, scheduler) and is exercised through a public seam by the in-slice codec equivalence tests, establishing cross-runtime parity as a full-scope requirement.",
+      "source_citation": "csharp/glp_il_codec.tests/GlpExecutor.cs:1-25",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-040",
+      "detail_id": "fe-be-process-split",
+      "aliases": [
+        "thin CLI wrapper",
+        "GlpEngine separation",
+        "glp_quick_host stdio bridge"
+      ],
+      "components": [
+        "ui-engine-separation",
+        "stdio-process-bridge",
+        "callback-seams"
+      ],
+      "grain": "pattern",
+      "status": "partial",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/bin/glp_repl.dart:1-5 (with csharp/glp_quick_host/Program.cs:13-19 and glp_runtime/lib/multiagent/agent_runtime.dart:1-11)",
+      "test_citation": "no-test: architectural property; no dedicated in-slice test",
+      "status_basis": "Present: strict engine/front-end separation (REPL and Flutter UI are thin layers over GlpEngine via callbacks) and a cross-process stdio-to-QUIC bridge in glp_quick_host; missing: no reference implementation runs the GLP front end (compiler/REPL) and the execution back end as separate communicating processes.",
+      "statement": "The reference delivers engine/UI separation and a stdio process bridge but no true front-end/back-end process split of the runtime itself, so that roadmap ambition has only an in-process precedent to match.",
+      "claim": "fe-be-process-split — The reference delivers engine/UI separation and a stdio process bridge but no true front-end/back-end process split of the runtime itself, so that roadmap ambition has only an in-process precedent to match.",
+      "source_citation": "glp_runtime/bin/glp_repl.dart:1-5",
+      "confidence": 0.75,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-041",
+      "detail_id": "multiagent-runtime",
+      "aliases": [
+        "AgentRuntime",
+        "agent_runtime.dart",
+        "madGLP"
+      ],
+      "components": [
+        "per-agent-engine",
+        "mad-context",
+        "output-log-send-callbacks",
+        "user-input-injection",
+        "network-message-ingestion"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/multiagent/agent_runtime.dart:1-67",
+      "test_citation": "no-test: multiagent unit tests at glp_runtime/test/multiagent/ outside slice; plays at programs/multiagent/",
+      "status_basis": "AgentRuntime packages a GlpEngine per agent with madGLP messaging, UI callbacks (onOutput/onLog/onSendMadMessage), user-input injection, and network-message reception for UI integration.",
+      "statement": "A multiagent runtime wrapping the engine per agent with messaging and host callbacks is a delivered reference capability.",
+      "claim": "multiagent-runtime — A multiagent runtime wrapping the engine per agent with messaging and host callbacks is a delivered reference capability.",
+      "source_citation": "glp_runtime/lib/multiagent/agent_runtime.dart:1-67",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-042",
+      "detail_id": "multiagent-isolate-manager",
+      "aliases": [
+        "IsolateManager",
+        "isolate_manager.dart",
+        "IsolateMessage"
+      ],
+      "components": [
+        "isolate-per-agent",
+        "boot-config-spawn",
+        "event-driven-drain",
+        "message-routing"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/multiagent/isolate_manager.dart:1-9",
+      "test_citation": "programs/multiagent/play_alice_bob.glp (via :boot)",
+      "status_basis": "IsolateManager spawns one Dart isolate per agent from BootConfig and routes messages between them, with event-driven drain+flush (no tick loop) and external termination.",
+      "statement": "Process-isolated agent execution (one isolate per agent, event-driven message routing) is the delivered multiagent concurrency model.",
+      "claim": "multiagent-isolate-manager — Process-isolated agent execution (one isolate per agent, event-driven message routing) is the delivered multiagent concurrency model.",
+      "source_citation": "glp_runtime/lib/multiagent/isolate_manager.dart:1-9",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-043",
+      "detail_id": "multiagent-boot-loader",
+      "aliases": [
+        "boot_loader.dart",
+        "boot/0",
+        "@ spawn directive"
+      ],
+      "components": [
+        "boot-clause-parsing",
+        "spawn-directive-extraction"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/multiagent/boot_loader.dart:1-14",
+      "test_citation": "programs/multiagent/play_cold_call_test.glp",
+      "status_basis": "The boot loader parses boot/0 clauses containing goal@agent spawn directives into spawn configuration without modifying the GLP parser.",
+      "statement": "Declarative multiagent boot files (boot/0 with @agent spawn directives) are a delivered configuration surface.",
+      "claim": "multiagent-boot-loader — Declarative multiagent boot files (boot/0 with @agent spawn directives) are a delivered configuration surface.",
+      "source_citation": "glp_runtime/lib/multiagent/boot_loader.dart:1-14",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-044",
+      "detail_id": "multiagent-global-send",
+      "aliases": [
+        "send_to_net",
+        "global_send",
+        "'_w'",
+        "global_writers_table.dart"
+      ],
+      "components": [
+        "send-to-net",
+        "send-to-remote",
+        "send-to-user",
+        "send-kernel",
+        "global-writers-table"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/engine/glp_engine.dart:84-113 (table at glp_runtime/lib/multiagent/global_writers_table.dart:1-15)",
+      "test_citation": "programs/tests/test_relay_send.glp",
+      "status_basis": "The embedded madGLP system predicates (send_to_net/1, send_to_remote/2, global_send/3, send_to_user/1) route over the '_send' kernel and a global writers table mapping '_w'(agent,i) names to local writers awaiting remote assignment.",
+      "statement": "The madGLP global-send protocol (stream-to-network predicates over a globalized-writer table) is the delivered inter-agent messaging contract.",
+      "claim": "multiagent-global-send — The madGLP global-send protocol (stream-to-network predicates over a globalized-writer table) is the delivered inter-agent messaging contract.",
+      "source_citation": "glp_runtime/lib/engine/glp_engine.dart:84-113",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-045",
+      "detail_id": "distribution-protocol",
+      "aliases": [
+        "payload_serializer.dart",
+        "GlobalVarId",
+        "irmaGLP"
+      ],
+      "components": [
+        "term-serialization",
+        "global-variable-ids",
+        "cross-agent-routing"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/multiagent/payload_serializer.dart:1-18",
+      "test_citation": "no-test: serializer unit tests outside slice; exercised by multiagent plays",
+      "status_basis": "Terms and messages are serialized to bytes with global variable IDs (creator:localId) for inter-agent transport per irmaGLP-spec sections 6 and 8.3.",
+      "statement": "A term-to-bytes distribution serialization with globally identified variables is the delivered cross-agent wire discipline.",
+      "claim": "distribution-protocol — A term-to-bytes distribution serialization with globally identified variables is the delivered cross-agent wire discipline.",
+      "source_citation": "glp_runtime/lib/multiagent/payload_serializer.dart:1-18",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-046",
+      "detail_id": "link-layer",
+      "aliases": [
+        "LinkKernels",
+        "link_kernels.dart",
+        "_link_setup",
+        "_link_send"
+      ],
+      "components": [
+        "link-setup-kernel",
+        "link-send-kernel",
+        "link-request-kernel",
+        "link-listen-kernel",
+        "link-accept-kernel",
+        "link-monitor-kernel",
+        "link-close-kernel",
+        "link-registry",
+        "link-egress",
+        "link-pump"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/primitives/link_kernels.dart:23-57 (C# parity tree at csharp/glp_link/primitives/)",
+      "test_citation": "programs/tests/link/ (6 GLP programs); csharp/glp_link.tests/LinkSetupKernelTests.cs",
+      "status_basis": "The seven link body kernels (_link_setup/5, _link_send/3, _link_request/5, _link_listen/3, _link_accept/5, _link_monitor/2, _link_close/2) are delivered in matching Dart and C# primitive trees and exercised from GLP source.",
+      "statement": "The GLP-visible link-layer kernel surface (setup, send, request/listen/accept handshake, monitor, close) is delivered identically in both reference runtimes.",
+      "claim": "link-layer — The GLP-visible link-layer kernel surface (setup, send, request/listen/accept handshake, monitor, close) is delivered identically in both reference runtimes.",
+      "source_citation": "glp_runtime/lib/link/primitives/link_kernels.dart:23-57",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-047",
+      "detail_id": "link-seam",
+      "aliases": [
+        "ILinkTransport",
+        "ILinkEndpoint",
+        "LinkAddress",
+        "TransportRegistry"
+      ],
+      "components": [
+        "transport-interface",
+        "endpoint-interface",
+        "link-address",
+        "link-fault",
+        "link-id",
+        "link-options",
+        "link-role",
+        "link-scheme",
+        "transport-registry"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/seam/ (8 files; C# mirror at csharp/glp_link/seam/)",
+      "test_citation": "csharp/glp_link.tests/LinkInfraTests.cs",
+      "status_basis": "A pluggable transport seam (ILinkTransport/ILinkEndpoint plus address, fault, id, options, role, scheme value types and a TransportRegistry) exists in matching Dart and C# trees.",
+      "statement": "A transport-agnostic link seam with a registry for pluggable transports is the delivered extension point every new transport (including future Gleam ones) plugs into.",
+      "claim": "link-seam — A transport-agnostic link seam with a registry for pluggable transports is the delivered extension point every new transport (including future Gleam ones) plugs into.",
+      "source_citation": "glp_runtime/lib/link/seam/",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-048",
+      "detail_id": "inbound-pump",
+      "aliases": [
+        "IInboundPump",
+        "inbound_pump.dart",
+        "tryApplyNext"
+      ],
+      "components": [
+        "thread-safe-inbox",
+        "runner-thread-application",
+        "single-owner-invariant",
+        "driver-loop-integration"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/runtime/inbound_pump.dart:1-20",
+      "test_citation": "csharp/glp_link.tests/LinkRecvIngressTests.cs",
+      "status_basis": "The inbound-pump seam lets asynchronous transports enqueue decoded frames into an inbox that the engine's run-to-quiescence driver applies on the runner thread between scheduler drains, preserving the single-owner invariant.",
+      "statement": "Asynchronous-transport ingress into the single-threaded runner via an inbound-pump seam is the delivered concurrency bridge for the link layer.",
+      "claim": "inbound-pump — Asynchronous-transport ingress into the single-threaded runner via an inbound-pump seam is the delivered concurrency bridge for the link layer.",
+      "source_citation": "glp_runtime/lib/runtime/inbound_pump.dart:1-20",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-049",
+      "detail_id": "frame-codec",
+      "aliases": [
+        "FrameCodec",
+        "ParsedFrame",
+        "FrameKind",
+        "frame_codec.dart"
+      ],
+      "components": [
+        "whole-frame",
+        "fragment-frame",
+        "message-id",
+        "total-length",
+        "fragment-index-count",
+        "reassembly"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/reliability/frame_codec.dart:1-30 (C# at csharp/glp_link/reliability/FrameCodec.cs)",
+      "test_citation": "csharp/glp_link.tests/FrameCodecTests.cs",
+      "status_basis": "The on-wire frame format (whole/fragment kinds with messageId, totalLength, fragIndex/fragCount, CRC-verified chunks) plus a reassembler is implemented in both runtimes and byte-parity tested.",
+      "statement": "The link frame wire format with fragmentation and reassembly is a delivered cross-runtime protocol artifact.",
+      "claim": "frame-codec — The link frame wire format with fragmentation and reassembly is a delivered cross-runtime protocol artifact.",
+      "source_citation": "glp_runtime/lib/link/reliability/frame_codec.dart:1-30",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-050",
+      "detail_id": "crc32-checksum",
+      "aliases": [
+        "crc32.dart",
+        "Crc32.cs"
+      ],
+      "components": [
+        "frame-integrity-check"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/reliability/crc32.dart (C# at csharp/glp_link/reliability/Crc32.cs)",
+      "test_citation": "csharp/glp_link.tests/FrameCodecTests.cs",
+      "status_basis": "CRC32 frame integrity checking exists in matching Dart and C# reliability sublayers.",
+      "statement": "CRC32 checksum validation of link frames is a delivered protocol requirement in both reference runtimes.",
+      "claim": "crc32-checksum — CRC32 checksum validation of link frames is a delivered protocol requirement in both reference runtimes.",
+      "source_citation": "glp_runtime/lib/link/reliability/crc32.dart",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-051",
+      "detail_id": "link-reliability",
+      "aliases": [
+        "SendWindow",
+        "InboundOrdering",
+        "LinkSequencer",
+        "FencingRegistry",
+        "CycleGuard",
+        "LinkReclaimer"
+      ],
+      "components": [
+        "send-window",
+        "inbound-ordering",
+        "sequencer",
+        "fencing",
+        "cycle-guard",
+        "reclaimer",
+        "resource-snapshot"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/reliability/ (11 files; C# mirror at csharp/glp_link/reliability/)",
+      "test_citation": "csharp/glp_link.tests/SendWindowTests.cs; OrderingTests.cs; FencingTests.cs; CycleGuardTests.cs; ReclaimTests.cs",
+      "status_basis": "A full reliability sublayer (send windowing, inbound ordering, sequencing, fencing, cycle guarding, reclamation, resource snapshots) is delivered in parallel Dart and C# trees with per-component C# tests.",
+      "statement": "The link reliability sublayer (windowing, ordering, fencing, cycle-guard, reclaim) is a delivered cross-runtime capability set.",
+      "claim": "link-reliability — The link reliability sublayer (windowing, ordering, fencing, cycle-guard, reclaim) is a delivered cross-runtime capability set.",
+      "source_citation": "glp_runtime/lib/link/reliability/",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-052",
+      "detail_id": "loopback-transport",
+      "aliases": [
+        "loopback_transport.dart",
+        "LoopbackTransport.cs"
+      ],
+      "components": [
+        "in-process-hub",
+        "default-repl-registration"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/transports/loopback_transport.dart (registered at glp_repl.dart:93-98; C# at csharp/glp_link/transports/LoopbackTransport.cs)",
+      "test_citation": "csharp/glp_link.tests/LoopbackTests.cs",
+      "status_basis": "An in-process loopback transport exists in both runtimes and is registered by the default REPL host.",
+      "statement": "A loopback transport for in-process link testing is delivered in both reference runtimes.",
+      "claim": "loopback-transport — A loopback transport for in-process link testing is delivered in both reference runtimes.",
+      "source_citation": "glp_runtime/lib/link/transports/loopback_transport.dart",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-053",
+      "detail_id": "tcp-transport",
+      "aliases": [
+        "tcp_transport.dart",
+        "TcpTransport.cs"
+      ],
+      "components": [
+        "tcp-endpoint",
+        "length-prefix-framing"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/link/transports/tcp_transport.dart (C# at csharp/glp_link/transports/TcpTransport.cs)",
+      "test_citation": "csharp/glp_link.tests/TcpTransportTests.cs",
+      "status_basis": "A real-socket TCP transport exists in both reference runtimes behind the same seam.",
+      "statement": "A TCP transport is delivered in both reference runtimes as a required real-network leaf.",
+      "claim": "tcp-transport — A TCP transport is delivered in both reference runtimes as a required real-network leaf.",
+      "source_citation": "glp_runtime/lib/link/transports/tcp_transport.dart",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-054",
+      "detail_id": "quic-transport",
+      "aliases": [
+        "QuicTransport.cs",
+        "QuicEndpoint.cs",
+        "SharedCertMaterial.cs",
+        "ConnectBootstrap.cs"
+      ],
+      "components": [
+        "real-quic-gate",
+        "cert-pinning",
+        "quic-listener",
+        "connect-bootstrap"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_link/transports/QuicTransport.cs:17-25 (Dart transports dir contains only loopback_transport.dart and tcp_transport.dart)",
+      "test_citation": "csharp/glp_link.tests/QuicTransportTests.cs; QuicReliabilityTests.cs; QuicTeardownTests.cs",
+      "status_basis": "Present: a genuine QUIC transport (real QUIC only, IsSupported-gated, pinned shared cert) in the C# reference with extensive tests; missing: no QUIC transport in the Dart reference's transports directory.",
+      "statement": "QUIC transport is delivered in the C# reference only (real-QUIC-only with cert pinning), with no Dart counterpart, making it a single-runtime reference capability.",
+      "claim": "quic-transport — QUIC transport is delivered in the C# reference only (real-QUIC-only with cert pinning), with no Dart counterpart, making it a single-runtime reference capability.",
+      "source_citation": "csharp/glp_link/transports/QuicTransport.cs:17-25",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-055",
+      "detail_id": "websocket-framing",
+      "aliases": [
+        "WebSocketOverQuic.cs",
+        "RFC 6455",
+        "RFC 9220"
+      ],
+      "components": [
+        "ws-opcodes",
+        "fin-continuation-reassembly",
+        "payload-length-encodings",
+        "unmasked-send",
+        "mask-honoring-receive"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_link/transports/WebSocketOverQuic.cs:1-20",
+      "test_citation": "csharp/glp_link.tests/WebSocketFramingTests.cs",
+      "status_basis": "A genuine RFC 6455 WebSocket carried over one bidirectional QUIC stream (the RFC 9220 carriage) is implemented with full opcode, continuation, and length handling, testable over any duplex stream.",
+      "statement": "RFC 6455 WebSocket framing over a QUIC stream is a delivered wire protocol in the C# reference.",
+      "claim": "websocket-framing — RFC 6455 WebSocket framing over a QUIC stream is a delivered wire protocol in the C# reference.",
+      "source_citation": "csharp/glp_link/transports/WebSocketOverQuic.cs:1-20",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-056",
+      "detail_id": "quic-host",
+      "aliases": [
+        "glp_quick_host",
+        "Program.cs",
+        "mesh router"
+      ],
+      "components": [
+        "client-stdio-bridge",
+        "multi-accept-mesh-server",
+        "envelope-routing-by-to-broadcast",
+        "failure-token-exit-codes"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_quick_host/Program.cs:13-67",
+      "test_citation": "csharp/glp_link.tests/QuicMeshTests.cs",
+      "status_basis": "The glp_quick_host process delivers a QUIC+WS endpoint with a stdio-bridged client role and a multi-accept mesh-router server role routing L5 envelopes by to/broadcast, with distinct non-zero exit codes per failure token.",
+      "statement": "A standalone QUIC+WS host process (client stdio bridge plus mesh-router server) is a delivered control-plane component of the reference stack.",
+      "claim": "quic-host — A standalone QUIC+WS host process (client stdio bridge plus mesh-router server) is a delivered control-plane component of the reference stack.",
+      "source_citation": "csharp/glp_quick_host/Program.cs:13-67",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-057",
+      "detail_id": "mesh-ring",
+      "aliases": [
+        "quic_mesh.glp",
+        "QuicMeshTests"
+      ],
+      "components": [
+        "multi-client-mesh",
+        "broadcast-routing",
+        "volume-run-acceptance"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "test",
+      "impl_citation": "programs/tests/quic/quic_mesh.glp (volume variants quic_mesh_t043.glp, quic_mesh_local_t043.glp)",
+      "test_citation": "csharp/glp_link.tests/QuicMeshTests.cs",
+      "status_basis": "GLP mesh programs over QUIC plus C# mesh tests demonstrate multi-client routed mesh acceptance including 1000-ping volume variants.",
+      "statement": "Multi-client mesh messaging over QUIC, driven from GLP source programs, is a delivered reference user story.",
+      "claim": "mesh-ring — Multi-client mesh messaging over QUIC, driven from GLP source programs, is a delivered reference user story.",
+      "source_citation": "programs/tests/quic/quic_mesh.glp",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-058",
+      "detail_id": "link-acceptance",
+      "aliases": [
+        "bidi.glp",
+        "pathb.glp",
+        "mon.glp",
+        "krepro.glp"
+      ],
+      "components": [
+        "bidirectional-link",
+        "path-b-handshake",
+        "monitor-fault",
+        "send-recv",
+        "kill-reproducer"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "test",
+      "impl_citation": "programs/tests/link/ (bidi.glp, pathb.glp, mon.glp, sr.glp, pc.glp, krepro.glp)",
+      "test_citation": "programs/tests/link/bidi.glp",
+      "status_basis": "Six GLP-source link programs drive the link kernels end-to-end (bidirectional exchange, path-B handshake, monitoring, send/recv, and a kill-defect reproducer).",
+      "statement": "End-to-end link usage from GLP source (setup, handshake, monitored exchange, teardown) is a delivered, program-level user story a Gleam runtime must also pass.",
+      "claim": "link-acceptance — End-to-end link usage from GLP source (setup, handshake, monitored exchange, teardown) is a delivered, program-level user story a Gleam runtime must also pass.",
+      "source_citation": "programs/tests/link/",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-059",
+      "detail_id": "il-codec",
+      "aliases": [
+        "IlCodec",
+        "IlCodec.cs",
+        "PayloadHeader 0x10",
+        "IlCodecRoundTrip"
+      ],
+      "components": [
+        "opcode-encode-decode",
+        "structural-identity",
+        "label-recomputation",
+        "loud-failure",
+        "lean-roundtrip-proof",
+        "heap-embedded-payload"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_il_codec/IlCodec.cs:1-25 (Lean proof at csharp/glp_il_codec/lean/IlCodecRoundTrip)",
+      "test_citation": "csharp/glp_il_codec.tests/RoundTripIdentityTests.cs; ExecuteEquivalenceTests.cs",
+      "status_basis": "The IL codec delivers compile-encode-decode with exact structural identity of opcode objects, recomputed labels, loud failure on every corruption mode, an execute-equivalence gate, and a Lean decode-encode-identity proof.",
+      "statement": "A self-describing bytecode wire codec with proven round-trip identity and execute-equivalence gating is the delivered program-shipping protocol.",
+      "claim": "il-codec — A self-describing bytecode wire codec with proven round-trip identity and execute-equivalence gating is the delivered program-shipping protocol.",
+      "source_citation": "csharp/glp_il_codec/IlCodec.cs:1-25",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-060",
+      "detail_id": "result-envelope-codec",
+      "aliases": [
+        "result_envelope_codec.dart",
+        "payloadType 0x11",
+        "ResultEnvelope"
+      ],
+      "components": [
+        "version-byte",
+        "payload-type-discriminant",
+        "status-section",
+        "bindings-section",
+        "suspended-section",
+        "error-section",
+        "consume-all-loud-fail"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/codec/result_envelope_codec.dart:1-25 (C# at csharp/glp_result_codec/; Lean proof at csharp/glp_result_codec/lean/ResultTermRoundTrip)",
+      "test_citation": "csharp/glp_result_codec/tests/GoldenByteIdentityTests.cs; RoundTripTests.cs",
+      "status_basis": "The result-envelope wire format (version 0x01, payloadType 0x11, six length-prefixed sections, decode-must-consume-every-byte-or-fail-loudly) is implemented in Dart and C# with golden byte-identity tests and a Lean round-trip proof.",
+      "statement": "A cross-runtime result-envelope wire format for execution outcomes (status, bindings, suspensions, errors) is a delivered protocol with byte-level parity locks.",
+      "claim": "result-envelope-codec — A cross-runtime result-envelope wire format for execution outcomes (status, bindings, suspensions, errors) is a delivered protocol with byte-level parity locks.",
+      "source_citation": "glp_runtime/lib/codec/result_envelope_codec.dart:1-25",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-061",
+      "detail_id": "result-envelope-builder",
+      "aliases": [
+        "result_envelope_builder.dart",
+        "ResultEnvelopeBuilder.cs",
+        "IHeapView"
+      ],
+      "components": [
+        "engine-to-envelope-mapping",
+        "depth-32-deep-resolve",
+        "truncated-marker",
+        "heap-view-seam"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/codec/result_envelope_builder.dart:1-14 (C# at csharp/glp_result_codec_builder/)",
+      "test_citation": "csharp/glp_result_codec_builder/tests/",
+      "status_basis": "Both runtimes deliver an engine-to-envelope builder with depth-32 deep resolve over a heap-view seam, the Dart side emitting an explicit $truncated marker at the depth bound.",
+      "statement": "Bridging live engine results into the heap-independent envelope (deep-resolve with explicit truncation) is a delivered builder interface in both runtimes.",
+      "claim": "result-envelope-builder — Bridging live engine results into the heap-independent envelope (deep-resolve with explicit truncation) is a delivered builder interface in both runtimes.",
+      "source_citation": "glp_runtime/lib/codec/result_envelope_builder.dart:1-14",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-062",
+      "detail_id": "term-codec",
+      "aliases": [
+        "term_codec.dart",
+        "TermCodec.cs"
+      ],
+      "components": [
+        "wire-term-encoding",
+        "varint",
+        "golden-vectors"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/codec/term_codec.dart (C# at csharp/glp_result_codec/TermCodec.cs)",
+      "test_citation": "csharp/glp_result_codec/tests/GoldenVectorTests.cs; OracleConsistencyTests.cs",
+      "status_basis": "A shared term sub-codec underlies the result envelope in both runtimes, locked by golden vectors and oracle-consistency tests.",
+      "statement": "A byte-parity term sub-codec for wire terms is a delivered cross-runtime protocol component.",
+      "claim": "term-codec — A byte-parity term sub-codec for wire terms is a delivered cross-runtime protocol component.",
+      "source_citation": "glp_runtime/lib/codec/term_codec.dart",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-063",
+      "detail_id": "message-envelope",
+      "aliases": [
+        "UnifiedHeader.cs",
+        "RouterView",
+        "TlvSection",
+        "VarInt"
+      ],
+      "components": [
+        "msg-id",
+        "from-to-seq",
+        "routing-policy",
+        "capability-slot",
+        "tlv-sections",
+        "must-understand-sections",
+        "payload-opacity"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_crdtmsg/header/UnifiedHeader.cs:1-27 (envelope primitives at csharp/glp_crdtmsg/envelope/)",
+      "test_citation": "csharp/glp_crdtmsg.tests/RouterTests.cs; FoundationTests.cs",
+      "status_basis": "The unified router-opaque header {msg_id, from, to, seq, policy, capability_slot} with verbatim TLV section forwarding and must-understand semantics is implemented and router-tested.",
+      "statement": "A router-opaque unified message envelope with verbatim-forwarded TLV payload sections is the delivered application-layer message protocol.",
+      "claim": "message-envelope — A router-opaque unified message envelope with verbatim-forwarded TLV payload sections is the delivered application-layer message protocol.",
+      "source_citation": "csharp/glp_crdtmsg/header/UnifiedHeader.cs:1-27",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-064",
+      "detail_id": "crdt-convergence",
+      "aliases": [
+        "MeshNode",
+        "Fugue",
+        "Peritext",
+        "op-WAL"
+      ],
+      "components": [
+        "crdt-ops",
+        "rich-text-crdt",
+        "op-wal-durability",
+        "dedup-msg-id-seq",
+        "store-projection-convergence"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_crdtmsg/route/Mesh.cs:1-22 (CRDT core at csharp/glp_crdtmsg/crdt/)",
+      "test_citation": "csharp/glp_crdtmsg.tests/StoreConvergenceTests.cs; FugueTests.cs; PeritextTests.cs",
+      "status_basis": "MeshNode applies ops locally, forwards them router-opaquely, dedups by msg_id plus per-link seq, and commits to an op-WAL whose projection converges across nodes even under reordering.",
+      "statement": "CRDT-based convergent messaging (rich-text ops over an op-WAL with dedup and reorder tolerance) is a delivered application capability of the C# reference.",
+      "claim": "crdt-convergence — CRDT-based convergent messaging (rich-text ops over an op-WAL with dedup and reorder tolerance) is a delivered application capability of the C# reference.",
+      "source_citation": "csharp/glp_crdtmsg/route/Mesh.cs:1-22",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-065",
+      "detail_id": "link-capability-gate",
+      "aliases": [
+        "MacaroonLinkGate",
+        "Macaroon.cs",
+        "ICapabilityGate",
+        "CapabilityGateRegistry"
+      ],
+      "components": [
+        "macaroon-verification",
+        "static-material",
+        "gate-registry",
+        "verify-before-act"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_crdtmsg/bridge/MacaroonLinkGate.cs (gate seam at csharp/glp_link/seam/ICapabilityGate.cs and primitives/CapabilityGateRegistry.cs)",
+      "test_citation": "csharp/glp_link.tests/MacaroonGateTests.cs; csharp/glp_crdtmsg.tests/CapabilityTests.cs",
+      "status_basis": "Macaroon-based capability gating of link establishment is implemented behind a capability-gate seam in the link layer and covered by dedicated tests.",
+      "statement": "Capability-gated link establishment (macaroon verify-before-act behind a gate seam) is a delivered security pattern of the reference link stack.",
+      "claim": "link-capability-gate — Capability-gated link establishment (macaroon verify-before-act behind a gate seam) is a delivered security pattern of the reference link stack.",
+      "source_citation": "csharp/glp_crdtmsg/bridge/MacaroonLinkGate.cs",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-066",
+      "detail_id": "schema-language",
+      "aliases": [
+        "SchemaDslParser",
+        "glp_schema_lang",
+        "CDDL"
+      ],
+      "components": [
+        "dsl-parser",
+        "schema-validator",
+        "instance-validator",
+        "compat-checker",
+        "cddl-lift",
+        "cddl-lower",
+        "pattern-nfa",
+        "schema-registry"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_schema_lang/parser/SchemaDslParser.cs:1-21 (full package at csharp/glp_schema_lang/)",
+      "test_citation": "csharp/glp_schema_lang.tests/",
+      "status_basis": "A schema DSL with parser, well-formedness and instance validation, compatibility checking, CDDL lift/lower, and a registry is delivered as a C# package with its own test project and goldens.",
+      "statement": "A wire-schema language toolchain (parse, validate, evolve, CDDL interop) is a delivered C#-side capability of the reference stack.",
+      "claim": "schema-language — A wire-schema language toolchain (parse, validate, evolve, CDDL interop) is a delivered C#-side capability of the reference stack.",
+      "source_citation": "csharp/glp_schema_lang/parser/SchemaDslParser.cs:1-21",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-067",
+      "detail_id": "wire-registry",
+      "aliases": [
+        "WireRegistry.cs",
+        "SchemaRegistry.cs"
+      ],
+      "components": [
+        "payload-type-registry",
+        "schema-binding"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "csharp/glp_wire_registry/WireRegistry.cs",
+      "test_citation": "csharp/glp_wire_registry.tests/",
+      "status_basis": "A wire/schema registry package exists with its own tests and is consumed by the il-codec and crdtmsg packages.",
+      "statement": "A shared wire registry binding payload types to schemas is a delivered protocol-infrastructure component.",
+      "claim": "wire-registry — A shared wire registry binding payload types to schemas is a delivered protocol-infrastructure component.",
+      "source_citation": "csharp/glp_wire_registry/WireRegistry.cs",
+      "confidence": 0.75,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-068",
+      "detail_id": "test-harness",
+      "aliases": [
+        "programs/tests",
+        "xunit suites",
+        "coverage gates"
+      ],
+      "components": [
+        "repl-corpus-228-programs",
+        "typed-positive-suite",
+        "type-error-negative-suite",
+        "srsw-negative-programs",
+        "module-test-dirs",
+        "link-quic-programs",
+        "csharp-per-package-suites",
+        "coverage-and-discriminant-gates"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "test",
+      "impl_citation": "programs/tests/ (228 .glp: typed/ 65, type_errors/ 3, modules, link, quic, dynamic_dispatch) and csharp/*.tests/ (7 test projects)",
+      "test_citation": "csharp/glp_il_codec.tests/CoverageGateTests.cs",
+      "status_basis": "The slice contains the reference's locking assets: a 228-program REPL corpus spanning guards, SRSW, modules, typing, link, and QUIC, plus seven C# xunit projects including explicit coverage/discriminant gates.",
+      "statement": "Reference behavior is locked by a large REPL program corpus plus per-package C# test suites with coverage gates, defining the acceptance bar for any Gleam parity claim.",
+      "claim": "test-harness — Reference behavior is locked by a large REPL program corpus plus per-package C# test suites with coverage gates, defining the acceptance bar for any Gleam parity claim.",
+      "source_citation": "programs/tests/",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-069",
+      "detail_id": "program-corpus",
+      "aliases": [
+        "typed_book",
+        "book 2",
+        "plays",
+        "paper programs"
+      ],
+      "components": [
+        "typed-book-223-programs",
+        "book-147-programs",
+        "multiagent-plays",
+        "coffee-shop-play",
+        "paper-programs",
+        "exercises"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "programs/ (typed_book/ 223, book 2/ 147, multiagent/ 20, plays/play_coffee_shop/, paper/ 6, exercises/ 1)",
+      "test_citation": "no-test: the corpus itself is the acceptance material; harness outside slice",
+      "status_basis": "The programs tree holds roughly 1183 .glp files including the typed book, legacy book, multiagent plays, and paper examples that a conforming runtime must load and run.",
+      "statement": "A large canonical GLP program corpus (book, typed book, plays, paper examples) defines what a full-scope implementation must actually execute.",
+      "claim": "program-corpus — A large canonical GLP program corpus (book, typed book, plays, paper examples) defines what a full-scope implementation must actually execute.",
+      "source_citation": "programs/",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-070",
+      "detail_id": "bytecode-lint",
+      "aliases": [
+        "linter.dart",
+        "LintIssue"
+      ],
+      "components": [
+        "opcode-level-checks",
+        "coded-issues"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "code",
+      "impl_citation": "glp_runtime/lib/lint/linter.dart:1-12",
+      "test_citation": "no-test: no in-slice test observed for the linter",
+      "status_basis": "A bytecode linter producing coded issues over compiled programs exists in the Dart runtime library.",
+      "statement": "A bytecode-level linter is a delivered auxiliary tool of the Dart reference.",
+      "claim": "bytecode-lint — A bytecode-level linter is a delivered auxiliary tool of the Dart reference.",
+      "source_citation": "glp_runtime/lib/lint/linter.dart:1-12",
+      "confidence": 0.65,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-071",
+      "detail_id": "clause-programming-idioms",
+      "aliases": [
+        "bind pattern",
+        "inject pattern",
+        "handle pattern",
+        "do pattern"
+      ],
+      "components": [
+        "bind-idiom",
+        "inject-idiom",
+        "handle-dispatch-idiom",
+        "do-select-dispatch-idiom",
+        "variable-mode-rules"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/glp-cheat-sheet.md sections 4-7",
+      "test_citation": "no-test: idioms are locked by the manual/cheat-sheet and pervade the programs/ corpus",
+      "status_basis": "The cheat sheet normatively documents the bind, inject, handle, and do idioms plus head-variable mode rules that reference programs are written against.",
+      "statement": "The canonical clause-programming idioms (bind/inject/handle/do and head-mode rules) are normative behaviors the corpus assumes of any conforming implementation.",
+      "claim": "clause-programming-idioms — The canonical clause-programming idioms (bind/inject/handle/do and head-mode rules) are normative behaviors the corpus assumes of any conforming implementation.",
+      "source_citation": "docs/glp-cheat-sheet.md sections 4-7",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-072",
+      "detail_id": "srsw-anonymous-writer",
+      "aliases": [
+        "anonymous underscore",
+        "_ exemption"
+      ],
+      "components": [
+        "writer-nobody-reads",
+        "srsw-exemption"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/typed-glp-manual.md section 9 (with docs/glp-cheat-sheet.md section 3)",
+      "test_citation": "programs/tests/test_passthrough.glp",
+      "status_basis": "The manual defines anonymous `_` as a writer nobody reads, exempt from SRSW, used throughout the corpus (e.g. abort clauses).",
+      "statement": "The anonymous-variable SRSW exemption is a normative language behavior locked by the manual.",
+      "claim": "srsw-anonymous-writer — The anonymous-variable SRSW exemption is a normative language behavior locked by the manual.",
+      "source_citation": "docs/typed-glp-manual.md section 9",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    },
+    {
+      "claim_id": "b3-c1-073",
+      "detail_id": "channel-convention",
+      "aliases": [
+        "Channel(In,Out)",
+        "ch(In,Out?)",
+        "new_channel"
+      ],
+      "components": [
+        "channel-type-definition",
+        "new-channel-creation",
+        "creation-vs-reception-discipline"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "reference-capability",
+      "evidence_type": "doc",
+      "impl_citation": "docs/typed-glp-manual.md sections 4-5 and 10 (type at programs/self.glp:18)",
+      "test_citation": "programs/tests/test_new_channel_guard.glp; programs/tests/test_channel_route.glp",
+      "status_basis": "The Channel(In,Out) ::= ch(In,Out?) convention with the new_channel creation idiom and creation-vs-reception discipline is defined in the manual, declared in the prelude, and covered by corpus tests.",
+      "statement": "The channel type convention and its creation/reception discipline are delivered normative behaviors of the reference language surface.",
+      "claim": "channel-convention — The channel type convention and its creation/reception discipline are delivered normative behaviors of the reference language surface.",
+      "source_citation": "docs/typed-glp-manual.md sections 4-5 and 10",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-reference-runtimes"
+    }
+  ],
+  "coverage_manifest": [
+    {
+      "area": "glp_runtime/lib/bytecode",
+      "state": "partially-swept",
+      "files_seen": 4,
+      "files_in_area": 5,
+      "note": "opcodes.dart class list extracted; runner.dart, guard_defs.dart, opcodes_v2.dart headers read; asm.dart listed only"
+    },
+    {
+      "area": "glp_runtime/lib/compiler (incl. pmt/)",
+      "state": "partially-swept",
+      "files_seen": 6,
+      "files_in_area": 20,
+      "note": "compiler.dart read in full; partial_evaluator, project_linker, pmt/checker headers read; parser/lexer/codegen/analyzer listed with line counts only"
+    },
+    {
+      "area": "glp_runtime/lib/runtime",
+      "state": "partially-swept",
+      "files_seen": 11,
+      "files_in_area": 21,
+      "note": "heap_fcp, scheduler, system_predicates(+impl), body_kernels, module_hierarchy, inbound_pump, external_io, fairness, glp_activation, suspension read at header/registration depth"
+    },
+    {
+      "area": "glp_runtime/lib/analysis (type_checker)",
+      "state": "partially-swept",
+      "files_seen": 4,
+      "files_in_area": 16,
+      "note": "type_checker.dart, prelude.dart, analysis_phase.dart headers read; 14-file type_checker package listed"
+    },
+    {
+      "area": "glp_runtime/lib/engine",
+      "state": "partially-swept",
+      "files_seen": 1,
+      "files_in_area": 2,
+      "note": "glp_engine.dart first 120 lines read; claude_adapter.dart listed only"
+    },
+    {
+      "area": "glp_runtime/lib/multiagent",
+      "state": "partially-swept",
+      "files_seen": 6,
+      "files_in_area": 13,
+      "note": "agent_runtime, isolate_manager, boot_loader, payload_serializer, global_writers_table headers read; archive-irma dir declared historical, not swept"
+    },
+    {
+      "area": "glp_runtime/lib/link",
+      "state": "partially-swept",
+      "files_seen": 6,
+      "files_in_area": 39,
+      "note": "all four subdirs fully listed; link_kernels, frame_codec headers read; per-kernel and per-reliability files inferred from names + C# mirrors"
+    },
+    {
+      "area": "glp_runtime/lib/codec + lint",
+      "state": "partially-swept",
+      "files_seen": 3,
+      "files_in_area": 5,
+      "note": "result_envelope_codec and builder headers read; term_codec cited by listing; linter.dart header read"
+    },
+    {
+      "area": "glp_runtime/bin",
+      "state": "swept",
+      "files_seen": 3,
+      "files_in_area": 17,
+      "note": "glp_repl.dart read (main flow); archive/ (13 retired tools) listed and declared archived per CLAUDE.md; triage_loader not read"
+    },
+    {
+      "area": "csharp (13 projects)",
+      "state": "partially-swept",
+      "files_seen": 14,
+      "files_in_area": 241,
+      "note": "all project dirs and test files listed; headers read for QuicTransport, WebSocketOverQuic, IlCodec, UnifiedHeader, Mesh, SchemaDslParser, GlpExecutor, quick_host Program, csprojs; C# GLP engine source itself is at out/csharp/glp_runtime_net (OUT OF SLICE, evidenced via ProjectReference)"
+    },
+    {
+      "area": "programs",
+      "state": "partially-swept",
+      "files_seen": 30,
+      "files_in_area": 1183,
+      "note": "breadth-only: all top-level dirs listed with .glp counts (tests 228, typed_book 223, book2 147, archive 248, multiagent 20); self.glp head read; individual corpus programs not read"
+    },
+    {
+      "area": "docs (4 normative files)",
+      "state": "partially-swept",
+      "files_seen": 4,
+      "files_in_area": 4,
+      "note": "full TOCs extracted for bytecode-v216, typed-glp-manual, cheat-sheet; runtime-spec headers plus suspension/fairness sections read; not read line-by-line"
+    },
+    {
+      "area": "out-of-corpus declarations",
+      "state": "not-swept",
+      "files_seen": 0,
+      "files_in_area": 0,
+      "note": "declared out-of-corpus: .dart_tool/ and obj/bin build caches, glp_runtime/test/ and test/run_all_tests.sh (outside slice list), out/csharp/glp_runtime_net (outside slice), glp_runtime/lib/analysis.zip and programs/*.zip archives, glp_runtime/lib/multiagent/archive-irma-2026-01-30"
+    }
+  ],
+  "questions_answered": [
+    "Q2",
+    "Q7",
+    "Q8"
+  ],
+  "retractions": []
+}
