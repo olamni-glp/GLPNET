@@ -548,3 +548,8 @@ For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
 - specs/017-conversion-plan-agents/plan.md
 <!-- SPECKIT END -->
+
+<!-- BUILDKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- BUILDKIT END -->

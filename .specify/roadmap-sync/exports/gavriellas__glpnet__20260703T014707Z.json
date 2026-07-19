@@ -1,0 +1,16 @@
+{
+  "dependencies": [],
+  "heads": [],
+  "journal": [],
+  "key_id": "1b47f68702731043",
+  "kind": "buildkit-roadmap-export",
+  "min_reader_version": 1,
+  "schema_version": "1",
+  "scores": [],
+  "signature": "yBlM+qz3zVoRvz9th3ITisP7SPusfxqOm0DLu+HIm523jNqQ9dq3hzrY78TNUFsYrVkN2tPz/PyaB4D18N6PDw==",
+  "source": {
+    "host_id": "54dd4d8f92c8fefbb5834f69c6442a59",
+    "hostname": "gavriellas",
+    "repo": "glpnet"
+  }
+}

@@ -49,3 +49,5 @@ glp_runtime_net/
 # round-trip source). Tombstones under .codeconv/tombstones/ stay tracked.
 .codeconv/depgraph.json
 
+.specify/.deploy-migrated
+.specify/deploy-ledger.jsonl

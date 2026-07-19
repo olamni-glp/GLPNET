@@ -2,9 +2,9 @@
   "ai": "claude",
   "ai_skills": true,
   "branch_numbering": "sequential",
+  "buildkit_version": "2026.7.14.1",
   "context_file": "CLAUDE.md",
   "here": true,
   "integration": "claude",
-  "script": "ps",
-  "speckit_version": "0.8.4.dev0"
+  "script": "ps"
 }
