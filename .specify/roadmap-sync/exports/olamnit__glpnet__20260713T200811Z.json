@@ -1,0 +1,502 @@
+{
+  "dependencies": [],
+  "heads": [
+    {
+      "description": "Genuinely-open YNET transport/overlay gaps deferred from feature 051 Out-of-Scope; unsolved in the cycle-2 external corpus (run 20260712T223008Z-c2a2).",
+      "entity_kind": "epic",
+      "guid": "01KXEHE8X6XHH05AYW6MWYRAC0",
+      "name": "YNET overlay — deferred BUILD-NEW gaps",
+      "resolved_slot": "epic-ynet-overlay-deferred-build-new-gaps"
+    },
+    {
+      "effort": "large (BUILD-NEW, no drop-in corpus reference)",
+      "entity_kind": "feature",
+      "epic_id": "epic-ynet-overlay-deferred-build-new-gaps",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "kind": "feature",
+      "notes": "Deferred from 051 Out-of-Scope. cycle-2 §6 + curator_report_cycle2. Sibling to qhstate 056. Do not fabricate resolutions.",
+      "priority_rank": null,
+      "problem": "YNET serves only self-certified key->record resolution (FR-017); human-memorable decentralized naming is unsolved in the entire cycle-2 corpus (GNS citation-only). Callers needing a name->key resolution get 'further resolver required'.",
+      "resolved_slot": "ynet-human-memorable-decentralized-naming-resolver",
+      "risk": "high — no proven decentralized human-naming design exists; may require a novel resolver or a trust-rooted registry",
+      "spec_path": null,
+      "state": "captured",
+      "target_user": "yngenios services + users needing human-memorable addressing over YNET",
+      "title": "YNET human-memorable decentralized-naming resolver",
+      "touched_areas": [
+        "naming",
+        "ynet-transport/Dht"
+      ],
+      "value": "Completes the R8/R9 naming story; ties to the mstack (diana/nato) resolver gap named in cycle-1 §5."
+    },
+    {
+      "effort": "medium — BUILD-NEW; needs a real mobile-P2P energy reference fetched first",
+      "entity_kind": "feature",
+      "epic_id": "epic-ynet-overlay-deferred-build-new-gaps",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "kind": "feature",
+      "notes": "Deferred from 051 Out-of-Scope. cycle-2 §6 corpus-integrity defect. Re-fetch a real mobile-P2P energy paper before design.",
+      "priority_rank": null,
+      "problem": "Leaf/edge tier lacks a battery/data-budget scheduling policy. The cycle-2 corpus reference (energy-p2p-mobile.pdf) was a mislabeled file (corpus-integrity defect) and Veilid has zero battery awareness, so the gap could not be closed from evidence.",
+      "resolved_slot": "ynet-mobile-background-battery-budget-scheduling-policy",
+      "risk": "medium — honest evidence gap; design must wait on a real reference to avoid guessing",
+      "spec_path": null,
+      "state": "captured",
+      "target_user": "mobile/edge YNET leaf nodes (subject-brief R9)",
+      "title": "YNET mobile background/battery-budget scheduling policy",
+      "touched_areas": [
+        "leaf-mode",
+        "ynet-transport/Relay"
+      ],
+      "value": "Makes the constrained-device leaf tier genuinely battery- and data-friendly, not just non-relaying."
+    }
+  ],
+  "journal": [
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:05.359000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 1
+      },
+      "entity_kind": "epic",
+      "field": "description",
+      "guid": "01KXEHE8X6XHH05AYW6MWYRAC0",
+      "hlc": 116914469298503680,
+      "op_id": "6959d6b7c24018d6033f82fd0dd989d6d9691bcbc9399f0cd7678aae0caf7914",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Genuinely-open YNET transport/overlay gaps deferred from feature 051 Out-of-Scope; unsolved in the cycle-2 external corpus (run 20260712T223008Z-c2a2)."
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:05.359000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 1
+      },
+      "entity_kind": "epic",
+      "field": "claimed_slot",
+      "guid": "01KXEHE8X6XHH05AYW6MWYRAC0",
+      "hlc": 116914469298503680,
+      "op_id": "9acf5fbbd26b7e3574e251ebeaf0d0bb2d9ae47f32a0b5a68399af5636b27eca",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "epic-ynet-overlay-deferred-build-new-gaps"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:05.359000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 1
+      },
+      "entity_kind": "epic",
+      "field": "name",
+      "guid": "01KXEHE8X6XHH05AYW6MWYRAC0",
+      "hlc": 116914469298503680,
+      "op_id": "9b10a6066847eb978ba701aa2f6325f2c10b88c6441f90a63162e0434fe97b28",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "YNET overlay — deferred BUILD-NEW gaps"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "target_user",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "197abe5d3c9793897bd1153f983ccf2a84b00101aeb31afab1dcaba54594b8a9",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "yngenios services + users needing human-memorable addressing over YNET"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "epic_id",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "2142c982838951aba63c721aab761218d2fc3d8094435800f8f5c49dc6999b56",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "epic-ynet-overlay-deferred-build-new-gaps"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "notes",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "439ea3ed558680740a169ff2bd456d3d156c9f210672e6b1c17d831c82b08ebc",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Deferred from 051 Out-of-Scope. cycle-2 §6 + curator_report_cycle2. Sibling to qhstate 056. Do not fabricate resolutions."
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "effort",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "59300caa6f5d023dafac0c5a7295fe593f3607578f16b33f056afb8107d8f75e",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "large (BUILD-NEW, no drop-in corpus reference)"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "value",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "6030213a89f772d0e5024d895e664d683302a2569d738fbf9903f7bee5ddd638",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Completes the R8/R9 naming story; ties to the mstack (diana/nato) resolver gap named in cycle-1 §5."
+    },
+    {
+      "action": "orset_add",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "touched_areas",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "7e3031e93428d74704f43a7b9034367b3e29d55cc84db2442d6500029be56e83",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "naming"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "problem",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "827ce2f300b15c36bcd50eb9f5d23dc35fcced3697aae3c78586187b734e2c65",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "YNET serves only self-certified key->record resolution (FR-017); human-memorable decentralized naming is unsolved in the entire cycle-2 corpus (GNS citation-only). Callers needing a name->key resolution get 'further resolver required'."
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "risk",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "87fe78a651ab64f03d8c56648145a2cf0578abce40a743839bb48697d942522e",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "high — no proven decentralized human-naming design exists; may require a novel resolver or a trust-rooted registry"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "state",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "9b55507a3c55d5f0b8ab648b883b2441d1481b4f8760c5fb6dfc70fb693b1789",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "captured"
+    },
+    {
+      "action": "orset_add",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "touched_areas",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "bc0e295823a7e046cece91b31f6358621b2db7e429480a02d8cc6eb726ac61bd",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "ynet-transport/Dht"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "claimed_slot",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "cc96c72963ef3152de53920942dd43626d3e36ac66aeca1eda98c89f2f1d20f6",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "ynet-human-memorable-decentralized-naming-resolver"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "title",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "d8fc0ecce77160f0be3cb7738c5973c8120aede85000ce7616b880fe24a247a1",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "YNET human-memorable decentralized-naming resolver"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:27.562000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 2
+      },
+      "entity_kind": "feature",
+      "field": "epic_guid",
+      "guid": "01KXEHEYJS7901067D9T3Z7J8V",
+      "hlc": 116914470753009664,
+      "op_id": "fb56af4840d66f0575fae3d9c75291b69a76d301bd5936a778dd311aa10957df",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "01KXEHE8X6XHH05AYW6MWYRAC0"
+    },
+    {
+      "action": "orset_add",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "touched_areas",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "019ac89562fea2fb7eb561ca9a1dcbd039cd0901e94d28bdc06d8b7c71a569ae",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "ynet-transport/Relay"
+    },
+    {
+      "action": "orset_add",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "touched_areas",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "1981a3b8ca90091c7c33105036a8e1a82ba1268baf85133e633e0c171dd54f5b",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "leaf-mode"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "target_user",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "2b109089a95aba8efa46ca5b3ae3258adee9f80484866df20e2e83e3a3c83737",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "mobile/edge YNET leaf nodes (subject-brief R9)"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "claimed_slot",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "3c91c2129d5e2aea00e07697633104746288e0d33098ceab9f8ec6bd353a0936",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "ynet-mobile-background-battery-budget-scheduling-policy"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "risk",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "6edf26396ceff352a75274bce1e0cf0e8cf8a52bbc999bd040b13a35fa1d4886",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "medium — honest evidence gap; design must wait on a real reference to avoid guessing"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "effort",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "8e1198f7a27e2e77c5ad4461f374d5546700bf01930279767ad3e759f0feb396",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "medium — BUILD-NEW; needs a real mobile-P2P energy reference fetched first"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "notes",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "9c6b32a84deae0980f57c300a48f3adee3e822703ca673087ed783b6adae94ad",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Deferred from 051 Out-of-Scope. cycle-2 §6 corpus-integrity defect. Re-fetch a real mobile-P2P energy paper before design."
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "value",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "9fe414e6d86aeadb48f702af7498645d0e9529fa937b7c430850dbbc083626b1",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Makes the constrained-device leaf tier genuinely battery- and data-friendly, not just non-relaying."
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "epic_id",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "acb12c39ea68dcea425cd11f4875b010277dae9600fcaddd5c13ff7bb9a906b4",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "epic-ynet-overlay-deferred-build-new-gaps"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "epic_guid",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "b0e72dac4afc973f89eb2293f65be24fa3fd32af55deebd3640817adb3d94ad5",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "01KXEHE8X6XHH05AYW6MWYRAC0"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "title",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "d6cf40cfbadc3beaa29208cb2375bdb10b99f41706789aa5b7500954a40d5a53",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "YNET mobile background/battery-budget scheduling policy"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "state",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "e85fb3382dd394a3b98ea67c5805bf4b66aa32f6c3cbbb6afc2fe0f77466adc4",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "captured"
+    },
+    {
+      "action": "field_set",
+      "actor": "actor-f328a2a97237",
+      "at": "2026-07-13T20:07:44.440000+00:00",
+      "dvv_dot": {
+        "3720f6bfdf8016d972a0d8da618711f3": 3
+      },
+      "entity_kind": "feature",
+      "field": "problem",
+      "guid": "01KXEHFF29CCHEQ40Y50V1TBH3",
+      "hlc": 116914471859257344,
+      "op_id": "fb303a026f7105077358cae0f1312eff62a5d050ff89a5814ea3d2d268152697",
+      "origin_host_id": "3720f6bfdf8016d972a0d8da618711f3",
+      "value": "Leaf/edge tier lacks a battery/data-budget scheduling policy. The cycle-2 corpus reference (energy-p2p-mobile.pdf) was a mislabeled file (corpus-integrity defect) and Veilid has zero battery awareness, so the gap could not be closed from evidence."
+    }
+  ],
+  "key_id": "d2a6463ba209d8a2",
+  "kind": "buildkit-roadmap-export",
+  "min_reader_version": 1,
+  "schema_version": "1",
+  "scores": [],
+  "signature": "S3RFo6hAeTCXh7Xt/shQnlcryn4kvDdV38a1cjad1JjSEWPFXfEBrzIPTN1j5m5iUEOj51lHG2skMHsdtBknDw==",
+  "source": {
+    "host_id": "3720f6bfdf8016d972a0d8da618711f3",
+    "hostname": "olamnit",
+    "repo": "glpnet"
+  }
+}
