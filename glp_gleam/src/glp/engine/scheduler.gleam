@@ -44,14 +44,19 @@
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/set.{type Set}
 import gleam/string
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
-import glp/engine/runner.{type RunnerFault, type SpawnReq}
+import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
+import glp/mad/global_name
+import glp/mad/globalize.{type Spawn}
+import glp/mad/mad_kernels.{type MadState, MadState}
 import glp/runtime/heap.{type Heap}
 import glp/runtime/suspension.{type GoalRef, Suspension}
+import glp/runtime/terms
 
 /// The scheduler state: the loaded program, the current heap, the run queue, the
 /// goal store (id → its current activation, for reactivation), the blocking-reader
@@ -264,7 +269,9 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.new_context(engine.heap, act.regs)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out) -> {
+        // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
+        // pure scheduler — always `None` on this path, ignored here.
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
           let engine =
             Engine(
               ..engine,
@@ -308,6 +315,163 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
         runner.RunnerError(reason: fault) -> #(engine, StepErrored(fault))
       }
     }
+  }
+}
+
+// ── madGLP-aware stepping (T050.A3) ────────────────────────────────────────────
+//
+// The pure `step` above runs a reduction with NO madGLP state (`ctx.mad == None`).
+// `step_mad` is the driver the A3 `MadEngine` calls: it injects the caller's
+// `MadState` (W_p + a per-step-empty M_p / spawn scratch) into the reduction, reads
+// the updated `MadState` back off `Reduced.mad`, LOWERS the reader-branch
+// `global_send` spawns globalization emitted into REAL runnable `global_send/3`
+// goals (so the ordinary suspension machinery watches the reader and fires `_send`
+// on binding — spec §4/§8.1 "Note on Outgoing Messages"), and hands the outgoing
+// message set (drained M_p) back to the caller as the returned `MadState`'s `m_p`
+// (the Send transaction, §8.2 — enabled every step, so M_p never accumulates).
+//
+// W_p persists across steps in the returned `MadState`; the index counter lives IN
+// W_p (T050.A0). The pure `StepReduced` outcome is UNCHANGED — the outbound messages
+// ride on the separately-returned `MadState`, exactly the ratified contract shape
+// `step -> #(_, StepOutcome, List(Message))` (contracts/madglp-port.md).
+
+/// One madGLP reduction: like `step`, but threading `mad_in` through the reduction
+/// and returning the updated `MadState` (whose `m_p` is this step's drained outgoing
+/// messages and whose `w_p` persists; `mad_spawns` is always `[]` on return — lowered
+/// into the run queue here). A lowering failure (`global_send/3` not loaded) surfaces
+/// as `StepErrored`, never a silent drop.
+pub fn step_mad(
+  engine: Engine,
+  reduction_budget: Int,
+  mad_in: MadState,
+) -> #(Engine, StepOutcome, MadState) {
+  case types.dequeue(engine.queue) {
+    Error(_) -> #(engine, StepIdle, mad_in)
+    Ok(#(act, queue)) -> {
+      let engine = Engine(..engine, queue: queue)
+      let ctx = runner.with_mad(runner.new_context(engine.heap, act.regs), mad_in)
+      case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o) -> {
+          // In madGLP mode the runner always returns `Some` (we injected `Some`);
+          // `None` would be an engine invariant break — treat it as no effect.
+          let mad_out = case mad_o {
+            Some(m) -> m
+            None -> mad_in
+          }
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
+            )
+          let engine = trace_reduction(engine, act, spawned, h)
+          let #(engine, spawned_ids) =
+            list.map_fold(spawned, engine, spawn_goal)
+          let engine = list.fold(woken, engine, reactivate)
+          let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+          // Lower the accumulated reader-branch `global_send` spawns into real goals.
+          case lower_mad_spawns(engine, mad_out.mad_spawns) {
+            Ok(engine) -> #(
+              engine,
+              StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
+              MadState(..mad_out, mad_spawns: []),
+            )
+            Error(reason) -> #(engine, StepErrored(runner.Malformed(reason)), mad_in)
+          }
+        }
+        runner.Suspended(heap: h, on: on) -> {
+          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+          let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
+          let on_list = on |> set.to_list |> list.sort(int.compare)
+          #(engine, StepSuspended(act.goal_id, act.procedure, on_list), mad_in)
+        }
+        runner.Failed(heap: h) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+            )
+          let engine = trace_terminal(engine, act, h, " \u{2192} failed")
+          #(engine, StepFailed(act.goal_id, act.procedure), mad_in)
+        }
+        runner.BudgetExhausted(heap: h) -> #(
+          Engine(..engine, heap: h),
+          StepErrored(runner.Malformed(
+            "reduction budget exhausted in goal " <> act.procedure,
+          )),
+          mad_in,
+        )
+        runner.RunnerError(reason: fault) -> #(engine, StepErrored(fault), mad_in)
+      }
+    }
+  }
+}
+
+/// Lower each `global_send` spawn into a runnable `global_send/3` goal and enqueue it
+/// (spec §4 / §5.1 reader branch). The spawn's `watch_addr` is the WRITER of the
+/// watched pair; the goal reads its paired READER `Y?`, so its `known(Y?)` guard
+/// suspends until the writer binds, then fires `_send` (T050.A2) — reusing the
+/// suspension machinery, no bespoke onBind. `Error` if `global_send/3` is not loaded.
+fn lower_mad_spawns(engine: Engine, spawns: List(Spawn)) -> Result(Engine, String) {
+  list.try_fold(spawns, engine, fn(engine, sp) {
+    case program.label_pc(engine.program, "global_send/3") {
+      Error(_) ->
+        Error(
+          "global_send/3 not loaded — cannot lower a madGLP reader spawn "
+          <> "(prelude wiring is T050.A4)",
+        )
+      Ok(entry_pc) -> {
+        let reader = heap.paired_reader(engine.heap, sp.watch_addr)
+        let regs =
+          program.new_regs()
+          |> program.set_reg(0, terms.VarRef(reader))
+          |> program.set_reg(1, global_name.to_term(sp.name))
+          |> program.set_reg(2, sp.dest)
+        let #(engine, _id) = spawn_goal(engine, SpawnReq("global_send/3", entry_pc, regs))
+        Ok(engine)
+      }
+    }
+  })
+}
+
+/// Enqueue the `global_send` spawns a Receive-side Localize emitted (spec §5.2 `_w`
+/// branch) — the public seam the `MadEngine` Receive transaction uses (same lowering
+/// as `step_mad`'s reduce-side spawns). `Error` if `global_send/3` is not loaded.
+pub fn enqueue_global_sends(
+  engine: Engine,
+  spawns: List(Spawn),
+) -> Result(Engine, String) {
+  lower_mad_spawns(engine, spawns)
+}
+
+/// Replace the engine's heap (the `MadEngine` Receive transaction threads Localize's
+/// freshly-allocated heap back in before binding the target writer).
+pub fn set_heap(engine: Engine, heap: Heap) -> Engine {
+  Engine(..engine, heap: heap)
+}
+
+/// Bind a local writer to `value` and re-enqueue every goal the binding wakes (the
+/// Receive transaction's "assign X := T↓, reactivate suspended goals" — spec §8.3).
+/// `Error` if the writer is already bound (a Receive on a consumed entry is an
+/// upstream violation, surfaced not swallowed — reliability dedup is T052).
+pub fn bind_and_wake(
+  engine: Engine,
+  writer_addr: Int,
+  value: terms.Term,
+) -> Result(Engine, String) {
+  case heap.bind_writer(engine.heap, writer_addr, value) {
+    Ok(#(h, woken)) -> {
+      let engine = Engine(..engine, heap: h)
+      Ok(list.fold(woken, engine, reactivate))
+    }
+    Error(_) ->
+      Error(
+        "madGLP Receive: writer "
+        <> int.to_string(writer_addr)
+        <> " already bound",
+      )
   }
 }
 
