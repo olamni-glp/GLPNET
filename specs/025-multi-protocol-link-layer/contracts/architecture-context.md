@@ -335,7 +335,19 @@ is why it cannot become a fourth verdict.
   then `permFail` on give-up, and a fault-guarded clause becomes reducible
   (FR-046, SC-010). The reader's *data* goal stays suspended-not-failed (FR-044).
 
-**PROPOSED — monitor term vocabulary (language-authority surface; see
+> 🔴 **SUPERSEDED 2026-07-20 — the arity below is WRONG. Ship bare `ok`, NOT `ok(LinkId)`.**
+> The ratified, shipped vocabulary is `programs/self.glp:451`:
+> ```prolog
+> Fault ::= ok ; closed(LinkId, Reason) ; tempFail(LinkId, Reason) ; permFail(LinkId, Reason).
+> ```
+> Two differences from the proposal below: **`ok` is arity 0**, and **`closed/2` exists** (the
+> intentional-close terminal added by `rulings-log.md`, Gabi 2026-06-06; `Reason = eos` for a graceful
+> stream-end `[]`, or the user reason from `link_close`). The C# reference agrees
+> (`LinkTerms.Ok()` → `ok`). A reader who acts on the paragraph below emits a term no clause will
+> match — a silent wrong answer, not a compile error. Tracked as deviation **D1** in
+> `specs/050-full-gleam-combined/contracts/link-primitives-port.md` §5.
+
+**PROPOSED (STALE — superseded above; `ok/1` is not the shipped shape) — monitor term vocabulary (language-authority surface; see
 §language_authority below).** This is the one place this facet surfaces a
 language-authority item, because the *term shapes* the program matches on are an
 interface contract. PROPOSED ground term shapes (names/arity pending Gabi):
