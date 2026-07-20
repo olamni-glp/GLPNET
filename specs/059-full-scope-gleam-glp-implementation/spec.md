@@ -18,6 +18,12 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 - Engineer gate rulings G1–G5 + G3-A: `docs/research/fullscope-gleam/phase2-verify/rulings.md` (binding)
 - Marathon: `mrun-8bda036d9e9b` (scoping discharged; this feature executes under it)
 
+## Clarifications
+
+### Session 2026-07-20
+
+- Q: Yngenios embeddability — does wave 4 require actual wiring to the running yngenios services, or does a contract-plus-stub boundary satisfy "complete inside the yngenios architecture"? → A: Option C — full wiring: the Gleam GLP engine embedded as the controller across all four spec-056 services (S1 storage / S2 network / S3 kv / spine), with the fabric's own tests passing against it. This resolves open escalation `rule-embeddability-api-yngenios-wiring`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Drift-proof foundation for everything downstream (Priority: P1)
@@ -96,18 +102,19 @@ A REPL user interacts with a front-end client process while the engine runs in a
 
 ---
 
-### User Story 6 - Yngenios embeddability and whole-feature acceptance (Priority: P6)
+### User Story 6 - Yngenios fabric runs on the embedded Gleam engine (Priority: P6)
 
-A yngenios integrator has a ratified embeddability requirements contract and a compiling service-box API boundary stub embedding the BE engine behind the frozen facade; a release engineer can then run one fresh-session acceptance sweep proving the whole feature (all waves) green.
+A yngenios operator runs the four spec-056 services (storage S1, network S2, kv S3, spine) with the Gleam GLP engine embedded as their controller over the shared mailbox binding, and the fabric's own test suites pass against that Gleam-controlled data plane; a release engineer can then run one fresh-session acceptance sweep proving the whole feature (all waves) green.
 
-**Why this priority**: The feature's terminal value — embeddability at requirements level plus integration acceptance — and the plan's wave 5.
+**Why this priority**: The feature's terminal value and its delivery frame (G3-A, clarified 2026-07-20 to full wiring): the implementation is only "complete inside the yngenios architecture" when the fabric actually runs on it. Spans the plan's waves 4–5.
 
-**Independent Test**: The embeddability boundary test builds and passes; the wave-5 acceptance WP re-runs the FE/BE e2e, the mesh acceptance, and the full pinned-suite set from a fresh session and appends evidence to the feature's acceptance record.
+**Independent Test**: With the yngenios repo checked out on the same machine, the four services start against the embedded Gleam engine and their `gleam test` suites plus the spine's object-PUT path pass end to end; the wave-5 sweep then re-runs the FE/BE e2e, the mesh acceptance, and the full pinned-suite set from a fresh session.
 
 **Acceptance Scenarios**:
 
-1. **Given** the ratified contract, **When** the boundary stub is built, **Then** it compiles green and its boundary test embeds the BE engine without touching frozen interfaces.
-2. **Given** all waves complete, **When** the acceptance sweep runs from a fresh session, **Then** every success criterion below has a committed evidence row.
+1. **Given** the ratified service-box contract, **When** each of the four services is started against the embedded Gleam BE engine, **Then** it drives the engine through the mailbox binding without touching any frozen interface.
+2. **Given** the wired fabric, **When** an object-PUT runs across the spine, **Then** it completes end to end on the Gleam-controlled data plane with the yngenios suites green.
+3. **Given** all waves complete, **When** the acceptance sweep runs from a fresh session, **Then** every success criterion below has a committed evidence row.
 
 ---
 
@@ -131,9 +138,9 @@ A yngenios integrator has a ratified embeddability requirements contract and a c
 - **FR-005**: Parity is normative (G4): where Gleam and the Dart/C# reference diverge, the reference v2.16 behavior governs — explicitly including the UnifyConstant ground-struct-literal case, whose golden pin pins the reference behavior.
 - **FR-006**: The multiagent runtime MUST be ported to the Gleam instance (G2) with the reference multiagent plays in the parity acceptance set.
 - **FR-007**: Mesh support MUST land with the Gleam instance as the QUIC-mesh controller of the yngenios fabric (G3); acceptance target is the Gleam equivalent of `programs/tests/quic/quic_mesh.glp` passing with C# endpoints eligible as peers.
-- **FR-008**: The feature MUST be delivered inside the yngenios architecture (G3-A): wave-4 builds validate against the frozen spec-056 four-service architecture at requirements level, with no yngenios sources imported into this repo and the S4 kernel remaining language-authority-gated per yngenios design 70.
+- **FR-008**: The feature MUST be delivered inside the yngenios architecture (G3-A): wave-4 builds MUST wire the Gleam GLP engine as the controller across all four frozen spec-056 services (S1 storage, S2 network, S3 kv, spine) on their shared mailbox binding, with the yngenios fabric's own tests passing against the Gleam-controlled data plane. Wiring is by cross-repo integration only — no yngenios sources are imported into this repo — and the S4 kernel (mint/policy) remains language-authority-gated per yngenios design 70.
 - **FR-009**: The FE/BE process split MUST pass its committed e2e (separate processes, wire load/run, FE kill-restart without engine loss, snapshot/restore, two concurrent clients via a GLP control program).
-- **FR-010**: Yngenios embeddability MUST be delivered at requirements level: a ratified contract, a compiling service-box API boundary stub, and a boundary test embedding the BE engine behind the frozen facade — with the store-kernel scope call (store_put/store_get vs host-owned log) escalated to the engineer, never resolved by the team.
+- **FR-010**: Yngenios embeddability MUST be delivered as working integration, not a stub: a ratified service-box contract, a service-box API on the engine facade, and the Gleam BE engine embedded and driven by each of the four spec-056 services through their mailbox binding, exercised by an end-to-end object-PUT path across the fabric. The store-kernel scope call (store_put/store_get kernels vs host-owned log) remains escalated to the engineer, never resolved by the team.
 - **FR-011**: The escalation register MUST be maintained: the two open escalations are ruled before any dependent WP starts; new conflicts append to the register and are never silently resolved.
 - **FR-012**: Scope exits happen only by recorded engineer ruling: the G5 dispositions apply to the 8 filed proposals; any new out-of-scope proposal follows the same rule-request path.
 - **FR-013**: Every WP's acceptance evidence MUST be checkable from a fresh session with zero conversational memory (a command, a test path, or a committed artifact), and the feature's progress MUST be tracked in marathon `mrun-8bda036d9e9b`.
@@ -157,15 +164,16 @@ A yngenios integrator has a ratified embeddability requirements contract and a c
 - **SC-005**: The FE/BE e2e (kill-restart, snapshot/restore, two concurrent clients) passes from a fresh session.
 - **SC-006**: The Gleam mesh acceptance (quic_mesh equivalent, C# peer participating) passes with verdicts identical to the single-runtime reference.
 - **SC-007**: The reference multiagent plays pass on the Gleam instance.
-- **SC-008**: The embeddability boundary stub builds green with its boundary test passing and the engineer's contract sign-off recorded.
+- **SC-008**: All four spec-056 yngenios services run against the embedded Gleam engine with their own test suites green and one end-to-end object-PUT completing across the spine, with the engineer's contract sign-off recorded.
 - **SC-009**: Zero unresolved escalation-register entries at feature close; every ruling recorded and cited.
 
 ## Assumptions
 
 - The engineer gate rulings G1–G5 and G3-A (`phase2-verify/rulings.md`) are binding scope decisions; this spec composes them and does not reopen them.
 - The FINAL Phase-2 outline plan is the authoritative WP inventory; `/bk-plan` will map waves to pipeline artifacts without re-litigating adjudicated WPs.
-- The two open escalations (`rule-quic-sideprocess-relay`, `rule-embeddability-api-yngenios-wiring`) will be ruled by the engineer before their due-before gates (wave-4 dependencies); until then dependent WPs are blocked, not re-scoped.
+- `rule-embeddability-api-yngenios-wiring` is RESOLVED (2026-07-20, full wiring — see Clarifications). `rule-quic-sideprocess-relay` remains open and will be ruled before its wave-4 gate; until then dependent WPs are blocked, not re-scoped.
+- Full yngenios wiring makes the fabric a runtime integration dependency, not just a reference: the yngenios repo must be checked out and buildable on the same machine, and its four services must be startable against an externally-supplied engine. If the spec-056 seams (C1–C6, frozen) do not admit an embedded external controller as-is, that is a cross-repo escalation — never a unilateral change to either side.
 - The BEAM toolchain (OTP 29, gleam 1.17, rebar3 3.27) is available with the recorded Windows-build/WSL-test topology; Profile-C QUIC remains WSL-only and environment-fragile.
 - The C#/.NET reference peers (glp_link, glp_quick_host, result-codec suites) and the Dart reference REPL remain available as parity oracles.
-- The yngenios repo (`D:\bstdev\research\yngenios-003`, frozen spec-056) is available on this machine for requirements-level validation; its sources are never imported into this repo.
+- The yngenios repo (`D:\bstdev\research\yngenios-003`, frozen spec-056 Gleam/BEAM data plane) is available and buildable on this machine for the wave-4 wiring; its sources are never imported into this repo (integration is cross-repo).
 - Effort is marathon-scale (multi-session); the marathon harness provides restart-resume; sessions ship via buildkit GitFlow from this feature branch.
