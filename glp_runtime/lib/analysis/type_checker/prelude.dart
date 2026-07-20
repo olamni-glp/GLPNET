@@ -136,6 +136,11 @@ const Set<String> builtinProcedures = {
   '_send/3',
   // Output (system predicate)
   '_output/1',
+  // UI output (system predicate; madGLP-spec §12.5). Host-implemented, no GLP clauses.
+  // A SEPARATE sink from _output (§12.6). Approved by Gabi 2026-07-20 under Language
+  // Authority (DISCIPLINE §1.14). Registered here so programs/self.glp's declaration
+  // and mad_predicates.glp's send_to_ui/1 wrapper type-check (same mechanism as _output).
+  '_send_to_ui/1',
   // Link-layer host kernels (feature 025; ratified rulings-log OQ-A4/C1/C2). NEW approved
   // system predicates — host-implemented (csharp/glp_link; Dart mirror later), no GLP clauses.
   // Registered here so programs/lib/link.glp's wrappers type-check (same mechanism as atom/@<).

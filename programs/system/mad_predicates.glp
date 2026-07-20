@@ -47,3 +47,32 @@ send_to_net([]).
 
 procedure global_send(NetMsg?, GlobalName?, Constant?).
 global_send(T, G, Q) :- known(T?) | '_send'(T?, G?, Q?).
+
+%% =============================================================================
+%% send_to_ui/1 - Process UI output stream
+%% =============================================================================
+%%
+%% Iterates over a stream of terms and delivers each GROUND element to the local
+%% UI sink via the '_send_to_ui' kernel.
+%%
+%% Per madGLP-spec.md Section 12.4.
+%%
+%% Contrast with send_to_net/1 above, per spec Section 12.6:
+%%   - send_to_net GLOBALIZES (variables may cross, becoming global links) and routes
+%%     through M_p; its guard is known(T?).
+%%   - send_to_ui does NOT globalize, does NOT touch M_p and creates no global link -
+%%     it is purely local. Its guard is ground(X?), which is what guarantees no unbound
+%%     variable ever reaches the GLP-host boundary: UI messages must be fully
+%%     instantiated. The two sinks stay distinct end to end.
+%%
+%% Typing note: spec Section 12.4 writes `procedure send_to_ui(Stream?)`, but bare
+%% `Stream` is not a type - root self.glp defines the parameterized `Stream(X)`, and
+%% Section 12 (v4.4) predates the tight-typing discipline in typed-glp-manual Section
+%% 18. Declared here as `Stream(X)?`; spec Section 12.4 needs the same correction.
+%% The '_send_to_ui'/1 kernel and this typing were approved by Gabi 2026-07-20 under
+%% Language Authority (DISCIPLINE Section 1.14), together with the ruling that the host
+%% UI sink is SEPARATE from the '_output'/1 program-output sink.
+
+procedure send_to_ui(Stream(X)?).
+send_to_ui([X|In]) :- ground(X?) | '_send_to_ui'(X?), send_to_ui(In?).
+send_to_ui([]).

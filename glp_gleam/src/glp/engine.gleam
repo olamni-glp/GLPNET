@@ -256,6 +256,50 @@ fn run_goal(
   Ok(#(envelope, output, scheduler.trace_lines(sched)))
 }
 
+/// Run `goal` and return the envelope plus BOTH host sinks, in emission order:
+/// `#(engine, envelope, output, ui)`.
+///
+/// `output` is `_output/1` program output; `ui` is `'_send_to_ui'/1` UI output. They
+/// are separate channels and are never merged (madGLP-spec §12.6; Gabi §1.14 ruling
+/// 2026-07-20) — in Dart the UI sink is a Flutter callback, and this is its Gleam
+/// equivalent: the embedder drains it here. Without this the UI sink would be
+/// unreachable from the facade, i.e. approved but undeliverable.
+pub fn run_with_limit_capturing_ui(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> #(Engine, ResultEnvelope, List(String), List(String)) {
+  case run_goal_ui(engine, goal, fuel) {
+    Ok(#(env, out, ui)) -> #(engine, env, out, ui)
+    Error(reason) -> #(engine, failed_envelope(reason), [], [])
+  }
+}
+
+fn run_goal_ui(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> Result(#(ResultEnvelope, List(String), List(String)), String) {
+  use atom <- result.try(parse_goal(goal))
+  let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
+  use entry <- result.try(
+    program.label_pc(engine.program, label)
+    |> result.replace_error("predicate " <> label <> " not found"),
+  )
+  use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
+
+  let sched = scheduler.new(engine.program, boot.heap)
+  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+  let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+
+  use #(envelope, output) <- result.try(finish_run(
+    sched,
+    boot.query_var_writers,
+    status,
+  ))
+  Ok(#(envelope, output, scheduler.captured_ui(sched)))
+}
+
 /// Build the result envelope + captured output from a finished scheduler run
 /// (shared by one-shot `run` and the interactive `step` at quiescence). `status`
 /// is the run's terminal status (map_status derives the envelope status + blocking

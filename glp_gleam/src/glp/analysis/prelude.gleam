@@ -63,6 +63,9 @@ pub fn is_builtin_procedure(name_arity: String) -> Bool {
     "_send/3" -> True
     // Output (system predicate)
     "_output/1" -> True
+    // UI output (system predicate; madGLP-spec §12.5). Separate sink from _output
+    // (§12.6). Kernel approved by Gabi 2026-07-20 under Language Authority §1.14.
+    "_send_to_ui/1" -> True
     // Link-layer host kernels (feature 025; rulings OQ-A4/C1/C2)
     "_link_setup/5" -> True
     "_link_send/3" -> True

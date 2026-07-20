@@ -54,10 +54,24 @@ import glp/runtime/terms.{
 const mutual_ref_functor = "$mutual_ref"
 
 /// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying the
-/// updated heap, any goals reactivated by binding the output writer, and any
-/// captured program-output lines (`_output`/1 — empty for the arithmetic kernels).
+/// updated heap, any goals reactivated by binding the output writer, and the two
+/// SEPARATE host sinks: captured program-output lines (`_output`/1) and UI lines
+/// (`_send_to_ui`/1). Both are empty for the arithmetic kernels.
+///
+/// `output` and `ui` are deliberately DISTINCT channels, not one merged stream:
+/// madGLP-spec §12.6 defines network output and UI output as different things, and an
+/// embedder handed them merged could not recover the distinction. Ruled by Gabi
+/// 2026-07-20 under Language Authority §1.14, together with the `'_send_to_ui'/1`
+/// kernel itself. In Dart the UI sink is a Flutter callback; there is no Flutter here,
+/// so it is captured as data and drained by the embedder — the same thread-as-data
+/// choice made for `_output` in T034.
 pub type KernelOutcome {
-  KSuccess(heap: Heap, woken: List(GoalRef), output: List(String))
+  KSuccess(
+    heap: Heap,
+    woken: List(GoalRef),
+    output: List(String),
+    ui: List(String),
+  )
   KAbort(detail: String)
 }
 
@@ -92,6 +106,7 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_stream_append", 3
     | "_close_mutual_reference", 1 -> True
     "_output", 1 -> True
+    "_send_to_ui", 1 -> True
     _, _ -> False
   }
 }
@@ -226,7 +241,7 @@ pub fn dispatch(
           case find_open_tail(heap, start) {
             Ok(tail) ->
               case heap.bind_writer(heap, tail, ConstTerm(ConstAtom("nil"))) {
-                Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, []))
+                Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, [], []))
                 Error(_) ->
                   Ok(KAbort("_close_mutual_reference: open tail already bound"))
               }
@@ -240,7 +255,16 @@ pub fn dispatch(
     // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
     // the output, threaded as data here rather than `print`ed inline).
     "_output", 1, [t] ->
-      Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)]))
+      Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)], []))
+    // '_send_to_ui'(T): deliver one GROUND term to the local UI sink (madGLP-spec
+    // §12.5). Distinct from `_output` — the term goes to the `ui` channel, never the
+    // program-output one (§12.6; Gabi §1.14 ruling 2026-07-20). Unlike `_send` it does
+    // NOT globalize, does NOT touch M_p and mints no global link: it is purely local,
+    // so the heap is unchanged and nothing is woken. The `ground(X?)` gate lives in the
+    // `send_to_ui/1` wrapper (self.glp/mad_predicates.glp), which is what guarantees no
+    // unbound cell reaches the boundary; the kernel renders whatever it is handed.
+    "_send_to_ui", 1, [t] ->
+      Ok(KSuccess(heap, [], [], [output_capture.format_ground_term(heap, t)]))
     _, _, _ -> Error(Nil)
   }
 }
@@ -294,7 +318,7 @@ fn bind_term(heap: Heap, out: Term, value: Term) -> KernelOutcome {
       case heap.is_writer(heap, addr) {
         True ->
           case heap.bind_writer(heap, addr, value) {
-            Ok(#(h2, woken)) -> KSuccess(h2, woken, [])
+            Ok(#(h2, woken)) -> KSuccess(h2, woken, [], [])
             Error(_) -> KAbort("body kernel: output writer already bound")
           }
         False -> KAbort("body kernel: output argument is not a writer")
@@ -377,8 +401,8 @@ fn find_open_tail(heap: Heap, addr: Int) -> Result(Int, Nil) {
 /// wakes across the two binds `_stream_append` performs).
 fn carry_woken(earlier: List(GoalRef), outcome: KernelOutcome) -> KernelOutcome {
   case outcome {
-    KSuccess(h, woken, output) ->
-      KSuccess(h, list.append(earlier, woken), output)
+    KSuccess(h, woken, output, ui) ->
+      KSuccess(h, list.append(earlier, woken), output, ui)
     KAbort(_) -> outcome
   }
 }

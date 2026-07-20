@@ -78,6 +78,9 @@ pub type ReduceOutcome {
     woken: List(GoalRef),
     spawned: List(SpawnReq),
     output: List(String),
+    /// UI lines emitted by `'_send_to_ui'/1` during this reduction — a SEPARATE sink
+    /// from `output` (madGLP-spec §12.6; Gabi §1.14 ruling 2026-07-20).
+    ui: List(String),
     /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
     /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
     mad: Option(MadState),
@@ -216,6 +219,9 @@ pub type RunnerContext {
     /// Captured `_output/1` program-output lines accumulated during this reduction
     /// (T034), handed to the scheduler on `Reduced` (never touches the heap).
     output: List(String),
+    /// UI lines from `'_send_to_ui'/1`, accumulated and handed over exactly like
+    /// `output` but on its own channel — never merged (madGLP-spec §12.6).
+    ui: List(String),
     /// madGLP effect state (W_p + M_p + reader-spawns), present only in madGLP mode
     /// (T050.A2). The effectful `_send` kernel reads/updates it deep inside `reduce`;
     /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
@@ -247,6 +253,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     parent_stack: [],
     in_body: False,
     output: [],
+    ui: [],
     mad: None,
   )
 }
@@ -324,9 +331,23 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
     opcodes.Proceed ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.ui,
+        ctx.mad,
+      ))
     opcodes.Halt ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.ui,
+        ctx.mad,
+      ))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -1888,13 +1909,14 @@ fn spawn(
           }
         })
       case kernels.dispatch(ctx.heap, proc_name, arity, args) {
-        Ok(kernels.KSuccess(heap, woken, output)) ->
+        Ok(kernels.KSuccess(heap, woken, output, ui)) ->
           Advance(
             RunnerContext(
               ..ctx,
               heap: heap,
               woken: list.append(ctx.woken, woken),
               output: list.append(ctx.output, output),
+              ui: list.append(ctx.ui, ui),
               arg_slots: dict.new(),
             ),
           )

@@ -78,6 +78,12 @@ procedure _send(_?, _?, _?).
 % Output (system predicate)
 procedure _output(_?).
 
+% UI output (system predicate) — madGLP-spec §12.5. Delivers ONE ground term to the
+% local UI sink. Does NOT globalize, does NOT add to M_p, mints no global link: purely
+% local. A SEPARATE sink from _output (§12.6: UI and network output are distinct
+% channels). The ground(X?) gate lives in the send_to_ui/1 wrapper.
+procedure _send_to_ui(_?).
+
 % =============================================================================
 % SINGLE-UNIT-CLAUSE PROCEDURES (DEFINED GUARDS)
 % =============================================================================

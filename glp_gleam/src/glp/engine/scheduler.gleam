@@ -74,6 +74,10 @@ pub opaque type Engine {
     /// Captured `_output/1` program-output lines accumulated across reductions, in
     /// emission order (T034). Read after `run` via `captured_output`.
     output: List(String),
+    /// `'_send_to_ui'/1` UI lines accumulated across reductions, in emission order.
+    /// A SEPARATE sink from `output` (madGLP-spec §12.6; Gabi §1.14 ruling 2026-07-20)
+    /// — read after `run` via `captured_ui`.
+    ui: List(String),
     /// Reduction-trace mode (`:trace`). When on, each step appends a reference-shape
     /// trace line (`head :- body` / `goal → suspended` / `goal → failed`).
     trace: Bool,
@@ -135,6 +139,7 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     blocking: dict.new(),
     next_id: 1,
     output: [],
+    ui: [],
     trace: False,
     trace_lines: [],
   )
@@ -209,6 +214,15 @@ pub fn captured_output(engine: Engine) -> List(String) {
   engine.output
 }
 
+/// The `'_send_to_ui'/1` UI lines, in emission order — the separate UI sink
+/// (madGLP-spec §12.4/§12.5). In Dart these go to a Flutter callback; there is no
+/// Flutter here, so the embedder drains them from the engine. Kept distinct from
+/// `captured_output` on purpose: §12.6 defines UI and network output as different
+/// channels, and merged they could not be told apart again (Gabi §1.14 2026-07-20).
+pub fn captured_ui(engine: Engine) -> List(String) {
+  engine.ui
+}
+
 /// The next goal id the engine would mint (test/inspection hook).
 pub fn next_id(engine: Engine) -> Int {
   engine.next_id
@@ -271,13 +285,21 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
         // pure scheduler — always `None` on this path, ignored here.
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          ui: ui_out,
+          mad: _,
+        ) -> {
           let engine =
             Engine(
               ..engine,
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
               output: list.append(engine.output, out),
+              ui: list.append(engine.ui, ui_out),
             )
           // Trace the committed reduction as `head :- body` (Dart onReduction).
           let engine = trace_reduction(engine, act, spawned, h)
@@ -351,7 +373,14 @@ pub fn step_mad(
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.with_mad(runner.new_context(engine.heap, act.regs), mad_in)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o) -> {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          ui: ui_out,
+          mad: mad_o,
+        ) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
           // `None` would be an engine invariant break — treat it as no effect.
           let mad_out = case mad_o {
@@ -364,6 +393,7 @@ pub fn step_mad(
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
               output: list.append(engine.output, out),
+              ui: list.append(engine.ui, ui_out),
             )
           let engine = trace_reduction(engine, act, spawned, h)
           let #(engine, spawned_ids) =
