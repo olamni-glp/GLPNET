@@ -209,7 +209,7 @@ The grow-only floor. **Measured at baseline commit `49b523420d745875c67207417adf
 | Suite | Command | Baseline result |
 |---|---|---|
 | Gleam gleeunit | WSL: `cd glp_gleam && gleam test` | **463 passed, no failures** |
-| Dart unified REPL | `DART=/c/Users/gavri/dart-sdk/bin/dart.exe bash test/run_all_tests.sh` | *(baseline run in progress — recorded on completion)* |
+| Dart unified REPL | `DART=/c/Users/gavri/dart-sdk/bin/dart.exe bash test/run_all_tests.sh` | **532 / 532** after the wave-1 AOT-smoke harness fix (see note) |
 | C# link reference | `dotnet test csharp/glp_link.tests` | **147 passed, 0 failed, 0 skipped** |
 | C# result-codec reference | `dotnet test csharp/glp_result_codec/tests` | **131 passed, 0 failed, 0 skipped** |
 
@@ -218,6 +218,8 @@ The grow-only floor. **Measured at baseline commit `49b523420d745875c67207417adf
 **Grow-only rule**: the Gleam count may only grow across waves, never shrink; no test may be skipped or modified without a rule-request. One red test blocks all wave-4 build WPs — deliberate, since a shrinking or reddening suite is exactly the drift this guard exists to make loud.
 
 **Degrade-loudly rule** (C#): if the .NET toolchain is unavailable on a runner, the guard degrades with a **recorded gap**, never a silent skip.
+
+**Wave-1 Dart-oracle harness fix (engineer-approved, 2026-07-20).** The baseline first measured 531/532: Section Q's AOT-smoke check "AOT exe loads self.glp from correct path" asserted the regex `glp[/\\]programs[/\\]self.glp`, which only matches a repo literally named `glp` (the sibling Mac repo). This repo is `glpnet`, so the exe's correct load line (`…\glp\glpnet\programs\self.glp`) failed the string match — a harness false-negative, not a runtime regression: the exe loaded self.glp correctly and all 8 functional AOT checks (ex-02 `:=` arithmetic → Sum=21, ex-03 `now/1`+`_output`+binding) passed. Per the bug protocol this was reported to the engineer, who approved the one-line fix; the regex is now `glp\(net\)\?[/\\]programs[/\\]self.glp` in `test/run_aot_smoke.sh`. AOT smoke → 9/9, full suite → 532/532. The pinned floor is 532; the runtime was never touched.
 
 ---
 
