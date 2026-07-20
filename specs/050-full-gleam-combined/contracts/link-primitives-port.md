@@ -222,10 +222,20 @@ chats are combinations of simpler channels with modifications."* Consequences th
   candidate readings all assumed two callers *share* one `LinkId` — they never do. `link_setup` at a
   `Reused` identity is therefore idempotent duplicate-absorption for **one** owner (redelivery → T052),
   never two live parties sharing streams.
-- **"New virtual thread per connection" = the Phase-B process model (T050.B).** Phase-A models it as
-  distinct registry handles per `LinkId`. Base MVP is one-caller-per-listen (the C# note: a
-  multi-request accept-loop is a transport-leaf Phase-6 concern); per-caller-thread multiplexing is the
-  fuller Phase-B model.
+- **"New virtual thread per connection" = the Phase-B process model (T050.B), and it is specifically a
+  yngenios-scheduled QHSM substrate.** Gabi 2026-07-20: *"virtual threads being rtc with preemption
+  qhsm yngenios created threads … ie muxing os threads on these qhsm machines."* Each connection is a
+  **run-to-completion QHSM** (quantum hierarchical state machine) virtual thread; **yngenios creates
+  them and multiplexes a small pool of OS threads across many of them, preemptively** — an M:N
+  scheduler (many QHSM machines : few OS threads), structurally the BEAM/QP active-object model but with
+  a QHSM state machine as the schedulable unit rather than a BEAM process. **This is Phase-B /
+  yngenios-integration scope, and does NOT block base-C2:** Phase-A drives connections as distinct
+  registry handles under the single scheduler; the M:N QHSM substrate is *how Phase-B/yngenios runs
+  them*. It sharpens the T050.B target (align the process-per-connection model to a yngenios M:N QHSM
+  scheduler, not bare `process.spawn`) and it bears directly on gavri's **yngenios-003 / G3-A** seam
+  question — the embedded Gleam engine's connections are QHSM machines muxed by yngenios OS threads.
+  Base MVP is one-caller-per-listen (the C# note: a multi-request accept-loop is a transport-leaf
+  Phase-6 concern).
 - **Multi-party (broadcast 1→many / chat many↔many) is COMPOSED from base point-to-point links + a
   coordination "modification", built ABOVE the base — NOT a base primitive and NOT fan-out inside
   `_link_setup`.** Joining is **explicit and permission-gated** — the gate is exactly the C1
