@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "20260719T130005Z-782b",
+  "feature_id": "full-scope-gleam-glp-implementation",
+  "task_type": "research",
+  "subject_ref": "Deduplicated delivered-vs-gaps inventory for the Gleam GLP implementation in glpnet. Question: which feature details (interfaces, user stories, patterns, protocols) are ALREADY DELIVERED in the glpnet Gleam implementation, and which remain GAPS versus (a) the roadmap's full-Gleam ambitions incl. front-end/back-end separation and (b) the Dart/C# reference runtimes? Note: yngenios embeddability is REQUIREMENTS-LEVEL (no yngenios sources in-repo; treat as gap-by-definition unless in-repo evidence says otherwise). Frozen roadmap evidence: docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md (created+committed this session). Anchor: marathon mrun-8bda036d9e9b, roadmap feature full-scope-gleam-glp-implementation.",
+  "branch": "050-full-gleam-combined",
+  "verdict": "review_only",
+  "halted_at": null,
+  "cycles": 1,
+  "num_builders": 3,
+  "critic_provider": "codex",
+  "independence_warning": false,
+  "terminal_review": {
+    "mode": "skipped",
+    "reason": "research task type - /bk-codexreview terminal review not applicable (code runs only)",
+    "codexreview_run_id": null
+  },
+  "terminal_review_policy": "auto",
+  "marathon_routed": true,
+  "budgets": {
+    "min_cycles": 2,
+    "max_cycles": 3,
+    "token_budget": 600000,
+    "max_seconds": 0,
+    "review_only": true,
+    "split": {
+      "planning": 20,
+      "validation": 20,
+      "curation": 15,
+      "scan": 25,
+      "eval": 10,
+      "final": 10
+    }
+  },
+  "warnings": [],
+  "curator_edit_distance": 0.9911,
+  "created_at": "",
+  "created_by": "mvw@bancstreet.com"
+}

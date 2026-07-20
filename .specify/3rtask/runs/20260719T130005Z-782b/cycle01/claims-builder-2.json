@@ -1,0 +1,1782 @@
+{
+  "builder": "builder-2",
+  "cycle": 1,
+  "claims": [
+    {
+      "claim_id": "b2-c1-001",
+      "detail_id": "term-representation",
+      "aliases": [
+        "glp/runtime/terms",
+        "terms.gleam",
+        "term-model"
+      ],
+      "components": [
+        "atom",
+        "int",
+        "real",
+        "string",
+        "compound-struct",
+        "empty-list",
+        "cons-list",
+        "nested-struct",
+        "var-ref"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/runtime/terms.gleam:13-38",
+      "test_citation": "glp_gleam/test/glp/runtime/terms_test.gleam:1-3",
+      "status_basis": "Term/Constant types cover all 9 term kinds and the test constructs, inspects, and equality-compares each (SC-001) against the Dart terms.dart oracle.",
+      "statement": "The full GLP term representation (atom, int, real, string, compound, nil, cons list, nested struct, var ref) is delivered as glp/runtime/terms with a 9-kind construction/inspection/equality test.",
+      "claim": "term-representation — The full GLP term representation (atom, int, real, string, compound, nil, cons list, nested struct, var ref) is delivered as glp/runtime/terms with a 9-kind construction/inspection/equality test.",
+      "source_citation": "glp_gleam/src/glp/runtime/terms.gleam:13-38",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-002",
+      "detail_id": "term-heap-unification",
+      "aliases": [
+        "glp/runtime/heap",
+        "heap.gleam",
+        "heap-fcp-port"
+      ],
+      "components": [
+        "paired-writer-reader-allocation",
+        "deref-path-compression",
+        "bind-writer",
+        "bind-writer-to-var",
+        "writer-writer-error",
+        "suspend-on-writer"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/runtime/heap.gleam:69-313",
+      "test_citation": "glp_gleam/test/glp/runtime/heap_test.gleam:1-3",
+      "status_basis": "An immutable threaded heap ports Dart heap_fcp.dart (allocate/deref/bind/path-compression/WxW) and heap_test locks each operation.",
+      "statement": "The immutable-threaded GLP heap (paired writer/reader allocation, deref with path compression, bind_writer, writer-writer violation as error, suspend_on_writer) is delivered and test-locked against the Dart heap_fcp source of truth.",
+      "claim": "term-heap-unification — The immutable-threaded GLP heap (paired writer/reader allocation, deref with path compression, bind_writer, writer-writer violation as error, suspend_on_writer) is delivered and test-locked against the Dart heap_fcp source of truth.",
+      "source_citation": "glp_gleam/src/glp/runtime/heap.gleam:69-313",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-003",
+      "detail_id": "unification-three-valued-verdict",
+      "aliases": [
+        "glp/runtime/unify",
+        "unify.gleam",
+        "three-valued-unification"
+      ],
+      "components": [
+        "const-const",
+        "struct-struct-functor-arity",
+        "var-value",
+        "var-var",
+        "unbound-reader-suspend",
+        "wxw-error",
+        "no-occurs-check"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/runtime/unify.gleam:19-40",
+      "test_citation": "glp_gleam/test/glp/runtime/unify_test.gleam:1-4",
+      "status_basis": "UnifyOutcome implements the SC-003 truth table and the test pins every row including unbound-reader Suspend (never Fail) and WxW Error (never Fail).",
+      "statement": "Three-valued unification (Success/Suspend/Fail, unbound reader suspends, writer-writer is a structural error, no occurs-check) is delivered with the full SC-003 verdict-table test.",
+      "claim": "unification-three-valued-verdict — Three-valued unification (Success/Suspend/Fail, unbound reader suspends, writer-writer is a structural error, no occurs-check) is delivered with the full SC-003 verdict-table test.",
+      "source_citation": "glp_gleam/src/glp/runtime/unify.gleam:19-40",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-004",
+      "detail_id": "unification-writer-mgu",
+      "aliases": [
+        "writer-mgu",
+        "sigma-hat",
+        "PI:14"
+      ],
+      "components": [
+        "binds-only-writers",
+        "never-reader-cell",
+        "never-writer-writer",
+        "post-heap-state-assertions",
+        "lean-proof-companion"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/runner.gleam:1-13",
+      "test_citation": "glp_gleam/test/glp/engine/writer_mgu_adversarial_test.gleam:1-11",
+      "status_basis": "The runner's HEAD phase binds only writers into sigma-hat applied atomically at Commit, and the adversarial suite asserts the invariant on post-heap state (co-discharging PI:14 with the Lean proof under glp_gleam/lean/).",
+      "statement": "The writer-MGU discipline (binds only writers, never readers, never writer-writer, sigma-hat applied atomically at Commit) is delivered and adversarially test-locked alongside a Lean proof artifact.",
+      "claim": "unification-writer-mgu — The writer-MGU discipline (binds only writers, never readers, never writer-writer, sigma-hat applied atomically at Commit) is delivered and adversarially test-locked alongside a Lean proof artifact.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:1-13",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-005",
+      "detail_id": "suspension-table",
+      "aliases": [
+        "glp/runtime/suspension",
+        "suspension.gleam",
+        "suspension-storage"
+      ],
+      "components": [
+        "suspend",
+        "atomic-consume",
+        "waiters-on",
+        "goal-ref",
+        "forwarding"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/runtime/suspension.gleam:20-84",
+      "test_citation": "glp_gleam/test/glp/runtime/suspension_test.gleam:1-5",
+      "status_basis": "SuspensionTable ports Dart suspendOnWriter/_walkAndActivate/_forwardSuspensions and the test cross-validates against the Dart suspension/binding pointer tests.",
+      "statement": "Heap-level suspension storage, activation, and forwarding (FR-008) is delivered as an opaque SuspensionTable cross-validated against the Dart suspension-pointer tests.",
+      "claim": "suspension-table — Heap-level suspension storage, activation, and forwarding (FR-008) is delivered as an opaque SuspensionTable cross-validated against the Dart suspension-pointer tests.",
+      "source_citation": "glp_gleam/src/glp/runtime/suspension.gleam:20-84",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-006",
+      "detail_id": "suspension-scheduler",
+      "aliases": [
+        "glp/engine/scheduler",
+        "scheduler.gleam",
+        "run-loop",
+        "drainWithStatus-port"
+      ],
+      "components": [
+        "run-queue",
+        "goal-store",
+        "blocking-reader-table",
+        "terminal-run-status",
+        "success-suspended-failed-outoffuel-errored",
+        "heap-driven-reactivation"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/scheduler.gleam:61-136",
+      "test_citation": "glp_gleam/test/glp/engine/scheduler_test.gleam:1-5",
+      "status_basis": "The scheduler is a faithful port of Dart Scheduler.drainWithStatus with distinct Success/Suspended(blocking_readers)/Failed/OutOfFuel/Errored terminal statuses, and the test runs the first end-to-end multi-goal execution to quiescence.",
+      "statement": "The suspension-aware scheduler run loop (run queue, goal store, blocking-reader table mirroring Dart rt.suspended, faithful terminal statuses, heap-driven reactivation) is delivered and locked by multi-goal end-to-end tests.",
+      "claim": "suspension-scheduler — The suspension-aware scheduler run loop (run queue, goal store, blocking-reader table mirroring Dart rt.suspended, faithful terminal statuses, heap-driven reactivation) is delivered and locked by multi-goal end-to-end tests.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:61-136",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-007",
+      "detail_id": "scheduler-single-step",
+      "aliases": [
+        "StepOutcome",
+        "step-seam",
+        "single-reduction-step"
+      ],
+      "components": [
+        "step-idle",
+        "step-reduced-woken-spawned",
+        "step-suspended",
+        "step-failed",
+        "step-errored"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/scheduler.gleam:99-121,260",
+      "test_citation": "glp_gleam/test/glp/engine/step_test.gleam:1-6",
+      "status_basis": "step performs exactly one reduction returning a StepOutcome (documented as a NEW capability with no Dart public equivalent) and step_test locks start/step/Done semantics.",
+      "statement": "A real single-reduction step seam (StepOutcome: idle/reduced/suspended/failed/errored) is delivered as a capability beyond the Dart reference, which only exposes the bounded drain.",
+      "claim": "scheduler-single-step — A real single-reduction step seam (StepOutcome: idle/reduced/suspended/failed/errored) is delivered as a capability beyond the Dart reference, which only exposes the bounded drain.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:99-121",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-008",
+      "detail_id": "suspension-wake-dedup",
+      "aliases": [
+        "enqueue_wake",
+        "WakeKey",
+        "reactivation-dedup"
+      ],
+      "components": [
+        "goal-id-generation-key",
+        "duplicate-wake-drop",
+        "stale-generation-drop",
+        "atomic-consume"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/types.gleam:48-102",
+      "test_citation": "glp_gleam/test/glp/engine/dedup_key_test.gleam:1-4",
+      "status_basis": "RunQueue.enqueue_wake dedupes per (goal_id, suspension_generation) per FR-005 and the test locks duplicate-drop, stale-generation-drop, and atomic consumption.",
+      "statement": "Reactivation dedup keyed by (goal id, suspension generation) with stale-wake dropping and atomic suspension consumption is delivered and test-locked (FR-005).",
+      "claim": "suspension-wake-dedup — Reactivation dedup keyed by (goal id, suspension generation) with stale-wake dropping and atomic suspension consumption is delivered and test-locked (FR-005).",
+      "source_citation": "glp_gleam/src/glp/engine/types.gleam:48-102",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-009",
+      "detail_id": "suspension-writer-address-model",
+      "aliases": [
+        "si-u-writer-addresses",
+        "suspension-adaptation"
+      ],
+      "components": [
+        "si-carries-writers",
+        "reactivate-on-writer-binding",
+        "documented-dart-deviation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/runner.gleam:26-31",
+      "test_citation": "glp_gleam/test/glp/runtime/suspension_test.gleam:1-5",
+      "status_basis": "The port documents a faithful adaptation: Dart keeps reader addresses in Si/U and maps at suspend time, while Gleam Si/U and Suspended(on:) carry WRITER addresses registered directly against the suspension table.",
+      "statement": "The Gleam suspension model deliberately carries writer addresses in Si/U (a documented adaptation of Dart's reader-address bookkeeping), reactivating on writer binding — behaviorally equivalent and test-locked.",
+      "claim": "suspension-writer-address-model — The Gleam suspension model deliberately carries writer addresses in Si/U (a documented adaptation of Dart's reader-address bookkeeping), reactivating on writer binding — behaviorally equivalent and test-locked.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:26-31",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-010",
+      "detail_id": "suspension-result-reporting",
+      "aliases": [
+        "suspended-acceptance",
+        "blocking-readers-envelope"
+      ],
+      "components": [
+        "status-suspended",
+        "blocking-reader-set",
+        "globalvarid-no-heap-leak"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:147",
+      "test_citation": "glp_gleam/test/glp/codec/suspended_acceptance_test.gleam:1-4",
+      "status_basis": "The acceptance test locks that a suspended goal emits Status=suspended plus the blocking-reader set as GlobalVarId(agent_id, local_id) with no heap address leaking, surviving encode/decode.",
+      "statement": "A user running a goal that suspends receives a suspended-status envelope naming the blocking readers as global variable ids (never heap addresses) — delivered and acceptance-tested.",
+      "claim": "suspension-result-reporting — A user running a goal that suspends receives a suspended-status envelope naming the blocking readers as global variable ids (never heap addresses) — delivered and acceptance-tested.",
+      "source_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:147",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-011",
+      "detail_id": "three-phase-execution",
+      "aliases": [
+        "head-guard-body",
+        "runner-phases"
+      ],
+      "components": [
+        "head-tentative-unification",
+        "guard-pure-tests",
+        "body-commit-and-spawn",
+        "tentative-struct",
+        "clause-vars"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/runner.gleam:1-37",
+      "test_citation": "glp_gleam/test/glp/engine/runner_test.gleam:1-6",
+      "status_basis": "The runner executes HEAD (tentative sigma-hat) -> GUARD (pure tests) -> BODY (commit + goal construction) including the _TentativeStruct/_ClauseVar machinery, and runner_test drives reductions end-to-end through the real pipeline.",
+      "statement": "Three-phase HEAD/GUARD/BODY clause execution with tentative-structure and clause-variable state (the Dart BytecodeRunner semantics re-expressed immutably) is delivered and test-locked.",
+      "claim": "three-phase-execution — Three-phase HEAD/GUARD/BODY clause execution with tentative-structure and clause-variable state (the Dart BytecodeRunner semantics re-expressed immutably) is delivered and test-locked.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:1-37",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-012",
+      "detail_id": "bytecode-runner",
+      "aliases": [
+        "glp/engine/runner",
+        "runner.gleam",
+        "reduce"
+      ],
+      "components": [
+        "control-spine",
+        "head-constant",
+        "head-structure",
+        "get-put-unify-family",
+        "commit",
+        "spawn",
+        "guard-dispatch",
+        "unimplemented-fault-surface"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/runner.gleam:247,300-374",
+      "test_citation": "glp_gleam/test/glp/engine/runner_test.gleam:1-6",
+      "status_basis": "The runner dispatches the full production-emitted instruction inventory, but Requeue, Allocate, Deallocate, HeadVariable, HeadList, Nop, Distribute, and Transmit fall to RunnerError(Unimplemented) at runner.gleam:374 — surfaced, never silently skipped.",
+      "statement": "The bytecode runner is delivered for the production-emitted opcode set (HEAD/GUARD/BODY families, Commit, Spawn) but Requeue tail-calls, environment frames (Allocate/Deallocate), and module-RPC opcodes (Distribute/Transmit) surface as Unimplemented runner faults.",
+      "claim": "bytecode-runner — The bytecode runner is delivered for the production-emitted opcode set (HEAD/GUARD/BODY families, Commit, Spawn) but Requeue tail-calls, environment frames (Allocate/Deallocate), and module-RPC opcodes (Distribute/Transmit) surface as Unimplemented runner faults.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:300-374",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-013",
+      "detail_id": "bytecode-opcode-table",
+      "aliases": [
+        "glp/bytecode/opcodes",
+        "opcodes.gleam",
+        "v2.16-instruction-set"
+      ],
+      "components": [
+        "control-ops",
+        "head-ops",
+        "get-put-set-unify-ops",
+        "guard-ops",
+        "distribute-transmit",
+        "spec-gap-opcodes",
+        "mnemonic-total-function"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/bytecode/opcodes.gleam:38-164",
+      "test_citation": "glp_gleam/test/glp/bytecode/opcodes_test.gleam:1-5",
+      "status_basis": "The single Op union models the complete v2.16 inventory (including the six spec-gap opcodes live in the Dart reference: NoReaders, GroundEqual, PutBoundConst, PutBoundNil, Distribute, Transmit) and the table-integrity test asserts every variant renders a distinct mnemonic.",
+      "statement": "The complete v2.16 bytecode instruction inventory — including reference-live spec-gap opcodes — is delivered as one Gleam union with a table-integrity test over mnemonics and reader/writer flips.",
+      "claim": "bytecode-opcode-table — The complete v2.16 bytecode instruction inventory — including reference-live spec-gap opcodes — is delivered as one Gleam union with a table-integrity test over mnemonics and reader/writer flips.",
+      "source_citation": "glp_gleam/src/glp/bytecode/opcodes.gleam:38-164",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-014",
+      "detail_id": "bytecode-program-model",
+      "aliases": [
+        "glp/bytecode/program",
+        "BytecodeProgram",
+        "XRegs"
+      ],
+      "components": [
+        "label-index-first-occurrence-wins",
+        "stdlib-in-front-merge",
+        "defined-guards-dict",
+        "disassembly",
+        "x-registers"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/bytecode/program.gleam:24-166",
+      "test_citation": "glp_gleam/test/glp/bytecode/opcodes_test.gleam:1-5",
+      "status_basis": "BytecodeProgram indexes labels first-occurrence-wins and merges stdlib-in-front per Dart semantics, with XRegs as the register file; the T012 test locks both program-model behaviors.",
+      "statement": "The bytecode program model (label indexing, prelude-in-front merge, guard-spec table, disassembly, X registers) is delivered and test-locked against Dart BytecodeProgram semantics.",
+      "claim": "bytecode-program-model — The bytecode program model (label indexing, prelude-in-front merge, guard-spec table, disassembly, X registers) is delivered and test-locked against Dart BytecodeProgram semantics.",
+      "source_citation": "glp_gleam/src/glp/bytecode/program.gleam:24-166",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-015",
+      "detail_id": "guard-kernel",
+      "aliases": [
+        "guard-opcodes",
+        "generic-guard",
+        "guards"
+      ],
+      "components": [
+        "ground",
+        "known",
+        "unknown",
+        "otherwise",
+        "no-readers",
+        "ground-equal",
+        "arith-comparisons",
+        "type-tests",
+        "standard-order",
+        "negation",
+        "suspend-on-unbound-reader"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/runner.gleam:353-371,2229",
+      "test_citation": "glp_gleam/test/glp/engine/guards_test.gleam:1-4",
+      "status_basis": "Three-valued guard evaluation (Ground/Known/Unknown/Otherwise/NoReaders/GroundEqual plus the generic Guard opcode covering arithmetic comparisons, type tests, =?=, @<) is delivered and test-locked, but the wait/wait_until timer guards are explicitly surfaced as Unimplemented (runner.gleam:2229).",
+      "statement": "Guard-kernel evaluation is delivered for the full pure three-valued guard set (with arith_guards_kernels_test also locking comparisons, type tests, =?=, @<), while timer guards wait/wait_until remain unimplemented faults.",
+      "claim": "guard-kernel — Guard-kernel evaluation is delivered for the full pure three-valued guard set (with arith_guards_kernels_test also locking comparisons, type tests, =?=, @<), while timer guards wait/wait_until remain unimplemented faults.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:353-371,2229",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-016",
+      "detail_id": "body-kernel",
+      "aliases": [
+        "glp/engine/kernels",
+        "kernels.gleam",
+        "native-kernels"
+      ],
+      "components": [
+        "arithmetic-add-sub-mul-div-idiv-mod-neg-pow",
+        "math-abs-sqrt-trig-exp-log",
+        "conversions-integer-real-round-floor-ceil",
+        "univ-list-tuple",
+        "mutual-ref-stream-append",
+        "output-kernel",
+        "inline-body-spawn-dispatch"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/kernels.gleam:20-97",
+      "test_citation": "glp_gleam/test/glp/engine/arith_guards_kernels_test.gleam:1-7",
+      "status_basis": "Arithmetic, extended math, type-conversion, univ, mutual-reference/stream-append, and _output kernels are registered and test-locked via the BODY Spawn dispatch, but the effectful _now/_send kernels are deliberately unregistered (kernels.gleam:24-27) and surface as loud runner errors.",
+      "statement": "Native body kernels are delivered for arithmetic, math, conversion, univ, mutual-reference stream append, and _output, while the effectful _now and _send kernels remain unregistered in the standalone engine.",
+      "claim": "body-kernel — Native body kernels are delivered for arithmetic, math, conversion, univ, mutual-reference stream append, and _output, while the effectful _now and _send kernels remain unregistered in the standalone engine.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:20-97",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-017",
+      "detail_id": "output-capture",
+      "aliases": [
+        "_output/1",
+        "format_ground_term",
+        "glp/engine/output_capture"
+      ],
+      "components": [
+        "ground-term-rendering",
+        "captured-line-as-data",
+        "kernel-runner-scheduler-engine-flow"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/output_capture.gleam:32",
+      "test_citation": "glp_gleam/test/glp/engine/output_capture_test.gleam:1-7",
+      "status_basis": "The three-layer test locks reference-shape rendering, kernel dispatch producing one captured line with the heap untouched, and end-to-end flow of the line as data through kernel->runner->scheduler->engine.",
+      "statement": "Program output via _output/1 is delivered end-to-end: the ground argument renders like the Dart formatGroundTerm and flows out as captured data rather than a side effect.",
+      "claim": "output-capture — Program output via _output/1 is delivered end-to-end: the ground argument renders like the Dart formatGroundTerm and flows out as captured data rather than a side effect.",
+      "source_citation": "glp_gleam/src/glp/engine/output_capture.gleam:32",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-018",
+      "detail_id": "srsw-check",
+      "aliases": [
+        "glp/analysis/srsw",
+        "srsw.gleam",
+        "single-reader-single-writer"
+      ],
+      "components": [
+        "violation-aggregation",
+        "ground-implying-guard-relaxation",
+        "constant-type-head-arg-relaxation",
+        "anonymous-exemption",
+        "guard-position-errors",
+        "reserved-constant-errors",
+        "no-skip-flag",
+        "clause-register-map"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/analysis/srsw.gleam:1-73",
+      "test_citation": "glp_gleam/test/glp/analysis/srsw_test.gleam:1-4",
+      "status_basis": "The SRSW checker ports the Dart analyzer STEP-1 path with both relaxations, deliberately drops the skipSRSW escape flags, and the conformance test locks violation text, relaxations, and error channels.",
+      "statement": "The SRSW check is delivered as a mandatory, unskippable pipeline stage with Dart-conformant violation messages and both sanctioned relaxations.",
+      "claim": "srsw-check — The SRSW check is delivered as a mandatory, unskippable pipeline stage with Dart-conformant violation messages and both sanctioned relaxations.",
+      "source_citation": "glp_gleam/src/glp/analysis/srsw.gleam:1-73",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-019",
+      "detail_id": "partial-evaluator",
+      "aliases": [
+        "glp/compiler/partial_eval",
+        "partial_eval.gleam",
+        "defined-guard-unfolding"
+      ],
+      "components": [
+        "engine-copy-transform",
+        "analyzer-copy-transform",
+        "unit-clause-collection",
+        "test-only-procedures",
+        "byte-identical-errors"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/compiler/partial_eval.gleam:64-254",
+      "test_citation": "glp_gleam/test/glp/compiler/partial_eval_test.gleam:1-6",
+      "status_basis": "Both live Dart partial-evaluator copies (engine transformDefinedGuards and the analyzer's embedded copy) are ported and the test asserts byte-identical CompileError text against REPL-verified Dart output.",
+      "statement": "The partial evaluator (defined-guard unfolding in both its engine and analyzer variants, unit-clause collection) is delivered with byte-identical error-message conformance tests.",
+      "claim": "partial-evaluator — The partial evaluator (defined-guard unfolding in both its engine and analyzer variants, unit-clause collection) is delivered with byte-identical error-message conformance tests.",
+      "source_citation": "glp_gleam/src/glp/compiler/partial_eval.gleam:64-254",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-020",
+      "detail_id": "type-checker",
+      "aliases": [
+        "glp/analysis/type_checker",
+        "moded-type-system",
+        "program-dfa"
+      ],
+      "components": [
+        "mode-algebra",
+        "subtyping-lattice",
+        "moded-term",
+        "moded-head",
+        "program-dfa-automata",
+        "leaf-consistency",
+        "well-typed-term",
+        "well-typed-clause",
+        "clause-validation",
+        "param-expansion",
+        "type-environment-builder",
+        "coverage-contravariance",
+        "warnings-nonfatal"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/analysis/type_checker/type_checker.gleam:146-190",
+      "test_citation": "glp_gleam/test/glp/analysis/type_checker_test.gleam:1-5",
+      "status_basis": "The full moded DFA-based type checker is ported across eleven modules and locked by ten oracle test suites (type_checker, program_dfa, moded_head, moded_term, well_typed_term, well_typed_clause, clause_validation, subtyping, param_expansion, type_environment_builder) asserting byte-identical Dart error/warning strings.",
+      "statement": "The complete GLP moded type checker — mode algebra, subtyping, complement-pair program DFA, well-typed term/clause checking, parameterized-type expansion, environment building, covariance and input-coverage contravariance — is delivered with byte-identical-message oracle tests.",
+      "claim": "type-checker — The complete GLP moded type checker — mode algebra, subtyping, complement-pair program DFA, well-typed term/clause checking, parameterized-type expansion, environment building, covariance and input-coverage contravariance — is delivered with byte-identical-message oracle tests.",
+      "source_citation": "glp_gleam/src/glp/analysis/type_checker/type_checker.gleam:146-190",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-021",
+      "detail_id": "parser-conformance",
+      "aliases": [
+        "glp/parser",
+        "lexer.gleam",
+        "parser.gleam",
+        "ast.gleam"
+      ],
+      "components": [
+        "tokenizer",
+        "clause-syntax",
+        "multi-char-operators",
+        "reader-marks",
+        "module-declarations",
+        "procedure-declarations",
+        "dart-identical-error-text",
+        "decline-corpus"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/parser/parser.gleam:251",
+      "test_citation": "glp_gleam/test/glp/parser/parser_test.gleam:1-6",
+      "status_basis": "Lexer and parser port the Dart oracle with negative cases pinning exact error messages and positions (cross-checked against the live Dart REPL), and lexer_test covers representative branch coverage.",
+      "statement": "The GLP source lexer and parser (clauses, guards, reader marks, module and procedure declarations) are delivered with Dart-identical error text and position conformance tests.",
+      "claim": "parser-conformance — The GLP source lexer and parser (clauses, guards, reader marks, module and procedure declarations) are delivered with Dart-identical error text and position conformance tests.",
+      "source_citation": "glp_gleam/src/glp/parser/parser.gleam:251",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-022",
+      "detail_id": "compiler-pipeline",
+      "aliases": [
+        "glp/compiler/loader",
+        "loader.gleam",
+        "load-pipeline",
+        "single-tool-discipline"
+      ],
+      "components": [
+        "parse-stage",
+        "srsw-stage",
+        "pe-stage",
+        "type-check-stage",
+        "codegen-stage",
+        "staged-diagnostics",
+        "earliest-stage-rejection",
+        "no-standalone-tools"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/compiler/loader.gleam:60-87",
+      "test_citation": "glp_gleam/test/glp/compiler/loader_test.gleam:1-9",
+      "status_basis": "The single-entry load pipeline wires the fixed stage order parse->SRSW->PE->type check->compile->load with staged diagnostics, and loader_test pins one clean load plus one negative per early stage asserting the earliest rejecting stage and class.",
+      "statement": "The full compiler pipeline is delivered as a single unskippable load entry (parse, SRSW, partial evaluation, type check, v2.16 codegen) with stage-attributed diagnostics and later-stages-do-not-run semantics.",
+      "claim": "compiler-pipeline — The full compiler pipeline is delivered as a single unskippable load entry (parse, SRSW, partial evaluation, type check, v2.16 codegen) with stage-attributed diagnostics and later-stages-do-not-run semantics.",
+      "source_citation": "glp_gleam/src/glp/compiler/loader.gleam:60-87",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-023",
+      "detail_id": "compiler-codegen",
+      "aliases": [
+        "glp/compiler/codegen",
+        "codegen.gleam",
+        "v2.16-emission"
+      ],
+      "components": [
+        "first-occurrence-register-allocation",
+        "head-structure-emission",
+        "put-spawn-body-emission",
+        "clause-labels",
+        "import-table",
+        "ground-list-divergence"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/compiler/codegen.gleam:114",
+      "test_citation": "glp_gleam/test/glp/compiler/codegen_test.gleam:1-11",
+      "status_basis": "Codegen is a faithful emit-sequence port of the Dart CodeGenerator (one documented, escalated divergence: ground list literals build structurally instead of UnifyConstant-with-struct) and the smoke test pins the exact instruction stream for canonical merge/3.",
+      "statement": "v2.16 bytecode code generation is delivered as a faithful Dart-parity port with the exact merge/3 instruction stream pinned, carrying one documented semantically-neutral divergence on ground list literals.",
+      "claim": "compiler-codegen — v2.16 bytecode code generation is delivered as a faithful Dart-parity port with the exact merge/3 instruction stream pinned, carrying one documented semantically-neutral divergence on ground list literals.",
+      "source_citation": "glp_gleam/src/glp/compiler/codegen.gleam:114",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-024",
+      "detail_id": "prelude-library",
+      "aliases": [
+        "programs/self.glp",
+        "root-prelude",
+        "compile_prelude"
+      ],
+      "components": [
+        "prelude-read-from-disk",
+        "compile-without-type-check",
+        "prelude-in-front-merge",
+        "prelude-only-goals-run"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine.gleam:42-45,103-115 + glp_gleam/src/glp/compiler/loader.gleam:106-110",
+      "test_citation": "glp_gleam/test/glp/engine_test.gleam:1-7",
+      "status_basis": "The engine reads ../programs/self.glp, compiles it without the type-check stage (Dart typeCheck=false parity), and merges it behind every load so prelude-only goals like X := 2+3 run; the self.glp content itself lives outside this corpus.",
+      "statement": "Prelude-library support is delivered — the engine boots the root self.glp untype-checked and merges it into every runnable program so prelude arithmetic works with no user load — though the prelude source file itself is outside the Gleam subtree.",
+      "claim": "prelude-library — Prelude-library support is delivered — the engine boots the root self.glp untype-checked and merges it into every runnable program so prelude arithmetic works with no user load — though the prelude source file itself is outside the Gleam subtree.",
+      "source_citation": "glp_gleam/src/glp/engine.gleam:42-45,103-115",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-025",
+      "detail_id": "diagnostics-staged-error",
+      "aliases": [
+        "glp/diagnostics",
+        "StagedError",
+        "rejection-class"
+      ],
+      "components": [
+        "stage-enum",
+        "rejection-class-enum",
+        "to-string-rendering"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/diagnostics.gleam:17-66",
+      "test_citation": "glp_gleam/test/glp/compiler/loader_test.gleam:1-9",
+      "status_basis": "StagedError carries stage, rejection class, position, and reason, and loader_test asserts the earliest rejecting stage and class per negative case.",
+      "statement": "Stage-attributed load diagnostics (which pipeline stage rejected, with what class, where) are delivered and locked by the loader negatives.",
+      "claim": "diagnostics-staged-error — Stage-attributed load diagnostics (which pipeline stage rejected, with what class, where) are delivered and locked by the loader negatives.",
+      "source_citation": "glp_gleam/src/glp/diagnostics.gleam:17-66",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-026",
+      "detail_id": "engine-facade",
+      "aliases": [
+        "glp/engine",
+        "engine.gleam",
+        "engine-as-typed-value"
+      ],
+      "components": [
+        "new",
+        "new-with-prelude",
+        "load",
+        "run",
+        "run-with-limit",
+        "run-capturing",
+        "run-traced",
+        "start",
+        "step",
+        "no-global-state-fr-009",
+        "result-envelope-production"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine.gleam:65-115,142-310",
+      "test_citation": "glp_gleam/test/glp/engine_test.gleam:1-7",
+      "status_basis": "The opaque engine value threads new->load->run/step with no global or process-dictionary state (FR-009), producing ResultEnvelopes; engine_test and step_test lock construction, load merging, staged-rejection propagation, and interactive stepping.",
+      "statement": "The engine-as-typed-value facade (construct, load with prelude merge, one-shot run to a ResultEnvelope, interactive start/step, zero global state) is delivered and test-locked.",
+      "claim": "engine-facade — The engine-as-typed-value facade (construct, load with prelude merge, one-shot run to a ResultEnvelope, interactive start/step, zero global state) is delivered and test-locked.",
+      "source_citation": "glp_gleam/src/glp/engine.gleam:65-115,142-310",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-027",
+      "detail_id": "repl-loop",
+      "aliases": [
+        "glp/repl/repl",
+        "repl.gleam",
+        "gleam-run-entry"
+      ],
+      "components": [
+        "scripted-stdin-loop",
+        "eof-exit",
+        "session-threading",
+        "banner-prompt",
+        "main-entry"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/repl/repl.gleam:22-47",
+      "test_citation": "glp_gleam/test/glp/repl/repl_test.gleam:1-7",
+      "status_basis": "repl.run implements the newline-fed scripted loop with non-interactive EOF exit over the Erlang read_line FFI, and repl_test drives the testable core (parse+execute over a Session) exactly as a piped session would.",
+      "statement": "The REPL loop is delivered — a scripted, EOF-terminating stdin loop over a threaded Session, entered via gleam run through glp_gleam.main.",
+      "claim": "repl-loop — The REPL loop is delivered — a scripted, EOF-terminating stdin loop over a threaded Session, entered via gleam run through glp_gleam.main.",
+      "source_citation": "glp_gleam/src/glp/repl/repl.gleam:22-47",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-028",
+      "detail_id": "repl-command-surface",
+      "aliases": [
+        "glp/repl/commands",
+        "commands.gleam",
+        "repl-commands"
+      ],
+      "components": [
+        "load-path",
+        "bare-glp-path",
+        "goal-with-trailing-dot",
+        "trace-toggle",
+        "limit-with-exhaustion",
+        "quit",
+        "blank-noop",
+        "dart-parse-parity"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/repl/commands.gleam:21-119",
+      "test_citation": "glp_gleam/test/glp/repl/repl_test.gleam:1-7",
+      "status_basis": "The contract command set (load/<path>.glp, goal., :trace, :limit n incl. exhaustion, :quit) mirrors the Dart REPL's pre-processing and fall-through, locked deterministically in-process by repl_test.",
+      "statement": "A user can drive scripted REPL sessions with the reference command set — load, bare .glp paths, dotted goals, :trace, :limit (including exhaustion behavior), :quit — with Dart-parity parse semantics.",
+      "claim": "repl-command-surface — A user can drive scripted REPL sessions with the reference command set — load, bare .glp paths, dotted goals, :trace, :limit (including exhaustion behavior), :quit — with Dart-parity parse semantics.",
+      "source_citation": "glp_gleam/src/glp/repl/commands.gleam:21-119",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-029",
+      "detail_id": "repl-trace-mode",
+      "aliases": [
+        ":trace",
+        "goal_format",
+        "reduction-trace"
+      ],
+      "components": [
+        "head-body-reduction-lines",
+        "suspended-failed-lines",
+        "reference-goal-shape",
+        "off-by-default"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine/goal_format.gleam:28-69",
+      "test_citation": "glp_gleam/test/glp/engine/goal_format_test.gleam:1-6",
+      "status_basis": "goal_format renders live goals in the reference trace shape and the engine's traced run emits head :- body lines only when :trace is on, both locked by goal_format_test.",
+      "statement": "REPL :trace mode is delivered — reduction traces render in the Dart reference shape (arity-stripped, reader-marked) and are emitted only when tracing is enabled.",
+      "claim": "repl-trace-mode — REPL :trace mode is delivered — reduction traces render in the Dart reference shape (arity-stripped, reader-marked) and are emitted only when tracing is enabled.",
+      "source_citation": "glp_gleam/src/glp/engine/goal_format.gleam:28-69",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-030",
+      "detail_id": "repl-result-rendering",
+      "aliases": [
+        "glp/repl/results",
+        "results.gleam",
+        "outcome-rendering"
+      ],
+      "components": [
+        "format-term",
+        "render-outcome",
+        "binding-lines",
+        "status-lines"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/repl/results.gleam:32-69",
+      "test_citation": "glp_gleam/test/glp/repl/results_test.gleam:1-3",
+      "status_basis": "results pins the Dart _formatTerm/_printStatus output shape over the codec term model — the rendering the corpus runner diffs against goldens.",
+      "statement": "Reference-shape REPL result rendering (bindings and goal status lines from the ResultEnvelope) is delivered and test-pinned.",
+      "claim": "repl-result-rendering — Reference-shape REPL result rendering (bindings and goal status lines from the ResultEnvelope) is delivered and test-pinned.",
+      "source_citation": "glp_gleam/src/glp/repl/results.gleam:32-69",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-031",
+      "detail_id": "term-codec",
+      "aliases": [
+        "glp/codec/term_codec",
+        "tlv-term-codec",
+        "section-15-codec"
+      ],
+      "components": [
+        "leb128-varints",
+        "le-int64",
+        "ieee754-double-gated",
+        "utf8-strings",
+        "tags-0x02-0x07",
+        "globalvarid-tag-0x07",
+        "reserved-tag-rejection"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/term_codec.gleam:36-98",
+      "test_citation": "glp_gleam/test/glp/codec/golden_corpus_test.gleam:1-9",
+      "status_basis": "The TLV term wire format (LEB128 varints, LE int64/double, varint+UTF-8 strings, tags 0x02..0x07 with 0x07 GlobalVarId) reproduces the Dart bytes and is locked by the pinned corpus.hex golden plus round-trip suites.",
+      "statement": "The cross-runtime term wire codec — byte-identical to the Dart reference with global variable identity replacing heap addresses — is delivered with golden-corpus byte-identity and cross-decode tests.",
+      "claim": "term-codec — The cross-runtime term wire codec — byte-identical to the Dart reference with global variable identity replacing heap addresses — is delivered with golden-corpus byte-identity and cross-decode tests.",
+      "source_citation": "glp_gleam/src/glp/codec/term_codec.gleam:36-98",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-032",
+      "detail_id": "result-envelope",
+      "aliases": [
+        "glp/codec/result_envelope",
+        "ResultEnvelope",
+        "payload-0x11"
+      ],
+      "components": [
+        "version-0x01-header",
+        "payload-type-0x11",
+        "status-bytes",
+        "resolved-bindings",
+        "var-to-writer",
+        "suspended-list",
+        "captured-blob",
+        "error-field",
+        "list-order-preservation"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/result_envelope.gleam:31-77",
+      "test_citation": "glp_gleam/test/glp/codec/result_envelope_codec_test.gleam:1-12",
+      "status_basis": "The heap-independent envelope with its 0x01/0x11 header and canonical list ordering round-trips field-by-field, rejects all malformed headers, and canonical_order_test pins deterministic cross-runtime serialization order.",
+      "statement": "The result-envelope wire protocol (status, bindings, var-to-writer, suspended, captured, error under a 0x01/0x11 header, order-preserving) is delivered with round-trip, loud-fail, and canonical-order tests.",
+      "claim": "result-envelope — The result-envelope wire protocol (status, bindings, var-to-writer, suspended, captured, error under a 0x01/0x11 header, order-preserving) is delivered with round-trip, loud-fail, and canonical-order tests.",
+      "source_citation": "glp_gleam/src/glp/codec/result_envelope.gleam:31-77",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-033",
+      "detail_id": "codec-loud-fail",
+      "aliases": [
+        "loud-fail-discipline",
+        "errors-as-data",
+        "CodecError"
+      ],
+      "components": [
+        "truncation-rejection",
+        "unknown-tag-rejection",
+        "varint-overflow-rejection",
+        "trailing-bytes-rejection",
+        "zero-silent-acceptances"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/term_codec.gleam:58-80",
+      "test_citation": "glp_gleam/test/glp/codec/loud_fail_fuzz_test.gleam:1-4",
+      "status_basis": "All malformed input returns structured CodecError values and the fuzz test asserts every truncation of every valid encoding plus garbage/corrupt-header cases yield zero silent acceptances.",
+      "statement": "The loud-fail codec discipline — every malformed byte sequence rejected as data, never silently accepted — is delivered and fuzz-locked (SC-004).",
+      "claim": "codec-loud-fail — The loud-fail codec discipline — every malformed byte sequence rejected as data, never silently accepted — is delivered and fuzz-locked (SC-004).",
+      "source_citation": "glp_gleam/src/glp/codec/term_codec.gleam:58-80",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-034",
+      "detail_id": "envelope-builder",
+      "aliases": [
+        "glp/codec/result_envelope_builder",
+        "deep-resolve",
+        "build_result_envelope"
+      ],
+      "components": [
+        "depth-32-deep-resolve",
+        "truncated-marker",
+        "circular-marker",
+        "heap-to-envelope-bridge",
+        "var-writer-identity"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:36-147",
+      "test_citation": "glp_gleam/test/glp/codec/deref_fidelity_test.gleam:1-5",
+      "status_basis": "deep_resolve over the real heap pins the depth-32 boundary exactly ($truncated at 33), preserves var-to-writer identity via GlobalVarId, and result_envelope_builder_test mirrors the Dart builder behavior.",
+      "statement": "The heap-to-envelope builder (depth-bounded deep resolve with explicit truncation and circular markers, global var identity) is delivered and locked by deref-fidelity and builder tests.",
+      "claim": "envelope-builder — The heap-to-envelope builder (depth-bounded deep resolve with explicit truncation and circular markers, global var identity) is delivered and locked by deref-fidelity and builder tests.",
+      "source_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:36-147",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-035",
+      "detail_id": "deep-resolve-cycle-detection",
+      "aliases": [
+        "cyclic-term",
+        "circular-marker",
+        "FORK-1"
+      ],
+      "components": [
+        "structural-cycle-detection",
+        "circular-marker-at-revisit",
+        "round-trippable-marker",
+        "dart-csharp-convergence"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:54",
+      "test_citation": "glp_gleam/test/glp/codec/cyclic_term_test.gleam:1-7",
+      "status_basis": "FORK-1 was resolved owner-directed in favour of structural cycle detection converging with the Dart/C# deref, and the test locks that self-referential terms resolve to the circular marker without looping.",
+      "statement": "Cyclic-term deep resolve is delivered — a self-referential term yields the circular marker at the revisit point (never loops) matching the Dart/C# REPL behavior.",
+      "claim": "deep-resolve-cycle-detection — Cyclic-term deep resolve is delivered — a self-referential term yields the circular marker at the revisit point (never loops) matching the Dart/C# REPL behavior.",
+      "source_citation": "glp_gleam/src/glp/codec/result_envelope_builder.gleam:54",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-036",
+      "detail_id": "result-seam-identity",
+      "aliases": [
+        "ED-1-seam",
+        "envelope-identity",
+        "in-process-vs-wire"
+      ],
+      "components": [
+        "byte-stable-wire-roundtrip",
+        "in-process-equals-decoded-rendering"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/engine.gleam:183-218",
+      "test_citation": "glp_gleam/test/glp/repl/envelope_identity_test.gleam:1-8",
+      "status_basis": "The envelope-identity test locks the ED-1 guarantee: encode(decode(encode(env))) is byte-stable and the in-process rendering equals the decoded-from-wire rendering for the same computation.",
+      "statement": "The ED-1 seam guarantee — a goal's result is byte-identical whether consumed in-process by the REPL or over the wire by a link peer — is delivered and test-locked.",
+      "claim": "result-seam-identity — The ED-1 seam guarantee — a goal's result is byte-identical whether consumed in-process by the REPL or over the wire by a link peer — is delivered and test-locked.",
+      "source_citation": "glp_gleam/src/glp/engine.gleam:183-218",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-037",
+      "detail_id": "crc32-checksum",
+      "aliases": [
+        "glp/link/reliability/crc32",
+        "crc32.gleam",
+        "ieee-crc32"
+      ],
+      "components": [
+        "reflected-polynomial-0xEDB88320",
+        "init-final-0xFFFFFFFF",
+        "pure-gleam-no-ffi",
+        "atomvm-portable"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/reliability/crc32.gleam:17-24",
+      "test_citation": "glp_gleam/test/glp/link/frame_codec_test.gleam:9-11",
+      "status_basis": "The standard IEEE 802.3/zlib CRC-32 is implemented in pure Gleam and the canonical check value 0xCBF43926 for \"123456789\" — the same assertion the C# Crc32_KnownVector test makes — is asserted.",
+      "statement": "CRC-32 (reflected 0xEDB88320, byte-identical to the Dart/C# implementations) is delivered in pure AtomVM-portable Gleam with the canonical cross-runtime check vector pinned.",
+      "claim": "crc32-checksum — CRC-32 (reflected 0xEDB88320, byte-identical to the Dart/C# implementations) is delivered in pure AtomVM-portable Gleam with the canonical cross-runtime check vector pinned.",
+      "source_citation": "glp_gleam/src/glp/link/reliability/crc32.gleam:17-24",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-038",
+      "detail_id": "frame-codec",
+      "aliases": [
+        "glp/link/reliability/frame_codec",
+        "frame_codec.gleam",
+        "wire-frame"
+      ],
+      "components": [
+        "22-byte-be-header",
+        "version-0x01",
+        "whole-fragment-kinds",
+        "64mib-payload-cap",
+        "per-chunk-crc",
+        "fragmentation",
+        "deterministic-message-id",
+        "structured-frame-errors"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/reliability/frame_codec.gleam:29-92",
+      "test_citation": "glp_gleam/test/glp/link/frame_codec_test.gleam:1-21",
+      "status_basis": "The 22-byte big-endian header frame codec with fragmentation and pre-allocation length hardening is a byte-parity port checked by three anchors (canonical CRC vector, exact wire-layout assertion, corpus.hex payload ride) plus rejection cases in reference order.",
+      "statement": "The link frame codec — fixed 22-byte big-endian header, Whole/Fragment kinds, 64 MiB cap, per-chunk CRC-32, MTU fragmentation, errors as data — is delivered with byte-parity and rejection tests against the Dart/C# reference.",
+      "claim": "frame-codec — The link frame codec — fixed 22-byte big-endian header, Whole/Fragment kinds, 64 MiB cap, per-chunk CRC-32, MTU fragmentation, errors as data — is delivered with byte-parity and rejection tests against the Dart/C# reference.",
+      "source_citation": "glp_gleam/src/glp/link/reliability/frame_codec.gleam:29-92",
+      "confidence": 0.95,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-039",
+      "detail_id": "link-layer",
+      "aliases": [
+        "glp/link/seam",
+        "endpoint-vtable",
+        "transport-seam",
+        "T045-seam"
+      ],
+      "components": [
+        "endpoint-send-recv-close-faults",
+        "transport-listen-connect",
+        "link-scheme",
+        "link-address",
+        "link-id-nonce",
+        "link-options",
+        "out-of-band-fault-subject"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:39-47",
+      "test_citation": "glp_gleam/test/glp/link/loopback_test.gleam:1-8",
+      "status_basis": "The full host-seam surface (Endpoint record-of-functions vtable, Transport, LinkScheme/Address/Id/Options/Fault) is delivered and exercised through the loopback and tcp tests, but the GLP-level link primitives layer (T050), fault-as-GLP-term decoration (T052), sequence/dedup reliability, and the QUIC leaf (T055) are absent from the corpus.",
+      "statement": "The link-layer seam below GLP (endpoint vtable, transport constructor surface, scheme/address/id/options/fault types) is delivered with two serving transports, while the GLP-facing link primitives, fault-as-data decoration, sequence/dedup, and QUIC leaf remain gaps.",
+      "claim": "link-layer — The link-layer seam below GLP (endpoint vtable, transport constructor surface, scheme/address/id/options/fault types) is delivered with two serving transports, while the GLP-facing link primitives, fault-as-data decoration, sequence/dedup, and QUIC leaf remain gaps.",
+      "source_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:39-47",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-040",
+      "detail_id": "loopback-transport",
+      "aliases": [
+        "glp/link/transports/loopback",
+        "loopback.gleam",
+        "in-process-transport"
+      ],
+      "components": [
+        "hub-process-rendezvous",
+        "ordered-channel-processes",
+        "fifo-exactly-once",
+        "synchronous-listen-connect",
+        "connect-timeout-fault",
+        "graceful-close"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:1-28",
+      "test_citation": "glp_gleam/test/glp/link/loopback_test.gleam:1-8",
+      "status_basis": "The Dart in-memory channel/rendezvous becomes hub+channel BEAM processes behind the seam (plain spawn+Subject, no gleam_otp) and the test verifies rendezvous, FIFO frame exchange, and graceful close.",
+      "statement": "The deterministic in-process loopback transport (hub+channel process rendezvous, FIFO exactly-once delivery, synchronous seam) is delivered and test-locked as the hermetic round-trip substrate.",
+      "claim": "loopback-transport — The deterministic in-process loopback transport (hub+channel process rendezvous, FIFO exactly-once delivery, synchronous seam) is delivered and test-locked as the hermetic round-trip substrate.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:1-28",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-041",
+      "detail_id": "tcp-transport",
+      "aliases": [
+        "glp/link/transports/tcp",
+        "tcp.gleam",
+        "gen-tcp-transport"
+      ],
+      "components": [
+        "gen-tcp-passive-ffi",
+        "listen-accept-one-client",
+        "connect-retry-role-order-independence",
+        "persistent-duplex-socket",
+        "graceful-shutdown"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:1-19,71-77",
+      "test_citation": "glp_gleam/test/glp/link/tcp_test.gleam:1-7",
+      "status_basis": "The first real cross-process transport uses gen_tcp in passive mode via glp_link_tcp_ffi with connect retry for role-order independence, and the test establishes genuine IPv4-loopback links checking both directions and graceful close over real sockets.",
+      "statement": "The raw-TCP transport (passive-mode gen_tcp FFI, one persistent duplex socket per bilateral link, role-order-independent connect retry) is delivered and locked by real-socket smoke tests.",
+      "claim": "tcp-transport — The raw-TCP transport (passive-mode gen_tcp FFI, one persistent duplex socket per bilateral link, role-order-independent connect retry) is delivered and locked by real-socket smoke tests.",
+      "source_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:1-19",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-042",
+      "detail_id": "tcp-length-prefix-framing",
+      "aliases": [
+        "4-byte-be-length-prefix",
+        "length-prefixed-framing"
+      ],
+      "components": [
+        "one-send-one-recv",
+        "big-endian-length",
+        "opaque-framecodec-payload"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:10-13",
+      "test_citation": "glp_gleam/test/glp/link/tcp_test.gleam:3-4",
+      "status_basis": "Each opaque frame is prefixed by a 4-byte big-endian length (byte-identical to Dart/C#) so one send yields one peer recv, and the test checks the framing in both directions.",
+      "statement": "The 4-byte big-endian length-prefix TCP wire framing with FrameCodec payloads riding opaquely is delivered at Dart/C# byte parity and test-locked.",
+      "claim": "tcp-length-prefix-framing — The 4-byte big-endian length-prefix TCP wire framing with FrameCodec payloads riding opaquely is delivered at Dart/C# byte parity and test-locked.",
+      "source_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:10-13",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-043",
+      "detail_id": "quic-transport",
+      "aliases": [
+        "gleam_quic",
+        "glp_quick_gleam",
+        "link_scheme.quic",
+        "T055"
+      ],
+      "components": [
+        "scheme-token-only-in-glp-gleam",
+        "profile-a-sideprocess-relay",
+        "profile-c-inprocess-client",
+        "no-quic-transport-leaf",
+        "no-tests-in-corpus"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/glp/link/seam/link_scheme.gleam:33-36 + gleam_quic/src/glp_quick_gleam.gleam:23-49",
+      "test_citation": "no-test: gleam_quic/test contains no test files and no glp_gleam test exercises the quic scheme",
+      "status_basis": "In glp_gleam only the \"quic\" scheme token exists (the T055 transport leaf is absent); the QUIC data plane lives in the separate gleam_quic package (side-process relay + profile-c quicer client) with zero tests in the corpus.",
+      "statement": "QUIC transport is partial — glp_gleam declares only the quic link-scheme token with no transport leaf, and the gleam_quic package supplies Profile A (C#-side-process relay) and Profile C (in-process quicer client) data planes without any in-corpus tests.",
+      "claim": "quic-transport — QUIC transport is partial — glp_gleam declares only the quic link-scheme token with no transport leaf, and the gleam_quic package supplies Profile A (C#-side-process relay) and Profile C (in-process quicer client) data planes without any in-corpus tests.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_scheme.gleam:33-36",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-044",
+      "detail_id": "quic-sideprocess-relay",
+      "aliases": [
+        "glpq_ffi",
+        "profile-a",
+        "os-port-relay"
+      ],
+      "components": [
+        "stdio-line-relay",
+        "first-byte-demux",
+        "stderr-control-tokens",
+        "noeol-line-reassembly",
+        "exit-status-propagation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "gleam_quic/src/glpq_ffi.erl:1-40",
+      "test_citation": "no-test: gleam_quic/test is empty; behavior verified only by out-of-repo stack adapters",
+      "status_basis": "The Erlang OS-port relay spawns the C# glp_quick_host, demuxes complete reassembled lines by first byte (data `{` to stdout, control READY/LINK_UP/ERR/FAULT to stderr), and includes the documented noeol-fragment reassembly fix against silent data loss — but nothing in the corpus tests it.",
+      "statement": "The Profile A QUIC delegation pattern — a BEAM OS-port line relay keeping observable stdio byte-identical to the C# stack, with long-line reassembly guarding against silent data loss — is delivered in code with no in-corpus test.",
+      "claim": "quic-sideprocess-relay — The Profile A QUIC delegation pattern — a BEAM OS-port line relay keeping observable stdio byte-identical to the C# stack, with long-line reassembly guarding against silent data loss — is delivered in code with no in-corpus test.",
+      "source_citation": "gleam_quic/src/glpq_ffi.erl:1-40",
+      "confidence": 0.85,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-045",
+      "detail_id": "quic-client-inprocess",
+      "aliases": [
+        "glpq_quic",
+        "profile-c",
+        "quicer-nif-client"
+      ],
+      "components": [
+        "client-role-only",
+        "alpn-h3",
+        "spki-sha256-pin",
+        "glpquick1-bootstrap",
+        "rfc6455-ws-frames",
+        "16mib-frame-cap",
+        "host-parity-exit-codes"
+      ],
+      "grain": "user-story",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "gleam_quic/src/glpq_quic.erl:1-50",
+      "test_citation": "no-test: gleam_quic/test is empty",
+      "status_basis": "The in-process Profile C data plane (genuine QUIC via the quicer NIF: ALPN h3, SPKI pin, GLPQUICK/1 bootstrap, RFC 6455 WS frames, host-parity exit codes) exists for the CLIENT role only — the reference server remains the C# host — and carries no in-corpus tests.",
+      "statement": "In-process QUIC on the BEAM is partial — a client-only Profile C implementation mirroring the C# wire contract exists (server role explicitly unsupported), gated on the external quicer build and untested in the corpus.",
+      "claim": "quic-client-inprocess — In-process QUIC on the BEAM is partial — a client-only Profile C implementation mirroring the C# wire contract exists (server role explicitly unsupported), gated on the external quicer build and untested in the corpus.",
+      "source_citation": "gleam_quic/src/glpq_quic.erl:1-50",
+      "confidence": 0.87,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-046",
+      "detail_id": "module-system",
+      "aliases": [
+        "module-declarations",
+        "distribute-transmit",
+        "exported-procedure",
+        "remote-calls"
+      ],
+      "components": [
+        "module-declaration-parse",
+        "exported-imported-flags",
+        "exported-signatures",
+        "import-table-codegen",
+        "distribute-transmit-emission",
+        "runner-execution-missing"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/glp/parser/parser.gleam:2198-2254 + glp_gleam/src/glp/compiler/codegen.gleam:460-464",
+      "test_citation": "no-test: no test exercises a module-qualified remote call end-to-end; runner.gleam:374 returns Unimplemented for Distribute/Transmit",
+      "status_basis": "Module declarations and exported/imported procedure flags parse, and codegen emits Distribute/Transmit with an import table for remote goals, but the runner has no handler for either opcode so remote calls cannot execute.",
+      "statement": "The module system is partial — declaration parsing, export/import flags, and Distribute/Transmit code generation are delivered, but runtime execution of module RPC is unimplemented so cross-module calls fault.",
+      "claim": "module-system — The module system is partial — declaration parsing, export/import flags, and Distribute/Transmit code generation are delivered, but runtime execution of module RPC is unimplemented so cross-module calls fault.",
+      "source_citation": "glp_gleam/src/glp/parser/parser.gleam:2198-2254",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-047",
+      "detail_id": "multiagent-runtime",
+      "aliases": [
+        "glp/multiagent",
+        "multiagent.gleam"
+      ],
+      "components": [],
+      "grain": "interface",
+      "status": "absent",
+      "tag": "gap-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/glp/multiagent.gleam:1-9 (explicit empty placeholder; also searched glp_gleam/src/** for agent/actor/mailbox/multiagent symbols beyond it: none)",
+      "test_citation": "no-test: no multiagent test exists in glp_gleam/test",
+      "status_basis": "multiagent.gleam is an intentionally empty placeholder module stating the heavy port lands in a downstream feature from the Dart glp_runtime/lib/multiagent/ source of truth.",
+      "statement": "The multiagent runtime is absent from the Gleam implementation — only an explicit empty-but-building placeholder module exists, deferring the port of glp_runtime/lib/multiagent/.",
+      "claim": "multiagent-runtime — The multiagent runtime is absent from the Gleam implementation — only an explicit empty-but-building placeholder module exists, deferring the port of glp_runtime/lib/multiagent/.",
+      "source_citation": "glp_gleam/src/glp/multiagent.gleam:1-9",
+      "confidence": 0.96,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-048",
+      "detail_id": "mesh-ring",
+      "aliases": [
+        "mesh",
+        "ring-topology",
+        "secure-ring"
+      ],
+      "components": [],
+      "grain": "protocol",
+      "status": "absent",
+      "tag": "gap-gleam",
+      "evidence_type": "code",
+      "impl_citation": "searched glp_gleam/src/** and gleam_quic/src/** for word-boundary mesh/Mesh/ring/Ring: zero matches",
+      "test_citation": "no-test: no mesh or ring test exists in the corpus",
+      "status_basis": "A systematic word-boundary sweep of both source trees found no mesh or ring topology code of any kind.",
+      "statement": "Mesh/ring topology support is absent from the Gleam implementation corpus — no module, type, or test references a mesh or ring.",
+      "claim": "mesh-ring — Mesh/ring topology support is absent from the Gleam implementation corpus — no module, type, or test references a mesh or ring.",
+      "source_citation": "searched glp_gleam/src/**+gleam_quic/src/** for \\bmesh\\b|\\bring\\b: none found",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-049",
+      "detail_id": "fe-be-process-split",
+      "aliases": [
+        "front-end-back-end-split",
+        "process-separation",
+        "ed-1-boundary"
+      ],
+      "components": [],
+      "grain": "pattern",
+      "status": "absent",
+      "tag": "gap-gleam",
+      "evidence_type": "code",
+      "impl_citation": "searched glp_gleam/src/** for a REPL/engine process boundary: the REPL holds the engine value in-process (glp_gleam/src/glp/repl/commands.gleam:37-39); the only processes spawned are link channel/hub and test helpers",
+      "test_citation": "no-test: envelope_identity_test locks the seam's byte-identity, not a process split",
+      "status_basis": "No front-end/back-end process separation exists in code — the REPL and engine share one process; the ED-1 ResultEnvelope seam is delivered as the designed boundary but nothing runs the engine behind a process or wire boundary from a separate front end.",
+      "statement": "Front-end/back-end process separation is absent — the designed ED-1 envelope seam exists and is byte-identity-tested, but no code actually splits a front end from an engine back end across processes.",
+      "claim": "fe-be-process-split — Front-end/back-end process separation is absent — the designed ED-1 envelope seam exists and is byte-identity-tested, but no code actually splits a front end from an engine back end across processes.",
+      "source_citation": "glp_gleam/src/glp/repl/commands.gleam:37-39",
+      "confidence": 0.88,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-050",
+      "detail_id": "embeddability-api",
+      "aliases": [
+        "new_with_prelude",
+        "embedding-seam",
+        "host-embedding"
+      ],
+      "components": [
+        "prelude-injection-seam",
+        "engine-as-value-embedding",
+        "no-host-callback-api"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/glp/engine.gleam:107-110",
+      "test_citation": "glp_gleam/test/glp/engine_test.gleam:1-7",
+      "status_basis": "new_with_prelude is documented as \"the CWD-independent test/embedding seam\" and the engine-as-value design (FR-009, no globals) makes in-BEAM embedding possible, but no host-embedding API surface (callbacks, host kernels registration, yngenios integration points) exists in the corpus.",
+      "statement": "Embeddability is partial — the engine is an embeddable pure value with an explicit prelude-injection seam, but no dedicated host-embedding API (and no yngenios integration surface) exists in code.",
+      "claim": "embeddability-api — Embeddability is partial — the engine is an embeddable pure value with an explicit prelude-injection seam, but no dedicated host-embedding API (and no yngenios integration surface) exists in code.",
+      "source_citation": "glp_gleam/src/glp/engine.gleam:107-110",
+      "confidence": 0.85,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-051",
+      "detail_id": "distribution-protocol",
+      "aliases": [
+        "cross-process-seam",
+        "engine-to-engine-distribution",
+        "link.gleam-placeholder"
+      ],
+      "components": [
+        "envelope-codec-delivered",
+        "frame-codec-delivered",
+        "transports-delivered",
+        "no-session-establishment",
+        "no-remote-goal-routing",
+        "link-subsystem-placeholder"
+      ],
+      "grain": "protocol",
+      "status": "partial",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/glp/link.gleam:1-9 (link subsystem placeholder) + glp_gleam/src/glp/link/seam/transport.gleam:39-51",
+      "test_citation": "no-test: no test connects two engines or routes a goal/result across a link",
+      "status_basis": "All wire building blocks (term codec, result envelope, frame codec, CRC, loopback/TCP transports) are delivered, but the glp/link engine-facing subsystem is an empty placeholder and nothing in the corpus establishes engine-to-engine sessions or routes goals/results between engines.",
+      "statement": "The distribution protocol is partial — every wire layer up to transports is delivered and tested, but engine-to-engine session establishment and remote goal/result routing above the seam do not exist in code.",
+      "claim": "distribution-protocol — The distribution protocol is partial — every wire layer up to transports is delivered and tested, but engine-to-engine session establishment and remote goal/result routing above the seam do not exist in code.",
+      "source_citation": "glp_gleam/src/glp/link.gleam:1-9",
+      "confidence": 0.88,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-052",
+      "detail_id": "atomvm-dependency-policy",
+      "aliases": [
+        "deps-policy",
+        "no-gleam-otp",
+        "atomvm-subset"
+      ],
+      "components": [
+        "otp-abstraction-package-ban",
+        "plain-spawn-subject-only",
+        "gleam-toml-manifest-tripwire"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:22-24",
+      "test_citation": "glp_gleam/test/glp/deps_policy_test.gleam:1-9",
+      "status_basis": "The AtomVM-compatibility-by-construction posture (no gleam_otp, plain spawn+Subject only) is enforced by a tripwire test that fails loudly if the OTP-abstraction package appears in gleam.toml or manifest.toml.",
+      "statement": "The AtomVM-subset dependency policy — no OTP-abstraction package anywhere in the tree, plain spawn and Subjects only — is delivered as an enforced test tripwire.",
+      "claim": "atomvm-dependency-policy — The AtomVM-subset dependency policy — no OTP-abstraction package anywhere in the tree, plain spawn and Subjects only — is delivered as an enforced test tripwire.",
+      "source_citation": "glp_gleam/test/glp/deps_policy_test.gleam:1-9",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-053",
+      "detail_id": "atomvm-conformance-probe",
+      "aliases": [
+        "atomvm_gated_probe",
+        "gated-corpus-probe",
+        "T039-T040"
+      ],
+      "components": [
+        "float-tag-0x03-probe",
+        "int64-edge-probe",
+        "round-trip-on-atomvm",
+        "node-atomvm-invocation"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "code",
+      "impl_citation": "glp_gleam/src/atomvm_gated_probe.gleam:1-38",
+      "test_citation": "no-test: the probe is run manually via the Node AtomVM wrapper, not by gleam test (which runs on full OTP and is explicitly not an AtomVM-faithfulness signal)",
+      "status_basis": "A start/0 probe runs the real term codec on AtomVM for the gated entries (IEEE-754 double and 64-bit int edges), displaying encoded bytes and round-trip verdicts; gated entries stay quarantined from the byte-final corpus regardless.",
+      "statement": "An AtomVM conformance probe for the gated codec entries (float and 64-bit-int edges) is delivered as a manually-run artifact, with those entries deliberately excluded from byte-final goldens.",
+      "claim": "atomvm-conformance-probe — An AtomVM conformance probe for the gated codec entries (float and 64-bit-int edges) is delivered as a manually-run artifact, with those entries deliberately excluded from byte-final goldens.",
+      "source_citation": "glp_gleam/src/atomvm_gated_probe.gleam:1-38",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-054",
+      "detail_id": "test-harness",
+      "aliases": [
+        "gleeunit-suite",
+        "glp_gleam_test",
+        "build-and-run-smoke"
+      ],
+      "components": [
+        "gleeunit-main",
+        "49-test-modules",
+        "build-smoke",
+        "oracle-parity-methodology"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/test/glp_gleam_test.gleam:5-17",
+      "test_citation": "glp_gleam/test/ (49 gleeunit test modules spanning runtime, engine, analysis, parser, compiler, bytecode, codec, repl, link)",
+      "status_basis": "A gleeunit harness with 49 test modules covers every delivered subsystem, rooted in a build-and-run smoke that proves the subtree builds to Erlang/BEAM and runs green.",
+      "statement": "The test harness is delivered — a 49-module gleeunit suite spanning all delivered subsystems, anchored by a build-and-run smoke test.",
+      "claim": "test-harness — The test harness is delivered — a 49-module gleeunit suite spanning all delivered subsystems, anchored by a build-and-run smoke test.",
+      "source_citation": "glp_gleam/test/glp_gleam_test.gleam:5-17",
+      "confidence": 0.94,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-055",
+      "detail_id": "parity-oracle-testing",
+      "aliases": [
+        "dart-oracle-parity",
+        "golden-corpus",
+        "hermetic-parity"
+      ],
+      "components": [
+        "baked-in-dart-expected-values",
+        "observable-outcome-only-assertions",
+        "golden-byte-vectors",
+        "byte-identical-error-strings",
+        "cross-validated-evidence-docs"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/test/glp/runtime/parity_test.gleam:1-8",
+      "test_citation": "glp_gleam/test/glp/runtime/parity_test.gleam:1-8",
+      "status_basis": "The corpus-wide testing methodology asserts observable outcomes against baked-in Dart source-of-truth values (hermetic, never internal heap layout), plus golden byte vectors and byte-identical error strings across analysis/codec suites.",
+      "statement": "Dart-oracle parity testing — hermetic observable-outcome corpora, golden byte vectors, and byte-identical error-string assertions — is the delivered verification methodology across the Gleam port.",
+      "claim": "parity-oracle-testing — Dart-oracle parity testing — hermetic observable-outcome corpora, golden byte vectors, and byte-identical error-string assertions — is the delivered verification methodology across the Gleam port.",
+      "source_citation": "glp_gleam/test/glp/runtime/parity_test.gleam:1-8",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-056",
+      "detail_id": "placeholder-module-scaffold",
+      "aliases": [
+        "empty-but-building",
+        "feature-033-placeholders"
+      ],
+      "components": [
+        "multiagent-placeholder",
+        "link-placeholder",
+        "lint-placeholder",
+        "analysis-facade-placeholder",
+        "compiler-facade-placeholder",
+        "bytecode-facade-placeholder"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "delivered-gleam",
+      "evidence_type": "test",
+      "impl_citation": "glp_gleam/src/glp/link.gleam:1-9 (same shape as multiagent/lint/analysis/compiler/bytecode top-level modules)",
+      "test_citation": "glp_gleam/test/glp_gleam_test.gleam:9-17",
+      "status_basis": "Six top-level subsystem modules are intentional empty-but-building placeholders that compile in every build, each naming its Dart source of truth for the downstream port — making the remaining gaps explicit in code.",
+      "statement": "An empty-but-building placeholder scaffold is delivered for the unported subsystems (multiagent, link, lint, plus the analysis/compiler/bytecode facades), keeping the gap inventory visible and the build green.",
+      "claim": "placeholder-module-scaffold — An empty-but-building placeholder scaffold is delivered for the unported subsystems (multiagent, link, lint, plus the analysis/compiler/bytecode facades), keeping the gap inventory visible and the build green.",
+      "source_citation": "glp_gleam/src/glp/link.gleam:1-9",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    },
+    {
+      "claim_id": "b2-c1-057",
+      "detail_id": "link-reliability-sequencing",
+      "aliases": [
+        "sequence-dedup-sublayer",
+        "reliability-above-framecodec"
+      ],
+      "components": [],
+      "grain": "protocol",
+      "status": "absent",
+      "tag": "gap-gleam",
+      "evidence_type": "code",
+      "impl_citation": "searched glp_gleam/src/glp/link/reliability/ (only crc32.gleam and frame_codec.gleam exist) and glp_gleam/src/** for sequence/ack/dedup reliability symbols: none; endpoint.gleam:5-7 names \"sequence/dedup\" as sublayer scope",
+      "test_citation": "no-test: no sequencing/dedup reliability test exists",
+      "status_basis": "The endpoint seam documentation names a FrameCodec-plus-sequence/dedup reliability sublayer, but only the frame codec and CRC exist — no sequence numbering, acknowledgement, or duplicate suppression above the transports.",
+      "statement": "The link reliability sequence/dedup sublayer is absent — the reliability directory holds only the frame codec and CRC-32, with no sequencing, ack, or dedup protocol implemented.",
+      "claim": "link-reliability-sequencing — The link reliability sequence/dedup sublayer is absent — the reliability directory holds only the frame codec and CRC-32, with no sequencing, ack, or dedup protocol implemented.",
+      "source_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:5-7",
+      "confidence": 0.85,
+      "builder_id": "builder-2",
+      "slice_id": "slice-gleam-impl"
+    }
+  ],
+  "coverage_manifest": [
+    {
+      "area": "glp_gleam/src root (glp_gleam.gleam, atomvm_gated_probe.gleam + glp_repl_ffi.erl, glp_link_tcp_ffi.erl)",
+      "state": "swept",
+      "files_seen": 2,
+      "files_in_area": 2,
+      "note": "Both .gleam files fully read; the two .erl FFI shims noted as in-corpus support files (not counted in the .gleam total)."
+    },
+    {
+      "area": "glp_gleam/src/glp/runtime (terms, heap, unify, suspension, runtime facade)",
+      "state": "swept",
+      "files_seen": 5,
+      "files_in_area": 5,
+      "note": "Public surfaces extracted for all five; heap/terms/unify/suspension read in signature detail."
+    },
+    {
+      "area": "glp_gleam/src/glp/engine (engine.gleam + types, arith, goal_boot, goal_format, kernels, output_capture, runner, scheduler)",
+      "state": "swept",
+      "files_seen": 9,
+      "files_in_area": 9,
+      "note": "Runner dispatch table, scheduler state/status, kernels registry, engine facade read directly; arith/goal_boot/goal_format/output_capture via public-surface pass."
+    },
+    {
+      "area": "glp_gleam/src/glp/analysis (facade, srsw, prelude, type_ast, type_conversion + 11 type_checker modules)",
+      "state": "swept",
+      "files_seen": 16,
+      "files_in_area": 16,
+      "note": "srsw and facade read directly; the type_checker family swept via full public-surface extraction plus its ten oracle test headers (line-by-line body reads not performed for the DFA internals)."
+    },
+    {
+      "area": "glp_gleam/src/glp/parser (ast, lexer, parser)",
+      "state": "swept",
+      "files_seen": 3,
+      "files_in_area": 3,
+      "note": "Public surfaces plus module-declaration/procedure-declaration parse sites read; parser body (2k+ lines) sampled at the module-system regions."
+    },
+    {
+      "area": "glp_gleam/src/glp/compiler (facade, partial_eval, codegen, loader)",
+      "state": "swept",
+      "files_seen": 4,
+      "files_in_area": 4,
+      "note": "Loader and codegen headers/entry read directly incl. the documented divergence; facade is a placeholder."
+    },
+    {
+      "area": "glp_gleam/src/glp/bytecode (facade, opcodes, guard_defs, program)",
+      "state": "swept",
+      "files_seen": 4,
+      "files_in_area": 4,
+      "note": "Full opcode union read; program/guard_defs via public-surface pass; facade is a placeholder."
+    },
+    {
+      "area": "glp_gleam/src/glp/codec (term_codec, result_envelope, result_envelope_builder)",
+      "state": "swept",
+      "files_seen": 3,
+      "files_in_area": 3,
+      "note": "Wire tags, header constants, and builder markers read directly."
+    },
+    {
+      "area": "glp_gleam/src/glp/link (facade + reliability/2 + seam/7 + transports/2)",
+      "state": "swept",
+      "files_seen": 12,
+      "files_in_area": 12,
+      "note": "crc32, frame_codec, endpoint, loopback, tcp read directly; remaining seam types via public-surface pass; facade is a placeholder."
+    },
+    {
+      "area": "glp_gleam/src/glp misc (diagnostics, multiagent, lint)",
+      "state": "swept",
+      "files_seen": 3,
+      "files_in_area": 3,
+      "note": "multiagent and lint are placeholders (read in full); diagnostics surface extracted."
+    },
+    {
+      "area": "glp_gleam/test (all subdirs)",
+      "state": "swept",
+      "files_seen": 49,
+      "files_in_area": 49,
+      "note": "P2 pass: every test module's locking header captured (48 doc headers + glp_gleam_test read in full); test bodies not read line-by-line."
+    },
+    {
+      "area": "gleam_quic/src",
+      "state": "swept",
+      "files_seen": 1,
+      "files_in_area": 1,
+      "note": "The single .gleam entry read in full; both .erl FFI data planes (glpq_ffi, glpq_quic) read in header+entry detail."
+    },
+    {
+      "area": "gleam_quic/test",
+      "state": "swept",
+      "files_seen": 0,
+      "files_in_area": 0,
+      "note": "Directory contains no test files — recorded as evidence for the QUIC no-test findings."
+    },
+    {
+      "area": "_build / packages caches (glp_gleam/_build, gleam_quic/profile_c/_build, dependency caches)",
+      "state": "not-swept",
+      "files_seen": 0,
+      "files_in_area": 0,
+      "note": "Declared out-of-corpus per the frozen method; gleam_quic/profile_c/ itself is outside the four listed source roots."
+    }
+  ],
+  "questions_answered": [
+    "Q1",
+    "Q4",
+    "Q5",
+    "Q6",
+    "Q8"
+  ],
+  "retractions": []
+}

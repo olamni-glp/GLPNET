@@ -1,0 +1,1863 @@
+{
+  "schema_version": 1,
+  "cycle": 1,
+  "critic_provider": "codex",
+  "recorded_by": "mvw@bancstreet.com",
+  "recorded_at": "2026-07-19T13:37:14Z",
+  "decisions": [
+    {
+      "claim_id": "2289979296d3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "638faafe8a93",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c4bdbf8e26c4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b7ded13d1a23",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "076f874f6015",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "a5a9f7ab9251",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f13204df4364",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "33b9e8031841",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "32164a646fb2",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f6ff599bc405",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3939fd0f5660",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "79da99c22507",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "013159dec550",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "57e5f1ae35ab",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "7d0269bd800b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "efcde710c173",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f089258f5022",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8b889876b3f1",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5564efc14ba5",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c9dc006585e0",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f5eec4861b7e",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "56097a524003",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "60397797c3ce",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fe5291d83b6a",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "785854d54bc3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fdaf2de5fe6f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bad80ec5e41d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2a0bed6cd37c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "036eecbd5d4f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6fbd1ebe3b3b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6ec877d1c244",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fe6fff02032c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d51ae8c769c4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f2cc835c66c9",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0f661cb361c3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "cb858f9848e9",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "860d3323e7bb",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0012ed8d7252",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "78bc7bec082d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "811731f84401",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ef12514b7d52",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "9c6e01a03798",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d739292033e4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5fad292df2b5",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "21e3de69ac38",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "73f9b6662209",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "42a061048742",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "707296d84a62",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "612894c82f0c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f4f87f13a313",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5130e1cebb86",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "9f7fc2d73dea",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c0720889a04b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0580049b5ec2",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4242b5c9a785",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d73ee1a34647",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b0ed5854827b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0330bb50a7c5",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "82826ba27681",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5d16865f48aa",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f6dc0cf5ab4f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c0988c9e5923",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2789327614d4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "42a937dae288",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6c8f8e31e7c9",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "562a28855a45",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "900cee1ba780",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3f9b68e527ca",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "591da3a7de55",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fd9c7fbdc3b8",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3f74b42c7f09",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "7c4451fff271",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0313b230f398",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "358c82019cce",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "656e4aa0de26",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "a1f7ed84b92c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0e7993a8d7c6",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "e316f4a3b32f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "056b27d954ac",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3f0e7304ed9b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "add5b489a5d0",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "46d470cc1a1d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b42670a77a64",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "9e6027ebe62b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6a44d8b9d7c6",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "1bba405c2564",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "eac802f6c3d3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "cbf321888961",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4d20a82d3b8c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "990180c0162b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "37224e7aa787",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8f0a2634d686",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "91133561fd21",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "791fe11fcc49",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "e6e65ac7a920",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2145c76237e6",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ec0fa2aab73f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "55ef9cf1141b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f599bb4dd7fc",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5cd08f2b07dc",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0dc7bd76e69f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "96d37a0ebddc",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "e615f5351048",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3e593f8cbbaa",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "15b4d2a759de",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6fe3698150c7",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "613e2ac855ec",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "1ff9a9be1299",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3976867aa080",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0a1bf51948b3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "aa7e2d8317ca",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8bd6c63207ef",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bde975a792d4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ca925935182d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "1c5c0de81597",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "1b8f228e9eec",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "49ff5fd67109",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "dea21fe5a55b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "803ce9502792",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "0b35372f0835",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fe5ea6ba5c26",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bae47f635b90",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "61009886f5db",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "24ff66cbf7e8",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d527c70bc0b4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fa7feb029e4e",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ef83b8265a1f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6c221122e062",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ba510430dcb7",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "491c3ad10b0e",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c0d1400cbeff",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "76ee63a8d481",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "33bab65b1f87",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d1672ddc3a18",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3204eca274a9",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "a59474b91202",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "de5371b26719",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8b0bcc5852fb",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bd0154fae548",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "c04c4b959ada",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fc370508edc8",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4f4b941b8e5a",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2e1f008457f1",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "47697e0d9118",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4998c5d17802",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5f1c7f6690c7",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "75b7b7801f97",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "580c14b6ed29",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5fba440d8c8b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "a68aecfa91d3",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "508e15fdbd6d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fe4fac0503f4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8eb8ab8d02e9",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "5b1e74da0d0a",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "36c14bd8935e",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b4f099dbd777",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "9384fd9e9991",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "faed3e48f031",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "a881a966707d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b4b28613f435",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "faddd77d42ff",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "15f55d85558f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3f8afd788bc6",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "1c194058cd07",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "af564732b9a8",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3762eb5cc8d6",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b953a97b73ee",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4242396164ae",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bca9b4634883",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3a1c9bc7b14f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "9774d2c1313a",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bc62a6026694",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ca4ec4dc1e92",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "89a7626f6f07",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "088721fbb0aa",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "e28f38814dba",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "fd5223bc6940",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4b3231374207",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8ce4f8fa8db7",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bd0f338e6501",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "bef3db1de1ae",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "82e469d7bd75",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4b964193510d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d2eeaf181a9f",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "34fb18f981d1",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "3546a523847d",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "090e1ad45971",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6c431a88f96b",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b7ef6622930a",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "536d48190c99",
+      "decision": "ESCALATE",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2d29af0e2b0e",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "06958a9a66de",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "d3a3dd439a56",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "99dbdbd5c453",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "cd6783d30e68",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "8624fe6fc080",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "6c4e1a57fb54",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "f414f4c3c6ae",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "243f2fff60f4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "4b7307934264",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "2d928cdb882c",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "525f0eaf1343",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "b5191c9c9636",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "27f57ddca9d5",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ee6b78bf13b4",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    },
+    {
+      "claim_id": "ee2ffec4bf27",
+      "decision": "CONFIRM",
+      "rationale": "",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-19T13:37:14Z"
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 #!/usr/bin/env pwsh
 
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 21241eab-1b21-4379-9fb7-85754313f1a0
+
 [CmdletBinding()]
 param(
     [switch]$Json,

@@ -1,3 +1,10 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+
+SPDX-License-Identifier: MIT
+buildkit-file-id: 57a8b9fc-2569-4312-9cb0-17b9be75ff62
+-->
+
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]

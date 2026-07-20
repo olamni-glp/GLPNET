@@ -84,7 +84,7 @@ echo ""
 # (under the repo root, not from the parent of the repo root).
 echo "--- AOT self.glp load path ---"
 output=$(printf ':quit\n' | "$SMOKE_EXE" 2>&1)
-check_aot "AOT exe loads self.glp from correct path" "Loaded root self.glp from:.*glp[/\\\\]programs[/\\\\]self.glp" "$output"
+check_aot "AOT exe loads self.glp from correct path" "Loaded root self.glp from:.*glp\(net\)\?[/\\\\]programs[/\\\\]self.glp" "$output"
 
 # Test 2: AOT exe must successfully run ex-02 (uses := arithmetic from self.glp)
 echo ""

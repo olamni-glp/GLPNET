@@ -1,0 +1,40 @@
+{
+  "slices": [
+    {
+      "slice_id": "slice-roadmap-specs",
+      "description": "Design/promise corpus: the full roadmap snapshot (delivered/WIP/promoted/unpromoted) and every feature spec dir. What was designed, promised, deferred.",
+      "sources": [
+        "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md",
+        "specs/",
+        "docs/handover/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-gleam-impl",
+      "description": "Implementation-truth corpus: the actual Gleam code delivered in glpnet — glp_gleam runtime subtree (terms/heap/unification/codec/transports) and gleam_quic profile work, including tests.",
+      "sources": [
+        "glp_gleam/src/",
+        "glp_gleam/test/",
+        "gleam_quic/src/",
+        "gleam_quic/test/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-reference-runtimes",
+      "description": "Full-scope reference corpus: what a COMPLETE GLP implementation delivers — the Dart runtime (REPL, compiler, bytecode runner, multiagent), the C# runtime, the normative language/runtime/bytecode docs, and the GLP program corpus.",
+      "sources": [
+        "glp_runtime/lib/",
+        "glp_runtime/bin/",
+        "csharp/",
+        "docs/typed-glp-manual.md",
+        "docs/glp-cheat-sheet.md",
+        "docs/glp-runtime-spec.txt",
+        "docs/glp-bytecode-v216-complete.md",
+        "programs/"
+      ],
+      "assigned_to": null
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+- cycle 1: 206 claims, 206 new, 206 singleton(s), 0 escalate(s), converged=False

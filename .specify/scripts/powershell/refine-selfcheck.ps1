@@ -1,5 +1,10 @@
 #!/usr/bin/env pwsh
 
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 10c1f1c6-c6c2-4efe-afec-c6a3ffa6b999
+
 # Refinement self-check (spec-007 FR-007/SC-004). Thin wrapper around the
 # module CLI so it works the moment the wheel is installed — no dependency
 # on the `buildkit` console script being on PATH.

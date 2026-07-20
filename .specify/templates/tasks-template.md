@@ -1,4 +1,8 @@
 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 
 description: "Task list template for feature implementation"
 ---

@@ -1,5 +1,13 @@
 # 050 full-Gleam — M2 restart note (2026-07-13)
 
+> ## ▶ M2 IN PROGRESS 2026-07-13 — **US4 1/14 done (T045 ✅). Next = T046 (FrameCodec+CRC32).**
+> - **Safe restart point.** Branch `050-full-gleam-combined`, tree **clean**, commit **`7a323e5d`** ("T045 US4 transport seam"). `73e89d9b` (M1 LOCK) is an ancestor. gleam **443/443** warning-free, `gleam format` clean.
+> - **M2 marathon run = `mrun-6bea075ec79e`** (M1's `mrun-d96119d59d07` is DISCHARGED — do NOT reopen it). 14 US4 steps seeded; 3 M2-lock discharge gates registered (T061 FR-016, T066 acceptance, T068 final regression). Position truth = this run + tasks.md checkboxes (T037–T045 = `[X]`, T046+ = `[ ]`).
+> - **T045 landed** (`7a323e5d`): `i_link_transport`/`ILinkEndpoint` seam ported 1:1 into `glp_gleam/src/glp/link/seam/` — 7 modules `link_scheme`·`link_address`·`link_options`·`link_id`·`link_fault`·`endpoint`·`transport`. QUIC-WS wire token = **`"quic"`** (from C# `LinkScheme.Quic`, NOT "quicws"). **Design decision (owner-notified, not re-litigate):** the seam is a HOST interface BELOW GLP (architecture-context.md §3), so its Gleam shape is a **language-mapping** choice, not a §1.14 deviation — modelled as **record-of-functions vtables** (`Transport`/`Endpoint`), synchronous **`Result(_, LinkFaultSignal)`** (`recv` → `Ok(Some(frame))` / `Ok(None)`=clean EOS), out-of-band faults on a **`gleam_erlang` `Subject`**; **no `gleam_otp`** (AtomVM subset). Frozen 025 semantics live ABOVE the seam (T050).
+> - **▶ RESUME (fresh session):** mandatory reading (CLAUDE.md order) → verify baseline: `cd /d/bstdev/research/glp/glpnet && git fetch origin 050-full-gleam-combined` then `cd glp_gleam && PATH=/c/src/flutter/bin/cache/dart-sdk/bin:$PATH gleam test` → **443/443**. Then **RESUME the marathon** (do not `open`): `PYTHONUTF8=1 D:/bstdev/research/buildkit/.venv313/Scripts/buildkit-marathon.exe resume --feature 050` → it reports `next: start T046`. Then `/bk-implement` at **T046** (byte-parity vs `frame_codec.dart`/`FrameCodec.cs`; golden vectors `specs/038-result-codec-and-framecodec-ride/contracts/golden/`). Continue T046→T058 (US4), then T059–T063 (US5 lock), T064–T068 (polish), per the ORIGINAL banner below.
+>
+> ---
+>
 > ## ✅ STATUS 2026-07-13 — **M1 LOCKED & DISCHARGED.** Next = **M2 (US4 links + US5 cross-runtime capstone), Phases 6–8, T045–T068.**
 > - **Safe restart point.** Branch `050-full-gleam-combined`, tree **clean**, **pushed** @ **`73e89d9b`**. Native gleam **443 / 443**, warning-free.
 > - **US1 (engine) + US2 (REPL) + US3 (corpus parity) DONE.** Corpus parity **206 / 206 = 100% agreement**, 0 diverge, 0 fork, **10× wall-clock PASS** (`bash test/parity/run_gleam_corpus.sh`). PI:14 discharged. **M1 marathon `mrun-d96119d59d07` DISCHARGED.**
