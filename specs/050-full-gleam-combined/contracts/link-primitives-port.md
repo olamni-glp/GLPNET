@@ -210,6 +210,30 @@ base through the ingress **without** building dedup; a duplicate frame is out-of
 (R-2 lives in T052). `link_close` GC (C8) reclaims registry/handle entries only — not the full
 distributed GC.
 
+**D-9 (a base link is POINT-TO-POINT; multi-party is a COMPOSITION, not a primitive). RULED by
+Gabi 2026-07-20 — resolves the C2 `_link_setup` reuse-semantics escalation (`mitem-019f80fe2ae9`).**
+Ruling, verbatim: *"links have two ends a listener and a caller. when the caller calls the listener it
+creates a new virtual thread and hands the connection to it. when another caller calls the same
+happens again with the second caller etc — except if the second caller asks and is permitted to join
+either a broadcasting or chat channel type structure"*, and: *"however broadcast and multi participant
+chats are combinations of simpler channels with modifications."* Consequences that bind C2–C8:
+- **No data-stream fan-out in the base.** Two callers are two connections, two distinct `LinkId`s (the
+  Nonce disambiguates), two handles, two independent `In`/`Out`/`Faults` sets. The escalation's three
+  candidate readings all assumed two callers *share* one `LinkId` — they never do. `link_setup` at a
+  `Reused` identity is therefore idempotent duplicate-absorption for **one** owner (redelivery → T052),
+  never two live parties sharing streams.
+- **"New virtual thread per connection" = the Phase-B process model (T050.B).** Phase-A models it as
+  distinct registry handles per `LinkId`. Base MVP is one-caller-per-listen (the C# note: a
+  multi-request accept-loop is a transport-leaf Phase-6 concern); per-caller-thread multiplexing is the
+  fuller Phase-B model.
+- **Multi-party (broadcast 1→many / chat many↔many) is COMPOSED from base point-to-point links + a
+  coordination "modification", built ABOVE the base — NOT a base primitive and NOT fan-out inside
+  `_link_setup`.** Joining is **explicit and permission-gated** — the gate is exactly the C1
+  `capability_gate` (D-7), i.e. the acceptance-policy enforcement point of Gabi's mesh/mailbox ruling.
+  This matches the spec base→glink dependency direction, FR-040 (multi-reader = N bilateral ground
+  copies = N base `link_send`s), and R-3. **C1–C8 build ONLY the point-to-point primitive + its
+  permission gate;** broadcast/chat are a later composed layer, out of the base link-primitives scope.
+
 ---
 
 ## 6. Risks carried into implementation (from `link-primitives.md §8`)
