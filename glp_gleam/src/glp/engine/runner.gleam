@@ -52,6 +52,8 @@ import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/kernels
+import glp/link/primitives/link_kernels
+import glp/link/primitives/link_runtime.{type LinkState}
 import glp/mad/mad_kernels.{type MadState}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
@@ -84,6 +86,10 @@ pub type ReduceOutcome {
     /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
     /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
     mad: Option(MadState),
+    /// link-layer effect state after this reduction (T050.C2) — `None` unless the goal
+    /// ran with a `LinkState` injected (`ctx.link` was `Some`). Threaded out exactly
+    /// like `mad`; the link engine facade reads the updated registry from here.
+    link: Option(LinkState),
   )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
@@ -227,6 +233,11 @@ pub type RunnerContext {
     /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
     /// a `_send` in a non-mad reduction fails non-fatally (the goal fails).
     mad: Option(MadState),
+    /// link-layer effect state (registry + transports + gates + pending), present only
+    /// when a `LinkState` was injected (T050.C2, `with_link`). The `_link_*` kernels
+    /// read/update it at the BODY label-miss; threaded out on `Reduced.link`. `None` for
+    /// non-link runs, so a link kernel in a non-link reduction fails non-fatally.
+    link: Option(LinkState),
   )
 }
 
@@ -255,6 +266,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     output: [],
     ui: [],
     mad: None,
+    link: None,
   )
 }
 
@@ -263,6 +275,13 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
 /// its updated `MadState` returns on `Reduced`).
 pub fn with_mad(ctx: RunnerContext, state: MadState) -> RunnerContext {
   RunnerContext(..ctx, mad: Some(state))
+}
+
+/// Inject link-layer effect state into a reduction context (the link engine facade / a
+/// test seam sets this before `reduce` so the `_link_*` kernels are reachable and the
+/// updated `LinkState` returns on `Reduced.link`). Parallel to `with_mad` (T050.C2).
+pub fn with_link(ctx: RunnerContext, state: LinkState) -> RunnerContext {
+  RunnerContext(..ctx, link: Some(state))
 }
 
 /// Run one reduction of the goal whose procedure entry PC is `kappa`, over
@@ -338,6 +357,7 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
         ctx.output,
         ctx.ui,
         ctx.mad,
+        ctx.link,
       ))
     opcodes.Halt ->
       Stop(Reduced(
@@ -347,6 +367,7 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
         ctx.output,
         ctx.ui,
         ctx.mad,
+        ctx.link,
       ))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
@@ -1928,8 +1949,9 @@ fn spawn(
               "body kernel " <> label <> " aborted: " <> detail,
             )),
           )
-        // Not a pure kernel → try the madGLP effectful seam (`_send`; T050.A2).
-        Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
+        // Not a pure kernel → try the effectful seams: link kernels (T050.C2) first,
+        // then the madGLP `_send` seam (T050.A2). The two namespaces are disjoint.
+        Error(_) -> link_spawn(ctx, label, proc_name, arity, args)
       }
     }
   }
@@ -1972,6 +1994,48 @@ fn mad_spawn(
         True -> Stop(Failed(ctx.heap))
         False ->
           Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
+      }
+  }
+}
+
+/// The link effectful dispatch at a BODY Spawn label-miss (T050.C2), tried BEFORE the
+/// madGLP seam because the two kernel namespaces are disjoint (`_link_*` vs `_send`). A
+/// recognized link kernel with a `LinkState` present runs and threads the updated state
+/// forward (`LinkEffect`) or fails the goal non-fatally (`LinkAbort`, spec-v5.3-PURE); a
+/// link kernel with NO `LinkState` (`ctx.link == None`) fails non-fatally, mirroring the
+/// mad None-branch. Anything that is not a link kernel falls through to `mad_spawn`,
+/// which keeps the `_send` seam and the final unresolved-label `RunnerError`.
+fn link_spawn(
+  ctx: RunnerContext,
+  label: LabelName,
+  proc_name: String,
+  arity: Int,
+  args: List(Term),
+) -> Step {
+  case link_kernels.link_is_kernel(proc_name, arity) {
+    False -> mad_spawn(ctx, label, proc_name, arity, args)
+    True ->
+      case ctx.link {
+        Some(state) ->
+          case link_kernels.link_dispatch(ctx.heap, state, proc_name, arity, args) {
+            Ok(link_kernels.LinkEffect(heap, state, woken)) ->
+              Advance(
+                RunnerContext(
+                  ..ctx,
+                  heap: heap,
+                  woken: list.append(ctx.woken, woken),
+                  link: Some(state),
+                  arg_slots: dict.new(),
+                ),
+              )
+            Ok(link_kernels.LinkAbort(_detail)) -> Stop(Failed(ctx.heap))
+            Error(_) ->
+              Stop(RunnerError(Malformed(
+                "spawn: unresolved procedure/kernel " <> label,
+              )))
+          }
+        // A link kernel invoked outside link mode fails non-fatally (mirror mad None).
+        None -> Stop(Failed(ctx.heap))
       }
   }
 }

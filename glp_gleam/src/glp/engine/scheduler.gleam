@@ -292,6 +292,7 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           output: out,
           ui: ui_out,
           mad: _,
+          link: _,
         ) -> {
           let engine =
             Engine(
@@ -380,6 +381,7 @@ pub fn step_mad(
           output: out,
           ui: ui_out,
           mad: mad_o,
+          link: _,
         ) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
           // `None` would be an engine invariant break — treat it as no effect.
