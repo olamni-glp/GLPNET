@@ -24,13 +24,19 @@
 //// cursors on the handle. Arming the egress drainer (C5) and starting the ingress pump
 //// (C6) come later; C2 establishes the link and wires the cursors those steps consume.
 
+import gleam/option
 import gleam/result
 import gleam/string
+import glp/link/primitives/capability_gate
 import glp/link/primitives/link_establish
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_registry.{Established, Reused}
 import glp/link/primitives/link_runtime.{type LinkState}
 import glp/link/primitives/link_terms
+import glp/link/primitives/link_wire
+import glp/link/primitives/transport_registry
+import glp/link/seam/endpoint.{type Endpoint}
+import glp/link/seam/link_id.{type LinkId}
 import glp/runtime/heap.{type Heap}
 import glp/runtime/suspension.{type GoalRef}
 import glp/runtime/terms.{type Term, VarRef}
@@ -45,10 +51,14 @@ pub type LinkOutcome {
   LinkAbort(detail: String)
 }
 
-/// Is `name/arity` a link effectful kernel this slice implements? C2 = `_link_setup/5`.
+/// Is `name/arity` a link effectful kernel this slice implements? C2 added
+/// `_link_setup/5` (path A); C4 adds the three path-B kernels.
 pub fn link_is_kernel(name: String, arity: Int) -> Bool {
   case name, arity {
     "_link_setup", 5 -> True
+    "_link_listen", 3 -> True
+    "_link_request", 5 -> True
+    "_link_accept", 5 -> True
     _, _ -> False
   }
 }
@@ -70,6 +80,28 @@ pub fn link_dispatch(
         state,
         link_id,
         role,
+        in_arg,
+        out_arg,
+        faults_arg,
+      ))
+    "_link_listen", 3, [scheme, endpoint_arg, requests] ->
+      Ok(link_listen_kernel(heap, state, scheme, endpoint_arg, requests))
+    "_link_request", 5, [link_id, to_peer, in_arg, out_arg, faults_arg] ->
+      Ok(link_request_kernel(
+        heap,
+        state,
+        link_id,
+        to_peer,
+        in_arg,
+        out_arg,
+        faults_arg,
+      ))
+    "_link_accept", 5, [link_id, from_peer, in_arg, out_arg, faults_arg] ->
+      Ok(link_accept_kernel(
+        heap,
+        state,
+        link_id,
+        from_peer,
         in_arg,
         out_arg,
         faults_arg,
@@ -115,8 +147,39 @@ fn try_link_setup(
   use in_addr <- result.try(cursor_addr(in_arg, "In"))
   use out_addr <- result.try(cursor_addr(out_arg, "Out"))
   use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
-  // 3. Converge on the ONE establish funnel (path A → not pre-gated). The address is the
-  //    LinkId's own endpoint — identity and address are the same ground fact here.
+  // 3. Converge on the ONE establish funnel. Path A: NOT pre-gated, NO pre-opened
+  //    endpoint (`adopt: None`) — the leaf opens by role inside the funnel.
+  wire_and_record(
+    heap,
+    state,
+    id,
+    role,
+    option.None,
+    False,
+    in_addr,
+    out_addr,
+    faults_addr,
+  )
+}
+
+/// The shared tail of every establishing kernel (K1/K3/K5): funnel through
+/// `wire_established_link` — the ONE code path that produces an established link (R-5) —
+/// and on genuine first establishment record the In/Out/Faults cursors the pump / egress
+/// / faults steps (C5–C7) consume. On idempotent reuse (FR-007) thread the registry back
+/// without re-wiring — the existing handle already drives the peer's frames. `adopt`
+/// (path B) adopts the endpoint the kernel already opened; `pre_gated` skips the funnel's
+/// gate for a kernel that gated itself. The address passed is the LinkId's own endpoint.
+fn wire_and_record(
+  heap: Heap,
+  state: LinkState,
+  id: LinkId,
+  role: link_establish.Role,
+  adopt: option.Option(Endpoint),
+  pre_gated: Bool,
+  in_addr: Int,
+  out_addr: Int,
+  faults_addr: Int,
+) -> Result(LinkOutcome, String) {
   let ctx = link_runtime.establish_context(state)
   case
     link_establish.wire_established_link(
@@ -125,26 +188,18 @@ fn try_link_setup(
       id,
       role,
       id.endpoint,
-      False,
+      adopt,
+      pre_gated,
     )
   {
-    Error(e) -> Error("_link_setup: establishment failed: " <> string.inspect(e))
+    Error(e) -> Error("establishment failed: " <> string.inspect(e))
     Ok(#(registry, Established(handle))) -> {
-      // First establishment: record the cursors the pump / egress / faults steps
-      // (C5–C7) consume. The writers stay unbound here — extending `In`/`Faults` and
-      // draining `Out` is those steps' work, not establishment's.
-      let wired =
-        link_handle.with_cursors(handle, in_addr, out_addr, faults_addr)
+      let wired = link_handle.with_cursors(handle, in_addr, out_addr, faults_addr)
       let state = link_runtime.with_links(state, link_registry.put(registry, wired))
       Ok(LinkEffect(heap, state, []))
     }
-    Ok(#(registry, Reused(_handle))) -> {
-      // Idempotent reuse (FR-007): do NOT re-wire cursors or re-open — the existing
-      // handle already drives the peer's frames. The reuse data semantics for a second
-      // owner's In/Out/Faults are a C5/C6 + T052 concern, not establishment's.
-      let state = link_runtime.with_links(state, registry)
-      Ok(LinkEffect(heap, state, []))
-    }
+    Ok(#(registry, Reused(_handle))) ->
+      Ok(LinkEffect(heap, link_runtime.with_links(state, registry), []))
   }
 }
 
@@ -170,10 +225,282 @@ fn cursor_addr(term: Term, what: String) -> Result(Int, String) {
     VarRef(addr) -> Ok(addr)
     _ ->
       Error(
-        "_link_setup: "
+        "kernel: "
         <> what
         <> " must be an unbound stream variable, got "
         <> string.inspect(term),
       )
+  }
+}
+
+// ── K4 `'_link_listen'/3` (Scheme?, Endpoint?, Requests) — path-B LISTEN half ──
+//
+// Bind a transport rendezvous, raw-read the inbound connection's first frame as a
+// `request(LinkId, FromPeer)` token (BEFORE the data pump, so the data sequence still
+// starts at 0), PARK the accepted-but-unmatched endpoint in `LinkState.pending` keyed by
+// the token's ground LinkId, and surface `[request(LinkId, FromPeer) | Tail]` on the
+// Requests stream — where `accept_link/4` reads it and `=?=`-matches the LinkId. Base
+// MVP: ONE request per rendezvous (the seam returns a single endpoint; a multi-request
+// accept-loop is a transport-leaf Phase-6 concern). This does NOT gate — admission is the
+// `accept_link` end's concern (K5), since the LinkId to serve is chosen there.
+
+fn link_listen_kernel(
+  heap: Heap,
+  state: LinkState,
+  scheme_arg: Term,
+  endpoint_arg: Term,
+  requests_arg: Term,
+) -> LinkOutcome {
+  case try_link_listen(heap, state, scheme_arg, endpoint_arg, requests_arg) {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_listen(
+  heap: Heap,
+  state: LinkState,
+  scheme_arg: Term,
+  endpoint_arg: Term,
+  requests_arg: Term,
+) -> Result(LinkOutcome, String) {
+  use #(heap, scheme_term) <- result.try(resolve(heap, scheme_arg, "Scheme"))
+  use scheme <- result.try(
+    link_terms.parse_scheme(scheme_term) |> term_err("Scheme"),
+  )
+  use #(heap, endpoint_term) <- result.try(resolve(heap, endpoint_arg, "Endpoint"))
+  use addr <- result.try(
+    link_terms.parse_endpoint(endpoint_term) |> term_err("Endpoint"),
+  )
+  use req_addr <- result.try(writer_addr(heap, requests_arg, "Requests"))
+  case transport_registry.select(state.transports, scheme) {
+    Error(e) -> Error("_link_listen: no transport: " <> string.inspect(e))
+    Ok(leaf) ->
+      // listen + the token read both block until a requester connects + sends; the
+      // requester runs in another engine/process, so this is not a self-deadlock.
+      case leaf.listen(scheme, addr, state.options) {
+        Error(sig) -> Error("_link_listen: rendezvous failed: " <> string.inspect(sig))
+        Ok(ep) ->
+          case read_token(ep) {
+            Error(d) -> Error("_link_listen: " <> d)
+            Ok(token) ->
+              case link_terms.parse_request_token(token) |> term_err("request token") {
+                Error(d) -> Error(d)
+                Ok(#(id, from_peer)) -> {
+                  // Park the accepted endpoint for '_link_accept' to adopt.
+                  let state = link_runtime.park_pending(state, id, ep)
+                  // Surface [request(id, FromPeer) | Tail?] on the Requests writer.
+                  let #(heap, _tail_w, tail_r) = heap.allocate_variable(heap)
+                  let cons =
+                    terms.cons(link_terms.request_token(id, from_peer), VarRef(tail_r))
+                  case heap.bind_writer(heap, req_addr, cons) {
+                    Error(e) ->
+                      Error("_link_listen: cannot bind Requests: " <> string.inspect(e))
+                    Ok(#(heap, woken)) -> Ok(LinkEffect(heap, state, woken))
+                  }
+                }
+              }
+          }
+      }
+  }
+}
+
+// ── K3 `'_link_request'/5` (LinkId?, ToPeer?, In, Out?, Faults) — path-B CONNECT half ──
+//
+// Verify-before-act (gate on the ground LinkId BEFORE opening anything), connect to the
+// peer's rendezvous, ship the in-band `request(LinkId, requester)` token as a RAW frame,
+// then ADOPT that same connection through the shared establish funnel (pre-gated) — so
+// the resulting link is indistinguishable from a listen/connect one (R-5, FR-002).
+
+fn link_request_kernel(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  to_peer_arg: Term,
+  in_arg: Term,
+  out_arg: Term,
+  faults_arg: Term,
+) -> LinkOutcome {
+  case
+    try_link_request(heap, state, id_arg, to_peer_arg, in_arg, out_arg, faults_arg)
+  {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_request(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  to_peer_arg: Term,
+  in_arg: Term,
+  out_arg: Term,
+  faults_arg: Term,
+) -> Result(LinkOutcome, String) {
+  use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
+  use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
+  // ToPeer must be ground (base placeholder; authenticated origin is FR-026/T075).
+  use #(heap, _to_peer) <- result.try(resolve(heap, to_peer_arg, "ToPeer"))
+  use in_addr <- result.try(cursor_addr(in_arg, "In"))
+  use out_addr <- result.try(cursor_addr(out_arg, "Out"))
+  use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
+  // Verify-before-act: gate BEFORE the connection or token ship (fail-closed on refusal).
+  use _ <- result.try(pre_gate(state, id, capability_gate.Outbound))
+  case transport_registry.select(state.transports, id.scheme) {
+    Error(e) -> Error("_link_request: no transport: " <> string.inspect(e))
+    Ok(leaf) ->
+      case leaf.connect(id.scheme, id.endpoint, state.options) {
+        Error(sig) -> Error("_link_request: connect failed: " <> string.inspect(sig))
+        Ok(ep) -> {
+          let token =
+            link_terms.request_token(id, terms.ConstTerm(terms.ConstAtom("requester")))
+          case ship_token(ep, token) {
+            Error(d) -> Error("_link_request: " <> d)
+            // Adopt the SAME handshake connection (path B: adopt + pre-gated).
+            Ok(Nil) ->
+              wire_and_record(
+                heap,
+                state,
+                id,
+                link_establish.Connector,
+                option.Some(ep),
+                True,
+                in_addr,
+                out_addr,
+                faults_addr,
+              )
+          }
+        }
+      }
+  }
+}
+
+// ── K5 `'_link_accept'/5` (LinkId?, FromPeer?, In, Out?, Faults) — path-B ACCEPT half ──
+//
+// The GLP `=?=` guard already matched the requested LinkId against one this end serves,
+// so the kernel ADOPTS the connection `'_link_listen'` parked for that ground LinkId and
+// establishes through the shared funnel (pre-gated) — converging on the same registry as
+// listen/connect (R-5, FR-002). Verify-before-act: gate before wiring; a refused peer's
+// parked connection is disposed rather than left half-open.
+
+fn link_accept_kernel(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  from_peer_arg: Term,
+  in_arg: Term,
+  out_arg: Term,
+  faults_arg: Term,
+) -> LinkOutcome {
+  case
+    try_link_accept(heap, state, id_arg, from_peer_arg, in_arg, out_arg, faults_arg)
+  {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_accept(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  from_peer_arg: Term,
+  in_arg: Term,
+  out_arg: Term,
+  faults_arg: Term,
+) -> Result(LinkOutcome, String) {
+  use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
+  use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
+  use #(heap, _from_peer) <- result.try(resolve(heap, from_peer_arg, "FromPeer"))
+  use in_addr <- result.try(cursor_addr(in_arg, "In"))
+  use out_addr <- result.try(cursor_addr(out_arg, "Out"))
+  use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
+  // Adopt the parked endpoint '_link_listen' surfaced for this LinkId.
+  case link_runtime.take_pending(state, id) {
+    Error(_) ->
+      Error(
+        "_link_accept: no pending request for the link — request_listener must surface it first",
+      )
+    Ok(#(state, ep)) ->
+      // Verify-before-act: gate AFTER adopting but BEFORE establishing; a refused peer's
+      // connection is disposed, never wired.
+      case pre_gate(state, id, capability_gate.Inbound) {
+        Error(reason) -> {
+          let _ = ep.close()
+          Error("_link_accept: " <> reason)
+        }
+        Ok(Nil) ->
+          wire_and_record(
+            heap,
+            state,
+            id,
+            link_establish.Listener,
+            option.Some(ep),
+            True,
+            in_addr,
+            out_addr,
+            faults_addr,
+          )
+      }
+  }
+}
+
+// ── shared path-B helpers ─────────────────────────────────────────────────────
+
+/// Run the scheme's capability gate on the ground LinkId (verify-before-act, FR-008). A
+/// refusal — or a gate that cannot even be evaluated — fails CLOSED (`admit` returns
+/// `Refused`). Base schemes resolve to the allow-all default (D-7).
+fn pre_gate(
+  state: LinkState,
+  id: LinkId,
+  direction: capability_gate.Direction,
+) -> Result(Nil, String) {
+  let request =
+    capability_gate.Request(id: id, scheme: id.scheme, direction: direction)
+  case capability_gate.admit(state.gates, request) {
+    capability_gate.Allowed -> Ok(Nil)
+    capability_gate.Refused(reason) ->
+      Error("capability refused (fail-closed): " <> reason)
+  }
+}
+
+/// A stream OUTPUT argument (the Requests writer) must be an unbound WRITER cell — its
+/// paired reader would dereference to it and erase the writer identity.
+fn writer_addr(heap: Heap, term: Term, what: String) -> Result(Int, String) {
+  case term {
+    VarRef(addr) ->
+      case heap.is_writer(heap, addr) {
+        True -> Ok(addr)
+        False -> Error(what <> " must be an unbound writer cell")
+      }
+    _ -> Error(what <> " must be an unbound variable")
+  }
+}
+
+/// Blocking raw read of one whole ground token off the endpoint (the out-of-band request
+/// frame, consumed BEFORE the data pump engages). A clean EOS before any frame is a peer
+/// that closed without requesting — surfaced, never swallowed.
+fn read_token(ep: Endpoint) -> Result(Term, String) {
+  case ep.recv() {
+    Error(sig) -> Error("token recv failed: " <> string.inspect(sig))
+    Ok(option.None) -> Error("peer closed before sending a request token")
+    Ok(option.Some(frame)) ->
+      case link_wire.decode_token(frame) {
+        Error(e) -> Error("malformed request token: " <> string.inspect(e))
+        Ok(term) -> Ok(term)
+      }
+  }
+}
+
+/// Ship one ground token as a raw out-of-band frame on the endpoint.
+fn ship_token(ep: Endpoint, token: Term) -> Result(Nil, String) {
+  case link_wire.encode_token(token) {
+    Error(e) -> Error("cannot encode request token: " <> string.inspect(e))
+    Ok(frame) ->
+      case ep.send(frame) {
+        Error(sig) -> Error("cannot send request token: " <> string.inspect(sig))
+        Ok(Nil) -> Ok(Nil)
+      }
   }
 }

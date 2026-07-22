@@ -35,10 +35,12 @@
 //// cursors unset for its caller to wire. Keeping that split explicit is deliberate: the
 //// registry convergence is testable now, without a heap.
 
+import gleam/option.{type Option, None, Some}
 import glp/link/primitives/capability_gate.{type CapabilityGateRegistry}
 import glp/link/primitives/link_handle.{type LinkHandle}
 import glp/link/primitives/link_registry.{type LinkRegistry, type Establishment}
 import glp/link/primitives/transport_registry.{type TransportRegistry}
+import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_address.{type LinkAddress}
 import glp/link/seam/link_fault.{type LinkFaultSignal}
 import glp/link/seam/link_id.{type LinkId}
@@ -84,12 +86,20 @@ pub type EstablishError {
 /// already being consumed) or newly `Established` (wire everything).
 ///
 /// `pre_gated` skips step 1 for path B, which already gated at its own kernel.
+///
+/// `adopt` is the endpoint-provenance switch and the single reason path B can reuse this
+/// ONE funnel (R-5): path A passes `None` and the leaf is opened here by `role`; the
+/// path-B kernels have ALREADY opened/adopted the transport connection to run the in-band
+/// handshake, so they pass `Some(endpoint)` and this core adopts that same connection
+/// rather than dialling a second one. Mirrors the C# oracle's `Func<ILinkEndpoint>`
+/// factory (`() => transport.Connect/Listen` vs `() => endpoint`).
 pub fn wire_established_link(
   ctx: EstablishContext,
   registry: LinkRegistry,
   id: LinkId,
   role: Role,
   address: LinkAddress,
+  adopt: Option(Endpoint),
   pre_gated: Bool,
 ) -> Result(#(LinkRegistry, Establishment), EstablishError) {
   // 1. Admission — BEFORE opening anything. Fail-closed inside `admit`.
@@ -112,7 +122,7 @@ pub fn wire_established_link(
       }
     }
   }
-  |> then_establish(ctx, registry, id, role, address)
+  |> then_establish(ctx, registry, id, role, address, adopt)
 }
 
 /// Steps 2–3: idempotent reuse, else open the transport and store the new handle.
@@ -125,35 +135,55 @@ fn then_establish(
   id: LinkId,
   role: Role,
   address: LinkAddress,
+  adopt: Option(Endpoint),
 ) -> Result(#(LinkRegistry, Establishment), EstablishError) {
   case admitted {
     Error(e) -> Error(e)
     Ok(Nil) ->
-      case transport_registry.select(ctx.transports, id.scheme) {
-        Error(e) -> Error(NoTransport(e))
-        Ok(leaf) -> {
-          let open = fn() -> Result(LinkHandle, LinkFaultSignal) {
-            let opened = case role {
-              Listener -> leaf.listen(id.scheme, address, ctx.options)
-              Connector -> leaf.connect(id.scheme, address, ctx.options)
-            }
-            case opened {
-              Error(signal) -> Error(signal)
-              Ok(endpoint) ->
-                // Identity is the CALLER's ground LinkId, not the endpoint's own id:
-                // the registry is keyed by the GLP-visible identity, and a leaf may
-                // mint its own carrier-level id. `link_registry.get_or_establish`
-                // enforces that what we file matches what was asked for.
-                Ok(link_handle.new(id, endpoint, ctx.options))
-            }
-          }
+      // Build the handle factory ONCE, then funnel through `get_or_establish` — the
+      // single code path that produces an established link (R-5). Path B adopts the
+      // pre-opened endpoint; path A selects the leaf and opens by role. `get_or_establish`
+      // runs the factory at most once, and ONLY on genuine first establishment (FR-007).
+      case handle_factory(ctx, id, role, address, adopt) {
+        Error(e) -> Error(e)
+        Ok(open) ->
           case link_registry.get_or_establish(registry, id, open) {
             Ok(pair) -> Ok(pair)
             Error(link_registry.EstablishFailed(signal)) ->
               Error(TransportFailed(id, signal))
             Error(other) -> Error(Registry(other))
           }
-        }
+      }
+  }
+}
+
+/// The endpoint→handle factory for `get_or_establish`. `Some(endpoint)` (path B) adopts
+/// that connection; `None` (path A) selects the scheme's leaf and opens by role — the
+/// only place `NoTransport` can arise. Identity is always the CALLER's ground LinkId, not
+/// the endpoint's own carrier id, so the registry keys on the GLP-visible identity.
+fn handle_factory(
+  ctx: EstablishContext,
+  id: LinkId,
+  role: Role,
+  address: LinkAddress,
+  adopt: Option(Endpoint),
+) -> Result(fn() -> Result(LinkHandle, LinkFaultSignal), EstablishError) {
+  case adopt {
+    Some(endpoint) -> Ok(fn() { Ok(link_handle.new(id, endpoint, ctx.options)) })
+    None ->
+      case transport_registry.select(ctx.transports, id.scheme) {
+        Error(e) -> Error(NoTransport(e))
+        Ok(leaf) ->
+          Ok(fn() {
+            let opened = case role {
+              Listener -> leaf.listen(id.scheme, address, ctx.options)
+              Connector -> leaf.connect(id.scheme, address, ctx.options)
+            }
+            case opened {
+              Error(signal) -> Error(signal)
+              Ok(endpoint) -> Ok(link_handle.new(id, endpoint, ctx.options))
+            }
+          })
       }
   }
 }

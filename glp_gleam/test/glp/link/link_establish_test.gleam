@@ -104,6 +104,7 @@ pub fn both_paths_converge_on_one_registry_test() {
       id,
       link_establish.Listener,
       addr,
+      None,
       False,
     )
   let assert link_registry.Established(handle_a) = first
@@ -116,6 +117,7 @@ pub fn both_paths_converge_on_one_registry_test() {
       id,
       link_establish.Connector,
       addr,
+      None,
       True,
     )
   let assert link_registry.Reused(handle_b) = second
@@ -143,6 +145,7 @@ pub fn repeat_setup_reuses_and_does_not_redial_test() {
       id,
       link_establish.Connector,
       addr,
+      None,
       False,
     )
   let assert Ok(#(r2, link_registry.Reused(_))) =
@@ -152,6 +155,7 @@ pub fn repeat_setup_reuses_and_does_not_redial_test() {
       id,
       link_establish.Connector,
       addr,
+      None,
       False,
     )
   let assert Ok(#(r3, link_registry.Reused(_))) =
@@ -161,6 +165,7 @@ pub fn repeat_setup_reuses_and_does_not_redial_test() {
       id,
       link_establish.Connector,
       addr,
+      None,
       False,
     )
 
@@ -185,6 +190,7 @@ pub fn distinct_identities_are_distinct_links_test() {
       int_id,
       link_establish.Connector,
       addr,
+      None,
       False,
     )
   let assert Ok(#(r2, link_registry.Established(_))) =
@@ -194,6 +200,7 @@ pub fn distinct_identities_are_distinct_links_test() {
       str_id,
       link_establish.Connector,
       addr,
+      None,
       False,
     )
 
@@ -221,6 +228,7 @@ pub fn refused_link_opens_no_transport_test() {
       an_id(1),
       link_establish.Connector,
       link_address.endpoint("127.0.0.1", 9000),
+      None,
       False,
     )
 
@@ -248,6 +256,7 @@ pub fn unevaluable_gate_fails_closed_test() {
       an_id(1),
       link_establish.Connector,
       link_address.endpoint("127.0.0.1", 9000),
+      None,
       False,
     )
   drain(counter, []) |> should.equal([])
@@ -273,6 +282,7 @@ pub fn pre_gated_path_skips_admission_test() {
       an_id(1),
       link_establish.Listener,
       link_address.endpoint("127.0.0.1", 9000),
+      None,
       True,
     )
   drain(counter, []) |> should.equal(["listen"])
@@ -293,6 +303,7 @@ pub fn transport_failure_registers_nothing_test() {
       an_id(1),
       link_establish.Connector,
       link_address.endpoint("127.0.0.1", 9000),
+      None,
       False,
     )
   signal.reason |> should.equal("refused")
@@ -322,6 +333,7 @@ pub fn unserved_scheme_reports_no_transport_test() {
       quic_id,
       link_establish.Connector,
       link_address.endpoint("127.0.0.1", 9000),
+      None,
       False,
     )
   drain(counter, []) |> should.equal([])

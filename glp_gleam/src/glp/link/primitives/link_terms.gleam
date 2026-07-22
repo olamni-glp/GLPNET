@@ -184,6 +184,26 @@ pub fn parse_rendezvous(
   }
 }
 
+/// `RequestMsg ::= request(LinkId, AgentId)` (self.glp:467) — the in-band token the
+/// path-B connector ships and the listener surfaces on `accept_link`'s RequestStream.
+/// `from_peer` is a ground AgentId term; the base ships the placeholder `requester`
+/// (authenticated origin binding is FR-026/T075), kept as a raw term here.
+pub fn request_token(id: LinkId, from_peer: Term) -> Term {
+  StructTerm("request", [link_id_to_term(id), from_peer])
+}
+
+/// Parse an in-band `request(LinkId, FromPeer)` token → the LinkId + the raw ground
+/// FromPeer AgentId term (the base does not interpret it beyond ground identity).
+pub fn parse_request_token(term: Term) -> Result(#(LinkId, Term), TermError) {
+  case term {
+    StructTerm("request", [link_id_term, from_peer]) -> {
+      use id <- result.try(parse_link_id(link_id_term))
+      Ok(#(id, from_peer))
+    }
+    other -> Error(BadShape("request(LinkId, AgentId)", other))
+  }
+}
+
 /// `Reason ::= String` — a close/fault reason (C7/C8).
 pub fn parse_reason(term: Term) -> Result(String, TermError) {
   case term {
