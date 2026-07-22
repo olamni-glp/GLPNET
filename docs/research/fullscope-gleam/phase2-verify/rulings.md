@@ -51,6 +51,14 @@ The three run-hygiene proposals (`open-items-cycle2-residual`, `open-items-merge
 
 ---
 
+## F1 (wave-2 verify finding) — param-arity panic: fix lands under a SHARED type-checker-robustness close
+
+**Date**: 2026-07-23 · **Ruled by**: Gabi · **Satisfies**: the engineer scope-Q raised in `verify-langsurface-channel-convention.md` Finding F1.
+
+**Ruling**: The F1 fix lands under a **shared type-checker-robustness close**, NOT under `close-langsurface-channel-convention`. F1: `program_dfa.gleam:580` raises an uncaught `panic as "UnknownTypeError: …"` (the Dart `states[…]!` ported to `panic`) that crashes the Gleam REPL on `param_arity_mismatch.glp`, where Dart/C# surface a graceful `Error loading …` diagnostic. Rationale: the defect is in shared type-checker infrastructure (program_dfa automaton build) — it fires for any unknown type reaching automaton construction, not the parameterized-type logic that merely surfaced it. The fix threads the error back as a returned/catchable `StagedError(TypeCheckStage, …)` (mirroring the Dart exception-caught-by-loader path). `close-langsurface-channel-convention` (b3-c1-028) is therefore NOT the owner of F1; its typed-corpus Dart-parity acceptance passes once the shared close lands the fix.
+
+---
+
 ## Still-open (not gated on /bk-specify, carried forward)
 
 - `rule-request-link-quic-relay` (wave-2 WP): drift-control disposition for the untested Profile-A QUIC relay — freeze-by-file-pin vs minimal smoke test. Decision pending; carried inside the plan, due before any wave-4 WP depends on the relay.
