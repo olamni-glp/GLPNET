@@ -59,6 +59,14 @@ The three run-hygiene proposals (`open-items-cycle2-residual`, `open-items-merge
 
 ---
 
+## ZMQ (2026-07-23) — G5 `zmq-comm-base` disposition OVERRULED: ZMQ is MANDATORY / in-scope
+
+**Date**: 2026-07-23 · **Ruled by**: Gabi (engineer/owner) · **Supersedes**: the G5 row `zmq-comm-base` (out-of-scope, contract-excluded) and `rule-transports-zmq-comm-base`.
+
+**Ruling**: The G5 disposition of `zmq-comm-base` as out-of-scope (governing reason "contract-excluded — Gleam transport contract is loopback/TCP/QUIC only") is **OVERRULED**. **ZMQ is mandatory and in-scope** for the full-scope Gleam implementation. The Gleam transport contract is **extended from {loopback, TCP, QUIC} to {loopback, TCP, QUIC, ZMQ}** — an express DISCIPLINE §1.14 language/transport-authority extension, owner-approved 2026-07-23 (Claude raised the G5 conflict per §1.15; owner overruled). A ZMQ transport leaf joins `glp_gleam/src/glp/link/transports/` behind the T045 seam, on the same **all-gating** transport-parity footing as loopback/TCP/QUIC. Consequently `verify-transports-multi-accept-transport-extension`'s `zmq-comm-base` verdict is **in-scope = required** (not out-of-scope), and the transports close must build the ZMQ transport.
+
+---
+
 ## Still-open (not gated on /bk-specify, carried forward)
 
 - `rule-request-link-quic-relay` (wave-2 WP): drift-control disposition for the untested Profile-A QUIC relay — freeze-by-file-pin vs minimal smoke test. Decision pending; carried inside the plan, due before any wave-4 WP depends on the relay.
