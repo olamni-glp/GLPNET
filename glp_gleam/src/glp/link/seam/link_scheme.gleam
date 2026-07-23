@@ -36,6 +36,14 @@ pub fn quic() -> LinkScheme {
   LinkScheme("quic")
 }
 
+/// ZeroMQ (ZMTP) transport. Added to the transport contract by the owner ruling
+/// of 2026-07-23 (docs/research/fullscope-gleam/phase2-verify/rulings.md — the
+/// G5 `zmq-comm-base` out-of-scope disposition was OVERRULED; ZMQ is mandatory,
+/// the contract is now {loopback, tcp, quic, zmq}). Wire token "zmq".
+pub fn zmq() -> LinkScheme {
+  LinkScheme("zmq")
+}
+
 /// Build a scheme from a raw GLP `Scheme` string, normalizing case so "WS" and
 /// "ws" denote the same transport. A blank token is a caller bug — the GLP wrapper
 /// guards `ground/1` before the host ever sees it (never a value to tolerate) — so
