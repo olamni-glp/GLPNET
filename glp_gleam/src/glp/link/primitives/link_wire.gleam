@@ -39,17 +39,43 @@ pub type WireError {
   Fragmented
 }
 
-/// Encode a GROUND term into ONE self-delimiting `Whole` frame ready for `endpoint.send`.
-pub fn encode_token(t: terms.Term) -> Result(BitArray, WireError) {
+/// Encode a GROUND term into framed bytes ready for `endpoint.send`, at the given
+/// message id and MTU. THE one ground→wire path: the C4 out-of-band token
+/// (`encode_token`, id 0, no MTU) and the C5 data egress (`link_egress.ship_ground`,
+/// the link's sequence number + `options.max_frame_bytes`) both come through here, so
+/// the two sender faces can never drift apart on the wire — the Gleam form of the C#
+/// oracle's "keeping a single ship path closes risk R-5".
+///
+/// Returns the fragment list in SEND ORDER; under the default `None` MTU that is
+/// exactly one `Whole` frame.
+pub fn encode_frames(
+  t: terms.Term,
+  message_id: Int,
+  max_frame_bytes: option.Option(Int),
+) -> Result(List(BitArray), WireError) {
   case to_codec_term(t) {
     Error(e) -> Error(e)
     Ok(ct) ->
-      // `None` MTU → a single Whole frame (no fragmentation); the token is small.
-      case frame_codec.encode(term_codec.encode_term(ct), token_message_id, option.None) {
+      case
+        frame_codec.encode(
+          term_codec.encode_term(ct),
+          message_id,
+          max_frame_bytes,
+        )
+      {
         Error(e) -> Error(Framing(e))
-        Ok([frame]) -> Ok(frame)
-        Ok(_) -> Error(Fragmented)
+        Ok(frames) -> Ok(frames)
       }
+  }
+}
+
+/// Encode a GROUND term into ONE self-delimiting `Whole` frame ready for `endpoint.send`.
+pub fn encode_token(t: terms.Term) -> Result(BitArray, WireError) {
+  // `None` MTU → a single Whole frame (no fragmentation); the token is small.
+  case encode_frames(t, token_message_id, option.None) {
+    Error(e) -> Error(e)
+    Ok([frame]) -> Ok(frame)
+    Ok(_) -> Error(Fragmented)
   }
 }
 

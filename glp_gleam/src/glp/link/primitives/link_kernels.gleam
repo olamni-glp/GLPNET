@@ -28,6 +28,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import glp/link/primitives/capability_gate
+import glp/link/primitives/link_egress
 import glp/link/primitives/link_establish
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_registry.{Established, Reused}
@@ -59,6 +60,7 @@ pub fn link_is_kernel(name: String, arity: Int) -> Bool {
     "_link_listen", 3 -> True
     "_link_request", 5 -> True
     "_link_accept", 5 -> True
+    "_link_send", 3 -> True
     _, _ -> False
   }
 }
@@ -106,6 +108,8 @@ pub fn link_dispatch(
         out_arg,
         faults_arg,
       ))
+    "_link_send", 3, [msg, link_id, to_peer] ->
+      Ok(link_send_kernel(heap, state, msg, link_id, to_peer))
     _, _, _ -> Error(Nil)
   }
 }
@@ -442,6 +446,70 @@ fn try_link_accept(
             out_addr,
             faults_addr,
           )
+      }
+  }
+}
+
+// ── K2 `'_link_send'/3` (Msg?, LinkId?, ToPeer?) — the LinkId-keyed SENDER face ──
+//
+// The host body of `out_relay/3` (self.glp:546-549), whose guards already certified all
+// three arguments ground. The LinkId-keyed twin of the channel face `link_send/3` (which
+// conses onto `Out` for the egress drainer); BOTH converge on the one
+// `link_egress.ship_ground` routine, so the two faces can never diverge on the wire
+// (R-5's egress form).
+//
+// GROUND-RELAY, NOT globalize (deviation D-4, RATIFIED): a deep-dereferenced ground copy
+// crosses the cut (FR-040) — no globalize, no `_w`/`_r` minting, no open structure.
+//
+// "Send before setup" is a CALLER BUG, surfaced as a non-fatal abort — the base does not
+// invent a suspend-until-established semantics the spec is silent on (C# oracle, verbatim
+// rationale). Nothing is bound and no goal is woken: a send is a pure host effect.
+
+fn link_send_kernel(
+  heap: Heap,
+  state: LinkState,
+  msg_arg: Term,
+  id_arg: Term,
+  to_peer_arg: Term,
+) -> LinkOutcome {
+  case try_link_send(heap, state, msg_arg, id_arg, to_peer_arg) {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_send(
+  heap: Heap,
+  state: LinkState,
+  msg_arg: Term,
+  id_arg: Term,
+  to_peer_arg: Term,
+) -> Result(LinkOutcome, String) {
+  // arg 2 — the ground LinkId selects the established link.
+  use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
+  use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
+  // arg 3 — ToPeer is validated-ground for the relay record, NOT routed on: the link is
+  // bilateral (FR-005) so the LinkId already names the single far end.
+  use #(heap, _to_peer) <- result.try(resolve(heap, to_peer_arg, "ToPeer"))
+  // The link must already be established (FR-007 registry).
+  case link_registry.try_get(state.links, id) {
+    Error(_) ->
+      Error(
+        "_link_send: no established link for "
+        <> string.inspect(id)
+        <> " — setup before send",
+      )
+    Ok(handle) ->
+      // arg 1 — the ground-relay ship, shared with the Out-stream egress drainer.
+      case link_egress.ship_ground(heap, handle, msg_arg) {
+        Error(e) -> Error("_link_send: Msg not shipped: " <> string.inspect(e))
+        // Thread the advanced handle (its sequence number was consumed) back into the
+        // registry, or the next send would reuse this message id.
+        Ok(#(heap, advanced)) -> {
+          let state =
+            link_runtime.with_links(state, link_registry.put(state.links, advanced))
+          Ok(LinkEffect(heap, state, []))
+        }
       }
   }
 }
