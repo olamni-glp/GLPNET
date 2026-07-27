@@ -222,6 +222,12 @@ pub fn warnings(engine: Engine) -> List(TypeWarning) {
   engine.warnings
 }
 
+/// The loaded user programs in first-load order (name, program) — the REPL
+/// `:bytecode` surface iterates this (Dart `engine.loadedPrograms.entries`).
+pub fn loaded_programs(engine: Engine) -> List(#(String, BytecodeProgram)) {
+  engine.loaded
+}
+
 // ── transport injection seam (wave-3 T007, gap G6) ───────────────────────────
 
 /// Inject the transport leaves this instance may hold links over (replacing any

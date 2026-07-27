@@ -63,12 +63,12 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 **Goal**: A person can load, pose goals, trace, bound, and inspect without leaving the instance.
 **Independent test**: Drive the scripted session in quickstart Â§4 and compare the transcript to the reference runtime.
 
-- [ ] T019 [US2] Implement `:bytecode <name>/<arity>` disassembly in `glp_gleam/src/glp/repl/commands.gleam` per `contracts/repl-commands.md` (gap G4, FR-014)
-- [ ] T020 [US2] Implement `:boot <module>` in `glp_gleam/src/glp/repl/commands.gleam` per the same contract (gap G4, FR-011)
-- [ ] T021 [P] [US2] Ensure `UnknownProcedure` / `UnknownModule` errors leave the session usable in `glp_gleam/src/glp/repl/repl.gleam` (contract invariant 1)
-- [ ] T022 [P] [US2] Ensure a `:limit`-stopped run returns `Bounded(steps)` and never `Failure` in `glp_gleam/src/glp/repl/results.gleam` (FR-013)
-- [ ] T023 [P] [US2] Add `gleeunit` tests for the full command surface in `glp_gleam/test/glp/repl/commands_test.gleam`
-- [ ] T024 [US2] Verify `:bytecode` is read-only â€” no heap or program mutation â€” with a test in `glp_gleam/test/glp/repl/commands_test.gleam` (contract invariant 6)
+- [x] T019 [US2] Implement `:bytecode <name>/<arity>` disassembly in `glp_gleam/src/glp/repl/commands.gleam` per `contracts/repl-commands.md` (gap G4, FR-014)
+- [x] T020 [US2] ~~Implement `:boot <module>`~~ Amended to the Dart reference (contract amendment 2026-07-27): `:boot` runs a multi-isolate play via IsolateManager = the multiagent boot loader (gap G9); this instance parses `:boot` and reports the deferral instead of misreading it as a goal. Full `:boot` lands with the dispatch subsystem
+- [x] T021 [P] [US2] Ensure `UnknownProcedure` / `UnknownModule` errors leave the session usable in `glp_gleam/src/glp/repl/repl.gleam` (contract invariant 1)
+- [x] T022 [P] [US2] Ensure a `:limit`-stopped run returns `Bounded(steps)` and never `Failure` in `glp_gleam/src/glp/repl/results.gleam` (FR-013)
+- [x] T023 [P] [US2] Add `gleeunit` tests for the full command surface in `glp_gleam/test/glp/repl/commands_test.gleam`
+- [x] T024 [US2] Verify `:bytecode` is read-only â€” no heap or program mutation â€” with a test in `glp_gleam/test/glp/repl/commands_test.gleam` (contract invariant 6)
 
 **Checkpoint**: every row of the `contracts/repl-commands.md` table is implemented and tested.
 
