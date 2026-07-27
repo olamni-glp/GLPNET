@@ -41,7 +41,8 @@ import glp/link/seam/link_address
 import glp/link/seam/link_id.{type LinkId, LinkId, NonceInt}
 import glp/link/seam/link_scheme
 import glp/link/seam/transport.{type Transport, Transport}
-import glp/runtime/heap
+import glp/link/transports/loopback
+import glp/runtime/heap.{type Heap}
 import glp/runtime/terms.{
   type Term, ConstAtom, ConstInt, ConstString, ConstTerm, StructTerm, VarRef,
 }
@@ -174,6 +175,79 @@ pub fn reuse_does_not_arm_a_second_drainer_test() {
 
   link_registry.count(s2.links) |> should.equal(1)
   s2.drains |> should.equal([])
+}
+
+// ── 1b. path B arms with the REAL peer, path A with the derived one ──────────
+
+fn loopback_id_term(channel: String, nonce: Int) -> Term {
+  StructTerm("link_id", [
+    ConstTerm(ConstAtom("loopback")),
+    ConstTerm(ConstString(channel)),
+    ConstTerm(ConstInt(nonce)),
+  ])
+}
+
+/// Fresh In (writer), Out (reader), Faults (writer) stream args, in kernel arg order.
+fn streams(h: Heap) -> #(Heap, List(Term)) {
+  let #(h, in_w, _) = heap.allocate_variable(h)
+  let #(h, _, out_r) = heap.allocate_variable(h)
+  let #(h, faults_w, _) = heap.allocate_variable(h)
+  #(h, [VarRef(in_w), VarRef(out_r), VarRef(faults_w)])
+}
+
+/// Gabi's ruling 2026-07-27: a path-B kernel HAS a real counterparty and its drainer says
+/// so — K3 lowers with the `ToPeer` the program passed, K5 with the `FromPeer` off the
+/// request token. Only K1 (path A), which has no peer argument at all, falls back to the
+/// LinkId-derived `bilateral_peer`. Both peers here differ from that derivation
+/// (`chan-c5-drain`), so this cannot pass by accident.
+///
+/// The two ends block until they rendezvous, so the connector runs in a spawned process
+/// and the listener in the test process, sharing one loopback hub (the C4 harness shape).
+pub fn path_b_drainers_carry_the_real_peer_test() {
+  let t = loopback.new()
+  let id_term = loopback_id_term("chan-c5-drain", 1)
+  let back = process.new_subject()
+
+  // Connector (child): K3 `'_link_request'` — drainer must carry ToPeer = `bob`.
+  process.spawn(fn() {
+    let state = link_runtime.new() |> link_runtime.with_transport(t)
+    let #(h, streams) = streams(heap.new())
+    let args = [id_term, ConstTerm(ConstAtom("bob")), ..streams]
+    let peer = case
+      link_kernels.link_dispatch(h, state, "_link_request", 5, args)
+    {
+      Ok(link_kernels.LinkEffect(_, s, _)) ->
+        case s.drains {
+          [request] -> Ok(request.to_peer)
+          _ -> Error(Nil)
+        }
+      _ -> Error(Nil)
+    }
+    process.send(back, peer)
+  })
+
+  // Listener (test process): K4 listen (park + surface), then K5 accept (adopt).
+  let state = link_runtime.new() |> link_runtime.with_transport(t)
+  let #(h, req_w, _) = heap.allocate_variable(heap.new())
+  let listen_args = [
+    ConstTerm(ConstAtom("loopback")),
+    ConstTerm(ConstString("chan-c5-drain")),
+    VarRef(req_w),
+  ]
+  let assert Ok(link_kernels.LinkEffect(h, state, _)) =
+    link_kernels.link_dispatch(h, state, "_link_listen", 3, listen_args)
+  // K4 does not establish, so it arms no drainer.
+  state.drains |> should.equal([])
+
+  let #(h, streams) = streams(h)
+  let accept_args = [id_term, ConstTerm(ConstAtom("requester")), ..streams]
+  let assert Ok(link_kernels.LinkEffect(_, state, _)) =
+    link_kernels.link_dispatch(h, state, "_link_accept", 5, accept_args)
+
+  let assert [accept_request] = state.drains
+  accept_request.to_peer |> should.equal(ConstTerm(ConstAtom("requester")))
+  process.receive(back, 5000)
+  |> should.equal(Ok(Ok(ConstTerm(ConstAtom("bob")))))
 }
 
 // ── 2. the driver: step_link lowers it over the SHIPPED prelude ───────────────

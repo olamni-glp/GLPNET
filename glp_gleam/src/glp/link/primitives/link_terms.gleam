@@ -241,11 +241,13 @@ pub fn link_id_to_term(id: LinkId) -> Term {
 ///
 /// The mapping is total and stays inside the shipped type (`self.glp:447`):
 /// `Endpoint ::= String` → `AgentId ::= String`, and `ep(Host, Port)` → `peer(Host, Port)`.
-/// Applied UNIFORMLY by all three establishing kernels — a path-B kernel does have a real
-/// peer term, but using it there and a derived one here would make the two paths'
-/// drainer goals distinguishable, which FR-002/R-5 forbids. `ToPeer` is inert on the wire
-/// (`'_link_send'/3` validates it ground and routes by `LinkId`), so nothing observes the
-/// choice; it exists to satisfy the guard.
+///
+/// **K1 (path A) ONLY.** The path-B kernels have a real peer — K3's `ToPeer`, K5's
+/// `FromPeer` — and pass it (Gabi's ruling 2026-07-27), so a path-B drainer names the
+/// actual counterparty and a path-A drainer names the endpoint. Do not extend this to
+/// path B for symmetry's sake. The asymmetry was raised against FR-002/R-5 and ruled
+/// acceptable because `ToPeer` is inert on the wire: `'_link_send'/3` validates it ground
+/// and routes by `LinkId` alone, so no observable artefact distinguishes the two paths.
 pub fn bilateral_peer(id: LinkId) -> Term {
   case id.endpoint.port {
     option.None -> ConstTerm(ConstAtom(id.endpoint.host))

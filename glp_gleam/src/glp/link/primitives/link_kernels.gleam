@@ -152,7 +152,8 @@ fn try_link_setup(
   use out_addr <- result.try(cursor_addr(out_arg, "Out"))
   use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
   // 3. Converge on the ONE establish funnel. Path A: NOT pre-gated, NO pre-opened
-  //    endpoint (`adopt: None`) — the leaf opens by role inside the funnel.
+  //    endpoint (`adopt: None`) — the leaf opens by role inside the funnel. Path A has
+  //    NO peer argument, so the drainer's `ToPeer` is derived from the LinkId (FR-005).
   wire_and_record(
     heap,
     state,
@@ -163,6 +164,7 @@ fn try_link_setup(
     in_addr,
     out_addr,
     faults_addr,
+    link_terms.bilateral_peer(id),
   )
 }
 
@@ -181,6 +183,16 @@ fn try_link_setup(
 /// for the same reason establishment itself converges here — a second arming site would
 /// break R-5 no matter how carefully it mirrored this one. The `Reused` arm deliberately
 /// does NOT arm: FR-007 idempotency would otherwise put two drainers on one `Out` stream.
+///
+/// `to_peer` is the ground `AgentId` the lowered drainer's `ground(ToPeer?)` guard needs.
+/// **Gabi's ruling 2026-07-27: the path-B kernels pass their REAL peer** — K3's `ToPeer`,
+/// K5's `FromPeer`, both already ground-resolved at the kernel — while K1 (path A), which
+/// has no peer argument at all, derives one from the LinkId (`link_terms.bilateral_peer`).
+/// So the two paths' drainer goals DIFFER in this third argument. That was flagged against
+/// FR-002/R-5 and ruled acceptable: `ToPeer` is inert on the wire (`'_link_send'/3`
+/// validates it ground and routes by `LinkId`, FR-005), so nothing downstream — registry,
+/// handle, frames — can tell the two paths apart. Do not "restore symmetry" by discarding
+/// the real peer; path B knows who it is talking to and says so.
 fn wire_and_record(
   heap: Heap,
   state: LinkState,
@@ -191,6 +203,7 @@ fn wire_and_record(
   in_addr: Int,
   out_addr: Int,
   faults_addr: Int,
+  to_peer: Term,
 ) -> Result(LinkOutcome, String) {
   let ctx = link_runtime.establish_context(state)
   case
@@ -214,7 +227,7 @@ fn wire_and_record(
           state,
           out_addr,
           link_terms.link_id_to_term(id),
-          link_terms.bilateral_peer(id),
+          to_peer,
         )
       Ok(LinkEffect(heap, state, []))
     }
@@ -360,8 +373,9 @@ fn try_link_request(
 ) -> Result(LinkOutcome, String) {
   use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
   use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
-  // ToPeer must be ground (base placeholder; authenticated origin is FR-026/T075).
-  use #(heap, _to_peer) <- result.try(resolve(heap, to_peer_arg, "ToPeer"))
+  // ToPeer must be ground (base placeholder; authenticated origin is FR-026/T075). Kept,
+  // not discarded: this is the peer the C5 drainer is lowered with (Gabi 2026-07-27).
+  use #(heap, to_peer) <- result.try(resolve(heap, to_peer_arg, "ToPeer"))
   use in_addr <- result.try(cursor_addr(in_arg, "In"))
   use out_addr <- result.try(cursor_addr(out_arg, "Out"))
   use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
@@ -389,6 +403,7 @@ fn try_link_request(
                 in_addr,
                 out_addr,
                 faults_addr,
+                to_peer,
               )
           }
         }
@@ -432,7 +447,9 @@ fn try_link_accept(
 ) -> Result(LinkOutcome, String) {
   use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
   use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
-  use #(heap, _from_peer) <- result.try(resolve(heap, from_peer_arg, "FromPeer"))
+  // FromPeer — the requester `'_link_listen'` surfaced in the token. Kept, not discarded:
+  // it is the peer the C5 drainer is lowered with (Gabi 2026-07-27).
+  use #(heap, from_peer) <- result.try(resolve(heap, from_peer_arg, "FromPeer"))
   use in_addr <- result.try(cursor_addr(in_arg, "In"))
   use out_addr <- result.try(cursor_addr(out_arg, "Out"))
   use faults_addr <- result.try(cursor_addr(faults_arg, "Faults"))
@@ -461,6 +478,7 @@ fn try_link_accept(
             in_addr,
             out_addr,
             faults_addr,
+            from_peer,
           )
       }
   }

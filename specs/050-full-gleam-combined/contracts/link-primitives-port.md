@@ -164,13 +164,34 @@ that builds it.
 `tempFail/2` + `permFail/2`, per `self.glp:451`. The C# oracle agrees (`LinkTerms.Ok()` → `ok`).
 `architecture-context.md §5`'s `ok(LinkId)` (arity 1) is a **superseded proposal** — do NOT emit it.
 
-**D-2 (no `heap.onBind` — the egress deviation). DESIGN, decide in C5.** The C#/Dart egress arms
-`heap.OnBind(outWriterAddr, …)` to observe the program binding the channel `Out` writer and ship the
-cons head. **Gleam has no `onBind`.** The port must drive egress the way A3 drove `global_send`:
-lower the Out-drainer to a **runnable goal guarded on `known(Out?)`** that ships the head and re-arms
-on the tail, reusing the existing suspension/reactivation machinery. *Recommendation:* egress-drainer
-goal, no bespoke `onBind` (mirrors A3; keeps the base discipline in existing machinery). This is a
-host-mapping choice, **not** GLP-visible.
+**D-2 (no `heap.onBind` — the egress deviation). RESOLVED in C5 — option (a), Gabi §1.14 approval
+2026-07-27.** The C#/Dart egress arms `heap.OnBind(outWriterAddr, …)` to observe the program binding
+the channel `Out` writer and ship the cons head. **Gleam has no `onBind`.** Egress is instead driven
+the way A3 drove `global_send`: the Out-drainer is lowered as an ordinary **runnable goal** reading
+the `Out` READER, which SUSPENDS until the program conses and reactivates through the existing
+suspension machinery — no bespoke callback. This is a host-mapping choice, **not** GLP-visible.
+
+As shipped:
+- **GLP side** (`4c8373eb`) — `link_drain/3` in `programs/self.glp`, composing already-ratified
+  kernels only (`_link_send` K2, `_link_close` K7). `Out = []` is the graceful stream-end close with
+  reason `eos` (FR-024), distinct from the abrupt `link_close/2`.
+- **Host side** (`ea85adeb`) — `link_runtime.DrainRequest` accumulated by `wire_and_record` (the one
+  establish tail K1/K3/K5 converge on) on the `Established` arm **only**; `scheduler.step_link`
+  injects the `LinkState`, reads `Reduced.link`, and lowers each request into a runnable
+  `link_drain/3` goal via `lower_link_drains`. A missing `link_drain/3` surfaces as `StepErrored`.
+- **Arming is once-per-link.** The `Reused` arm (FR-007 idempotency) must NOT arm: two drainers on
+  one `Out` stream is a double-read of a non-constant stream — every cons would ship twice.
+
+**D-2a (the drainer's `ToPeer`). RULED by Gabi 2026-07-27.** `link_drain/3` guards
+`ground(ToPeer?)`, but `'_link_setup'/5` (path A) carries **no peer argument at all**. Ruled: the
+path-B kernels lower with their **real** peer (K3's `ToPeer`, K5's `FromPeer`, both already
+ground-resolved at the kernel); K1 derives one from the link's own `LinkId` via
+`link_terms.bilateral_peer` (`Endpoint ::= String` → `AgentId ::= String`, `ep(H,P)` → `peer(H,P)` —
+total, and inside the shipped type at `self.glp:447`). The two paths' drainer goals therefore
+**differ in this third argument**. That asymmetry was raised against FR-002/R-5 and ruled acceptable:
+`ToPeer` is inert on the wire — `'_link_send'/3` validates it ground and routes by `LinkId` alone
+(FR-005 bilateral) — so no observable artefact (registry, handle, frames) distinguishes the paths.
+Do not "restore symmetry" by discarding the real peer.
 
 **D-3 (sync seam vs async oracle). RESOLVED by T049 precedent, no escalation.** C#/Dart use an async
 `Task<byte[]?> RecvBytesAsync` + a background pump + a thread-safe inbox drained by `try_apply_next`.
