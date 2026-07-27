@@ -225,6 +225,20 @@ pub fn captured_ui(engine: Engine) -> List(String) {
   engine.ui
 }
 
+/// Is there anything left to reduce RIGHT NOW? (T054 quiescence observation —
+/// read-only; `False` means the queue is drained, saying nothing about suspended
+/// goals.)
+pub fn has_runnable(engine: Engine) -> Bool {
+  !types.is_empty(engine.queue)
+}
+
+/// How many goals remain in the store once the queue is drained — the suspended
+/// population (T054 quiescence observation; mirrors `terminal_status`'s emptiness
+/// check as a count).
+pub fn goal_count(engine: Engine) -> Int {
+  dict.size(engine.goals)
+}
+
 /// The next goal id the engine would mint (test/inspection hook).
 pub fn next_id(engine: Engine) -> Int {
   engine.next_id
