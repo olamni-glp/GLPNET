@@ -52,6 +52,7 @@ import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/kernels
+import glp/link/primitives/link_kernels
 import glp/mad/mad_kernels.{type MadState}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
@@ -1940,17 +1941,36 @@ fn mad_spawn(
             ),
           )
         Ok(mad_kernels.MadAbort(_detail)) -> Stop(Failed(ctx.heap))
-        Error(_) ->
-          Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
+        Error(_) -> unresolved_or_link(ctx, label, proc_name, arity)
       }
     None ->
       case mad_kernels.mad_is_kernel(proc_name, arity) {
         // A madGLP kernel invoked outside madGLP mode fails non-fatally (Dart: no
         // MadContext → abort), never crashes the standalone engine.
         True -> Stop(Failed(ctx.heap))
-        False ->
-          Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
+        False -> unresolved_or_link(ctx, label, proc_name, arity)
       }
+  }
+}
+
+/// A body-Spawn label that missed the pure kernels AND the madGLP kernels: either an
+/// effectful LINK kernel (T076 `close-link-layer-glp-primitives`) or a genuine
+/// unknown procedure. A link kernel invoked WITHOUT the (T074) link driver — the
+/// `LinkRuntime`-threading pump `step_link` that establishes transports, binds the
+/// `In` stream as inbound frames arrive, and drains the `Out` egress — fails
+/// NON-FATALLY here, exactly as a madGLP kernel does outside madGLP mode (both are
+/// effectful seams whose driver is absent on the pure `run` path). A label that is
+/// neither stays a loud `RunnerError`, as before.
+fn unresolved_or_link(
+  ctx: RunnerContext,
+  label: LabelName,
+  proc_name: String,
+  arity: Int,
+) -> Step {
+  case link_kernels.is_link_kernel(proc_name, arity) {
+    True -> Stop(Failed(ctx.heap))
+    False ->
+      Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
   }
 }
 
