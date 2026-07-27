@@ -1,0 +1,41 @@
+# Line-ending policy for glpnet.
+#
+# WHY THIS EXISTS (2026-07-27): `test/run_all_tests.sh` was checked out with CRLF
+# on OLAMNIT after the June rebuild, so bash died before running a single test:
+#
+#   test/run_all_tests.sh: line 24: $'\r': command not found
+#   test/run_all_tests.sh: line 33: syntax error near unexpected token `$'{\r''
+#
+# The suite reported a failure that had nothing to do with any code change. Shell
+# scripts, and anything else consumed by a POSIX interpreter, MUST be LF in the
+# working tree regardless of the platform or the user's core.autocrlf setting.
+
+# Default: let git decide for text, but never rewrite what it cannot classify.
+* text=auto
+
+# POSIX-interpreted files — LF ALWAYS, on every platform.
+*.sh            text eol=lf
+*.bash          text eol=lf
+*.mjs           text eol=lf
+*.cjs           text eol=lf
+
+# GLP sources: the REPL reads these directly and the R-2 suite asserts
+# byte-equivalence against canonical copies, so a stray CR is a real diff.
+*.glp           text eol=lf
+
+# Erlang/Gleam toolchain scripts and escripts.
+*.erl           text eol=lf
+*.gleam         text eol=lf
+
+# Windows-native scripts keep CRLF — cmd.exe and PowerShell want it.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Binary — never touched.
+*.png           binary
+*.jpg           binary
+*.pdf           binary
+*.zip           binary
+*.exe           binary
+*.dill          binary

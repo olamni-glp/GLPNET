@@ -366,6 +366,42 @@ Verify the build timestamp matches your changes. Logs go to a per-platform trace
 
 ---
 
+## 🔴 Dart / REPL toolchain on OLAMNIT (2026-07-27)
+
+The June rebuild left the GLP toolchain **silently unrunnable**. Three independent
+breakages, all now fixed or worked around — check these first if the REPL or the suite
+misbehaves:
+
+1. **Dart SDK was missing entirely.** Installed at **`D:\BSTDEV\tools\dart-sdk`**
+   (stable 3.12.2). Not on PATH persistently — prefix it per session:
+   ```
+   $env:Path = "D:\BSTDEV\tools\dart-sdk\bin;$env:Path"
+   ```
+2. **`glp_runtime/.dart_tool/package_config.json` pointed at `C:/Users/smbuser/…`** —
+   the *pre-rebuild* user's pub cache. Symptom: `Error when reading '…collection.dart':
+   The system cannot find the path specified`. Fix: `dart pub get` in `glp_runtime/`.
+3. **`test/run_all_tests.sh` checked out CRLF.** Symptom: `line 24: $'\r': command not
+   found` then a syntax error — bash dies before running a single test, and the suite
+   reports a failure unrelated to any code change. `.gitattributes` now pins `*.sh`
+   (and `*.glp`, `*.mjs`) to `eol=lf`, which fixes **future** checkouts/clones. An
+   already-CRLF working copy needs a one-time re-checkout of the affected file.
+
+🔴 **`glp_runtime/glp_repl.exe` is STALE — do not use it.** It predates clause-less
+builtin declarations and dies on the current prelude with
+`Procedure declaration for "atom" has no clauses` (line 31 of `self.glp`) — the same
+shape all seven `_link_*` kernel declarations use. This is also why the suite's **AOT
+smoke check is the one known pre-existing failure** (expected: 531/532). Always use:
+```
+dart run bin/glp_repl.dart
+```
+
+Scripted (from `glp_runtime/`, paths relative to it):
+```
+"load ../programs/tests/typed/foo.glp",":quit" | dart run bin/glp_repl.dart
+```
+
+---
+
 ## #remember Directive
 
 When Gabi says `#remember <something>`, add that information to this file so it persists across sessions. When you figure something out after multiple tries (paths, commands, environment quirks), add it here too — future sessions shouldn't repeat the trial-and-error. Pre-approved commands accumulated during a session go in `.claude/settings.local.json`.
