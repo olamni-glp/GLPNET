@@ -1,0 +1,319 @@
+{
+  "claims": [
+    {
+      "claim": "The mesh wire frame is a fixed 6-byte prefix carrying EXACTLY four decoded fields plus an opaque tail: dest (u16 LE, offset 0), src (u16 LE, offset 2), hopLimit (u8, offset 4), flags (u8, offset 5), inner (bytes 6..). TryDecode emits precisely these five outs; there is no other field. PrefixSize=6.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:21 (PrefixSize=6), :23-32 (Encode), :36-50 (TryDecode outs dest/src/hopLimit/flags/inner) at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Of those four fields a forwarder consults only THREE: flags (bit 0x01 test, control-vs-data demux), dest (== self ? deliver : lookup next hop), and hop (<=1 ? drop). src is NOT consulted for any forwarding decision - it is only copied verbatim into the re-encoded forward and passed to the local delivery callback as the origin tag.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:254 (flags & FlagControl), :260 (dest == _self), :266 (hop <= 1), :271 (TryNextHop(dest)), :276 (Encode(dest, src, hop-1, flags, inner) - src merely copied), :263 (DeliverAsync(src,...)) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "An originator therefore CANNOT express an intended PATH - only a destination and a hop budget. SendAsync's entire signature is (dest, payload, hopLimit, ct); the frame has no route vector, no waypoint list, no via field, and MeshRelayRoute.Decide re-derives the next hop purely from the local router's table, ignoring any originator preference. Absence scoped to Olamnit/Olamnit.Kernel/Mesh/ and Olamnit/Olamnit.Kernel/Link/ ONLY; vocabulary searched: sourceroute, 'source route', waypoint, path, via-list, segment, intermediate, 'explicit route', steer - plus a field-by-field read of the codec (not a grep-only conclusion).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:186-188 (SendAsync signature), MeshFrameCodec.cs:23 (Encode signature - no path arg), MeshRelayRoute.cs:48 (_router.TryNextHop(dest, out next)) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The ONLY originator-controlled steering lever that ships is hopLimit (byte, default 16): the originator can shorten a path budget (truncating reach) but cannot select among equal-cost paths. hopLimit 0 is a terminal Dropped value at the origin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:187 (hopLimit param), :584 (DefaultHopLimit=16), :200-204 (hopLimit==0 => Dropped) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "7 of the 8 flag bits are carried end-to-end but never consulted: only bit 0 (FlagControl 0x01) is tested, and the forward re-encode preserves the whole flags byte unchanged. An originator can set bits 1-7 and every relay will propagate them to the destination unread and unauthenticated - a carried-but-unconsulted field (a covert channel), NOT a steering lever.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:50-52 (FlagData 0x00 / FlagControl 0x01), :254 ((flags & FlagControl) != 0 - only bit 0), :276 (flags forwarded verbatim); MeshFrameCodec.cs:14 doc says 'extend by a flag bit, never reorder' at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "A SECOND, older forwarder ships alongside MeshNodeRuntime: MeshRouter, with an ADMINISTRATIVELY SET static next-hop table via AddRoute(destNode, viaNeighbor). This is per-node dest->nexthop configuration set by the local host, not an originator-expressible path; MeshRouter.SendAsync also takes only (dest, inner, hopLimit).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:57 (AddRoute), :68 (SendAsync signature), :115-121 (ForwardAsync consults _routes[dest] only) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "There are THREE distinct relay/forwarding decision sites in my sources, not one - any change to forwarding must move all three: MeshNodeRuntime.HandleInboundAsync (live runtime), MeshRouter.ProcessInboundAsync (static-route node), and MeshRelayRoute.Decide (the pure RouterEngine-bound relay decision).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246-285; Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:94-113; Olamnit/Olamnit.Kernel/Mesh/MeshRelayRoute.cs:40-52 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Runtime neighbour change SHIPS at edge granularity: AddNeighbor(neighborId, link, scheme, linkCost) registers an edge + starts its pump + triggers an advert round (refuses self / duplicate id, returns false); RemoveNeighborAsync(neighborId) is the administrative leave of one edge (poison, stop pump, release, reconverge, idempotent).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:145-162 (AddNeighbor), :166-172 (RemoveNeighborAsync), :462-476 (MarkDown) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Neighbour removal also happens IMPLICITLY and unauthenticated: any link fault, a clean peer close (null recv), or a failed send latches the neighbour down and poisons every route through it. So 'membership' at this layer is exactly 'my link to you is currently up' - liveness, not authorization.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:238 (catch => MarkDown 'fault'), :239 (wire is null => MarkDown 'closed'), :412 (send catch => MarkDown), :467 (_router.SetLinkState(n.Id,false)) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "No node-level membership roster, epoch, exclusion, or reintegration concept exists in Olamnit/Olamnit.Kernel/Mesh/ - membership is per-edge only, and a node id is a bare ushort with no identity binding at the mesh layer. Absence scoped to that directory ONLY; vocabulary searched: roster, membership, epoch, exclude, exclusion, quorum, elect, admit, revoke, ban, blocklist, allowlist, join, leave (the only hits are prose about link join/leave). I could NOT see the election/trust-anchor surface (another slice) - see open question.",
+      "source_citation": "grep over Olamnit/Olamnit.Kernel/Mesh/ at pin 02bcc20; MeshNodeRuntime.cs:59 (_neighbors is the only membership state); MeshFrameCodec.cs:15 (dest/src are bare ushort node ids)",
+      "confidence": 0.72,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The routing cost function's inputs are a LOCAL-ONLY 5-tuple: LinkCostInputs(Base=1, Quality=0, Load=0, Period=0, Event=0), supplied by the LOCAL host at AddNeighbor time. They are never transmitted: the advert batch codec encodes only Origin/Dest/Cost/Seq/Via (16 bytes), so no remote node can supply LinkCostInputs.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/ILinkCostModel.cs:28-40 (LinkCostInputs); Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:77-85 (AddNeighbor(neighbor, in LinkCostInputs) -> _costModel.CostFor); Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:480-497 (AdvertSize=2+2+4+8+2, fields Origin/Dest/Cost/Seq/Via only) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "LayeredLinkCostModel IS bounded in both directions against its LOCAL inputs: total = Base + Quality - min(Load+Period+Event, MaxAdaptiveBonus=8), floored at Base and saturated at uint.MaxValue in long arithmetic (never wraps to a spuriously cheap link). This bound is verified by a theory including all-uint.MaxValue inputs.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/LayeredLinkCostModel.cs:20 (MaxAdaptiveBonus=8), :24-37 (clamp to Base, clamp to uint.MaxValue), :42-46 (AdaptiveBonus cap); Olamnit/Olamnit.Kernel.Tests/Mesh/LayeredCostTests.cs:57-62 (theory incl. uint.MaxValue), :70 (ExtremeInputs_SaturateHigh_NeverWrapToCheap) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "THE ATTACK SURFACE the cost bound does NOT cover: advert.Cost is a raw remote-supplied uint and IS the metric. Ingest computes rawCost = advert.Cost + linkCost and only bounds it from ABOVE (>= MaxCost 16 => Infinity). Nothing bounds it from BELOW: a neighbour may advertise Cost=0 for EVERY dest, yielding candidate == linkCost (1 by default) - the cheapest possible non-self route - and so elect itself next hop for the whole mesh (a black hole). The 016 codex-review fix cited at :96-97 defends only the wrap/overflow direction.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:97-100 (rawCost = advert.Cost + linkCost; ceiling only), :116 (candidate < cur.Cost accepts a strictly cheaper claim); RouteAdvertisement.cs:18 (MaxCost=16) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "advert.Seq is a remote-supplied ulong with NO ceiling and NO origin authentication: 'advert.Seq > cur.Seq => accept = true' unconditionally, including for a poisoned claim. A neighbour advertising Seq=ulong.MaxValue wins every subsequent comparison for that dest.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:108-111 (fresher info always wins), :144-151 (entry stamped with advert.Seq verbatim) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "M-36 counterexample CONSTRUCTED (by reading, NOT executed at the pin): the seq ceiling is unrecoverable because NO node ever increments a seq. _selfSeq is initialised to 2 at declaration and read ONLY in the constructor - it is never incremented anywhere in the file. SetLinkState's poison deliberately KEEPS the seq (:170-173). Therefore after a hostile Seq=ulong.MaxValue/Cost=0 advert for dest X, every legitimate advert for X (seq 1 or 2) is rejected as stale forever; when the hostile link then drops, A's entry for X is poisoned at seq=MaxValue and no legitimate reroute can ever out-rank it => X permanently unreachable at A. Only a DIRECT link to X re-seeds it (AddNeighborNoLock at :185-192).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:42 (private ulong _selfSeq = 2 - sole assignment), :60 (sole read), :108-124 (accept ladder), :170-173 (poison keeps seq), :185-192 (direct re-seed) at pin 02bcc20",
+      "confidence": 0.75,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "M-32 DOC-vs-CODE DISAGREEMENT (I am quoting docs/comments here): the class remark says 'this node owns an ever-increasing seq for its own reachability; a poisoned route bumps the affected seq so the withdrawal out-ranks the stale good route at every neighbor' and IDistanceVectorRouter says SetLinkState 'bumps the affected sequences'. The CODE does neither: _selfSeq is never incremented and SetLinkState's own inline comment states the opposite ('Poison locally but KEEP the seq ... Bumping the seq here would out-rank - and so reject - that real reroute'). Two comments in the same file contradict each other; the code follows the inline one.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:12 (class remark) vs :170-173 (inline comment + code); Olamnit/Olamnit.Kernel/Mesh/IDistanceVectorRouter.cs:17-18 (interface doc) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Advert PROVENANCE is not checked against the arriving link: MeshNodeRuntime.HandleInboundAsync knows the receiving Neighbor 'from' but calls HandleControl(inner) WITHOUT it, and the router's only provenance test is that advert.Via is SOME up-neighbour. So neighbour B can emit adverts stamped Via=D (another of A's neighbours) and A will accept them at D's link cost, attributing them to D.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246 (HandleInboundAsync(Neighbor from, ...)), :256 (HandleControl(inner) - 'from' dropped), :287-305 (HandleControl has no sender param); DistanceVectorRouter.cs:92 (only checks _neighbors.TryGetValue(advert.Via, ...)) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The advert's Origin field is decoded and carried but NEVER read by routing: AdvertsFor always emits Origin == Dest, and Ingest reads advert.Dest/Via/Cost/Seq only. Origin is dead weight on the wire (2 of every 18 advert bytes) and offers no origin-authentication today.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/RouteAdvertisement.cs:15 (record has Origin); Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:270 (new RouteAdvertisement(e.Dest, e.Dest, ...) - Origin=Dest), :87-153 (Ingest never references advert.Origin) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "What DOES constrain a hostile contributor at the link layer (not the routing layer): a bench link is wrapped by the shipped pin-verified ECDH (P-256) handshake into an AES-256-GCM SecureLinkEndpoint, default-deny on an unpinned peer, with no configuration to skip the wrap and no plaintext fallback. This authenticates WHO the neighbour is; it authenticates NOTHING about the CONTENT of the adverts that authenticated neighbour then sends.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/Secure/SecureLinkCredentials.cs:12-30 (pinned, default-deny), :67 (IsPinnedPeer), :74-88 (TryDeriveSessionKey); Olamnit/Olamnit.Kernel/Link/Secure/SecureLinkEndpoint.cs:29-77 (AesGcmSessionCipher); Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:11-13 + :31-43 (no skip, null on refusal) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "MeshNodeRuntime.HandleInboundAsync carries a shipped TODO(FR-012) stating in-clear frames: 'frames cross the link in clear here. The sealing / attestation / integrity check plugs in behind THIS seam ... No behaviour this MVP.' (I am quoting a code comment.) The secure wrap is composed OUTSIDE the runtime (BenchLinkComposer), so security depends on the composition root, not on the runtime.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:248-250 (TODO(FR-012)); Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:21-31 (wrap applied before AddNeighbor) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "NO history, smoothing, EWMA, decay, hysteresis, or flap-tracking of route quality over time exists in my four source directories - cost is instantaneous and memoryless. The only time-shaped state that ships is (a) a binary per-dest Stable flag set by a no-change round and cleared on any reroute/poison (explicitly advisory, never consulted by correctness) and (b) LastRefreshTick, a single last-seen logical tick used for a hard expiry cutoff - neither is a quality history. Absence scoped verbatim to Olamnit/Olamnit.Kernel/Mesh/, Olamnit/Olamnit.Kernel/Link/, Olamnit/Olamnit.Kernel.Tests/Mesh/, Olamnit/Olamnit.Kernel.Tests/Verification/ ONLY; vocabulary searched (case-insensitive, ZERO hits): ewma, smooth, hysteresis, flap, movingaverage, 'moving average', decay, histor, windowed, rolling, percentile, variance, rtt, jitter.",
+      "source_citation": "grep over the four slice dirs at pin 02bcc20; Olamnit/Olamnit.Kernel/Mesh/RoutingTable.cs:18-21 (RouteEntry fields: Dest/NextHop/Cost/Seq/State/Stable/LastRefreshTick - no history), DistanceVectorRouter.cs:243-256 (CommitRound), :217-237 (Tick)",
+      "confidence": 0.8,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The equal-cost incumbent-retention rule is the ONLY anti-oscillation mechanism and it is emergent from the same-seq tie ('a strictly better alternative wins; an equal-cost one does not'), NOT from a stability check - the code comment says so explicitly. It damps equal-cost flapping but provides no damping at all against an attacker who advertises a STRICTLY cheaper cost each round.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:112-119 (same-seq tie rule + comment 'emergent from this same-seq tie rule, never a Stable-flag check'); Olamnit/Olamnit.Kernel.Tests/Mesh/RouteStabilityTests.cs:63-78 (StableDest_KeepsIncumbent_OnEqualCostAlternative), :81-96 (StrictlyBetterCost_Overrides_AStableIncumbent) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "NOTHING compels a node to contribute route knowledge, and a non-contributor IS detectable but ONLY when a clock is injected: DistanceVectorRouter.Tick ages a dest out when now - LastRefreshTick > expiryTicks (default 30) and poisons it. Critically, aging is OFF by default ('if (_clock is null) return false') and MeshNodeRuntime NEVER constructs a clock - it calls new DistanceVectorRouter(self), the no-clock overload - so in the SHIPPED runtime a silent (non-contributing but link-up) neighbour is never aged out. The consequence for a non-contributor is at most withdrawal of routes THROUGH it; there is no penalty, no exclusion, no report.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:217-219 (aging off with no clock), :29 (DefaultExpiryTicks=30), :44-45 (no-clock ctor); Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:88 (new DistanceVectorRouter(self) - no clock, no cost model) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "COROLLARY: the shipped MeshNodeRuntime also never injects an ILinkCostModel, so the layered cost seam (FR-017) is unreachable from the live runtime - AddNeighbor's uint linkCost (default 1) is the only knob, routed through a default LayeredLinkCostModel as LinkCostInputs(Base: linkCost). The whole Quality/Load/Period/Event surface is exercised only via DistanceVectorRouter directly / the test fabric.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:88 (new DistanceVectorRouter(self)), :145 (AddNeighbor(..., uint linkCost = 1)), :152 (_router.AddNeighbor(neighborId, linkCost)); DistanceVectorRouter.cs:72-73 (uint overload wraps into LinkCostInputs(Base: linkCost)), :55 (_costModel = costModel ?? new LayeredLinkCostModel()) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "There is NO delivery/receipt concept back to the originator. The service surface is send-only + a separate inbound callback: SendAsync returns a closed MeshSendOutcome whose success value 'Accepted' is documented as 'Handed to the current next hop and registered for no-loss retransmit' - explicitly a next-hop handoff, NOT an end-to-end ACK. Inbound delivery IS tagged (the ctor callback Action<ushort src, byte[] payload> plus the stable {origin}:{seq} key), but that tag surfaces at the DESTINATION only; no frame ever travels back. Absence scoped to Olamnit/Olamnit.Kernel/Mesh/ ONLY; vocabulary searched: ack, acknowledg, receipt, confirm, delivered-confirm, inbound, receive-tag, deliverytag (the only 'ACK' hit is a prose mention of the COMMIT->ACK window of the separate RouterEngine).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:565-576 (MeshSendOutcome closed set: Accepted/DeliveredLocal/Unreachable/Dropped), :567 (Accepted doc), :55 (_onLocalDeliver), :193 (key = {self}:{counter}); MeshFrameCodec.cs:36 (no ack field) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "LOAD-BEARING: the in-flight pending set is cleared ONLY by TTL expiry, NEVER by delivery. _pending is written at :215 and the sole TryRemove is inside the 'now >= p.Deadline' branch at :375. So an Accepted message is blindly re-sent every RetransmitInterval (50 ms) for the FULL MessageTtl (5 s default; 120 s on the bench profile) even after the destination has already received it - the destination's dedup, not the source, absorbs the duplicates. Delivery is invisible to the sender.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:61 (_pending), :215 (write), :363-388 (RetransmitLoopAsync), :373-377 (TryRemove only on Deadline), :590-600 (RetransmitInterval 50ms, MessageTtl 5s); Bench/MeshBenchProfile.cs:27 (MessageTtlSeconds default 120) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "TTL expiry is a CONSERVED DROP, not a durable queue: StageExpiredToPartitionQueue only emits telemetry and increments _dropped, with a shipped TODO(FR-005) stating the durable per-partition queue / DLQ / re-drive-on-heal 'No behaviour this MVP'. The IMeshTelemetry doc concurs: 'no durable dead-letter queue exists in the shipped runtime'. (Quoting comments; the code matches them.)",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (StageExpiredToPartitionQueue); Olamnit/Olamnit.Kernel/Mesh/IMeshTelemetry.cs:59-61 (MessageExpired doc) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Named topology scenarios exercised by the verification sources: line-4, ring-4, diamond, star-5, dense-5 (small-model theory); diamond+kill-relay-B reconvergence; line-4 bridge-cut partition; 3 randomized seeds x 40 connected graphs of 4-7 nodes with 0-2 random cuts; a converged 3-ring via FakeFabric; a layered-cost 4-node fabric; and an age-out-then-heal 4-node line. Max node count anywhere in these sources is 7 (randomized) / 5 (named).",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:33-41 (line-4/ring-4/diamond/star-5/dense-5), :47-56 (DiamondReconvergence_AfterKillingARelay), :61-69 (Partition_AfterCuttingTheBridge), :74-90 (Randomized 3 seeds x 40), :95-101 (FakeFabricOverload ring-3), :106-117 (LayeredCostFabric), :120-131 (AfterTimeoutAgingAndRecovery), :167-188 (RandomConnectedScenario n=4..7) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "LOAD-BEARING ANSWER on failover: there are TWO distinct kill-one test families and they assert DIFFERENT things. FailoverTests (FR-009/SC-004/SC-005) asserts ONLY routing state - TryNextHop returns a different hop and Snapshot.Entries[C].Cost == 2 - and the no-alternate case asserts only that TryNextHop returns FALSE. It sends NO message and asserts NO delivery. Same for DistanceVectorRouterTests.RelayKill_Reconverges_OverSurvivingPath_ExactlyReroutes and MeshInvariantsTests.DiamondReconvergence_*.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:17-33 (ActivePathFails_TrafficContinues_OverTheDisjointAlternate - asserts TryNextHop + Cost==2 only), :36-51 (NoAlternateRemains - asserts !TryNextHop only); Olamnit/Olamnit.Kernel.Tests/Mesh/DistanceVectorRouterTests.cs:107-124 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The DELIVERY-asserting failover test DOES ship, in a different file: MeshNodeRuntimeTests.SendAsync_DiamondRelayKilledMidFlow_DeliversToCExactlyOnce wires a real diamond over LoopbackLinks, converges A->B->C first (so the incumbent is deterministically B), sends, disposes B mid-flow, then asserts BOTH the reroute (A->D) AND end-to-end delivery: atC.Count == 1 and the durable IdempotentSink count == 1 and payload bytes intact. This is the exactly-once-across-relay-kill evidence; note the exactly-once EFFECT is achieved by destination dedup over the stable {origin}:{seq} key, not by any source-side confirmation.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:70-125 (esp. :102 Accepted, :104 b.DisposeAsync, :107-110 reconverge to D, :115 Assert.Equal(1, atC.Count), :116 cSink.Count==1); MeshNodeRuntime.cs:307-332 (DeliverAsync dedup) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "Hostile/adversarial routing input is NOT exercised by any test in my sources. The nearest tests are StaleAdvertisement_IsIgnored and AdvertOverNonNeighborLink_IsRejected - both benign-input cases. Absence scoped to Olamnit/Olamnit.Kernel.Tests/Mesh/ and Olamnit/Olamnit.Kernel.Tests/Verification/ ONLY; I enumerated EVERY [Fact]/[Theory] in those two directories by name rather than relying on a keyword grep, and none constructs a lying advert (Cost=0 / Seq=MaxValue / spoofed Via). The randomized property fabric perturbs only link cuts, never advert content.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/DistanceVectorRouterTests.cs:175-186 (StaleAdvertisement_IsIgnored), :188-198 (AdvertOverNonNeighborLink_IsRejected); Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:167-188 (RandomConnectedScenario perturbs links only) at pin 02bcc20",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "The bench profile fixes the DEPLOYABLE topology vocabulary at exactly three shapes and six scenarios, fail-closed on any other string: shape in {line, triangle, diamond}; scenario in {bringup, e2e-delivery, failover, heal, partition, kv-flow}. A ring is NOT in the shape vocabulary and would be refused at parse. secure:false is refused at parse.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:86-87 (shape vocabulary), :89-90 (scenario vocabulary), :80 (secure:false refused), :67 (unknown fields Disallow) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (I could not verify): FakeFabric, MeshInvariants, Scenario, LinkChange and InvariantReport - the types every MeshInvariantsTests / FailoverTests / RouteStabilityTests / DeterminismTests assertion rests on - live in namespace Olamnit.Kernel.Verification, which is OUTSIDE my slice (my slice has Olamnit.Kernel.Tests/Verification/, not Olamnit.Kernel/Verification/). I therefore CANNOT state what MeshInvariants.Check actually checks, whether Cut() models a one-sided or two-sided cut, or whether the invariants include any delivery property. Everything I say about those tests is limited to their literal Assert lines.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:2 (using Olamnit.Kernel.Verification), :24-27 (MeshInvariants.Check(scenario)); Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:2 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (I could not verify): whether any authorization, roster, capability or signature layer OUTSIDE my slice gates mesh adverts or node ids. My sources show the mesh layer accepting Cost/Seq/Via from any link-authenticated neighbour with no content check, but the amulet/macaroon caveat surface, the election/trust-anchor surface, and the KV capability boundary are all in slices I was forbidden to read. My cost/seq attack claims are therefore claims about Olamnit/Olamnit.Kernel/Mesh/ ONLY and must not be read as a repo-scope absence of advert authorization.",
+      "source_citation": "scope note; evidence base = Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:87-153 and Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246-305 at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (I could not verify): I did not execute any test at the pin. Every claim above is derived by reading source, including the M-36 permanent-poisoning counterexample, which is a constructed argument from the accept ladder and the never-incremented _selfSeq, NOT an observed failure. It should be confirmed by writing the adversarial advert test before being treated as established.",
+      "source_citation": "method note; target = Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:42,:108-124,:170-173 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-4",
+      "slice_id": "slice-mesh-steering-emergence",
+      "negates": null
+    }
+  ]
+}

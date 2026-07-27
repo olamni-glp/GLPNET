@@ -1,0 +1,310 @@
+{
+  "claims": [
+    {
+      "claim": "TWO DISTINCT capability dialects ship side by side in my sources, not one. (1) The amulet dialect: string 'k=v' caveats over an HMAC chain inside an Ed25519 seal (Olamnit.Shared/Yngenios/Seal/). (2) macaroon-v2: a binary tag-numbered caveat wire + HMAC tail chain, pinned in conformance/macaroon-v2/. The macaroon-v2 README states macaroon-v2 'is the ONE converged capability dialect - it supersedes the amulet HMAC-chain + Ed25519-seal dialect for **mesh capability tokens** (the amulet code stays for its existing fetch-from-store surface)'. NOTE: I am quoting a README (doc), not code; the C# MacaroonV2Verifier named there lives at Olamnit.Shared.Tests/Kv/... + Olamnit.Shared/Kv/, OUTSIDE my slice, so I could not verify the code behind that claim. A mesh-segment capability bound would therefore land on macaroon-v2, NOT on the amulet caveat set.",
+      "source_citation": "conformance/macaroon-v2/README.md:6-14,34 at pin 02bcc20",
+      "confidence": 0.83,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AMULET DIALECT - the closed caveat key set is exactly six, enforced by a C# switch whose default arm refuses: exp, scope, audience, resource, tbl, kpfx. Any other key returns (false, \"unknown caveat key: {k}\"). This is CODE, not a comment.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:56-88 at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AMULET DIALECT - the caveat set HAS been extended once before, and the mechanism is recorded in code as an APPEND after the existing keys: a source comment at Macaroon.cs:71-75 states 'Feature #057 (T014, R-6): the KV caveat extension - tbl (per-table) + kpfx (key-prefix range). Appended AFTER the existing four in the fixed mint order (exp -> scope -> audience -> resource -> tbl -> kpfx) so every already-minted macaroon verifies unchanged, and OLD verifiers refuse the new keys (below) and thus fail closed - the rollout only ever tightens.' I am quoting a COMMENT. The compatibility argument it makes is structurally sound against the code I can see: a macaroon minted without tbl/kpfx still hits only the four original switch arms, and an old verifier's default arm refuses an unknown key rather than ignoring it. So the precedent for a 7th appended key exists and is documented.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:71-85 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "CONTRADICTION (code vs code): the shipped minter's caveat order is scope -> exp -> audience -> resource, NOT the 'fixed mint order exp -> scope -> audience -> resource' asserted by the Macaroon.cs:73 comment and pinned by the conformance vector. AmuletMinter.Mint builds the array literally as {$\"scope={scope}\", $\"exp={exp:yyyy-MM-dd}\", $\"audience={audience}\", $\"resource={resourceId}\"} under a comment reading 'Caveat order is signed - keep it stable.' The pinned vector grant-kv-caveats.json instead pins exp first. Since order is signed into both the HMAC chain and the CBOR array, the bytes AmuletMinter actually emits can never equal the pinned vector's canonical_hex. There is no single 'exact mint order' in this repo - the minter and the pinned corpus disagree.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:22-29 vs Macaroon.cs:73 vs conformance/kv-substrate/vectors/grant-kv-caveats.json:15-21 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AmuletMinter.Mint - the ONLY minter in my sources - has a fixed 6-parameter signature (IDeviceSealKey, string resourceId, string scope, string audience, DateOnly exp, string identity) and can mint ONLY the four original caveats. It has NO parameter and NO code path for tbl or kpfx, let alone a new key. Adding any 7th caveat key to a minted amulet requires either changing this signature or calling Macaroon.Create directly and hand-rolling the seal.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:11-38 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "COUNTEREXAMPLE CONSTRUCTED (M-36) - the tbl and kpfx caveats are UNSATISFIABLE through the shipped Ed25519AmuletVerifier. Verify builds its enforcement context with exactly three entries: scope, audience, resource. It never populates 'tbl' or 'key'. So a macaroon carrying tbl=books hits Macaroon.cs:77, GetValueOrDefault(\"tbl\") returns null != \"books\", refuse; a macaroon carrying kpfx=settings/ hits Macaroon.cs:82, context[\"key\"] is absent so the 'is not string accessedKey' guard trips, refuse. The 057 caveat extension is enforceable only via some other caller that calls Macaroon.EnforceCaveats directly with a richer context - I could not see such a caller (it would be outside Seal/).",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:112-118 with Macaroon.cs:76-85 at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AMULET DIALECT - expiry granularity is a WHOLE DAY and nothing finer. The caveat value is parsed with DateOnly.TryParse, the enforcement parameter is DateOnly now, the comparison is 'if (now > exp)' (i.e. still valid THROUGHOUT the expiry day; expiry is inclusive), and the minter formats it '{exp:yyyy-MM-dd}'. A time-limited fallback measured in minutes or hours CANNOT be expressed by this caveat as it ships.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:48,58-61 + AmuletVerifier.cs:18,28 at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AMULET DIALECT - the exact enforcement API shapes are: IAmuletVerifier.Verify(Seal amulet, DateOnly now, string expectedScope, string expectedAudience) -> (bool Ok, string Reason); and Macaroon.EnforceCaveats(DateOnly now, IReadOnlyDictionary<string,string> context) -> (bool Ok, string Reason). Both are DateOnly-typed. Widening expiry to sub-day granularity is a BREAKING change to both public signatures, not an additive one.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:76 + Macaroon.cs:48 at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The 'now' used for amulet expiry enforcement is supplied ENTIRELY by the caller - it is a DateOnly parameter threaded from IAmuletVerifier.Verify into Macaroon.EnforceCaveats. Within my sources (all six files under Yngenios/Seal/, read in full; search vocabulary: DateTime, TimeProvider, UtcNow, Today, IClock, Stopwatch, now, case-insensitive) there is no clock, no time provider, and no default. OPEN QUESTION: who supplies 'now' at each call site, and whether that source is monotonic, device-local, attacker-influenceable, or offline-skewable, is outside my slice and I could not verify it. This matters: a caller that passes a device-local date can be rolled back to un-expire an amulet.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:76,84,118 + Macaroon.cs:48,60 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "COUNTEREXAMPLE CONSTRUCTED (M-36) - an OMITTED amulet caveat constrains NOTHING. EnforceCaveats is a foreach over the PRESENT caveats only; an empty caveat list falls straight through to return (true, \"ok\"). Nothing in Verify requires a scope, audience, exp, or resource caveat to be present. So a Seal minted with caveats=[] verifies OK against ANY expectedScope and ANY expectedAudience and NEVER expires. The security of this surface rests wholly on the minter always adding all four - there is no verifier-side floor.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:48-91 + AmuletVerifier.cs:84-118 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The FetchDescriptor's Scope, Audience and IssuedForIdentity fields are SIGNED (they are in the CBOR signing payload) but NEVER ENFORCED. Ed25519AmuletVerifier cross-checks only ResourceId three ways (seal vs macaroon.Identifier vs descriptor.ResourceId). expectedScope/expectedAudience are compared against the CAVEATS, never against the descriptor. So a seal whose descriptor says Scope=\"admin\" while its scope caveat says scope=\"kv\" verifies OK under expectedScope=\"kv\". The doc comment at Seal.cs:12-17 says the signature 'covers intent' - the code does not act on that intent.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:103-118 + Seal.cs:9 + CanonicalCbor.cs:36-44 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "AMULET DIALECT - a scope caveat DOES already exist in the closed set and IS enforced by exact ordinal equality against a verifier-supplied context value: 'if (context.GetValueOrDefault(\"scope\") != v) return (false, ...)'. The verifier passes expectedScope straight into context[\"scope\"] (AmuletVerifier.cs:114). So a mesh-segment bound CAN in principle ride the existing 'scope' key as an opaque string, provided every verifier call site supplies the matching segment value as expectedScope. The value is an uninterpreted string - no structure, no prefix semantics, no set membership.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:62-64 + AmuletVerifier.cs:112-117 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "Overloading the existing 'scope' caveat for a mesh-segment bound is CONSTRAINED, not free: scope is a SINGLE exact-match string already carrying an authorization scope value (e.g. \"kv:read+write\" in the pinned vector), and AmuletMinter emits exactly one scope caveat from one parameter. A segment bound would either have to be packed into that one string (changing its grammar and every expectedScope caller) or ride a new appended key. It cannot be added as a second independent scope caveat without both matching the same context[\"scope\"] value.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:17,25 + Macaroon.cs:62-64 + conformance/kv-substrate/vectors/grant-kv-caveats.json:16 at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The amulet corpus's UNKNOWN-KEY EXAMPLE is 'quota=100' - vector grant-refuse-unknown-caveat.json appends quota=100 as a 7th caveat after exp/scope/audience/resource/tbl/kpfx and pins expect \"refuse:PermissionDenied\". Therefore a newly-appended caveat key would collide with a pinned vector ONLY if it were named 'quota'. Any other name (e.g. 'seg', 'segment', 'path') does not collide with this vector - but ADDING it to the known set would still require regenerating this vector's neighbours only if the new key appears in them, which it would not.",
+      "source_citation": "conformance/kv-substrate/vectors/grant-refuse-unknown-caveat.json:14-22,35 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "An INDEPENDENT re-implementation of the amulet caveat enforcement EXISTS and must move in lockstep: tools/kv-conformance/verify_vectors.py carries its own hardcoded KNOWN_CAVEATS = {\"exp\", \"scope\", \"audience\", \"resource\", \"tbl\", \"kpfx\"} and its own enforce_caveats(). Its module docstring states it is 'deliberately NOT a port of the C# code: cross-runtime independence is the point (SC-004)'. Any 7th caveat key must be added HERE too or the Python CI step fails closed with 'unknown caveat key'.",
+      "source_citation": "tools/kv-conformance/verify_vectors.py:179-199 + :4-8 at pin 02bcc20",
+      "confidence": 0.96,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "DIVERGENCE between the two enforcement implementations of 'exp': C# uses DateOnly.TryParse(v, out exp) - which is CULTURE-SENSITIVE and accepts non-ISO forms (e.g. '12/31/2026' under en-US) - while the Python verifier uses date.fromisoformat(v), which accepts ISO-8601 only and RAISES (uncaught ValueError, not a fail-closed return) on anything else. The two do not agree on the set of well-formed exp values. The pinned vector only ever uses 'exp=2026-12-31', so no vector exercises this divergence.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:59 vs tools/kv-conformance/verify_vectors.py:191-192 at pin 02bcc20",
+      "confidence": 0.82,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The Python verifier's 'now' for expiry is a HARDCODED LITERAL date(2026, 7, 12) passed into enforce_caveats - it is not read from the vector's context and not the system clock. So the corpus's expiry semantics are pinned against a frozen date baked into the verifier source, not into the corpus. Any vector whose exp crosses that literal changes meaning only if the literal is edited.",
+      "source_citation": "tools/kv-conformance/verify_vectors.py:258-263 at pin 02bcc20",
+      "confidence": 0.94,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "COVERAGE GAP: the Python verifier runs caveat enforcement ONLY for grant-cbor vectors whose expect starts with 'refuse:'. For expect==\"ok\" grant vectors it checks canonical bytes + digest and returns (True, \"ok\") WITHOUT ever calling enforce_caveats. Consequently grant-kv-caveats.json - the one vector pinning the full six-caveat order - has its context field set to null and its SATISFIED-path enforcement is never exercised by this verifier. The corpus pins the BYTES of the full vocab, not its accept behaviour.",
+      "source_citation": "tools/kv-conformance/verify_vectors.py:252-267 + conformance/kv-substrate/vectors/grant-kv-caveats.json:24,28 at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "What the kv-substrate corpus PINS and how it is versioned: corpus-manifest.json carries corpus_version 1, vector_count 35, and a sha256 over each vector file's exact on-disk BYTES. The vectors themselves pin, per surface, canonical_hex + digest_hex + an expect of \"ok\" or \"refuse:<closed outcome>\". Two independent gates exist: verify_vectors.py (semantic re-encode) and verify_manifest.py (byte parity). The README states the corpus is 'FROZEN at first replication (US3, T042)' and that a change 'must regenerate them HERE first, bump corpus_version, and land the same-saga consumer updates together'.",
+      "source_citation": "conformance/kv-substrate/corpus-manifest.json:1-4 + conformance/kv-substrate/README.md:8-11,68-72 + tools/kv-conformance/verify_manifest.py:4-25 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "COST of touching the amulet caveat surface, concretely (from the code, not the doc): a new caveat key forces (1) the C# switch arm in Macaroon.cs; (2) the verifier's context dictionary in AmuletVerifier.cs (else it is unsatisfiable, see the tbl/kpfx counterexample); (3) AmuletMinter's signature; (4) KNOWN_CAVEATS + enforce_caveats in the Python verifier; (5) regeneration of grant-kv-caveats.json AND grant-refuse-unknown-caveat.json (both embed the caveat list, its HMAC sig, canonical_hex and digest_hex); (6) their two sha256 pins in corpus-manifest.json; (7) a corpus_version bump per the stated change discipline; (8) the named-but-unseen consumer suites (Olamnit.Shared.Tests/Kv/GoldenVectorTests.cs, qhstate's frozen-import copy, buildkit's pytest verifier). Items 1-6 I verified in code/data; item 8 I am quoting the README consumer table.",
+      "source_citation": "Macaroon.cs:56-88 + AmuletVerifier.cs:13-38,112-117 + tools/kv-conformance/verify_vectors.py:179-199 + conformance/kv-substrate/corpus-manifest.json:7-8 + conformance/kv-substrate/README.md:22-27,68-72 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2 DIALECT - the closed caveat vocabulary is exactly SIX kinds, wire-tag-numbered 0..5, decoded from wire-roundtrip-full-vocab.json's token_hex: 0=time_before (bare 8-byte BE unix seconds, NO length prefix), 1=resource (len32+utf8 content_hash), 2=key (len32+utf8), 3=key_prefix (len32+utf8), 4=op (single op byte, 0..3), 5=keyspace_scope (len32+utf8). The layout is per-kind, not uniform TLV. This is a materially DIFFERENT vocabulary from the amulet's {exp,scope,audience,resource,tbl,kpfx}.",
+      "source_citation": "conformance/macaroon-v2/vectors/wire-roundtrip-full-vocab.json:2-32,37 + conformance/macaroon-v2/README.md:26-28 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2 expiry granularity is ONE SECOND (unix epoch seconds) and the comparison is STRICT: the README states 'strict now < expiry', and chain-refuse-expired.json pins now == expiry == 1752451200 as expect \"refuse:CaveatFailed:time_before\" (i.e. expiry is EXCLUSIVE - the opposite boundary convention from the amulet's inclusive 'now > exp'). A time-limited fallback in minutes IS expressible in macaroon-v2 and is NOT expressible in the amulet dialect.",
+      "source_citation": "conformance/macaroon-v2/vectors/chain-refuse-expired.json:2-3,11,18 + conformance/macaroon-v2/README.md:25 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2 supplies 'now' as a VECTOR/VERIFIER-CONTEXT VALUE, not from a clock: every chain vector's input.context carries an explicit \"now\": 1752451200 alongside key/keyspace/op/resource. So in BOTH dialects the expiry clock is an injected caller-supplied value. OPEN QUESTION: the production call sites that populate this context are outside my slice (the named MacaroonV2Verifier is in Olamnit.Shared/Kv/, not Yngenios/Seal/) and I could not verify what clock they use.",
+      "source_citation": "conformance/macaroon-v2/vectors/chain-mint-full-vocab.json:7-13 + chain-refuse-expired.json:7-13 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2 has a scope-like caveat already: keyspace_scope (tag 5), enforced by equality against the verifier-supplied context value \"keyspace\" (context {\"keyspace\": \"ks-main\"} vs caveat {kind: keyspace_scope, scope: \"ks-main\"} -> ok). The README states the vocabulary is 'evaluated against the presented context (strict now < expiry; byte prefix for key_prefix; equality otherwise)'. A mesh-SEGMENT bound is not the same thing as a KEYSPACE bound; whether a segment id can be carried in that field is a naming/semantics decision, not a mechanism gap.",
+      "source_citation": "conformance/macaroon-v2/vectors/chain-mint-full-vocab.json:9,38-40 + conformance/macaroon-v2/README.md:22-25 at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2's UNKNOWN-KEY EXAMPLE IS TAG 6 - and therefore a newly-appended 7th caveat kind WOULD COLLIDE with a pinned vector. wire-refuse-unknown-tag.json pins a token carrying 'caveat tag 6 outside the closed C3 set' as expect \"refuse:BadTag\". Since the vocabulary is DENSE numeric 0..5, the next kind is necessarily tag 6, which this vector pins as a refusal. Extending macaroon-v2's caveat set requires editing or re-numbering this pinned vector - unlike the amulet's string-keyed set, where a non-'quota' name collides with nothing.",
+      "source_citation": "conformance/macaroon-v2/vectors/wire-refuse-unknown-tag.json:3-7 + conformance/macaroon-v2/README.md:26-28 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "MACAROON-V2 supports HOLDER-SIDE ATTENUATION without the root key - chain-attenuate-narrowing.json pins 'mint [op=get] then holder-attenuates [key_prefix=objects/]; verify ok', with presented_caveats a strict superset of mint_caveats and a different valid tail. The amulet dialect CANNOT do this: appending any caveat changes the CBOR signing payload and breaks the Ed25519 seal, which no holder can re-sign (the seed is never persisted and is per-session). This is a real capability difference for any 'narrow a credential per-hop / per-segment' design.",
+      "source_citation": "conformance/macaroon-v2/vectors/chain-attenuate-narrowing.json:2-42 vs Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-33 + Seal.cs:12-17 + IDeviceSealKey.cs:8-11 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The macaroon-v2 corpus is a hash-pinned DOWNSTREAM COPY, not a source of truth: manifest.json declares corpus_version 1, surface_set macaroon-v2, and semantics_anchor 'yngenios kv/capability.gleam + kv/capability_wire.gleam @ phase-b 501e334'; the README states the source of truth is buildkit specs/058-.../vectors/macaroon-v2/ and that 'A dialect change regenerates in the buildkit source-of-truth corpus first (gen_vectors.py), bumps corpus_version, and lands ALL consumer re-pins in one coordinated change set'. So a macaroon-v2 caveat addition costs a change in a DIFFERENT repo (buildkit) plus a Gleam semantics anchor (yngenios) plus this pinned copy plus two suites. That is a strictly heavier change than an amulet-side one.",
+      "source_citation": "conformance/macaroon-v2/manifest.json:1-4 + conformance/macaroon-v2/README.md:8-11,37-41 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "A macaroon-v2 independent re-implementation is NAMED but I could not verify it: the README's suite table lists 'tools/macaroon-conformance/verify_vectors.py - independent Python re-implementation, own CI step' and 'Olamnit.Shared.Tests/Kv/MacaroonV2GoldenVectorTests.cs'. Neither path is in my slice (my only tools path is tools/kv-conformance/, which contains exactly two files: verify_vectors.py and verify_manifest.py, and whose KNOWN_CAVEATS is the AMULET set). I am quoting a doc table. OPEN QUESTION: does tools/macaroon-conformance/ actually exist at this pin, and does it enforce all 22 macaroon-v2 vectors?",
+      "source_citation": "conformance/macaroon-v2/README.md:31-35 + tools/kv-conformance/ (directory listing: verify_vectors.py, verify_manifest.py only) at pin 02bcc20",
+      "confidence": 0.8,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The macaroon-v2 corpus has NO byte-parity gate reachable by the tooling in my slice. verify_manifest.py's default_corpus_dir() walks parents looking ONLY for conformance/kv-substrate/corpus-manifest.json; the macaroon-v2 corpus uses a differently-named manifest.json and, if that file were passed explicitly as corpus_dir, check_corpus would report a spurious finding because macaroon-v2/manifest.json declares NO 'vector_count' key (manifest.get('vector_count') -> None != 22 pinned entries). Scoped absence: within tools/kv-conformance/ (both files read in full; vocabulary searched: 'macaroon-v2', 'manifest.json', 'corpus_dir') nothing targets the macaroon-v2 corpus. The macaroon-v2 README asserts a manifest-parity check exists inside the xUnit suite - which is outside my slice.",
+      "source_citation": "tools/kv-conformance/verify_manifest.py:35-50,65-71 + conformance/macaroon-v2/manifest.json:1-5 + conformance/macaroon-v2/README.md:34 at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The amulet's device signing key is a per-instance, per-launch, in-memory-only random 32-byte Ed25519 seed (InMemoryDeviceSealKey generates via RandomNumberGenerator.GetBytes in its constructor; the doc comment says 'never persisted', and the code contains no write path). Consequence for any long-lived or batch/epoch minting design: amulets do not survive a process restart, because the trust anchor (DeviceSealTrustAnchor) pins the CURRENT instance's public key and Verify refuses any other key fixed-time as 'untrusted key'. An amulet minted before a restart is unverifiable after it, regardless of its exp caveat.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/IDeviceSealKey.cs:33-44 + AmuletVerifier.cs:59-62,97-101 at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The amulet trust anchor is SINGLE-KEY by contract: IAmuletTrustAnchor exposes exactly one byte[] TrustedPublicKey and Ed25519AmuletVerifier does one FixedTimeEquals against it. There is no peer set, no add/remove, no roster. Scoped absence: within the six files of Olamnit.Shared/Yngenios/Seal/ (all read in full; vocabulary searched by full read: TrustedPublicKey, IAmuletTrustAnchor, Anchor, peer, roster, add, remove) the amulet verification path cannot express more than one trusted signer. The 057 PeerSetTrustAnchor named in CLAUDE.md lives under Kv/Capabilities/, outside my slice - I could not verify it and emit that as an OPEN QUESTION, not an absence.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:48-62,100-101 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The amulet CBOR signing payload is a FIXED-ARITY, FIXED-SHAPE encoder with no extension point: SigningPayload writes exactly a 2-entry map {block, macaroon}; WriteDescriptor writes exactly a 4-entry map (scope, audience, issued_for, resource_id); WriteMacaroon writes exactly a 3-entry map (sig, caveats, identifier). Only the caveats ARRAY is variable-length. Any new SIGNED field (e.g. a segment/epoch/roster field on the descriptor) changes the map arity and the length-first key order, altering the signed bytes for EVERY amulet and invalidating grant-kv-caveats.json + grant-refuse-unknown-caveat.json. Adding a new CAVEAT string is the only additive path that leaves the encoder untouched.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-57 at pin 02bcc20",
+      "confidence": 0.94,
+      "tag": "feasibility",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "CanonicalCbor's own doc comment DISCLAIMS cross-runtime parity for the amulet dialect: 'The scheme is olamnit-internal (qmedit never verifies these seals ...), so exact parity with the Python encoder is not required; only that our own sign and verify produce identical bytes'. This directly contradicts the kv-substrate README, which lists grant-cbor as a cross-runtime golden-vector surface with qhstate and buildkit as consumers required to pass byte-identically (SC-004), and tools/kv-conformance/verify_vectors.py DOES re-implement and byte-compare encode_grant. Quoting a comment vs a README vs code: the CODE (the Python encoder + pinned vectors) sides with cross-runtime parity being required; the CanonicalCbor comment is stale.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:12-15 vs conformance/kv-substrate/README.md:22-27,44-46 vs tools/kv-conformance/verify_vectors.py:158-176,252-257 at pin 02bcc20",
+      "confidence": 0.87,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    },
+    {
+      "claim": "The kpfx enforcement's constant-time claim is only partially delivered by the code. ConstantTimeIsPrefix does use CryptographicOperations.FixedTimeEquals over the prefix length, but it first branches on 'if (k.Length < p.Length) return false' (an early length-dependent return, which the comment concedes: 'Length is not secret') and allocates via AsSpan(0, p.Length).ToArray(). The comparison is fixed-time over the compared bytes; the overall operation is not. Reporting this as observed, not as a defect claim.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:98-105 at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-2",
+      "slice_id": "slice-seal-caveat-window",
+      "negates": null
+    }
+  ]
+}

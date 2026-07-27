@@ -51,7 +51,31 @@ The three run-hygiene proposals (`open-items-cycle2-residual`, `open-items-merge
 
 ---
 
+## F1 (wave-2 verify finding) — param-arity panic: fix lands under a SHARED type-checker-robustness close
+
+**Date**: 2026-07-23 · **Ruled by**: Gabi · **Satisfies**: the engineer scope-Q raised in `verify-langsurface-channel-convention.md` Finding F1.
+
+**Ruling**: The F1 fix lands under a **shared type-checker-robustness close**, NOT under `close-langsurface-channel-convention`. F1: `program_dfa.gleam:580` raises an uncaught `panic as "UnknownTypeError: …"` (the Dart `states[…]!` ported to `panic`) that crashes the Gleam REPL on `param_arity_mismatch.glp`, where Dart/C# surface a graceful `Error loading …` diagnostic. Rationale: the defect is in shared type-checker infrastructure (program_dfa automaton build) — it fires for any unknown type reaching automaton construction, not the parameterized-type logic that merely surfaced it. The fix threads the error back as a returned/catchable `StagedError(TypeCheckStage, …)` (mirroring the Dart exception-caught-by-loader path). `close-langsurface-channel-convention` (b3-c1-028) is therefore NOT the owner of F1; its typed-corpus Dart-parity acceptance passes once the shared close lands the fix.
+
+---
+
+## ZMQ (2026-07-23) — G5 `zmq-comm-base` disposition OVERRULED: ZMQ is MANDATORY / in-scope
+
+**Date**: 2026-07-23 · **Ruled by**: Gabi (engineer/owner) · **Supersedes**: the G5 row `zmq-comm-base` (out-of-scope, contract-excluded) and `rule-transports-zmq-comm-base`.
+
+**Ruling**: The G5 disposition of `zmq-comm-base` as out-of-scope (governing reason "contract-excluded — Gleam transport contract is loopback/TCP/QUIC only") is **OVERRULED**. **ZMQ is mandatory and in-scope** for the full-scope Gleam implementation. The Gleam transport contract is **extended from {loopback, TCP, QUIC} to {loopback, TCP, QUIC, ZMQ}** — an express DISCIPLINE §1.14 language/transport-authority extension, owner-approved 2026-07-23 (Claude raised the G5 conflict per §1.15; owner overruled). A ZMQ transport leaf joins `glp_gleam/src/glp/link/transports/` behind the T045 seam, on the same **all-gating** transport-parity footing as loopback/TCP/QUIC. Consequently `verify-transports-multi-accept-transport-extension`'s `zmq-comm-base` verdict is **in-scope = required** (not out-of-scope), and the transports close must build the ZMQ transport.
+
+---
+
 ## Still-open (not gated on /bk-specify, carried forward)
 
-- `rule-request-link-quic-relay` (wave-2 WP): drift-control disposition for the untested Profile-A QUIC relay — freeze-by-file-pin vs minimal smoke test. Decision pending; carried inside the plan, due before any wave-4 WP depends on the relay.
+- `rule-request-link-quic-relay` (wave-2 WP): **RESOLVED 2026-07-27 — Disposition 2 (minimal in-corpus relay smoke test required)**; see the QUIC-relay ruling below + `phase2-plan/escalation-register.md`.
 - `close-embed-embeddability-service-box` scope call: store_put/store_get kernels vs host-owned log — escalated to Gabi at that WP, per plan.
+
+---
+
+## QUIC side-process relay (2026-07-27) — `rule-quic-sideprocess-relay`: Disposition 2 (smoke test required)
+
+**Date**: 2026-07-27 · **Ruled by**: Gabi (engineer/owner).
+
+**Ruling**: The OPEN escalation `rule-quic-sideprocess-relay` is resolved by **Disposition 2**: the delivered-but-untested Profile-A QUIC OS-port line relay (`gleam_quic/src/glpq_ffi.erl`) requires a **minimal in-corpus relay smoke test** — long-line reassembly + stdio byte-identity to the C# stack — before any Wave-4 WP may depend on it. Enforced by the new WP `close-quic-sideprocess-relay-smoketest` (Wave-3 close; gates the Wave-4 QUIC build). Environment-fragility acknowledged: where the smoke test cannot run it is classified **environment** (per the Profile-C QUIC discipline), recorded, and the dependency stays blocked — never silently waived. Full entry: `phase2-plan/escalation-register.md`.

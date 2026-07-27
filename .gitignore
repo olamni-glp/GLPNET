@@ -119,3 +119,6 @@ gleam_quic/test/_build_test/
 # feature 050 US3: regenerable Gleam corpus-runner output (goldens are Dart-side)
 test/parity/goldens/gleam/
 glp_gleam/.parity_run.glp
+
+# 3rtask run evidence (orchestration artifacts, not source)
+.specify/3rtask/runs/

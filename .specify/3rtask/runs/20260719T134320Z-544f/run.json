@@ -7,7 +7,7 @@
   "branch": "050-full-gleam-combined",
   "verdict": "review_only",
   "halted_at": null,
-  "cycles": 1,
+  "cycles": 2,
   "num_builders": 3,
   "critic_provider": "codex",
   "independence_warning": false,
@@ -34,7 +34,7 @@
     }
   },
   "warnings": [],
-  "curator_edit_distance": 0.9801,
+  "curator_edit_distance": 0.9876,
   "created_at": "",
   "created_by": "mvw@bancstreet.com"
 }
