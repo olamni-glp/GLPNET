@@ -60,7 +60,7 @@ pub fn output_is_a_kernel_test() {
 // `_output`(hello): one captured line, heap unchanged (same value back), no wakes.
 pub fn dispatch_output_captures_line_test() {
   let h = heap.new()
-  let assert Ok(kernels.KSuccess(_h, [], ["hello"])) =
+  let assert Ok(kernels.KSuccess(_h, [], ["hello"], [])) =
     kernels.dispatch(h, "_output", 1, [atom("hello")])
 }
 

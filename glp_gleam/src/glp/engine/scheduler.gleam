@@ -49,6 +49,7 @@ import gleam/set.{type Set}
 import gleam/string
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
+import glp/engine/kernels
 import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
 import glp/mad/global_name
@@ -300,9 +301,10 @@ pub fn activate_module(
 }
 
 /// The ground module sentinel `'$module'(idx)` (the ModuleTerm mapping — same
-/// precedent as kernels' `$mutual_ref`).
+/// precedent as kernels' `$mutual_ref`; the representation is owned by
+/// `kernels`, where `_activate/2` consumes it).
 pub fn module_sentinel(idx: Int) -> terms.Term {
-  terms.StructTerm("$module", [terms.ConstTerm(terms.ConstInt(idx))])
+  kernels.module_sentinel(idx)
 }
 
 /// Send `goal` on `name`'s channel (Dart `GlpChannelHandle.send`): bind the
@@ -390,7 +392,14 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       case runner.reduce(goal_program, ctx, act.resume_pc, reduction_budget) {
         // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
         // pure scheduler — always `None` on this path, ignored here.
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          remote: remote,
+          mad: _,
+        ) -> {
           let engine =
             Engine(
               ..engine,
@@ -406,12 +415,25 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           // their entry PCs are meaningful only there (Dart: spawned goals
           // share the spawning goal's program association).
           let engine = inherit_program(engine, act.goal_id, spawned_ids)
-          let engine = list.fold(woken, engine, reactivate)
-          let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
-          #(
-            engine,
-            StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
-          )
+          // Module-dispatch spawns from `_activate/2` resolve against the
+          // registry (Dart activateKernel enqueues directly; here the kernel's
+          // data request is applied at the scheduler, which owns identity).
+          case apply_remote_spawns(engine, remote) {
+            Error(reason) -> #(engine, StepErrored(runner.Malformed(reason)))
+            Ok(#(engine, remote_ids)) -> {
+              let engine = list.fold(woken, engine, reactivate)
+              let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+              #(
+                engine,
+                StepReduced(
+                  act.goal_id,
+                  act.procedure,
+                  woken_ids,
+                  list.append(spawned_ids, remote_ids),
+                ),
+              )
+            }
+          }
         }
         runner.Suspended(heap: h, on: on) -> {
           let engine = suspend_goal(Engine(..engine, heap: h), act, on)
@@ -474,7 +496,14 @@ pub fn step_mad(
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.with_mad(runner.new_context(engine.heap, act.regs), mad_in)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o) -> {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          remote: remote,
+          mad: mad_o,
+        ) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
           // `None` would be an engine invariant break — treat it as no effect.
           let mad_out = case mad_o {
@@ -493,14 +522,32 @@ pub fn step_mad(
             list.map_fold(spawned, engine, spawn_goal)
           let engine = list.fold(woken, engine, reactivate)
           let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
-          // Lower the accumulated reader-branch `global_send` spawns into real goals.
-          case lower_mad_spawns(engine, mad_out.mad_spawns) {
-            Ok(engine) -> #(
+          // Module-dispatch spawns resolve against the registry (as in `step`).
+          case apply_remote_spawns(engine, remote) {
+            Error(reason) -> #(
               engine,
-              StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
-              MadState(..mad_out, mad_spawns: []),
+              StepErrored(runner.Malformed(reason)),
+              mad_in,
             )
-            Error(reason) -> #(engine, StepErrored(runner.Malformed(reason)), mad_in)
+            Ok(#(engine, remote_ids)) ->
+              // Lower the accumulated reader-branch `global_send` spawns into real goals.
+              case lower_mad_spawns(engine, mad_out.mad_spawns) {
+                Ok(engine) -> #(
+                  engine,
+                  StepReduced(
+                    act.goal_id,
+                    act.procedure,
+                    woken_ids,
+                    list.append(spawned_ids, remote_ids),
+                  ),
+                  MadState(..mad_out, mad_spawns: []),
+                )
+                Error(reason) -> #(
+                  engine,
+                  StepErrored(runner.Malformed(reason)),
+                  mad_in,
+                )
+              }
           }
         }
         runner.Suspended(heap: h, on: on) -> {
@@ -670,6 +717,53 @@ fn inherit_program(
         ),
       )
   }
+}
+
+/// Apply a reduction's module-dispatch spawns (Dart activateKernel:857-878):
+/// resolve each `'$module'(idx)` against the module registry, look up the goal's
+/// label in THAT module's bytecode, mint + enqueue the goal, and associate it
+/// with the module program (Dart `rt.setGoalProgram`). A label miss silently
+/// succeeds — no goal spawned (Dart: "procedure not found — silently succeed",
+/// matching `_select/1`'s otherwise clause). An unregistered idx is a structural
+/// break (sentinels are only minted by `register_module`) — surfaced, never
+/// guessed. Returns the minted goal ids for the step outcome's `spawned` report.
+fn apply_remote_spawns(
+  engine: Engine,
+  remote: List(kernels.RemoteSpawn),
+) -> Result(#(Engine, List(Int)), String) {
+  list.try_fold(remote, #(engine, []), fn(acc, sp) {
+    let #(engine, ids) = acc
+    case dict.get(engine.modules, sp.module_idx) {
+      Error(_) ->
+        Error(
+          "_activate: module index "
+          <> int.to_string(sp.module_idx)
+          <> " is not registered",
+        )
+      Ok(prog) ->
+        case program.label_pc(prog, sp.label) {
+          Error(_) -> Ok(#(engine, ids))
+          Ok(entry_pc) -> {
+            let regs =
+              list.index_fold(sp.args, program.new_regs(), fn(regs, arg, i) {
+                program.set_reg(regs, i, arg)
+              })
+            let #(engine, id) =
+              spawn_goal(engine, SpawnReq(sp.label, entry_pc, regs))
+            let engine =
+              Engine(
+                ..engine,
+                goal_programs: dict.insert(
+                  engine.goal_programs,
+                  id,
+                  sp.module_idx,
+                ),
+              )
+            Ok(#(engine, list.append(ids, [id])))
+          }
+        }
+    }
+  })
 }
 
 /// Mint an id for a body spawn request and enqueue it as a fresh goal; returns the

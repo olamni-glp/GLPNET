@@ -78,6 +78,10 @@ pub type ReduceOutcome {
     woken: List(GoalRef),
     spawned: List(SpawnReq),
     output: List(String),
+    /// Module-dispatch spawn requests from `_activate/2` (wave-3): the kernel is
+    /// heap-only, so the spawns ride out as data for the scheduler to resolve
+    /// against its module registry (the `output` precedent).
+    remote: List(kernels.RemoteSpawn),
     /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
     /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
     mad: Option(MadState),
@@ -216,6 +220,9 @@ pub type RunnerContext {
     /// Captured `_output/1` program-output lines accumulated during this reduction
     /// (T034), handed to the scheduler on `Reduced` (never touches the heap).
     output: List(String),
+    /// Module-dispatch spawn requests accumulated from `_activate/2` kernel calls
+    /// this reduction (wave-3); threaded out on `Reduced.remote` like `output`.
+    remote_spawns: List(kernels.RemoteSpawn),
     /// madGLP effect state (W_p + M_p + reader-spawns), present only in madGLP mode
     /// (T050.A2). The effectful `_send` kernel reads/updates it deep inside `reduce`;
     /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
@@ -247,6 +254,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     parent_stack: [],
     in_body: False,
     output: [],
+    remote_spawns: [],
     mad: None,
   )
 }
@@ -324,9 +332,23 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
     opcodes.Proceed ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.remote_spawns,
+        ctx.mad,
+      ))
     opcodes.Halt ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.remote_spawns,
+        ctx.mad,
+      ))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -1888,13 +1910,14 @@ fn spawn(
           }
         })
       case kernels.dispatch(ctx.heap, proc_name, arity, args) {
-        Ok(kernels.KSuccess(heap, woken, output)) ->
+        Ok(kernels.KSuccess(heap, woken, output, spawns)) ->
           Advance(
             RunnerContext(
               ..ctx,
               heap: heap,
               woken: list.append(ctx.woken, woken),
               output: list.append(ctx.output, output),
+              remote_spawns: list.append(ctx.remote_spawns, spawns),
               arg_slots: dict.new(),
             ),
           )
