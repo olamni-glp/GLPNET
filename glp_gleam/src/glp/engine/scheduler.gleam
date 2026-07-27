@@ -79,6 +79,22 @@ pub opaque type Engine {
     trace: Bool,
     /// Accumulated trace lines in emission order (empty unless `trace`).
     trace_lines: List(String),
+    // ── module-dispatch state (wave-3 dispatch subsystem, research.md mapping) ──
+    /// Module registry: `'$module'(idx)` sentinel index → the module's runnable
+    /// bytecode (Dart: the `ModuleTerm.bytecode` payload; the sentinel-index
+    /// mapping mirrors `$mutual_ref`'s addr-in-a-ground-struct precedent).
+    modules: Dict(Int, BytecodeProgram),
+    /// Per-goal program override: goal id → module registry idx. A goal absent
+    /// here runs in the main `program` (Dart `rt.setGoalProgram` /
+    /// `rt.runners[program]` — goals may run in different programs).
+    goal_programs: Dict(Int, Int),
+    /// Infrastructure goal ids (`serve/2` loops from activation): excluded from
+    /// terminal-status derivation — their steady-state suspension is normal
+    /// (Dart `rt.infrastructureGoalIds`, scheduler.dart:319-329).
+    infrastructure: Set(Int),
+    /// Module channels: module name → the channel stream's CURRENT writer addr
+    /// (Dart `GlpChannelHandle._writerAddr`, advanced on each send).
+    channels: Dict(String, Int),
   )
 }
 
@@ -137,6 +153,10 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     output: [],
     trace: False,
     trace_lines: [],
+    modules: dict.new(),
+    goal_programs: dict.new(),
+    infrastructure: set.new(),
+    channels: dict.new(),
   )
 }
 
@@ -235,6 +255,102 @@ pub fn boot(
   )
 }
 
+// ── module-dispatch seams (wave-3; Dart glp_activation.dart) ─────────────────
+
+/// Register a module's runnable bytecode; returns the engine and the minted
+/// registry index — the payload of its `'$module'(idx)` sentinel.
+pub fn register_module(
+  engine: Engine,
+  prog: BytecodeProgram,
+) -> #(Engine, Int) {
+  let idx = dict.size(engine.modules) + 1
+  #(Engine(..engine, modules: dict.insert(engine.modules, idx, prog)), idx)
+}
+
+/// The registered module program for a sentinel index (test/dispatch seam).
+pub fn module_program(engine: Engine, idx: Int) -> Result(BytecodeProgram, Nil) {
+  dict.get(engine.modules, idx)
+}
+
+/// Activate a registered module for channel dispatch (Dart `activateModule`):
+/// allocate the channel writer/reader pair, spawn `serve_label` from the MAIN
+/// program with `#('$module'(idx), Reader?)` as its arguments, tag the serve
+/// goal as infrastructure, and record the channel writer under `name`.
+/// The serve program must already be merged into the main program (the engine
+/// facade embeds `_serveSource` there — Dart compiles it at init).
+pub fn activate_module(
+  engine: Engine,
+  name: String,
+  idx: Int,
+  serve_label: String,
+  serve_entry: Int,
+) -> Engine {
+  let #(heap, writer, reader) = heap.allocate_variable(engine.heap)
+  let engine = Engine(..engine, heap: heap)
+  let regs =
+    program.new_regs()
+    |> program.set_reg(0, module_sentinel(idx))
+    |> program.set_reg(1, terms.VarRef(reader))
+  let #(engine, serve_id) = boot(engine, serve_label, serve_entry, regs)
+  Engine(
+    ..engine,
+    infrastructure: set.insert(engine.infrastructure, serve_id),
+    channels: dict.insert(engine.channels, name, writer),
+  )
+}
+
+/// The ground module sentinel `'$module'(idx)` (the ModuleTerm mapping — same
+/// precedent as kernels' `$mutual_ref`).
+pub fn module_sentinel(idx: Int) -> terms.Term {
+  terms.StructTerm("$module", [terms.ConstTerm(terms.ConstInt(idx))])
+}
+
+/// Send `goal` on `name`'s channel (Dart `GlpChannelHandle.send`): bind the
+/// current writer to `[goal | NewTail]`, advance the recorded writer to the new
+/// tail, and re-enqueue every goal the binding wakes (the serve loop). `Error`
+/// if the module has no channel (not activated) — the Distribute/Transmit
+/// hard-error path.
+pub fn channel_send(
+  engine: Engine,
+  name: String,
+  goal: terms.Term,
+) -> Result(Engine, String) {
+  case dict.get(engine.channels, name) {
+    Error(_) -> Error("module " <> name <> " not activated (no GLP channel)")
+    Ok(writer) -> {
+      let #(heap, new_writer, new_reader) =
+        heap.allocate_variable(engine.heap)
+      let cons = terms.StructTerm(".", [goal, terms.VarRef(new_reader)])
+      case heap.bind_writer(heap, writer, cons) {
+        Error(_) ->
+          Error("module " <> name <> " channel writer already bound")
+        Ok(#(heap, woken)) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: heap,
+              channels: dict.insert(engine.channels, name, new_writer),
+            )
+          Ok(list.fold(woken, engine, reactivate))
+        }
+      }
+    }
+  }
+}
+
+/// The program a goal reduces in: its module override, else the main program
+/// (Dart `rt.getGoalProgram` fallback semantics).
+fn program_for(engine: Engine, goal_id: Int) -> BytecodeProgram {
+  case dict.get(engine.goal_programs, goal_id) {
+    Ok(idx) ->
+      case dict.get(engine.modules, idx) {
+        Ok(prog) -> prog
+        Error(_) -> engine.program
+      }
+    Error(_) -> engine.program
+  }
+}
+
 /// Run to quiescence (or the fuel cap). `reduction_budget` bounds instructions
 /// per goal reduction; `fuel` bounds total goal reductions (loop backstop). The
 /// run is `step` looped: each Reduced/Suspended step consumes one fuel; a Failed
@@ -268,7 +384,10 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
     Ok(#(act, queue)) -> {
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.new_context(engine.heap, act.regs)
-      case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
+      // The goal's own program: a dispatched module goal reduces in ITS module's
+      // bytecode, not the main program (Dart rt.getGoalProgram).
+      let goal_program = program_for(engine, act.goal_id)
+      case runner.reduce(goal_program, ctx, act.resume_pc, reduction_budget) {
         // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
         // pure scheduler — always `None` on this path, ignored here.
         runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
@@ -283,6 +402,10 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           let engine = trace_reduction(engine, act, spawned, h)
           let #(engine, spawned_ids) =
             list.map_fold(spawned, engine, spawn_goal)
+          // Body spawns of a module goal reduce in the SAME module program —
+          // their entry PCs are meaningful only there (Dart: spawned goals
+          // share the spawning goal's program association).
+          let engine = inherit_program(engine, act.goal_id, spawned_ids)
           let engine = list.fold(woken, engine, reactivate)
           let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
           #(
@@ -475,15 +598,19 @@ pub fn bind_and_wake(
   }
 }
 
-/// The terminal status once the queue has drained (T029 cap 1): goals remaining
-/// in the store are suspended goals ⇒ Suspended (with their blocking readers);
-/// an empty store ⇒ the run reduced to completion ⇒ Success. Mirrors Dart's
-/// end-of-drain `userSuspendedGoals.isEmpty ? succeeded : suspended` (the
-/// MVP engine has no infrastructure/serve goals to exclude).
+/// The terminal status once the queue has drained (T029 cap 1): USER goals
+/// remaining in the store are suspended goals ⇒ Suspended (with their blocking
+/// readers); none ⇒ the run reduced to completion ⇒ Success. Infrastructure
+/// goals (activation `serve/2` loops) are excluded — their steady-state
+/// suspension is normal (Dart scheduler.dart:319-329 `userSuspendedGoals`).
 fn terminal_status(engine: Engine) -> RunStatus {
-  case dict.is_empty(engine.goals) {
-    True -> Success
-    False -> Suspended(blocking_readers(engine))
+  let user_goals =
+    engine.goals
+    |> dict.keys
+    |> list.filter(fn(id) { !set.contains(engine.infrastructure, id) })
+  case user_goals {
+    [] -> Success
+    _ -> Suspended(blocking_readers(engine))
   }
 }
 
@@ -494,13 +621,55 @@ pub fn status(engine: Engine) -> RunStatus {
   terminal_status(engine)
 }
 
-/// The sorted, deduped reader addresses that the still-suspended goals are blocked
-/// on (Dart `rt.suspended.keys`). Entries are dropped as they empty, so every key
-/// is a live blocking reader.
+/// The sorted, deduped reader addresses that the still-suspended USER goals are
+/// blocked on (Dart `rt.suspended.keys`, infra excluded per §3.4). Entries are
+/// dropped as they empty, so every key is a live blocking reader; a reader
+/// blocking ONLY infrastructure goals is not a user-facing blocker.
 fn blocking_readers(engine: Engine) -> List(Int) {
   engine.blocking
-  |> dict.keys
+  |> dict.to_list
+  |> list.filter_map(fn(pair) {
+    let #(reader, goal_ids) = pair
+    let user =
+      set.filter(goal_ids, fn(id) { !set.contains(engine.infrastructure, id) })
+    case set.is_empty(user) {
+      True -> Error(Nil)
+      False -> Ok(reader)
+    }
+  })
   |> list.sort(int.compare)
+}
+
+/// Propagate a module-program override from `parent_id` to its body spawns
+/// (no-op for main-program goals). Serve loops respawning themselves also stay
+/// infrastructure-tagged via the same parent walk.
+fn inherit_program(
+  engine: Engine,
+  parent_id: Int,
+  spawned_ids: List(Int),
+) -> Engine {
+  let engine = case dict.get(engine.goal_programs, parent_id) {
+    Error(_) -> engine
+    Ok(idx) ->
+      Engine(
+        ..engine,
+        goal_programs: list.fold(spawned_ids, engine.goal_programs, fn(gp, id) {
+          dict.insert(gp, id, idx)
+        }),
+      )
+  }
+  case set.contains(engine.infrastructure, parent_id) {
+    False -> engine
+    True ->
+      Engine(
+        ..engine,
+        infrastructure: list.fold(
+          spawned_ids,
+          engine.infrastructure,
+          set.insert,
+        ),
+      )
+  }
 }
 
 /// Mint an id for a body spawn request and enqueue it as a fresh goal; returns the
