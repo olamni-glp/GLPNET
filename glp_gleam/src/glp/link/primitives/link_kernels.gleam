@@ -30,6 +30,7 @@ import gleam/string
 import glp/link/primitives/capability_gate
 import glp/link/primitives/link_egress
 import glp/link/primitives/link_establish
+import glp/link/primitives/link_faults
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_pump
 import glp/link/primitives/link_registry.{Established, Reused}
@@ -62,6 +63,7 @@ pub fn link_is_kernel(name: String, arity: Int) -> Bool {
     "_link_request", 5 -> True
     "_link_accept", 5 -> True
     "_link_send", 3 -> True
+    "_link_monitor", 2 -> True
     _, _ -> False
   }
 }
@@ -111,6 +113,8 @@ pub fn link_dispatch(
       ))
     "_link_send", 3, [msg, link_id, to_peer] ->
       Ok(link_send_kernel(heap, state, msg, link_id, to_peer))
+    "_link_monitor", 2, [link_id, faults_arg] ->
+      Ok(link_monitor_kernel(heap, state, link_id, faults_arg))
     _, _, _ -> Error(Nil)
   }
 }
@@ -221,6 +225,12 @@ fn wire_and_record(
     Error(e) -> Error("establishment failed: " <> string.inspect(e))
     Ok(#(registry, Established(handle))) -> {
       let wired = link_handle.with_cursors(handle, in_addr, out_addr, faults_addr)
+      // Register the establishment `Faults` stream as a live monitor cursor (C7,
+      // FR-008): a transport fault fans out to it as well as to any later
+      // `link_monitor` stream. NO `ok` is pushed here — the cell stays lazily unbound
+      // until a real fault, so an unmonitored goal stays safely suspended (FR-044).
+      // Only `'_link_monitor'` (K6) pushes the healthy baseline.
+      let wired = link_handle.add_monitor_cursor(wired, faults_addr)
       let state = link_runtime.with_links(state, link_registry.put(registry, wired))
       // Arm egress ONCE, on first establishment only (see the doc comment above).
       let state =
@@ -550,6 +560,63 @@ fn try_link_send(
           let state =
             link_runtime.with_links(state, link_registry.put(state.links, advanced))
           Ok(LinkEffect(heap, state, []))
+        }
+      }
+  }
+}
+
+// ── K6 `'_link_monitor'/2` (LinkId?, Faults) — the independent fault observer ──
+//
+// The host body of `link_monitor/2` (self.glp:578-581). Given a ground,
+// ALREADY-ESTABLISHED LinkId, registers the `Faults` writer as one more monitor cursor
+// on the handle — independent of the data path and of every other monitor stream for
+// the same link (FR-008): they share only the ground LinkId (a registry lookup), so
+// there is no cell aliasing and no SRSW interference. On registration the kernel pushes
+// ONE `ok` term — the lattice's healthy baseline (025 contracts §2.7) — so a watcher's
+// `[ok|Rest]` clause is immediately reducible and the link is observably healthy until
+// a fault. Monitoring an unestablished link is a caller bug, surfaced as a non-fatal
+// abort — monitor OBSERVES a link, it does not create one.
+
+fn link_monitor_kernel(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  faults_arg: Term,
+) -> LinkOutcome {
+  case try_link_monitor(heap, state, id_arg, faults_arg) {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_monitor(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  faults_arg: Term,
+) -> Result(LinkOutcome, String) {
+  use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
+  use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
+  // The Faults output hole must be an unbound WRITER the host extends (the program
+  // reads the paired reader) — same discipline as the establishment holes.
+  use faults_addr <- result.try(writer_addr(heap, faults_arg, "Faults"))
+  case link_registry.try_get(state.links, id) {
+    Error(_) ->
+      Error(
+        "_link_monitor: monitor of unestablished link "
+        <> string.inspect(id)
+        <> " — setup before monitor",
+      )
+    Ok(handle) ->
+      // Register the observer, then push the healthy-baseline `ok` on the NEW cursor
+      // only (the other observers' streams are untouched — they are independent).
+      case link_faults.extend(heap, faults_addr, link_faults.ok()) {
+        Error(Nil) -> Error("_link_monitor: Faults cursor already bound")
+        Ok(#(heap, advanced_cursor, woken)) -> {
+          let handle = link_handle.add_monitor_cursor(handle, advanced_cursor)
+          let state =
+            link_runtime.with_links(state, link_registry.put(state.links, handle))
+          Ok(LinkEffect(heap, state, woken))
         }
       }
   }

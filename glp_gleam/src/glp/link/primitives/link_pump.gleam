@@ -24,9 +24,13 @@
 ////     ships as ONE `Whole` frame (D-8) and the far side needs no reassembler; a
 ////     `Fragment` arriving here is a wire-contract violation, surfaced by
 ////     `link_wire.decode_frame`.
-////   * *Fault fan-out onto monitor cursors* — C7 (`link_faults`). The endpoint's
-////     out-of-band `faults` Subject is untouched here; a recv-time transport fault ends
-////     this link's loop and is reported as `Faulted`, which C7 turns into a lattice term.
+////   * *In C7 (landed):* a recv-time transport fault ends this link's loop and is
+////     reported as `Faulted` carrying the refined lattice term; the applier fans it to
+////     every monitor cursor via `link_faults.deliver_fault` (FR-008). The endpoint's
+////     out-of-band `faults` Subject stays untouched — in the SYNC seam every transport
+////     fault surfaces as a `recv`/`send` return value on the call that hit it (`send`
+////     errors reach the kernels as `EgressError`), so there is no async side-channel
+////     left to subscribe to; the Subject exists for transport-internal use.
 ////   * *Path-B request surfacing* — the Dart pump carries a `requestWriterAddr` inbox
 ////     item because its listen/token-read are async. Gleam's C4 `'_link_listen'` does
 ////     both SYNCHRONOUSLY on the runner thread, so that item has no counterpart here.
@@ -40,6 +44,7 @@ import gleam/erlang/process.{type Subject}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import glp/link/primitives/link_faults
 import glp/link/primitives/link_handle.{type LinkHandle}
 import glp/link/primitives/link_registry.{type LinkRegistry}
 import glp/link/primitives/link_wire
@@ -60,9 +65,12 @@ pub type InboundItem {
   Data(link: LinkId, message_id: Int, value: Term)
   /// The peer cleanly ended its send side (`recv` → `Ok(None)`): end `In` with `[]`.
   Closed(link: LinkId)
-  /// The receive loop stopped on a transport fault or a malformed frame. Carried as
-  /// data, never a crash (FR-043/044); C7 refines it onto the monitor cursors.
-  Faulted(link: LinkId, detail: String)
+  /// The receive loop stopped on a transport fault or a malformed frame. `fault` is the
+  /// ALREADY-REFINED lattice term (`closed`/`tempFail`/`permFail` — refinement is pure
+  /// data, so the pump does it off the runner); the applier fans it out to every
+  /// monitor cursor (C7, FR-008). Carried as a bound term, never a crash and never a
+  /// logical Fail (FR-043/044).
+  Faulted(link: LinkId, fault: Term)
 }
 
 /// The runner's end of the inbox. One per engine, shared by every link's loop.
@@ -110,24 +118,30 @@ fn recv_loop(inbox: Inbox, id: LinkId, endpoint: Endpoint) -> Nil {
     Ok(Some(frame)) ->
       case link_wire.decode_frame(frame) {
         // A frame that will not decode is a wire-contract violation (a non-ground
-        // payload, a Fragment with no reassembler, a bad CRC). Report it and STOP: the
-        // stream position is no longer trustworthy, so continuing would silently splice
-        // the peer's later frames onto a stream that lost one.
+        // payload, a Fragment with no reassembler, a bad CRC) — a PROTOCOL violation,
+        // which the seam classifies `Permanent` (link_fault.gleam), so it refines to
+        // `permFail/2`. Report it and STOP: the stream position is no longer
+        // trustworthy, so continuing would silently splice the peer's later frames
+        // onto a stream that lost one.
         Error(e) ->
           process.send(
             inbox,
-            Faulted(id, "undecodable inbound frame: " <> string.inspect(e)),
+            Faulted(
+              id,
+              link_faults.perm_fail(
+                id,
+                "undecodable inbound frame: " <> string.inspect(e),
+              ),
+            ),
           )
         Ok(#(message_id, term)) -> {
           process.send(inbox, Data(id, message_id, term))
           recv_loop(inbox, id, endpoint)
         }
       }
-    Error(signal) ->
-      process.send(
-        inbox,
-        Faulted(id, "transport recv failed: " <> string.inspect(signal)),
-      )
+    // A transport-level recv fault: refine the seam signal to its lattice term
+    // (`from_signal` is pure data — no heap) and report it.
+    Error(signal) -> process.send(inbox, Faulted(id, link_faults.from_signal(signal)))
   }
 }
 
@@ -180,15 +194,29 @@ pub type Applied {
 /// `Closed`, or data after close, is therefore a no-op rather than a double-bind.
 ///
 /// An item naming a link that is not in the registry is a no-op: the link was torn down
-/// (C8) while a frame was already in flight. `Faulted` is carried to C7; this slice
-/// records nothing for it, and deliberately does NOT fail the reader's goal (FR-044).
+/// (C8) while a frame was already in flight.
+///
+/// `Faulted` (C7) fans the refined lattice term out to EVERY monitor cursor of the link
+/// — the establishment `Faults` stream and each `link_monitor` stream (FR-008) — via
+/// `link_faults.deliver_fault`, threading the cursor-advanced handle back through the
+/// registry. It deliberately does NOT fail the reader's data goal (FR-044) and does NOT
+/// end the `In` stream: whether a fault is terminal is C8 teardown's call, not the
+/// pump's.
 pub fn apply_item(
   heap: Heap,
   links: LinkRegistry,
   item: InboundItem,
 ) -> Applied {
   case item {
-    Faulted(_, _) -> Applied(heap, links, [])
+    Faulted(id, fault) ->
+      case link_registry.try_get(links, id) {
+        Error(_) -> Applied(heap, links, [])
+        Ok(handle) -> {
+          let #(heap, handle, woken) =
+            link_faults.deliver_fault(heap, handle, fault)
+          Applied(heap, link_registry.put(links, handle), woken)
+        }
+      }
     Data(id, _message_id, value) ->
       case link_registry.try_get(links, id) {
         Error(_) -> Applied(heap, links, [])

@@ -117,3 +117,9 @@ pub fn end_in_stream(handle: LinkHandle) -> LinkHandle {
 pub fn add_monitor_cursor(handle: LinkHandle, addr: Int) -> LinkHandle {
   LinkHandle(..handle, monitor_cursors: [addr, ..handle.monitor_cursors])
 }
+
+/// Replace the whole cursor list — the delivery core (`link_faults`) advances every
+/// cursor on a fan-out, or clears them all when the streams end (C7/C8).
+pub fn set_monitor_cursors(handle: LinkHandle, cursors: List(Int)) -> LinkHandle {
+  LinkHandle(..handle, monitor_cursors: cursors)
+}
