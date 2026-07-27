@@ -1,10 +1,10 @@
-﻿//// `_output/1` output-capture tests (feature 050, T034; US2).
+//// `_output/1` output-capture tests (feature 050, T034; US2).
 ////
 //// Three layers: (1) `format_ground_term` renders like the reference kernel (Dart
 //// `formatGroundTerm`); (2) `kernels.dispatch` on `_output/1` yields one captured
-//// line, heap untouched, no reactivations; (3) end-to-end â€” a loaded program's
-//// `'_output'(T?)` body call flows a captured line through kernel â†’ runner â†’
-//// scheduler â†’ engine, returned as DATA (not the R4-excluded envelope field).
+//// line, heap untouched, no reactivations; (3) end-to-end — a loaded program's
+//// `'_output'(T?)` body call flows a captured line through kernel → runner →
+//// scheduler → engine, returned as DATA (not the R4-excluded envelope field).
 
 import gleeunit/should
 import glp/codec/result_envelope
@@ -18,7 +18,7 @@ fn atom(a: String) {
   ConstTerm(ConstAtom(a))
 }
 
-// â”€â”€ format_ground_term (Dart formatGroundTerm) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── format_ground_term (Dart formatGroundTerm) ───────────────────────────────
 
 pub fn format_atom_test() {
   output_capture.format_ground_term(heap.new(), atom("hello"))
@@ -44,14 +44,14 @@ pub fn format_struct_test() {
   |> should.equal("p(a, 1)")
 }
 
-// A struct inside a list â€” nested formatting.
+// A struct inside a list — nested formatting.
 pub fn format_nested_test() {
   let list_term = cons(StructTerm("p", [atom("a")]), cons(atom("b"), nil()))
   output_capture.format_ground_term(heap.new(), list_term)
   |> should.equal("[p(a), b]")
 }
 
-// â”€â”€ kernels.dispatch on _output/1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── kernels.dispatch on _output/1 ────────────────────────────────────────────
 
 pub fn output_is_a_kernel_test() {
   kernels.is_kernel("_output", 1) |> should.be_true
@@ -64,7 +64,7 @@ pub fn dispatch_output_captures_line_test() {
     kernels.dispatch(h, "_output", 1, [atom("hello")])
 }
 
-// â”€â”€ end-to-end: loaded program â†’ captured output threaded through the engine â”€â”€
+// ── end-to-end: loaded program → captured output threaded through the engine ──
 
 const emit_source = "-mode(system).
 procedure emit(Constant?).
