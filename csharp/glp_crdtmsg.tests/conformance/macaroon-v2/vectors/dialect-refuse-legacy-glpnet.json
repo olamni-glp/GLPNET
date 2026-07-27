@@ -1,0 +1,10 @@
+{
+  "decoded": null,
+  "description": "GLPNET {action,peer,expires} textual token must refuse with a dialect diagnostic",
+  "expect": "refuse:DialectMismatch",
+  "id": "dialect-refuse-legacy-glpnet",
+  "input": {
+    "token_hex": "616374696f6e3d726561643b706565723d6e6f64652d613b657870697265733d323032372d30312d30315430303a30303a30305a3b7369673d30363132356634633733333936613330346164343237613237616138616665376232383764376230313261653439386136646432616131343639326132653963"
+  },
+  "surface": "macaroon-v2-wire"
+}

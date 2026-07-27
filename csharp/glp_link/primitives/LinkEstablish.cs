@@ -186,7 +186,16 @@ public static class LinkEstablish
         bool allowed;
         try
         {
-            allowed = link.CapabilityGates.Select(id.Scheme).GateEstablish(id);
+            // Prefer the async-capable gate variant (feature 058 T034): an implementation that
+            // overrides GateEstablishAsync (e.g. one consulting the network-callable S4 policy
+            // service) gets its async decision path; a sync-only implementor's default-interface
+            // method delegates to GateEstablish and completes synchronously — zero behavior change.
+            // The establish kernels are synchronous body kernels, so a genuinely-async gate is
+            // bridged here, at the one below-the-seam blocking point.
+            ValueTask<bool> decision = link.CapabilityGates.Select(id.Scheme).GateEstablishAsync(id);
+            allowed = decision.IsCompletedSuccessfully
+                ? decision.Result
+                : decision.AsTask().GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {

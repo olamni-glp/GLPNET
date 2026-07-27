@@ -1,0 +1,24 @@
+{
+  "description": "no-caveat mint: tail = HMAC(root, identifier)",
+  "expect": "ok",
+  "id": "chain-mint-basic",
+  "input": {
+    "attenuations": [],
+    "context": {
+      "key": "objects/alpha",
+      "keyspace": "ks-main",
+      "now": 1752451200,
+      "op": "get",
+      "resource": "sha256:00ff"
+    },
+    "identifier": "cap-058-test",
+    "location": "glp://mint.test",
+    "mint_caveats": [],
+    "presented_caveats": [],
+    "presented_tail_hex": "8b3e446043be4cc9a710f8afa0f79ad97ca6243880c718e30d04cb45bfa2e118",
+    "root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "verify_root_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "surface": "macaroon-v2-chain",
+  "tail_hex": "8b3e446043be4cc9a710f8afa0f79ad97ca6243880c718e30d04cb45bfa2e118"
+}

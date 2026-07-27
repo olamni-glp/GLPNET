@@ -1,6 +1,22 @@
 # Contract: Base Link Primitives (PROPOSED) — feature 025 multi-protocol-link-layer
 
-**Status:** PROPOSAL pending Gabi's language-authority approval (CLAUDE.md §Language Authority; DISCIPLINE §1.14). **NOTHING here is decided.** Every name, arity, mode, guard, system-predicate, body-kernel, and directive below is marked **PROPOSED** and is presented as input to the language-authority co-design gate. Approve / revise / decline each item; do not treat any as ratified.
+> 🔴 **SUPERSEDED 2026-07-20 by `contracts/rulings-log.md` — THE GATE IS CLOSED AND THIS SURFACE IS RATIFIED.**
+> The "Status: PROPOSAL … NOTHING here is decided" paragraph below is **STALE** and must not be read as
+> current. `rulings-log.md` records **"PLAN-APPROVAL GATE: COMPLETE. The 9 base link primitives + the
+> approved guard set + the three core fixes are approved-to-implement under language authority"**
+> (Gabi, 2026-06-06), extended by the T033 establishment-path-B ratification (Gabi, 2026-06-07) which
+> adds the 10th primitive `request_listener/2` + `'_link_listen'/3`. Names and arities are ratified
+> **AS WRITTEN**. **Work on this surface is NOT §1.14-gate-blocked.**
+>
+> This stale header has already cost one near-false escalation. **Authority order:** shipped surface
+> (`programs/self.glp`) + `rulings-log.md` **>** this document's body **>** proposal docs
+> (`architecture-context.md`) **>** the C# reference **>** the Dart reference.
+>
+> Note also: the entire GLP-side surface designed here **already ships** in `programs/self.glp`
+> (declarations + wrappers, relocated Gabi-approved in `6c21281e`). Remaining work is host-side
+> kernels only — see `specs/050-full-gleam-combined/contracts/link-primitives-port.md`.
+
+**Status (STALE — see the superseding banner above):** PROPOSAL pending Gabi's language-authority approval (CLAUDE.md §Language Authority; DISCIPLINE §1.14). **NOTHING here is decided.** Every name, arity, mode, guard, system-predicate, body-kernel, and directive below is marked **PROPOSED** and is presented as input to the language-authority co-design gate. Approve / revise / decline each item; do not treat any as ratified.
 
 **Scope.** This contract designs ONLY the **BASE link primitives** named in FR-001 / Key Entities "Base link primitives": request-link, accept-link, link setup, sender, receiver, server-listener, client-connector, per-link fault monitor. Per the RULED contract (`docs/research/multi-protocol-link-layer/B2-B3-G-decision.md` §"Decisions — RULED (Gabi, 2026-06-06)") and FR-009/FR-010, the base set is the **first deliverable**, the base discipline is a **GRL-style ground-relay** (FR-010, "ground-relay base carries the binding across the cut"), and **`glink` (full writer/reader variable distribution) is a LATER higher-level layer built ON these — explicitly OUT OF MVP SCOPE and NOT designed here.** Dependency direction is base → glink, never the reverse.
 
