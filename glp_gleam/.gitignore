@@ -2,3 +2,6 @@
 *.ez
 /build
 erl_crash.dump
+
+# Two-process link test harness transient transcripts (T074)
+test/link/results/

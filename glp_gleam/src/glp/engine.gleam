@@ -34,6 +34,11 @@ import glp/compiler/loader
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
+import glp/link/primitives/link_pump
+import glp/link/primitives/link_runtime.{type LinkRuntime}
+import glp/link/primitives/transport_registry
+import glp/link/transports/loopback
+import glp/link/transports/tcp
 import glp/parser/ast
 import glp/parser/lexer
 import glp/parser/parser
@@ -226,6 +231,62 @@ pub fn run_with_limit_traced(
     Error(reason) -> #(failed_envelope(reason), [], [])
   }
   #(engine, envelope, output, traces)
+}
+
+// ── link-aware run (T074) ─────────────────────────────────────────────────────
+
+/// Execute `goal` under the LINK DRIVER (T074): a `LinkRuntime` with the loopback +
+/// tcp transports registered is threaded through the reduction so the effectful
+/// `_link_*` kernels run, and the inbound pump (`link_pump.drive`) feeds arriving
+/// frames onto the `In` stream + drains `Out` to the wire until the goal completes.
+/// Returns the result envelope + captured `_output/1` lines. Used by the two-process
+/// link REPL harness; the ordinary `run` path is unchanged (no link runtime → the
+/// `_link_*` kernels fail non-fatally, exactly as before).
+pub fn run_link(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> #(Engine, ResultEnvelope, List(String)) {
+  let #(envelope, output) = case run_link_goal(engine, goal, fuel) {
+    Ok(#(env, out)) -> #(env, out)
+    Error(reason) -> #(failed_envelope(reason), [])
+  }
+  #(engine, envelope, output)
+}
+
+fn run_link_goal(
+  engine: Engine,
+  goal: String,
+  fuel: Int,
+) -> Result(#(ResultEnvelope, List(String)), String) {
+  use atom <- result.try(parse_goal(goal))
+  let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
+  use entry <- result.try(
+    program.label_pc(engine.program, label)
+    |> result.replace_error("predicate " <> label <> " not found"),
+  )
+  use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
+  use runtime <- result.try(new_link_runtime())
+
+  let sched = scheduler.new(engine.program, boot.heap)
+  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+  let #(sched, _runtime, status) =
+    link_pump.drive(sched, runtime, default_reduction_budget, fuel)
+
+  finish_run(sched, boot.query_var_writers, status)
+}
+
+/// A fresh `LinkRuntime` with the loopback + tcp transports registered (the schemes
+/// the acceptance link programs use). A registration conflict is a trusted-config
+/// failure, surfaced as a run error.
+fn new_link_runtime() -> Result(LinkRuntime, String) {
+  let runtime = link_runtime.new()
+  use transports <- result.try(transport_registry.register(
+    runtime.transports,
+    loopback.new(),
+  ))
+  use transports <- result.try(transport_registry.register(transports, tcp.new()))
+  Ok(link_runtime.with_transports(runtime, transports))
 }
 
 fn run_goal(

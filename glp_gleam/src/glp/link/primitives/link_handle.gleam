@@ -38,8 +38,15 @@ pub type LinkHandle {
     seq: Int,
     /// The writer the host extends as inbound frames arrive (program reads `In`).
     in_writer: Option(Int),
-    /// The reader the host drains as the program writes `Out`.
+    /// The reader the host drains as the program writes `Out`. The pump ADVANCES
+    /// this as it ships each bound cons head (the moving egress cursor).
     out_reader: Option(Int),
+    /// The pump has shipped `Out = []` and closed the send half (graceful eos). No
+    /// further egress on this link.
+    out_closed: Bool,
+    /// The pump has bound `In = []` (peer eos) — the inbound stream is ended. No
+    /// further `recv` on this link.
+    in_closed: Bool,
     /// The writer the host extends with fault terms (program reads `Faults`).
     faults_writer: Option(Int),
     /// The live per-link MONITOR cursors (T034): one writer cell per independent
@@ -60,6 +67,8 @@ pub fn new(id: LinkId, options: LinkOptions) -> LinkHandle {
     seq: 0,
     in_writer: None,
     out_reader: None,
+    out_closed: False,
+    in_closed: False,
     faults_writer: None,
     monitor_cursors: [],
   )

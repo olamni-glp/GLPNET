@@ -51,6 +51,7 @@ import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
 import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
+import glp/link/primitives/link_runtime.{type LinkRuntime}
 import glp/mad/global_name
 import glp/mad/globalize.{type Spawn}
 import glp/mad/mad_kernels.{type MadState, MadState}
@@ -259,6 +260,115 @@ pub fn run(
   }
 }
 
+// ── link-aware run (T074) ─────────────────────────────────────────────────────
+//
+// The link pump needs the reduction to run the effectful `_link_*` kernels, which
+// requires the `LinkRuntime` threaded through each reduction (the analogue of
+// `MadState`/`step_mad`). `run_link` loops `step_link` to quiescence, threading the
+// runtime; the pump then drains egress + feeds inbound frames and calls `run_link`
+// again. The pure `run`/`step` above are UNCHANGED (they inject no link runtime).
+
+/// Run to quiescence (or the fuel cap) with a `LinkRuntime` threaded through every
+/// reduction, so `_link_*` body kernels execute (T074). Returns the advanced engine,
+/// terminal status, and the updated runtime (its registry now holds the links the
+/// run established). `run` is `step_link` looped; a Failed step STOPS the run.
+pub fn run_link(
+  engine: Engine,
+  reduction_budget: Int,
+  fuel: Int,
+  runtime: LinkRuntime,
+) -> #(Engine, RunStatus, LinkRuntime) {
+  case fuel <= 0 {
+    True -> #(engine, OutOfFuel, runtime)
+    False -> {
+      let #(engine, outcome, runtime) =
+        step_link(engine, reduction_budget, runtime)
+      case outcome {
+        StepIdle -> #(engine, terminal_status(engine), runtime)
+        StepReduced(..) -> run_link(engine, reduction_budget, fuel - 1, runtime)
+        StepSuspended(..) -> run_link(engine, reduction_budget, fuel - 1, runtime)
+        StepFailed(..) -> #(engine, Failed, runtime)
+        StepErrored(fault) -> #(engine, Errored(fault), runtime)
+      }
+    }
+  }
+}
+
+/// One link reduction: like `step`, but threading `runtime` through the reduction
+/// (via `runner.with_link`) and reading the updated `LinkRuntime` back off
+/// `Reduced.link`. Mirror of `step_mad`. A reduction that runs no link kernel returns
+/// `runtime` unchanged.
+pub fn step_link(
+  engine: Engine,
+  reduction_budget: Int,
+  runtime: LinkRuntime,
+) -> #(Engine, StepOutcome, LinkRuntime) {
+  case types.dequeue(engine.queue) {
+    Error(_) -> #(engine, StepIdle, runtime)
+    Ok(#(act, queue)) -> {
+      let engine = Engine(..engine, queue: queue)
+      let ctx =
+        runner.with_link(runner.new_context(engine.heap, act.regs), runtime)
+      case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _, link: link_o) -> {
+          let runtime_out = case link_o {
+            Some(r) -> r
+            None -> runtime
+          }
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
+            )
+          let engine = trace_reduction(engine, act, spawned, h)
+          let #(engine, spawned_ids) =
+            list.map_fold(spawned, engine, spawn_goal)
+          let engine = list.fold(woken, engine, reactivate)
+          let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+          #(
+            engine,
+            StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
+            runtime_out,
+          )
+        }
+        runner.Suspended(heap: h, on: on) -> {
+          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+          let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
+          let on_list = on |> set.to_list |> list.sort(int.compare)
+          #(engine, StepSuspended(act.goal_id, act.procedure, on_list), runtime)
+        }
+        runner.Failed(heap: h) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+            )
+          let engine = trace_terminal(engine, act, h, " \u{2192} failed")
+          #(engine, StepFailed(act.goal_id, act.procedure), runtime)
+        }
+        runner.BudgetExhausted(heap: h) -> #(
+          Engine(..engine, heap: h),
+          StepErrored(runner.Malformed(
+            "reduction budget exhausted in goal " <> act.procedure,
+          )),
+          runtime,
+        )
+        runner.RunnerError(reason: fault) -> #(engine, StepErrored(fault), runtime)
+      }
+    }
+  }
+}
+
+/// The reader addresses the still-suspended goals are blocked on (the pump uses this
+/// to decide which link has a consumer waiting on its inbound stream). Public mirror
+/// of the private `blocking_readers`.
+pub fn blocking_reader_addrs(engine: Engine) -> List(Int) {
+  blocking_readers(engine)
+}
+
 /// Perform ONE reduction: dequeue the next runnable goal, reduce it once, apply
 /// its effects (spawn / wake / suspend / drop), and report what happened. The
 /// shared core of `run` and the REPL single-step seam (T029 cap 3).
@@ -271,7 +381,7 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
         // pure scheduler — always `None` on this path, ignored here.
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _) -> {
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _, link: _) -> {
           let engine =
             Engine(
               ..engine,
@@ -351,7 +461,7 @@ pub fn step_mad(
       let engine = Engine(..engine, queue: queue)
       let ctx = runner.with_mad(runner.new_context(engine.heap, act.regs), mad_in)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
-        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o) -> {
+        runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o, link: _) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
           // `None` would be an engine invariant break — treat it as no effect.
           let mad_out = case mad_o {
