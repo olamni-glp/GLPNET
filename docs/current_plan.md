@@ -30,8 +30,11 @@ $env:PYTHONUTF8 = 1
 1. **Roadmap** → `python -m buildkit_cli.roadmap status` (56 closed / 37 open across 10 epics).
 2. **Active feature** → `.specify/feature.json` = `specs/060-wave3-full-gleam-chain`.
 3. **Pipeline** → `python -m buildkit_cli.pipeline.cli status`.
-4. **Marathon** → `python -m buildkit_cli.marathon status --feature wave-3-consolidated-full-gleam-chain`
-   (run `mrun-e300493d5a6d`), or `marathon resume --run mrun-e300493d5a6d`.
+4. **Marathon** → `python -m buildkit_cli.marathon resume --feature wave-3-consolidated-full-gleam-chain`
+   (run `mrun-e300493d5a6d`). Rehearsed 2026-07-27, exits 0 and reports the position from durable rows.
+   Note: `buildkit_cli.marathon` takes **`--feature`**, not `--run` — `--run` is the *codeconv* 030
+   harness's flag (CLAUDE.md § Multi-Stage Task Persistence), a different tool. `status` / `position` /
+   `doctor` take the same `--feature`.
 
 ## Where things stand (2026-07-27)
 
