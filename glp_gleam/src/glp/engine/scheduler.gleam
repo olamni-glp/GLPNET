@@ -333,24 +333,30 @@ pub fn step_link(
             runtime_out,
           )
         }
-        runner.Suspended(heap: h, on: on) -> {
-          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+        runner.Suspended(heap: h, on: on, output: out) -> {
+          let engine =
+            suspend_goal(
+              Engine(..engine, heap: h, output: list.append(engine.output, out)),
+              act,
+              on,
+            )
           let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
           let on_list = on |> set.to_list |> list.sort(int.compare)
           #(engine, StepSuspended(act.goal_id, act.procedure, on_list), runtime)
         }
-        runner.Failed(heap: h) -> {
+        runner.Failed(heap: h, output: out) -> {
           let engine =
             Engine(
               ..engine,
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
             )
           let engine = trace_terminal(engine, act, h, " \u{2192} failed")
           #(engine, StepFailed(act.goal_id, act.procedure), runtime)
         }
-        runner.BudgetExhausted(heap: h) -> #(
-          Engine(..engine, heap: h),
+        runner.BudgetExhausted(heap: h, output: out) -> #(
+          Engine(..engine, heap: h, output: list.append(engine.output, out)),
           StepErrored(runner.Malformed(
             "reduction budget exhausted in goal " <> act.procedure,
           )),
@@ -408,24 +414,30 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
             StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
           )
         }
-        runner.Suspended(heap: h, on: on) -> {
-          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+        runner.Suspended(heap: h, on: on, output: out) -> {
+          let engine =
+            suspend_goal(
+              Engine(..engine, heap: h, output: list.append(engine.output, out)),
+              act,
+              on,
+            )
           let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
           let on_list = on |> set.to_list |> list.sort(int.compare)
           #(engine, StepSuspended(act.goal_id, act.procedure, on_list))
         }
-        runner.Failed(heap: h) -> {
+        runner.Failed(heap: h, output: out) -> {
           let engine =
             Engine(
               ..engine,
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
             )
           let engine = trace_terminal(engine, act, h, " \u{2192} failed")
           #(engine, StepFailed(act.goal_id, act.procedure))
         }
-        runner.BudgetExhausted(heap: h) -> #(
-          Engine(..engine, heap: h),
+        runner.BudgetExhausted(heap: h, output: out) -> #(
+          Engine(..engine, heap: h, output: list.append(engine.output, out)),
           StepErrored(runner.Malformed(
             "reduction budget exhausted in goal " <> act.procedure,
           )),
@@ -498,24 +510,30 @@ pub fn step_mad(
             Error(reason) -> #(engine, StepErrored(runner.Malformed(reason)), mad_in)
           }
         }
-        runner.Suspended(heap: h, on: on) -> {
-          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+        runner.Suspended(heap: h, on: on, output: out) -> {
+          let engine =
+            suspend_goal(
+              Engine(..engine, heap: h, output: list.append(engine.output, out)),
+              act,
+              on,
+            )
           let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
           let on_list = on |> set.to_list |> list.sort(int.compare)
           #(engine, StepSuspended(act.goal_id, act.procedure, on_list), mad_in)
         }
-        runner.Failed(heap: h) -> {
+        runner.Failed(heap: h, output: out) -> {
           let engine =
             Engine(
               ..engine,
               heap: h,
               goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
             )
           let engine = trace_terminal(engine, act, h, " \u{2192} failed")
           #(engine, StepFailed(act.goal_id, act.procedure), mad_in)
         }
-        runner.BudgetExhausted(heap: h) -> #(
-          Engine(..engine, heap: h),
+        runner.BudgetExhausted(heap: h, output: out) -> #(
+          Engine(..engine, heap: h, output: list.append(engine.output, out)),
           StepErrored(runner.Malformed(
             "reduction budget exhausted in goal " <> act.procedure,
           )),

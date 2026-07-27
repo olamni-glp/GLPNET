@@ -91,11 +91,15 @@ pub type ReduceOutcome {
   )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
-  Suspended(heap: Heap, on: Set(Int))
+  /// `output` carries any diagnostic/program lines emitted before suspension (e.g.
+  /// an unknown-guard `[WARN]`), so a warning is not lost on the non-committing path.
+  Suspended(heap: Heap, on: Set(Int), output: List(String))
   /// All clauses were exhausted with nothing to wait on: permanent failure.
-  Failed(heap: Heap)
+  /// `output` carries any diagnostic/program lines emitted before failure (Dart
+  /// prints `[WARN] Unknown guard predicate` during guard eval regardless of commit).
+  Failed(heap: Heap, output: List(String))
   /// The reduction budget was exhausted mid-run (fairness / loop backstop).
-  BudgetExhausted(heap: Heap)
+  BudgetExhausted(heap: Heap, output: List(String))
   /// A structural violation or a not-yet-ported opcode — surfaced, never hidden.
   RunnerError(reason: RunnerFault)
 }
@@ -309,7 +313,7 @@ fn run_loop(
   budget: Int,
 ) -> ReduceOutcome {
   case budget <= 0 {
-    True -> BudgetExhausted(ctx.heap)
+    True -> BudgetExhausted(ctx.heap, ctx.output)
     False ->
       case program.op_at(program, pc) {
         Error(_) ->
@@ -1973,7 +1977,7 @@ fn link_spawn(
           arg_slots: dict.new(),
         ),
       )
-    LinkAbort(_detail) -> Stop(Failed(ctx.heap))
+    LinkAbort(_detail) -> Stop(Failed(ctx.heap, ctx.output))
   }
 }
 
@@ -2003,14 +2007,14 @@ fn mad_spawn(
               arg_slots: dict.new(),
             ),
           )
-        Ok(mad_kernels.MadAbort(_detail)) -> Stop(Failed(ctx.heap))
+        Ok(mad_kernels.MadAbort(_detail)) -> Stop(Failed(ctx.heap, ctx.output))
         Error(_) -> unresolved_or_link(ctx, label, proc_name, arity)
       }
     None ->
       case mad_kernels.mad_is_kernel(proc_name, arity) {
         // A madGLP kernel invoked outside madGLP mode fails non-fatally (Dart: no
         // MadContext → abort), never crashes the standalone engine.
-        True -> Stop(Failed(ctx.heap))
+        True -> Stop(Failed(ctx.heap, ctx.output))
         False -> unresolved_or_link(ctx, label, proc_name, arity)
       }
   }
@@ -2031,7 +2035,7 @@ fn unresolved_or_link(
   arity: Int,
 ) -> Step {
   case link_kernels.is_link_kernel(proc_name, arity) {
-    True -> Stop(Failed(ctx.heap))
+    True -> Stop(Failed(ctx.heap, ctx.output))
     False ->
       Stop(RunnerError(Malformed("spawn: unresolved procedure/kernel " <> label)))
   }
@@ -2375,6 +2379,10 @@ type GuardVerdict {
   GSuccess
   GFailure
   GUnsupported(name: String)
+  /// An unknown guard predicate (Dart `_evaluateGuard` default arm): the clause
+  /// FAILS *and* a `[WARN] Unknown guard predicate: <name>` diagnostic is emitted
+  /// (parity with Dart runner.dart:5284 / the C# REPL), never silently dropped.
+  GUnknown(name: String)
 }
 
 fn guard_generic(
@@ -2410,6 +2418,17 @@ fn guard_generic_builtin(
     False ->
       case eval_guard(predicate, args) {
         GUnsupported(name) -> Stop(RunnerError(Unimplemented("guard " <> name)))
+        // Unknown predicate: emit the `[WARN]` diagnostic (Dart parity) into the
+        // context's output — which survives on the failing path (`clear_clause`
+        // preserves `output`, and `no_more_clauses` carries it into Failed/Suspended)
+        // — then soft-fail the clause as the Dart default arm does.
+        GUnknown(name) -> {
+          let ctx =
+            RunnerContext(..ctx, output: list.append(ctx.output, [
+              "[WARN] Unknown guard predicate: " <> name,
+            ]))
+          soft_fail(program, ctx, pc)
+        }
         verdict -> {
           let succeeded = case verdict {
             GSuccess -> True
@@ -2545,9 +2564,10 @@ fn eval_guard(predicate: String, args: List(Term)) -> GuardVerdict {
     // an UNBOUND duration is already handled upstream (guard_gather adds the reader
     // to the suspension set); a non-number FAILs (Dart's non-number arm).
     "wait" | "wait_until" -> type_test(args, is_number)
-    // Unknown predicate → FAIL (Dart `_evaluateGuard` default `[WARN]` arm).
-    // Also the fall-through for unported runtime-defined guards (049).
-    _ -> GFailure
+    // Unknown predicate → FAIL + a `[WARN]` diagnostic (Dart `_evaluateGuard`
+    // default `[WARN]` arm). Also the fall-through for unported runtime-defined
+    // guards (049): the clause fails, and the caller emits the warning line.
+    _ -> GUnknown(predicate)
   }
 }
 
@@ -3390,8 +3410,8 @@ fn apply_sigma_hat(
 fn no_more_clauses(ctx: RunnerContext) -> ReduceOutcome {
   let on = set.filter(ctx.u, fn(writer) { heap.is_writer(ctx.heap, writer) })
   case set.is_empty(on) {
-    True -> Failed(ctx.heap)
-    False -> Suspended(ctx.heap, on)
+    True -> Failed(ctx.heap, ctx.output)
+    False -> Suspended(ctx.heap, on, ctx.output)
   }
 }
 

@@ -77,7 +77,7 @@ pub fn flip_suspends_on_unbound_reader_test() {
   let outcome = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
   // Suspends on A's writer (deref of A's reader terminates there).
-  let assert runner.Suspended(heap: _, on: on) = outcome
+  let assert runner.Suspended(heap: _, on: on, ..) = outcome
   should.be_true(set.contains(on, a_writer))
 }
 
@@ -202,7 +202,7 @@ pub fn first_bit_suspends_on_unbound_list_test() {
     |> program.set_reg(1, VarRef(b_writer))
   let out = runner.reduce(prog, runner.new_context(h, regs), kappa, 1000)
 
-  let assert runner.Suspended(heap: _, on: on) = out
+  let assert runner.Suspended(heap: _, on: on, ..) = out
   should.be_true(set.contains(on, xs_writer))
 }
 

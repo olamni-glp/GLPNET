@@ -190,6 +190,6 @@ pub fn tentative_head_failed_match_leaves_output_unbound_test() {
     program.new_regs()
     |> program.set_reg(0, c("two"))
     |> program.set_reg(1, VarRef(r_writer))
-  let assert runner.Failed(heap: h2) = reduce(flip_source, "flip/2", regs, h)
+  let assert runner.Failed(heap: h2, ..) = reduce(flip_source, "flip/2", regs, h)
   is_unbound(h2, r_writer) |> should.be_true
 }
