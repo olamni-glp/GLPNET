@@ -27,6 +27,11 @@ pub opaque type BytecodeProgram {
     size: Int,
     labels: Dict(LabelName, Int),
     defined_guards: Dict(String, GuardProcSpec),
+    /// The module RPC import table: a `Distribute` opcode's 1-based `import_index`
+    /// → the target module name (codegen's `add_import` table, inverted; feature
+    /// 059 T078). Empty for programs with no `M # goal(...)` static cross-module
+    /// calls. Resolves `Distribute` at runtime, mirroring Dart `replCtx.imports`.
+    imports: Dict(Int, String),
   )
 }
 
@@ -49,7 +54,22 @@ pub fn from_ops(
       }
       #(dict.insert(by_pc, pc, op), labels, pc + 1)
     })
-  BytecodeProgram(by_pc:, size:, labels:, defined_guards:)
+  BytecodeProgram(by_pc:, size:, labels:, defined_guards:, imports: dict.new())
+}
+
+/// Install the module-RPC import table (`import_index` → module name) surfaced from
+/// codegen (feature 059 T078). Returns the program carrying its imports.
+pub fn with_imports(
+  program: BytecodeProgram,
+  imports: Dict(Int, String),
+) -> BytecodeProgram {
+  BytecodeProgram(..program, imports: imports)
+}
+
+/// Resolve a `Distribute` opcode's 1-based `import_index` to the target module
+/// name, or `Error(Nil)` if the index is not in the import table.
+pub fn import_name(program: BytecodeProgram, index: Int) -> Result(String, Nil) {
+  dict.get(program.imports, index)
 }
 
 /// Number of instructions in the stream.
@@ -98,6 +118,7 @@ pub fn merge(
     list.append(to_ops(other), to_ops(program)),
     dict.merge(other.defined_guards, program.defined_guards),
   )
+  |> with_imports(dict.merge(other.imports, program.imports))
 }
 
 /// Human-readable disassembly, one "PC n: instruction" line per op (Dart

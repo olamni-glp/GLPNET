@@ -42,9 +42,17 @@ module var), route the goal to the target module's activated service loop over a
 module-qualified `M # goal(...)` call **runs to completion instead of faulting Unimplemented**.
 
 Faithful to the delivered link/mad channel machinery: the routing is a GLP-channel send to the
-service loop (the same shape as the delivered `_send`/link kernels), NOT a new language primitive
-(Language Authority §1.14 — no new kernel/guard/directive is introduced; this is runtime execution of
-already-declared module RPC).
+service loop (the same shape as the delivered `_send`/link kernels).
+
+**§1.14 ruling (Gabi, 2026-07-27) — KERNEL ADD APPROVED.** An earlier draft of this note claimed "no
+new kernel/guard/directive is introduced." That was **inaccurate about the mechanism**: the faithful
+Dart-parity port routes through the `_activate/2` **body kernel** (Dart `body_kernels.dart:820-881`
+`activateKernel`) driven by the `serve/2` **system procedure** (Dart `glp_engine.dart:71-82`) — neither
+exists in Gleam yet. Gabi, as Language Authority (§1.14), **expressly approved adding `_activate/2` +
+`serve/2` to Gleam** as a parity port (system-internal, underscore-prefixed, `-mode(system)`; they are
+existing language surface in the Dart reference, not a new invention). Routing model = the faithful
+channel/`serve`/`_activate` dynamic dispatch (NOT the direct-spawn static-link shortcut). This resolves
+the spec-vs-mechanism inconsistency before any runner code is written.
 
 ## Scope boundary — the directory `self.glp` scope chain
 

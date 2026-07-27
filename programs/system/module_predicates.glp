@@ -1,0 +1,23 @@
+%% Module RPC System Predicates (feature 059 T078)
+%%
+%% The module service loop. Port of the Dart embedded `serve/2`
+%% (glp_runtime/lib/engine/glp_engine.dart:71-82). When a module with
+%% `exported procedure` declarations is activated, a GLP channel is created and a
+%% `serve/2` goal is spawned reading that channel stream; each `Goal` a caller routes
+%% onto the channel (via the `Distribute`/`Transmit` opcodes) is dispatched to the
+%% exported procedure by the `_activate/2` body kernel, then `serve` recurses on the
+%% stream tail. An empty / closed stream ends the loop.
+%%
+%% Per typed-glp-manual.md Section 19.4 / 19.7 (dynamic dispatch): "the runtime
+%% routes the goal through a GLP channel to the target module's service loop, which
+%% dispatches it to the exported procedure."
+
+-mode(system).
+
+%% serve(Module, ChannelStream) — Module is the activated module's name (a ground
+%% atom); ChannelStream is the stream of incoming goal terms.
+procedure serve(_?, Stream(_)?).
+serve(Module, [Goal | In]) :- ground(Module?) |
+    '_activate'(Module?, Goal?),
+    serve(Module?, In?).
+serve(_, []) :- otherwise | true.

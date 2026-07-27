@@ -55,6 +55,7 @@ import glp/engine/kernels
 import glp/link/primitives/link_driver.{LinkAbort, LinkEffect}
 import glp/link/primitives/link_kernels
 import glp/link/primitives/link_runtime.{type LinkRuntime}
+import glp/engine/module_runtime.{type ModuleRuntime}
 import glp/mad/mad_kernels.{type MadState}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
@@ -88,6 +89,10 @@ pub type ReduceOutcome {
     /// under the link driver (`ctx.link` was `Some`). The link pump reads the updated
     /// registry/handles from here, exactly as the MadEngine reads `mad`.
     link: Option(LinkRuntime),
+    /// Module-RPC registry after this reduction (T078) — `None` unless the goal ran
+    /// under the module driver (`ctx.module` was `Some`). `step_module` reads the
+    /// updated channel registry from here, exactly as `step_link` reads `link`.
+    module: Option(ModuleRuntime),
   )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
@@ -237,6 +242,12 @@ pub type RunnerContext {
     /// `reduce`; threaded out on `Reduced` like `mad`. `None` for ordinary runs, so a
     /// `_link_*` kernel in a non-link reduction fails non-fatally (the goal fails).
     link: Option(LinkRuntime),
+    /// Module-RPC registry (activated module → channel writer), present only under the
+    /// module dispatch driver (T078). The `Distribute`/`Transmit` opcodes + the
+    /// `_activate/2` kernel read/update it deep inside `reduce`; threaded out on
+    /// `Reduced` like `link`. `None` for ordinary runs, so a module-qualified call
+    /// without the driver fails non-fatally (the goal fails).
+    module: Option(ModuleRuntime),
   )
 }
 
@@ -265,6 +276,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     output: [],
     mad: None,
     link: None,
+    module: None,
   )
 }
 
@@ -280,6 +292,14 @@ pub fn with_mad(ctx: RunnerContext, state: MadState) -> RunnerContext {
 /// updated `LinkRuntime` returns on `Reduced`). Mirror of `with_mad`.
 pub fn with_link(ctx: RunnerContext, runtime: LinkRuntime) -> RunnerContext {
   RunnerContext(..ctx, link: Some(runtime))
+}
+
+/// Inject the module-RPC registry into a reduction context (the T078 `step_module`
+/// scheduler variant sets this before `reduce` so the `Distribute`/`Transmit`
+/// opcodes + the `_activate/2` kernel are reachable and their updated `ModuleRuntime`
+/// returns on `Reduced`). Mirror of `with_link`.
+pub fn with_module(ctx: RunnerContext, runtime: ModuleRuntime) -> RunnerContext {
+  RunnerContext(..ctx, module: Some(runtime))
 }
 
 /// Run one reduction of the goal whose procedure entry PC is `kappa`, over
@@ -348,9 +368,25 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
     opcodes.Proceed ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad, ctx.link))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.mad,
+        ctx.link,
+        ctx.module,
+      ))
     opcodes.Halt ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad, ctx.link))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.mad,
+        ctx.link,
+        ctx.module,
+      ))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -410,6 +446,15 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     // ── GUARD phase: the generic Guard opcode (T024) ────────────────────────
     opcodes.Guard(predicate, arity, negated) ->
       guard_generic(program, ctx, pc, predicate, arity, negated)
+
+    // ── Module RPC (T078): route a module-qualified `M # goal(...)` body call to
+    // the target module's activated `serve/2` loop over its channel stream (Dart
+    // runner.dart:3375-3479). `Distribute` resolves a static import index; `Transmit`
+    // resolves the module name from a body register at runtime.
+    opcodes.Distribute(import_index, functor, arity) ->
+      distribute(program, ctx, import_index, functor, arity)
+    opcodes.Transmit(module_var_index, functor, arity) ->
+      transmit(ctx, module_var_index, functor, arity)
 
     // ── Not yet ported (surfaced, never silently skipped) ───────────────────
     _ -> Stop(RunnerError(Unimplemented(opcodes.mnemonic(op))))
@@ -1932,7 +1977,7 @@ fn spawn(
           )
         // Not a pure kernel → try the effectful seams: the link driver (`_link_*`;
         // T074) or the madGLP `_send` (T050.A2).
-        Error(_) -> effectful_spawn(ctx, label, proc_name, arity, args)
+        Error(_) -> effectful_spawn(program, ctx, label, proc_name, arity, args)
       }
     }
   }
@@ -1943,15 +1988,188 @@ fn spawn(
 /// (`ctx.link` is `Some`); otherwise it falls through to `mad_spawn`, which handles
 /// the madGLP `_send` and the non-fatal "effectful kernel without its driver" case.
 fn effectful_spawn(
+  program: BytecodeProgram,
   ctx: RunnerContext,
   label: LabelName,
   proc_name: String,
   arity: Int,
   args: List(Term),
 ) -> Step {
-  case link_kernels.is_link_kernel(proc_name, arity), ctx.link {
-    True, Some(runtime) -> link_spawn(ctx, runtime, proc_name, arity, args)
-    _, _ -> mad_spawn(ctx, label, proc_name, arity, args)
+  // The module service loop's dispatch kernel (T078): `_activate/2` resolves the
+  // received goal to its exported procedure and spawns it — the module RPC seam,
+  // checked before the link/mad seams.
+  case proc_name == "_activate" && arity == 2 {
+    True -> module_activate(program, ctx, args)
+    False ->
+      case link_kernels.is_link_kernel(proc_name, arity), ctx.link {
+        True, Some(runtime) -> link_spawn(ctx, runtime, proc_name, arity, args)
+        _, _ -> mad_spawn(ctx, label, proc_name, arity, args)
+      }
+  }
+}
+
+// ── Module RPC opcode arms + the `_activate/2` kernel (T078) ──────────────────
+
+/// `Distribute(import_index, functor, arity)` — route a static module-qualified body
+/// call `math_service # goal(...)` to the target module's channel. `None` module
+/// driver → non-fatal goal failure (a module call on the pure `run` path, no
+/// `serve/2` loop); an unresolved import index is a loud `RunnerError`.
+fn distribute(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  import_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.module {
+    None -> Stop(Failed(ctx.heap, ctx.output))
+    Some(runtime) ->
+      case program.import_name(program, import_index) {
+        Error(_) ->
+          Stop(RunnerError(Malformed(
+            "distribute: no import at index " <> int.to_string(import_index),
+          )))
+        Ok(name) -> route_to_module(ctx, runtime, name, functor, arity)
+      }
+  }
+}
+
+/// `Transmit(module_var_index, functor, arity)` — route a dynamic module-qualified
+/// body call `M # goal(...)`, resolving `M` from a body register to a ground atom.
+/// An unresolved / non-atom module var fails NON-FATALLY (the secondary path; Gabi
+/// ruling: dynamic dispatch is not generally needed).
+fn transmit(
+  ctx: RunnerContext,
+  module_var_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.module {
+    None -> Stop(Failed(ctx.heap, ctx.output))
+    Some(runtime) ->
+      case module_name_of(ctx, module_var_index) {
+        Error(_) -> Stop(Failed(ctx.heap, ctx.output))
+        Ok(name) -> route_to_module(ctx, runtime, name, functor, arity)
+      }
+  }
+}
+
+/// Send the module-qualified goal onto the target module's channel stream: build the
+/// goal term over the caller's shared arg cells, bind the current channel writer to
+/// `[goal | freshTail]` (waking the suspended `serve/2` reader), and register the
+/// fresh tail writer as the new channel (Dart `glpChannel.send`,
+/// glp_activation.dart:32-38). LOUD if the module was never activated.
+fn route_to_module(
+  ctx: RunnerContext,
+  runtime: ModuleRuntime,
+  name: String,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case module_runtime.channel(runtime, name) {
+    Error(_) ->
+      Stop(RunnerError(Malformed(
+        "module RPC: module " <> name <> " not activated (no channel)",
+      )))
+    Ok(writer) -> {
+      let args =
+        upto(arity)
+        |> list.map(fn(i) {
+          case dict.get(ctx.arg_slots, i) {
+            Ok(t) -> t
+            Error(_) -> ConstTerm(ConstAtom("$missing"))
+          }
+        })
+      let goal = StructTerm(functor, args)
+      let #(heap, tail_w, tail_r) = heap.allocate_variable(ctx.heap)
+      let cell = StructTerm(".", [goal, VarRef(tail_r)])
+      case heap.bind_writer(heap, writer, cell) {
+        Error(e) -> Stop(RunnerError(StructuralViolation(heap_error_detail(e))))
+        Ok(#(heap, woken)) ->
+          Advance(
+            RunnerContext(
+              ..ctx,
+              heap: heap,
+              woken: list.append(ctx.woken, woken),
+              module: Some(module_runtime.set_channel(runtime, name, tail_w)),
+              arg_slots: dict.new(),
+            ),
+          )
+      }
+    }
+  }
+}
+
+/// The `_activate/2` body kernel (Dart `body_kernels.dart:820-881` `activateKernel`):
+/// dispatch a goal received off a module's channel to its exported procedure.
+/// Resolves the goal's `functor/arity` to an entry PC in the merged program and emits
+/// an ordinary `SpawnReq` over the goal's argument cells — reusing the existing spawn
+/// path (NOT a new dynamic-spawn primitive; Gabi ruling 2026-07-27). Output args are
+/// the shared heap cells, so results flow back to the caller. An unknown exported
+/// procedure fails non-fatally (Dart silently succeeds — we surface a clean fail).
+fn module_activate(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  args: List(Term),
+) -> Step {
+  case args {
+    [_module, goal] ->
+      case resolve_goal_term(ctx, goal) {
+        StructTerm(functor, goal_args) -> {
+          let arity = list.length(goal_args)
+          let label = functor <> "/" <> int.to_string(arity)
+          case program.label_pc(program, label) {
+            Ok(entry_pc) -> {
+              let regs =
+                list.index_fold(goal_args, program.new_regs(), fn(regs, arg, i) {
+                  program.set_reg(regs, i, arg)
+                })
+              Advance(
+                RunnerContext(
+                  ..ctx,
+                  spawn_reqs: list.append(ctx.spawn_reqs, [
+                    SpawnReq(label, entry_pc, regs),
+                  ]),
+                  arg_slots: dict.new(),
+                ),
+              )
+            }
+            Error(_) -> Stop(Failed(ctx.heap, ctx.output))
+          }
+        }
+        _ -> Stop(Failed(ctx.heap, ctx.output))
+      }
+    _ -> Stop(Failed(ctx.heap, ctx.output))
+  }
+}
+
+/// Deref the top-level of a goal term through the heap (its args stay as-is — they are
+/// the shared writer/reader cells the callee binds). A non-var / unbound term is
+/// returned unchanged.
+fn resolve_goal_term(ctx: RunnerContext, t: Term) -> Term {
+  case t {
+    VarRef(addr) ->
+      case heap.deref(ctx.heap, addr) {
+        Ok(#(_, heap.Bound(term))) -> term
+        _ -> t
+      }
+    _ -> t
+  }
+}
+
+/// Resolve a `Transmit` module-variable register to its ground module-name atom.
+fn module_name_of(ctx: RunnerContext, index: Int) -> Result(String, Nil) {
+  let raw = case dict.get(ctx.arg_slots, index) {
+    Ok(t) -> t
+    Error(_) ->
+      case dict.get(ctx.clause_vars, index) {
+        Ok(cv) -> resolve_cvar(ctx, cv)
+        Error(_) -> ConstTerm(ConstAtom("$missing"))
+      }
+  }
+  case resolve_goal_term(ctx, raw) {
+    ConstTerm(ConstAtom(name)) -> Ok(name)
+    _ -> Error(Nil)
   }
 }
 

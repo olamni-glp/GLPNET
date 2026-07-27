@@ -75,6 +75,11 @@ procedure _close_mutual_reference(_?).
 % madGLP network primitives
 procedure _send(_?, _?, _?).
 
+% Module RPC dispatch kernel (feature 059 T078; §1.14 kernel-add approved
+% 2026-07-27) — the serve/2 loop dispatches a received goal to its exported
+% procedure. Implemented by the runtime (no clauses), like _send.
+procedure _activate(_?, _?).
+
 % Output (system predicate)
 procedure _output(_?).
 

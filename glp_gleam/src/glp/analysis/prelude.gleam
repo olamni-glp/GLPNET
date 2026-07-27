@@ -61,6 +61,9 @@ pub fn is_builtin_procedure(name_arity: String) -> Bool {
     "_close_mutual_reference/1" -> True
     // madGLP network primitives
     "_send/3" -> True
+    // Module RPC dispatch kernel (feature 059 T078; §1.14 kernel-add approved
+    // 2026-07-27) — the `serve/2` loop's dispatch to an exported procedure.
+    "_activate/2" -> True
     // Output (system predicate)
     "_output/1" -> True
     // Link-layer host kernels (feature 025; rulings OQ-A4/C1/C2)

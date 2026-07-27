@@ -127,7 +127,15 @@ pub fn generate(module: ast.SourceModule) -> BytecodeProgram {
     list.fold(module.procedures, ctx0, fn(ctx, procedure) {
       gen_procedure(ctx, procedure)
     })
+  // Surface the module-RPC import table (feature 059 T078): invert the codegen
+  // `name → 1-based index` map into the runtime `index → name` table a `Distribute`
+  // opcode resolves against.
+  let imports =
+    dict.fold(ctx.imports, dict.new(), fn(acc, name, index) {
+      dict.insert(acc, index, name)
+    })
   program.from_ops(list.reverse(ctx.rev_ops), defined_guards)
+  |> program.with_imports(imports)
 }
 
 // ============================================================================
