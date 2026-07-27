@@ -35,6 +35,7 @@ import glp/link/primitives/link_handle
 import glp/link/primitives/link_pump
 import glp/link/primitives/link_registry.{Established, Reused}
 import glp/link/primitives/link_runtime.{type LinkState}
+import glp/link/primitives/link_teardown
 import glp/link/primitives/link_terms
 import glp/link/primitives/link_wire
 import glp/link/primitives/transport_registry
@@ -64,6 +65,7 @@ pub fn link_is_kernel(name: String, arity: Int) -> Bool {
     "_link_accept", 5 -> True
     "_link_send", 3 -> True
     "_link_monitor", 2 -> True
+    "_link_close", 2 -> True
     _, _ -> False
   }
 }
@@ -115,6 +117,8 @@ pub fn link_dispatch(
       Ok(link_send_kernel(heap, state, msg, link_id, to_peer))
     "_link_monitor", 2, [link_id, faults_arg] ->
       Ok(link_monitor_kernel(heap, state, link_id, faults_arg))
+    "_link_close", 2, [link_id, reason_arg] ->
+      Ok(link_close_kernel(heap, state, link_id, reason_arg))
     _, _, _ -> Error(Nil)
   }
 }
@@ -619,6 +623,55 @@ fn try_link_monitor(
           Ok(LinkEffect(heap, state, woken))
         }
       }
+  }
+}
+
+// ── K7 `'_link_close'/2` (LinkId?, Reason?) — abrupt teardown by identity ──────
+//
+// The host body of `link_close/1` (reason `abrupt`) and `link_close/2` (user reason)
+// (self.glp:588-593) — AND of `link_drain/3`'s `[]` clause, which closes gracefully
+// with reason `eos` (FR-024): in the Gleam mapping the graceful stream-end arrives
+// through this same kernel, so both close paths converge on `link_teardown.teardown`
+// structurally. Closing an unestablished link is a caller bug surfaced as a non-fatal
+// abort — close observes an existing link, it never creates one, and a repeat close
+// after GC finds nothing ("robustness is a workaround").
+
+fn link_close_kernel(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  reason_arg: Term,
+) -> LinkOutcome {
+  case try_link_close(heap, state, id_arg, reason_arg) {
+    Ok(outcome) -> outcome
+    Error(detail) -> LinkAbort(detail)
+  }
+}
+
+fn try_link_close(
+  heap: Heap,
+  state: LinkState,
+  id_arg: Term,
+  reason_arg: Term,
+) -> Result(LinkOutcome, String) {
+  use #(heap, id_term) <- result.try(resolve(heap, id_arg, "LinkId"))
+  use id <- result.try(link_terms.parse_link_id(id_term) |> term_err("LinkId"))
+  use #(heap, reason_term) <- result.try(resolve(heap, reason_arg, "Reason"))
+  use reason <- result.try(
+    link_terms.parse_reason(reason_term) |> term_err("Reason"),
+  )
+  case link_registry.try_get(state.links, id) {
+    Error(_) ->
+      Error(
+        "_link_close: close of unestablished link "
+        <> string.inspect(id)
+        <> " — already closed, or never set up",
+      )
+    Ok(handle) -> {
+      let #(heap, links, woken) =
+        link_teardown.teardown(heap, state.links, handle, reason)
+      Ok(LinkEffect(heap, link_runtime.with_links(state, links), woken))
+    }
   }
 }
 

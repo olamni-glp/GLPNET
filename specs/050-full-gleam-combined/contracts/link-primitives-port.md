@@ -153,8 +153,24 @@ that builds it.
 - **C6 `link_recv` + pump:** `link_pump` ingress; extend `In`, wake suspended `link_recv`.
   **Dedup/reorder/reliability stays T052** — base routes through the ingress but does not build the
   sublayer.
-- **C7 monitor + faults:** `link_faults` + K6 `_link_monitor`; fault vocab (§5 deviation).
-- **C8 close:** `link_teardown` + K7 `_link_close`; terminal `closed(_,_)`, GC.
+- **C7 monitor + faults:** `link_faults` + K6 `_link_monitor`; fault vocab (§5 deviation). ✅ SHIPPED
+  2026-07-27 (see D-1's as-shipped record).
+- **C8 close:** `link_teardown` + K7 `_link_close`; terminal `closed(_,_)`, GC. ✅ SHIPPED 2026-07-27:
+  `link_teardown.teardown` = terminal `closed(LinkId, Reason)` fan-out (on the cursors
+  `deliver_fault` ADVANCED — ending pre-delivery cursors would double-bind) → `end_all` →
+  `endpoint.close` → registry-entry removal (the base layer's whole GC, FR-024). Repeat close →
+  non-fatal abort. The `In` data path is never bound by teardown (FR-044). **Both close paths
+  converge on K7**: the graceful path is `link_drain/3`'s `[]` clause dispatching
+  `'_link_close'(LinkId?, eos)` — proven end-to-end over the shipped self.glp under `step_link`.
+  Sync-seam corollaries of D-3 (not semantic changes): no flush-then-close chain (sends are
+  synchronous — nothing queued to flush) and no deferred-connect gate. **Residual, recorded in
+  `link_teardown.gleam`:** the pump process stays parked in blocking `recv` until the peer FINs —
+  interrupting it needs `process.kill` (extends the ratified no-OTP subset) or OTP selectors, a
+  surface call NOT made silently; late items no-op on the registry miss. Escalate if the
+  peer-bounded drain is unacceptable.
+
+**With C8, all 7 ratified kernels are live in the Gleam engine** (K1 setup, K2 send, K3 request,
+K4 listen, K5 accept, K6 monitor, K7 close) — the C0–C8 ladder is complete.
 
 ---
 
