@@ -69,10 +69,10 @@ engineer ruling (FR-012).
 |---|---|---|
 | I. Spec-First — code never source of truth | **PASS** | Feature composes adjudicated rulings G1–G5/G3-A + gap inventory; no code-first. Verify-before-close (FR-004) is spec-first made mechanical. |
 | II. Bug-Protocol / No-Workarounds | **PASS** | Edge cases mandate halt+escalate on divergence, never inline patch (spec Edge Cases; FR-011). |
-| III. SRSW inviolable (`skipSRSW` scan) | **PASS** | Zero `skipSRSW` tokens in spec/plan; Gleam engine enforces SRSW (writer-MGU). |
+| III. SRSW inviolable (SRSW-escape-token scan) | **PASS** | Zero SRSW-escape tokens in spec/plan; Gleam engine enforces SRSW (writer-MGU). |
 | IV-a. Language Authority | **PASS** | No language extension proposed. S4 mint/policy kernel and store-kernel scope remain owner-gated/escalated (FR-008/FR-010); prior ZMQ scope change was owner-approved (DISCIPLINE 1.14). |
 | IV-b. Preserve Working Internals | **PASS** | Wave-1 freeze register *protects* delivered internals; changes require an unfreeze ruling (FR-002). |
-| V. Claude-Only LM / No External API (`OPENAI_API_KEY`/`litellm`/`openai` scan) | **PASS** | Zero such tokens in artifacts. Any codex-CLI review degrades to Claude; no OpenAI on any LM path. |
+| V. Claude-Only LM / No External API (external-LM-key/provider-token scan) | **PASS** | Zero external-LM API-key or non-Claude-provider tokens in artifacts. Any codex-CLI review degrades to Claude; no external-provider LM on any path. |
 | VI-a. Additive-only, idempotent, single-head migrations | **PASS** (N/A) | Feature adds no DB migration; marathon/roadmap rows are additive by construction. |
 | VI-b. Single OS-lock-guarded PGLite cluster | **PASS** | No new working-data cluster; marathon per-run store is the permitted out-of-repo exemption. |
 | VII. Test-gated, commit-scoped shipping | **PASS** | Grow-only pinned suites (FR-003); ships feature→develop→release/*→main via GitFlow; main only via `buildkit release` (never hand-merged). |
