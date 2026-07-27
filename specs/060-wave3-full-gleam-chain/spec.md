@@ -37,7 +37,8 @@ The consolidated roadmap items, in dependency order:
 - Q: Is a shared grammar artifact (the ANTLR4 spike) still in scope, or is per-runtime parsing the accepted answer? → A: Per-runtime parsing accepted; the ANTLR4 shared-grammar artifact is out of scope for wave 3 (059 G5 ruling stands). Cross-runtime syntax agreement is guaranteed by conformance, not by a shared generator.
 - Q: Which transports must be proven for wave-3 acceptance? → A: Loopback and TCP only. QUIC/WebSocket and ZMQ stay behind the existing transport seam and are out of scope for acceptance.
 - Q: Is running on embedded AtomVM a wave-3 acceptance gate? → A: No — the full BEAM is sufficient for acceptance. AtomVM is deferred, but no BEAM-only construct may be introduced that would foreclose it.
-- Q: How are the 44 corpus cases with missing goldens (059 T051 escalation) treated? → A: Declared out-of-scope with the recorded reason "golden missing — 059 T051 drift", and regenerating them is in-scope work for this wave; they may not be counted as passes.
+- Q: How are the 44 corpus cases with missing goldens (059 T051 escalation) treated? → A: Declared out-of-scope with the recorded reason "golden missing — 059 T051 drift", and regenerating them is in-scope work for this wave; they may not be counted as passes. **[Superseded same-day — see next entry.]**
+- Q: (Bug Protocol ruling, same day) The baseline investigation proved all 44 goldens exist, git-tracked and LF-clean; the runner's `corpus.list` parse corrupted block ids with `\r` on a CRLF checkout. How is this resolved? → A: Owner confirmed root cause and directed the durable fix: make the harness CR-tolerant **and** pin `test/parity` inputs/goldens to LF via `.gitattributes`. Nothing is regenerated; 059 T051 is reclassified from evidence drift to a harness defect. FR-018a/FR-018b and SC-010 are revised accordingly.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -168,8 +169,8 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 - **FR-016**: The shared conformance corpus MUST be runnable against the Gleam runtime by a single command.
 - **FR-017**: The corpus runner MUST emit a per-case verdict of pass, fail, or explicitly-declared out-of-scope, with no case silently omitted.
 - **FR-018**: Any case declared out of scope MUST carry a recorded reason.
-- **FR-018a**: The 44 corpus cases whose reference goldens are missing (recorded as the feature-059 T051 evidence-reproducibility drift) MUST be declared out-of-scope with the reason "golden missing — 059 T051 drift" until their goldens are regenerated. They MUST NOT be counted as passes.
-- **FR-018b**: Regenerating the missing reference goldens and returning those cases to in-scope MUST be tracked as work within this wave.
+- **FR-018a** *(revised per Bug Protocol ruling 2026-07-27)*: The corpus runner MUST parse its input lists (`corpus.list`, `expected.list`) tolerantly of CR line endings, so a CRLF checkout can never corrupt case identities. The 44 cases recorded in feature-059 T051 as "missing goldens" were a symptom of this defect — their goldens exist and MUST be compared, not regenerated.
+- **FR-018b** *(revised)*: The parity harness inputs and goldens MUST be pinned to LF line endings in version control, so the byte-compared evidence is identical on every host regardless of checkout configuration.
 - **FR-019**: The corpus runner MUST report aggregate pass / fail / out-of-scope counts, and repeated runs over unchanged code MUST produce identical counts.
 
 **Link layer**
@@ -217,7 +218,7 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 - **SC-007**: When a peer disappears, the surviving instance reports the loss within 30 seconds; no scenario leaves an instance blocked indefinitely.
 - **SC-008**: Repeated runs of the full conformance corpus over unchanged code produce identical verdicts — no flaky cases.
 - **SC-009**: The existing reference-runtime test suites remain fully green throughout the wave; this feature adds capability without regressing what already works.
-- **SC-010**: The count of cases declared out-of-scope for "golden missing" falls from 44 to 0 by the end of the wave, or each remaining case carries an individually recorded reason for staying out.
+- **SC-010** *(revised per Bug Protocol ruling 2026-07-27)*: The corpus runner reports 0 "missing golden" cases on a CRLF checkout — the 44 false MISSINGs of 059 T051 are eliminated by the harness fix, with every golden compared rather than regenerated.
 
 ## Assumptions
 
