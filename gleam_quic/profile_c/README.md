@@ -35,6 +35,28 @@ compiled", NOT "QUIC works". Three findings, 2026-07-27:
    CMake cache pins absolute tool paths, so it cannot be reused — **delete `c_build_win/` and
    re-configure** against the tools that exist.
 
+## Windows prerequisites (the list nobody had written down)
+
+Discovered the hard way 2026-07-27, each one a distinct build stop:
+
+| Tool | Why | Where on OLAMNIT |
+|---|---|---|
+| MSVC (BuildTools) | compiles MsQuic + the NIF | `C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools` — enter via `VsDevCmd.bat -arch=amd64` |
+| ninja | the CMake generator | bundled: `...\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja` |
+| CMake | configure/build driver | `C:\Program Files\CMake` |
+| Erlang OTP | `erl_nif.h` (set `Erlang_OTP_ROOT_DIR`) | `C:\Program Files\Erlang OTP` |
+| rebar3 | the Erlang side | `C:\Users\ariel\bin` — **off PATH** |
+| **Perl** (NATIVE) | OpenSSL's `Configure` **is** a Perl script | **Strawberry Perl** `C:\Strawberry\perl\bin` (`winget install StrawberryPerl.StrawberryPerl`). 🔴 Git-for-Windows' cygwin perl is REJECTED outright: *"This perl implementation doesn't produce Windows like paths… This Perl version: …-cygwin-thread-multi"* |
+| **NASM** | OpenSSL x64 assembly | `%LOCALAPPDATA%\bin\NASM` (`winget install NASM.NASM`) |
+| vswhere | MsQuic probes for it | `C:\Program Files (x86)\Microsoft Visual Studio\Installer` |
+
+🔴 **PATH ORDER MATTERS.** Git's `usr\bin` must go at the **END** — it ships a cygwin `link.exe`
+that otherwise shadows MSVC's linker and breaks the build in a confusing way. Verify with
+`where link` (MSVC must be first).
+
+SChannel is **not** an escape from OpenSSL: quicer's own C sources `#include <openssl/...>` in five
+files, so libcrypto is required whatever `QUIC_TLS` says.
+
 ## To complete Profile C (the corrected recipe)
 
 Prereqs are all present; the work is driving the C build **manually**, because `rebar3 compile`
