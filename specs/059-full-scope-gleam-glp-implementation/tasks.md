@@ -104,9 +104,9 @@ SPDX-License-Identifier: MIT
 - [ ] T071 [P] [US2] `close-guard-kernel-wait-guards` (close, M, b2-c2-006) — acceptance per FINAL plan
 - [x] T072 [P] [US2] `close-guards-guard-defined` (close, M, b3-c1-027) — CLOSED 2026-07-27: guard-defined (guard_defs.gleam three-valued Guard-opcode; test_defined_guards.glp R=ok/R=not_channel agree Dart/C#/Gleam) + guard-purity (compile-time enforced; test_time_guard.glp negative agrees) both DELIVERED, clean; evidence phase3-close/close-guards-guard-defined.md
 - [ ] T073 [P] [US2] `close-langsurface-channel-convention` (close, M, b3-c1-028) — acceptance per FINAL plan
-- [ ] T074 [P] [US4] `close-link-inbound-pump` (close, L, b3-c1-033) — acceptance per FINAL plan
+- [x] T074 [P] [US4] `close-link-inbound-pump` (close, L, b3-c1-033) — CLOSED 2026-07-27: link_driver+link_pump (egress-as-goal, no heap onBind; step_link mirrors step_mad, pure run untouched); 6 link programs round-trip 2-proc real-TCP ≡ Dart oracle (harness 7/7 PASS), gleam 544/0; ConstString renderer-parity gap flagged for follow-up; evidence phase3-close/close-link-inbound-pump.md
 - [ ] T075 [P] [US4] `close-link-layer-fault-decoration` (close, S, b2-c2-009) — acceptance per FINAL plan
-- [ ] T076 [P] [US4] `close-link-layer-glp-primitives` (close, L, b2-c2-008) — acceptance per FINAL plan
+- [x] T076 [P] [US4] `close-link-layer-glp-primitives` (close, L, b2-c2-008) — CLOSED 2026-07-27: 8-module primitives layer (link_terms/transport_registry/handle/registry/runtime/egress/faults/kernels) faithful Dart port, +36 tests; shares acceptance with T074 (6 link programs round-trip, gleam 544/0); evidence phase3-close/close-link-inbound-pump.md
 - [ ] T077 [P] [US4] `close-link-layer-sequence-dedup` (close, M, b2-c2-010) — acceptance per FINAL plan
 - [ ] T078 [P] [US2] `close-module-system-runtime-rpc` (close, M, b2-c2-007) — acceptance per FINAL plan
 - [ ] T079 [P] [US3] `close-multiagent-multiagent-boot-loader` (close, L, b3-c2-032) — acceptance per FINAL plan
