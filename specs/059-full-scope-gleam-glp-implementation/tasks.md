@@ -61,7 +61,7 @@ SPDX-License-Identifier: MIT
 - [x] T033 [P] [US2] `rule-open-items-merge-candidates` (rule-request, S, b2-c2-024) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [x] T034 [P] [US2] `rule-open-items-unswept-areas` (rule-request, S, b2-c2-025) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [x] T035 [P] [US2] `rule-process-engine-instances-scaling-research` (rule-request, S, b3-c2-023) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
-- [ ] T036 [P] [US4] `rule-quic-sideprocess-relay` (rule-request, S, b1-c2-015) **[BLOCKED until ruled]** — acceptance per FINAL plan
+- [x] T036 [P] [US4] `rule-quic-sideprocess-relay` (rule-request, S, b1-c2-015) **[RULED 2026-07-27 — Disposition 2: minimal relay smoke test required; enforced by T098 `close-quic-sideprocess-relay-smoketest`; escalation-register.md]** — acceptance per FINAL plan
 - [x] T037 [P] [US4] `rule-quicws-mesh-full-mesh-native-quic` (rule-request, S, b3-c2-025) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [x] T038 [P] [US4] `rule-transports-zmq-comm-base` (rule-request, S, b3-c2-022) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [ ] T039 [P] [US2] `verify-acceptance-acceptance-sweep-and-polish` (verify, S, b3-c1-017) — acceptance per FINAL plan
@@ -114,6 +114,7 @@ SPDX-License-Identifier: MIT
 - [ ] T081 [P] [US2] `close-platform-atomvm-compatibility-by-construction` (close, S, b3-c1-043) — acceptance per FINAL plan
 - [ ] T082 [P] [US2] `close-process-baseline-program-dossier` (close, S, b3-c2-044) — acceptance per FINAL plan
 - [ ] T083 [P] [US2] `close-proofs-proof-dist-deref-convergence` (close, L, b3-c2-045) — acceptance per FINAL plan
+- [ ] T098 [US4] `close-quic-sideprocess-relay-smoketest` (close, S, ruling-2026-07-27) — RULING-ENFORCED (Disposition 2): minimal in-corpus relay smoke test (long-line reassembly + stdio byte-identity to the C# stack) exercising `gleam_quic/src/glpq_ffi.erl`; **gates T084/T085/T086 + all Wave-4 QUIC dependents** (escalation-register.md); env-fragile → classify env-vs-absence, never silent-waive
 - [ ] T084 [P] [US4] `close-quic-client-inprocess-tests` (close, M, b2-c2-012) — acceptance per FINAL plan
 - [ ] T085 [P] [US4] `close-quic-transport-leaf` (close, L, b2-c2-011) — acceptance per FINAL plan
 - [ ] T086 [P] [US4] `close-quicws-link-completion-live-repl-bridge` (close, L, b3-c2-034) — acceptance per FINAL plan
@@ -148,7 +149,7 @@ SPDX-License-Identifier: MIT
 
 - **Wave order is strict** (FR-001): Wave 1 (freeze/guard) -> Wave 2 (verify/rule) -> Wave 3 (close) -> Wave 4 (build) -> Wave 5 (accept). A later wave never starts before its predecessor's gate.
 - **verify -> close activation**: a Wave-2 `verify-*` WP emitting ABSENT activates its paired Wave-3 `close-*` WP (data-model.md).
-- **Open-escalation block**: `rule-quic-sideprocess-relay` (OPEN) blocks the Wave-4 QUIC-dependent build until ruled — never worked around (FR-011).
+- **QUIC-relay gate**: `rule-quic-sideprocess-relay` RULED 2026-07-27 (Disposition 2). The QUIC OS-port relay may not be depended on until T098 `close-quic-sideprocess-relay-smoketest` passes; that WP gates the Wave-3 QUIC closes (T084–T086) and all Wave-4 QUIC dependents (escalation-register.md; FR-011).
 - **Within a wave**: `[P]`-tagged WPs are parallel-safe (independent files / distinct builders in the 3rtask split).
 
 ## Implementation Strategy (MVP-first)

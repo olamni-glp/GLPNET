@@ -69,5 +69,13 @@ The three run-hygiene proposals (`open-items-cycle2-residual`, `open-items-merge
 
 ## Still-open (not gated on /bk-specify, carried forward)
 
-- `rule-request-link-quic-relay` (wave-2 WP): drift-control disposition for the untested Profile-A QUIC relay — freeze-by-file-pin vs minimal smoke test. Decision pending; carried inside the plan, due before any wave-4 WP depends on the relay.
+- `rule-request-link-quic-relay` (wave-2 WP): **RESOLVED 2026-07-27 — Disposition 2 (minimal in-corpus relay smoke test required)**; see the QUIC-relay ruling below + `phase2-plan/escalation-register.md`.
 - `close-embed-embeddability-service-box` scope call: store_put/store_get kernels vs host-owned log — escalated to Gabi at that WP, per plan.
+
+---
+
+## QUIC side-process relay (2026-07-27) — `rule-quic-sideprocess-relay`: Disposition 2 (smoke test required)
+
+**Date**: 2026-07-27 · **Ruled by**: Gabi (engineer/owner).
+
+**Ruling**: The OPEN escalation `rule-quic-sideprocess-relay` is resolved by **Disposition 2**: the delivered-but-untested Profile-A QUIC OS-port line relay (`gleam_quic/src/glpq_ffi.erl`) requires a **minimal in-corpus relay smoke test** — long-line reassembly + stdio byte-identity to the C# stack — before any Wave-4 WP may depend on it. Enforced by the new WP `close-quic-sideprocess-relay-smoketest` (Wave-3 close; gates the Wave-4 QUIC build). Environment-fragility acknowledged: where the smoke test cannot run it is classified **environment** (per the Profile-C QUIC discipline), recorded, and the dependency stays blocked — never silently waived. Full entry: `phase2-plan/escalation-register.md`.
