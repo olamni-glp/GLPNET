@@ -162,7 +162,7 @@ fn execute_load(
       False,
     )
     Ok(source) ->
-      case engine.load(session.engine, source) {
+      case engine.load(session.engine, path, source) {
         Ok(engine) -> #(
           Session(..session, engine: engine),
           ["✓ Loaded: " <> path],

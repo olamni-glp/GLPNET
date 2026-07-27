@@ -81,6 +81,12 @@ pub opaque type Engine {
     /// here — never a compiled-in registry — keeps the composition root the ONE
     /// place an instance's capabilities are assembled.
     transports: List(Transport),
+    /// Loaded user programs keyed by load name, in first-load order (wave-3
+    /// T012, FR-015 — Dart `_loadedPrograms[name] = program`: a LinkedHashMap
+    /// overwrite REPLACES in place, preserving the original position). The
+    /// runnable `program` is always rebuilt from this registry, so a re-load's
+    /// stale definitions are unreachable by construction.
+    loaded: List(#(String, BytecodeProgram)),
   )
 }
 
@@ -127,6 +133,7 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
         warnings: [],
         session: None,
         transports: [],
+        loaded: [],
       )
     Error(staged) ->
       panic as {
@@ -136,12 +143,14 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
   }
 }
 
-/// Run the full load pipeline over `source` and, on success, ACCUMULATE it onto the
-/// engine's current runnable program (Dart `GlpEngine.loadSource` stores each file in
-/// `_loadedPrograms[name]` and `combinedProgram` concatenates them all). Merging into
-/// `engine.program` (prelude + any prior loads) rather than the bare prelude means a
-/// second `load` no longer discards the first — so a multi-file Dart REPL session
-/// (Section-A blocks that co-load several files) reproduces on the Gleam instance.
+/// Run the full load pipeline over `source` and, on success, store it in the
+/// loaded-programs registry under `name` (Dart `GlpEngine.loadSource(name, source)`:
+/// `_loadedPrograms[name] = program`) and rebuild the runnable program. Distinct
+/// names ACCUMULATE in first-load order — a multi-file Dart REPL session (Section-A
+/// blocks that co-load several files) reproduces on the Gleam instance. Re-loading
+/// an EXISTING name REPLACES that entry in place (FR-015, wave-3 T012): the
+/// combined program is rebuilt from the registry, so the replaced file's stale
+/// definitions are unreachable — exactly Dart's LinkedHashMap overwrite.
 ///
 /// Op/label order is `[prelude, file1, …, fileN]` and `from_ops` is first-occurrence-
 /// wins, matching Dart `combinedProgram`'s insertion order (a predicate defined in an
@@ -150,15 +159,49 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
 /// against the prelude (Dart checks each `loadSource` against its self.glp ancestor
 /// scope, not against other loaded files), so self-contained corpus files load cleanly.
 /// A staged rejection propagates unchanged; the engine is left untouched on failure.
-pub fn load(engine: Engine, source: String) -> Result(Engine, StagedError) {
+pub fn load(
+  engine: Engine,
+  name: String,
+  source: String,
+) -> Result(Engine, StagedError) {
   use outcome <- result.try(loader.load(source, engine.prelude_source))
+  let loaded = upsert(engine.loaded, name, outcome.program)
   Ok(
     Engine(
       ..engine,
-      program: program.merge(outcome.program, engine.program),
+      loaded: loaded,
+      program: rebuild_program(engine.prelude_program, loaded),
       warnings: outcome.warnings,
     ),
   )
+}
+
+/// Replace `name`'s entry in place (preserving its position — the Dart
+/// LinkedHashMap overwrite), or append a first-time load.
+fn upsert(
+  loaded: List(#(String, BytecodeProgram)),
+  name: String,
+  prog: BytecodeProgram,
+) -> List(#(String, BytecodeProgram)) {
+  case list.any(loaded, fn(p) { p.0 == name }) {
+    True ->
+      list.map(loaded, fn(p) {
+        case p.0 == name {
+          True -> #(name, prog)
+          False -> p
+        }
+      })
+    False -> list.append(loaded, [#(name, prog)])
+  }
+}
+
+/// The runnable program, rebuilt from the registry: `[prelude, file1, …, fileN]`
+/// in first-load order (Dart `combinedProgram` folds `_loadedPrograms.values`).
+fn rebuild_program(
+  prelude: BytecodeProgram,
+  loaded: List(#(String, BytecodeProgram)),
+) -> BytecodeProgram {
+  list.fold(loaded, prelude, fn(acc, pair) { program.merge(pair.1, acc) })
 }
 
 /// The current runnable program (prelude alone, or prelude + last loaded module).
