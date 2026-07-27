@@ -27,6 +27,13 @@ pub opaque type BytecodeProgram {
     size: Int,
     labels: Dict(LabelName, Int),
     defined_guards: Dict(String, GuardProcSpec),
+    /// Import table: 1-based import index → static module name (wave-3 module
+    /// dispatch). Codegen assigns indexes for `Module # goal` remotes (Dart
+    /// `ImportTable.addImport`); the runner's `Distribute` case resolves them
+    /// back to the channel name here (Dart resolves via the per-goal
+    /// `ReplModuleContext.imports` instead — the Gleam runner is pure, so the
+    /// table rides on the program). Empty for programs without remotes.
+    imports: Dict(Int, String),
   )
 }
 
@@ -49,7 +56,22 @@ pub fn from_ops(
       }
       #(dict.insert(by_pc, pc, op), labels, pc + 1)
     })
-  BytecodeProgram(by_pc:, size:, labels:, defined_guards:)
+  BytecodeProgram(by_pc:, size:, labels:, defined_guards:, imports: dict.new())
+}
+
+/// Attach the codegen import table (index → static module name). Codegen calls
+/// this once per compiled module; `from_ops` starts empty.
+pub fn with_imports(
+  program: BytecodeProgram,
+  imports: Dict(Int, String),
+) -> BytecodeProgram {
+  BytecodeProgram(..program, imports: imports)
+}
+
+/// The static module name behind an import index (the runner's `Distribute`
+/// resolution — Dart `replCtx.imports[op.importIndex]`).
+pub fn import_name(program: BytecodeProgram, index: Int) -> Result(String, Nil) {
+  dict.get(program.imports, index)
 }
 
 /// Number of instructions in the stream.
@@ -98,6 +120,9 @@ pub fn merge(
     list.append(to_ops(other), to_ops(program)),
     dict.merge(other.defined_guards, program.defined_guards),
   )
+  // Import tables union, `program`'s entries winning (same rule as the guard
+  // table). In practice the prelude/serve side carries no imports.
+  |> with_imports(dict.merge(other.imports, program.imports))
 }
 
 /// Human-readable disassembly, one "PC n: instruction" line per op (Dart

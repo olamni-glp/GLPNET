@@ -8,7 +8,10 @@
 
 import gleeunit/should
 import glp/bytecode/program
+import glp/codec/result_envelope
+import glp/codec/term_codec
 import glp/compiler/loader
+import glp/engine
 import glp/engine/kernels
 import glp/engine/scheduler
 import glp/runtime/heap
@@ -141,6 +144,73 @@ other(x).",
   status |> should.equal(scheduler.Success)
   let assert Ok(#(_, heap.Unbound(_))) =
     heap.deref(scheduler.heap(engine), out_writer)
+}
+
+// ── Section L oracle: the full dispatch chain through the engine facade ──────
+// Verbatim sources from programs/tests/dynamic_dispatch/{math_service,
+// dispatch_client}.glp — the REPL suite's Section L cases (L1–L3). Loading
+// math_service (it has exports) auto-activates it; dispatch_client's
+// `math_service # double(X?, Y)` compiles to Distribute, routed over the GLP
+// channel to the serve/2 loop, which `_activate`s the goal inside the module's
+// bytecode. Expected outcomes are Section L's: X = 10 / 12 / 17.
+
+const math_service_source = "-module(math_service).
+
+exported procedure double(Integer?, Integer).
+double(X, Y?) :- Y := X? * 2.
+
+exported procedure triple(Integer?, Integer).
+triple(X, Y?) :- Y := X? * 3.
+
+exported procedure add_ten(Integer?, Integer).
+add_ten(X, Y?) :- Y := X? + 10.
+"
+
+const dispatch_client_source = "-module(dispatch_client).
+
+imported procedure math_service#double(Integer?, Integer).
+imported procedure math_service#triple(Integer?, Integer).
+imported procedure math_service#add_ten(Integer?, Integer).
+
+exported procedure test_double(Integer?, Integer).
+test_double(X, Y?) :- math_service # double(X?, Y).
+
+exported procedure test_triple(Integer?, Integer).
+test_triple(X, Y?) :- math_service # triple(X?, Y).
+
+exported procedure test_add_ten(Integer?, Integer).
+test_add_ten(X, Y?) :- math_service # add_ten(X?, Y).
+"
+
+fn dispatch_engine() -> engine.Engine {
+  let e = engine.new()
+  let assert Ok(e) = engine.load(e, "math_service", math_service_source)
+  let assert Ok(e) = engine.load(e, "dispatch_client", dispatch_client_source)
+  e
+}
+
+// L1: test_double(5, X) = 10.
+pub fn section_l1_dispatch_double_test() {
+  let #(_e, env) = engine.run(dispatch_engine(), "test_double(5, X)")
+  env.status |> should.equal(result_envelope.Success)
+  env.resolved_bindings
+  |> should.equal([#("X", term_codec.ConstTerm(term_codec.ConstInt(10)))])
+}
+
+// L2: test_triple(4, X) = 12.
+pub fn section_l2_dispatch_triple_test() {
+  let #(_e, env) = engine.run(dispatch_engine(), "test_triple(4, X)")
+  env.status |> should.equal(result_envelope.Success)
+  env.resolved_bindings
+  |> should.equal([#("X", term_codec.ConstTerm(term_codec.ConstInt(12)))])
+}
+
+// L3: test_add_ten(7, X) = 17.
+pub fn section_l3_dispatch_add_ten_test() {
+  let #(_e, env) = engine.run(dispatch_engine(), "test_add_ten(7, X)")
+  env.status |> should.equal(result_envelope.Success)
+  env.resolved_bindings
+  |> should.equal([#("X", term_codec.ConstTerm(term_codec.ConstInt(17)))])
 }
 
 // An unregistered '$module' index is a structural break — surfaced as an

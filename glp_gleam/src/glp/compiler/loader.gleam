@@ -50,6 +50,13 @@ pub type LoadOutcome {
   LoadOutcome(
     program: BytecodeProgram,
     warnings: List(type_checker.TypeWarning),
+    /// The `-module(name)` directive's name, `None` for a top-level program
+    /// (Dart `_extractModuleInfo`: top-level falls back to the filename).
+    module_name: option.Option(String),
+    /// Exported procedure signatures ("name/arity" of `exported procedure`
+    /// declarations — Dart `ModuleInfo.exportedLabels`). Non-empty triggers
+    /// auto-activation for dynamic dispatch (glp_engine.dart:306-317).
+    exported_signatures: List(String),
   )
 }
 
@@ -83,7 +90,12 @@ pub fn load(
   // Stage 6 — load: for the standalone instance the compiled program IS the
   // registration; the engine facade (T029) installs it. No load-stage error
   // is producible here.
-  Ok(LoadOutcome(prog, warnings))
+  Ok(LoadOutcome(
+    prog,
+    warnings,
+    ast.module_name(module),
+    ast.exported_signatures(module),
+  ))
 }
 
 /// Compile the prelude (programs/self.glp) to bytecode, WITHOUT the fatal

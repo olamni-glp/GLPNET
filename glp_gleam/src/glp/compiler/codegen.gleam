@@ -128,6 +128,13 @@ pub fn generate(module: ast.SourceModule) -> BytecodeProgram {
       gen_procedure(ctx, procedure)
     })
   program.from_ops(list.reverse(ctx.rev_ops), defined_guards)
+  // Invert the name→index import table to index→name for the runner's
+  // `Distribute` resolution (wave-3 module dispatch).
+  |> program.with_imports(
+    dict.fold(ctx.imports, dict.new(), fn(acc, name, index) {
+      dict.insert(acc, index, name)
+    }),
+  )
 }
 
 // ============================================================================

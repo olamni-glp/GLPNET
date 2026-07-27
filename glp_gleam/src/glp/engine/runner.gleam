@@ -82,6 +82,11 @@ pub type ReduceOutcome {
     /// heap-only, so the spawns ride out as data for the scheduler to resolve
     /// against its module registry (the `output` precedent).
     remote: List(kernels.RemoteSpawn),
+    /// Channel-send requests from `Distribute`/`Transmit` (wave-3): resolved
+    /// module name + the built goal term, applied by the scheduler via
+    /// `channel_send` (Dart sends inline on `rt.glpChannels`; the pure runner
+    /// threads the effect out as data).
+    sends: List(#(String, Term)),
     /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
     /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
     mad: Option(MadState),
@@ -223,6 +228,9 @@ pub type RunnerContext {
     /// Module-dispatch spawn requests accumulated from `_activate/2` kernel calls
     /// this reduction (wave-3); threaded out on `Reduced.remote` like `output`.
     remote_spawns: List(kernels.RemoteSpawn),
+    /// Channel-send requests accumulated from `Distribute`/`Transmit` this
+    /// reduction (wave-3); threaded out on `Reduced.sends`.
+    sends: List(#(String, Term)),
     /// madGLP effect state (W_p + M_p + reader-spawns), present only in madGLP mode
     /// (T050.A2). The effectful `_send` kernel reads/updates it deep inside `reduce`;
     /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
@@ -255,6 +263,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     in_body: False,
     output: [],
     remote_spawns: [],
+    sends: [],
     mad: None,
   )
 }
@@ -338,6 +347,7 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
         ctx.spawn_reqs,
         ctx.output,
         ctx.remote_spawns,
+        ctx.sends,
         ctx.mad,
       ))
     opcodes.Halt ->
@@ -347,6 +357,7 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
         ctx.spawn_reqs,
         ctx.output,
         ctx.remote_spawns,
+        ctx.sends,
         ctx.mad,
       ))
 
@@ -388,6 +399,13 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
       body_element_var(ctx, var_index, is_reader)
     opcodes.SetConstant(value) -> body_element_const(ctx, value)
     opcodes.Spawn(label, arity) -> spawn(program, ctx, label, arity)
+
+    // ── BODY phase: module-dispatch channel RPC (wave-3; Dart runner.dart:
+    // 3375-3479) ────────────────────────────────────────────────────────────
+    opcodes.Distribute(import_index, functor, arity) ->
+      distribute(program, ctx, import_index, functor, arity)
+    opcodes.Transmit(module_var_index, functor, arity) ->
+      transmit(ctx, module_var_index, functor, arity)
 
     // ── GUARD phase: pure three-valued tests (slice 21e / T023) ─────────────
     opcodes.Otherwise ->
@@ -1933,6 +1951,114 @@ fn spawn(
         Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
       }
     }
+  }
+}
+
+// Distribute (Dart runner.dart:3375-3424) — static RPC to the imported module
+// at a known index. BODY-only: outside BODY it is a no-op skip (Dart's
+// `if (cx.inBody)` guard falls through to `pc++`). Build the goal struct from
+// the collected arg slots, resolve the import index to the module name on the
+// goal's OWN program (Dart resolves via `replCtx.imports`), and thread the
+// channel send out as data for the scheduler, which owns the channels. An
+// unknown import index is a hard error (Dart: `RunResult.terminated`).
+fn distribute(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  import_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.in_body {
+    False -> Advance(ctx)
+    True ->
+      case program.import_name(program, import_index) {
+        Error(_) ->
+          Stop(RunnerError(Malformed(
+            "distribute: no target for import index "
+            <> int.to_string(import_index)
+            <> " ("
+            <> functor
+            <> "/"
+            <> int.to_string(arity)
+            <> ")",
+          )))
+        Ok(name) -> emit_channel_send(ctx, name, functor, arity)
+      }
+  }
+}
+
+// Transmit (Dart runner.dart:3426-3479) — dynamic RPC to a module resolved at
+// runtime from clause variable X<module_var_index>: a constant, or a VarRef
+// dereferenced to one; its printable value is the channel name. An unresolvable
+// module var is a hard error (Dart: `RunResult.terminated`).
+fn transmit(
+  ctx: RunnerContext,
+  module_var_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.in_body {
+    False -> Advance(ctx)
+    True ->
+      case resolve_module_name(ctx, module_var_index) {
+        Error(_) ->
+          Stop(RunnerError(Malformed(
+            "transmit: could not resolve module name from X"
+            <> int.to_string(module_var_index)
+            <> " ("
+            <> functor
+            <> "/"
+            <> int.to_string(arity)
+            <> ")",
+          )))
+        Ok(name) -> emit_channel_send(ctx, name, functor, arity)
+      }
+  }
+}
+
+/// Build the goal struct from the collected arg slots (Dart: non-null slots in
+/// order) and append the send request; arg slots clear (Dart `argSlots.clear`).
+fn emit_channel_send(
+  ctx: RunnerContext,
+  name: String,
+  functor: String,
+  arity: Int,
+) -> Step {
+  let args =
+    upto(arity)
+    |> list.filter_map(fn(i) { dict.get(ctx.arg_slots, i) })
+  Advance(
+    RunnerContext(
+      ..ctx,
+      sends: list.append(ctx.sends, [#(name, StructTerm(functor, args))]),
+      arg_slots: dict.new(),
+    ),
+  )
+}
+
+/// Resolve the Transmit module variable to a channel name (Dart: `clauseVars
+/// [idx]` as a ConstTerm, or a VarRef dereferenced to one).
+fn resolve_module_name(
+  ctx: RunnerContext,
+  var_index: Int,
+) -> Result(String, Nil) {
+  case dict.get(ctx.clause_vars, var_index) {
+    Ok(CVTerm(t)) -> const_module_name(ctx.heap, t)
+    Ok(CVAddr(addr)) -> const_module_name(ctx.heap, VarRef(addr))
+    _ -> Error(Nil)
+  }
+}
+
+fn const_module_name(heap: Heap, term: Term) -> Result(String, Nil) {
+  case term {
+    ConstTerm(ConstAtom(name)) -> Ok(name)
+    ConstTerm(ConstString(name)) -> Ok(name)
+    VarRef(addr) ->
+      case dval(heap, addr) {
+        Bound(v) -> const_module_name(heap, v)
+        _ -> Error(Nil)
+      }
+    _ -> Error(Nil)
   }
 }
 

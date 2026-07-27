@@ -54,6 +54,26 @@ const prelude_path = "../programs/self.glp"
 /// pin a parity value here if a suspended-var corpus case is later recorded.
 const instance_id = "gleam"
 
+/// serve/2 system predicate (embedded — verbatim Dart `_serveSource`,
+/// glp_engine.dart:71-82). The dynamic-dispatch service loop: reads goals off a
+/// module's GLP channel and dispatches each via `'_activate'`. Compiled once at
+/// engine construction through the NON-typechecked path (`compile_prelude`) —
+/// Dart compiles it with `CompileOptions()` where `typeCheck = false`
+/// (compiler.dart:27), and `_activate/2` is deliberately absent from the
+/// type-check prelude in both runtimes — then merged into the runnable program
+/// so `activate_module` can spawn `serve/2` from it.
+const serve_source = "-mode(system).
+
+procedure serve(_?, Stream(_)?).
+serve(Module, [Goal | In]) :-
+    ground(Module?) |
+    '_activate'(Module?, Goal?),
+    serve(Module?, In?).
+serve(_, []) :-
+    otherwise |
+    true.
+"
+
 /// Instruction budget per goal reduction (REPL `:limit` overrides this later).
 const default_reduction_budget = 1_000_000
 
@@ -87,6 +107,15 @@ pub opaque type Engine {
     /// runnable `program` is always rebuilt from this registry, so a re-load's
     /// stale definitions are unreachable by construction.
     loaded: List(#(String, BytecodeProgram)),
+    /// The compiled embedded `serve/2` program (Dart `_serveBytecode`), merged
+    /// into every runnable program so activation can spawn the service loop.
+    serve_program: BytecodeProgram,
+    /// Modules auto-activated for dynamic dispatch, in load order: module name →
+    /// its dispatchable bytecode (the module merged with the prelude, Dart
+    /// glp_engine.dart:310 `program.merge(rootSelf)`). Applied to each run's
+    /// scheduler at goal boot — Dart activates once on its persistent runtime;
+    /// the Gleam scheduler is per-run, so activation replays per run.
+    activations: List(#(String, BytecodeProgram)),
   )
 }
 
@@ -124,20 +153,27 @@ pub fn new() -> Engine {
 /// test/embedding seam; `new()` is this over the on-disk self.glp). A prelude that
 /// fails to compile panics LOUDLY — same trusted-invariant contract as `new()`.
 pub fn new_with_prelude(prelude_source: String) -> Engine {
-  case loader.compile_prelude(prelude_source) {
-    Ok(prelude_program) ->
+  case loader.compile_prelude(prelude_source), loader.compile_prelude(serve_source) {
+    Ok(prelude_program), Ok(serve_program) ->
       Engine(
         prelude_program: prelude_program,
         prelude_source: prelude_source,
-        program: prelude_program,
+        program: program.merge(serve_program, prelude_program),
         warnings: [],
         session: None,
         transports: [],
         loaded: [],
+        serve_program: serve_program,
+        activations: [],
       )
-    Error(staged) ->
+    Error(staged), _ ->
       panic as {
         "engine.new: prelude (programs/self.glp) failed to compile: "
+        <> string.inspect(staged)
+      }
+    _, Error(staged) ->
+      panic as {
+        "engine.new: embedded serve/2 failed to compile: "
         <> string.inspect(staged)
       }
   }
@@ -166,12 +202,31 @@ pub fn load(
 ) -> Result(Engine, StagedError) {
   use outcome <- result.try(loader.load(source, engine.prelude_source))
   let loaded = upsert(engine.loaded, name, outcome.program)
+  // Auto-activate modules with exports for dynamic dispatch (Dart
+  // glp_engine.dart:306-317). The dispatchable bytecode is the module merged
+  // with the prelude, so dispatched procedures find `:=`/2 etc. The module
+  // name comes from `-module(...)`, falling back to the load name (Dart
+  // `_moduleNameFromFilename`). A re-load replaces its activation in place.
+  let activations = case outcome.exported_signatures {
+    [] -> engine.activations
+    _ ->
+      upsert(
+        engine.activations,
+        option.unwrap(outcome.module_name, name),
+        program.merge(outcome.program, engine.prelude_program),
+      )
+  }
   Ok(
     Engine(
       ..engine,
       loaded: loaded,
-      program: rebuild_program(engine.prelude_program, loaded),
+      program: rebuild_program(
+        engine.prelude_program,
+        engine.serve_program,
+        loaded,
+      ),
       warnings: outcome.warnings,
+      activations: activations,
     ),
   )
 }
@@ -195,13 +250,17 @@ fn upsert(
   }
 }
 
-/// The runnable program, rebuilt from the registry: `[prelude, file1, …, fileN]`
-/// in first-load order (Dart `combinedProgram` folds `_loadedPrograms.values`).
+/// The runnable program, rebuilt from the registry: `[prelude, serve, file1, …,
+/// fileN]` in first-load order (Dart `combinedProgram` folds
+/// `_loadedPrograms.values`; serve rides along so activation can spawn it).
 fn rebuild_program(
   prelude: BytecodeProgram,
+  serve: BytecodeProgram,
   loaded: List(#(String, BytecodeProgram)),
 ) -> BytecodeProgram {
-  list.fold(loaded, prelude, fn(acc, pair) { program.merge(pair.1, acc) })
+  list.fold(loaded, program.merge(serve, prelude), fn(acc, pair) {
+    program.merge(pair.1, acc)
+  })
 }
 
 /// The current runnable program (prelude alone, or prelude + last loaded module).
@@ -313,6 +372,31 @@ pub fn run_with_limit_traced(
   #(engine, envelope, output, traces)
 }
 
+/// A run's scheduler over the engine's program + boot heap, with every
+/// auto-activated module registered and its `serve/2` loop spawned (Dart
+/// activates once on its persistent runtime, glp_activation.dart; the Gleam
+/// scheduler is per-run, so activation replays at each goal boot). A missing
+/// `serve/2` label with activations pending is a broken engine invariant —
+/// panic loudly, never a user diagnostic.
+fn new_sched(engine: Engine, boot_heap: heap.Heap) -> scheduler.Engine {
+  let sched = scheduler.new(engine.program, boot_heap)
+  case engine.activations {
+    [] -> sched
+    _ -> {
+      let serve_entry = case program.label_pc(engine.program, "serve/2") {
+        Ok(pc) -> pc
+        Error(_) ->
+          panic as "engine: serve/2 missing from the runnable program"
+      }
+      list.fold(engine.activations, sched, fn(sched, act) {
+        let #(mod_name, mod_prog) = act
+        let #(sched, idx) = scheduler.register_module(sched, mod_prog)
+        scheduler.activate_module(sched, mod_name, idx, "serve/2", serve_entry)
+      })
+    }
+  }
+}
+
 fn run_goal(
   engine: Engine,
   goal: String,
@@ -328,7 +412,7 @@ fn run_goal(
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
 
   let sched =
-    scheduler.new(engine.program, boot.heap)
+    new_sched(engine, boot.heap)
     |> scheduler.with_trace(trace)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
@@ -383,7 +467,7 @@ pub fn start(engine: Engine, goal: String) -> Result(Engine, String) {
     |> result.replace_error("predicate " <> label <> " not found"),
   )
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
-  let sched = scheduler.new(engine.program, boot.heap)
+  let sched = new_sched(engine, boot.heap)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   Ok(Engine(..engine, session: Some(RunSession(sched, boot.query_var_writers))))
 }

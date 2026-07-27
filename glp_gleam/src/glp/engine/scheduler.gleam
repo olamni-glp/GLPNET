@@ -398,6 +398,7 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           spawned: spawned,
           output: out,
           remote: remote,
+          sends: sends,
           mad: _,
         ) -> {
           let engine =
@@ -420,19 +421,28 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           // data request is applied at the scheduler, which owns identity).
           case apply_remote_spawns(engine, remote) {
             Error(reason) -> #(engine, StepErrored(runner.Malformed(reason)))
-            Ok(#(engine, remote_ids)) -> {
-              let engine = list.fold(woken, engine, reactivate)
-              let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
-              #(
-                engine,
-                StepReduced(
-                  act.goal_id,
-                  act.procedure,
-                  woken_ids,
-                  list.append(spawned_ids, remote_ids),
-                ),
-              )
-            }
+            Ok(#(engine, remote_ids)) ->
+              // Distribute/Transmit channel sends resolve against the channel
+              // table; an unactivated module is a hard error (Dart terminated).
+              case apply_channel_sends(engine, sends) {
+                Error(reason) -> #(
+                  engine,
+                  StepErrored(runner.Malformed(reason)),
+                )
+                Ok(engine) -> {
+                  let engine = list.fold(woken, engine, reactivate)
+                  let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+                  #(
+                    engine,
+                    StepReduced(
+                      act.goal_id,
+                      act.procedure,
+                      woken_ids,
+                      list.append(spawned_ids, remote_ids),
+                    ),
+                  )
+                }
+              }
           }
         }
         runner.Suspended(heap: h, on: on) -> {
@@ -502,6 +512,7 @@ pub fn step_mad(
           spawned: spawned,
           output: out,
           remote: remote,
+          sends: sends,
           mad: mad_o,
         ) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
@@ -530,6 +541,13 @@ pub fn step_mad(
               mad_in,
             )
             Ok(#(engine, remote_ids)) ->
+              case apply_channel_sends(engine, sends) {
+                Error(reason) -> #(
+                  engine,
+                  StepErrored(runner.Malformed(reason)),
+                  mad_in,
+                )
+                Ok(engine) ->
               // Lower the accumulated reader-branch `global_send` spawns into real goals.
               case lower_mad_spawns(engine, mad_out.mad_spawns) {
                 Ok(engine) -> #(
@@ -547,6 +565,7 @@ pub fn step_mad(
                   StepErrored(runner.Malformed(reason)),
                   mad_in,
                 )
+              }
               }
           }
         }
@@ -763,6 +782,20 @@ fn apply_remote_spawns(
           }
         }
     }
+  })
+}
+
+/// Apply a reduction's `Distribute`/`Transmit` channel sends: each goal term
+/// goes out on its module's channel via `channel_send` (bind writer to
+/// `[goal|NewTail]`, advance, wake the serve loop). An unactivated module is a
+/// hard error (Dart runner: `RunResult.terminated` on a missing GLP channel).
+fn apply_channel_sends(
+  engine: Engine,
+  sends: List(#(String, terms.Term)),
+) -> Result(Engine, String) {
+  list.try_fold(sends, engine, fn(engine, send) {
+    let #(name, goal) = send
+    channel_send(engine, name, goal)
   })
 }
 
