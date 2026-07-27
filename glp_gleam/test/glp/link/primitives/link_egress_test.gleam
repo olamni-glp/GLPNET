@@ -6,6 +6,7 @@ import gleam/list
 import gleeunit/should
 import glp/link/primitives/link_egress
 import glp/link/primitives/link_handle
+import glp/link/reliability/link_sequencer
 import glp/link/reliability/frame_codec
 import glp/link/seam/link_address
 import glp/link/seam/link_id.{LinkId, NonceInt}
@@ -36,7 +37,7 @@ pub fn ship_ground_frames_and_advances_seq_test() {
   // At least one frame shipped, and the outbound sequence advanced (0 → 1).
   { list.length(frames) >= 1 }
   |> should.be_true
-  handle2.seq
+  link_sequencer.peek(handle2.sequencer)
   |> should.equal(1)
 }
 

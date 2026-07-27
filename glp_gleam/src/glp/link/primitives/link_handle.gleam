@@ -19,6 +19,9 @@
 //// land with T077 (`close-link-layer-sequence-dedup`).
 
 import gleam/option.{type Option, None, Some}
+import glp/link/reliability/frame_reassembler.{type FrameReassembler}
+import glp/link/reliability/inbound_ordering.{type InboundOrdering}
+import glp/link/reliability/link_sequencer.{type LinkSequencer}
 import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_id.{type LinkId}
 import glp/link/seam/link_options.{type LinkOptions}
@@ -34,8 +37,15 @@ pub type LinkHandle {
     /// Set once the link is being / has been torn down (graceful `[]` close, abrupt
     /// `_link_close`, or a connect failure).
     closed: Bool,
-    /// Outbound monotone sequence source (→ frame MessageId). T077 adds the window.
-    seq: Int,
+    /// Outbound monotone sequence source (→ frame message_id) — the reliability
+    /// sublayer `LinkSequencer` (T077).
+    sequencer: LinkSequencer,
+    /// Inbound multi-frame reassembly (T077): a Fragment set is buffered by
+    /// message_id until complete; a Whole frame passes straight through.
+    reassembler: FrameReassembler,
+    /// Inbound FIFO reconstruction + transport-level dedup (T077): out-of-order
+    /// frames held until the gap fills, duplicates/old frames idempotently dropped.
+    ordering: InboundOrdering,
     /// The writer the host extends as inbound frames arrive (program reads `In`).
     in_writer: Option(Int),
     /// The reader the host drains as the program writes `Out`. The pump ADVANCES
@@ -64,7 +74,9 @@ pub fn new(id: LinkId, options: LinkOptions) -> LinkHandle {
     options: options,
     endpoint: None,
     closed: False,
-    seq: 0,
+    sequencer: link_sequencer.new(),
+    reassembler: frame_reassembler.new(),
+    ordering: inbound_ordering.new(),
     in_writer: None,
     out_reader: None,
     out_closed: False,
@@ -82,7 +94,8 @@ pub fn attach_endpoint(handle: LinkHandle, ep: Endpoint) -> LinkHandle {
 /// Take the next outbound sequence number, returning it with the advanced handle
 /// (the immutable analogue of the Dart `sequencer.next()` side effect).
 pub fn next_seq(handle: LinkHandle) -> #(LinkHandle, Int) {
-  #(LinkHandle(..handle, seq: handle.seq + 1), handle.seq)
+  let #(sequencer, value) = link_sequencer.next(handle.sequencer)
+  #(LinkHandle(..handle, sequencer: sequencer), value)
 }
 
 /// Add a live monitor cursor (the establishment `Faults` stream, or a later

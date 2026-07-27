@@ -40,14 +40,19 @@ pub fn decode_term_frame(bytes: BitArray) -> Result(Term, String) {
     Error(_) -> Error("undecodable frame")
     Ok(frame) ->
       case frame.kind {
-        frame_codec.Whole ->
-          case term_codec.decode_term(frame.chunk) {
-            Ok(#(codec_term, _rest)) -> from_codec_term(codec_term)
-            Error(_) -> Error("undecodable term payload")
-          }
+        frame_codec.Whole -> decode_payload_term(frame.chunk)
         frame_codec.Fragment ->
-          Error("fragment reassembly is T077 (MVP: Whole frames only)")
+          Error("fragment reassembly rides the pump's frame_reassembler (T077)")
       }
+  }
+}
+
+/// Decode a (already-reassembled) TLV payload blob to its ground runtime term — the
+/// pump's post-reassembly/post-ordering decode step (T077).
+pub fn decode_payload_term(payload: BitArray) -> Result(Term, String) {
+  case term_codec.decode_term(payload) {
+    Ok(#(codec_term, _rest)) -> from_codec_term(codec_term)
+    Error(_) -> Error("undecodable term payload")
   }
 }
 

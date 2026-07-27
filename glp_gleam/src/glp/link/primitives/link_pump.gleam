@@ -34,6 +34,9 @@ import glp/link/primitives/link_registry
 import glp/link/primitives/link_runtime.{type LinkRuntime}
 import glp/link/primitives/link_terms
 import glp/link/primitives/link_wire
+import glp/link/reliability/frame_codec
+import glp/link/reliability/frame_reassembler
+import glp/link/reliability/inbound_ordering
 import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_fault
 import glp/runtime/heap
@@ -176,10 +179,12 @@ fn find_waiter(engine: Engine, runtime: LinkRuntime) -> option.Option(LinkHandle
   |> option.from_result
 }
 
-/// Block on `handle`'s endpoint for the next inbound frame and extend the `In`
-/// stream: `Some(frame)` → `In := [term | In']`; `None` (peer eos) → `In := []` +
-/// terminal `closed(LinkId, eos)` on the monitor; `Error` → the fault term on the
-/// monitor. Reactivates the consumer via `bind_and_wake`.
+/// Block on `handle`'s endpoint for the next inbound frame and drive it through the
+/// reliability sublayer (T077): reassemble fragments, reorder + dedup by sequence,
+/// then extend the `In` stream `In := [term | In']` per in-order payload. Peer eos →
+/// `In := []` + terminal `closed(LinkId, eos)` on the monitor; a transport / decode /
+/// reassembly fault → the refined lattice term on the monitor. Reactivates the
+/// consumer via `bind_and_wake`.
 fn recv_and_bind(
   engine: Engine,
   runtime: LinkRuntime,
@@ -188,16 +193,7 @@ fn recv_and_bind(
   case handle.endpoint, handle.in_writer {
     Some(ep), Some(in_writer) ->
       case ep.recv() {
-        Ok(Some(bytes)) ->
-          case link_wire.decode_term_frame(bytes) {
-            Ok(term) -> extend_in(engine, runtime, handle, in_writer, term)
-            // Undecodable inbound frame → treat as a permanent fault (never silent).
-            Error(why) ->
-              close_in(engine, runtime, handle, in_writer, link_terms.perm_fail(
-                handle.id,
-                why,
-              ))
-          }
+        Ok(Some(bytes)) -> ingest_frame(engine, runtime, handle, in_writer, bytes)
         // Peer cleanly ended the stream → In := [] + closed(LinkId, eos).
         Ok(None) ->
           close_in(engine, runtime, handle, in_writer, link_terms.closed(
@@ -212,25 +208,111 @@ fn recv_and_bind(
   }
 }
 
-/// `In := [term | In']`: allocate a fresh tail, bind the current In writer to the
-/// cons, reactivate the consumer, and advance the handle's In cursor to In'.
-fn extend_in(
+/// Parse one wire frame and drive it through reassembly → ordering → decode → extend.
+/// A malformed frame / inconsistent fragment metadata / reorder-bound breach is a
+/// permanent fault on the monitor (FR-028, never silent). An incomplete fragment set
+/// (`None`) or a duplicate/out-of-order frame (empty ready set) simply advances the
+/// sublayer state; the outer loop blocks on the next frame.
+fn ingest_frame(
   engine: Engine,
   runtime: LinkRuntime,
   handle: LinkHandle,
   in_writer: Int,
-  term: Term,
+  bytes: BitArray,
 ) -> #(Engine, LinkRuntime) {
-  let #(h2, fresh_writer, fresh_reader) =
-    heap.allocate_variable(scheduler.heap(engine))
-  let engine = scheduler.set_heap(engine, h2)
-  let cell = cons(term, VarRef(fresh_reader))
-  case scheduler.bind_and_wake(engine, in_writer, cell) {
-    Ok(engine) -> {
-      let handle = link_handle.LinkHandle(..handle, in_writer: Some(fresh_writer))
-      #(engine, replace_handle(runtime, handle))
+  case frame_codec.parse_frame(bytes) {
+    Error(_) ->
+      close_in(engine, runtime, handle, in_writer, link_terms.perm_fail(
+        handle.id,
+        "undecodable frame",
+      ))
+    Ok(frame) ->
+      case frame_reassembler.accept(handle.reassembler, frame) {
+        Error(fe) ->
+          close_in(engine, runtime, handle, in_writer, link_terms.perm_fail(
+            handle.id,
+            fe.message,
+          ))
+        // Incomplete fragment set — persist the reassembler, no In change.
+        Ok(#(reassembler, None)) -> #(
+          engine,
+          replace_handle(runtime, link_handle.LinkHandle(..handle, reassembler: reassembler)),
+        )
+        // A complete payload — feed it through inbound ordering (reorder + dedup).
+        Ok(#(reassembler, Some(payload))) ->
+          case inbound_ordering.accept(handle.ordering, frame.message_id, payload) {
+            Error(fe) ->
+              close_in(
+                engine,
+                runtime,
+                link_handle.LinkHandle(..handle, reassembler: reassembler),
+                in_writer,
+                link_terms.perm_fail(handle.id, fe.message),
+              )
+            Ok(#(ordering, ready)) -> {
+              let handle =
+                link_handle.LinkHandle(
+                  ..handle,
+                  reassembler: reassembler,
+                  ordering: ordering,
+                )
+              deliver_payloads(engine, runtime, handle, in_writer, ready)
+            }
+          }
+      }
+  }
+}
+
+/// Extend the `In` stream by one term per in-order payload (advancing the In cursor
+/// each time), then persist the advanced handle. A payload that fails to decode
+/// post-reassembly is a permanent fault (never a silent mis-decode).
+fn deliver_payloads(
+  engine: Engine,
+  runtime: LinkRuntime,
+  handle: LinkHandle,
+  in_writer: Int,
+  payloads: List(BitArray),
+) -> #(Engine, LinkRuntime) {
+  case payloads {
+    [] -> #(engine, replace_handle(runtime, handle))
+    [payload, ..rest] ->
+      case link_wire.decode_payload_term(payload) {
+        Error(why) ->
+          close_in(engine, runtime, handle, in_writer, link_terms.perm_fail(
+            handle.id,
+            why,
+          ))
+        Ok(term) -> {
+          let #(engine, handle) = extend_one(engine, handle, term)
+          case handle.in_writer {
+            Some(next_in) ->
+              deliver_payloads(engine, runtime, handle, next_in, rest)
+            None -> #(engine, replace_handle(runtime, handle))
+          }
+        }
+      }
+  }
+}
+
+/// `In := [term | In']`: allocate a fresh tail, bind the current In writer to the
+/// cons, reactivate the consumer, and advance the handle's In cursor to In'.
+fn extend_one(
+  engine: Engine,
+  handle: LinkHandle,
+  term: Term,
+) -> #(Engine, LinkHandle) {
+  case handle.in_writer {
+    Some(in_writer) -> {
+      let #(h2, fresh_writer, fresh_reader) =
+        heap.allocate_variable(scheduler.heap(engine))
+      let engine = scheduler.set_heap(engine, h2)
+      let cell = cons(term, VarRef(fresh_reader))
+      case scheduler.bind_and_wake(engine, in_writer, cell) {
+        Ok(engine) -> #(engine, link_handle.LinkHandle(..handle, in_writer: Some(fresh_writer)))
+        Error(_) -> #(engine, handle)
+      }
     }
-    Error(_) -> #(engine, runtime)
+    None -> #(engine, handle)
   }
 }
 
