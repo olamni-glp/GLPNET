@@ -60,3 +60,34 @@ Verified against `glp_gleam/src/` on 2026-07-27. "Exists" means the module is pr
 - Gleam: **465 green** (recorded in 059 as the floor; raised from 463).
 - Repo REPL suite: `bash test/run_all_tests.sh` must stay green (SC-009).
 - Both must be captured *before* the first wave-3 code change, per Principle VII.
+
+## Baseline captured — 2026-07-27 (T001–T003, OLAMNIT host)
+
+Toolchain was **absent on this host** and freshly installed (all portable, user-profile, no admin):
+Gleam **1.17.0** (`~\.local\bin`, SHA256-verified) · Erlang/**OTP 29** (erts 17.0.4, `~\erlang-otp-29\`)
+· Dart **3.12.2** stable (`~\dart-sdk\`). Erlang + Dart bins persisted to the user PATH.
+
+| Task | Suite | Result | Note |
+|---|---|---|---|
+| T001 | `gleam test` (glp_gleam) | **508 passed, no failures** | the documented 465/463 floor is stale — tree grew since 059; **508 is the wave-3 floor** |
+| T002 | `bash test/run_all_tests.sh` | **532/532 passed** | first run failed en masse (`Invalid kernel binary format version (expected 130, found 125)`) — the documented stale-`repl.dill` failure mode after the Dart SDK change; deleted `glp_runtime/.dart_tool/repl.dill`, `dart pub get`, re-ran → all green |
+| T003 | `bash test/parity/run_gleam_corpus.sh` | **agree=162 · diverge=44 · blocked=0 · gap/fork=0 · 10x bound PASS · exit 44** | reproduces 059 T051 rc=44 exactly; deterministic across two runs; see finding below |
+
+### T003 finding — the "44 missing goldens" are a CRLF harness artifact (Bug Protocol, ruling pending)
+
+All 44 divergences are `MISSING golden` lines; **zero** behavioural DIVERGE lines. But all 44 golden
+files **exist** in `test/parity/goldens/runtime/` — git-tracked, LF-clean, names exactly matching the
+corpus block ids (`a1…a30`, `gap_g1/g2/g3/g8`, `fork_1`). Hex probe (od -c, 2026-07-27, OLAMNIT):
+`corpus.list` is CRLF in a `core.autocrlf` checkout → the runner's block-id parse yields `a1\r` →
+`[ -f goldens/runtime/a1\r.golden ]` fails → every block reports MISSING. The script strips `\r`
+from REPL transcripts (line 74) but not from `corpus.list`/`expected.list` input lines.
+
+**Consequence if the ruling accepts this**: 059 T051 was a harness defect, not evidence drift.
+Nothing needs regenerating — T029's premise dissolves; the fix is a CR-tolerant parse in
+`run_gleam_corpus.sh` (and the recorder), or a `.gitattributes` eol pin for `test/parity/*.list`.
+T027/T028a/T029 and FR-018a's reason string should then be revised spec-first. Recorded as marathon
+item `mitem-019fa481-623b` (kind bug, parked). **No fix applied — awaiting engineer ruling.**
+
+Environment caveat: these artifacts were previously built 2026-07-22 with an unknown (likely peer-host
+GAVRI) toolchain; today's toolchain is newer. Everything compiles and passes, but wave-3 results are
+attributed to **this** environment, not 059's.
