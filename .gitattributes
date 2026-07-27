@@ -1,0 +1,20 @@
+# Repo line-ending policy.
+#
+# The repo sets core.autocrlf=true. With no line-ending policy, a Windows checkout
+# rewrites LF -> CRLF in the working tree, which breaks LF-only consumers:
+#   - bash read-loops on MSYS/WSL parse a trailing \r into tokens (e.g. corpus block
+#     id "a1" becomes "a1\r" -> golden path "a1\r.golden" -> MISSING; feature 059 T051),
+#   - byte-exact golden/vector comparisons diff on the injected \r (feature 057 macaroon).
+# This was previously patched per-subtree (glp_gleam/.gitattributes, macaroon-v2/.gitattributes);
+# this root policy is the single source of truth.
+#
+# Scope of THIS commit (feature 059, T051 stabilization): shell scripts and the parity
+# harness only. A repo-wide normalization is tracked separately.
+
+# Shell scripts must be LF everywhere (bash on MSYS/WSL breaks on CRLF).
+*.sh text eol=lf
+
+# The differential-parity harness: pinned corpus, classifications, recorded goldens,
+# and shared shell libs. LF-only — the recorder and comparator are bash read-loops and
+# the goldens are byte-compared.
+test/parity/** text eol=lf

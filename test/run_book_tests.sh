@@ -174,6 +174,7 @@ PASS=0
 FAIL=0
 
 while IFS= read -r line; do
+    line="${line%$'\r'}"    # tolerate CRLF in REPL output / a CRLF working tree (core.autocrlf=true)
     if [[ "$line" == *"Loaded:"* ]]; then
         # Extract filename from "✓ Loaded: /path/to/file.glp"
         filename="${line##*/}"

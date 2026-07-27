@@ -26,6 +26,7 @@ command -v gleam >/dev/null 2>&1 || { echo "run_gleam_corpus.sh: gleam not on PA
 declare -A CLASS CLASS_REASON
 if [ -f "$SCRIPT_DIR/expected.list" ]; then
     while IFS= read -r l; do
+        l="${l%$'\r'}"    # tolerate a CRLF working tree (core.autocrlf=true)
         case "$l" in ''|'#'*) continue ;; esac
         k="${l%% *}"; r="${l#* }"; b="${r%% *}"; why="${r#* }"
         CLASS["$b"]="$k"; CLASS_REASON["$b"]="$why"
@@ -135,6 +136,7 @@ _BLK_ID=""; _BLK_FILES=(); _BLK_GOALS=(); declare -a LOAD_B LOAD_C LOAD_D; LOAD_
 flush_block() { [ -z "$_BLK_ID" ] && return 0; record_and_diff_block "$_BLK_ID"; _BLK_ID=""; _BLK_FILES=(); _BLK_GOALS=(); }
 echo "=== Gleam corpus runner (feature 050 T039) ==="
 while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"    # tolerate a CRLF working tree (core.autocrlf=true); see /.gitattributes
     case "$line" in ''|'#'*) continue ;; esac
     tok="${line%% *}"; rest="${line#"$tok"}"; rest="${rest# }"
     case "$tok" in

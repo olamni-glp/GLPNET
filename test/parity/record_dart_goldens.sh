@@ -191,6 +191,7 @@ flush_block() {
 }
 
 while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"    # tolerate a CRLF working tree (core.autocrlf=true); see /.gitattributes
     case "$line" in
         ''|'#'*) continue ;;
     esac
