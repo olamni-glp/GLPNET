@@ -247,9 +247,17 @@ fn wire_and_record(
       // Start ingress (C6) — AFTER the cursors are wired, which is what `start` checks:
       // a frame arriving before `in_writer` exists would have nowhere to go. Same
       // once-per-link rule as egress; the `Reused` arm below starts no second loop.
+      // The loop's Pid goes onto the handle so C8 teardown can kill it.
       case link_pump.start(state.inbox, wired) {
         Error(detail) -> Error(detail)
-        Ok(Nil) -> Ok(LinkEffect(heap, state, []))
+        Ok(pid) -> {
+          let state =
+            link_runtime.with_links(
+              state,
+              link_registry.put(state.links, link_handle.with_pump(wired, pid)),
+            )
+          Ok(LinkEffect(heap, state, []))
+        }
       }
     }
     Ok(#(registry, Reused(_handle))) ->

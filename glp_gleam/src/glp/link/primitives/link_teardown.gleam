@@ -33,18 +33,20 @@
 ////     time teardown runs — so there is nothing to flush.
 ////   * No deferred-connect gate: establishment is synchronous, so the handle always
 ////     holds an open endpoint.
-////   * **Residual (recorded, not solved): the pump process.** The oracle's `dispose`
+////   * **Pump shutdown (RESOLVED — Gabi ruling 2026-07-27).** The oracle's `dispose`
 ////     cancels the recv loop via a token the async recv races. The Gleam loop is parked
-////     INSIDE the blocking `endpoint.recv`, and the ratified no-OTP subset
-////     (spawn/new_subject/receive — T048/T050.B) offers no way to interrupt it without
-////     extending that subset (`process.kill`) or adopting OTP selectors — a §1.14-adjacent
-////     surface call, not one this step makes silently. After teardown the loop drains
-////     naturally: the seam's `close` FINs our side, a well-behaved peer FINs back, the
-////     loop sends `Closed`, and the applier's registry miss makes it a no-op. Until the
-////     peer FINs, the process stays parked — bounded by the peer, leaked if the peer
-////     never answers. Escalate if that bound is unacceptable.
+////     INSIDE the blocking `endpoint.recv`, which nothing in the original no-OTP subset
+////     (spawn/new_subject/receive — T048/T050.B) can interrupt. Gabi extended the
+////     subset with **`process.kill`**: teardown kills the recorded pump Pid after
+////     closing the endpoint, the exact dispose-equivalent. A kill mid-`recv` is safe by
+////     construction — the loop holds no state beyond its stack, its only effect is
+////     enqueueing, and a frame lost at kill time is indistinguishable from one lost to
+////     the close itself (this IS teardown). For gen_tcp, the dying process also releases
+////     any socket it controls. Late items already enqueued no-op on the registry miss.
 
+import gleam/erlang/process
 import gleam/list
+import gleam/option
 import glp/link/primitives/link_faults
 import glp/link/primitives/link_handle.{type LinkHandle}
 import glp/link/primitives/link_registry.{type LinkRegistry}
@@ -68,10 +70,15 @@ pub fn teardown(
   let closed_term = link_faults.closed(handle.id, reason)
   let #(heap, handle, woken1) = link_faults.deliver_fault(heap, handle, closed_term)
   let #(heap, handle, woken2) = link_faults.end_all(heap, handle)
-  // 3. Transport teardown (idempotent per the seam contract).
+  // 3. Transport teardown (idempotent per the seam contract), then kill the pump loop
+  //    parked in its blocking recv (the dispose-equivalent — module header). Items it
+  //    already enqueued no-op on the registry miss below.
   let Nil = handle.endpoint.close()
+  case handle.pump {
+    option.Some(pid) -> process.kill(pid)
+    option.None -> Nil
+  }
   // 4. Distributed GC: the registry entry is the base layer's only per-link state
-  //    (FR-024). The pump's parked recv loop drains via the peer's FIN — see the
-  //    module-header residual — and its late items no-op on the registry miss.
+  //    (FR-024).
   #(heap, link_registry.remove(links, handle.id), list.append(woken1, woken2))
 }

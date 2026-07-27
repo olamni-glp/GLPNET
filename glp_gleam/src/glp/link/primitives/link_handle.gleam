@@ -21,6 +21,7 @@
 //// — a monotone outbound sequence counter — and T052 adds the rest. Nothing here
 //// pretends to deduplicate or reorder.
 
+import gleam/erlang/process.{type Pid}
 import gleam/option.{type Option, None}
 import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_id.{type LinkId}
@@ -50,6 +51,11 @@ pub type LinkHandle {
     out_reader: Option(Int),
     faults_writer: Option(Int),
     monitor_cursors: List(Int),
+    /// The ingress pump process for this link (C6), recorded so C8 teardown can
+    /// `process.kill` it — the loop is parked in the blocking `endpoint.recv`, which
+    /// nothing else can interrupt (Gabi ruling 2026-07-27 extending the no-OTP subset
+    /// with `kill`). `None` until the pump is armed.
+    pump: Option(Pid),
   )
 }
 
@@ -70,6 +76,7 @@ pub fn new(
     out_reader: None,
     faults_writer: None,
     monitor_cursors: [],
+    pump: None,
   )
 }
 
@@ -94,6 +101,11 @@ pub fn with_cursors(
     out_reader: option.Some(out_reader),
     faults_writer: option.Some(faults_writer),
   )
+}
+
+/// Record the armed ingress pump process (C6/C8) so teardown can kill it.
+pub fn with_pump(handle: LinkHandle, pid: Pid) -> LinkHandle {
+  LinkHandle(..handle, pump: option.Some(pid))
 }
 
 /// Advance the `In` ingress cursor after the pump extended the stream by one term (C6).

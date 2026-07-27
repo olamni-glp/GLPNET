@@ -169,6 +169,72 @@ pub fn repeat_close_aborts_test() {
   count(closes, 0) |> should.equal(1)
 }
 
+// ── pump shutdown: teardown kills the parked recv loop ───────────────────────
+
+/// C8's dispose-equivalent (Gabi ruling 2026-07-27: `process.kill` extends the no-OTP
+/// subset). The endpoint here PARKS its recv — the loop can never exit on its own — so
+/// only the teardown kill can end it. Establish arms the pump; close must kill it.
+pub fn teardown_kills_the_parked_pump_test() {
+  let parked =
+    Transport(
+      supported_schemes: [link_scheme.tcp()],
+      listen: fn(_s, _a, _o) { Ok(parked_endpoint(an_id(1))) },
+      connect: fn(_s, _a, _o) { Ok(parked_endpoint(an_id(1))) },
+    )
+  let state = link_runtime.new() |> link_runtime.with_transport(parked)
+  let #(h, in_w, _) = heap.allocate_variable(heap.new())
+  let #(h, _, out_r) = heap.allocate_variable(h)
+  let #(h, faults_w, _) = heap.allocate_variable(h)
+  let assert Ok(link_kernels.LinkEffect(h, state, _)) =
+    link_kernels.link_dispatch(h, state, "_link_setup", 5, [
+      tcp_id_term(1),
+      ConstTerm(ConstAtom("connector")),
+      VarRef(in_w),
+      VarRef(out_r),
+      VarRef(faults_w),
+    ])
+  let assert Ok(handle) = link_registry.try_get(state.links, an_id(1))
+  let assert Some(pid) = handle.pump
+  process.is_alive(pid) |> should.be_true
+
+  let assert Ok(link_kernels.LinkEffect(_, state, _)) =
+    link_kernels.link_dispatch(h, state, "_link_close", 2, [
+      tcp_id_term(1),
+      ConstTerm(ConstAtom("bye")),
+    ])
+  link_registry.count(state.links) |> should.equal(0)
+  wait_dead(pid, 50)
+}
+
+fn parked_endpoint(id: LinkId) -> Endpoint {
+  Endpoint(
+    id: id,
+    send: fn(_frame) { Ok(Nil) },
+    // Parks (effectively) forever: without the teardown kill this loop never ends.
+    recv: fn() {
+      process.sleep(3_600_000)
+      Ok(None)
+    },
+    close: fn() { Nil },
+    faults: process.new_subject(),
+  )
+}
+
+/// The kill signal is asynchronous; poll briefly rather than asserting instantly.
+fn wait_dead(pid: process.Pid, budget: Int) -> Nil {
+  case process.is_alive(pid) {
+    False -> Nil
+    True ->
+      case budget <= 0 {
+        True -> panic as "pump process survived teardown kill"
+        False -> {
+          process.sleep(10)
+          wait_dead(pid, budget - 1)
+        }
+      }
+  }
+}
+
 // ── graceful close: link_drain's [] clause → K7 with eos, over the prelude ──
 
 /// The graceful stream-end, end-to-end over the SHIPPED self.glp: a `link_drain/3` goal

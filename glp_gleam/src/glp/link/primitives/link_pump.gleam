@@ -91,9 +91,14 @@ pub fn new_inbox() -> Inbox {
 /// dropped silently. Establishment wires the cursors and then arms the pump.
 ///
 /// The loop owns the blocking `endpoint.recv` and only ever sends to `inbox`. It ends on
-/// the PEER's FIN or a transport fault — NOT on this end closing its own sender, because
-/// a link is bilateral (FR-003): closing our send side must never stop us receiving.
-pub fn start(inbox: Inbox, handle: LinkHandle) -> Result(Nil, String) {
+/// the PEER's FIN, a transport fault, or C8 teardown killing it (`process.kill` — Gabi
+/// ruling 2026-07-27 extending the no-OTP subset; nothing else can interrupt a parked
+/// blocking recv) — NOT on this end closing its own sender, because a link is bilateral
+/// (FR-003): closing our send side must never stop us receiving.
+///
+/// Returns the loop's Pid; the caller records it on the handle (`link_handle.with_pump`)
+/// so teardown can find it.
+pub fn start(inbox: Inbox, handle: LinkHandle) -> Result(process.Pid, String) {
   case handle.in_writer {
     None ->
       Error(
@@ -103,8 +108,10 @@ pub fn start(inbox: Inbox, handle: LinkHandle) -> Result(Nil, String) {
     Some(_) -> {
       let endpoint = handle.endpoint
       let id = handle.id
-      process.spawn(fn() { recv_loop(inbox, id, endpoint) })
-      Ok(Nil)
+      // UNLINKED, deliberately, twice over: (1) a pump crash must surface as a missing
+      // link, never as an exit signal that kills the RUNNER (fault-as-data, FR-009);
+      // (2) C8's teardown `process.kill` must not propagate back over a link either.
+      Ok(process.spawn_unlinked(fn() { recv_loop(inbox, id, endpoint) }))
     }
   }
 }

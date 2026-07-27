@@ -163,11 +163,13 @@ that builds it.
   converge on K7**: the graceful path is `link_drain/3`'s `[]` clause dispatching
   `'_link_close'(LinkId?, eos)` — proven end-to-end over the shipped self.glp under `step_link`.
   Sync-seam corollaries of D-3 (not semantic changes): no flush-then-close chain (sends are
-  synchronous — nothing queued to flush) and no deferred-connect gate. **Residual, recorded in
-  `link_teardown.gleam`:** the pump process stays parked in blocking `recv` until the peer FINs —
-  interrupting it needs `process.kill` (extends the ratified no-OTP subset) or OTP selectors, a
-  surface call NOT made silently; late items no-op on the registry miss. Escalate if the
-  peer-bounded drain is unacceptable.
+  synchronous — nothing queued to flush) and no deferred-connect gate. **Pump shutdown — RESOLVED
+  by Gabi 2026-07-27:** the no-OTP subset is extended with **`process.kill`**; teardown kills the
+  pump Pid recorded on the handle (`LinkHandle.pump`) after closing the endpoint — the oracle's
+  `dispose` equivalent, since nothing else can interrupt a blocking `recv`. The pump is spawned
+  **UNLINKED** (`spawn_unlinked`): a pump crash must surface as data, never as an exit signal that
+  kills the runner (FR-009), and the teardown kill must not propagate back either. Late items
+  no-op on the registry miss.
 
 **With C8, all 7 ratified kernels are live in the Gleam engine** (K1 setup, K2 send, K3 request,
 K4 listen, K5 accept, K6 monitor, K7 close) — the C0–C8 ladder is complete.
