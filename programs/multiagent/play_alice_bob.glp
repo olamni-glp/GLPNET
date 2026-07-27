@@ -10,19 +10,19 @@ NetMsg ::= msg(_, _, _).
 Channel ::= ch(NetMsg?, NetMsg).
 
 %% Agent pair for network switch
-AgentChannel ::= (_, Channel).
+AgentChannel ::= pair(_, Channel).
 
 %% User commands
-UserCmd ::= connect(_) | decision(_, _, _).
+UserCmd ::= connect(_) ; decision(_, _, _).
 
 %% Agent responses to user
-UserResp ::= befriend(_, _) | connected(_).
+UserResp ::= befriend(_, _) ; connected(_).
 
 %% Befriend response
-BefriendResp ::= accept(Channel) | no.
+BefriendResp ::= accept(Channel) ; no.
 
 %% Friends list entry
-FriendEntry ::= (_, NetMsg).
+FriendEntry ::= pair(_, NetMsg).
 FriendList ::= list(FriendEntry).
 
 %% ========== Procedure Declarations ==========
@@ -45,7 +45,7 @@ procedure alice_actor(UserResp?, UserCmd).
 %% Wait for connection response
 procedure alice_wait_response(UserResp?, UserCmd).
 
-%% Actor for Bob - reads agent output, writes user commands  
+%% Actor for Bob - reads agent output, writes user commands
 procedure bob_actor(UserResp?, UserCmd).
 
 %% Done waiting
@@ -78,26 +78,26 @@ procedure merge(NetMsg?, NetMsg?, NetMsg).
 %% ========== 2-Way Network Switch ==========
 
 %% Alice sends to Bob
-network2((alice, ch([msg(alice, bob, X)|AliceIn], AliceOut?)),
-         (bob, ch(BobIn, [msg(alice, bob, X?)|BobOut?]))) :-
-    network2((alice, ch(AliceIn?, AliceOut)),
-             (bob, ch(BobIn?, BobOut))).
+network2(pair(alice, ch([msg(alice, bob, X)|AliceIn], AliceOut?)),
+         pair(bob, ch(BobIn, [msg(alice, bob, X?)|BobOut?]))) :-
+    network2(pair(alice, ch(AliceIn?, AliceOut)),
+             pair(bob, ch(BobIn?, BobOut))).
 
 %% Bob sends to Alice
-network2((alice, ch(AliceIn, [msg(bob, alice, X?)|AliceOut?])),
-         (bob, ch([msg(bob, alice, X)|BobIn], BobOut?))) :-
-    network2((alice, ch(AliceIn?, AliceOut)),
-             (bob, ch(BobIn?, BobOut))).
+network2(pair(alice, ch(AliceIn, [msg(bob, alice, X?)|AliceOut?])),
+         pair(bob, ch([msg(bob, alice, X)|BobIn], BobOut?))) :-
+    network2(pair(alice, ch(AliceIn?, AliceOut)),
+             pair(bob, ch(BobIn?, BobOut))).
 
 %% Termination
-network2((_, ch([], _)), (_, ch([], _))).
+network2(pair(_, ch([], _)), pair(_, ch([], _))).
 
 %% ========== Play ==========
 
 play_alice_bob :-
     %% Network switch (holds inverse channels: ch(AgentOut?, AgentIn))
-    network2((alice, ch(AliceNetOut?, AliceNetIn)),
-             (bob, ch(BobNetOut?, BobNetIn))),
+    network2(pair(alice, ch(AliceNetOut?, AliceNetIn)),
+             pair(bob, ch(BobNetOut?, BobNetIn))),
 
     %% Agents (receive channels: ch(In?, Out))
     agent(alice, ch(AliceUserIn?, AliceUserOut), ch(AliceNetIn?, AliceNetOut)),
@@ -112,7 +112,7 @@ play_alice_bob :-
 
 agent(Id, ch(UserIn, UserOut?), ch(NetIn, NetOut?)) :-
     merge(UserIn?, NetIn?, In),
-    social_graph(Id?, In?, [(user, UserOut), (net, NetOut)]).
+    social_graph(Id?, In?, [pair(user, UserOut), pair(net, NetOut)]).
 
 %% ========== Actors ==========
 
@@ -124,14 +124,14 @@ alice_actor(AgentOut?, [msg(user, alice, connect(bob))|UserIn?]) :-
 
 %% Wait for connected message
 alice_wait_response([msg(agent, user, connected(bob))|_], _).
-alice_wait_response([_|AgentOut], UserIn?) :- 
+alice_wait_response([_|AgentOut], UserIn?) :-
     alice_wait_response(AgentOut?, UserIn).
 
 %% Bob: wait for befriend request, send acceptance
 bob_actor([msg(agent, user, befriend(alice, Resp))|AgentOut?],
           [msg(user, bob, decision(yes, alice, Resp?))|UserIn?]) :-
     bob_done(AgentOut?, UserIn).
-bob_actor([_|AgentOut], UserIn?) :- 
+bob_actor([_|AgentOut], UserIn?) :-
     bob_actor(AgentOut?, UserIn).
 
 bob_done(_, _).
@@ -205,13 +205,13 @@ handle_response(accept(ch(FIn, FOut)), From, Fs, Fs2?, In, In1?) :-
 handle_response(no, _, Fs, Fs?, In, In?).
 
 %% Add friend to list
-add_friend(Name, Out, Fs, [(Name?, Out?)|Fs?]).
+add_friend(Name, Out, Fs, [pair(Name?, Out?)|Fs?]).
 
 %% ========== Utilities ==========
 
 %% Lookup key and send message
 lookup_send(_, _, [], [], not_found).
-lookup_send(Key, Msg, [(K, Out)|Rest], [(K?, Out1?)|Rest?], found) :-
+lookup_send(Key, Msg, [pair(K, Out)|Rest], [pair(K?, Out1?)|Rest?], found) :-
     Key? =?= K? |
     Out? = [Msg?|Out1].
 lookup_send(Key, Msg, [Pair|Rest], [Pair?|Rest1?], Status?) :-
