@@ -74,6 +74,38 @@ the `serve/2` loop. The REPL suite's Sections F and L (CSSG modules, dynamic dis
 reference oracle. Sequencing note: T012 (re-load replacement), T013 (lint), T014–T018a, and all of
 US2 (REPL commands) are independent of this dossier and can land first.
 
+### Concrete Gleam mapping (decided 2026-07-27, after full reference read)
+
+1. **No `Term` variant.** A module value is the ground sentinel struct `'$module'(<idx:Int>)`
+   indexing an engine/scheduler-level module registry — the SAME mapping the port already uses for
+   Dart's `MutualRefTerm` (`'$mutual_ref'(addr)`, kernels.gleam:48-54). Zero blast radius in
+   terms/heap/unify/codec.
+2. **Per-goal programs.** Dart goals each carry a program (`rt.setGoalProgram`,
+   `rt.runners[program]` — activateKernel:867-878). The Gleam scheduler is single-program; it
+   gains a module registry (`idx → BytecodeProgram`) and a per-goal program reference (default:
+   the main program). This is the structural change.
+3. **`_activate/2` is NOT a plain kernel.** Gleam kernels are heap-only by contract
+   (kernels.gleam module doc) — they cannot enqueue goals. Follow the `_output` precedent:
+   thread the effect out as DATA. `KernelOutcome.KSuccess` gains a `spawns` field
+   (list of `#(module_idx, label, args)`), which the runner surfaces and the scheduler applies —
+   exactly how captured output already flows kernel → runner → scheduler.
+4. **`serve/2`** is embedded GLP (Dart `_serveSource`, glp_engine.dart:71-82) — a 2-clause loop:
+   `serve(Module, [Goal|In]) :- ground(Module?) | '_activate'(Module?, Goal?), serve(Module?, In?).`
+   Compiled once at engine init; spawned per activation as an infrastructure goal (excluded from
+   run-status derivation, Dart scheduler.dart:319-329).
+5. **Activation** (`activateModule`, glp_activation.dart): allocate channel writer/reader; register
+   module in the registry; spawn `serve('$module'(idx), Reader?)`; record the channel writer by
+   module name; auto-activate on load iff the module has exports (glp_engine.dart:306-317).
+6. **`Distribute`/`Transmit` runner cases** (runner.dart:3375-3479): build `StructTerm(functor,
+   collected args)`; resolve module name (static import table / deref'd var); look up the channel;
+   `send` = bind stream writer to `[goal|NewTail]`, advance writer, enqueue wakes; hard error
+   (terminate) when the module is not activated.
+7. **Channel send** mirrors `_stream_append`'s existing walk-and-bind machinery.
+
+Implementation order: scheduler registry + per-goal program → `'$module'` + `_activate` via
+extended `KernelOutcome` → activation + embedded serve → `Distribute`/`Transmit` → Section F/L
+oracle cases as gleeunit tests. Commit after each green slice.
+
 ## Non-regression baseline
 
 - Gleam: **465 green** (recorded in 059 as the floor; raised from 463).
