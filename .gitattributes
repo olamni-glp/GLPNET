@@ -1,0 +1,10 @@
+# Line-ending pins (059 T051 root cause: CRLF checkout of corpus.list corrupted
+# the parity runner's block ids -> all 44 runtime goldens reported MISSING).
+# The parity harness inputs and goldens are byte-compared evidence: always LF,
+# on every host, regardless of core.autocrlf.
+test/parity/*.list      text eol=lf
+test/parity/**/*.golden text eol=lf
+test/parity/goldens/**  text eol=lf
+test/parity/*.sh        text eol=lf
+test/parity/lib/*.sh    text eol=lf
+test/*.sh               text eol=lf
