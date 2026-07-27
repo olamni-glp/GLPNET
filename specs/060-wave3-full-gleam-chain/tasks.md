@@ -1,0 +1,194 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+
+SPDX-License-Identifier: MIT
+-->
+
+# Tasks: Wave 3 consolidated — Full Gleam chain
+
+**Feature**: `060-wave3-full-gleam-chain` | **Date**: 2026-07-27
+**Input**: [spec.md](./spec.md), [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/](./contracts/), [quickstart.md](./quickstart.md)
+
+**MVP scope**: Phase 1 + Phase 2 + Phase 3 (User Story 1). That alone delivers a Gleam runtime that loads and runs a multi-module GLP program — the wave's floor.
+
+Tests are included for US3 and US5 because the spec makes conformance and cross-runtime proof the acceptance instruments (FR-016…FR-019, FR-026…FR-030); elsewhere tests follow the existing `gleeunit` pattern.
+
+---
+
+## Phase 1: Setup
+
+- [ ] T001 Capture the non-regression baseline: run `gleam test` in `glp_gleam/` and record the green count (expected 465) in `specs/060-wave3-full-gleam-chain/research.md` under a new "Baseline captured" line
+- [ ] T002 Capture the reference-suite baseline: run `bash test/run_all_tests.sh` from repo root and record pass/total in the same "Baseline captured" line
+- [ ] T003 [P] Record the corpus starting state: run `bash test/parity/run_gleam_corpus.sh` and record total / pass / fail / missing-golden counts in `specs/060-wave3-full-gleam-chain/research.md`
+- [ ] T004 Commit the captured baseline as the wave's checkpoint-zero (scoped commit, `research.md` only)
+
+**Gate**: T001 and T002 must be green before any code change. A change made against a red baseline cannot be attributed (Constitution VII).
+
+---
+
+## Phase 2: Foundational (blocking prerequisites)
+
+- [ ] T005 Add the `_copy/2` builtin required by the `reduce` metainterpreter in `glp_gleam/src/glp/engine/kernels.gleam` (gap G2)
+- [ ] T006 [P] Add a `gleeunit` test for `_copy/2` term-copy semantics in `glp_gleam/test/glp/engine/kernels_test.gleam`
+- [ ] T007 Introduce the transport-injection seam on the engine composition root in `glp_gleam/src/glp/engine.gleam` so an instance can be constructed with a transport rather than compiled-in kernels only (gap G6)
+- [ ] T008 [P] Add a `gleeunit` test constructing an engine with an injected loopback transport in `glp_gleam/test/glp/engine_test.gleam`
+
+**Gate**: T005 and T007 unblock US1 and US4 respectively. Nothing in Phase 3+ may proceed past its dependency on them.
+
+---
+
+## Phase 3: User Story 1 — Run a GLP program on the Gleam runtime (P1) 🎯 MVP
+
+**Goal**: A `.glp` file loads and its goal runs, matching the reference runtime's outcome.
+**Independent test**: Run a representative corpus subset on both runtimes and compare outcomes (quickstart §3).
+
+- [ ] T009 [US1] Implement module static linking in `glp_gleam/src/glp/compiler/loader.gleam` — resolve cross-module procedure references at load time (gap G1, FR-008)
+- [ ] T010 [US1] Implement dynamic dispatch for module-qualified calls in `glp_gleam/src/glp/compiler/loader.gleam`, replacing the `Unimplemented distribute` path (gap G1, FR-009)
+- [ ] T011 [US1] Support late resolution: a module referenced before it is loaded must resolve when it arrives, or yield a structured error at first call in `glp_gleam/src/glp/compiler/loader.gleam` (FR-008)
+- [ ] T012 [P] [US1] Implement re-load replacement semantics in `glp_gleam/src/glp/compiler/loader.gleam` so stale procedures and link-table entries become unreachable (FR-015)
+- [ ] T013 [US1] Implement the bytecode lint, replacing the placeholder in `glp_gleam/src/glp/lint.gleam` (gap G3)
+- [ ] T014 [P] [US1] Ensure load-time SRSW rejection names the offending variable and clause in `glp_gleam/src/glp/analysis/srsw.gleam` diagnostics (FR-005)
+- [ ] T015 [P] [US1] Ensure every load failure yields a structured `LoadError{file, clause, reason}` and leaves the runtime usable in `glp_gleam/src/glp/diagnostics.gleam` (FR-003)
+- [ ] T016 [P] [US1] Add `gleeunit` tests for multi-module load, late resolution, and duplicate-procedure resolution in `glp_gleam/test/glp/compiler/loader_test.gleam`
+- [ ] T017 [P] [US1] Add `gleeunit` tests for the bytecode lint in `glp_gleam/test/glp/lint_test.gleam`
+- [ ] T018 [US1] Verify suspension is reported distinctly from failure end-to-end in `glp_gleam/src/glp/engine/runner.gleam` (FR-006) and add a `gleeunit` case in `glp_gleam/test/glp/engine/runner_test.gleam`
+
+**Checkpoint**: `gleam test` ≥ baseline; a multi-module program loads and runs.
+
+---
+
+## Phase 4: User Story 2 — Standalone interactive instance (P2)
+
+**Goal**: A person can load, pose goals, trace, bound, and inspect without leaving the instance.
+**Independent test**: Drive the scripted session in quickstart §4 and compare the transcript to the reference runtime.
+
+- [ ] T019 [US2] Implement `:bytecode <name>/<arity>` disassembly in `glp_gleam/src/glp/repl/commands.gleam` per `contracts/repl-commands.md` (gap G4, FR-014)
+- [ ] T020 [US2] Implement `:boot <module>` in `glp_gleam/src/glp/repl/commands.gleam` per the same contract (gap G4, FR-011)
+- [ ] T021 [P] [US2] Ensure `UnknownProcedure` / `UnknownModule` errors leave the session usable in `glp_gleam/src/glp/repl/repl.gleam` (contract invariant 1)
+- [ ] T022 [P] [US2] Ensure a `:limit`-stopped run returns `Bounded(steps)` and never `Failure` in `glp_gleam/src/glp/repl/results.gleam` (FR-013)
+- [ ] T023 [P] [US2] Add `gleeunit` tests for the full command surface in `glp_gleam/test/glp/repl/commands_test.gleam`
+- [ ] T024 [US2] Verify `:bytecode` is read-only — no heap or program mutation — with a test in `glp_gleam/test/glp/repl/commands_test.gleam` (contract invariant 6)
+
+**Checkpoint**: every row of the `contracts/repl-commands.md` table is implemented and tested.
+
+---
+
+## Phase 5: User Story 3 — Conformance against the shared corpus (P2)
+
+**Goal**: A single command yields a complete, deterministic, per-case verdict set.
+**Independent test**: Run the corpus and confirm `pass + fail + out_of_scope == total`.
+
+- [ ] T025 [US3] Emit the three-verdict model (`pass` / `fail` / `out_of_scope{reason}`) from `test/parity/run_gleam_corpus.sh` per `contracts/corpus-report.md` (FR-017)
+- [ ] T026 [US3] Emit the aggregate block and assert the completeness invariant `P + F + O == N` in `test/parity/run_gleam_corpus.sh` (SC-002)
+- [ ] T027 [US3] Classify the 44 golden-less cases as `out_of_scope` with reason `golden missing — 059 T051 drift` in `test/parity/expected.list` handling within `test/parity/run_gleam_corpus.sh` (FR-018a)
+- [ ] T028 [P] [US3] Emit named divergences (case id, expected, observed) for every `fail` from `test/parity/run_differential.sh` (FR-017)
+- [ ] T029 [US3] Regenerate the 44 missing reference goldens using `test/parity/record_dart_goldens.sh` and return those cases to in-scope (FR-018b, SC-010)
+- [ ] T030 [US3] Verify determinism: run the corpus twice over unchanged code and assert identical verdicts and counts (FR-019, SC-008)
+- [ ] T031 [P] [US3] Record the resulting in-scope pass rate against the ≥95% target, naming every exception, in `specs/060-wave3-full-gleam-chain/research.md` (SC-001)
+
+**Checkpoint**: completeness invariant holds; golden-less count is 0 or individually reasoned.
+
+**Note**: if T029 surfaces a *behavioural* divergence rather than a missing file, STOP and report under the Bug-Protocol — do not regenerate a golden from the runtime under test.
+
+---
+
+## Phase 6: User Story 4 — Connect two Gleam instances (P3)
+
+**Goal**: Two instances link, exchange ordered messages, and fail cleanly on peer loss.
+**Independent test**: quickstart §6 — join, round-trip, kill, observe.
+
+- [ ] T032 [US4] Implement the inbound pump so an instance accepts inbound link attempts in `glp_gleam/src/glp/link.gleam` (gap G7, FR-023)
+- [ ] T033 [US4] Implement the capability/version handshake per `contracts/link-handshake.md` in `glp_gleam/src/glp/link/seam/link_options.gleam` (FR-022)
+- [ ] T034 [US4] Implement `Refuse{reason}` on version or capability mismatch — never best-effort continuation — in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-022, FR-029)
+- [ ] T035 [US4] Implement instance network join in `glp_gleam/src/glp/link.gleam` (gap G7)
+- [ ] T036 [US4] Establish per-link ordering guarantees in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` above the current CRC floor (gap G8, FR-021)
+- [ ] T037 [P] [US4] Ensure a partially-received or CRC-failing frame is never delivered as complete in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` (contract rule 5)
+- [ ] T038 [US4] Implement bounded peer-loss detection (≤30 s) with fault propagation to programs holding cross-link references in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-024, SC-007)
+- [ ] T039 [P] [US4] Implement the multiagent boot loader in `glp_gleam/src/glp/mad/mad_engine.gleam` (gap G9)
+- [ ] T040 [P] [US4] Add `gleeunit` link tests over loopback in `glp_gleam/test/glp/link_test.gleam`
+- [ ] T041 [US4] Add link tests over TCP in `glp_gleam/test/glp/link/transports/tcp_test.gleam` (FR-025 acceptance surface)
+- [ ] T042 [P] [US4] Assert `zmq`, `quic`, and `ws` remain selectable through the seam without link-layer changes in `glp_gleam/test/glp/link/seam/link_scheme_test.gleam` (FR-025)
+
+**Checkpoint**: quickstart §6 checks 1–4 pass over both loopback and TCP.
+
+**Note on G9**: 059 recorded the malformed named-reference plays (`|` type-alt) as failing on **both** runtimes. That is a shared defect — report and specify it before fixing it on the Gleam side (Constitution II).
+
+---
+
+## Phase 7: User Story 5 — C# ↔ Gleam interoperation (P3)
+
+**Goal**: Two independently-written runtimes proven interoperable.
+**Independent test**: every suite scenario passes in both directions.
+
+- [ ] T043 [US5] Create the cross-runtime distributed test suite scaffold in `test/parity/cross_runtime/` with C#-initiates and Gleam-initiates variants (gap G10, FR-028)
+- [ ] T044 [US5] Implement the term round-trip scenario covering nested structures, lists, and unbound variables with reader/writer polarity preserved in `test/parity/cross_runtime/round_trip.sh` (FR-027, SC-006)
+- [ ] T045 [P] [US5] Implement the capability-mismatch scenario asserting explicit refusal, not silent misinterpretation, in `test/parity/cross_runtime/mismatch.sh` (FR-029)
+- [ ] T046 [US5] Implement the bidirectional link-establishment scenario in `test/parity/cross_runtime/link_both_ways.sh` (FR-026)
+- [ ] T047 [US5] Wire the cross-runtime suite into the project's regular test invocation in `test/run_all_tests.sh` so its results report alongside the others (FR-030)
+- [ ] T048 [US5] Verify no scenario leaves an instance blocked indefinitely (SC-007) in `test/parity/cross_runtime/round_trip.sh`
+
+**Checkpoint**: 100% of suite scenarios pass in both directions (SC-005).
+
+---
+
+## Phase 8: Polish & cross-cutting
+
+- [ ] T049 [P] Verify the AtomVM-compatibility constraint: no BEAM-only construct introduced without a recorded reason, checked via `glp_gleam/src/atomvm_gated_probe.gleam` (FR-032)
+- [ ] T050 [P] Re-run the full non-regression set — `gleam test` and `bash test/run_all_tests.sh` — and confirm both at or above the T001/T002 baseline (SC-009)
+- [ ] T051 [P] Time the quickstart cold path and confirm first-goal-answer under 5 minutes (SC-003)
+- [ ] T052 Update `specs/060-wave3-full-gleam-chain/quickstart.md` to remove any troubleshooting row whose gap has been closed
+
+---
+
+## Dependencies
+
+```text
+Phase 1 (T001-T004)  ─┬─▶ Phase 2 (T005-T008) ─┬─▶ Phase 3 US1 (T009-T018) ──┬─▶ Phase 5 US3 (T025-T031)
+   baseline gate      │      T005 ─────────────┘                             │
+                      │      T007 ──────────────────▶ Phase 6 US4 (T032-T042)┤
+                      │                                                       ├─▶ Phase 7 US5 (T043-T048)
+                      └─────────────────────────────▶ Phase 4 US2 (T019-T024)┘
+                                                                              │
+                                                                Phase 8 (T049-T052) ◀┘
+```
+
+- **US1 depends on** T005 (`_copy/2`).
+- **US2 depends on** US1 (nothing to inspect or boot without a loaded program).
+- **US3 depends on** US1 (programs must run to be compared).
+- **US4 depends on** T007 (transport injection seam).
+- **US5 depends on** US4 **and** US3, plus a runnable C# instance.
+- **Phase 8** depends on everything.
+
+## Parallel opportunities
+
+| Phase | Parallelisable |
+|---|---|
+| 1 | T003 alongside T001/T002 |
+| 2 | T006 ∥ T008 |
+| 3 | T012, T014, T015, T016, T017 (distinct files) |
+| 4 | T021, T022, T023 |
+| 5 | T028, T031 |
+| 6 | T037, T039, T040, T042 |
+| 7 | T045 alongside T044 |
+| 8 | T049, T050, T051 all parallel |
+
+## Implementation strategy
+
+1. **Baseline first** (Phase 1) — non-negotiable under Constitution VII.
+2. **MVP** = Phases 1–3. Stop here and the wave has already delivered a working second GLP runtime.
+3. **Incremental delivery** — US2 and US3 can land in either order once US1 is green; US4 can start in parallel with them as soon as T007 lands.
+4. **US5 last** — it consumes everything and needs an external C# instance.
+
+## Task count
+
+| Phase | Tasks |
+|---|---|
+| 1 Setup | 4 |
+| 2 Foundational | 4 |
+| 3 US1 (MVP) | 10 |
+| 4 US2 | 6 |
+| 5 US3 | 7 |
+| 6 US4 | 11 |
+| 7 US5 | 6 |
+| 8 Polish | 4 |
+| **Total** | **52** |
