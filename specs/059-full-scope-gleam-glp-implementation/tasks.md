@@ -16,36 +16,36 @@ SPDX-License-Identifier: MIT
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm BEAM toolchain + Windows/WSL topology and both parity oracles available (Gleam winget + Erlang/OTP 29 on PATH; `DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart.exe`) per specs/059-full-scope-gleam-glp-implementation/quickstart.md
-- [ ] T002 [P] Establish green baselines on synced branch: `cd glp_gleam && gleam test` (>=508/0) and `bash test/run_all_tests.sh` (0 fail) — record as the freeze baseline
-- [ ] T003 [P] Confirm escalation register state in specs/059-full-scope-gleam-glp-implementation/research.md: `rule-quic-sideprocess-relay` OPEN (blocks wave-4 QUIC dependents); `rule-embeddability-api-yngenios-wiring` RESOLVED
-- [ ] T004 Confirm coverage/traceability union (154 detail_ids + open-items) is loaded from docs/research/fullscope-gleam/gap-inventory-2026-07-19.md for terminal-disposition tracking (SC-003)
+- [x] T001 Confirm BEAM toolchain + Windows/WSL topology and both parity oracles available (Gleam winget + Erlang/OTP 29 on PATH; `DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart.exe`) per specs/059-full-scope-gleam-glp-implementation/quickstart.md
+- [x] T002 [P] Establish green baselines on synced branch: `cd glp_gleam && gleam test` (>=508/0) and `bash test/run_all_tests.sh` (0 fail) — record as the freeze baseline
+- [x] T003 [P] Confirm escalation register state in specs/059-full-scope-gleam-glp-implementation/research.md: `rule-quic-sideprocess-relay` OPEN (blocks wave-4 QUIC dependents); `rule-embeddability-api-yngenios-wiring` RESOLVED
+- [x] T004 Confirm coverage/traceability union (154 detail_ids + open-items) is loaded from docs/research/fullscope-gleam/gap-inventory-2026-07-19.md for terminal-disposition tracking (SC-003)
 
 ## Phase 2: Foundational — Wave 1 FREEZE + GUARD (blocks all later waves)
 
 **Goal**: US1 — drift-proof foundation. **Gate**: see plan.md Wave→pipeline mapping.
 
-- [ ] T005 [P] [US1] `freeze-body-kernel` (freeze, S, b2-c2-015) — acceptance per FINAL plan
-- [ ] T006 [P] [US1] `freeze-bytecode-isa` (freeze, S, b1-c2-005) — acceptance per FINAL plan
-- [ ] T007 [P] [US1] `freeze-bytecode-runner` (freeze, S, b2-c2-016) — acceptance per FINAL plan
-- [ ] T008 [P] [US1] `freeze-codec-envelope` (freeze, M, b1-c2-006) — acceptance per FINAL plan
-- [ ] T009 [P] [US1] `freeze-compiler-pipeline` (freeze, M, b1-c2-004) — acceptance per FINAL plan
-- [ ] T010 [P] [US6] `freeze-embeddability-api` (freeze, S, b2-c2-020) — acceptance per FINAL plan
-- [ ] T011 [P] [US1] `freeze-engine-execution` (freeze, M, b1-c2-002) — acceptance per FINAL plan
-- [ ] T012 [P] [US1] `freeze-engine-facade` (freeze, S, b1-c2-003) — acceptance per FINAL plan
-- [ ] T013 [P] [US1] `freeze-guard-kernel` (freeze, S, b2-c2-017) — acceptance per FINAL plan
-- [ ] T014 [P] [US4] `freeze-link-layer` (freeze, S, b2-c2-019) — acceptance per FINAL plan
-- [ ] T015 [P] [US4] `freeze-link-transport-seam` (freeze, S, b1-c2-008) — acceptance per FINAL plan
-- [ ] T016 [P] [US4] `freeze-link-wire` (freeze, S, b1-c2-007) — acceptance per FINAL plan
-- [ ] T017 [P] [US1] `freeze-module-system` (freeze, S, b2-c2-018) — acceptance per FINAL plan
-- [ ] T018 [P] [US1] `freeze-platform-atomvm-policy` (freeze, S, b1-c2-010) — acceptance per FINAL plan
-- [ ] T019 [P] [US1] `freeze-repl-surface` (freeze, S, b1-c2-009) — acceptance per FINAL plan
-- [ ] T020 [P] [US1] `freeze-runtime-term-heap` (freeze, S, b1-c2-001) — acceptance per FINAL plan
-- [ ] T021 [P] [US1] `guard-atomvm-gated-probe` (guard, S, b1-c2-014) — acceptance per FINAL plan
-- [ ] T022 [P] [US5] `guard-fe-be-envelope-seam` (guard, S, b2-c1-001) — acceptance per FINAL plan
-- [ ] T023 [P] [US1] `guard-suite-csharp-reference` (guard, S, b1-c2-013) — acceptance per FINAL plan
-- [ ] T024 [P] [US1] `guard-suite-dart-reference` (guard, S, b1-c2-012) — acceptance per FINAL plan
-- [ ] T025 [P] [US1] `guard-suite-gleam` (guard, S, b1-c2-011) — acceptance per FINAL plan
+- [x] T005 [P] [US1] `freeze-body-kernel` (freeze, S, b2-c2-015) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T006 [P] [US1] `freeze-bytecode-isa` (freeze, S, b1-c2-005) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T007 [P] [US1] `freeze-bytecode-runner` (freeze, S, b2-c2-016) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T008 [P] [US1] `freeze-codec-envelope` (freeze, M, b1-c2-006) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T009 [P] [US1] `freeze-compiler-pipeline` (freeze, M, b1-c2-004) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T010 [P] [US6] `freeze-embeddability-api` (freeze, S, b2-c2-020) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T011 [P] [US1] `freeze-engine-execution` (freeze, M, b1-c2-002) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T012 [P] [US1] `freeze-engine-facade` (freeze, S, b1-c2-003) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T013 [P] [US1] `freeze-guard-kernel` (freeze, S, b2-c2-017) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T014 [P] [US4] `freeze-link-layer` (freeze, S, b2-c2-019) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T015 [P] [US4] `freeze-link-transport-seam` (freeze, S, b1-c2-008) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T016 [P] [US4] `freeze-link-wire` (freeze, S, b1-c2-007) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T017 [P] [US1] `freeze-module-system` (freeze, S, b2-c2-018) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T018 [P] [US1] `freeze-platform-atomvm-policy` (freeze, S, b1-c2-010) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T019 [P] [US1] `freeze-repl-surface` (freeze, S, b1-c2-009) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T020 [P] [US1] `freeze-runtime-term-heap` (freeze, S, b1-c2-001) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T021 [P] [US1] `guard-atomvm-gated-probe` (guard, S, b1-c2-014) — acceptance per FINAL plan ✓ runbook present + atomvm_gated_probe.gleam unmodified vs baseline; MANUAL AtomVM Node-probe run = human checkpoint (not run this session)
+- [x] T022 [P] [US5] `guard-fe-be-envelope-seam` (guard, S, b2-c1-001) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T023 [P] [US1] `guard-suite-csharp-reference` (guard, S, b1-c2-013) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T024 [P] [US1] `guard-suite-dart-reference` (guard, S, b1-c2-012) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
+- [x] T025 [P] [US1] `guard-suite-gleam` (guard, S, b1-c2-011) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
 
 ## Phase 3: Wave 2 — VERIFY + RULE-REQUESTS
 
