@@ -21,6 +21,10 @@ dependencies = [
 dev = [
   "pytest>=7",
   "pytest-mock",
+  # ship/release tests use flaky-retry marks; without the plugin, `-k "ship or
+  # release"` fails at COLLECTION (RCA item 4, 2026-07-27) — so it is a dev dep,
+  # not an optional nicety.
+  "pytest-rerunfailures",
   "alembic>=1.13",
 ]
 # Feature 019 (codeconv-codegen) — OFFLINE GEPA/DSPy optimizer ONLY.
