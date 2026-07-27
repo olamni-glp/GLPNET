@@ -64,7 +64,7 @@ SPDX-License-Identifier: MIT
 - [x] T036 [P] [US4] `rule-quic-sideprocess-relay` (rule-request, S, b1-c2-015) **[RULED 2026-07-27 — Disposition 2: minimal relay smoke test required; enforced by T098 `close-quic-sideprocess-relay-smoketest`; escalation-register.md]** — acceptance per FINAL plan
 - [x] T037 [P] [US4] `rule-quicws-mesh-full-mesh-native-quic` (rule-request, S, b3-c2-025) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [x] T038 [P] [US4] `rule-transports-zmq-comm-base` (rule-request, S, b3-c2-022) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
-- [ ] T039 [P] [US2] `verify-acceptance-acceptance-sweep-and-polish` (verify, S, b3-c1-017) — acceptance per FINAL plan
+- [x] T039 [P] [US2] `verify-acceptance-acceptance-sweep-and-polish` (verify, S, b3-c1-017) — acceptance per FINAL plan ✓ VERDICT 2026-07-27 (phase2-verify/verify-acceptance-acceptance-sweep-and-polish.md): DELIVERED-as-verify — capstone unstarted as expected (no run_link_tests_cross_gleam.sh, no acceptance.md)
 - [x] T040 [P] [US2] `verify-bytecode-bytecode-instruction-set` (verify, M, b3-c1-005) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-bytecode-bytecode-instruction-set.md)
 - [x] T041 [P] [US2] `verify-codec-compiled-il-on-the-wire` (verify, M, b3-c1-011) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-codec-compiled-il-on-the-wire.md)
 - [x] T042 [P] [US2] `verify-compiler-antlr-shared-grammar-spike` (verify, M, b3-c1-004) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-compiler-antlr-shared-grammar-spike.md)
@@ -74,7 +74,7 @@ SPDX-License-Identifier: MIT
 - [x] T046 [P] [US2] `verify-guards-guard-defined` (verify, S, b3-c1-002) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-guards-guard-defined.md)
 - [x] T047 [P] [US2] `verify-langsurface-channel-convention` (verify, M, b3-c1-003) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-langsurface-channel-convention.md)
 - [x] T048 [P] [US4] `verify-link-inbound-pump` (verify, M, b3-c1-008) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-link-inbound-pump.md)
-- [ ] T049 [P] [US2] `verify-module-system-scope-chain` (verify, S, b2-c2-021) — acceptance per FINAL plan
+- [x] T049 [P] [US2] `verify-module-system-scope-chain` (verify, S, b2-c2-021) — acceptance per FINAL plan ✓ VERDICT 2026-07-27 (phase2-verify/verify-module-system-scope-chain.md): ABSENT — directory self.glp scope-chain not in Gleam (single root prelude only); scope decision surfaced
 - [x] T050 [P] [US3] `verify-multiagent-multiagent-boot-loader` (verify, S, b3-c1-007) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-multiagent-multiagent-boot-loader.md)
 - [ ] T051 [P] [US2] `verify-parity-differential-harness` (verify, M, b3-c2-016) — acceptance per FINAL plan
 - [ ] T052 [P] [US2] `verify-platform-atomvm-compatibility-by-construction` (verify, S, b3-c1-018) — acceptance per FINAL plan
@@ -83,7 +83,7 @@ SPDX-License-Identifier: MIT
 - [x] T055 [P] [US4] `verify-quicws-link-completion-live-repl-bridge` (verify, M, b3-c1-009) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-quicws-link-completion-live-repl-bridge.md)
 - [x] T056 [P] [US2] `verify-repl-repl-boot-command` (verify, S, b3-c1-006) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-repl-repl-boot-command.md)
 - [x] T057 [P] [US2] `verify-runtime-arithmetic-expression` (verify, M, b3-c1-001) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-runtime-arithmetic-expression.md)
-- [ ] T058 [P] [US4] `verify-transports-multi-accept-transport-extension` (verify, M, b3-c1-010) — acceptance per FINAL plan
+- [x] T058 [P] [US4] `verify-transports-multi-accept-transport-extension` (verify, M, b3-c1-010) — acceptance per FINAL plan ✓ VERDICT 2026-07-27 (phase2-verify/verify-transports-multi-accept-transport-extension.md): PARTIAL — multi-accept/quiescence ABSENT, frame-hardening DELIVERED; zmq-comm-base premise SUPERSEDED (ZMQ now in-contract)
 - [x] T059 [P] [US4] `verify-wireproto-crdt-convergence` (verify, M, b3-c1-012) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-wireproto-crdt-convergence.md)
 
 ## Phase 4: Wave 3 — CLOSE (paired to ABSENT verdicts)
