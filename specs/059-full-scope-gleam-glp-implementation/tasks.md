@@ -92,17 +92,17 @@ SPDX-License-Identifier: MIT
 
 - [ ] T060 [P] [US2] `close-acceptance-acceptance-sweep-and-polish` (close, L, b3-c2-042) — acceptance per FINAL plan
 - [ ] T061 [P] [US2] `close-body-kernel-now-send` (close, M, b2-c2-004) — acceptance per FINAL plan
-- [ ] T062 [P] [US2] `close-bytecode-bytecode-instruction-set` (close, M, b3-c1-030) — acceptance per FINAL plan
+- [x] T062 [P] [US2] `close-bytecode-bytecode-instruction-set` (close, M, b3-c1-030) — CLOSED 2026-07-27: Op union discriminant-complete (44) + runtime WxW (unify.gleam:88-89) CONFIRMED, opcodes_test/writer_mgu_adversarial green; bytecode-lint recorded auxiliary-optional; evidence phase3-close/close-bytecode-bytecode-instruction-set.md
 - [ ] T063 [P] [US2] `close-bytecode-runner-missing-opcodes` (close, M, b2-c2-005) — acceptance per FINAL plan
-- [ ] T064 [P] [US2] `close-codec-compiled-il-on-the-wire` (close, M, b3-c2-036) — acceptance per FINAL plan
+- [x] T064 [P] [US2] `close-codec-compiled-il-on-the-wire` (close, M, b3-c2-036) — CLOSED 2026-07-27: term/envelope/builder byte-parity CONFIRMED (golden_corpus_test reads corpus.hex live, gleam test 465+); IL-codec family ABSENT-by-design/owner-deferred, held pending rule-codec-compiled-il-on-the-wire (b3-c2-024); evidence phase3-close/close-codec-compiled-il-on-the-wire.md
 - [ ] T065 [P] [US2] `close-compiler-antlr-shared-grammar-spike` (close, L, b3-c2-029) — acceptance per FINAL plan
 - [ ] T066 [P] [US5] `close-distribution-engine-sessions` (close, L, b2-c2-014) — acceptance per FINAL plan
 - [ ] T067 [P] [US6] `close-embed-embeddability-service-box` (close, S, b3-c1-039) — acceptance per FINAL plan
 - [ ] T068 [P] [US6] `close-embeddability-host-api` (close, M, b2-c2-013) — acceptance per FINAL plan
 - [ ] T069 [P] [US5] `close-engine-engine-composition-root` (close, M, b3-c1-040) — acceptance per FINAL plan
-- [ ] T070 [P] [US5] `close-febe-embedded-switch-role-framing` (close, M, b3-c1-038) — acceptance per FINAL plan
+- [x] T070 [P] [US5] `close-febe-embedded-switch-role-framing` (close, M, b3-c1-038) — CLOSED 2026-07-27: single-process shape confirmed + 026 design authority DELIVERED; all 8 detail_ids dispositioned & bound to build-fe-be-process-split (b3-c2-046) acceptances; forks F1 (snapshot API) + F2 (liveness-vs-BEAM-supervision) carried to engineer, NOT resolved; evidence phase3-close/close-febe-embedded-switch-role-framing.md
 - [ ] T071 [P] [US2] `close-guard-kernel-wait-guards` (close, M, b2-c2-006) — acceptance per FINAL plan
-- [ ] T072 [P] [US2] `close-guards-guard-defined` (close, M, b3-c1-027) — acceptance per FINAL plan
+- [x] T072 [P] [US2] `close-guards-guard-defined` (close, M, b3-c1-027) — CLOSED 2026-07-27: guard-defined (guard_defs.gleam three-valued Guard-opcode; test_defined_guards.glp R=ok/R=not_channel agree Dart/C#/Gleam) + guard-purity (compile-time enforced; test_time_guard.glp negative agrees) both DELIVERED, clean; evidence phase3-close/close-guards-guard-defined.md
 - [ ] T073 [P] [US2] `close-langsurface-channel-convention` (close, M, b3-c1-028) — acceptance per FINAL plan
 - [ ] T074 [P] [US4] `close-link-inbound-pump` (close, L, b3-c1-033) — acceptance per FINAL plan
 - [ ] T075 [P] [US4] `close-link-layer-fault-decoration` (close, S, b2-c2-009) — acceptance per FINAL plan
@@ -111,8 +111,8 @@ SPDX-License-Identifier: MIT
 - [ ] T078 [P] [US2] `close-module-system-runtime-rpc` (close, M, b2-c2-007) — acceptance per FINAL plan
 - [ ] T079 [P] [US3] `close-multiagent-multiagent-boot-loader` (close, L, b3-c2-032) — acceptance per FINAL plan
 - [x] T080 [P] [US2] `close-parity-differential-harness` (close, M, b3-c1-041) — CLOSED 2026-07-27: CRLF root cause fixed (9bf9d02f/8627f7f3); corpus rc=0 206 agree/0 diverge/0 missing, 10x PASS; evidence phase3-close/close-parity-differential-harness.md
-- [ ] T081 [P] [US2] `close-platform-atomvm-compatibility-by-construction` (close, S, b3-c1-043) — acceptance per FINAL plan
-- [ ] T082 [P] [US2] `close-process-baseline-program-dossier` (close, S, b3-c2-044) — acceptance per FINAL plan
+- [x] T081 [P] [US2] `close-platform-atomvm-compatibility-by-construction` (close, S, b3-c1-043) — CLOSED 2026-07-27: by-construction DELIVERED — no-OTP policy (deps_policy_test green; gleam.toml gleam_erlang only), Windows-native gleam build+test 508/0, 13 subsystems filled, 6 records dispositioned; AtomVM probe PASS supplementary only; evidence phase3-close/close-platform-atomvm-compatibility-by-construction.md
+- [x] T082 [P] [US2] `close-process-baseline-program-dossier` (close, S, b3-c2-044) — CLOSED 2026-07-27: 6 process/decision records reconciled MATCH, 0 drift; conditional-drift trigger recorded (constituent rows understate M1 by protocol, become drift only when combined-full-gleam ships per 050:12,191); scaling-research held pending rule (b3-c2-023); evidence phase3-close/close-process-baseline-program-dossier.md
 - [ ] T083 [P] [US2] `close-proofs-proof-dist-deref-convergence` (close, L, b3-c2-045) — acceptance per FINAL plan
 - [x] T098 [US4] `close-quic-sideprocess-relay-smoketest` (close, S, ruling-2026-07-27) — CLOSED 2026-07-27: reassembly gate green (gleam_quic/smoke.sh rc=0, 2 MiB envelope whole on stdout / control on stderr); live-C# byte-identity ENVIRONMENT-blocked (msquic; glp_quick_host requires real QUIC) — recorded not waived; T084/T085/T086 inherit same msquic block; evidence phase3-close/close-quic-sideprocess-relay-smoketest.md
 - [ ] T084 [P] [US4] `close-quic-client-inprocess-tests` (close, M, b2-c2-012) — acceptance per FINAL plan
