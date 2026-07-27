@@ -233,6 +233,30 @@ pub fn link_id_to_term(id: LinkId) -> Term {
   ])
 }
 
+/// The ground `AgentId` naming the SINGLE far end of a bilateral link (FR-005), derived
+/// from the link's own ground `LinkId`. Used where the host must supply a `ToPeer` it was
+/// not handed — the C5 egress drainer, lowered as `link_drain(Out?, LinkId?, ToPeer?)`,
+/// whose `ground(ToPeer?)` guard needs a ground `AgentId` while `'_link_setup'/5` (path A)
+/// carries no peer argument at all.
+///
+/// The mapping is total and stays inside the shipped type (`self.glp:447`):
+/// `Endpoint ::= String` → `AgentId ::= String`, and `ep(Host, Port)` → `peer(Host, Port)`.
+/// Applied UNIFORMLY by all three establishing kernels — a path-B kernel does have a real
+/// peer term, but using it there and a derived one here would make the two paths'
+/// drainer goals distinguishable, which FR-002/R-5 forbids. `ToPeer` is inert on the wire
+/// (`'_link_send'/3` validates it ground and routes by `LinkId`), so nothing observes the
+/// choice; it exists to satisfy the guard.
+pub fn bilateral_peer(id: LinkId) -> Term {
+  case id.endpoint.port {
+    option.None -> ConstTerm(ConstAtom(id.endpoint.host))
+    option.Some(port) ->
+      StructTerm("peer", [
+        ConstTerm(ConstAtom(id.endpoint.host)),
+        ConstTerm(ConstInt(port)),
+      ])
+  }
+}
+
 fn link_address_to_term(address: LinkAddress) -> Term {
   case address.port {
     option.None -> ConstTerm(ConstAtom(address.host))

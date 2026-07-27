@@ -173,6 +173,14 @@ fn try_link_setup(
 /// without re-wiring — the existing handle already drives the peer's frames. `adopt`
 /// (path B) adopts the endpoint the kernel already opened; `pre_gated` skips the funnel's
 /// gate for a kernel that gated itself. The address passed is the LinkId's own endpoint.
+///
+/// **Egress arming (C5, deviation D-2 option (a) — Gabi §1.14 approval 2026-07-27).** On
+/// genuine first establishment this also REQUESTS the Out-drainer: the scheduler lowers a
+/// runnable `link_drain(Out?, LinkId, ToPeer)` goal whose suspension on the `Out` reader
+/// replaces the oracle's `heap.OnBind`. It is requested here, in the ONE convergence tail,
+/// for the same reason establishment itself converges here — a second arming site would
+/// break R-5 no matter how carefully it mirrored this one. The `Reused` arm deliberately
+/// does NOT arm: FR-007 idempotency would otherwise put two drainers on one `Out` stream.
 fn wire_and_record(
   heap: Heap,
   state: LinkState,
@@ -200,6 +208,14 @@ fn wire_and_record(
     Ok(#(registry, Established(handle))) -> {
       let wired = link_handle.with_cursors(handle, in_addr, out_addr, faults_addr)
       let state = link_runtime.with_links(state, link_registry.put(registry, wired))
+      // Arm egress ONCE, on first establishment only (see the doc comment above).
+      let state =
+        link_runtime.request_drain(
+          state,
+          out_addr,
+          link_terms.link_id_to_term(id),
+          link_terms.bilateral_peer(id),
+        )
       Ok(LinkEffect(heap, state, []))
     }
     Ok(#(registry, Reused(_handle))) ->

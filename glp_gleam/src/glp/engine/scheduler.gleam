@@ -51,6 +51,7 @@ import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
 import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
+import glp/link/primitives/link_runtime.{type DrainRequest, type LinkState}
 import glp/mad/global_name
 import glp/mad/globalize.{type Spawn}
 import glp/mad/mad_kernels.{type MadState, MadState}
@@ -476,6 +477,145 @@ pub fn enqueue_global_sends(
   spawns: List(Spawn),
 ) -> Result(Engine, String) {
   lower_mad_spawns(engine, spawns)
+}
+
+// ── link-aware stepping (T050.C5) ──────────────────────────────────────────────
+//
+// The pure `step` and the madGLP `step_mad` both run with NO link state
+// (`ctx.link == None`), so a `_link_*` kernel reached from either fails non-fatally
+// (`runner.link_spawn`'s None branch). `step_link` is the missing driver: it injects the
+// caller's `LinkState` into the reduction, reads the updated one back off `Reduced.link`,
+// and LOWERS the egress drainers establishment accumulated into real runnable
+// `link_drain/3` goals — the exact shape `step_mad` uses for `global_send/3`, and for the
+// same reason: the kernels run deep inside `runner.reduce`, which owns neither goal
+// identity nor the run queue.
+//
+// This is deliberately ONE seam rather than a per-step-type special case, because C6's
+// ingress pump needs the identical injection point: the pump's decoded frames extend the
+// `In` writer and wake `link_recv` goals through the same `LinkState`. Building the seam
+// once here means C6 adds a drain of its inbox next to `take_drains`, not a second driver.
+
+/// One link-aware reduction: like `step`, but threading `link_in` through the reduction
+/// and returning the updated `LinkState` (whose `drains` is always `[]` on return — the
+/// requests are lowered into the run queue here). A lowering failure (`link_drain/3` not
+/// loaded) surfaces as `StepErrored`, never a silent drop: an unlowered drainer is a link
+/// whose `Out` stream is established but never reaches the wire.
+pub fn step_link(
+  engine: Engine,
+  reduction_budget: Int,
+  link_in: LinkState,
+) -> #(Engine, StepOutcome, LinkState) {
+  case types.dequeue(engine.queue) {
+    Error(_) -> #(engine, StepIdle, link_in)
+    Ok(#(act, queue)) -> {
+      let engine = Engine(..engine, queue: queue)
+      let ctx =
+        runner.with_link(runner.new_context(engine.heap, act.regs), link_in)
+      case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          ui: ui_out,
+          mad: _,
+          link: link_o,
+        ) -> {
+          // We injected `Some`, so the runner always returns `Some`; `None` would be an
+          // engine invariant break — treat it as no effect rather than losing the state.
+          let link_out = case link_o {
+            Some(l) -> l
+            None -> link_in
+          }
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
+              ui: list.append(engine.ui, ui_out),
+            )
+          let engine = trace_reduction(engine, act, spawned, h)
+          let #(engine, spawned_ids) = list.map_fold(spawned, engine, spawn_goal)
+          let engine = list.fold(woken, engine, reactivate)
+          let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+          let #(link_out, drains) = link_runtime.take_drains(link_out)
+          case lower_link_drains(engine, drains) {
+            Ok(engine) -> #(
+              engine,
+              StepReduced(act.goal_id, act.procedure, woken_ids, spawned_ids),
+              link_out,
+            )
+            Error(reason) -> #(
+              engine,
+              StepErrored(runner.Malformed(reason)),
+              link_in,
+            )
+          }
+        }
+        runner.Suspended(heap: h, on: on) -> {
+          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+          let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
+          let on_list = on |> set.to_list |> list.sort(int.compare)
+          #(engine, StepSuspended(act.goal_id, act.procedure, on_list), link_in)
+        }
+        runner.Failed(heap: h) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+            )
+          let engine = trace_terminal(engine, act, h, " \u{2192} failed")
+          #(engine, StepFailed(act.goal_id, act.procedure), link_in)
+        }
+        runner.BudgetExhausted(heap: h) -> #(
+          Engine(..engine, heap: h),
+          StepErrored(runner.Malformed(
+            "reduction budget exhausted in goal " <> act.procedure,
+          )),
+          link_in,
+        )
+        runner.RunnerError(reason: fault) -> #(
+          engine,
+          StepErrored(fault),
+          link_in,
+        )
+      }
+    }
+  }
+}
+
+/// Lower each accumulated `DrainRequest` into a runnable `link_drain/3` goal and enqueue
+/// it (self.glp:557-564). Register 0 is the channel `Out` READER, so the drainer's first
+/// head argument `[Msg|Rest]` (declared `Stream(X)?`) SUSPENDS until the program conses
+/// via `link_send/3` — the ordinary suspension/reactivation machinery drives egress and
+/// no `heap.onBind` is needed (deviation D-2). `Out = []` takes the drainer's second
+/// clause into `'_link_close'(LinkId?, eos)`, the graceful stream-end close (FR-024).
+/// `Error` if `link_drain/3` is not loaded.
+fn lower_link_drains(
+  engine: Engine,
+  drains: List(DrainRequest),
+) -> Result(Engine, String) {
+  list.try_fold(drains, engine, fn(engine, d) {
+    case program.label_pc(engine.program, "link_drain/3") {
+      Error(_) ->
+        Error(
+          "link_drain/3 not loaded — cannot lower the egress drainer for an "
+          <> "established link (it ships in programs/self.glp)",
+        )
+      Ok(entry_pc) -> {
+        let regs =
+          program.new_regs()
+          |> program.set_reg(0, terms.VarRef(d.out_reader))
+          |> program.set_reg(1, d.link_id)
+          |> program.set_reg(2, d.to_peer)
+        let #(engine, _id) =
+          spawn_goal(engine, SpawnReq("link_drain/3", entry_pc, regs))
+        Ok(engine)
+      }
+    }
+  })
 }
 
 /// Replace the engine's heap (the `MadEngine` Receive transaction threads Localize's

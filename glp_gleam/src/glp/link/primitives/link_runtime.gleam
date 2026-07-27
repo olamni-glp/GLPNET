@@ -22,6 +22,7 @@
 //// A LinkId's nonce is a carrier fact, meaningless as a logical channel identity.
 
 import gleam/dict.{type Dict}
+import gleam/list
 import glp/link/primitives/capability_gate.{type CapabilityGateRegistry}
 import glp/link/primitives/link_establish.{type EstablishContext}
 import glp/link/primitives/link_registry.{type LinkRegistry}
@@ -30,6 +31,23 @@ import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_id.{type LinkId}
 import glp/link/seam/link_options.{type LinkOptions}
 import glp/link/seam/transport.{type Transport}
+import glp/runtime/terms.{type Term}
+
+/// One pending request to lower the egress DRAINER for a newly established link
+/// (T050.C5, deviation D-2 option (a)). It is a *request*, not the goal itself, because
+/// only the scheduler owns goal identity and the run queue — the kernels run deep inside
+/// `runner.reduce` and cannot enqueue. Exactly the `globalize.Spawn` → `lower_mad_spawns`
+/// shape A3 established for `global_send/3`.
+///
+/// - `out_reader`: the heap address of the channel `Out` READER (`'_link_setup'/5` arg 4).
+///   `link_drain/3`'s first argument is `Stream(X)?`, so reading it SUSPENDS until the
+///   program conses via `link_send/3` — which is precisely why no `heap.onBind` is needed
+///   (the C#/Dart oracle's mechanism, absent in Gleam).
+/// - `link_id` / `to_peer`: the two ground terms the drainer's guards require, prebuilt
+///   here so the scheduler needs no link-layer term knowledge to lower the goal.
+pub type DrainRequest {
+  DrainRequest(out_reader: Int, link_id: Term, to_peer: Term)
+}
 
 /// All link-layer host state for ONE engine instance.
 ///
@@ -41,6 +59,10 @@ import glp/link/seam/transport.{type Transport}
 ///   request token. A parked endpoint is OPEN but not yet an established link — it is
 ///   deliberately NOT in `links`, so a half-completed handshake can never be mistaken
 ///   for an established link. C4 populates and drains this; C1 only carries it.
+/// - `drains`: egress drainers awaiting lowering into runnable `link_drain/3` goals
+///   (C5). Accumulated by the establishing kernels — which cannot enqueue — and taken by
+///   the scheduler's `step_link` after the reduction, mirroring `MadState.mad_spawns`.
+///   Always empty on the `LinkState` a driver hands back out.
 pub type LinkState {
   LinkState(
     links: LinkRegistry,
@@ -48,6 +70,7 @@ pub type LinkState {
     gates: CapabilityGateRegistry,
     options: LinkOptions,
     pending: Dict(LinkId, Endpoint),
+    drains: List(DrainRequest),
   )
 }
 
@@ -61,6 +84,7 @@ pub fn new() -> LinkState {
     gates: capability_gate.new(),
     options: link_options.default(),
     pending: dict.new(),
+    drains: [],
   )
 }
 
@@ -112,6 +136,33 @@ pub fn take_pending(
       endpoint,
     ))
   }
+}
+
+/// Record that a newly established link needs its egress drainer lowered (C5).
+///
+/// 🔴 Call this ONLY on a genuine first establishment (`link_registry.Established`).
+/// A repeat `link_setup` at the same ground identity returns `Reused` (FR-007) and must
+/// NOT arm a second drainer: two `link_drain/3` goals reading one `Out` stream is a
+/// double-read of a non-constant stream — each cons would be shipped twice, or worse the
+/// two goals would race for the same head. Idempotency at identity means idempotency of
+/// the egress arming too.
+pub fn request_drain(
+  state: LinkState,
+  out_reader: Int,
+  link_id: Term,
+  to_peer: Term,
+) -> LinkState {
+  LinkState(..state, drains: [
+    DrainRequest(out_reader, link_id, to_peer),
+    ..state.drains
+  ])
+}
+
+/// Take the accumulated drain requests in establishment order, leaving the state with
+/// none. The scheduler calls this once per reduction and lowers what it gets; a request
+/// is therefore lowered exactly once.
+pub fn take_drains(state: LinkState) -> #(LinkState, List(DrainRequest)) {
+  #(LinkState(..state, drains: []), list.reverse(state.drains))
 }
 
 /// The establish-context view of this state, for `link_establish.wire_established_link`.
