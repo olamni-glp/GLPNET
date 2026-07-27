@@ -51,27 +51,35 @@ zmq_close({Ctx, Sock}) ->
 %% ---- helpers -------------------------------------------------------------
 
 %% Create a context + a PAIR socket, run Bind/Connect, hand back {Ctx, Sock}.
+%% erlzmq is provisioned only in WSL (see glp_gleam/profile_zmq/README.md); in the
+%% documented Windows/default env the module-qualified erlzmq:* calls resolve to
+%% `undef` at runtime. Catch that here and return a normal {error, erlzmq_unavailable}
+%% the Gleam side maps onto a LinkFaultSignal, rather than crashing the caller.
 with_socket(BindOrConnect) ->
-    case erlzmq:context() of
-        {ok, Ctx} ->
-            case erlzmq:socket(Ctx, pair) of
-                {ok, Sock} ->
-                    case BindOrConnect(Sock) of
-                        ok -> {ok, {Ctx, Sock}};
-                        {error, _} = E ->
-                            _ = erlzmq:close(Sock),
-                            _ = erlzmq:term(Ctx),
-                            E;
-                        Other ->
-                            _ = erlzmq:close(Sock),
-                            _ = erlzmq:term(Ctx),
-                            {error, Other}
-                    end;
-                {error, _} = E ->
-                    _ = erlzmq:term(Ctx),
-                    E
-            end;
-        {error, _} = E -> E
+    try
+        case erlzmq:context() of
+            {ok, Ctx} ->
+                case erlzmq:socket(Ctx, pair) of
+                    {ok, Sock} ->
+                        case BindOrConnect(Sock) of
+                            ok -> {ok, {Ctx, Sock}};
+                            {error, _} = E ->
+                                _ = erlzmq:close(Sock),
+                                _ = erlzmq:term(Ctx),
+                                E;
+                            Other ->
+                                _ = erlzmq:close(Sock),
+                                _ = erlzmq:term(Ctx),
+                                {error, Other}
+                        end;
+                    {error, _} = E ->
+                        _ = erlzmq:term(Ctx),
+                        E
+                end;
+            {error, _} = E -> E
+        end
+    catch
+        error:undef -> {error, erlzmq_unavailable}
     end.
 
 normalise_recv({ok, Bin}) when is_binary(Bin) -> {ok, Bin};

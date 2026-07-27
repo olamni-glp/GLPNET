@@ -75,7 +75,7 @@ pub fn new() -> Transport {
 fn do_listen(
   scheme: LinkScheme,
   addr: LinkAddress,
-  _opts: LinkOptions,
+  opts: LinkOptions,
 ) -> Result(Endpoint, LinkFaultSignal) {
   use <- require_zmq(scheme, addr)
   use port <- require_port(scheme, addr)
@@ -83,24 +83,76 @@ fn do_listen(
     Error(r) ->
       Error(fault_addr(scheme, addr, Transient, "zmq bind failed: " <> ins(r)))
     Ok(sock) ->
-      Ok(make_endpoint(LinkId(link_scheme.zmq(), addr, NonceInt(port)), sock))
+      // Bounded establishment (FR-004): await the connector's hello within the
+      // connect budget and ack it BEFORE handing back the endpoint, so a peer that
+      // never appears is a fault, not an endpoint whose recv blocks forever.
+      case establish_listen(sock, opts.connect_timeout_ms) {
+        Ok(Nil) ->
+          Ok(make_endpoint(LinkId(link_scheme.zmq(), addr, NonceInt(port)), sock))
+        Error(reason) -> {
+          ffi_close(sock)
+          Error(fault_addr(scheme, addr, Transient, reason))
+        }
+      }
   }
 }
 
 fn do_connect(
   scheme: LinkScheme,
   addr: LinkAddress,
-  _opts: LinkOptions,
+  opts: LinkOptions,
 ) -> Result(Endpoint, LinkFaultSignal) {
   use <- require_zmq(scheme, addr)
   use port <- require_port(scheme, addr)
-  // ZMQ connect is asynchronous — it succeeds immediately and queues until the
-  // bound peer appears (role-order independence, FR-004; no connect-retry needed).
+  // ZMQ connect succeeds locally even with no listener (it just queues), so
+  // establishment is confirmed by a bounded application handshake, mirroring
+  // tcp.gleam's bounded connect: the connector's hello is queued until the peer
+  // binds (role-order independence, FR-004), and a peer that never acks within the
+  // connect budget becomes a fault instead of an endpoint that blocks forever.
   case ffi_connect(zmtp_endpoint(addr, port)) {
     Error(r) ->
       Error(fault_addr(scheme, addr, Transient, "zmq connect failed: " <> ins(r)))
     Ok(sock) ->
-      Ok(make_endpoint(LinkId(link_scheme.zmq(), addr, NonceInt(port)), sock))
+      case establish_connect(sock, opts.connect_timeout_ms) {
+        Ok(Nil) ->
+          Ok(make_endpoint(LinkId(link_scheme.zmq(), addr, NonceInt(port)), sock))
+        Error(reason) -> {
+          ffi_close(sock)
+          Error(fault_addr(scheme, addr, Transient, reason))
+        }
+      }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Establishment handshake (0x02 tag, distinct from data 0x00 / eos 0x01)
+// ---------------------------------------------------------------------------
+// Confirms a real bilateral PAIR link before either end is returned. Role order
+// stays independent (FR-004): ZMQ queues the connector's hello until the listener
+// binds. Bounded by connect_timeout_ms (default 15_000), so a never-appearing peer
+// is a transport fault, not a silently-buffering endpoint.
+
+fn establish_connect(sock: ZmqSocket, timeout_ms: Int) -> Result(Nil, String) {
+  case ffi_send(sock, <<2>>) {
+    Error(r) -> Error("zmq handshake hello failed: " <> ins(r))
+    Ok(Nil) ->
+      case ffi_recv(sock, timeout_ms) {
+        Ok(<<2>>) -> Ok(Nil)
+        Ok(_) -> Error("zmq handshake: unexpected frame before ack")
+        Error(r) -> Error("zmq handshake: peer never acked: " <> ins(r))
+      }
+  }
+}
+
+fn establish_listen(sock: ZmqSocket, timeout_ms: Int) -> Result(Nil, String) {
+  case ffi_recv(sock, timeout_ms) {
+    Ok(<<2>>) ->
+      case ffi_send(sock, <<2>>) {
+        Ok(Nil) -> Ok(Nil)
+        Error(r) -> Error("zmq handshake ack failed: " <> ins(r))
+      }
+    Ok(_) -> Error("zmq handshake: unexpected frame before hello")
+    Error(r) -> Error("zmq handshake: connector never appeared: " <> ins(r))
   }
 }
 
@@ -130,10 +182,17 @@ fn make_endpoint(id: LinkId, sock: ZmqSocket) -> Endpoint {
         // 0x01 tag = the peer's graceful end-of-stream → closed/eos upstream.
         Ok(<<1>>) -> Ok(None)
         Ok(<<0, body:bits>>) -> Ok(Some(body))
-        // Any other shape (empty / bad tag) → treat as a clean end rather than
-        // crash (fault-as-data boundary, T052, sits above this).
-        Ok(_) -> Ok(None)
-        // A recv error after peer close is a graceful end, not a data fault.
+        // Empty frame or any tag other than 0x00/0x01 is a protocol violation on
+        // a link whose framing reserves only data/EOS — surface a transport fault
+        // rather than a silent clean close (codex 059 finding #3).
+        Ok(_) -> {
+          let signal =
+            LinkFaultSignal(id, Transient, "zmq: malformed frame (bad tag)")
+          process.send(faults, signal)
+          Error(signal)
+        }
+        // A recv error after peer close is a graceful end (mirrors tcp.gleam),
+        // not a data fault.
         Error(_) -> Ok(None)
       }
     },
