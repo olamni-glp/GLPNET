@@ -87,6 +87,8 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_ceil", 2 -> True
     // Univ (=../2) — list↔compound (Dart listToTupleKernel / tupleToListKernel).
     "_list_to_tuple", 2 | "_tuple_to_list", 2 -> True
+    // Identity/copy (Dart copyKernel, body_kernels.dart:527) — reduce metainterp.
+    "_copy", 2 -> True
     // Mutual-reference (O(1) stream append; mwm/2) — Dart mutualRef kernels.
     "_allocate_mutual_reference", 2
     | "_stream_append", 3
@@ -168,6 +170,11 @@ pub fn dispatch(
           ))
         _ -> Ok(KAbort("_tuple_to_list: first argument must be a structure"))
       }
+    // Identity/copy (Dart copyKernel, body_kernels.dart:527-535): deref the
+    // source and bind the output writer to it — an identity copy of the deref'd
+    // value, NOT a fresh-variable rename. Unblocks the reduce metainterpreter
+    // (059 verdict b3-c1-004: reduce PARTIAL, blocked on missing _copy/2).
+    "_copy", 2, [src, out] -> Ok(bind_term(heap, out, deref_term(heap, src)))
     // ── mutual reference (O(1) stream append) — Dart mutualRef kernels ────────
     // allocate(Ref, Out): Out is the (unbound writer) stream head; Ref becomes a
     // sentinel capturing Out's writer addr as the current append point.
