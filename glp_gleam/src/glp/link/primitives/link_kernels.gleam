@@ -27,6 +27,7 @@
 import gleam/option
 import gleam/result
 import gleam/string
+import glp/link/faults
 import glp/link/primitives/capability_gate
 import glp/link/primitives/link_egress
 import glp/link/primitives/link_establish
@@ -717,14 +718,16 @@ fn writer_addr(heap: Heap, term: Term, what: String) -> Result(Int, String) {
 
 /// Blocking raw read of one whole ground token off the endpoint (the out-of-band request
 /// frame, consumed BEFORE the data pump engages). A clean EOS before any frame is a peer
-/// that closed without requesting — surfaced, never swallowed.
+/// that closed without requesting — surfaced, never swallowed. The frame goes through
+/// the T052 untrusted-ingress gate (FR-015): no link exists yet, so the classified
+/// violation surfaces as this kernel's non-fatal abort detail rather than a fault term.
 fn read_token(ep: Endpoint) -> Result(Term, String) {
   case ep.recv() {
     Error(sig) -> Error("token recv failed: " <> string.inspect(sig))
     Ok(option.None) -> Error("peer closed before sending a request token")
     Ok(option.Some(frame)) ->
-      case link_wire.decode_token(frame) {
-        Error(e) -> Error("malformed request token: " <> string.inspect(e))
+      case faults.gate_token(frame) {
+        Error(detail) -> Error("malformed request token: " <> detail)
         Ok(term) -> Ok(term)
       }
   }

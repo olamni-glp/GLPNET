@@ -44,10 +44,10 @@ import gleam/erlang/process.{type Subject}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import glp/link/faults
 import glp/link/primitives/link_faults
 import glp/link/primitives/link_handle.{type LinkHandle}
 import glp/link/primitives/link_registry.{type LinkRegistry}
-import glp/link/primitives/link_wire
 import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_id.{type LinkId}
 import glp/runtime/heap.{type Heap}
@@ -123,24 +123,13 @@ fn recv_loop(inbox: Inbox, id: LinkId, endpoint: Endpoint) -> Nil {
     // Peer FIN: end the stream and stop. Nothing more can arrive on this link.
     Ok(None) -> process.send(inbox, Closed(id))
     Ok(Some(frame)) ->
-      case link_wire.decode_frame(frame) {
-        // A frame that will not decode is a wire-contract violation (a non-ground
-        // payload, a Fragment with no reassembler, a bad CRC) — a PROTOCOL violation,
-        // which the seam classifies `Permanent` (link_fault.gleam), so it refines to
-        // `permFail/2`. Report it and STOP: the stream position is no longer
-        // trustworthy, so continuing would silently splice the peer's later frames
-        // onto a stream that lost one.
-        Error(e) ->
-          process.send(
-            inbox,
-            Faulted(
-              id,
-              link_faults.perm_fail(
-                id,
-                "undecodable inbound frame: " <> string.inspect(e),
-              ),
-            ),
-          )
+      // The T052 untrusted-ingress gate (FR-015): length/CRC/type validation before
+      // any decode, every violation already refined to its `permFail/2` fault term.
+      // On a violation, report it and STOP: the stream position is no longer
+      // trustworthy, so continuing would silently splice the peer's later frames
+      // onto a stream that lost one.
+      case faults.gate_frame(id, frame) {
+        Error(fault_term) -> process.send(inbox, Faulted(id, fault_term))
         Ok(#(message_id, term)) -> {
           process.send(inbox, Data(id, message_id, term))
           recv_loop(inbox, id, endpoint)
