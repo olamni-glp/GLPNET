@@ -114,7 +114,7 @@ SPDX-License-Identifier: MIT
 - [ ] T081 [P] [US2] `close-platform-atomvm-compatibility-by-construction` (close, S, b3-c1-043) — acceptance per FINAL plan
 - [ ] T082 [P] [US2] `close-process-baseline-program-dossier` (close, S, b3-c2-044) — acceptance per FINAL plan
 - [ ] T083 [P] [US2] `close-proofs-proof-dist-deref-convergence` (close, L, b3-c2-045) — acceptance per FINAL plan
-- [ ] T098 [US4] `close-quic-sideprocess-relay-smoketest` (close, S, ruling-2026-07-27) — RULING-ENFORCED (Disposition 2): minimal in-corpus relay smoke test (long-line reassembly + stdio byte-identity to the C# stack) exercising `gleam_quic/src/glpq_ffi.erl`; **gates T084/T085/T086 + all Wave-4 QUIC dependents** (escalation-register.md); env-fragile → classify env-vs-absence, never silent-waive
+- [x] T098 [US4] `close-quic-sideprocess-relay-smoketest` (close, S, ruling-2026-07-27) — CLOSED 2026-07-27: reassembly gate green (gleam_quic/smoke.sh rc=0, 2 MiB envelope whole on stdout / control on stderr); live-C# byte-identity ENVIRONMENT-blocked (msquic; glp_quick_host requires real QUIC) — recorded not waived; T084/T085/T086 inherit same msquic block; evidence phase3-close/close-quic-sideprocess-relay-smoketest.md
 - [ ] T084 [P] [US4] `close-quic-client-inprocess-tests` (close, M, b2-c2-012) — acceptance per FINAL plan
 - [ ] T085 [P] [US4] `close-quic-transport-leaf` (close, L, b2-c2-011) — acceptance per FINAL plan
 - [ ] T086 [P] [US4] `close-quicws-link-completion-live-repl-bridge` (close, L, b3-c2-034) — acceptance per FINAL plan
