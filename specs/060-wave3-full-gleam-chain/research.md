@@ -71,7 +71,7 @@ Gleam **1.17.0** (`~\.local\bin`, SHA256-verified) · Erlang/**OTP 29** (erts 17
 |---|---|---|---|
 | T001 | `gleam test` (glp_gleam) | **508 passed, no failures** | the documented 465/463 floor is stale — tree grew since 059; **508 is the wave-3 floor** |
 | T002 | `bash test/run_all_tests.sh` | **532/532 passed** | first run failed en masse (`Invalid kernel binary format version (expected 130, found 125)`) — the documented stale-`repl.dill` failure mode after the Dart SDK change; deleted `glp_runtime/.dart_tool/repl.dill`, `dart pub get`, re-ran → all green |
-| T003 | `bash test/parity/run_gleam_corpus.sh` | **agree=162 · diverge=44 · blocked=0 · gap/fork=0 · 10x bound PASS · exit 44** | reproduces 059 T051 rc=44 exactly; deterministic across two runs; see finding below |
+| T003 | `bash test/parity/run_gleam_corpus.sh` | pre-fix: **agree=162 · diverge=44 · exit 44** (reproduced 059 T051 rc=44 exactly, deterministic) → post-ruling fix: **agree=206 · diverge=0 · exit 0 · 100% agreement · 10x bound PASS** | see finding below; the corpus baseline for the wave is **206/0** |
 
 ### T003 finding — the "44 missing goldens" are a CRLF harness artifact (Bug Protocol, ruling pending)
 
@@ -82,11 +82,17 @@ corpus block ids (`a1…a30`, `gap_g1/g2/g3/g8`, `fork_1`). Hex probe (od -c, 20
 `[ -f goldens/runtime/a1\r.golden ]` fails → every block reports MISSING. The script strips `\r`
 from REPL transcripts (line 74) but not from `corpus.list`/`expected.list` input lines.
 
-**Consequence if the ruling accepts this**: 059 T051 was a harness defect, not evidence drift.
-Nothing needs regenerating — T029's premise dissolves; the fix is a CR-tolerant parse in
-`run_gleam_corpus.sh` (and the recorder), or a `.gitattributes` eol pin for `test/parity/*.list`.
-T027/T028a/T029 and FR-018a's reason string should then be revised spec-first. Recorded as marathon
-item `mitem-019fa481-623b` (kind bug, parked). **No fix applied — awaiting engineer ruling.**
+**Ruling (owner, 2026-07-27): root cause confirmed; durable fix directed and applied** — CR-strip in
+all three harness read loops (`run_gleam_corpus.sh` ×2, `record_dart_goldens.sh`) + `.gitattributes`
+LF pin for `test/parity` (commit `10d66d84`); FR-018a/FR-018b/SC-010 and T027/T028a/T029 revised
+spec-first (commit `efac2f19`); marathon item `mitem-019fa481` resolved.
+
+**Verified clean re-run (stable tree, nothing concurrent): agree=206 · diverge=0 · exit 0 —
+100% agreement on in-scope cases, 10x wall-clock bound PASS.** All 44 formerly-MISSING blocks AGREE
+against their existing goldens. (An interim post-fix run showed 8 apparent divergences — measurement
+artifact: it overlapped `gleam test` rebuilds in the same build dir; each such block AGREEs solo and
+in the clean run.) Note for the record: 059's Windows corpus runs never actually compared these 44
+blocks — today's run is the first true block-level parity evidence on this host, and it is green.
 
 Environment caveat: these artifacts were previously built 2026-07-22 with an unknown (likely peer-host
 GAVRI) toolchain; today's toolchain is newer. Everything compiles and passes, but wave-3 results are
