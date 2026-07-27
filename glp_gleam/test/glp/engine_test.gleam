@@ -15,6 +15,9 @@ import glp/codec/term_codec
 import glp/diagnostics
 import glp/engine
 import glp/engine/goal_boot
+import glp/link/seam/link_scheme
+import glp/link/seam/transport
+import glp/link/transports/loopback
 import glp/parser/ast
 import glp/runtime/heap
 import glp/runtime/terms
@@ -145,4 +148,31 @@ pub fn goal_boot_builds_const_list_test() {
   // Head is the inline constant 1; tail is a further cons (structural check).
   let assert terms.StructTerm(".", [terms.ConstTerm(terms.ConstInt(1)), _tail]) =
     cell
+}
+
+// ── transport injection seam (wave-3 T007/T008, gap G6) ──────────────────────
+
+// A fresh engine holds no transports; injecting loopback makes exactly that
+// scheme resolvable through the composition root, and an uninjected scheme
+// (tcp) reports Error(Nil) — never auto-instantiated.
+pub fn transport_injection_seam_test() {
+  let eng = engine.new_with_prelude("")
+  should.equal(engine.transports(eng), [])
+  let assert Error(Nil) = engine.transport_for(eng, link_scheme.loopback())
+
+  let eng2 = engine.with_transports(eng, [loopback.new()])
+  let assert Ok(t) = engine.transport_for(eng2, link_scheme.loopback())
+  should.be_true(transport.serves(t, link_scheme.loopback()))
+  let assert Error(Nil) = engine.transport_for(eng2, link_scheme.tcp())
+}
+
+// with_transports REPLACES the injected set (composition-root semantics: the
+// set is assembled once, in one place — not accumulated behind the caller's back).
+pub fn with_transports_replaces_test() {
+  let eng =
+    engine.new_with_prelude("")
+    |> engine.with_transports([loopback.new()])
+    |> engine.with_transports([])
+  should.equal(engine.transports(eng), [])
+  let assert Error(Nil) = engine.transport_for(eng, link_scheme.loopback())
 }

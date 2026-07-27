@@ -23,6 +23,7 @@
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/int
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
@@ -34,6 +35,8 @@ import glp/compiler/loader
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
+import glp/link/seam/link_scheme.{type LinkScheme}
+import glp/link/seam/transport.{type Transport}
 import glp/parser/ast
 import glp/parser/lexer
 import glp/parser/parser
@@ -71,6 +74,13 @@ pub opaque type Engine {
     /// An in-progress interactive run (the `start`/`step` seam), or `None` between
     /// runs. One-shot `run` never touches it (its scheduler state is internal).
     session: Option(RunSession),
+    /// Constructor-injected transport leaves (wave-3 T007, gap G6: the 059
+    /// engine-composition-root verdict was PARTIAL — kernels compiled-in, no
+    /// transport injection seam). The link layer (US4) selects a leaf by scheme
+    /// via `transport_for`; an engine with `[]` simply holds no links. Injection
+    /// here — never a compiled-in registry — keeps the composition root the ONE
+    /// place an instance's capabilities are assembled.
+    transports: List(Transport),
   )
 }
 
@@ -116,6 +126,7 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
         program: prelude_program,
         warnings: [],
         session: None,
+        transports: [],
       )
     Error(staged) ->
       panic as {
@@ -166,6 +177,31 @@ pub fn prelude_source(engine: Engine) -> String {
 /// surface renders these.
 pub fn warnings(engine: Engine) -> List(TypeWarning) {
   engine.warnings
+}
+
+// ── transport injection seam (wave-3 T007, gap G6) ───────────────────────────
+
+/// Inject the transport leaves this instance may hold links over (replacing any
+/// previously injected set). The composition-root seam: transports arrive as
+/// constructed values — the engine never instantiates one itself, so a test can
+/// inject loopback only, an embedded host can inject none, and US4's link layer
+/// injects the acceptance set (loopback + tcp) without touching this module.
+pub fn with_transports(engine: Engine, transports: List(Transport)) -> Engine {
+  Engine(..engine, transports: transports)
+}
+
+/// The injected transport leaves (`[]` for a fresh engine).
+pub fn transports(engine: Engine) -> List(Transport) {
+  engine.transports
+}
+
+/// Select the injected leaf serving `scheme` (first match wins, mirroring the
+/// registry's selection-by-membership — seam/transport.serves). `Error(Nil)`
+/// means no injected leaf serves the scheme: the caller reports an unsupported
+/// scheme; nothing is ever auto-instantiated (FR-025's seam stays open — the
+/// unproven schemes remain selectable exactly here, with no link-layer change).
+pub fn transport_for(engine: Engine, scheme: LinkScheme) -> Result(Transport, Nil) {
+  list.find(engine.transports, fn(t) { transport.serves(t, scheme) })
 }
 
 // ── run: goal → ResultEnvelope (T029 Slice 2) ────────────────────────────────
