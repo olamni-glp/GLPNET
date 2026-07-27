@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "role_id": "critic-planning",
+  "role_kind": "critic",
+  "cycle": 0,
+  "parts": [
+    {
+      "part": "subject_brief",
+      "sha256": "edac51d8085cbf2903e33f685ae0e422c78eceade63448906218db660c12bf14"
+    },
+    {
+      "part": "own_slice",
+      "sha256": "42d5c99e6d6dcaf6f199c27bb65ca4afaec4a949d2ce5f51e4ca5deddde708c1"
+    }
+  ],
+  "content_path": "D:\\BSTDEV\\research\\olamnit-wt-ring\\.specify\\3rtask\\runs\\20260715T235300Z-235d\\roles\\critic-planning\\input.md",
+  "input_sha256": "46a5412ffd8387593e72655526cf38019dbcf2e031bdf54655624e376c19c44a"
+}

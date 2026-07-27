@@ -1,0 +1,4516 @@
+{
+  "result": {
+    "schema_version": 1,
+    "cycle": 1,
+    "new_identities": [
+      [
+        "399ee9599a421f56",
+        "completeness"
+      ],
+      [
+        "3e22ceac2a142a72",
+        "feasibility"
+      ],
+      [
+        "88c078483d831b96",
+        "feasibility"
+      ],
+      [
+        "b941f16078e220b6",
+        "feasibility"
+      ],
+      [
+        "8a92fadac6f7d4c9",
+        "risk"
+      ],
+      [
+        "c9ef84734a2265ab",
+        "risk"
+      ],
+      [
+        "bc1578cf3c114541",
+        "risk"
+      ],
+      [
+        "bbb92027b3d9c579",
+        "risk"
+      ],
+      [
+        "9183a60638b3585d",
+        "feasibility"
+      ],
+      [
+        "7e375e5cf6cb6815",
+        "feasibility"
+      ],
+      [
+        "6d88d063a6f2aca8",
+        "feasibility"
+      ],
+      [
+        "62dcabd59c791279",
+        "feasibility"
+      ],
+      [
+        "8e271f886d779862",
+        "feasibility"
+      ],
+      [
+        "c33a5d139d13d653",
+        "feasibility"
+      ],
+      [
+        "d9129bdde77eba1d",
+        "feasibility"
+      ],
+      [
+        "d7d6359068dfe36a",
+        "risk"
+      ],
+      [
+        "b9237758fad92cdb",
+        "risk"
+      ],
+      [
+        "b8c217e2d506def7",
+        "risk"
+      ],
+      [
+        "8c12611035083c67",
+        "risk"
+      ],
+      [
+        "803bf19bafb941eb",
+        "completeness"
+      ],
+      [
+        "b0e6d01803570a6f",
+        "feasibility"
+      ],
+      [
+        "a7880ce614318f43",
+        "feasibility"
+      ],
+      [
+        "728c97e0bcce61fd",
+        "risk"
+      ],
+      [
+        "0f1886909f9ee6a7",
+        "risk"
+      ],
+      [
+        "8cb1f9b0edcd366d",
+        "risk"
+      ],
+      [
+        "c9000165eebc48c4",
+        "completeness"
+      ],
+      [
+        "dfc507e84a4ce84c",
+        "risk"
+      ],
+      [
+        "cefd01c4272eafe8",
+        "completeness"
+      ],
+      [
+        "110aaf7f4c0e0998",
+        "risk"
+      ],
+      [
+        "c88c121d793ba113",
+        "feasibility"
+      ],
+      [
+        "7662f58f5159a367",
+        "completeness"
+      ],
+      [
+        "cbaeb32ee27721d8",
+        "feasibility"
+      ],
+      [
+        "0009f9f2e57e70e3",
+        "completeness"
+      ],
+      [
+        "ab96c990c4b2877d",
+        "completeness"
+      ],
+      [
+        "a9241a052f9657c3",
+        "completeness"
+      ],
+      [
+        "d31a61d251d03208",
+        "completeness"
+      ],
+      [
+        "903fccecf61a43ff",
+        "feasibility"
+      ],
+      [
+        "14f982c914cceb3c",
+        "risk"
+      ],
+      [
+        "c830662b3f138b6f",
+        "completeness"
+      ],
+      [
+        "196b07b1b507f640",
+        "risk"
+      ],
+      [
+        "5bb7cdc3b9a461ad",
+        "risk"
+      ],
+      [
+        "d474335b6cf98ca8",
+        "feasibility"
+      ],
+      [
+        "4773eedfaa79b47d",
+        "risk"
+      ],
+      [
+        "257d0cb6f79c7819",
+        "risk"
+      ],
+      [
+        "aee7bc1f191a67cc",
+        "risk"
+      ],
+      [
+        "2a789deee2a88743",
+        "feasibility"
+      ],
+      [
+        "c5e7a7a486617b1f",
+        "feasibility"
+      ],
+      [
+        "f5e715bf36992c16",
+        "feasibility"
+      ],
+      [
+        "f5b0de1d8b1f0290",
+        "completeness"
+      ],
+      [
+        "989c8c3c800dca19",
+        "risk"
+      ],
+      [
+        "a4f736402b122b58",
+        "risk"
+      ],
+      [
+        "0a2e3eb041b72a2b",
+        "completeness"
+      ],
+      [
+        "5a88c31c614b4847",
+        "completeness"
+      ],
+      [
+        "3ad797fe0213c736",
+        "feasibility"
+      ],
+      [
+        "0f2df4521b7f6fda",
+        "completeness"
+      ],
+      [
+        "74053f1d03c5d6b5",
+        "feasibility"
+      ],
+      [
+        "7cd79ca40627e110",
+        "risk"
+      ],
+      [
+        "d5535538d5ac65c7",
+        "feasibility"
+      ],
+      [
+        "4d43d3d531295ce2",
+        "risk"
+      ],
+      [
+        "37c2320088b63563",
+        "feasibility"
+      ],
+      [
+        "16ed2c1413701114",
+        "feasibility"
+      ],
+      [
+        "91b36d5242fb9cc6",
+        "completeness"
+      ],
+      [
+        "33b14ff4a559b486",
+        "risk"
+      ],
+      [
+        "410e4f6a94a3eda3",
+        "risk"
+      ],
+      [
+        "4c4317e85d361759",
+        "completeness"
+      ],
+      [
+        "93ae961f6ba6bc8d",
+        "feasibility"
+      ],
+      [
+        "f177e369aa7aca9f",
+        "risk"
+      ],
+      [
+        "3d361c031f8938bf",
+        "risk"
+      ],
+      [
+        "829c7059d7a97aab",
+        "completeness"
+      ],
+      [
+        "b43c36b844a77ba2",
+        "risk"
+      ],
+      [
+        "a760ee6a5217708a",
+        "risk"
+      ],
+      [
+        "cbab0f4fec585d72",
+        "feasibility"
+      ],
+      [
+        "55fa6d2fb092f932",
+        "risk"
+      ],
+      [
+        "3b085dc72bb46cda",
+        "feasibility"
+      ],
+      [
+        "9c8ebafd134a489e",
+        "feasibility"
+      ],
+      [
+        "e4611483057514d7",
+        "feasibility"
+      ],
+      [
+        "71adaf996a081c18",
+        "feasibility"
+      ],
+      [
+        "5805a7d57bc29cb7",
+        "feasibility"
+      ],
+      [
+        "aacffa35642b7232",
+        "risk"
+      ],
+      [
+        "92bc415944e6c609",
+        "risk"
+      ],
+      [
+        "d7c9446e2ff64555",
+        "risk"
+      ],
+      [
+        "089ead316af0c09d",
+        "feasibility"
+      ],
+      [
+        "0d9863d90c29531c",
+        "feasibility"
+      ],
+      [
+        "7bbb4b45487ae6d9",
+        "risk"
+      ],
+      [
+        "9bb047b9208f08dd",
+        "risk"
+      ],
+      [
+        "46e6f56561db06e1",
+        "risk"
+      ],
+      [
+        "a5f74085b98a14e2",
+        "risk"
+      ],
+      [
+        "0f199d0669328317",
+        "risk"
+      ],
+      [
+        "15bb1d8cb3f6ec04",
+        "risk"
+      ],
+      [
+        "4b87337361789245",
+        "risk"
+      ],
+      [
+        "7de9e896b8472be6",
+        "risk"
+      ],
+      [
+        "cf1d96f3d7fca204",
+        "risk"
+      ],
+      [
+        "bcfd44488a093659",
+        "risk"
+      ],
+      [
+        "213fb5b6894bbe81",
+        "risk"
+      ],
+      [
+        "faed6bff347769ec",
+        "risk"
+      ],
+      [
+        "c81ce6133a7a87ce",
+        "feasibility"
+      ],
+      [
+        "3c8b0cd2f12306cf",
+        "feasibility"
+      ],
+      [
+        "56edc7a4cb687d74",
+        "completeness"
+      ],
+      [
+        "6c68ad25131bf3a0",
+        "feasibility"
+      ],
+      [
+        "6bdb3e4183c34be2",
+        "completeness"
+      ],
+      [
+        "dafcf9c8b2e17c6e",
+        "risk"
+      ],
+      [
+        "68cb53b61a82eefa",
+        "feasibility"
+      ],
+      [
+        "c144c8c1645ef3ea",
+        "feasibility"
+      ],
+      [
+        "a9c102227f1ff145",
+        "feasibility"
+      ],
+      [
+        "513617ee57884b6b",
+        "feasibility"
+      ],
+      [
+        "04e16a8bd4e3cd07",
+        "risk"
+      ],
+      [
+        "3e2c96ec31890c95",
+        "feasibility"
+      ],
+      [
+        "fb11c5d166ec55e0",
+        "completeness"
+      ],
+      [
+        "435ad00aa6f531c0",
+        "feasibility"
+      ],
+      [
+        "aa3ac9eac58c571a",
+        "risk"
+      ],
+      [
+        "cf2710554378008e",
+        "completeness"
+      ],
+      [
+        "d96b203a62246611",
+        "feasibility"
+      ],
+      [
+        "b7f27176ea0bbeee",
+        "feasibility"
+      ],
+      [
+        "bab572a44fe194f0",
+        "risk"
+      ],
+      [
+        "b85e0e0e6776bc17",
+        "risk"
+      ],
+      [
+        "48467384c7a6bbbd",
+        "risk"
+      ],
+      [
+        "9224ee19e32d1d39",
+        "risk"
+      ],
+      [
+        "04682d87bed3312f",
+        "risk"
+      ],
+      [
+        "3d10abd5ae3fe794",
+        "completeness"
+      ],
+      [
+        "07c862555f8d7c54",
+        "feasibility"
+      ],
+      [
+        "8444d7396b6404f3",
+        "risk"
+      ],
+      [
+        "4e14db6500680e13",
+        "completeness"
+      ],
+      [
+        "7f0d3c1e01d5ebfe",
+        "risk"
+      ],
+      [
+        "b16eb3a6837374cf",
+        "risk"
+      ],
+      [
+        "6b9ed21b11b2c17e",
+        "completeness"
+      ],
+      [
+        "5f5709f61cbdbc83",
+        "completeness"
+      ],
+      [
+        "6d49982aa442f890",
+        "risk"
+      ],
+      [
+        "50dec70e603519ca",
+        "risk"
+      ],
+      [
+        "9b0a5f2002b08d0a",
+        "completeness"
+      ],
+      [
+        "266755a1aacb24d4",
+        "risk"
+      ],
+      [
+        "2db7f5ee76da2730",
+        "feasibility"
+      ],
+      [
+        "386d1d4511e7398a",
+        "risk"
+      ],
+      [
+        "cb46d91edd08ef43",
+        "completeness"
+      ],
+      [
+        "59e9b1700dce82f6",
+        "completeness"
+      ],
+      [
+        "6401901c0585654c",
+        "risk"
+      ],
+      [
+        "ec32a8954a8f38bd",
+        "risk"
+      ],
+      [
+        "87b54ef75f0232af",
+        "risk"
+      ],
+      [
+        "fea8815e82c84c3c",
+        "risk"
+      ],
+      [
+        "4d46fe9f37cfaf7d",
+        "feasibility"
+      ],
+      [
+        "dd4975202749ca56",
+        "risk"
+      ],
+      [
+        "1497abc68bf781d6",
+        "risk"
+      ],
+      [
+        "415b358c44dcf35b",
+        "risk"
+      ],
+      [
+        "74b884e6d78f54d9",
+        "completeness"
+      ],
+      [
+        "e4414c56b579f83d",
+        "completeness"
+      ],
+      [
+        "4d0689b5dbc6192c",
+        "risk"
+      ],
+      [
+        "39da0b6b8b8ae8bc",
+        "risk"
+      ],
+      [
+        "7aae1e0d1802e956",
+        "risk"
+      ],
+      [
+        "73704416b7dc7f71",
+        "completeness"
+      ],
+      [
+        "e6c19204938a20ef",
+        "completeness"
+      ],
+      [
+        "2baa391bfc6def33",
+        "completeness"
+      ],
+      [
+        "726c3ee8b1b094fd",
+        "risk"
+      ],
+      [
+        "452d5a948ed105d4",
+        "feasibility"
+      ],
+      [
+        "f4d815b9fb888ecd",
+        "risk"
+      ],
+      [
+        "2d716a01f27fc2af",
+        "feasibility"
+      ],
+      [
+        "fc49e3a0b6ac9ca3",
+        "feasibility"
+      ],
+      [
+        "bd73f3708857d6ae",
+        "risk"
+      ],
+      [
+        "0eae3f4b83b1b631",
+        "risk"
+      ],
+      [
+        "403d856cb42bd7c4",
+        "feasibility"
+      ],
+      [
+        "fc8b661bb5696fe1",
+        "completeness"
+      ],
+      [
+        "f11b617fa534776f",
+        "completeness"
+      ],
+      [
+        "7e896fbe1886d79e",
+        "completeness"
+      ],
+      [
+        "0781155c5dd2078a",
+        "risk"
+      ],
+      [
+        "4904aa4f2c9dace4",
+        "risk"
+      ],
+      [
+        "208a45f5ac82e213",
+        "risk"
+      ],
+      [
+        "4134b36f27c3137e",
+        "risk"
+      ],
+      [
+        "2eb043fa68b219c3",
+        "risk"
+      ],
+      [
+        "7f388737077483bc",
+        "completeness"
+      ],
+      [
+        "66e65c725e2755aa",
+        "completeness"
+      ],
+      [
+        "78bb73dc356e77e8",
+        "risk"
+      ],
+      [
+        "936ee46339a37ecf",
+        "risk"
+      ],
+      [
+        "dd91f97855786bda",
+        "completeness"
+      ],
+      [
+        "0511626d8f864429",
+        "completeness"
+      ],
+      [
+        "a72b423029cec6e6",
+        "risk"
+      ]
+    ],
+    "combined_count": 173,
+    "singleton_count": 173,
+    "escalate_count": 0,
+    "converged": false,
+    "tokens": 0
+  },
+  "rows": [
+    {
+      "claim_id": "41a91cdce4d8",
+      "claim": "NO roster-epoch concept ships in my sources. Grepping Olamnit.Shared/Kv/Election/ and Olamnit.Shared/Kv/Capabilities/ case-insensitively for the vocabulary {roster, epoch, exclu*, revok*, revocation, ban, genesis, nonce, reintegrat*, founder, manifest, run_id, blocklist, denylist, expel, evict, rejoin, quarantin, era} returns ZERO hits in Kv/Capabilities/ and, in Kv/Election/, only the word 'operator' inside a comment. ABSENCE SCOPED VERBATIM to those two directories at pin 02bcc20 with that exact vocabulary; I could not read the rest of the repo, so this is not a repo-scope absence.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ (all 7 files) + Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/ (all 5 files) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "da37150a9ddd",
+      "claim": "The election's versioning primitive is a per-domain monotone int64 TERM, not a roster epoch: DecisionRecord carries exactly (DomainId, Term, DecisionId, Winner, Protocol) and NO membership set, membership hash, roster version, or nonce. Nothing in a shipped decision record binds the decision to the membership that produced it.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:30 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "c7c218ca8ce9",
+      "claim": "The durable decision table columns are exactly (domain_id, term, decision_id, winner, protocol, decided_utc) as written by the shipped INSERT — no membership, no roster epoch, no nonce, no signature. A roster epoch therefore cannot be persisted in the shipped decision log without a schema change.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:73-81 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "b19480d50c8c",
+      "claim": "Membership is FIXED AT CONSTRUCTION and immutable for the life of the election object: both RaftElection and PbftElection take IReadOnlyList<string> membership as a primary-constructor parameter, and the IElectionDomain seam exposes only {Id, Protocol, DecideAsync, ConfirmTermAsync} — there is NO add-member, remove-member, or change-membership API. Changing membership means constructing a new election instance; nothing in these sources records that a change occurred, versions it, or binds prior decisions to the old set.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:14-18; PbftElection.cs:15-19; ElectionDomain.cs:176-182 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.94,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "b4c1043e50ff",
+      "claim": "Membership entries are OPAQUE STRINGS ('a','b','c') and are never compared against, or mapped to, any Ed25519 public key. In PbftElection the trust anchor is consulted only as trustAnchor.TrustedKeys.Count == 0 — the membership ids and the trusted key set are two unrelated collections. A shipped election therefore cannot bind a member id to a key, and so cannot express 'this node, identified by its key, is/is not in the roster'.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:15-19,48 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "7ea9c18ec204",
+      "claim": "CODE/COMMENT DISAGREEMENT (M-32). The doc comment on PbftElection.GatheredPrepares asserts 'each prepare's signer must be a trusted peer key — verified via trustAnchor'. The CODE never verifies any prepare, any signer, or any signature: GatheredPrepares is a plain public settable int, and the only trust-anchor use in the whole class is the emptiness test `trustAnchor.TrustedKeys.Count == 0`. The Byzantine authentication the comment claims is NOT implemented in this file; the quorum count is injected by the host/test.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:32-36 (comment) vs :36,48-50 (code) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "5bfcc5dc7d5d",
+      "claim": "Raft's liveness input is likewise an unauthenticated injected number: `public int ReachableVoters { get; set; }` with no bound and no provenance. Counterexample constructed against 'quorum protects the decision' (M-36): `new RaftElection(d, [\"a\",\"b\",\"c\"], log) { ReachableVoters = 99 }` passes `votes*2 > membership.Count` and decides. Nothing in RaftElection.cs constrains ReachableVoters to <= membership.Count.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:27-28,39-42 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "16f9362c3afd",
+      "claim": "Raft's liveness check is DEFAULT-OPEN, not fail-closed: `int voters = ReachableVoters > 0 ? ReachableVoters : membership.Count;` — an unset ReachableVoters (0) is silently read as 'ALL members reachable', so a freshly-constructed RaftElection always reaches quorum. Zero reachable voters is indistinguishable from full reachability at this line.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:39 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "74b6720e3b93",
+      "claim": "THE THRESHOLD ARITHMETIC: Raft quorum is a strict majority of the FIXED constructed membership — `votes * 2 > membership.Count` (denominator = membership.Count, i.e. the epoch's fixed N, never 'who is live now'); the numerator is the injected reachable count. Below quorum ⇒ LivenessTimeout, never a Byzantine refusal.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:21-22,39-42 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f7e3fa0bb291",
+      "claim": "THE THRESHOLD ARITHMETIC: PBFT computes f = (membership.Count - 1) / 3 and Quorum = 2f + 1, both over the FIXED constructed membership count — the denominator IS the epoch's fixed N, not a live-set count. membership.Count < 4 refuses with QuorumUnattainable ('membership {n} < 3f+1 minimum (4)'). This is the one shipped arithmetic that matches a 'threshold over fixed membership N' requirement.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:27,30,42-44 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f1f054cbb113",
+      "claim": "Below-quorum PBFT returns ElectionOutcomeKind.QuorumUnattainable as a value and NEVER falls back to the crash-fault path — verified by code (the guard returns before any log.DecideAsync call) and by test. This 'refusal, never a downgrade' property IS shipped and is testable.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:46-50; Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:102-112 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "88bef611e1c2",
+      "claim": "A SINGLE ELECTED DECISION per (domain, decision_id) IS shipped and IS bindable: the compare-and-set is across ALL terms (the prior lookup scans every term for the decision_id, deterministic lowest-term-first), so a later term never contradicts a committed decision; the loser receives the durable winner + the durable term. This is the strongest primitive in my slice for 'one elected decision other subsystems bind to'.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:64-113 (esp. :82-85); RaftElection.cs:52-55 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "4bc3c069a3b5",
+      "claim": "The decision key is (domain_id, decision_id) — a caller-supplied opaque string pair. Nothing in the shipped code parses, validates, or interprets DecisionId or Proposal. A roster epoch COULD therefore be smuggled into a decision_id string, but no shipped code would enforce, order, or bind it — the log would treat 'roster/epoch-7' as an arbitrary label.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:27,67-69 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "66e3a2d3207f",
+      "claim": "There IS a shipped binding surface from a subsystem to an elected decision: KV PublishOnceAsync(key, payload, domain) routes through the registered election domain and refuses with KvOutcome.ElectionRequired when no domain is registered; ordinary commutative Puts are unaffected. This is exercised end-to-end in the battery.",
+      "sources": [
+        "Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:150-167 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "95b6af34b078",
+      "claim": "THE TRUST ANCHOR IS GROW-ONLY: IPeerSetTrustAnchor exposes exactly four members — TrustedKeys (get), TryPublishRootKey, TryAddPeerKey, IsTrusted. There is NO remove, revoke, replace, clear, expire, or version operation on the interface OR on the PeerSetTrustAnchor class. Grep of Kv/Capabilities/ for {TryRemove, Revoke, Unpublish, Delete, Clear, Reset} returns zero hits. Once a key is added it is trusted for the object's lifetime. PERMANENT EXCLUSION OF A NODE IS NOT EXPRESSIBLE at the shipped trust anchor.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:14-31 (interface), :34-83 (class) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "9f5737e4524f",
+      "claim": "The trust anchor is IN-MEMORY ONLY — a `List<byte[]> _keys` behind a lock, with no store seam, no constructor-injected persistence, and no load/save path anywhere in the class. Unlike the election decision log (which has IElectionDecisionStore + a PGlite backend), there is no IPeerSetTrustAnchorStore in Kv/Capabilities/. The 'publish-once root that can never be replaced' therefore holds only within one process lifetime; a restart yields an empty, fail-closed anchor that must be re-populated by whatever code calls TryPublishRootKey.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:36-38 at pin 02bcc20; contrast Kv/Election/IElectionDecisionStore.cs:13-27"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "800d35769da5",
+      "claim": "'HIGHER AUTHORITY' IS NOT EXPRESSIBLE at the trust anchor. TryAddPeerKey(ReadOnlySpan<byte> publicKey) takes ONLY a public key — no signature, no grant, no proof that the root (or anyone) authorized the addition. The only gate is `if (!_rootPublished) return false`. Any caller holding the anchor reference can add any key. The root's 'publish-once' privilege is solely that slot 0 cannot be overwritten; it confers no veto or signing authority over subsequent additions.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:57-68 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "050a86035874",
+      "claim": "The 'root first' ordering of TrustedKeys is DECORATIVE for authorization: IsTrusted ORs a FixedTimeEquals over every slot with no positional weighting, and the only other shipped consumer (PbftElection) reads only .Count. No shipped code in my sources treats slot 0 differently from slot k during verification. The doc comment calls the first slot 'the publish-once ROOT key (element 9's degenerate single-decree)' — that is a DOC assertion about intent; the code gives the root no superior verification standing.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:6-13 (doc) vs :70-82 (IsTrusted code); PbftElection.cs:48 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "1458d45b0639",
+      "claim": "Every anchored key is a FULL SELF-MINTING AUTHORITY: KvCaveats.MintGrant(IDeviceSealKey key, resource, audience, identity, exp, verbs, tbl, kpfx) seals a grant with the holder's OWN key and arbitrary caveat values, and PeerSetAmuletVerifier accepts any grant whose embedded key IsTrusted. There is no attenuation-from-root, no delegation chain, and no check that a peer's self-chosen resource/audience/scope was ever granted to it. Combined with the absence of removal, a compromised anchored key can mint unlimited fresh grants indefinitely within the process lifetime — expiry cannot contain it because the holder simply re-mints.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/KvCaveats.cs:82-96; PeerSetTrustAnchor.cs:95-121 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "41d214c3f20f",
+      "claim": "SAFE REINTEGRATION of a returning node has no shipped surface in my sources: TryAddPeerKey is idempotent and unconditional (re-adding an already-present key returns true with no state change, no epoch bump, no history), and the election objects have no rejoin/catch-up/fence path. Reintegration is indistinguishable from initial admission — there is nothing to make it 'safe' at this layer.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:57-68; Kv/Election/ElectionDomain.cs:176-182 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.87,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "e9294d1f6c1f",
+      "claim": "GENESIS CANNOT BE EXPRESSED with the shipped seal shape: the verifier reads exactly ONE PubKeyHex and ONE SignatureHex from a Seal and verifies a single Ed25519 signature over the canonical-CBOR payload. A genesis manifest 'signed by all N founders' requires N signatures over one document; the shipped Seal/verifier surface is single-signer, with no multi-signature aggregation, threshold-signature, or signature-list shape anywhere in Kv/Capabilities/.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:95-121 (esp. :100-101,112-114) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "d9aabe5865e3",
+      "claim": "No genesis_hash, run_id, or run nonce exists in the shipped decision surface: DecisionRecord has no nonce field, Term is an in-process int64 counter raised only by AdvanceTerm() and Math.Max(_term, log.HighestTerm(domain)), and there is no freshness value derived from or bound to any founding document. A non-circular genesis_hash->run_id binding has NO shipped carrier in my sources.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:30; RaftElection.cs:38,59-67,81 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "758da14e78f6",
+      "claim": "The election decision log is HARD-CEILINGED at 100,000 decisions per domain (constructor default maxDecisionsPerDomain), returning KvOutcome.StorageCeilingReached at the ceiling. No archive/prune/compact API exists in Kv/Election/ — the comment says 'archive is an explicit operator act (FR-008)' but ships no operator surface. A very-high-cycle-count design that consumes one decision per epoch/batch hits an absorbing refusal state at 100k epochs per domain with no shipped exit.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:49,86-88 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "dc4cebbc298f",
+      "claim": "The ceiling is enforced against ONE INSTANCE'S LOADED VIEW, and the code's own comment bands the residual: 'N live logs over one store can jointly overshoot by at most N-1 decisions before their next reload'. Additionally the in-memory cache retains every loaded decision for the process lifetime (Dictionary keyed (Term, DecisionId) per domain), so a long-running node's election RAM grows monotonically toward the ceiling.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:41-46 (comment), :58,86-88,140-147 (code) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "f626d2cc9749",
+      "claim": "COULD NOT VERIFY (load-bearing): the single-winner-across-terms guarantee of the PGlite store rests on a claimed unique index. The comment states 'The DURABLE arbiter is the kv_election_decision_single_winner_idx unique index on (domain_id, decision_id) ... contradictory durable rows are impossible-by-construction'. The CODE issues a bare `INSERT ... ON CONFLICT DO NOTHING` naming NO constraint, and the index is defined in KvSubstrateSchema.Ddl (Kv/Store/), which is OUTSIDE my slice. If that index covers only (domain_id, term, decision_id), the constructed counterexample stands: actor A commits (term 5, winner a) and returns Decided; actor B concurrently commits (term 3, winner b); SelectWinnerAsync's ORDER BY term LIMIT 1 then returns b to every later reader, retroactively contradicting A's Decided result. I could not read the DDL to rule this out.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:61-67 (comment), :71-81 (bare ON CONFLICT), :99-102 (ORDER BY term LIMIT 1) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.72,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "2aafe32b6dd5",
+      "claim": "OPEN QUESTION (cannot be answered from my slice): does the unique index kv_election_decision_single_winner_idx on (domain_id, decision_id) actually exist in KvSubstrateSchema.Ddl at pin 02bcc20? The whole cross-term single-winner property — and therefore any 'one elected decision per epoch that other subsystems bind to' built on it — depends on it. Naming what I could not see: Olamnit.Shared/Kv/Store/KvSubstrateSchema.cs (or wherever Ddl lives).",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:64-66,119 at pin 02bcc20 (reference to KvSubstrateSchema.Ddl, file not in my slice)"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "4885bdbed55e",
+      "claim": "The two store implementations enforce single-winner-across-terms by DIFFERENT mechanisms, so 'store-swap parity' (asserted in the IElectionDecisionStore doc comment as 'identical observable behaviour') is not established by construction: InMemoryElectionDecisionStore keys its dictionary by (DomainId, Term, DecisionId) and enforces the across-terms rule with an explicit application-code LINQ scan, whereas PgliteElectionDecisionStore relies on a SELECT-then-INSERT-ON-CONFLICT plus an unverified DB constraint. Under true concurrency these are different races.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/InMemoryElectionDecisionStore.cs:14,26-35 vs PgliteElectionDecisionStore.cs:68-87; IElectionDecisionStore.cs:9-12 (doc) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "437ed43049a9",
+      "claim": "THREE of the seven declared ElectionOutcomeKind values are DECLARED BUT NEVER PRODUCED by either shipped election: grepping Kv/Election/ for {TermSuperseded, PermissionDenied, DomainUnknown} finds them ONLY at their enum declaration (ElectionDomain.cs:14,16,17) and at no return site in RaftElection.cs or PbftElection.cs. The 'closed outcome set' is therefore wider than the shipped behaviour; in particular no shipped election ever returns PermissionDenied.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:9-18 vs RaftElection.cs:30-78 and PbftElection.cs:38-91 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "930f680dbe00",
+      "claim": "THE ELECTION IS NOT CAPABILITY-GATED in my sources. DecisionRequest carries a `string Principal`, but neither RaftElection.DecideAsync nor PbftElection.DecideAsync ever reads it — both pass only (domain.Id, term, request.DecisionId, request.Proposal, protocol) to the log. No KvAuthBoundary/Authorize call, no grant, and no MacaroonFp appears anywhere in Kv/Election/. Whatever authorization exists for deciding must live outside my slice (the keyspace open path), which I could not read.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:27; RaftElection.cs:44; PbftElection.cs:58 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "aa26cad09631",
+      "claim": "Where a decision is verifiably durable IS shipped and honest: DecideAsync persists BEFORE caching, a persist refusal returns a closed outcome with nothing cached, an unloadable log refuses LOUDLY rather than confirming a false term 0, and restart rehydrates the winner + original term. These are code-verified and test-verified across both the in-memory and PGlite backends.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:90-110; RaftElection.cs:69-78; Olamnit/Olamnit.Shared.Tests/Kv/DurableStateBatteryTests.cs:62-141 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "dbe7416bfed2",
+      "claim": "Byzantine misbehaviour is DETECTED but never EXCLUDES anyone: the merge-time equivocation guard returns a closed KvOutcome.EquivocationDetected for an op re-using a committed dot with different canonical bytes, and the first-committed variant stays. The guard operates per-op at the WAL; nothing in it touches membership, the trust anchor, or any roster. Detection exists; exclusion has no shipped consumer of that detection in my sources.",
+      "sources": [
+        "Olamnit/Olamnit.Shared.Tests/Kv/EquivocationGuardTests.cs:9-17,58-60 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.82,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "bd734198cee5",
+      "claim": "The KvCaveats expiry granularity is ONE DAY: Build emits `exp={exp:yyyy-MM-dd}` from a DateOnly, and KvAuthBoundary evaluates it at `now ?? DateOnly.FromDateTime(DateTime.UtcNow)`. A 'time-limited, segment-scoped fallback' shorter than a calendar day cannot be expressed through the shipped KvCaveats/KvAuthBoundary mint+enforce path. (The separate MacaroonV2Caveat.TimeBefore in the same directory carries a ulong expiry with strict now<expiry, i.e. finer granularity — two different time surfaces coexist in Kv/Capabilities/ at this pin.)",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/KvCaveats.cs:62-76 (esp. :67); KvAuthBoundary.cs:70; MacaroonV2Verifier.cs:191-197 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "a8067f9ce6c7",
+      "claim": "OPEN QUESTION (cannot be answered from my slice): who constructs the RaftElection/PbftElection instances and calls RegisterElectionDomain in production, and can a domain be RE-registered with a different membership at runtime? The only registration I can see is a test call (`service.RegisterElectionDomain(new RaftElection(...))`). Whether membership can be swapped live — the closest shipped thing to a roster change — depends on KvKeyspaceService/KvSubstrate, which are outside my slice.",
+      "sources": [
+        "Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:158-160 at pin 02bcc20 (KvKeyspaceService not in my slice)"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.78,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "ba75eeb3a5b4",
+      "claim": "OPEN QUESTION (cannot be answered from my slice): is there any roster/membership/revocation surface elsewhere in the repo — e.g. under Kv/Replication/ (CaveatAwareDeltaFilter, per-peer grant-filtered admission), Kv/Locate/ (Kademlia peer admission), or Yngenios/Seal/ — that my election+capabilities slice would not see? My absence findings above are scoped strictly to Kv/Election/ and Kv/Capabilities/ with the stated grep vocabulary. In particular, a mechanism named neither 'roster' nor 'exclude' (e.g. peer admission filtering) would not have matched my vocabulary.",
+      "sources": [
+        "scope statement over Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ + Kv/Capabilities/ at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-1"
+      ],
+      "confidence": 0.75,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "4f68d0fc6562",
+      "claim": "TWO DISTINCT capability dialects ship side by side in my sources, not one. (1) The amulet dialect: string 'k=v' caveats over an HMAC chain inside an Ed25519 seal (Olamnit.Shared/Yngenios/Seal/). (2) macaroon-v2: a binary tag-numbered caveat wire + HMAC tail chain, pinned in conformance/macaroon-v2/. The macaroon-v2 README states macaroon-v2 'is the ONE converged capability dialect - it supersedes the amulet HMAC-chain + Ed25519-seal dialect for **mesh capability tokens** (the amulet code stays for its existing fetch-from-store surface)'. NOTE: I am quoting a README (doc), not code; the C# MacaroonV2Verifier named there lives at Olamnit.Shared.Tests/Kv/... + Olamnit.Shared/Kv/, OUTSIDE my slice, so I could not verify the code behind that claim. A mesh-segment capability bound would therefore land on macaroon-v2, NOT on the amulet caveat set.",
+      "sources": [
+        "conformance/macaroon-v2/README.md:6-14,34 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.83,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "89db0fad43d9",
+      "claim": "AMULET DIALECT - the closed caveat key set is exactly six, enforced by a C# switch whose default arm refuses: exp, scope, audience, resource, tbl, kpfx. Any other key returns (false, \"unknown caveat key: {k}\"). This is CODE, not a comment.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:56-88 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "f2ef9308faac",
+      "claim": "AMULET DIALECT - the caveat set HAS been extended once before, and the mechanism is recorded in code as an APPEND after the existing keys: a source comment at Macaroon.cs:71-75 states 'Feature #057 (T014, R-6): the KV caveat extension - tbl (per-table) + kpfx (key-prefix range). Appended AFTER the existing four in the fixed mint order (exp -> scope -> audience -> resource -> tbl -> kpfx) so every already-minted macaroon verifies unchanged, and OLD verifiers refuse the new keys (below) and thus fail closed - the rollout only ever tightens.' I am quoting a COMMENT. The compatibility argument it makes is structurally sound against the code I can see: a macaroon minted without tbl/kpfx still hits only the four original switch arms, and an old verifier's default arm refuses an unknown key rather than ignoring it. So the precedent for a 7th appended key exists and is documented.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:71-85 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "45b58c86db9a",
+      "claim": "CONTRADICTION (code vs code): the shipped minter's caveat order is scope -> exp -> audience -> resource, NOT the 'fixed mint order exp -> scope -> audience -> resource' asserted by the Macaroon.cs:73 comment and pinned by the conformance vector. AmuletMinter.Mint builds the array literally as {$\"scope={scope}\", $\"exp={exp:yyyy-MM-dd}\", $\"audience={audience}\", $\"resource={resourceId}\"} under a comment reading 'Caveat order is signed - keep it stable.' The pinned vector grant-kv-caveats.json instead pins exp first. Since order is signed into both the HMAC chain and the CBOR array, the bytes AmuletMinter actually emits can never equal the pinned vector's canonical_hex. There is no single 'exact mint order' in this repo - the minter and the pinned corpus disagree.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:22-29 vs Macaroon.cs:73 vs conformance/kv-substrate/vectors/grant-kv-caveats.json:15-21 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "d304578c296a",
+      "claim": "AmuletMinter.Mint - the ONLY minter in my sources - has a fixed 6-parameter signature (IDeviceSealKey, string resourceId, string scope, string audience, DateOnly exp, string identity) and can mint ONLY the four original caveats. It has NO parameter and NO code path for tbl or kpfx, let alone a new key. Adding any 7th caveat key to a minted amulet requires either changing this signature or calling Macaroon.Create directly and hand-rolling the seal.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:11-38 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "ce69fbfc8fea",
+      "claim": "COUNTEREXAMPLE CONSTRUCTED (M-36) - the tbl and kpfx caveats are UNSATISFIABLE through the shipped Ed25519AmuletVerifier. Verify builds its enforcement context with exactly three entries: scope, audience, resource. It never populates 'tbl' or 'key'. So a macaroon carrying tbl=books hits Macaroon.cs:77, GetValueOrDefault(\"tbl\") returns null != \"books\", refuse; a macaroon carrying kpfx=settings/ hits Macaroon.cs:82, context[\"key\"] is absent so the 'is not string accessedKey' guard trips, refuse. The 057 caveat extension is enforceable only via some other caller that calls Macaroon.EnforceCaveats directly with a richer context - I could not see such a caller (it would be outside Seal/).",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:112-118 with Macaroon.cs:76-85 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "07786551b186",
+      "claim": "AMULET DIALECT - expiry granularity is a WHOLE DAY and nothing finer. The caveat value is parsed with DateOnly.TryParse, the enforcement parameter is DateOnly now, the comparison is 'if (now > exp)' (i.e. still valid THROUGHOUT the expiry day; expiry is inclusive), and the minter formats it '{exp:yyyy-MM-dd}'. A time-limited fallback measured in minutes or hours CANNOT be expressed by this caveat as it ships.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:48,58-61 + AmuletVerifier.cs:18,28 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "03f114318a1b",
+      "claim": "AMULET DIALECT - the exact enforcement API shapes are: IAmuletVerifier.Verify(Seal amulet, DateOnly now, string expectedScope, string expectedAudience) -> (bool Ok, string Reason); and Macaroon.EnforceCaveats(DateOnly now, IReadOnlyDictionary<string,string> context) -> (bool Ok, string Reason). Both are DateOnly-typed. Widening expiry to sub-day granularity is a BREAKING change to both public signatures, not an additive one.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:76 + Macaroon.cs:48 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "426d751a75ea",
+      "claim": "The 'now' used for amulet expiry enforcement is supplied ENTIRELY by the caller - it is a DateOnly parameter threaded from IAmuletVerifier.Verify into Macaroon.EnforceCaveats. Within my sources (all six files under Yngenios/Seal/, read in full; search vocabulary: DateTime, TimeProvider, UtcNow, Today, IClock, Stopwatch, now, case-insensitive) there is no clock, no time provider, and no default. OPEN QUESTION: who supplies 'now' at each call site, and whether that source is monotonic, device-local, attacker-influenceable, or offline-skewable, is outside my slice and I could not verify it. This matters: a caller that passes a device-local date can be rolled back to un-expire an amulet.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:76,84,118 + Macaroon.cs:48,60 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "ec9d0b5b2f8b",
+      "claim": "COUNTEREXAMPLE CONSTRUCTED (M-36) - an OMITTED amulet caveat constrains NOTHING. EnforceCaveats is a foreach over the PRESENT caveats only; an empty caveat list falls straight through to return (true, \"ok\"). Nothing in Verify requires a scope, audience, exp, or resource caveat to be present. So a Seal minted with caveats=[] verifies OK against ANY expectedScope and ANY expectedAudience and NEVER expires. The security of this surface rests wholly on the minter always adding all four - there is no verifier-side floor.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:48-91 + AmuletVerifier.cs:84-118 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "612842619112",
+      "claim": "The FetchDescriptor's Scope, Audience and IssuedForIdentity fields are SIGNED (they are in the CBOR signing payload) but NEVER ENFORCED. Ed25519AmuletVerifier cross-checks only ResourceId three ways (seal vs macaroon.Identifier vs descriptor.ResourceId). expectedScope/expectedAudience are compared against the CAVEATS, never against the descriptor. So a seal whose descriptor says Scope=\"admin\" while its scope caveat says scope=\"kv\" verifies OK under expectedScope=\"kv\". The doc comment at Seal.cs:12-17 says the signature 'covers intent' - the code does not act on that intent.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:103-118 + Seal.cs:9 + CanonicalCbor.cs:36-44 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "8559c9172d5a",
+      "claim": "AMULET DIALECT - a scope caveat DOES already exist in the closed set and IS enforced by exact ordinal equality against a verifier-supplied context value: 'if (context.GetValueOrDefault(\"scope\") != v) return (false, ...)'. The verifier passes expectedScope straight into context[\"scope\"] (AmuletVerifier.cs:114). So a mesh-segment bound CAN in principle ride the existing 'scope' key as an opaque string, provided every verifier call site supplies the matching segment value as expectedScope. The value is an uninterpreted string - no structure, no prefix semantics, no set membership.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:62-64 + AmuletVerifier.cs:112-117 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "2d4ff265c65d",
+      "claim": "Overloading the existing 'scope' caveat for a mesh-segment bound is CONSTRAINED, not free: scope is a SINGLE exact-match string already carrying an authorization scope value (e.g. \"kv:read+write\" in the pinned vector), and AmuletMinter emits exactly one scope caveat from one parameter. A segment bound would either have to be packed into that one string (changing its grammar and every expectedScope caller) or ride a new appended key. It cannot be added as a second independent scope caveat without both matching the same context[\"scope\"] value.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:17,25 + Macaroon.cs:62-64 + conformance/kv-substrate/vectors/grant-kv-caveats.json:16 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "0943c527cdf3",
+      "claim": "The amulet corpus's UNKNOWN-KEY EXAMPLE is 'quota=100' - vector grant-refuse-unknown-caveat.json appends quota=100 as a 7th caveat after exp/scope/audience/resource/tbl/kpfx and pins expect \"refuse:PermissionDenied\". Therefore a newly-appended caveat key would collide with a pinned vector ONLY if it were named 'quota'. Any other name (e.g. 'seg', 'segment', 'path') does not collide with this vector - but ADDING it to the known set would still require regenerating this vector's neighbours only if the new key appears in them, which it would not.",
+      "sources": [
+        "conformance/kv-substrate/vectors/grant-refuse-unknown-caveat.json:14-22,35 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "d89343b112aa",
+      "claim": "An INDEPENDENT re-implementation of the amulet caveat enforcement EXISTS and must move in lockstep: tools/kv-conformance/verify_vectors.py carries its own hardcoded KNOWN_CAVEATS = {\"exp\", \"scope\", \"audience\", \"resource\", \"tbl\", \"kpfx\"} and its own enforce_caveats(). Its module docstring states it is 'deliberately NOT a port of the C# code: cross-runtime independence is the point (SC-004)'. Any 7th caveat key must be added HERE too or the Python CI step fails closed with 'unknown caveat key'.",
+      "sources": [
+        "tools/kv-conformance/verify_vectors.py:179-199 + :4-8 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.96,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "a4ed397bd5a5",
+      "claim": "DIVERGENCE between the two enforcement implementations of 'exp': C# uses DateOnly.TryParse(v, out exp) - which is CULTURE-SENSITIVE and accepts non-ISO forms (e.g. '12/31/2026' under en-US) - while the Python verifier uses date.fromisoformat(v), which accepts ISO-8601 only and RAISES (uncaught ValueError, not a fail-closed return) on anything else. The two do not agree on the set of well-formed exp values. The pinned vector only ever uses 'exp=2026-12-31', so no vector exercises this divergence.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:59 vs tools/kv-conformance/verify_vectors.py:191-192 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.82,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "dd8bbbff0c19",
+      "claim": "The Python verifier's 'now' for expiry is a HARDCODED LITERAL date(2026, 7, 12) passed into enforce_caveats - it is not read from the vector's context and not the system clock. So the corpus's expiry semantics are pinned against a frozen date baked into the verifier source, not into the corpus. Any vector whose exp crosses that literal changes meaning only if the literal is edited.",
+      "sources": [
+        "tools/kv-conformance/verify_vectors.py:258-263 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.94,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "b4c6bc18eb22",
+      "claim": "COVERAGE GAP: the Python verifier runs caveat enforcement ONLY for grant-cbor vectors whose expect starts with 'refuse:'. For expect==\"ok\" grant vectors it checks canonical bytes + digest and returns (True, \"ok\") WITHOUT ever calling enforce_caveats. Consequently grant-kv-caveats.json - the one vector pinning the full six-caveat order - has its context field set to null and its SATISFIED-path enforcement is never exercised by this verifier. The corpus pins the BYTES of the full vocab, not its accept behaviour.",
+      "sources": [
+        "tools/kv-conformance/verify_vectors.py:252-267 + conformance/kv-substrate/vectors/grant-kv-caveats.json:24,28 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "f0866b08d8ec",
+      "claim": "What the kv-substrate corpus PINS and how it is versioned: corpus-manifest.json carries corpus_version 1, vector_count 35, and a sha256 over each vector file's exact on-disk BYTES. The vectors themselves pin, per surface, canonical_hex + digest_hex + an expect of \"ok\" or \"refuse:<closed outcome>\". Two independent gates exist: verify_vectors.py (semantic re-encode) and verify_manifest.py (byte parity). The README states the corpus is 'FROZEN at first replication (US3, T042)' and that a change 'must regenerate them HERE first, bump corpus_version, and land the same-saga consumer updates together'.",
+      "sources": [
+        "conformance/kv-substrate/corpus-manifest.json:1-4 + conformance/kv-substrate/README.md:8-11,68-72 + tools/kv-conformance/verify_manifest.py:4-25 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "33b90c162207",
+      "claim": "COST of touching the amulet caveat surface, concretely (from the code, not the doc): a new caveat key forces (1) the C# switch arm in Macaroon.cs; (2) the verifier's context dictionary in AmuletVerifier.cs (else it is unsatisfiable, see the tbl/kpfx counterexample); (3) AmuletMinter's signature; (4) KNOWN_CAVEATS + enforce_caveats in the Python verifier; (5) regeneration of grant-kv-caveats.json AND grant-refuse-unknown-caveat.json (both embed the caveat list, its HMAC sig, canonical_hex and digest_hex); (6) their two sha256 pins in corpus-manifest.json; (7) a corpus_version bump per the stated change discipline; (8) the named-but-unseen consumer suites (Olamnit.Shared.Tests/Kv/GoldenVectorTests.cs, qhstate's frozen-import copy, buildkit's pytest verifier). Items 1-6 I verified in code/data; item 8 I am quoting the README consumer table.",
+      "sources": [
+        "Macaroon.cs:56-88 + AmuletVerifier.cs:13-38,112-117 + tools/kv-conformance/verify_vectors.py:179-199 + conformance/kv-substrate/corpus-manifest.json:7-8 + conformance/kv-substrate/README.md:22-27,68-72 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "0daf3592072d",
+      "claim": "MACAROON-V2 DIALECT - the closed caveat vocabulary is exactly SIX kinds, wire-tag-numbered 0..5, decoded from wire-roundtrip-full-vocab.json's token_hex: 0=time_before (bare 8-byte BE unix seconds, NO length prefix), 1=resource (len32+utf8 content_hash), 2=key (len32+utf8), 3=key_prefix (len32+utf8), 4=op (single op byte, 0..3), 5=keyspace_scope (len32+utf8). The layout is per-kind, not uniform TLV. This is a materially DIFFERENT vocabulary from the amulet's {exp,scope,audience,resource,tbl,kpfx}.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/wire-roundtrip-full-vocab.json:2-32,37 + conformance/macaroon-v2/README.md:26-28 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "3b08a559f135",
+      "claim": "MACAROON-V2 expiry granularity is ONE SECOND (unix epoch seconds) and the comparison is STRICT: the README states 'strict now < expiry', and chain-refuse-expired.json pins now == expiry == 1752451200 as expect \"refuse:CaveatFailed:time_before\" (i.e. expiry is EXCLUSIVE - the opposite boundary convention from the amulet's inclusive 'now > exp'). A time-limited fallback in minutes IS expressible in macaroon-v2 and is NOT expressible in the amulet dialect.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/chain-refuse-expired.json:2-3,11,18 + conformance/macaroon-v2/README.md:25 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f9584d42566a",
+      "claim": "MACAROON-V2 supplies 'now' as a VECTOR/VERIFIER-CONTEXT VALUE, not from a clock: every chain vector's input.context carries an explicit \"now\": 1752451200 alongside key/keyspace/op/resource. So in BOTH dialects the expiry clock is an injected caller-supplied value. OPEN QUESTION: the production call sites that populate this context are outside my slice (the named MacaroonV2Verifier is in Olamnit.Shared/Kv/, not Yngenios/Seal/) and I could not verify what clock they use.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/chain-mint-full-vocab.json:7-13 + chain-refuse-expired.json:7-13 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "c8e02b360afe",
+      "claim": "MACAROON-V2 has a scope-like caveat already: keyspace_scope (tag 5), enforced by equality against the verifier-supplied context value \"keyspace\" (context {\"keyspace\": \"ks-main\"} vs caveat {kind: keyspace_scope, scope: \"ks-main\"} -> ok). The README states the vocabulary is 'evaluated against the presented context (strict now < expiry; byte prefix for key_prefix; equality otherwise)'. A mesh-SEGMENT bound is not the same thing as a KEYSPACE bound; whether a segment id can be carried in that field is a naming/semantics decision, not a mechanism gap.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/chain-mint-full-vocab.json:9,38-40 + conformance/macaroon-v2/README.md:22-25 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "5ebfe37d1877",
+      "claim": "MACAROON-V2's UNKNOWN-KEY EXAMPLE IS TAG 6 - and therefore a newly-appended 7th caveat kind WOULD COLLIDE with a pinned vector. wire-refuse-unknown-tag.json pins a token carrying 'caveat tag 6 outside the closed C3 set' as expect \"refuse:BadTag\". Since the vocabulary is DENSE numeric 0..5, the next kind is necessarily tag 6, which this vector pins as a refusal. Extending macaroon-v2's caveat set requires editing or re-numbering this pinned vector - unlike the amulet's string-keyed set, where a non-'quota' name collides with nothing.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/wire-refuse-unknown-tag.json:3-7 + conformance/macaroon-v2/README.md:26-28 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "ace738d23312",
+      "claim": "MACAROON-V2 supports HOLDER-SIDE ATTENUATION without the root key - chain-attenuate-narrowing.json pins 'mint [op=get] then holder-attenuates [key_prefix=objects/]; verify ok', with presented_caveats a strict superset of mint_caveats and a different valid tail. The amulet dialect CANNOT do this: appending any caveat changes the CBOR signing payload and breaks the Ed25519 seal, which no holder can re-sign (the seed is never persisted and is per-session). This is a real capability difference for any 'narrow a credential per-hop / per-segment' design.",
+      "sources": [
+        "conformance/macaroon-v2/vectors/chain-attenuate-narrowing.json:2-42 vs Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-33 + Seal.cs:12-17 + IDeviceSealKey.cs:8-11 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "2b76487faa3d",
+      "claim": "The macaroon-v2 corpus is a hash-pinned DOWNSTREAM COPY, not a source of truth: manifest.json declares corpus_version 1, surface_set macaroon-v2, and semantics_anchor 'yngenios kv/capability.gleam + kv/capability_wire.gleam @ phase-b 501e334'; the README states the source of truth is buildkit specs/058-.../vectors/macaroon-v2/ and that 'A dialect change regenerates in the buildkit source-of-truth corpus first (gen_vectors.py), bumps corpus_version, and lands ALL consumer re-pins in one coordinated change set'. So a macaroon-v2 caveat addition costs a change in a DIFFERENT repo (buildkit) plus a Gleam semantics anchor (yngenios) plus this pinned copy plus two suites. That is a strictly heavier change than an amulet-side one.",
+      "sources": [
+        "conformance/macaroon-v2/manifest.json:1-4 + conformance/macaroon-v2/README.md:8-11,37-41 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "186856275c38",
+      "claim": "A macaroon-v2 independent re-implementation is NAMED but I could not verify it: the README's suite table lists 'tools/macaroon-conformance/verify_vectors.py - independent Python re-implementation, own CI step' and 'Olamnit.Shared.Tests/Kv/MacaroonV2GoldenVectorTests.cs'. Neither path is in my slice (my only tools path is tools/kv-conformance/, which contains exactly two files: verify_vectors.py and verify_manifest.py, and whose KNOWN_CAVEATS is the AMULET set). I am quoting a doc table. OPEN QUESTION: does tools/macaroon-conformance/ actually exist at this pin, and does it enforce all 22 macaroon-v2 vectors?",
+      "sources": [
+        "conformance/macaroon-v2/README.md:31-35 + tools/kv-conformance/ (directory listing: verify_vectors.py, verify_manifest.py only) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "3694ea4677f7",
+      "claim": "The macaroon-v2 corpus has NO byte-parity gate reachable by the tooling in my slice. verify_manifest.py's default_corpus_dir() walks parents looking ONLY for conformance/kv-substrate/corpus-manifest.json; the macaroon-v2 corpus uses a differently-named manifest.json and, if that file were passed explicitly as corpus_dir, check_corpus would report a spurious finding because macaroon-v2/manifest.json declares NO 'vector_count' key (manifest.get('vector_count') -> None != 22 pinned entries). Scoped absence: within tools/kv-conformance/ (both files read in full; vocabulary searched: 'macaroon-v2', 'manifest.json', 'corpus_dir') nothing targets the macaroon-v2 corpus. The macaroon-v2 README asserts a manifest-parity check exists inside the xUnit suite - which is outside my slice.",
+      "sources": [
+        "tools/kv-conformance/verify_manifest.py:35-50,65-71 + conformance/macaroon-v2/manifest.json:1-5 + conformance/macaroon-v2/README.md:34 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "de30b1a6a8d4",
+      "claim": "The amulet's device signing key is a per-instance, per-launch, in-memory-only random 32-byte Ed25519 seed (InMemoryDeviceSealKey generates via RandomNumberGenerator.GetBytes in its constructor; the doc comment says 'never persisted', and the code contains no write path). Consequence for any long-lived or batch/epoch minting design: amulets do not survive a process restart, because the trust anchor (DeviceSealTrustAnchor) pins the CURRENT instance's public key and Verify refuses any other key fixed-time as 'untrusted key'. An amulet minted before a restart is unverifiable after it, regardless of its exp caveat.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/IDeviceSealKey.cs:33-44 + AmuletVerifier.cs:59-62,97-101 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "bbee8e26f332",
+      "claim": "The amulet trust anchor is SINGLE-KEY by contract: IAmuletTrustAnchor exposes exactly one byte[] TrustedPublicKey and Ed25519AmuletVerifier does one FixedTimeEquals against it. There is no peer set, no add/remove, no roster. Scoped absence: within the six files of Olamnit.Shared/Yngenios/Seal/ (all read in full; vocabulary searched by full read: TrustedPublicKey, IAmuletTrustAnchor, Anchor, peer, roster, add, remove) the amulet verification path cannot express more than one trusted signer. The 057 PeerSetTrustAnchor named in CLAUDE.md lives under Kv/Capabilities/, outside my slice - I could not verify it and emit that as an OPEN QUESTION, not an absence.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:48-62,100-101 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "d4ca8594ecc1",
+      "claim": "The amulet CBOR signing payload is a FIXED-ARITY, FIXED-SHAPE encoder with no extension point: SigningPayload writes exactly a 2-entry map {block, macaroon}; WriteDescriptor writes exactly a 4-entry map (scope, audience, issued_for, resource_id); WriteMacaroon writes exactly a 3-entry map (sig, caveats, identifier). Only the caveats ARRAY is variable-length. Any new SIGNED field (e.g. a segment/epoch/roster field on the descriptor) changes the map arity and the length-first key order, altering the signed bytes for EVERY amulet and invalidating grant-kv-caveats.json + grant-refuse-unknown-caveat.json. Adding a new CAVEAT string is the only additive path that leaves the encoder untouched.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-57 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.94,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "90f05c59ad7f",
+      "claim": "CanonicalCbor's own doc comment DISCLAIMS cross-runtime parity for the amulet dialect: 'The scheme is olamnit-internal (qmedit never verifies these seals ...), so exact parity with the Python encoder is not required; only that our own sign and verify produce identical bytes'. This directly contradicts the kv-substrate README, which lists grant-cbor as a cross-runtime golden-vector surface with qhstate and buildkit as consumers required to pass byte-identically (SC-004), and tools/kv-conformance/verify_vectors.py DOES re-implement and byte-compare encode_grant. Quoting a comment vs a README vs code: the CODE (the Python encoder + pinned vectors) sides with cross-runtime parity being required; the CanonicalCbor comment is stale.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:12-15 vs conformance/kv-substrate/README.md:22-27,44-46 vs tools/kv-conformance/verify_vectors.py:158-176,252-257 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.87,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "a9ba530aabd8",
+      "claim": "The kpfx enforcement's constant-time claim is only partially delivered by the code. ConstantTimeIsPrefix does use CryptographicOperations.FixedTimeEquals over the prefix length, but it first branches on 'if (k.Length < p.Length) return false' (an early length-dependent return, which the comment concedes: 'Length is not secret') and allocates via AsSpan(0, p.Length).ToArray(). The comparison is fixed-time over the compared bytes; the overall operation is not. Reporting this as observed, not as a defect claim.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:98-105 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-2"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "8adee6c80fa1",
+      "claim": "SCOPE OF MY SOURCES: my slice is exactly two directories, 16 files total: Olamnit/Olamnit.Kernel/Mailbox/ (DurabilityMode.cs, DurableMailbox.cs, DurableMailboxOptions.cs, FileWriteAheadLog.cs, IDurableMailbox.cs, IMessageSerializer.cs, IWriteAheadLog.cs, InMemoryDurableMailbox.cs, MailboxTriple.cs) and Olamnit/Olamnit.Kernel/DurableExecution/ (CommitRecord.cs, DurableExecutor.cs, IDurableHandler.cs, IdempotentSink.cs, KeyedEnvelopeSource.cs, TriggerIdentity.cs, UnitOfWork.cs). Every claim below is scoped verbatim to these paths at pin 02bcc20 and to no other region of the repo.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/ + Olamnit/Olamnit.Kernel/DurableExecution/ (directory listing) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 1.0,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "b4b1defcb927",
+      "claim": "SIGNING IDENTITY — SCOPED ABSENCE (M-20). Within my two source directories ONLY, there is no code that generates, derives, loads, or persists a cryptographic signing identity/keypair. SEARCH VOCABULARY USED (case-insensitive regex over both dirs): sign|key|keypair|Ed25519|private|public|secret|seed|cert|identity|generat|Random|RNG|Crypto|Hmac|Curve|device|persist|Store|amulet|macaroon|seal. The only hits are semantically unrelated: 'Key' = an idempotency dedup STRING key (UnitOfWork.cs:11,17,85,88), 'Identity' = TriggerIdentity, a dedup string derivation (TriggerIdentity.cs:24). I MUST NOT conclude the repo has no signing identity — a signing/keying mechanism that matches none of these words, or that lives in any other directory, is exactly the region I was forbidden to read. See my open question on device signing identity.",
+      "sources": [
+        "grep vocabulary over Olamnit/Olamnit.Kernel/{Mailbox,DurableExecution}/**; hits only at UnitOfWork.cs:11,17,85,88 and TriggerIdentity.cs:24 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "d4ec333eaadc",
+      "claim": "OPEN QUESTION (cannot answer from my slice): how a device's SIGNING identity is generated and whether/where it is persisted across process restarts is NOT determinable from my sources. My sources contain no key material of any kind. To answer, someone must read the region naming the device seal key / trust anchor / credential store — which I could not see. I explicitly do NOT claim it is absent from the repo.",
+      "sources": [
+        "absence of any key-material code across all 16 files of Olamnit/Olamnit.Kernel/{Mailbox,DurableExecution}/ at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "4e6f01ab460f",
+      "claim": "IDENTITY THAT DOES EXIST IN MY SOURCES is a non-cryptographic dedup identity, not a signing identity: TriggerIdentity.Derive returns the string 'env:<scope>:<MessageId>' when the payload parses as a valid wire envelope, else 'seq:<walSeq>'. It is a pure string derivation with no I/O, no signature, and no verification — the doc itself says 'Pure derivation, no I/O, never throws'. It authenticates nothing; it only names a message for dedup.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/TriggerIdentity.cs:23,28-29,43,48 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "228f9faff06c",
+      "claim": "The 'identityScope' that scopes cross-node dedup is a caller-supplied plain string passed to DurableExecutor.OpenAsync — it is not derived from, or bound to, any key. Its doc requires it be 'a LOGICAL sender id, stable across link reconnects'. RISK for a ring/mesh demonstrator: node identity here is an UNAUTHENTICATED, caller-asserted label; nothing in my sources prevents two nodes from being constructed with the same scope, which would silently merge their MessageId spaces and cause cross-node dedup to drop a distinct message as a duplicate.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:54,87,93,106 (param 'string? identityScope'), doc at :96-100; consumed at TriggerIdentity.cs:43 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "51c3fd034be3",
+      "claim": "(a) MANY WRITES DURABLE — GROUP COMMIT: EXISTS AND IS ALREADY WIRED. FileWriteAheadLog.Append buffers a framed record into the active FileStream without flushing (marks _dirty); CommitAsync flushes once for all buffered appends. DurableMailbox runs a background CommitLoopAsync that awaits Task.Delay(FsyncIntervalMs) then calls _wal.CommitAsync — literally many appends, one fsync.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:52-79 (Append, _dirty=true at :73), :81-92 (CommitAsync); Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:152-169 (CommitLoopAsync, Delay at :160, CommitAsync at :161) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "3e5264b9a1aa",
+      "claim": "(a) FSYNC-MODE SELECTOR: EXISTS AND IS WIRED. DurabilityMode is a 3-value enum {FsyncAlways, FsyncEveryNms, OsFlushOnly}; DurableMailboxOptions.Durability selects it (default FsyncEveryNms) and FsyncIntervalMs sets the group-commit window (default 8 ms). SegmentBytes (default 64 MiB) selects the roll size.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/DurabilityMode.cs:8-18; Olamnit/Olamnit.Kernel/Mailbox/DurableMailboxOptions.cs:18,21,24 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.98,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "1350415201f3",
+      "claim": "MECHANISM DETAIL a WAL-level reader must know: inside FileWriteAheadLog, FsyncAlways and FsyncEveryNms are BYTE-IDENTICAL in behaviour — both evaluate Flush(flushToDisk: _mode != DurabilityMode.OsFlushOnly) == Flush(true). The WAL does not distinguish them; the ONLY difference is the CALLER's cadence (DurableMailbox.WriteAsync awaits CommitAsync inline iff FsyncAlways). The code's own comment states this. So the durability difference between the two fsync modes lives entirely in DurableMailbox, not in the WAL.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:86-88 (comment + Flush call), :202, :322; Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:95 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "33d829de692c",
+      "claim": "(b) TORN/CORRUPT RECORD DETECTION — CRC32 FRAMING: EXISTS AND IS WIRED. Records are framed [u32 totalLen][u32 crc32][u64 seq][payload] little-endian, crc computed over seq||payload via System.IO.Hashing.Crc32 (pure BCL). Both the async replay path and the sync scan path recompute and compare the crc.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:19 (frame constants), :64-68 (write path), :120-123 (ReplayAsync verify), :239-242 (ScanSegment verify), :148-153 (Crc32Of) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "1cf47c9318cc",
+      "claim": "(b) TORN-TAIL TRUNCATION ON REOPEN: EXISTS AND IS WIRED. OpenActiveSegment scans the last segment for the byte offset of its last GOOD record and physically SetLength()s the file back to that offset before any new append, so a crash-torn tail cannot survive into future replay.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:175-198, specifically goodEnd at :184, SetLength at :187, Seek at :188 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "bcf86567e4eb",
+      "claim": "CRC COVERAGE GAP (M-36 counterexample constructed, contradicting the 'torn tail only' framing): the crc32 covers seq||payload ONLY — the leading u32 totalLen length field is NOT covered by any checksum. Append computes Crc32Of(frame.Slice(LenSize + CrcSize, SeqSize + payload.Length)), i.e. it starts AFTER the length field. A corrupted-but-plausible length (the only validation is totalLen >= 12 && totalLen <= 1<<30 at :114/:234) misframes the read; the crc then mismatches and the reader yield-breaks. So a single flipped bit in a length field is not reported as a length corruption — it is silently reclassified as a torn tail.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:67 (crc scope), :113-114 and :233-234 (only plausibility bounds on totalLen) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "9a4d2afd646e",
+      "claim": "SILENT-DATA-LOSS COUNTEREXAMPLE (M-36; the doc says the torn TAIL is truncated — the code truncates at the first bad record ANYWHERE): ReplayAsync iterates segments in order and, on a bad crc or implausible length, executes 'yield break' — which exits the WHOLE iterator, not just the current segment. So a corrupt record in the MIDDLE of a non-final segment makes replay silently stop, and every good record in that segment's tail AND in every LATER segment is never yielded. Nothing surfaces an error; the caller sees a clean short enumeration.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:104-129, yield break at :112, :114, :119, :123 (all inside the foreach over segments at :104) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "ebb978c79591",
+      "claim": "THE SAME COUNTEREXAMPLE PRODUCES A SEQ-ASSIGNMENT DIVERGENCE: ScanLastSeq computes max over EVERY segment independently (a torn record only stops that one segment's scan), whereas ReplayAsync stops globally at the first torn record. So after mid-log corruption, LastSeq/_seq reflects records that ReplayAsync will never yield: the mailbox resumes appending at the true high seq while the un-replayed records are permanently unreachable and never re-issued. No error, no counter, no audit surfaces this. Non-final segments are never repaired — OpenActiveSegment only truncates existing[^1], the LAST segment.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:212-221 (ScanLastSeq per-segment max), :96-129 (ReplayAsync global stop), :177-190 (only existing[^1] repaired), ctor order at :43-44 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "2c17a8bfec10",
+      "claim": "(c) RESUME AFTER CRASH — MAILBOX REPLAY: EXISTS AND IS WIRED. FileWriteAheadLog reads checkpoint.json on construction into _consumedUpToSeq; DurableMailbox.OpenAsync replays every record with seq > ConsumedUpToSeq, deserializes each, and bursts them into the channel before serving new traffic. This is a working crash-resume path with no additional code needed.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:42 (ReadCheckpoint), :267-276; Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:62-70 (ReplayAsync + recovery burst at :70) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.96,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "62f70fda3b94",
+      "claim": "(c) RESUME AFTER CRASH — COMMIT-JOURNAL FOLD: EXISTS AND IS WIRED. DurableExecutor.OpenAsync replays the commit journal, folds every record's StateEvents into state (state = fold of the journal), and rebuilds the dedup set, so a crash between COMMIT and ACK recovers by re-publishing idempotently rather than re-running the handler. Two explicit test seams (CrashAfterCommitBeforeAck, CrashAfterCommitBeforePublish) exist to exercise the two crash windows.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:116-124 (replay+fold), :75,:81 (crash seams), :183,:190 (seam checkpoints), commit point at :178-179 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "5f60966900d2",
+      "claim": "HEADLINE RISK FOR A VERY-HIGH-CYCLE-COUNT BUDGET — THE COMMIT JOURNAL IS NEVER CHECKPOINTED AND NEVER PRUNED. Grep for 'Checkpoint' across both my source dirs finds CheckpointAsync CALLED at exactly two sites, both in DurableMailbox (:164, :182). DurableExecutor touches its _commitJournal only via Append (:178), CommitAsync (:179) and ReplayAsync(0, ct) (:116) — it never calls CheckpointAsync. Because FileWriteAheadLog.PruneConsumedSegments only ever runs from inside CheckpointAsync, the commit journal's ConsumedUpToSeq stays 0 forever, no segment is ever pruned, and the journal grows without bound for the life of the node.",
+      "sources": [
+        "grep 'Checkpoint' over Olamnit/Olamnit.Kernel/{Mailbox,DurableExecution}/**: only IWriteAheadLog.cs:33, FileWriteAheadLog.cs:42,134,140,158,267,271,272,278,282,285, DurableMailbox.cs:164,182. DurableExecutor.cs:116,178,179 are the only _commitJournal uses; PruneConsumedSegments reachable only from FileWriteAheadLog.cs:141 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "f08a4fed8f2a",
+      "claim": "CONSEQUENCE: DurableExecutor RESTART COST IS O(TOTAL HISTORY EVER PROCESSED), NOT O(UNFINISHED WORK). OpenAsync calls commitJournal.ReplayAsync(0, ct) — the literal constant 0, i.e. from the beginning of time — deserializing every CommitRecord ever written and re-folding every state event. For a very-high-cycle-count ring demonstrator this makes recovery time grow linearly with lifetime cycle count without bound. There is no snapshot mechanism in my sources.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:116 ('await foreach (var rec in commitJournal.ReplayAsync(0, ct))') at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "a5aafb1e06e5",
+      "claim": "CONSEQUENCE: DurableExecutor's IN-MEMORY DEDUP STATE GROWS WITHOUT BOUND. _committed (HashSet<string>) and _byTriggerId (Dictionary<string, CommitRecord>) gain one entry per distinct trigger identity and are never pruned, evicted, or bounded anywhere in the file — and _byTriggerId retains the FULL CommitRecord (all state-event byte[] and all outbox payload byte[]) for every trigger ever processed, in RAM. At a very high cycle count this is a per-node memory ceiling with no declared shed/refuse semantic.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:56-57 (declarations), :120-121 (populated on replay), :180-181 (populated on fresh commit); no removal site anywhere in the file at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "dd31672f7c18",
+      "claim": "THE SAME UNBOUNDED-GROWTH DEFECT IS IN IdempotentSink, AND IT IS WORSE. IdempotentSink never calls _wal.CheckpointAsync (its only WAL uses are the ctor, ReplayAsync(0), Append, CommitAsync, DisposeAsync), so its WAL is never pruned; on open it replays from 0 and folds EVERY record ever delivered into _seen (HashSet<string>) AND into _records (List<(string, byte[])>) — retaining every delivered payload in memory forever. This is structural: correctness of the dedup ('exactly once over an at-least-once producer', its doc) REQUIRES the seen-set to remember all keys, so the growth cannot simply be capped without breaking the stated guarantee.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:17-19 (_wal/_seen/_records), :26-34 (OpenAsync ReplayAsync(0) fold), :41-46 (WriteAsync adds to both), doc claim at :12-13; no Checkpoint call in the file at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "e4a0fb64c9ec",
+      "claim": "IdempotentSink is ALSO the most fsync-expensive component and is the DEFAULT: OpenAsync defaults mode = DurabilityMode.FsyncAlways, and WriteAsync awaits _wal.CommitAsync() on EVERY accepted message ('durable before the dedup-claim is visible'). There is no group commit on this path — one fsync per delivered message. For a high-cycle-count budget the sink, not the mailbox, is the throughput floor.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:23-24 (default FsyncAlways), :42-43 (Append then await CommitAsync per write) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.94,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "20757c2ea6d5",
+      "claim": "IdempotentSink.OpenAsync constructs its WAL with segmentBytes: 0, which FileWriteAheadLog's ctor silently coerces to the 64 MiB default (segmentBytes <= 0 ? 64L*1024*1024). So the sink gets 64 MiB segments it never declared — and, since it never checkpoints, those segments accumulate and are never pruned. The coercion is silent: no validation, no warning.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:26 ('new FileWriteAheadLog(directory, mode, 0)'); Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:40 (coercion) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "7f03d2b94ed9",
+      "claim": "DOC/CODE DISAGREEMENT (I am quoting a DOC comment and reporting the code contradicts it): IDurableMailbox's interface doc asserts 'every accepted message is durable (per the configured DurabilityMode)'. The CODE only honours FsyncAlways in WriteAsync (':95 if (_opts.Durability == DurabilityMode.FsyncAlways) await _wal.CommitAsync(ct)'). TryWrite appends to the WAL and returns true WITHOUT any CommitAsync, under every mode including FsyncAlways. So a TryWrite that returns true under FsyncAlways is accepted-but-not-yet-durable — the code does not implement the doc's guarantee on that path.",
+      "sources": [
+        "DOC quoted from Olamnit/Olamnit.Kernel/Mailbox/IDurableMailbox.cs:9; CODE at Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:74-86 (TryWrite, no commit) vs :88-99 (WriteAsync, commit at :95) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "bee10c3da6d7",
+      "claim": "SECOND DOC/CODE DISAGREEMENT (doc quoted): IDurableMailbox.TryWrite is documented '(no durable side-effect on reject)'. In DurableMailbox.TryWrite the WAL Append happens BEFORE the channel publish; if _channel.Writer.TryWrite returns false (e.g. after the writer was completed on dispose) the method releases the slot and returns false — a REJECT — but the appended WAL record already exists and will be replayed on the next open. The reject therefore does have a durable side-effect, contradicting the doc. (The record is not lost, so this is a contract/doc defect, not data loss.)",
+      "sources": [
+        "DOC quoted from Olamnit/Olamnit.Kernel/Mailbox/IDurableMailbox.cs:15; CODE at Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:81-85 (Append at :81 precedes TryWrite at :82; finally releases at :85) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "e232703d43ec",
+      "claim": "THE CHECKPOINT FILE ITSELF IS NOT POWER-LOSS DURABLE, and its failure is swallowed. WriteCheckpoint writes checkpoint.json.tmp with File.WriteAllText and File.Move(overwrite: true) — the code's own comment hedges 'atomic-ish replace'. There is no fsync of the tmp file and no directory fsync before/after the move; the whole body is wrapped in 'catch { }'. ReadCheckpoint likewise returns 0 on ANY exception (including a parse failure of a corrupted checkpoint). Failure direction is safe (replay more, at-least-once) but it is silent: a lost checkpoint degrades to a full replay from 0 with no signal.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:278-288 (WriteCheckpoint, comment at :285, catch at :287), :267-276 (ReadCheckpoint, catch returns 0 at :275) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "63ad646d280b",
+      "claim": "A REAL, NAMED DURABILITY DEFECT WAS ALREADY FOUND AND FIXED HERE — the contiguous-low-water ack. DurableMailbox.AckAsync keeps out-of-order acks in a SortedSet (_ackedAhead) and advances _ackedLowWater only while the next seq is acked, so the checkpoint never passes an unacked hole. The in-code comment states the prior implementation ('the old interlocked-max ack') checkpointed past out-of-order unacked messages and silently skipped them on replay, and names it a lineage defect. EVIDENCE VALUE: this is the codebase's own record that its checkpoint arithmetic has been wrong before in precisely the silent-skip direction.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:25-31 (comment naming the old defect), :130-150 (AckAsync low-water algorithm at :138-147) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "c09c61881cbd",
+      "claim": "THE BOUNDED-CAPACITY GUARANTEE IS SUSPENDED FOR RECOVERED ITEMS — an unbounded memory burst on restart. DurableMailbox.OpenAsync accumulates ALL replayed records into a List<Envelope<T>> and then TryWrites every one into the UNBOUNDED channel without consuming producer slots; ReadAllAsync/TryRead only release a slot when env.Seq > _replayHighWater. The doc states this intentionally ('recovered (replayed) items burst through without consuming slots'). Consequence for a high-cycle-count budget: a node that crashed with a large unacked backlog materializes that entire backlog in RAM at open, unbounded by Capacity — the very bound OpenAsync fail-loud REFUSES to run without (':58-59 unbounded mailboxes are refused).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/DurableMailbox.cs:63-70 (pending List + burst at :70), :39-41 (CreateUnbounded + slots), :113,:122 (slot release gated on _replayHighWater), :11 (doc), :57-59 (the refused-unbounded check) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "9da1ed064abc",
+      "claim": "MailboxTriple's ERROR mailbox is bounded drop-oldest and is IN-MEMORY ONLY — it is not durable and does not survive a restart. _errors is a plain ConcurrentQueue<QEvt> trimmed to _errorCapacity (default 32) by dequeuing the oldest. The doc claims faulted events are 'KEPT and inspectable, never silently lost'; the CODE silently discards the oldest beyond 32 (while (_errors.Count > _errorCapacity) _errors.TryDequeue(out _)) and loses all of them on process exit. Doc and code disagree on 'never silently lost'.",
+      "sources": [
+        "DOC quoted from Olamnit/Olamnit.Kernel/Mailbox/MailboxTriple.cs:10-11; CODE at :15 (ConcurrentQueue), :34-38 (CaptureError drop-oldest at :37) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "5ede04ec5a86",
+      "claim": "HONEST-SEMANTICS CREDIT: the wire-level guarantee is stated as at-least-once + key dedup, and the code matches. DeliverRemoteAsync retries a bounded number of times under the key STORED IN the commit record (stable across retries and recovery), and on exhaustion parks the push durably in the DLQ under '<key>:dl' via the IdempotentSink — one accounted move. The doc explicitly refuses the stronger claim ('never claimed exactly-once at the wire'), and I found no code contradicting that.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:215-234 (retry loop :226-227, park :233), doc at :221; UnitOfWork.cs:50-55 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "ce903a1c402a",
+      "claim": "REUSABILITY: the durability stack is pure managed BCL with no native/third-party dependency — System.Buffers, System.Buffers.Binary, System.IO.Hashing.Crc32, System.Text.Json, System.Threading.Channels. The doc claims 'Pure managed BCL — iOS-AOT-safe'; the using-list is consistent with that. CAVEAT I can verify from code: the default JsonMessageSerializer is reflection-based (its own doc says so), which is the one AOT-hostile element in my sources; ByteArrayMessageSerializer is the AOT-safe identity codec and is what DurableExecutor's inbox (IDurableMailbox<byte[]>) would use.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:1-5 (usings), :15 (doc claim); Olamnit/Olamnit.Kernel/Mailbox/IMessageSerializer.cs:13-14 (reflection-based note), :26-31 (ByteArrayMessageSerializer 'zero-copy, AOT-safe'); DurableExecutor.cs:44 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "66f38aa979dc",
+      "claim": "CATEGORY: DOES NOT EXIST IN MY SOURCES AND WOULD HAVE TO BE WRITTEN (scoped to my two dirs; vocabulary given). Searched for 'snapshot', 'compact', 'truncate', 'prune', 'GC', 'evict', 'retention': the ONLY pruning primitive in my sources is FileWriteAheadLog.PruneConsumedSegments, reachable solely from CheckpointAsync. There is NO state-snapshot mechanism, NO journal compaction, NO dedup-set retention/eviction policy, and NO stability-frontier or tombstone logic. A very-high-cycle-count budget resting on DurableExecutor/IdempotentSink would need all of these WRITTEN. I do not claim they are absent from the repo — only from Olamnit.Kernel/{Mailbox,DurableExecution}/.",
+      "sources": [
+        "grep {snapshot|compact|truncate|prune|GC|evict|retention} over Olamnit/Olamnit.Kernel/{Mailbox,DurableExecution}/**; only hits are FileWriteAheadLog.cs:141,251-265 (PruneConsumedSegments) and :187 (SetLength torn-tail truncate) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "6427c6aab77d",
+      "claim": "CATEGORY: EXISTS AND COULD BE WIRED (but is NOT wired today) — the fix for the headline risk is small and local. IWriteAheadLog.CheckpointAsync + FileWriteAheadLog.PruneConsumedSegments are fully implemented and proven in use by DurableMailbox; nothing prevents DurableExecutor and IdempotentSink from calling CheckpointAsync on their own WALs. What is MISSING is the arithmetic for a safe consumed-frontier on a journal whose whole history is load-bearing for state-fold and dedup: pruning the commit journal is only safe once state is snapshotted, and pruning the sink's WAL is only safe once the dedup key set has a retention bound. So the segment-pruning PRIMITIVE exists; the SAFETY FRONTIER that would let these two callers use it does not exist in my sources.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/IWriteAheadLog.cs:32-33; Olamnit/Olamnit.Kernel/Mailbox/FileWriteAheadLog.cs:134-144, :251-265; called only at DurableMailbox.cs:164,182; DurableExecutor.cs:116 and IdempotentSink.cs:26-34 both replay from 0 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "e91b55f8b4d8",
+      "claim": "OPEN QUESTION (cannot answer from my slice): whether any test/verification source exercises the mid-log-corruption case, the never-checkpointed commit journal, or the IdempotentSink unbounded-growth path. My slice contains no test files at all — the two directories hold only production types. The severity of my three growth/loss findings depends on whether a test suite already pins the current behaviour as intended.",
+      "sources": [
+        "directory listing of Olamnit/Olamnit.Kernel/{Mailbox,DurableExecution}/ — 16 files, zero test files at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "4f79fd3bea0c",
+      "claim": "OPEN QUESTION (cannot answer from my slice): DurableExecutor and TriggerIdentity depend on Olamnit.Kernel.Envelope (EnvelopeHeader.Read/Size/CurrentVersion/MessageId/CapabilityId), Olamnit.Kernel.Edge (IUnsafeSink, IUnsafeSource, EdgeFrame, KeyedFrame), Olamnit.Kernel.Persistence (IEventSourced), Olamnit.Kernel.Routing (NameInterner) and Qp.Runtime (QEvt) — ALL outside my slice. In particular IDurableHandler's doc asserts that authorization is enforced by a 'CapabilityEdgeGate at EdgeIngress' BEFORE the durable inbox, and that replay deliberately does NOT re-check capabilities. I could NOT verify that gate exists or that it does what the comment claims — that file is outside my sources. This is a doc-asserted security property I am explicitly declining to confirm.",
+      "sources": [
+        "usings/refs at DurableExecutor.cs:1-3, TriggerIdentity.cs:1, KeyedEnvelopeSource.cs:1-4, MailboxTriple.cs:2; the unverifiable doc claim at IDurableHandler.cs:11-13,17-19 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-3"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "31669847c2ab",
+      "claim": "The mesh wire frame is a fixed 6-byte prefix carrying EXACTLY four decoded fields plus an opaque tail: dest (u16 LE, offset 0), src (u16 LE, offset 2), hopLimit (u8, offset 4), flags (u8, offset 5), inner (bytes 6..). TryDecode emits precisely these five outs; there is no other field. PrefixSize=6.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:21 (PrefixSize=6), :23-32 (Encode), :36-50 (TryDecode outs dest/src/hopLimit/flags/inner) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.97,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "ce131126949c",
+      "claim": "Of those four fields a forwarder consults only THREE: flags (bit 0x01 test, control-vs-data demux), dest (== self ? deliver : lookup next hop), and hop (<=1 ? drop). src is NOT consulted for any forwarding decision - it is only copied verbatim into the re-encoded forward and passed to the local delivery callback as the origin tag.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:254 (flags & FlagControl), :260 (dest == _self), :266 (hop <= 1), :271 (TryNextHop(dest)), :276 (Encode(dest, src, hop-1, flags, inner) - src merely copied), :263 (DeliverAsync(src,...)) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "e5fd2683a592",
+      "claim": "An originator therefore CANNOT express an intended PATH - only a destination and a hop budget. SendAsync's entire signature is (dest, payload, hopLimit, ct); the frame has no route vector, no waypoint list, no via field, and MeshRelayRoute.Decide re-derives the next hop purely from the local router's table, ignoring any originator preference. Absence scoped to Olamnit/Olamnit.Kernel/Mesh/ and Olamnit/Olamnit.Kernel/Link/ ONLY; vocabulary searched: sourceroute, 'source route', waypoint, path, via-list, segment, intermediate, 'explicit route', steer - plus a field-by-field read of the codec (not a grep-only conclusion).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:186-188 (SendAsync signature), MeshFrameCodec.cs:23 (Encode signature - no path arg), MeshRelayRoute.cs:48 (_router.TryNextHop(dest, out next)) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "1b8e896c27fe",
+      "claim": "The ONLY originator-controlled steering lever that ships is hopLimit (byte, default 16): the originator can shorten a path budget (truncating reach) but cannot select among equal-cost paths. hopLimit 0 is a terminal Dropped value at the origin.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:187 (hopLimit param), :584 (DefaultHopLimit=16), :200-204 (hopLimit==0 => Dropped) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f567b59ed587",
+      "claim": "7 of the 8 flag bits are carried end-to-end but never consulted: only bit 0 (FlagControl 0x01) is tested, and the forward re-encode preserves the whole flags byte unchanged. An originator can set bits 1-7 and every relay will propagate them to the destination unread and unauthenticated - a carried-but-unconsulted field (a covert channel), NOT a steering lever.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:50-52 (FlagData 0x00 / FlagControl 0x01), :254 ((flags & FlagControl) != 0 - only bit 0), :276 (flags forwarded verbatim); MeshFrameCodec.cs:14 doc says 'extend by a flag bit, never reorder' at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "5c483983a6a4",
+      "claim": "A SECOND, older forwarder ships alongside MeshNodeRuntime: MeshRouter, with an ADMINISTRATIVELY SET static next-hop table via AddRoute(destNode, viaNeighbor). This is per-node dest->nexthop configuration set by the local host, not an originator-expressible path; MeshRouter.SendAsync also takes only (dest, inner, hopLimit).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:57 (AddRoute), :68 (SendAsync signature), :115-121 (ForwardAsync consults _routes[dest] only) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "2e2a536b408f",
+      "claim": "There are THREE distinct relay/forwarding decision sites in my sources, not one - any change to forwarding must move all three: MeshNodeRuntime.HandleInboundAsync (live runtime), MeshRouter.ProcessInboundAsync (static-route node), and MeshRelayRoute.Decide (the pure RouterEngine-bound relay decision).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246-285; Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:94-113; Olamnit/Olamnit.Kernel/Mesh/MeshRelayRoute.cs:40-52 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "6f8025f5b1a3",
+      "claim": "Runtime neighbour change SHIPS at edge granularity: AddNeighbor(neighborId, link, scheme, linkCost) registers an edge + starts its pump + triggers an advert round (refuses self / duplicate id, returns false); RemoveNeighborAsync(neighborId) is the administrative leave of one edge (poison, stop pump, release, reconverge, idempotent).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:145-162 (AddNeighbor), :166-172 (RemoveNeighborAsync), :462-476 (MarkDown) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "8dd307802ee0",
+      "claim": "Neighbour removal also happens IMPLICITLY and unauthenticated: any link fault, a clean peer close (null recv), or a failed send latches the neighbour down and poisons every route through it. So 'membership' at this layer is exactly 'my link to you is currently up' - liveness, not authorization.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:238 (catch => MarkDown 'fault'), :239 (wire is null => MarkDown 'closed'), :412 (send catch => MarkDown), :467 (_router.SetLinkState(n.Id,false)) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "030d439201a1",
+      "claim": "No node-level membership roster, epoch, exclusion, or reintegration concept exists in Olamnit/Olamnit.Kernel/Mesh/ - membership is per-edge only, and a node id is a bare ushort with no identity binding at the mesh layer. Absence scoped to that directory ONLY; vocabulary searched: roster, membership, epoch, exclude, exclusion, quorum, elect, admit, revoke, ban, blocklist, allowlist, join, leave (the only hits are prose about link join/leave). I could NOT see the election/trust-anchor surface (another slice) - see open question.",
+      "sources": [
+        "grep over Olamnit/Olamnit.Kernel/Mesh/ at pin 02bcc20; MeshNodeRuntime.cs:59 (_neighbors is the only membership state); MeshFrameCodec.cs:15 (dest/src are bare ushort node ids)"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.72,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "3f3fd5c6572d",
+      "claim": "The routing cost function's inputs are a LOCAL-ONLY 5-tuple: LinkCostInputs(Base=1, Quality=0, Load=0, Period=0, Event=0), supplied by the LOCAL host at AddNeighbor time. They are never transmitted: the advert batch codec encodes only Origin/Dest/Cost/Seq/Via (16 bytes), so no remote node can supply LinkCostInputs.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/ILinkCostModel.cs:28-40 (LinkCostInputs); Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:77-85 (AddNeighbor(neighbor, in LinkCostInputs) -> _costModel.CostFor); Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:480-497 (AdvertSize=2+2+4+8+2, fields Origin/Dest/Cost/Seq/Via only) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "b9fe901078f2",
+      "claim": "LayeredLinkCostModel IS bounded in both directions against its LOCAL inputs: total = Base + Quality - min(Load+Period+Event, MaxAdaptiveBonus=8), floored at Base and saturated at uint.MaxValue in long arithmetic (never wraps to a spuriously cheap link). This bound is verified by a theory including all-uint.MaxValue inputs.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/LayeredLinkCostModel.cs:20 (MaxAdaptiveBonus=8), :24-37 (clamp to Base, clamp to uint.MaxValue), :42-46 (AdaptiveBonus cap); Olamnit/Olamnit.Kernel.Tests/Mesh/LayeredCostTests.cs:57-62 (theory incl. uint.MaxValue), :70 (ExtremeInputs_SaturateHigh_NeverWrapToCheap) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "922841024bca",
+      "claim": "THE ATTACK SURFACE the cost bound does NOT cover: advert.Cost is a raw remote-supplied uint and IS the metric. Ingest computes rawCost = advert.Cost + linkCost and only bounds it from ABOVE (>= MaxCost 16 => Infinity). Nothing bounds it from BELOW: a neighbour may advertise Cost=0 for EVERY dest, yielding candidate == linkCost (1 by default) - the cheapest possible non-self route - and so elect itself next hop for the whole mesh (a black hole). The 016 codex-review fix cited at :96-97 defends only the wrap/overflow direction.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:97-100 (rawCost = advert.Cost + linkCost; ceiling only), :116 (candidate < cur.Cost accepts a strictly cheaper claim); RouteAdvertisement.cs:18 (MaxCost=16) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "99f1ee5633b5",
+      "claim": "advert.Seq is a remote-supplied ulong with NO ceiling and NO origin authentication: 'advert.Seq > cur.Seq => accept = true' unconditionally, including for a poisoned claim. A neighbour advertising Seq=ulong.MaxValue wins every subsequent comparison for that dest.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:108-111 (fresher info always wins), :144-151 (entry stamped with advert.Seq verbatim) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "2f634ef4dba6",
+      "claim": "M-36 counterexample CONSTRUCTED (by reading, NOT executed at the pin): the seq ceiling is unrecoverable because NO node ever increments a seq. _selfSeq is initialised to 2 at declaration and read ONLY in the constructor - it is never incremented anywhere in the file. SetLinkState's poison deliberately KEEPS the seq (:170-173). Therefore after a hostile Seq=ulong.MaxValue/Cost=0 advert for dest X, every legitimate advert for X (seq 1 or 2) is rejected as stale forever; when the hostile link then drops, A's entry for X is poisoned at seq=MaxValue and no legitimate reroute can ever out-rank it => X permanently unreachable at A. Only a DIRECT link to X re-seeds it (AddNeighborNoLock at :185-192).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:42 (private ulong _selfSeq = 2 - sole assignment), :60 (sole read), :108-124 (accept ladder), :170-173 (poison keeps seq), :185-192 (direct re-seed) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.75,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "6d0a77bc90a0",
+      "claim": "M-32 DOC-vs-CODE DISAGREEMENT (I am quoting docs/comments here): the class remark says 'this node owns an ever-increasing seq for its own reachability; a poisoned route bumps the affected seq so the withdrawal out-ranks the stale good route at every neighbor' and IDistanceVectorRouter says SetLinkState 'bumps the affected sequences'. The CODE does neither: _selfSeq is never incremented and SetLinkState's own inline comment states the opposite ('Poison locally but KEEP the seq ... Bumping the seq here would out-rank - and so reject - that real reroute'). Two comments in the same file contradict each other; the code follows the inline one.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:12 (class remark) vs :170-173 (inline comment + code); Olamnit/Olamnit.Kernel/Mesh/IDistanceVectorRouter.cs:17-18 (interface doc) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "9be68c380c2f",
+      "claim": "Advert PROVENANCE is not checked against the arriving link: MeshNodeRuntime.HandleInboundAsync knows the receiving Neighbor 'from' but calls HandleControl(inner) WITHOUT it, and the router's only provenance test is that advert.Via is SOME up-neighbour. So neighbour B can emit adverts stamped Via=D (another of A's neighbours) and A will accept them at D's link cost, attributing them to D.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246 (HandleInboundAsync(Neighbor from, ...)), :256 (HandleControl(inner) - 'from' dropped), :287-305 (HandleControl has no sender param); DistanceVectorRouter.cs:92 (only checks _neighbors.TryGetValue(advert.Via, ...)) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "11b60d29915b",
+      "claim": "The advert's Origin field is decoded and carried but NEVER read by routing: AdvertsFor always emits Origin == Dest, and Ingest reads advert.Dest/Via/Cost/Seq only. Origin is dead weight on the wire (2 of every 18 advert bytes) and offers no origin-authentication today.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/RouteAdvertisement.cs:15 (record has Origin); Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:270 (new RouteAdvertisement(e.Dest, e.Dest, ...) - Origin=Dest), :87-153 (Ingest never references advert.Origin) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "b70a01720612",
+      "claim": "What DOES constrain a hostile contributor at the link layer (not the routing layer): a bench link is wrapped by the shipped pin-verified ECDH (P-256) handshake into an AES-256-GCM SecureLinkEndpoint, default-deny on an unpinned peer, with no configuration to skip the wrap and no plaintext fallback. This authenticates WHO the neighbour is; it authenticates NOTHING about the CONTENT of the adverts that authenticated neighbour then sends.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Link/Secure/SecureLinkCredentials.cs:12-30 (pinned, default-deny), :67 (IsPinnedPeer), :74-88 (TryDeriveSessionKey); Olamnit/Olamnit.Kernel/Link/Secure/SecureLinkEndpoint.cs:29-77 (AesGcmSessionCipher); Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:11-13 + :31-43 (no skip, null on refusal) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f8048facb57b",
+      "claim": "MeshNodeRuntime.HandleInboundAsync carries a shipped TODO(FR-012) stating in-clear frames: 'frames cross the link in clear here. The sealing / attestation / integrity check plugs in behind THIS seam ... No behaviour this MVP.' (I am quoting a code comment.) The secure wrap is composed OUTSIDE the runtime (BenchLinkComposer), so security depends on the composition root, not on the runtime.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:248-250 (TODO(FR-012)); Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:21-31 (wrap applied before AddNeighbor) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "daa81522c1c0",
+      "claim": "NO history, smoothing, EWMA, decay, hysteresis, or flap-tracking of route quality over time exists in my four source directories - cost is instantaneous and memoryless. The only time-shaped state that ships is (a) a binary per-dest Stable flag set by a no-change round and cleared on any reroute/poison (explicitly advisory, never consulted by correctness) and (b) LastRefreshTick, a single last-seen logical tick used for a hard expiry cutoff - neither is a quality history. Absence scoped verbatim to Olamnit/Olamnit.Kernel/Mesh/, Olamnit/Olamnit.Kernel/Link/, Olamnit/Olamnit.Kernel.Tests/Mesh/, Olamnit/Olamnit.Kernel.Tests/Verification/ ONLY; vocabulary searched (case-insensitive, ZERO hits): ewma, smooth, hysteresis, flap, movingaverage, 'moving average', decay, histor, windowed, rolling, percentile, variance, rtt, jitter.",
+      "sources": [
+        "grep over the four slice dirs at pin 02bcc20; Olamnit/Olamnit.Kernel/Mesh/RoutingTable.cs:18-21 (RouteEntry fields: Dest/NextHop/Cost/Seq/State/Stable/LastRefreshTick - no history), DistanceVectorRouter.cs:243-256 (CommitRound), :217-237 (Tick)"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "e4cbba89b1b6",
+      "claim": "The equal-cost incumbent-retention rule is the ONLY anti-oscillation mechanism and it is emergent from the same-seq tie ('a strictly better alternative wins; an equal-cost one does not'), NOT from a stability check - the code comment says so explicitly. It damps equal-cost flapping but provides no damping at all against an attacker who advertises a STRICTLY cheaper cost each round.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:112-119 (same-seq tie rule + comment 'emergent from this same-seq tie rule, never a Stable-flag check'); Olamnit/Olamnit.Kernel.Tests/Mesh/RouteStabilityTests.cs:63-78 (StableDest_KeepsIncumbent_OnEqualCostAlternative), :81-96 (StrictlyBetterCost_Overrides_AStableIncumbent) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "639645aea211",
+      "claim": "NOTHING compels a node to contribute route knowledge, and a non-contributor IS detectable but ONLY when a clock is injected: DistanceVectorRouter.Tick ages a dest out when now - LastRefreshTick > expiryTicks (default 30) and poisons it. Critically, aging is OFF by default ('if (_clock is null) return false') and MeshNodeRuntime NEVER constructs a clock - it calls new DistanceVectorRouter(self), the no-clock overload - so in the SHIPPED runtime a silent (non-contributing but link-up) neighbour is never aged out. The consequence for a non-contributor is at most withdrawal of routes THROUGH it; there is no penalty, no exclusion, no report.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:217-219 (aging off with no clock), :29 (DefaultExpiryTicks=30), :44-45 (no-clock ctor); Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:88 (new DistanceVectorRouter(self) - no clock, no cost model) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "29162ad18cce",
+      "claim": "COROLLARY: the shipped MeshNodeRuntime also never injects an ILinkCostModel, so the layered cost seam (FR-017) is unreachable from the live runtime - AddNeighbor's uint linkCost (default 1) is the only knob, routed through a default LayeredLinkCostModel as LinkCostInputs(Base: linkCost). The whole Quality/Load/Period/Event surface is exercised only via DistanceVectorRouter directly / the test fabric.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:88 (new DistanceVectorRouter(self)), :145 (AddNeighbor(..., uint linkCost = 1)), :152 (_router.AddNeighbor(neighborId, linkCost)); DistanceVectorRouter.cs:72-73 (uint overload wraps into LinkCostInputs(Base: linkCost)), :55 (_costModel = costModel ?? new LayeredLinkCostModel()) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "51913a6b6582",
+      "claim": "There is NO delivery/receipt concept back to the originator. The service surface is send-only + a separate inbound callback: SendAsync returns a closed MeshSendOutcome whose success value 'Accepted' is documented as 'Handed to the current next hop and registered for no-loss retransmit' - explicitly a next-hop handoff, NOT an end-to-end ACK. Inbound delivery IS tagged (the ctor callback Action<ushort src, byte[] payload> plus the stable {origin}:{seq} key), but that tag surfaces at the DESTINATION only; no frame ever travels back. Absence scoped to Olamnit/Olamnit.Kernel/Mesh/ ONLY; vocabulary searched: ack, acknowledg, receipt, confirm, delivered-confirm, inbound, receive-tag, deliverytag (the only 'ACK' hit is a prose mention of the COMMIT->ACK window of the separate RouterEngine).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:565-576 (MeshSendOutcome closed set: Accepted/DeliveredLocal/Unreachable/Dropped), :567 (Accepted doc), :55 (_onLocalDeliver), :193 (key = {self}:{counter}); MeshFrameCodec.cs:36 (no ack field) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "3bb9dea18cf5",
+      "claim": "LOAD-BEARING: the in-flight pending set is cleared ONLY by TTL expiry, NEVER by delivery. _pending is written at :215 and the sole TryRemove is inside the 'now >= p.Deadline' branch at :375. So an Accepted message is blindly re-sent every RetransmitInterval (50 ms) for the FULL MessageTtl (5 s default; 120 s on the bench profile) even after the destination has already received it - the destination's dedup, not the source, absorbs the duplicates. Delivery is invisible to the sender.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:61 (_pending), :215 (write), :363-388 (RetransmitLoopAsync), :373-377 (TryRemove only on Deadline), :590-600 (RetransmitInterval 50ms, MessageTtl 5s); Bench/MeshBenchProfile.cs:27 (MessageTtlSeconds default 120) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "965f1df29a7b",
+      "claim": "TTL expiry is a CONSERVED DROP, not a durable queue: StageExpiredToPartitionQueue only emits telemetry and increments _dropped, with a shipped TODO(FR-005) stating the durable per-partition queue / DLQ / re-drive-on-heal 'No behaviour this MVP'. The IMeshTelemetry doc concurs: 'no durable dead-letter queue exists in the shipped runtime'. (Quoting comments; the code matches them.)",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (StageExpiredToPartitionQueue); Olamnit/Olamnit.Kernel/Mesh/IMeshTelemetry.cs:59-61 (MessageExpired doc) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "a5c64859e5fb",
+      "claim": "Named topology scenarios exercised by the verification sources: line-4, ring-4, diamond, star-5, dense-5 (small-model theory); diamond+kill-relay-B reconvergence; line-4 bridge-cut partition; 3 randomized seeds x 40 connected graphs of 4-7 nodes with 0-2 random cuts; a converged 3-ring via FakeFabric; a layered-cost 4-node fabric; and an age-out-then-heal 4-node line. Max node count anywhere in these sources is 7 (randomized) / 5 (named).",
+      "sources": [
+        "Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:33-41 (line-4/ring-4/diamond/star-5/dense-5), :47-56 (DiamondReconvergence_AfterKillingARelay), :61-69 (Partition_AfterCuttingTheBridge), :74-90 (Randomized 3 seeds x 40), :95-101 (FakeFabricOverload ring-3), :106-117 (LayeredCostFabric), :120-131 (AfterTimeoutAgingAndRecovery), :167-188 (RandomConnectedScenario n=4..7) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "2ba2b814dfcd",
+      "claim": "LOAD-BEARING ANSWER on failover: there are TWO distinct kill-one test families and they assert DIFFERENT things. FailoverTests (FR-009/SC-004/SC-005) asserts ONLY routing state - TryNextHop returns a different hop and Snapshot.Entries[C].Cost == 2 - and the no-alternate case asserts only that TryNextHop returns FALSE. It sends NO message and asserts NO delivery. Same for DistanceVectorRouterTests.RelayKill_Reconverges_OverSurvivingPath_ExactlyReroutes and MeshInvariantsTests.DiamondReconvergence_*.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:17-33 (ActivePathFails_TrafficContinues_OverTheDisjointAlternate - asserts TryNextHop + Cost==2 only), :36-51 (NoAlternateRemains - asserts !TryNextHop only); Olamnit/Olamnit.Kernel.Tests/Mesh/DistanceVectorRouterTests.cs:107-124 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "48dd03e7c2f2",
+      "claim": "The DELIVERY-asserting failover test DOES ship, in a different file: MeshNodeRuntimeTests.SendAsync_DiamondRelayKilledMidFlow_DeliversToCExactlyOnce wires a real diamond over LoopbackLinks, converges A->B->C first (so the incumbent is deterministically B), sends, disposes B mid-flow, then asserts BOTH the reroute (A->D) AND end-to-end delivery: atC.Count == 1 and the durable IdempotentSink count == 1 and payload bytes intact. This is the exactly-once-across-relay-kill evidence; note the exactly-once EFFECT is achieved by destination dedup over the stable {origin}:{seq} key, not by any source-side confirmation.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:70-125 (esp. :102 Accepted, :104 b.DisposeAsync, :107-110 reconverge to D, :115 Assert.Equal(1, atC.Count), :116 cSink.Count==1); MeshNodeRuntime.cs:307-332 (DeliverAsync dedup) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "8aff93f979ad",
+      "claim": "Hostile/adversarial routing input is NOT exercised by any test in my sources. The nearest tests are StaleAdvertisement_IsIgnored and AdvertOverNonNeighborLink_IsRejected - both benign-input cases. Absence scoped to Olamnit/Olamnit.Kernel.Tests/Mesh/ and Olamnit/Olamnit.Kernel.Tests/Verification/ ONLY; I enumerated EVERY [Fact]/[Theory] in those two directories by name rather than relying on a keyword grep, and none constructs a lying advert (Cost=0 / Seq=MaxValue / spoofed Via). The randomized property fabric perturbs only link cuts, never advert content.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel.Tests/Mesh/DistanceVectorRouterTests.cs:175-186 (StaleAdvertisement_IsIgnored), :188-198 (AdvertOverNonNeighborLink_IsRejected); Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:167-188 (RandomConnectedScenario perturbs links only) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "aac73fb2ac3e",
+      "claim": "The bench profile fixes the DEPLOYABLE topology vocabulary at exactly three shapes and six scenarios, fail-closed on any other string: shape in {line, triangle, diamond}; scenario in {bringup, e2e-delivery, failover, heal, partition, kv-flow}. A ring is NOT in the shape vocabulary and would be refused at parse. secure:false is refused at parse.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:86-87 (shape vocabulary), :89-90 (scenario vocabulary), :80 (secure:false refused), :67 (unknown fields Disallow) at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "57e38b04c472",
+      "claim": "OPEN QUESTION (I could not verify): FakeFabric, MeshInvariants, Scenario, LinkChange and InvariantReport - the types every MeshInvariantsTests / FailoverTests / RouteStabilityTests / DeterminismTests assertion rests on - live in namespace Olamnit.Kernel.Verification, which is OUTSIDE my slice (my slice has Olamnit.Kernel.Tests/Verification/, not Olamnit.Kernel/Verification/). I therefore CANNOT state what MeshInvariants.Check actually checks, whether Cut() models a one-sided or two-sided cut, or whether the invariants include any delivery property. Everything I say about those tests is limited to their literal Assert lines.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel.Tests/Verification/MeshInvariantsTests.cs:2 (using Olamnit.Kernel.Verification), :24-27 (MeshInvariants.Check(scenario)); Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:2 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "33e869d197e8",
+      "claim": "OPEN QUESTION (I could not verify): whether any authorization, roster, capability or signature layer OUTSIDE my slice gates mesh adverts or node ids. My sources show the mesh layer accepting Cost/Seq/Via from any link-authenticated neighbour with no content check, but the amulet/macaroon caveat surface, the election/trust-anchor surface, and the KV capability boundary are all in slices I was forbidden to read. My cost/seq attack claims are therefore claims about Olamnit/Olamnit.Kernel/Mesh/ ONLY and must not be read as a repo-scope absence of advert authorization.",
+      "sources": [
+        "scope note; evidence base = Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:87-153 and Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:246-305 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "e37c63fa8e75",
+      "claim": "OPEN QUESTION (I could not verify): I did not execute any test at the pin. Every claim above is derived by reading source, including the M-36 permanent-poisoning counterexample, which is a constructed argument from the accept ladder and the never-incremented _selfSeq, NOT an observed failure. It should be confirmed by writing the adversarial advert test before being treated as established.",
+      "sources": [
+        "method note; target = Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:42,:108-124,:170-173 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-4"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "934482b9c021",
+      "claim": "MINT AUTHORIZATION IS NEVER VERIFIED. ValidateMint checks exactly four things and none is authorization: value non-zero + provider non-empty (RejectedMalformed), mint id not already present (AlreadyApplied), FundingPool+FundingFresh == Value (RejectedConservation), FundingPool <= _poolCredits (RejectedConservation). It never reads MintBody.WitnessCert, MintBody.Envelope, or MintBody.MultiplierApplied.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:184-195 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.96,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "449cd5d0a681",
+      "claim": "The mint path has no other verification hook: Admit() does `Validate(envelope.Body)` -> Append -> Project, and Validate dispatches MintBody straight to ValidateMint. There is no cert/signature step anywhere between the caller and the WAL append.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:69-82 and :173-182 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "4c4de58e5fe8",
+      "claim": "AUTHORIZATION IS VERIFIED ONLY ON THE SPEND PATH. SpendGate calls `_certVerifier.Verify(cert, _quorum.WitnessCount)` and aborts the spend when the cert does not check out. Within my sources this is the ONLY call site that verifies a WitnessCert. (Search vocabulary over Olamnit.Coin/Ledger/, Olamnit.Coin.Rewards/, Olamnit.Coin.Tests/Ledger/: 'WitnessCert', 'Witness', 'certVerifier', 'Verify', 'Ed25519', 'Signature'.)",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Settlement/SpendGate.cs:139-141 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "ea595e7ef690",
+      "claim": "SHIPPED PROOF (not a test): GenesisGrantIssuer mints a value-creating op with a WitnessCert carrying `Array.Empty<byte[]>()` signers AND `Array.Empty<byte[]>()` signatures, and the engine returns Applied. A cert with zero signers is accepted by the mint path.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Identity/GenesisGrantIssuer.cs:111-120 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "5d21ba03063c",
+      "claim": "TEST PROOF: the processor's own test helper builds every MintBody with `Cert(...) = new(subject, SchemeEd25519SetV1, new List<byte[]>(), new List<byte[]>())` — empty signer and signature lists — and the happy-path test asserts OpAdmission.Applied. The shipped suite therefore encodes 'a mint with no signatures is admitted' as expected behaviour.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Tests/Ledger/Commutative/CommutativeOpProcessorTests.cs:10-16 and :31 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.94,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "f52e93efa31e",
+      "claim": "RewardMinter's cert content is unvalidated key material: PadKey() SHA-256s any endorser key id that is not 64 hex chars, producing a 32-byte value that is NOT an Ed25519 public key, and SafeHex() returns Array.Empty<byte>() for a non-hex signature. Both are handed to the engine as a WitnessCert and the mint still applies, because ValidateMint never inspects it.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:79-82 and :136-144 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.87,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "17d35747bcef",
+      "claim": "MintEnvelopeRef (QtyUCoin/WorkClass/ProofRef/Epoch) is carried but never checked: RewardMinter and GenesisGrantIssuer both pass the mint id bytes themselves as ProofRef, and ValidateMint reads no Envelope field. 'ProofRef' proves nothing on any shipped path.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:78 + Olamnit/Olamnit.Coin.Rewards/Identity/GenesisGrantIssuer.cs:113 + Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:184-195 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "2528d6d16a16",
+      "claim": "The ONLY pre-mint authorization gate that exists is ROW EXISTENCE, not evidence validity: RewardMinter refuses (returns null) when no reward_endorsement row exists for the claim ('endorsed state without a row - refuse, never self-mint'). It selects endorser_key_id + signature and uses them as cert material without verifying the signature.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:58-59 and :120-126 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "806d08fe387a",
+      "claim": "No signature is verified at endorsement-recording time either: RewardClaimProcessor.EndorseAsync accepts `signatureHex` as an opaque string parameter and INSERTs it into reward_endorsement, then flips the claim to `endorsed`. There is no Ed25519 verify, no length check, no hex check in this method.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Claims/RewardClaimProcessor.cs:138-177 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "a50c63545c7a",
+      "claim": "The manual path is the same: ReviewQueue.EndorseAsync gates ONLY on `IsDesignated(reviewerKeyId)` — an Ordinal string equality against a configured key-id string — and then forwards the caller-supplied signatureHex unverified. Possession of the designated KEY is never demonstrated; knowing its id string is sufficient at this seam.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Endorsement/ReviewQueue.cs:29-33 and :46-48 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "cafdedf139c7",
+      "claim": "THE CONSERVATION AUDIT CANNOT DETECT A FORGED MINT. PoolAudit's identity is `circulating + pool == fresh` where fresh = sum(MintBody.FundingFreshUCoin) and circulating = replay TotalCirculating(). A forged fresh-funded mint of V adds V to `fresh` at PoolAudit.cs:46-47 AND creates a live DAG root of V (Project, CommutativeOpProcessor.cs:284-288) adding V to `circulating`. Both sides move by V; the identity STILL HOLDS and audit.Holds stays true. I constructed this counterexample against the code rather than accepting 'by construction'.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:41-65 + Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:284-288 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "561053e7a294",
+      "claim": "What PoolAudit ACTUALLY catches is exactly two defect classes: (1) POOL OVERDRAW — sum of MintBody.FundingPoolUCoin exceeds sum of AgingBody.DecayedDeltaUCoin (returns Holds=false, 'pool overdrawn'); (2) an INTRA-DAG conservation break surfaced by VerifyAllConservation(). It catches NO defect in mint authorization, endorsement, provenance, identity, or rate policy.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:55-62 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "52f1d2cb34ca",
+      "claim": "The shipped forgery test confirms the boundary rather than closing it: PoolAuditTests's only forged-WAL case ('PoolOverdraw_FailsTheAudit_WhenForgedIntoTheWal') forges a mint funded 500 from POOL / 0 fresh. There is no test in my sources that forges a FRESH-funded mint into the WAL — the case that passes the audit. (Vocabulary searched in Olamnit.Coin.Tests/Ledger/: 'forge', 'forged', 'Mallory', 'bypass', 'Append(', 'Holds'.)",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Tests/Ledger/Validity/PoolAuditTests.cs:60-72 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.88,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "756bdccf3c8e",
+      "claim": "CoinDag.VerifyConservation is INTRA-DAG only: `live + decayed + spent == MintedValue`, where MintedValue is taken from the mint op that created the DAG (CoinDag ctor). A forged mint's DAG therefore satisfies it trivially at creation (root live == MintedValue). The DAG invariant is arithmetic self-consistency, not legitimacy of the root value.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Model/CoinDag.cs:25-33 and :208-220 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "b496960fb65d",
+      "claim": "DOC-VS-CODE DIVERGENCE (quoting a code comment): PoolAudit's summary says the pool's outflow is 'reward funding witnessed inside mint ops'. The word 'witnessed' is not backed by code — no shipped path verifies a mint's WitnessCert, so the audit sums a funding field that is asserted by the op author, not witnessed.",
+      "sources": [
+        "comment at Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:24-30 vs code at Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:184-195 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "259cb4041ec3",
+      "claim": "COMMENT AND CODE AGREE HERE (reported for symmetry): Project() clamps a forged pool overdraw to MicroCoin.Zero instead of throwing, and its comment says 'the pool audit is what convicts it'. PoolAudit.cs:55-58 does convict that specific case. This is the one defect class where the mint-side comment's claim is honoured by code.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:289-293 + Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:55-58 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.87,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "6ebba0126981",
+      "claim": "Rehydration replays every WAL op through Project() WITHOUT re-running admission — so even the four ValidateMint checks are skipped on restart. The code's own comment concedes this ('rehydration Projects every WAL op WITHOUT re-running admission checks / witness-cert verification') and defers it to a cross-host follow-up. Comment and code AGREE; the gap is real and acknowledged.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:54-66 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "1ee0c35342ce",
+      "claim": "SPLIT OF THE SMALLEST DENOMINATION IS REFUSED. ValidateSplit requires b.K >= 2 and b.Children.Count == b.K (else RejectedMalformed), then requires parentValue.TryFloorSplit(K) to succeed; TryFloorSplit returns false when `UCoin < k`. A 1-microcoin leaf therefore cannot split for any legal k>=2 — refused as RejectedConservation. The floor is structural, in MicroCoin, not a policy knob.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:197-216 + Olamnit/Olamnit.Coin/Ledger/Model/MicroCoin.cs:51-67 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "1021e10c905e",
+      "claim": "MERGE OF SMALLEST-DENOMINATION UNITS IS PERMITTED, under four conditions: >=2 parents; parents pairwise distinct; every parent a LIVE leaf; and Merged.ValueUCoin == the exact sum. Violations map to RejectedMalformed / RejectedUnknownRef / RejectedConservation respectively. Merging N 1-microcoin leaves of one mint is admissible.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:219-237 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "f377a0007010",
+      "claim": "MERGE ACROSS DISTINCT MINT DAGs IS REFUSED as RejectedMalformed ('v1: merge within one mint's DAG (per-coin lineage)'). Split cannot cross a DAG by construction (one ParentRef). Consequence for any batch/epoch minting design: reward units minted under DIFFERENT mint ids can never be consolidated into one leaf — holdings fragment permanently per mint.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:231-232 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "a99c3f331e69",
+      "claim": "The same one-mint-DAG restriction binds the SPEND leg twice: BalanceValidator refuses 'spend leg crosses mint DAGs - one mint per leg', and ValidateSpendProjection refuses RejectedMalformed. PaymentPlanner works around it by emitting one leg (and one commit id, and one E3PC witness round) PER MINT DAG. Per-mint fragmentation therefore scales the number of witnessed spend rounds.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Validity/BalanceValidator.cs:79-80 + Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:256-257 + Olamnit/Olamnit.Coin/Ledger/Commutative/PaymentPlanner.cs:44-71 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "669d4fce2096",
+      "claim": "Split and merge are BOTH additionally refused (RejectedReserved) when a parent leaf is reserved by an in-flight gated spend, via the reservation callback the SpendGate attaches at construction.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:45-52, :206-207, :229-230 + Olamnit/Olamnit.Coin/Ledger/Settlement/SpendGate.cs:53-54 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "feasibility",
+      "tags": [
+        "feasibility"
+      ]
+    },
+    {
+      "claim_id": "4d5b9524469b",
+      "claim": "AUTO-ENDORSEMENT REQUIRES EXACTLY FOUR THINGS OF EVIDENCE, none cryptographic: (1) claim.EndorsementMode == 'auto'; (2) a reward_signal row loads; (3) a registered ICorroborationSource whose SourceKind string-matches signal.SourceKind; (4) that source returns a NON-NULL string. Any non-null string is accepted as `evidence_ref` — the return value's content is never inspected. Then the verifier signs and endorses.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:53-71 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "022f62a8c9e1",
+      "claim": "NO SHIPPED CORROBORATOR VERIFIES A SIGNATURE. Both ICorroborationSource implementations in my sources — CoQueryCorroborationSource and IcWorkFeedCorroborationSource — do exactly the same two things: a CaptureMethod string equality ('co_event' / 'ic_work') and a set-membership test `live.Contains(signal.SourceNativeId)`, returning an interpolated string. Neither touches Ed25519Signer, a key, a digest, or signal.PayloadDigest. ABSENCE SCOPED to Olamnit.Coin.Rewards/, Olamnit.Coin/Ledger/, Olamnit.Coin.Tests/Ledger/; vocabulary searched: 'ICorroborationSource', 'CorroborationSource', 'CorroborateAsync', 'Ed25519', 'Verify', 'Signature', 'PublicKey'.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:102-118 and :127-142 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "9a85d47399c2",
+      "claim": "Corroboration strength reduces to the trustworthiness of an injected delegate: both corroborators take `Func<CancellationToken, Task<IReadOnlySet<string>>> liveNativeIds` in their constructor. Nothing in my sources CONSTRUCTS either corroborator (grep for 'CorroborationSource' outside IndependentVerifier.cs hits only a prose comment in RewardsOptions.cs:70), so what actually populates that set is not established here.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:104-107 and :129-132; only other hit Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:70 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.8,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "785d9ecbff6c",
+      "claim": "Two of the three seeded work classes are AutoEndorsable=true ('stage-complete-co'/co_event at 1,000,000 microcoin and 'kernel-work-typed'/ic_work at 250,000); only 'kernel-work-trace'/trace_scrape is manual. So the default deployment mints on the auto path, i.e. on the unverified-signature path, for the highest-value class.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:62-83 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "085d0b28e6ae",
+      "claim": "THE INDEPENDENCE CHECK CONSULTS NO BINDINGS. RewardClaimProcessor.EndorseAsync's independence rule is `string.Equals(endorserKeyId, claim.WalletId, StringComparison.Ordinal)`. The `_bindings` (ActorWalletBindingRegistry) field is used ONLY in DeriveClaimAsync (:87) and ResolveParkedAsync (:110); EndorseAsync never calls ResolveAsync. The check does not resolve the endorser through anything.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Claims/RewardClaimProcessor.cs:154-157 vs :87 and :110 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.95,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "ef6c3468f1f6",
+      "claim": "DOC-VS-CODE DIVERGENCE (quoting a doc comment): the RewardClaimProcessor class summary says 'endorsements are rejected when the endorser resolves to the claimant's own binding (US3 AS-4, SC-004)'. The code performs no resolution — it compares the endorser's KEY ID to the claim's WALLET ID as raw strings. 'resolves to the claimant's own binding' describes a mechanism that is not implemented.",
+      "sources": [
+        "comment at Olamnit/Olamnit.Coin.Rewards/Claims/RewardClaimProcessor.cs:34-39 vs code at :154-157 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.93,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "0318bfe274b8",
+      "claim": "M-36, BOTH HALVES CHECKED — the independence equality CAN fire on the auto path; it is NOT structurally impossible. Half 1: the endorser key id is a 64-char lowercase hex Ed25519 public key derived under domain separation 'olamnit-rewards-verifier-v1:' (EndorserKey.cs:22-30). Half 2: claim.WalletId is an ARBITRARY caller-supplied string — RewardsService's `bind` admin op passes `Str(root,\"wallet_id\")` straight into ActorWalletBindingRegistry.BindAsync, which INSERTs it with no format, length, or namespace validation. An admin who binds wallet_id to the verifier's hex public key makes the Ordinal equality true and the auto endorsement refused. Domain separation constrains only half 1.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Endorsement/EndorserKey.cs:22-33 + Olamnit/Olamnit.Coin.Rewards/Service/RewardsService.cs:149-156 + Olamnit/Olamnit.Coin.Rewards/Identity/ActorWalletBindingRegistry.cs:37-51 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "66aa5a75bfe3",
+      "claim": "The security consequence of the key-id-vs-wallet-id comparison runs the OTHER way too: because the two operands live in different namespaces, the check does NOT refuse an endorsement from an endorser key that is merely CONTROLLED BY the claimant but whose id differs from the wallet id string. Self-attestation is blocked only in the literal case wallet_id == endorser_key_id.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Claims/RewardClaimProcessor.cs:154-157 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.86,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "ba43c91c696c",
+      "claim": "ProvenanceAudit reproduces the SAME string-equality independence check (`string.Equals(mint.endorser_key_id, mint.wallet_id, StringComparison.Ordinal)`), so the post-hoc audit inherits the identical blind spot — it is not a second, independent formulation.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/ProvenanceAudit.cs:63-64 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.92,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "572fe36c1363",
+      "claim": "ProvenanceAudit IS the only shipped code in my sources that verifies an endorsement's Ed25519 signature (over `claim_id || payload_digest || issuance_ucoin`), and it refuses non-64-hex key ids outright. But it is POST-HOC and OFF the mint path: nothing in RewardMinter, RewardsIngestionLoop, RewardsService, or CommutativeOpProcessor calls AuditAsync. A mint is never blocked by it.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/ProvenanceAudit.cs:74-90 + Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:46-98 + Olamnit/Olamnit.Coin.Rewards/Service/RewardsIngestionLoop.cs:146-170 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "907237c1555e",
+      "claim": "ProvenanceAudit IS DRIVEN FROM THE PROVENANCE TABLE, NOT THE LEDGER — the one direction that cannot catch forgery. AuditAsync(claimId) queries reward_mint and returns NULL (not a failure) when no row exists, then checks engine-holds-mint (provenance -> ledger). There is no ledger -> provenance direction and no enumeration API: a mint appended straight to the WAL with no reward_mint row produces no report at all and is invisible to this audit.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Minting/ProvenanceAudit.cs:39-47 and :92-103 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.9,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "1e47a9fb7a26",
+      "claim": "DOC-VS-CODE DIVERGENCE (quoting a doc comment): ProvenanceAudit's summary asserts '100% of minted rewards must verify (SC-004); any break returns a named failure, never a silent pass.' The code can only speak about rewards that HAVE a reward_mint row; for a WAL mint with no provenance row it returns null — which is neither a verify nor a named failure. The '100% of minted rewards' scope the comment claims is not the scope the code covers.",
+      "sources": [
+        "comment at Olamnit/Olamnit.Coin.Rewards/Minting/ProvenanceAudit.cs:18-25 vs code at :43-47 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.85,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    },
+    {
+      "claim_id": "28061a0e578e",
+      "claim": "OPEN QUESTION (not an absence claim): I cannot see IQuorumCertVerifier / QuorumCertVerifier — they live in namespace `Olamnit.Coin.Authority` (imported at SpendGate.cs:9 and LocalWitnessQuorum.cs:9), outside my slice. What the spend path's cert verification actually checks (signer-set membership? duplicate-signer refusal? N-of-N arithmetic? trust anchor?) is UNVERIFIED by me.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/Settlement/SpendGate.cs:9 and :139 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.75,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "4f781975e959",
+      "claim": "OPEN QUESTION (not an absence claim): I cannot assert at REPO scope that no code verifies a mint's WitnessCert — only that nothing in Olamnit.Coin/Ledger/, Olamnit.Coin.Rewards/, or Olamnit.Coin.Tests/Ledger/ does. I could not see host/DI wiring, Olamnit.Coin.Authority, Olamnit.Shared.Yngenios.Seal (Ed25519Signer), or any Olamnit.Yngenios.Host coin binder. If a verifying decorator wraps CommutativeOpProcessor.Admit outside my slice, I would not have seen it.",
+      "sources": [
+        "scope note over Olamnit/Olamnit.Coin/Ledger/, Olamnit/Olamnit.Coin.Rewards/, Olamnit/Olamnit.Coin.Tests/Ledger/ at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.7,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "completeness",
+      "tags": [
+        "completeness"
+      ]
+    },
+    {
+      "claim_id": "a6601e955e7e",
+      "claim": "OPEN QUESTION (not an absence claim): the mint id is fully deterministic from the claim id (`MintIdBytesOf` = first 16 bytes of SHA-256('claim:' + SHA-256(source_kind || 0x1F || source_native_id))), so any party who knows a source_native_id can compute the exact mint id an honest node would use. Whether that is exploitable depends on who can append to the WAL — an ICoinLedger.Append authorization question I cannot see from this slice.",
+      "sources": [
+        "Olamnit/Olamnit.Coin.Rewards/Signals/WorkSignal.cs:23-38 (separator at :31 is a literal 0x1F byte, not the '||' the comment renders) + Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:62 at pin 02bcc20"
+      ],
+      "builders": [
+        "builder-5"
+      ],
+      "confidence": 0.78,
+      "status": "singleton",
+      "conflict_ref": null,
+      "decision": null,
+      "tag": "risk",
+      "tags": [
+        "risk"
+      ]
+    }
+  ],
+  "identities": [
+    [
+      "110aaf7f4c0e0998",
+      "risk"
+    ],
+    [
+      "5a88c31c614b4847",
+      "completeness"
+    ],
+    [
+      "803bf19bafb941eb",
+      "completeness"
+    ],
+    [
+      "403d856cb42bd7c4",
+      "feasibility"
+    ],
+    [
+      "0781155c5dd2078a",
+      "risk"
+    ],
+    [
+      "b8c217e2d506def7",
+      "risk"
+    ],
+    [
+      "78bb73dc356e77e8",
+      "risk"
+    ],
+    [
+      "c81ce6133a7a87ce",
+      "feasibility"
+    ],
+    [
+      "d9129bdde77eba1d",
+      "feasibility"
+    ],
+    [
+      "c5e7a7a486617b1f",
+      "feasibility"
+    ],
+    [
+      "5f5709f61cbdbc83",
+      "completeness"
+    ],
+    [
+      "bcfd44488a093659",
+      "risk"
+    ],
+    [
+      "15bb1d8cb3f6ec04",
+      "risk"
+    ],
+    [
+      "8444d7396b6404f3",
+      "risk"
+    ],
+    [
+      "4134b36f27c3137e",
+      "risk"
+    ],
+    [
+      "0009f9f2e57e70e3",
+      "completeness"
+    ],
+    [
+      "aee7bc1f191a67cc",
+      "risk"
+    ],
+    [
+      "4b87337361789245",
+      "risk"
+    ],
+    [
+      "cbab0f4fec585d72",
+      "feasibility"
+    ],
+    [
+      "452d5a948ed105d4",
+      "feasibility"
+    ],
+    [
+      "56edc7a4cb687d74",
+      "completeness"
+    ],
+    [
+      "0d9863d90c29531c",
+      "feasibility"
+    ],
+    [
+      "55fa6d2fb092f932",
+      "risk"
+    ],
+    [
+      "c33a5d139d13d653",
+      "feasibility"
+    ],
+    [
+      "213fb5b6894bbe81",
+      "risk"
+    ],
+    [
+      "a9241a052f9657c3",
+      "completeness"
+    ],
+    [
+      "37c2320088b63563",
+      "feasibility"
+    ],
+    [
+      "0f199d0669328317",
+      "risk"
+    ],
+    [
+      "46e6f56561db06e1",
+      "risk"
+    ],
+    [
+      "7de9e896b8472be6",
+      "risk"
+    ],
+    [
+      "3c8b0cd2f12306cf",
+      "feasibility"
+    ],
+    [
+      "b941f16078e220b6",
+      "feasibility"
+    ],
+    [
+      "91b36d5242fb9cc6",
+      "completeness"
+    ],
+    [
+      "7f388737077483bc",
+      "completeness"
+    ],
+    [
+      "07c862555f8d7c54",
+      "feasibility"
+    ],
+    [
+      "e4611483057514d7",
+      "feasibility"
+    ],
+    [
+      "fea8815e82c84c3c",
+      "risk"
+    ],
+    [
+      "3e22ceac2a142a72",
+      "feasibility"
+    ],
+    [
+      "b16eb3a6837374cf",
+      "risk"
+    ],
+    [
+      "9183a60638b3585d",
+      "feasibility"
+    ],
+    [
+      "50dec70e603519ca",
+      "risk"
+    ],
+    [
+      "8c12611035083c67",
+      "risk"
+    ],
+    [
+      "d474335b6cf98ca8",
+      "feasibility"
+    ],
+    [
+      "ec32a8954a8f38bd",
+      "risk"
+    ],
+    [
+      "d7d6359068dfe36a",
+      "risk"
+    ],
+    [
+      "f177e369aa7aca9f",
+      "risk"
+    ],
+    [
+      "7662f58f5159a367",
+      "completeness"
+    ],
+    [
+      "399ee9599a421f56",
+      "completeness"
+    ],
+    [
+      "7bbb4b45487ae6d9",
+      "risk"
+    ],
+    [
+      "6401901c0585654c",
+      "risk"
+    ],
+    [
+      "266755a1aacb24d4",
+      "risk"
+    ],
+    [
+      "726c3ee8b1b094fd",
+      "risk"
+    ],
+    [
+      "66e65c725e2755aa",
+      "completeness"
+    ],
+    [
+      "c9000165eebc48c4",
+      "completeness"
+    ],
+    [
+      "bab572a44fe194f0",
+      "risk"
+    ],
+    [
+      "b43c36b844a77ba2",
+      "risk"
+    ],
+    [
+      "9bb047b9208f08dd",
+      "risk"
+    ],
+    [
+      "cf1d96f3d7fca204",
+      "risk"
+    ],
+    [
+      "d96b203a62246611",
+      "feasibility"
+    ],
+    [
+      "59e9b1700dce82f6",
+      "completeness"
+    ],
+    [
+      "e6c19204938a20ef",
+      "completeness"
+    ],
+    [
+      "415b358c44dcf35b",
+      "risk"
+    ],
+    [
+      "196b07b1b507f640",
+      "risk"
+    ],
+    [
+      "3b085dc72bb46cda",
+      "feasibility"
+    ],
+    [
+      "dd4975202749ca56",
+      "risk"
+    ],
+    [
+      "3ad797fe0213c736",
+      "feasibility"
+    ],
+    [
+      "b7f27176ea0bbeee",
+      "feasibility"
+    ],
+    [
+      "a760ee6a5217708a",
+      "risk"
+    ],
+    [
+      "6d49982aa442f890",
+      "risk"
+    ],
+    [
+      "b85e0e0e6776bc17",
+      "risk"
+    ],
+    [
+      "dfc507e84a4ce84c",
+      "risk"
+    ],
+    [
+      "7e375e5cf6cb6815",
+      "feasibility"
+    ],
+    [
+      "c88c121d793ba113",
+      "feasibility"
+    ],
+    [
+      "d7c9446e2ff64555",
+      "risk"
+    ],
+    [
+      "cefd01c4272eafe8",
+      "completeness"
+    ],
+    [
+      "fb11c5d166ec55e0",
+      "completeness"
+    ],
+    [
+      "7cd79ca40627e110",
+      "risk"
+    ],
+    [
+      "87b54ef75f0232af",
+      "risk"
+    ],
+    [
+      "f5b0de1d8b1f0290",
+      "completeness"
+    ],
+    [
+      "3d361c031f8938bf",
+      "risk"
+    ],
+    [
+      "04682d87bed3312f",
+      "risk"
+    ],
+    [
+      "0f1886909f9ee6a7",
+      "risk"
+    ],
+    [
+      "aacffa35642b7232",
+      "risk"
+    ],
+    [
+      "0511626d8f864429",
+      "completeness"
+    ],
+    [
+      "0a2e3eb041b72a2b",
+      "completeness"
+    ],
+    [
+      "386d1d4511e7398a",
+      "risk"
+    ],
+    [
+      "fc8b661bb5696fe1",
+      "completeness"
+    ],
+    [
+      "16ed2c1413701114",
+      "feasibility"
+    ],
+    [
+      "0eae3f4b83b1b631",
+      "risk"
+    ],
+    [
+      "4d0689b5dbc6192c",
+      "risk"
+    ],
+    [
+      "92bc415944e6c609",
+      "risk"
+    ],
+    [
+      "7e896fbe1886d79e",
+      "completeness"
+    ],
+    [
+      "48467384c7a6bbbd",
+      "risk"
+    ],
+    [
+      "829c7059d7a97aab",
+      "completeness"
+    ],
+    [
+      "b0e6d01803570a6f",
+      "feasibility"
+    ],
+    [
+      "cb46d91edd08ef43",
+      "completeness"
+    ],
+    [
+      "71adaf996a081c18",
+      "feasibility"
+    ],
+    [
+      "4773eedfaa79b47d",
+      "risk"
+    ],
+    [
+      "257d0cb6f79c7819",
+      "risk"
+    ],
+    [
+      "089ead316af0c09d",
+      "feasibility"
+    ],
+    [
+      "d31a61d251d03208",
+      "completeness"
+    ],
+    [
+      "73704416b7dc7f71",
+      "completeness"
+    ],
+    [
+      "410e4f6a94a3eda3",
+      "risk"
+    ],
+    [
+      "dd91f97855786bda",
+      "completeness"
+    ],
+    [
+      "93ae961f6ba6bc8d",
+      "feasibility"
+    ],
+    [
+      "bd73f3708857d6ae",
+      "risk"
+    ],
+    [
+      "208a45f5ac82e213",
+      "risk"
+    ],
+    [
+      "5bb7cdc3b9a461ad",
+      "risk"
+    ],
+    [
+      "2db7f5ee76da2730",
+      "feasibility"
+    ],
+    [
+      "903fccecf61a43ff",
+      "feasibility"
+    ],
+    [
+      "f5e715bf36992c16",
+      "feasibility"
+    ],
+    [
+      "4d46fe9f37cfaf7d",
+      "feasibility"
+    ],
+    [
+      "6d88d063a6f2aca8",
+      "feasibility"
+    ],
+    [
+      "4c4317e85d361759",
+      "completeness"
+    ],
+    [
+      "2baa391bfc6def33",
+      "completeness"
+    ],
+    [
+      "3d10abd5ae3fe794",
+      "completeness"
+    ],
+    [
+      "d5535538d5ac65c7",
+      "feasibility"
+    ],
+    [
+      "a72b423029cec6e6",
+      "risk"
+    ],
+    [
+      "728c97e0bcce61fd",
+      "risk"
+    ],
+    [
+      "7f0d3c1e01d5ebfe",
+      "risk"
+    ],
+    [
+      "f11b617fa534776f",
+      "completeness"
+    ],
+    [
+      "74b884e6d78f54d9",
+      "completeness"
+    ],
+    [
+      "e4414c56b579f83d",
+      "completeness"
+    ],
+    [
+      "9c8ebafd134a489e",
+      "feasibility"
+    ],
+    [
+      "dafcf9c8b2e17c6e",
+      "risk"
+    ],
+    [
+      "a9c102227f1ff145",
+      "feasibility"
+    ],
+    [
+      "2a789deee2a88743",
+      "feasibility"
+    ],
+    [
+      "88c078483d831b96",
+      "feasibility"
+    ],
+    [
+      "c144c8c1645ef3ea",
+      "feasibility"
+    ],
+    [
+      "39da0b6b8b8ae8bc",
+      "risk"
+    ],
+    [
+      "a5f74085b98a14e2",
+      "risk"
+    ],
+    [
+      "9b0a5f2002b08d0a",
+      "completeness"
+    ],
+    [
+      "4e14db6500680e13",
+      "completeness"
+    ],
+    [
+      "ab96c990c4b2877d",
+      "completeness"
+    ],
+    [
+      "74053f1d03c5d6b5",
+      "feasibility"
+    ],
+    [
+      "1497abc68bf781d6",
+      "risk"
+    ],
+    [
+      "435ad00aa6f531c0",
+      "feasibility"
+    ],
+    [
+      "2eb043fa68b219c3",
+      "risk"
+    ],
+    [
+      "62dcabd59c791279",
+      "feasibility"
+    ],
+    [
+      "5805a7d57bc29cb7",
+      "feasibility"
+    ],
+    [
+      "6c68ad25131bf3a0",
+      "feasibility"
+    ],
+    [
+      "6b9ed21b11b2c17e",
+      "completeness"
+    ],
+    [
+      "bbb92027b3d9c579",
+      "risk"
+    ],
+    [
+      "c9ef84734a2265ab",
+      "risk"
+    ],
+    [
+      "4904aa4f2c9dace4",
+      "risk"
+    ],
+    [
+      "68cb53b61a82eefa",
+      "feasibility"
+    ],
+    [
+      "6bdb3e4183c34be2",
+      "completeness"
+    ],
+    [
+      "513617ee57884b6b",
+      "feasibility"
+    ],
+    [
+      "8a92fadac6f7d4c9",
+      "risk"
+    ],
+    [
+      "7aae1e0d1802e956",
+      "risk"
+    ],
+    [
+      "c830662b3f138b6f",
+      "completeness"
+    ],
+    [
+      "8cb1f9b0edcd366d",
+      "risk"
+    ],
+    [
+      "04e16a8bd4e3cd07",
+      "risk"
+    ],
+    [
+      "3e2c96ec31890c95",
+      "feasibility"
+    ],
+    [
+      "4d43d3d531295ce2",
+      "risk"
+    ],
+    [
+      "14f982c914cceb3c",
+      "risk"
+    ],
+    [
+      "0f2df4521b7f6fda",
+      "completeness"
+    ],
+    [
+      "9224ee19e32d1d39",
+      "risk"
+    ],
+    [
+      "2d716a01f27fc2af",
+      "feasibility"
+    ],
+    [
+      "a4f736402b122b58",
+      "risk"
+    ],
+    [
+      "936ee46339a37ecf",
+      "risk"
+    ],
+    [
+      "bc1578cf3c114541",
+      "risk"
+    ],
+    [
+      "fc49e3a0b6ac9ca3",
+      "feasibility"
+    ],
+    [
+      "aa3ac9eac58c571a",
+      "risk"
+    ],
+    [
+      "33b14ff4a559b486",
+      "risk"
+    ],
+    [
+      "8e271f886d779862",
+      "feasibility"
+    ],
+    [
+      "cbaeb32ee27721d8",
+      "feasibility"
+    ],
+    [
+      "cf2710554378008e",
+      "completeness"
+    ],
+    [
+      "a7880ce614318f43",
+      "feasibility"
+    ],
+    [
+      "faed6bff347769ec",
+      "risk"
+    ],
+    [
+      "989c8c3c800dca19",
+      "risk"
+    ],
+    [
+      "f4d815b9fb888ecd",
+      "risk"
+    ],
+    [
+      "b9237758fad92cdb",
+      "risk"
+    ]
+  ],
+  "at": "2026-07-16T08:20:01Z"
+}

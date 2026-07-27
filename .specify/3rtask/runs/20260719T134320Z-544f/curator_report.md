@@ -1,30 +1,41 @@
-# Curator report — Full-scope Gleam GLP feature outline plan (Phase 2)
+# Curator report — run 20260719T134320Z-544f (cycle-2 resume, FINAL)
 
-Run `20260719T134320Z-544f` (plan, review-only) · frozen method `method-20260719T134320Z-544f` (10 elements, 3 codex red-team passes to all-CONFIRM) · marathon `mrun-8bda036d9e9b` · anchor feature `full-scope-gleam-glp-implementation`. Deliverable: `docs/research/fullscope-gleam/feature-outline-plan-2026-07-19.md` — **stamped NON-FINAL per method E9** (cap-hit run; acceptance requires a resumed cycle-2 or an explicit engineer waiver).
+**Task**: plan · **Feature**: `full-scope-gleam-glp-implementation` · **Resumed**: 2026-07-20 per the engineer's recorded G1 ruling (fresh budget, no waiver; `docs/research/fullscope-gleam/phase2-verify/rulings.md`). The E9 NON-FINAL condition is discharged via option (i) — a resumed session completed the interrupted cycle from persisted state.
 
-## Who claimed, who confirmed
+## What cycle 2 did
 
-- **builder-1** (44 delivered capabilities, blind): 15 WPs — 10 frozen-interface register entries (term/heap, execution, facade, compiler pipeline, bytecode ISA, codec/envelope, link wire, transport seam, REPL surface, AtomVM policy), 4 suite guards (Gleam 463/463 grow-only, Dart oracle, C# suites, AtomVM manual probe), 1 rule-request (untested QUIC side-process relay).
-- **builder-2** (9 partials + escalations, blind): 15 WPs — 11 closes (one per named missing part: runner opcodes, wait guards, _now/_send kernels, module RPC, link primitives, fault decoration, sequence/dedup, QUIC leaf + client tests, host-embedding API, engine sessions), FE/BE envelope-seam guard, 3 rule-requests (multiagent, mesh-ring, UnifyConstant divergence — a third genuine escalation surfaced from the Phase-1 record).
-- **builder-3** (97 unconfirmed gaps, blind): 49 WPs — 20 verify batches whose union = all 97 gap ids, 20 paired conditional closes, build-fe-be-process-split + build-yngenios-embeddability (wave 4), 2 accept WPs, 5 rule-requests carrying its 5 post-verify out-of-scope proposals (zmq, ANTLR spike, compiled-IL-on-the-wire, scaling research, native-QUIC mesh).
-- **Mechanical merge**: 79 distinct WPs, 154/154 coverage union, 0 status conflicts, 0 dep cycles, 13 dangling cross-builder dependency names.
-- **Critic (codex, non-blind)**: adjudicated ALL 79 (single-slice provisional by construction): 66 CONFIRM, 10 NOT-ACCEPTED → BLOCKED (several due to the adjudication input's 200-char statement truncation — recorded as input artifact; genuine defects: missing verify predecessors, unresolved-escalation dependencies), 3 ESCALATE. Bound 9 of 13 dangling deps to real WPs; exposed 3 genuinely-missing WPs (body-kernel freeze, module-system freeze, module-system scope-chain verify).
+- Three blind builders self-reviewed their own cycle-1 output per frozen-method E5 (no merge-derived information; independence audit clean, 5 roles, 0 violations, twice — pre- and post-output):
+  - **builder-1** (slice A, 44 DELIVERED): 12 unchanged / 3 tightened / 3 retractions; 44/44 coverage. Corrected the E1-violating `rule-request-link-quic-relay` → `rule-quic-sideprocess-relay`; replaced a non-restart-safe manual-procedure acceptance with a checked-in runbook artifact.
+  - **builder-2** (slice B, 13 + 3 open-items): 1 unchanged / 14 tightened+re-issued / 14 retracted / **11 NEW** — authored the freezes its cycle-1 depends_on dangled on (incl. `freeze-body-kernel`, `freeze-module-system`) plus a module-system verify and 4 rule-requests; 16-entry coverage map schema-valid.
+  - **builder-3** (slice C, 97 UNCONFIRMED): 31 unchanged / 18 corrected re-issued / 18 retracted; 97/97 coverage script-asserted (verify-WP union == slice).
+- Mechanical merge (E6): 90 combined claims, 0 conflicts, 19 new identities, all single-slice (slices disjoint by construction — promotion via E10).
+- **E10 adjudication (codex, cross-provider) over FULL untruncated statements** — the cycle-1 200-char truncation defect is repaired: **85 CONFIRM / 3 NOT-ACCEPTED / 2 ESCALATE**, then a Critic binding addendum ruled 3 dependency-name bindings (`freeze-frame-codec`→`freeze-link-wire`, `freeze-result-envelope-interface`→`freeze-codec-envelope`, `freeze-engine-facade-interface`→`freeze-engine-facade`) and CONFIRMED the 3 R4-refuted rows. (Addendum recorded here and in the FINAL plan; the append-once adjudications.json carries the primary 90 with the 3 as `NOT-ACCEPTED(E10)` REFUTE rows — the addendum supersedes them, cycle-1 bindings precedent.)
+- **Final: 88 CONFIRM / 0 blocked / 2 open ESCALATEs / 0 dangling deps / 0 status conflicts.** Coverage union 157 (154 inventory + 3 open-items rows): 149 covered, 8 out-of-scope per the G5 ruling.
 
-## Engineer decisions required (the plan's open gates)
+## Cycle-1 defects, dispositions
 
-1. **E9 waiver-or-resume**: accept the NON-FINAL plan as-is (written waiver) or commission the cycle-2 repair (re-adjudicate BLOCKED with full statements, author the 3 missing WPs, repair dependency defects) from persisted state.
-2. **rule-multiagent-runtime-escalation**: in-scope port of glp_runtime/lib/multiagent/ vs stays-deferred (blocks wave-4 scoping, _send kernel scope, parity acceptance).
-3. **rule-mesh-ring-escalation**: mesh/ring topology parity in-scope vs follow-on (blocks QUIC/distribution acceptance breadth, wave-5 accept).
-4. **rule-bytecode-runner-unifyconstant-divergence**: normative ground-struct-literal behavior (blocks the runner golden pin) — a §1.14-adjacent language-behavior ruling.
-5. **5 out-of-scope proposals** (each carried by a rule-request WP) + builder-2's 3 run-hygiene proposals.
+All 10 cycle-1 NOT-ACCEPTED WPs re-entered via corrected cycle-2 successors and are CONFIRMED. The 3 cycle-1 dangling deps are authored (builder-2) and the graph closes with zero dangling refs after the Critic bindings.
 
-## Verdict
+## Engineer rulings applied (recorded resolutions, not Curator judgment)
 
-budget_stop at cycle 1 (359k/350k, warn_confirm honored — run stopped, residual persisted). Convergence not claimable (min-cycles 2 not reached); every residual is a named open item. Restart path: `.specify/3rtask/runs/20260719T134320Z-544f/` holds all claims/merge/adjudication state; marathon step `phase2-3rtask-outline-plan` checkpoints the artifacts.
+G2 (multiagent in-scope, mandatory/critical), G3+G3-A (mesh in-scope as the yngenios-fabric controller; feature delivered inside the yngenios architecture), G4 (reference v2.16 UnifyConstant behavior normative), G5 (all 8 OOS accepted as proposed) — full text in `phase2-verify/rulings.md`.
+
+## OPEN ESCALATES — the ENGINEER's to resolve (never Curator-resolved)
+
+1. `rule-quic-sideprocess-relay` (b1-c2-015): drift-control disposition for the untested Profile-A QUIC relay — freeze-by-file-pin vs minimal smoke test. Due before any wave-4 WP depends on the relay.
+2. `rule-embeddability-api-yngenios-wiring` (b2-c2-022): whether real yngenios-side wiring may be deferred from the wave-4 embeddability build — an engineer-only scope decision, sharpened by G3-A. Due before wave 4.
+
+## Budget
+
+Cycle-2 spend: builder-1 111,297 + builder-2 118,381 + builder-3 154,389 (token rows recorded) + critic (codex, count unavailable — recorded as such). `budget-check` fired `warn_confirm` at the 350k method cap; the recorded G1 fresh-budget ruling is the engineer confirmation of record — never a silent overrun.
+
+## Output
+
+`docs/research/fullscope-gleam/feature-outline-plan-FINAL-2026-07-20.md` (STATUS FINAL; supersedes the 2026-07-19 NON-FINAL doc, whose banner now points forward). The plan is ready for `/bk-specify "Full-scope Gleam GLP implementation"`.
 
 ---
 ## Run footer
 
-- run: `20260719T134320Z-544f`  verdict: **review_only**  cycles: 1
+- run: `20260719T134320Z-544f`  verdict: **review_only**  cycles: 2
 - critic: codex
 - terminal review: skipped — plan task type - /bk-codexreview terminal review not applicable (code runs only)

@@ -1,0 +1,274 @@
+{
+  "claims": [
+    {
+      "claim": "The mesh wire format at commit 02bcc20 carries NO path, source-route, or hop-list field: MeshFrameCodec's fixed 6-byte prefix is exactly [u16 dest][u16 src][u8 hopLimit][u8 flags] followed by an opaque inner payload, so a sender cannot express a pinned relay sequence (a ring order) in a mesh frame at all.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:14-16 (layout doc) and :23-32 (Encode writes only dest, src, hopLimit, flags, inner) at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "Every relay forwarding decision in MeshNodeRuntime is made solely by asking the distance-vector router for a next hop toward the frame's destination (_router.TryNextHop(dest, out next)); the forwarding node ignores the originator's intent entirely, so the actual path taken by a mesh message is chosen hop-by-hop by DV and cannot be dictated by the sender.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:271-276 (HandleInboundAsync: TryNextHop then re-Encode with hop-1) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "A ring ordering over DV-routed mesh nodes is realizable only as N separate one-hop originations each addressed to an adjacent neighbour, because DV offers no other way to pin a sequence; INFERENCE from the read code: for such an adjacent-neighbour destination DistanceVectorRouter.TryNextHop returns the directly-seeded neighbour route, the frame's dest equals the receiver's own id, and the receiver takes the deliver-local branch — so the multi-hop relay path (hop-decrement, no-route drop, next-hop reselection) never executes in the ring's steady state.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:182-193 (AddNeighborNoLock seeds _table[neighbor] = RouteEntry(neighbor, NextHop: neighbor, ...)) + :195-204 (TryNextHop returns that entry) + Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:260-265 (dest == _self ⇒ deliver, returns before any forwarding) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A >=1M-cycle ring soak over adjacent-neighbour hops exercises the distance-vector mesh's routing logic."
+    },
+    {
+      "claim": "In a ring topology a mesh message addressed to a non-adjacent node has two equal-cost paths (clockwise and counter-clockwise) and DistanceVectorRouter resolves that tie by retaining the incumbent next hop rather than by any ring order, so the direction such a message travels is a DV tie-break artifact and is not controllable by the soak design.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:112-120 (same-seq tie rule: 'accept = advert.Via == cur.NextHop ? candidate != cur.Cost : candidate < cur.Cost' with the FR-018 comment that an EQUAL-cost alternative is not strictly better so the incumbent next hop is kept) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "There are TWO distinct and mutually exclusive relay implementations in Olamnit.Kernel/Mesh/ at pin 02bcc20: MeshRouter, which forwards using an operator-pinned STATIC next-hop table (AddRoute(destNode, viaNeighbor)) and holds no reference to IDistanceVectorRouter, and MeshNodeRuntime, which forwards using a live DistanceVectorRouter and exposes no route-pinning API; consequently a soak can EITHER pin its path (MeshRouter, bypassing DV entirely) OR ride the real DV mesh (MeshNodeRuntime, surrendering path control) — it cannot do both.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:27 (private readonly Dictionary<ushort, ushort> _routes) + :55-57 (AddRoute) + :117-121 (ForwardAsync consults _routes only) vs Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:57 (private readonly DistanceVectorRouter _router) + :88 (_router = new DistanceVectorRouter(self)) — MeshNodeRuntime has no AddRoute member; at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A relay ring can both pin its sequence and ride the real distance-vector mesh."
+    },
+    {
+      "claim": "There is NO acknowledgement mechanism anywhere in the mesh runtime at pin 02bcc20: the source-side in-flight table _pending is written only at origination and removed only when the message's TTL deadline expires — no delivery, receipt, or ACK path ever clears an entry — so a design that pays 'one ucoin per ACKED hop' has no ACK primitive to observe in this layer.",
+      "source_citation": "command: `grep -rn \"_pending\" Olamnit/Olamnit.Kernel/Mesh/` at pin 02bcc20 returns exactly 4 hits — MeshNodeRuntime.cs:61 (declaration), :215 (_pending[key] = new Pending(...) in SendAsync), :371 (foreach over _pending.ToArray() in RetransmitLoopAsync), :375 (_pending.TryRemove inside the `if (now >= p.Deadline)` expiry branch). No other removal site exists.",
+      "confidence": 0.96,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The shipped mesh exposes an ACKED-hop signal that a per-hop reward can be earned against."
+    },
+    {
+      "claim": "MeshSendOutcome.Accepted explicitly does NOT mean delivered or acknowledged — it means only that the frame was handed to the current next hop and registered for retransmit — so treating an Accepted return value as an earned/ACKED hop would over-count every message that is later dropped, expired, or never delivered.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:566-570 (enum member doc: 'Handed to the current next hop and registered for no-loss retransmit; the destination dedups the result to exactly-once') + :219 (return MeshSendOutcome.Accepted immediately after TrySendToNeighborAsync) at pin 02bcc20",
+      "confidence": 0.94,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "Because no ACK clears the in-flight table, MeshNodeRuntime retransmits every accepted message on every retransmit tick until its TTL expires regardless of successful delivery, giving a fixed amplification of TTL/RetransmitInterval link-sends per logical message: 5000ms/50ms = 100x at the shipped defaults and 120s/50ms = 2400x at the 059 bench TTL of 120 seconds.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:363-388 (RetransmitLoopAsync re-sends every non-expired pending entry each tick, with no success check) + :591 (RetransmitInterval default 50ms) + :600 (MessageTtl default 5000ms) + :599 (doc: 'the 059 bench profile raises it to 120 s') + Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:27 (MessageTtlSeconds default 120) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A 1M-cycle mesh soak issues on the order of 1M link sends."
+    },
+    {
+      "claim": "The retransmit loop copies the entire in-flight pending set (_pending.ToArray()) on every 50ms tick, and since entries persist for the full TTL, the per-tick work grows linearly with the origination rate times the TTL — an O(rate x TTL) scan every 50ms that is a scale hazard specific to a long soak and is not exercised by any test at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:371 (foreach (var (key, p) in _pending.ToArray()) inside the while loop of RetransmitLoopAsync) + :367 (Task.Delay(_opts.RetransmitInterval)) at pin 02bcc20",
+      "confidence": 0.82,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The mesh runtime's Dropped counter is incremented at TTL expiry for EVERY in-flight message including ones already successfully delivered (since nothing clears the pending entry on delivery), so the documented conservation invariant 'Sum Originated == Sum Delivered + Sum Dropped' is violated once TTL elapses — a delivered message contributes 1 to Delivered at the destination AND 1 to Dropped at the source, making Delivered + Dropped exceed Originated.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (StageExpiredToPartitionQueue increments _dropped, called from the deadline branch at :374-377 unconditionally) + :328 (Interlocked.Increment(ref _delivered) in DeliverAsync at the destination) + Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:17-18 (the stated invariant 'Σ Originated == Σ Delivered + Σ Dropped') at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The mesh's conservation counters remain a valid accounting basis over a long-running soak."
+    },
+    {
+      "claim": "MeshNodeRuntime's Dropped property is documented as counting 'no-route / hop-exhausted / malformed / failed send' and does NOT mention TTL expiry, yet the expiry path increments the same counter — the documented counter semantics and the actual behaviour disagree at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:112-113 (doc: 'Conserved drops at this node (no-route / hop-exhausted / malformed / failed send)') vs :398 (Interlocked.Increment(ref _dropped) in StageExpiredToPartitionQueue) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "No test in Olamnit.Kernel.Tests/Mesh/ at pin 02bcc20 runs long enough to reach the default 5-second message TTL — the mesh runtime tests settle with delays of 150-400ms — which is why the retransmit-until-expiry and expiry-double-counts-as-dropped behaviours are not caught by the shipped suite.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:114 (await Task.Delay(400)), :161 (await Task.Delay(150)), :236 and :247 (await Task.Delay(200)) vs MeshRuntimeOptions.MessageTtl default 5000ms at Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:600; at pin 02bcc20",
+      "confidence": 0.87,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "There is NO signature generation or verification of any kind in the mesh or link layers at pin 02bcc20: a case-insensitive search for signature/verify/ed25519/sign( across Olamnit.Kernel/Mesh/ and Olamnit.Kernel/Link/ returns exactly one hit, and it is a TODO comment stating that frames cross the link in clear and that the integrity check has yet to be plugged in.",
+      "source_citation": "command: `grep -rni \"signature\\|verify\\|ed25519\\|sign(\" Olamnit/Olamnit.Kernel/Mesh/ Olamnit/Olamnit.Kernel/Link/` at pin 02bcc20 returns a single hit: MeshNodeRuntime.cs:249 — 'TODO(FR-012): K1 secure posture — frames cross the link in clear here. The sealing / attestation / integrity check plugs in behind THIS seam (decode-after-verify on ingress, seal-before-send on egress)... No behaviour this MVP.'",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "An Ed25519-chained relay can verify signatures using the shipped mesh/link layers as they exist at the pin."
+    },
+    {
+      "claim": "The closed MeshSendOutcome set has exactly four members — Accepted, DeliveredLocal, Unreachable, Dropped — and contains no member capable of expressing a signature/integrity failure, so a split fail policy in which a bad signature HALTS cannot be expressed against MeshSendOutcome at the pin without extending the closed enum (a breaking change to a type the codebase treats as a frozen closed outcome set).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:563-576 (enum MeshSendOutcome : byte { Accepted, DeliveredLocal, Unreachable, Dropped }) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The split fail policy (bad-sig HALTS vs link-drop REROUTES) can be expressed against the shipped MeshSendOutcome."
+    },
+    {
+      "claim": "A HALT-on-bad-signature policy is architecturally opposed to the mesh's mandatory never-throw pump discipline: HandleInboundAsync is wrapped in a catch-all that swallows every exception ('never throw out of a pump — closed-outcome discipline') and a malformed frame is a silent conserved skip, so any halt semantics must be introduced as a new explicit outcome value plumbed through the pump rather than as an exception.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:241-242 (try { await HandleInboundAsync(n, wire) } catch { /* never throw out of a pump — closed-outcome discipline */ }) + :251-252 (malformed prefix ⇒ bare return, 'conserved skip, never a throw') at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The link-drop half of the split fail policy IS supported by shipped code: a faulted or closed neighbour link latches down exactly once, poisons routes through it via SetLinkState(false), emits a triggered withdrawal advert, and the retransmit loop re-sends the in-flight message over the newly-selected next hop while the destination's dedup collapses duplicates — so 'link-drop REROUTES' needs no new mechanism, unlike its bad-sig counterpart.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:462-476 (MarkDown: CompareExchange once, _router.SetLinkState(n.Id, false), FireAndForget(AdvertiseToAllAsync())) + :380-385 (retransmit over the CURRENT best next hop) + :307-332 (DeliverAsync dedups by stable key) + Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:156-180 (SetLinkState poisons entries whose NextHop is the downed neighbour) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The shipped 059 bench arming profile CANNOT arm a ring: MeshBenchProfile.Parse enforces a closed shape vocabulary of exactly line|triangle|diamond and a closed scenario vocabulary of exactly bringup|e2e-delivery|failover|heal|partition|kv-flow, and fails closed on anything else, so a profile declaring shape 'ring' or a soak scenario is REFUSED at parse with 'unknown shape' / 'unknown scenario' rather than armed.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:86-87 (if (shape is not (\"line\" or \"triangle\" or \"diamond\")) return Invalid($\"unknown shape '{shape}' (line|triangle|diamond)\")) + :89-90 (if (scenario is not (\"bringup\" or \"e2e-delivery\" or \"failover\" or \"heal\" or \"partition\" or \"kv-flow\")) return Invalid(...)) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The shipped 059 bench profile can arm a ring-shaped soak without code change."
+    },
+    {
+      "claim": "The mesh bench profile mandates an encrypted link with no opt-out — a profile with secure:false is refused at parse and BenchLinkComposer has no configuration to skip the K1 SecureLinkTransport wrap, returning a closed leg failure and tearing the raw link down rather than ever exposing a plaintext channel — so a hardware ring soak inherits a mandatory pin-verified ECDH handshake per leg.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:80 (if (dto.Secure is false) return Invalid(\"secure:false is refused on the bench (FR-007)\")) + :98 (link missing pinnedSpki refused) + Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:11-14 (doc: 'There is no configuration to skip the wrap on a bench link ... never a plaintext fallback') + :36-48 (non-Established ⇒ record reason, dispose raw link, return null) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The only BLE L2CAP socket factory in Olamnit.Kernel/Link/ at pin 02bcc20 is Linux/BlueZ-specific and fails closed with PlatformNotSupportedException on a non-Linux head — it hardcodes AF_BLUETOOTH = 31 with an explicit inline warning that 'Windows AF_BTH = 32 — different!' — so a Windows participant in a BT-legged mesh is not served by this transport.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/BlueZL2capSocketFactory.cs:9-11 (doc: 'the calls run only on Linux (guarded), so a non-Linux head fails closed with PlatformNotSupportedException at wiring time') + :21 (private const int AF_BLUETOOTH = 31;     // Linux value (Windows AF_BTH = 32 — different!)) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The LinkScheme enum documentation is STALE with respect to shipped code at pin 02bcc20: BleL2cap is documented as a 'SCHEME STUB, no transport this pass' yet L2capLinkTransport.cs implements ILinkTransport for that exact scheme (attributed to feature #022 P2), so the enum's own comments cannot be relied on to establish which mesh legs have transports.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/LinkTerms.cs:26-30 ('BLE L2CAP connection-oriented channel — SCHEME STUB, no transport this pass (plan D8...)' immediately above `BleL2cap,`) vs Olamnit/Olamnit.Kernel/Link/L2capLinkTransport.cs:18-20 (public sealed class L2capLinkTransport : ILinkTransport with `private static readonly LinkScheme[] Schemes = { LinkScheme.BleL2cap };`) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "I could not verify within Olamnit.Kernel/Link/ that any Android-to-Windows Bluetooth transport exists at pin 02bcc20: the LinkScheme enum names WindowsRfcommTransport and AndroidRfcommTransport as the live RFCOMM fallback leaves, but no file of either name exists under Olamnit/Olamnit.Kernel/Link/ (which contains only the L2CAP, TCP, WS/WSS, loopback, GATT-abstraction and secure files), so those leaves live outside this evidence and their existence and readiness remain unverified.",
+      "source_citation": "command: `git ls-tree -r --name-only 02bcc20 -- Olamnit/Olamnit.Kernel/Link/` lists 26 files, none named *Rfcomm*; the names appear only as prose in Olamnit/Olamnit.Kernel/Link/LinkTerms.cs:38-43",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The link layer explicitly documents that a raw link has NO ack channel and that its send-success return value means only 'the frame was written to the transport', with receipt not confirmed end-to-end — an independent confirmation at the transport layer that no per-hop acknowledgement signal exists anywhere beneath the mesh.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/LinkSinkAdapter.cs:15-19 (doc: 'Honest at-least-once: true means the frame was written to the transport — receipt is NOT confirmed end-to-end (a raw link has no ack channel), so the guarantee degrades, honestly, to at-least-once-with-dedup-key') at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The mesh failover tests at pin 02bcc20 assert only on the distance-vector ROUTING TABLE via an in-memory FakeFabric (TryNextHop and Snapshot cost), never sending a single mesh frame or asserting a delivery, so kill-one survival is proven at the pin only for route reconvergence and not for message delivery across the reconvergence in those tests.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:20-51 (both facts use f.Nodes[A].TryNextHop / f.Nodes[A].Snapshot.Entries[C].Cost; no SendAsync, no inbox, no delivery assertion) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The load-bearing shipped relay-kill test (SC-001) sends exactly ONE message through the mesh and asserts a delivery count of 1; no test under Olamnit.Kernel.Tests/Mesh/ at pin 02bcc20 sends more than a handful of messages or contains any soak, cycle-count, or throughput loop, so nothing at the pin provides a measured basis for extrapolating mesh behaviour to 1,000,000 cycles.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:100-118 (one payload, one SendAsync, Assert.Equal(1, atC.Count)); command: `grep -rni \"ring\\|soak\\|1000000\\|1_000_000\\|cycle\" Olamnit/Olamnit.Kernel/Mesh/ Olamnit/Olamnit.Kernel.Tests/Mesh/` at pin 02bcc20 returns no test loop bound and no occurrence of ring/soak/1000000 — only incidental substring matches in JsonlMeshTelemetry/BenchLinkComposer prose",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "MeshNodeRuntime carries an explicit unimplemented TODO for node restart/rejoin stating that this MVP keeps the source-side outbox in memory and that a node restart re-floods from scratch, so a kill-one-and-restore step in a long soak has no shipped rehydration of routing identity or in-flight state at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:95-98 (TODO(FR-006): lifecycle restart/rejoin ... 'This MVP keeps source-side outbox in memory ... so a node restart re-floods from scratch') at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The hybrid-partition durable queue is an unimplemented TODO: a message whose TTL expires while its destination is partitioned is simply counted as a drop with no durable parking and no re-drive on heal, so in a soak any message in flight across a partition longer than the TTL is silently lost rather than resumed.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (TODO(FR-005): 'should park in a durable per-partition queue and re-drive when the partition heals ... This MVP drops it as a conserved value at expiry; the hook is here. No behaviour this MVP.') at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "Mesh route adverts are exchanged over the SAME neighbour links as data frames, demultiplexed only by bit 0x01 of the frame's flags byte, so a high-rate data soak and the DV control plane contend for the identical link and per-neighbour send gate — control-plane starvation under sustained data load is a soak-specific risk with no separate priority path at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:22-26 (doc: 'Adverts ride the SAME neighbour links as data, demuxed by the MeshFrameCodec flags byte') + :348-361 (AdvertiseToAllAsync calls the same TrySendToNeighborAsync as data) + :403-414 (TrySendToNeighborAsync serializes all sends per neighbour through one SendGate semaphore) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "The mesh relay is contractually forbidden from reading the inner payload (the D7 trust boundary: relays forward opaque bytes and only the destination interprets them), so any per-hop reward that requires a relay to inspect, verify, or chain-sign the payload it forwards would violate the documented trust boundary of the shipped mesh rather than merely extend it.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:14-16 (doc: 'Trust boundary (D7): a relay forwards the inner payload opaque — it never decodes the envelope or runs a capability gate; only the destination node's EdgeIngress interprets it') + Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:8-11 (same property) + Olamnit/Olamnit.Kernel/Mesh/MeshRelayRoute.cs:10-12 ('never read the inner payload (the D7 trust boundary)') at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "An Ed25519-chained per-hop relay can be added to the shipped mesh without breaching the D7 opaque-relay trust boundary."
+    },
+    {
+      "claim": "The one place the mesh runtime does peek inside the opaque inner payload is telemetry-only and explicitly marked non-destructive: MessageForwarded unwraps the KeyedFrame purely to log a key, guarded by a null-telemetry check, and a throwing observer is counted rather than propagated — so the telemetry tap is an observation seam and cannot be repurposed to make a forwarding or reward decision without changing its stated observe-only guarantee.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:280-281 (if (_telemetry is not null && TryUnwrapKeyed(inner, out var fkey, out _)) SafeObserve(() => _telemetry.MessageForwarded(fkey, next));   // non-destructive peek, telemetry-only) + :449-453 (SafeObserve swallows and counts observer throws) + :603-606 (MeshRuntimeOptions.Telemetry doc: observe-only, 'can never change a routing/relay/dedup outcome') at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    },
+    {
+      "claim": "INFERENCE from the read topology code: in an N-node ring where the soak's value comes from a pinned traversal order visiting every node, killing one node makes the declared order unsatisfiable rather than merely rerouted — DV can reroute around a dead relay toward a live destination, but it cannot deliver to a destination that no longer exists, so 'ring order' and 'survives kill-one' are only jointly satisfiable if the ring is re-formed over the surviving nodes, which is a design step I found no shipped support for at the pin.",
+      "source_citation": "Inference from Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:186-226 (SendAsync settles to the terminal MeshSendOutcome.Unreachable when no next hop to dest appears within RouteWaitTimeout) + :533-548 (DisposeAsync is a node leave/kill that closes every link); no ring-reformation or membership-change API exists in Olamnit/Olamnit.Kernel/Mesh/ per `git ls-tree -r --name-only 02bcc20 -- Olamnit/Olamnit.Kernel/Mesh/` at pin 02bcc20",
+      "confidence": 0.7,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": null
+    }
+  ]
+}

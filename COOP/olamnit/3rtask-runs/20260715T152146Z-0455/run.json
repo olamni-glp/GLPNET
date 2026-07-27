@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "20260715T152146Z-0455",
+  "feature_id": "meshtest-recure-ring",
+  "task_type": "plan",
+  "subject_ref": "roadmap:meshtest-recure-ring — design a >=1M-cycle Ed25519-chained relay soak that rides the REAL ynet @mesh DV mesh (never freestanding raw links) across olamnit+gavri+tablet+phone over BT+WiFi legs, earning 1 ucoin per ACKED hop on the shipped Olamnit.Coin.Rewards, surviving kill-one",
+  "branch": "HEAD",
+  "verdict": "halted",
+  "halted_at": "cycle-1-curator-stop",
+  "cycles": 1,
+  "num_builders": 4,
+  "critic_provider": "codex",
+  "independence_warning": false,
+  "terminal_review": {
+    "mode": "skipped",
+    "reason": "task_type=plan (terminal codexreview defaults to code only); no implementation exists to review - the design was refuted at cycle 1. The cross-provider codex Critic adjudicated all 113 claims at repo scope instead (96 CONFIRM / 14 REFUTE / 3 ESCALATE).",
+    "codexreview_run_id": null
+  },
+  "terminal_review_policy": "auto",
+  "marathon_routed": true,
+  "budgets": {
+    "min_cycles": 2,
+    "max_cycles": 3,
+    "token_budget": 500000,
+    "max_seconds": 0,
+    "review_only": false,
+    "split": {
+      "planning": 20,
+      "validation": 20,
+      "curation": 15,
+      "scan": 25,
+      "eval": 10,
+      "final": 10
+    }
+  },
+  "warnings": [],
+  "curator_edit_distance": 0.9823,
+  "created_at": "",
+  "created_by": "mvw@bancstreet.com"
+}

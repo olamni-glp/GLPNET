@@ -1,0 +1,1036 @@
+{
+  "claims": [
+    {
+      "claim_id": "513720fdd559",
+      "claim": "The YNGENIOS @mesh service surface (MeshServiceBinder) is OUTBOUND-ONLY: its actor handles exactly one request tag (KnownTags.MeshSend) and emits exactly one reply tag (KnownTags.MeshRes); the file contains no inbound/receive/delivery tag or delivery callback of any kind, so a node cannot be notified via the mailbox that a mesh frame arrived for it.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:29 (`var req = doc.Find(KnownTags.MeshSend); if (req is null) return;`) and :65-67 (`Res` emits only `KnownTags.MeshRes`); whole file is 68 lines, no other tag referenced",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "2bedbe73ff4d",
+      "claim": "A relay ring (receive-a-payload, verify, re-emit to the next node) CANNOT be built on the @mesh YNGENIOS service as it exists at commit 02bcc20, because the service exposes a send path but no receive path; an inbound surface (e.g. a mesh.recv/mesh.deliver block tag plus a subscription from MeshNodeRuntime's pump into the mailbox) is NET-NEW work the ring plan must budget, not an existing capability it can ride.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:29,65-67 (send-only); `grep -rn 'mesh\\.recv|mesh\\.in|MeshRecv|mesh\\.deliver' specs/020-olamni-yngenios-core-and-toptask-mvp specs/021-olamnit-usecase-parity-on-yngenios` => zero hits",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service",
+      "negates": "the assumption that the shipped @mesh service can carry a relay ring today"
+    },
+    {
+      "claim_id": "4793e9b7cf8a",
+      "claim": "The mesh.res reply carries NO correlation identifier — it serializes only `{outcome, detail}` — so with more than one mesh.send in flight on the same mailbox a caller cannot match a reply to its originating send; this is a direct inconsistency with the sibling @kv service and the @conversation-agent service, both of which thread a correlationId through request and reply.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:65-67 (`JsonSerializer.Serialize(new { outcome, detail })`) vs Olamnit/Olamnit.Yngenios.Host/Services/KvSubstrateService.cs:37,41,57,107 (correlationId parsed and echoed in every reply) and specs/021-olamnit-usecase-parity-on-yngenios/spec.md:245 (FR-007 'Replies MUST be correlated to their originating turn')",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "3b7773b88787",
+      "claim": "The mesh.res outcome set documented on the shipped binder is `Accepted|DeliveredLocal|Unreachable|Dropped|Unavailable`, none of which is an end-to-end acknowledgment from a remote hop: 'Accepted' denotes local acceptance for sending, not remote receipt. Therefore an 'earn 1 ucoin per ACKED hop' rule has no ACK signal to key on at the @mesh service surface, and would have to invent one (or misread 'Accepted' as an ACK, which would pay for un-acknowledged sends).",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:12-14 (XML doc: `Reply: a mesh.res block, payload JSON {\"outcome\":\"Accepted|DeliveredLocal|Unreachable|Dropped|Unavailable\"}`) and :54 (`emit(Res(outcome.ToString()))` — the raw MeshSendOutcome passed through)",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service",
+      "negates": "the subject's premise that an ACKED-hop reward signal is readable from the shipped mesh service"
+    },
+    {
+      "claim_id": "b78b353330d3",
+      "claim": "The mesh.send request schema is `{\"dest\":u16,\"payload\":base64}` and contains NO path, next-hop, route, or source parameter, so the @mesh YNGENIOS service surface provides no mechanism to pin a specific ring path; a caller can only name a final destination node id and let the underlying runtime choose the route.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:11-12 (doc: `payload JSON {\"dest\":u16,\"payload\":base64}`) and :38-41 (only `dest` and `payload` are read from the parsed JSON)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "bd19a5ed0126",
+      "claim": "The @mesh service performs NO capability/authorization check whatsoever: MeshServiceBinder references no Seal, amulet, macaroon or grant and will send any well-formed mesh.send that reaches its mailbox. This is asymmetric with the @kv service, which refuses every ungranted op with a closed PermissionDenied ('no grant — refusing unauthenticated kv op'). A ring riding @mesh therefore inherits no authentication from the service surface.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:1-68 (no `Seal`/grant/amulet using-directive or reference; contrast its usings with) Olamnit/Olamnit.Yngenios.Host/Services/KvSubstrateService.cs:6 (`using Olamnit.Shared.Yngenios.Seal;`), :77-87 (`if (grant is null) return new { outcome = \"PermissionDenied\", diagnostic = \"no grant — refusing unauthenticated kv op\", ... }`)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "a9d327db82aa",
+      "claim": "Kernel supervision of the `mesh` service CANNOT heal a faulted MeshNodeRuntime: the runtime instance is injected once into MeshServiceBinder's constructor, stored in a readonly field, and merely captured into each new actor's closure by CreateAsync — the binder never reconstructs, restarts, or health-checks the runtime. A supervision restart therefore rebinds a fresh DelegateServiceActor over the SAME (possibly dead) runtime object.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:19-21 (`private readonly MeshNodeRuntime? _runtime; public MeshServiceBinder(MeshNodeRuntime? runtime) => _runtime = runtime;`) and :26 (`var runtime = _runtime;` captured inside CreateAsync — no construction of a runtime anywhere in the file)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service",
+      "negates": "the assumption that kernel supervision of the mesh actor confers restart/recovery on the mesh runtime itself, as a 'surviving kill-one' soak would require"
+    },
+    {
+      "claim_id": "bd8310595230",
+      "claim": "The `mesh` actor swallows EVERY exception from the underlying send into a closed value reply — `catch (Exception ex) { emit(Res(\"Dropped\", ex.GetType().Name)); }` — so no mesh send failure can ever propagate as an actor fault to the kernel supervisor. This satisfies the closed-outcome requirement (#020 FR-023 / #021 FR-015) but means a fault injected at the mesh send path will produce NO supervision restart and NO yngenios_supervision_event row.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:55-59 (`catch (Exception ex) { emit(Res(\"Dropped\", ex.GetType().Name)); }`); requirement context specs/021-olamnit-usecase-parity-on-yngenios/spec.md:274-276 (FR-015 'closed-outcome ... never thrown ... contained/restarted by supervision')",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "b75a8b53aeaf",
+      "claim": "The `mesh` service explicitly DISCARDS the kernel-supplied CancellationToken: CreateAsync receives `ct`, but the send is invoked as `runtime.SendAsync(dest, payload, ct: CancellationToken.None)`. Consequently in-flight mesh sends cannot be cancelled by kernel shutdown or service teardown, which matters for a long-running soak that must be stoppable.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:23 (`CancellationToken ct` parameter) and :53 (`await runtime.SendAsync(dest, payload, ct: CancellationToken.None)`)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "1c91f2b1a9ab",
+      "claim": "Each mesh.send spawns an unawaited, ungated `_ = Task.Run(...)` with no concurrency limit, no queue and no backpressure on the send path — in contrast to the mailbox itself, which the #020 contract specifies as bounded with a closed PostOutcome.BackpressureRejected on full. A high-rate soak can therefore accumulate unbounded outstanding send tasks behind a bounded mailbox.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:49-60 (`_ = Task.Run(async () => { ... });`); specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/qhsm-service-and-mailbox.md:23-24 ('Bounded mailboxes: PostOutcome.BackpressureRejected on full (closed set, FR-023); ordering per-mailbox FIFO within a priority class')",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "e33040676712",
+      "claim": "There is a DIRECT CONTRADICTION between the two governing contract documents on whether Task.Run pumps may survive conversion: the #020 QHSM service contract states 'no service-owned Task.Run pumps survive conversion (FR-007)', while the #021 background-conversion contract states the wrapped capability's 'internal Task.Run/Channel pumps stay inside' and that 'Heavy/async work runs off the RTC step (Task.Run -> emit)'. The shipped MeshServiceBinder follows the #021 rule (it uses Task.Run), so the ledger's 'converted' status for the mesh runtime does not meet #020's own stated definition of a converted capability.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/qhsm-service-and-mailbox.md:20-22 ('Every converted background capability is a QActive QHSM chart dispatched by the kernel's RTC loop — no service-owned Task.Run pumps survive conversion (FR-007)') vs specs/021-olamnit-usecase-parity-on-yngenios/contracts/background-conversion-and-ledger.md:11-13 ('its internal Task.Run/Channel pumps stay inside — OS-I/O pumps stay native ... Heavy/async work runs off the RTC step (Task.Run -> emit)') vs Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:49",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service",
+      "negates": "the conversion ledger's claim that the MeshNodeRuntime pump is 'converted'"
+    },
+    {
+      "claim_id": "a5d69cfc9483",
+      "claim": "The conversion ledger's 'converted' row for the mesh runtime covers only the CONTROL surface, not the pump: the ledger row's scope is stated as 'MeshServiceBinder (mesh worker, mesh.send -> MeshSendOutcome)', while the capability it claims to convert is described as 'MeshNodeRuntime pump' / '3 Task.Run loops (advert/retransmit/pump)'. Those three loops remain inside the unwrapped runtime by explicit design, so the advert/retransmit/pump loops are NOT kernel-supervised at commit 02bcc20.",
+      "source_citation": "specs/021-olamnit-usecase-parity-on-yngenios/conversion-ledger.md:22 ('| Mesh runtime | `MeshNodeRuntime` pump | pending | mesh actor | **converted (P3, T042)** — `MeshServiceBinder` (`mesh` worker, `mesh.send` → `MeshSendOutcome`) | T042 |') and specs/021-olamnit-usecase-parity-on-yngenios/contracts/background-conversion-and-ledger.md:21 ('| `MeshNodeRuntime` (`Olamnit.Kernel/Mesh/`) | `mesh` actor | 3 `Task.Run` loops (advert/retransmit/pump) |') and research.md:203-204 ('The existing Task.Run/Channel pumps stay *inside* the wrapped object ... the actor sits *above* them')",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "aa06e93ee40d",
+      "claim": "The constraint 'wrap-never-replace (FR-010)' is MIS-CITED with respect to the mesh service. Feature #021's FR-010 governs FOREGROUND use-case surfaces only (Content/CMS, Book Cave conversation + audit, Blocks playground, Programme verify, LMS demo subject, workspace conversations, live conversation surface) and does not mention the mesh runtime; the mesh runtime's conversion is governed by #021 FR-013. Feature #020's FR-010 is a different rule again: 'Conversion MUST be gradual and additive ... and a conversion ledger MUST record what is converted, what is pending, and what is intentionally out of scope.'",
+      "source_citation": "specs/021-olamnit-usecase-parity-on-yngenios/spec.md:256-259 (FR-010, foreground surfaces) and :267-270 (FR-013, 'mesh runtime → mesh actor'); specs/020-olamni-yngenios-core-and-toptask-mvp/spec.md:347-349 (FR-010, gradual+additive+ledger); the code's own comment Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:10 cites '(wrap-never-replace, FR-010)'",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service",
+      "negates": "the subject brief's framing that the mesh service surface is constrained by FR-010 'wrap-never-replace'"
+    },
+    {
+      "claim_id": "b2198b48e200",
+      "claim": "Adding a new inbound mesh block tag for a relay ring is REGISTRATION-ONLY and does not require a kernel/engine edit, and would not violate #020 FR-010's additive-conversion rule provided the conversion ledger records it: the #020 message-format contract states 'New tags are registration-only (no engine edit — mirrors the feature-006 registry principle)', and the #020 registered-tag list (hb, sup, ui.intent, ui.render, store.op, store.res, route.msg, agent.in, agent.out, guard.ping|pong|restart) does not itself contain mesh.send — the mesh tags were themselves added later by registration in #021.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/qhsm-service-and-mailbox.md:40-43 (registered tag list + 'New tags are registration-only (no engine edit)'); specs/021-olamnit-usecase-parity-on-yngenios/tasks.md:86 (T042 added `mesh.send {dest,payload}`)",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "d8ec2a4eb901",
+      "claim": "The `mesh` worker is NOT one of feature #020's four worker services — those are db (PGlite), store (S3-like throwaway prototype), route (glpnet stand-in) and agent (agent-shell). The mesh worker is an addition made by feature #021 task T042, which means the #020 success criterion SC-001 ('at least 6 registered services (2 TaskTop surfaces + 4 workers)') does not cover the mesh service.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/worker-services.md:1-48 (the four workers: Db, ObjectStore, Routing, AgentShell — no mesh); specs/020-olamni-yngenios-core-and-toptask-mvp/spec.md:428-431 (SC-001); specs/021-olamnit-usecase-parity-on-yngenios/tasks.md:86 (T042 creates MeshServiceBinder)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "a1928983443e",
+      "claim": "Two distinct YNGENIOS services touch mesh routing and must not be conflated by a ring design: the `route` worker (route.msg) is documented as 'addressed delivery between registered service ids (internal) and a loopback external echo target this iteration' whose managed stand-in wraps Olamnit.Kernel/Routing/ (RouterEngine, PrefixRouteTable) and Mesh/ (DistanceVectorRouter), whereas the `mesh` worker (mesh.send) wraps MeshNodeRuntime and addresses a u16 physical node id. Only the `mesh` worker addresses off-box nodes; the `route` worker's external leg is a loopback echo at this iteration.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/worker-services.md:31-34 ('route.msg blocks: addressed delivery between registered service ids (internal) and a loopback \"external\" echo target this iteration'); specs/020-olamni-yngenios-core-and-toptask-mvp/research.md:126-132 (D7: stand-in wraps Routing/ + Mesh/ DistanceVectorRouter); Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:11-12,39",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "7558513ef168",
+      "claim": "The #020 worker-services contract contains a STALE, self-contradicted line about the route service: it says 'MVP realization wraps the GLP dataflow scheduler port already in Olamnit.Kernel/Glp/', but the same feature's own validator verdict V6 and research D7 explicitly refuted this — 'Olamnit.Kernel/Glp/ is a dataflow scheduler (GlpScheduler), not a router; real routing = Routing/ (RouterEngine, PrefixRouteTable) + Mesh/ (DistanceVectorRouter)'. A ring plan reading the contract doc alone would be misled about what the route service wraps.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/worker-services.md:34 ('MVP realization wraps the GLP dataflow scheduler port already in `Olamnit.Kernel/Glp/`.') vs specs/020-olamni-yngenios-core-and-toptask-mvp/pipeline-trail.md:36-39 (V6 ESCALATE→CURATED) and research.md:126-132 (D7)",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "17c2ded97084",
+      "claim": "The only committed local round-trip latency figure in the YNGENIOS #020/#021 specs is a CEILING, not a throughput number: SC-004 requires 'a representative message round-trips TaskTop → kernel → worker → TaskTop in under 250 ms locally'. INFERENCE from that single committed figure: if a ring hop costs one mailbox round-trip at the specified ceiling, 1,000,000 hops would take ~250,000 s (~69 hours) of wall clock, so a >=1M-cycle ring soak's schedule is bounded by per-hop mailbox round-trip cost and the plan must state a measured per-hop cost rather than rely on this ceiling.",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/spec.md:438-440 (SC-004)",
+      "confidence": 0.6,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "3c361d909857",
+      "claim": "The committed supervision recovery budgets a 'surviving kill-one' soak would be measured against are SC-002 (a deliberately faulted supervised service is detected and restarted within 10 seconds, no user-visible disruption outside the affected capability, 10/10 trials) and SC-003 (a stopped kernel is detected and restarted by a guardian within 15 seconds, 10/10 trials, services re-register after restart).",
+      "source_citation": "specs/020-olamni-yngenios-core-and-toptask-mvp/spec.md:433-437 (SC-002, SC-003)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "7b07ecd8ac22",
+      "claim": "I COULD NOT VERIFY whether MeshNodeRuntime is actually registered in dependency injection (i.e. whether the runtime resolves null and the mesh service therefore answers 'Unavailable' in practice). What I verified is only the code's null-handling: MeshServiceBinder accepts a nullable MeshNodeRuntime and, when it is null, emits outcome 'Unavailable'. The DI registration site (BindWorkerServicesAsync / the AddOlamnitYngenios wiring) is outside the evidence available to me, so the premise 'MeshNodeRuntime DI resolve is null => Unavailable today' is confirmed as a code path but NOT confirmed as the actual runtime state.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:19-21,32 (`if (runtime is null) { emit(Res(\"Unavailable\")); return; }`); specs/021-olamnit-usecase-parity-on-yngenios/tasks.md:86 states only 'tuple registered' without naming the runtime's registration",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "926c1ef5d821",
+      "claim": "The mesh.send payload is transported base64-encoded inside a JSON document, so every hop costs a JsonDocument.Parse plus a Convert.FromBase64String and inflates the on-wire mailbox payload by roughly 33% relative to the raw bytes; for an Ed25519-chained relay frame (64-byte signature plus chain) crossing 1M hops this is a per-hop managed allocation cost the plan should account for.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:38-41 (`using var json = JsonDocument.Parse(req.PayloadUtf8()); ... Convert.FromBase64String(b64)`)",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "f1d1a343ed58",
+      "claim": "The @kv service opens AND disposes a keyspace handle on EVERY single op — `OpenKeyspaceAsync(keyspace, grant, createOptions: null)` followed by `await using var box` — with full grant deserialization and boundary re-verification per op. INFERENCE: if a >=1M-cycle ring records per-hop evidence through the @kv mailbox surface, it pays a keyspace open + Ed25519-grant verify + dispose per hop, which is a throughput floor the ring's cycle arithmetic must include.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/KvSubstrateService.cs:77-96 (grant deserialize, `OpenKeyspaceAsync(...)`, `await using var box = ((KvResult<IKeyspaceHandle>.Ok)open).Value;`)",
+      "confidence": 0.75,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "78da091921d3",
+      "claim": "The mesh actor's reply is emitted from an arbitrary thread-pool thread inside an unawaited Task.Run continuation, i.e. outside the kernel's run-to-completion step, so the mailbox's documented 'per-mailbox FIFO within a priority class' ordering guarantee does not extend to the ORDER in which two concurrent mesh.res replies are emitted; combined with the absence of a correlationId in mesh.res, a ring cannot safely have more than one mesh.send in flight per mailbox.",
+      "source_citation": "Olamnit/Olamnit.Yngenios.Host/Services/MeshService.cs:49-60 (`_ = Task.Run(async () => { ... emit(Res(outcome.ToString())); ... });`) and :65-67 (no correlationId); specs/020-olamni-yngenios-core-and-toptask-mvp/contracts/qhsm-service-and-mailbox.md:24 ('ordering per-mailbox FIFO within a priority class')",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "0896a94fd1d5",
+      "claim": "An equivalence test for the mesh worker does exist and is recorded green: T046 BackgroundServiceEquivalenceTests is marked '11/11 green' covering per-capability direct-vs-through-the-binder outcome for mesh/voice/shell/egress/content plus null-substrate-yields-Unavailable and unhandled-message-ignored-never-throws. INFERENCE: this suite proves send-path outcome equivalence only, and cannot cover a receive path that does not exist.",
+      "source_citation": "specs/021-olamnit-usecase-parity-on-yngenios/tasks.md:90 (T046, '11/11 green'); specs/021-olamnit-usecase-parity-on-yngenios/contracts/background-conversion-and-ledger.md:30-35 (test obligation)",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "72cb604efafd",
+      "claim": "The #021 conversion ledger is formally CLOSED with zero silent pending rows as of 2026-07-06, with the mesh row marked converted — meaning a ring feature that needs to EXTEND the mesh service (e.g. add an inbound surface) is reopening a capability the project has already declared discharged, and must add its own ledger row rather than inherit the mesh row's converted status.",
+      "source_citation": "specs/021-olamnit-usecase-parity-on-yngenios/conversion-ledger.md:68-71 ('_State: **CLOSED for P2 + P3 (T047, 2026-07-06)** — **zero silent pending**...') and :22 (mesh row 'converted (P3, T042)')",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "a12fa60aa557",
+      "claim": "The design rationale recorded for wrapping MeshNodeRuntime as a kernel service is a single three-word wrap note — 'already kernel-adjacent' — with no analysis of the runtime's send/receive surface, its outcome semantics, or its supervision needs; this is the thinnest justification of the six background conversions in the same table and is evidence that the mesh conversion was not designed against a relay/ring use case.",
+      "source_citation": "specs/021-olamnit-usecase-parity-on-yngenios/research.md:207-214 (D7 table; row: '| `MeshNodeRuntime` (`Olamnit.Kernel/Mesh/`) | `mesh` actor | already kernel-adjacent |')",
+      "confidence": 0.75,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-ynet-mesh-service"
+    },
+    {
+      "claim_id": "0273697032d4",
+      "claim": "The mesh wire format at commit 02bcc20 carries NO path, source-route, or hop-list field: MeshFrameCodec's fixed 6-byte prefix is exactly [u16 dest][u16 src][u8 hopLimit][u8 flags] followed by an opaque inner payload, so a sender cannot express a pinned relay sequence (a ring order) in a mesh frame at all.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:14-16 (layout doc) and :23-32 (Encode writes only dest, src, hopLimit, flags, inner) at pin 02bcc20",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "39148090da6e",
+      "claim": "Every relay forwarding decision in MeshNodeRuntime is made solely by asking the distance-vector router for a next hop toward the frame's destination (_router.TryNextHop(dest, out next)); the forwarding node ignores the originator's intent entirely, so the actual path taken by a mesh message is chosen hop-by-hop by DV and cannot be dictated by the sender.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:271-276 (HandleInboundAsync: TryNextHop then re-Encode with hop-1) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "f64fb2849ef0",
+      "claim": "A ring ordering over DV-routed mesh nodes is realizable only as N separate one-hop originations each addressed to an adjacent neighbour, because DV offers no other way to pin a sequence; INFERENCE from the read code: for such an adjacent-neighbour destination DistanceVectorRouter.TryNextHop returns the directly-seeded neighbour route, the frame's dest equals the receiver's own id, and the receiver takes the deliver-local branch — so the multi-hop relay path (hop-decrement, no-route drop, next-hop reselection) never executes in the ring's steady state.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:182-193 (AddNeighborNoLock seeds _table[neighbor] = RouteEntry(neighbor, NextHop: neighbor, ...)) + :195-204 (TryNextHop returns that entry) + Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:260-265 (dest == _self ⇒ deliver, returns before any forwarding) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A >=1M-cycle ring soak over adjacent-neighbour hops exercises the distance-vector mesh's routing logic."
+    },
+    {
+      "claim_id": "59c573132b0c",
+      "claim": "In a ring topology a mesh message addressed to a non-adjacent node has two equal-cost paths (clockwise and counter-clockwise) and DistanceVectorRouter resolves that tie by retaining the incumbent next hop rather than by any ring order, so the direction such a message travels is a DV tie-break artifact and is not controllable by the soak design.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:112-120 (same-seq tie rule: 'accept = advert.Via == cur.NextHop ? candidate != cur.Cost : candidate < cur.Cost' with the FR-018 comment that an EQUAL-cost alternative is not strictly better so the incumbent next hop is kept) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "22344eba80a5",
+      "claim": "There are TWO distinct and mutually exclusive relay implementations in Olamnit.Kernel/Mesh/ at pin 02bcc20: MeshRouter, which forwards using an operator-pinned STATIC next-hop table (AddRoute(destNode, viaNeighbor)) and holds no reference to IDistanceVectorRouter, and MeshNodeRuntime, which forwards using a live DistanceVectorRouter and exposes no route-pinning API; consequently a soak can EITHER pin its path (MeshRouter, bypassing DV entirely) OR ride the real DV mesh (MeshNodeRuntime, surrendering path control) — it cannot do both.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:27 (private readonly Dictionary<ushort, ushort> _routes) + :55-57 (AddRoute) + :117-121 (ForwardAsync consults _routes only) vs Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:57 (private readonly DistanceVectorRouter _router) + :88 (_router = new DistanceVectorRouter(self)) — MeshNodeRuntime has no AddRoute member; at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A relay ring can both pin its sequence and ride the real distance-vector mesh."
+    },
+    {
+      "claim_id": "caa73670ebd4",
+      "claim": "There is NO acknowledgement mechanism anywhere in the mesh runtime at pin 02bcc20: the source-side in-flight table _pending is written only at origination and removed only when the message's TTL deadline expires — no delivery, receipt, or ACK path ever clears an entry — so a design that pays 'one ucoin per ACKED hop' has no ACK primitive to observe in this layer.",
+      "source_citation": "command: `grep -rn \"_pending\" Olamnit/Olamnit.Kernel/Mesh/` at pin 02bcc20 returns exactly 4 hits — MeshNodeRuntime.cs:61 (declaration), :215 (_pending[key] = new Pending(...) in SendAsync), :371 (foreach over _pending.ToArray() in RetransmitLoopAsync), :375 (_pending.TryRemove inside the `if (now >= p.Deadline)` expiry branch). No other removal site exists.",
+      "confidence": 0.96,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The shipped mesh exposes an ACKED-hop signal that a per-hop reward can be earned against."
+    },
+    {
+      "claim_id": "c302cb7ca72c",
+      "claim": "MeshSendOutcome.Accepted explicitly does NOT mean delivered or acknowledged — it means only that the frame was handed to the current next hop and registered for retransmit — so treating an Accepted return value as an earned/ACKED hop would over-count every message that is later dropped, expired, or never delivered.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:566-570 (enum member doc: 'Handed to the current next hop and registered for no-loss retransmit; the destination dedups the result to exactly-once') + :219 (return MeshSendOutcome.Accepted immediately after TrySendToNeighborAsync) at pin 02bcc20",
+      "confidence": 0.94,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "653392a3b93f",
+      "claim": "Because no ACK clears the in-flight table, MeshNodeRuntime retransmits every accepted message on every retransmit tick until its TTL expires regardless of successful delivery, giving a fixed amplification of TTL/RetransmitInterval link-sends per logical message: 5000ms/50ms = 100x at the shipped defaults and 120s/50ms = 2400x at the 059 bench TTL of 120 seconds.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:363-388 (RetransmitLoopAsync re-sends every non-expired pending entry each tick, with no success check) + :591 (RetransmitInterval default 50ms) + :600 (MessageTtl default 5000ms) + :599 (doc: 'the 059 bench profile raises it to 120 s') + Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:27 (MessageTtlSeconds default 120) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "A 1M-cycle mesh soak issues on the order of 1M link sends."
+    },
+    {
+      "claim_id": "e2b77f9bc532",
+      "claim": "The retransmit loop copies the entire in-flight pending set (_pending.ToArray()) on every 50ms tick, and since entries persist for the full TTL, the per-tick work grows linearly with the origination rate times the TTL — an O(rate x TTL) scan every 50ms that is a scale hazard specific to a long soak and is not exercised by any test at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:371 (foreach (var (key, p) in _pending.ToArray()) inside the while loop of RetransmitLoopAsync) + :367 (Task.Delay(_opts.RetransmitInterval)) at pin 02bcc20",
+      "confidence": 0.82,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "46b8a2324ae8",
+      "claim": "The mesh runtime's Dropped counter is incremented at TTL expiry for EVERY in-flight message including ones already successfully delivered (since nothing clears the pending entry on delivery), so the documented conservation invariant 'Sum Originated == Sum Delivered + Sum Dropped' is violated once TTL elapses — a delivered message contributes 1 to Delivered at the destination AND 1 to Dropped at the source, making Delivered + Dropped exceed Originated.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (StageExpiredToPartitionQueue increments _dropped, called from the deadline branch at :374-377 unconditionally) + :328 (Interlocked.Increment(ref _delivered) in DeliverAsync at the destination) + Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:17-18 (the stated invariant 'Σ Originated == Σ Delivered + Σ Dropped') at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The mesh's conservation counters remain a valid accounting basis over a long-running soak."
+    },
+    {
+      "claim_id": "c313b8ca019d",
+      "claim": "MeshNodeRuntime's Dropped property is documented as counting 'no-route / hop-exhausted / malformed / failed send' and does NOT mention TTL expiry, yet the expiry path increments the same counter — the documented counter semantics and the actual behaviour disagree at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:112-113 (doc: 'Conserved drops at this node (no-route / hop-exhausted / malformed / failed send)') vs :398 (Interlocked.Increment(ref _dropped) in StageExpiredToPartitionQueue) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "28196b818d3a",
+      "claim": "No test in Olamnit.Kernel.Tests/Mesh/ at pin 02bcc20 runs long enough to reach the default 5-second message TTL — the mesh runtime tests settle with delays of 150-400ms — which is why the retransmit-until-expiry and expiry-double-counts-as-dropped behaviours are not caught by the shipped suite.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:114 (await Task.Delay(400)), :161 (await Task.Delay(150)), :236 and :247 (await Task.Delay(200)) vs MeshRuntimeOptions.MessageTtl default 5000ms at Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:600; at pin 02bcc20",
+      "confidence": 0.87,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "dc3d019db9df",
+      "claim": "There is NO signature generation or verification of any kind in the mesh or link layers at pin 02bcc20: a case-insensitive search for signature/verify/ed25519/sign( across Olamnit.Kernel/Mesh/ and Olamnit.Kernel/Link/ returns exactly one hit, and it is a TODO comment stating that frames cross the link in clear and that the integrity check has yet to be plugged in.",
+      "source_citation": "command: `grep -rni \"signature\\|verify\\|ed25519\\|sign(\" Olamnit/Olamnit.Kernel/Mesh/ Olamnit/Olamnit.Kernel/Link/` at pin 02bcc20 returns a single hit: MeshNodeRuntime.cs:249 — 'TODO(FR-012): K1 secure posture — frames cross the link in clear here. The sealing / attestation / integrity check plugs in behind THIS seam (decode-after-verify on ingress, seal-before-send on egress)... No behaviour this MVP.'",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "An Ed25519-chained relay can verify signatures using the shipped mesh/link layers as they exist at the pin."
+    },
+    {
+      "claim_id": "8e4e0bcf7158",
+      "claim": "The closed MeshSendOutcome set has exactly four members — Accepted, DeliveredLocal, Unreachable, Dropped — and contains no member capable of expressing a signature/integrity failure, so a split fail policy in which a bad signature HALTS cannot be expressed against MeshSendOutcome at the pin without extending the closed enum (a breaking change to a type the codebase treats as a frozen closed outcome set).",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:563-576 (enum MeshSendOutcome : byte { Accepted, DeliveredLocal, Unreachable, Dropped }) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The split fail policy (bad-sig HALTS vs link-drop REROUTES) can be expressed against the shipped MeshSendOutcome."
+    },
+    {
+      "claim_id": "0fa9e5385ee4",
+      "claim": "A HALT-on-bad-signature policy is architecturally opposed to the mesh's mandatory never-throw pump discipline: HandleInboundAsync is wrapped in a catch-all that swallows every exception ('never throw out of a pump — closed-outcome discipline') and a malformed frame is a silent conserved skip, so any halt semantics must be introduced as a new explicit outcome value plumbed through the pump rather than as an exception.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:241-242 (try { await HandleInboundAsync(n, wire) } catch { /* never throw out of a pump — closed-outcome discipline */ }) + :251-252 (malformed prefix ⇒ bare return, 'conserved skip, never a throw') at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "ff32e6dc9a05",
+      "claim": "The link-drop half of the split fail policy IS supported by shipped code: a faulted or closed neighbour link latches down exactly once, poisons routes through it via SetLinkState(false), emits a triggered withdrawal advert, and the retransmit loop re-sends the in-flight message over the newly-selected next hop while the destination's dedup collapses duplicates — so 'link-drop REROUTES' needs no new mechanism, unlike its bad-sig counterpart.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:462-476 (MarkDown: CompareExchange once, _router.SetLinkState(n.Id, false), FireAndForget(AdvertiseToAllAsync())) + :380-385 (retransmit over the CURRENT best next hop) + :307-332 (DeliverAsync dedups by stable key) + Olamnit/Olamnit.Kernel/Mesh/DistanceVectorRouter.cs:156-180 (SetLinkState poisons entries whose NextHop is the downed neighbour) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "1393d4ba1d2d",
+      "claim": "The shipped 059 bench arming profile CANNOT arm a ring: MeshBenchProfile.Parse enforces a closed shape vocabulary of exactly line|triangle|diamond and a closed scenario vocabulary of exactly bringup|e2e-delivery|failover|heal|partition|kv-flow, and fails closed on anything else, so a profile declaring shape 'ring' or a soak scenario is REFUSED at parse with 'unknown shape' / 'unknown scenario' rather than armed.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:86-87 (if (shape is not (\"line\" or \"triangle\" or \"diamond\")) return Invalid($\"unknown shape '{shape}' (line|triangle|diamond)\")) + :89-90 (if (scenario is not (\"bringup\" or \"e2e-delivery\" or \"failover\" or \"heal\" or \"partition\" or \"kv-flow\")) return Invalid(...)) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "The shipped 059 bench profile can arm a ring-shaped soak without code change."
+    },
+    {
+      "claim_id": "89848657cde1",
+      "claim": "The mesh bench profile mandates an encrypted link with no opt-out — a profile with secure:false is refused at parse and BenchLinkComposer has no configuration to skip the K1 SecureLinkTransport wrap, returning a closed leg failure and tearing the raw link down rather than ever exposing a plaintext channel — so a hardware ring soak inherits a mandatory pin-verified ECDH handshake per leg.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/Bench/MeshBenchProfile.cs:80 (if (dto.Secure is false) return Invalid(\"secure:false is refused on the bench (FR-007)\")) + :98 (link missing pinnedSpki refused) + Olamnit/Olamnit.Kernel/Mesh/Bench/BenchLinkComposer.cs:11-14 (doc: 'There is no configuration to skip the wrap on a bench link ... never a plaintext fallback') + :36-48 (non-Established ⇒ record reason, dispose raw link, return null) at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "522dafd40e43",
+      "claim": "The only BLE L2CAP socket factory in Olamnit.Kernel/Link/ at pin 02bcc20 is Linux/BlueZ-specific and fails closed with PlatformNotSupportedException on a non-Linux head — it hardcodes AF_BLUETOOTH = 31 with an explicit inline warning that 'Windows AF_BTH = 32 — different!' — so a Windows participant in a BT-legged mesh is not served by this transport.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/BlueZL2capSocketFactory.cs:9-11 (doc: 'the calls run only on Linux (guarded), so a non-Linux head fails closed with PlatformNotSupportedException at wiring time') + :21 (private const int AF_BLUETOOTH = 31;     // Linux value (Windows AF_BTH = 32 — different!)) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "4b4bd6a034dc",
+      "claim": "The LinkScheme enum documentation is STALE with respect to shipped code at pin 02bcc20: BleL2cap is documented as a 'SCHEME STUB, no transport this pass' yet L2capLinkTransport.cs implements ILinkTransport for that exact scheme (attributed to feature #022 P2), so the enum's own comments cannot be relied on to establish which mesh legs have transports.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/LinkTerms.cs:26-30 ('BLE L2CAP connection-oriented channel — SCHEME STUB, no transport this pass (plan D8...)' immediately above `BleL2cap,`) vs Olamnit/Olamnit.Kernel/Link/L2capLinkTransport.cs:18-20 (public sealed class L2capLinkTransport : ILinkTransport with `private static readonly LinkScheme[] Schemes = { LinkScheme.BleL2cap };`) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "122d0a50434e",
+      "claim": "I could not verify within Olamnit.Kernel/Link/ that any Android-to-Windows Bluetooth transport exists at pin 02bcc20: the LinkScheme enum names WindowsRfcommTransport and AndroidRfcommTransport as the live RFCOMM fallback leaves, but no file of either name exists under Olamnit/Olamnit.Kernel/Link/ (which contains only the L2CAP, TCP, WS/WSS, loopback, GATT-abstraction and secure files), so those leaves live outside this evidence and their existence and readiness remain unverified.",
+      "source_citation": "command: `git ls-tree -r --name-only 02bcc20 -- Olamnit/Olamnit.Kernel/Link/` lists 26 files, none named *Rfcomm*; the names appear only as prose in Olamnit/Olamnit.Kernel/Link/LinkTerms.cs:38-43",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "e56e7a6256ff",
+      "claim": "The link layer explicitly documents that a raw link has NO ack channel and that its send-success return value means only 'the frame was written to the transport', with receipt not confirmed end-to-end — an independent confirmation at the transport layer that no per-hop acknowledgement signal exists anywhere beneath the mesh.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Link/LinkSinkAdapter.cs:15-19 (doc: 'Honest at-least-once: true means the frame was written to the transport — receipt is NOT confirmed end-to-end (a raw link has no ack channel), so the guarantee degrades, honestly, to at-least-once-with-dedup-key') at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "ea7256dbcd22",
+      "claim": "The mesh failover tests at pin 02bcc20 assert only on the distance-vector ROUTING TABLE via an in-memory FakeFabric (TryNextHop and Snapshot cost), never sending a single mesh frame or asserting a delivery, so kill-one survival is proven at the pin only for route reconvergence and not for message delivery across the reconvergence in those tests.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/FailoverTests.cs:20-51 (both facts use f.Nodes[A].TryNextHop / f.Nodes[A].Snapshot.Entries[C].Cost; no SendAsync, no inbox, no delivery assertion) at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "8752cb6cacf1",
+      "claim": "The load-bearing shipped relay-kill test (SC-001) sends exactly ONE message through the mesh and asserts a delivery count of 1; no test under Olamnit.Kernel.Tests/Mesh/ at pin 02bcc20 sends more than a handful of messages or contains any soak, cycle-count, or throughput loop, so nothing at the pin provides a measured basis for extrapolating mesh behaviour to 1,000,000 cycles.",
+      "source_citation": "Olamnit/Olamnit.Kernel.Tests/Mesh/MeshNodeRuntimeTests.cs:100-118 (one payload, one SendAsync, Assert.Equal(1, atC.Count)); command: `grep -rni \"ring\\|soak\\|1000000\\|1_000_000\\|cycle\" Olamnit/Olamnit.Kernel/Mesh/ Olamnit/Olamnit.Kernel.Tests/Mesh/` at pin 02bcc20 returns no test loop bound and no occurrence of ring/soak/1000000 — only incidental substring matches in JsonlMeshTelemetry/BenchLinkComposer prose",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "5227278ae133",
+      "claim": "MeshNodeRuntime carries an explicit unimplemented TODO for node restart/rejoin stating that this MVP keeps the source-side outbox in memory and that a node restart re-floods from scratch, so a kill-one-and-restore step in a long soak has no shipped rehydration of routing identity or in-flight state at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:95-98 (TODO(FR-006): lifecycle restart/rejoin ... 'This MVP keeps source-side outbox in memory ... so a node restart re-floods from scratch') at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "8a1f7347bbf4",
+      "claim": "The hybrid-partition durable queue is an unimplemented TODO: a message whose TTL expires while its destination is partitioned is simply counted as a drop with no durable parking and no re-drive on heal, so in a soak any message in flight across a partition longer than the TTL is silently lost rather than resumed.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:390-399 (TODO(FR-005): 'should park in a durable per-partition queue and re-drive when the partition heals ... This MVP drops it as a conserved value at expiry; the hook is here. No behaviour this MVP.') at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "0d7579ac4897",
+      "claim": "Mesh route adverts are exchanged over the SAME neighbour links as data frames, demultiplexed only by bit 0x01 of the frame's flags byte, so a high-rate data soak and the DV control plane contend for the identical link and per-neighbour send gate — control-plane starvation under sustained data load is a soak-specific risk with no separate priority path at the pin.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:22-26 (doc: 'Adverts ride the SAME neighbour links as data, demuxed by the MeshFrameCodec flags byte') + :348-361 (AdvertiseToAllAsync calls the same TrySendToNeighborAsync as data) + :403-414 (TrySendToNeighborAsync serializes all sends per neighbour through one SendGate semaphore) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "f8ed3286a1c1",
+      "claim": "The mesh relay is contractually forbidden from reading the inner payload (the D7 trust boundary: relays forward opaque bytes and only the destination interprets them), so any per-hop reward that requires a relay to inspect, verify, or chain-sign the payload it forwards would violate the documented trust boundary of the shipped mesh rather than merely extend it.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshRouter.cs:14-16 (doc: 'Trust boundary (D7): a relay forwards the inner payload opaque — it never decodes the envelope or runs a capability gate; only the destination node's EdgeIngress interprets it') + Olamnit/Olamnit.Kernel/Mesh/MeshFrameCodec.cs:8-11 (same property) + Olamnit/Olamnit.Kernel/Mesh/MeshRelayRoute.cs:10-12 ('never read the inner payload (the D7 trust boundary)') at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports",
+      "negates": "An Ed25519-chained per-hop relay can be added to the shipped mesh without breaching the D7 opaque-relay trust boundary."
+    },
+    {
+      "claim_id": "6d4d84f1a134",
+      "claim": "The one place the mesh runtime does peek inside the opaque inner payload is telemetry-only and explicitly marked non-destructive: MessageForwarded unwraps the KeyedFrame purely to log a key, guarded by a null-telemetry check, and a throwing observer is counted rather than propagated — so the telemetry tap is an observation seam and cannot be repurposed to make a forwarding or reward decision without changing its stated observe-only guarantee.",
+      "source_citation": "Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:280-281 (if (_telemetry is not null && TryUnwrapKeyed(inner, out var fkey, out _)) SafeObserve(() => _telemetry.MessageForwarded(fkey, next));   // non-destructive peek, telemetry-only) + :449-453 (SafeObserve swallows and counts observer throws) + :603-606 (MeshRuntimeOptions.Telemetry doc: observe-only, 'can never change a routing/relay/dedup outcome') at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "845505f490d5",
+      "claim": "INFERENCE from the read topology code: in an N-node ring where the soak's value comes from a pinned traversal order visiting every node, killing one node makes the declared order unsatisfiable rather than merely rerouted — DV can reroute around a dead relay toward a live destination, but it cannot deliver to a destination that no longer exists, so 'ring order' and 'survives kill-one' are only jointly satisfiable if the ring is re-formed over the surviving nodes, which is a design step I found no shipped support for at the pin.",
+      "source_citation": "Inference from Olamnit/Olamnit.Kernel/Mesh/MeshNodeRuntime.cs:186-226 (SendAsync settles to the terminal MeshSendOutcome.Unreachable when no next hop to dest appears within RouteWaitTimeout) + :533-548 (DisposeAsync is a node leave/kill that closes every link); no ring-reformation or membership-change API exists in Olamnit/Olamnit.Kernel/Mesh/ per `git ls-tree -r --name-only 02bcc20 -- Olamnit/Olamnit.Kernel/Mesh/` at pin 02bcc20",
+      "confidence": 0.7,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "slice-kernel-mesh-transports"
+    },
+    {
+      "claim_id": "94ac1f5f747b",
+      "claim": "No benchmark record of any kind exists in feature 059's evidence tree at pin 02bcc20: both specs/059-hw-3device-mesh-failover/evidence/runs/ and evidence/sessions/ contain only an EMPTY .gitkeep file (git blob e69de29b, the canonical empty blob), so any throughput or cycle-rate figure attributed to a 059 bench run is unsupported by a named record.",
+      "source_citation": "git ls-tree -r 02bcc20 -- specs/059-hw-3device-mesh-failover/evidence/runs/ evidence/sessions/ => only '100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 .gitkeep' for each",
+      "confidence": 0.97,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "05afb138279e",
+      "claim": "Feature 059's own discharge ledger states in prose that no hardware run has ever happened ('Status: pre-bench. No bench session has run.'), and every hardware cell in it is banded DEVICE-SPIKE with the reason 'no bench session yet' — so 059 supplies zero measured on-radio evidence for any soak arithmetic.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/discharge-ledger.md:23-25 and :44-48, :54-58",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "985f9ad1031b",
+      "claim": "The entire vocabulary of the meshtest-recure-ring subject is absent from both of its supposed evidence sources: a case-insensitive grep for 'ucoin', 'coin', 'reward', 'soak', '1,000,000', '1000000', '1_000_000', '1M-cycle' and 'ed25519' across specs/059-hw-3device-mesh-failover/ and tools/mesh-bench/ returns ZERO matches at pin 02bcc20.",
+      "source_citation": "grep -rniE 'ucoin|\\bcoin\\b|reward|soak|1,000,000|1000000|1_000_000|1M[- ]cycle|ed25519' specs/059-hw-3device-mesh-failover/ tools/mesh-bench/ => no output, exit 0",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "81dab2c70868",
+      "claim": "The shipped bench controller cannot run a >=1,000,000-cycle ring soak because it has no such scenario: tools/mesh-bench/bench.py declares a closed scenario set SCENARIOS = {'bringup','e2e-delivery','failover','heal','partition','kv-flow-failover','hop-latency'} with no soak, ring, or cycle-count scenario, and argparse restricts the scenario argument to exactly that set.",
+      "source_citation": "tools/mesh-bench/bench.py:34 (SCENARIOS literal) and bench.py:358 (ap.add_argument('scenario', ..., choices=sorted(SCENARIOS)))",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "795d10853b0d",
+      "claim": "The ONLY measured radio latency figure available anywhere in the crypto/durability/evidence slice is 'L2CAP RTT p50 122 ms', and it is explicitly attributed to feature 013 on a 2-node link — not to any 059 measurement; 059's own per-hop latency cell (SC-004, p50<200/p99<400) is banded DEVICE-SPIKE with 'no bench session yet'.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:50 ('Latency evidence on radio so far: L2CAP RTT p50 122 ms (013, 2-node).'); discharge-ledger.md:46",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "804bbaf4f1de",
+      "claim": "The premise that fsync rather than BLE binds the 1,000,000-cycle throughput budget is contradicted by the only measured transport number in evidence: at the recorded L2CAP p50 RTT of 122 ms, 1,000,000 serialized cycles cost 122,000 s = approximately 33.9 hours of pure radio time, and no fsync measurement exists anywhere in the slice to compare against, so the radio — not fsync — is the only floor with any measured basis. (INFERENCE from the 122 ms record; assumes one non-pipelined 2-node RTT per cycle, sustained p50, no failover stalls; a real >=3-hop ring across four devices would cost MORE radio time per cycle, not less, so this is a lower bound.)",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:50 (122 ms p50 RTT) + arithmetic 1e6 * 0.122 s = 122,000 s; no fsync figure returned by grep -rniE 'fsync|throughput|ops/s' over specs/059 + tools/mesh-bench (zero hits)",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": "The fsync/group-commit throughput floor (fsync, not BLE) binds the 1M-cycle budget."
+    },
+    {
+      "claim_id": "51dfdb8c93d4",
+      "claim": "No fsync cost, group-commit rate, or durable-append throughput figure is recorded anywhere in the slice's evidence sources, so the claim that a fsync/group-commit floor binds the 1M-cycle budget is UNSUPPORTED by any named benchmark record at pin 02bcc20 and rests on an unstated assumed fsync latency.",
+      "source_citation": "grep -rniE 'fsync|group.commit|throughput|ops/s|per second' over specs/059-hw-3device-mesh-failover/ and tools/mesh-bench/ => zero hits; evidence/runs/ empty (git ls-tree)",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "f409850a6961",
+      "claim": "The durable commit path performs an unbatched fsync per unit of work: DurableExecutor appends exactly one CommitRecord then immediately awaits _commitJournal.CommitAsync(ct) as the commit point, with no batching, no group commit, and no accumulation across triggers — one durable flush per trigger is structural.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:178-179 (_commitJournal.Append(...); await _commitJournal.CommitAsync(ct); // COMMIT POINT (durable))",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "558fc3832f5b",
+      "claim": "IdempotentSink defaults to DurabilityMode.FsyncAlways and issues a second durable flush per delivered message (await _wal.CommitAsync(ct) inside WriteAsync), so a relayed hop that commits a unit of work AND delivers one local outbox item costs at least TWO fsyncs, not one — doubling any per-cycle durable-write budget derived from a single-fsync assumption.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:24 (DurabilityMode mode = DurabilityMode.FsyncAlways) and IdempotentSink.cs:42-43; reached per outbox item from DurableExecutor.cs:206-208 (PublishAsync -> sink.WriteAsync)",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "a53b08bc8292",
+      "claim": "No group-commit, batching, or write-coalescing mechanism exists in Olamnit/Olamnit.Kernel/DurableExecution/ at pin 02bcc20 — a plan that relies on group commit to make a 1M-cycle budget close depends on code that must still be written.",
+      "source_citation": "grep -rniE 'fsync|flush|group.commit|batch|throughput' Olamnit/Olamnit.Kernel/DurableExecution/ => matches are only doc-comment prose about a single fsync'd append (CommitRecord.cs:6, UnitOfWork.cs:15) and IdempotentSink.cs:24 FsyncAlways; no batching implementation",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "90461ad457be",
+      "claim": "A symbol named 'SealSet' does not exist anywhere in Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ at pin 02bcc20 — the directory contains exactly six files (AmuletVerifier.cs, CanonicalCbor.cs, Ed25519Signer.cs, IDeviceSealKey.cs, Macaroon.cs, Seal.cs) and a grep for 'SealSet' returns zero hits, so a plan element phrased as 'reuse SealSet rather than re-implement' names an artifact that is not present under that name.",
+      "source_citation": "git ls-tree -r 02bcc20 -- Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ (6 files); grep -n 'SealSet' over that directory => zero hits",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "bf5c4e35afdf",
+      "claim": "The shipped device signing key is regenerated on every process launch — InMemoryDeviceSealKey's constructor calls RandomNumberGenerator.GetBytes(32) for a fresh seed held in memory only and never persisted — so a device's Ed25519 public key identity CHANGES across a restart, which structurally defeats a soak that must survive a kill-one: after the killed node restarts, its post-restart key cannot verify or continue any signature chain minted under its pre-restart key.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/IDeviceSealKey.cs:40-44 (constructor generates seed) and :28-32 + :10-11 doc ('a fresh seed is generated per app launch/session', 'never persisted')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "627fab4ba4f8",
+      "claim": "The shipped amulet verifier refuses every foreign key by construction and therefore cannot verify a peer device's signature: Ed25519AmuletVerifier fixed-time-compares the seal's embedded public key against a single IAmuletTrustAnchor.TrustedPublicKey and returns (false, 'untrusted key') on any mismatch, and the only IAmuletTrustAnchor implementation present in Seal/ is DeviceSealTrustAnchor, which pins the LOCAL device's own key.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:100-101 (FixedTimeEquals -> 'untrusted key'), :59-62 (DeviceSealTrustAnchor => key.PublicKey); grep 'IAmuletTrustAnchor|class .*TrustAnchor' over Seal/ finds only these two",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "f1abbc73939a",
+      "claim": "The Seal stack is documented as single-device by design — 'In-process the device's own key IS the single trust root (one device / one session)' — so a four-device relay ring (olamnit+gavri+tablet+phone) in which each node verifies its predecessor's signature requires a multi-key trust anchor that does not exist in Seal/ at pin 02bcc20; I could not verify whether a multi-key anchor exists elsewhere in the repo, as that is outside my evidence slice.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:41-47 (IAmuletTrustAnchor doc block, 'one device / one session')",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "d0a388b86a13",
+      "claim": "The macaroon caveat key set is closed and fail-closed — EnforceCaveats switches over exactly {exp, scope, audience, resource, tbl, kpfx} and its default branch returns (false, 'unknown caveat key: {k}') — so hop-chain data (a predecessor hash, hop index, or cycle counter) CANNOT be threaded through a caveat without editing Macaroon.cs, which contradicts any wrap-never-replace / additive-only framing of the ring work.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:56-88 (switch with default => 'unknown caveat key')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "119f890fe10d",
+      "claim": "The Ed25519-signed payload has no field capable of representing a chain of relay hops: CanonicalCbor.SigningPayload signs exactly { 'block': FetchDescriptor, 'macaroon': Macaroon }, where FetchDescriptor carries only (ResourceId, Audience, Scope, IssuedForIdentity) and Macaroon carries only (Identifier, Caveats, Sig) — there is no predecessor-hash, sequence, hop-index, or cycle field anywhere in the signed bytes, so an 'Ed25519-chained relay' has no representation in the shipped seal format.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-57 (SigningPayload/WriteDescriptor/WriteMacaroon field lists); Seal.cs:9 (FetchDescriptor record); Macaroon.cs:25 (Macaroon record)",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "3a8c286557fe",
+      "claim": "The macaroon's HMAC chain is a per-credential CAVEAT-attenuation chain computed under one device's mint-time key (sig = HMAC(...HMAC(HMAC(key, id), cav0)..., cavN)), NOT a cross-device chain of relay hops — so citing the existing 'HMAC-chain' as the ring's hop chain conflates two different constructs, and the mint key is derived from a seed that never leaves one device.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:9-10 (chain formula), :28-34 (Chain implementation); IDeviceSealKey.cs:21-25 (DeriveHmacKey, 'never leaves the signer')",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "61f66bdd42f6",
+      "claim": "Amulet expiry has whole-day granularity only (the exp caveat is a DateOnly parsed by DateOnly.TryParse and enforced as 'now > exp'), which cannot express a soak boundary finer than a day; combined with the 122 ms p50 RTT record, a 1,000,000-cycle serialized soak runs approximately 33.9 hours and therefore crosses a day boundary, so an amulet minted with exp = today expires mid-soak and every subsequent hop fails closed with 'amulet expired'. (The expiry granularity is READ; the 33.9 h crossing is INFERENCE under the serialized-cycle assumptions stated elsewhere.)",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:58-61 (exp caveat, DateOnly, 'amulet expired') and :20 ('exp (whole-day DateOnly)'); AmuletVerifier.cs:18 (DateOnly exp parameter); specs/059-.../research.md:50 (122 ms)",
+      "confidence": 0.78,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "8ee842e0f267",
+      "claim": "The durable-execution layer has unbounded in-memory retention with no compaction: DurableExecutor keeps a HashSet _committed and a Dictionary _byTriggerId holding the FULL CommitRecord (including its payloads) for every trigger ever committed, IdempotentSink keeps a _seen HashSet plus a _records List holding every key and payload, and a grep for evict/compact/truncate/prune/ceiling/Remove(/Clear( across DurableExecution/ finds no eviction site at all — only Add sites. At 1,000,000 cycles this retains 1,000,000 commit records plus 1,000,000 sink payloads in RAM per node, which is a first-order OOM risk on the tablet and phone legs.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:56-57 (fields), :120-121, :180-181 (Add sites); IdempotentSink.cs:18-19 (fields), :31-32, :44-45 (Add sites); grep -rniE 'evict|compact|truncat|prune|ceiling|Remove\\(|Clear\\(' DurableExecution/ => no eviction implementation",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "3142de7a4cf9",
+      "claim": "Crash recovery is O(total history), not O(recent), and gets monotonically slower as a soak progresses: DurableExecutor.OpenAsync replays the ENTIRE commit journal from offset 0 folding every record into state, and IdempotentSink.OpenAsync replays its entire WAL from offset 0 rebuilding the seen-set — so the 'survive kill-one' restart at cycle ~900,000 must replay ~900,000 records before the node can accept its next hop, a recovery cost no recorded measurement bounds.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:116-123 (await foreach commitJournal.ReplayAsync(0, ct)); IdempotentSink.cs:28-33 (await foreach wal.ReplayAsync(0))",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "ae20b16e913b",
+      "claim": "No CRC, checksum, or frame-resume mechanism exists in either code source of the crypto/durability slice — a case-insensitive grep for 'crc|checksum|resume' across Olamnit/Olamnit.Kernel/DurableExecution/ and Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ returns zero hits at pin 02bcc20, so I could not verify the existence of the 'CRC-frame resume' mechanism; if it exists it lives in Olamnit.Kernel/Persistence/ or Olamnit.Kernel/Mailbox/, which are outside my evidence slice.",
+      "source_citation": "grep -rniE 'crc|checksum|resume' Olamnit/Olamnit.Kernel/DurableExecution/ Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ => zero hits",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "819592ad0500",
+      "claim": "I could not verify what DurabilityMode.FsyncAlways actually costs or even whether it issues a real fsync, because FileWriteAheadLog and DurabilityMode are declared in the Olamnit.Kernel.Mailbox namespace (imported by IdempotentSink) which is outside my evidence slice — therefore any per-cycle durable-write figure in the plan rests on an unverified assumption about media, record format, and flush semantics.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:3 (using Olamnit.Kernel.Mailbox;) and :26 (new FileWriteAheadLog(directory, mode, 0)) — definition not present under DurableExecution/",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "22f4ebff2257",
+      "claim": "The only PASS-producing records in feature 059's evidence tree are hand-authored synthetic fixtures, not measurements: tools/mesh-bench/README.md describes evidence/fixtures/ as 'hand-authored JSONL', and the bringup-happy manifest carries commit:'dry-run', sessionId:'dry-run' and an invented timing atMs:10 — so the ledger's GREEN controller-path cell proves the controller's assertion arithmetic, and provides no timing or throughput evidence whatsoever.",
+      "source_citation": "tools/mesh-bench/README.md:58-63 ('hand-authored JSONL replayed by --dry-run'); specs/059-hw-3device-mesh-failover/evidence/fixtures/bringup-happy/manifest.json:2-6,22-24 (runId/sessionId 'dry-run', commit 'dry-run', atMs 10); discharge-ledger.md:35",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "c0e6b4f08f31",
+      "claim": "The Ed25519 signing primitive and the durable commit chain live in DIFFERENT assemblies — Ed25519Signer/Seal are in namespace Olamnit.Shared.Yngenios.Seal under Olamnit/Olamnit/Olamnit.Shared/, while DurableExecutor is in namespace Olamnit.Kernel.DurableExecution and imports only Olamnit.Kernel.* namespaces — so signing a durable commit chain inside the kernel would require a Kernel->Shared reference; I could not verify whether that reference direction is permitted, as the .csproj files are outside my evidence slice. (Namespaces and imports are READ; the reference-direction consequence is INFERENCE.)",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Ed25519Signer.cs:3 (namespace Olamnit.Shared.Yngenios.Seal); Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:1-5 (using Olamnit.Kernel.Edge/Mailbox/Persistence; namespace Olamnit.Kernel.DurableExecution)",
+      "confidence": 0.6,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "72b26c211b93",
+      "claim": "The Ed25519 primitive allocates a fresh managed copy of the message on every sign and every verify (message.ToArray() in both paths), so a 1,000,000-cycle chained soak incurs at least 1,000,000 avoidable payload copies per signing node plus another per verifying node — a real but second-order cost next to the radio and fsync floors, and one no recorded benchmark measures.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Ed25519Signer.cs:29-31 (var msg = message.ToArray() in Sign) and :41-42 (var msg = message.ToArray() in Verify)",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "19a861c6afb0",
+      "claim": "Feature 059's research explicitly records that the shipped secure link transport is composed on NO radio path today and that mesh frames currently cross links in clear, so a ring soak that assumes signed/sealed frames already ride the real radio legs is assuming bench-composition work (059 D5) that is itself banded DEVICE-SPIKE and has never run on hardware.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:29-31 ('The shipped K1 SecureLinkTransport ... is composed on **no** radio path today; mesh frames cross links in clear (TODO(FR-012)...)'); discharge-ledger.md:47 (Android<->Pi interop DEVICE-SPIKE, 'has never run')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence"
+    },
+    {
+      "claim_id": "8c1652b49284",
+      "claim": "ICoinLedger.MergeFrom(IEnumerable<Op>) EXISTS at pin 02bcc20: it is declared on the ICoinLedger interface and is implemented (not stubbed, not NotImplementedException) by CoinProvenanceStore as a single-expression delegation to the op-WAL.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:35 (decl `int MergeFrom(IEnumerable<Op> ops);`) and :104 (`public int MergeFrom(IEnumerable<Op> ops) => _wal.Merge(ops);`)",
+      "confidence": 0.99,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "2c19fc664234",
+      "claim": "CoinProvenanceStore.MergeFrom performs ZERO validation of peer ops: it contains no op-type check, no conservation check, no witness-certificate verification and no call into CommutativeOpProcessor.Validate — the whole method body is `_wal.Merge(ops)`.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:104 — full method body is `=> _wal.Merge(ops);` with no other statements",
+      "confidence": 0.97,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "dc42103cc871",
+      "claim": "Folding peer coin ops via MergeFrom structurally BYPASSES the seam where the coin ledger enforces its spend invariant: CoinProvenanceStore.Append throws InvalidOperationException for a Spend op so that only the E3PC gate's AppendCommittedSpend may admit one, but MergeFrom writes to the same WAL with no such guard, so a peer-supplied Spend op reaches the WAL without passing any local gate.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:67-69 (Append refuses CoinOpType.Spend) vs :104 (MergeFrom, no op-type guard); interface contract at :13-16",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "c0d657c3d7c4",
+      "claim": "The dot-keyed idempotence of the coin ledger's merge is NOT verifiable from the olamnit repository: MergeFrom delegates to GlpRuntime.CrdtMsg.Store.PgliteOpWal.Merge, whose project lives OUT OF REPO at the MSBuild `$(GlpnetRoot)` path (default `D:/bstdev/glp/GLPNET`). The dot-keyed `INSERT … ON CONFLICT DO NOTHING` behaviour is asserted only in a doc comment; I could NOT verify the implementation.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:1-2 (`using GlpRuntime.CrdtMsg.Store;`), :7-9 (doc comment claiming dot-keyed ON CONFLICT DO NOTHING), :40,:104; Olamnit/Olamnit.Coin/Olamnit.Coin.csproj:24 (`<GlpnetRoot …>D:/bstdev/glp/GLPNET</GlpnetRoot>`) and :28 (ProjectReference to `$(GlpnetRoot)/csharp/glp_crdtmsg/GlpCrdtMsg.csproj`)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "26c7b315c5e6",
+      "claim": "MergeFrom does not update any in-memory balance projection — it only writes the WAL — so after an anti-entropy merge a live CommutativeOpProcessor instance is stale until a fresh processor rehydrates from the WAL.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:104 (no Project call); corroborated by the shipped test Olamnit/Olamnit.Coin.Tests/Ledger/Commutative/CommutativeOpProcessorTests.cs:163-174 which, after `storeB.MergeFrom(...)`, constructs FRESH processors (`new CommutativeOpProcessor(new CoinProvenanceStore(dbA, \"peer-a\"))`) to observe merged balances rather than reading procA/procB",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "3d54d8a9493a",
+      "claim": "The missing re-validation on the peer-merge path is a KNOWN, code-documented, deliberately out-of-v1-scope gap (labelled 'CROSS-HOST FOLLOW-UP (codexreview, out of v1 scope — OE-4)'), not an undiscovered defect: the comment states rehydration Projects every WAL op WITHOUT re-running admission checks or witness-cert verification, and that once MergeFrom folds peer ops both rehydration and MergeFrom must re-validate before projecting.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:60-65",
+      "confidence": 0.97,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "bd56e2856b05",
+      "claim": "CommutativeOpProcessor rehydration is the actual projection path for merged peer ops and it calls Project(envelope) directly in the constructor with NO Validate call, so any op that reached the WAL via MergeFrom is projected into balances unvalidated on the next restart or audit replay.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:57-59 (`foreach (var (_, envelope) in ledger.OpsIn(CoinBoxes.Ledger)) Project(envelope);`)",
+      "confidence": 0.96,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "3d7bc1ca1ab7",
+      "claim": "A naive 'validate every op before projecting' fix to the merge path would BREAK convergence rather than fix it, because CommutativeOpProcessor.Validate is order-dependent: it returns RejectedUnknownRef for any split/merge/charge/aging whose referenced mint or leaf is not yet in the local projection, so a peer delta replayed in a non-causal order would reject legitimate ops. Correct re-validation-before-projection therefore requires causal/dependency ordering of the merged op set, not merely calling Validate.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:173-182 (Validate dispatch), :176 (ChargeBody => RejectedUnknownRef when `!_dags.ContainsKey`), :201-202 and :227-228 (RejectedUnknownRef on unseen leaf), :267-268 (aging RejectedUnknownRef); Op.Create carries `deps` at CoinProvenanceStore.cs:82 but Validate never consults them",
+      "confidence": 0.82,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "a73f135fad2c",
+      "claim": "Correct re-validation-before-projection additionally requires changing CommutativeOpProcessor.Validate, because today Validate maps SpendBody to RejectedMalformed unconditionally, which means the public Replay path rejects EVERY committed spend already in the WAL — the code comment names this as a required change so 'the recovery paths agree'.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:180 (`SpendBody => OpAdmission.RejectedMalformed`), :107-117 (Replay calls Validate), :64-65 (comment: 'Replay must accept a committed SpendBody (today it returns RejectedMalformed)')",
+      "confidence": 0.94,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "aab6166acd27",
+      "claim": "The coin ledger NEVER verifies the WitnessCert on a mint op: CommutativeOpProcessor.ValidateMint checks only non-zero value, non-empty provider, mint-id novelty, the funding split sum, and the pool bound — no signature check. A repository-wide grep of Olamnit.Coin/Ledger for Ed25519/Verify shows witness-certificate verification occurring ONLY on the spend path (SpendGate). Mint authorization is therefore enforced entirely outside the ledger engine.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:184-195 (ValidateMint body, no cert check); grep 'Ed25519|Verify|WitnessCert' over Olamnit/Olamnit.Coin/Ledger/ → only Olamnit/Olamnit.Coin/Ledger/Settlement/SpendGate.cs:139 (`_certVerifier.Verify(cert, _quorum.WitnessCount)`) verifies a cert",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "cbcc78cec2f0",
+      "claim": "The design's stated conviction mechanism for a forged merged mint — the pool audit — does NOT detect supply inflation. PoolAudit checks `circulating + pool == fresh`; a forged mint with FundingFreshUCoin = V adds V to `fresh` AND V to `circulating` (a new live DAG root), so the identity still holds and the audit returns Holds=true. PoolAudit only convicts a pool OVERDRAW (poolOut > poolIn) and DAG-internal conservation breaks.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:41-62 (`fresh += mint.FundingFreshUCoin`, `circulating = replay.TotalCirculating()`, `holds = circulating + pool == fresh && replay.VerifyAllConservation()`), :55-58 (the only overdraw refusal); INFERENCE from the arithmetic as read, not from an executed test",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "9aec27aee3eb",
+      "claim": "CommutativeOpProcessor.Project deliberately CLAMPS a forged pool overdraw to zero instead of throwing, with an in-code comment naming the pool audit as the mechanism that 'convicts it' — so the engine's designed answer to a hostile merged mint is a later audit, not admission-time refusal.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:289-293 (`// pool-first drawdown (FR-010a) — Admit validated ≤ pool; replay of a FORGED overdraw clamps instead of crashing (the pool audit is what convicts it)`)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "9e9c5cb9b9d8",
+      "claim": "No test at pin 02bcc20 under Olamnit.Coin.Tests/Ledger/ merges a hostile, malformed, or unauthorized peer op: the ONLY MergeFrom exercise is AntiEntropy_ConvergesTwoReplicas, which merges two well-formed mint ops between cooperating replicas. MergeFrom's behaviour under a hostile op is therefore untested.",
+      "source_citation": "grep 'MergeFrom' over Olamnit/Olamnit.Coin.Tests/Ledger/ → exactly 2 hits, both in Olamnit/Olamnit.Coin.Tests/Ledger/Commutative/CommutativeOpProcessorTests.cs:163-164, inside the test at :149-175 which merges only `Mint(...)` envelopes",
+      "confidence": 0.92,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "fd69742dbdbf",
+      "claim": "The reward pipeline's endorsement INDEPENDENCE check is a raw string comparison, not the binding resolution its own doc comment claims: RewardClaimProcessor.EndorseAsync compares `endorserKeyId` to `claim.WalletId` with string.Equals and never consults the injected ActorWalletBindingRegistry, despite the class doc stating endorsements are 'rejected when the endorser resolves to the claimant's own binding'.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Claims/RewardClaimProcessor.cs:154-157 (`if (claim.WalletId is not null && string.Equals(endorserKeyId, claim.WalletId, StringComparison.Ordinal)) return false;`) vs the doc claim at :37-38 and :133-136; `_bindings` (declared :46) is used only in DeriveClaimAsync:87, ResolveParkedAsync:110 and ReadmitUnmappedAsync:204 — never in EndorseAsync",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "1dace53d966a",
+      "claim": "The auto-endorser's key is derived from the SAME per-host secret as the host itself, merely domain-separated, so the string-equality independence check in EndorseAsync can never fire on the auto path by construction: EndorserKey hashes 'olamnit-rewards-{role}-v1:' with HostIdentity.Seed to produce a key id that structurally cannot equal a wallet id. Auto-endorsement 'independence' at the pin is key-material domain separation on ONE host, not a separate trust domain.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Endorsement/EndorserKey.cs:22-30 (domain = `olamnit-rewards-{role}-v1:`, `_seed = SHA256.HashData(buf)` over the host seed, `KeyId = Convert.ToHexString(Ed25519Signer.PublicKeyFromSeed(_seed))`) combined with RewardClaimProcessor.cs:154-157",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "7545abfdaec3",
+      "claim": "The only real anti-self-attestation strength in the shipped auto-endorsement path is ICorroborationSource, and BOTH shipped implementations reduce to a set-membership lookup (`live.Contains(signal.SourceNativeId)`) against an INJECTED Func<CancellationToken, Task<IReadOnlySet<string>>> — neither verifies any signature. 'Evidence the claimant cannot forge' is therefore only as strong as the independence of whatever function the host injects.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:112-117 (CoQueryCorroborationSource.CorroborateAsync) and :136-141 (IcWorkFeedCorroborationSource.CorroborateAsync); constructor-injected delegate at :104-107 and :129-131",
+      "confidence": 0.92,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "d877c6d0ffab",
+      "claim": "NO relay-hop, mesh, or per-hop work class exists in the reward policy at pin 02bcc20: the shipped seed set is exactly three rules — 'stage-complete-co' (capture_method co_event, 1_000_000 µcoin, auto), 'kernel-work-trace' (trace_scrape, 100_000 µcoin, manual) and 'kernel-work-typed' (ic_work, 250_000 µcoin, auto). A ring soak paying per ACKED hop has no work class to bill against today.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:62-83 (SeedMapping.V1Defaults), specifically :75, :80, :82",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "92bf35ec39b6",
+      "claim": "Adding an auto-endorsed relay-hop reward class is ADDITIVE and requires no coin-ledger engine change: it needs a new SourceKind + capture_method, one SeedMapping row with AutoEndorsable=true, and one ICorroborationSource registered under that SourceKind — the IndependentVerifier resolves corroborators by dictionary lookup on signal.SourceKind and RewardMappingStore re-reads policy per call so no restart is needed.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:48 (`_sources = sources.ToDictionary(s => s.SourceKind, …)`) and :59 (`_sources.TryGetValue(signal.SourceKind, out var source)`); Olamnit/Olamnit.Coin.Rewards/Policy/RewardMappingStore.cs:22-23 ('Administration requires no code change or restart: MatchAsync re-reads per call') and :99-126; Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:47-48 (MappingSeed is an init-settable option)",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "6ebfd75c2289",
+      "claim": "A relay-hop class corroborated by a next-hop-signed ACK verified against a peer Ed25519 public key the claimant does not hold WOULD satisfy the shipped ICorroborationSource contract's stated requirement ('independent of the claimant's self-attestation path'), but NO such signature-verifying corroboration source exists at pin 02bcc20 — it would be new code, and it is the single load-bearing addition on which an auto-endorsed hop reward's integrity rests.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:8-18 (ICorroborationSource contract, 'Implementations must be independent of the claimant's self-attestation path'); the only two implementations at :102-118 and :127-142 do set-membership, not signature verification (READ); the 'would satisfy' half is INFERENCE",
+      "confidence": 0.75,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "edb7e198c479",
+      "claim": "A 1-µcoin-per-hop reward is mintable but is UNSPLITTABLE and UNMERGEABLE dust that can never be aggregated: MicroCoin.TryFloorSplit returns false when the value is below k, and CommutativeOpProcessor.ValidateMerge returns RejectedMalformed for parents spanning different mint DAGs — since each hop reward is its own mint with its own DAG, 1M hop rewards can never be merged into a single balance leaf.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Model/MicroCoin.cs:51-55 (`if (k <= 0 || UCoin < (UInt128)(ulong)k) return false;`); Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:231-232 (`if (mint is not null && !mint.Value.Equals(m)) return OpAdmission.RejectedMalformed; // v1: merge within one mint's DAG`); Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:61-62 (one mint id per claim)",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "0fbf64e687e3",
+      "claim": "The subject's phrase '1 ucoin per ACKED hop' is ambiguous against the shipped units and is off the shipped rate scale by six orders of magnitude if read literally: 1 µcoin is the smallest unit (1 coin = 1,000,000 µcoin) while the shipped CO stage-completion class pays 1,000,000 µcoin (= 1 whole coin) per work unit.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Model/MicroCoin.cs:14 (`public const ulong UCoinPerCoin = 1_000_000;`) and :5-7 doc; Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:75 (SeedMapping 'stage-complete-co' issuance 1_000_000)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "6793fce28c23",
+      "claim": "A 1M-hop soak that mints per hop creates 1M CoinDag objects plus 1M leaf entries retained in process memory for the life of the CommutativeOpProcessor, and every restart or audit replays all of them, because _dags and _leafToMint are unbounded in-memory Dictionaries with no eviction and PoolAudit.Run constructs a full fresh replay processor.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:32-35 (unbounded `Dictionary<MintId, CoinDag> _dags`, `_leafToMint`, `_leafHolder`, `_holderLeaves`), :284-288 (a new CoinDag per MintBody), :57-59 (constructor replays every WAL op); Olamnit/Olamnit.Coin/Ledger/Validity/PoolAudit.cs:35-36 (`var replay = new CommutativeOpProcessor(ledger);`)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "14f524a001b3",
+      "claim": "The coin ledger has an O(N) full-dictionary scan on the aging path that becomes quadratic at ring-soak scale: FindLiveLeavesOf performs a LINQ Where over the entire _leafToMint dictionary and is called by both ValidateAging and Project(AgingBody), so with ~1M leaves each aging op scans ~1M entries.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:346-348 (`_leafToMint.Where(kv => kv.Value.Equals(mint) && …).OrderBy(l => l).ToList()`), called at :269 (ValidateAging) and :334 (Project AgingBody)",
+      "confidence": 0.87,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "9c6f3d8b4489",
+      "claim": "Every coin mint on a node serializes through one global lock, so per-hop minting cannot be parallelized within a node: CommutativeOpProcessor.Admit holds `lock (_lock)` across validate → WAL append → project.",
+      "source_citation": "Olamnit/Olamnit.Coin/Ledger/Commutative/CommutativeOpProcessor.cs:69-81 (Admit) and :30 (`private readonly object _lock = new();`)",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "c614b42fd40a",
+      "claim": "One reward hop costs roughly 20-25 sequential PGlite round trips through RewardsIngestionLoop.ProcessAsync (admission SELECT+INSERT, claim GET, policy version + rules SELECT, binding SELECT, claim INSERT, claim re-GET, endorsement signal SELECT, endorsement existence SELECT + INSERT + UPDATE, mint claim GET, endorsement SELECT, provenance INSERT, signal SELECT, claim close UPDATE), which at 1M hops implies on the order of 2x10^7 round trips — a throughput ceiling in the reward pipeline itself, independent of any link or fsync cost.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Service/RewardsIngestionLoop.cs:146-170 (ProcessAsync) tracing into SignalAdmission.cs:20-43, RewardClaimProcessor.cs:61-105 + :138-178 + :254-261, RewardMappingStore.cs:99-126 + :140-151, ActorWalletBindingRegistry.cs:22-34, IndependentVerifier.cs:53-71 + :73-87, RewardMinter.cs:46-98 + :100-134; count is INFERENCE by tracing the calls, not a measurement",
+      "confidence": 0.7,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "dc703f70affa",
+      "claim": "RewardSchema.InitializeAsync carries NO memoization guard of its own — it re-issues the full DDL to the connection on every call and is invoked at the head of nearly every reward store method — so whether the ~25-round-trip-per-hop cost also re-runs the whole DDL per hop depends on IPgliteConnection.InitializeAsync, which lives in Olamnit.Shared and was outside my evidence slice; I could NOT verify it memoizes.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Persistence/RewardSchema.cs:103-105 (`public static Task InitializeAsync(IPgliteConnection conn, CancellationToken ct = default) => conn.InitializeAsync(Ddl, ct);` — no static flag, no lock); callers include SignalAdmission.cs:22, RewardClaimProcessor.cs:63,:236,:256,:265, ActorWalletBindingRegistry.cs:24,:40,:57, RewardMappingStore.cs:41,:61",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "862dda6fb1ec",
+      "claim": "Olamnit.Coin.Rewards has exactly ONE ProjectReference — Olamnit.Coin — and no reference to any mesh, ynet, or transport project, so at pin 02bcc20 the shipped rewards assembly has no compile-time path to mesh hop events; its use of Olamnit.Shared.Content.Interop resolves only TRANSITIVELY through Olamnit.Coin, which is what actually references Olamnit.Shared.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Olamnit.Coin.Rewards.csproj:23-25 (single `<ProjectReference Include=\"..\\Olamnit.Coin\\Olamnit.Coin.csproj\" />`); Olamnit/Olamnit.Coin/Olamnit.Coin.csproj:27-31 (ProjectReferences: GlpCrdtMsg, Olamnit.Kernel, Olamnit.Shared); the transitive `using` appears at Olamnit/Olamnit.Coin.Rewards/Endorsement/IndependentVerifier.cs:4",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "e9cb5637bbf0",
+      "claim": "The coin assembly cannot build on any device without an out-of-repo GLPNET checkout: Olamnit.Coin.csproj takes a ProjectReference on an absolute path `$(GlpnetRoot)/csharp/glp_crdtmsg/GlpCrdtMsg.csproj` defaulting to `D:/bstdev/glp/GLPNET`, pinned by comment to GLPNET commit 5adfa0e35707230e8f9b9427ee7d9664d11c3a03, with packaging/NuGet noted as a ship-stage follow-up — a per-build-host prerequisite for any multi-device (olamnit + gavri + tablet + phone) soak.",
+      "source_citation": "Olamnit/Olamnit.Coin/Olamnit.Coin.csproj:10-12 (pinned GLPNET commit comment, 'packaging/NuGet is a ship-stage follow-up'), :22-24 (GlpnetRoot default `D:/bstdev/glp/GLPNET`), :28 (ProjectReference)",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "266aa6bc1090",
+      "claim": "Auto-endorsable reward claims expire after 24 hours by default (AutoClaimExpiry / the seeded auto classes' EndorsementWindow), and a periodic ExpirySweep closes any still-awaiting claim as `expired_unendorsed`, so any ring-soak hop whose corroboration is delayed past its window is terminally closed and never mints — a partition longer than the window silently converts hop rewards into expired dispositions.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Configuration/RewardsOptions.cs:17-18 (`AutoClaimExpiry … = TimeSpan.FromHours(24)`) and :75,:82 (seeded auto classes use TimeSpan.FromHours(24)); Olamnit/Olamnit.Coin.Rewards/Claims/ExpirySweep.cs:18-33 (UPDATE … SET disposition = expired_unendorsed WHERE expires_at < now); Olamnit/Olamnit.Coin.Rewards/Service/RewardsIngestionLoop.cs:57 (default sweep interval 15 min)",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "813545785d8d",
+      "claim": "The reward pipeline's mint authorization state (reward_signal / reward_claim / reward_endorsement / reward_mint) lives in per-host PGlite tables and is NOT part of the replicated coin op-WAL, so the anti-entropy merge path carries minted coin ops between peers WITHOUT carrying the claim/endorsement evidence that authorized them — a receiving peer folding a mint has no local record against which to re-check it even if re-validation were added.",
+      "source_citation": "Olamnit/Olamnit.Coin.Rewards/Persistence/RewardSchema.cs:14-101 (the reward_* DDL, applied via IPgliteConnection) vs Olamnit/Olamnit.Coin/Ledger/Provenance/CoinProvenanceStore.cs:102-104 (DeltaFor/MergeFrom operate only over the op-WAL's four coin boxes, listed at CoinOps.cs:17-24); Olamnit/Olamnit.Coin.Rewards/Minting/RewardMinter.cs:100-118 (reward_mint provenance written to PGlite, not to the WAL)",
+      "confidence": 0.83,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    },
+    {
+      "claim_id": "82b5e8470c80",
+      "claim": "I could NOT assess the reward pipeline's test coverage: the project Olamnit.Coin.Rewards.Tests EXISTS at pin 02bcc20 with 16 files including Soaks/ and Integration/ suites, but it was not among my slice's sources and I did not open it, so no claim I make about untested reward behaviour extends beyond Olamnit.Coin.Tests/Ledger/.",
+      "source_citation": "command: `git ls-tree -r --name-only HEAD | grep -i 'Coin.Rewards.Tests'` at pin 02bcc20 → 16 paths incl. Olamnit/Olamnit.Coin.Rewards.Tests/Soaks/RestartSmokeTests.cs, .../Soaks/EpochAndDurabilityTests.cs, .../Integration/RewardCoreTests.cs",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-4",
+      "slice_id": "slice-coin-ledger-merge"
+    }
+  ]
+}

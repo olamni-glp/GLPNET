@@ -1,0 +1,310 @@
+{
+  "claims": [
+    {
+      "claim": "NO roster-epoch concept ships in my sources. Grepping Olamnit.Shared/Kv/Election/ and Olamnit.Shared/Kv/Capabilities/ case-insensitively for the vocabulary {roster, epoch, exclu*, revok*, revocation, ban, genesis, nonce, reintegrat*, founder, manifest, run_id, blocklist, denylist, expel, evict, rejoin, quarantin, era} returns ZERO hits in Kv/Capabilities/ and, in Kv/Election/, only the word 'operator' inside a comment. ABSENCE SCOPED VERBATIM to those two directories at pin 02bcc20 with that exact vocabulary; I could not read the rest of the repo, so this is not a repo-scope absence.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ (all 7 files) + Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/ (all 5 files) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The election's versioning primitive is a per-domain monotone int64 TERM, not a roster epoch: DecisionRecord carries exactly (DomainId, Term, DecisionId, Winner, Protocol) and NO membership set, membership hash, roster version, or nonce. Nothing in a shipped decision record binds the decision to the membership that produced it.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:30 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The durable decision table columns are exactly (domain_id, term, decision_id, winner, protocol, decided_utc) as written by the shipped INSERT — no membership, no roster epoch, no nonce, no signature. A roster epoch therefore cannot be persisted in the shipped decision log without a schema change.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:73-81 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Membership is FIXED AT CONSTRUCTION and immutable for the life of the election object: both RaftElection and PbftElection take IReadOnlyList<string> membership as a primary-constructor parameter, and the IElectionDomain seam exposes only {Id, Protocol, DecideAsync, ConfirmTermAsync} — there is NO add-member, remove-member, or change-membership API. Changing membership means constructing a new election instance; nothing in these sources records that a change occurred, versions it, or binds prior decisions to the old set.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:14-18; PbftElection.cs:15-19; ElectionDomain.cs:176-182 at pin 02bcc20",
+      "confidence": 0.94,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Membership entries are OPAQUE STRINGS ('a','b','c') and are never compared against, or mapped to, any Ed25519 public key. In PbftElection the trust anchor is consulted only as trustAnchor.TrustedKeys.Count == 0 — the membership ids and the trusted key set are two unrelated collections. A shipped election therefore cannot bind a member id to a key, and so cannot express 'this node, identified by its key, is/is not in the roster'.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:15-19,48 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "CODE/COMMENT DISAGREEMENT (M-32). The doc comment on PbftElection.GatheredPrepares asserts 'each prepare's signer must be a trusted peer key — verified via trustAnchor'. The CODE never verifies any prepare, any signer, or any signature: GatheredPrepares is a plain public settable int, and the only trust-anchor use in the whole class is the emptiness test `trustAnchor.TrustedKeys.Count == 0`. The Byzantine authentication the comment claims is NOT implemented in this file; the quorum count is injected by the host/test.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:32-36 (comment) vs :36,48-50 (code) at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Raft's liveness input is likewise an unauthenticated injected number: `public int ReachableVoters { get; set; }` with no bound and no provenance. Counterexample constructed against 'quorum protects the decision' (M-36): `new RaftElection(d, [\"a\",\"b\",\"c\"], log) { ReachableVoters = 99 }` passes `votes*2 > membership.Count` and decides. Nothing in RaftElection.cs constrains ReachableVoters to <= membership.Count.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:27-28,39-42 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Raft's liveness check is DEFAULT-OPEN, not fail-closed: `int voters = ReachableVoters > 0 ? ReachableVoters : membership.Count;` — an unset ReachableVoters (0) is silently read as 'ALL members reachable', so a freshly-constructed RaftElection always reaches quorum. Zero reachable voters is indistinguishable from full reachability at this line.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:39 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "THE THRESHOLD ARITHMETIC: Raft quorum is a strict majority of the FIXED constructed membership — `votes * 2 > membership.Count` (denominator = membership.Count, i.e. the epoch's fixed N, never 'who is live now'); the numerator is the injected reachable count. Below quorum ⇒ LivenessTimeout, never a Byzantine refusal.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/RaftElection.cs:21-22,39-42 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "THE THRESHOLD ARITHMETIC: PBFT computes f = (membership.Count - 1) / 3 and Quorum = 2f + 1, both over the FIXED constructed membership count — the denominator IS the epoch's fixed N, not a live-set count. membership.Count < 4 refuses with QuorumUnattainable ('membership {n} < 3f+1 minimum (4)'). This is the one shipped arithmetic that matches a 'threshold over fixed membership N' requirement.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:27,30,42-44 at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Below-quorum PBFT returns ElectionOutcomeKind.QuorumUnattainable as a value and NEVER falls back to the crash-fault path — verified by code (the guard returns before any log.DecideAsync call) and by test. This 'refusal, never a downgrade' property IS shipped and is testable.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PbftElection.cs:46-50; Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:102-112 at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "A SINGLE ELECTED DECISION per (domain, decision_id) IS shipped and IS bindable: the compare-and-set is across ALL terms (the prior lookup scans every term for the decision_id, deterministic lowest-term-first), so a later term never contradicts a committed decision; the loser receives the durable winner + the durable term. This is the strongest primitive in my slice for 'one elected decision other subsystems bind to'.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:64-113 (esp. :82-85); RaftElection.cs:52-55 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The decision key is (domain_id, decision_id) — a caller-supplied opaque string pair. Nothing in the shipped code parses, validates, or interprets DecisionId or Proposal. A roster epoch COULD therefore be smuggled into a decision_id string, but no shipped code would enforce, order, or bind it — the log would treat 'roster/epoch-7' as an arbitrary label.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:27,67-69 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "There IS a shipped binding surface from a subsystem to an elected decision: KV PublishOnceAsync(key, payload, domain) routes through the registered election domain and refuses with KvOutcome.ElectionRequired when no domain is registered; ordinary commutative Puts are unaffected. This is exercised end-to-end in the battery.",
+      "source_citation": "Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:150-167 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "THE TRUST ANCHOR IS GROW-ONLY: IPeerSetTrustAnchor exposes exactly four members — TrustedKeys (get), TryPublishRootKey, TryAddPeerKey, IsTrusted. There is NO remove, revoke, replace, clear, expire, or version operation on the interface OR on the PeerSetTrustAnchor class. Grep of Kv/Capabilities/ for {TryRemove, Revoke, Unpublish, Delete, Clear, Reset} returns zero hits. Once a key is added it is trusted for the object's lifetime. PERMANENT EXCLUSION OF A NODE IS NOT EXPRESSIBLE at the shipped trust anchor.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:14-31 (interface), :34-83 (class) at pin 02bcc20",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The trust anchor is IN-MEMORY ONLY — a `List<byte[]> _keys` behind a lock, with no store seam, no constructor-injected persistence, and no load/save path anywhere in the class. Unlike the election decision log (which has IElectionDecisionStore + a PGlite backend), there is no IPeerSetTrustAnchorStore in Kv/Capabilities/. The 'publish-once root that can never be replaced' therefore holds only within one process lifetime; a restart yields an empty, fail-closed anchor that must be re-populated by whatever code calls TryPublishRootKey.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:36-38 at pin 02bcc20; contrast Kv/Election/IElectionDecisionStore.cs:13-27",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "'HIGHER AUTHORITY' IS NOT EXPRESSIBLE at the trust anchor. TryAddPeerKey(ReadOnlySpan<byte> publicKey) takes ONLY a public key — no signature, no grant, no proof that the root (or anyone) authorized the addition. The only gate is `if (!_rootPublished) return false`. Any caller holding the anchor reference can add any key. The root's 'publish-once' privilege is solely that slot 0 cannot be overwritten; it confers no veto or signing authority over subsequent additions.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:57-68 at pin 02bcc20",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The 'root first' ordering of TrustedKeys is DECORATIVE for authorization: IsTrusted ORs a FixedTimeEquals over every slot with no positional weighting, and the only other shipped consumer (PbftElection) reads only .Count. No shipped code in my sources treats slot 0 differently from slot k during verification. The doc comment calls the first slot 'the publish-once ROOT key (element 9's degenerate single-decree)' — that is a DOC assertion about intent; the code gives the root no superior verification standing.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:6-13 (doc) vs :70-82 (IsTrusted code); PbftElection.cs:48 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Every anchored key is a FULL SELF-MINTING AUTHORITY: KvCaveats.MintGrant(IDeviceSealKey key, resource, audience, identity, exp, verbs, tbl, kpfx) seals a grant with the holder's OWN key and arbitrary caveat values, and PeerSetAmuletVerifier accepts any grant whose embedded key IsTrusted. There is no attenuation-from-root, no delegation chain, and no check that a peer's self-chosen resource/audience/scope was ever granted to it. Combined with the absence of removal, a compromised anchored key can mint unlimited fresh grants indefinitely within the process lifetime — expiry cannot contain it because the holder simply re-mints.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/KvCaveats.cs:82-96; PeerSetTrustAnchor.cs:95-121 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "SAFE REINTEGRATION of a returning node has no shipped surface in my sources: TryAddPeerKey is idempotent and unconditional (re-adding an already-present key returns true with no state change, no epoch bump, no history), and the election objects have no rejoin/catch-up/fence path. Reintegration is indistinguishable from initial admission — there is nothing to make it 'safe' at this layer.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:57-68; Kv/Election/ElectionDomain.cs:176-182 at pin 02bcc20",
+      "confidence": 0.87,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "GENESIS CANNOT BE EXPRESSED with the shipped seal shape: the verifier reads exactly ONE PubKeyHex and ONE SignatureHex from a Seal and verifies a single Ed25519 signature over the canonical-CBOR payload. A genesis manifest 'signed by all N founders' requires N signatures over one document; the shipped Seal/verifier surface is single-signer, with no multi-signature aggregation, threshold-signature, or signature-list shape anywhere in Kv/Capabilities/.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/PeerSetTrustAnchor.cs:95-121 (esp. :100-101,112-114) at pin 02bcc20",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "No genesis_hash, run_id, or run nonce exists in the shipped decision surface: DecisionRecord has no nonce field, Term is an in-process int64 counter raised only by AdvanceTerm() and Math.Max(_term, log.HighestTerm(domain)), and there is no freshness value derived from or bound to any founding document. A non-circular genesis_hash->run_id binding has NO shipped carrier in my sources.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:30; RaftElection.cs:38,59-67,81 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The election decision log is HARD-CEILINGED at 100,000 decisions per domain (constructor default maxDecisionsPerDomain), returning KvOutcome.StorageCeilingReached at the ceiling. No archive/prune/compact API exists in Kv/Election/ — the comment says 'archive is an explicit operator act (FR-008)' but ships no operator surface. A very-high-cycle-count design that consumes one decision per epoch/batch hits an absorbing refusal state at 100k epochs per domain with no shipped exit.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:49,86-88 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The ceiling is enforced against ONE INSTANCE'S LOADED VIEW, and the code's own comment bands the residual: 'N live logs over one store can jointly overshoot by at most N-1 decisions before their next reload'. Additionally the in-memory cache retains every loaded decision for the process lifetime (Dictionary keyed (Term, DecisionId) per domain), so a long-running node's election RAM grows monotonically toward the ceiling.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:41-46 (comment), :58,86-88,140-147 (code) at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "COULD NOT VERIFY (load-bearing): the single-winner-across-terms guarantee of the PGlite store rests on a claimed unique index. The comment states 'The DURABLE arbiter is the kv_election_decision_single_winner_idx unique index on (domain_id, decision_id) ... contradictory durable rows are impossible-by-construction'. The CODE issues a bare `INSERT ... ON CONFLICT DO NOTHING` naming NO constraint, and the index is defined in KvSubstrateSchema.Ddl (Kv/Store/), which is OUTSIDE my slice. If that index covers only (domain_id, term, decision_id), the constructed counterexample stands: actor A commits (term 5, winner a) and returns Decided; actor B concurrently commits (term 3, winner b); SelectWinnerAsync's ORDER BY term LIMIT 1 then returns b to every later reader, retroactively contradicting A's Decided result. I could not read the DDL to rule this out.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:61-67 (comment), :71-81 (bare ON CONFLICT), :99-102 (ORDER BY term LIMIT 1) at pin 02bcc20",
+      "confidence": 0.72,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (cannot be answered from my slice): does the unique index kv_election_decision_single_winner_idx on (domain_id, decision_id) actually exist in KvSubstrateSchema.Ddl at pin 02bcc20? The whole cross-term single-winner property — and therefore any 'one elected decision per epoch that other subsystems bind to' built on it — depends on it. Naming what I could not see: Olamnit.Shared/Kv/Store/KvSubstrateSchema.cs (or wherever Ddl lives).",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/PgliteElectionDecisionStore.cs:64-66,119 at pin 02bcc20 (reference to KvSubstrateSchema.Ddl, file not in my slice)",
+      "confidence": 0.8,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The two store implementations enforce single-winner-across-terms by DIFFERENT mechanisms, so 'store-swap parity' (asserted in the IElectionDecisionStore doc comment as 'identical observable behaviour') is not established by construction: InMemoryElectionDecisionStore keys its dictionary by (DomainId, Term, DecisionId) and enforces the across-terms rule with an explicit application-code LINQ scan, whereas PgliteElectionDecisionStore relies on a SELECT-then-INSERT-ON-CONFLICT plus an unverified DB constraint. Under true concurrency these are different races.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/InMemoryElectionDecisionStore.cs:14,26-35 vs PgliteElectionDecisionStore.cs:68-87; IElectionDecisionStore.cs:9-12 (doc) at pin 02bcc20",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "THREE of the seven declared ElectionOutcomeKind values are DECLARED BUT NEVER PRODUCED by either shipped election: grepping Kv/Election/ for {TermSuperseded, PermissionDenied, DomainUnknown} finds them ONLY at their enum declaration (ElectionDomain.cs:14,16,17) and at no return site in RaftElection.cs or PbftElection.cs. The 'closed outcome set' is therefore wider than the shipped behaviour; in particular no shipped election ever returns PermissionDenied.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:9-18 vs RaftElection.cs:30-78 and PbftElection.cs:38-91 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "THE ELECTION IS NOT CAPABILITY-GATED in my sources. DecisionRequest carries a `string Principal`, but neither RaftElection.DecideAsync nor PbftElection.DecideAsync ever reads it — both pass only (domain.Id, term, request.DecisionId, request.Proposal, protocol) to the log. No KvAuthBoundary/Authorize call, no grant, and no MacaroonFp appears anywhere in Kv/Election/. Whatever authorization exists for deciding must live outside my slice (the keyspace open path), which I could not read.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:27; RaftElection.cs:44; PbftElection.cs:58 at pin 02bcc20",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Where a decision is verifiably durable IS shipped and honest: DecideAsync persists BEFORE caching, a persist refusal returns a closed outcome with nothing cached, an unloadable log refuses LOUDLY rather than confirming a false term 0, and restart rehydrates the winner + original term. These are code-verified and test-verified across both the in-memory and PGlite backends.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ElectionDomain.cs:90-110; RaftElection.cs:69-78; Olamnit/Olamnit.Shared.Tests/Kv/DurableStateBatteryTests.cs:62-141 at pin 02bcc20",
+      "confidence": 0.92,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "Byzantine misbehaviour is DETECTED but never EXCLUDES anyone: the merge-time equivocation guard returns a closed KvOutcome.EquivocationDetected for an op re-using a committed dot with different canonical bytes, and the first-committed variant stays. The guard operates per-op at the WAL; nothing in it touches membership, the trust anchor, or any roster. Detection exists; exclusion has no shipped consumer of that detection in my sources.",
+      "source_citation": "Olamnit/Olamnit.Shared.Tests/Kv/EquivocationGuardTests.cs:9-17,58-60 at pin 02bcc20",
+      "confidence": 0.82,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "The KvCaveats expiry granularity is ONE DAY: Build emits `exp={exp:yyyy-MM-dd}` from a DateOnly, and KvAuthBoundary evaluates it at `now ?? DateOnly.FromDateTime(DateTime.UtcNow)`. A 'time-limited, segment-scoped fallback' shorter than a calendar day cannot be expressed through the shipped KvCaveats/KvAuthBoundary mint+enforce path. (The separate MacaroonV2Caveat.TimeBefore in the same directory carries a ulong expiry with strict now<expiry, i.e. finer granularity — two different time surfaces coexist in Kv/Capabilities/ at this pin.)",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/KvCaveats.cs:62-76 (esp. :67); KvAuthBoundary.cs:70; MacaroonV2Verifier.cs:191-197 at pin 02bcc20",
+      "confidence": 0.88,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (cannot be answered from my slice): who constructs the RaftElection/PbftElection instances and calls RegisterElectionDomain in production, and can a domain be RE-registered with a different membership at runtime? The only registration I can see is a test call (`service.RegisterElectionDomain(new RaftElection(...))`). Whether membership can be swapped live — the closest shipped thing to a roster change — depends on KvKeyspaceService/KvSubstrate, which are outside my slice.",
+      "source_citation": "Olamnit/Olamnit.Shared.Tests/Kv/ElectionBatteryTests.cs:158-160 at pin 02bcc20 (KvKeyspaceService not in my slice)",
+      "confidence": 0.78,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    },
+    {
+      "claim": "OPEN QUESTION (cannot be answered from my slice): is there any roster/membership/revocation surface elsewhere in the repo — e.g. under Kv/Replication/ (CaveatAwareDeltaFilter, per-peer grant-filtered admission), Kv/Locate/ (Kademlia peer admission), or Yngenios/Seal/ — that my election+capabilities slice would not see? My absence findings above are scoped strictly to Kv/Election/ and Kv/Capabilities/ with the stated grep vocabulary. In particular, a mechanism named neither 'roster' nor 'exclude' (e.g. peer admission filtering) would not have matched my vocabulary.",
+      "source_citation": "scope statement over Olamnit/Olamnit/Olamnit.Shared/Kv/Election/ + Kv/Capabilities/ at pin 02bcc20",
+      "confidence": 0.75,
+      "tag": "completeness",
+      "builder_id": "builder-1",
+      "slice_id": "slice-election-roster-exclusion",
+      "negates": null
+    }
+  ]
+}
