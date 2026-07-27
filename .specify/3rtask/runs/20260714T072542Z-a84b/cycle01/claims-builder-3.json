@@ -1,0 +1,220 @@
+{
+  "claims": [
+    {
+      "claim": "The current link seam models a link END as a record-of-functions vtable Endpoint(id, send, recv, close, faults), NOT a stdio triple; send is fn(BitArray)->Result(Nil,LinkFaultSignal), recv is fn()->Result(Option(BitArray),LinkFaultSignal), close is fn()->Nil, and faults is a gleam_erlang process.Subject(LinkFaultSignal). This is the natural attach point for a (role,channel-identity) registry: each logical channel is one Endpoint value.",
+      "source_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:39-47",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "The seam is deliberately BILATERAL: 'the seam exposes exactly two logical ends; a broker is a transport relay UNDER one endpoint pair, never a logical hub' (FR-005). A (role,channel) registry that fans one physical carrier out to N logical channels must therefore live ABOVE the endpoint pair, not by turning an endpoint into a hub.",
+      "source_citation": "glp_gleam/src/glp/link/seam/transport.gleam:14-16",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "LinkId is a stable, never-reused identity LinkId(scheme:LinkScheme, endpoint:LinkAddress, nonce:LinkNonce) whose record value-equality is the idempotency-at-identity basis (FR-007): re-setup with the same LinkId returns the already-established link. It is a per-CONNECTION identity, not a per-logical-channel-role tag.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_id.gleam:24-26",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "LinkNonce keeps NonceInt and NonceStr distinct on purpose ('an integer 5 is NOT the string 5') so equality matches the GLP term exactly; a channel-tag namespace layered on top must preserve this int/string distinction or it will alias two distinct logical channels.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_id.gleam:6-10,16-19",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RESOLUTION Q10(a): channel identity should be a SEPARATE lightweight role+index/channel-tag namespace ABOVE the transports, not a reuse of LinkId. LinkId already encodes scheme+endpoint+nonce for one physical bilateral link (link_id.gleam:24-26); the link-primitives contract explicitly defers full logical channel/writer-reader distribution ('glink') to a LATER higher-level layer built ON the base, dependency direction base->glink never the reverse.",
+      "source_citation": "specs/025-multi-protocol-link-layer/contracts/link-primitives.md §5 (line 5)",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RESOLUTION Q10(b): the stderr-equivalent is the FAULT/MONITOR stream, not a distinct diagnostic data channel. link_monitor/2 returns a per-link Faults monitor stream that is 'Independently observable from the data path (FR-008): reading Faults does not touch In/Out, and vice versa' — the third distinguished channel role IS the monitor stream, carried as ordinary bound ground terms (ok/tempFail/permFail/closed), never a 4th unification verdict (FR-043).",
+      "source_citation": "specs/025-multi-protocol-link-layer/contracts/link-primitives.md §2.7 (lines 233-263)",
+      "confidence": 0.75,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "The seam already carries a fault channel out-of-band on Endpoint.faults:Subject and a coarse LinkFaultKind lattice {Closed,Transient,Permanent}; the GLP reliability sublayer refines these into ok/tempFail/permFail/closed ground terms. This confirms the diagnostic/stderr role maps onto the existing fault/monitor stream shape, distinct from send/recv data.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_fault.gleam:14-33 + endpoint.gleam:44-46",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RESOLUTION Q10(c): logical channel identity being first-class is satisfied by EITHER physical-multiplexing choice because the seam is term-agnostic — it 'carries the byte-parity payload blob as an opaque frame and knows nothing about terms'. Distinct-carriers = one Endpoint per (role,channel); tagged-on-one-carrier = one Endpoint whose opaque frames carry a channel-tag prefix demuxed above the seam. Neither leaks into the transport leaf, so parity is preserved either way.",
+      "source_citation": "glp_gleam/src/glp/link/seam/transport.gleam:12-13 + endpoint.gleam:5-8",
+      "confidence": 0.75,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "The tagged-on-one-carrier option is directly supported by the frame contract: send delivers 'exactly one self-delimiting frame' in submission order (FR-018) and recv returns one complete frame; a channel-tag can ride inside the opaque payload with no transport change, since FrameCodec/038-TLV sits ABOVE the endpoint (T046) and the endpoint is byte-agnostic.",
+      "source_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:24-33 + link-parity.md §Wire (lines 10-13)",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q11 dependency set: Phase-A runtime deps are exactly gleam_stdlib (>=0.34,<2.0) and gleam_erlang (>=0.34,<2.0); dev-dep gleeunit. No other runtime deps.",
+      "source_citation": "glp_gleam/gleam.toml:11-16",
+      "confidence": 0.98,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q11 no-OTP policy CONFIRMED: 'The Gleam OTP actor package is intentionally NOT a dependency: its proc_lib use is outside AtomVM's BEAM/OTP subset, so the downstream port stays AtomVM-runnable by spawning the raw erlang way + gleam_erlang Subjects' — verified transitively absent per manifest.toml.",
+      "source_citation": "glp_gleam/gleam.toml:7-10",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q11 Phase-B primitives already demonstrated within the no-OTP subset: the loopback transport builds channel processes and a hub process using only gleam_erlang process.spawn / process.new_subject / process.receive(_forever) / process.send — the exact spawn-the-raw-erlang-way + Subject mailbox primitives Phase-B process-per-agent needs, WITHOUT gleam_otp.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:77-86,88-153,214-266",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q11 RISK: a Phase-B process-per-agent design that reaches for gleam_otp supervisors/actors/gen_server for lifecycle would VIOLATE the ratified no-OTP policy (proc_lib outside AtomVM subset); Phase B must stay on raw process.spawn + Subject (as loopback already does) to keep AtomVM-runnable.",
+      "source_citation": "glp_gleam/gleam.toml:7-10 + link-parity.md §Transports (line 26, loopback in-BEAM)",
+      "confidence": 0.75,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q12 mapping: global_send/send_to_net/send_to_ui are ground-relay outbound roles; each maps to a distinguished logical channel whose payload is appended (ground-gated) to that channel's Out stream. In the seam this is Endpoint.send(BitArray) on the Endpoint bound to that (role,channel); send_to_ui specifically corresponds to the ground-only transport discipline the base layer adopts ('_send_to_ui guards ground/1, never globalizes').",
+      "source_citation": "specs/025-multi-protocol-link-layer/contracts/link-primitives.md line 22 + endpoint.gleam:42",
+      "confidence": 0.65,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q12 ordering parity: byte/ordering parity vs the Dart oracle is asserted by (a) 038 TLV term codec being byte-for-byte identical against golden vectors corpus.hex, and (b) FrameCodec envelope parity (header/flags/sequence/CRC32 identical to Dart/C#) so any two runtimes interop. The channel demux must not perturb these bytes.",
+      "source_citation": "specs/050-full-gleam-combined/contracts/link-parity.md §Wire (lines 11-12)",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q12 per-link FIFO parity is guaranteed at the transport level: loopback exchanges frames over two ordered in-memory channels 'FIFO / in-order / exactly-once by construction (FR-018/020)', and its channel_loop hands a parked reader the frame straight over preserving submission order.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:8-11,100-119",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q12 TCP wire parity: each opaque frame is prefixed by a 4-byte BIG-ENDIAN length (<<len:int-size(32)-big, frame:bits>>) 'byte-identical to Dart/C#', so one send => one peer recv; a multiplexed channel-tag must sit INSIDE this length-prefixed opaque frame to keep the framing byte-identical to the Dart oracle.",
+      "source_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:10-13,156-157,168-186",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "Q12 cross-runtime assertion mechanism: parity is gated by 16 runs = 8 scenarios (pc_integers,pc_strings,pc_terms,link_send_wrapper,link_recv_chain,bidirectional,path_b_request_accept,monitor_close) x 2 directions, C#<->Gleam, all passing, across TCP (full 16/16), loopback (same-host pairs), QUIC-WS (WSL); a quiescence oracle (GAP-G6) decides completion before verdict comparison.",
+      "source_citation": "specs/050-full-gleam-combined/contracts/link-parity.md §Cross-runtime capstone (lines 32-36)",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (madGLP fidelity): the seam has NO cross-channel ordering guarantee — LinkOptions notes backpressure_window default 8 gives 'no head-of-line blocking ACROSS independent links', i.e. independent channels/links are intentionally unordered relative to each other. A Phase-B process-per-agent that races an index-0 serializer merge order across per-agent mailboxes could reorder relative to the single-process oracle, breaking parity, because the seam only promises PER-link FIFO, not cross-channel order.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_options.gleam:14-17 + endpoint.gleam:28-29",
+      "confidence": 0.7,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (physical-multiplexing leaking into logical identity): loopback derives LinkId nonce from a hub counter (NonceInt(n)) and TCP derives nonce from the PORT (NonceInt(port)) — physical/carrier facts. If a (role,channel) registry keys off LinkId, the logical channel identity would inherit carrier-specific nonces (port, hub counter), coupling logical identity to the physical multiplexing choice — the exact leak the DECIDED design forbids. A separate channel-tag namespace avoids this.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:227-228 + tcp.gleam:102,129",
+      "confidence": 0.75,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (loopback self-rendezvous): a single OS process 'cannot rendezvous with itself' on loopback — the first arrival BLOCKS in process.receive until the peer appears. A Phase-B process-per-agent topology on one BEAM node must pair distinct spawned processes for each channel or a channel setup deadlocks; hermetic tests explicitly spawn one side.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:19-24",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (fault-not-fail invariant must survive multiplexing): a fault NEVER becomes a unification verdict (FR-043) and a disconnect NEVER maps to a logical Fail (FR-044). If distinct logical channels are multiplexed onto ONE carrier, a single carrier fault would signal ALL multiplexed logical channels at once — the registry must fan the one LinkFaultSignal to every affected (role,channel) as data, without turning any into a logical failure.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_fault.gleam:6-9 + endpoint.gleam:44-46",
+      "confidence": 0.7,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (recv is single-reader per Endpoint): the loopback channel_loop parks exactly ONE pending reader ('the single reader'); tagged-on-one-carrier multiplexing therefore cannot have N logical channels each independently blocking on the same physical Endpoint.recv — a demux pump must own the single recv and route frames to per-channel mailboxes.",
+      "source_citation": "glp_gleam/src/glp/link/transports/loopback.gleam:62,136-137",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (scheme registry vs channel registry conflation): LinkScheme keys the TRANSPORT registry (T050) by scheme token (loopback|tcp|quic), a different namespace from a (role,channel) identity registry. Reusing the scheme-keyed selection path for channel identity would collide transport selection with logical channel demux — the channel registry is a distinct layer.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_scheme.gleam:8-13 + transport.gleam:49-53",
+      "confidence": 0.7,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (idempotency-at-identity vs channel setup): re-setup with the same LinkId returns the already-established link (FR-007). If two logical channels of the same role accidentally share a LinkId (e.g. both derive the same nonce), the second setup silently REUSES the first channel instead of creating a distinct one — the channel-tag namespace must guarantee uniqueness independent of LinkId nonce derivation.",
+      "source_citation": "glp_gleam/src/glp/link/seam/link_id.gleam:6-8",
+      "confidence": 0.7,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "The seam commits to synchronous Result + gleam_erlang Subject as a LANGUAGE-MAPPING choice (not a GLP-semantic deviation) because it is a HOST interface BELOW GLP; the frozen 025 semantics live ABOVE the seam in the primitives (T050). A (role,channel) registry therefore belongs in the primitives layer above, keeping the transport seam channel-agnostic.",
+      "source_citation": "glp_gleam/src/glp/link/seam/endpoint.gleam:9-15 + transport.gleam:7-10",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    },
+    {
+      "claim": "RISK (TCP one-link-per-listen MVP): the TCP leaf accepts exactly one client then closes the listener ('One link per listen (MVP): release the port for re-use'). Distinct-carriers multiplexing of many logical channels over TCP would need many ports/listens; this MVP constraint limits how many distinct physical carriers a single (role) can hold concurrently.",
+      "source_citation": "glp_gleam/src/glp/link/transports/tcp.gleam:90-91,71-77",
+      "confidence": 0.7,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "channel-mailbox-link-beam"
+    }
+  ]
+}

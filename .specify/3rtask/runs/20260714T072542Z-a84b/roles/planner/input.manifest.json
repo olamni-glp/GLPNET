@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "role_id": "planner",
+  "role_kind": "planner",
+  "cycle": 0,
+  "parts": [
+    {
+      "part": "subject_brief",
+      "sha256": "f1d551f7774cd068e630ddeab6136d416c3d29d538542f9900d46ee788ced80e"
+    },
+    {
+      "part": "own_slice",
+      "sha256": "123f529ef25d17e62fc7c5dca8429acb4e9e432db250134f5e52894ba1ba6579"
+    }
+  ],
+  "content_path": "D:\\BSTDEV\\research\\glp\\GLPNET\\.specify\\3rtask\\runs\\20260714T072542Z-a84b\\roles\\planner\\input.md",
+  "input_sha256": "56b7d3e8dc2d46e2e3daa0914bb5a94cd7d1d955efe20344b262d6e364ebf452"
+}

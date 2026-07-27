@@ -1,0 +1,774 @@
+{
+  "schema_version": 1,
+  "cycle": 1,
+  "critic_provider": "codex",
+  "recorded_by": "mvw@bancstreet.com",
+  "recorded_at": "2026-07-14T07:46:02Z",
+  "decisions": [
+    {
+      "claim_id": "a39c31d55239",
+      "decision": "CONFIRM",
+      "rationale": "This matches the v5.3 directionality needed for madGLP fidelity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "8e2de58713a3",
+      "decision": "CONFIRM",
+      "rationale": "This is the complementary Localize direction and preserves the sender/receiver link semantics.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "6d7ccdbccc28",
+      "decision": "CONFIRM",
+      "rationale": "The lifecycle statement is consistent with write-once entries and the permanent serializer exception.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "9031de213144",
+      "decision": "CONFIRM",
+      "rationale": "A single monotonic per-agent allocator is required to preserve global-name uniqueness.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "400cd704eb9f",
+      "decision": "CONFIRM",
+      "rationale": "Duplicate rejection for remote localize entries is a faithful enforcement of create-once semantics.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "856199fdd6fd",
+      "decision": "CONFIRM",
+      "rationale": "The two lookup modes follow directly from the two entry kinds.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "9f0154c60145",
+      "decision": "CONFIRM",
+      "rationale": "Idempotent removal with index-0 protection is compatible with the permanent serializer invariant.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "6240f2cf27a1",
+      "decision": "CONFIRM",
+      "rationale": "Boot-time one-shot initialization and later writer updates are required for serializer continuity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "38efc1cdec4a",
+      "decision": "CONFIRM",
+      "rationale": "The merge description preserves stream extension, permanent entry update, and per-sender FIFO only.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "726fa4307e77",
+      "decision": "CONFIRM",
+      "rationale": "Per-peer FIFO is the necessary ordering guarantee without imposing global ordering.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "c086eea992c9",
+      "decision": "CONFIRM",
+      "rationale": "The argument and mode checks are part of the observable builtin contract.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "990d6dbdc6c1",
+      "decision": "CONFIRM",
+      "rationale": "Deep dereference is required to avoid serializing stale nested local variable references.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "7976d71766ac",
+      "decision": "CONFIRM",
+      "rationale": "The index-0 serializer payload is intentionally different from normal global assignment payloads.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "ff24a4d5254b",
+      "decision": "CONFIRM",
+      "rationale": "Globalization and enqueue must occur in one Reduce transaction to preserve send atomicity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "9ac1343c052d",
+      "decision": "CONFIRM",
+      "rationale": "The `known/1` guarded `global_send/3` definition is the correct firing boundary for `_send`.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "f9c97682ab87",
+      "decision": "CONFIRM",
+      "rationale": "This accurately separates ordinary agent-local Reduce from the madGLP send/receive layer.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "18e02d1556c1",
+      "decision": "CONFIRM",
+      "rationale": "Send is unary at the agent state level and moves one queued message to transport.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "2045edde973a",
+      "decision": "CONFIRM",
+      "rationale": "The three Receive cases and serializer update exception are required for madGLP fidelity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "08c66edf0b1b",
+      "decision": "CONFIRM",
+      "rationale": "Forwarding must emerge from binding and `global_send`, not from a special Receive case.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "cab4f4f24f6e",
+      "decision": "CONFIRM",
+      "rationale": "This correctly states the outbound sequence and the cold-call versus established-link split.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "440c82d7f235",
+      "decision": "CONFIRM",
+      "rationale": "Cold calls should remain ordinary `global_send/3` to the serializer address.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "5b06d91d8785",
+      "decision": "CONFIRM",
+      "rationale": "If Dart encodes paired readers by address adjacency, the port must preserve or explicitly replace that invariant.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "bc34fa427c3c",
+      "decision": "CONFIRM",
+      "rationale": "Watching the writer bind event is necessary because that is when the paired reader becomes known.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "0df3715abfc7",
+      "decision": "CONFIRM",
+      "rationale": "The warning is consistent with the corrected v5.3 directionality.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "c59040cd3b73",
+      "decision": "ESCALATE",
+      "rationale": "Dart duplicate-delivery absorption is a beyond-spec reliability choice that must be explicitly accepted or rejected.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "b5442d6c66ba",
+      "decision": "ESCALATE",
+      "rationale": "Whether to mirror Dart's `bindAny` seam or keep the pure local-pair model is an unresolved implementation-fidelity decision.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "49497e5682c3",
+      "decision": "CONFIRM",
+      "rationale": "The stated yardstick matches madGLP correctness constraints and rejects any confluence requirement.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "277406f3bda5",
+      "decision": "CONFIRM",
+      "rationale": "Keeping `_w` and `_r` spelling and reservation preserves both source and wire fidelity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "3631971b9601",
+      "decision": "CONFIRM",
+      "rationale": "The initial active goal plus only the index-0 serializer entry is the correct c0 shape.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "0543f3689d77",
+      "decision": "CONFIRM",
+      "rationale": "UI output is local ground-only I/O and must not share the network globalization path.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "881ca83e11e3",
+      "decision": "CONFIRM",
+      "rationale": "The existing kernel outcome has no field for madGLP effect state.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "39d85ed07fcd",
+      "decision": "CONFIRM",
+      "rationale": "The described scheduler-to-runner reduction layering is internally consistent.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "c33d7820cd53",
+      "decision": "CONFIRM",
+      "rationale": "A missing procedure label falling to kernel dispatch is the natural builtin hook.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "b783f67b7a26",
+      "decision": "CONFIRM",
+      "rationale": "Heap-only dispatch cannot implement `_send` without additional state plumbing or a separate path.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "80a90b0ede3f",
+      "decision": "CONFIRM",
+      "rationale": "Leaving effectful kernels unregistered and failing loudly is consistent with the current pure engine boundary.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "f698df2b9ef6",
+      "decision": "CONFIRM",
+      "rationale": "If `_send` is not listed as a kernel, unresolved-kernel behavior follows.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "3684045d0c16",
+      "decision": "CONFIRM",
+      "rationale": "Immutable heap threading is compatible with adding immutable madGLP state threading.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "d2230c3da97b",
+      "decision": "CONFIRM",
+      "rationale": "Writer-cell suspensions are the Gleam analogue of Dart bind callbacks.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "38e8c592ae79",
+      "decision": "CONFIRM",
+      "rationale": "Scheduler reactivation already supplies the wake path needed after Receive bindings.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "dfd1625f9a91",
+      "decision": "CONFIRM",
+      "rationale": "The existing output channel shows non-heap reduction data can be threaded immutably.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "f857d570fd88",
+      "decision": "CONFIRM",
+      "rationale": "The suspension table is a plausible immutable structural precedent, though W_p will need different keys and entry values.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "7f676eedc73f",
+      "decision": "CONFIRM",
+      "rationale": "An immutable Engine can carry Send/Receive state as additional fields.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "54c9dfb03364",
+      "decision": "ESCALATE",
+      "rationale": "Choosing a parallel effectful path over widening `KernelOutcome` is the unresolved seam-shape decision.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "d8278ed8b761",
+      "decision": "CONFIRM",
+      "rationale": "Widening the kernel outcome would ripple through runner and scheduler destructuring.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "67233da10dab",
+      "decision": "ESCALATE",
+      "rationale": "A `MadEngine` wrapper shape is part of the unresolved effectful-dispatch architecture.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "db1c987bcce0",
+      "decision": "CONFIRM",
+      "rationale": "A black-box wrapper cannot affect dispatch state inside `runner.reduce`.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "be71ee664a51",
+      "decision": "CONFIRM",
+      "rationale": "Runner context or reduce inputs must expose madGLP state for `_send` to work.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "18e02d1556c1",
+      "decision": "CONFIRM",
+      "rationale": "Existing spawn request handling can schedule `global_send` goals without new identity machinery.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "eac13851e6cb",
+      "decision": "REFUTE",
+      "rationale": "A generic `GlobalVarId(agent,local)` lacks the `_w` versus `_r` kind required by madGLP global names and Dart-compatible serialization.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "b5cfb95d08dc",
+      "decision": "CONFIRM",
+      "rationale": "The term codec may carry term payload bytes, provided madGLP global-name kind encoding is handled separately.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "05750960996d",
+      "decision": "CONFIRM",
+      "rationale": "Existing remote-goal AST nodes should be reused rather than inventing new surface syntax.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "9a6b191ce125",
+      "decision": "REFUTE",
+      "rationale": "Globalize/localize are semantic traversals over terms and should not be implemented by relying on user-level `=..` surface goals.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "bd82566c64f8",
+      "decision": "CONFIRM",
+      "rationale": "Adding a new Term variant would be a language-model change, while sentinel structs avoid that authority issue.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "f2dc70e149df",
+      "decision": "CONFIRM",
+      "rationale": "A `_w` or `_r` sentinel struct matches existing runtime-only special-term precedent.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "1e3eb3e5224a",
+      "decision": "CONFIRM",
+      "rationale": "Outgoing messages need a new scheduler-visible path or parallel return value.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "e901a1b75e2e",
+      "decision": "CONFIRM",
+      "rationale": "The current engine accumulates output only, not M_p or an index counter.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "ed9741259302",
+      "decision": "CONFIRM",
+      "rationale": "If effect failures are non-fatal, mapping them to `KAbort` would be too coarse.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "92e98dda5db2",
+      "decision": "CONFIRM",
+      "rationale": "Generation-scoped wake dedup is suitable for Receive-triggered reactivation.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "03493896fba8",
+      "decision": "CONFIRM",
+      "rationale": "Receive can reuse `bind_writer` once W_p maps the global name to a local writer.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "3a2b4452a611",
+      "decision": "CONFIRM",
+      "rationale": "Endpoint values are the right seam-level handles for logical channel attachment.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "3d776845c2bd",
+      "decision": "CONFIRM",
+      "rationale": "Logical fanout belongs above a bilateral endpoint pair, not inside the endpoint abstraction.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "ef44cc9bd3b6",
+      "decision": "CONFIRM",
+      "rationale": "LinkId identifies a physical connection setup, not a logical madGLP channel.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "9a83a2de9690",
+      "decision": "CONFIRM",
+      "rationale": "Preserving nonce type distinctions avoids aliasing logically distinct identities.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "4c01a66c50ec",
+      "decision": "CONFIRM",
+      "rationale": "A separate role/channel namespace prevents physical LinkId details from becoming logical identity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "c9508bb4b98c",
+      "decision": "CONFIRM",
+      "rationale": "The monitor stream is the correct stderr-equivalent and must remain data, not a unification verdict.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "d98902e9cfac",
+      "decision": "CONFIRM",
+      "rationale": "Endpoint faults already provide the out-of-band diagnostic stream shape.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "1ea7705415b3",
+      "decision": "CONFIRM",
+      "rationale": "Both approved physical multiplexing choices preserve first-class logical channel identity if demux stays above the seam.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "0dd4ec0dc246",
+      "decision": "CONFIRM",
+      "rationale": "Opaque self-delimiting frames can carry channel tags without transport changes.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "a74a4b35dbd2",
+      "decision": "CONFIRM",
+      "rationale": "The dependency claim is plausible and consistent with the no-OTP design.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "7aa0e8ecbaa4",
+      "decision": "CONFIRM",
+      "rationale": "Avoiding gleam_otp is consistent with the stated AtomVM portability constraint.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "d719d24d27bf",
+      "decision": "CONFIRM",
+      "rationale": "Loopback demonstrates the needed raw process and Subject primitives without OTP.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "766f2145a2f2",
+      "decision": "CONFIRM",
+      "rationale": "Using OTP actors or supervisors would violate the stated no-OTP policy.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "6c2b68726adf",
+      "decision": "CONFIRM",
+      "rationale": "Outbound roles map cleanly to logical channels, with UI remaining ground-only and non-globalized.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "2895710d40f3",
+      "decision": "CONFIRM",
+      "rationale": "Channel demux must be layered so it does not disturb the established byte framing.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "427ea94ab6c4",
+      "decision": "CONFIRM",
+      "rationale": "A multiplex tag must live inside the length-prefixed opaque frame to preserve TCP framing parity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "730047f07eae",
+      "decision": "CONFIRM",
+      "rationale": "The parity-gating description is a plausible verification mechanism for the link layer.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "63c96440ca8a",
+      "decision": "CONFIRM",
+      "rationale": "The seam guarantees per-link FIFO only, so cross-channel ordering must not be assumed.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "3d776845c2bd",
+      "decision": "CONFIRM",
+      "rationale": "Physical LinkId nonce derivation must not be reused as logical channel identity.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "5386cc772883",
+      "decision": "CONFIRM",
+      "rationale": "Loopback setup requires paired processes and can deadlock if a single process tries to rendezvous with itself.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "202d8d18da0d",
+      "decision": "CONFIRM",
+      "rationale": "Carrier faults must fan out as monitor data without becoming logical Fail.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "953b5ecfcf74",
+      "decision": "CONFIRM",
+      "rationale": "Single-reader physical recv requires a demux owner for tagged multiplexing.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "2d2045b3ae81",
+      "decision": "CONFIRM",
+      "rationale": "Transport scheme selection and logical channel identity are distinct namespaces.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "61d35b027000",
+      "decision": "CONFIRM",
+      "rationale": "Channel uniqueness cannot rely on LinkId reuse semantics.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "0fcf751f955b",
+      "decision": "CONFIRM",
+      "rationale": "The channel registry belongs above the host transport seam.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    },
+    {
+      "claim_id": "aeceee06ea17",
+      "decision": "CONFIRM",
+      "rationale": "The one-link-per-listen TCP MVP constrains distinct-carrier designs that need many concurrent TCP links.",
+      "evidence_ref": "",
+      "critic_provider": "codex",
+      "cycle": 1,
+      "at": "2026-07-14T07:46:02Z"
+    }
+  ]
+}

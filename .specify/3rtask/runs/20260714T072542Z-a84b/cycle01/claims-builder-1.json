@@ -1,0 +1,268 @@
+{
+  "claims": [
+    {
+      "claim": "Globalize (spec §5.1) MUST preserve: for a writer Y — allocate next index i, replace Y with `_w(p,i)`, create entry (Y,q) at index i in W_p, and spawn NO goal (globalizer is the receiver, expects value back); for a reader Y? — allocate next index i, replace Y? with `_r(p,i)`, spawn `global_send(Y?, _r(p,i), q)`, and create NO entry (globalizer keeps writer, sends value forward). The Gleam port must reproduce this exact direction verbatim.",
+      "source_citation": "docs/ma/madGLP-spec.md §5.1 (lines 140-144)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Localize (spec §5.2) MUST preserve: for `_w(p,i)` — create fresh local pair (Y_q,Y_q?), replace with Y_q (writer), spawn `global_send(Y_q?, _w(p,i), p)`, create NO entry; for `_r(p,i)` — create fresh pair (Z_q,Z_q?), allocate next index k in W_q, add entry (Z_q,p,i), replace with Z_q? (reader), spawn NO goal. Gleam must reproduce this exact direction.",
+      "source_citation": "docs/ma/madGLP-spec.md §5.2 (lines 150-154)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "W_p lifecycle (spec §9.3, §13 Entry Lifecycle) MUST hold: an entry is created exactly once (by Globalize-writer OR Localize-reader, i.e. whenever the agent is the RECEIVER of a link) and removed exactly once (by Receive, when the assignment arrives and the writer is bound); an entry is NEVER modified between creation and removal. The serializer entry at index 0 is the only exception (updated, never removed).",
+      "source_citation": "docs/ma/madGLP-spec.md §9.3 (lines 291-293) + §13 (lines 642-643)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Index allocation MUST use a SINGLE per-agent counter shared across both Globalize and Localize, starting at 1 (index 0 reserved for the serializer), with indices NEVER reused even after entry removal (Index Uniqueness invariant §13). Dart implements this as `int _nextIndex = 1` incremented by both addGlobalizeEntry and allocateIndex/addLocalizeEntry.",
+      "source_citation": "docs/ma/madGLP-spec.md §3.2 (lines 71-73), §13 (line 646); glp_runtime/lib/multiagent/global_writers_table.dart:75",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "W_p create: Globalize-writer entry is created by addGlobalizeEntry(writerAddr, remoteAgent) which allocates the next index and stores GlobalizeEntry; Localize-reader entry is created by addLocalizeEntry(writerAddr, remoteAgent, remoteIndex) which throws ArgumentError on a duplicate (remoteAgent,remoteIndex) — enforcing the create-exactly-once invariant. Gleam port must preserve the duplicate-rejection guard.",
+      "source_citation": "glp_runtime/lib/multiagent/global_writers_table.dart:147-154 (addGlobalizeEntry), 164-179 (addLocalizeEntry)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "W_p lookup MUST be two-kinded: GlobalizeEntries are looked up by DIRECT index (`_w(p,i)` case), LocalizeEntries by SEARCH over (remoteAgent, remoteIndex) (`_r(p,i)` case). Dart: lookupByIndex(index) returns _globalizeEntries[index]; findByRemote(agent,index) linear-scans _localizeEntries. The two entry kinds are stored in separate structures (Map<int,GlobalizeEntry> vs List<LocalizeEntry>).",
+      "source_citation": "glp_runtime/lib/multiagent/global_writers_table.dart:185-201 (lookupByIndex, findByRemote), 85-89 (separate maps)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "W_p retire MUST be: removeGlobalizeEntry(index) deletes the index-keyed entry but is a NO-OP for index 0 (serializer permanent); removeLocalizeEntry(agent,index) removes the (agent,index)-matching entry. Both are idempotent (safe on non-existent). Gleam must keep index-0 retire as a guarded no-op.",
+      "source_citation": "glp_runtime/lib/multiagent/global_writers_table.dart:211-218 (removeGlobalizeEntry, index==0 guard), 225-229 (removeLocalizeEntry)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "The index-0 serializer entry MUST be initialized once at boot (mapping the local network-input writer N_p) and only ever UPDATED to a fresh writer, never removed. Dart: initializeSerializerEntry throws if re-initialized; updateSerializerWriter throws if not initialized; hasSerializerEntry/serializerWriterAddr expose state. Boot wires it via wp.initializeSerializerEntry(netInWriter).",
+      "source_citation": "glp_runtime/lib/multiagent/global_writers_table.dart:106-133; glp_runtime/lib/multiagent/isolate_manager.dart:288-290; glp_runtime/lib/multiagent/agent_runtime.dart:168-170",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "The index-0 serializer is a many-to-one MERGE: multiple agents send to `_w(q,0)` simultaneously; the writer is reused in the message tail `[T|_w(q,0)]`; each received message extends q's network-input stream by one cell. The order of messages from DIFFERENT senders is non-deterministic, while messages from the SAME sender preserve FIFO order (Remark: Serializer as Merge). Gleam must reproduce merge semantics = stream extension + permanent entry update.",
+      "source_citation": "docs/ma/madGLP-spec.md §4.1 (lines 109-120)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "The merge-ordering guarantee the transport MUST supply: messages between any pair of agents are delivered in FIFO order (Message Ordering invariant §13) — if p sends two messages to q, q receives them in send order. This is the only ordering the correctness argument relies on; it is per-pair, not global. Gleam channel/transport must guarantee per-peer FIFO.",
+      "source_citation": "docs/ma/madGLP-spec.md §13 (lines 648) + corpus 00 §13 (line 245-250)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "The `_send` kernel contract (`'_send'(T,G,Q)`, arity 3): INPUTS = T a term, G a struct `_w/2` or `_r/2` with a string agent arg and numeric index arg, Q an atom destination agent; PRECONDITION = runtime must be in madGLP mode (rt.madContext is a MadContext) else the kernel ABORTS; it delegates to ctx.send(termArg, isWriter, gnAgent, gnIndex, destAgent). Wrong arity / non-struct G / non-atom Q all abort. Gleam kernel must reproduce these argument checks.",
+      "source_citation": "glp_runtime/lib/runtime/body_kernels.dart:658-745",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RULE: `_send` MUST DEEP-dereference its term argument T before serialization — Dart uses _deepDeref (not _deref) because top-level-only deref leaves nested struct args as unresolved VarRefs, causing e.g. msg(bob,intro(alice,X)) to serialize as msg(VarRef,VarRef). A Gleam port that only shallow-resolves T will silently corrupt nested payloads.",
+      "source_citation": "glp_runtime/lib/runtime/body_kernels.dart:672-679 (comment + _deepDeref call)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "What crosses the kernel boundary and its W_p/M_p side effects: ctx.send() extracts the term's variables, runs globalize() (which ADDS GlobalizeEntries to W_p for writers and returns global_send spawns for readers), registers the spawned global_send goals, substitutes global names into the term, then ADDS one OutboundMessage to M_p. So a single `_send` reduction mutates W_p (new writer entries) and M_p (one queued message) atomically.",
+      "source_citation": "glp_runtime/lib/multiagent/mad_context.dart:535-599 (send method)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "`_send` payload format MUST branch on index: for a serializer address `_w(q,0)` the content is wrapped in a list cell `[T↑ | _w(q,0)]` (createSerializerPayload); for a normal `_w(p,i)`/`_r(p,i)` with i>0 the content is sent directly `G := T↑` (createGlobalSendPayload). Dart selects via `if (isWriter && gnIndex == 0)`. Gleam must reproduce the index-0 vs index>0 payload split.",
+      "source_citation": "docs/ma/madGLP-spec.md §11.5 (lines 441-455); glp_runtime/lib/multiagent/mad_context.dart:570-589",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "`_send` ordering relative to the Reduce transaction: Reduce does NOT directly generate outgoing messages; instead binding a writer makes its reader X? known, which triggers a watching global_send goal, whose `'_send'` reduction adds the message to M_p. Send Atomicity invariant: the globalization of the term value (which may spawn further global_send goals) AND the addition of the message to M_p occur ATOMICALLY within the same Reduce transaction. Gleam must not split globalize and M_p-enqueue across transactions.",
+      "source_citation": "docs/ma/madGLP-spec.md §8.1 Note (lines 249) + §13 Send Atomicity (line 644)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "global_send predicate definition MUST be preserved verbatim: `global_send(T,G,Q) :- known(T) | '_send'(T,G,Q).` — guard known(T) succeeds only when T is bound to a non-variable term; `'_send'` globalizes T and adds message (G := T↑, Q) to the outgoing set M_p. The builtin is invoked ONLY when the guard succeeds (reader arg bound).",
+      "source_citation": "docs/ma/madGLP-spec.md §4 (lines 85-95, 455); corpus 10 Def. C.5 (lines 122-124)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Reduce transaction (§8.1) MUST: on GLP reduction success (B,σ̂), apply σ̂ to bind writers and σ̂? to propagate to readers, move goals suspended on now-instantiated readers back to active, and set A'_p := (A_r·B·R)σ̂σ̂?. Case Suspend adds (A,W) to S_p when suspension set W≠∅; Case Fail adds A to F_p when W=∅. This is the unary agent-local reduction the Gleam engine already ports; the mad seam sits on top of it.",
+      "source_citation": "docs/ma/madGLP-spec.md §8.1 (lines 229-248); corpus 10 Def. C.16 (lines 137-140)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Send transaction (§8.2) MUST: when (m,q) ∈ M_p, remove it from M_p and place m in the communication channel to q, with destination q in the header and the assignment (global name + globalized term) in the body. Dart realizes Send as flushMessages() polling M_p per destination and invoking onMessageReady(dest,msg). All three transactions are unary (affect one agent).",
+      "source_citation": "docs/ma/madGLP-spec.md §8.2 (lines 253-257), §9.1 (lines 281-283); glp_runtime/lib/multiagent/mad_context.dart:97-115",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Receive transaction (§8.3) MUST dispatch on three cases: `_w(p,i):=T` with i>0 → find entry (X,q) at index i, localize T from q, bind X, reactivate, REMOVE entry; `_w(q,0):=[T|_w(q,0)]` (serializer) → find permanent entry (N_q,*), localize T, assign N_q:=[T_q↓|N'_q], UPDATE entry to fresh writer (NOT removed); `_r(p,i):=T` → search entry (X_q,p,i) by (p,i), localize T from p, bind X_q, reactivate, REMOVE entry. Dart routes these in handleMadAssignment via isWriter/index==0.",
+      "source_citation": "docs/ma/madGLP-spec.md §8.3 (lines 261-275); glp_runtime/lib/multiagent/mad_context.dart:239-447",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "global_send forwarding MUST be uniform: when an agent exports BOTH ends of a pair, the value flows Y_q → p's local pair (X,X?) → Z_q? via the SAME mechanism — no special forwarding logic in Receive. Receive simply binds the local writer and removes the entry; if that writer's reader X? is watched by a global_send goal (because it was also exported), that goal fires on a subsequent Reduce and forwards the value automatically. Gleam must NOT add ad-hoc forwarding; forwarding emerges from bind→global_send.",
+      "source_citation": "docs/ma/madGLP-spec.md §4 Forwarding (lines 97), §8.3 Automatic Forwarding (lines 275), §5.4 worked example (lines 164-186)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "On global_send, what LEAVES an agent (in order) is: (1) globalize the reader's now-known value T for destination Q — for each nested writer create entry (Y,Q) in W_p, for each nested reader spawn global_send(Y?,_r(p,k),Q); (2) exactly one message (G:=T↑, Q) enqueued to M_p; (3) later a Send moves it to the wire. For a cold-call the bytes are the list-wrapped `_w(Q,0):=[T↑|_w(Q,0)]`; for an established link the bytes are `G:=T↑` directly. Nested global names are baked with destination Q.",
+      "source_citation": "docs/ma/madGLP-spec.md §11.5 (lines 441-455), §12.2 (lines 492-500)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "send_to_net/1 MUST be preserved as `send_to_net([msg(Q,T)|In]) :- global_send(T?, _w(Q,0), Q?), send_to_net(In?).` plus a `send_to_net([]).` base clause — cold-calls reuse the same 3-arg global_send with the well-known serializer address `_w(Q,0)` as G. Gleam Phase-A must keep cold-calls unified with established links (differ only in target address).",
+      "source_citation": "docs/ma/madGLP-spec.md §12.2 (lines 481-500)",
+      "confidence": 1.0,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RISK (serializer tail encoding is an IMPLEMENTATION deviation the wire depends on): the spec says the serializer message reuses the actual writer `_w(q,0)` in the tail, but the Dart wire encodes the tail as a MARKER constant `ConstTerm('#serializer:agent:0')` and the receiver IGNORES the tail, allocating a fresh continuation writer itself. A Gleam port must byte-match this marker convention (or agree a new one on both ends) or serializer cold-calls will not decode.",
+      "source_citation": "glp_runtime/lib/multiagent/payload_serializer.dart:257-276 (_buildSerializerListCell); glp_runtime/lib/multiagent/mad_context.dart:276-285 (tail ignored)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RISK (writer/reader adjacency assumption): the Dart serializer encodes a writer's paired-reader id as `creatorLocalId + 1`, hard-assuming a writer cell and its paired reader occupy adjacent heap addresses. If the Gleam heap does not preserve the writer+1 = reader pairing convention, cross-agent assignment addressing (spec §5.3) silently breaks.",
+      "source_citation": "glp_runtime/lib/multiagent/payload_serializer.dart:443-451",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RISK (global_send fires on WRITER bind, not reader): despite the field being named readerAddr, GlobalSendSpawn.readerAddr is populated with the WRITER address and used as the heap.onBind key, because onBind is indexed by writer address and the goal must fire when the writer is bound (making the paired reader known). A Gleam port that literally watches the reader address will never fire global_send.",
+      "source_citation": "glp_runtime/lib/multiagent/mad_helpers.dart:205-213 (globalize reader spawn), 259-268 (localize _w spawn); glp_runtime/lib/multiagent/mad_context.dart:215-223 (registerGlobalSendSpawns onBind)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RISK (writer-globalize registers NO outgoing callback): per §5.1 a globalized writer creates entry (Y,q) and spawns nothing — agent p does NOT send anything for a `_w` entry, it only waits to RECEIVE. Dart explicitly omits onBind registration for globalize-writer entries. A Gleam port that installs a send-callback on globalized writers would double-send / invert direction.",
+      "source_citation": "glp_runtime/lib/multiagent/mad_context.dart:555-558 (comment: no onBind for _w entries)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "FIDELITY RISK (v5.3 direction is easy to invert): the v5.3 spec explicitly CORRECTED the Globalize/Localize gs-vs-entry placement — writer→entry at the globalizer (receiver gets writer, sends value back); reader→global_send at the globalizer (globalizer keeps writer, sends value forward). Prior versions had it swapped. The Gleam port must follow v5.3, not any earlier mental model, or dataflow reverses.",
+      "source_citation": "docs/ma/madGLP-spec.md §17 Document History v5.3 (line 693)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "BEYOND-SPEC (escalate for Phase-A scope): the Dart MadContext adds a duplicate-delivery dedup layer NOT in madGLP-spec.md — _deliveredWriterIndices / _deliveredReaderKeys, so a redelivered assignment whose W_p entry was already consumed is absorbed as a VERIFIED no-op (FR-021/SC-008) rather than throwing on the missing entry. Whether Phase-A Gleam must reproduce this reliability sublayer (vs. faithful-to-spec strict entry-required Receive) is a deviation decision to escalate, since faithful spec behavior would throw.",
+      "source_citation": "glp_runtime/lib/multiagent/mad_context.dart:41-48, 343-350, 399-410",
+      "confidence": 0.85,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "BEYOND-SPEC (escalate): the Dart Receive path routes all writer binding through a single bindAny seam (FR-035/SC-009) so an imported-reader target drains its suspensions while a local writer takes the plain bindVariable path. This local-pair-vs-imported-reader distinction is an implementation seam, not in the pure spec (which treats all variables as local pairs, §11.3). Gleam must decide whether to mirror bindAny or keep the spec's uniform-local-pair model.",
+      "source_citation": "glp_runtime/lib/multiagent/mad_context.dart:316-318, 374-376, 432-435; docs/ma/madGLP-spec.md §11.3 (lines 422-429)",
+      "confidence": 0.8,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "The correctness yardstick the Gleam port is measured against is Theorem 5.7 ('the implementation (madGLP,π) of maGLP is correct'), where correct = live ∧ complete (Def. 2.3), resting on persistence/monotonicity (Lemma 5.2 / 3.12) and disjoint-substitution commutativity from SRSW (Lemma 3.20). There is deliberately NO confluence theorem (agent-level deterministic, system-level async non-deterministic). Preserve-exactly implications: unary Reduce→Send→Receive decomposition, per-pair FIFO, and write-once/read-once (SRSW).",
+      "source_citation": "corpus 11 §3 (lines 111-147), corpus 10 §5 (lines 156-208)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Reserved system constants MUST be honored identically: `'_w(p,i)'` and `'_r(p,i)'` are global writer/reader names, `'_user'`/`'_net'` identify channels; underscore-prefixed constants are system-reserved and rejected in user mode (only `-mode(system).` files may use them). Gleam serialization uses functors `_w`/`_r` with (agent,index) args; the Dart deserializer recognizes exactly functor=='_w'/'_r' with 2 args. Gleam must keep the same functor spelling and reserved-name enforcement.",
+      "source_citation": "docs/ma/madGLP-spec.md §15 (lines 658-675); glp_runtime/lib/multiagent/mad_helpers.dart:308-350 (_w/_r functor substitution + extraction)",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "Initial configuration c0 MUST be: A_p = [agent(p, ch(_?,_), ch(_?,_))], S_p=F_p=M_p=∅, and W_p = {(N_p,*) at index 0} (serializer entry) — each agent boots with only its initial goal and the permanent index-0 serializer entry. Gleam boot must establish exactly the index-0 serializer entry before any goal runs; the Dart isolate/agent bootstrap does this immediately after enableMadGLP.",
+      "source_citation": "docs/ma/madGLP-spec.md §7 c0 (lines 217-221); glp_runtime/lib/multiagent/isolate_manager.dart:284-290",
+      "confidence": 0.95,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    },
+    {
+      "claim": "UI output is a DISTINCT local seam that MUST NOT be globalized: `send_to_ui([X|In]) :- ground(X?) | '_send_to_ui'(X?), send_to_ui(In?).` — the `ground(X?)` guard ensures no unbound variable crosses to Dart/Flutter, and `'_send_to_ui'` does NOT globalize, does NOT add to M_p, and creates no global links (purely isolate-local). This contrasts with network output (global_send, known(T) guard, globalization). Gleam must keep UI vs network output as two separate builtins with different guards.",
+      "source_citation": "docs/ma/madGLP-spec.md §12.4-12.6 (lines 511-559)",
+      "confidence": 0.9,
+      "tag": "feasibility",
+      "builder_id": "builder-1",
+      "slice_id": "madglp-semantics-dart-oracle"
+    }
+  ]
+}

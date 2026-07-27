@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "20260714T072542Z-a84b",
+  "feature_id": "050-full-gleam-combined",
+  "task_type": "plan",
+  "subject_ref": "madGLP->Gleam Phase-A port + distinguished-mailbox-channel I/O seam: design analysis, interfaces/contracts, and A0-A4 + Phase-B task schedule for feature 050 US4/T050 (anchors: docs/ma/madGLP-spec.md; specs/050-full-gleam-combined; memory 050-madglp-gleam-port-A-then-B; DECIDED: logical channel identity first-class, physical multiplexing either)",
+  "branch": "050-full-gleam-combined",
+  "verdict": "budget_stop",
+  "halted_at": null,
+  "cycles": 1,
+  "num_builders": 3,
+  "critic_provider": "codex",
+  "independence_warning": false,
+  "terminal_review": {
+    "mode": "skipped",
+    "reason": "terminal_review disabled by policy (--terminal-review off)",
+    "codexreview_run_id": null
+  },
+  "terminal_review_policy": "off",
+  "marathon_routed": false,
+  "budgets": {
+    "min_cycles": 2,
+    "max_cycles": 3,
+    "token_budget": 500000,
+    "max_seconds": 0,
+    "review_only": false,
+    "split": {
+      "planning": 20,
+      "validation": 20,
+      "curation": 15,
+      "scan": 25,
+      "eval": 10,
+      "final": 10
+    }
+  },
+  "warnings": [],
+  "curator_edit_distance": 0.9743,
+  "created_at": "",
+  "created_by": "mvw@bancstreet.com"
+}

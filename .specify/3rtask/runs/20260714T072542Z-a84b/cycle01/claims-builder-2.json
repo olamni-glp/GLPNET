@@ -1,0 +1,244 @@
+{
+  "claims": [
+    {
+      "claim": "Q5: The pure body-kernel outcome type is `KernelOutcome { KSuccess(heap, woken, output) | KAbort(detail) }` — two-valued: success carries the updated heap, reactivated GoalRefs, and captured output lines; abort carries only a String detail. It has NO channel for effectful state (W_p/M_p/index/messages).",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:59-62",
+      "confidence": 0.99,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q5: The drive loop is three-tiered: scheduler.run loops scheduler.step (one reduction per dequeued goal), scheduler.step calls runner.reduce, and runner.reduce delegates to run_loop which recursively steps one bytecode instruction (Advance/Jump/Stop) until Proceed/Halt/suspend/fail.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:247-290",
+      "confidence": 0.98,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q5: The EXACT hook point for an effectful madGLP dispatch (_send etc.) is the BODY Spawn label-miss branch: when program.label_pc misses, the runner strips the /arity suffix and calls kernels.dispatch(ctx.heap, proc_name, arity, args). A _send builtin would be dispatched here.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:1860-1873",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q5: kernels.dispatch is currently passed ONLY the heap (`dispatch(heap, name, arity, args)`) — it has no access to W_p/M_p/index/agent-state, so an effectful _send cannot be implemented there without changing the dispatch signature or routing effectful builtins on a parallel path.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:101-106",
+      "confidence": 0.96,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q5: The engine deliberately leaves `_now`/`_send` UNREGISTERED as kernels because they need wall-clock/IO the standalone engine lacks; a BODY Spawn to an unregistered kernel currently surfaces as a loud runner error (Malformed 'unresolved procedure/kernel'), never a guessed result.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:24-27",
+      "confidence": 0.98,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q5: kernels.is_kernel does NOT list `_send`; it enumerates only arithmetic/math/conversion/univ/mutual-ref/_output kernels, so is_kernel('_send',_) is False and a _send Spawn falls through to the unresolved-kernel error.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:65-97",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: Heap immutability is total — every mutating heap op returns a NEW Heap value threaded through; bind_writer returns `Result(#(Heap, List(GoalRef)), HeapError)`, so bindings produce a fresh heap plus an activation list rather than mutating cells in place.",
+      "source_citation": "glp_gleam/src/glp/runtime/heap.gleam:227-239",
+      "confidence": 0.99,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: Dart's onBind callback is replaced by armed suspensions stored ON the WriterCell (heap.suspend_on_writer prepends a Suspension) plus heap.activate, which on bind_writer converts armed suspensions into GoalRefs; the cell is then replaced by a ValueCell so records never re-fire.",
+      "source_citation": "glp_gleam/src/glp/runtime/heap.gleam:313-332",
+      "confidence": 0.97,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: Woken-GoalRef reactivation is fully scheduler-driven: runner surfaces woken GoalRefs in ReduceOutcome.Reduced.woken, and scheduler.reactivate re-enqueues each woken goal (dedup per goal_id+generation) and clears it from the blocking table — this is the onBind replacement at the scheduler layer.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:363-378",
+      "confidence": 0.96,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: W_p/M_p/index can attach WITHOUT mutating the heap by threading them as additional immutable fields, exactly as the `output` line-capture channel already does: KSuccess.output → runner ctx.output → Reduced.output → Engine.output — a non-heap data channel already proven end-to-end.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:69-71",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: A ready-made immutable model for the global-writers table W_p already exists: suspension.SuspensionTable is an opaque `Dict(Int, Set(Waiter))` with immutable suspend/consume/waiters_on operations (every op returns a new table) — the madGLP W_p (writer-id-keyed) can follow this exact shape.",
+      "source_citation": "glp_gleam/src/glp/runtime/suspension.gleam:41-89",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: Send/Receive transactions attach without in-place heap mutation because the scheduler Engine is itself an immutable opaque value — every scheduler.step returns a new Engine; madGLP transaction state can ride alongside the existing heap/queue/goals/blocking/next_id/output fields.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:61-78",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: RECOMMEND a PARALLEL effectful path over widening KernelOutcome. Widening KernelOutcome would touch every kernel: all ~30 dispatch arms construct KSuccess(heap, woken, output) or bind_result/bind_term which return KSuccess with exactly three fields — adding a 4th (w_p/m_p/index) forces edits to every arm and every helper.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:285-304",
+      "confidence": 0.92,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: Widening also forces an engine-core change beyond kernels: runner's Spawn handler unpacks KSuccess(heap, woken, output) (runner.gleam:1874), ReduceOutcome.Reduced carries (heap, woken, spawned, output), and scheduler.step destructures Reduced(heap, woken, spawned, output) — a widened kernel outcome ripples through all three layers.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:75-80",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: Proposed parallel effectful outcome type: `pub type MadOutcome { MadEffect(heap: Heap, woken: List(GoalRef), output: List(String), w_p: WritersTable, m_p: List(Message), index: Int, spawned: List(SpawnReq)) }` — the arithmetic/pure kernels keep returning KernelOutcome unchanged; only effectful builtins return MadOutcome, dispatched on a separate seam.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:59-62",
+      "confidence": 0.8,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: Proposed MadEngine wrapper over scheduler.Engine: `pub type MadEngine { MadEngine(engine: Engine, w_p: WritersTable, m_p: List(Message), index: Int) }` with `pub fn step(me: MadEngine, budget: Int) -> #(MadEngine, StepOutcome, List(Message))` and `run` = step looped — mirroring scheduler.run/step (run loops step, consuming one fuel per reduction).",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:237-312",
+      "confidence": 0.78,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: The MadEngine wrapper CANNOT simply wrap scheduler.Engine as an opaque black box for _send, because the effectful state must be visible AT kernel-dispatch time inside runner.reduce (runner.gleam:1873), which is invoked deep inside scheduler.step — the opaque Engine boundary (scheduler.gleam:61) does not expose that inner call, so the effectful state has to be plumbed through runner.new_context / reduce.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:260-266",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: runner.new_context builds a fresh RunnerContext from only (heap, regs); to give _send access to W_p/M_p/index the context (or reduce signature) must be extended — the RunnerContext currently has no field for agent-global effectful state (its non-heap channels are woken, spawn_reqs, output).",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:170-216",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q7: The scheduler already mints identity for body-spawned goals (spawn_goal assigns next_id and enqueues) and re-enqueues woken goals — so a madGLP Reduce transaction's spawned goals map cleanly onto the existing SpawnReq→spawn_goal path without new scheduler machinery.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:344-357",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8: term_codec ALREADY provides the global-name wire form: GlobalVarId(agent_id: String, local_id: Int) with tag 0x07 varref and encode_global_var_id/decode_global_var_id — an agent-scoped (p, i) identity that A0-A1 _w(p,i)/_r(p,i) global names and message serialization can REUSE directly.",
+      "source_citation": "glp_gleam/src/glp/codec/term_codec.gleam:33-38",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8: term_codec's encode_term/decode_term handle a VarRef carrying a GlobalVarId (tag 0x07) across processes — the cross-process message body codec that Send/Receive need for terms is already present and byte-parity-tested; a `message` payload can be built from encode_term over its argument terms.",
+      "source_citation": "glp_gleam/src/glp/codec/term_codec.gleam:235-295",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8: The parser ALREADY produces the two madGLP goal shapes: SpawnGoal(InnerGoal, agent_id) from `Goal@AgentId` and RemoteGoal(target, inner) from `Var#Goal` / `Module#Goal` — so remote-send surface syntax is parsed today; A0-A1 must reuse these AST nodes rather than add new syntax.",
+      "source_citation": "glp_gleam/src/glp/parser/parser.gleam:984-1003",
+      "confidence": 0.88,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8: The parser produces `=..` (univ) goals (`Var =.. Expr`, `foo(a,b) =.. L`) as ast.Goal('=..', ...) — globalize/localize that decompose/compose a compound into functor+args can reuse this univ surface plus the existing runtime univ kernels _list_to_tuple/_tuple_to_list (kernels.gleam:88-89).",
+      "source_citation": "glp_gleam/src/glp/parser/parser.gleam:835-841",
+      "confidence": 0.82,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8 GAP (propose-first, Language Authority): there is NO `_w(p,i)`/`_r(p,i)` global-name literal syntax in the parser and no `message`/`globalize`/`localize` construct; terms.Term has only ConstTerm/StructTerm/VarRef(addr: Int), where VarRef is a LOCAL heap address with no global identity. Representing a global name in the engine's Term model needs either a sentinel StructTerm (as `$mutual_ref` does) or a NEW Term variant — the latter is a language extension requiring Gabi's approval.",
+      "source_citation": "glp_gleam/src/glp/runtime/terms.gleam:26-30",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q8: A sentinel-struct precedent for a runtime-only special term exists: kernels represents the mutual-reference cell as `StructTerm(\"$mutual_ref\", [ConstInt(addr)])` because Gleam's Term has no custom cell — a global-name `_w(p,i)` could analogously be `StructTerm(\"_w\",[p,i])` WITHOUT a language-level Term change, keeping A0 inside existing authority.",
+      "source_citation": "glp_gleam/src/glp/engine/kernels.gleam:48-54",
+      "confidence": 0.83,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "COMPLETENESS RISK: The effectful outcome CANNOT currently carry messages up to the scheduler. StepReduced only reports (goal_id, procedure, woken, spawned) — there is no outbound-message field, so M_p emissions from a reduction have no path to surface at the scheduler step boundary without widening StepOutcome or a parallel step return.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:107-112",
+      "confidence": 0.93,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "COMPLETENESS RISK: The only non-heap data that reductions currently propagate to the Engine is `output` (captured print lines), threaded via list.append(engine.output, out) in scheduler.step; there is no analogous accumulator for outgoing messages M_p or for a global index counter, so both are ABSENT engine capabilities the madGLP port must add.",
+      "source_citation": "glp_gleam/src/glp/engine/scheduler.gleam:267-274",
+      "confidence": 0.9,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "COMPLETENESS RISK: A KAbort from a body kernel is currently treated as a fatal RunnerError (Malformed, stops the reduction) — if _send's failure modes (e.g. transport error) are non-fatal in madGLP, the existing KAbort→RunnerError mapping at the Spawn site is too strict and needs a distinct effectful-failure outcome, not a reuse of KAbort.",
+      "source_citation": "glp_gleam/src/glp/engine/runner.gleam:1886-1891",
+      "confidence": 0.85,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6/Q7: The generation-scoped WakeKey/RunQueue dedup (enqueue_wake keyed by goal_id+generation) means a Receive that binds a writer will reactivate waiting goals at-most-once per generation — madGLP Receive can rely on the existing FR-005 reactivation machinery rather than inventing its own wake protocol.",
+      "source_citation": "glp_gleam/src/glp/engine/types.gleam:82-97",
+      "confidence": 0.86,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    },
+    {
+      "claim": "Q6: Binding a global writer to satisfy a Receive uses heap.bind_writer, which returns the woken GoalRefs to re-schedule — so localize/Receive delivering a value into a local writer integrates with reactivation for free, provided the global name maps to a local heap writer address at delivery time.",
+      "source_citation": "glp_gleam/src/glp/runtime/heap.gleam:227-234",
+      "confidence": 0.84,
+      "tag": "completeness",
+      "builder_id": "builder-2",
+      "slice_id": "gleam-engine-seam"
+    }
+  ]
+}
