@@ -18,6 +18,11 @@ Every decision below is stated as **Decision / Rationale / Alternatives consider
 CLARIFICATION remains open: the one still-open *escalation* is resolved here **as to how it is
 handled** (blocked-until-ruled), which is the spec-mandated disposition, not a blank.
 
+**Marathon run reconciliation (spec FR-013):** FR-013 names `mrun-8bda036d9e9b` as the tracking run —
+that is the **scoping** run (discharged 2026-07-20). Execution of this feature runs under a distinct
+**execution run `mrun-7e6cfbf0a9fb`** (opened 2026-07-27), same feature marathon lineage. FR-013's
+text is left unchanged (the scoping id is preserved for provenance).
+
 ---
 
 ## D1 — Parity governance (which runtime is normative on divergence)

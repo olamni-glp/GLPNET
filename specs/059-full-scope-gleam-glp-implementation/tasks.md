@@ -51,40 +51,40 @@ SPDX-License-Identifier: MIT
 
 **Goal**: US2 — every promised capability verified. **Gate**: see plan.md Wave→pipeline mapping.
 
-- [ ] T026 [P] [US2] `rule-bytecode-runner-unifyconstant-divergence` (rule-request, S, b2-c2-003) — acceptance per FINAL plan
-- [ ] T027 [P] [US2] `rule-codec-compiled-il-on-the-wire` (rule-request, S, b3-c2-024) — acceptance per FINAL plan
-- [ ] T028 [P] [US2] `rule-compiler-antlr-shared-grammar-spike` (rule-request, S, b3-c2-021) — acceptance per FINAL plan
-- [ ] T029 [P] [US6] `rule-embeddability-api-yngenios-wiring` (rule-request, S, b2-c2-022) **[RESOLVED 2026-07-20 — Option C full wiring, see spec Clarifications]** — acceptance per FINAL plan
-- [ ] T030 [P] [US4] `rule-mesh-ring-escalation` (rule-request, S, b2-c2-002) — acceptance per FINAL plan
-- [ ] T031 [P] [US3] `rule-multiagent-runtime-escalation` (rule-request, S, b2-c2-001) — acceptance per FINAL plan
-- [ ] T032 [P] [US2] `rule-open-items-cycle2-residual` (rule-request, S, b2-c2-023) — acceptance per FINAL plan
-- [ ] T033 [P] [US2] `rule-open-items-merge-candidates` (rule-request, S, b2-c2-024) — acceptance per FINAL plan
-- [ ] T034 [P] [US2] `rule-open-items-unswept-areas` (rule-request, S, b2-c2-025) — acceptance per FINAL plan
-- [ ] T035 [P] [US2] `rule-process-engine-instances-scaling-research` (rule-request, S, b3-c2-023) — acceptance per FINAL plan
+- [x] T026 [P] [US2] `rule-bytecode-runner-unifyconstant-divergence` (rule-request, S, b2-c2-003) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T027 [P] [US2] `rule-codec-compiled-il-on-the-wire` (rule-request, S, b3-c2-024) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T028 [P] [US2] `rule-compiler-antlr-shared-grammar-spike` (rule-request, S, b3-c2-021) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T029 [P] [US6] `rule-embeddability-api-yngenios-wiring` (rule-request, S, b2-c2-022) **[RESOLVED 2026-07-20 — Option C full wiring, see spec Clarifications]** — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T030 [P] [US4] `rule-mesh-ring-escalation` (rule-request, S, b2-c2-002) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T031 [P] [US3] `rule-multiagent-runtime-escalation` (rule-request, S, b2-c2-001) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T032 [P] [US2] `rule-open-items-cycle2-residual` (rule-request, S, b2-c2-023) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T033 [P] [US2] `rule-open-items-merge-candidates` (rule-request, S, b2-c2-024) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T034 [P] [US2] `rule-open-items-unswept-areas` (rule-request, S, b2-c2-025) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T035 [P] [US2] `rule-process-engine-instances-scaling-research` (rule-request, S, b3-c2-023) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [ ] T036 [P] [US4] `rule-quic-sideprocess-relay` (rule-request, S, b1-c2-015) **[BLOCKED until ruled]** — acceptance per FINAL plan
-- [ ] T037 [P] [US4] `rule-quicws-mesh-full-mesh-native-quic` (rule-request, S, b3-c2-025) — acceptance per FINAL plan
-- [ ] T038 [P] [US4] `rule-transports-zmq-comm-base` (rule-request, S, b3-c2-022) — acceptance per FINAL plan
+- [x] T037 [P] [US4] `rule-quicws-mesh-full-mesh-native-quic` (rule-request, S, b3-c2-025) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
+- [x] T038 [P] [US4] `rule-transports-zmq-comm-base` (rule-request, S, b3-c2-022) — acceptance per FINAL plan ✓ RULED (docs/research/fullscope-gleam/phase2-verify/rulings.md)
 - [ ] T039 [P] [US2] `verify-acceptance-acceptance-sweep-and-polish` (verify, S, b3-c1-017) — acceptance per FINAL plan
-- [ ] T040 [P] [US2] `verify-bytecode-bytecode-instruction-set` (verify, M, b3-c1-005) — acceptance per FINAL plan
-- [ ] T041 [P] [US2] `verify-codec-compiled-il-on-the-wire` (verify, M, b3-c1-011) — acceptance per FINAL plan
-- [ ] T042 [P] [US2] `verify-compiler-antlr-shared-grammar-spike` (verify, M, b3-c1-004) — acceptance per FINAL plan
-- [ ] T043 [P] [US6] `verify-embed-embeddability-service-box` (verify, S, b3-c1-014) — acceptance per FINAL plan
-- [ ] T044 [P] [US5] `verify-engine-engine-composition-root` (verify, S, b3-c1-015) — acceptance per FINAL plan
-- [ ] T045 [P] [US5] `verify-febe-embedded-switch-role-framing` (verify, M, b3-c1-013) — acceptance per FINAL plan
-- [ ] T046 [P] [US2] `verify-guards-guard-defined` (verify, S, b3-c1-002) — acceptance per FINAL plan
-- [ ] T047 [P] [US2] `verify-langsurface-channel-convention` (verify, M, b3-c1-003) — acceptance per FINAL plan
-- [ ] T048 [P] [US4] `verify-link-inbound-pump` (verify, M, b3-c1-008) — acceptance per FINAL plan
+- [x] T040 [P] [US2] `verify-bytecode-bytecode-instruction-set` (verify, M, b3-c1-005) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-bytecode-bytecode-instruction-set.md)
+- [x] T041 [P] [US2] `verify-codec-compiled-il-on-the-wire` (verify, M, b3-c1-011) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-codec-compiled-il-on-the-wire.md)
+- [x] T042 [P] [US2] `verify-compiler-antlr-shared-grammar-spike` (verify, M, b3-c1-004) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-compiler-antlr-shared-grammar-spike.md)
+- [x] T043 [P] [US6] `verify-embed-embeddability-service-box` (verify, S, b3-c1-014) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-embed-embeddability-service-box.md)
+- [x] T044 [P] [US5] `verify-engine-engine-composition-root` (verify, S, b3-c1-015) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-engine-engine-composition-root.md)
+- [x] T045 [P] [US5] `verify-febe-embedded-switch-role-framing` (verify, M, b3-c1-013) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-febe-embedded-switch-role-framing.md)
+- [x] T046 [P] [US2] `verify-guards-guard-defined` (verify, S, b3-c1-002) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-guards-guard-defined.md)
+- [x] T047 [P] [US2] `verify-langsurface-channel-convention` (verify, M, b3-c1-003) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-langsurface-channel-convention.md)
+- [x] T048 [P] [US4] `verify-link-inbound-pump` (verify, M, b3-c1-008) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-link-inbound-pump.md)
 - [ ] T049 [P] [US2] `verify-module-system-scope-chain` (verify, S, b2-c2-021) — acceptance per FINAL plan
-- [ ] T050 [P] [US3] `verify-multiagent-multiagent-boot-loader` (verify, S, b3-c1-007) — acceptance per FINAL plan
+- [x] T050 [P] [US3] `verify-multiagent-multiagent-boot-loader` (verify, S, b3-c1-007) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-multiagent-multiagent-boot-loader.md)
 - [ ] T051 [P] [US2] `verify-parity-differential-harness` (verify, M, b3-c2-016) — acceptance per FINAL plan
 - [ ] T052 [P] [US2] `verify-platform-atomvm-compatibility-by-construction` (verify, S, b3-c1-018) — acceptance per FINAL plan
-- [ ] T053 [P] [US2] `verify-process-baseline-program-dossier` (verify, S, b3-c1-019) — acceptance per FINAL plan
+- [x] T053 [P] [US2] `verify-process-baseline-program-dossier` (verify, S, b3-c1-019) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-process-baseline-program-dossier.md)
 - [ ] T054 [P] [US2] `verify-proofs-proof-dist-deref-convergence` (verify, S, b3-c1-020) — acceptance per FINAL plan
-- [ ] T055 [P] [US4] `verify-quicws-link-completion-live-repl-bridge` (verify, M, b3-c1-009) — acceptance per FINAL plan
-- [ ] T056 [P] [US2] `verify-repl-repl-boot-command` (verify, S, b3-c1-006) — acceptance per FINAL plan
-- [ ] T057 [P] [US2] `verify-runtime-arithmetic-expression` (verify, M, b3-c1-001) — acceptance per FINAL plan
+- [x] T055 [P] [US4] `verify-quicws-link-completion-live-repl-bridge` (verify, M, b3-c1-009) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-quicws-link-completion-live-repl-bridge.md)
+- [x] T056 [P] [US2] `verify-repl-repl-boot-command` (verify, S, b3-c1-006) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-repl-repl-boot-command.md)
+- [x] T057 [P] [US2] `verify-runtime-arithmetic-expression` (verify, M, b3-c1-001) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-runtime-arithmetic-expression.md)
 - [ ] T058 [P] [US4] `verify-transports-multi-accept-transport-extension` (verify, M, b3-c1-010) — acceptance per FINAL plan
-- [ ] T059 [P] [US4] `verify-wireproto-crdt-convergence` (verify, M, b3-c1-012) — acceptance per FINAL plan
+- [x] T059 [P] [US4] `verify-wireproto-crdt-convergence` (verify, M, b3-c1-012) — acceptance per FINAL plan ✓ VERDICT COMMITTED (docs/research/fullscope-gleam/phase2-verify\verify-wireproto-crdt-convergence.md)
 
 ## Phase 4: Wave 3 — CLOSE (paired to ABSENT verdicts)
 
