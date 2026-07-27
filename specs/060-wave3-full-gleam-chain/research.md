@@ -55,6 +55,25 @@ Verified against `glp_gleam/src/` on 2026-07-27. "Exists" means the module is pr
 
 **Note on G9**: 059 recorded the malformed named-reference plays as failing on *both* runtimes. That is a shared defect, not a Gleam gap — under Principle II it must be reported and specified before being "fixed" on one side.
 
+## G1 design dossier — module dispatch is a subsystem port, not a loader patch (2026-07-27)
+
+Read against the Dart reference before starting T009–T011. The `Unimplemented distribute` surface
+is in `runner.gleam:391` (catch-all), but the machinery behind it spans four modules:
+
+| Dart reference | What it does | Gleam locus (to create) |
+|---|---|---|
+| `runtime/glp_activation.dart` `activateModule` | allocate channel var; store a **ModuleTerm** (compiled bytecode as a first-class heap term); spawn GLP-level `serve(Module, ChannelReader?)`; tag it an infrastructure goal; register `rt.glpChannels[name]` | scheduler state + a new `terms` variant |
+| `GlpChannelHandle.send` | bind stream writer to `[goal \| NewTail]`, advance writer, return wakes | small — mirrors `_stream_append` |
+| `body_kernels.dart:820` `activateKernel` (`_activate/2`) | kernel entry to activation | `engine/kernels.gleam` (currently unregistered) |
+| `runner.dart:3375-3479` `Distribute`/`Transmit` | build goal struct from arg slots; look up channel by import-index (static) or deref'd module var (dynamic); `channel.send`; enqueue wakes; hard error if module not activated | `engine/runner.gleam` two new opcode cases |
+| `serve/2` GLP infrastructure + `ModuleTerm` | the dispatch loop itself, reading goals off the channel and applying them **inside the target module's bytecode** | needs `ModuleTerm` in `runtime/terms.gleam` — blast radius: heap, unify, codec, output |
+
+**Consequences for the plan**: tasks.md places T009–T011 in `compiler/loader.gleam` — the wrong
+locus. The real work is runner+scheduler+kernels+terms, dominated by the `ModuleTerm` variant and
+the `serve/2` loop. The REPL suite's Sections F and L (CSSG modules, dynamic dispatch) are the
+reference oracle. Sequencing note: T012 (re-load replacement), T013 (lint), T014–T018a, and all of
+US2 (REPL commands) are independent of this dossier and can land first.
+
 ## Non-regression baseline
 
 - Gleam: **465 green** (recorded in 059 as the floor; raised from 463).
