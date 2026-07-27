@@ -105,7 +105,7 @@ SPDX-License-Identifier: MIT
 - [x] T072 [P] [US2] `close-guards-guard-defined` (close, M, b3-c1-027) — CLOSED 2026-07-27: guard-defined (guard_defs.gleam three-valued Guard-opcode; test_defined_guards.glp R=ok/R=not_channel agree Dart/C#/Gleam) + guard-purity (compile-time enforced; test_time_guard.glp negative agrees) both DELIVERED, clean; evidence phase3-close/close-guards-guard-defined.md
 - [ ] T073 [P] [US2] `close-langsurface-channel-convention` (close, M, b3-c1-028) — acceptance per FINAL plan
 - [x] T074 [P] [US4] `close-link-inbound-pump` (close, L, b3-c1-033) — CLOSED 2026-07-27: link_driver+link_pump (egress-as-goal, no heap onBind; step_link mirrors step_mad, pure run untouched); 6 link programs round-trip 2-proc real-TCP ≡ Dart oracle (harness 7/7 PASS), gleam 544/0; ConstString renderer-parity gap flagged for follow-up; evidence phase3-close/close-link-inbound-pump.md
-- [ ] T075 [P] [US4] `close-link-layer-fault-decoration` (close, S, b2-c2-009) — acceptance per FINAL plan
+- [x] T075 [P] [US4] `close-link-layer-fault-decoration` (close, S, b2-c2-009) — CLOSED 2026-07-27: fault-as-data decoration parity to C# LinkFaults — bounded-silence heuristic (tempFail/permFail), fencing→permFail (T077 fencing_registry wired), establishment-failure→permFail on monitor (not bare LinkAbort); gleam 587/0, harness 7/7 (mon.glp observes decoration); evidence phase3-close/close-link-layer-fault-decoration.md
 - [x] T076 [P] [US4] `close-link-layer-glp-primitives` (close, L, b2-c2-008) — CLOSED 2026-07-27: 8-module primitives layer (link_terms/transport_registry/handle/registry/runtime/egress/faults/kernels) faithful Dart port, +36 tests; shares acceptance with T074 (6 link programs round-trip, gleam 544/0); evidence phase3-close/close-link-inbound-pump.md
 - [x] T077 [P] [US4] `close-link-layer-sequence-dedup` (close, M, b2-c2-010) — CLOSED 2026-07-27: 9-module reliability sublayer (sequencer/inbound_ordering/frame_reassembler/send_window/fencing/cycle_guard/reclaimer/snapshot/frame_exception) faithful Dart port; ordering+reassembly on live pump path, +27 tests gleam 571/0, harness 7/7 (sr.glp passes); evidence phase3-close/close-link-layer-sequence-dedup.md
 - [ ] T078 [P] [US2] `close-module-system-runtime-rpc` (close, M, b2-c2-007) — acceptance per FINAL plan
@@ -120,7 +120,7 @@ SPDX-License-Identifier: MIT
 - [ ] T086 [P] [US4] `close-quicws-link-completion-live-repl-bridge` (close, L, b3-c2-034) — acceptance per FINAL plan
 - [ ] T087 [P] [US2] `close-repl-repl-boot-command` (close, M, b3-c1-031) — acceptance per FINAL plan
 - [ ] T088 [P] [US2] `close-runtime-arithmetic-expression` (close, L, b3-c2-026) — acceptance per FINAL plan
-- [ ] T089 [P] [US4] `close-transports-multi-accept-transport-extension` (close, L, b3-c2-035) — acceptance per FINAL plan
+- [x] T089 [P] [US4] `close-transports-multi-accept-transport-extension` (close, L, b3-c2-035) — CLOSED 2026-07-27: quiescence oracle (quiescence.gleam, GAP-G6, public API for T083/T066) + multi-accept capability (N distinct links, per-link reliability state); gleam 587/0, harness 7/7. 🔻RESIDUAL flagged (not silent-deferred): TCP single-persistent-socket accept-loop (re-listen has port-release window) needs FFI/seam, no acceptance program exercises it — engineer-directed follow-up; evidence phase3-close/close-transports-multi-accept-transport-extension.md
 - [ ] T090 [P] [US4] `close-wireproto-crdt-convergence` (close, L, b3-c1-037) — acceptance per FINAL plan
 
 ## Phase 5: Wave 4 — BUILD (FE/BE split + yngenios)

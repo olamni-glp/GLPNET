@@ -18,6 +18,7 @@
 
 import gleam/int
 import gleam/option.{Some}
+import glp/link/primitives/link_faults
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_registry
 import glp/link/primitives/link_runtime.{type LinkRuntime}
@@ -99,7 +100,18 @@ fn link_request(
             True -> LinkAbort("re-establishment of already-established LinkId (FR-007)")
             False ->
               case connect_and_handshake(runtime, id) {
-                Error(why) -> LinkAbort(why)
+                // FR-044 (T075): a failed path-B connect/handshake surfaces `permFail`
+                // on the monitor, not a Fail.
+                Error(why) ->
+                  decorate_establishment_failure(
+                    heap,
+                    runtime,
+                    id,
+                    in_writer,
+                    out_reader,
+                    faults_writer,
+                    why,
+                  )
                 Ok(ep) ->
                   wire(runtime, id, ep, in_writer, out_reader, faults_writer, heap)
               }
@@ -287,12 +299,60 @@ fn link_setup(
               )
             False ->
               case establish(runtime, id, role) {
-                Error(why) -> LinkAbort(why)
+                // FR-044 (T075): a failed rendezvous is NOT a logical Fail — surface a
+                // `permFail` on the establishment Faults monitor and mark the link
+                // closed; the data goal stays suspended on its unbound `In` head.
+                Error(why) ->
+                  decorate_establishment_failure(
+                    heap,
+                    runtime,
+                    id,
+                    in_writer,
+                    out_reader,
+                    faults_writer,
+                    why,
+                  )
                 Ok(ep) ->
                   wire(runtime, id, ep, in_writer, out_reader, faults_writer, heap)
               }
           }
       }
+  }
+}
+
+/// Register a faulted (endpoint-less, closed) handle and deliver a `permFail` on its
+/// establishment Faults monitor (FR-044, T075). The goal proceeds (the fault is data);
+/// a reader of the data `In` stream simply stays suspended (never a Fail).
+fn decorate_establishment_failure(
+  heap: Heap,
+  runtime: LinkRuntime,
+  id: LinkId,
+  in_writer: Int,
+  out_reader: Int,
+  faults_writer: Int,
+  reason: String,
+) -> LinkOutcome {
+  let handle =
+    link_handle.LinkHandle(
+      ..link_handle.new(id, link_options.default()),
+      in_writer: Some(in_writer),
+      out_reader: Some(out_reader),
+      faults_writer: Some(faults_writer),
+      closed: True,
+    )
+    |> link_handle.add_monitor_cursor(faults_writer)
+  let #(heap, _fresh_writer, fresh_reader) = heap.allocate_variable(heap)
+  let fault = link_faults.establishment_failure(id, reason)
+  case heap.bind_writer(heap, faults_writer, cons(fault, VarRef(fresh_reader))) {
+    Ok(#(heap, woken)) ->
+      case link_registry.put(runtime.links, id, handle) {
+        Ok(links) -> LinkEffect(heap, link_runtime.with_links(runtime, links), woken)
+        // Registry conflict is unreachable here (contains-checked above); still
+        // surface the fault rather than swallow it.
+        Error(_) -> LinkEffect(heap, runtime, woken)
+      }
+    Error(_) ->
+      LinkAbort("establishment failed and Faults writer unbindable: " <> reason)
   }
 }
 

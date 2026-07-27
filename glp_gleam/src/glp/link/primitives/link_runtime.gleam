@@ -17,6 +17,9 @@
 import gleam/dict.{type Dict}
 import glp/link/primitives/link_registry.{type LinkRegistry}
 import glp/link/primitives/transport_registry.{type TransportRegistry}
+import glp/link/reliability/fencing_registry.{
+  type EpochAllocator, type FencingRegistry,
+}
 import glp/link/seam/endpoint.{type Endpoint}
 import glp/link/seam/link_id.{type LinkId}
 
@@ -31,6 +34,11 @@ pub type LinkRuntime {
     /// `LinkId` in the request token (path-B: `_link_listen` populates,
     /// `_link_accept` drains).
     pending: Dict(LinkId, Endpoint),
+    /// Split-brain fencing state (FR-047, T075): the highest epoch admitted per
+    /// global name. A stale (lower-epoch) writer is fenced → `permFail`.
+    fencing: FencingRegistry,
+    /// Monotone source of per-establishment fencing epochs (FR-047, T075).
+    epochs: EpochAllocator,
   )
 }
 
@@ -40,6 +48,8 @@ pub fn new() -> LinkRuntime {
     transports: transport_registry.new(),
     links: link_registry.new(),
     pending: dict.new(),
+    fencing: fencing_registry.new(),
+    epochs: fencing_registry.new_allocator(),
   )
 }
 
@@ -74,4 +84,25 @@ pub fn take_pending(
     Ok(ep) -> Ok(#(LinkRuntime(..runtime, pending: dict.delete(runtime.pending, id)), ep))
     Error(Nil) -> Error(Nil)
   }
+}
+
+/// Draw the next per-establishment fencing epoch (FR-047, T075), advancing the
+/// allocator.
+pub fn next_epoch(runtime: LinkRuntime) -> #(LinkRuntime, Int) {
+  let #(epochs, epoch) = fencing_registry.next_epoch(runtime.epochs)
+  #(LinkRuntime(..runtime, epochs: epochs), epoch)
+}
+
+/// Consult the fencing registry for a writer carrying `epoch` binding `global_name`
+/// (FR-047, T075): `Admit` (highest epoch → may bind) or `Fenced` (a stale, lower
+/// epoch → the caller surfaces `permFail` via `link_faults.fence_fault`). Advances the
+/// registry's high-water on admit.
+pub fn check_fence(
+  runtime: LinkRuntime,
+  global_name: String,
+  epoch: Int,
+) -> #(LinkRuntime, fencing_registry.FenceVerdict) {
+  let #(fencing, verdict) =
+    fencing_registry.admit(runtime.fencing, global_name, epoch)
+  #(LinkRuntime(..runtime, fencing: fencing), verdict)
 }

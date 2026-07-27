@@ -369,6 +369,14 @@ pub fn blocking_reader_addrs(engine: Engine) -> List(Int) {
   blocking_readers(engine)
 }
 
+/// The number of RUNNABLE goals currently queued (goals ready to reduce, not
+/// suspended). Zero at quiescence — the "no runnable goals" half of the network-
+/// quiescence oracle (T089, consumed by T083/T066). The run queue holds only runnable
+/// activations; suspended goals live in `goals` but not the queue.
+pub fn runnable_count(engine: Engine) -> Int {
+  types.queue_length(engine.queue)
+}
+
 /// Perform ONE reduction: dequeue the next runnable goal, reduce it once, apply
 /// its effects (spawn / wake / suspend / drop), and report what happened. The
 /// shared core of `run` and the REPL single-step seam (T029 cap 3).

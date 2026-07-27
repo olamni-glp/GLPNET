@@ -132,3 +132,9 @@ pub fn is_empty(queue: RunQueue) -> Bool {
     _, _ -> False
   }
 }
+
+/// The number of runnable activations queued (front + back) — the "no runnable goals"
+/// input to the network-quiescence oracle (T089).
+pub fn queue_length(queue: RunQueue) -> Int {
+  list.length(queue.front) + list.length(queue.back)
+}

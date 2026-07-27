@@ -23,9 +23,13 @@
 //// faithful fault-as-data core (`link_terms`).
 
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import glp/link/primitives/link_handle.{type LinkHandle}
 import glp/link/primitives/link_terms
+import glp/link/reliability/fencing_registry.{type FenceVerdict, Admit, Fenced}
 import glp/link/seam/link_fault.{type LinkFaultSignal}
+import glp/link/seam/link_id.{type LinkId}
+import glp/link/seam/link_options.{type LinkOptions}
 import glp/runtime/terms.{type Term, VarRef, cons, nil}
 
 /// One monitor-cursor delivery plan: bind `cursor` (a writer address) to `value`
@@ -79,4 +83,72 @@ pub fn end_all(handle: LinkHandle) -> List(MonitorBind) {
   list.map(handle.monitor_cursors, fn(cursor) {
     MonitorBind(cursor: cursor, value: nil(), next_writer: cursor)
   })
+}
+
+// ── bounded-silence heuristic (FR-045, SC-010; T075) ──────────────────────────
+//
+// A link that has gone silent is DECIDED — never observed directly (FLP/two-generals):
+// after `temp_fail_after_ms` of silence the sublayer surfaces `tempFail` (a recoverable,
+// possibly-wrong give-up that may recover via idempotent reconnect-redelivery); after
+// `perm_fail_after_ms` it gives up with `permFail` (and runs distributed GC). These are
+// LIVENESS tuning knobs, not correctness bounds — the thresholds live in `LinkOptions`.
+// This is the PURE decision the (timed-recv) pump consults; the timer that measures the
+// elapsed silence is the liveness driver above it.
+
+/// The bounded-silence verdict for an elapsed silence.
+pub type SilenceVerdict {
+  /// Below the temp-fail threshold — no fault yet.
+  NoSilenceFault
+  /// Silence exceeded `temp_fail_after_ms` — a recoverable `tempFail`.
+  TempFailSilence
+  /// Silence exceeded `perm_fail_after_ms` — an unrecoverable `permFail` (→ GC).
+  PermFailSilence
+}
+
+/// Classify an elapsed silence (ms) against the link's thresholds (FR-045). The
+/// perm-fail threshold dominates (it is the later, harder give-up).
+pub fn classify_silence(elapsed_ms: Int, options: LinkOptions) -> SilenceVerdict {
+  case elapsed_ms >= options.perm_fail_after_ms {
+    True -> PermFailSilence
+    False ->
+      case elapsed_ms >= options.temp_fail_after_ms {
+        True -> TempFailSilence
+        False -> NoSilenceFault
+      }
+  }
+}
+
+/// The GLP monitor lattice term for a silence verdict, or `None` below the temp
+/// threshold (no fault to deliver). The reason names the bounded-silence cause so a
+/// reader can distinguish it from a peer-signalled fault.
+pub fn silence_fault(verdict: SilenceVerdict, id: LinkId) -> Option(Term) {
+  case verdict {
+    NoSilenceFault -> None
+    TempFailSilence ->
+      Some(link_terms.temp_fail(id, "bounded silence exceeded temp-fail threshold"))
+    PermFailSilence ->
+      Some(link_terms.perm_fail(id, "bounded silence exceeded perm-fail threshold"))
+  }
+}
+
+// ── fencing → permFail surfacing (FR-047, SC-011; T075) ────────────────────────
+
+/// The GLP monitor term for a fencing verdict, or `None` when the writer is admitted.
+/// A FENCED writer (a stale, lower-epoch writer after a newer takeover) surfaces
+/// `permFail` — never a silent overwrite, never an error verdict (FR-047).
+pub fn fence_fault(verdict: FenceVerdict, id: LinkId, global_name: String) -> Option(Term) {
+  case verdict {
+    Admit -> None
+    Fenced -> Some(link_terms.perm_fail(id, "fenced by newer epoch: " <> global_name))
+  }
+}
+
+// ── establishment-failure decoration (FR-044; T075) ───────────────────────────
+
+/// The GLP monitor term for a transport establishment failure — a `permFail`. FR-044:
+/// a failed rendezvous is a BOUND FAULT TERM on the monitor, never a logical Fail; the
+/// data goal simply stays suspended on its unbound `In` head. The `_link_setup`/path-B
+/// kernels deliver this on the establishment `Faults` stream instead of aborting.
+pub fn establishment_failure(id: LinkId, reason: String) -> Term {
+  link_terms.perm_fail(id, "transport establishment failed: " <> reason)
 }

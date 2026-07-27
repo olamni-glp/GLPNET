@@ -1,15 +1,20 @@
-//// Tests for glp/link/primitives/link_faults (T076) — fault-as-data delivery
-//// planning: signal→lattice term, fan-out to every monitor cursor, and end-all.
+//// Tests for glp/link/primitives/link_faults (T076/T075) — fault-as-data delivery
+//// planning (signal→lattice, fan-out, end-all) + the T075 fault decoration: the
+//// bounded-silence heuristic, fencing→permFail, and establishment-failure.
 
 import gleam/list
+import gleam/option.{None, Some}
 import gleeunit/should
-import glp/link/primitives/link_faults.{MonitorBind}
+import glp/link/primitives/link_faults.{
+  MonitorBind, NoSilenceFault, PermFailSilence, TempFailSilence,
+}
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_terms
+import glp/link/reliability/fencing_registry.{Admit, Fenced}
 import glp/link/seam/link_address
 import glp/link/seam/link_fault.{LinkFaultSignal, Transient}
 import glp/link/seam/link_id.{LinkId, NonceInt}
-import glp/link/seam/link_options
+import glp/link/seam/link_options.{type LinkOptions}
 import glp/link/seam/link_scheme
 import glp/runtime/terms.{cons, nil, VarRef}
 
@@ -58,4 +63,54 @@ pub fn fanout_on_no_cursors_is_empty_test() {
     link_faults.fanout_fault(handle_with_cursors([]), nil(), fn() { #(1, 2) })
   list.length(binds)
   |> should.equal(0)
+}
+
+// ── T075: bounded-silence heuristic (FR-045) ──────────────────────────────────
+
+fn opts() -> LinkOptions {
+  // temp_fail after 5000ms, perm_fail after 30000ms (the defaults).
+  link_options.default()
+}
+
+pub fn silence_below_temp_threshold_is_no_fault_test() {
+  link_faults.classify_silence(4999, opts()) |> should.equal(NoSilenceFault)
+  link_faults.silence_fault(NoSilenceFault, id()) |> should.equal(None)
+}
+
+pub fn silence_past_temp_threshold_is_temp_fail_test() {
+  link_faults.classify_silence(5000, opts()) |> should.equal(TempFailSilence)
+  link_faults.silence_fault(TempFailSilence, id())
+  |> should.equal(Some(link_terms.temp_fail(
+    id(),
+    "bounded silence exceeded temp-fail threshold",
+  )))
+}
+
+pub fn silence_past_perm_threshold_is_perm_fail_test() {
+  link_faults.classify_silence(30_000, opts()) |> should.equal(PermFailSilence)
+  case link_faults.silence_fault(PermFailSilence, id()) {
+    Some(_perm_term) -> should.be_true(True)
+    None -> should.be_true(False)
+  }
+}
+
+// ── T075: fencing → permFail (FR-047) ─────────────────────────────────────────
+
+pub fn admitted_writer_has_no_fault_test() {
+  link_faults.fence_fault(Admit, id(), "_w(p,1)") |> should.equal(None)
+}
+
+pub fn fenced_writer_surfaces_perm_fail_test() {
+  link_faults.fence_fault(Fenced, id(), "_w(p,1)")
+  |> should.equal(Some(link_terms.perm_fail(id(), "fenced by newer epoch: _w(p,1)")))
+}
+
+// ── T075: establishment-failure decoration (FR-044) ───────────────────────────
+
+pub fn establishment_failure_is_perm_fail_term_test() {
+  link_faults.establishment_failure(id(), "connection refused")
+  |> should.equal(link_terms.perm_fail(
+    id(),
+    "transport establishment failed: connection refused",
+  ))
 }
