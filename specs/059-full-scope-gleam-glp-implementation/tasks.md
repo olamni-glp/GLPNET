@@ -41,7 +41,7 @@ SPDX-License-Identifier: MIT
 - [x] T018 [P] [US1] `freeze-platform-atomvm-policy` (freeze, S, b1-c2-010) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
 - [x] T019 [P] [US1] `freeze-repl-surface` (freeze, S, b1-c2-009) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
 - [x] T020 [P] [US1] `freeze-runtime-term-heap` (freeze, S, b1-c2-001) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
-- [x] T021 [P] [US1] `guard-atomvm-gated-probe` (guard, S, b1-c2-014) — acceptance per FINAL plan ✓ runbook present + atomvm_gated_probe.gleam unmodified vs baseline; MANUAL AtomVM Node-probe run = human checkpoint (not run this session)
+- [x] T021 [P] [US1] `guard-atomvm-gated-probe` (guard, S, b1-c2-014) — acceptance per FINAL plan ✓ COMPLETE 2026-07-27: manual AtomVM probe RUN on OLAMNIT (release v0.7.0-alpha.1 wrapper, sha256-verified) → ATOMVM GATED PASS, byte-identical (int64 max/min + float π, 3× round-trip true); src unmodified vs baseline (item 3)
 - [x] T022 [P] [US5] `guard-fe-be-envelope-seam` (guard, S, b2-c1-001) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
 - [x] T023 [P] [US1] `guard-suite-csharp-reference` (guard, S, b1-c2-013) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
 - [x] T024 [P] [US1] `guard-suite-dart-reference` (guard, S, b1-c2-012) — acceptance per FINAL plan ✓ VERIFIED 2026-07-27 (register@49b52342 + Gleam 508/0, REPL 0-fail, C# glp_link 152/0)
