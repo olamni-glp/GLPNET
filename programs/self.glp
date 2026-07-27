@@ -548,6 +548,21 @@ out_relay(Msg, LinkId, ToPeer) :-
     ground(Msg?), ground(LinkId?), ground(ToPeer?) |
     '_link_send'(Msg?, LinkId?, ToPeer?).
 
+% The host-driven egress DRAINER behind the channel face link_send/3. link_send only
+% conses onto Out; this is what carries those terms to the wire. The host lowers one
+% instance per established link at setup (the A3 global_send shape): reading [Msg|Rest]
+% SUSPENDS until the program conses, so no heap onBind is needed — the ordinary
+% suspension/reactivation machinery drives egress. Out = [] is the graceful stream-end
+% close (FR-024), distinct from the abrupt link_close/2.
+procedure link_drain(Stream(X)?, LinkId?, AgentId?).
+link_drain([Msg|Rest], LinkId, ToPeer) :-
+    ground(Msg?), ground(LinkId?), ground(ToPeer?) |
+    '_link_send'(Msg?, LinkId?, ToPeer?),
+    link_drain(Rest?, LinkId?, ToPeer?).
+link_drain([], LinkId, _) :-
+    ground(LinkId?) |
+    '_link_close'(LinkId?, eos).
+
 % Receive the next term off the link's In stream (the self.glp receive/3 shape). The In
 % tail is extended by the host ingress as frames arrive; an unarrived value SUSPENDS.
 procedure link_recv(X, Link(X, Y)?, Link(X, Y)).
