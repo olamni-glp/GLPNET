@@ -30,6 +30,15 @@ The consolidated roadmap items, in dependency order:
 | 6 | `glp-gleam-link-layer` | Gleam instance ↔ Gleam instance over the multi-protocol link |
 | 7 | `cross-runtime-csharp-gleam-distributed-tests` | C# instance ↔ Gleam instance, proven by tests |
 
+## Clarifications
+
+### Session 2026-07-27
+
+- Q: Is a shared grammar artifact (the ANTLR4 spike) still in scope, or is per-runtime parsing the accepted answer? → A: Per-runtime parsing accepted; the ANTLR4 shared-grammar artifact is out of scope for wave 3 (059 G5 ruling stands). Cross-runtime syntax agreement is guaranteed by conformance, not by a shared generator.
+- Q: Which transports must be proven for wave-3 acceptance? → A: Loopback and TCP only. QUIC/WebSocket and ZMQ stay behind the existing transport seam and are out of scope for acceptance.
+- Q: Is running on embedded AtomVM a wave-3 acceptance gate? → A: No — the full BEAM is sufficient for acceptance. AtomVM is deferred, but no BEAM-only construct may be introduced that would foreclose it.
+- Q: How are the 44 corpus cases with missing goldens (059 T051 escalation) treated? → A: Declared out-of-scope with the recorded reason "golden missing — 059 T051 drift", and regenerating them is in-scope work for this wave; they may not be counted as passes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run a GLP program on the Gleam runtime (Priority: P1)
@@ -119,6 +128,7 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 
 - A program loads on the reference runtime but is rejected by the Gleam runtime, or vice versa — the divergence must be reported as a conformance failure, not papered over.
 - A corpus case neither succeeds nor fails but suspends — suspension is a first-class outcome and must be compared as such.
+- A corpus case has no reference golden to compare against — it must be declared out-of-scope with a reason, never silently passed or silently dropped.
 - A link is established but the two sides disagree about the wire-format version — the link must be refused with a stated reason.
 - A message arrives for a program that has already terminated — the sender must learn the delivery failed rather than waiting forever.
 - The same module is loaded twice, or two modules define the same procedure — the resolution rule must be stated and deterministic.
@@ -131,7 +141,7 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 
 **Surface syntax and front end**
 
-- **FR-001**: The GLP surface syntax MUST have a single authoritative definition shared across runtimes, such that a syntax change is made in one place rather than re-implemented per runtime. [NEEDS CLARIFICATION: the ANTLR4 shared-grammar approach was recorded as superseded during feature 059 — is a shared grammar artifact still in scope for this wave, or is per-runtime hand-written parsing the accepted answer?]
+- **FR-001**: The Gleam runtime MUST parse GLP surface syntax with its own front end; no shared grammar artifact is required. Agreement between runtimes on what is and is not valid GLP MUST be demonstrated by conformance (FR-002), not by a shared generator. Any accept/reject divergence found by the corpus MUST be recorded as a conformance failure against a named case.
 - **FR-002**: The Gleam runtime MUST accept every source construct the reference runtime accepts, and reject every construct the reference runtime rejects, across the agreed conformance corpus.
 - **FR-003**: A rejected source file MUST produce a structured diagnostic identifying the file, the clause, and the reason; the runtime MUST remain usable afterwards and MUST NOT terminate the process.
 
@@ -158,6 +168,8 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 - **FR-016**: The shared conformance corpus MUST be runnable against the Gleam runtime by a single command.
 - **FR-017**: The corpus runner MUST emit a per-case verdict of pass, fail, or explicitly-declared out-of-scope, with no case silently omitted.
 - **FR-018**: Any case declared out of scope MUST carry a recorded reason.
+- **FR-018a**: The 44 corpus cases whose reference goldens are missing (recorded as the feature-059 T051 evidence-reproducibility drift) MUST be declared out-of-scope with the reason "golden missing — 059 T051 drift" until their goldens are regenerated. They MUST NOT be counted as passes.
+- **FR-018b**: Regenerating the missing reference goldens and returning those cases to in-scope MUST be tracked as work within this wave.
 - **FR-019**: The corpus runner MUST report aggregate pass / fail / out-of-scope counts, and repeated runs over unchanged code MUST produce identical counts.
 
 **Link layer**
@@ -167,7 +179,7 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 - **FR-022**: A link MUST negotiate capabilities and wire-format version before carrying program traffic, and MUST refuse with a stated reason on mismatch.
 - **FR-023**: An instance MUST accept inbound link attempts, not merely initiate outbound ones.
 - **FR-024**: Loss of a peer MUST be observed within a bounded time and surfaced to programs holding references across that link, rather than blocking indefinitely.
-- **FR-025**: The link MUST support the transports agreed for this wave. [NEEDS CLARIFICATION: which transports are required for wave-3 acceptance — loopback and TCP only, or must QUIC/WebSocket and ZMQ also be proven?]
+- **FR-025**: The link MUST work over loopback and TCP; these are the transports required for wave-3 acceptance. QUIC/WebSocket and ZMQ MUST remain reachable behind the existing transport seam without code changes to the link layer, but proving them is out of scope for this wave.
 
 **Cross-runtime interoperation**
 
@@ -179,7 +191,8 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 
 **Deployment target**
 
-- **FR-031**: The Gleam runtime MUST run on the agreed execution target(s). [NEEDS CLARIFICATION: is running on the embedded AtomVM target required for wave-3 acceptance, or is the full BEAM sufficient for this wave with AtomVM deferred?]
+- **FR-031**: The Gleam runtime MUST run on the full BEAM; this is the acceptance target for wave 3. Running on embedded AtomVM is deferred to a follow-on wave.
+- **FR-032**: No construct MUST be introduced that is known to be unavailable on the embedded AtomVM target, so that the deferred AtomVM work remains reachable without redesign. Any deliberate exception MUST be recorded with its reason.
 
 ### Key Entities
 
@@ -204,6 +217,7 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 - **SC-007**: When a peer disappears, the surviving instance reports the loss within 30 seconds; no scenario leaves an instance blocked indefinitely.
 - **SC-008**: Repeated runs of the full conformance corpus over unchanged code produce identical verdicts — no flaky cases.
 - **SC-009**: The existing reference-runtime test suites remain fully green throughout the wave; this feature adds capability without regressing what already works.
+- **SC-010**: The count of cases declared out-of-scope for "golden missing" falls from 44 to 0 by the end of the wave, or each remaining case carries an individually recorded reason for staying out.
 
 ## Assumptions
 
@@ -220,5 +234,5 @@ A maintainer runs a distributed test suite in which a C# GLP instance and a Glea
 ## Dependencies
 
 - **Upstream roadmap**: `wave-2-consolidated-repl-engine-split-spine` (recorded blocker), plus the delivered `glp-gleam-core-terms-and-heap`, `glp-gleam-subtree-scaffold`, `result-codec-and-framecodec-ride`, `multi-protocol-link-layer`, and `m2-0-verify-erlang-monitor-atomvm`.
-- **Toolchain**: the Gleam/BEAM toolchain, and — if FR-031 resolves to requiring it — a working AtomVM build. AtomVM toolchain instability is the wave's primary recorded risk.
+- **Toolchain**: the Gleam/BEAM toolchain. A working AtomVM build is **not** required for wave-3 acceptance (FR-031), which removes the wave's primary recorded risk; the AtomVM-compatibility constraint in FR-032 keeps the deferred work reachable.
 - **Cross-runtime**: a runnable C# GLP instance is required for story 5; without it, stories 1–4 still stand alone.
