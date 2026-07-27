@@ -52,8 +52,9 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 - [ ] T016 [P] [US1] Add `gleeunit` tests for multi-module load, late resolution, and duplicate-procedure resolution in `glp_gleam/test/glp/compiler/loader_test.gleam`
 - [ ] T017 [P] [US1] Add `gleeunit` tests for the bytecode lint in `glp_gleam/test/glp/lint_test.gleam`
 - [ ] T018 [US1] Verify suspension is reported distinctly from failure end-to-end in `glp_gleam/src/glp/engine/runner.gleam` (FR-006) and add a `gleeunit` case in `glp_gleam/test/glp/engine/runner_test.gleam`
+- [ ] T018a [US1] Verify the writer-MGU invariant survives module linking and the injected-transport engine seam — only writers bind, never readers, never writer-to-writer — with a `gleeunit` test in `glp_gleam/test/glp/runtime/unify_test.gleam` exercising cross-module calls (FR-007; closes analyze finding C1)
 
-**Checkpoint**: `gleam test` ≥ baseline; a multi-module program loads and runs.
+**Checkpoint**: `gleam test` ≥ baseline; a multi-module program loads and runs; writer-MGU verified across the changed paths.
 
 ---
 
@@ -82,13 +83,14 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 - [ ] T026 [US3] Emit the aggregate block and assert the completeness invariant `P + F + O == N` in `test/parity/run_gleam_corpus.sh` (SC-002)
 - [ ] T027 [US3] Classify the 44 golden-less cases as `out_of_scope` with reason `golden missing — 059 T051 drift` in `test/parity/expected.list` handling within `test/parity/run_gleam_corpus.sh` (FR-018a)
 - [ ] T028 [P] [US3] Emit named divergences (case id, expected, observed) for every `fail` from `test/parity/run_differential.sh` (FR-017)
-- [ ] T029 [US3] Regenerate the 44 missing reference goldens using `test/parity/record_dart_goldens.sh` and return those cases to in-scope (FR-018b, SC-010)
+- [ ] T028a [US3] **GATE — Bug-Protocol triage before any regeneration.** For each of the 44 golden-less cases, classify it as (a) *golden file genuinely absent* or (b) *behavioural divergence between runtimes*. Record the classification per case in `specs/060-wave3-full-gleam-chain/research.md`. Any case in class (b) MUST STOP and be reported under the Bug-Protocol — it MUST NOT proceed to T029 (Constitution II; closes analyze finding B1)
+- [ ] T029 [US3] Regenerate reference goldens **only for cases T028a classified as class (a)** using `test/parity/record_dart_goldens.sh`, and return those cases to in-scope. Never regenerate a golden from the runtime under test; the reference runtime is the sole source (FR-018b, SC-010)
 - [ ] T030 [US3] Verify determinism: run the corpus twice over unchanged code and assert identical verdicts and counts (FR-019, SC-008)
-- [ ] T031 [P] [US3] Record the resulting in-scope pass rate against the ≥95% target, naming every exception, in `specs/060-wave3-full-gleam-chain/research.md` (SC-001)
+- [ ] T031 [P] [US3] **GATE — enforce SC-001.** Compute the in-scope pass rate, record it with every exception named in `specs/060-wave3-full-gleam-chain/research.md`, and **fail the phase if it is below 95%**, escalating rather than proceeding (SC-001; closes analyze finding A1)
 
-**Checkpoint**: completeness invariant holds; golden-less count is 0 or individually reasoned.
+**Checkpoint**: completeness invariant holds; golden-less count is 0 or individually reasoned; in-scope pass rate ≥95% or escalated.
 
-**Note**: if T029 surfaces a *behavioural* divergence rather than a missing file, STOP and report under the Bug-Protocol — do not regenerate a golden from the runtime under test.
+**Dependency**: T028a strictly precedes T029. Skipping the triage risks baking a drifted reference into a golden — the exact failure the Bug-Protocol exists to prevent.
 
 ---
 
@@ -107,7 +109,7 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 - [ ] T039 [P] [US4] Implement the multiagent boot loader in `glp_gleam/src/glp/mad/mad_engine.gleam` (gap G9)
 - [ ] T040 [P] [US4] Add `gleeunit` link tests over loopback in `glp_gleam/test/glp/link_test.gleam`
 - [ ] T041 [US4] Add link tests over TCP in `glp_gleam/test/glp/link/transports/tcp_test.gleam` (FR-025 acceptance surface)
-- [ ] T042 [P] [US4] Assert `zmq`, `quic`, and `ws` remain selectable through the seam without link-layer changes in `glp_gleam/test/glp/link/seam/link_scheme_test.gleam` (FR-025)
+- [ ] T042 [P] [US4] Assert `zmq`, `quic`, and `ws` remain **reachable** through the seam without link-layer changes: for each scheme, instantiate it via `link_scheme` and assert construction succeeds (not merely that the variant is selectable) in `glp_gleam/test/glp/link/seam/link_scheme_test.gleam` (FR-025; closes analyze finding U1)
 
 **Checkpoint**: quickstart §6 checks 1–4 pass over both loopback and TCP.
 
@@ -143,7 +145,7 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 ## Dependencies
 
 ```text
-Phase 1 (T001-T004)  ─┬─▶ Phase 2 (T005-T008) ─┬─▶ Phase 3 US1 (T009-T018) ──┬─▶ Phase 5 US3 (T025-T031)
+Phase 1 (T001-T004)  ─┬─▶ Phase 2 (T005-T008) ─┬─▶ Phase 3 US1 (T009-T018a) ─┬─▶ Phase 5 US3 (T025-T031, incl. T028a)
    baseline gate      │      T005 ─────────────┘                             │
                       │      T007 ──────────────────▶ Phase 6 US4 (T032-T042)┤
                       │                                                       ├─▶ Phase 7 US5 (T043-T048)
@@ -165,9 +167,9 @@ Phase 1 (T001-T004)  ─┬─▶ Phase 2 (T005-T008) ─┬─▶ Phase 3 US1 (
 |---|---|
 | 1 | T003 alongside T001/T002 |
 | 2 | T006 ∥ T008 |
-| 3 | T012, T014, T015, T016, T017 (distinct files) |
+| 3 | T012, T014, T015, T016, T017 (distinct files); T018a after T009–T011 |
 | 4 | T021, T022, T023 |
-| 5 | T028, T031 |
+| 5 | T028 ∥ T028a; T031 after T029/T030 |
 | 6 | T037, T039, T040, T042 |
 | 7 | T045 alongside T044 |
 | 8 | T049, T050, T051 all parallel |
@@ -185,10 +187,14 @@ Phase 1 (T001-T004)  ─┬─▶ Phase 2 (T005-T008) ─┬─▶ Phase 3 US1 (
 |---|---|
 | 1 Setup | 4 |
 | 2 Foundational | 4 |
-| 3 US1 (MVP) | 10 |
+| 3 US1 (MVP) | 11 |
 | 4 US2 | 6 |
-| 5 US3 | 7 |
+| 5 US3 | 8 |
 | 6 US4 | 11 |
 | 7 US5 | 6 |
 | 8 Polish | 4 |
-| **Total** | **52** |
+| **Total** | **54** |
+
+Two tasks (`T018a`, `T028a`) were added after `/bk-analyze` to close findings C1 and B1; `T031` and `T042`
+were tightened to close A1 and U1. Suffixed IDs keep the original numbering stable so
+`analysis-findings.md` and any in-flight references stay valid.

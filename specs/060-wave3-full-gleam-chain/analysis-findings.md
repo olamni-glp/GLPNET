@@ -1,11 +1,24 @@
 # Analyze findings — 060 wave-3 full Gleam chain
 
-**Produced by**: `/bk-analyze`, 2026-07-27 | **Status**: reported, **not applied** (analyze is read-only)
-**Verdict**: 0 CRITICAL. Cleared to proceed to `/bk-implement`.
+**Produced by**: `/bk-analyze`, 2026-07-27 | **Verdict**: 0 CRITICAL. Cleared to proceed to `/bk-implement`.
 
-Persisted here so a restarted session does not lose them. Two are worth fixing before implementation starts; the rest are judgement calls.
+**Status**: **C1, B1, A1, U1 APPLIED to `tasks.md` on 2026-07-27** (owner-directed, after the read-only
+analyze pass). C2, G1, C3, D1, I1 remain open by decision — see the judgement-calls table.
 
-## Worth fixing first
+| Finding | Disposition | Change |
+|---|---|---|
+| C1 | ✅ applied | new task **T018a** — writer-MGU verified across module linking + engine seam |
+| B1 | ✅ applied | new gate task **T028a** — Bug-Protocol triage strictly precedes T029; T029 restricted to class-(a) cases |
+| A1 | ✅ applied | **T031** promoted to a gate — fails the phase below 95% |
+| U1 | ✅ applied | **T042** tightened from *selectable* to *reachable* (instantiate + assert construction) |
+| C2, G1, C3, D1, I1 | open | accepted as-is |
+
+Task count moved 52 → 54. Suffixed IDs were used so the original numbering — and every reference in
+this file — stays valid.
+
+Persisted here so a restarted session does not lose the reasoning.
+
+## Applied
 
 ### C1 — HIGH — FR-007 writer-MGU has zero task coverage
 
@@ -19,12 +32,22 @@ Persisted here so a restarted session does not lose them. Two are worth fixing b
 
 **Fix**: promote the note into T029's task text, or split it into a preceding verification task that must pass first.
 
-## Judgement calls
+### U1 — MEDIUM — FR-025 "reachable" vs T042 "selectable" — APPLIED
+
+FR-025 requires unproven transports stay *reachable without link-layer code changes*; T042 originally asserted only that the scheme variant was *selectable* — strictly weaker. A selectable-but-broken transport would have passed T042 while violating FR-025.
+
+**Applied**: T042 now instantiates each of `zmq`/`quic`/`ws` through `link_scheme` and asserts construction succeeds.
+
+### A1 — MEDIUM — SC-001's 95% target was unenforced — APPLIED
+
+SC-001 sets a ≥95% in-scope pass rate, but T031 only *recorded* the rate. Nothing failed the wave at 60%.
+
+**Applied**: T031 is now a gate — it computes, records with exceptions named, and fails the phase below 95%.
+
+## Judgement calls — left open by decision
 
 | ID | Sev | Issue | Suggested fix |
 |---|---|---|---|
-| U1 | MEDIUM | FR-025 requires unproven transports stay "reachable without link-layer code changes"; T042 only asserts *selectable* — weaker. Selectable-but-broken passes T042 and violates FR-025. | Tighten T042 to instantiate each scheme through the seam and assert construction succeeds; or weaken FR-025 to "selectable". |
-| A1 | MEDIUM | SC-001 sets ≥95% in-scope pass rate; T031 only *records* it. Nothing fails the wave at 60%. | Make T031 a gate: record **and** compare against 95%, escalating below. |
 | C2 | MEDIUM | FR-004 (three-phase HEAD/GUARD/BODY preserved) has no task; assumed baseline-covered. | Add an assertion task, or state explicitly that T001 covers it. |
 | G1 | LOW | SC-004's "no manual intervention between start-up and first message" is untested. | Fold an assertion into T040, or accept as advisory. |
 | C3 | LOW | FR-031 (BEAM acceptance target) has no task — implicitly covered by everything running on BEAM. | No action. |
@@ -33,7 +56,8 @@ Persisted here so a restarted session does not lose them. Two are worth fixing b
 
 ## Coverage
 
-- 34 functional requirements, 10 success criteria, 52 tasks.
-- **31/34 FR covered = 91%.** Uncovered: FR-004 (C2), FR-007 (C1), FR-031 (C3).
+- 34 functional requirements, 10 success criteria, **54 tasks** (52 at analyze time, +2 from C1/B1).
+- At analyze time: **31/34 FR covered = 91%.** Uncovered: FR-004 (C2), FR-007 (C1), FR-031 (C3).
+- After applying C1: **32/34 = 94%.** Remaining uncovered: FR-004 (C2, open), FR-031 (C3, implicit).
 - All 52 tasks map to at least one FR or SC — no unmapped tasks.
 - Constitution: no violations. B1 sits *under* Principle II, not against it.
