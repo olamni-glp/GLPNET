@@ -110,7 +110,7 @@ SPDX-License-Identifier: MIT
 - [ ] T077 [P] [US4] `close-link-layer-sequence-dedup` (close, M, b2-c2-010) — acceptance per FINAL plan
 - [ ] T078 [P] [US2] `close-module-system-runtime-rpc` (close, M, b2-c2-007) — acceptance per FINAL plan
 - [ ] T079 [P] [US3] `close-multiagent-multiagent-boot-loader` (close, L, b3-c2-032) — acceptance per FINAL plan
-- [ ] T080 [P] [US2] `close-parity-differential-harness` (close, M, b3-c1-041) — acceptance per FINAL plan
+- [x] T080 [P] [US2] `close-parity-differential-harness` (close, M, b3-c1-041) — CLOSED 2026-07-27: CRLF root cause fixed (9bf9d02f/8627f7f3); corpus rc=0 206 agree/0 diverge/0 missing, 10x PASS; evidence phase3-close/close-parity-differential-harness.md
 - [ ] T081 [P] [US2] `close-platform-atomvm-compatibility-by-construction` (close, S, b3-c1-043) — acceptance per FINAL plan
 - [ ] T082 [P] [US2] `close-process-baseline-program-dossier` (close, S, b3-c2-044) — acceptance per FINAL plan
 - [ ] T083 [P] [US2] `close-proofs-proof-dist-deref-convergence` (close, L, b3-c2-045) — acceptance per FINAL plan
