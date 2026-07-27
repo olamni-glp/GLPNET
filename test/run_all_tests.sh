@@ -75,9 +75,18 @@ echo ""
 PASS=0
 FAIL=0
 
+# Strip the REPL's "Build: <git commit subject>" banner line before matching: the
+# subject is arbitrary prose, so any commit whose message contains a checked word
+# ("suspended", "succeeds", ...) would otherwise flip every check/check_not on that
+# word — 4 spurious A24 failures on 2026-07-27 came from exactly this. Only runtime
+# output is under test; the banner never is.
+strip_banner() {
+    grep -v '^Build: '
+}
+
 check() {
     local name="$1" pattern="$2" source="$3"
-    if echo "$source" | grep -q "$pattern"; then
+    if echo "$source" | strip_banner | grep -q "$pattern"; then
         echo "  PASS: $name"
         PASS=$((PASS + 1))
     else
@@ -88,7 +97,7 @@ check() {
 
 check_not() {
     local name="$1" pattern="$2" source="$3"
-    if echo "$source" | grep -q "$pattern"; then
+    if echo "$source" | strip_banner | grep -q "$pattern"; then
         echo "  FAIL: $name (should NOT match: $pattern)"
         FAIL=$((FAIL + 1))
     else

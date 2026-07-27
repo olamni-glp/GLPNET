@@ -160,9 +160,23 @@ that builds it.
 
 ## 5. Deviation list (Gleam port ≠ C#/Dart oracle) — READ BEFORE C1
 
-**D-1 (fault vocab — `ok` arity). RESOLVED, no escalation.** Ship bare `ok` (arity 0) + `closed/2` +
-`tempFail/2` + `permFail/2`, per `self.glp:451`. The C# oracle agrees (`LinkTerms.Ok()` → `ok`).
-`architecture-context.md §5`'s `ok(LinkId)` (arity 1) is a **superseded proposal** — do NOT emit it.
+**D-1 (fault vocab — `ok` arity). RESOLVED, no escalation; SHIPPED in C7.** Ship bare `ok` (arity 0)
++ `closed/2` + `tempFail/2` + `permFail/2`, per `self.glp:451`. The C# oracle agrees
+(`LinkTerms.Ok()` → `ok`). `architecture-context.md §5`'s `ok(LinkId)` (arity 1) is a **superseded
+proposal** — do NOT emit it.
+
+As shipped (C7, `link_faults.gleam` + K6 in `link_kernels.gleam`): the lattice builders +
+`from_signal` (`Closed`→`closed/2`, `Transient`→`tempFail/2`, `Permanent`→`permFail/2`; pure data,
+callable off the runner) + `extend` / `deliver_fault` (fan to EVERY cursor, FR-008) / `end_all`
+(bind `[]` + clear, consumed by C8). Cursor lists thread through the registry-held handle
+(`set_monitor_cursors`) — the `take_seq`/`advance_in_cursor` discipline. K6 `'_link_monitor'/2`
+registers an independent observer on an ALREADY-established link (unestablished → non-fatal abort)
+and pushes ONE `ok` baseline on the NEW cursor only; establishment registers its `Faults` stream as
+a live cursor with NO `ok` — lazily unbound until a real fault, so an unmonitored goal stays safely
+suspended (FR-044). The pump's `Faulted` item carries the refined term (an undecodable frame refines
+to `permFail` — a protocol violation is `Permanent` per the seam classification) and `apply_item`
+fans it to the monitors WITHOUT touching the `In` data stream: a fault never fails the reader's goal
+and never ends the data path — terminal is C8's call.
 
 **D-2 (no `heap.onBind` — the egress deviation). RESOLVED in C5 — option (a), Gabi §1.14 approval
 2026-07-27.** The C#/Dart egress arms `heap.OnBind(outWriterAddr, …)` to observe the program binding
