@@ -31,6 +31,7 @@ import glp/link/primitives/capability_gate
 import glp/link/primitives/link_egress
 import glp/link/primitives/link_establish
 import glp/link/primitives/link_handle
+import glp/link/primitives/link_pump
 import glp/link/primitives/link_registry.{Established, Reused}
 import glp/link/primitives/link_runtime.{type LinkState}
 import glp/link/primitives/link_terms
@@ -229,7 +230,13 @@ fn wire_and_record(
           link_terms.link_id_to_term(id),
           to_peer,
         )
-      Ok(LinkEffect(heap, state, []))
+      // Start ingress (C6) — AFTER the cursors are wired, which is what `start` checks:
+      // a frame arriving before `in_writer` exists would have nowhere to go. Same
+      // once-per-link rule as egress; the `Reused` arm below starts no second loop.
+      case link_pump.start(state.inbox, wired) {
+        Error(detail) -> Error(detail)
+        Ok(Nil) -> Ok(LinkEffect(heap, state, []))
+      }
     }
     Ok(#(registry, Reused(_handle))) ->
       Ok(LinkEffect(heap, link_runtime.with_links(state, registry), []))

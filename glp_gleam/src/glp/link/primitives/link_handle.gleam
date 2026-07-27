@@ -96,6 +96,23 @@ pub fn with_cursors(
   )
 }
 
+/// Advance the `In` ingress cursor after the pump extended the stream by one term (C6).
+/// The old writer is now BOUND to `[value | fresh_reader]`; the fresh writer is the tail
+/// the next inbound term extends. Threading this through the registry — rather than a
+/// mutable side-channel — is the same discipline `take_seq` uses outbound: the cursor is
+/// per-link state, so it lives on the per-link handle.
+pub fn advance_in_cursor(handle: LinkHandle, fresh_writer: Int) -> LinkHandle {
+  LinkHandle(..handle, in_writer: option.Some(fresh_writer))
+}
+
+/// Terminate the `In` stream (C6): the peer FINed and the cursor was bound to `[]`. The
+/// cursor is CLEARED rather than left dangling, so a late frame or a second close is a
+/// no-op instead of a double-bind on a consumed cell. Mirrors the oracle's
+/// `handle.inWriterAddr = null` on graceful close.
+pub fn end_in_stream(handle: LinkHandle) -> LinkHandle {
+  LinkHandle(..handle, in_writer: option.None)
+}
+
 /// Register one more independent fault-monitor cursor (C7 `link_monitor/2`).
 pub fn add_monitor_cursor(handle: LinkHandle, addr: Int) -> LinkHandle {
   LinkHandle(..handle, monitor_cursors: [addr, ..handle.monitor_cursors])

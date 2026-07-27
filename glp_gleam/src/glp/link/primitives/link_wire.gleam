@@ -81,6 +81,25 @@ pub fn encode_token(t: terms.Term) -> Result(BitArray, WireError) {
 
 /// Decode ONE `Whole` frame back into the ground term the peer shipped.
 pub fn decode_token(frame: BitArray) -> Result(terms.Term, WireError) {
+  case decode_frame(frame) {
+    Error(e) -> Error(e)
+    Ok(#(_message_id, term)) -> Ok(term)
+  }
+}
+
+/// Decode ONE inbound DATA frame — the C6 ingress counterpart to `encode_frames`, so the
+/// pump takes terms off the wire by exactly the route `link_egress.ship_ground` put them
+/// on it. Returns the frame's message id alongside the term: the base pump does not use
+/// it (it applies frames in arrival order), but the T052 reliability sublayer keys
+/// dedup/reorder on it, and dropping it here would make the pump the thing that has to
+/// change later rather than the sublayer above it.
+///
+/// `Fragmented` on a `Fragment` frame is CORRECT for the base layer and not a gap: the
+/// default `None` MTU ships every payload as one `Whole` frame (D-8), so a fragment can
+/// only arrive from a peer running a reassembly sublayer this end does not have — which
+/// is a wire-contract violation to surface, not a partial payload to buffer. Reassembly
+/// is T052.
+pub fn decode_frame(frame: BitArray) -> Result(#(Int, terms.Term), WireError) {
   case frame_codec.parse_frame(frame) {
     Error(e) -> Error(Framing(e))
     Ok(parsed) ->
@@ -89,7 +108,11 @@ pub fn decode_token(frame: BitArray) -> Result(terms.Term, WireError) {
         frame_codec.Whole ->
           case term_codec.decode_term(parsed.chunk) {
             Error(e) -> Error(Codec(e))
-            Ok(#(ct, _rest)) -> from_codec_term(ct)
+            Ok(#(ct, _rest)) ->
+              case from_codec_term(ct) {
+                Error(e) -> Error(e)
+                Ok(term) -> Ok(#(parsed.message_id, term))
+              }
           }
       }
   }

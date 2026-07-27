@@ -193,12 +193,29 @@ total, and inside the shipped type at `self.glp:447`). The two paths' drainer go
 (FR-005 bilateral) — so no observable artefact (registry, handle, frames) distinguishes the paths.
 Do not "restore symmetry" by discarding the real peer.
 
-**D-3 (sync seam vs async oracle). RESOLVED by T049 precedent, no escalation.** C#/Dart use an async
-`Task<byte[]?> RecvBytesAsync` + a background pump + a thread-safe inbox drained by `try_apply_next`.
-Gleam `endpoint.recv` is **synchronous blocking** (T045/T049). The pump is therefore a **BEAM process**
-(`process.spawn`/`new_subject`/`receive`, **no-OTP**) owning the blocking recv, forwarding decoded
-items to the runner via a `Subject`, drained on the runner thread. Consistent with the ratified
-madGLP Phase-B process model.
+**D-3 (sync seam vs async oracle). RESOLVED by T049 precedent, no escalation; SHIPPED in C6.**
+C#/Dart use an async `Task<byte[]?> RecvBytesAsync` + a background pump + a thread-safe inbox drained
+by `try_apply_next`. Gleam `endpoint.recv` is **synchronous blocking** (T045/T049). The pump is
+therefore a **BEAM process** (`process.spawn`/`new_subject`/`receive`, **no-OTP**) owning the blocking
+recv, forwarding decoded items to the runner via a `Subject`, drained on the runner thread.
+Consistent with the ratified madGLP Phase-B process model.
+
+As shipped (`link_pump.gleam`): one process per link, started by `wire_and_record` on the
+`Established` arm only (after the cursors are wired — `start` refuses otherwise, mirroring the
+oracle's `addLink before the In-stream ingress cursor was wired`); `InboundItem` =
+`Data(link, message_id, value)` / `Closed(link)` / `Faulted(link, detail)`; ONE inbox per engine on
+`LinkState.inbox`, whose receiving end belongs to the process that called `link_runtime.new()`.
+`apply_item` is the runner-side half — the ONLY half that touches the heap — extending `In` by one
+cons and advancing the handle's ingress cursor via `link_handle.advance_in_cursor`, or binding `[]`
+and clearing it via `end_in_stream` on peer FIN. `scheduler.step_link` ingests **before** the dequeue,
+so a frame that arrives at quiescence wakes its `link_recv` and that goal is reduced by the same step.
+`link_wire.decode_frame` is the ingress counterpart to `encode_frames`, keeping one wire path.
+
+Deliberately out of C6, each recorded where it belongs: reassembly/dedup/reorder → **T052** (base MTU
+`None` ⇒ one `Whole` frame, D-8); fault fan-out onto monitor cursors → **C7** (`Faulted` is carried,
+not delivered); pump shutdown (the oracle's `dispose()` cancel token) → **C8** `link_teardown`, so a
+loop currently ends only on the peer's FIN or a transport fault. Path-B request surfacing has NO
+counterpart — Gleam's C4 `'_link_listen'` does listen + token-read synchronously on the runner.
 
 **D-4 (`_link_send` is ground-relay, NOT the globalize path). RATIFIED, guard against mis-wiring.**
 `architecture-context.md §1` says the transport seam sits on the globalize/`known/1` path — that is

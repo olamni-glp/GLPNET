@@ -51,6 +51,7 @@ import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
 import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
+import glp/link/primitives/link_pump
 import glp/link/primitives/link_runtime.{type DrainRequest, type LinkState}
 import glp/mad/global_name
 import glp/mad/globalize.{type Spawn}
@@ -490,21 +491,27 @@ pub fn enqueue_global_sends(
 // same reason: the kernels run deep inside `runner.reduce`, which owns neither goal
 // identity nor the run queue.
 //
-// This is deliberately ONE seam rather than a per-step-type special case, because C6's
-// ingress pump needs the identical injection point: the pump's decoded frames extend the
-// `In` writer and wake `link_recv` goals through the same `LinkState`. Building the seam
-// once here means C6 adds a drain of its inbox next to `take_drains`, not a second driver.
+// This is ONE seam rather than a per-step-type special case, and C6 confirmed the shape:
+// the ingress pump needed exactly this injection point, and landed as an inbox drain
+// (`ingest_inbound`) next to `take_drains` rather than a second driver.
 
 /// One link-aware reduction: like `step`, but threading `link_in` through the reduction
 /// and returning the updated `LinkState` (whose `drains` is always `[]` on return — the
 /// requests are lowered into the run queue here). A lowering failure (`link_drain/3` not
 /// loaded) surfaces as `StepErrored`, never a silent drop: an unlowered drainer is a link
 /// whose `Out` stream is established but never reaches the wire.
+///
+/// INGRESS RUNS FIRST (C6). Every buffered inbound frame is applied to the heap before
+/// the queue is even consulted, so a frame that arrived while the engine sat at
+/// quiescence wakes its suspended `link_recv` and that goal is dequeued by this very
+/// step. Draining after the reduction instead would report `StepIdle` on the step that
+/// ingested, and a driver that stops on `StepIdle` would never run the woken goal.
 pub fn step_link(
   engine: Engine,
   reduction_budget: Int,
   link_in: LinkState,
 ) -> #(Engine, StepOutcome, LinkState) {
+  let #(engine, link_in) = ingest_inbound(engine, link_in)
   case types.dequeue(engine.queue) {
     Error(_) -> #(engine, StepIdle, link_in)
     Ok(#(act, queue)) -> {
@@ -584,6 +591,29 @@ pub fn step_link(
       }
     }
   }
+}
+
+/// Apply every buffered inbound frame to the heap (C6). The pump processes only ever
+/// ENQUEUE — this is the runner-side half that touches the heap, keeping the single-owner
+/// invariant the whole pump design exists to protect.
+///
+/// Each applied item extends its link's `In` stream and may wake goals suspended on it;
+/// those are re-enqueued exactly as a commit-time binding's are. The advanced ingress
+/// cursor comes back on the handle inside the returned registry, so ingress state is
+/// threaded, never held on the side. An empty inbox is the overwhelmingly common case and
+/// costs one non-blocking receive.
+fn ingest_inbound(engine: Engine, state: LinkState) -> #(Engine, LinkState) {
+  list.fold(
+    link_pump.drain(state.inbox),
+    #(engine, state),
+    fn(acc, item) {
+      let #(engine, state) = acc
+      let link_pump.Applied(heap, links, woken) =
+        link_pump.apply_item(engine.heap, state.links, item)
+      let engine = list.fold(woken, Engine(..engine, heap: heap), reactivate)
+      #(engine, link_runtime.with_links(state, links))
+    },
+  )
 }
 
 /// Lower each accumulated `DrainRequest` into a runnable `link_drain/3` goal and enqueue

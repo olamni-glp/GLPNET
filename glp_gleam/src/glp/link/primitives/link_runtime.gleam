@@ -25,6 +25,7 @@ import gleam/dict.{type Dict}
 import gleam/list
 import glp/link/primitives/capability_gate.{type CapabilityGateRegistry}
 import glp/link/primitives/link_establish.{type EstablishContext}
+import glp/link/primitives/link_pump.{type Inbox}
 import glp/link/primitives/link_registry.{type LinkRegistry}
 import glp/link/primitives/transport_registry.{type TransportRegistry}
 import glp/link/seam/endpoint.{type Endpoint}
@@ -63,6 +64,10 @@ pub type DrainRequest {
 ///   (C5). Accumulated by the establishing kernels — which cannot enqueue — and taken by
 ///   the scheduler's `step_link` after the reduction, mirroring `MadState.mad_spawns`.
 ///   Always empty on the `LinkState` a driver hands back out.
+/// - `inbox`: the ONE ingress queue every link's pump process sends to (C6). 🔴 Its
+///   receiving end belongs to the process that called `new()` — the runner — because a
+///   BEAM `Subject` may only be received on by its owner. Create the `LinkState` on the
+///   process that will drive `step_link`, or `drain` silently returns nothing.
 pub type LinkState {
   LinkState(
     links: LinkRegistry,
@@ -71,6 +76,7 @@ pub type LinkState {
     options: LinkOptions,
     pending: Dict(LinkId, Endpoint),
     drains: List(DrainRequest),
+    inbox: Inbox,
   )
 }
 
@@ -85,6 +91,7 @@ pub fn new() -> LinkState {
     options: link_options.default(),
     pending: dict.new(),
     drains: [],
+    inbox: link_pump.new_inbox(),
   )
 }
 
