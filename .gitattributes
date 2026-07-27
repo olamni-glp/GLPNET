@@ -1,20 +1,72 @@
-# Repo line-ending policy.
+# ── Repo line-ending policy — single source of truth (feature 059) ──
 #
-# The repo sets core.autocrlf=true. With no line-ending policy, a Windows checkout
-# rewrites LF -> CRLF in the working tree, which breaks LF-only consumers:
-#   - bash read-loops on MSYS/WSL parse a trailing \r into tokens (e.g. corpus block
-#     id "a1" becomes "a1\r" -> golden path "a1\r.golden" -> MISSING; feature 059 T051),
-#   - byte-exact golden/vector comparisons diff on the injected \r (feature 057 macaroon).
-# This was previously patched per-subtree (glp_gleam/.gitattributes, macaroon-v2/.gitattributes);
-# this root policy is the single source of truth.
-#
-# Scope of THIS commit (feature 059, T051 stabilization): shell scripts and the parity
-# harness only. A repo-wide normalization is tracked separately.
+# core.autocrlf=true with no policy was smudging ~6800 working-tree files to CRLF on
+# Windows checkouts, breaking LF-only consumers: bash read-loops parse a stray \r into
+# tokens (feature 059 T051 — corpus block id "a1" -> "a1\r" -> golden "a1\r.golden"
+# MISSING), and byte-exact goldens/vectors diff on the injected \r (feature 057 macaroon).
+# The repo already stores text as LF (git ls-files --eol: 6935 i/lf, only 2 i/crlf); this
+# makes the WORKING TREE match so the bash + dart + gleam + python toolchain runs
+# identically on every host. Supersedes the per-subtree patches
+# (glp_gleam/.gitattributes, macaroon-v2/.gitattributes).
 
-# Shell scripts must be LF everywhere (bash on MSYS/WSL breaks on CRLF).
-*.sh text eol=lf
+# Default: auto-detect text vs binary; check every text file out as LF (never CRLF).
+* text=auto eol=lf
 
-# The differential-parity harness: pinned corpus, classifications, recorded goldens,
-# and shared shell libs. LF-only — the recorder and comparator are bash read-loops and
-# the goldens are byte-compared.
+# ── Toolchain-critical text: explicit LF (documents intent; belt over text=auto) ──
+*.sh    text eol=lf
+*.glp   text eol=lf
+*.dart  text eol=lf
+*.gleam text eol=lf
+*.erl   text eol=lf
+*.py    text eol=lf
+*.mjs   text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.pl    text eol=lf
+*.c     text eol=lf
+*.h     text eol=lf
+*.cs    text eol=lf
+
+# Differential-parity harness: bash read-loops + byte-compared goldens.
 test/parity/** text eol=lf
+
+# ── Windows-native scripts / solutions: keep CRLF (cmd.exe + Visual Studio conventions) ──
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sln text eol=crlf
+
+# ── Known-binary: never EOL-touch (git also auto-detects; explicit = belt-and-suspenders) ──
+*.obj      binary
+*.o        binary
+*.a        binary
+*.lib      binary
+*.pdb      binary
+*.exe      binary
+*.dll      binary
+*.so       binary
+*.dylib    binary
+*.dill     binary
+*.snapshot binary
+*.wasm     binary
+*.beam     binary
+*.avm      binary
+*.zip      binary
+*.gz       binary
+*.tar      binary
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.pdf      binary
+*.docx     binary
+*.pfx      binary
+*.bin      binary
+*.wal      binary
+*.DS_Store binary
