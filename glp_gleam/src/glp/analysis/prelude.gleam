@@ -68,6 +68,9 @@ pub fn is_builtin_procedure(name_arity: String) -> Bool {
     "_activate/2" -> True
     // Output (system predicate)
     "_output/1" -> True
+    // Current wall-clock time (external-io body kernel; Dart `nowKernel`) — the
+    // `now(T?) :- '_now'(T).` prelude wrapper's kernel, ported in feature 059 T061.
+    "_now/1" -> True
     // Link-layer host kernels (feature 025; rulings OQ-A4/C1/C2)
     "_link_setup/5" -> True
     "_link_send/3" -> True

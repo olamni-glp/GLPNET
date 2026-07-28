@@ -33,6 +33,7 @@
 //// system predicate (self.glp `procedure _output(_?)`, Dart `bodyKernels` `_output`
 //// /1), not a §1.14 language extension.
 
+import gleam/erlang/atom
 import gleam/float
 import gleam/int
 import gleam/list
@@ -92,6 +93,8 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_stream_append", 3
     | "_close_mutual_reference", 1 -> True
     "_output", 1 -> True
+    // Effectful external-io body kernel: current wall-clock time (Dart `nowKernel`).
+    "_now", 1 -> True
     _, _ -> False
   }
 }
@@ -246,9 +249,24 @@ pub fn dispatch(
     // the output, threaded as data here rather than `print`ed inline).
     "_output", 1, [t] ->
       Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)]))
+    // '_now'(T): bind T to the current wall-clock time in milliseconds since the
+    // epoch (Dart `nowKernel`: `DateTime.now().millisecondsSinceEpoch`). The one
+    // external-io kernel here — its result varies per call (excluded from the byte-
+    // parity corpus), so a test asserts an integer is bound, not a fixed value.
+    "_now", 1, [out] -> Ok(bind_term(heap, out, ConstTerm(ConstInt(now_millis()))))
     _, _, _ -> Error(Nil)
   }
 }
+
+/// Current wall-clock time in milliseconds since the Unix epoch — the `_now/1`
+/// external-io source (Dart `DateTime.now().millisecondsSinceEpoch`). `system_time/1`
+/// is a BIF (AtomVM-safe, no OTP).
+fn now_millis() -> Int {
+  erl_system_time(atom.create("millisecond"))
+}
+
+@external(erlang, "erlang", "system_time")
+fn erl_system_time(unit: atom.Atom) -> Int
 
 /// `//` requires integer operands (Dart `idivKernel`: `x is! int || y is! int`
 /// aborts); zero divisor aborts.
