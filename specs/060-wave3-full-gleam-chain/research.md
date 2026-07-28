@@ -148,3 +148,31 @@ blocks — today's run is the first true block-level parity evidence on this hos
 Environment caveat: these artifacts were previously built 2026-07-22 with an unknown (likely peer-host
 GAVRI) toolchain; today's toolchain is newer. Everything compiles and passes, but wave-3 results are
 attributed to **this** environment, not 059's.
+
+## T009 dossier — project static linking (Section F's mechanism; owner-directed 2026-07-28)
+
+Section F (CSSG modules) runs through Dart's PROJECT loader, not the channel-dispatch subsystem
+B1–B4 delivered: `loadProject` (glp_engine.dart:331) = discover → type-check-each → detect top →
+link into ONE flat program → compile. Reference spec: `docs/modules/glp-project-compilation-spec.md`.
+
+| Dart reference | What it does | Gleam locus |
+|---|---|---|
+| `discoverProject` (project_linker.dart:57) | recursive `.glp` listing (skip `boot_direct.glp`, `mad_boot.glp`, `mad_boot/`); parse each; module name = `-module(M)` ?? (self.glp → parent-DIR name : filename base); per-file ancestor chain + scope | discovery I/O in the ENGINE facade (it owns disk, FR-009 precedent: `read_file` external); parse via existing lexer/parser |
+| `discoverSelfChain` (module_hierarchy.dart:32) | walk the file's dir up to project root collecting `self.glp`s, ROOT-FIRST; a self.glp's own chain starts at its grandparent | pure path walk over the discovered file set — no extra I/O needed |
+| `_buildAncestorScope` (project_linker.dart:442) | prelude env (root self.glp included) + chain-layered self.glp envs; parameterized templates extracted before expansion and threaded to descendants; children shadow parents | ALL seams exist: `teb.build_prelude_environment`, `build_environment_from_module`, `type_ast.merge`, `param_expansion.expand_parameterized_types` |
+| `typeCheckProject` (project_linker.dart:121) | per module with own (non-imported) decls: PE → `checkModule(ancestorScope:)`; first error throws | `type_checker.check_module` already takes `ancestor_scope: Option(TypeEnvironment)` |
+| `_detectTopModule` (glp_engine.dart:358) | module with imported decls (the orchestrator), else most procedures | pure |
+| `linkProject` (project_linker.dart:158) | rename every proc `p/n` → `M:p`; resolve body goals local → ancestor-self chain (innermost wins) → leave (prelude/kernel); STATIC `RemoteGoal` → direct `M':p` call (no channels); dynamic RemoteGoal left as-is; `SpawnGoal` resolves inner; entry aliases (top = ALL procs, others = EXPORTED only, first wins) with MODE-AWARE body args from the ProcDecl (input→reader, output→writer; no-decl fallback all-reader); renamed non-imported ProcDecls returned | new `compiler/project_linker.gleam` — pure AST transformation; `ast.Goal`/`RemoteGoal`/`SpawnGoal` all modeled |
+| `compileProgram` (compiler.dart:142) | analyzer `compileMode: system`, **`skipGlobalSRSW: true`** (modules were checked individually — a REFERENCE option, not an invented skip), procDeclarations for relaxation → codegen; stored as `_loadedPrograms['__project__']` | `loader.compile_linked`: PE → codegen in system mode, eliding the SRSW + per-module type-check stages exactly as the reference does; `__project__` enters the facade's loaded registry (participates in `rebuild_program`, re-load replaces) |
+
+Notes: colon-renamed procedures (`M:p`) never pass through the lexer — they are constructed AST,
+compiled to labels `"M:p/n"` (labels are plain strings). Dart's `generateReduce: true` concerns the
+reduce metainterpreter source generation the Gleam codegen does not have anywhere — parity with the
+rest of the port. Oracle: gleeunit over `programs/cssg_modules` — `load_project`, `play1`–`play7` →
+Success|Suspended; `fplay1` captured output contains the Section F tagged lines.
+
+Implementation order: dir-listing externals + discovery → ancestor scope → type-check-project →
+linker (pure) → `compile_linked` → facade `load_project` → Section F oracle tests → gates
+(`gleam test` ≥ 537, corpus 206/0). Risk surfaced loudly, never worked around: the Gleam parser has
+not yet seen the CSSG sources (parameterized self.glp types, `ui/` subdir modules) — a parse/check
+rejection there is a REPORTABLE gap, not a thing to patch silently.
