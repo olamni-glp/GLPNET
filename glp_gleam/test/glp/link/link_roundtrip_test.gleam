@@ -136,8 +136,15 @@ fn phash2(term: a) -> Int
 /// no row. Enable with `GLP_QUIC_MATRIX=1` (and the built host dll + certs present).
 ///
 /// The live QUIC path is NOT unverified as a result: `--binary` end-to-end byte-exactness over a
-/// genuine QUIC link is proven — client and server both opaque, payload containing NUL/LF/CR/
-/// 0xFF — and this row re-runs the same proof through the Gleam seam on demand.
+/// genuine QUIC link is proven by direct probe — client and server both opaque, payload
+/// containing NUL/LF/CR/0xFF, `ROUND_TRIP_EXACT=True`.
+///
+/// 🔴 **STATUS OF THIS ROW, stated honestly (2026-07-28):** under `GLP_QUIC_MATRIX=1` the
+/// `wire_bytes_are_byte_identical` case PASSES over real QUIC and `graceful_close` is correctly
+/// EXCLUDED (see `supports_graceful_close`). The `round_trip_matrix` case is still TIMING-SENSITIVE
+/// — the connector child had not signalled within a 45s budget, now raised to 120s but NOT yet
+/// re-verified green. So: the transport is proven, the seam-level round-trip row is not yet.
+/// That is why this row stays opt-in and why the default sweep does not depend on it.
 fn quic_leaf() -> Leaf {
   let spec =
     quic_ws.HostSpec(
@@ -160,8 +167,10 @@ fn quic_leaf() -> Leaf {
         ConstTerm(ConstInt(1)),
       ])
     },
-    // Two dotnet spawns + a real QUIC handshake; measured well under this locally.
-    settle_ms: 45_000,
+    // Two dotnet COLD STARTS + a real QUIC handshake, under test-suite load. 45s proved
+    // too tight for the round-trip case (the connector child had not signalled in time);
+    // raised deliberately rather than trimming the assertion. An opt-in row may be slow.
+    settle_ms: 120_000,
     supports_graceful_close: False,
   )
 }
