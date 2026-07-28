@@ -1,0 +1,3 @@
+%% Scope-chain fixture — NEARER self.glp (sub/). Shadows the root Widget:
+%% here Widget is slider, NOT button.
+Widget ::= slider.

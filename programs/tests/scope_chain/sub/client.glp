@@ -1,0 +1,5 @@
+%% Scope-chain fixture — the target module (sub/client.glp). Uses `slider`,
+%% which is a Widget ONLY under the NEARER sub/self.glp; if the root Widget
+%% (button/dial) were in scope instead, this would be a type error.
+procedure use_widget(Widget?).
+use_widget(slider).

@@ -28,6 +28,7 @@
 
 import gleam/dict.{type Dict}
 import gleam/option.{Some}
+import gleam/list
 import gleam/result
 import gleam/string
 import glp/analysis/srsw
@@ -61,6 +62,22 @@ pub fn load(
   source: String,
   prelude_source: String,
 ) -> Result(LoadOutcome, StagedError) {
+  load_with_scope(source, prelude_source, [])
+}
+
+/// Like `load`, but with an ancestor `self.glp` SCOPE CHAIN (feature 059 T078 Part
+/// B; typed-glp-manual §19.6). `ancestor_sources` are the directory-`self.glp`
+/// sources visible to the target module, ordered ROOT-FIRST (outermost ancestor
+/// first, nearest last); each is merged into the type environment on top of the
+/// root prelude with NEARER-WINS shadowing (Dart `module_hierarchy.assembleTypeScope`
+/// — `dict.merge`, later overwrites earlier). Sibling `self.glp` files are never in
+/// the chain (the facade's `discover_self_chain` walks only the ancestor path), so
+/// they are not visible. `load` is `load_with_scope(..., [])`.
+pub fn load_with_scope(
+  source: String,
+  prelude_source: String,
+  ancestor_sources: List(String),
+) -> Result(LoadOutcome, StagedError) {
   // Stage 1 — parse (lex + parse).
   use module <- result.try(parse_stage(source))
   // Stage 2 — SRSW, on the ORIGINAL parse (before PE: guard readers still count
@@ -76,6 +93,7 @@ pub fn load(
     module,
     transformed,
     prelude_source,
+    ancestor_sources,
   ))
   // Stage 5 — compile the PE-transformed module to v2.16 bytecode.
   let compiled_module = ast.SourceModule(..module, procedures: transformed)
@@ -213,12 +231,24 @@ fn type_check_stage(
   module: ast.SourceModule,
   transformed: List(ast.Procedure),
   prelude_source: String,
+  ancestor_sources: List(String),
 ) -> Result(List(type_checker.TypeWarning), StagedError) {
-  use prelude_env <- result.try(
+  use root_env <- result.try(
     case teb.build_prelude_environment(prelude_source) {
       Ok(env) -> Ok(env)
       Error(env_error) -> Error(env_error_to_staged(env_error))
     },
+  )
+  // Merge the ancestor self.glp chain on top of the root prelude, ROOT-FIRST so the
+  // NEAREST self.glp wins (T078 Part B, §19.6): `merge(acc, next)` lets `next`
+  // (the nearer definition) overwrite (`type_ast.merge` = `dict.merge`).
+  use prelude_env <- result.try(
+    list.try_fold(ancestor_sources, root_env, fn(acc, src) {
+      case teb.build_prelude_environment(src) {
+        Ok(env) -> Ok(type_ast.merge(acc, env))
+        Error(env_error) -> Error(env_error_to_staged(env_error))
+      }
+    }),
   )
   case type_checker.check_module(module, Some(transformed), Some(prelude_env)) {
     Error(env_error) -> Error(env_error_to_staged(env_error))

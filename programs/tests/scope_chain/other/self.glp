@@ -1,0 +1,3 @@
+%% Scope-chain fixture — SIBLING self.glp (other/). NOT on sub/client.glp's
+%% ancestor chain, so Gadget must be invisible to it (sibling isolation).
+Gadget ::= lever.

@@ -1,0 +1,3 @@
+%% Scope-chain fixture — ROOT self.glp (feature 059 T078 Part B).
+%% Defines Widget=button; the nearer sub/self.glp shadows it to slider.
+Widget ::= button.
