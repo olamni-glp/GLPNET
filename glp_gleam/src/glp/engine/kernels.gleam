@@ -114,6 +114,11 @@ pub fn dispatch(
     "_div", 3, [a, b, out] -> Ok(binary(heap, a, b, out, arith.div))
     "_idiv", 3, [a, b, out] -> Ok(binary(heap, a, b, out, idiv_ints))
     "_mod", 3, [a, b, out] -> Ok(binary(heap, a, b, out, mod_ints))
+    // `_copy(A, A_copy)` — snapshot: deref A and bind A_copy to it (parity port of
+    // Dart `copyKernel`, body_kernels.dart:527: `_deref(args[0])` then bind arg[1]).
+    // The metainterpreter idiom (`tracing_meta.glp`) copies a goal before reducing it.
+    "_copy", 2, [source, out] ->
+      Ok(bind_term(heap, out, deref_term(heap, source)))
     "_neg", 2, [a, out] ->
       case eval_num(heap, a) {
         Ok(x) -> Ok(bind_result(heap, out, arith.neg(x)))
