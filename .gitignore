@@ -116,6 +116,12 @@ glpquick-cert/
 # 049 T028 erlang regression scratch output
 gleam_quic/test/_build_test/
 
+# 049 US2 / 050 T055: rebar3 + CMake build output for the quicer/MsQuic NIF.
+# Was tracked (1041 files, since v2026.07.09.1) — untracked 2026-07-27: it is
+# REGENERABLE (`rebar3 compile` + the profile_c/README recipe), it churns by the
+# hundreds on any build, and it nests a full msquic git clone inside the worktree.
+gleam_quic/profile_c/_build/
+
 # feature 050 US3: regenerable Gleam corpus-runner output (goldens are Dart-side)
 test/parity/goldens/gleam/
 glp_gleam/.parity_run.glp
