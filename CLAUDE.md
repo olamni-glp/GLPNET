@@ -5,18 +5,74 @@
 - **Project**: glpnet — Windows-side workstreams (D2NET, PGLite, Flutter multiagent app) sharing the GLP language with the sibling Mac/Linux GLP repo.
 - **Working directory**: `D:\BSTDEV\RESEARCH\glp\glpnet`
 - **User**: Gabi (`vonwenm` / `mvonwen@gmail.com`)
+- 🔴 **THIS HOST IS `Ariellas`** (verified `hostname`; local `D:` label `ARIELLA_D`). Corrected
+  2026-07-28 — this file previously asserted "this host is OLAMNIT", which is **false** and caused
+  real damage: sessions inheriting it posted into another host's COOP outbox. **Never take host
+  identity from this file. Run `hostname` and use it** (lowercased) for COOP outbox dirs, action
+  files, export filenames and seq headers — `COOP/PROTOCOL-DRIVES.md` §2 makes this binding.
+  The three hosts are `Olamnit`, `Ariellas` (this one) and `Gavriella`.
 - **Branching/versioning**: **buildkit GitFlow** — see `docs/BRANCHING.md` and `docs/VERSIONING.md` (feature `NNN-short-name` → `develop` → `release/*` → `main`; CalVer tags `vYYYY.MM.DD.N` cut by `buildkit release`, never by hand).
 - **Sibling repo**: GLP language implementation at `/Users/udi/Grassroots/GLP/` (Mac) or `/home/user/GLP/` (Linux). See appendix at the end of this file for sibling-repo-specific commands and paths.
 
 ## 🔴 PGLite data-dir — use the repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
-**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, all 🔴 ABSOLUTE:
+**Local repo volume:** this host's own `D:` (label `ARIELLA_D`, **NTFS** — passes the CLI filesystem
+guard) carries the working repo. 🔴 **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED**
+— the old canonical C: cluster is gone and must not be re-established.
 
-1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established.
-2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place. **One sanctioned exception: `G:\BSTDEV\research\glp\glpnet\COOP\`** — the bk-colab mailbox (**read/write OK**). Everything else under G: glpnet stays observe-only.
-3. **Drive topology:** `GAVRI_VOL_D` is a **shared volume** — it is **G: on this host (OLAMNIT)** and **D: on the colleague host (GAVRI)**. So `G:\BSTDEV\research\glp\glpnet` here == `D:\BSTDEV\research\glp\glpnet` on GAVRI (same files). The bk-colab COOP mailbox lives on this volume so both hosts share it; the channel is **asynchronous** (the volume is not always mounted on both at once). See `COOP/PROTOCOL.md` and `/bk-colab` (in design).
+### 🔴 Drive-letter law (three hosts) — `COOP/PROTOCOL-DRIVES.md` v1, BINDING
 
-🔴 **The COOP mailbox in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a STALE COPY — do not read it as the channel.** It rode along in the drive swap and sits at seq 3 (2026-06-15). The live channel is **only** on the shared volume (`G:\...\COOP\`). Read the peer at `G:\...\COOP\gavri\handoff.md`; write your own side at `G:\...\COOP\olamnit\handoff.md`. Both `handoff.md` files are **newest-seq-first with older seqs preserved below** — so **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread (PROTOCOL.md rule 3's "full snapshot" is satisfied by prepending). OLAMNIT runs **more than one workstream** through this one mailbox — state which workstream you are in your seq block, and do not answer asks you have no standing on.
+Three hosts each own one working `D:` and export it over SMB. **Fixed letters, identical on every
+host**: a host mounts the OTHER TWO at these letters and never remaps its own.
+
+| Host | Its own D: | Mounted by the others as | Verified here 2026-07-28 |
+|---|---|---|---|
+| `Olamnit` | `Olamnit_D` | **G:** | `G:` → `\\192.168.0.129\Olamnit_D` ✔ |
+| `Ariellas` (**this host**) | `ariellas_D` | **H:** | own volume — never remapped ✔ |
+| `Gavriella` | `GAVRI_VOL_D` | **I:** | `I:` → `\\192.168.0.108\GAVRI_D` ✔ |
+
+So `G:\BSTDEV\research\glp\glpnet\…` means *Olamnit's* tree on every host, unambiguously; `I:\…`
+means Gavriella's. A stray `O:` duplicate of Olamnit_D existed and was **deleted** 2026-07-28
+(`net use O: /delete`) — do not recreate it.
+
+**Write discipline:** a peer's volume is **observe-only** except the COOP areas granted below. Never
+run tools or builds against a peer's tree in place — copy onto this host's `D:` first.
+
+*(Superseded: the pre-2026-07-28 note claiming `GAVRI_VOL_D` is G: here and that this host is
+OLAMNIT. Both were wrong — `GAVRI_VOL_D` is Gavriella's and mounts at **I:**.)*
+
+### 🔴 COOP mailbox — one root, and write ONLY your own areas
+
+The repo-local `D:\bstdev\research\glp\glpnet\COOP\` is a **STALE COPY — never read it as the
+channel.** The live mailbox root is **Olamnit's repo COOP**, reached from here at
+`G:\BSTDEV\research\glp\glpnet\COOP\` (one root, no replication, no split-brain).
+
+As `Ariellas`, the ONLY areas this host may write:
+
+```
+G:\...\COOP\ariellas\handoff.md          <- my outbox   (PREPEND seq blocks, never overwrite)
+G:\...\COOP\ariellas\roadmap-sync\       <- my export drops
+G:\...\COOP\actions\ariellas.jsonl       <- my CRDT action log (APPEND-only)
+```
+
+Everything else under `COOP/` — other hosts' dirs, `PROTOCOL*.md`, `ACTIONS.md` — is **read-only**.
+Read peers at `COOP/olamnit/`, `COOP/gavri/` (legacy name for Gavriella) and `COOP/actions/*.jsonl`.
+
+- `handoff.md` is **newest-seq-first with older seqs preserved below** — **PREPEND**; never
+  overwrite wholesale, or you destroy the thread (PROTOCOL rule 3's "full snapshot" is satisfied by
+  prepending). Tag every block `[host: <hostname> · workstream: <ws>]`.
+- **Action records are the citable truth; seq numbers are navigation only** — seq numbers have
+  collided when several workstreams share one outbox.
+- **Poll discipline:** on every COOP touch read the peers' action logs, answer open threads
+  addressed to you with at least `ack`/`nack`, and post a one-line `note` "seen through <peer>
+  seq N / actions through <id>".
+- ⚠ **Known hazard:** `ACTIONS.md` v1 says single-writer-per-file, which holds per *host* but **not
+  per workstream** — two workstreams sharing one host file have allocated the same id and
+  union-by-id then **silently drops one's content**. Use workstream-scoped id suffixes
+  (`act-ariellas-<date>-050a`) so allocation needs no cross-workstream coordination.
+
+The channel is **asynchronous** — a peer's share may be unmounted or its host off. See
+`COOP/PROTOCOL.md`, `COOP/PROTOCOL-DRIVES.md` (binding), `COOP/ACTIONS.md`, and `/bk-colab`.
 
 The canonical cluster is now the repo-local one. Every `codeconv` invocation that talks to the bridge passes:
 
@@ -366,7 +422,7 @@ Verify the build timestamp matches your changes. Logs go to a per-platform trace
 
 ---
 
-## 🔴 Dart / REPL toolchain on OLAMNIT (2026-07-27)
+## 🔴 Dart / REPL toolchain on this host — `Ariellas` (2026-07-27)
 
 The June rebuild left the GLP toolchain **silently unrunnable**. Three independent
 breakages, all now fixed or worked around — check these first if the REPL or the suite
