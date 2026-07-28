@@ -35,7 +35,9 @@ import glp/compiler/loader
 import glp/compiler/module_hierarchy
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
+import glp/engine/module_runtime.{type ModuleRuntime}
 import glp/engine/scheduler
+import glp/runtime/terms.{ConstAtom, ConstTerm, VarRef}
 import glp/link/primitives/link_pump
 import glp/link/primitives/link_runtime.{type LinkRuntime}
 import glp/link/primitives/transport_registry
@@ -50,6 +52,12 @@ import glp/runtime/heap
 /// `gleam test` and `gleam run` use — the same convention as `golden_corpus_test`
 /// reading `../specs/...`).
 const prelude_path = "../programs/self.glp"
+
+/// The module-RPC system module (`serve/2` + `_activate/2`), merged into every
+/// engine's program so exported modules can be auto-activated and `#` calls routed
+/// (T078 residual #1a). A missing/uncompilable system module degrades gracefully:
+/// module RPC is simply unavailable, the rest of the engine is unaffected.
+const system_module_path = "../programs/system/module_predicates.glp"
 
 /// Per-instance id stamped on every `GlobalVarId` this engine mints (the C#
 /// `GlobalVarId.agentId` — a per-glpnet-instance unique id). PROVISIONAL: the Dart
@@ -78,6 +86,10 @@ pub opaque type Engine {
     /// An in-progress interactive run (the `start`/`step` seam), or `None` between
     /// runs. One-shot `run` never touches it (its scheduler state is internal).
     session: Option(RunSession),
+    /// Names of loaded modules with `exported procedure`s (T078 residual #1a). Each
+    /// run activates them — spawns a `serve/2` service loop over a channel + registers
+    /// it — so a `M # goal(...)` call routes to the module. Dart §19.8 auto-activation.
+    activated_modules: List(String),
   )
 }
 
@@ -120,9 +132,10 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
       Engine(
         prelude_program: prelude_program,
         prelude_source: prelude_source,
-        program: prelude_program,
+        program: merge_system_module(prelude_program, prelude_source),
         warnings: [],
         session: None,
+        activated_modules: [],
       )
     Error(staged) ->
       panic as {
@@ -153,8 +166,45 @@ pub fn load(engine: Engine, source: String) -> Result(Engine, StagedError) {
       ..engine,
       program: program.merge(outcome.program, engine.program),
       warnings: outcome.warnings,
+      activated_modules: track_activation(
+        engine.activated_modules,
+        outcome.exported_module,
+      ),
     ),
   )
+}
+
+/// Compile the module-RPC system module (`serve/2` + `_activate/2`) and merge it into
+/// `base`. Graceful: an unreadable / uncompilable system module leaves `base`
+/// unchanged (module RPC unavailable, engine otherwise fine).
+fn merge_system_module(
+  base: BytecodeProgram,
+  prelude_source: String,
+) -> BytecodeProgram {
+  case read_self_source(system_module_path) {
+    Ok(src) ->
+      case loader.load(src, prelude_source) {
+        Ok(outcome) -> program.merge(outcome.program, base)
+        Error(_) -> base
+      }
+    Error(_) -> base
+  }
+}
+
+/// Add an exported module name to the activation set (deduped), or leave it unchanged
+/// for a non-exporting load.
+fn track_activation(
+  existing: List(String),
+  exported: Option(String),
+) -> List(String) {
+  case exported {
+    Some(name) ->
+      case list.contains(existing, name) {
+        True -> existing
+        False -> [name, ..existing]
+      }
+    None -> existing
+  }
 }
 
 /// As `load`, but PATH-AWARE: applies the directory `self.glp` scope chain
@@ -182,6 +232,10 @@ pub fn load_file(
       ..engine,
       program: program.merge(outcome.program, engine.program),
       warnings: outcome.warnings,
+      activated_modules: track_activation(
+        engine.activated_modules,
+        outcome.exported_module,
+      ),
     ),
   )
 }
@@ -344,18 +398,83 @@ fn run_goal(
   )
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
 
-  let sched =
-    scheduler.new(engine.program, boot.heap)
-    |> scheduler.with_trace(trace)
-  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
-  let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+  // With loaded exported modules, activate them (spawn `serve/2` service loops over
+  // channels) and run under the module driver so a `M # goal(...)` call routes (T078
+  // residual #1a). Otherwise the plain one-shot path (unchanged).
+  case engine.activated_modules {
+    [] -> {
+      let sched =
+        scheduler.new(engine.program, boot.heap)
+        |> scheduler.with_trace(trace)
+      let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+      let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+      use #(envelope, output) <- result.try(finish_run(
+        sched,
+        boot.query_var_writers,
+        status,
+      ))
+      Ok(#(envelope, output, scheduler.trace_lines(sched)))
+    }
+    modules -> {
+      use #(sched, runtime) <- result.try(activate_modules(
+        engine,
+        modules,
+        boot.heap,
+        trace,
+      ))
+      let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
+      let #(sched, status, _runtime) =
+        scheduler.run_module(sched, default_reduction_budget, fuel, runtime)
+      use #(envelope, output) <- result.try(finish_run(
+        sched,
+        boot.query_var_writers,
+        status,
+      ))
+      Ok(#(envelope, output, scheduler.trace_lines(sched)))
+    }
+  }
+}
 
-  use #(envelope, output) <- result.try(finish_run(
-    sched,
-    boot.query_var_writers,
-    status,
-  ))
-  Ok(#(envelope, output, scheduler.trace_lines(sched)))
+/// Stand up the module-RPC service loops for a run: allocate a channel per activated
+/// module, boot each module's `serve/2` as an INFRASTRUCTURE goal (excluded from the
+/// run's terminal status), and register the channel in a fresh `ModuleRuntime` (T078
+/// residual #1a). `serve/2` missing (system module absent) is a run error.
+fn activate_modules(
+  engine: Engine,
+  modules: List(String),
+  heap: heap.Heap,
+  trace: Bool,
+) -> Result(#(scheduler.Engine, ModuleRuntime), String) {
+  use serve_pc <- result.try(
+    program.label_pc(engine.program, "serve/2")
+    |> result.replace_error(
+      "module RPC: serve/2 not found (system module missing)",
+    ),
+  )
+  let #(heap, chans) =
+    list.fold(modules, #(heap, []), fn(acc, name) {
+      let #(h, cs) = acc
+      let #(h, ch_w, ch_r) = heap.allocate_variable(h)
+      #(h, [#(name, ch_w, ch_r), ..cs])
+    })
+  let sched =
+    scheduler.new(engine.program, heap)
+    |> scheduler.with_trace(trace)
+    // `serve/2` goals (initial + recursive) are infrastructure — parked service loops
+    // that must not make the run report `Suspended`.
+    |> scheduler.mark_infrastructure("serve/2")
+  let #(sched, runtime) =
+    list.fold(chans, #(sched, module_runtime.new()), fn(acc, chan) {
+      let #(sched, rt) = acc
+      let #(name, ch_w, ch_r) = chan
+      let regs =
+        program.new_regs()
+        |> program.set_reg(0, ConstTerm(ConstAtom(name)))
+        |> program.set_reg(1, VarRef(ch_r))
+      let #(sched, _id) = scheduler.boot(sched, "serve/2", serve_pc, regs)
+      #(sched, module_runtime.activate(rt, name, ch_w))
+    })
+  Ok(#(sched, runtime))
 }
 
 /// Build the result envelope + captured output from a finished scheduler run

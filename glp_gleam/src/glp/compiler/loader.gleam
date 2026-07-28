@@ -27,7 +27,7 @@
 //// caller (the engine facade, T029, owns reading programs/self.glp from disk).
 
 import gleam/dict.{type Dict}
-import gleam/option.{Some}
+import gleam/option.{type Option, None, Some}
 import gleam/list
 import gleam/result
 import gleam/string
@@ -51,6 +51,11 @@ pub type LoadOutcome {
   LoadOutcome(
     program: BytecodeProgram,
     warnings: List(type_checker.TypeWarning),
+    /// The module's name IFF it declares an `exported procedure` (feature 059 T078
+    /// residual #1a) — the facade auto-activates it (spawns its `serve/2` loop over a
+    /// channel) so a `M # goal(...)` call routes to it. `None` for a module with no
+    /// `-module` directive or no exports. Dart §19.8: exported modules auto-activate.
+    exported_module: Option(String),
   )
 }
 
@@ -101,7 +106,7 @@ pub fn load_with_scope(
   // Stage 6 — load: for the standalone instance the compiled program IS the
   // registration; the engine facade (T029) installs it. No load-stage error
   // is producible here.
-  Ok(LoadOutcome(prog, warnings))
+  Ok(LoadOutcome(prog, warnings, exported_module_of(module)))
 }
 
 /// Compile the prelude (programs/self.glp) to bytecode, WITHOUT the fatal
@@ -133,6 +138,20 @@ pub fn compile_prelude(
 }
 
 // ── Stage 1: parse ──────────────────────────────────────────────────────────
+
+/// The module's name iff it declares any `exported procedure` (feature 059 T078
+/// residual #1a) AND has a `-module` directive naming it. A module with exports but
+/// no `-module` name is not auto-activatable by name here (returns `None`; the facade
+/// may supply a filename via `load_file`).
+fn exported_module_of(module: ast.SourceModule) -> Option(String) {
+  case
+    list.any(module.proc_declarations, fn(pd) { pd.exported }),
+    module.declaration
+  {
+    True, Some(decl) -> Some(decl.name)
+    _, _ -> None
+  }
+}
 
 fn parse_stage(source: String) -> Result(ast.SourceModule, StagedError) {
   case lexer.tokenize(source) {

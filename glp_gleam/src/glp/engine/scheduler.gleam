@@ -73,6 +73,13 @@ pub opaque type Engine {
     goals: Dict(Int, Activation),
     blocking: Dict(Int, Set(Int)),
     next_id: Int,
+    /// Infrastructure PROCEDURE names — long-lived service loops (the module-RPC
+    /// `serve/2` goals, Dart `rt.infrastructureGoalIds`) that suspend forever waiting
+    /// on their channel and must NOT count toward the run's terminal status (else every
+    /// run reports `Suspended`). Keyed by procedure name so a serve loop's RECURSIVE
+    /// re-spawn is also excluded (a goal-id set would miss it). Excluded from
+    /// `terminal_status` + `blocking_readers`.
+    infrastructure: Set(String),
     /// Captured `_output/1` program-output lines accumulated across reductions, in
     /// emission order (T034). Read after `run` via `captured_output`.
     output: List(String),
@@ -136,6 +143,7 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     goals: dict.new(),
     blocking: dict.new(),
     next_id: 1,
+    infrastructure: set.new(),
     output: [],
     trace: False,
     trace_lines: [],
@@ -235,6 +243,22 @@ pub fn boot(
     ),
     id,
   )
+}
+
+/// Mark a PROCEDURE as infrastructure — its goals (a module-RPC `serve/2` service
+/// loop and every recursive re-spawn) are excluded from the run's terminal status
+/// (T078 residual #1a; Dart `rt.infrastructureGoalIds`). Set before running.
+pub fn mark_infrastructure(engine: Engine, procedure: String) -> Engine {
+  Engine(..engine, infrastructure: set.insert(engine.infrastructure, procedure))
+}
+
+/// Whether `goal_id`'s goal runs an infrastructure procedure (looked up in the live
+/// goal store; a completed/deleted goal is not infrastructure).
+fn is_infrastructure_goal(engine: Engine, goal_id: Int) -> Bool {
+  case dict.get(engine.goals, goal_id) {
+    Ok(act) -> set.contains(engine.infrastructure, act.procedure)
+    Error(_) -> False
+  }
 }
 
 /// Run to quiescence (or the fuel cap). `reduction_budget` bounds instructions
@@ -723,7 +747,13 @@ pub fn bind_and_wake(
 /// end-of-drain `userSuspendedGoals.isEmpty ? succeeded : suspended` (the
 /// MVP engine has no infrastructure/serve goals to exclude).
 fn terminal_status(engine: Engine) -> RunStatus {
-  case dict.is_empty(engine.goals) {
+  // Only NON-infrastructure goals count: a run is `Success` when every user goal has
+  // completed, even if service-loop `serve/2` goals remain suspended on their channels.
+  let live_user =
+    dict.filter(engine.goals, fn(_id, act) {
+      !set.contains(engine.infrastructure, act.procedure)
+    })
+  case dict.is_empty(live_user) {
     True -> Success
     False -> Suspended(blocking_readers(engine))
   }
@@ -741,6 +771,12 @@ pub fn status(engine: Engine) -> RunStatus {
 /// is a live blocking reader.
 fn blocking_readers(engine: Engine) -> List(Int) {
   engine.blocking
+  // Keep only readers blocking at least one NON-infrastructure goal (a `serve/2`
+  // service loop suspended on its channel is not a user-visible blocking reader).
+  |> dict.filter(fn(_reader, goal_ids) {
+    set.to_list(goal_ids)
+    |> list.any(fn(gid) { !is_infrastructure_goal(engine, gid) })
+  })
   |> dict.keys
   |> list.sort(int.compare)
 }
