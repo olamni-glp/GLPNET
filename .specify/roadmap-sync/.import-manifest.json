@@ -1,6 +1,26 @@
 {
   "applied": [
     {
+      "applied_lines": 163,
+      "file_name": "ariellas__glpnet__20260728T103006Z.json",
+      "file_sha256": "3842e51c1c8e83004f8ce02980fa5752704ecacff252c35f7028cba938d44a5f",
+      "imported_at": "2026-07-28T10:32:50.079000+00:00",
+      "line_count": 2450,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260728T094815Z.json",
+      "file_sha256": "27eac09e8aa287b6d47f54aaed5fc9c996bd0944aa10918dea4086cfb1a83950",
+      "imported_at": "2026-07-28T10:32:50.079000+00:00",
+      "line_count": 2287,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
       "applied_lines": 0,
       "file_name": "gavriellas__glpnet__20260703T005655Z.json",
       "file_sha256": "a7e7d7c3d80d418aa8460e1a072a036a1e6e200504cd6f82e961bf35f57928c5",
