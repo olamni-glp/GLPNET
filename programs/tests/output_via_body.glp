@@ -1,0 +1,6 @@
+%% Minimal repro: output produced in a callee's BODY (Y := ...) flowing back
+%% through a reader-hole chain to the caller's output. Manual §19.5 pattern.
+procedure p(Integer?, Integer).
+p(X, R?) :- q(X?, R).
+procedure q(Integer?, Integer).
+q(X, Y?) :- Y := X? * 2.

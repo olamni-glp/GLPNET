@@ -34,12 +34,23 @@ dynamic dispatch (§19.4/§19.7), not the static-link shortcut.
 | `step_module`/`run_module` scheduler variant (mirrors `step_link`) | `glp_gleam/src/glp/engine/scheduler.gleam` |
 | `Distribute` import table (`index→name`) on the compiled program, surfaced from codegen | `glp_gleam/src/glp/bytecode/program.gleam` (`import_name`/`with_imports`) + `glp_gleam/src/glp/compiler/codegen.gleam` |
 | `serve/2` system procedure | `programs/system/module_predicates.glp` (new) |
-| `_activate/2` declaration + type-checker recognizer (§1.14 approved) | `programs/self.glp:78` + `glp_gleam/src/glp/analysis/prelude.gleam` |
+| `_activate/2` declaration + type-checker recognizer (§1.14 approved) | `programs/system/module_predicates.glp` (with `serve/2`) + `glp_gleam/src/glp/analysis/prelude.gleam` |
 | **Acceptance test** | `glp_gleam/test/glp/engine/module_rpc_test.gleam` |
 
 **Acceptance test (`module_rpc_distribute_runs_to_completion`):** `run_echo(5, R?) :- math_service # echo(X?, R).`
 drives `scheduler.run_module` to completion with **no `Unimplemented` fault**; the input `5` crosses the
 RPC (Distribute → channel → `serve` → `_activate` → `echo`) and the output flows back on the shared cell.
+
+**🔴 Shared-file hardening (2026-07-28, post-close correction).** The `_activate/2` declaration was
+FIRST added to `programs/self.glp` — which is SHARED with the Dart reference runtime (`glp_runtime` also
+compiles `self.glp`). Dart's compiler rejects a **clauseless** `_activate` declaration (it is not in
+Dart's host-kernel recognizer, unlike `_send`/`_link_*`), so `GlpEngine._loadRootSelf` threw
+`Bad state: … Procedure declaration for "_activate" has no clauses` and the **Dart REPL crashed on boot**
+(surfaced when the differential harness's Dart column came back blank). Fix: the declaration was moved to
+`programs/system/module_predicates.glp` — a **Gleam-only** system module loaded alongside `serve/2`, only
+when module RPC is exercised — so `self.glp` stays byte-identical to the shared original and both runtimes
+boot. Verified: Dart REPL boots + runs `p(5,R). → R=10`; Gleam `gleam test` 606/0. LESSON: never add a
+Gleam-only clauseless kernel declaration to the shared `self.glp`.
 
 ## Part B — the directory `self.glp` scope chain (§19.6)
 
@@ -72,10 +83,14 @@ is rejected — order-sensitivity confirms root-first is what makes the nearer d
    a file PATH into `load` to call `discover_self_chain` + `load_with_scope`. So the interactive REPL does
    not yet route `#` calls or apply the directory scope chain automatically. The acceptance tests drive
    the mechanisms directly (the facade would only wire them). Recommended as a T078 follow-up sub-WP.
-2. **`q(X, Y?) :- Y := X? * 2` output-hole-via-body** (the manual §19.5 canonical output pattern) leaves
-   the caller's output UNBOUND even via a DIRECT (non-`#`) call — a general output-hole propagation gap,
-   NOT a module-RPC bug (RPC proven; `:=` works standalone). The Part A acceptance uses a head-binding
-   `echo(X, X?)` that exercises input→output flow. Needs a Dart-parity check; logged for follow-up.
+2. **~~§19.5 output-hole-via-body~~ — RETRACTED 2026-07-28 (was a test-harness artifact, NOT an engine
+   gap).** Differential on `programs/tests/output_via_body.glp` (`p(X, R?) :- q(X?, R). q(X, Y?) :- Y :=
+   X? * 2.`) with `p(5, R).` → **Dart `R = 10 → succeeds` AND Gleam `R = 10 → succeeds` — they AGREE.**
+   The §19.5 output-hole-via-body pattern works correctly in both runtimes. The earlier "unbound output"
+   observation came from `module_rpc_test` manually setting the query register (`reg1 = VarRef(r_w)`)
+   instead of building it via `goal_boot.setup_goal`; the head-binding `echo` was robust to that, the
+   body-output chain was not. No engine fix needed. (The Part A acceptance keeps `echo(X, X?)`; it
+   correctly exercises input→output flow through the RPC.)
 3. **T073 interaction** — a module referencing a type defined in NO in-scope `self.glp` panics at
    `program_dfa.gleam:580` (`UnknownTypeError`) rather than returning a clean staged error; this is the
    pending T073 (`close-langsurface-channel-convention` sibling / small-fix panic→StagedError). The

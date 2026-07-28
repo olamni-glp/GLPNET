@@ -14,6 +14,14 @@
 
 -mode(system).
 
+%% _activate/2 — the module-dispatch body kernel (feature 059 T078; §1.14 kernel-add
+%% approved by Gabi 2026-07-27). Implemented by the Gleam runtime (no clauses, like
+%% _send). Declared HERE (a Gleam-only system module loaded with serve/2), NOT in the
+%% shared programs/self.glp — the Dart reference compiler rejects a clauseless
+%% _activate declaration (it is not in Dart's host-kernel recognizer), so putting it
+%% in self.glp would break the Dart runtime that also compiles self.glp.
+procedure _activate(_?, _?).
+
 %% serve(Module, ChannelStream) — Module is the activated module's name (a ground
 %% atom); ChannelStream is the stream of incoming goal terms.
 procedure serve(_?, Stream(_)?).
