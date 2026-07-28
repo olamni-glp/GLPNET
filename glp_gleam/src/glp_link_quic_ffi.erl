@@ -23,7 +23,14 @@
 %% space, so "known token, then space-or-end" is an UNAMBIGUOUS discriminator. Prefix matching
 %% alone would not be: "ERRxyz" is legal base64.
 -module(glp_link_quic_ffi).
--export([open/3, send/2, recv/2, close/1]).
+-export([open/3, send/2, recv/2, close/1, get_env/1]).
+
+%% get_env(Name) -> {ok, Value} | {error, nil}   (Gleam Result)
+get_env(Name) ->
+    case os:getenv(to_list(Name)) of
+        false -> {error, nil};
+        V -> {ok, unicode:characters_to_binary(V)}
+    end.
 
 -define(LINE_BUF, 4194304).
 
@@ -42,14 +49,34 @@ open(Exe, Args, TimeoutMs) ->
     end.
 
 boot(Caller, Exe, Args) ->
-    try
-        Port = open_port(
-            {spawn_executable, Exe},
-            [{args, Args}, binary, exit_status, stderr_to_stdout, {line, ?LINE_BUF}]
-        ),
-        await_link_up(Caller, Port, <<>>)
-    catch _:E ->
-        Caller ! {self(), {failed, iolist_to_binary(io_lib:format("cannot spawn ~ts: ~p", [Exe, E]))}}
+    %% `spawn_executable` does NOT search PATH — a bare name like "dotnet" is enoent. Resolve
+    %% it the way a shell would, and say so plainly when it genuinely is not installed.
+    case resolve_exe(Exe) of
+        false ->
+            Caller ! {self(), {failed, iolist_to_binary(
+                io_lib:format("executable not found on PATH: ~ts", [Exe]))}};
+        Path ->
+            try
+                Port = open_port(
+                    {spawn_executable, Path},
+                    [{args, Args}, binary, exit_status, stderr_to_stdout, {line, ?LINE_BUF}]
+                ),
+                await_link_up(Caller, Port, <<>>)
+            catch _:E ->
+                Caller ! {self(), {failed, iolist_to_binary(
+                    io_lib:format("cannot spawn ~ts: ~p", [Path, E]))}}
+            end
+    end.
+
+%% Absolute/relative path with a separator -> use as-is; a bare name -> PATH lookup.
+resolve_exe(Exe) ->
+    case filename:pathtype(Exe) of
+        relative ->
+            case filename:split(Exe) of
+                [_Single] -> os:find_executable(Exe);
+                _ -> Exe
+            end;
+        _ -> Exe
     end.
 
 %% Consume control lines until the link is up (or the host gives up). Data cannot arrive before

@@ -55,9 +55,15 @@ internal static class Program
 
         try
         {
-            return opts.Role == "server"
-                ? await RunMeshServerAsync(transport, addr, opts, stdout, life)
-                : await RunClientAsync(transport, addr, opts, stdout, life);
+            return opts.Role switch
+            {
+                // `--role server --binary` is a POINT-TO-POINT opaque listener, not the mesh
+                // router: it accepts ONE link and runs the same stdio relay the client does, so
+                // both ends of an 025 link can carry opaque frames (glpnet 050 T055).
+                "server" when opts.Binary => await RunBinaryServerAsync(transport, addr, stdout, life),
+                "server" => await RunMeshServerAsync(transport, addr, opts, stdout, life),
+                _ => await RunClientAsync(transport, addr, opts, stdout, life),
+            };
         }
         catch (AuthenticationException ex) { Console.Error.WriteLine($"ERR cert_mismatch {ex.Message}"); return ExitCertMismatch; }
         catch (QuicException ex) when (ex.QuicError is QuicError.ConnectionTimeout or QuicError.ConnectionAborted)
@@ -140,6 +146,33 @@ internal static class Program
             await stdout.WriteLineAsync(binary ? Convert.ToBase64String(frame) : Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
             await stdout.FlushAsync().ConfigureAwait(false);
         }
+    }
+
+    // ------------------------------------------------- server role: opaque point-to-point (050 T055)
+    /// <summary>
+    /// `--role server --binary`: bind, accept ONE link, and relay opaque frames over stdio exactly
+    /// as the client role does (base64 on the stdio leg, RAW bytes on the wire). This is the
+    /// LISTENING half of an 025 link — the mesh router is deliberately not involved, because that
+    /// router parses L5 JSON envelopes and an 025 frame is opaque binary by contract.
+    /// One link per process mirrors the 025 base MVP (one-link-per-listen, as in the TCP leaf).
+    /// </summary>
+    private static async Task<int> RunBinaryServerAsync(QuicTransport transport, LinkAddress addr, TextWriter stdout, CancellationTokenSource life)
+    {
+        await using var listener = await transport.CreateListenerAsync(addr, LinkOptions.Default, life.Token).ConfigureAwait(false);
+        Console.Error.WriteLine($"READY server {addr}");
+
+        ILinkEndpoint link;
+        try { link = await listener.AcceptAsync(life.Token).ConfigureAwait(false); }
+        catch (OperationCanceledException) { return ExitOk; }
+
+        Console.Error.WriteLine($"LINK_UP {link.Id}");
+        link.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
+
+        _ = StdinToLinkAsync(link, life.Token, binary: true);
+        await LinkToStdoutAsync(link, stdout, life, binary: true).ConfigureAwait(false);
+        life.Cancel();
+        await link.DisposeAsync().ConfigureAwait(false);
+        return ExitOk;
     }
 
     // ---------------------------------------------------------------- server role: mesh router (US2)
@@ -246,7 +279,9 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
             if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
-            if (binary && role != "client") throw new ArgumentException("--binary is client-role only (the mesh router parses L5 envelopes)");
+            // --binary is valid for BOTH roles: client dials, server binds+accepts-one — each an
+            // opaque point-to-point end of one 025 link. It only excludes the MESH router, which
+            // needs L5 envelopes it can route by `to`/`from`.
             return new Opts(role, addr, port, cert, maxClients, retry, selfId!, binary);
         }
 

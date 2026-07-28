@@ -25,6 +25,7 @@
 
 import gleam/erlang/process.{type Pid}
 import gleam/int
+import gleam/list
 import gleam/option.{None, Some}
 import glp/link/seam/endpoint.{type Endpoint, Endpoint}
 import glp/link/seam/link_address.{type LinkAddress}
@@ -74,7 +75,7 @@ fn open(
         "quic address needs an ep(Host, Port) form — got a bare path",
       ))
     _ -> {
-      let args = [
+      let base = [
         spec.dll,
         "--role",
         role,
@@ -87,6 +88,13 @@ fn open(
         // Opaque-binary stdio: base64 on this leg, RAW frames on the wire.
         "--binary",
       ]
+      // FR-004 role-order independence: the connector must tolerate dialling BEFORE the
+      // listener has bound — the same guarantee the tcp leaf gets from `connect_retry`.
+      // Without this a perfectly healthy pair fails purely on startup order.
+      let args = case role {
+        "client" -> list.append(base, ["--retry"])
+        _ -> base
+      }
       case ffi_open(spec.dotnet, args, opts.connect_timeout_ms) {
         Error(reason) -> Error(LinkFaultSignal(id, Transient, reason))
         Ok(pid) -> Ok(endpoint_over(id, pid))

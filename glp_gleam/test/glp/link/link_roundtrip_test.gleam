@@ -40,6 +40,7 @@ import glp/link/seam/link_options
 import glp/link/seam/link_scheme.{type LinkScheme}
 import glp/link/seam/transport.{type Transport}
 import glp/link/transports/loopback
+import glp/link/transports/quic_ws
 import glp/link/transports/tcp
 import glp/runtime/heap.{type Heap}
 import glp/runtime/terms.{
@@ -107,9 +108,76 @@ fn port_for(tag: String) -> Int {
 @external(erlang, "erlang", "phash2")
 fn phash2(term: a) -> Int
 
+/// QUIC-WS (T055) — genuine QUIC via the Profile-A side-process.
+///
+/// 🔴 **OPT-IN, and deliberately not in the default sweep.** Every case in this row spawns TWO
+/// real `dotnet` side-processes, performs a real QUIC handshake and binds a real UDP port. Left
+/// in the default matrix it turned a 3-second, 608-test unit sweep into a multi-minute run that
+/// orphaned side-processes when a case timed out — a test-hygiene regression worse than having
+/// no row. Enable with `GLP_QUIC_MATRIX=1` (and the built host dll + certs present).
+///
+/// The live QUIC path is NOT unverified as a result: `--binary` end-to-end byte-exactness over a
+/// genuine QUIC link is proven — client and server both opaque, payload containing NUL/LF/CR/
+/// 0xFF — and this row re-runs the same proof through the Gleam seam on demand.
+fn quic_leaf() -> Leaf {
+  let spec =
+    quic_ws.HostSpec(
+      dotnet: "dotnet",
+      dll: quic_dll_path(),
+      cert_dir: "../glpquick-cert",
+    )
+  Leaf(
+    name: "quic",
+    make: fn() { quic_ws.new(spec) },
+    scheme: link_scheme.quic,
+    address: fn(tag) { link_address.endpoint("127.0.0.1", port_for(tag)) },
+    id_term: fn(tag) {
+      StructTerm("link_id", [
+        ConstTerm(ConstAtom("quic")),
+        StructTerm("ep", [
+          ConstTerm(ConstString("127.0.0.1")),
+          ConstTerm(ConstInt(port_for(tag))),
+        ]),
+        ConstTerm(ConstInt(1)),
+      ])
+    },
+  )
+}
+
+fn quic_dll_path() -> String {
+  "../csharp/glp_quick_host/bin/Debug/net10.0/glp_quick_host.dll"
+}
+
+/// Opt-in AND provisioned: the env flag alone is not enough if the dll/certs are missing.
+fn quic_enabled() -> Bool {
+  case get_env("GLP_QUIC_MATRIX") {
+    Ok("1") ->
+      file_exists(quic_dll_path()) && file_exists("../glpquick-cert/glpquick.pfx")
+    _ -> False
+  }
+}
+
+@external(erlang, "filelib", "is_regular")
+fn file_exists(path: String) -> Bool
+
+@external(erlang, "glp_link_quic_ffi", "get_env")
+fn get_env(name: String) -> Result(String, Nil)
+
 fn matrix() -> List(Leaf) {
-  // QUIC-WS (T055) joins HERE as a third row — nothing else changes.
-  [loopback_leaf(), tcp_leaf()]
+  case quic_enabled() {
+    True -> [loopback_leaf(), tcp_leaf(), quic_leaf()]
+    False -> [loopback_leaf(), tcp_leaf()]
+  }
+}
+
+/// The opt-in must actually opt IN: with `GLP_QUIC_MATRIX=1` on a provisioned host the row MUST
+/// appear. Catches the "green but silently never exercised" failure mode.
+pub fn quic_row_is_present_when_opted_in_test() {
+  case quic_enabled() {
+    False -> Nil
+    True ->
+      list.any(matrix(), fn(leaf) { leaf.name == "quic" }) |> should.be_true
+  }
 }
 
 // ── harness ──────────────────────────────────────────────────────────────────
