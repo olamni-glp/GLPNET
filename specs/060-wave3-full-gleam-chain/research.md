@@ -177,6 +177,60 @@ linker (pure) → `compile_linked` → facade `load_project` → Section F oracl
 not yet seen the CSSG sources (parameterized self.glp types, `ui/` subdir modules) — a parse/check
 rejection there is a REPORTABLE gap, not a thing to patch silently.
 
+## US4 dossier — link layer (T032–T042; owner-directed 2026-07-28) — ⛔ SPEC CONFLICT, ruling required
+
+**Reference**: C# `csharp/glp_link/` (the wire format's owner per the contract) + Dart
+`glp_runtime/lib/link/` (39 files — primitives / reliability / seam / transports), both carrying the
+frozen feature-025 semantics.
+
+**Already in Gleam (feature 050)**: the seam is COMPLETE and faithful — `link_scheme`
+(loopback/tcp/quic/zmq), `link_address`, `link_id`, `link_options` (backpressure window, TLS,
+temp/perm-fail ms, connect timeout), `link_fault` (Closed/Transient/Permanent), `Endpoint`
+record-of-functions vtable (send/recv/close + out-of-band fault `Subject`), `Transport`
+(listen/connect); `reliability/crc32` + `frame_codec` (version byte 0x01 with `UnsupportedVersion`
+rejection, fragmentation header, CRC — parse/encode both ways); transports `loopback`/`tcp`/`zmq`
+with green tests (`frame_codec_test`, `loopback_test`, `tcp_test`).
+
+**Missing in Gleam (the actual T032–T039 surface)**: the PRIMITIVES layer — `LinkEstablish` (the
+one canonical wire-and-register core), `LinkPump` (per-link background recv loops + single inbox +
+runner-thread `tryApplyNext` extending the `In` stream), `LinkHandle`/`LinkRegistry`/`LinkRuntime`,
+egress drainers (heap `onBind` observers on the `Out` writer chain), `LinkFaults`/monitor fan-out,
+teardown + distributed-GC hooks, the seven `_link_*` kernels, `inbound_ordering` +
+`frame_reassembler` + `fencing_registry` + `cycle_guard`, and the T039 multiagent boot loader.
+Engine-integration gaps that make this bigger than the dispatch port: the pure Gleam engine has NO
+heap bind-observer hook and NO inbound-pump/run-to-quiescence-await seam — both need new,
+carefully-mapped seams (likely the data-threading discipline again + `gleam_erlang` processes for
+the genuinely-async recv loops).
+
+### ⛔ The conflict (STOP — Constitution II / spec-first)
+
+`contracts/link-handshake.md` specifies a wire message sequence
+`Hello{version, capabilities, identity} → Accept{...} | Refuse{reason}` and rests on the assumption
+*"The wire format is the one already established for the C# runtime; Gleam conforms to it."*
+**Neither reference implements any such message exchange.** What both references actually have:
+
+1. **Version negotiation** = the frame codec's version byte (0x01); any other byte → the frame is
+   REJECTED (`UnsupportedVersion` / FR-022 "bad-version rejected") — never misinterpreted. Already
+   ported to Gleam.
+2. **Capability enforcement** = the `ICapabilityGate` verify-before-act seam (macaroon-backed gate
+   injected per scheme from `glp_crdtmsg`; allow-all default for loopback/tcp) — a LOCAL fail-closed
+   gate that records refusals, not a wire negotiation of a capability intersection.
+3. **"Handshake"** = the path-B establishment rendezvous: `_link_request` (connector ships a token)
+   / `_link_listen` + `_link_accept` (adopt the pending connection).
+4. **Refusal surface** = gate refusal / transport fault on the `Faults` monitor with a reason term —
+   not a `Refuse` wire message.
+
+Implementing the contract's `Hello/Accept/Refuse` literally would INVENT a wire protocol the C# peer
+does not speak — breaking US5's C#↔Gleam interop, the very thing the contract serves — and would be
+a cross-runtime protocol addition needing Language-Authority-level approval plus C#-side work.
+
+**Recommended disposition**: amend `contracts/link-handshake.md` to the reference's actual
+mechanisms, onto which every rule 1–7 already maps (either side initiates ✓ listen+pump; version
+mismatch never best-effort ✓ frame-version rejection; explicit capability refusal ✓ fail-closed
+gate; per-link ordering ✓ inbound_ordering; partial frames never delivered ✓ CRC+reassembly; peer
+loss bounded ✓ temp/perm-fail ms ≤ 30 s default; refused terminal ✓). Then port T032–T042 against
+the amended contract. Awaiting the owner's ruling before any US4 code.
+
 ## SC-001 / SC-008 record — 2026-07-28 (T030/T031, OLAMNIT host)
 
 - **In-scope pass rate (SC-001)**: **100% (206/206)** — zero exceptions to name. The ≥95% gate is
