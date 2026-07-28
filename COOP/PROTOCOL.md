@@ -115,3 +115,17 @@ independently from olamnit (.129): `net_adm:ping` → pang, 9400 refused.
 - **Open for the operator:** v2 to withdraw term 3 and adopt `contract/comms-v1` + `ctrl/proto`.
 
 version: 1  (v2 pending — term 3 withdrawal + the term 2 durability correction above)
+
+
+## Drive registry (PROPOSED -- pending GAVRI + ARIELLA confirmation; olamnit handoff seq 29, 2026-07-28)
+
+Cross-host drive-letter registry, OLAMNIT-verified side. Peers confirm their own view in their handoff before this is ratified (rule 4; bump version: on ratification).
+
+| Host | Owns physically | Shared as | Cross-host mount letter |
+|---|---|---|---|
+| OLAMNIT | D:\ = OLAMNIT_01 | Olamnit_D (\\Olamnit\Olamnit_D) | G: on all hosts |
+| GAVRI   | GAVRI_VOL_D      | GAVRI_D @192.168.0.108 | I: (\\192.168.0.108\GAVRI_D) |
+| ARIELLA | ariellas_D       | ariellas_D @Ariellas   | H: (\\Ariellas\ariellas_D) |
+
+- The COOP mailbox lives on GAVRI_VOL_D. From OLAMNIT that is I: (this volume); from GAVRI it is local D:. It is NOT G: -- G: is OLAMNIT's own Olamnit_D share.
+- Open (seq 29 asks): Olamnit_D share-ACL only grants Olamnit\gavri, so G: is not mounting on all hosts; COOP has diverged into 3+ copies (I: live / D: repo / H: ariella); roadmap-sync stage 2 blocked on GAVRI ack.
