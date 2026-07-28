@@ -125,3 +125,12 @@ gleam_quic/profile_c/_build/
 # feature 050 US3: regenerable Gleam corpus-runner output (goldens are Dart-side)
 test/parity/goldens/gleam/
 glp_gleam/.parity_run.glp
+
+# COOP live dialogue — PROTOCOL-DRIVES.md §7 (operator ruling, adopted 2026-07-28).
+# NO in-branch commit/push/merge logic for live COOP state: the mailbox is the shared
+# volume (Olamnit's repo COOP at G:\...\COOP\), not git. This repo-local COOP/ is a
+# STALE COPY and was tracked by accident; untracked 2026-07-28 (`git rm -r --cached COOP`,
+# disk contents intact). Git carries COOP state ONLY as deliberate milestone snapshots
+# under docs/coop-milestones/ — the mstack pattern: live state out of git, deterministic
+# exports in.
+COOP/
