@@ -28,6 +28,14 @@ Outcome reporting: success (with deep-resolved bindings), suspension (goal list)
 - No process dictionary, no global ETS state for engine semantics (transport processes excepted).
 - Every goal result — REPL-consumed or link-delivered — is a `ResultEnvelope` built by the 038 builder (deep-resolve, canonical ordering, output capture). In-process and over-the-wire envelopes for the same computation are byte-identical after encoding (SC-004 corollary).
 
+## Host-embedding API (T068 · T069)
+
+The host-callable surface over the pure `Engine` value, decoupled from any UI/REPL (the yngenios embedding hook; matches the Dart `glp_engine.dart` baseline). A host drives the engine through `glp/engine` alone — never a `glp/repl/*` module.
+
+- **Construct + prelude injection** (T068 prelude-injection seam): `new() -> Engine` reads the on-disk root `self.glp`; `new_with_prelude(source) -> Engine` injects a caller-supplied prelude (CWD-independent). The prelude is compiled *without* a user-style type check (`compile_prelude`), so — exactly as `self.glp` itself calls host kernels the type checker does not recognise (`'_now'`, `'_add'`) — an injected prelude may define wrapper procedures that call host kernels (`double(X, Y?) :- '_host_double'(X?, Y).`).
+- **Configure** (T068): `configure(Engine, EngineConfig) -> Engine` replaces the tunable configuration; `config(Engine) -> EngineConfig` reads it. `EngineConfig` carries `reduction_budget` (per-goal instruction budget), `fuel` (total-reduction backstop; Dart `maxCycles`), `trace` (reduction-trace default), and `host_kernels`. `default_config()` is the historical defaults. The config-driven `run` honours `fuel` + `trace`; the explicit `run_with_limit*` variants still take an ad-hoc fuel for the REPL `:limit`.
+- **Kernel injection / composition root** (T069): `register_kernel(Engine, name, arity, HostKernel) -> Engine` adds a host-supplied body kernel to the config. A `HostKernel` is `fn(Heap, List(Term)) -> Result(HostKernelOutcome, String)` (the same three data channels a built-in kernel's `KSuccess` threads out: updated heap, reactivations, output lines). At a BODY Spawn label-miss the runner consults the injected table by `(name, arity)` — **after** the built-in pure/effectful kernels, so a host *extends* the kernel set without shadowing a built-in — and **never names any host kernel** (the "injected onto a live engine, never referenced by it" discipline). A host abort surfaces loudly (a `Failed` run), never a silent success. No global state — the table lives on the `Engine` value (FR-009).
+
 ## Acceptance hooks
 
 - Corpus runner drives this surface exactly as it drives the Dart REPL (piped commands), so goldens diff cleanly (contracts/corpus-parity.md).

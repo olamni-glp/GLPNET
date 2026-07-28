@@ -187,6 +187,22 @@ pub type ParentCtx {
 
 /// Per-reduction execution context (Dart `RunnerContext`, the fields this slice
 /// uses). Immutable — every handler returns a new context.
+/// A host-injected body kernel (T069 composition-root seam): given the heap and the
+/// body call's argument terms, produce an updated heap + reactivated goals + captured
+/// output lines, or a rejection reason. The runner consults the injected table by
+/// `(name, arity)` at a BODY Spawn label-miss WITHOUT naming any host kernel — the
+/// engine never references what the host registered (verify-engine-engine-composition-
+/// root #1: "kernels injected onto a live engine, never referenced by it"). Mirrors the
+/// pure-kernel contract (`kernels.KSuccess`/`KAbort`) but supplied from outside.
+pub type HostKernel =
+  fn(Heap, List(Term)) -> Result(HostKernelOutcome, String)
+
+/// The success payload of a host kernel — the same three data channels a pure kernel's
+/// `KSuccess` threads out (updated heap, reactivations, output lines).
+pub type HostKernelOutcome {
+  HostKernelOutcome(heap: Heap, woken: List(GoalRef), output: List(String))
+}
+
 pub type RunnerContext {
   RunnerContext(
     heap: Heap,
@@ -248,6 +264,13 @@ pub type RunnerContext {
     /// `Reduced` like `link`. `None` for ordinary runs, so a module-qualified call
     /// without the driver fails non-fatally (the goal fails).
     module: Option(ModuleRuntime),
+    /// Host-injected body kernels keyed by `(name, arity)` (T069 composition-root
+    /// seam). READ-ONLY config (unlike `mad`/`link`/`module`, which carry mutated
+    /// driver state) — consulted at a BODY Spawn label-miss after the built-in pure
+    /// and effectful kernels, so a host EXTENDS the kernel set without shadowing a
+    /// built-in. Empty for a bare engine (nothing injected); never threaded out on
+    /// `Reduced` (it is not mutated by a reduction).
+    host_kernels: Dict(#(String, Int), HostKernel),
   )
 }
 
@@ -277,6 +300,7 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     mad: None,
     link: None,
     module: None,
+    host_kernels: dict.new(),
   )
 }
 
@@ -300,6 +324,17 @@ pub fn with_link(ctx: RunnerContext, runtime: LinkRuntime) -> RunnerContext {
 /// returns on `Reduced`). Mirror of `with_link`.
 pub fn with_module(ctx: RunnerContext, runtime: ModuleRuntime) -> RunnerContext {
   RunnerContext(..ctx, module: Some(runtime))
+}
+
+/// Inject the host-kernel table into a reduction context (T069 composition-root seam;
+/// the engine facade's `configure`/`register_kernel` set it, threaded in by the
+/// scheduler before each `reduce`). Read-only during a reduction — consulted at a BODY
+/// Spawn label-miss, never mutated, so it does not ride `Reduced` out.
+pub fn with_host_kernels(
+  ctx: RunnerContext,
+  host_kernels: Dict(#(String, Int), HostKernel),
+) -> RunnerContext {
+  RunnerContext(..ctx, host_kernels: host_kernels)
 }
 
 /// Run one reduction of the goal whose procedure entry PC is `kappa`, over
@@ -2003,8 +2038,43 @@ fn effectful_spawn(
     False ->
       case link_kernels.is_link_kernel(proc_name, arity), ctx.link {
         True, Some(runtime) -> link_spawn(ctx, runtime, proc_name, arity, args)
-        _, _ -> mad_spawn(ctx, label, proc_name, arity, args)
+        // A host-injected kernel (T069) is consulted AFTER the built-in seams, so it
+        // extends the kernel set without shadowing a built-in; nothing injected → the
+        // ordinary madGLP `_send` / non-fatal fallback.
+        _, _ ->
+          case dict.get(ctx.host_kernels, #(proc_name, arity)) {
+            Ok(kernel) -> host_spawn(ctx, kernel, label, args)
+            Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
+          }
       }
+  }
+}
+
+/// Run a host-injected kernel at a BODY Spawn (T069). On success, advance exactly as a
+/// pure kernel's `KSuccess` (updated heap + carried reactivations + captured output). A
+/// host abort is surfaced as a fatal `Malformed` — the same discipline as a built-in
+/// kernel `KAbort` (guards should have prevented it; never swallowed).
+fn host_spawn(
+  ctx: RunnerContext,
+  kernel: HostKernel,
+  label: LabelName,
+  args: List(Term),
+) -> Step {
+  case kernel(ctx.heap, args) {
+    Ok(HostKernelOutcome(heap, woken, output)) ->
+      Advance(
+        RunnerContext(
+          ..ctx,
+          heap: heap,
+          woken: list.append(ctx.woken, woken),
+          output: list.append(ctx.output, output),
+          arg_slots: dict.new(),
+        ),
+      )
+    Error(detail) ->
+      Stop(RunnerError(Malformed(
+        "host kernel " <> label <> " aborted: " <> detail,
+      )))
   }
 }
 

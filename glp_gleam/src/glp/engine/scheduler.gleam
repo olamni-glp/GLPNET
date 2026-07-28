@@ -49,7 +49,7 @@ import gleam/set.{type Set}
 import gleam/string
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/goal_format
-import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
+import glp/engine/runner.{type HostKernel, type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
 import glp/link/primitives/link_runtime.{type LinkRuntime}
 import glp/engine/module_runtime.{type ModuleRuntime}
@@ -88,6 +88,10 @@ pub opaque type Engine {
     trace: Bool,
     /// Accumulated trace lines in emission order (empty unless `trace`).
     trace_lines: List(String),
+    /// Host-injected body kernels keyed by `(name, arity)` (T069 composition-root
+    /// seam). Threaded into every reduction context (`runner.with_host_kernels`) so an
+    /// injected kernel is reachable under any driver mode; empty for a bare engine.
+    host_kernels: Dict(#(String, Int), HostKernel),
   )
 }
 
@@ -147,12 +151,23 @@ pub fn new(program: BytecodeProgram, heap: Heap) -> Engine {
     output: [],
     trace: False,
     trace_lines: [],
+    host_kernels: dict.new(),
   )
 }
 
 /// Enable/disable reduction tracing (`:trace`). Set before `run`/`step`.
 pub fn with_trace(engine: Engine, on: Bool) -> Engine {
   Engine(..engine, trace: on)
+}
+
+/// Inject the host-kernel table (T069 composition-root seam). Set before `run`/`step`;
+/// the engine facade's `configure`/`register_kernel` supply it. Threaded into every
+/// reduction context so an injected kernel is reachable at a BODY Spawn label-miss.
+pub fn with_host_kernels(
+  engine: Engine,
+  host_kernels: Dict(#(String, Int), HostKernel),
+) -> Engine {
+  Engine(..engine, host_kernels: host_kernels)
 }
 
 /// The accumulated reduction-trace lines, in emission order (T-US2 `:trace`).
@@ -333,7 +348,9 @@ pub fn step_link(
     Ok(#(act, queue)) -> {
       let engine = Engine(..engine, queue: queue)
       let ctx =
-        runner.with_link(runner.new_context(engine.heap, act.regs), runtime)
+        runner.new_context(engine.heap, act.regs)
+        |> runner.with_host_kernels(engine.host_kernels)
+        |> runner.with_link(runtime)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _, link: link_o, module: _) -> {
           let runtime_out = case link_o {
@@ -438,7 +455,9 @@ pub fn step_module(
     Ok(#(act, queue)) -> {
       let engine = Engine(..engine, queue: queue)
       let ctx =
-        runner.with_module(runner.new_context(engine.heap, act.regs), runtime)
+        runner.new_context(engine.heap, act.regs)
+        |> runner.with_host_kernels(engine.host_kernels)
+        |> runner.with_module(runtime)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: _, link: _, module: mod_o) -> {
           let runtime_out = case mod_o {
@@ -521,7 +540,9 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
     Error(_) -> #(engine, StepIdle)
     Ok(#(act, queue)) -> {
       let engine = Engine(..engine, queue: queue)
-      let ctx = runner.new_context(engine.heap, act.regs)
+      let ctx =
+        runner.new_context(engine.heap, act.regs)
+        |> runner.with_host_kernels(engine.host_kernels)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
         // pure scheduler — always `None` on this path, ignored here.
@@ -609,7 +630,10 @@ pub fn step_mad(
     Error(_) -> #(engine, StepIdle, mad_in)
     Ok(#(act, queue)) -> {
       let engine = Engine(..engine, queue: queue)
-      let ctx = runner.with_mad(runner.new_context(engine.heap, act.regs), mad_in)
+      let ctx =
+        runner.new_context(engine.heap, act.regs)
+        |> runner.with_host_kernels(engine.host_kernels)
+        |> runner.with_mad(mad_in)
       case runner.reduce(engine.program, ctx, act.resume_pc, reduction_budget) {
         runner.Reduced(heap: h, woken: woken, spawned: spawned, output: out, mad: mad_o, link: _, module: _) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);

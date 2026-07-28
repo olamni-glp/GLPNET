@@ -21,6 +21,7 @@
 ////     `combinedProgram` always folds in `__root_self__`.
 
 import gleam/bit_array
+import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/option.{type Option, None, Some}
@@ -36,6 +37,7 @@ import glp/compiler/module_hierarchy
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/module_runtime.{type ModuleRuntime}
+import glp/engine/runner
 import glp/engine/scheduler
 import glp/runtime/terms.{ConstAtom, ConstTerm, VarRef}
 import glp/link/primitives/link_pump
@@ -72,6 +74,33 @@ const default_reduction_budget = 1_000_000
 /// Total-reduction backstop for one `run` (loop non-termination guard).
 const default_fuel = 1_000_000
 
+/// A host-injected body kernel — re-exported from the runner seam so an embedding host
+/// registers kernels through the `glp/engine` API alone (never a repl module). See
+/// `runner.HostKernel` / `register_kernel`.
+pub type HostKernel =
+  runner.HostKernel
+
+/// The host-tunable engine configuration (T068 `configure` surface): the reduction
+/// budget + total fuel (Dart `engine.maxCycles`), trace mode, and the host-injected
+/// kernel table (T069 composition-root seam). An engine carries one; `configure`
+/// replaces it, `register_kernel` adds to it. `run` (the config-driven entry) reads it;
+/// the explicit `run_with_limit*` variants still take an ad-hoc fuel for the REPL
+/// `:limit`.
+pub type EngineConfig {
+  EngineConfig(
+    reduction_budget: Int,
+    fuel: Int,
+    trace: Bool,
+    host_kernels: Dict(#(String, Int), HostKernel),
+  )
+}
+
+/// The default configuration a fresh engine starts with (the historical constants: a
+/// 1M per-reduction budget, a 1M total-fuel backstop, tracing off, no injected kernels).
+pub fn default_config() -> EngineConfig {
+  EngineConfig(default_reduction_budget, default_fuel, False, dict.new())
+}
+
 /// The engine as an opaque typed value (FR-009). Holds the compiled prelude
 /// (kept for re-merge on each `load`), the prelude source (the load pipeline
 /// threads it into PE + the type environment), the current runnable program
@@ -90,6 +119,10 @@ pub opaque type Engine {
     /// run activates them — spawns a `serve/2` service loop over a channel + registers
     /// it — so a `M # goal(...)` call routes to the module. Dart §19.8 auto-activation.
     activated_modules: List(String),
+    /// The host-tunable configuration (T068 `configure` + T069 kernel injection).
+    /// Threaded into every run — the reduction budget / fuel bound the scheduler and the
+    /// injected kernel table reaches each reduction context.
+    config: EngineConfig,
   )
 }
 
@@ -136,6 +169,7 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
         warnings: [],
         session: None,
         activated_modules: [],
+        config: default_config(),
       )
     Error(staged) ->
       panic as {
@@ -268,6 +302,40 @@ pub fn warnings(engine: Engine) -> List(TypeWarning) {
   engine.warnings
 }
 
+// ── configure + host kernel injection (T068 host API · T069 composition root) ──
+
+/// This engine's current configuration (budgets, trace, injected kernels).
+pub fn config(engine: Engine) -> EngineConfig {
+  engine.config
+}
+
+/// Replace the engine configuration (T068 `configure`): the reduction budget + fuel the
+/// config-driven `run` uses, the trace default, and the host-kernel table. The engine
+/// stays a pure value — no global state is touched (FR-009).
+pub fn configure(engine: Engine, config: EngineConfig) -> Engine {
+  Engine(..engine, config: config)
+}
+
+/// Register a host-injected body kernel under `(name, arity)` (T069 composition-root
+/// seam). The engine never references the kernel by name — a BODY Spawn label-miss on
+/// `name/arity` consults the table and runs it. Re-registering `(name, arity)` replaces
+/// the prior kernel. The host wires its own kernels through this API alone.
+pub fn register_kernel(
+  engine: Engine,
+  name: String,
+  arity: Int,
+  kernel: HostKernel,
+) -> Engine {
+  let config = engine.config
+  Engine(
+    ..engine,
+    config: EngineConfig(
+      ..config,
+      host_kernels: dict.insert(config.host_kernels, #(name, arity), kernel),
+    ),
+  )
+}
+
 // ── run: goal → ResultEnvelope (T029 Slice 2) ────────────────────────────────
 
 /// Execute `goal` against the engine's runnable program and return the result
@@ -281,7 +349,11 @@ pub fn warnings(engine: Engine) -> List(TypeWarning) {
 /// build error yields a `Failed` envelope carrying the reason (Dart catches these
 /// into `ExecutionResult(status: failed, error: …)`).
 pub fn run(engine: Engine, goal: String) -> #(Engine, ResultEnvelope) {
-  run_with_limit(engine, goal, default_fuel)
+  // The config-driven entry (T068): honour the configured fuel + trace default. The
+  // explicit `run_with_limit*` variants keep taking an ad-hoc fuel for the REPL `:limit`.
+  let #(engine, envelope, _output, _traces) =
+    run_with_limit_traced(engine, goal, engine.config.fuel, engine.config.trace)
+  #(engine, envelope)
 }
 
 /// As `run`, but with an explicit total-reduction budget (`fuel`) — the seam the
@@ -363,10 +435,12 @@ fn run_link_goal(
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
   use runtime <- result.try(new_link_runtime())
 
-  let sched = scheduler.new(engine.program, boot.heap)
+  let sched =
+    scheduler.new(engine.program, boot.heap)
+    |> scheduler.with_host_kernels(engine.config.host_kernels)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   let #(sched, _runtime, status) =
-    link_pump.drive(sched, runtime, default_reduction_budget, fuel)
+    link_pump.drive(sched, runtime, engine.config.reduction_budget, fuel)
 
   finish_run(sched, boot.query_var_writers, status)
 }
@@ -406,8 +480,10 @@ fn run_goal(
       let sched =
         scheduler.new(engine.program, boot.heap)
         |> scheduler.with_trace(trace)
+        |> scheduler.with_host_kernels(engine.config.host_kernels)
       let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
-      let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+      let #(sched, status) =
+        scheduler.run(sched, engine.config.reduction_budget, fuel)
       use #(envelope, output) <- result.try(finish_run(
         sched,
         boot.query_var_writers,
@@ -424,7 +500,7 @@ fn run_goal(
       ))
       let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
       let #(sched, status, _runtime) =
-        scheduler.run_module(sched, default_reduction_budget, fuel, runtime)
+        scheduler.run_module(sched, engine.config.reduction_budget, fuel, runtime)
       use #(envelope, output) <- result.try(finish_run(
         sched,
         boot.query_var_writers,
@@ -460,6 +536,7 @@ fn activate_modules(
   let sched =
     scheduler.new(engine.program, heap)
     |> scheduler.with_trace(trace)
+    |> scheduler.with_host_kernels(engine.config.host_kernels)
     // `serve/2` goals (initial + recursive) are infrastructure — parked service loops
     // that must not make the run report `Suspended`.
     |> scheduler.mark_infrastructure("serve/2")
@@ -519,7 +596,10 @@ pub fn start(engine: Engine, goal: String) -> Result(Engine, String) {
     |> result.replace_error("predicate " <> label <> " not found"),
   )
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
-  let sched = scheduler.new(engine.program, boot.heap)
+  let sched =
+    scheduler.new(engine.program, boot.heap)
+    |> scheduler.with_trace(engine.config.trace)
+    |> scheduler.with_host_kernels(engine.config.host_kernels)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   Ok(Engine(..engine, session: Some(RunSession(sched, boot.query_var_writers))))
 }
@@ -533,7 +613,7 @@ pub fn step(engine: Engine) -> #(Engine, Event) {
     None -> #(engine, Idle)
     Some(session) -> {
       let #(sched, outcome) =
-        scheduler.step(session.sched, default_reduction_budget)
+        scheduler.step(session.sched, engine.config.reduction_budget)
       case outcome {
         scheduler.StepReduced(_, procedure, woken, spawned) -> #(
           Engine(..engine, session: Some(RunSession(..session, sched: sched))),
