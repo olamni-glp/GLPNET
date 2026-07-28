@@ -136,7 +136,7 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 ## Phase 8: Polish & cross-cutting
 
 - [ ] T049 [P] Verify the AtomVM-compatibility constraint: no BEAM-only construct introduced without a recorded reason, checked via `glp_gleam/src/atomvm_gated_probe.gleam` (FR-032)
-- [ ] T050 [P] Re-run the full non-regression set — `gleam test` and `bash test/run_all_tests.sh` — and confirm both at or above the T001/T002 baseline (SC-009)
+- [x] T050 [P] Re-run the full non-regression set — `gleam test` and `bash test/run_all_tests.sh` — and confirm both at or above the T001/T002 baseline (SC-009). **2026-07-28**: gleam **547** (baseline 508) and REPL **532/532** (baseline 532/532), both green at tip `11f25b76`
 - [ ] T051 [P] Time the quickstart cold path and confirm first-goal-answer under 5 minutes (SC-003)
 - [ ] T052 Update `specs/060-wave3-full-gleam-chain/quickstart.md` to remove any troubleshooting row whose gap has been closed
 
