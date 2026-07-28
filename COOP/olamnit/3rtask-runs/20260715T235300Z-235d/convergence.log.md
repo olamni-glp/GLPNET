@@ -1,2 +1,0 @@
-- cycle 1: 173 claims, 173 new, 173 singleton(s), 0 escalate(s), converged=False
-- cycle 2: 173 claims, 0 new, 173 singleton(s), 0 escalate(s), converged=True

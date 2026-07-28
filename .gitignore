@@ -122,3 +122,10 @@ glp_gleam/.parity_run.glp
 
 # 3rtask run evidence (orchestration artifacts, not source)
 .specify/3rtask/runs/
+
+# COOP live mailboxes (operator ruling 2026-07-28): the cross-host channel is
+# NEVER tracked - no in-branch commit/push/merge logic for live dialogue.
+# Git carries COOP state ONLY as deliberate milestone snapshots under
+# docs/coop-milestones/ (the mstack pattern: live state out of git, deliberate
+# deterministic exports in - same split as .specify/roadmap-sync/exports).
+COOP/
