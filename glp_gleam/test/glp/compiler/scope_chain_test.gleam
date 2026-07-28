@@ -17,6 +17,7 @@ import gleam/string
 import gleeunit/should
 import glp/compiler/loader
 import glp/compiler/module_hierarchy
+import glp/engine
 
 @external(erlang, "file", "read_file")
 fn read_file(path: String) -> Result(BitArray, Dynamic)
@@ -85,4 +86,23 @@ pub fn reversed_chain_lets_outer_win_and_rejects_test() {
 
   loader.load_with_scope(client, prelude, reversed)
   |> should.be_error
+}
+
+// ── facade integration (T078 Part B / residual #1b): the REPL's path-aware
+//    `engine.load_file` applies the discovered scope chain automatically ──────────
+
+pub fn facade_load_file_applies_scope_chain_test() {
+  let eng = engine.new_with_prelude(read_source(root <> "/../../self.glp"))
+  let client = read_source(root <> "/sub/client.glp")
+  // Path-aware load discovers sub/self.glp (+ scope_chain/self.glp) → `slider` is a
+  // valid Widget, so the load succeeds.
+  engine.load_file(eng, client, root <> "/sub/client.glp") |> should.be_ok
+}
+
+pub fn facade_plain_load_ignores_scope_chain_test() {
+  let eng = engine.new_with_prelude(read_source(root <> "/../../self.glp"))
+  let client = read_source(root <> "/sub/client.glp")
+  // Plain `load` (no path) sees NO scope chain → `Widget` is undefined → cleanly
+  // rejected (T073 fix: a staged error, not a panic).
+  engine.load(eng, client) |> should.be_error
 }

@@ -30,7 +30,9 @@ import glp/analysis/type_checker/type_checker.{type TypeWarning}
 import glp/bytecode/program.{type BytecodeProgram}
 import glp/codec/result_envelope.{type ResultEnvelope}
 import glp/codec/result_envelope_builder as builder
+import gleam/list
 import glp/compiler/loader
+import glp/compiler/module_hierarchy
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
@@ -153,6 +155,45 @@ pub fn load(engine: Engine, source: String) -> Result(Engine, StagedError) {
       warnings: outcome.warnings,
     ),
   )
+}
+
+/// As `load`, but PATH-AWARE: applies the directory `self.glp` scope chain
+/// (typed-glp-manual §19.6, feature 059 T078 Part B). The ancestor `self.glp` files
+/// on `path`'s directory chain are discovered (root-first, siblings excluded) and
+/// merged into the type environment with nearer-wins shadowing. `source` is the
+/// already-read file content; `path` is used only to locate the scope chain. The REPL
+/// `load <file>` command routes here so a loaded file sees its directory's types
+/// (Dart `GlpEngine.loadSource` + `discoverSelfChain` + `_buildAncestorScope`).
+pub fn load_file(
+  engine: Engine,
+  source: String,
+  path: String,
+) -> Result(Engine, StagedError) {
+  let ancestor_sources =
+    module_hierarchy.discover_ancestor_self_chain(path)
+    |> list.filter_map(read_self_source)
+  use outcome <- result.try(loader.load_with_scope(
+    source,
+    engine.prelude_source,
+    ancestor_sources,
+  ))
+  Ok(
+    Engine(
+      ..engine,
+      program: program.merge(outcome.program, engine.program),
+      warnings: outcome.warnings,
+    ),
+  )
+}
+
+/// Read + UTF-8-decode an ancestor `self.glp`; an unreadable / non-UTF-8 ancestor is
+/// SKIPPED (returns `Error(Nil)`, dropped by `filter_map`) — a scope-chain file that
+/// cannot be read simply does not contribute (never a hard failure of the user load).
+fn read_self_source(path: String) -> Result(String, Nil) {
+  case read_file(path) {
+    Ok(bits) -> bit_array.to_string(bits) |> result.replace_error(Nil)
+    Error(_) -> Error(Nil)
+  }
 }
 
 /// The current runnable program (prelude alone, or prelude + last loaded module).

@@ -39,6 +39,37 @@ pub fn discover_self_chain(target_file: String, root_dir: String) -> List(String
   walk_up(start, root, [])
 }
 
+/// The ancestor `self.glp` chain for `target_file` when NO project root is
+/// configured (the REPL facade case): walk from the target's directory up to the
+/// FILESYSTEM root, collecting every `<dir>/self.glp`, ROOT-FIRST. Unlike
+/// `discover_self_chain` (Dart-faithful, bounded by an explicit root), this needs no
+/// root argument — it simply includes every ancestor `self.glp`. Sibling directories
+/// are still never visited (only the ancestor path is walked).
+pub fn discover_ancestor_self_chain(target_file: String) -> List(String) {
+  let target_dir = dirname(target_file)
+  let start = case string.ends_with(norm(target_file), "/self.glp") {
+    True -> dirname(target_dir)
+    False -> target_dir
+  }
+  walk_to_fs_root(start, [])
+}
+
+// Ascend to the filesystem root collecting each existing `<dir>/self.glp`.
+// PREPENDING yields ROOT-FIRST. Terminates when `dirname` reaches a fixpoint
+// (`/`, `.`, or a drive root — `dirname(x) == x`).
+fn walk_to_fs_root(dir: String, acc: List(String)) -> List(String) {
+  let self_path = path_join(dir, "self.glp")
+  let acc2 = case is_regular(self_path) {
+    True -> [self_path, ..acc]
+    False -> acc
+  }
+  let parent = dirname(dir)
+  case norm(parent) == norm(dir) {
+    True -> acc2
+    False -> walk_to_fs_root(parent, acc2)
+  }
+}
+
 // Ascend from `dir` to `root` (inclusive), collecting each existing `<dir>/self.glp`.
 // PREPENDING as we ascend yields ROOT-FIRST order (the nearest dir is visited first
 // and prepended first, so it ends up LAST; the root is visited last and prepended

@@ -162,7 +162,8 @@ fn execute_load(
       False,
     )
     Ok(source) ->
-      case engine.load(session.engine, source) {
+      // Path-aware load: applies the directory `self.glp` scope chain (§19.6).
+      case engine.load_file(session.engine, source, path) {
         Ok(engine) -> #(
           Session(..session, engine: engine),
           ["✓ Loaded: " <> path],
