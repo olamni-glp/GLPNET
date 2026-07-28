@@ -99,17 +99,17 @@ Tests are included for US3 and US5 because the spec makes conformance and cross-
 **Goal**: Two instances link, exchange ordered messages, and fail cleanly on peer loss.
 **Independent test**: quickstart §6 — join, round-trip, kill, observe.
 
-- [ ] T032 [US4] Implement the inbound pump so an instance accepts inbound link attempts in `glp_gleam/src/glp/link.gleam` (gap G7, FR-023)
-- [ ] T033 [US4] Implement the capability/version handshake per `contracts/link-handshake.md` in `glp_gleam/src/glp/link/seam/link_options.gleam` (FR-022)
-- [ ] T034 [US4] Implement `Refuse{reason}` on version or capability mismatch — never best-effort continuation — in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-022, FR-029)
-- [ ] T035 [US4] Implement instance network join in `glp_gleam/src/glp/link.gleam` (gap G7)
-- [ ] T036 [US4] Establish per-link ordering guarantees in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` above the current CRC floor (gap G8, FR-021)
-- [ ] T037 [P] [US4] Ensure a partially-received or CRC-failing frame is never delivered as complete in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` (contract rule 5)
-- [ ] T038 [US4] Implement bounded peer-loss detection (≤30 s) with fault propagation to programs holding cross-link references in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-024, SC-007)
+- [x] T032 [US4] Implement the inbound pump so an instance accepts inbound link attempts in `glp_gleam/src/glp/link.gleam` (gap G7, FR-023). **Delivered as `link_pump.gleam` (`pump_once`: recv → parse → reassemble → order → deliver; the listener role + pump accept inbound, rule 1)**
+- [x] T033 [US4] Implement the capability/version handshake per `contracts/link-handshake.md` in `glp_gleam/src/glp/link/seam/link_options.gleam` (FR-022). **Delivered per the AMENDED contract (owner ruling 2026-07-28): `capability_gate.gleam` verify-before-act seam + the frame-version byte rejection already in `frame_codec`**
+- [x] T034 [US4] Implement `Refuse{reason}` on version or capability mismatch — never best-effort continuation — in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-022, FR-029). **Delivered: fail-closed reasoned refusal (`LinkFaultSignal(Permanent, "capability refused: …")`) in `link_establish.gleam`; version mismatch rejected per frame (never best-effort)**
+- [x] T035 [US4] Implement instance network join in `glp_gleam/src/glp/link.gleam` (gap G7). **Delivered: `link_establish.gleam` canonical core + `link_registry.gleam` (FR-007 idempotency); tested over loopback AND TCP, either role initiating**
+- [x] T036 [US4] Establish per-link ordering guarantees in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` above the current CRC floor (gap G8, FR-021). **Delivered: `link_sequencer` + `inbound_ordering` (bounded reorder buffer, dedup) + `send_window`; FIFO proven end-to-end in `primitives_test`**
+- [x] T037 [P] [US4] Ensure a partially-received or CRC-failing frame is never delivered as complete in `glp_gleam/src/glp/link/reliability/frame_codec.gleam` (contract rule 5). **Delivered: `frame_reassembler.gleam` (bounded partials, metadata-mismatch rejection) + pump rules 2/5 tests (version-forged and truncated frames rejected, never delivered)**
+- [x] T038 [US4] Implement bounded peer-loss detection (≤30 s) with fault propagation to programs holding cross-link references in `glp_gleam/src/glp/link/seam/link_fault.gleam` (FR-024, SC-007). **Delivered: `link_faults.gleam` lattice + `classify_silence` bounded-silence heuristic (perm bound default 30 000 ms = the ≤30 s ceiling, tested at the boundary); heap-cursor monitor fan-out lands with the link kernels (engine integration)**
 - [ ] T039 [P] [US4] Implement the multiagent boot loader in `glp_gleam/src/glp/mad/mad_engine.gleam` (gap G9)
-- [ ] T040 [P] [US4] Add `gleeunit` link tests over loopback in `glp_gleam/test/glp/link_test.gleam`
-- [ ] T041 [US4] Add link tests over TCP in `glp_gleam/test/glp/link/transports/tcp_test.gleam` (FR-025 acceptance surface)
-- [ ] T042 [P] [US4] Assert `zmq`, `quic`, and `ws` remain **reachable** through the seam without link-layer changes: for each scheme, instantiate it via `link_scheme` and assert construction succeeds (not merely that the variant is selectable) in `glp_gleam/test/glp/link/seam/link_scheme_test.gleam` (FR-025; closes analyze finding U1)
+- [x] T040 [P] [US4] Add `gleeunit` link tests over loopback in `glp_gleam/test/glp/link_test.gleam`. **Delivered: `glp_gleam/test/glp/link/primitives_test.gleam` — 12 cases over loopback (establishment, exchange, FIFO, fragmentation, refusal, rejection, close, silence bounds)**
+- [x] T041 [US4] Add link tests over TCP in `glp_gleam/test/glp/link/transports/tcp_test.gleam` (FR-025 acceptance surface). **Delivered: `tcp_establish_and_exchange_test` — the same establish/ship/pump chain over real 127.0.0.1 sockets (plus the existing 050 `tcp_test`)**
+- [x] T042 [P] [US4] Assert `zmq`, `quic`, and `ws` remain **reachable** through the seam without link-layer changes: for each scheme, instantiate it via `link_scheme` and assert construction succeeds (not merely that the variant is selectable) in `glp_gleam/test/glp/link/seam/link_scheme_test.gleam` (FR-025; closes analyze finding U1). **Delivered: `unproven_schemes_reachable_through_seam_test` — quic/zmq/ws scheme construction + the zmq Transport leaf constructing and serving its scheme with zero link-layer changes**
 
 **Checkpoint**: quickstart §6 checks 1–4 pass over both loopback and TCP.
 
