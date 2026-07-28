@@ -201,5 +201,16 @@ if [ "$ATTEMPTED" -ne "$TOTAL" ]; then
     echo "  COMPLETENESS VIOLATION: attempted=$ATTEMPTED but P+F+O=$TOTAL — runner defect (SC-002)"
     exit 3
 fi
+# SC-001 gate (T031): in-scope pass rate = P/(P+F); below 95% FAILS the phase —
+# escalate (Bug Protocol on each named fail), never proceed past it.
+INSCOPE=$((AGREE + DIVERGE))
+if [ "$INSCOPE" -gt 0 ]; then
+    RATE=$((100 * AGREE / INSCOPE))
+    echo "in_scope_pass_rate: ${RATE}% ($AGREE/$INSCOPE)"
+    if [ "$RATE" -lt 95 ]; then
+        echo "  SC-001 GATE FAIL: in-scope pass rate ${RATE}% < 95% — escalate, do not proceed"
+        [ "$DIVERGE" -eq 0 ] && exit 4
+    fi
+fi
 [ "$DIVERGE" -eq 0 ] && echo "  RESULT: 100% agreement on in-scope cases" || echo "  RESULT: $DIVERGE divergence(s) to classify (Bug Protocol)"
 exit "$DIVERGE"

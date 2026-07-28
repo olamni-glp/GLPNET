@@ -176,3 +176,14 @@ linker (pure) → `compile_linked` → facade `load_project` → Section F oracl
 (`gleam test` ≥ 537, corpus 206/0). Risk surfaced loudly, never worked around: the Gleam parser has
 not yet seen the CSSG sources (parameterized self.glp types, `ui/` subdir modules) — a parse/check
 rejection there is a REPORTABLE gap, not a thing to patch silently.
+
+## SC-001 / SC-008 record — 2026-07-28 (T030/T031, OLAMNIT host)
+
+- **In-scope pass rate (SC-001)**: **100% (206/206)** — zero exceptions to name. The ≥95% gate is
+  now enforced in `run_gleam_corpus.sh` itself (`in_scope_pass_rate:` line; below 95% prints
+  `SC-001 GATE FAIL` and the run cannot exit 0).
+- **Determinism (SC-008, T030)**: two consecutive full corpus runs over the unchanged tree produced
+  **identical verdict sets (206 `verdict:` lines) and identical aggregate counts**
+  (total 206 / pass 206 / fail 0 / out_of_scope 0), both exit 0.
+- Out-of-scope at wave end: **0** (SC-010 target met — the 44 "golden missing" cases were the T028a
+  CRLF harness defect, fixed durably; nothing remains individually reasoned).
