@@ -1,0 +1,4 @@
+%% Repro: a procedure declaration referencing an UNDEFINED type (Foo).
+%% The type checker should reject this with a CLEAN error, not crash.
+procedure p(Foo?).
+p(anything).

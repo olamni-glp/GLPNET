@@ -285,31 +285,7 @@ pub fn get_automaton(dfa: ProgramDfa, type_name: String) -> Automaton {
 /// Build the complete program DFA from the type environment
 /// (Dart `buildProgramDFA`).
 pub fn build_program_dfa(env: TypeEnvironment) -> ProgramDfa {
-  // States for defined types (both T and T?), created BEFORE any automata so
-  // cross-type references resolve.
-  let states_with_types =
-    list.fold(dict.to_list(env.types), system_states(), fn(acc, entry) {
-      let #(type_name, _) = entry
-      acc
-      |> dict.insert(
-        type_name,
-        DfaState(type_name, is_dual: False, is_final: False, is_procedure: False),
-      )
-      |> dict.insert(
-        type_name <> "?",
-        DfaState(type_name, is_dual: True, is_final: False, is_procedure: False),
-      )
-    })
-  // Procedure states (no complement).
-  let states =
-    list.fold(dict.to_list(env.procedures), states_with_types, fn(acc, entry) {
-      let #(proc_key, _) = entry
-      dict.insert(
-        acc,
-        proc_key,
-        DfaState(proc_key, is_dual: False, is_final: False, is_procedure: True),
-      )
-    })
+  let states = build_states(env)
 
   // Automata for defined types (T with declared modes, T? with all flipped).
   let automata_with_types =
@@ -334,6 +310,89 @@ pub fn build_program_dfa(env: TypeEnvironment) -> ProgramDfa {
     )
 
   ProgramDfa(states, automata)
+}
+
+/// The DFA state set — system states + defined types (both `T` and `T?`) +
+/// procedures — created BEFORE any automata so cross-references resolve. Shared by
+/// `build_program_dfa` and `collect_unknown_types`, so the pre-DFA validation checks
+/// EXACTLY the names the automaton builder will look up.
+fn build_states(env: TypeEnvironment) -> Dict(String, DfaState) {
+  let states_with_types =
+    list.fold(dict.to_list(env.types), system_states(), fn(acc, entry) {
+      let #(type_name, _) = entry
+      acc
+      |> dict.insert(
+        type_name,
+        DfaState(type_name, is_dual: False, is_final: False, is_procedure: False),
+      )
+      |> dict.insert(
+        type_name <> "?",
+        DfaState(type_name, is_dual: True, is_final: False, is_procedure: False),
+      )
+    })
+  list.fold(dict.to_list(env.procedures), states_with_types, fn(acc, entry) {
+    let #(proc_key, _) = entry
+    dict.insert(
+      acc,
+      proc_key,
+      DfaState(proc_key, is_dual: False, is_final: False, is_procedure: True),
+    )
+  })
+}
+
+/// Every type NAME referenced by a procedure declaration's argument types OR by a
+/// type definition's alternatives that is NOT a known type — i.e. a wholly-undefined
+/// type (feature 059 T073). Returns `#(mode-qualified-name, line, col)`. Run BEFORE
+/// `build_program_dfa` so a caller can surface a CLEAN staged error instead of the
+/// automaton builder (`build_procedure_automaton` / `build_type_automaton`) hitting
+/// its must-exist assertion (Gleam cannot catch a panic). Parity: Dart rejects the
+/// load with `Error loading …: UnknownTypeError: <name>`.
+pub fn collect_unknown_types(
+  env: TypeEnvironment,
+) -> List(#(String, Int, Int)) {
+  let states = build_states(env)
+  let refs_in_procs =
+    list.flat_map(dict.values(env.procedures), fn(proc_decl) {
+      list.flat_map(proc_decl.arg_types, type_refs)
+    })
+  let refs_in_types =
+    list.flat_map(dict.values(env.types), fn(type_def) {
+      list.flat_map(type_def.alternatives, type_refs)
+    })
+  list.append(refs_in_procs, refs_in_types)
+  |> list.filter_map(fn(r) {
+    let #(base, full, pos) = r
+    // Known iff the BASE type name has a DFA state (both `T` and `T?` exist for a
+    // known type); otherwise report the mode-qualified `full` name (Dart parity:
+    // `Foo?` for an input proc arg, `Undefined` for a bare type-def reference).
+    case dict.has_key(states, base) {
+      True -> Error(Nil)
+      False -> Ok(#(full, pos.line, pos.column))
+    }
+  })
+}
+
+/// Every `TypeRef` a type expression references, as `#(base-name, mode-qualified-
+/// name, pos)`, recursing into nested/parameterized/structural positions. Non-`TypeRef`
+/// leaves (constants, nil, primitive modes) reference no user type name.
+fn type_refs(expr: TypeExpr) -> List(#(String, String, type_ast.Pos)) {
+  case expr {
+    type_ast.TypeRef(name, is_input, args, pos) -> {
+      let full = case is_input {
+        True -> name <> "?"
+        False -> name
+      }
+      [#(name, full, pos), ..list.flat_map(args, type_refs)]
+    }
+    type_ast.StructAlt(_, args, _) -> list.flat_map(args, type_refs)
+    type_ast.ListConsAlt(head, tail, _) ->
+      list.append(type_refs(head), type_refs(tail))
+    type_ast.DiffListAlt(content, hole, _) ->
+      list.append(type_refs(content), type_refs(hole))
+    type_ast.ConstantAlt(_, _)
+    | type_ast.ListNilAlt(_)
+    | type_ast.PrimitiveModeAlt(_, _) -> []
+  }
 }
 
 /// The 13 system states (complement pairs plus the anonymous final).

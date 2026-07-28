@@ -63,12 +63,16 @@ pub fn nearer_self_glp_shadows_outer_and_module_typechecks_test() {
   |> should.be_ok
 }
 
-// (A "without any scope chain" control is intentionally omitted here: with `Widget`
-// wholly undefined, the type checker hits the pending T073 defect — an
-// UnknownTypeError PANIC at `program_dfa.gleam:580` rather than a clean staged
-// error — so it cannot be asserted cleanly yet. The reversed-chain negative below
-// gives the same "the chain is what makes it well-typed" evidence via a DEFINED but
-// non-matching `Widget`, which the checker rejects cleanly.)
+// Control: WITHOUT the scope chain (`[]`), `Widget` is wholly undefined, so the load
+// is rejected with a CLEAN staged error (T073 fix — was a `program_dfa.gleam:580`
+// panic; now `UnknownTypeError`, matching Dart's `Error loading …: UnknownTypeError`).
+pub fn without_scope_chain_module_is_rejected_test() {
+  let prelude = read_source(root <> "/../../self.glp")
+  let client = read_source(root <> "/sub/client.glp")
+
+  loader.load_with_scope(client, prelude, [])
+  |> should.be_error
+}
 
 // Shadowing is ORDER-SENSITIVE: with the outer self.glp merged LAST (reversed
 // chain), the root Widget (button/dial) wins and `slider` is rejected — proving the

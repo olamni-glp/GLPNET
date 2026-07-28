@@ -162,10 +162,26 @@ pub fn check_module(
     expanded_module,
     Some(base_env),
   ))
-  let dfa = program_dfa.build_program_dfa(type_env)
-  let procedures = option.unwrap(transformed_procedures, module.procedures)
-  let clauses = list.flat_map(procedures, fn(p) { p.clauses })
-  Ok(check(type_env, dfa, clauses))
+  // T073: a procedure declaration referencing a wholly-undefined type must be
+  // rejected with a CLEAN staged error (Dart `Error loading …: UnknownTypeError:
+  // <name>`), NOT the automaton builder's must-exist panic (Gleam cannot catch a
+  // panic). Validate BEFORE building the DFA.
+  case program_dfa.collect_unknown_types(type_env) {
+    [] -> {
+      let dfa = program_dfa.build_program_dfa(type_env)
+      let procedures = option.unwrap(transformed_procedures, module.procedures)
+      let clauses = list.flat_map(procedures, fn(p) { p.clauses })
+      Ok(check(type_env, dfa, clauses))
+    }
+    unknowns ->
+      Ok(TypeCheckResult(
+        list.map(unknowns, fn(u) {
+          let #(name, line, col) = u
+          TypeError("UnknownTypeError: " <> name, line, col, None)
+        }),
+        [],
+      ))
+  }
 }
 
 /// Parse and type-check GLP source (Dart `checkSource`). The source is parsed by
