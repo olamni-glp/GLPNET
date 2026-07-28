@@ -31,7 +31,9 @@ import glp/analysis/type_checker/type_checker.{type TypeWarning}
 import glp/bytecode/program.{type BytecodeProgram}
 import glp/codec/result_envelope.{type ResultEnvelope}
 import glp/codec/result_envelope_builder as builder
+import gleam/erlang/charlist.{type Charlist}
 import glp/compiler/loader
+import glp/compiler/project_linker
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
@@ -286,6 +288,113 @@ pub fn warnings(engine: Engine) -> List(TypeWarning) {
 pub fn loaded_programs(engine: Engine) -> List(#(String, BytecodeProgram)) {
   engine.loaded
 }
+
+// ── project loading: static linking (wave-3 T009, FR-008; Dart loadProject) ──
+
+/// Load an entire project directory via static linking (Dart
+/// `GlpEngine.loadProject`, glp_engine.dart:331): recursively discover `.glp`
+/// modules (skipping `boot_direct.glp` / `mad_boot.glp` / `mad_boot/`),
+/// type-check each independently against its ancestor `self.glp` scope, link
+/// into ONE flat program (top module auto-detected), compile, and store it
+/// under `"__project__"` in the loaded registry (participates in
+/// `rebuild_program`; re-load replaces). Any stage failure returns
+/// `Error(reason)` with the engine untouched.
+pub fn load_project(engine: Engine, dir: String) -> Result(Engine, String) {
+  let dir = string.replace(dir, "\\", "/")
+  let rel_paths =
+    erl_wildcard(charlist.from_string(dir <> "/**/*.glp"))
+    |> list.map(charlist.to_string)
+    |> list.map(fn(p) { string.replace(p, "\\", "/") })
+    |> list.sort(string.compare)
+    |> list.filter_map(fn(p) {
+      case string.starts_with(p, dir <> "/") {
+        True -> Ok(string.drop_start(p, string.length(dir) + 1))
+        False -> Error(Nil)
+      }
+    })
+    |> list.filter(fn(p) { !skip_project_file(p) })
+  use <- bool_guard(
+    rel_paths == [],
+    "no modules found in " <> dir,
+  )
+  use files <- result.try(
+    list.try_map(rel_paths, fn(rel) {
+      case read_file(dir <> "/" <> rel) {
+        Ok(bits) ->
+          case bit_array.to_string(bits) {
+            Ok(source) -> Ok(#(rel, source))
+            Error(_) -> Error("project read: " <> rel <> " is not valid UTF-8")
+          }
+        Error(_) -> Error("project read: cannot read " <> rel)
+      }
+    }),
+  )
+  let root_name = last_component(dir)
+  use modules <- result.try(project_linker.discover(
+    files,
+    root_name,
+    engine.prelude_source,
+  ))
+  use _ <- result.try(project_linker.type_check_project(
+    modules,
+    loader.prelude_units(engine.prelude_source),
+  ))
+  let top = project_linker.detect_top_module(modules)
+  let linked = project_linker.link_project(modules, top)
+  use prog <- result.try(
+    loader.compile_linked(linked, engine.prelude_source)
+    |> result.map_error(fn(staged) {
+      "project compile: " <> string.inspect(staged)
+    }),
+  )
+  let loaded = upsert(engine.loaded, "__project__", prog)
+  Ok(
+    Engine(
+      ..engine,
+      loaded: loaded,
+      program: rebuild_program(
+        engine.prelude_program,
+        engine.serve_program,
+        loaded,
+      ),
+    ),
+  )
+}
+
+/// Dart discoverProject's exclusions: `boot_direct.glp` (direct-call copy of
+/// boot.glp), `mad_boot.glp`, and anything under a `mad_boot/` directory
+/// (madGLP boot procedures, loaded on top of the linked project).
+fn skip_project_file(rel: String) -> Bool {
+  let parts = string.split(rel, "/")
+  let base = case list.last(parts) {
+    Ok(b) -> b
+    Error(_) -> rel
+  }
+  base == "boot_direct.glp"
+  || base == "mad_boot.glp"
+  || list.contains(parts, "mad_boot")
+}
+
+fn last_component(path: String) -> String {
+  case list.last(string.split(path, "/")) {
+    Ok(last) -> last
+    Error(_) -> path
+  }
+}
+
+fn bool_guard(
+  condition: Bool,
+  reason: String,
+  continue: fn() -> Result(a, String),
+) -> Result(a, String) {
+  case condition {
+    True -> Error(reason)
+    False -> continue()
+  }
+}
+
+@external(erlang, "filelib", "wildcard")
+fn erl_wildcard(pattern: Charlist) -> List(Charlist)
 
 // ── transport injection seam (wave-3 T007, gap G6) ───────────────────────────
 

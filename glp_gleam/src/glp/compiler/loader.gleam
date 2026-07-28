@@ -126,6 +126,31 @@ pub fn compile_prelude(
   Ok(codegen.generate(compiled_module))
 }
 
+/// Compile a LINKED flat module (project_linker output): PE → codegen, eliding
+/// the SRSW and type-check stages exactly as the reference does for linked
+/// programs (Dart `compileProgram`, compiler.dart:142 — `skipGlobalSRSW: true`,
+/// no `checkModule`: every module was already type-checked individually against
+/// its ancestor scope before linking, and the generated mode-aware alias
+/// clauses are pass-through forwarders outside per-clause SRSW shape).
+pub fn compile_linked(
+  module: ast.SourceModule,
+  prelude_source: String,
+) -> Result(BytecodeProgram, StagedError) {
+  use transformed <- result.try(pe_stage(
+    module,
+    prelude_unit_clauses(prelude_source),
+  ))
+  let compiled_module = ast.SourceModule(..module, procedures: transformed)
+  Ok(codegen.generate(compiled_module))
+}
+
+/// The prelude's unit clauses for defined-guard PE (public for the project
+/// pipeline, which PEs each module before its independent type check — Dart's
+/// `PartialEvaluator` reads the same units from engine-init globals).
+pub fn prelude_units(prelude_source: String) -> Dict(String, List(ast.Term)) {
+  prelude_unit_clauses(prelude_source)
+}
+
 // ── Stage 1: parse ──────────────────────────────────────────────────────────
 
 fn parse_stage(source: String) -> Result(ast.SourceModule, StagedError) {
