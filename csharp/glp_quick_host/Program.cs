@@ -76,8 +76,8 @@ internal static class Program
         // The client lives for the LINK's lifetime, NOT stdin's: stdin EOF (a one-shot / piped /
         // non-interactive shell) must NOT tear the link down — it only stops accepting new sends.
         // We exit when the peer closes the link (recv returns) or the process is killed.
-        _ = StdinToLinkAsync(endpoint, life.Token);
-        await LinkToStdoutAsync(endpoint, stdout, life).ConfigureAwait(false);
+        _ = StdinToLinkAsync(endpoint, life.Token, opts.Binary);
+        await LinkToStdoutAsync(endpoint, stdout, life, opts.Binary).ConfigureAwait(false);
         life.Cancel();
         await endpoint.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
@@ -99,22 +99,45 @@ internal static class Program
         }
     }
 
-    private static async Task StdinToLinkAsync(ILinkEndpoint endpoint, CancellationToken ct)
+    /// <summary>
+    /// stdin → link. In the default (L5) mode a line IS the payload, UTF-8 encoded. In
+    /// <c>--binary</c> mode (glpnet feature 050 T055) the line is BASE64 of an opaque binary frame:
+    /// it is decoded here, so what reaches the wire is the RAW frame — byte-identical to what
+    /// <c>glp_link</c>'s own <c>QuicTransport</c> sends, preserving cross-runtime parity (US5).
+    /// The base64 exists ONLY on the stdio IPC leg, which is line-delimited UTF-8 and therefore
+    /// cannot carry arbitrary binary (CRC bytes, length prefixes, embedded newlines) intact.
+    /// A malformed base64 line is reported and skipped — never a crash (FR-019).
+    /// </summary>
+    private static async Task StdinToLinkAsync(ILinkEndpoint endpoint, CancellationToken ct, bool binary)
     {
         using var stdin = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8);
         string? line;
         while (!ct.IsCancellationRequested && (line = await stdin.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
-            if (line.Length > 0)
-                await endpoint.SendBytesAsync(Encoding.UTF8.GetBytes(line), ct).ConfigureAwait(false);
+        {
+            if (line.Length == 0) continue;
+            byte[] payload;
+            if (binary)
+            {
+                try { payload = Convert.FromBase64String(line); }
+                catch (FormatException)
+                {
+                    Console.Error.WriteLine("ERR bad_base64 stdin line is not valid base64 (--binary mode); skipped");
+                    continue;
+                }
+            }
+            else payload = Encoding.UTF8.GetBytes(line);
+            await endpoint.SendBytesAsync(payload, ct).ConfigureAwait(false);
+        }
     }
 
-    private static async Task LinkToStdoutAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life)
+    /// <summary>link → stdout; the exact inverse of <see cref="StdinToLinkAsync"/> per mode.</summary>
+    private static async Task LinkToStdoutAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life, bool binary)
     {
         while (!life.IsCancellationRequested)
         {
             byte[]? frame = await endpoint.RecvBytesAsync(life.Token).ConfigureAwait(false);
             if (frame is null) { Console.Error.WriteLine("LINK_CLOSED"); life.Cancel(); return; }
-            await stdout.WriteLineAsync(Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
+            await stdout.WriteLineAsync(binary ? Convert.ToBase64String(frame) : Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
             await stdout.FlushAsync().ConfigureAwait(false);
         }
     }
@@ -195,13 +218,13 @@ internal static class Program
         await link.DisposeAsync().ConfigureAwait(false);
     }
 
-    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId)
+    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId, bool Binary)
     {
         public static Opts Parse(string[] args)
         {
             string? role = null, addr = null, cert = null, selfId = "server";
             int port = 0, maxClients = 3;
-            bool retry = false;
+            bool retry = false, binary = false;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -213,6 +236,9 @@ internal static class Program
                     case "--max-clients": maxClients = int.Parse(Req(args, ++i)); break;
                     case "--id": selfId = Req(args, ++i); break;
                     case "--retry": retry = true; break;
+                    // glpnet 050 T055: opaque-binary stdio mode — stdin/stdout lines are BASE64 of
+                    // the frame; the wire still carries the RAW bytes (see StdinToLinkAsync).
+                    case "--binary": binary = true; break;
                     default: throw new ArgumentException($"unknown arg '{args[i]}'");
                 }
             }
@@ -220,7 +246,8 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
             if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
-            return new Opts(role, addr, port, cert, maxClients, retry, selfId!);
+            if (binary && role != "client") throw new ArgumentException("--binary is client-role only (the mesh router parses L5 envelopes)");
+            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, binary);
         }
 
         private static string Req(string[] args, int i) =>
