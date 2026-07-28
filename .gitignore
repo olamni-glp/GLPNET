@@ -122,3 +122,4 @@ glp_gleam/.parity_run.glp
 
 # 3rtask run evidence (orchestration artifacts, not source)
 .specify/3rtask/runs/
+COOP/
