@@ -1,0 +1,730 @@
+{
+  "builder": "builder-2",
+  "cycle": 2,
+  "claims": [
+    {
+      "claim_id": "b2-c1-001",
+      "wp_id": "guard-fe-be-envelope-seam",
+      "kind": "guard",
+      "backing_detail_ids": [
+        "fe-be-process-split"
+      ],
+      "deliverable": "Freeze the ED-1 envelope seam as the FE/BE-split contract by extending the existing envelope byte-identity test into a checked-in golden envelope byte corpus so any envelope drift fails the suite before the wave-4 process split rides it.",
+      "acceptance_evidence": "Fresh session runs `gleam test` in glp_gleam and the envelope byte-identity suite (envelope_identity_test) passes against a checked-in golden envelope byte-corpus artifact under glp_gleam/test/; deleting or altering any golden byte makes the suite fail.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "Over-freezing could block legitimate ED-1 envelope evolution needed by the split, so envelope changes must go through an explicit unfreeze ruling rather than silent edits.",
+      "statement": "unchanged from b2-c1-001: Guard decision for resolved gap fe-be-process-split is YES: the byte-identity envelope seam is the only delivered substrate of the unstarted two-process split, so it must be drift-locked in wave 1 as the head of the FE/BE critical path feeding the other-builder build-fe-be-process-split in wave 4.",
+      "claim": "guard-fe-be-envelope-seam — lock the ED-1 envelope byte-identity seam as the frozen FE/BE-split contract before any build work.",
+      "source_citation": "sliceB §4 fe-be-process-split (b1-c1-038, b2-c1-049, b3-c1-040)",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-001",
+      "wp_id": "rule-multiagent-runtime-escalation",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "multiagent-runtime"
+      ],
+      "deliverable": "Carry the open multiagent-runtime escalation to the engineer with the exact cross-corpus conflict — b3: agent_runtime.dart is a delivered parity-required reference capability (engine-per-agent wrapper, messaging, host callbacks); b1: explicitly deferred to link-layer successors (F9+) with no 050 task; b2: only an empty placeholder module exists — and obtain a scope ruling.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — stating either 'in-scope: port glp_runtime/lib/multiagent/ in wave N' or 'stays deferred: named follow-on ruling <name>'.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Unruled, builders either silently drop a parity-required=yes reference capability (E3c violation) or scope-creep the feature by porting lib/multiagent/ with no spec backing.",
+      "statement": "The open multiagent-runtime escalation blocks any wave-4 multiagent build work package, blocks full-scope parity acceptance of the reference multiagent plays at programs/multiagent/, and blocks the _send messaging-kernel scope inside close-body-kernel-now-send; the minimal ruling is a one-line in-scope-vs-stays-deferred decision plus the target wave if in-scope.",
+      "claim": "rule-multiagent-runtime-escalation — obtain the in-scope-vs-deferred ruling for the Gleam multiagent runtime that blocks wave-4 build scoping, parity acceptance, and the _send kernel.",
+      "source_citation": "sliceB §6 multiagent-runtime (b1-c1-058, b2-c1-047, b3-c1-041) + Open items 'Open escalations'",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-002",
+      "wp_id": "rule-mesh-ring-escalation",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "mesh-ring"
+      ],
+      "deliverable": "Carry the open mesh-ring escalation to the engineer with the exact conflict — b3: multi-client mesh messaging over QUIC driven from GLP programs is a delivered, parity-required reference user story (programs/tests/quic/quic_mesh.glp + QuicMeshTests.cs); b2: zero mesh/ring matches anywhere in glp_gleam or gleam_quic — and obtain a scope ruling.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — stating 'mesh/ring user-story parity in-scope with acceptance target = Gleam equivalent of programs/tests/quic/quic_mesh.glp passing, wave N' or 'follow-on: <name>'.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Unruled, 'full-scope' stays undefined between point-to-point-only links and N-client mesh, so wave-5 accept WPs and the QUIC/distribution closes would bake in an acceptance breadth the engineer never chose.",
+      "statement": "The open mesh-ring escalation blocks the multi-peer acceptance criteria of close-quic-transport-leaf, close-distribution-engine-sessions, and the wave-5 accept work packages; the minimal ruling is one line — mesh/ring parity in-scope or follow-on — naming the acceptance target and wave if in-scope.",
+      "claim": "rule-mesh-ring-escalation — obtain the in-scope-vs-follow-on ruling for mesh/ring topology parity that blocks QUIC and distribution acceptance breadth.",
+      "source_citation": "sliceB §6 mesh-ring (b2-c1-048, b3-c1-057) + Open items 'Open escalations'",
+      "confidence": 0.93,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-003",
+      "wp_id": "rule-bytecode-runner-unifyconstant-divergence",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "bytecode-runner"
+      ],
+      "deliverable": "Surface the recorded-but-unresolved UnifyConstant ground-struct-literal divergence (b1 testimony: 'escalated rather than resolved') for an explicit engineer ruling on which behavior is normative — reference v2.16 ground-struct-literal handling or the current Gleam emission — since the drift controls forbid silently resolving a recorded escalation inside a close WP.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/, a marathon mrun-8bda036d9e9b decision row, or a note in specs/050-full-gleam-combined/tasks.md against T006/T007/T019/T021 — naming the normative UnifyConstant ground-struct-literal behavior for the golden pin.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Unruled, close-bytecode-runner-missing-opcodes cannot lock a golden opcode pin without either freezing the divergence in or reversing it unauthorized.",
+      "statement": "The recorded-but-unresolved UnifyConstant ground-struct-literal divergence blocks the golden-parity pin inside close-bytecode-runner-missing-opcodes; the minimal ruling is a one-line declaration of the normative ground-struct-literal behavior.",
+      "claim": "rule-bytecode-runner-unifyconstant-divergence — obtain the normative-behavior ruling for the escalated UnifyConstant ground-struct-literal divergence blocking the runner golden pin.",
+      "source_citation": "sliceB §3 bytecode-runner (b1-c1-006 'a UnifyConstant ground-struct-literal divergence was escalated rather than resolved')",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-004",
+      "wp_id": "close-body-kernel-now-send",
+      "kind": "close",
+      "backing_detail_ids": [
+        "body-kernel"
+      ],
+      "deliverable": "Register and implement the effectful _now and _send body kernels in the standalone Gleam engine (glp_gleam/src/glp/engine/kernels.gleam), completing the delivered arithmetic/math/conversion/univ/mwm/_output registry to the reference two-valued (success/abort) kernel surface.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes with new gleeunit cases (extending glp_gleam/test/glp/engine/arith_guards_kernels_test.gleam or a sibling effectful-kernels test) exercising _now and _send success and abort paths.",
+      "depends_on": [
+        "freeze-body-kernel",
+        "rule-multiagent-runtime-escalation"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "_send's routing target hangs on the unruled multiagent scope, so the kernel must be scoped strictly to the reference body-kernel messaging contract or it stalls on that escalation.",
+      "statement": "Closes the only named body-kernel missing part — the effectful _now and _send kernels unregistered in the standalone engine — as parallel wave-3 work that is not on the FE/BE-split critical path.",
+      "claim": "close-body-kernel-now-send — register and implement the missing effectful _now and _send body kernels to reference two-valued parity.",
+      "source_citation": "sliceB §3 body-kernel (b2-c1-016 kernels.gleam:20-97; b1-c1-010; b3-c1-014 body_kernels.dart:52-106)",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-005",
+      "wp_id": "close-bytecode-runner-missing-opcodes",
+      "kind": "close",
+      "backing_detail_ids": [
+        "bytecode-runner"
+      ],
+      "deliverable": "Implement the Unimplemented runner faults for Requeue tail-calls and environment frames (Allocate/Deallocate) in glp_gleam/src/glp/engine/runner.gleam and apply the ruled UnifyConstant ground-struct-literal behavior in a golden pin, with Distribute/Transmit runtime explicitly owned by close-module-system-runtime-rpc to avoid double work.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes with new glp_gleam/test/glp/engine/runner_test.gleam cases executing Requeue and Allocate/Deallocate programs to completion (no Unimplemented fault) plus a golden opcode pin covering the ruled UnifyConstant ground-struct-literal case.",
+      "depends_on": [
+        "rule-bytecode-runner-unifyconstant-divergence",
+        "freeze-bytecode-runner"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "These opcodes are recorded deferred-as-unused (US4), so compiler emission paths may not yet produce them and compiler-side work could get dragged into this runner close.",
+      "statement": "Closes the named bytecode-runner missing parts Requeue and Allocate/Deallocate as parallel wave-3 work off the FE/BE-split critical path, with the module-RPC opcodes Distribute/Transmit routed to close-module-system-runtime-rpc.",
+      "claim": "close-bytecode-runner-missing-opcodes — implement Requeue and Allocate/Deallocate and pin the ruled UnifyConstant behavior, removing the Unimplemented runner faults.",
+      "source_citation": "sliceB §3 bytecode-runner (b2-c1-012 runner.gleam:247,300-374; b1-c1-006; b3-c1-005)",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-006",
+      "wp_id": "close-guard-kernel-wait-guards",
+      "kind": "close",
+      "backing_detail_ids": [
+        "guard-kernel"
+      ],
+      "deliverable": "Implement the timer guards wait/wait_until (currently unimplemented faults at runner.gleam:353-371,2229) with reference three-valued suspend semantics, completing the otherwise-delivered pure guard set.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes with new cases in glp_gleam/test/glp/engine/guards_test.gleam covering wait/wait_until suspend-then-reactivate and failure paths.",
+      "depends_on": [
+        "freeze-guard-kernel"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Timer guards need a time source inside the pure engine value, which may force a clock seam through the host API and couple this close to close-embeddability-host-api and the _now kernel.",
+      "statement": "Closes the only named guard-kernel missing part — the wait/wait_until timer-guard unimplemented faults — as parallel wave-3 work off the FE/BE-split critical path.",
+      "claim": "close-guard-kernel-wait-guards — implement the wait/wait_until timer guards with three-valued suspend semantics, removing their unimplemented faults.",
+      "source_citation": "sliceB §3 guard-kernel (b2-c1-015 runner.gleam:353-371,2229; b1-c1-009; b3-c1-011)",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-007",
+      "wp_id": "close-module-system-runtime-rpc",
+      "kind": "close",
+      "backing_detail_ids": [
+        "module-system"
+      ],
+      "deliverable": "Implement runtime execution of module RPC — Distribute/Transmit execution in the runner over the already-delivered declaration parsing, export/import flags, and codegen — so module-qualified cross-module calls stop faulting Unimplemented.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes a new end-to-end module-qualified remote-call test (none exists today; runner.gleam:374 currently returns Unimplemented for Distribute/Transmit).",
+      "depends_on": [
+        "freeze-module-system",
+        "verify-module-system-scope-chain"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "The 050 spec is silent on modules (promise=absent), so this close lacks spec backing and needs a spec/tasks amendment first, while the reference self.glp scope chain remains an adjacent parity area routed to the wave-2 verify-module-system-scope-chain.",
+      "statement": "Closes the named module-system missing part — runtime module-RPC execution — as parallel wave-3 work off the FE/BE-split critical path.",
+      "claim": "close-module-system-runtime-rpc — implement Distribute/Transmit runtime execution so module-qualified cross-module calls resolve end-to-end.",
+      "source_citation": "sliceB §3 module-system (b2-c1-046 parser.gleam:2198-2254 + codegen.gleam:460-464 + runner.gleam:374; b1-c1-057; b3-c1-027)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-008",
+      "wp_id": "close-link-layer-glp-primitives",
+      "kind": "close",
+      "backing_detail_ids": [
+        "link-layer"
+      ],
+      "deliverable": "Port the 025 GLP-facing link primitives — link_send/link_recv plus establish/listen/accept/request/setup/close/monitor kernels with registry, pump, and egress — onto the delivered seam (endpoint vtable + two serving transports) per the 025 contracts verbatim.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes T056-style link round-trip tests over loopback and TCP (tasks.md:133 currently unchecked), mirroring the six reference programs at programs/tests/link/.",
+      "depends_on": [
+        "freeze-link-layer"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "The 025 contracts are verbatim-binding with deviations required to escalate, so any BEAM-process-model mismatch stops this WP rather than being silently adapted; split point if it slips: land link_send/link_recv plus setup/close over loopback first, then listen/accept/request/monitor plus registry/pump/egress as a second slice.",
+      "statement": "Closes the first named link-layer missing part — the GLP-facing 025 link primitive kernels with registry, pump, and egress — as parallel wave-3 work off the FE/BE-split critical path, since the split rides the envelope seam directly rather than the GLP primitives.",
+      "claim": "close-link-layer-glp-primitives — port the 025 GLP-facing link primitive kernels, registry, pump, and egress onto the delivered seam per contract.",
+      "source_citation": "sliceB §3 link-layer (b1-c1-033 T050 + link-parity.md:5-7; b2-c1-039 endpoint.gleam:39-47; b3-c1-046 link_kernels.dart:23-57)",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-009",
+      "wp_id": "close-link-layer-fault-decoration",
+      "kind": "close",
+      "backing_detail_ids": [
+        "link-layer"
+      ],
+      "deliverable": "Implement fault-as-data decoration so transport/endpoint faults (the seam's delivered fault types) arrive as data terms on GLP-visible link streams per the 025 contract, closing the second named link-layer missing part.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes a fault-injection case that closes/faults a loopback transport and observes the fault delivered as a data term through the link primitives.",
+      "depends_on": [
+        "close-link-layer-glp-primitives"
+      ],
+      "wave": 3,
+      "effort": "S",
+      "risk": "The delivered seam fault taxonomy may not map one-to-one onto the 025 fault-as-data contract, which would trigger the deviations-escalate clause.",
+      "statement": "Closes the second named link-layer missing part — fault-as-data decoration on GLP-visible link streams — as a small wave-3 follow-through on the link-primitives close, off the FE/BE-split critical path.",
+      "claim": "close-link-layer-fault-decoration — deliver transport faults as data terms on GLP link streams per the 025 contract.",
+      "source_citation": "sliceB §3 link-layer (b2-c1-039 'fault-as-data decoration ... remain gaps' + seam fault types at endpoint.gleam:39-47)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-010",
+      "wp_id": "close-link-layer-sequence-dedup",
+      "kind": "close",
+      "backing_detail_ids": [
+        "link-reliability-sequencing",
+        "link-layer"
+      ],
+      "deliverable": "Implement the sequence/ack/dedup reliability sublayer in glp_gleam/src/glp/link/reliability/ (scope already declared at endpoint.gleam:5-7) atop the existing frame codec and CRC-32, closing both the section-5 code-only gap and the third named link-layer missing part.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes new reliability tests under glp_gleam/test/glp/link/ covering duplicate drop, reorder handling, and ack progression (no such test exists today).",
+      "depends_on": [
+        "freeze-frame-codec"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "The sublayer is not-promised in any spec (code-testimony scope only), so its sole authority is the endpoint.gleam sublayer declaration and it may need a spec amendment before build.",
+      "statement": "Closes the third named link-layer missing part and the whole link-reliability-sequencing gap — the sequence/ack/dedup sublayer — as parallel wave-3 work off the FE/BE-split critical path, atop the delivered frame codec whose freeze (freeze-frame-codec) is the delivered-foundation builder's territory because the frame codec is delivered code.",
+      "claim": "close-link-layer-sequence-dedup — implement the missing sequence/ack/dedup reliability sublayer atop the frozen frame codec and CRC-32.",
+      "source_citation": "sliceB §5 link-reliability-sequencing (b2-c1-057) + §3 link-layer (b2-c1-039 'sequence/dedup ... remain gaps')",
+      "confidence": 0.88,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-011",
+      "wp_id": "close-quic-transport-leaf",
+      "kind": "close",
+      "backing_detail_ids": [
+        "quic-transport"
+      ],
+      "deliverable": "Implement the QUIC transport leaf behind the seam, wiring glp_gleam's declared quic link-scheme token (link_scheme.gleam:33-36, currently leafless) to the gleam_quic data planes (Profile A relay / Profile C in-process client) with RFC-6455-over-QUIC-bidi parity against the C# reference peer per T055.",
+      "acceptance_evidence": "The QUIC part of T056 (specs/050-full-gleam-combined/tasks.md:132-133, currently unchecked) passes: `gleam test` in glp_gleam exercises the quic scheme end-to-end against the C# reference peer under the recorded WSL-only runtime.",
+      "depends_on": [
+        "freeze-link-layer",
+        "close-quic-client-inprocess-tests"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "Carries the recorded host-block risk, the WSL-only runtime constraint, and the external quicer/MsQuic build gate, any of which can push this leaf late — acceptably, since it is off the FE/BE critical path; split point if it slips: land the Profile A (C#-side-process relay) leaf first and the Profile C in-process leaf as a second slice.",
+      "statement": "Closes the quic-transport partial by wiring the declared-but-leafless quic scheme to a real transport leaf as late/parallel wave-3 work — the FE/BE split rides TCP loopback per its roadmap promise so the QUIC leaf never blocks it, and multi-peer acceptance breadth additionally awaits rule-mesh-ring-escalation.",
+      "claim": "close-quic-transport-leaf — wire the declared quic scheme to a real transport leaf over the gleam_quic data planes with C#-peer wire parity.",
+      "source_citation": "sliceB §3 quic-transport (b2-c1-043 link_scheme.gleam:33-36 + glp_quick_gleam.gleam:23-49; b1-c1-032 T055/R5; b3-c1-054 QuicTransport.cs)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-012",
+      "wp_id": "close-quic-client-inprocess-tests",
+      "kind": "close",
+      "backing_detail_ids": [
+        "quic-client-inprocess"
+      ],
+      "deliverable": "Bring the Profile C in-process quicer client (gleam_quic/src/glpq_quic.erl) under corpus test — gleam_quic/test is empty today — locking its mirror of the C# wire contract and recording the explicitly-unsupported server role as a tested refusal rather than silence.",
+      "acceptance_evidence": "`gleam test` run in the gleam_quic package directory passes new tests exercising the Profile C client handshake and data path against the C# reference peer plus a server-role refusal assertion (gleam_quic/test currently contains no test files).",
+      "depends_on": [],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Gated on the external quicer/MsQuic build, and with parity-required=no and promise=not-promised the scope is strictly test coverage — adding a server role would be unbacked scope creep requiring a ruling.",
+      "statement": "Closes the quic-client-inprocess partial — whose named missing parts are its tests and its explicit server-role gap — as parallel wave-3 hardening off the FE/BE-split critical path.",
+      "claim": "close-quic-client-inprocess-tests — put the untested Profile C quicer client under corpus test with the unsupported server role as a tested refusal.",
+      "source_citation": "sliceB §3 quic-client-inprocess (b2-c1-045 glpq_quic.erl:1-50; 'gleam_quic/test is empty')",
+      "confidence": 0.86,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-013",
+      "wp_id": "close-embeddability-host-api",
+      "kind": "close",
+      "backing_detail_ids": [
+        "embeddability-api"
+      ],
+      "deliverable": "Deliver the dedicated host-embedding API over the pure engine value — a host-callable load/run/step/configure/Event surface decoupled from any UI, matching the Dart glp_engine.dart embeddability baseline and the gleam-instance-surface contract with its prelude-injection seam — as the yngenios embedding hook.",
+      "acceptance_evidence": "`gleam test` in glp_gleam passes a host-harness test that embeds and drives the engine exclusively through the new API (no repl module imports), and the surface is documented in specs/050-full-gleam-combined/contracts/gleam-instance-surface.md.",
+      "depends_on": [
+        "freeze-embeddability-api"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "yngenios integration is requirements-level with no in-repo sources, so in-repo acceptance can only prove the host API and harness — the yngenios-side wiring deferral is filed explicitly as rule-embeddability-api-yngenios-wiring rather than assumed.",
+      "statement": "Closes the named embeddability-api missing part — the dedicated host-embedding API over the pure engine value — and is the one PARTIAL close on the FE/BE-split critical path, because the wave-4 engine back-end process wraps exactly this surface, so build-fe-be-process-split depends on this close plus guard-fe-be-envelope-seam while all other closes run parallel or late.",
+      "claim": "close-embeddability-host-api — deliver the missing dedicated host-embedding API over the pure engine value as the yngenios hook and FE/BE back-end surface.",
+      "source_citation": "sliceB §3 embeddability-api (b2-c1-050 engine.gleam:107-110; b1-c1-018 gleam-instance-surface.md:25-30; b3-c1-037 glp_engine.dart:1-48,115-120) + header yngenios note",
+      "confidence": 0.92,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-014",
+      "wp_id": "close-distribution-engine-sessions",
+      "kind": "close",
+      "backing_detail_ids": [
+        "distribution-protocol"
+      ],
+      "deliverable": "Implement engine-to-engine session establishment and remote goal/result routing above the delivered wire layers — deferred-local-assignment distributed unification with globalize/localize on known/1 and RemoteVarRef as (instance id, writer id) — per the designed T051 contract (data-model.md:49-50, link-parity.md:15-19).",
+      "acceptance_evidence": "The T057 adversarial dist-deref suite (specs/050-full-gleam-combined/tasks.md:134, currently unchecked) passes, plus a new two-engine goal/result round-trip test in glp_gleam (today no test connects two engines or routes a goal/result across a link).",
+      "depends_on": [
+        "close-link-layer-glp-primitives",
+        "rule-mesh-ring-escalation"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "The design is proof-gated (designed but not recorded delivered, with an outstanding proof obligation), and pairwise sessions may need rework if the mesh-ring ruling brings N-peer topology into scope; split point if it slips: land session establishment plus goal/result routing first, then the T057 adversarial dist-deref suite as a second slice.",
+      "statement": "Closes the named distribution-protocol missing part — engine-to-engine session establishment and remote goal/result routing above the delivered wire seam — as the latest of the wave-3 closes, off the FE/BE-split critical path because FE-to-engine rides the envelope seam rather than engine-to-engine sessions.",
+      "claim": "close-distribution-engine-sessions — implement the missing engine-to-engine session establishment and remote goal/result routing above the delivered wire seam.",
+      "source_citation": "sliceB §3 distribution-protocol (b2-c1-051 link.gleam:1-9 + seam/transport.gleam:39-51; b1-c1-034 T051/T057; b3-c1-045 payload_serializer.dart)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-015",
+      "wp_id": "freeze-body-kernel",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "body-kernel"
+      ],
+      "deliverable": "Freeze the delivered standalone-engine body-kernel registry surface — arithmetic, math, conversion, univ, mutual-reference stream append, and _output at glp_gleam/src/glp/engine/kernels.gleam:20-97 — as a frozen-interface register entry so the wave-3 _now/_send close extends it without changing it.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the kernels.gleam:20-97 registry surface, plus `gleam test` in glp_gleam passing glp_gleam/test/glp/engine/arith_guards_kernels_test.gleam unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "Over-freezing could block a registry-shape change the _now/_send close legitimately needs, so any change routes through an explicit unfreeze ruling.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL body-kernel lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the delivered kernel registry that close-body-kernel-now-send builds on.",
+      "claim": "freeze-body-kernel — pin the delivered Gleam body-kernel registry surface as a frozen interface before its missing parts are closed.",
+      "source_citation": "sliceB §3 body-kernel (b2-c1-016 kernels.gleam:20-97 + arith_guards_kernels_test.gleam:1-7)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-016",
+      "wp_id": "freeze-bytecode-runner",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "bytecode-runner"
+      ],
+      "deliverable": "Freeze the delivered bytecode-runner surface — the production-emitted opcode set (HEAD/GUARD/BODY families, Commit, Spawn) executed by glp_gleam/src/glp/engine/runner.gleam — as a frozen-interface register entry so the wave-3 opcode close adds Requeue/Allocate/Deallocate without altering delivered opcode behavior.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the delivered runner opcode surface, plus `gleam test` in glp_gleam passing glp_gleam/test/glp/engine/runner_test.gleam unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "The ruled UnifyConstant divergence may legitimately change one delivered behavior, so the freeze must carve out exactly the ruling's scope via an explicit unfreeze note rather than a silent edit.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL bytecode-runner lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the production-emitted opcode behavior that close-bytecode-runner-missing-opcodes extends.",
+      "claim": "freeze-bytecode-runner — pin the delivered production-emitted opcode behavior as a frozen interface before the missing opcodes are closed.",
+      "source_citation": "sliceB §3 bytecode-runner (b2-c1-012 runner.gleam:247,300-374 + runner_test.gleam:1-6)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-017",
+      "wp_id": "freeze-guard-kernel",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "guard-kernel"
+      ],
+      "deliverable": "Freeze the delivered pure three-valued guard set — ground/known/otherwise/=?=, arithmetic and standard-order comparisons, type tests, @< per runner.gleam and arith_guards_kernels_test — as a frozen-interface register entry so the wave-3 wait-guards close adds timer guards without altering delivered guard semantics.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the delivered pure guard set, plus `gleam test` in glp_gleam passing glp_gleam/test/glp/engine/guards_test.gleam unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "Over-freezing could block a guard-evaluation refactor the timer guards need for a time source, so any change routes through an explicit unfreeze ruling.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL guard-kernel lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the delivered pure guard semantics that close-guard-kernel-wait-guards extends.",
+      "claim": "freeze-guard-kernel — pin the delivered pure three-valued guard set as a frozen interface before the timer guards are closed.",
+      "source_citation": "sliceB §3 guard-kernel (b2-c1-015 runner.gleam:353-371,2229 + guards_test.gleam:1-4)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-018",
+      "wp_id": "freeze-module-system",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "module-system"
+      ],
+      "deliverable": "Freeze the delivered module-system front half — declaration parsing, export/import flags (glp_gleam/src/glp/parser/parser.gleam:2198-2254) and Distribute/Transmit code generation (glp_gleam/src/glp/compiler/codegen.gleam:460-464) — as a frozen-interface register entry so the wave-3 runtime-RPC close implements execution against, not around, the delivered emission.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the parser.gleam:2198-2254 and codegen.gleam:460-464 surfaces, plus `gleam test` in glp_gleam passing unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "If the runtime-RPC close discovers the delivered codegen emission is wrong for execution, the freeze forces an explicit unfreeze ruling instead of a silent codegen rewrite.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL module-system lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the delivered module parsing and codegen that close-module-system-runtime-rpc builds on.",
+      "claim": "freeze-module-system — pin the delivered module declaration parsing and Distribute/Transmit codegen as a frozen interface before runtime RPC is closed.",
+      "source_citation": "sliceB §3 module-system (b2-c1-046 parser.gleam:2198-2254 + codegen.gleam:460-464)",
+      "confidence": 0.88,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-019",
+      "wp_id": "freeze-link-layer",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "link-layer"
+      ],
+      "deliverable": "Freeze the delivered link-layer seam below GLP — the endpoint vtable, transport constructor surface, and scheme/address/id/options/fault types (glp_gleam/src/glp/link/seam/endpoint.gleam:39-47) with its two serving transports — as a frozen-interface register entry so the wave-3 primitives, fault-decoration, and QUIC-leaf closes build on it unchanged.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the endpoint.gleam:39-47 seam types and vtable, plus `gleam test` in glp_gleam passing glp_gleam/test/glp/link/loopback_test.gleam unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "The 025-contract port may expose a seam-shape gap (for example the fault taxonomy mismatch), which then routes through an explicit unfreeze ruling under the deviations-escalate clause rather than a silent seam edit.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL link-layer lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the delivered seam that three wave-3 link closes and the QUIC leaf build on.",
+      "claim": "freeze-link-layer — pin the delivered endpoint-vtable seam and its two serving transports as a frozen interface before the link closes ride it.",
+      "source_citation": "sliceB §3 link-layer (b2-c1-039 endpoint.gleam:39-47 + loopback_test.gleam:1-8)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-020",
+      "wp_id": "freeze-embeddability-api",
+      "kind": "freeze",
+      "backing_detail_ids": [
+        "embeddability-api"
+      ],
+      "deliverable": "Freeze the delivered engine-value API — the opaque Engine with new/load/run/step/start/Event and the explicit prelude-injection seam (glp_gleam/src/glp/engine.gleam:107-110, per the gleam-instance-surface contract) — as a frozen-interface register entry so the wave-3 host-API close wraps it without changing it.",
+      "acceptance_evidence": "A checked-in frozen-interface register entry (docs/research/fullscope-gleam/frozen-interface-register.md) naming the engine.gleam engine-value surface and prelude-injection seam, plus `gleam test` in glp_gleam passing glp_gleam/test/glp/engine_test.gleam unmodified.",
+      "depends_on": [],
+      "wave": 1,
+      "effort": "S",
+      "risk": "Over-freezing could block a step/Event envelope adjustment the host API needs, so any change routes through an explicit unfreeze ruling.",
+      "statement": "Authored by builder-2 because the delivered part of PARTIAL embeddability-api lives in the partials slice outside the delivered-foundation builder's view: this wave-1 freeze pins the pure engine-value API that close-embeddability-host-api and the wave-4 FE/BE back end wrap.",
+      "claim": "freeze-embeddability-api — pin the delivered pure engine-value API and prelude-injection seam as a frozen interface before the host API wraps it.",
+      "source_citation": "sliceB §3 embeddability-api (b2-c1-050 engine.gleam:107-110 + engine_test.gleam:1-7; b1-c1-018 gleam-instance-surface.md:25-30)",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-021",
+      "wp_id": "verify-module-system-scope-chain",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "module-system"
+      ],
+      "deliverable": "Verify whether the reference directory-based self.glp module scope chain (ancestor scoping, shadowing, sibling isolation, delivered in Dart per glp_runtime/lib/runtime/module_hierarchy.dart) exists anywhere in the Gleam implementation, producing a recorded present/absent finding that scopes the spec amendment required by close-module-system-runtime-rpc.",
+      "acceptance_evidence": "A checked-in verification record (under docs/research/fullscope-gleam/ or as a specs/050-full-gleam-combined amendment) stating the sweep performed over glp_gleam/src/** for self.glp scope-chain handling and its present/absent result, reproducible by re-running the recorded search from a fresh session.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If the scope chain is absent, a scope ruling is needed on whether reference self.glp scope-chain parity joins the module-system close or is filed as a deferral rule-request — this verify surfaces that decision instead of burying it.",
+      "statement": "Authored by builder-2 because module-system is a partials-slice detail_id invisible to the unconfirmed-gaps builder: this wave-2 verify settles whether the reference self.glp scope chain exists in Gleam before close-module-system-runtime-rpc amends the module spec.",
+      "claim": "verify-module-system-scope-chain — establish present/absent for the reference self.glp scope chain in the Gleam implementation before the module-system close.",
+      "source_citation": "sliceB §3 module-system (b3-c1-027 module_hierarchy.dart:1-9; b2-c1-046; b1-c1-057 'spec and tasks are silent')",
+      "confidence": 0.88,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-022",
+      "wp_id": "rule-embeddability-api-yngenios-wiring",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "embeddability-api"
+      ],
+      "deliverable": "File for engineer ruling the explicit deferral proposal that real yngenios-side integration wiring is a post-feature follow-on — no yngenios sources exist in-repo and the inventory header records yngenios integration as gap-by-definition at requirements level — while the in-repo host-embedding API stays in-feature via close-embeddability-host-api.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — stating either 'yngenios-side wiring deferred to follow-on <name>' or 'in-feature with acceptance target <artifact>'.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Until ruled, the no-silent-deferral rule defaults yngenios-side wiring into in-feature scope, which no in-repo acceptance test can prove because the counterpart sources do not exist in this repository.",
+      "statement": "Files per the no-silent-deferral rule the post-feature-follow-on proposal that cycle 1 left implicit in a risk note, naming detail_id embeddability-api and the proposed deferral of yngenios-side wiring beyond the in-repo host-embedding API.",
+      "claim": "rule-embeddability-api-yngenios-wiring — obtain the ruling that yngenios-side wiring is a follow-on while the in-repo host API remains in-feature.",
+      "source_citation": "sliceB header yngenios note ('embeddability-api ... host-embedding/yngenios surface absent; the yngenios integration itself is gap-by-definition') + §3 embeddability-api",
+      "confidence": 0.9,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-023",
+      "wp_id": "rule-open-items-cycle2-residual",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "open-items-cycle2-residual"
+      ],
+      "deliverable": "File for engineer ruling the out-of-scope proposal that the Phase-1 run's unrun cycle-2 self-verification pass (budget_stop at 574k/600k in run 20260719T130005Z-782b) is run-verification hygiene outside this feature's deliverable scope, resolvable by resuming that run with a fresh budget rather than by a feature work package.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — either accepting the exclusion or ordering the Phase-1 run resumed before plan finalization.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If ruled in-scope, the resumed Phase-1 cycle could revise inventory rows and force re-mapping of the work packages built on them.",
+      "statement": "Files per the no-silent-deferral rule the out-of-scope proposal for the Phase-1 open-items row 'residual cycle' — the unrun cycle-2 self-verification of run 20260719T130005Z-782b — so its exclusion from feature scope is an engineer ruling, not a builder decision.",
+      "claim": "rule-open-items-cycle2-residual — obtain the ruling that the Phase-1 run's unrun self-verification cycle is run hygiene outside feature scope.",
+      "source_citation": "sliceB 'Open items' bullet 'Residual cycle' (budget_stop 574k/600k, run 20260719T130005Z-782b)",
+      "confidence": 0.87,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-024",
+      "wp_id": "rule-open-items-merge-candidates",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "open-items-merge-candidates"
+      ],
+      "deliverable": "File for engineer ruling the out-of-scope proposal that the 40 near-miss key pairs all judged DISTINCT by the Phase-1 Critic (pair list preserved in phase1-detail-join.json merge_candidates) warrant no feature work package unless a re-check overturns a DISTINCT verdict.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — either accepting the exclusion or ordering a re-check of named pairs from phase1-detail-join.json.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If a re-check merges two detail_ids, work packages backed by either id need re-mapping and the coverage union recomputing.",
+      "statement": "Files per the no-silent-deferral rule the out-of-scope proposal for the Phase-1 open-items row 'merge candidates' — the 40 DISTINCT-judged near-miss pairs — so their exclusion from feature scope is an engineer ruling, not a builder decision.",
+      "claim": "rule-open-items-merge-candidates — obtain the ruling that the 40 DISTINCT-judged near-miss pairs need no feature work package absent a re-check.",
+      "source_citation": "sliceB 'Open items' bullet 'Merge candidates' (phase1-detail-join.json merge_candidates)",
+      "confidence": 0.87,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "b2-c2-025",
+      "wp_id": "rule-open-items-unswept-areas",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "open-items-unswept-areas"
+      ],
+      "deliverable": "File for engineer ruling the out-of-scope proposal that the Phase-1 sweep residuals of the other builders — b1 non-Gleam spec bodies read roadmap-rows-only (380 files) and b3 programs corpus breadth-only (1183 files) with C# engine source at out/csharp outside slice — are inventory-completeness hygiene, not deliverable feature work.",
+      "acceptance_evidence": "A recorded engineer ruling a fresh session can read — an escalation-register entry marked RULED checked in under docs/research/fullscope-gleam/ or a marathon mrun-8bda036d9e9b decision row — either accepting the exclusion or ordering targeted re-sweeps whose findings would enter the inventory before plan finalization.",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If a re-sweep surfaces new capabilities, the 154-capability inventory grows and the plan's coverage union must be recomputed before acceptance.",
+      "statement": "Files per the no-silent-deferral rule the out-of-scope proposal for the Phase-1 open-items row 'unswept areas' — the b1/b3 partial-sweep residuals — so their exclusion from feature scope is an engineer ruling, not a builder decision.",
+      "claim": "rule-open-items-unswept-areas — obtain the ruling that the Phase-1 b1/b3 sweep residuals are inventory hygiene outside feature scope.",
+      "source_citation": "sliceB 'Open items' bullet 'Unswept areas' (b1 380 files roadmap-rows-only; b3 1183 files breadth-only; out/csharp outside slice)",
+      "confidence": 0.87,
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    }
+  ],
+  "coverage_map": {
+    "body-kernel": {
+      "status": "covered",
+      "wp_ids": [
+        "close-body-kernel-now-send",
+        "freeze-body-kernel"
+      ],
+      "reason": ""
+    },
+    "bytecode-runner": {
+      "status": "covered",
+      "wp_ids": [
+        "close-bytecode-runner-missing-opcodes",
+        "rule-bytecode-runner-unifyconstant-divergence",
+        "freeze-bytecode-runner"
+      ],
+      "reason": ""
+    },
+    "distribution-protocol": {
+      "status": "covered",
+      "wp_ids": [
+        "close-distribution-engine-sessions"
+      ],
+      "reason": ""
+    },
+    "embeddability-api": {
+      "status": "covered",
+      "wp_ids": [
+        "close-embeddability-host-api",
+        "freeze-embeddability-api",
+        "rule-embeddability-api-yngenios-wiring"
+      ],
+      "reason": ""
+    },
+    "guard-kernel": {
+      "status": "covered",
+      "wp_ids": [
+        "close-guard-kernel-wait-guards",
+        "freeze-guard-kernel"
+      ],
+      "reason": ""
+    },
+    "link-layer": {
+      "status": "covered",
+      "wp_ids": [
+        "close-link-layer-glp-primitives",
+        "close-link-layer-fault-decoration",
+        "close-link-layer-sequence-dedup",
+        "freeze-link-layer",
+        "close-quic-transport-leaf"
+      ],
+      "reason": ""
+    },
+    "module-system": {
+      "status": "covered",
+      "wp_ids": [
+        "close-module-system-runtime-rpc",
+        "verify-module-system-scope-chain",
+        "freeze-module-system"
+      ],
+      "reason": ""
+    },
+    "quic-client-inprocess": {
+      "status": "covered",
+      "wp_ids": [
+        "close-quic-client-inprocess-tests"
+      ],
+      "reason": ""
+    },
+    "quic-transport": {
+      "status": "covered",
+      "wp_ids": [
+        "close-quic-transport-leaf"
+      ],
+      "reason": ""
+    },
+    "fe-be-process-split": {
+      "status": "covered",
+      "wp_ids": [
+        "guard-fe-be-envelope-seam"
+      ],
+      "reason": ""
+    },
+    "link-reliability-sequencing": {
+      "status": "covered",
+      "wp_ids": [
+        "close-link-layer-sequence-dedup"
+      ],
+      "reason": ""
+    },
+    "mesh-ring": {
+      "status": "covered",
+      "wp_ids": [
+        "rule-mesh-ring-escalation"
+      ],
+      "reason": ""
+    },
+    "multiagent-runtime": {
+      "status": "covered",
+      "wp_ids": [
+        "rule-multiagent-runtime-escalation"
+      ],
+      "reason": ""
+    },
+    "open-items-cycle2-residual": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "Run-verification hygiene of the Phase-1 3rtask run (budget_stop at 574k/600k), not feature scope; filed for ruling as rule-open-items-cycle2-residual; resolvable by resuming run 20260719T130005Z-782b with a fresh budget."
+    },
+    "open-items-merge-candidates": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "All 40 near-miss key pairs were judged DISTINCT by the Phase-1 Critic (pair list preserved in phase1-detail-join.json); filed for ruling as rule-open-items-merge-candidates; no feature WP warranted unless a re-check overturns a DISTINCT verdict."
+    },
+    "open-items-unswept-areas": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "Sweep-completeness residual of builders b1/b3 (non-Gleam spec bodies roadmap-rows-only; programs corpus breadth-only; out/csharp outside slice); filed for ruling as rule-open-items-unswept-areas; inventory hygiene, not deliverable feature work."
+    }
+  },
+  "retractions": [
+    {
+      "claim_id": "b2-c1-002",
+      "reason": "Superseded by b2-c2-001: statement carried a cycle-1-internal 'Q6' reference; acceptance evidence tightened to a named register path or marathon decision row."
+    },
+    {
+      "claim_id": "b2-c1-003",
+      "reason": "Superseded by b2-c2-002: statement carried a cycle-1-internal 'Q6' reference; acceptance evidence tightened to a named register path or marathon decision row."
+    },
+    {
+      "claim_id": "b2-c1-004",
+      "reason": "Superseded by b2-c2-003: statement carried a cycle-1-internal 'Q6-adjacent' reference; acceptance evidence tightened."
+    },
+    {
+      "claim_id": "b2-c1-005",
+      "reason": "Superseded by b2-c2-004: depends_on named freeze-body-kernel-interface, a WP no builder would emit under the E1 rule (body-kernel is a section-3 PARTIAL invisible to builder-1); re-pointed to self-authored freeze-body-kernel; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-006",
+      "reason": "Superseded by b2-c2-005: depends_on named freeze-bytecode-runner-interface (E1-invalid for a PARTIAL subsystem); re-pointed to self-authored freeze-bytecode-runner; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-007",
+      "reason": "Superseded by b2-c2-006: depends_on named freeze-guard-kernel-interface (E1-invalid); re-pointed to self-authored freeze-guard-kernel; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-008",
+      "reason": "Superseded by b2-c2-007: depends_on named freeze-module-system-interface and an unauthored verify-module-system-scope-chain; freeze re-pointed to self-authored freeze-module-system and the verify WP now authored as b2-c2-021; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-009",
+      "reason": "Superseded by b2-c2-008: depends_on named freeze-link-layer-interface (E1-invalid); re-pointed to self-authored freeze-link-layer; L-effort risk now names its split point per R6; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-010",
+      "reason": "Superseded by b2-c2-009: statement carried a cycle-1-internal 'Q5' reference."
+    },
+    {
+      "claim_id": "b2-c1-011",
+      "reason": "Superseded by b2-c2-010: depends_on named freeze-frame-codec-interface; re-pointed to freeze-frame-codec, the E1-correct name for the delivered frame codec the delivered-foundation builder plausibly freezes; statement de-referenced from cycle-1 context."
+    },
+    {
+      "claim_id": "b2-c1-012",
+      "reason": "Superseded by b2-c2-011: depends_on named freeze-link-layer-interface (E1-invalid); re-pointed to self-authored freeze-link-layer; L-effort risk now names its split point per R6; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-013",
+      "reason": "Superseded by b2-c2-012: acceptance evidence was ambiguous ('gleam test or the package's eunit runner'); tightened to a single `gleam test` invocation in the gleam_quic package; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-014",
+      "reason": "Superseded by b2-c2-013: depends_on named freeze-embeddability-api-surface (E1-invalid); re-pointed to self-authored freeze-embeddability-api; the yngenios follow-on deferral hidden in the risk note is now filed explicitly as rule-embeddability-api-yngenios-wiring per E3e; statement de-referenced from 'Q5'."
+    },
+    {
+      "claim_id": "b2-c1-015",
+      "reason": "Superseded by b2-c2-014: L-effort risk now names its split point per R6; statement de-referenced from 'Q5'."
+    }
+  ]
+}

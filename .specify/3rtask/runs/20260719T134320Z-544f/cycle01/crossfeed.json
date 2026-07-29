@@ -1,0 +1,715 @@
+{
+  "claims": [
+    {
+      "claim_id": "684f94fad9b0",
+      "claim": "freeze-runtime-term-heap — Freeze the delivered term ADT, immutable heap, three-valued unification, writer-MGU discipline, and heap-level SuspensionTable as the immutable bottom layer of the feature's dependency spine.",
+      "source_citation": "sliceA §1: term-representation (b2-c1-001), term-heap-unification (b2-c1-002); §2: unification-three-valued-verdict (b2-c1-003), unification-writer-mgu (b2-c1-004), suspension-table (b2-c1-005)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "43b1fc4d46f3",
+      "claim": "freeze-engine-execution — Freeze three-phase execution, the suspension-aware scheduler, wake-dedup, the writer-address suspension model, and the StepOutcome single-step seam as the delivered execution contract downstream builds may drive but not alter.",
+      "source_citation": "sliceA §1: three-phase-execution (b2-c1-011), suspension-scheduler (b2-c1-006); §2: suspension-wake-dedup (b2-c1-008), suspension-writer-address-model (b2-c1-009), scheduler-single-step (b2-c1-007)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "168f25df2cf8",
+      "claim": "freeze-engine-facade — Freeze the zero-global-state engine-value facade with prelude merge and output capture as the keystone interface both the FE/BE split and yngenios embeddability build on.",
+      "source_citation": "sliceA §1: prelude-library (b2-c1-024, b3-c1-026); §2: engine-facade (b2-c1-026), output-capture (b2-c1-017)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "f7b11f97bcb4",
+      "claim": "freeze-compiler-pipeline — Freeze the whole single-entry load pipeline — parser, SRSW, partial evaluator, type checker, codegen, staged diagnostics — with its byte-identical Dart error conformance as one register entry.",
+      "source_citation": "sliceA §1: compiler-pipeline (b2-c1-022), srsw-check (b2-c1-018), partial-evaluator (b2-c1-019), type-checker (b2-c1-020); §2: parser-conformance (b2-c1-021), compiler-codegen (b2-c1-023), diagnostics-staged-error (b2-c1-025)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "5a461a5ac0bd",
+      "claim": "freeze-bytecode-isa — Freeze the delivered v2.16 opcode table and BytecodeProgram model as the immutable ISA contract between compiler and engine.",
+      "source_citation": "sliceA §2: bytecode-opcode-table (b2-c1-013), bytecode-program-model (b2-c1-014)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "f36354801b56",
+      "claim": "freeze-codec-envelope — Freeze the term codec plus ED-1 result-envelope seam — including loud-fail, cycle markers, suspended-var reporting, and in-process/wire byte-identity — as the single payload contract on the FE/BE and embeddability spine.",
+      "source_citation": "sliceA §1: term-codec (b2-c1-031), result-envelope (b2-c1-032, b1-c1-016); §2: envelope-builder (b2-c1-034), codec-loud-fail (b2-c1-033), deep-resolve-cycle-detection (b2-c1-035), result-seam-identity (b2-c1-036), suspension-result-reporting (b2-c1-010)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "48277a17c3ca",
+      "claim": "freeze-link-wire — Freeze the 22-byte frame header, CRC-32, and 4-byte length-prefix wire formats at cross-runtime byte parity so no wave-4 transport work can bend the wire.",
+      "source_citation": "sliceA §1: frame-codec (b2-c1-038, b1-c1-028), crc32-checksum (b2-c1-037, b1-c1-029); §2: tcp-length-prefix-framing (b2-c1-042)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "fd624cae5b8e",
+      "claim": "freeze-link-transport-seam — Freeze the transport seam with its delivered loopback and TCP leaves so the FE/BE split plugs in as a new leaf behind an unchanged seam.",
+      "source_citation": "sliceA §1: loopback-transport (b2-c1-040, b1-c1-030), tcp-transport (b2-c1-041, b1-c1-031)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "7c34bcb4f8db",
+      "claim": "freeze-repl-surface — Freeze the scripted REPL loop, command set, result rendering, and trace shapes as the byte-comparable user-surface reference for the future FE.",
+      "source_citation": "sliceA §1: repl-loop (b2-c1-027, b1-c1-015); §2: repl-command-surface (b2-c1-028), repl-result-rendering (b2-c1-030), repl-trace-mode (b2-c1-029)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "160e47d0b22a",
+      "claim": "freeze-platform-atomvm-policy — Freeze the no-OTP-abstraction AtomVM dependency policy as a binding constraint on all downstream build WPs.",
+      "source_citation": "sliceA §2: atomvm-dependency-policy (b2-c1-052)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "a907e44809d9",
+      "claim": "guard-suite-gleam — Pin the whole glp_gleam gleeunit suite green (463/463 baseline, grow-only) as the one suite-level guard covering all in-suite delivered capabilities.",
+      "source_citation": "sliceA §1: test-harness (b2-c1-054, b3-c1-068); §2: parity-oracle-testing (b2-c1-055), placeholder-module-scaffold (b2-c1-056)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "9aedef1455ad",
+      "claim": "guard-suite-dart-reference — Pin the Dart unified REPL suite green as the parity oracle backing every byte-identical conformance freeze.",
+      "source_citation": "sliceA §1: compiler-pipeline (b3-c1-019), type-checker (b3-c1-023), prelude-library (b3-c1-026), repl-loop (b3-c1-032), three-phase-execution (b3-c1-004)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "9bea00828196",
+      "claim": "guard-suite-csharp-reference — Pin the C# link and result-codec test suites green as the second wire-parity oracle for the frozen link and codec contracts.",
+      "source_citation": "sliceA §1: frame-codec (b3-c1-049), crc32-checksum (b3-c1-050), term-codec (b3-c1-062), tcp-transport (b3-c1-053), loopback-transport (b3-c1-052)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "7545b2594f88",
+      "claim": "guard-atomvm-gated-probe — Keep the manually-run AtomVM gated-codec probe runnable and its exclusion verdicts pinned, as the only delivered capability gleam test cannot cover.",
+      "source_citation": "sliceA §2: atomvm-conformance-probe (b2-c1-053)",
+      "confidence": 0.8,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "b6c3e78cfcbc",
+      "claim": "rule-request-link-quic-relay — Request an engineer ruling on whether the untested QUIC side-process relay is frozen by file pin or must gain a minimal in-corpus smoke test before builds depend on it.",
+      "source_citation": "sliceA §2: quic-sideprocess-relay (b2-c1-044)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-1",
+      "slice_id": "slice-delivered-foundation"
+    },
+    {
+      "claim_id": "2524b60f12b5",
+      "claim": "guard-fe-be-envelope-seam — lock the ED-1 envelope byte-identity seam as the frozen FE/BE-split contract before any build work.",
+      "source_citation": "sliceB §4 fe-be-process-split (b1-c1-038, b2-c1-049, b3-c1-040)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "1acb99569f53",
+      "claim": "rule-multiagent-runtime-escalation — obtain the in-scope-vs-deferred ruling for the Gleam multiagent runtime that blocks wave-4 build scoping, parity acceptance, and the _send kernel.",
+      "source_citation": "sliceB §6 multiagent-runtime (b1-c1-058, b2-c1-047, b3-c1-041) + Open items 'Open escalations'",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "8ceeec961074",
+      "claim": "rule-mesh-ring-escalation — obtain the in-scope-vs-follow-on ruling for mesh/ring topology parity that blocks QUIC and distribution acceptance breadth.",
+      "source_citation": "sliceB §6 mesh-ring (b2-c1-048, b3-c1-057) + Open items 'Open escalations'",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "a7fddd88e5b0",
+      "claim": "rule-bytecode-runner-unifyconstant-divergence — obtain the normative-behavior ruling for the escalated UnifyConstant ground-struct-literal divergence blocking the runner golden pin.",
+      "source_citation": "sliceB §3 bytecode-runner (b1-c1-006 'a UnifyConstant ground-struct-literal divergence was escalated rather than resolved')",
+      "confidence": 0.88,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "ef18c97f543a",
+      "claim": "close-body-kernel-now-send — register and implement the missing effectful _now and _send body kernels to reference two-valued parity.",
+      "source_citation": "sliceB §3 body-kernel (b2-c1-016 kernels.gleam:20-97; b1-c1-010; b3-c1-014 body_kernels.dart:52-106)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "a3cd3e99f1db",
+      "claim": "close-bytecode-runner-missing-opcodes — implement Requeue and Allocate/Deallocate and pin the ruled UnifyConstant behavior, removing the Unimplemented runner faults.",
+      "source_citation": "sliceB §3 bytecode-runner (b2-c1-012 runner.gleam:247,300-374; b1-c1-006; b3-c1-005)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "a78091c4ee5e",
+      "claim": "close-guard-kernel-wait-guards — implement the wait/wait_until timer guards with three-valued suspend semantics, removing their unimplemented faults.",
+      "source_citation": "sliceB §3 guard-kernel (b2-c1-015 runner.gleam:353-371,2229; b1-c1-009; b3-c1-011)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "114b7d06a0ec",
+      "claim": "close-module-system-runtime-rpc — implement Distribute/Transmit runtime execution so module-qualified cross-module calls resolve end-to-end.",
+      "source_citation": "sliceB §3 module-system (b2-c1-046 parser.gleam:2198-2254 + codegen.gleam:460-464 + runner.gleam:374; b1-c1-057; b3-c1-027)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "3fd9b80e6bb5",
+      "claim": "close-link-layer-glp-primitives — port the 025 GLP-facing link primitive kernels, registry, pump, and egress onto the delivered seam per contract.",
+      "source_citation": "sliceB §3 link-layer (b1-c1-033 T050 + link-parity.md:5-7; b2-c1-039 endpoint.gleam:39-47; b3-c1-046 link_kernels.dart:23-57)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "82d4efebff91",
+      "claim": "close-link-layer-fault-decoration — deliver transport faults as data terms on GLP link streams per the 025 contract.",
+      "source_citation": "sliceB §3 link-layer (b2-c1-039 'fault-as-data decoration ... remain gaps' + seam fault types at endpoint.gleam:39-47)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "eb5c6f345cc4",
+      "claim": "close-link-layer-sequence-dedup — implement the missing sequence/ack/dedup reliability sublayer atop the frozen frame codec and CRC-32.",
+      "source_citation": "sliceB §5 link-reliability-sequencing (b2-c1-057) + §3 link-layer (b2-c1-039 'sequence/dedup ... remain gaps')",
+      "confidence": 0.88,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "6f643bfc72c2",
+      "claim": "close-quic-transport-leaf — wire the declared quic scheme to a real transport leaf over the gleam_quic data planes with C#-peer wire parity.",
+      "source_citation": "sliceB §3 quic-transport (b2-c1-043 link_scheme.gleam:33-36 + glp_quick_gleam.gleam:23-49; b1-c1-032 T055/R5; b3-c1-054 QuicTransport.cs)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "52e1d8ffdabf",
+      "claim": "close-quic-client-inprocess-tests — put the untested Profile C quicer client under corpus test with the unsupported server role as a tested refusal.",
+      "source_citation": "sliceB §3 quic-client-inprocess (b2-c1-045 glpq_quic.erl:1-50; 'gleam_quic/test is empty')",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "a5a07e7b4e3b",
+      "claim": "close-embeddability-host-api — deliver the missing dedicated host-embedding API over the pure engine value as the yngenios hook and FE/BE back-end surface.",
+      "source_citation": "sliceB §3 embeddability-api (b2-c1-050 engine.gleam:107-110; b1-c1-018 gleam-instance-surface.md:25-30; b3-c1-037 glp_engine.dart:1-48,115-120) + header yngenios note",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "9db5b8d6484d",
+      "claim": "close-distribution-engine-sessions — implement the missing engine-to-engine session establishment and remote goal/result routing above the delivered wire seam.",
+      "source_citation": "sliceB §3 distribution-protocol (b2-c1-051 link.gleam:1-9 + seam/transport.gleam:39-51; b1-c1-034 T051/T057; b3-c1-045 payload_serializer.dart)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-2",
+      "slice_id": "slice-partials-gaps-escalations"
+    },
+    {
+      "claim_id": "9d383f222588",
+      "claim": "verify-runtime-arithmetic-expression — one batched existence check settles code testimony for all eight unconfirmed runtime-core semantics gaps.",
+      "source_citation": "sliceC section 7: arithmetic-expression (b3-c1-017), external-io (b3-c1-018), heap-value-copy-semantics (b1-c1-013), scheduler-fairness (b3-c1-009), stream-mutual-reference (b3-c1-016), suspension-abandonment (b3-c1-008), suspension-diagnostics (b3-c1-010), system-predicate-registry (b3-c1-015)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "cb97d1c967ef",
+      "claim": "verify-guards-guard-defined — a two-gap batch check establishes whether the Gleam guard system implements defined guards and purity.",
+      "source_citation": "sliceC section 7: guard-defined (b3-c1-012), guard-purity (b3-c1-013)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "04ebc2094e6c",
+      "claim": "verify-langsurface-channel-convention — corpus-driven checks convert five normative language-surface gaps into concrete pass/fail testimony.",
+      "source_citation": "sliceC section 7: channel-convention (b3-c1-073), clause-programming-idioms (b3-c1-071), srsw-anonymous-writer (b3-c1-072), type-guard-set (b3-c1-025), type-parameterized (b3-c1-024)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "c551aca85a65",
+      "claim": "verify-compiler-antlr-shared-grammar-spike — one compiler-subsystem batch check covers seven parser/compiler gaps including the concrete ANTLR-absence check that grounds the superseded proposal.",
+      "source_citation": "sliceC section 7: antlr-shared-grammar-spike (b1-c1-050), compile-mode-directive (b3-c1-030), compiler-strict-mode (b3-c1-020), module-dynamic-dispatch (b3-c1-029), module-static-linking (b3-c1-028), parser-recursive-descent (b1-c1-005), reduce-metainterpreter (b3-c1-031)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "3c812acc89f4",
+      "claim": "verify-bytecode-bytecode-instruction-set — a discriminant-completeness diff plus WxW execution settles the three bytecode-level conformance gaps.",
+      "source_citation": "sliceC section 7: bytecode-instruction-set (b3-c1-006), bytecode-lint (b3-c1-070), bytecode-mode-conversion (b3-c1-007)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "5eebf4428ece",
+      "claim": "verify-repl-repl-boot-command — a single front-surface inspection resolves all four REPL-command gaps.",
+      "source_citation": "sliceC section 7: repl-boot-command (b3-c1-036), repl-bytecode-command (b3-c1-034), repl-limit-command (b3-c1-035), repl-trace-command (b3-c1-033)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "d074b6f5bb88",
+      "claim": "verify-multiagent-multiagent-boot-loader — one batch check determines whether any of the three multiagent capabilities exist in Gleam and sizes the port if not.",
+      "source_citation": "sliceC section 7: multiagent-boot-loader (b3-c1-043), multiagent-global-send (b3-c1-044), multiagent-isolate-manager (b3-c1-042)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "e9c21fe23239",
+      "claim": "verify-link-inbound-pump — a module-list diff plus link-program execution fixes the exact delivered/absent boundary across seven link-layer gaps.",
+      "source_citation": "sliceC section 7: inbound-pump (b3-c1-048), instance-network-join (b1-c1-068), link-acceptance (b3-c1-058), link-capability-gate (b3-c1-065), link-reliability (b3-c1-051), link-seam (b3-c1-047), link-transport-seam (b1-c1-027)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "7e0513139b23",
+      "claim": "verify-quicws-link-completion-live-repl-bridge — one QUIC-WS batch check separates delivered transport substrate from the open bridge/mesh ambitions and grounds the mesh out-of-scope proposal.",
+      "source_citation": "sliceC section 7: link-completion-live-repl-bridge (b1-c1-071), mesh-full-mesh-native-quic (b1-c1-056), profile-c-quic-acceptance (b1-c1-055), quic-host (b3-c1-056), websocket-framing (b3-c1-055)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "3fae7b76eb5d",
+      "claim": "verify-transports-multi-accept-transport-extension — a five-gap hardening check pins what remains before the all-gating transport matrix can run and grounds the ZMQ out-of-scope proposal.",
+      "source_citation": "sliceC section 7: multi-accept-transport-extension (b1-c1-046), quiescence-oracle (b1-c1-026), transport-parity-all-gating (b1-c1-037), untrusted-frame-hardening (b1-c1-035), zmq-comm-base (b1-c1-069)",
+      "confidence": 0.91,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "1e786e8d8337",
+      "claim": "verify-codec-compiled-il-on-the-wire — golden-vector reruns plus an IL-codec existence check settle five codec gaps and ground the compiled-IL deferral proposal.",
+      "source_citation": "sliceC section 7: compiled-il-on-the-wire (b1-c1-042), il-codec (b3-c1-059), il-codec-round-trip (b1-c1-041), result-envelope-builder (b3-c1-061), result-envelope-codec (b3-c1-060), term-codec-tlv (b1-c1-061)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "6bf617b693c6",
+      "claim": "verify-wireproto-crdt-convergence — a component-list diff plus scope table turns five application-layer parity questions into rulable inputs instead of assumptions.",
+      "source_citation": "sliceC section 7: crdt-convergence (b3-c1-064), durable-mesh-messaging (b1-c1-070), message-envelope (b3-c1-063), schema-language (b3-c1-066), wire-registry (b3-c1-067)",
+      "confidence": 0.9,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b724e2560492",
+      "claim": "verify-febe-embedded-switch-role-framing — one FE/BE batch check converts eight separation-epic gaps into a single verified requirements baseline for the build WP.",
+      "source_citation": "sliceC section 7: embedded-switch-role-framing (b1-c1-074), engine-review-dossier (b1-c1-039), engine-state-snapshot-persistence (b1-c1-043), liveness-crash-restart-host (b1-c1-044), multi-client-control-program (b1-c1-047), premise-reconciliation-compiler-location (b1-c1-040), repl-engine-split-binary-wire-mvp (b1-c1-048), restore-and-resume-link-reestablish (b1-c1-045)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "ed326a65fe49",
+      "claim": "verify-embed-embeddability-service-box — a grep-plus-dossier check locks the requirements-level status of both embeddability gaps and yields the build checklist.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052); header note on requirements-level yngenios",
+      "confidence": 0.94,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "9184f52440cc",
+      "claim": "verify-engine-engine-composition-root — a seam-level inspection converts three recorded-only engine-seam claims into code testimony.",
+      "source_citation": "sliceC section 7: engine-composition-root (b3-c1-038), output-capture-seam (b1-c1-017), reference-envelope-and-capture-seam (b1-c1-049)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "53a7bbd8c690",
+      "claim": "verify-parity-differential-harness — re-executing the recorded M1 evidence converts eight parity-harness records into current, fresh-session code testimony.",
+      "source_citation": "sliceC section 7: differential-harness (b1-c1-021), engine-csharp-parity (b3-c1-039), gap-fork-case-corpus (b1-c1-020), instance-load-and-run (b1-c1-067), performance-sanity-bound (b1-c1-022), program-corpus (b3-c1-069), regression-guard (b1-c1-023), test-harness-corpus-parity (b1-c1-019)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "4ffc11e7a776",
+      "claim": "verify-acceptance-acceptance-sweep-and-polish — an artifact-absence check fixes the true remaining scope of the feature-closing acceptance work.",
+      "source_citation": "sliceC section 7: acceptance-sweep-and-polish (b1-c1-075), cross-runtime-pair-capstone (b1-c1-036)",
+      "confidence": 0.94,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "8590330b7683",
+      "claim": "verify-platform-atomvm-compatibility-by-construction — one platform batch re-runs the by-construction guarantees behind six toolchain/decision gaps.",
+      "source_citation": "sliceC section 7: atomvm-compatibility-by-construction (b1-c1-053), build-test-topology-windows (b1-c1-066), langpair-dart-gleam (b1-c1-062), monitor-primitive-verification (b1-c1-054), port-source-basis-dart (b1-c1-064), subtree-scaffold (b1-c1-063)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "0b0c8a2f635a",
+      "claim": "verify-process-baseline-program-dossier — a records-vs-reality inspection closes the testimony gap on six process/decision entries without touching code.",
+      "source_citation": "sliceC section 7: baseline-program-dossier (b1-c1-065), engine-instances-scaling-research (b1-c1-073), full-scope-gleam-anchor (b1-c1-059), marathon-run-position (b1-c1-076), roadmap-constituent-reconciliation (b1-c1-060), runtime-gap-features-reference (b1-c1-072)",
+      "confidence": 0.92,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "4e933771bcdc",
+      "claim": "verify-proofs-proof-dist-deref-convergence — a proof-artifact audit separates the discharged M1 obligation from the open M2-gating one and sizes the remaining Lean work.",
+      "source_citation": "sliceC section 7: proof-dist-deref-convergence (b1-c1-025), proof-writer-mgu-value-copy (b1-c1-024)",
+      "confidence": 0.93,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "6e092179eeff",
+      "claim": "rule-request-compiler-antlr-shared-grammar-spike — the recorded R1 absorption makes this the cleanest superseded out-of-scope candidate, carried to an explicit ruling.",
+      "source_citation": "sliceC section 7: antlr-shared-grammar-spike (b1-c1-050, promise=deferred, absorbed/superseded)",
+      "confidence": 0.88,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "04896bc6434e",
+      "claim": "rule-request-transports-zmq-comm-base — ZMQ is contract-excluded for Gleam and unbuilt in the reference, warranting a ruled follow-on rather than silent deferral.",
+      "source_citation": "sliceC section 7: zmq-comm-base (b1-c1-069, designed-unstarted, absent from the Gleam transport contract)",
+      "confidence": 0.87,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "05bf2ccbac7a",
+      "claim": "rule-request-process-engine-instances-scaling-research — research-only roadmap rows with no spec dirs are proposed out of the delivery feature via an explicit ruling.",
+      "source_citation": "sliceC section 7: engine-instances-scaling-research (b1-c1-073, all rows [refined], no spec dirs)",
+      "confidence": 0.88,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "2a8147ddf4e6",
+      "claim": "rule-request-codec-compiled-il-on-the-wire — an owner-recorded MVP wire decision is converted into a ruled scope boundary instead of an implicit one.",
+      "source_citation": "sliceC section 7: compiled-il-on-the-wire (b1-c1-042, [refined] no spec dir); premise-reconciliation-compiler-location (b1-c1-040)",
+      "confidence": 0.88,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "4519a34b3ff2",
+      "claim": "rule-request-quicws-mesh-full-mesh-native-quic — a capability owned by a separately promoted feature is proposed duplicate-of rather than double-planned here.",
+      "source_citation": "sliceC section 7: mesh-full-mesh-native-quic (b1-c1-056, [promoted], C# REPL ruled as host, no Gleam role)",
+      "confidence": 0.87,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "f5cc6f5f8b44",
+      "claim": "close-runtime-arithmetic-expression — conditional close work turns every runtime-core verdict into either cited testimony or a delivered port.",
+      "source_citation": "sliceC section 7 runtime batch (b3-c1-017/018/009/016/008/010/015, b1-c1-013)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "5146f373783c",
+      "claim": "close-guards-guard-defined — both guard-system gaps close with executable positive and negative testimony.",
+      "source_citation": "sliceC section 7 guards batch (b3-c1-012, b3-c1-013)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "79e850a1f884",
+      "claim": "close-langsurface-channel-convention — language-surface parity closes through Dart-identical corpus verdicts rather than document assertions.",
+      "source_citation": "sliceC section 7 langsurface batch (b3-c1-073/071/072/025/024)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "4911ab45b56f",
+      "claim": "close-compiler-antlr-shared-grammar-spike — the compiler chain closes against executable module, dispatch, meta and negative-type evidence with the ANTLR question ruled, not assumed.",
+      "source_citation": "sliceC section 7 compiler batch (b1-c1-050, b3-c1-030/020/029/028, b1-c1-005, b3-c1-031)",
+      "confidence": 0.84,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "49e39d4963a5",
+      "claim": "close-bytecode-bytecode-instruction-set — bytecode conformance closes with a discriminant-completeness test as its durable regression guard.",
+      "source_citation": "sliceC section 7 bytecode batch (b3-c1-006, b3-c1-070, b3-c1-007)",
+      "confidence": 0.83,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "818366995c01",
+      "claim": "close-repl-repl-boot-command — REPL-control parity closes via a scripted session transcript, whichever surface the controls land on.",
+      "source_citation": "sliceC section 7 repl batch (b3-c1-036/034/035/033)",
+      "confidence": 0.84,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "876e7538677a",
+      "claim": "close-multiagent-multiagent-boot-loader — multiagent capability closes when the plays themselves run green on Gleam, not before.",
+      "source_citation": "sliceC section 7 multiagent batch (b3-c1-043/044/042)",
+      "confidence": 0.82,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "182761e48997",
+      "claim": "close-link-inbound-pump — the link layer closes only when the GLP-source link acceptance suite runs green on the Gleam instance.",
+      "source_citation": "sliceC section 7 link batch (b3-c1-048, b1-c1-068, b3-c1-058/065/051/047, b1-c1-027)",
+      "confidence": 0.83,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "01afd84d0b12",
+      "claim": "close-quicws-link-completion-live-repl-bridge — QUIC-WS closes with a real Gleam-to-reference interop link, the transport SC-008 cannot pass without.",
+      "source_citation": "sliceC section 7 quicws batch (b1-c1-071, b1-c1-055, b3-c1-056, b3-c1-055, b1-c1-056)",
+      "confidence": 0.82,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "9368be93a61e",
+      "claim": "close-transports-multi-accept-transport-extension — hardening closes with the adversarial suite and the identical-outcomes matrix as the acceptance instruments.",
+      "source_citation": "sliceC section 7 transports batch (b1-c1-046, b1-c1-026, b1-c1-037, b1-c1-035, b1-c1-069)",
+      "confidence": 0.83,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "4fbb36785208",
+      "claim": "close-codec-compiled-il-on-the-wire — codec parity closes on golden-vector byte identity, the only evidence strong enough for wire formats.",
+      "source_citation": "sliceC section 7 codec batch (b1-c1-042, b3-c1-059, b1-c1-041, b3-c1-061, b3-c1-060, b1-c1-061)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "fa70b678bb3d",
+      "claim": "close-wireproto-crdt-convergence — application-layer parity closes item-by-item against an explicit required-vs-host-side boundary.",
+      "source_citation": "sliceC section 7 wireproto batch (b3-c1-064, b1-c1-070, b3-c1-063, b3-c1-066, b3-c1-067)",
+      "confidence": 0.8,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "f5d7d14c3c6f",
+      "claim": "close-febe-embedded-switch-role-framing — FE/BE closes as a decision-complete spec input so the wave-4 build starts unblocked.",
+      "source_citation": "sliceC section 7 febe batch (b1-c1-074/039/043/044/047/040/048/045)",
+      "confidence": 0.84,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "5c7c6b6f1ff9",
+      "claim": "close-embed-embeddability-service-box — embeddability closes into a ratified requirements contract that makes the wave-4 build definable.",
+      "source_citation": "sliceC section 7 embed batch (b1-c1-051, b1-c1-052)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "73464e871df3",
+      "claim": "close-engine-engine-composition-root — engine-seam gaps close with executable seam tests because two wave-4 builds stand on them.",
+      "source_citation": "sliceC section 7 engine batch (b3-c1-038, b1-c1-017, b1-c1-049)",
+      "confidence": 0.86,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "6cfef8a522c8",
+      "claim": "close-parity-differential-harness — parity evidence closes as a reproducible one-command rig, the drift-control backbone for later waves.",
+      "source_citation": "sliceC section 7 parity batch (b1-c1-021, b3-c1-039, b1-c1-020, b1-c1-067, b1-c1-022, b3-c1-069, b1-c1-023, b1-c1-019)",
+      "confidence": 0.86,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "ebf6b8c839d2",
+      "claim": "close-acceptance-acceptance-sweep-and-polish — the M2 LOCK gates are built as runnable artifacts here so wave 5 only has to execute them.",
+      "source_citation": "sliceC section 7 acceptance batch (b1-c1-075, b1-c1-036)",
+      "confidence": 0.82,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "407f462ac56f",
+      "claim": "close-platform-atomvm-compatibility-by-construction — platform guarantees close on a fresh-clone transcript, the strongest available by-construction evidence.",
+      "source_citation": "sliceC section 7 platform batch (b1-c1-053/066/062/054/064/063)",
+      "confidence": 0.87,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "319a268034cc",
+      "claim": "close-process-baseline-program-dossier — process records close by reconciliation so the feature's drift controls start from a true baseline.",
+      "source_citation": "sliceC section 7 process batch (b1-c1-065/073/059/076/060/072)",
+      "confidence": 0.85,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "170924ea4a8e",
+      "claim": "close-proofs-proof-dist-deref-convergence — the open M2-gating proof obligation is discharged in its mandated form rather than waived.",
+      "source_citation": "sliceC section 7 proofs batch (b1-c1-025, b1-c1-024)",
+      "confidence": 0.8,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b9ccf07ccdf9",
+      "claim": "build-fe-be-process-split — the FE/BE process-split chain is delivered as one wave-4 build on frozen interfaces with a kill-restart e2e as its proof.",
+      "source_citation": "sliceC section 7 febe batch (b1-c1-048, b1-c1-039, b1-c1-040, b1-c1-074, b1-c1-043, b1-c1-044, b1-c1-047, b1-c1-045)",
+      "confidence": 0.8,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "e01e7dedc89e",
+      "claim": "build-yngenios-embeddability — embeddability lands as a ratified contract plus a compiling boundary stub on the split engine, exactly requirements-level as mandated.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052), embedded-switch-role-framing (b1-c1-074); header requirements-level note",
+      "confidence": 0.8,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "0802cc3ba30f",
+      "claim": "accept-full-scope-regression — the feature closes on one fresh-session all-green run of the full cross-runtime and cross-transport matrix.",
+      "source_citation": "sliceC section 7: acceptance-sweep-and-polish (b1-c1-075), cross-runtime-pair-capstone (b1-c1-036), regression-guard (b1-c1-023), test-harness-corpus-parity (b1-c1-019), transport-parity-all-gating (b1-c1-037)",
+      "confidence": 0.82,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "8c048fdbcd7b",
+      "claim": "accept-febe-embeddability — the FE/BE and embeddability chain gets its own wave-5 acceptance so the terminal regression gate is not its only proof.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052), repl-engine-split-binary-wire-mvp (b1-c1-048), restore-and-resume-link-reestablish (b1-c1-045)",
+      "confidence": 0.82,
+      "tag": "",
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    }
+  ]
+}

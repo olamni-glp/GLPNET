@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "method_id": "method-20260715T152146Z-0455",
+  "elements": [
+    {
+      "id": "M-00-fact-vs-decision",
+      "kind": "method-rule",
+      "text": "STRUCTURAL RULE governing every element below (added in cycle 2 after the planning Critic correctly objected that the draft froze unverified code facts). This method freezes DECISIONS and QUESTIONS — never FACTS. A decision is the lead's ruling and stands on its reasoning; it is red-teamable from the artifact alone. A fact about code is NEVER frozen here: it is routed to a blind Builder's slice as a question and established by evidence (file:line at the pinned commit). Where a decision has a factual PREMISE, the premise is named explicitly and the decision states what happens IF THE PREMISE IS FALSE. Any element asserting an unverified code fact as settled is a defect in this method, not a finding about the code."
+    },
+    {
+      "id": "M-01-seal-reuse",
+      "kind": "decision",
+      "text": "DECISION: do not hand-roll a chained-signature scheme; reuse the project's shipped signing primitives. REASONING (artifact-evaluable): a bespoke chain re-implements shipped, CI-tested infrastructure more weakly — an independent 3-critic panel reached this conclusion separately, and the standing layering law forbids a new peer implementation where a shipped realization exists. PREMISE (Builder must establish, slice-crypto-durability-evidence): that the shipped signing surface can actually bind the relay body + checkpoint fields and meet the throughput path. IF THE PREMISE IS FALSE: this decision is void and the gap is an ESCALATE — NOT a licence to hand-roll silently."
+    },
+    {
+      "id": "M-02-witness-checkpoints",
+      "kind": "decision",
+      "text": "DECISION, REWRITTEN TWICE (cycles 3 and 4) — the planning Critic REFUTED this element in BOTH cycles and was right both times; the second refutation found a hole the first fix left open, which is recorded here because it would have been a silent integrity defeat. CYCLE-3 REFUTATION (unanimity vs kill-one), verbatim: 'The all-node co-signing requirement conflicts with the stated kill-one survival goal unless it defines live-roster, quorum, or epoch-change semantics. As written, a killed node can prevent future all-node checkpoints, turning a liveness test into a halt condition.' CYCLE-4 REFUTATION (the quorum fix was itself holed), verbatim: 'A signed epoch transition is not enough unless the signer set and threshold for changing roster are specified; otherwise a node or minority could shrink the roster until sole quorum is reachable. The text also mixes live roster and roster epoch as quorum bases, which affects safety under partitions.' BOTH ARE ACCEPTED. The second is the more dangerous: the cycle-3 fix said a roster change is 'a signed epoch transition' without saying SIGNED BY WHOM at WHAT THRESHOLD — so one node could sign an epoch shrinking the roster to itself, reach 'quorum' alone, and truncate, defeating the very threat this element exists to stop. THE CORRECTED DECISION IS BELOW. Historical note for the reader: the original 'all-node' form is the SAME defect the peer panel found in the routing layer (a rigid ring HALTS on a dead node — M-03), reproduced one layer up in the CHECKPOINT layer. The refutation, recorded verbatim because it nearly shipped: 'The all-node co-signing requirement conflicts with the stated kill-one survival goal unless it defines live-roster, quorum, or epoch-change semantics. As written, a killed node can prevent future all-node checkpoints, turning a liveness test into a halt condition.' This is the SAME defect the peer panel found in the routing layer (a rigid ring HALTS on a dead node — M-03), reproduced one layer up in the CHECKPOINT layer: unanimity and kill-one survival are mutually exclusive, and the kill-one test would have deadlocked on the very mechanism meant to protect integrity. THE THREAT (unchanged): a SOLE verifier/persister can truncate or roll back the chain undetected. THE CORRECTED DECISION — witness checkpoints are co-signed by a QUORUM, never by unanimity, and never by a liveness-derived set: (a) QUORUM BASIS IS THE ROSTER EPOCH'S FIXED MEMBERSHIP (N), NEVER 'who is live now'. The cycle-3 text mixed the two and the Critic was right to reject it: a liveness-derived quorum SHRINKS as nodes die, so it drifts toward sole-quorum, and under a PARTITION each side would form its own quorum and fork the chain (split-brain). Membership is fixed per epoch; liveness never changes the threshold. (b) QUORUM = a strict majority of that epoch's N. This defeats the actual threat because a SOLE node can never reach it, so dropping unanimity gives nothing away. (c) A ROSTER CHANGE (epoch transition) REQUIRES A QUORUM OF THE OUTGOING EPOCH'S MEMBERSHIP — this is the hole the cycle-4 refutation found, and it is what closes it: a minority can NEVER shrink the roster, because shrinking it is itself an act needing the old epoch's majority. An epoch transition signed by fewer is INVALID and is an integrity failure (it HALTS per M-04), not a roster change. (d) THE 4-NODE ARITHMETIC, stated explicitly because the Critic asked for it: N=4 => strict majority = 3. Kill-one leaves 3 => quorum still reachable => THE SOAK'S KILL-ONE BAR IS MET. Kill-TWO leaves 2 < 3 => checkpoints STALL. That stall is CORRECT BEHAVIOUR, not a bug: 4 nodes tolerate exactly one loss, the requirement is kill-ONE, and a stall on kill-two MUST be reported as a declared limit — never hidden, and never 'fixed' by lowering the threshold, which would reopen (b). (e) run_id, position, roster EPOCH and sequence are BOUND INTO THE SIGNED BODY (unbound fields are replayable across runs/positions). (f) A returning node re-joins at the CURRENT epoch and MUST NOT retroactively invalidate checkpoints agreed in its absence — otherwise a revived node could rewrite agreed history, which is the rollback this element forbids. (g) GENESIS — ADDED IN CYCLE 5, closing the third hole the Critic found in this element. Its refutation, verbatim: 'the artifact still does not specify how the FIRST roster epoch is established or authenticated... a node can start from or present a sole-member initial epoch and then satisfy strict-majority-of-N. The outgoing-quorum rule cannot protect epoch 0 because there is no outgoing epoch yet.' ACCEPTED — rule (c) is INDUCTIVE and induction needs a BASE CASE; without one an attacker declares genesis = {itself}, N=1, majority=1, holds quorum forever, and every later transition is 'valid' by induction from a poisoned root. THE CLOSE: (g1) a run's roster is established ONCE as a GENESIS RUN MANIFEST enumerating the run_id and the N founding member public keys; epoch 0 IS that manifest. (g2) The genesis manifest MUST be signed by ALL N founding members — UNANIMITY IS CORRECT HERE AND COSTS NOTHING, because the unanimity-vs-kill-one tension does not exist at bootstrap: kill-one is a property of the RUN, whereas at genesis every member is present by definition, and a member that will not sign simply means the run does not start. Unanimity at genesis, majority thereafter — the two are not in conflict. (g3) Every node REJECTS any genesis manifest it did not ITSELF sign. This is what actually kills the attack: a sole-member initial epoch is never accepted by the other three, because they never signed it. (g4) RESTATED IN CYCLE 6 — the Critic found the cycle-5 wording CIRCULAR ('run_id inside the manifest' plus 'genesis hash bound into run_id' is circular unless defined as hash-over-canonical-genesis-body excluding run_id) and was right. NON-CIRCULAR DEFINITION: genesis_hash := SHA-256 over the CANONICAL genesis body EXCLUDING run_id; run_id := genesis_hash. The dependency is one-way (body -> hash -> run_id) and the manifest therefore does NOT contain its own run_id. Every checkpoint and every epoch transition BINDS genesis_hash; anything not rooted in THE genesis manifest is INVALID. (g5) Two distinct genesis manifests bearing the same run_id is an INTEGRITY FAILURE and HALTS per M-04 — a rival genesis is never silently preferred, never merged, and never resolved by recency. (g6) FRESHNESS — ADDED IN CYCLE 6, closing the Critic's replay finding, verbatim: 'a valid genesis from a prior run with the same roster can be replayed as a new run unless the genesis body contains signed freshness or an operator-chosen unique run nonce; binding checkpoints to the old run_id stops cross-run mixing but does not by itself create a distinct new run.' ACCEPTED. The genesis body MUST contain an OPERATOR-CHOSEN UNIQUE RUN NONCE, covered by the (g2) signatures. CONSEQUENCE: the same roster starting a genuinely new run yields a DIFFERENT genesis body => a different genesis_hash => a different run_id; whereas a REPLAYED prior genesis necessarily reproduces the PRIOR run_id and is therefore not a new run at all. Each node REJECTS a genesis whose run_id already exists in its durable record. This makes prior-run replay detectable by construction rather than by policy. NOTE ON RESIDUAL: the Critic classified this pair as 'an engineer-spec hole, not a reason to reopen quorum arithmetic' — i.e. the quorum design (a)-(c) is SOUND and only the genesis encoding needed pinning. (g4)/(g6) are that pinning, and MUST be verified against the shipped signing/canonicalisation surface at implementation; if the canonical encoding cannot exclude run_id from the signed body, ESCALATE rather than reintroducing the circularity. REUSE BEFORE INVENTING (per M-01): a shipped election module IS PRESENT AT THE PIN — verified mechanically at 02bcc20 by listing Olamnit/Olamnit/Olamnit.Shared/Kv/Election/, which contains RaftElection.cs, PbftElection.cs, ElectionDomain.cs, IElectionDecisionStore.cs and PgliteElectionDecisionStore.cs (existence is evidence; capability is NOT). Hand-rolling roster-epoch consensus when a durable decision-log discipline already ships would be the exact peer-implementation error M-01 forbids. PREMISES: (i) whether the shipped signing surface can express a quorum/multi-signer set over a versioned roster — routed to slice-crypto-durability-evidence, which owns the signing sources; (ii) whether the shipped election module can express roster epochs for this checkpoint — OWNED BY NO SLICE (no slice's sources include Kv/Election/), therefore an EXPLICIT ENGINEER ESCALATE, named as an uncovered gap rather than faked as coverage, exactly as in M-14. IF the shipped surfaces cannot express (i) or (ii), that is an ESCALATE — NOT a licence to fall back to unanimity (which breaks kill-one) or to a liveness-derived quorum (which forks). COUPLING: this checkpoint surface is the independent record the M-12 corroborator reads. Note the consequence the Critic's cycle-3 finding exposed: had checkpoints stalled on kill-one, relay claims would DEAD-EXPIRE during exactly the window the soak exists to test."
+    },
+    {
+      "id": "M-03-dv-mesh-not-rigid-ring",
+      "kind": "decision",
+      "text": "DECISION (Critic-CONFIRMed cycle 1): the soak MUST ride the REAL ynet DV mesh and NEVER freestanding raw links (operator hard constraint, independently confirmed by the peer panel). A rigid ring HALTS on a dead node; the DV mesh REROUTES. CONSEQUENCE: 'ring' names the LOGICAL relay order, NOT a pinned physical path. See M-17 — whether that consequence undermines what the soak proves is an open question, not a settled one."
+    },
+    {
+      "id": "M-04-split-fail-policy",
+      "kind": "decision",
+      "text": "DECISION: fail semantics are SPLIT and must not be conflated — a BAD SIGNATURE (integrity) HALTS the run and is recorded; a LINK DROP (liveness) REROUTES via DV and is COUNTED, not fatal. Conflating them either halts on a routine drop or hides a forgery. PREMISE (Builder must establish, slice-kernel-mesh-transports): that the shipped outcome value set is expressive enough to distinguish integrity failure from liveness drop. IF THE PREMISE IS FALSE: the gap must be reported and the outcome set extended by the owning module — not by inventing a parallel outcome type in the relay."
+    },
+    {
+      "id": "M-05-fsync-binds",
+      "kind": "question",
+      "text": "QUESTION (was a frozen budget claim; the Critic correctly refused it as unverified arithmetic). The draft asserted: fsync-per-cycle caps ~50 cycles/s => 1M cycles = 5-12 h; therefore FSYNC binds the budget, NOT radio latency; therefore batch B cycles + Merkle-root chaining + CRC-framed group-commit resume + a cached expanded key; ~72 MB total; crypto not the bottleneck. slice-crypto-durability-evidence MUST establish or refute each number against NAMED benchmark records, stating fsync frequency, batch size, media and checkpoint format. An unsupported number is to be reported as unsupported. The DESIGN DIRECTION (batch + Merkle chain + resumable frames) survives only if the throughput floor is real."
+    },
+    {
+      "id": "M-06-stable-ring-key",
+      "kind": "decision",
+      "text": "DECISION: the relay identity key MUST be stable across restarts. REASONING (artifact-evaluable): an ephemeral per-launch key churns identity across restarts, which silently invalidates pinned vectors and any cross-run replay defence — this exact failure has already been recorded once on a prior bench. PREMISE (Builder, slice-coin-ledger-merge or slice-crypto-durability-evidence): the concrete key-derivation pattern to reuse (a created-once host secret under domain separation) must be identified in code rather than assumed. The REQUIREMENT is frozen; the PRESCRIPTION is not."
+    },
+    {
+      "id": "M-07-identity-by-name",
+      "kind": "decision",
+      "text": "DECISION: identity is by logical name, NEVER raw IP — a multi-homed host (three interfaces observed on the lead's box) is ONE identity, and IP-keyed identity would double-count it. PREMISE (Builder must establish, slice-kernel-mesh-transports): the exact resolve API. The draft asserted 'AddressBook.Resolve does not exist; the real API is PrefixRouteTable.TryResolve(ushort)' — a peer critic's correction that the lead did NOT independently re-verify. Treat BOTH the negative and the positive as UNVERIFIED: establish the real API from code at the pinned commit and report it. IF the asserted API is wrong, say so — a correction that is itself unverified is exactly the failure M-18 names."
+    },
+    {
+      "id": "M-08-mesh-is-cleartext",
+      "kind": "question",
+      "text": "QUESTION (was asserted as fact; correctly escalated). The draft asserted the DV mesh path is CLEARTEXT today with no secure wrap. slice-kernel-mesh-transports MUST establish this from code at the pinned commit. THE ANTI-OVERCLAIM RULE IS FROZEN REGARDLESS OF THE ANSWER: the evidence report MUST NOT imply any confidentiality or in-transit protection that is not demonstrated. If the path IS cleartext, the report states the gap explicitly; if it is NOT, the report states what actually protects it and does not silently inherit the claim."
+    },
+    {
+      "id": "M-09-fault-semantics-risk",
+      "kind": "question",
+      "text": "QUESTION (was a frozen risk re-attribution; correctly escalated — it redirects investigation priority on an unverified basis). The draft asserted, from a peer critic, that the real adapter risk is FAULT-SEMANTICS (a transient fault escalating into a permanent-down storm) rather than the type split. slice-kernel-mesh-transports MUST establish whether transient-vs-permanent classification exists, where, and whether a storm is reachable — with a named mechanism or observed failure, not an assertion. If neither risk is real, say so."
+    },
+    {
+      "id": "M-10-reject-merge-max",
+      "kind": "decision",
+      "text": "DECISION (lead ruling, E-A): merge=max is REJECTED as the replica-convergence rule for the wallet. REASONING (artifact-evaluable, independent of code detail): a max-lattice presupposes a SCALAR to maximise; a conservation-based token ledger has no such scalar, because balance is a PROJECTION over surviving tokens rather than a stored quantity, and taking a max over replicas would fabricate or destroy value rather than converge it. Suspected origin of the error, worth naming so it is not re-imported: 'merge' is ALREADY an op name in this ledger (a TOKEN merge) — conflating token-merge with replica-merge. PREMISE (Builder, slice-coin-ledger-merge): the ledger's actual convergence basis. IF the Builder finds a scalar balance is in fact stored and authoritative, THIS RULING IS VOID and must be re-opened."
+    },
+    {
+      "id": "M-11-ea-scope",
+      "kind": "decision",
+      "text": "DECISION (lead ruling, E-A): peer ops MUST be re-validated BEFORE they are projected, and kill-one is NOT descoped on account of this. REASONING (artifact-evaluable): admission is where a ledger's invariants (conservation, no-negative, exactly-once) are enforced; any path that folds FOREIGN ops into durable state without re-running admission trusts a peer to have enforced OUR invariants — which is exactly the assumption that a single-node deployment made safe and that adding an anti-entropy peer voids. The soak CREATES the first such peer. PREMISES (Builder must establish, slice-coin-ledger-merge — the lead read these ALONE and single-reader verification is the recorded weakness on this feature): (a) whether the merge entry point is implemented at all; (b) whether it is dot-keyed; (c) whether it bypasses admission; (d) whether an in-code follow-up already names this work. IF the Builder's evidence contradicts any premise, the BUILDER'S EVIDENCE WINS and this element re-opens. The lead has pre-authorised that refutation; a Builder finding that contradicts the lead is a SUCCESS of this method, not a conflict."
+    },
+    {
+      "id": "M-12-eb-auto-endorse",
+      "kind": "decision",
+      "text": "DECISION (lead ruling, E-B): relay-hop claims MAY be auto-endorsed, CONDITIONAL on the corroborating evidence being the SUCCESSOR'S ACK (counterparty-signed, bound per M-02) and NEVER the claimant's own record. REASONING (artifact-evaluable): auto-endorsement is only legitimate where corroboration is independent of the claimant's self-attestation path; a counterparty signature is unforgeable by the claimant, whereas the claimant's own log is self-attestation and would let a node mint from its own say-so. A distinct endorser KEY does not by itself establish independence — independence is a property of the EVIDENCE, not the keyring. PREMISES (Builder must establish, slice-coin-ledger-merge): (a) what the shipped independence rule actually enforces; (b) whether an existing work class is pinned fail-closed manual for want of a corroborator (which would be binding precedent that auto-endorsability is EARNED by a corroborator, not granted by a key); (c) what the shipped corroborators actually re-read. IF (b) is false, the precedent argument collapses and this ruling must be re-argued on its own merits. SECURITY-SENSITIVE: this gates token issuance — a wrong ruling here mints fraudulent value. ENGINEER RESOLUTION OF THE CYCLE-4 ESCALATE (the Critic correctly refused to promote this while its M-02 dependency was unsettled, and correctly routed the judgement to an engineer rather than guessing): THIS RULING STANDS, bound to the CORRECTED M-02(a)-(f). Reasoning: the independence property rests on the ack being COUNTERPARTY-SIGNED and BOUND — a claimant cannot forge a successor's signature regardless of how many witnesses later attest it — so the quorum design governs WHEN a checkpoint commits and WHO attests it, NOT WHETHER the ack is forgeable. The independence argument is therefore not disturbed by the quorum rewrite. BUT the Critic's coupling instinct exposes a real consequence that is hereby frozen: because the corroborator reads the CHECKPOINT rather than the raw ack, ENDORSEMENT AVAILABILITY INHERITS THE QUORUM'S LIVENESS. Under kill-one (3 of 4) checkpoints still commit, so corroboration proceeds and the soak's bar is met; under kill-two checkpoints stall per M-02(d), and relay claims will DEAD-EXPIRE. That is a DECLARED LIMIT, to be reported as such — and it must NEVER be 'fixed' by letting a claim endorse against the claimant's own record when no checkpoint is available, which would silently reintroduce self-attestation minting at exactly the moment the system is most degraded. If no checkpoint, then no endorsement: fail closed. CYCLE-5 ADDITION — the Critic refuted the above resolution on genesis grounds and was right: 'If checkpoint validity can be bootstrapped from an attacker-chosen sole-member initial epoch, the corroborator's checkpoint source can be made to look quorum-valid without real four-node independence.' That is fatal to this element's whole argument, because independence-by-counterparty-signature is worthless if the counterparty set itself is attacker-chosen. ACCEPTED, and closed by taking the Critic's own stated close condition EXPLICITLY rather than relying on M-02 alone: THE CORROBORATOR MUST REJECT ANY CHECKPOINT NOT ROOTED IN THE VALID GENESIS MANIFEST OF ITS OWN run_id (M-02(g1)-(g5)) — it verifies the genesis root, not merely that some quorum signed something. A checkpoint whose genesis root is unknown to this node, or whose genesis this node did not sign, corroborates NOTHING and yields NO endorsement. Restated as the invariant: the ack proves the HOP; the genesis-rooted quorum proves the ROSTER THE ACK IS AGAINST WAS NOT CHOSEN BY THE CLAIMANT. Both are required to mint; either alone is insufficient. CYCLE-6 CLOSE: the Critic refuted the cycle-5 form only because it INHERITED M-02's circular run_id and missing replay-freshness ('M-12 inherits that gap'), while explicitly affirming the rest ('The invariant is otherwise correct: ACK proves the hop and a valid genesis-rooted quorum proves the roster was not claimant-chosen; both are required to mint'). M-02(g4)/(g6) now close that inherited gap at its source: run_id is a one-way function of the canonical genesis body, and an operator-chosen run nonce makes a replayed prior genesis reproduce the PRIOR run_id and thus fail (g5)/the local duplicate-run_id rejection. The corroborator therefore rejects (i) checkpoints not rooted in the valid genesis of its own run_id, AND (ii) any genesis whose run_id already exists in this node's durable record. The inheritance is resolved because the parent is resolved; no independent M-12 mechanism is required."
+    },
+    {
+      "id": "M-13-eb-honest-caveat",
+      "kind": "anti-overclaim",
+      "text": "FROZEN REGARDLESS OF EVERY PREMISE ABOVE (Critic-CONFIRMed cycle 1). M-12 buys independence against a FORGING adversary, NOT against a FULLY BYZANTINE HOST: a node controlling its own durable store could write an endorsement row directly and skip the verifier entirely. This is true of every shipped work class — it is the existing threat boundary (host secret trusted) — and the relay class is strictly stronger than what ships while NOT moving that boundary. Claim exactly that and nothing more. ANY claim of byzantine-fault tolerance arising from this soak is to be REFUTED at adjudication."
+    },
+    {
+      "id": "M-14-l1-gap-constraint",
+      "kind": "decision",
+      "text": "DECISION (standing layering law), REWRITTEN IN CYCLE 3 — the planning Critic REFUTED the previous form for an M-00 violation and was right: 'the premise routing violates M-00: Builder, any slice that touches the project graph is not a real assigned slice. The project-graph/L1 feasibility premise is essential and no listed Builder slice owns it explicitly.' That was a FAKE slice assignment dressed as coverage. THE DECISION (unchanged, and artifact-evaluable): the relay node-agent is L1 BY DEFINITION — the same byte-exact source must run on the two PC hosts AND the two MAUI handsets — therefore do NOT fork the adapter/corroborator per world. Forbidden: two 'peer' implementations that drift. Required: realizations of ONE contract. Put the E-A/E-B logic behind an L0 contract with an L1-shaped core; keep host-specific couplings at the L3/L4 seam. RECORDED EVIDENCE (mechanically reproducible at pin 02bcc20 by reading the ProjectReference entries of the named csproj files — NOT an assertion, and it CORRECTED the lead, who had inferred the anchoring from `using` statements alone without checking the graph, which is precisely the M-18 failure): (1) Olamnit.Shared.csproj declares ZERO ProjectReferences — it is a leaf, so Shared -> Kernel = 0 and no MAUI-side core reaches the host world; (2) Olamnit.Coin.csproj references GlpCrdtMsg AND Olamnit.Kernel AND Olamnit.Shared; (3) Olamnit.Coin.Rewards.csproj references ONLY Olamnit.Coin. CONSEQUENCE, which overturns the lead's earlier reading: the coin is NOT 'MAUI-anchored' — via Olamnit.Coin it is DUAL-anchored, depending transitively on BOTH the host world (Kernel) and the MAUI world (Shared). Under the standing law that is a STRADDLE, which is forbidden, and NOT the L1 core the ring needs. THE REAL QUESTION, now open: is Olamnit.Coin a forbidden straddle to be factored, or a de-facto L1 already? That turns on whether Olamnit.Shared can run on a Linux/Windows daemon host and whether Olamnit.Kernel can run inside MAUI — NEITHER of which any listed slice establishes. PREMISE OWNERSHIP: the COIN-side graph premise is routed to slice-coin-ledger-merge, which owns Olamnit.Coin/ and Olamnit.Coin.Rewards/ and can therefore read those csproj files at the pin. THE CROSS-WORLD RUNNABILITY QUESTION IS OWNED BY NO SLICE AND IS HEREBY AN EXPLICIT ENGINEER ESCALATE — named as an uncovered gap rather than faked as coverage (the Critic's finding stands). It MUST be resolved before implement-ring; do not quietly duplicate. See M-15 for precedence."
+    },
+    {
+      "id": "M-15-scope-intent",
+      "kind": "decision",
+      "text": "DECISION, with EXPLICIT PRECEDENCE (rewritten in cycle 2 — the planning Critic correctly found the draft contradicted M-14 and M-16). SCOPE INTENT: the coin leg SHOULD add exactly ONE new work-signal adapter over the SHIPPED rewards engine, plus the M-12 corroborator as a registration-only addition, reusing minter/wallet/identity/endorsement/epoch/provenance VERBATIM. Parameters: 1 ucoin per ACKED hop to the successor; 1 coin = 1,000,000 ucoin; 1M hops ~ 1 coin/node; 4 wallets replicated per node, surviving kill-one. PRECEDENCE — THIS ELEMENT DOES NOT OVERRIDE M-14 OR M-16: if the layering law (M-14) or wrap-never-replace (M-16) genuinely requires more than one new component, that is an ESCALATE for the engineer, NOT a licence to breach layering, NOT a licence to fork the engine, and NOT a reason to silently absorb extra scope. Scope intent yields to the architectural constraints; it does not defeat them."
+    },
+    {
+      "id": "M-16-mesh-seam-question",
+      "kind": "question",
+      "text": "QUESTION — EXPLICITLY NOT A SETTLED ELEMENT (the planning Critic correctly objected that the draft froze an open question as a decision). The draft asserted the @mesh service's runtime DI resolve is NULL today and therefore answers Unavailable, making this a precondition for M-03. slice-ynet-mesh-service MUST (a) establish whether that is true at the pinned commit, and (b) determine what must change to make the mesh real WITHOUT violating wrap-never-replace. FROZEN ONLY AS A GATE: the run may not proceed to implementation until this question is ANSWERED with evidence. A proposal that REPLACES rather than WRAPS is to be rejected — that policy is frozen; the factual state of the seam is not."
+    },
+    {
+      "id": "M-17-what-does-the-soak-prove",
+      "kind": "question",
+      "text": "HONESTY GATE (Critic-CONFIRMed cycle 1) — answer plainly, even if unwelcome. A logical relay order pins a sequence; DV routing chooses next-hops. Does the relay ordering BYPASS the routing layer, and if so what does a 1M-cycle soak ACTUALLY prove about the mesh — liveness? framing? exactly-once? or ONLY the crypto chain? If it proves less than the operator expects, SAY SO NOW, not after the run. Also adjudicate the split proposal (1M all-WiFi + 10k heterogeneous with a BLE leg) against the requirement '>=1,000,000 cycles over a BT+WiFi mesh': honest, or a dodge? Recorded input to check: BLE L2CAP RTT p50 = 122 ms (feature 013, 2-node, measured). A finding that the headline number is theatre is a WANTED result."
+    },
+    {
+      "id": "M-18-evidence-discipline",
+      "kind": "method-rule",
+      "text": "NO ASSERT-WITHOUT-VERIFY (Critic-CONFIRMed cycle 1). Every claim must rest on a file:line at the pinned commit, a committed record, or a measured number — NAMED in the claim. This rule was authored after two recorded failures of exactly this kind ON THIS FEATURE: a peer's critic INFERRED a branch state from a local checkout and passed it through unverified (later refuted by fetched remote refs), and the lead carried a wrong premise about a symbol's existence. Both were caught ONLY by cross-checking. Note the sharper lesson the planning Critic surfaced: SINGLE-READER verification is itself weak — the lead reading a file alone is the same failure mode as the peer inferring from a checkout. A claim resting on inference from an adjacent fact must be MARKED as such or dropped. Prefer 'I could not verify X' over a confident wrong X."
+    },
+    {
+      "id": "M-19-worktree-isolation",
+      "kind": "method-rule",
+      "text": "PINNED-COMMIT ISOLATION (Critic-CONFIRMed cycle 1). A concurrent automation drives the lead's primary clone and is mid-refactor, relocating mesh routing sources between projects on an UNCOMMITTED branch; it has ALREADY caused one test to silently run the wrong code. Therefore every read and every live test for this run executes in an ISOLATED worktree pinned to a named commit — never the shared working tree. Evidence citing a path MUST be reproducible at that pin. If a cited path does not exist at the pin, the claim is VOID. Corollary: a path that exists in the lead's dirty tree but NOT at the pin is an artefact of the refactor and must never be cited."
+    }
+  ],
+  "source_partition": {},
+  "questions": [],
+  "rubric_id": "plan-review",
+  "cycle_cap": 3,
+  "min_cycles": 2,
+  "token_budget": 500000,
+  "critic_adjudications": [
+    {
+      "claim_id": "M-00-fact-vs-decision",
+      "decision": "CONFIRM",
+      "rationale": "The rule correctly keeps code facts unfrozen and routes factual premises to evidence slices; M-02/M-12 changes are expressed as decisions plus premises rather than code claims.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-01-seal-reuse",
+      "decision": "CONFIRM",
+      "rationale": "The decision remains methodologically sound and does not depend on the M-02 genesis issue except through its stated premise that shipped signing can bind the needed fields.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-02-witness-checkpoints",
+      "decision": "REFUTE",
+      "rationale": "The sole-member-genesis attack is killed for the four-node run only if the other founding nodes are expected participants and reject manifests they did not sign; g2+g3 do that. Unanimity at genesis does not conflict with kill-one during the run, because kill-one starts after bootstrap and an absent founding member means the run has not begun. However g4 is underspecified: 'run_id inside the manifest' plus 'genesis hash bound into run_id' is circular unless defined as hash-over-canonical-genesis-body excluding run_id, or as separate signed run nonce plus genesis_hash. More importantly, a valid genesis from a prior run with the same roster can be replayed as a new run unless the genesis body contains signed freshness or an operator-chosen unique run nonce; binding checkpoints to the old run_id stops cross-run mixing but does not by itself create a distinct new run. This is an engineer-spec hole, not a reason to reopen quorum arithmetic.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-03-dv-mesh-not-rigid-ring",
+      "decision": "CONFIRM",
+      "rationale": "No new M-02/M-12 issue changes the distinction between logical relay order and DV-routed physical path.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-04-split-fail-policy",
+      "decision": "CONFIRM",
+      "rationale": "The split between integrity HALT and liveness reroute remains coherent; invalid genesis or rival genesis correctly belongs to integrity HALT.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-05-fsync-binds",
+      "decision": "ESCALATE",
+      "rationale": "This remains an evidence question outside the closing gate and cannot be confirmed or refuted artifact-only.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-06-stable-ring-key",
+      "decision": "CONFIRM",
+      "rationale": "Stable identity is consistent with genesis signing; replay protection now additionally needs a unique signed run nonce, but that does not weaken the stable-key decision.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-07-identity-by-name",
+      "decision": "ESCALATE",
+      "rationale": "The API and identity-resolution facts remain assigned to code evidence and are outside the M-02/M-12 artifact-only gate.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-08-mesh-is-cleartext",
+      "decision": "ESCALATE",
+      "rationale": "This is explicitly a code-evidence question and cannot be adjudicated by the blind Critic.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-09-fault-semantics-risk",
+      "decision": "ESCALATE",
+      "rationale": "This remains a transport-code evidence question outside the genesis and corroborator logic.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-10-reject-merge-max",
+      "decision": "CONFIRM",
+      "rationale": "The artifact-only rejection of merge=max remains valid and is not affected by the genesis-rooted checkpoint issue.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-11-ea-scope",
+      "decision": "CONFIRM",
+      "rationale": "The requirement to revalidate peer ops before projection remains sound; M-12's corroborator must feed admission, not bypass it.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-12-eb-auto-endorse",
+      "decision": "REFUTE",
+      "rationale": "The added genesis-rooted corroborator rule closes the prior sole-member-roster refutation only for checkpoints rooted in a non-replayed, uniquely identified genesis accepted by the local node. Because M-02 still lacks a non-circular run_id/genesis_hash definition and signed freshness against prior-valid-genesis replay, M-12 inherits that gap. The invariant is otherwise correct: ACK proves the hop and a valid genesis-rooted quorum proves the roster was not claimant-chosen; both are required to mint.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-13-eb-honest-caveat",
+      "decision": "CONFIRM",
+      "rationale": "The caveat remains necessary and accurate: genesis-rooted quorum and counterparty ACKs do not create Byzantine-host resistance.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-14-l1-gap-constraint",
+      "decision": "ESCALATE",
+      "rationale": "The cross-world runnability and project graph questions remain explicitly outside the assigned evidence slices and outside this closing gate.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-15-scope-intent",
+      "decision": "CONFIRM",
+      "rationale": "The scope intent remains subordinate to M-14/M-16 and is not invalidated by the M-02/M-12 replay-spec gap.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-16-mesh-seam-question",
+      "decision": "ESCALATE",
+      "rationale": "This remains a required code-evidence gate and cannot be judged code-blind.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-17-what-does-the-soak-prove",
+      "decision": "ESCALATE",
+      "rationale": "The honesty gate remains open pending transport evidence; M-02/M-12 genesis fixes do not answer what the DV mesh soak proves.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-18-evidence-discipline",
+      "decision": "CONFIRM",
+      "rationale": "The discipline is reinforced by this adjudication: the remaining M-02/M-12 problem is named as a specification gap rather than converted into an assumed fact.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    },
+    {
+      "claim_id": "M-19-worktree-isolation",
+      "decision": "CONFIRM",
+      "rationale": "The pinned-commit isolation rule remains applicable and unaffected by the artifact-level genesis analysis.",
+      "evidence_ref": "artifact-only",
+      "critic_provider": "codex",
+      "cycle": 0,
+      "at": ""
+    }
+  ],
+  "frozen_at": "20260715T154205Z",
+  "frozen_by": "curator"
+}

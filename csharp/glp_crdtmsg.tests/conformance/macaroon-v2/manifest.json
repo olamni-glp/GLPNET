@@ -1,0 +1,29 @@
+{
+  "corpus_version": 1,
+  "semantics_anchor": "yngenios kv/capability.gleam + kv/capability_wire.gleam @ phase-b 501e334",
+  "surface_set": "macaroon-v2",
+  "vectors": {
+    "chain-attenuate-narrowing.json": "28e985ff168db1e38d84aadeafb386b76d7a158f98db074837e46072b34258a5",
+    "chain-mint-basic.json": "4378ddce8641cf2c6729af25c15db267fa6db2e9c2209aa3f34612fd82776e29",
+    "chain-mint-full-vocab.json": "75bae477823542b9b6b57ddec541ced5464254853e47a545046ae03fcb7eeede",
+    "chain-refuse-caveat-stripped.json": "d64e2a70aa763610b68f7e527b79f689b3ef1849f2d23a8b709e406347a37a22",
+    "chain-refuse-expired.json": "90900e1bf1caa2697cf3b270df7171cb82a6a9ef4f22336af31daf21845f9e1a",
+    "chain-refuse-prefix-miss.json": "a43b58fb057ece93ba32f8f2d45177730b3e8406bc0124decc5635dd6b8b3ba3",
+    "chain-refuse-tampered-tail.json": "4d19091b2c02fec0075ce2934fedff5c71d7d5a212d96ee170c918933c359353",
+    "chain-refuse-wrong-key.json": "58b996750d838a176a83ec7142065fa0e168282b5a45095f74c7ed9977c90b7c",
+    "chain-refuse-wrong-keyspace.json": "9dae3ce96ebf3417e43af28b9525917989c46c921cc8086fc55ab1e08058bc1c",
+    "chain-refuse-wrong-op.json": "c52f742bbc89fc51a53e7af64a96cab1a1d6051300684f8026b2cdcea2de1cf5",
+    "chain-refuse-wrong-resource.json": "f6ad664373de6ecf067d67df4be654e62e58e1ac5e5abdf2586dc53da457816f",
+    "chain-refuse-wrong-root.json": "08dfcbeed76ebcca8b3e2bdcf4a5394b0016d8529b005bf291ca57a8eded6e64",
+    "dialect-refuse-legacy-amulet.json": "9b03b52a5c2d4aef9258d8b3301e272e76bac4534541bfddf15b5370f2db532b",
+    "dialect-refuse-legacy-glpnet.json": "8be0126570ba814354c0975b99ad54e6db219d99fb3d4af3316494178834a197",
+    "dialect-refuse-legacy-static-hmac.json": "bee19ec413d132365d568c20f34474e624183b4848269ef0dd11c3c32e237442",
+    "wire-refuse-bad-utf8.json": "475914c7e9a1531e3b740ad4af0ad6c0a335ced0c8c9e28be1fab197f9b77a1e",
+    "wire-refuse-trailing-bytes.json": "72e9c6eddf7afa7dcf4bd20f350c43f9dac2fa5d1a6f296d5a3e4a2599c50289",
+    "wire-refuse-truncated.json": "a63d92b9721c1bcaebeb7c42a8f1fa61be1544170f3e31e527232edc38374369",
+    "wire-refuse-unknown-op.json": "03431ff2c9eeea3baf795c09f43638cee5c15a9e1672bd058bea209aa2d5da96",
+    "wire-refuse-unknown-tag.json": "7d8f2aafe3c958332ff6e9762d70b6a39ef771add6ad7297711613119c400e65",
+    "wire-roundtrip-basic.json": "e72f568c4a49ea52687cc7a10303ae9f1f5b186ce9cc2a1dd4992fd5beaa1b0b",
+    "wire-roundtrip-full-vocab.json": "abba8f303cc3c530f74b6bd4ce5c80c974f88114811f8da151ae250f2e9418f6"
+  }
+}

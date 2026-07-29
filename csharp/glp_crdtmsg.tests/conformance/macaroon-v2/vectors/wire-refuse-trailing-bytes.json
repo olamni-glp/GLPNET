@@ -1,0 +1,10 @@
+{
+  "decoded": null,
+  "description": "valid token + 2 stray bytes",
+  "expect": "refuse:TrailingBytes",
+  "id": "wire-refuse-trailing-bytes",
+  "input": {
+    "token_hex": "0000000c6361702d3035382d746573740000000f676c703a2f2f6d696e742e7465737400000000000000208b3e446043be4cc9a710f8afa0f79ad97ca6243880c718e30d04cb45bfa2e118beef"
+  },
+  "surface": "macaroon-v2-wire"
+}

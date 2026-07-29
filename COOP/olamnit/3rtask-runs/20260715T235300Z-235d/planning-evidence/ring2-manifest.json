@@ -1,0 +1,54 @@
+{
+  "slices": [
+    {
+      "slice_id": "slice-election-roster-exclusion",
+      "description": "The shipped election + trust-anchor surface. Establish from the sources what these surfaces CAN and CANNOT express, and at what threshold/arithmetic: a versioned roster epoch; permanent exclusion of a node by a higher authority; safe reintegration of a returning node; a single elected decision per epoch that other subsystems could bind to. Establish what the trust anchor's key-management surface actually offers over a peer set, including whether anything can be removed once added. Report what ships, with file:line - not what could be built.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Election/",
+        "Olamnit/Olamnit/Olamnit.Shared/Kv/Capabilities/",
+        "Olamnit/Olamnit.Shared.Tests/Kv/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-seal-caveat-window",
+      "description": "The amulet/macaroon caveat surface and its pinned conformance bytes. Establish: the closed caveat key set and the exact mint order; the granularity at which an expiry can be expressed and enforced, and the enforcement API's shape; whether the caveat set has EVER been extended before and if so by exactly what mechanism and with what compatibility consequence for already-minted credentials and for older verifiers; what the committed vectors pin, how they are versioned, and what re-check any change would cost; whether any independent re-implementation of this enforcement exists and must move in lockstep; and where the 'now' used for expiry enforcement comes from.",
+      "sources": [
+        "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/",
+        "conformance/",
+        "tools/kv-conformance/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-identity-durability-reuse",
+      "description": "Node identity and the durability primitives a very-high-cycle-count budget would rest on. Establish: how a device's signing identity is generated, and whether and where it is persisted across process restarts; and, for durable writes, exactly which mechanisms exist in these sources for making many writes durable, for detecting a torn or corrupted record, and for resuming after a crash - naming each by file:line. For every mechanism, state plainly whether it EXISTS AND COULD BE WIRED, or DOES NOT EXIST AND WOULD HAVE TO BE WRITTEN. Keep those two categories strictly apart.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mailbox/",
+        "Olamnit/Olamnit.Kernel/DurableExecution/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-mesh-steering-emergence",
+      "description": "The mesh + link layer. Establish: exactly which fields the wire frame carries and which of them a forwarder consults, and therefore whether an originator can express an intended PATH rather than only a destination; what mechanisms exist for changing a node's neighbours or membership at runtime; what inputs the routing cost function accepts, from whom, and whether any bound constrains what a contributing node can drive it to; whether any history, smoothing, or flap-tracking of route quality over time exists in these sources; and what topology scenarios the test/verification sources actually exercise, naming them.",
+      "sources": [
+        "Olamnit/Olamnit.Kernel/Mesh/",
+        "Olamnit/Olamnit.Kernel/Link/",
+        "Olamnit/Olamnit.Kernel.Tests/Mesh/",
+        "Olamnit/Olamnit.Kernel.Tests/Verification/"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "slice-mint-authorization",
+      "description": "The coin's mint and reward surface. Establish: on which code path(s) a value-creating operation's authorization evidence is actually verified, and on which it is not, naming each by file:line; what invariant any audit/conservation check actually enforces, and precisely which classes of defect it would and would not detect; whether reward units of the smallest denomination can be split and/or merged, and under what conditions either is refused; and what the shipped corroboration surface requires of evidence before a claim may be auto-endorsed. Report the code's behaviour, not its comments - and where a comment and the code disagree, say so.",
+      "sources": [
+        "Olamnit/Olamnit.Coin/Ledger/",
+        "Olamnit/Olamnit.Coin.Rewards/",
+        "Olamnit/Olamnit.Coin.Tests/Ledger/"
+      ],
+      "assigned_to": null
+    }
+  ]
+}

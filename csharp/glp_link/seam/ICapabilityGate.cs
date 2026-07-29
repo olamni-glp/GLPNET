@@ -18,6 +18,18 @@ public interface ICapabilityGate
     /// The caller surfaces the refusal via its graceful abort path — never a crash (FR-009).
     /// </summary>
     bool GateEstablish(LinkId id);
+
+    /// <summary>
+    /// Async-capable establishment gate (feature 058 T034, contract <c>s4-policy-service.md</c> §A):
+    /// a gate whose decision needs I/O — e.g. consulting the network-callable S4 policy service —
+    /// overrides THIS member. ADDITIVE default-interface-method: every existing sync-only implementor
+    /// compiles and behaves unchanged, because the default delegates to <see cref="GateEstablish"/>
+    /// and completes synchronously (zero behavior change for sync callers). Identical fail-closed
+    /// semantics: <c>false</c> is a recorded refusal; a throw (or faulted task) DENIES — the caller
+    /// aborts gracefully exactly as for the sync path (FR-008/FR-009).
+    /// </summary>
+    ValueTask<bool> GateEstablishAsync(LinkId id, CancellationToken cancellationToken = default) =>
+        new(GateEstablish(id));
 }
 
 /// <summary>

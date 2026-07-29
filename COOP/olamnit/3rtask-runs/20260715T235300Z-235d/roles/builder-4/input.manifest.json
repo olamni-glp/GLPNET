@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "role_id": "builder-4",
+  "role_kind": "builder",
+  "cycle": 1,
+  "parts": [
+    {
+      "part": "subject_brief",
+      "sha256": "edac51d8085cbf2903e33f685ae0e422c78eceade63448906218db660c12bf14"
+    },
+    {
+      "part": "own_slice",
+      "sha256": "3daffe3f5cec2237e8ba753c3dfa9979bef6880b620f4cfacbf1d13c47565924"
+    }
+  ],
+  "content_path": "D:\\BSTDEV\\research\\olamnit-wt-ring\\.specify\\3rtask\\runs\\20260715T235300Z-235d\\roles\\builder-4\\input.md",
+  "input_sha256": "a7ecdc03e24ebb141abf31cb48749a3671f00eca24b3c1fea223b8fe566b9a38"
+}

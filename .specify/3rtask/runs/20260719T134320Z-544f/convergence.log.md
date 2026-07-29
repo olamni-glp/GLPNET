@@ -1,0 +1,2 @@
+- cycle 1: 79 claims, 79 new, 79 singleton(s), 0 escalate(s), converged=False
+- cycle 2: 90 claims, 19 new, 90 singleton(s), 0 escalate(s), converged=False

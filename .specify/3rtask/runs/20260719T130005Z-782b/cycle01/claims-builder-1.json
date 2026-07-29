@@ -1,0 +1,2153 @@
+{
+  "builder": "builder-1",
+  "cycle": 1,
+  "claims": [
+    {
+      "claim_id": "b1-c1-001",
+      "detail_id": "compiler-pipeline",
+      "aliases": [
+        "load-pipeline",
+        "single-entry-load",
+        "loader"
+      ],
+      "components": [
+        "parse",
+        "srsw-check",
+        "partial-eval",
+        "type-check",
+        "codegen-v216",
+        "staged-diagnostics"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:60 (T020) + contracts/gleam-instance-surface.md:5-11",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:60 (4 gleeunit staged-error tests; native gleam 336/336)",
+      "status_basis": "T020 checked [X] with a dated closure note wiring the fixed stage order parse→SRSW→PE→typecheck→codegen→load per Dart compileWithMetadata.",
+      "statement": "The single-entry Gleam load pipeline (parse→SRSW→partial-eval→type-check→compile-v2.16→load, staged diagnostics, no skippable stage) is recorded complete per FR-001 and the instance-surface contract.",
+      "claim": "compiler-pipeline — The single-entry Gleam load pipeline (parse→SRSW→partial-eval→type-check→compile-v2.16→load, staged diagnostics, no skippable stage) is recorded complete per FR-001 and the instance-surface contract.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:60 (T020) + contracts/gleam-instance-surface.md:5-11",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-002",
+      "detail_id": "srsw-check",
+      "aliases": [
+        "srsw-checker",
+        "single-reader-single-writer-analysis"
+      ],
+      "components": [
+        "constant-type-relaxation",
+        "ground-guard-relaxation-d6",
+        "no-escape-mechanism"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:56 (T016) + spec.md:123 (FR-003)",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:51 (SRSW negative rejects at SrswStage)",
+      "status_basis": "T016 checked [X] (unchanged semantics incl. D6 relaxation) and the T030 smoke record shows an SRSW negative rejected at the SRSW stage.",
+      "statement": "The SRSW checker port with unchanged semantics (incl. the approved ground/1 relaxation D6, no escape mechanism) is recorded complete.",
+      "claim": "srsw-check — The SRSW checker port with unchanged semantics (incl. the approved ground/1 relaxation D6, no escape mechanism) is recorded complete.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:56 (T016)",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-003",
+      "detail_id": "partial-evaluator",
+      "aliases": [
+        "pe",
+        "unit-clause-unfolding"
+      ],
+      "components": [
+        "engine-copy-with-049-guard-admission",
+        "analyzer-copy-feeding-codegen",
+        "pi13-srsw-preservation-note"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:57 (T017)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:57 (28 gleeunit tests; 5 error channels REPL-verified byte-identical)",
+      "status_basis": "T017 checked [X] with note that BOTH live Dart PE copies were ported and error channels verified byte-identical; dead unfoldReduceCalls deliberately not ported.",
+      "statement": "The partial evaluator is recorded complete as a port of both live Dart copies (SRSW-preserving per PI:13), with the dead unfoldReduceCalls path deliberately omitted.",
+      "claim": "partial-evaluator — The partial evaluator is recorded complete as a port of both live Dart copies (SRSW-preserving per PI:13), with the dead unfoldReduceCalls path deliberately omitted.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:57 (T017)",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-004",
+      "detail_id": "type-checker",
+      "aliases": [
+        "mode-checker",
+        "typed-glp-checker"
+      ],
+      "components": [
+        "mode-flip-rule",
+        "parameterized-types",
+        "type-union"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:58 (T018) + docs/handover/050-full-gleam-T018-handover-2026-07-12.md",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:52 (type negative rejects at TypeCheckStage)",
+      "status_basis": "T018 checked [X]; a cross-host handover doc records the chunked delivery; T030 smoke shows type negatives rejected at the type-check stage.",
+      "statement": "The Gleam type-checker port (modes with ?-flip, parameterized types, unions per manual §2A/§17/§20) is recorded complete.",
+      "claim": "type-checker — The Gleam type-checker port (modes with ?-flip, parameterized types, unions per manual §2A/§17/§20) is recorded complete.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:58 (T018)",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-005",
+      "detail_id": "parser-recursive-descent",
+      "aliases": [
+        "grammar-conformance",
+        "hand-ported-parser",
+        "lexer"
+      ],
+      "components": [
+        "lexer-port",
+        "rd-parser-port",
+        "corpus-driven-conformance"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:122 (FR-002) + research.md:5-11 (R1) + tasks.md:53-54 (T013/T014)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:55 (T015 parser negative tests [X])",
+      "status_basis": "FR-002 fixes a hand-ported recursive-descent parser (no parser generator on BEAM); T013–T015 are checked [X] with the Dart parser as conformance oracle.",
+      "statement": "A hand-ported recursive-descent lexer+parser conforming by corpus to the Dart grammar is recorded complete, with no ANTLR-generated parser introduced on BEAM.",
+      "claim": "parser-recursive-descent — A hand-ported recursive-descent lexer+parser conforming by corpus to the Dart grammar is recorded complete, with no ANTLR-generated parser introduced on BEAM.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:122 + research.md R1",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-006",
+      "detail_id": "bytecode-runner",
+      "aliases": [
+        "engine",
+        "v216-isa-runner",
+        "x-register-model"
+      ],
+      "components": [
+        "v216-opcode-table",
+        "program-model",
+        "positional-x-registers",
+        "codegen-golden-pin"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:35-36,59,61 (T006/T007/T019/T021) + spec.md:129 (FR-006)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:41 (T012 opcode-table tests) + tasks.md:59 (merge/3 golden pin)",
+      "status_basis": "v2.16 opcodes, program model, codegen and runner are checked [X], but the T021 record explicitly defers Distribute/Transmit/Allocate/Deallocate opcodes to US4/unused and surfaces one UnifyConstant struct-literal divergence.",
+      "statement": "The v2.16 bytecode engine with positional X-registers is recorded complete for the M1 corpus, but Distribute/Transmit/Allocate/Deallocate opcodes are recorded deferred (US4/unused) and a UnifyConstant ground-struct-literal divergence was escalated rather than resolved.",
+      "claim": "bytecode-runner — The v2.16 bytecode engine with positional X-registers is recorded complete for the M1 corpus, but Distribute/Transmit/Allocate/Deallocate opcodes are recorded deferred (US4/unused) and a UnifyConstant ground-struct-literal divergence was escalated rather than resolved.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:59,61",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-007",
+      "detail_id": "three-phase-execution",
+      "aliases": [
+        "head-guard-body",
+        "tentative-unification",
+        "commit"
+      ],
+      "components": [
+        "head-tentative-sigma-hat",
+        "clause-var-resolution",
+        "tentative-struct",
+        "body-construction",
+        "spawn-seam"
+      ],
+      "grain": "pattern",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:61 (T021 slices 21a-21d) + spec.md:127 (FR-004)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:65 (T025 phase-ordering tests [X])",
+      "status_basis": "T021 is closed [X] across four recorded slices and T025 pins HEAD→GUARD→BODY ordering, but the record surfaces a frozen-semantics gap (WRITE-mode void slot committing Dart ConstTerm(null) is unrepresentable in the Gleam Constant model, escalate-if-hit).",
+      "statement": "Three-phase HEAD/GUARD/BODY execution with writer-MGU discipline is recorded complete and test-pinned, except one surfaced-unimplemented frozen-semantics gap (WRITE-mode void slot → ConstTerm(null)) left as escalate-if-hit.",
+      "claim": "three-phase-execution — Three-phase HEAD/GUARD/BODY execution with writer-MGU discipline is recorded complete and test-pinned, except one surfaced-unimplemented frozen-semantics gap (WRITE-mode void slot → ConstTerm(null)) left as escalate-if-hit.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:61",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-008",
+      "detail_id": "suspension-scheduler",
+      "aliases": [
+        "scheduler-actor",
+        "reactivation-dedup",
+        "run-queue"
+      ],
+      "components": [
+        "generation-scoped-wake",
+        "goal-id-generation-dedup-key",
+        "heap-driven-reactivation",
+        "run-status-classification",
+        "blocking-reader-table"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:39,62,69 (T010/T022/T029-slice-0) + research.md:14-19 (R2) + spec.md:128 (FR-005)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:65 (T025 exactly-once rendezvous test)",
+      "status_basis": "T010/T022 checked [X] with (goal_id, suspension_generation) dedup, and the T029 Slice-0 note records a faithful drainWithStatus port with a blocking-reader table; T025 pins exactly-once reactivation.",
+      "statement": "The scheduler-actor design (pure stepping, run queue, reduction budget, generation-scoped reactivation dedup keyed on (goal_id, suspension_generation)) is recorded complete including the drainWithStatus-parity refinement.",
+      "claim": "suspension-scheduler — The scheduler-actor design (pure stepping, run queue, reduction budget, generation-scoped reactivation dedup keyed on (goal_id, suspension_generation)) is recorded complete including the drainWithStatus-parity refinement.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:62,69",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-009",
+      "detail_id": "guard-kernel",
+      "aliases": [
+        "guard-library",
+        "three-valued-guards",
+        "comparison-guards-gleam"
+      ],
+      "components": [
+        "ground-known-otherwise",
+        "structural-equality-guard",
+        "arithmetic-comparisons",
+        "standard-order",
+        "type-tests",
+        "wait-guards",
+        "runtime-defined-guard-interpreter",
+        "satisfiable-guard"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:63-64 (T023/T024) + baseline.md:83-84 (defined-guard interpreter + wait guards in T042 fixes)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:63-64 (guard gleeunit) + baseline.md:66-69 (206-case parity)",
+      "status_basis": "T023's deferred arithmetic slice is recorded CLOSED in T024, and the T042 record adds the wait guards and the 049 runtime defined-guard interpreter (satisfiable/2), with 100% corpus agreement as the completion evidence.",
+      "statement": "The three-valued guard library (ground/known/otherwise/=?=, arithmetic and standard-order comparisons, type tests, wait guards, and the 049 satisfiable/2 defined-guard interpreter) is recorded functionally complete for parity.",
+      "claim": "guard-kernel — The three-valued guard library (ground/known/otherwise/=?=, arithmetic and standard-order comparisons, type tests, wait guards, and the 049 satisfiable/2 defined-guard interpreter) is recorded functionally complete for parity.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:63-64 + baseline.md:83-84",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-010",
+      "detail_id": "body-kernel",
+      "aliases": [
+        "kernels",
+        "arithmetic-kernels",
+        "system-predicates"
+      ],
+      "components": [
+        "arith-kernels",
+        "math-conversion-kernels",
+        "univ-kernels",
+        "output-kernel",
+        "mwm-mutable-ref-subsystem",
+        "shared-numeric-core"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:64,85 (T024/T034) + baseline.md:79-82 (T042 math/univ/mwm fixes)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:64 (15 gleeunit) + baseline.md:66-69 (corpus parity)",
+      "status_basis": "T024 checked [X] (arith kernels + shared numeric core, Dart num-promotion semantics 1:1) and T042's recorded fixes complete math/univ/mwm/_output kernels needed by the corpus.",
+      "statement": "The body-kernel set (arithmetic with Dart num-promotion parity, math/type-conversion, univ, _output, and the mwm mutable-ref subsystem made immutable-safe) is recorded complete against corpus needs.",
+      "claim": "body-kernel — The body-kernel set (arithmetic with Dart num-promotion parity, math/type-conversion, univ, _output, and the mwm mutable-ref subsystem made immutable-safe) is recorded complete against corpus needs.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:64 + baseline.md:79-82",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-011",
+      "detail_id": "term-representation",
+      "aliases": [
+        "term-model",
+        "immutable-term-adt"
+      ],
+      "components": [
+        "constants",
+        "structures",
+        "lists",
+        "writer-reader-refs"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:33-47 (US1) + docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:52",
+      "test_citation": "specs/050-full-gleam-combined/data-model.md:7-8 (marked EXISTS, 034)",
+      "status_basis": "Roadmap row glp-gleam-core-terms-and-heap is [released/delivered] and the 050 data-model marks Term as EXISTS from 034.",
+      "statement": "The immutable Gleam term ADT (constants, structures, lists, writer/reader refs) promised by feature 034 is recorded delivered and is the reused foundation of the 050 instance.",
+      "claim": "term-representation — The immutable Gleam term ADT (constants, structures, lists, writer/reader refs) promised by feature 034 is recorded delivered and is the reused foundation of the 050 instance.",
+      "source_citation": "roadmap-snapshot-2026-07-19.md:52 + specs/034 spec.md US1",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-012",
+      "detail_id": "term-heap-unification",
+      "aliases": [
+        "writer-mgu-unification",
+        "three-valued-unification",
+        "binding-store"
+      ],
+      "components": [
+        "success-suspend-fail-verdicts",
+        "writer-only-binding",
+        "wxw-prohibition",
+        "suspension-recording",
+        "path-compression"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:50-64 (US2) + roadmap-snapshot-2026-07-19.md:52",
+      "test_citation": "specs/034-glp-gleam-core-terms-and-heap/parity-evidence.md (parity evidence file present in spec dir)",
+      "status_basis": "034 is a released/delivered roadmap row whose spec pins writer-MGU three-valued unification with observable-outcome-only Dart parity (2026-06-25 clarification).",
+      "statement": "Writer-MGU three-valued unification over the immutable heap, with parity measured on observable outcomes only (not heap layout), is recorded delivered by feature 034.",
+      "claim": "term-heap-unification — Writer-MGU three-valued unification over the immutable heap, with parity measured on observable outcomes only (not heap layout), is recorded delivered by feature 034.",
+      "source_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:50-64",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-013",
+      "detail_id": "heap-value-copy-semantics",
+      "aliases": [
+        "immutable-heap-re-expression",
+        "wam-heap-reexpression"
+      ],
+      "components": [
+        "immutable-threaded-store",
+        "no-mutable-cells",
+        "copy-on-lookup"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:14 (dossier §4.1 re-expression) + specs/050-full-gleam-combined/data-model.md:10-11",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:66 (T026 asserts post-heap state invariants)",
+      "status_basis": "034 records the decision that the WAM mutable heap must be re-expressed immutably, and the 050 data-model records the value-copy invariant as the delivered basis of PI:14.",
+      "statement": "The value-copy/immutable re-expression of the WAM mutable heap is the recorded, delivered design basis for the Gleam runtime, with lookups copying rather than aliasing.",
+      "claim": "heap-value-copy-semantics — The value-copy/immutable re-expression of the WAM mutable heap is the recorded, delivered design basis for the Gleam runtime, with lookups copying rather than aliasing.",
+      "source_citation": "specs/050-full-gleam-combined/data-model.md:10-11",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-014",
+      "detail_id": "prelude-library",
+      "aliases": [
+        "self-glp-prelude",
+        "root-prelude-load"
+      ],
+      "components": [
+        "on-disk-self-glp-read",
+        "compile-prelude",
+        "program-merge-user-wins",
+        "assignment-via-prelude-clauses"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:69 (T029 Slice 1) + tasks.md:64 (T024 finding := and = are self.glp clauses)",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:49 (X := 2+3 via real on-disk self.glp)",
+      "status_basis": "T029 Slice 1 records engine.new() reading programs/self.glp via FFI with compile_prelude and user-label-wins merge; the T030 smoke exercises it.",
+      "statement": "Prelude loading (on-disk self.glp compiled and merged with user code, making := and = work as prelude clauses) is recorded complete in the engine facade.",
+      "claim": "prelude-library — Prelude loading (on-disk self.glp compiled and merged with user code, making := and = work as prelude clauses) is recorded complete in the engine facade.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:69",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-015",
+      "detail_id": "repl-loop",
+      "aliases": [
+        "standalone-repl",
+        "interactive-instance",
+        "repl-commands"
+      ],
+      "components": [
+        "scripted-stdin-mode",
+        "load-command",
+        "trace-toggle",
+        "trace-line-emission",
+        "limit-budget",
+        "quit",
+        "outcome-rendering"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:82-91 (T031-T036 + US2 polish) + spec.md:42-55 (US2) + contracts/gleam-instance-surface.md:13-23",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:90 (T035 16 scripted-mode tests)",
+      "status_basis": "All US2 tasks are checked [X] with end-to-end verification lines, and the polish note adds :trace per-reduction line emission and the facade step/Event surface (443/443).",
+      "statement": "The standalone Gleam REPL user story (load, goals, :trace with reference-shape trace lines, :limit, :quit, scripted stdin) is recorded complete as the M1 user surface.",
+      "claim": "repl-loop — The standalone Gleam REPL user story (load, goals, :trace with reference-shape trace lines, :limit, :quit, scripted stdin) is recorded complete as the M1 user surface.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:82-91",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-016",
+      "detail_id": "result-envelope",
+      "aliases": [
+        "ed1-seam",
+        "result-envelope-codec",
+        "heap-independent-result"
+      ],
+      "components": [
+        "deep-resolve-bindings",
+        "status-classification",
+        "wire-byte-identity",
+        "captured-field"
+      ],
+      "grain": "interface",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:84,91 (T033/T036) + spec.md:135 (FR-009) + specs/038-result-codec-and-framecodec-ride/spec.md:10",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:91 (T036 envelope-identity tests)",
+      "status_basis": "Envelope rendering and in-process-vs-TLV byte-identity are checked [X], but the T029 record defers envelope captured-field population (Slice 0b) with owner approval, excluding it from parity per R4.",
+      "statement": "The ED-1 result-envelope seam (deep-resolve, canonical ordering, in-process/wire byte-identity) is recorded complete, while the envelope captured-output field remains deferred-by-owner-approval (excluded from parity, always empty).",
+      "claim": "result-envelope — The ED-1 result-envelope seam (deep-resolve, canonical ordering, in-process/wire byte-identity) is recorded complete, while the envelope captured-output field remains deferred-by-owner-approval (excluded from parity, always empty).",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:69,84,91",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-017",
+      "detail_id": "output-capture-seam",
+      "aliases": [
+        "structured-output-capture",
+        "output-as-data"
+      ],
+      "components": [
+        "output-kernel",
+        "runner-output-accumulator",
+        "run-with-limit-capturing",
+        "repl-print-order"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:85 (T034)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:85 (8 tests; e2e emit(hello) verified)",
+      "status_basis": "T034 checked [X] with the owner-chosen option (b): output threaded as data through kernel→runner→scheduler→facade→REPL rather than the R4-excluded envelope field.",
+      "statement": "The output-capture seam is recorded complete via the owner-chosen output-as-data design (captured program output flows through the runner/scheduler to the REPL ahead of the outcome block), folding the constituent structured-output-capture scope.",
+      "claim": "output-capture-seam — The output-capture seam is recorded complete via the owner-chosen output-as-data design (captured program output flows through the runner/scheduler to the REPL ahead of the outcome block), folding the constituent structured-output-capture scope.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:85",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-018",
+      "detail_id": "embeddability-api",
+      "aliases": [
+        "engine-as-typed-value",
+        "engine-facade",
+        "in-process-embedding-surface"
+      ],
+      "components": [
+        "new-load-run-step",
+        "opaque-engine-value",
+        "no-global-state",
+        "start-step-event",
+        "run-session"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/contracts/gleam-instance-surface.md:25-30 + tasks.md:69,89 (T029 + facade step/Event polish)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:89 (step envelope proven == run envelope; 4 tests)",
+      "status_basis": "The contract fixes Engine as an opaque typed value with new/load/run/step and no global state, and T029 plus the US2 polish record the full surface delivered — this is the only in-process host-embedding seam recorded in the design corpus.",
+      "statement": "An in-process embeddability surface exists as the recorded-complete engine-value API (opaque Engine, new/load/run/step/start/Event, no process-dictionary or ETS state), which is the sole host-embedding hook the design corpus records for the Gleam instance.",
+      "claim": "embeddability-api — An in-process embeddability surface exists as the recorded-complete engine-value API (opaque Engine, new/load/run/step/start/Event, no process-dictionary or ETS state), which is the sole host-embedding hook the design corpus records for the Gleam instance.",
+      "source_citation": "specs/050-full-gleam-combined/contracts/gleam-instance-surface.md:25-30",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-019",
+      "detail_id": "test-harness-corpus-parity",
+      "aliases": [
+        "golden-parity",
+        "m1-lock",
+        "shared-corpus-runner"
+      ],
+      "components": [
+        "golden-recorder",
+        "shared-normalization-lib",
+        "gleam-corpus-runner",
+        "corpus-manifest",
+        "13-engine-fixes"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:13 + specs/050-full-gleam-combined/baseline.md:64-69 + tasks.md:103-110 (T037-T044 [X])",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:66-69 (206/206 agree, 0 diverge)",
+      "status_basis": "The M2 restart banner and baseline record M1 LOCKED with 206/206 = 100% golden agreement after 13 recorded engine fixes, satisfying SC-001/FR-010/FR-011.",
+      "statement": "US3 shared-corpus parity is recorded delivered at M1 LOCK: 206/206 (100%) agreement against recorded Dart goldens via the test/parity/ recorder, shared normalization lib, and Gleam corpus runner.",
+      "claim": "test-harness-corpus-parity — US3 shared-corpus parity is recorded delivered at M1 LOCK: 206/206 (100%) agreement against recorded Dart goldens via the test/parity/ recorder, shared normalization lib, and Gleam corpus runner.",
+      "source_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:13-15",
+      "confidence": 0.95,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-020",
+      "detail_id": "gap-fork-case-corpus",
+      "aliases": [
+        "gap-cases",
+        "fork-1-circular-deref",
+        "parity-preconditions"
+      ],
+      "components": [
+        "gap-g1",
+        "gap-g2",
+        "gap-g3",
+        "gap-g8",
+        "fork-1-cycle-detection"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:140 (FR-011) + baseline.md:87-91 + docs/handover/050-full-gleam-M2-restart-2026-07-13.md:14",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:87-91 (T040 record)",
+      "status_basis": "FR-011's precondition cases are recorded authored and passing; FORK-1 was first recorded as an owner-gated fork (Gleam $truncated) and then recorded RESOLVED owner-directed to path-based cycle detection rendering <circular> on all three runtimes.",
+      "statement": "The GAP-G1/G2/G3/G8 + FORK-1 parity-precondition cases are recorded delivered, with FORK-1's circular-deref discriminator resolved owner-directed to <circular> cycle detection matching Dart/C#.",
+      "claim": "gap-fork-case-corpus — The GAP-G1/G2/G3/G8 + FORK-1 parity-precondition cases are recorded delivered, with FORK-1's circular-deref discriminator resolved owner-directed to <circular> cycle detection matching Dart/C#.",
+      "source_citation": "specs/050-full-gleam-combined/baseline.md:87-91 + M2-restart:14",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-021",
+      "detail_id": "differential-harness",
+      "aliases": [
+        "run-differential",
+        "miss-04",
+        "three-way-diff"
+      ],
+      "components": [
+        "dart-csharp-gleam-columns",
+        "exit-code-divergent-pairs"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/contracts/corpus-parity.md:19-22 + tasks.md:107 (T041 [X]) + baseline.md:92-94",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:92-94 (validated on X:=2+3, primes(10), FORK-1)",
+      "status_basis": "T041 checked [X] and baseline records validation runs, closing the MISS-04 harness gap per FR-012.",
+      "statement": "The cross-runtime differential harness (same program on Dart+C#+Gleam, three-column diff, exit = divergent pairs) is recorded delivered, closing MISS-04.",
+      "claim": "differential-harness — The cross-runtime differential harness (same program on Dart+C#+Gleam, three-column diff, exit = divergent pairs) is recorded delivered, closing MISS-04.",
+      "source_citation": "specs/050-full-gleam-combined/baseline.md:92-94",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-022",
+      "detail_id": "performance-sanity-bound",
+      "aliases": [
+        "ten-x-wall-clock",
+        "sc-009"
+      ],
+      "components": [
+        "suite-level-sum-comparison",
+        "recorded-dart-timings"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:179 (SC-009) + baseline.md:66-69 (T043)",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:68 (gleam ~35.3s vs dart ~26.1s, ~1.35x)",
+      "status_basis": "The clarified 10x sanity bound is recorded PASS at ~1.35x in the baseline record.",
+      "statement": "The 10x wall-clock sanity bound (SC-009, explicitly not an optimization target) is recorded verified at roughly 1.35x of the Dart reference.",
+      "claim": "performance-sanity-bound — The 10x wall-clock sanity bound (SC-009, explicitly not an optimization target) is recorded verified at roughly 1.35x of the Dart reference.",
+      "source_citation": "specs/050-full-gleam-combined/baseline.md:68",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-023",
+      "detail_id": "regression-guard",
+      "aliases": [
+        "sc-007",
+        "no-regression-to-shipped-runtimes"
+      ],
+      "components": [
+        "dart-repl-suite",
+        "dart-csharp-link-rig",
+        "csharp-suites",
+        "gleam-suite"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "specs/050-full-gleam-combined/baseline.md:95-99 (T044) + docs/handover/050-full-gleam-M2-restart-2026-07-13.md:15",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:95-99 (530/531, 16/16, 727/727, 443/443)",
+      "status_basis": "T044 records all reference suites green after M1 corpus work, with the single Dart failure documented as a pre-existing stale AOT-exe smoke.",
+      "statement": "The SC-007 regression guard is recorded satisfied at M1: Dart 530/531 (pre-existing Section-Q AOT failure documented), Dart↔C# rig 16/16, all seven C# suites 727/727, gleam 443/443.",
+      "claim": "regression-guard — The SC-007 regression guard is recorded satisfied at M1: Dart 530/531 (pre-existing Section-Q AOT failure documented), Dart↔C# rig 16/16, all seven C# suites 727/727, gleam 443/443.",
+      "source_citation": "specs/050-full-gleam-combined/baseline.md:95-99",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-024",
+      "detail_id": "proof-writer-mgu-value-copy",
+      "aliases": [
+        "pi-14",
+        "writer-mgu-binds-only-writers",
+        "m1-proof-gate"
+      ],
+      "components": [
+        "lean-lake-project",
+        "prose-proof",
+        "adversarial-suite",
+        "index-flip"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/contracts/proof-obligations.md:5-11 + tasks.md:66-68 (T026/T027/T028)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:66 (T026 10-test adversarial suite)",
+      "status_basis": "T028 records PI:14 DISCHARGED with all four artifacts (Lean lake build exit 0 re-verified, PROOF.md, adversarial tests, INDEX row flipped to proved) landed in one commit as the contract requires.",
+      "statement": "The M1-gating proof obligation PI:14 (writer-MGU binds only writers under value-copy semantics) is recorded discharged in the contract-mandated Lean+prose+adversarial-tests+INDEX form.",
+      "claim": "proof-writer-mgu-value-copy — The M1-gating proof obligation PI:14 (writer-MGU binds only writers under value-copy semantics) is recorded discharged in the contract-mandated Lean+prose+adversarial-tests+INDEX form.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:68 (T028)",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-025",
+      "detail_id": "proof-dist-deref-convergence",
+      "aliases": [
+        "pi-17",
+        "distributed-dereference-convergence",
+        "m2-proof-gate"
+      ],
+      "components": [
+        "lean-dist-deref-project",
+        "prose-proof",
+        "adversarial-dist-deref-suite",
+        "spin-superseded"
+      ],
+      "grain": "pattern",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/contracts/proof-obligations.md:13-20 + tasks.md:135 (T058 [ ])",
+      "test_citation": "no-test: T057 adversarial dist-deref suite (tasks.md:134) unchecked",
+      "status_basis": "T057/T058 remain unchecked; only the Lean scaffold is recorded built (T004), and the contract records the owner-directed deviation replacing the dossier's SPIN plan with Lean.",
+      "statement": "The M2-gating proof obligation PI:17 (cross-instance deref chains terminate and converge under deferred-local-assignment) is fully designed with an owner-directed Lean-not-SPIN discharge form, but no discharge is recorded.",
+      "claim": "proof-dist-deref-convergence — The M2-gating proof obligation PI:17 (cross-instance deref chains terminate and converge under deferred-local-assignment) is fully designed with an owner-directed Lean-not-SPIN discharge form, but no discharge is recorded.",
+      "source_citation": "specs/050-full-gleam-combined/contracts/proof-obligations.md:13-20",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-026",
+      "detail_id": "quiescence-oracle",
+      "aliases": [
+        "gap-g6",
+        "distributed-termination-detector"
+      ],
+      "components": [
+        "no-runnable-goals",
+        "no-in-flight-frames",
+        "deadlock-vs-quiescent-distinction",
+        "rig-integration"
+      ],
+      "grain": "protocol",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/data-model.md:66-67 + spec.md:155 (FR-017) + tasks.md:131,151 (T054/T063 [ ])",
+      "test_citation": "no-test: quiescence_test.gleam is a planned artifact (tasks.md:131), unchecked",
+      "status_basis": "The oracle is specified as a precondition for judging distributed acceptance, but T054 and its rig integration T063 are unchecked.",
+      "statement": "The quiescence oracle (quiescent vs deadlocked vs running: no runnable goals + no in-flight frames) is designed as a hard precondition for distributed acceptance but not recorded delivered.",
+      "claim": "quiescence-oracle — The quiescence oracle (quiescent vs deadlocked vs running: no runnable goals + no in-flight frames) is designed as a hard precondition for distributed acceptance but not recorded delivered.",
+      "source_citation": "specs/050-full-gleam-combined/data-model.md:66-67",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-027",
+      "detail_id": "link-transport-seam",
+      "aliases": [
+        "i-link-transport-port",
+        "transport-vtable",
+        "seam-modules"
+      ],
+      "components": [
+        "scheme-address-options-id-fault-endpoint-transport-modules",
+        "record-of-functions-vtable",
+        "synchronous-result-seam",
+        "out-of-band-fault-subject",
+        "quic-scheme-token"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:6 (T045 landed, 7 seam modules) + specs/050-full-gleam-combined/tasks.md:122 (T045 [X])",
+      "test_citation": "no-test: seam is exercised by transport smoke tests (T048/T049 records)",
+      "status_basis": "T045 is checked [X] and the handover records the seam landed with an owner-notified language-mapping decision (host interface below GLP, so the vtable/synchronous-Result shape is not a §1.14 deviation).",
+      "statement": "The scheme-agnostic link transport seam (port of i_link_transport as record-of-functions vtables with synchronous Results and out-of-band fault Subjects, QUIC token \"quic\") is recorded delivered.",
+      "claim": "link-transport-seam — The scheme-agnostic link transport seam (port of i_link_transport as record-of-functions vtables with synchronous Results and out-of-band fault Subjects, QUIC token \"quic\") is recorded delivered.",
+      "source_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:6",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-028",
+      "detail_id": "frame-codec",
+      "aliases": [
+        "frame-envelope",
+        "framing-header",
+        "fragmentation"
+      ],
+      "components": [
+        "22-byte-big-endian-header",
+        "message-id-fragment-fields",
+        "fragmentation-math",
+        "loud-fail-error-variants",
+        "rejection-order-parity"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:123 (T046 [X]) + contracts/link-parity.md:9-13",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:124 (T047 13 parity tests incl. exact wire-layout byte pin)",
+      "status_basis": "T046/T047 are checked [X] with byte-parity anchors (canonical CRC vector, exact 22-byte BE header layout, golden-payload ride) recorded; the deep adversarial matrix is explicitly deferred to T053.",
+      "statement": "The FrameCodec port (fixed 22-byte big-endian header, 1:1 fragmentation math, loud-fail-as-data error variants checked in reference order) is recorded delivered with byte-parity evidence, while the deep adversarial frame matrix remains deferred to T053.",
+      "claim": "frame-codec — The FrameCodec port (fixed 22-byte big-endian header, 1:1 fragmentation math, loud-fail-as-data error variants checked in reference order) is recorded delivered with byte-parity evidence, while the deep adversarial frame matrix remains deferred to T053.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:123-124",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-029",
+      "detail_id": "crc32-checksum",
+      "aliases": [
+        "ieee-crc32",
+        "zlib-crc"
+      ],
+      "components": [
+        "reflected-poly-edb88320",
+        "inline-table-entry",
+        "pure-gleam-no-ffi",
+        "atomvm-portable"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:123 (T046 crc32.gleam)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:124 (canonical vector compute(\"123456789\")==0xCBF43926)",
+      "status_basis": "The T046 record describes a pure-Gleam standard IEEE CRC-32 with the cross-runtime canonical vector asserted in T047.",
+      "statement": "A pure-Gleam (FFI-free, AtomVM-portable) IEEE CRC-32 with the canonical cross-runtime check vector is recorded delivered for frame integrity.",
+      "claim": "crc32-checksum — A pure-Gleam (FFI-free, AtomVM-portable) IEEE CRC-32 with the canonical cross-runtime check vector is recorded delivered for frame integrity.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:123",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-030",
+      "detail_id": "loopback-transport",
+      "aliases": [
+        "in-beam-transport",
+        "channel-hub-processes"
+      ],
+      "components": [
+        "hub-process-rendezvous",
+        "ordered-channel-process",
+        "fifo-exactly-once",
+        "graceful-close-drain",
+        "send-after-close-fault",
+        "connect-timeout"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:125 (T048 [X])",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:125 (4 smoke tests; full matrix deferred to T056)",
+      "status_basis": "T048 checked [X] with a detailed BEAM-mapping record (hub+channel processes, gleam_erlang only, frozen 025 semantics preserved), smoke-tested; the cross-transport matrix remains open in T056.",
+      "statement": "The in-BEAM loopback transport (hub+channel process mapping of the Dart/C# design, FIFO/exactly-once, close-drain and fault-on-send-after-close semantics, no gleam_otp) is recorded delivered behind the seam.",
+      "claim": "loopback-transport — The in-BEAM loopback transport (hub+channel process mapping of the Dart/C# design, FIFO/exactly-once, close-drain and fault-on-send-after-close semantics, no gleam_otp) is recorded delivered behind the seam.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:125",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-031",
+      "detail_id": "tcp-transport",
+      "aliases": [
+        "gen-tcp-transport",
+        "length-prefix-framing"
+      ],
+      "components": [
+        "4-byte-be-length-prefix",
+        "passive-mode-exact-read",
+        "half-close-shutdown-write",
+        "connect-retry-role-independence",
+        "gen-tcp-ffi"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:126 (T049 [X]) + contracts/link-parity.md:26",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:126 (3 real-socket smoke tests)",
+      "status_basis": "T049 checked [X] with byte-identical 4-byte big-endian length-prefix framing against the Dart/C# peers and real-localhost-socket smokes recorded.",
+      "statement": "The TCP transport (gen_tcp passive-mode FFI, byte-identical 4-byte big-endian length-prefix framing with the C#/Dart interop peers, half-close and retry-based role independence) is recorded delivered.",
+      "claim": "tcp-transport — The TCP transport (gen_tcp passive-mode FFI, byte-identical 4-byte big-endian length-prefix framing with the C#/Dart interop peers, half-close and retry-based role independence) is recorded delivered.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:126",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-032",
+      "detail_id": "quic-transport",
+      "aliases": [
+        "quic-ws-transport",
+        "http3-channel",
+        "gleam-quic-profile-c"
+      ],
+      "components": [
+        "rfc6455-over-quic-bidi",
+        "quicer-msquic-ffi",
+        "glpquick-cert-material",
+        "wsl-only-runtime",
+        "csharp-wire-reference-peer"
+      ],
+      "grain": "protocol",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:132 (T055 [ ]) + research.md:37-45 (R5) + contracts/link-parity.md:27",
+      "test_citation": "no-test: QUIC round-trip is the QUIC part of T056 (tasks.md:133), unchecked",
+      "status_basis": "T055 is unchecked; R5 records QUIC as the highest-variance item and the M2 handover records a likely host-block (no WSL on the executing host) with an explicit do-not-fake instruction.",
+      "statement": "The Gleam QUIC-WS/HTTP3 transport (gleam_quic Profile-C quicer/MsQuic FFI, RFC-6455-over-QUIC-bidi parity with the C# reference peer, WSL-only runtime) is designed and gating but not recorded delivered, with a recorded host-block risk.",
+      "claim": "quic-transport — The Gleam QUIC-WS/HTTP3 transport (gleam_quic Profile-C quicer/MsQuic FFI, RFC-6455-over-QUIC-bidi parity with the C# reference peer, WSL-only runtime) is designed and gating but not recorded delivered, with a recorded host-block risk.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:132 + docs/handover/050-full-gleam-M2-restart-2026-07-13.md:34",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-033",
+      "detail_id": "link-layer",
+      "aliases": [
+        "link-primitives-port",
+        "link-send-recv",
+        "link-registry-pump-egress"
+      ],
+      "components": [
+        "link-send",
+        "link-recv",
+        "establish-listen-accept-request-setup-close-monitor",
+        "registry",
+        "pump",
+        "egress"
+      ],
+      "grain": "interface",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:127 (T050 [ ]) + contracts/link-parity.md:5-7 + specs/025-multi-protocol-link-layer/contracts/link-primitives.md",
+      "test_citation": "no-test: T056 link round-trip tests (tasks.md:133) unchecked",
+      "status_basis": "T050 is unchecked in tasks.md; the contract binds the port to the 025 primitive contracts verbatim with STOP-and-escalate on any deviation.",
+      "statement": "The Gleam port of the 025 link primitives (link_send/link_recv, establish/listen/accept/request/setup/close/monitor kernels, registry, pump, egress) is contractually designed (025 contracts verbatim, deviations escalate) but not recorded delivered.",
+      "claim": "link-layer — The Gleam port of the 025 link primitives (link_send/link_recv, establish/listen/accept/request/setup/close/monitor kernels, registry, pump, egress) is contractually designed (025 contracts verbatim, deviations escalate) but not recorded delivered.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:127 + contracts/link-parity.md:5-7",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-034",
+      "detail_id": "distribution-protocol",
+      "aliases": [
+        "dist-unify",
+        "deferred-local-assignment",
+        "remote-var-ref"
+      ],
+      "components": [
+        "owning-side-binding",
+        "globalize-localize-on-known",
+        "remote-var-ref-instance-writer-pair",
+        "fork-1-discriminator-across-seam"
+      ],
+      "grain": "protocol",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/data-model.md:49-50 + contracts/link-parity.md:15-19 + tasks.md:128 (T051 [ ])",
+      "test_citation": "no-test: T057 adversarial dist-deref suite (tasks.md:134) unchecked",
+      "status_basis": "The distributed-unification protocol is fully specified (spec FR-014, contract, data-model entity) but T051/T057 are unchecked and PI:17 undischarged.",
+      "statement": "Distributed unification for the Gleam instance (deferred-local-assignment, globalize/localize on known/1, RemoteVarRef as (instance id, writer id)) is designed and proof-gated but not recorded delivered.",
+      "claim": "distribution-protocol — Distributed unification for the Gleam instance (deferred-local-assignment, globalize/localize on known/1, RemoteVarRef as (instance id, writer id)) is designed and proof-gated but not recorded delivered.",
+      "source_citation": "specs/050-full-gleam-combined/data-model.md:49-50 + tasks.md:128",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-035",
+      "detail_id": "untrusted-frame-hardening",
+      "aliases": [
+        "fault-as-data",
+        "wire-threat-model",
+        "d11-d12"
+      ],
+      "components": [
+        "length-crc-type-validation-order",
+        "fault-term-not-crash",
+        "adversarial-frame-matrix"
+      ],
+      "grain": "protocol",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:147 (FR-015) + contracts/link-parity.md:13 + tasks.md:123,129-130 (T046 [X], T052/T053 [ ])",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:124 (rejection-order parity delivered) vs tasks.md:130 (T053 adversarial suite unchecked)",
+      "status_basis": "Codec-level loud-fail rejection with reference rejection-order parity is recorded delivered in T046/T047, but the fault-term boundary (faults.gleam, T052) and the adversarial untrusted-input suite (T053) are unchecked.",
+      "statement": "Untrusted-frame hardening is partially recorded: codec-level loud-fail rejection in reference order is delivered, while the length→CRC→type fault-as-data boundary module and its adversarial suite (FR-015, D11/D12) remain designed-only.",
+      "claim": "untrusted-frame-hardening — Untrusted-frame hardening is partially recorded: codec-level loud-fail rejection in reference order is delivered, while the length→CRC→type fault-as-data boundary module and its adversarial suite (FR-015, D11/D12) remain designed-only.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:123,129-130",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-036",
+      "detail_id": "cross-runtime-pair-capstone",
+      "aliases": [
+        "csharp-gleam-16-16",
+        "split-pair-suite",
+        "m2-lock"
+      ],
+      "components": [
+        "cross-gleam-rig-script",
+        "8-scenarios-2-directions",
+        "tcp-hard-gate",
+        "quic-ws-under-wsl",
+        "verdict-parity-vs-single-runtime"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:90-102,151 (US5, FR-016) + contracts/link-parity.md:31-35 + tasks.md:147-151 (T059-T063 [ ])",
+      "test_citation": "no-test: run_link_tests_cross_gleam.sh is a planned artifact (tasks.md:147), unchecked",
+      "status_basis": "US5 is fully specified with a clarified 16/16 hard gate mirroring the recorded Dart↔C# 16/16 baseline, but all five capstone tasks are unchecked.",
+      "statement": "The C#↔Gleam cross-runtime capstone (8 role-parameterized scenarios × 2 directions = 16/16 over TCP with QUIC-WS coverage, verdicts identical to single-runtime references) is a designed hard gate (M2 LOCK) with no delivery recorded.",
+      "claim": "cross-runtime-pair-capstone — The C#↔Gleam cross-runtime capstone (8 role-parameterized scenarios × 2 directions = 16/16 over TCP with QUIC-WS coverage, verdicts identical to single-runtime references) is a designed hard gate (M2 LOCK) with no delivery recorded.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:151 + tasks.md:147-151",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-037",
+      "detail_id": "transport-parity-all-gating",
+      "aliases": [
+        "sc-008",
+        "full-multi-protocol-parity"
+      ],
+      "components": [
+        "loopback-gating",
+        "tcp-gating",
+        "quic-ws-gating",
+        "identical-outcomes-across-transports"
+      ],
+      "grain": "protocol",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:18,146,178 (clarification + FR-014 + SC-008)",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:125-126 (loopback/TCP delivered) vs 132-133 (QUIC/matrix open)",
+      "status_basis": "The 2026-07-10 owner clarification made all three transports gating; loopback and TCP are recorded delivered, QUIC-WS and the cross-transport outcome matrix are not.",
+      "statement": "Full multi-protocol transport parity is owner-clarified as all-gating (none deferred); of the three, loopback and TCP are recorded delivered while QUIC-WS and the identical-outcomes-across-transports matrix remain open.",
+      "claim": "transport-parity-all-gating — Full multi-protocol transport parity is owner-clarified as all-gating (none deferred); of the three, loopback and TCP are recorded delivered while QUIC-WS and the identical-outcomes-across-transports matrix remain open.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:18,146",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-038",
+      "detail_id": "fe-be-process-split",
+      "aliases": [
+        "repl-engine-two-process-split",
+        "process-split-mvp",
+        "tcp-loopback-split"
+      ],
+      "components": [
+        "front-end-repl-process",
+        "engine-process",
+        "binary-wire-seam",
+        "wave-2-spine"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:32 (repl-engine-process-split-mvp [refined], blocked-by result-codec-and-framecodec-ride) + :119 (wave-2 [captured])",
+      "test_citation": "no-test: no spec dir for the process-split MVP exists under specs/",
+      "status_basis": "The roadmap snapshot shows the two-process split MVP still refined (its blocker result-codec-and-framecodec-ride is now released) and the wave-2 consolidated spine merely captured; no spec dir exists.",
+      "statement": "The REPL/engine two-process split MVP (separate front-end and engine processes over TCP loopback) remains a designed-but-unstarted roadmap promise — its declared blocker is delivered, yet no spec or delivery is recorded.",
+      "claim": "fe-be-process-split — The REPL/engine two-process split MVP (separate front-end and engine processes over TCP loopback) remains a designed-but-unstarted roadmap promise — its declared blocker is delivered, yet no spec or delivery is recorded.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:32,119",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-039",
+      "detail_id": "engine-review-dossier",
+      "aliases": [
+        "fe-be-design-dossier",
+        "seam-contract-design",
+        "separation-epic-design"
+      ],
+      "components": [
+        "seam-contract",
+        "binary-wire-shapes",
+        "control-program-startup-client-model",
+        "liveness-crash-restart-model",
+        "persistent-vs-ephemeral-state",
+        "mailbox-decision",
+        "mvp-slice",
+        "successor-feature-seeding"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/026-engine-review-dossier/spec.md:32-68 (US1 design areas a-g) + roadmap-snapshot-2026-07-19.md:28 ([closed, delivered])",
+      "test_citation": "no-test: documentation/design deliverable by definition (spec.md:22-23)",
+      "status_basis": "The roadmap row is closed/delivered and the spec defines the dossier as the decision-final source-of-truth covering the seven FE/BE design areas plus seeding successor features 2-16.",
+      "statement": "The FE/BE separation design dossier — covering the seam contract, binary wire shapes, control-program/client model, liveness/crash/restart, persistence and restore-and-resume, the mailbox decision, and the MVP slice — is recorded delivered as the epic's authoritative design.",
+      "claim": "engine-review-dossier — The FE/BE separation design dossier — covering the seam contract, binary wire shapes, control-program/client model, liveness/crash/restart, persistence and restore-and-resume, the mailbox decision, and the MVP slice — is recorded delivered as the epic's authoritative design.",
+      "source_citation": "specs/026-engine-review-dossier/spec.md:32-68 + roadmap-snapshot:28",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-040",
+      "detail_id": "premise-reconciliation-compiler-location",
+      "aliases": [
+        "compiler-in-engine-as-built",
+        "mvp-carries-source-text",
+        "runtime-il-generation-myth"
+      ],
+      "components": [
+        "compiler-engine-internal-decision",
+        "no-runtime-bytecode-synthesis",
+        "goal-term-assembly-mechanism"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/026-engine-review-dossier/spec.md:70-97 (US2)",
+      "test_citation": "no-test: design reconciliation, not code",
+      "status_basis": "The delivered dossier's US2 records both premise reconciliations: the compiler is engine-internal as-built (MVP carries source text; relocation is a deliberate follow-up) and no IL is synthesised at runtime.",
+      "statement": "Two FE/BE premise reconciliations are recorded decided: the parser/compiler stays engine-internal for the MVP (source text on the wire, compiler relocation a follow-up feature) and the engine does not generate IL at runtime (goal-term assembly over pre-compiled bytecode).",
+      "claim": "premise-reconciliation-compiler-location — Two FE/BE premise reconciliations are recorded decided: the parser/compiler stays engine-internal for the MVP (source text on the wire, compiler relocation a follow-up feature) and the engine does not generate IL at runtime (goal-term assembly over pre-compiled bytecode).",
+      "source_citation": "specs/026-engine-review-dossier/spec.md:70-97",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-041",
+      "detail_id": "il-codec-round-trip",
+      "aliases": [
+        "bytecode-program-codec",
+        "il-codec-spike",
+        "decode-encode-id"
+      ],
+      "components": [
+        "structural-identity-equivalence",
+        "execute-equivalence-gate",
+        "v1-v2-opcode-coverage",
+        "lean-round-trip-proof",
+        "module-term-traversal"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/029-il-codec-spike/spec.md:8-36 + roadmap-snapshot-2026-07-19.md:31 ([released, delivered])",
+      "test_citation": "specs/029-il-codec-spike/spec.md:34 (sorry-free Lean decode∘encode=id in scope)",
+      "status_basis": "The roadmap row is released/delivered and the spec records owner-ruled scope: structural identity plus execute-equivalence plus a Lean round-trip proof.",
+      "statement": "The BytecodeProgram↔bytes round-trip codec (structural-identity equivalence, execute-equivalence gate, Lean decode∘encode=id) that de-risks persistence and compiled-IL-on-the-wire is recorded delivered.",
+      "claim": "il-codec-round-trip — The BytecodeProgram↔bytes round-trip codec (structural-identity equivalence, execute-equivalence gate, Lean decode∘encode=id) that de-risks persistence and compiled-IL-on-the-wire is recorded delivered.",
+      "source_citation": "specs/029-il-codec-spike/spec.md:8-36 + roadmap-snapshot:31",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-042",
+      "detail_id": "compiled-il-on-the-wire",
+      "aliases": [
+        "factor-out-compiler",
+        "compiler-relocation"
+      ],
+      "components": [
+        "wire-carries-compiled-il",
+        "front-end-compiler"
+      ],
+      "grain": "protocol",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:37 ([refined])",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "The roadmap row is refined/unstarted; the delivered 026 dossier deliberately deferred compiler relocation out of the MVP.",
+      "statement": "Compiled-IL-on-the-wire with the compiler factored into the front-end is a designed, deliberately-deferred follow-up (roadmap refined, no spec dir).",
+      "claim": "compiled-il-on-the-wire — Compiled-IL-on-the-wire with the compiler factored into the front-end is a designed, deliberately-deferred follow-up (roadmap refined, no spec dir).",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:37",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-043",
+      "detail_id": "engine-state-snapshot-persistence",
+      "aliases": [
+        "heap-snapshot-api",
+        "persistence-api"
+      ],
+      "components": [
+        "durable-store-choice",
+        "snapshot-granularity",
+        "consistency-point"
+      ],
+      "grain": "interface",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:33 ([refined], blocked-by repl-engine-process-split-mvp)",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "The roadmap row is refined and blocked by the unstarted process-split MVP; its open forks (store choice, snapshot granularity) are recorded as owner questions in the 026 dossier spec.",
+      "statement": "The engine-state snapshot + persistence API is a designed roadmap promise whose open design forks were surfaced by the 026 dossier, still blocked behind the unstarted process split.",
+      "claim": "engine-state-snapshot-persistence — The engine-state snapshot + persistence API is a designed roadmap promise whose open design forks were surfaced by the 026 dossier, still blocked behind the unstarted process split.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:33 + specs/026-engine-review-dossier/spec.md:112-120",
+      "confidence": 0.87,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-044",
+      "detail_id": "liveness-crash-restart-host",
+      "aliases": [
+        "supervised-restart",
+        "crash-signal-host"
+      ],
+      "components": [
+        "liveness-signal",
+        "crash-detection",
+        "supervised-restart"
+      ],
+      "grain": "pattern",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:34 ([refined])",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "Refined roadmap row, blocked behind snapshot/persistence; the 039 spike additionally records the design intent that OTP supervision could supersede the C# liveness host.",
+      "statement": "The liveness + crash-signal + supervised-restart host is a designed-unstarted FE/BE promise, with the 039 monitor spike recording that BEAM supervision may supersede the C# liveness-host design.",
+      "claim": "liveness-crash-restart-host — The liveness + crash-signal + supervised-restart host is a designed-unstarted FE/BE promise, with the 039 monitor spike recording that BEAM supervision may supersede the C# liveness-host design.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:34 + specs/039-m2-0-verify-erlang-monitor-atomvm/spec.md:10",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-045",
+      "detail_id": "restore-and-resume-link-reestablish",
+      "aliases": [
+        "resume-with-links",
+        "state-restore"
+      ],
+      "components": [
+        "state-restore",
+        "link-reestablish",
+        "in-flight-request-policy"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:35 ([refined])",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "Refined roadmap row at the end of the FE/BE dependency chain (blocked-by liveness host).",
+      "statement": "Restore-and-resume with link re-establish is a designed-unstarted FE/BE promise at the end of the separation epic's dependency chain.",
+      "claim": "restore-and-resume-link-reestablish — Restore-and-resume with link re-establish is a designed-unstarted FE/BE promise at the end of the separation epic's dependency chain.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:35",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-046",
+      "detail_id": "multi-accept-transport-extension",
+      "aliases": [
+        "multi-client-listener",
+        "multi-accept-tcp"
+      ],
+      "components": [
+        "multiple-concurrent-clients",
+        "accept-loop"
+      ],
+      "grain": "interface",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:36 ([refined, parallel-safe])",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "Refined roadmap row; notably the delivered Gleam TCP transport record (T049) is a one-link-per-listen MVP, so multi-accept remains a promised extension on both sides.",
+      "statement": "The multi-accept TCP transport extension is a designed-unstarted promise, and the delivered Gleam TCP transport is explicitly recorded as one-link-per-listen MVP.",
+      "claim": "multi-accept-transport-extension — The multi-accept TCP transport extension is a designed-unstarted promise, and the delivered Gleam TCP transport is explicitly recorded as one-link-per-listen MVP.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:36 + specs/050-full-gleam-combined/tasks.md:126",
+      "confidence": 0.87,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-047",
+      "detail_id": "multi-client-control-program",
+      "aliases": [
+        "control-program-in-glp",
+        "client-orchestration-glp"
+      ],
+      "components": [
+        "glp-written-control-program",
+        "multi-client-startup"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:39 ([refined])",
+      "test_citation": "no-test: no spec dir exists for this feature",
+      "status_basis": "Refined roadmap row in the separation epic; the control-program startup + client model is a named 026 dossier design area.",
+      "statement": "A multi-client control program written in GLP is a designed-unstarted separation-epic promise whose design area is covered by the delivered 026 dossier.",
+      "claim": "multi-client-control-program — A multi-client control program written in GLP is a designed-unstarted separation-epic promise whose design area is covered by the delivered 026 dossier.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:39",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-048",
+      "detail_id": "repl-engine-split-binary-wire-mvp",
+      "aliases": [
+        "csharp-split-mvp",
+        "binary-wire-format-il"
+      ],
+      "components": [
+        "csharp-wire-format",
+        "split-mvp"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:27 ([closed, delivered])",
+      "test_citation": "no-test: completion recorded only as roadmap row state",
+      "status_basis": "The roadmap snapshot records repl-engine-split-mvp-binary-wire-format-intermediate-language-c as closed/delivered.",
+      "statement": "The C# REPL/engine split MVP with a binary wire-format intermediate language is recorded delivered on the roadmap (reference-runtime side of the FE/BE separation).",
+      "claim": "repl-engine-split-binary-wire-mvp — The C# REPL/engine split MVP with a binary wire-format intermediate language is recorded delivered on the roadmap (reference-runtime side of the FE/BE separation).",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:27",
+      "confidence": 0.8,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-049",
+      "detail_id": "reference-envelope-and-capture-seam",
+      "aliases": [
+        "result-envelope-and-deep-resolve",
+        "structured-output-capture-reference"
+      ],
+      "components": [
+        "self-contained-result-envelope",
+        "server-side-deep-resolve",
+        "output-capture-seam-reference"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:29-30 ([released, delivered] x2)",
+      "test_citation": "no-test: completion recorded only as roadmap row state",
+      "status_basis": "Both separation-epic seam features (result envelope + deep-resolve; structured output capture) are recorded released/delivered, and 050 lists them among relied-upon prerequisites.",
+      "statement": "The reference-side ED-1 seam features — self-contained result envelope with server-side deep-resolve and the structured output-capture seam — are recorded delivered and are relied-upon prerequisites of the Gleam instance.",
+      "claim": "reference-envelope-and-capture-seam — The reference-side ED-1 seam features — self-contained result envelope with server-side deep-resolve and the structured output-capture seam — are recorded delivered and are relied-upon prerequisites of the Gleam instance.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:29-30 + specs/050-full-gleam-combined/spec.md:187",
+      "confidence": 0.87,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-050",
+      "detail_id": "antlr-shared-grammar-spike",
+      "aliases": [
+        "antlr4-multi-target-spike",
+        "canonical-g4"
+      ],
+      "components": [
+        "canonical-grammar-file",
+        "generated-parser-targets"
+      ],
+      "grain": "pattern",
+      "status": "deferred",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:12 + research.md:5-11 (R1) + roadmap-snapshot-2026-07-19.md:38 ([refined])",
+      "test_citation": "no-test: absorbed scope decision, no artifact",
+      "status_basis": "050 records the spike's scope decision absorbed (hand-port, no ANTLR on BEAM, no hard dependency kept); the roadmap row remains refined and R1 keeps the canonical .g4 open at dossier level.",
+      "statement": "The ANTLR4 shared-grammar spike is recorded absorbed/superseded for the Gleam path (hand-ported parser, no BEAM ANTLR target), with the canonical Glp.g4 artifact remaining an open dossier-level concern.",
+      "claim": "antlr-shared-grammar-spike — The ANTLR4 shared-grammar spike is recorded absorbed/superseded for the Gleam path (hand-ported parser, no BEAM ANTLR target), with the canonical Glp.g4 artifact remaining an open dossier-level concern.",
+      "source_citation": "specs/050-full-gleam-combined/research.md:5-11",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-051",
+      "detail_id": "embeddability-service-box",
+      "aliases": [
+        "durable-listener-service-box",
+        "store-kernels",
+        "host-owned-log"
+      ],
+      "components": [
+        "durable-listener",
+        "service-box-boundary",
+        "store-put-get-kernels"
+      ],
+      "grain": "interface",
+      "status": "absent",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:133 ([promoted], no spec reference)",
+      "test_citation": "no-test: no spec dir or contract exists anywhere under specs/ (repo-wide grep for yngenios/embeddab/service-box/store_put returned no spec hits)",
+      "status_basis": "The only corpus artifact is a promoted roadmap row with no spec dir; a grep across specs/ and docs/handover/ finds no yngenios, service-box, or store-kernel design artifact.",
+      "statement": "Yngenios-oriented embeddability (durable-listener-service-box, service/box boundary, store kernels) is absent from the design corpus beyond a promoted-but-unspecified roadmap row — a gap-by-definition at requirements level.",
+      "claim": "embeddability-service-box — Yngenios-oriented embeddability (durable-listener-service-box, service/box boundary, store kernels) is absent from the design corpus beyond a promoted-but-unspecified roadmap row — a gap-by-definition at requirements level.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:133",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-052",
+      "detail_id": "qhsm-yngenios-integration-design",
+      "aliases": [
+        "p7-qhsm-dossier",
+        "yngenios-microkernel-packaging",
+        "ngenius-integration"
+      ],
+      "components": [
+        "gleam-instance-as-qhsm",
+        "yngenios-microkernel-slot",
+        "sibling-repo-grounding",
+        "embedded-switch-role"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/036-glp-gleam-baseline-program/spec.md:167-168 (FR-007) + tasks.md:44 (T010 [X] → pipelines/P7-qhsm-yngenios/DOSSIER.md)",
+      "test_citation": "no-test: design dossier deliverable; gate was 'concrete packaging design citing the sibling repos'",
+      "status_basis": "FR-007 promised a QHSM/YngeniOS integration design and T010 is checked [X] producing the P7 dossier grounded read-only in the qhstate/Yngenios sibling repos — a design artifact only, with no implementation feature promised anywhere in the corpus.",
+      "statement": "A QHSM/YngeniOS(=NGENIUS) integration design — packaging the combined Gleam front+back instance as a QHSM inside the YngeniOS microkernel — is recorded delivered as a dossier (design-level only; no implementation feature exists in the corpus).",
+      "claim": "qhsm-yngenios-integration-design — A QHSM/YngeniOS(=NGENIUS) integration design — packaging the combined Gleam front+back instance as a QHSM inside the YngeniOS microkernel — is recorded delivered as a dossier (design-level only; no implementation feature exists in the corpus).",
+      "source_citation": "specs/036-glp-gleam-baseline-program/spec.md:167-168 + tasks.md:44",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-053",
+      "detail_id": "atomvm-compatibility-by-construction",
+      "aliases": [
+        "no-gleam-otp-constraint",
+        "lightweight-platform-profile",
+        "plain-spawn"
+      ],
+      "components": [
+        "dependency-policy-test",
+        "plain-process-spawning",
+        "subjects-not-otp-actors",
+        "atomvm-not-acceptance-gated"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:130,185 (FR-007 + Assumptions) + tasks.md:41 (T012 dep-policy assertion [X])",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:41 (deps_policy_test fails if an OTP-abstraction package appears)",
+      "status_basis": "FR-007 and the BEAM-only clarification fix AtomVM compatibility as by-construction (no gleam_otp, plain spawn) with an enforcing test recorded delivered; AtomVM execution itself is explicitly not an acceptance gate.",
+      "statement": "AtomVM/lightweight-platform compatibility is designed as preserved-by-construction (no gleam_otp, plain spawn + Subjects, enforced by a delivered dependency-policy test), while actual AtomVM execution is explicitly excluded from 050 acceptance.",
+      "claim": "atomvm-compatibility-by-construction — AtomVM/lightweight-platform compatibility is designed as preserved-by-construction (no gleam_otp, plain spawn + Subjects, enforced by a delivered dependency-policy test), while actual AtomVM execution is explicitly excluded from 050 acceptance.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:19,130,185",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-054",
+      "detail_id": "monitor-primitive-verification",
+      "aliases": [
+        "m2-0-spike",
+        "erlang-monitor-atomvm",
+        "down-message-verdict"
+      ],
+      "components": [
+        "monitor-down-shape",
+        "link-trap-exit-fallback",
+        "d10-fork"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/039-m2-0-verify-erlang-monitor-atomvm/spec.md:10-40 + roadmap-snapshot-2026-07-19.md:86 ([released, delivered])",
+      "test_citation": "specs/039-m2-0-verify-erlang-monitor-atomvm/spec.md:22 (minimal monitor/DOWN probe defined)",
+      "status_basis": "The roadmap records the M2-0 gating spike released/delivered, and 050 lists monitor-primitive verification among its relied-upon prerequisites.",
+      "statement": "The M2-0 verification of erlang:monitor/'DOWN' behaviour on AtomVM 0.6.6 (grounding the fault-as-data model, with a D10 fallback inventory) is recorded delivered and relied upon by the link-layer design.",
+      "claim": "monitor-primitive-verification — The M2-0 verification of erlang:monitor/'DOWN' behaviour on AtomVM 0.6.6 (grounding the fault-as-data model, with a D10 fallback inventory) is recorded delivered and relied upon by the link-layer design.",
+      "source_citation": "roadmap-snapshot-2026-07-19.md:86 + specs/039 spec.md:10",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-055",
+      "detail_id": "profile-c-quic-acceptance",
+      "aliases": [
+        "wave-1-link-full-acceptance",
+        "quicer-nif-profile-c",
+        "two-host-lan-acceptance"
+      ],
+      "components": [
+        "profile-c-quicer-nif",
+        "two-host-lan-e2e",
+        "marathon-durability-verification",
+        "wsl-only-ruling"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/049-wave1-guard-link-acceptance/spec.md:1-35 + roadmap-snapshot-2026-07-19.md:22,118 (both rows [closed, delivered])",
+      "test_citation": "no-test: completion recorded as roadmap row states plus 050's Assumption that Profile-C runtime is WSL-only 'as established by feature 049'",
+      "status_basis": "Both the wave-1 consolidated row and http3-quic-ws-link-full-acceptance are recorded closed/delivered, and 050 inherits the 049 WSL-only Profile-C ruling as an assumption.",
+      "statement": "The 036-deferred HTTP3/QUIC-WS full-acceptance items (Erlang Profile-C via quicer NIF, two-host LAN e2e, marathon durability) are recorded delivered via wave 1, establishing the WSL-only Profile-C runtime ruling the Gleam QUIC transport builds on.",
+      "claim": "profile-c-quic-acceptance — The 036-deferred HTTP3/QUIC-WS full-acceptance items (Erlang Profile-C via quicer NIF, two-host LAN e2e, marathon durability) are recorded delivered via wave 1, establishing the WSL-only Profile-C runtime ruling the Gleam QUIC transport builds on.",
+      "source_citation": "roadmap-snapshot-2026-07-19.md:22,118 + specs/050-full-gleam-combined/spec.md:185",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-056",
+      "detail_id": "mesh-full-mesh-native-quic",
+      "aliases": [
+        "mesh-ring",
+        "glp-native-true-quic-link",
+        "five-endpoint-mesh"
+      ],
+      "components": [
+        "all-pairs-mesh-c-5-2",
+        "macaroon-capabilities",
+        "crdtmsg-wire-format",
+        "graceful-termination",
+        "csharp-host-ruling"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-glp-native-quic-link/spec.md:9-25 + roadmap-snapshot-2026-07-19.md:24 ([promoted])",
+      "test_citation": "no-test: cross-host mesh test is the feature's own planned acceptance",
+      "status_basis": "A full spec exists (all-pairs 5-endpoint mesh, 10 full-duplex QUIC links, crdtmsg + macaroons, GLP-driven setup) but the frozen roadmap snapshot records the feature only promoted; its clarifications rule all endpoints C#/.NET with Dart/Flutter out of MVP scope and no Gleam host role.",
+      "statement": "The GLP-native true-QUIC full-mesh ambition (5 endpoints, 10 full-duplex QUIC links, crdtmsg envelopes with macaroons, GLP-program-driven setup and graceful termination) is designed/promoted with the C# REPL ruled as host — the Gleam instance has no recorded role in it.",
+      "claim": "mesh-full-mesh-native-quic — The GLP-native true-QUIC full-mesh ambition (5 endpoints, 10 full-duplex QUIC links, crdtmsg envelopes with macaroons, GLP-program-driven setup and graceful termination) is designed/promoted with the C# REPL ruled as host — the Gleam instance has no recorded role in it.",
+      "source_citation": "specs/050-glp-native-quic-link/spec.md:9-25 + roadmap-snapshot:24",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-057",
+      "detail_id": "module-system",
+      "aliases": [
+        "glp-modules",
+        "cssg-modules",
+        "self-glp-module-integration"
+      ],
+      "components": [
+        "module-syntax-phase",
+        "linker",
+        "stdlib-cleanup"
+      ],
+      "grain": "pattern",
+      "status": "absent",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md (silent on modules) + docs/handover/module-phase1-handover.md:1-5 (Dart-side, Completed 2026-02)",
+      "test_citation": "no-test: no Gleam module-system task exists in tasks.md",
+      "status_basis": "The 050 spec, tasks, and contracts contain no module-system requirement for the Gleam instance, while the handover corpus records the module system as Dart-side work — leaving Gleam module support an unpromised area (subject to whatever the T037 corpus manifest included).",
+      "statement": "A Gleam-side module system is absent from the 050 design promises (spec and tasks are silent), with module-system delivery recorded only in Dart-era handovers — a potential parity scope gap versus the reference runtimes.",
+      "claim": "module-system — A Gleam-side module system is absent from the 050 design promises (spec and tasks are silent), with module-system delivery recorded only in Dart-era handovers — a potential parity scope gap versus the reference runtimes.",
+      "source_citation": "docs/handover/module-phase1-handover.md:1-5 + specs/050-full-gleam-combined/spec.md",
+      "confidence": 0.6,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-058",
+      "detail_id": "multiagent-runtime",
+      "aliases": [
+        "madglp",
+        "cross-agent-imported-variables",
+        "multiagent-subsystem"
+      ],
+      "components": [
+        "multiagent-placeholder-module",
+        "imported-variable-support",
+        "variable-entry-cross-runtime"
+      ],
+      "grain": "pattern",
+      "status": "deferred",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/033-glp-gleam-subtree-scaffold/spec.md:24 (all-8-subsystems incl. multiagent) + specs/034-glp-gleam-core-terms-and-heap/spec.md:23 (imported variables out of scope, lands with link features F9+)",
+      "test_citation": "no-test: no multiagent port task exists in 050 tasks.md",
+      "status_basis": "The scaffold promised a multiagent placeholder and 034 explicitly deferred cross-agent imported-variable support to the link features; 050's link tasks (the successor) are open and do not name the multiagent subsystem.",
+      "statement": "The Gleam multiagent runtime exists in the design corpus only as a promised scaffold placeholder with cross-agent imported-variable support explicitly deferred to link-layer successors, and no delivery is recorded.",
+      "claim": "multiagent-runtime — The Gleam multiagent runtime exists in the design corpus only as a promised scaffold placeholder with cross-agent imported-variable support explicitly deferred to link-layer successors, and no delivery is recorded.",
+      "source_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:23",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-059",
+      "detail_id": "full-scope-gleam-anchor",
+      "aliases": [
+        "full-scope-gleam-glp-implementation",
+        "fullscope-feature"
+      ],
+      "components": [
+        "captured-roadmap-row",
+        "blocked-by-combined-feature"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:69 ([captured], blocked-by gleam-implementation-combined-full-gleam-feature)",
+      "test_citation": "no-test: captured row, no spec dir",
+      "status_basis": "The anchor feature is recorded only as a captured roadmap row blocked by the in-flight combined feature (itself [promoted] on the snapshot).",
+      "statement": "The full-scope-gleam-glp-implementation anchor is a captured, unspecified roadmap ambition blocked behind the in-progress combined Full-Gleam feature — its scope beyond 050 (including any FE/BE split or embeddability content) is not yet written down.",
+      "claim": "full-scope-gleam-anchor — The full-scope-gleam-glp-implementation anchor is a captured, unspecified roadmap ambition blocked behind the in-progress combined Full-Gleam feature — its scope beyond 050 (including any FE/BE split or embeddability content) is not yet written down.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:68-69",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-060",
+      "detail_id": "roadmap-constituent-reconciliation",
+      "aliases": [
+        "folded-constituent-rows",
+        "wave-3-superseded"
+      ],
+      "components": [
+        "six-constituent-rows-stay-refined",
+        "advance-on-ship",
+        "wave-3-row-superseded"
+      ],
+      "grain": "pattern",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:12,191 + roadmap-snapshot-2026-07-19.md:62-67 (six rows still [refined])",
+      "test_citation": "no-test: bookkeeping protocol",
+      "status_basis": "The spec's fold/reconciliation rule matches the snapshot: all six constituent Full-Gleam rows (compiler-loader, bytecode-runner, repl, corpus, link-layer, cross-runtime tests) remain refined pending the combined feature's ship, and wave-3 is superseded.",
+      "statement": "Per the recorded reconciliation protocol, the six constituent Full-Gleam roadmap rows deliberately remain 'refined' (and wave-3 superseded) until the combined feature ships, so roadmap row states currently understate recorded M1 delivery.",
+      "claim": "roadmap-constituent-reconciliation — Per the recorded reconciliation protocol, the six constituent Full-Gleam roadmap rows deliberately remain 'refined' (and wave-3 superseded) until the combined feature ships, so roadmap row states currently understate recorded M1 delivery.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:12,191 + roadmap-snapshot:62-67",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-061",
+      "detail_id": "term-codec-tlv",
+      "aliases": [
+        "section-15-codec",
+        "wire-term-encoding",
+        "golden-corpus-hex"
+      ],
+      "components": [
+        "leb128-varints",
+        "le-int64",
+        "ieee-double",
+        "utf8-strings",
+        "tag-bytes",
+        "golden-vectors"
+      ],
+      "grain": "protocol",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/data-model.md:38-39 (EXISTS, 038) + specs/038-result-codec-and-framecodec-ride/spec.md:37-48 + roadmap-snapshot:61 ([released, delivered])",
+      "test_citation": "specs/038-result-codec-and-framecodec-ride/contracts/golden/ (golden vectors referenced by 050 contracts)",
+      "status_basis": "The 038 roadmap row is released/delivered and 050 marks the TLV term codec EXISTS with byte-parity golden vectors as the reused wire foundation.",
+      "statement": "The Section-15 TLV term codec with cross-runtime byte-parity golden vectors is recorded delivered (feature 038) and reused unchanged as the Gleam wire and envelope payload foundation.",
+      "claim": "term-codec-tlv — The Section-15 TLV term codec with cross-runtime byte-parity golden vectors is recorded delivered (feature 038) and reused unchanged as the Gleam wire and envelope payload foundation.",
+      "source_citation": "specs/050-full-gleam-combined/data-model.md:38-39 + roadmap-snapshot:61",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-062",
+      "detail_id": "langpair-dart-gleam",
+      "aliases": [
+        "codeconv-gleam-langpair",
+        "conversion-pair"
+      ],
+      "components": [
+        "mirror-verbatim-extension-swap",
+        "target-uniqueness-assertion-r3b"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/032-codeconv-gleam-langpair/spec.md:1-27 + roadmap-snapshot-2026-07-19.md:50 ([released, delivered])",
+      "test_citation": "no-test: completion recorded as roadmap row state",
+      "status_basis": "Roadmap row released/delivered; spec records the layout-agnostic pair and the owner-ruled R3-b generic uniqueness assertion.",
+      "statement": "The Dart→Gleam codeconv language pair (layout-agnostic mirror with the R3-b generic target-uniqueness assertion) is recorded delivered as the port's toolchain enabler.",
+      "claim": "langpair-dart-gleam — The Dart→Gleam codeconv language pair (layout-agnostic mirror with the R3-b generic target-uniqueness assertion) is recorded delivered as the port's toolchain enabler.",
+      "source_citation": "roadmap-snapshot-2026-07-19.md:50 + specs/032 spec.md",
+      "confidence": 0.87,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-063",
+      "detail_id": "subtree-scaffold",
+      "aliases": [
+        "glp-gleam-subtree",
+        "committed-hand-authored-home"
+      ],
+      "components": [
+        "eight-subsystem-placeholders",
+        "wsl-smoke-gate",
+        "committed-not-generated"
+      ],
+      "grain": "interface",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/033-glp-gleam-subtree-scaffold/spec.md:14-24 + roadmap-snapshot-2026-07-19.md:51 ([released, delivered])",
+      "test_citation": "specs/033-glp-gleam-subtree-scaffold/contracts/build-test-smoke.md (local WSL smoke gate)",
+      "status_basis": "Roadmap row released/delivered; the clarifications fix the subtree as committed hand-authored source with all 8 Dart-mirroring subsystem placeholders and a WSL-runnable smoke gate.",
+      "statement": "The glp_gleam subtree scaffold (committed hand-authored home, 1:1 placeholders for all 8 Dart subsystems, local WSL build+test smoke gate) is recorded delivered.",
+      "claim": "subtree-scaffold — The glp_gleam subtree scaffold (committed hand-authored home, 1:1 placeholders for all 8 Dart subsystems, local WSL build+test smoke gate) is recorded delivered.",
+      "source_citation": "roadmap-snapshot-2026-07-19.md:51 + specs/033 spec.md:24",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-064",
+      "detail_id": "port-source-basis-dart",
+      "aliases": [
+        "gleam-port-spike",
+        "dart-source-of-truth-ratification"
+      ],
+      "components": [
+        "dart-vs-csharp-decision",
+        "toolchain-standup",
+        "atomvm-feasibility-matrix",
+        "single-bind-architectural-smoke"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/031-gleam-port-spike/spec.md:9-30 + specs/034-glp-gleam-core-terms-and-heap/spec.md:11,21 (dossier §2.3 ratification) + roadmap-snapshot:49,84",
+      "test_citation": "no-test: decision-dossier deliverable (hello-GLP-term smoke recorded in dossier scope)",
+      "status_basis": "The spike rows are released/closed-delivered and 034 records the ratified decision: Dart glp_runtime/ is the single authoritative port basis, explicitly overturning the roadmap's C#-lean.",
+      "statement": "The foundational port decision — Dart as the single source-of-truth basis for the Gleam port (overturning the C#-lean), with toolchain and AtomVM feasibility evidence — is recorded delivered.",
+      "claim": "port-source-basis-dart — The foundational port decision — Dart as the single source-of-truth basis for the Gleam port (overturning the C#-lean), with toolchain and AtomVM feasibility evidence — is recorded delivered.",
+      "source_citation": "specs/034-glp-gleam-core-terms-and-heap/spec.md:11,21",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-065",
+      "detail_id": "baseline-program-dossier",
+      "aliases": [
+        "036-baseline-dossier",
+        "two-epic-reconfiguration",
+        "faithfulness-spec"
+      ],
+      "components": [
+        "d1-d16-decisions",
+        "fb-m1-m2-obligation-sets",
+        "outcome-equivalence-theorem",
+        "gap-fork-registers",
+        "two-epic-migration"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/036-glp-gleam-baseline-program/spec.md:17-66 + specs/050-full-gleam-combined/spec.md:188 (authoritative decision record) + roadmap-snapshot:85",
+      "test_citation": "no-test: research/verification program; proofs recorded in the P4 INDEX it created",
+      "status_basis": "The 036 program row is released/delivered and 050 cites its dossier (D1–D16, FB-M1/M2 obligations, outcome-equivalence Thm 3.34) as the authoritative backing for every 050 obligation.",
+      "statement": "The 036 baseline-program dossier — corpus-verified faithfulness spec, D1–D16 decisions, obligation registers, outcome-equivalence theorem, and the two-epic (Optional/Full-Gleam) reconfiguration — is recorded delivered and is the authoritative decision record behind 050.",
+      "claim": "baseline-program-dossier — The 036 baseline-program dossier — corpus-verified faithfulness spec, D1–D16 decisions, obligation registers, outcome-equivalence theorem, and the two-epic (Optional/Full-Gleam) reconfiguration — is recorded delivered and is the authoritative decision record behind 050.",
+      "source_citation": "specs/050-full-gleam-combined/spec.md:188 + roadmap-snapshot:85",
+      "confidence": 0.9,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-066",
+      "detail_id": "build-test-topology-windows",
+      "aliases": [
+        "wsl-test-native-build",
+        "gleeunit-path-defect"
+      ],
+      "components": [
+        "native-gleam-build",
+        "wsl-gleam-test",
+        "mixed-build-artifact-cleanup",
+        "host-requirement-headers"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/research.md:63-69 (R8) + baseline.md:30-35 (T005 + mixed-artifact note)",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:30 (WSL gleam test verified)",
+      "status_basis": "R8 fixes the topology (build native, test under WSL due to the gleeunit path-separator defect) and the baseline records it verified, including the build/-cleanup convention; the M2 handover later records native-gleam-test runs working via Git Bash on the executing host.",
+      "statement": "The recorded build/test topology — native Windows gleam build with WSL-hosted gleeunit runs (path-separator defect) and cross-environment build-artifact cleanup — is a delivered operational decision of the Gleam workstream.",
+      "claim": "build-test-topology-windows — The recorded build/test topology — native Windows gleam build with WSL-hosted gleeunit runs (path-separator defect) and cross-environment build-artifact cleanup — is a delivered operational decision of the Gleam workstream.",
+      "source_citation": "specs/050-full-gleam-combined/research.md:63-69 + baseline.md:30-35",
+      "confidence": 0.88,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-067",
+      "detail_id": "instance-load-and-run",
+      "aliases": [
+        "us1-standalone-instance",
+        "engine-mvp"
+      ],
+      "components": [
+        "smoke-set",
+        "staged-negative-rejection",
+        "suspension-case",
+        "dart-identical-outcomes"
+      ],
+      "grain": "user-story",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:26-39 (US1) + baseline.md:37-60 (T030 record)",
+      "test_citation": "specs/050-full-gleam-combined/baseline.md:45-53 (five-case smoke table, all agree)",
+      "status_basis": "US1's acceptance record (T030) shows the smoke set run through the engine API with Dart-identical or reference-shape outcomes, including staged SRSW/type rejection and a suspension case.",
+      "statement": "US1 — load and run GLP programs on a standalone Gleam instance with staged rejection parity and suspension behaviour — is recorded delivered via the T030 smoke record and subsequent corpus lock.",
+      "claim": "instance-load-and-run — US1 — load and run GLP programs on a standalone Gleam instance with staged rejection parity and suspension behaviour — is recorded delivered via the T030 smoke record and subsequent corpus lock.",
+      "source_citation": "specs/050-full-gleam-combined/baseline.md:37-60",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-068",
+      "detail_id": "instance-network-join",
+      "aliases": [
+        "us4-links-story",
+        "peer-to-peer-join"
+      ],
+      "components": [
+        "transport-seam-delivered",
+        "frame-codec-delivered",
+        "loopback-tcp-delivered",
+        "primitives-dist-unify-quic-open"
+      ],
+      "grain": "user-story",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/spec.md:74-87 (US4) + tasks.md:122-135 (T045-T049 [X], T050-T058 [ ]) + docs/handover/050-full-gleam-M2-restart-2026-07-13.md:3-5",
+      "test_citation": "specs/050-full-gleam-combined/tasks.md:124-126 (codec/transport smokes) vs 133-134 (round-trip/adversarial unchecked)",
+      "status_basis": "The M2 handover and tasks record US4 as in progress: the seam, FrameCodec/CRC32, loopback, and TCP delivered; link primitives, dist-unify, fault boundary, quiescence, QUIC-WS, and both adversarial suites open.",
+      "statement": "US4 (Gleam instance joins peer-to-peer links) is partially recorded delivered: transport seam, frame codec, loopback, and TCP are done, while link primitives, distributed unification, fault hardening, quiescence, and QUIC-WS remain open.",
+      "claim": "instance-network-join — US4 (Gleam instance joins peer-to-peer links) is partially recorded delivered: transport seam, frame codec, loopback, and TCP are done, while link primitives, distributed unification, fault hardening, quiescence, and QUIC-WS remain open.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:122-135 + M2-restart:3-5",
+      "confidence": 0.93,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-069",
+      "detail_id": "zmq-comm-base",
+      "aliases": [
+        "zmq-receiver-sender-base",
+        "zmq-primitives"
+      ],
+      "components": [
+        "zmq-receiver-base",
+        "zmq-sender-base"
+      ],
+      "grain": "protocol",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:13 ([refined], blocked-by multi-protocol-link-layer)",
+      "test_citation": "no-test: no spec dir exists",
+      "status_basis": "Refined roadmap row with its blocker (025) delivered; not referenced by any Gleam spec.",
+      "statement": "ZMQ base comm primitives remain a designed-unstarted transport ambition for the reference link layer, absent from the Gleam transport contract (loopback/TCP/QUIC only).",
+      "claim": "zmq-comm-base — ZMQ base comm primitives remain a designed-unstarted transport ambition for the reference link layer, absent from the Gleam transport contract (loopback/TCP/QUIC only).",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:13",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-070",
+      "detail_id": "durable-mesh-messaging",
+      "aliases": [
+        "signal-then-fetch",
+        "wal-pglite-tiering"
+      ],
+      "components": [
+        "prototype-delivered",
+        "full-protocol-captured"
+      ],
+      "grain": "protocol",
+      "status": "partial",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:55 (prototype [closed, delivered]) + :105 (full protocol [captured])",
+      "test_citation": "no-test: roadmap rows only in this corpus",
+      "status_basis": "The prototype row is closed/delivered while the full signal-then-fetch WAL/PGLite protocol is only captured, with no spec dir.",
+      "statement": "Durable mesh messaging is partially recorded: a prototype is delivered while the full signal-then-fetch WAL/PGLite-tiered protocol remains a captured, unspecified ambition.",
+      "claim": "durable-mesh-messaging — Durable mesh messaging is partially recorded: a prototype is delivered while the full signal-then-fetch WAL/PGLite-tiered protocol remains a captured, unspecified ambition.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:55,105",
+      "confidence": 0.82,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-071",
+      "detail_id": "link-completion-live-repl-bridge",
+      "aliases": [
+        "http3-quic-ws-link-completion",
+        "live-glp-repl-bridge",
+        "mesh-fix"
+      ],
+      "components": [
+        "live-repl-bridge",
+        "mesh-fix",
+        "build-reverify"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:107 ([captured])",
+      "test_citation": "no-test: captured row, no spec dir",
+      "status_basis": "Captured roadmap row naming residual QUIC/WS-link work (live glp_repl bridge, mesh fix) beyond the delivered prototype and acceptance rows.",
+      "statement": "HTTP3/QUIC+WS link completion (live glp_repl bridge, mesh fix, rebuild and re-verify) is a captured, unspecified residual ambition on the QUIC prototype line.",
+      "claim": "link-completion-live-repl-bridge — HTTP3/QUIC+WS link completion (live glp_repl bridge, mesh fix, rebuild and re-verify) is a captured, unspecified residual ambition on the QUIC prototype line.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:107",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-072",
+      "detail_id": "runtime-gap-features-reference",
+      "aliases": [
+        "nested-structure-head-matching",
+        "abandon-operation",
+        "glp-runtime-gaps-epic"
+      ],
+      "components": [
+        "nested-head-matching-row",
+        "abandon-operation-fcp-exact",
+        "comparison-guards-delivered"
+      ],
+      "grain": "interface",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:10-12 (comparison-guards [released]; nested-structure-head-matching, abandon-operation [refined])",
+      "test_citation": "no-test: refined rows have no spec dirs",
+      "status_basis": "Within the specified-but-unimplemented GLP-runtime-gaps epic, comparison-guards is recorded delivered while nested-structure HEAD matching and the FCP-exact abandon operation remain refined-unstarted.",
+      "statement": "Of the language-level runtime-gap promises, comparison guards are recorded delivered while nested-structure HEAD-phase matching and the FCP-exact abandon operation remain designed-unstarted in the reference runtimes (and correspondingly unpromised for Gleam).",
+      "claim": "runtime-gap-features-reference — Of the language-level runtime-gap promises, comparison guards are recorded delivered while nested-structure HEAD-phase matching and the FCP-exact abandon operation remain designed-unstarted in the reference runtimes (and correspondingly unpromised for Gleam).",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:10-12",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-073",
+      "detail_id": "engine-instances-scaling-research",
+      "aliases": [
+        "many-instances-shared-static-memory",
+        "cpp-engine-feasibility",
+        "llvm-research-programme"
+      ],
+      "components": [
+        "shared-static-memory-cooperative-scheduling",
+        "cpp-engine-spike",
+        "llvm-feasibility"
+      ],
+      "grain": "pattern",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:40-42 (all [refined])",
+      "test_citation": "no-test: research/feasibility rows, no spec dirs",
+      "status_basis": "Three refined separation-epic research ambitions (C++ engine feasibility, many-instance shared-static-memory cooperative scheduling, LLVM programme) are recorded designed with no starts.",
+      "statement": "The separation epic's scaling/alternative-backend research ambitions (C++ engine feasibility, many-instances shared-static-memory cooperative scheduling, staged LLVM programme) are designed-unstarted roadmap promises.",
+      "claim": "engine-instances-scaling-research — The separation epic's scaling/alternative-backend research ambitions (C++ engine feasibility, many-instances shared-static-memory cooperative scheduling, staged LLVM programme) are designed-unstarted roadmap promises.",
+      "source_citation": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md:40-42",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-074",
+      "detail_id": "embedded-switch-role-framing",
+      "aliases": [
+        "engine-as-embedded-switch",
+        "qhsm-routing-role"
+      ],
+      "components": [
+        "external-connectivity-routing",
+        "internal-os-actor-actions"
+      ],
+      "grain": "pattern",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/027-refinement-verification-framework/spec.md:178 (FR-051)",
+      "test_citation": "no-test: framing requirement inside a delivered verification framework",
+      "status_basis": "FR-051 of the delivered refinement-verification framework records the engine's target role as an embedded switch routing between external connectivity and internal OS/actor (QHSM/HSM) actions — a framing, not an implemented capability.",
+      "statement": "The engine's embedded-switch role (routing between external connectivity and internal OS/actor QHSM/HSM actions) is a recorded design framing in the verification framework, with no implementing feature in the corpus.",
+      "claim": "embedded-switch-role-framing — The engine's embedded-switch role (routing between external connectivity and internal OS/actor QHSM/HSM actions) is a recorded design framing in the verification framework, with no implementing feature in the corpus.",
+      "source_citation": "specs/027-refinement-verification-framework/spec.md:178",
+      "confidence": 0.7,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-075",
+      "detail_id": "acceptance-sweep-and-polish",
+      "aliases": [
+        "sc-acceptance-record",
+        "phase-8-polish",
+        "final-regression"
+      ],
+      "components": [
+        "acceptance-md",
+        "dossier-bookkeeping",
+        "docs-updates",
+        "final-all-green-run"
+      ],
+      "grain": "user-story",
+      "status": "designed",
+      "tag": "design-promise",
+      "evidence_type": "spec",
+      "impl_citation": "specs/050-full-gleam-combined/tasks.md:159-163 (T064-T068 all [ ])",
+      "test_citation": "no-test: T068 final regression run is itself the planned evidence",
+      "status_basis": "All Phase-8 tasks (docs, dossier sweep, SC-001..SC-009 acceptance evidence, cleanup, final regression) are unchecked.",
+      "statement": "The feature-closing acceptance sweep (SC-001..SC-009 evidence in acceptance.md, dossier obligation sweep, docs, final all-green regression) is designed but entirely unstarted.",
+      "claim": "acceptance-sweep-and-polish — The feature-closing acceptance sweep (SC-001..SC-009 evidence in acceptance.md, dossier obligation sweep, docs, final all-green regression) is designed but entirely unstarted.",
+      "source_citation": "specs/050-full-gleam-combined/tasks.md:159-163",
+      "confidence": 0.92,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    },
+    {
+      "claim_id": "b1-c1-076",
+      "detail_id": "marathon-run-position",
+      "aliases": [
+        "m2-marathon",
+        "mrun-position-truth"
+      ],
+      "components": [
+        "m1-run-discharged",
+        "m2-run-open",
+        "discharge-gates-registered"
+      ],
+      "grain": "pattern",
+      "status": "delivered",
+      "tag": "design-promise",
+      "evidence_type": "doc",
+      "impl_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:5 (M2 run mrun-6bea075ec79e; M1 run discharged; 3 M2-lock gates registered)",
+      "test_citation": "no-test: process-state record",
+      "status_basis": "The handover records the durable position-tracking design in effect: M1 marathon discharged, M2 run open with 14 US4 steps and three registered discharge gates (T061/T066/T068).",
+      "statement": "The recorded work-position design for the Gleam feature is delivered-as-recorded: M1's marathon run discharged and an open M2 run with three registered M2-lock discharge gates (16/16 capstone, acceptance sweep, final regression).",
+      "claim": "marathon-run-position — The recorded work-position design for the Gleam feature is delivered-as-recorded: M1's marathon run discharged and an open M2 run with three registered M2-lock discharge gates (16/16 capstone, acceptance sweep, final regression).",
+      "source_citation": "docs/handover/050-full-gleam-M2-restart-2026-07-13.md:5",
+      "confidence": 0.85,
+      "builder_id": "builder-1",
+      "slice_id": "slice-roadmap-specs"
+    }
+  ],
+  "coverage_manifest": [
+    {
+      "area": "docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md",
+      "state": "swept",
+      "files_seen": 1,
+      "files_in_area": 1,
+      "note": "Read in full; frozen roadmap evidence anchoring all row-state claims."
+    },
+    {
+      "area": "specs/050-full-gleam-combined",
+      "state": "swept",
+      "files_seen": 10,
+      "files_in_area": 12,
+      "note": "spec.md, plan.md, tasks.md, research.md, data-model.md, baseline.md, all 4 contracts read in full; quickstart.md and checklists/requirements.md not read (build/run commands and checklist only)."
+    },
+    {
+      "area": "specs Gleam epic (031,032,033,034,036-baseline,038,039)",
+      "state": "partially-swept",
+      "files_seen": 9,
+      "files_in_area": 67,
+      "note": "spec.md headers/US/FR sections read for all seven features plus 036 tasks.md QHSM rows and targeted greps; plan/research/tasks/contract files not exhaustively read — roadmap row states used for delivery status."
+    },
+    {
+      "area": "specs/025-multi-protocol-link-layer",
+      "state": "partially-swept",
+      "files_seen": 2,
+      "files_in_area": 31,
+      "note": "Directory enumerated; link-primitives.md grounding section read (normative source of the Gleam link contract); other contracts/tutorials sampled via grep only."
+    },
+    {
+      "area": "specs FE/BE separation (026,029)",
+      "state": "partially-swept",
+      "files_seen": 2,
+      "files_in_area": 18,
+      "note": "spec.md first ~120/100 lines read covering design areas, premise reconciliations, and clarified scopes; contracts/tasks not read."
+    },
+    {
+      "area": "specs QUIC line (036-http3-quic-ws-link, 049, 050-glp-native-quic-link)",
+      "state": "partially-swept",
+      "files_seen": 3,
+      "files_in_area": 71,
+      "note": "spec.md overview/clarifications read for all three (Profile A/C split, WSL-only ruling, C#-host mesh rulings); tasks/plan/evidence files not read."
+    },
+    {
+      "area": "specs other (001-024, 027, 028, 030, 035, 036-glp-gleam-baseline handled above, 037, 040-043)",
+      "state": "not-swept",
+      "files_seen": 1,
+      "files_in_area": 380,
+      "note": "Out of the Gleam research question except via roadmap rows and targeted greps (embeddability grep hit 027 FR-051, included); codeconv/D2NET/marathon/tutorial/crdtmsg spec bodies not read."
+    },
+    {
+      "area": "docs/handover",
+      "state": "partially-swept",
+      "files_seen": 5,
+      "files_in_area": 11,
+      "note": "050 M2-restart read in full (primary position/delivery record); T018 handover and three legacy module/union handovers header-classified; T018-moded/T021/T024/T029 restart notes not read (their content is superseded by tasks.md checkbox annotations and the M2 banner)."
+    }
+  ],
+  "questions_answered": [
+    "Q3",
+    "Q5",
+    "Q6"
+  ],
+  "retractions": []
+}

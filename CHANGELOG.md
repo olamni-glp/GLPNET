@@ -1,5 +1,85 @@
 ## [Unreleased]
 
+## [v2026.07.29.1] - 2026-07-29
+
+### Added
+- network-callable S4 mint/attenuate policy endpoint + macaroon-v2 (T035)
+- async-capable capability-gate variant beside the sync one (T034)
+
+### Fixed
+- ZMQ transport robustness (codex review) - #1 bounded establishment handshake (0x02) on both ends mirroring tcp bounded-connect so a never-appearing peer is a fault not a blocking endpoint; #2 erlzmq-absent returns erlzmq_unavailable not undef-crash; #3 malformed frame emits LinkFaultSignal not silent EOS; gleam 508/0
+- plan.md Constitution Check - avoid reproducing forbidden literal scan tokens (III/V) so artifacts don't trip their own machine-checkable gate
+
+### Changed
+- Merge pull request #115 from olamni-glp/059-full-scope-gleam-glp-implementation
+- verify(059) Wave-2 batch 2/2: T052 platform-atomvm (DELIVERED by-construction), T054 proofs (PI:14 DISCHARGED lake-green, PI:17 undischarged expected), T051 parity (harness OK but HALT/ESCALATE: corpus rc=44, 44 missing-goldens = evidence-reproducibility drift, engineer decision needed)
+- verify(059) Wave-2 batch 1/2: T039 acceptance-sweep (DELIVERED-as-verify, capstone unstarted), T049 module-scope-chain (ABSENT, single-root-prelude only), T058 transports (PARTIAL; multi-accept/quiescence ABSENT, frame-hardening DELIVERED, ZMQ premise superseded->in-contract)
+- rule(059) C: rule-quic-sideprocess-relay RESOLVED (Gabi 2026-07-27, Disposition 2) - minimal in-corpus relay smoke test required before any Wave-4 QUIC dependent; new escalation-register.md entry + enforcing WP T098 close-quic-sideprocess-relay-smoketest gating T084-T086; rulings.md updated; T036 RULED
+- impl(059) D+E: AtomVM gated probe RUN on OLAMNIT (release v0.7.0-alpha.1 wrapper, sha256-verified) -> PASS byte-identical (T021 complete, 3rd independent AtomVM confirmation); gitignore .specify/3rtask/runs evidence dir
+- docs(059) Wave-2 reconcile: mark 12 ruled rule-requests + 15 committed verify verdicts done (evidence-pointered to rulings.md / phase2-verify); research.md marathon run-id note (scoping mrun-8bda036d9e9b vs execution mrun-7e6cfbf0a9fb)
+- impl(059) Wave 1 COMPLETE: freeze-interface register (16 entries @49b52342) + 5 guard tripwires verified green (Gleam 508/0, REPL 0-fail, C# glp_link 152/0); 21 WPs + 4 setup done, 76 remain (waves 2-5)
+- tasks(059): tasks.md - 97 tasks (4 setup + 90 WPs wave-ordered + 3 polish), each WP tagged to its user story; embeddability escalation marked RESOLVED per spec clarification
+- plan(059): /bk-plan artifacts - plan.md (Constitution gate PASS) + research/data-model/quickstart + frozen-interface/parity/service-box contracts, composing the 90-WP/5-wave FINAL plan
+- merge(059): sync develop into 059-full-scope-gleam-glp-implementation
+- wip(059): COOP session artifacts + 3rtask run evidence (ring/mesh findings, kv backups, planning evidence)
+- ZMQ transport leaf (owner ruling) - zmq.gleam + glp_link_zmq_ffi.erl behind T045 seam + link_scheme.zmq(); Windows-native compiles green, baseline 465 intact; runtime WSL-provisioned via profile_zmq/
+- wave2(059): record ZMQ ruling — G5 zmq-comm-base OVERRULED by owner, ZMQ mandatory/in-scope, transport contract extended to loopback/TCP/QUIC/ZMQ (DISCIPLINE 1.14 owner-approved)
+- wave2(059): verify-quicws-link-completion-live-repl-bridge verdict (b3-c1-009) — engine-side QUIC-WS ABSENT (T055 open, no quic_ws.gleam); websocket-framing PRESENT in gleam_quic/glpq_quic.erl but unwired; profile-c-quic-acceptance ENV-BLOCKED not code-absent (WSL quicer 0.2.15 build-hook fails, no MSVC on Windows); quic-host = C#-only (no Gleam role, spec Q1); mesh out-of-scope (G5); live-repl-bridge captured residual → activates close-quicws-link-completion-live-repl-bridge
+- wave2(059): verify-link-inbound-pump verdict (b3-c1-008) — per-sublayer boundary: link-seam + link-transport-seam (loopback/TCP) DELIVERED, link-reliability PARTIAL (FrameCodec+CRC floor only), inbound-pump/link-acceptance/link-capability-gate/instance-network-join ABSENT; clean line = tasks T045-T049 done / T050-T058 open → activates close-link-inbound-pump
+- wave2(059): verify-wireproto-crdt-convergence verdict (b3-c1-012)
+- wave2(059): verify-bytecode-bytecode-instruction-set verdict (b3-c1-005) — bytecode-instruction-set + bytecode-mode-conversion DELIVERED (Op union discriminant-complete vs Dart production set + §2-14; is_reader polarity; runtime WxW via unify writer-MGU SC-004), bytecode-lint ABSENT (placeholder); FINDING: test_wxw.glp is SRSW-rejected at load (agrees only as reject-parity, not runtime WxW) → activates close-bytecode-bytecode-instruction-set (lint disposition)
+- wave2(059): verify-compiler-antlr-shared-grammar-spike verdict (b3-c1-004) — 3 DELIVERED (parser-recursive-descent/compile-mode/strict-gate), 2 ABSENT (module-static-linking + module-dynamic-dispatch: Unimplemented distribute), reduce-metainterpreter PARTIAL (blocked by missing _copy/2), antlr superseded (G5) → activates close-compiler-antlr-shared-grammar-spike
+- wave2(059): verify-febe-embedded-switch-role-framing verdict (b3-c1-013)
+- wave2(059): record F1 ruling — param-arity panic fix lands under a shared type-checker-robustness close (not close-langsurface)
+- wave2(059): verify-langsurface-channel-convention verdict (b3-c1-003) — 5/5 detail_ids DELIVERED (parity across 10 harness runs + decline-reader reject); FINDING F1: param_arity_mismatch panics on Gleam (program_dfa.gleam:580 panic vs Dart/C# graceful load-error) → activates close-langsurface-channel-convention
+- wave2(059): verify-process-baseline-program-dossier verdict (b3-c1-019)
+- wave2(059): verify-embed-embeddability-service-box verdict (b3-c1-014)
+- wave1(059): guard-atomvm-gated-probe — corroborate on source-built main AtomVM
+- wave2(059): verify-codec-compiled-il-on-the-wire verdict (b3-c1-011)
+- wave2(059): verify-multiagent-multiagent-boot-loader verdict (b3-c1-007) — all 3 ABSENT (empty module); FINDING: named reference plays malformed on BOTH runtimes (| type-alt); activates close-multiagent-multiagent-boot-loader
+- wave2(059): verify-engine-engine-composition-root verdict (b3-c1-015) — output-capture + reference-envelope DELIVERED, engine-composition-root PARTIAL (kernels compiled-in, no transport injection seam); activates close-engine-engine-composition-root
+- wave2(059): verify-repl-repl-boot-command verdict (b3-c1-006) — :trace/:limit DELIVERED, :boot/:bytecode ABSENT; activates close-repl-repl-boot-command (engineer scope Q on narrow surface)
+- wave2(059): verify-guards-guard-defined verdict (b3-c1-002) — guard-defined + guard-purity both DELIVERED (Dart/C#/Gleam parity); no close activation
+- wave1(059): guard-atomvm-gated-probe — RESOLVED
+- wave2(059): verify-runtime-arithmetic-expression verdict (b3-c1-001) — 4 DELIVERED / 3 PARTIAL / 1 ABSENT; activates close-runtime-arithmetic-expression
+- wave1(059): register — mark guard-fe-be-envelope-seam RESOLVED (3ea7dde9), pin seam golden in codec-envelope protected list, Gleam floor 463->465
+- wave1(059): guard-fe-be-envelope-seam — pin ED-1 seam bytes to golden corpus (b2-c1-001)
+- Merge pull request #114 from olamni-glp/050-full-gleam-combined
+- R1 supersession stamps - link-primitives PROPOSAL header superseded by rulings-log, arch-context ok(LinkId) superseded by self.glp:451 bare ok, tasks.md T050 authors-no-GLP scope correction
+- Merge pull request #113 from olamni-glp/059-full-scope-gleam-glp-implementation
+- clarify(059): integrate Q1 ruling - yngenios embeddability is FULL WIRING (Gleam engine as controller across all 4 spec-056 services), resolves rule-embeddability-api-yngenios-wiring
+- wave1(059): fix AOT-smoke self.glp path regex for glpnet repo name (glp->glp(net)?); Dart oracle now 532/532 green, all four baselines pinned
+- restore COOP bk-colab carve-out + drive topology to CLAUDE.md (lost again since ebc9da07) + live-vs-stale mailbox and prepend-dont-clobber discipline
+- wave1(059): frozen-interface register (17 entries) + atomvm probe runbook + path-pointer; baselines measured Gleam 463/463, C# link 147/147, C# result-codec 131/131
+- coop(seq27): open co-op dialogue with Olamnit on feature 059 full-scope Gleam GLP - mesh ownership collision, K5 acceptance-target finding, yngenios-003 wiring asks
+- impl(050): T050.C0 link-primitives port scope breakdown - ratified surface + Gleam module map + oracle + deviation list
+- impl(050): T050.A4b madGLP multi-agent parity - §10.1 client-monitor + §10.3 friend-intro in Gleam (mad_multiagent_test drives 2-3 real MadEngines over in-test routing loop = Phase-A stand-in for Phase-B mesh; run_to_quiescence drains M_p, deliver_all routes Message->receive; boot=network prelude over self.glp + appended agent clauses; §10.1: cold-call export reader Xs?->q serializer _r(p,1)+watching global_send, q localize entry, p client Xs:=[add] fires forward _r(p,1):=[add]->q, q Xs_q?=[add]; §10.3 3-agent 2-hop: bob exports X?->alice _r(bob,1) + X->charlie entry idx2 _w(bob,2), charlie X_c:=hi->_w(bob,2):=hi->bob, bob binds X X? known forwards _r(bob,1):=hi->alice, alice X_a?=hi - value flows charlie->bob->alice per exact spec §10.3 index/name/msg seq = Dart oracle; writer-assign via unit-clause-head not =; KNOWN-GAP: open-stream [add|Xs1] anon output-tail writer hits pre-existing void-slot gap, closed-list [add] same path; gleam 504->506 warning-free)
+- impl(050): T050.A4a madGLP network prelude loads through Gleam pipeline (mad_prelude_load_test reads self.glp + system/mad_predicates.glp via file:read_file FFI, asserts loader.load Ok w/ global_send/3 + send_to_net/1 callable labels; full SRSW/PE/typecheck/compile - known(T?)-guard-non-multiplicity + ground(Q?) relaxation confirmed; gleam 503->504 warning-free; ESCALATION: send_to_ui/1 + _send_to_ui host kernel spec-only, absent from self.glp+programs/, needs Gabi §1.14 decision, out of network-prelude scope)
+- impl(050): T050.A3 madGLP mad_engine.gleam wrapping scheduler.Engine in Gleam (s_p=(R_p,W_p,M_p): new/boot c0 permanent index-0 serializer entry spec-4.1; step=Reduce+Send-drain-M_p per-step returning List(Message) contract-shape; receive/3 = 3 Receive cases spec-8.3 faithful to Dart handleMadAssignment - serializer cold-call extend N_p / globalize-writer lookup-bind-remove / localize-reader search-bind-remove; Localize threads immutable heap + enqueues _w-branch global_send spawns; scheduler step_mad injects W_p reads Reduced.mad LOWERS reader-spawns to runnable global_send/3 goals drains M_p; +enqueue_global_sends/set_heap/bind_and_wake/alloc_local; missing global_send/3 or consumed-entry SURFACED not swallowed - dedup=T052 spec-v5.3-PURE; StepReduced + 3 call sites byte-identical; 7 gleeunit tests; gleam 496->503 warning-free)
+- impl(050): T050.A2 madGLP effectful-dispatch seam + _send kernel in Gleam (RATIFIED engine-surface change §1.14; parallel MadOutcome not widened KernelOutcome; RunnerContext.mad Option(MadState) threaded out on Reduced.mad like output; _send serializer=[T↑|_w(q,0)]/normal=G:=T↑ globalizing T for Q via A1; MadAbort->Failed non-fatal path; wired at BODY Spawn label-miss mad_spawn; 8 unit + 1 reduce-level seam test; gleam 487->496 warning-free)
+- impl(050): T050.A1 madGLP globalize/localize in Gleam (host-level term traversals over heap+W_p+counter; §5.1 writer=entry-no-spawn/reader=spawn-no-entry + §5.4 export-both-ends round-trip; faithful in-outcome to mad_helpers.dart; Gleam VarRef carries neither role nor pair -> read from heap tag; localize threads immutable heap for fresh pairs; 2 modules + 10 gleeunit tests; gleam 477->487, warning-free)
+- impl(050): T050.A0 madGLP W_p foundation in Gleam (global_name _w/_r polarity + immutable global_writers_table + message; single never-reused counter, index-0 serializer, created-exactly-once; gleam 463->477)
+- plan(050): T050 decomposed into madGLP Phase-A (T050.A0-A4)+Phase-B via /bk-3rtask run 20260714T072542Z-a84b; contracts/madglp-port.md; 3 escalations ratified (parallel MadOutcome+RunnerContext; spec-v5.3-pure; pure local-pair)
+- spec(059): full-scope Gleam GLP implementation - spec.md + requirements checklist from FINAL phase2 plan and gate rulings G1-G5
+- plan(fullscope-gleam): FINAL phase2 outline plan via cycle-2 resume - 88 CONFIRM, 0 blocked, 2 open escalations, dangling deps zero (run 20260719T134320Z-544f)
+- research(fullscope-gleam): record engineer gate rulings G1-G5 (resume, multiagent, mesh/yngenios, unifyconstant parity, OOS proposals)
+- upgrade buildkit integration artifacts to 2026.07.14.1
+- roadmap: export after full-scope-gleam-glp-implementation scoping (enriched+promoted, dep on 050; phase1 inventory + phase2 plan committed)
+- plan(fullscope-gleam): phase2 3rtask outline plan NON-FINAL - 66 accepted WPs waves1-5, 10 blocked, 3 escalations, 154/154 traceability (run 20260719T134320Z-544f)
+- research(fullscope-gleam): phase1 3rtask gap inventory - 154 capabilities, 44 delivered / 9 partial / 99 gap-class / 2 escalates (run 20260719T130005Z-782b)
+- research(fullscope-gleam): freeze roadmap snapshot 2026-07-19 as 3rtask phase1 evidence
+- roadmap: sync w/ olamnit - import 0713 ynet export, dedup 5 twin features + 2 empty epic shells, export 20260719T123341Z
+- Merge origin/050-full-gleam-combined (T045-T049 M2 wave) into local T043 programs
+- T043 volume-run programs - 1000-ping mesh acceptance + loopback reproducer for the egress-drainer kill defect (0/1000, blocks SC-005)
+- Merge pull request #112 from olamni-glp/058-s4-policy-service
+- macaroon-v2 shared vector conformance - 22/22 (T037)
+- impl(050): T049 US4 TCP transport (gen_tcp passive FFI; 4B BE length-prefix framing parity w/ Dart/C#; real-socket smoke; gleam 463/463)
+- impl(050): T048 US4 loopback transport (in-BEAM hub+channel processes behind seam; FIFO/close/fault parity; gleam 460/460)
+- impl(050): T046+T047 US4 FrameCodec+CRC32 Gleam port + parity (byte-parity vs Dart/C#; corpus.hex golden ride; gleam 456/456)
+- M2 restart-prep — T045 done (mark [X]), handover banner: resume mrun-6bea075ec79e at T046
+- impl(050): T045 US4 transport seam — port i_link_transport/ILinkEndpoint to Gleam (loopback|tcp|quic vocab; vtable seam below GLP)
+- Merge pull request #110 from olamni-glp/main
+
 ## [v2026.07.13.2] - 2026-07-13
 
 ### Added

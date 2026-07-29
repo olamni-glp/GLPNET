@@ -1,0 +1,104 @@
+{
+ "adjudications": [
+  {
+   "claim_id": "M-00-fact-vs-decision",
+   "decision": "CONFIRM",
+   "rationale": "Sound method boundary: decisions are reviewable from reasoning, code facts are routed as premises, and false-premise consequences are required."
+  },
+  {
+   "claim_id": "M-20-absence-claims",
+   "decision": "CONFIRM",
+   "rationale": "Correctly fixes the blind-slice absence defect by scoping absences to the viewed slice and requiring repo-scope treatment as open questions."
+  },
+  {
+   "claim_id": "M-21-critic-wildcard-repo-scope",
+   "decision": "CONFIRM",
+   "rationale": "Sound counterpart to M-20 for later code-fact adjudication: a refutation-only repo-scope critic can test absences without becoming corroborating evidence."
+  },
+  {
+   "claim_id": "M-36-agreement-is-not-verification",
+   "decision": "CONFIRM",
+   "rationale": "Sound anti-corroboration rule: independent agreement does not prove complete reasoning, and impossibility claims require counterexample search."
+  },
+  {
+   "claim_id": "M-01-reuse-never-peer",
+   "decision": "CONFIRM",
+   "rationale": "Decision is coherent and names each factual premise plus false-premise consequence. It preserves the realization-not-peer constraint."
+  },
+  {
+   "claim_id": "M-13-eb-honest-caveat-AMENDED",
+   "decision": "CONFIRM",
+   "rationale": "The amended caveat preserves the key boundary: BFT claims apply only to verified elected decisions, not unilateral local-store writes. It coherently classifies mode (a) as a downgrade and names the mint-path verification premise with the correct consequence if false."
+  },
+  {
+   "claim_id": "M-22-minting-mode",
+   "decision": "CONFIRM",
+   "rationale": "The ruling still blocks the hunt-item attack: mode (a) is only a positively elected downgrade while quorum exists, with expiry failing closed to mode (b). Quorum loss cannot trigger weak mode or keep it open indefinitely, especially when read with M-23's conjunctive clock/epoch/segment bounds."
+  },
+  {
+   "claim_id": "M-23-downgrade-window-expression",
+   "decision": "CONFIRM",
+   "rationale": "The revision closes the prior segment-scope defect: segment is required in the elected decision, bound in the credential, verified against actual local context, and fails closed on absence/mismatch. The fallback if no exact-match scope caveat exists is explicitly named as needing a new key, not silently assumed."
+  },
+  {
+   "claim_id": "M-24-exclusion-via-roster-epoch",
+   "decision": "CONFIRM",
+   "rationale": "The induction now has a non-poisonable base case: unanimous signed genesis, self-signature rejection, non-circular run_id, replay nonce, fixed epoch N thresholds, and genesis binding on all transitions. It also rejects liveness-derived shrinkage and distinguishes genesis unanimity from runtime majority."
+  },
+  {
+   "claim_id": "M-25-stable-identity",
+   "decision": "CONFIRM",
+   "rationale": "Reasoning is sound: stable identity is a prerequisite for reintegration, exclusion, roster naming, and payee identity, with secrecy tradeoff explicitly required."
+  },
+  {
+   "claim_id": "M-26-elected-ring-steering",
+   "decision": "CONFIRM",
+   "rationale": "Coherent distinction between deciding a ring and enforcing a path on a destination-routed mesh. It also honestly limits what the demonstrator can prove."
+  },
+  {
+   "claim_id": "M-27-emergent-algorithm",
+   "decision": "CONFIRM",
+   "rationale": "Properly framed as a question, not a decision. It identifies unbounded self-reported metrics and contribution enforcement as unresolved security/liveness issues."
+  },
+  {
+   "claim_id": "M-28-delivery-receipt",
+   "decision": "CONFIRM",
+   "rationale": "Sound shared-primitive decision if the premise holds, and it avoids incompatible local ACK semantics. False-premise wiring outcome is named."
+  },
+  {
+   "claim_id": "M-29-eb-escalate-ruling",
+   "decision": "CONFIRM",
+   "rationale": "Correctly separates code facts about corroboration from the security judgement of whether signed ACKs satisfy the contract. Escalation is appropriate."
+  },
+  {
+   "claim_id": "M-30-mint-authorization",
+   "decision": "CONFIRM",
+   "rationale": "Sound conditional decision: elected minting does not imply supply integrity unless the mint path verifies the elected authorization evidence."
+  },
+  {
+   "claim_id": "M-31-what-the-demonstrator-proves",
+   "decision": "CONFIRM",
+   "rationale": "Valid honesty gate. It prevents over-reading cycle counts, routing-only failover, unmeasured floors, and small-model proofs as hardware delivery evidence."
+  },
+  {
+   "claim_id": "M-34-layering",
+   "decision": "ESCALATE",
+   "rationale": "The law is clear, but whether coin is a forbidden straddle or de-facto L1 is explicitly an ownership/architecture judgement not settled by the artifact."
+  },
+  {
+   "claim_id": "M-35-additive-claim",
+   "decision": "CONFIRM",
+   "rationale": "Correctly blocks an overbroad additive claim and names surfaces whose extension has compatibility and ledger costs."
+  },
+  {
+   "claim_id": "M-32-evidence-discipline",
+   "decision": "CONFIRM",
+   "rationale": "Compliable and aligned with M-20: requires file:line evidence, scoped absence vocabulary, doc/comment labeling, and explicit unverifiable outputs."
+  },
+  {
+   "claim_id": "M-33-worktree-isolation",
+   "decision": "CONFIRM",
+   "rationale": "Sound reproducibility rule: all evidence must resolve to the pinned isolated worktree, avoiding moving-main-clone contamination."
+  }
+ ]
+}

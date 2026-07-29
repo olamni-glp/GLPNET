@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "role_id": "builder-3",
+  "role_kind": "builder",
+  "cycle": 1,
+  "parts": [
+    {
+      "part": "subject_brief",
+      "sha256": "cb3d23a843a11fbe3679ca3c32a6bfdee621aa7e8a9ce16f778545971f5366bf"
+    },
+    {
+      "part": "own_slice",
+      "sha256": "3f60a584360804029a351d286a0424dbc7a77cd743c6e95bf65d05b92a41f00c"
+    }
+  ],
+  "content_path": "D:\\BSTDEV\\research\\GLP\\GLPNET\\.specify\\3rtask\\runs\\20260719T134320Z-544f\\roles\\builder-3\\input.md",
+  "input_sha256": "b2afb76c5392140e8c4bb0c976454849665cc91b98570b5ca6a1d89eda7b3e24"
+}

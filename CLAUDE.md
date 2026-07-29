@@ -10,10 +10,13 @@
 
 ## 🔴 PGLite data-dir — use the repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
-**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, both 🔴 ABSOLUTE:
+**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, all 🔴 ABSOLUTE:
 
 1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established.
-2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place.
+2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place. **One sanctioned exception: `G:\BSTDEV\research\glp\glpnet\COOP\`** — the bk-colab mailbox (**read/write OK**). Everything else under G: glpnet stays observe-only.
+3. **Drive topology:** `GAVRI_VOL_D` is a **shared volume** — it is **G: on this host (OLAMNIT)** and **D: on the colleague host (GAVRI)**. So `G:\BSTDEV\research\glp\glpnet` here == `D:\BSTDEV\research\glp\glpnet` on GAVRI (same files). The bk-colab COOP mailbox lives on this volume so both hosts share it; the channel is **asynchronous** (the volume is not always mounted on both at once). See `COOP/PROTOCOL.md` and `/bk-colab` (in design).
+
+🔴 **The COOP mailbox in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a STALE COPY — do not read it as the channel.** It rode along in the drive swap and sits at seq 3 (2026-06-15). The live channel is **only** on the shared volume (`G:\...\COOP\`). Read the peer at `G:\...\COOP\gavri\handoff.md`; write your own side at `G:\...\COOP\olamnit\handoff.md`. Both `handoff.md` files are **newest-seq-first with older seqs preserved below** — so **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread (PROTOCOL.md rule 3's "full snapshot" is satisfied by prepending). OLAMNIT runs **more than one workstream** through this one mailbox — state which workstream you are in your seq block, and do not answer asks you have no standing on.
 
 The canonical cluster is now the repo-local one. Every `codeconv` invocation that talks to the bridge passes:
 
@@ -571,5 +574,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-- specs/050-full-gleam-combined/plan.md
+`specs/059-full-scope-gleam-glp-implementation/plan.md`
 <!-- BUILDKIT END -->

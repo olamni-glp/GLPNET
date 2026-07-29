@@ -1,0 +1,44 @@
+% quic_mesh_local_t043.glp — loopback REPRODUCER for the open T043-blocking egress defect
+% (found 2026-07-13): at PingCount 1000 the egress drainer samples a not-yet-ground cons head
+% (gen_pings binds [Msg?|Out?] before mk_ping commits Msg), the ground-relay gate throws, and
+% the catch in LinkEstablish.OnOutboundBind returns WITHOUT re-arming on the tail — one drop
+% permanently kills the drainer, so 0/1000 envelopes deliver and both goals suspend. Repro:
+% two REPLs on one host, :limit 5000000, main(node_a, R). then main(node_b, R). → both
+% suspended, one "[link egress] non-ground term ... dropped" line each, R = <unbound>.
+% (127.0.0.1:9310, 1000 pings each way; same gen_pings shape as the committed quic_mesh.glp.)
+-mode(system).
+
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+procedure main(AgentId?, Stream(_)).
+main(Me, Report?) :- Me? =?= node_a |
+    server_listener(link_id("quic", ep("127.0.0.1", 9310), 1), Link, _),
+    run_node(Link?, node_a, node_b, 1000, Report).
+main(Me, Report?) :- Me? =?= node_b |
+    client_connector(link_id("quic", ep("127.0.0.1", 9310), 1), Link, _),
+    run_node(Link?, node_b, node_a, 1000, Report).
+
+procedure run_node(Link(_, _)?, Constant?, Constant?, Integer?, Stream(_)).
+run_node(ch(In, Out?), Me, Peer, PingCount, Report?) :-
+    ground(Me?), ground(Peer?), ground(PingCount?) |
+    gen_pings(Me?, Peer?, 1, PingCount?, Out),
+    collect(In?, Report).
+
+procedure gen_pings(Constant?, Constant?, Integer?, Integer?, Stream(_)).
+gen_pings(From, To, N, Max, [Msg?|Out?]) :-
+    ground(From?), ground(To?), ground(N?), ground(Max?), N? =< Max? |
+    mk_ping(From?, To?, N?, Msg),
+    N1 := N? + 1,
+    gen_pings(From?, To?, N1?, Max?, Out).
+gen_pings(_, _, N, Max, []) :- ground(N?), ground(Max?), N? > Max? | true.
+
+procedure mk_ping(Constant?, Constant?, Integer?, CrdtMsg).
+mk_ping(From, To, N, crdtmsg("ping", From?, To?, N?, policy([], [], []), none, [])) :-
+    ground(From?), ground(To?), ground(N?) | true.
+
+procedure collect(Stream(_)?, Stream(_)).
+collect([M|In], [M?|Rest?]) :- ground(M?) | collect(In?, Rest).
+collect([], []).

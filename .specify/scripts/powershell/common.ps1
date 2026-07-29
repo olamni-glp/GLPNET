@@ -1,4 +1,10 @@
 #!/usr/bin/env pwsh
+
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+# buildkit-file-id: 6d69515b-a614-4251-bb6c-edf18186b8a8
+
 # Common PowerShell functions analogous to common.sh
 
 # Find repository root by searching upward for .specify directory

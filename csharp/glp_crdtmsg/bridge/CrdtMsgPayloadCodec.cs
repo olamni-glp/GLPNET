@@ -51,13 +51,20 @@ public sealed class CrdtMsgPayloadCodec : IPayloadCodec
     private const string Nil = "nil";
 
     /// <summary>The must-understand (odd) section types the link CARRIES verbatim — carriage, not apply
-    /// (addendum A3): the reserved CRDT op section (<see cref="UnifiedHeader.OpSectionType"/>) and the
+    /// (addendum A3): the reserved CRDT op section (<see cref="UnifiedHeader.OpSectionType"/>), the
     /// 057 E3PC control section (<see cref="E3pcCtrlCodec.SectionType"/>), so an E3PC control frame can
-    /// ride a "quic" link without the codec loud-rejecting it (codexreview 20260713T110357Z). Any OTHER
+    /// ride a "quic" link without the codec loud-rejecting it (codexreview 20260713T110357Z), and the
+    /// 058 S4 policy request/reply sections (<see cref="Policy.PolicyWire.RequestSectionType"/> /
+    /// <see cref="Policy.PolicyWire.ReplySectionType"/>) for the same reason. Any OTHER
     /// odd/must-understand section the codec does not understand still fails loud on decode (FR-005).
     /// Even/ignorable sections are always carried verbatim by the TLV codec.</summary>
-    private static readonly IReadOnlySet<long> Understood =
-        new HashSet<long> { UnifiedHeader.OpSectionType, E3pcCtrlCodec.SectionType };
+    private static readonly IReadOnlySet<long> Understood = new HashSet<long>
+    {
+        UnifiedHeader.OpSectionType,
+        E3pcCtrlCodec.SectionType,
+        Policy.PolicyWire.RequestSectionType,
+        Policy.PolicyWire.ReplySectionType,
+    };
 
     private readonly MacaroonLinkGate? _gate;
 

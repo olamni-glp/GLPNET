@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "run_id": "20260719T134320Z-544f",
+  "feature_id": "full-scope-gleam-glp-implementation",
+  "task_type": "plan",
+  "subject_ref": "Pre-verified feature OUTLINE PLAN with strong drift controls delivering ALL Phase-1 gaps in ONE roadmap feature: full-scope Gleam GLP implementation incl. front-end/back-end separation and yngenios embeddability (requirements-level). Input evidence: the committed Phase-1 inventory docs/research/fullscope-gleam/gap-inventory-2026-07-19.md split into three disjoint slices. Output: dependency-ordered work packages, each back-traceable to inventory detail_ids and forward-traceable to acceptance evidence, restart-session-safe (marathon mrun-8bda036d9e9b), with drift controls (frozen interfaces, no-silent-deferral rule, escalation register). Phase-1 run: 20260719T130005Z-782b.",
+  "branch": "050-full-gleam-combined",
+  "verdict": "review_only",
+  "halted_at": null,
+  "cycles": 2,
+  "num_builders": 3,
+  "critic_provider": "codex",
+  "independence_warning": false,
+  "terminal_review": {
+    "mode": "skipped",
+    "reason": "plan task type - /bk-codexreview terminal review not applicable (code runs only)",
+    "codexreview_run_id": null
+  },
+  "terminal_review_policy": "auto",
+  "marathon_routed": true,
+  "budgets": {
+    "min_cycles": 2,
+    "max_cycles": 2,
+    "token_budget": 350000,
+    "max_seconds": 0,
+    "review_only": true,
+    "split": {
+      "planning": 20,
+      "validation": 20,
+      "curation": 15,
+      "scan": 25,
+      "eval": 10,
+      "final": 10
+    }
+  },
+  "warnings": [],
+  "curator_edit_distance": 0.9876,
+  "created_at": "",
+  "created_by": "mvw@bancstreet.com"
+}

@@ -1,0 +1,208 @@
+using System.Diagnostics;
+using Olamnit.Kernel.Link;
+using Olamnit.Kernel.Mesh;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace Olamnit.Kernel.Tests.Mesh;
+
+/// <summary>
+/// PROBE (not a product test) — measures whether a fully-adjacent ("every node a neighbour of every other")
+/// 4-node topology can exercise multi-hop relay forwarding at all.
+///
+/// The claim under test, made to olamnit from a READING of
+/// <see cref="MeshNodeRuntime"/>.HandleInboundAsync: on a complete graph every data frame hits the
+/// <c>dest == _self</c> local-delivery branch on its FIRST hop, so the relay-forward branch never executes
+/// and a kill-one run on that topology cannot validate mesh routing. This file measures it instead of
+/// asserting it from structure.
+///
+/// Falsifiable core:
+///   K4   (complete, 6 edges) : delivery MUST happen and total Forwarded MUST be 0.
+///   Line (path,     3 edges) : delivery MUST happen and total Forwarded MUST be > 0.
+/// If the K4 case shows forwards, the claim is REFUTED and must be withdrawn to olamnit before they act.
+/// Delivery is asserted in BOTH cases so "zero forwards" can never be an artefact of nothing being sent.
+/// </summary>
+public sealed class TopologyForwardingProbe
+{
+    private readonly ITestOutputHelper _output;
+
+    public TopologyForwardingProbe(ITestOutputHelper output) => _output = output;
+
+    private sealed class Inbox
+    {
+        private readonly List<(ushort Src, byte[] Payload)> _items = new();
+        public void Deliver(ushort src, byte[] payload) { lock (_items) _items.Add((src, payload)); }
+        public int Count { get { lock (_items) return _items.Count; } }
+    }
+
+    private static void Wire(MeshNodeRuntime x, ushort xId, MeshNodeRuntime y, ushort yId, string name)
+    {
+        var (ex, ey) = LoopbackLink.CreatePair(name);
+        Assert.True(x.AddNeighbor(yId, ex, LinkScheme.Loopback));
+        Assert.True(y.AddNeighbor(xId, ey, LinkScheme.Loopback));
+    }
+
+    private static async Task<bool> WaitUntilAsync(Func<bool> cond, TimeSpan timeout)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.Elapsed < timeout)
+        {
+            if (cond()) return true;
+            await Task.Delay(15);
+        }
+        return cond();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+    // PROBE 1 — fully adjacent (K4). Every node is a direct neighbour of every other: 6 edges.
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task FullyAdjacentK4_DeliversInOneHop_NoNodeEverForwards()
+    {
+        const ushort A = 1, B = 2, C = 3, D = 4;
+        var atD = new Inbox();
+
+        var a = new MeshNodeRuntime(A, (_, _) => { });
+        var b = new MeshNodeRuntime(B, (_, _) => { });
+        var c = new MeshNodeRuntime(C, (_, _) => { });
+        var d = new MeshNodeRuntime(D, atD.Deliver);
+
+        await using (a)
+        await using (b)
+        await using (c)
+        await using (d)
+        {
+            // all 6 edges — the complete graph
+            Wire(a, A, b, B, "AB");
+            Wire(a, A, c, C, "AC");
+            Wire(a, A, d, D, "AD");
+            Wire(b, B, c, C, "BC");
+            Wire(b, B, d, D, "BD");
+            Wire(c, C, d, D, "CD");
+
+            Assert.True(await WaitUntilAsync(() => a.TryNextHop(D, out _), TimeSpan.FromSeconds(5)),
+                "A should have a route to D");
+            Assert.True(a.TryNextHop(D, out var hop));
+            _output.WriteLine($"K4: A's next hop to D = {hop} (direct = {D})");
+
+            var outcome = await a.SendAsync(D, new byte[] { 0x01, 0x02, 0x03 });
+            Assert.Equal(MeshSendOutcome.Accepted, outcome);
+
+            // delivery MUST happen — otherwise "zero forwards" proves nothing
+            Assert.True(await WaitUntilAsync(() => atD.Count >= 1, TimeSpan.FromSeconds(5)),
+                "D never received — the probe would be vacuous");
+            await Task.Delay(500);   // settle: let any relay path that DOES exist show up in the counters
+
+            long fwdA = a.Forwarded, fwdB = b.Forwarded, fwdC = c.Forwarded, fwdD = d.Forwarded;
+            long total = fwdA + fwdB + fwdC + fwdD;
+
+            _output.WriteLine($"K4 forwarded: A={fwdA} B={fwdB} C={fwdC} D={fwdD} TOTAL={total}");
+            _output.WriteLine($"K4 delivered at D: {atD.Count}");
+
+            Assert.Equal(1, atD.Count);
+            Assert.Equal(0, total);   // ← THE claim: no relay branch ever ran on a complete graph
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+    // PROBE 2 — line / path topology A-B-C-D. The control: forwarding MUST occur here.
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task LineTopology_DeliversMultiHop_RelaysDoForward()
+    {
+        const ushort A = 1, B = 2, C = 3, D = 4;
+        var atD = new Inbox();
+
+        var a = new MeshNodeRuntime(A, (_, _) => { });
+        var b = new MeshNodeRuntime(B, (_, _) => { });
+        var c = new MeshNodeRuntime(C, (_, _) => { });
+        var d = new MeshNodeRuntime(D, atD.Deliver);
+
+        await using (a)
+        await using (b)
+        await using (c)
+        await using (d)
+        {
+            // only 3 edges — a path, so A→D is genuinely 3 hops
+            Wire(a, A, b, B, "AB");
+            Wire(b, B, c, C, "BC");
+            Wire(c, C, d, D, "CD");
+
+            Assert.True(await WaitUntilAsync(() => a.TryNextHop(D, out var h) && h == B, TimeSpan.FromSeconds(5)),
+                "A should converge to D via B");
+            _output.WriteLine("Line: A converged to D via B");
+
+            var outcome = await a.SendAsync(D, new byte[] { 0x01, 0x02, 0x03 });
+            Assert.Equal(MeshSendOutcome.Accepted, outcome);
+
+            Assert.True(await WaitUntilAsync(() => atD.Count >= 1, TimeSpan.FromSeconds(5)), "D never received");
+            await Task.Delay(500);
+
+            long fwdA = a.Forwarded, fwdB = b.Forwarded, fwdC = c.Forwarded, fwdD = d.Forwarded;
+            long total = fwdA + fwdB + fwdC + fwdD;
+
+            _output.WriteLine($"Line forwarded: A={fwdA} B={fwdB} C={fwdC} D={fwdD} TOTAL={total}");
+            _output.WriteLine($"Line delivered at D: {atD.Count}");
+
+            Assert.Equal(1, atD.Count);
+            Assert.True(total > 0, "the relay branch MUST run on a path topology");
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+    // PROBE 3 — incidental to the topology question, but conservation-relevant so MEASURED not read:
+    // there is no end-to-end ack; _pending is cleared only at deadline expiry (RetransmitLoopAsync), which
+    // routes through StageExpiredToPartitionQueue and increments _dropped. So a SUCCESSFULLY-DELIVERED
+    // message may ALSO be counted as a source-side drop once its MessageTtl elapses. Measure whether that
+    // is true, because a counter that double-books delivered traffic as dropped would corrupt any
+    // conservation ledger built on these counters.
+    // ════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DeliveredMessage_AfterTtlElapses_IsAlsoCountedAsSourceDrop()
+    {
+        const ushort A = 1, B = 2, C = 3, D = 4;
+        var atD = new Inbox();
+
+        // short TTL so the probe does not sit for the 5 s default
+        var opts = MeshRuntimeOptions.Default with { MessageTtl = TimeSpan.FromMilliseconds(600) };
+
+        var a = new MeshNodeRuntime(A, (_, _) => { }, opts);
+        var b = new MeshNodeRuntime(B, (_, _) => { }, opts);
+        var c = new MeshNodeRuntime(C, (_, _) => { }, opts);
+        var d = new MeshNodeRuntime(D, atD.Deliver, opts);
+
+        await using (a)
+        await using (b)
+        await using (c)
+        await using (d)
+        {
+            Wire(a, A, b, B, "AB");
+            Wire(b, B, c, C, "BC");
+            Wire(c, C, d, D, "CD");
+
+            Assert.True(await WaitUntilAsync(() => a.TryNextHop(D, out var h) && h == B, TimeSpan.FromSeconds(5)),
+                "A should converge to D via B");
+
+            Assert.Equal(MeshSendOutcome.Accepted, await a.SendAsync(D, new byte[] { 0x0A }));
+            Assert.True(await WaitUntilAsync(() => atD.Count >= 1, TimeSpan.FromSeconds(5)), "D never received");
+
+            long droppedAtDeliveryTime = a.Dropped;
+            _output.WriteLine($"A.Dropped immediately after successful delivery = {droppedAtDeliveryTime}");
+
+            // let the TTL elapse so the retransmit loop expires the (already-delivered) pending entry
+            await Task.Delay(1200);
+
+            _output.WriteLine($"A: originated={a.Originated} dropped={a.Dropped}");
+            _output.WriteLine($"D: delivered={d.Delivered} duplicates={d.Duplicates}");
+            _output.WriteLine($"one message, delivered exactly once at D, yet source-side dropped={a.Dropped}");
+
+            Assert.Equal(1, atD.Count);          // delivered exactly once — the message genuinely arrived
+            Assert.Equal(1, d.Delivered);
+            Assert.Equal(1, a.Originated);
+            Assert.Equal(1, a.Dropped);          // ← and ALSO booked as a drop: originated=1, delivered=1, dropped=1
+        }
+    }
+}

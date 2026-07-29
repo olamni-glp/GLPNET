@@ -1,0 +1,238 @@
+{
+  "claims": [
+    {
+      "claim": "No benchmark record of any kind exists in feature 059's evidence tree at pin 02bcc20: both specs/059-hw-3device-mesh-failover/evidence/runs/ and evidence/sessions/ contain only an EMPTY .gitkeep file (git blob e69de29b, the canonical empty blob), so any throughput or cycle-rate figure attributed to a 059 bench run is unsupported by a named record.",
+      "source_citation": "git ls-tree -r 02bcc20 -- specs/059-hw-3device-mesh-failover/evidence/runs/ evidence/sessions/ => only '100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 .gitkeep' for each",
+      "confidence": 0.97,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "Feature 059's own discharge ledger states in prose that no hardware run has ever happened ('Status: pre-bench. No bench session has run.'), and every hardware cell in it is banded DEVICE-SPIKE with the reason 'no bench session yet' — so 059 supplies zero measured on-radio evidence for any soak arithmetic.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/discharge-ledger.md:23-25 and :44-48, :54-58",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The entire vocabulary of the meshtest-recure-ring subject is absent from both of its supposed evidence sources: a case-insensitive grep for 'ucoin', 'coin', 'reward', 'soak', '1,000,000', '1000000', '1_000_000', '1M-cycle' and 'ed25519' across specs/059-hw-3device-mesh-failover/ and tools/mesh-bench/ returns ZERO matches at pin 02bcc20.",
+      "source_citation": "grep -rniE 'ucoin|\\bcoin\\b|reward|soak|1,000,000|1000000|1_000_000|1M[- ]cycle|ed25519' specs/059-hw-3device-mesh-failover/ tools/mesh-bench/ => no output, exit 0",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The shipped bench controller cannot run a >=1,000,000-cycle ring soak because it has no such scenario: tools/mesh-bench/bench.py declares a closed scenario set SCENARIOS = {'bringup','e2e-delivery','failover','heal','partition','kv-flow-failover','hop-latency'} with no soak, ring, or cycle-count scenario, and argparse restricts the scenario argument to exactly that set.",
+      "source_citation": "tools/mesh-bench/bench.py:34 (SCENARIOS literal) and bench.py:358 (ap.add_argument('scenario', ..., choices=sorted(SCENARIOS)))",
+      "confidence": 0.95,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The ONLY measured radio latency figure available anywhere in the crypto/durability/evidence slice is 'L2CAP RTT p50 122 ms', and it is explicitly attributed to feature 013 on a 2-node link — not to any 059 measurement; 059's own per-hop latency cell (SC-004, p50<200/p99<400) is banded DEVICE-SPIKE with 'no bench session yet'.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:50 ('Latency evidence on radio so far: L2CAP RTT p50 122 ms (013, 2-node).'); discharge-ledger.md:46",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The premise that fsync rather than BLE binds the 1,000,000-cycle throughput budget is contradicted by the only measured transport number in evidence: at the recorded L2CAP p50 RTT of 122 ms, 1,000,000 serialized cycles cost 122,000 s = approximately 33.9 hours of pure radio time, and no fsync measurement exists anywhere in the slice to compare against, so the radio — not fsync — is the only floor with any measured basis. (INFERENCE from the 122 ms record; assumes one non-pipelined 2-node RTT per cycle, sustained p50, no failover stalls; a real >=3-hop ring across four devices would cost MORE radio time per cycle, not less, so this is a lower bound.)",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:50 (122 ms p50 RTT) + arithmetic 1e6 * 0.122 s = 122,000 s; no fsync figure returned by grep -rniE 'fsync|throughput|ops/s' over specs/059 + tools/mesh-bench (zero hits)",
+      "confidence": 0.8,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": "The fsync/group-commit throughput floor (fsync, not BLE) binds the 1M-cycle budget."
+    },
+    {
+      "claim": "No fsync cost, group-commit rate, or durable-append throughput figure is recorded anywhere in the slice's evidence sources, so the claim that a fsync/group-commit floor binds the 1M-cycle budget is UNSUPPORTED by any named benchmark record at pin 02bcc20 and rests on an unstated assumed fsync latency.",
+      "source_citation": "grep -rniE 'fsync|group.commit|throughput|ops/s|per second' over specs/059-hw-3device-mesh-failover/ and tools/mesh-bench/ => zero hits; evidence/runs/ empty (git ls-tree)",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The durable commit path performs an unbatched fsync per unit of work: DurableExecutor appends exactly one CommitRecord then immediately awaits _commitJournal.CommitAsync(ct) as the commit point, with no batching, no group commit, and no accumulation across triggers — one durable flush per trigger is structural.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:178-179 (_commitJournal.Append(...); await _commitJournal.CommitAsync(ct); // COMMIT POINT (durable))",
+      "confidence": 0.93,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "IdempotentSink defaults to DurabilityMode.FsyncAlways and issues a second durable flush per delivered message (await _wal.CommitAsync(ct) inside WriteAsync), so a relayed hop that commits a unit of work AND delivers one local outbox item costs at least TWO fsyncs, not one — doubling any per-cycle durable-write budget derived from a single-fsync assumption.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:24 (DurabilityMode mode = DurabilityMode.FsyncAlways) and IdempotentSink.cs:42-43; reached per outbox item from DurableExecutor.cs:206-208 (PublishAsync -> sink.WriteAsync)",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "No group-commit, batching, or write-coalescing mechanism exists in Olamnit/Olamnit.Kernel/DurableExecution/ at pin 02bcc20 — a plan that relies on group commit to make a 1M-cycle budget close depends on code that must still be written.",
+      "source_citation": "grep -rniE 'fsync|flush|group.commit|batch|throughput' Olamnit/Olamnit.Kernel/DurableExecution/ => matches are only doc-comment prose about a single fsync'd append (CommitRecord.cs:6, UnitOfWork.cs:15) and IdempotentSink.cs:24 FsyncAlways; no batching implementation",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "A symbol named 'SealSet' does not exist anywhere in Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ at pin 02bcc20 — the directory contains exactly six files (AmuletVerifier.cs, CanonicalCbor.cs, Ed25519Signer.cs, IDeviceSealKey.cs, Macaroon.cs, Seal.cs) and a grep for 'SealSet' returns zero hits, so a plan element phrased as 'reuse SealSet rather than re-implement' names an artifact that is not present under that name.",
+      "source_citation": "git ls-tree -r 02bcc20 -- Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ (6 files); grep -n 'SealSet' over that directory => zero hits",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The shipped device signing key is regenerated on every process launch — InMemoryDeviceSealKey's constructor calls RandomNumberGenerator.GetBytes(32) for a fresh seed held in memory only and never persisted — so a device's Ed25519 public key identity CHANGES across a restart, which structurally defeats a soak that must survive a kill-one: after the killed node restarts, its post-restart key cannot verify or continue any signature chain minted under its pre-restart key.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/IDeviceSealKey.cs:40-44 (constructor generates seed) and :28-32 + :10-11 doc ('a fresh seed is generated per app launch/session', 'never persisted')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The shipped amulet verifier refuses every foreign key by construction and therefore cannot verify a peer device's signature: Ed25519AmuletVerifier fixed-time-compares the seal's embedded public key against a single IAmuletTrustAnchor.TrustedPublicKey and returns (false, 'untrusted key') on any mismatch, and the only IAmuletTrustAnchor implementation present in Seal/ is DeviceSealTrustAnchor, which pins the LOCAL device's own key.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:100-101 (FixedTimeEquals -> 'untrusted key'), :59-62 (DeviceSealTrustAnchor => key.PublicKey); grep 'IAmuletTrustAnchor|class .*TrustAnchor' over Seal/ finds only these two",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The Seal stack is documented as single-device by design — 'In-process the device's own key IS the single trust root (one device / one session)' — so a four-device relay ring (olamnit+gavri+tablet+phone) in which each node verifies its predecessor's signature requires a multi-key trust anchor that does not exist in Seal/ at pin 02bcc20; I could not verify whether a multi-key anchor exists elsewhere in the repo, as that is outside my evidence slice.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/AmuletVerifier.cs:41-47 (IAmuletTrustAnchor doc block, 'one device / one session')",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The macaroon caveat key set is closed and fail-closed — EnforceCaveats switches over exactly {exp, scope, audience, resource, tbl, kpfx} and its default branch returns (false, 'unknown caveat key: {k}') — so hop-chain data (a predecessor hash, hop index, or cycle counter) CANNOT be threaded through a caveat without editing Macaroon.cs, which contradicts any wrap-never-replace / additive-only framing of the ring work.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:56-88 (switch with default => 'unknown caveat key')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The Ed25519-signed payload has no field capable of representing a chain of relay hops: CanonicalCbor.SigningPayload signs exactly { 'block': FetchDescriptor, 'macaroon': Macaroon }, where FetchDescriptor carries only (ResourceId, Audience, Scope, IssuedForIdentity) and Macaroon carries only (Identifier, Caveats, Sig) — there is no predecessor-hash, sequence, hop-index, or cycle field anywhere in the signed bytes, so an 'Ed25519-chained relay' has no representation in the shipped seal format.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/CanonicalCbor.cs:23-57 (SigningPayload/WriteDescriptor/WriteMacaroon field lists); Seal.cs:9 (FetchDescriptor record); Macaroon.cs:25 (Macaroon record)",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The macaroon's HMAC chain is a per-credential CAVEAT-attenuation chain computed under one device's mint-time key (sig = HMAC(...HMAC(HMAC(key, id), cav0)..., cavN)), NOT a cross-device chain of relay hops — so citing the existing 'HMAC-chain' as the ring's hop chain conflates two different constructs, and the mint key is derived from a seed that never leaves one device.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:9-10 (chain formula), :28-34 (Chain implementation); IDeviceSealKey.cs:21-25 (DeriveHmacKey, 'never leaves the signer')",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "Amulet expiry has whole-day granularity only (the exp caveat is a DateOnly parsed by DateOnly.TryParse and enforced as 'now > exp'), which cannot express a soak boundary finer than a day; combined with the 122 ms p50 RTT record, a 1,000,000-cycle serialized soak runs approximately 33.9 hours and therefore crosses a day boundary, so an amulet minted with exp = today expires mid-soak and every subsequent hop fails closed with 'amulet expired'. (The expiry granularity is READ; the 33.9 h crossing is INFERENCE under the serialized-cycle assumptions stated elsewhere.)",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Macaroon.cs:58-61 (exp caveat, DateOnly, 'amulet expired') and :20 ('exp (whole-day DateOnly)'); AmuletVerifier.cs:18 (DateOnly exp parameter); specs/059-.../research.md:50 (122 ms)",
+      "confidence": 0.78,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The durable-execution layer has unbounded in-memory retention with no compaction: DurableExecutor keeps a HashSet _committed and a Dictionary _byTriggerId holding the FULL CommitRecord (including its payloads) for every trigger ever committed, IdempotentSink keeps a _seen HashSet plus a _records List holding every key and payload, and a grep for evict/compact/truncate/prune/ceiling/Remove(/Clear( across DurableExecution/ finds no eviction site at all — only Add sites. At 1,000,000 cycles this retains 1,000,000 commit records plus 1,000,000 sink payloads in RAM per node, which is a first-order OOM risk on the tablet and phone legs.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:56-57 (fields), :120-121, :180-181 (Add sites); IdempotentSink.cs:18-19 (fields), :31-32, :44-45 (Add sites); grep -rniE 'evict|compact|truncat|prune|ceiling|Remove\\(|Clear\\(' DurableExecution/ => no eviction implementation",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "Crash recovery is O(total history), not O(recent), and gets monotonically slower as a soak progresses: DurableExecutor.OpenAsync replays the ENTIRE commit journal from offset 0 folding every record into state, and IdempotentSink.OpenAsync replays its entire WAL from offset 0 rebuilding the seen-set — so the 'survive kill-one' restart at cycle ~900,000 must replay ~900,000 records before the node can accept its next hop, a recovery cost no recorded measurement bounds.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:116-123 (await foreach commitJournal.ReplayAsync(0, ct)); IdempotentSink.cs:28-33 (await foreach wal.ReplayAsync(0))",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "No CRC, checksum, or frame-resume mechanism exists in either code source of the crypto/durability slice — a case-insensitive grep for 'crc|checksum|resume' across Olamnit/Olamnit.Kernel/DurableExecution/ and Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ returns zero hits at pin 02bcc20, so I could not verify the existence of the 'CRC-frame resume' mechanism; if it exists it lives in Olamnit.Kernel/Persistence/ or Olamnit.Kernel/Mailbox/, which are outside my evidence slice.",
+      "source_citation": "grep -rniE 'crc|checksum|resume' Olamnit/Olamnit.Kernel/DurableExecution/ Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/ => zero hits",
+      "confidence": 0.88,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "I could not verify what DurabilityMode.FsyncAlways actually costs or even whether it issues a real fsync, because FileWriteAheadLog and DurabilityMode are declared in the Olamnit.Kernel.Mailbox namespace (imported by IdempotentSink) which is outside my evidence slice — therefore any per-cycle durable-write figure in the plan rests on an unverified assumption about media, record format, and flush semantics.",
+      "source_citation": "Olamnit/Olamnit.Kernel/DurableExecution/IdempotentSink.cs:3 (using Olamnit.Kernel.Mailbox;) and :26 (new FileWriteAheadLog(directory, mode, 0)) — definition not present under DurableExecution/",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The only PASS-producing records in feature 059's evidence tree are hand-authored synthetic fixtures, not measurements: tools/mesh-bench/README.md describes evidence/fixtures/ as 'hand-authored JSONL', and the bringup-happy manifest carries commit:'dry-run', sessionId:'dry-run' and an invented timing atMs:10 — so the ledger's GREEN controller-path cell proves the controller's assertion arithmetic, and provides no timing or throughput evidence whatsoever.",
+      "source_citation": "tools/mesh-bench/README.md:58-63 ('hand-authored JSONL replayed by --dry-run'); specs/059-hw-3device-mesh-failover/evidence/fixtures/bringup-happy/manifest.json:2-6,22-24 (runId/sessionId 'dry-run', commit 'dry-run', atMs 10); discharge-ledger.md:35",
+      "confidence": 0.92,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The Ed25519 signing primitive and the durable commit chain live in DIFFERENT assemblies — Ed25519Signer/Seal are in namespace Olamnit.Shared.Yngenios.Seal under Olamnit/Olamnit/Olamnit.Shared/, while DurableExecutor is in namespace Olamnit.Kernel.DurableExecution and imports only Olamnit.Kernel.* namespaces — so signing a durable commit chain inside the kernel would require a Kernel->Shared reference; I could not verify whether that reference direction is permitted, as the .csproj files are outside my evidence slice. (Namespaces and imports are READ; the reference-direction consequence is INFERENCE.)",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Ed25519Signer.cs:3 (namespace Olamnit.Shared.Yngenios.Seal); Olamnit/Olamnit.Kernel/DurableExecution/DurableExecutor.cs:1-5 (using Olamnit.Kernel.Edge/Mailbox/Persistence; namespace Olamnit.Kernel.DurableExecution)",
+      "confidence": 0.6,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "The Ed25519 primitive allocates a fresh managed copy of the message on every sign and every verify (message.ToArray() in both paths), so a 1,000,000-cycle chained soak incurs at least 1,000,000 avoidable payload copies per signing node plus another per verifying node — a real but second-order cost next to the radio and fsync floors, and one no recorded benchmark measures.",
+      "source_citation": "Olamnit/Olamnit/Olamnit.Shared/Yngenios/Seal/Ed25519Signer.cs:29-31 (var msg = message.ToArray() in Sign) and :41-42 (var msg = message.ToArray() in Verify)",
+      "confidence": 0.85,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    },
+    {
+      "claim": "Feature 059's research explicitly records that the shipped secure link transport is composed on NO radio path today and that mesh frames currently cross links in clear, so a ring soak that assumes signed/sealed frames already ride the real radio legs is assuming bench-composition work (059 D5) that is itself banded DEVICE-SPIKE and has never run on hardware.",
+      "source_citation": "specs/059-hw-3device-mesh-failover/research.md:29-31 ('The shipped K1 SecureLinkTransport ... is composed on **no** radio path today; mesh frames cross links in clear (TODO(FR-012)...)'); discharge-ledger.md:47 (Android<->Pi interop DEVICE-SPIKE, 'has never run')",
+      "confidence": 0.9,
+      "tag": "risk",
+      "builder_id": "builder-3",
+      "slice_id": "slice-crypto-durability-evidence",
+      "negates": null
+    }
+  ]
+}

@@ -1,0 +1,2099 @@
+{
+  "builder": "builder-3",
+  "cycle": 2,
+  "claims": [
+    {
+      "claim_id": "b3-c1-001",
+      "wp_id": "verify-runtime-arithmetic-expression",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "arithmetic-expression",
+        "external-io",
+        "heap-value-copy-semantics",
+        "scheduler-fairness",
+        "stream-mutual-reference",
+        "suspension-abandonment",
+        "suspension-diagnostics",
+        "system-predicate-registry"
+      ],
+      "deliverable": "Existence/scope verdict (DELIVERED/ABSENT per detail_id) for the eight runtime-core capabilities in the Gleam runtime: arithmetic Exp evaluation, host I/O bridge, value-copy heap invariants, FIFO fairness plus bounded tail-recursion yield, O(1) mutual-reference stream append, suspension abandonment, drain-result suspension diagnostics, and the three-valued system-predicate registry.",
+      "acceptance_evidence": "Run rg -n 'abandon|fairness|external_io|system_predicate|mutual|drain' glp_gleam/src and wsl -e bash -lc 'cd glp_gleam && gleam test'; execute programs/tests/typed/arith_comparison.glp, programs/tests/test_mutual_ref.glp and programs/tests/test_time_guard.glp through the T041 differential harness; verdict table committed at docs/research/fullscope-gleam/phase2-verify/verify-runtime-arithmetic-expression.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Gleam module names may not mirror Dart file names, so a pure grep can miss delivered code and each ABSENT verdict must be confirmed by a failing corpus program.",
+      "statement": "unchanged from b3-c1-001: One batched existence check settles code testimony for all eight unconfirmed runtime-core semantics gaps.",
+      "claim": "verify-runtime-arithmetic-expression — one batched existence check settles code testimony for all eight unconfirmed runtime-core semantics gaps.",
+      "source_citation": "sliceC section 7: arithmetic-expression (b3-c1-017), external-io (b3-c1-018), heap-value-copy-semantics (b1-c1-013), scheduler-fairness (b3-c1-009), stream-mutual-reference (b3-c1-016), suspension-abandonment (b3-c1-008), suspension-diagnostics (b3-c1-010), system-predicate-registry (b3-c1-015)",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-002",
+      "wp_id": "verify-guards-guard-defined",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "guard-defined",
+        "guard-purity"
+      ],
+      "deliverable": "Existence/scope verdict for runtime-defined guards (side-table compilation, three-valued evaluation) and guard purity enforcement in the Gleam runtime.",
+      "acceptance_evidence": "Run rg -n 'guard' glp_gleam/src; execute programs/tests/test_defined_guards.glp plus one negative guard-purity program through the Gleam runner and diff against Dart; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-guards-guard-defined.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Guard purity is normative-doc-locked (manual section 6) with no in-slice negative harness, so an equivalent negative case must be run rather than assumed.",
+      "statement": "unchanged from b3-c1-002: A two-gap batch check establishes whether the Gleam guard system implements defined guards and purity.",
+      "claim": "verify-guards-guard-defined — a two-gap batch check establishes whether the Gleam guard system implements defined guards and purity.",
+      "source_citation": "sliceC section 7: guard-defined (b3-c1-012), guard-purity (b3-c1-013)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-003",
+      "wp_id": "verify-langsurface-channel-convention",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "channel-convention",
+        "clause-programming-idioms",
+        "srsw-anonymous-writer",
+        "type-guard-set",
+        "type-parameterized"
+      ],
+      "deliverable": "Verdict on whether the Gleam type-checker/parser honors the normative language surface: Channel convention, bind/inject/handle/do idioms, anonymous-writer SRSW exemption, the fixed self.glp guard vocabulary, and parameterized types.",
+      "acceptance_evidence": "Execute programs/tests/test_new_channel_guard.glp, test_channel_route.glp, test_passthrough.glp, test_ground.glp, test_channel_guards.glp and the programs/tests/typed/ corpus through the Gleam corpus runner against Dart goldens; per-detail_id verdicts at docs/research/fullscope-gleam/phase2-verify/verify-langsurface-channel-convention.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Idioms pervade the corpus rather than one test, so the check must sample enough typed programs to avoid a false DELIVERED from a narrow pass.",
+      "statement": "unchanged from b3-c1-003: Corpus-driven checks convert five normative language-surface gaps into concrete pass/fail testimony.",
+      "claim": "verify-langsurface-channel-convention — corpus-driven checks convert five normative language-surface gaps into concrete pass/fail testimony.",
+      "source_citation": "sliceC section 7: channel-convention (b3-c1-073), clause-programming-idioms (b3-c1-071), srsw-anonymous-writer (b3-c1-072), type-guard-set (b3-c1-025), type-parameterized (b3-c1-024)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-004",
+      "wp_id": "verify-compiler-antlr-shared-grammar-spike",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "antlr-shared-grammar-spike",
+        "compile-mode-directive",
+        "compiler-strict-mode",
+        "module-dynamic-dispatch",
+        "module-static-linking",
+        "parser-recursive-descent",
+        "reduce-metainterpreter"
+      ],
+      "deliverable": "Existence/scope verdict for the Gleam compiler chain: hand-ported recursive-descent parser, system compile-mode directive, strict-types gate, project static linking, dynamic _activate/_select dispatch, reduce/2 generation, and confirmation that no ANTLR artifact exists on the BEAM path (Glp.g4 status recorded).",
+      "acceptance_evidence": "Run rg -n 'strict|_activate|_select|reduce|linker|antlr' glp_gleam/src plus rg -l 'Glp.g4' across the repo; execute programs/tests/modules/, programs/tests/dynamic_dispatch/, programs/tests/tracing_meta.glp, programs/system/mad_predicates.glp and programs/tests/type_errors/ through the Gleam runner; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-compiler-antlr-shared-grammar-spike.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Compile-mode and reduce/2 generation are compiler-internal and may pass corpus runs while diverging internally, so negative programs (type_errors/) are required in the check.",
+      "statement": "unchanged from b3-c1-004: One compiler-subsystem batch check covers seven parser/compiler gaps including the concrete ANTLR-absence check that grounds the superseded proposal.",
+      "claim": "verify-compiler-antlr-shared-grammar-spike — one compiler-subsystem batch check covers seven parser/compiler gaps including the concrete ANTLR-absence check that grounds the superseded proposal.",
+      "source_citation": "sliceC section 7: antlr-shared-grammar-spike (b1-c1-050), compile-mode-directive (b3-c1-030), compiler-strict-mode (b3-c1-020), module-dynamic-dispatch (b3-c1-029), module-static-linking (b3-c1-028), parser-recursive-descent (b1-c1-005), reduce-metainterpreter (b3-c1-031)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-005",
+      "wp_id": "verify-bytecode-bytecode-instruction-set",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "bytecode-instruction-set",
+        "bytecode-lint",
+        "bytecode-mode-conversion"
+      ],
+      "deliverable": "Verdict on Gleam conformance to the v2.16 instruction set (discriminant-by-discriminant diff against docs/glp-bytecode-v216-complete.md sections 2-14), mode-aware GetVariable/GetValue polarity with the WxW restriction, and existence of any bytecode-linter port.",
+      "acceptance_evidence": "Diff the Gleam opcode enumeration against docs/glp-bytecode-v216-complete.md (mirroring csharp/glp_il_codec.tests/DiscriminantCompletenessTests.cs); execute programs/tests/test_wxw.glp via the differential harness; rg -n 'lint' glp_gleam/src; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-bytecode-bytecode-instruction-set.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "The Gleam instance may be tree-walking rather than bytecode-level, in which case the verdict must state the conformance target is unmet by construction and escalate scope, not silently pass.",
+      "statement": "unchanged from b3-c1-005: A discriminant-completeness diff plus WxW execution settles the three bytecode-level conformance gaps.",
+      "claim": "verify-bytecode-bytecode-instruction-set — a discriminant-completeness diff plus WxW execution settles the three bytecode-level conformance gaps.",
+      "source_citation": "sliceC section 7: bytecode-instruction-set (b3-c1-006), bytecode-lint (b3-c1-070), bytecode-mode-conversion (b3-c1-007)",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-006",
+      "wp_id": "verify-repl-repl-boot-command",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "repl-boot-command",
+        "repl-bytecode-command",
+        "repl-limit-command",
+        "repl-trace-command"
+      ],
+      "deliverable": "Existence/scope verdict on whether the Gleam instance front surface provides :boot, :bytecode disassembly, :limit and :trace equivalents, or whether these are host-level controls out of the Gleam surface.",
+      "acceptance_evidence": "Run rg -n 'boot|limit|trace|bytecode|command' over the Gleam frontend/entry modules in glp_gleam/src; drive the Gleam entry point with each command scripted and record observed behavior; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-repl-repl-boot-command.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "The Gleam instance may intentionally expose a narrower non-interactive surface, so the check must distinguish absent-capability from relocated-capability before any close work.",
+      "statement": "unchanged from b3-c1-006: A single front-surface inspection resolves all four REPL-command gaps.",
+      "claim": "verify-repl-repl-boot-command — a single front-surface inspection resolves all four REPL-command gaps.",
+      "source_citation": "sliceC section 7: repl-boot-command (b3-c1-036), repl-bytecode-command (b3-c1-034), repl-limit-command (b3-c1-035), repl-trace-command (b3-c1-033)",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-007",
+      "wp_id": "verify-multiagent-multiagent-boot-loader",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "multiagent-boot-loader",
+        "multiagent-global-send",
+        "multiagent-isolate-manager"
+      ],
+      "deliverable": "Existence/scope verdict for the madGLP multiagent layer in Gleam: declarative boot files with @agent spawn directives, the global-send protocol over a globalized-writer table, and per-agent process isolation (BEAM processes standing in for Dart isolates).",
+      "acceptance_evidence": "Run rg -n 'boot|global|agent|spawn' glp_gleam/src; attempt programs/multiagent/play_alice_bob.glp and programs/tests/test_relay_send.glp on the Gleam instance and record outcomes; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-multiagent-multiagent-boot-loader.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "The multiagent layer is the most likely wholly-absent subsystem, so the check must scope the port cost honestly rather than fold it into a generic ABSENT.",
+      "statement": "unchanged from b3-c1-007: One batch check determines whether any of the three multiagent capabilities exist in Gleam and sizes the port if not.",
+      "claim": "verify-multiagent-multiagent-boot-loader — one batch check determines whether any of the three multiagent capabilities exist in Gleam and sizes the port if not.",
+      "source_citation": "sliceC section 7: multiagent-boot-loader (b3-c1-043), multiagent-global-send (b3-c1-044), multiagent-isolate-manager (b3-c1-042)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-008",
+      "wp_id": "verify-link-inbound-pump",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "inbound-pump",
+        "instance-network-join",
+        "link-acceptance",
+        "link-capability-gate",
+        "link-reliability",
+        "link-seam",
+        "link-transport-seam"
+      ],
+      "deliverable": "Code-vs-record verdict for the Gleam link stack: transport seam registry, T045 seam modules, inbound-pump ingress, link primitives, reliability sublayer (windowing/ordering/fencing/cycle-guard/reclaim), capability gate, and US4 open remainder (T050-T058) reconciled against actual glp_gleam code.",
+      "acceptance_evidence": "Run ls -R glp_gleam/src (link/seam/reliability directories) diffed against glp_runtime/lib/link/ and csharp/glp_link/ module lists; execute programs/tests/link/bidi.glp and mon.glp over the Gleam loopback and TCP transports; cross-check specs/050-full-gleam-combined/tasks.md 122-135 checkboxes against found code; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-link-inbound-pump.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "US4 is recorded partial, so the check must produce a per-sublayer boundary (delivered seam/codec/loopback/TCP vs open primitives/reliability/gate) instead of one batch verdict.",
+      "statement": "unchanged from b3-c1-008: A module-list diff plus link-program execution fixes the exact delivered/absent boundary across seven link-layer gaps.",
+      "claim": "verify-link-inbound-pump — a module-list diff plus link-program execution fixes the exact delivered/absent boundary across seven link-layer gaps.",
+      "source_citation": "sliceC section 7: inbound-pump (b3-c1-048), instance-network-join (b1-c1-068), link-acceptance (b3-c1-058), link-capability-gate (b3-c1-065), link-reliability (b3-c1-051), link-seam (b3-c1-047), link-transport-seam (b1-c1-027)",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-009",
+      "wp_id": "verify-quicws-link-completion-live-repl-bridge",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "link-completion-live-repl-bridge",
+        "mesh-full-mesh-native-quic",
+        "profile-c-quic-acceptance",
+        "quic-host",
+        "websocket-framing"
+      ],
+      "deliverable": "Existence/scope verdict for the QUIC-WS line on the Gleam side: gleam_quic Profile-C transport state, RFC 6455 framing over QUIC, any Gleam role in the quic-host control plane, the live-repl-bridge residual, and the recorded scope of the native-QUIC full-mesh feature relative to the Gleam instance.",
+      "acceptance_evidence": "Run ls -R gleam_quic/ and rg -n 'websocket|rfc6455|quic' glp_gleam/src gleam_quic/; attempt one Gleam QUIC-WS loopback link in WSL (Profile-C per feature 049 ruling); record the mesh feature scope citation; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-quicws-link-completion-live-repl-bridge.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Profile-C is WSL-only and environment-fragile, so an execution failure must be classified as environment versus absence before feeding SC-008 planning.",
+      "statement": "unchanged from b3-c1-009: One QUIC-WS batch check separates delivered transport substrate from the open bridge/mesh ambitions and grounds the mesh out-of-scope proposal.",
+      "claim": "verify-quicws-link-completion-live-repl-bridge — one QUIC-WS batch check separates delivered transport substrate from the open bridge/mesh ambitions and grounds the mesh out-of-scope proposal.",
+      "source_citation": "sliceC section 7: link-completion-live-repl-bridge (b1-c1-071), mesh-full-mesh-native-quic (b1-c1-056), profile-c-quic-acceptance (b1-c1-055), quic-host (b3-c1-056), websocket-framing (b3-c1-055)",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-010",
+      "wp_id": "verify-transports-multi-accept-transport-extension",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "multi-accept-transport-extension",
+        "quiescence-oracle",
+        "transport-parity-all-gating",
+        "untrusted-frame-hardening",
+        "zmq-comm-base"
+      ],
+      "deliverable": "Existence/scope verdict for transport hardening: multi-accept vs one-link-per-listen TCP, quiescence oracle presence (quiescence_test.gleam), the all-gating transport-parity matrix, the length-CRC-type fault-as-data boundary module with its adversarial suite, and confirmation of ZMQ absence from the Gleam transport contract.",
+      "acceptance_evidence": "Run rg -n 'accept|quiescen|zmq|crc' glp_gleam/src; check for quiescence_test.gleam and the T052/T053 boundary module; run the delivered frame-rejection-order test and record T050-T058 checkbox state from specs/050-full-gleam-combined/tasks.md; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-transports-multi-accept-transport-extension.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Transport parity is owner-clarified as all-gating, so any tempting per-transport deferral found here must route through a rule-request rather than a quiet verdict.",
+      "statement": "unchanged from b3-c1-010: A five-gap hardening check pins what remains before the all-gating transport matrix can run and grounds the ZMQ out-of-scope proposal.",
+      "claim": "verify-transports-multi-accept-transport-extension — a five-gap hardening check pins what remains before the all-gating transport matrix can run and grounds the ZMQ out-of-scope proposal.",
+      "source_citation": "sliceC section 7: multi-accept-transport-extension (b1-c1-046), quiescence-oracle (b1-c1-026), transport-parity-all-gating (b1-c1-037), untrusted-frame-hardening (b1-c1-035), zmq-comm-base (b1-c1-069)",
+      "confidence": 0.91,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-011",
+      "wp_id": "verify-codec-compiled-il-on-the-wire",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "compiled-il-on-the-wire",
+        "il-codec",
+        "il-codec-round-trip",
+        "result-envelope-builder",
+        "result-envelope-codec",
+        "term-codec-tlv"
+      ],
+      "deliverable": "Existence/scope verdict for the Gleam codec stack: Section-15 TLV term codec byte parity, result-envelope codec and deep-resolve builder, any Gleam IL codec (BytecodeProgram to bytes), and confirmation that compiled-IL-on-the-wire is absent by owner decision (source text on the wire for MVP).",
+      "acceptance_evidence": "Run the specs/038-result-codec-and-framecodec-ride/contracts/golden/ vectors against the Gleam codec via wsl -e bash -lc 'cd glp_gleam && gleam test'; rg -n 'il_codec|envelope|tlv' glp_gleam/src; record the b1-c1-042 deferral citation; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-codec-compiled-il-on-the-wire.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "Byte-level parity claims require golden-vector reruns, not module presence, so a stale golden set would produce a false DELIVERED.",
+      "statement": "unchanged from b3-c1-011: Golden-vector reruns plus an IL-codec existence check settle five codec gaps and ground the compiled-IL deferral proposal.",
+      "claim": "verify-codec-compiled-il-on-the-wire — golden-vector reruns plus an IL-codec existence check settle five codec gaps and ground the compiled-IL deferral proposal.",
+      "source_citation": "sliceC section 7: compiled-il-on-the-wire (b1-c1-042), il-codec (b3-c1-059), il-codec-round-trip (b1-c1-041), result-envelope-builder (b3-c1-061), result-envelope-codec (b3-c1-060), term-codec-tlv (b1-c1-061)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-012",
+      "wp_id": "verify-wireproto-crdt-convergence",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "crdt-convergence",
+        "durable-mesh-messaging",
+        "message-envelope",
+        "schema-language",
+        "wire-registry"
+      ],
+      "deliverable": "Existence/scope verdict for the application-layer wire stack in Gleam (CRDT convergent messaging, durable signal-then-fetch mesh protocol, router-opaque unified envelope, wire-schema toolchain, shared wire registry) including an explicit ruling-input on which items are full-scope-Gleam-required versus C#-host-side.",
+      "acceptance_evidence": "Run rg -n 'crdt|envelope|schema|registry|wal' glp_gleam/src gleam_quic/; diff against csharp/glp_crdtmsg/, csharp/glp_schema_lang/, csharp/glp_wire_registry/ component lists; per-item required-vs-host-side scope table at docs/research/fullscope-gleam/phase2-verify/verify-wireproto-crdt-convergence.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "These are parity-required by b3 testimony but plausibly host-side by architecture, and misclassifying them either bloats the Gleam port or silently drops required parity.",
+      "statement": "unchanged from b3-c1-012: A component-list diff plus scope table turns five application-layer parity questions into rulable inputs instead of assumptions.",
+      "claim": "verify-wireproto-crdt-convergence — a component-list diff plus scope table turns five application-layer parity questions into rulable inputs instead of assumptions.",
+      "source_citation": "sliceC section 7: crdt-convergence (b3-c1-064), durable-mesh-messaging (b1-c1-070), message-envelope (b3-c1-063), schema-language (b3-c1-066), wire-registry (b3-c1-067)",
+      "confidence": 0.9,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-013",
+      "wp_id": "verify-febe-embedded-switch-role-framing",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "embedded-switch-role-framing",
+        "engine-review-dossier",
+        "engine-state-snapshot-persistence",
+        "liveness-crash-restart-host",
+        "multi-client-control-program",
+        "premise-reconciliation-compiler-location",
+        "repl-engine-split-binary-wire-mvp",
+        "restore-and-resume-link-reestablish"
+      ],
+      "deliverable": "Confirmation that no Gleam-side FE/BE process split exists plus a consolidated requirements baseline extracted from the 026 dossier, the two premise reconciliations, the C# split MVP, and the four designed-unstarted FE/BE promises (snapshot/persistence, liveness host, multi-client control program, restore-and-resume) as direct input to build-fe-be-process-split.",
+      "acceptance_evidence": "Run rg -n 'server|client|wire|socket|split' glp_gleam/src entry modules to confirm single-process shape; file-inspect specs/026-engine-review-dossier/spec.md US1/US2 and the roadmap rows for the four unstarted promises; requirements baseline committed at docs/research/fullscope-gleam/phase2-verify/verify-febe-embedded-switch-role-framing.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "The dossier records open design forks (snapshot API) that the baseline must surface as decisions-needed, not resolve unilaterally.",
+      "statement": "unchanged from b3-c1-013: One FE/BE batch check converts eight separation-epic gaps into a single verified requirements baseline for the build WP.",
+      "claim": "verify-febe-embedded-switch-role-framing — one FE/BE batch check converts eight separation-epic gaps into a single verified requirements baseline for the build WP.",
+      "source_citation": "sliceC section 7: embedded-switch-role-framing (b1-c1-074), engine-review-dossier (b1-c1-039), engine-state-snapshot-persistence (b1-c1-043), liveness-crash-restart-host (b1-c1-044), multi-client-control-program (b1-c1-047), premise-reconciliation-compiler-location (b1-c1-040), repl-engine-split-binary-wire-mvp (b1-c1-048), restore-and-resume-link-reestablish (b1-c1-045)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-014",
+      "wp_id": "verify-embed-embeddability-service-box",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "embeddability-service-box",
+        "qhsm-yngenios-integration-design"
+      ],
+      "deliverable": "Repo-wide existence check confirming yngenios embeddability remains requirements-level (no spec dir, contract, or code) plus extraction of the P7 QHSM/YngeniOS packaging dossier into a concrete embeddability requirements checklist for build-yngenios-embeddability.",
+      "acceptance_evidence": "Run rg -in 'yngenios|embeddab|service-box|store_put|store_get' specs/ glp_gleam/ gleam_quic/ (expected: dossier-only hits); file-inspect specs/036-glp-gleam-baseline-program pipelines/P7-qhsm-yngenios/DOSSIER.md; requirements checklist committed at docs/research/fullscope-gleam/phase2-verify/verify-embed-embeddability-service-box.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Gap-by-definition entries tempt a no-op verdict, but the checklist extraction is the load-bearing output and must be concrete enough to build against.",
+      "statement": "unchanged from b3-c1-014: A grep-plus-dossier check locks the requirements-level status of both embeddability gaps and yields the build checklist.",
+      "claim": "verify-embed-embeddability-service-box — a grep-plus-dossier check locks the requirements-level status of both embeddability gaps and yields the build checklist.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052); header note on requirements-level yngenios",
+      "confidence": 0.94,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-015",
+      "wp_id": "verify-engine-engine-composition-root",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "engine-composition-root",
+        "output-capture-seam",
+        "reference-envelope-and-capture-seam"
+      ],
+      "deliverable": "Existence/scope verdict for the Gleam engine seam features: host-side composition-root injection of kernels/transports, the output-as-data capture flow (T034), and the ED-1 self-contained result envelope with server-side deep-resolve.",
+      "acceptance_evidence": "Run rg -n 'inject|kernel|capture|envelope' the Gleam engine facade modules in glp_gleam/src; re-run the T034 e2e emit(hello) check and the 8 recorded capture tests via wsl gleam test; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-engine-engine-composition-root.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Two of the three entries are recorded delivered only as roadmap/tasks rows, exactly the record-vs-code drift this feature's controls exist to catch.",
+      "statement": "unchanged from b3-c1-015: A seam-level inspection converts three recorded-only engine-seam claims into code testimony.",
+      "claim": "verify-engine-engine-composition-root — a seam-level inspection converts three recorded-only engine-seam claims into code testimony.",
+      "source_citation": "sliceC section 7: engine-composition-root (b3-c1-038), output-capture-seam (b1-c1-017), reference-envelope-and-capture-seam (b1-c1-049)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-016",
+      "wp_id": "verify-parity-differential-harness",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "differential-harness",
+        "engine-csharp-parity",
+        "gap-fork-case-corpus",
+        "instance-load-and-run",
+        "performance-sanity-bound",
+        "program-corpus",
+        "regression-guard",
+        "test-harness-corpus-parity"
+      ],
+      "deliverable": "Fresh-session re-execution of the recorded M1 parity evidence: three-runtime differential harness, C# engine seam, GAP/FORK case corpus, US1 load-and-run smoke, the 10x perf bound, the SC-007 suite counts, 206/206 corpus parity, and a scope statement of the full programs/ corpus against current Gleam coverage.",
+      "acceptance_evidence": "Re-run the recorded M1 evidence per specs/050-full-gleam-combined/baseline.md:64-99: the T041 differential harness on X:=2+3, primes(10) and FORK-1; the test/parity/ recorder plus the Gleam corpus runner via wsl -e bash -lc 'cd glp_gleam && gleam test', comparing to the 206/206 record; suite counts via bash test/run_all_tests.sh, the C# suites, and wsl gleam test; the T043 timing rerun against the ~1.35x record; results table committed at docs/research/fullscope-gleam/phase2-verify/verify-parity-differential-harness.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "M",
+      "risk": "All eight entries are recorded-delivered without b2 testimony, so any re-run divergence is a drift finding that must halt and escalate rather than be patched inline.",
+      "statement": "Re-executing the recorded M1 evidence converts eight parity-harness records into current, fresh-session code testimony.",
+      "claim": "verify-parity-differential-harness — re-executing the recorded M1 evidence converts eight parity-harness records into current, fresh-session code testimony.",
+      "source_citation": "sliceC section 7: differential-harness (b1-c1-021), engine-csharp-parity (b3-c1-039), gap-fork-case-corpus (b1-c1-020), instance-load-and-run (b1-c1-067), performance-sanity-bound (b1-c1-022), program-corpus (b3-c1-069), regression-guard (b1-c1-023), test-harness-corpus-parity (b1-c1-019)",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-017",
+      "wp_id": "verify-acceptance-acceptance-sweep-and-polish",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "acceptance-sweep-and-polish",
+        "cross-runtime-pair-capstone"
+      ],
+      "deliverable": "Confirmation that T059-T068 remain unstarted (no run_link_tests_cross_gleam.sh, no acceptance.md evidence) and a concrete work-scope statement for the 16/16 capstone and SC-001..SC-009 sweep feeding the close and accept WPs.",
+      "acceptance_evidence": "Run ls specs/050-full-gleam-combined/ and rg -l 'run_link_tests_cross_gleam' across the repo (expected absent); record tasks.md 147-163 checkbox state; scope statement at docs/research/fullscope-gleam/phase2-verify/verify-acceptance-acceptance-sweep-and-polish.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "The capstone is an M2 LOCK hard gate, so under-scoping it here corrupts the whole wave-5 acceptance plan.",
+      "statement": "unchanged from b3-c1-017: An artifact-absence check fixes the true remaining scope of the feature-closing acceptance work.",
+      "claim": "verify-acceptance-acceptance-sweep-and-polish — an artifact-absence check fixes the true remaining scope of the feature-closing acceptance work.",
+      "source_citation": "sliceC section 7: acceptance-sweep-and-polish (b1-c1-075), cross-runtime-pair-capstone (b1-c1-036)",
+      "confidence": 0.94,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-018",
+      "wp_id": "verify-platform-atomvm-compatibility-by-construction",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "atomvm-compatibility-by-construction",
+        "build-test-topology-windows",
+        "langpair-dart-gleam",
+        "monitor-primitive-verification",
+        "port-source-basis-dart",
+        "subtree-scaffold"
+      ],
+      "deliverable": "Fresh-session verification of the platform substrate: deps_policy_test still enforces no-OTP-abstraction, the Windows-build/WSL-test topology works from clean, all eight 033 scaffold placeholders are filled, and the 039 monitor probe, Dart-basis decision, and Dart-to-Gleam langpair records match reality.",
+      "acceptance_evidence": "Run wsl -e bash -lc 'cd glp_gleam && gleam build && gleam test' from a clean tree confirming deps_policy_test passes; ls glp_gleam/src against the 8 Dart subsystems; file-inspect specs/039-m2-0-verify-erlang-monitor-atomvm/spec.md, specs/031-gleam-port-spike/spec.md and specs/032-codeconv-gleam-langpair/spec.md; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-platform-atomvm-compatibility-by-construction.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "AtomVM execution is excluded from 050 acceptance, so the check must verify by-construction constraints only and flag any actual-AtomVM claims as out of this feature's evidence.",
+      "statement": "unchanged from b3-c1-018: One platform batch re-runs the by-construction guarantees behind six toolchain/decision gaps.",
+      "claim": "verify-platform-atomvm-compatibility-by-construction — one platform batch re-runs the by-construction guarantees behind six toolchain/decision gaps.",
+      "source_citation": "sliceC section 7: atomvm-compatibility-by-construction (b1-c1-053), build-test-topology-windows (b1-c1-066), langpair-dart-gleam (b1-c1-062), monitor-primitive-verification (b1-c1-054), port-source-basis-dart (b1-c1-064), subtree-scaffold (b1-c1-063)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-019",
+      "wp_id": "verify-process-baseline-program-dossier",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "baseline-program-dossier",
+        "engine-instances-scaling-research",
+        "full-scope-gleam-anchor",
+        "marathon-run-position",
+        "roadmap-constituent-reconciliation",
+        "runtime-gap-features-reference"
+      ],
+      "deliverable": "File-inspection verdict that the six process/decision records (036 dossier plus P4 INDEX, scaling-research rows, full-scope anchor row, marathon M2 run gates, six-constituent reconciliation, runtime-gap rows) still match current repo state, with any drift flagged into the feature drift controls.",
+      "acceptance_evidence": "File-inspect specs/036-glp-gleam-baseline-program/spec.md and its P4 INDEX, docs/research/fullscope-gleam/roadmap-snapshot-2026-07-19.md rows 33-42/62-69/105-133, and docs/handover/050-full-gleam-M2-restart-2026-07-13.md gate list; drift table at docs/research/fullscope-gleam/phase2-verify/verify-process-baseline-program-dossier.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Roadmap rows deliberately understate delivery per the reconciliation protocol, so naive row-reading would generate false drift findings.",
+      "statement": "unchanged from b3-c1-019: A records-vs-reality inspection closes the testimony gap on six process/decision entries without touching code.",
+      "claim": "verify-process-baseline-program-dossier — a records-vs-reality inspection closes the testimony gap on six process/decision entries without touching code.",
+      "source_citation": "sliceC section 7: baseline-program-dossier (b1-c1-065), engine-instances-scaling-research (b1-c1-073), full-scope-gleam-anchor (b1-c1-059), marathon-run-position (b1-c1-076), roadmap-constituent-reconciliation (b1-c1-060), runtime-gap-features-reference (b1-c1-072)",
+      "confidence": 0.92,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-020",
+      "wp_id": "verify-proofs-proof-dist-deref-convergence",
+      "kind": "verify",
+      "backing_detail_ids": [
+        "proof-dist-deref-convergence",
+        "proof-writer-mgu-value-copy"
+      ],
+      "deliverable": "Verification that the PI:14 discharge artifacts (Lean, prose, adversarial suite, INDEX per contracts/proof-obligations.md) exist and re-run green, and confirmation that PI:17 remains undischarged with T057/T058 unchecked, scoping the Lean discharge work for the close WP.",
+      "acceptance_evidence": "File-inspect specs/050-full-gleam-combined/contracts/proof-obligations.md 5-20 and the T026/T027/T028 artifacts; re-run the T026 10-test adversarial suite via wsl gleam test; confirm T057/T058 unchecked in tasks.md 134-135; verdicts at docs/research/fullscope-gleam/phase2-verify/verify-proofs-proof-dist-deref-convergence.md",
+      "depends_on": [],
+      "wave": 2,
+      "effort": "S",
+      "risk": "PI:17 is M2-gating with an owner-directed Lean-not-SPIN form, so mis-scoping the discharge here jeopardizes the distributed acceptance chain.",
+      "statement": "unchanged from b3-c1-020: A proof-artifact audit separates the discharged M1 obligation from the open M2-gating one and sizes the remaining Lean work.",
+      "claim": "verify-proofs-proof-dist-deref-convergence — a proof-artifact audit separates the discharged M1 obligation from the open M2-gating one and sizes the remaining Lean work.",
+      "source_citation": "sliceC section 7: proof-dist-deref-convergence (b1-c1-025), proof-writer-mgu-value-copy (b1-c1-024)",
+      "confidence": 0.93,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-021",
+      "wp_id": "rule-compiler-antlr-shared-grammar-spike",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "antlr-shared-grammar-spike"
+      ],
+      "deliverable": "An engineer ruling on the proposal to mark antlr-shared-grammar-spike out-of-scope as superseded (owner-recorded R1 absorption: hand-ported recursive-descent parser, no BEAM ANTLR target), with the canonical Glp.g4 concern re-anchored as a dossier follow-on.",
+      "acceptance_evidence": "Ruling (accept/reject with rationale) recorded in docs/research/fullscope-gleam/phase2-verify/rulings.md citing the verify-compiler-antlr-shared-grammar-spike existence-check output showing no ANTLR artifact on the Gleam path",
+      "depends_on": [
+        "verify-compiler-antlr-shared-grammar-spike"
+      ],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If the ruling rejects, the spike re-enters close-compiler scope and its cost must be absorbed there.",
+      "statement": "The recorded R1 absorption makes this the cleanest superseded out-of-scope candidate, carried to an explicit ruling.",
+      "claim": "rule-compiler-antlr-shared-grammar-spike — the recorded R1 absorption makes this the cleanest superseded out-of-scope candidate, carried to an explicit ruling.",
+      "source_citation": "sliceC section 7: antlr-shared-grammar-spike (b1-c1-050, promise=deferred, absorbed/superseded)",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-022",
+      "wp_id": "rule-transports-zmq-comm-base",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "zmq-comm-base"
+      ],
+      "deliverable": "An engineer ruling on the proposal to mark zmq-comm-base out-of-scope as external-dependency/post-feature-follow-on: it is blocked-by the reference-side multi-protocol-link-layer and explicitly absent from the Gleam transport contract (loopback/TCP/QUIC only).",
+      "acceptance_evidence": "Ruling recorded in docs/research/fullscope-gleam/phase2-verify/rulings.md citing the verify-transports-multi-accept-transport-extension check confirming ZMQ absence from both the Gleam contract and delivered reference code",
+      "depends_on": [
+        "verify-transports-multi-accept-transport-extension"
+      ],
+      "wave": 2,
+      "effort": "S",
+      "risk": "Conflates two reasons (blocked upstream and contract-excluded), so the ruling must state which one governs for future reopening.",
+      "statement": "ZMQ is contract-excluded for Gleam and unbuilt in the reference, warranting a ruled follow-on rather than silent deferral.",
+      "claim": "rule-transports-zmq-comm-base — ZMQ is contract-excluded for Gleam and unbuilt in the reference, warranting a ruled follow-on rather than silent deferral.",
+      "source_citation": "sliceC section 7: zmq-comm-base (b1-c1-069, designed-unstarted, absent from the Gleam transport contract)",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-023",
+      "wp_id": "rule-process-engine-instances-scaling-research",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "engine-instances-scaling-research"
+      ],
+      "deliverable": "An engineer ruling on the proposal to mark engine-instances-scaling-research out-of-scope as post-feature-follow-on: C++ engine feasibility, shared-static-memory many-instances scheduling, and the staged LLVM programme are research rows with no spec dirs, beyond the full-scope Gleam implementation.",
+      "acceptance_evidence": "Ruling recorded in docs/research/fullscope-gleam/phase2-verify/rulings.md citing the verify-process-baseline-program-dossier inspection of roadmap rows 40-42",
+      "depends_on": [
+        "verify-process-baseline-program-dossier"
+      ],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If any scaling row is later ruled feature-relevant (e.g. many-instances for embeddability), the embeddability build WP inherits the requirement.",
+      "statement": "Research-only roadmap rows with no spec dirs are proposed out of the delivery feature via an explicit ruling.",
+      "claim": "rule-process-engine-instances-scaling-research — research-only roadmap rows with no spec dirs are proposed out of the delivery feature via an explicit ruling.",
+      "source_citation": "sliceC section 7: engine-instances-scaling-research (b1-c1-073, all rows [refined], no spec dirs)",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-024",
+      "wp_id": "rule-codec-compiled-il-on-the-wire",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "compiled-il-on-the-wire"
+      ],
+      "deliverable": "An engineer ruling on the proposal to mark compiled-il-on-the-wire out-of-scope as post-feature-follow-on, per the owner-recorded 026 reconciliation (source text on the wire for the MVP, compiler relocation a deliberately-deferred follow-up with no spec dir).",
+      "acceptance_evidence": "Ruling recorded in docs/research/fullscope-gleam/phase2-verify/rulings.md citing the verify-codec-compiled-il-on-the-wire existence check and the b1-c1-040/b1-c1-042 deferral records",
+      "depends_on": [
+        "verify-codec-compiled-il-on-the-wire"
+      ],
+      "wave": 2,
+      "effort": "S",
+      "risk": "The FE/BE build WP assumes source-text-on-the-wire, so a rejecting ruling changes the build-fe-be-process-split wire contract and must land before wave 4.",
+      "statement": "An owner-recorded MVP wire decision is converted into a ruled scope boundary instead of an implicit one.",
+      "claim": "rule-codec-compiled-il-on-the-wire — an owner-recorded MVP wire decision is converted into a ruled scope boundary instead of an implicit one.",
+      "source_citation": "sliceC section 7: compiled-il-on-the-wire (b1-c1-042, [refined] no spec dir); premise-reconciliation-compiler-location (b1-c1-040)",
+      "confidence": 0.88,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-025",
+      "wp_id": "rule-quicws-mesh-full-mesh-native-quic",
+      "kind": "rule-request",
+      "backing_detail_ids": [
+        "mesh-full-mesh-native-quic"
+      ],
+      "deliverable": "An engineer ruling on the proposal to mark mesh-full-mesh-native-quic out-of-scope as duplicate-of: it is its own promoted roadmap feature (glp-native-quic-link) with the C# REPL ruled as host and no recorded Gleam-instance role.",
+      "acceptance_evidence": "Ruling recorded in docs/research/fullscope-gleam/phase2-verify/rulings.md citing the verify-quicws-link-completion-live-repl-bridge scope check of specs/050-glp-native-quic-link/spec.md and the promoted roadmap row",
+      "depends_on": [
+        "verify-quicws-link-completion-live-repl-bridge"
+      ],
+      "wave": 2,
+      "effort": "S",
+      "risk": "If the ruling instead assigns the Gleam instance a mesh role, close-quicws inherits a large new scope and the wave plan must be re-sized.",
+      "statement": "A capability owned by a separately promoted feature is proposed duplicate-of rather than double-planned here.",
+      "claim": "rule-quicws-mesh-full-mesh-native-quic — a capability owned by a separately promoted feature is proposed duplicate-of rather than double-planned here.",
+      "source_citation": "sliceC section 7: mesh-full-mesh-native-quic (b1-c1-056, [promoted], C# REPL ruled as host, no Gleam role)",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-026",
+      "wp_id": "close-runtime-arithmetic-expression",
+      "kind": "close",
+      "backing_detail_ids": [
+        "arithmetic-expression",
+        "external-io",
+        "heap-value-copy-semantics",
+        "scheduler-fairness",
+        "stream-mutual-reference",
+        "suspension-abandonment",
+        "suspension-diagnostics",
+        "system-predicate-registry"
+      ],
+      "deliverable": "Per the verify verdict, each runtime-core detail_id is closed by either recording confirming glp_gleam code testimony or porting the missing capability (kernel, seam, or invariant) with parity tests until all eight have code testimony.",
+      "acceptance_evidence": "wsl -e bash -lc 'cd glp_gleam && gleam test' all-green including new/located tests for each batch id; the eight inventory entries re-filed with glp_gleam evidence paths in docs/research/fullscope-gleam/phase2-verify/close-runtime-arithmetic-expression.md",
+      "depends_on": [
+        "verify-runtime-arithmetic-expression"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "Fairness and abandonment semantics are spec-locked with no in-slice tests, so closing them requires authoring parity tests that could surface latent reference divergence; split point if it slips: land arithmetic/IO/stream kernels first and split fairness+abandonment parity tests into a follow-on close sub-WP inside the feature",
+      "statement": "Conditional close work turns every runtime-core verdict into either cited testimony or a delivered port.",
+      "claim": "close-runtime-arithmetic-expression — conditional close work turns every runtime-core verdict into either cited testimony or a delivered port.",
+      "source_citation": "sliceC section 7 runtime batch (b3-c1-017/018/009/016/008/010/015, b1-c1-013)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-027",
+      "wp_id": "close-guards-guard-defined",
+      "kind": "close",
+      "backing_detail_ids": [
+        "guard-defined",
+        "guard-purity"
+      ],
+      "deliverable": "Defined-guard support and purity enforcement are confirmed or implemented in the Gleam guard system with a positive and a negative test each.",
+      "acceptance_evidence": "programs/tests/test_defined_guards.glp passes on Gleam via the differential harness and a negative purity program is rejected identically to Dart; record in docs/research/fullscope-gleam/phase2-verify/close-guards-guard-defined.md",
+      "depends_on": [
+        "verify-guards-guard-defined"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Three-valued defined-guard evaluation interacts with suspension and may require runner changes beyond the guard table itself.",
+      "statement": "unchanged from b3-c1-027: Both guard-system gaps close with executable positive and negative testimony.",
+      "claim": "close-guards-guard-defined — both guard-system gaps close with executable positive and negative testimony.",
+      "source_citation": "sliceC section 7 guards batch (b3-c1-012, b3-c1-013)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-028",
+      "wp_id": "close-langsurface-channel-convention",
+      "kind": "close",
+      "backing_detail_ids": [
+        "channel-convention",
+        "clause-programming-idioms",
+        "srsw-anonymous-writer",
+        "type-guard-set",
+        "type-parameterized"
+      ],
+      "deliverable": "The five normative language-surface behaviors are confirmed or implemented so the named test programs and typed corpus produce Dart-identical verdicts on Gleam.",
+      "acceptance_evidence": "test_new_channel_guard.glp, test_channel_route.glp, test_passthrough.glp, test_ground.glp, test_channel_guards.glp and the programs/tests/typed/ sample all agree with Dart goldens via the corpus runner; record in docs/research/fullscope-gleam/phase2-verify/close-langsurface-channel-convention.md",
+      "depends_on": [
+        "verify-langsurface-channel-convention"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Parameterized-type expansion (param_expansion equivalent) is the deepest of the five and could dominate the batch if absent.",
+      "statement": "unchanged from b3-c1-028: Language-surface parity closes through Dart-identical corpus verdicts rather than document assertions.",
+      "claim": "close-langsurface-channel-convention — language-surface parity closes through Dart-identical corpus verdicts rather than document assertions.",
+      "source_citation": "sliceC section 7 langsurface batch (b3-c1-073/071/072/025/024)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-029",
+      "wp_id": "close-compiler-antlr-shared-grammar-spike",
+      "kind": "close",
+      "backing_detail_ids": [
+        "antlr-shared-grammar-spike",
+        "compile-mode-directive",
+        "compiler-strict-mode",
+        "module-dynamic-dispatch",
+        "module-static-linking",
+        "parser-recursive-descent",
+        "reduce-metainterpreter"
+      ],
+      "deliverable": "Each compiler-chain gap is closed per verdict and ruling: confirmed with cited code, or implemented (strict gate, compile mode, linker, dispatch, reduce/2), with antlr-shared-grammar-spike resolved per its rule-request outcome.",
+      "acceptance_evidence": "programs/tests/modules/, dynamic_dispatch/, tracing_meta.glp, mad_predicates.glp pass and the three type_errors/ programs are rejected on Gleam identically to Dart; record in docs/research/fullscope-gleam/phase2-verify/close-compiler-antlr-shared-grammar-spike.md",
+      "depends_on": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "rule-compiler-antlr-shared-grammar-spike"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "reduce/2 generation plus the metainterpreter idiom couples compiler and runtime, so a partial close here can silently break meta-level corpus programs later; split point if it slips: strict-mode+compile-mode first, linker+dynamic dispatch second, reduce/2+metainterpreter last",
+      "statement": "The compiler chain closes against executable module, dispatch, meta and negative-type evidence with the ANTLR question ruled, not assumed.",
+      "claim": "close-compiler-antlr-shared-grammar-spike — the compiler chain closes against executable module, dispatch, meta and negative-type evidence with the ANTLR question ruled, not assumed.",
+      "source_citation": "sliceC section 7 compiler batch (b1-c1-050, b3-c1-030/020/029/028, b1-c1-005, b3-c1-031)",
+      "confidence": 0.84,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-030",
+      "wp_id": "close-bytecode-bytecode-instruction-set",
+      "kind": "close",
+      "backing_detail_ids": [
+        "bytecode-instruction-set",
+        "bytecode-lint",
+        "bytecode-mode-conversion"
+      ],
+      "deliverable": "Gleam conformance to the v2.16 instruction set and mode-conversion semantics is confirmed or implemented, and the linter gap is either ported or explicitly recorded auxiliary-optional per the verify scope finding.",
+      "acceptance_evidence": "A Gleam discriminant-completeness test mirroring DiscriminantCompletenessTests.cs passes; test_wxw.glp agrees with Dart; linter disposition recorded in docs/research/fullscope-gleam/phase2-verify/close-bytecode-bytecode-instruction-set.md",
+      "depends_on": [
+        "verify-bytecode-bytecode-instruction-set"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "If the Gleam runner is not bytecode-level, this close escalates to an architecture decision rather than a fill-in port.",
+      "statement": "unchanged from b3-c1-030: Bytecode conformance closes with a discriminant-completeness test as its durable regression guard.",
+      "claim": "close-bytecode-bytecode-instruction-set — bytecode conformance closes with a discriminant-completeness test as its durable regression guard.",
+      "source_citation": "sliceC section 7 bytecode batch (b3-c1-006, b3-c1-070, b3-c1-007)",
+      "confidence": 0.83,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-031",
+      "wp_id": "close-repl-repl-boot-command",
+      "kind": "close",
+      "backing_detail_ids": [
+        "repl-boot-command",
+        "repl-bytecode-command",
+        "repl-limit-command",
+        "repl-trace-command"
+      ],
+      "deliverable": "The four REPL controls are confirmed, implemented on the Gleam front surface, or (per verify scope finding) recorded as host-level with the equivalent control path documented and tested.",
+      "acceptance_evidence": "A scripted session against the Gleam entry point exercises boot/limit/trace/bytecode equivalents with expected outputs; record in docs/research/fullscope-gleam/phase2-verify/close-repl-repl-boot-command.md",
+      "depends_on": [
+        "verify-repl-repl-boot-command"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "The :boot command drags in the multiagent layer, so this close may be blocked-by close-multiagent for that one control.",
+      "statement": "unchanged from b3-c1-031: REPL-control parity closes via a scripted session transcript, whichever surface the controls land on.",
+      "claim": "close-repl-repl-boot-command — REPL-control parity closes via a scripted session transcript, whichever surface the controls land on.",
+      "source_citation": "sliceC section 7 repl batch (b3-c1-036/034/035/033)",
+      "confidence": 0.84,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-032",
+      "wp_id": "close-multiagent-multiagent-boot-loader",
+      "kind": "close",
+      "backing_detail_ids": [
+        "multiagent-boot-loader",
+        "multiagent-global-send",
+        "multiagent-isolate-manager"
+      ],
+      "deliverable": "The madGLP layer is confirmed or ported to Gleam (boot loader, global-send over globalized writers, BEAM-process agent isolation) sufficient to run the multiagent plays.",
+      "acceptance_evidence": "programs/multiagent/play_alice_bob.glp and play_cold_call_test.glp run on the Gleam instance with Dart-equivalent outcomes; test_relay_send.glp agrees via the harness; record in docs/research/fullscope-gleam/phase2-verify/close-multiagent-multiagent-boot-loader.md",
+      "depends_on": [
+        "verify-multiagent-multiagent-boot-loader"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "Mapping Dart isolates to BEAM processes changes delivery timing semantics and may need an owner-approved equivalence statement rather than byte-identical traces; split point if it slips: boot-loader+global-send first, isolate-manager process-equivalence as its own sub-WP",
+      "statement": "Multiagent capability closes when the plays themselves run green on Gleam, not before.",
+      "claim": "close-multiagent-multiagent-boot-loader — multiagent capability closes when the plays themselves run green on Gleam, not before.",
+      "source_citation": "sliceC section 7 multiagent batch (b3-c1-043/044/042)",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-033",
+      "wp_id": "close-link-inbound-pump",
+      "kind": "close",
+      "backing_detail_ids": [
+        "inbound-pump",
+        "instance-network-join",
+        "link-acceptance",
+        "link-capability-gate",
+        "link-reliability",
+        "link-seam",
+        "link-transport-seam"
+      ],
+      "deliverable": "The open US4 remainder (link primitives, reliability sublayer, capability gate, distributed unification path) is implemented on the delivered seam/pump substrate until the link acceptance programs pass end-to-end on Gleam.",
+      "acceptance_evidence": "All programs/tests/link/ programs (bidi, pathb, mon, sr, pc, krepro) pass on Gleam over loopback and TCP, with reliability-sublayer tests mirroring SendWindow/Ordering/Fencing/CycleGuard/Reclaim green under wsl gleam test; record in docs/research/fullscope-gleam/phase2-verify/close-link-inbound-pump.md",
+      "depends_on": [
+        "verify-link-inbound-pump"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "This is the largest single build surface in the plan and the T050-T058 remainder may itself hide sequencing dependencies (primitives before reliability before gate).",
+      "statement": "unchanged from b3-c1-033: The link layer closes only when the GLP-source link acceptance suite runs green on the Gleam instance.",
+      "claim": "close-link-inbound-pump — the link layer closes only when the GLP-source link acceptance suite runs green on the Gleam instance.",
+      "source_citation": "sliceC section 7 link batch (b3-c1-048, b1-c1-068, b3-c1-058/065/051/047, b1-c1-027)",
+      "confidence": 0.83,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-034",
+      "wp_id": "close-quicws-link-completion-live-repl-bridge",
+      "kind": "close",
+      "backing_detail_ids": [
+        "link-completion-live-repl-bridge",
+        "profile-c-quic-acceptance",
+        "quic-host",
+        "websocket-framing",
+        "mesh-full-mesh-native-quic"
+      ],
+      "deliverable": "The Gleam QUIC-WS transport is completed on the verified substrate (RFC 6455 framing over QUIC, Profile-C WSL runtime, interop with the reference quic-host), with the live-repl-bridge residual either delivered or ruled forward and the mesh item resolved per its rule-request.",
+      "acceptance_evidence": "One Gleam-to-C# link over QUIC-WS exchanges the link smoke suite in WSL against csharp/glp_quick_host, with WebSocketFramingTests-equivalent Gleam tests green; record in docs/research/fullscope-gleam/phase2-verify/close-quicws-link-completion-live-repl-bridge.md",
+      "depends_on": [
+        "verify-quicws-link-completion-live-repl-bridge",
+        "rule-quicws-mesh-full-mesh-native-quic"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "Profile-C environment fragility (WSL-only quicer NIF) can stall the close on infrastructure rather than code; split point if it slips: RFC 6455 framing tests in isolation first, the live Gleam-to-C# interop link second",
+      "statement": "QUIC-WS closes with a real Gleam-to-reference interop link, the transport SC-008 cannot pass without.",
+      "claim": "close-quicws-link-completion-live-repl-bridge — QUIC-WS closes with a real Gleam-to-reference interop link, the transport SC-008 cannot pass without.",
+      "source_citation": "sliceC section 7 quicws batch (b1-c1-071, b1-c1-055, b3-c1-056, b3-c1-055, b1-c1-056)",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-035",
+      "wp_id": "close-transports-multi-accept-transport-extension",
+      "kind": "close",
+      "backing_detail_ids": [
+        "multi-accept-transport-extension",
+        "quiescence-oracle",
+        "transport-parity-all-gating",
+        "untrusted-frame-hardening",
+        "zmq-comm-base"
+      ],
+      "deliverable": "Transport hardening closes per verdict and ruling: quiescence oracle and the length-CRC-type fault-as-data boundary with its adversarial suite implemented, the all-gating identical-outcomes matrix run across loopback/TCP/QUIC-WS, multi-accept either delivered or ruled follow-on, and ZMQ resolved per its rule-request.",
+      "acceptance_evidence": "quiescence_test.gleam and the T053 adversarial suite green under wsl gleam test; the transport matrix run shows identical outcomes across all three transports; record in docs/research/fullscope-gleam/phase2-verify/close-transports-multi-accept-transport-extension.md",
+      "depends_on": [
+        "verify-transports-multi-accept-transport-extension",
+        "rule-transports-zmq-comm-base"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "The all-gating clarification means any one transport lagging blocks this whole close, concentrating schedule risk; split point if it slips: quiescence oracle + fault-as-data hardening first, the all-transport identical-outcomes matrix last",
+      "statement": "Hardening closes with the adversarial suite and the identical-outcomes matrix as the acceptance instruments.",
+      "claim": "close-transports-multi-accept-transport-extension — hardening closes with the adversarial suite and the identical-outcomes matrix as the acceptance instruments.",
+      "source_citation": "sliceC section 7 transports batch (b1-c1-046, b1-c1-026, b1-c1-037, b1-c1-035, b1-c1-069)",
+      "confidence": 0.83,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-036",
+      "wp_id": "close-codec-compiled-il-on-the-wire",
+      "kind": "close",
+      "backing_detail_ids": [
+        "compiled-il-on-the-wire",
+        "il-codec",
+        "il-codec-round-trip",
+        "result-envelope-builder",
+        "result-envelope-codec",
+        "term-codec-tlv"
+      ],
+      "deliverable": "The Gleam codec stack closes per verdict: TLV and result-envelope byte parity confirmed against golden vectors, the IL codec ported or interop-consumed for program shipping, and compiled-IL-on-the-wire resolved per its rule-request.",
+      "acceptance_evidence": "All specs/038 golden vectors byte-identical on Gleam; a BytecodeProgram round-trips Gleam-encode to C#-decode (or the ruled alternative) in a committed test; record in docs/research/fullscope-gleam/phase2-verify/close-codec-compiled-il-on-the-wire.md",
+      "depends_on": [
+        "verify-codec-compiled-il-on-the-wire",
+        "rule-codec-compiled-il-on-the-wire"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Byte-parity closes are brittle to endian/length-prefix drift, so goldens must be run from the shared contracts directory, never regenerated locally.",
+      "statement": "Codec parity closes on golden-vector byte identity, the only evidence strong enough for wire formats.",
+      "claim": "close-codec-compiled-il-on-the-wire — codec parity closes on golden-vector byte identity, the only evidence strong enough for wire formats.",
+      "source_citation": "sliceC section 7 codec batch (b1-c1-042, b3-c1-059, b1-c1-041, b3-c1-061, b3-c1-060, b1-c1-061)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-037",
+      "wp_id": "close-wireproto-crdt-convergence",
+      "kind": "close",
+      "backing_detail_ids": [
+        "crdt-convergence",
+        "durable-mesh-messaging",
+        "message-envelope",
+        "schema-language",
+        "wire-registry"
+      ],
+      "deliverable": "Each application-layer wire item closes per the verify scope table: Gleam-required items implemented with reference-mirroring tests, host-side items recorded as satisfied-by-reference with the interop boundary tested from Gleam.",
+      "acceptance_evidence": "For each item either a Gleam test mirroring the named C# suite passes or an interop test proves the Gleam instance correctly produces/consumes the C#-hosted capability (envelope forwarding, registry lookup); record in docs/research/fullscope-gleam/phase2-verify/close-wireproto-crdt-convergence.md",
+      "depends_on": [
+        "verify-wireproto-crdt-convergence"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "The required-vs-host-side scope table is itself a judgment surface, so this close must not start until that table has engineer sign-off.",
+      "statement": "unchanged from b3-c1-037: Application-layer parity closes item-by-item against an explicit required-vs-host-side boundary.",
+      "claim": "close-wireproto-crdt-convergence — application-layer parity closes item-by-item against an explicit required-vs-host-side boundary.",
+      "source_citation": "sliceC section 7 wireproto batch (b3-c1-064, b1-c1-070, b3-c1-063, b3-c1-066, b3-c1-067)",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-038",
+      "wp_id": "close-febe-embedded-switch-role-framing",
+      "kind": "close",
+      "backing_detail_ids": [
+        "embedded-switch-role-framing",
+        "engine-review-dossier",
+        "engine-state-snapshot-persistence",
+        "liveness-crash-restart-host",
+        "multi-client-control-program",
+        "premise-reconciliation-compiler-location",
+        "repl-engine-split-binary-wire-mvp",
+        "restore-and-resume-link-reestablish"
+      ],
+      "deliverable": "The FE/BE gaps close at requirements level: the verified baseline is confirmed against the 026 dossier and C# split MVP, open design forks (snapshot API, BEAM-supervision-vs-liveness-host, mailbox) are carried to engineer decisions, and the implementation scope is handed to build-fe-be-process-split as a signed-off spec input.",
+      "acceptance_evidence": "A signed-off FE/BE requirements+decisions record at docs/research/fullscope-gleam/phase2-verify/close-febe-embedded-switch-role-framing.md enumerating each of the eight detail_ids with its disposition (design-confirmed / decision-taken / built-in-wave-4)",
+      "depends_on": [
+        "verify-febe-embedded-switch-role-framing"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Closing at requirements level defers real proof to wave 4, so the record must bind each detail_id to a named build acceptance to avoid a paper close.",
+      "statement": "unchanged from b3-c1-038: FE/BE closes as a decision-complete spec input so the wave-4 build starts unblocked.",
+      "claim": "close-febe-embedded-switch-role-framing — FE/BE closes as a decision-complete spec input so the wave-4 build starts unblocked.",
+      "source_citation": "sliceC section 7 febe batch (b1-c1-074/039/043/044/047/040/048/045)",
+      "confidence": 0.84,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-039",
+      "wp_id": "close-embed-embeddability-service-box",
+      "kind": "close",
+      "backing_detail_ids": [
+        "embeddability-service-box",
+        "qhsm-yngenios-integration-design"
+      ],
+      "deliverable": "The embeddability gaps close at requirements level: the extracted P7 checklist is ratified into a service-box/store-kernel requirements contract (scope call: store_put/store_get kernels vs host-owned log carried to decision) handed to build-yngenios-embeddability.",
+      "acceptance_evidence": "A ratified embeddability requirements contract at docs/research/fullscope-gleam/phase2-verify/close-embed-embeddability-service-box.md with each requirement traced to the P7 dossier and marked build-bound",
+      "depends_on": [
+        "verify-embed-embeddability-service-box"
+      ],
+      "wave": 3,
+      "effort": "S",
+      "risk": "The open store-kernel scope call is Gabi-level and must be escalated, not resolved by the plan team.",
+      "statement": "unchanged from b3-c1-039: Embeddability closes into a ratified requirements contract that makes the wave-4 build definable.",
+      "claim": "close-embed-embeddability-service-box — embeddability closes into a ratified requirements contract that makes the wave-4 build definable.",
+      "source_citation": "sliceC section 7 embed batch (b1-c1-051, b1-c1-052)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-040",
+      "wp_id": "close-engine-engine-composition-root",
+      "kind": "close",
+      "backing_detail_ids": [
+        "engine-composition-root",
+        "output-capture-seam",
+        "reference-envelope-and-capture-seam"
+      ],
+      "deliverable": "The engine seam gaps close with code testimony: composition-root injection, output-as-data capture, and the deep-resolve result envelope confirmed or implemented in the Gleam engine facade with seam tests.",
+      "acceptance_evidence": "The T034 capture tests plus an injection test (kernel registered from the host, never referenced by the engine) green under wsl gleam test; record in docs/research/fullscope-gleam/phase2-verify/close-engine-engine-composition-root.md",
+      "depends_on": [
+        "verify-engine-engine-composition-root"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "The seam contract is the FE/BE and embeddability attachment point, so a weak close here propagates into both wave-4 builds.",
+      "statement": "unchanged from b3-c1-040: Engine-seam gaps close with executable seam tests because two wave-4 builds stand on them.",
+      "claim": "close-engine-engine-composition-root — engine-seam gaps close with executable seam tests because two wave-4 builds stand on them.",
+      "source_citation": "sliceC section 7 engine batch (b3-c1-038, b1-c1-017, b1-c1-049)",
+      "confidence": 0.86,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-041",
+      "wp_id": "close-parity-differential-harness",
+      "kind": "close",
+      "backing_detail_ids": [
+        "differential-harness",
+        "engine-csharp-parity",
+        "gap-fork-case-corpus",
+        "instance-load-and-run",
+        "performance-sanity-bound",
+        "program-corpus",
+        "regression-guard",
+        "test-harness-corpus-parity"
+      ],
+      "deliverable": "The parity-harness gaps close by re-establishing every recorded M1 evidence artifact as a fresh-session-reproducible check (scripts committed, goldens pinned) and extending corpus coverage per the program-corpus scope statement.",
+      "acceptance_evidence": "One command sequence documented in docs/research/fullscope-gleam/phase2-verify/close-parity-differential-harness.md reproduces harness diff, 206/206 parity, GAP/FORK verdicts, suite counts and the perf bound from a fresh clone",
+      "depends_on": [
+        "verify-parity-differential-harness"
+      ],
+      "wave": 3,
+      "effort": "M",
+      "risk": "Pinned goldens can mask real regressions if regenerated during close, so golden updates must be change-controlled.",
+      "statement": "unchanged from b3-c1-041: Parity evidence closes as a reproducible one-command rig, the drift-control backbone for later waves.",
+      "claim": "close-parity-differential-harness — parity evidence closes as a reproducible one-command rig, the drift-control backbone for later waves.",
+      "source_citation": "sliceC section 7 parity batch (b1-c1-021, b3-c1-039, b1-c1-020, b1-c1-067, b1-c1-022, b3-c1-069, b1-c1-023, b1-c1-019)",
+      "confidence": 0.86,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-042",
+      "wp_id": "close-acceptance-acceptance-sweep-and-polish",
+      "kind": "close",
+      "backing_detail_ids": [
+        "acceptance-sweep-and-polish",
+        "cross-runtime-pair-capstone"
+      ],
+      "deliverable": "The feature-closing build work lands: run_link_tests_cross_gleam.sh with the 8x2 role-parameterized capstone scenarios over TCP plus QUIC-WS coverage, and the SC-001..SC-009 evidence sweep assembled into acceptance.md.",
+      "acceptance_evidence": "run_link_tests_cross_gleam.sh exits 0 with 16/16 verdicts identical to single-runtime references; acceptance.md carries per-SC evidence rows; both committed under specs/050-full-gleam-combined/",
+      "depends_on": [
+        "verify-acceptance-acceptance-sweep-and-polish",
+        "close-link-inbound-pump",
+        "close-quicws-link-completion-live-repl-bridge"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "The capstone is downstream of the entire link and transport chain, so it inherits every open defect found there; split point if it slips: TCP-only 16/16 capstone first, QUIC-WS coverage as the second slice",
+      "statement": "The M2 LOCK gates are built as runnable artifacts here so wave 5 only has to execute them.",
+      "claim": "close-acceptance-acceptance-sweep-and-polish — the M2 LOCK gates are built as runnable artifacts here so wave 5 only has to execute them.",
+      "source_citation": "sliceC section 7 acceptance batch (b1-c1-075, b1-c1-036)",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-043",
+      "wp_id": "close-platform-atomvm-compatibility-by-construction",
+      "kind": "close",
+      "backing_detail_ids": [
+        "atomvm-compatibility-by-construction",
+        "build-test-topology-windows",
+        "langpair-dart-gleam",
+        "monitor-primitive-verification",
+        "port-source-basis-dart",
+        "subtree-scaffold"
+      ],
+      "deliverable": "The platform gaps close by recording fresh code/toolchain testimony for each (deps-policy green, clean-tree build/test reproduced, scaffold complete, decision records verified) with any drift escalated.",
+      "acceptance_evidence": "Fresh-clone wsl gleam build+test transcript including deps_policy_test, plus the six per-detail_id dispositions, committed at docs/research/fullscope-gleam/phase2-verify/close-platform-atomvm-compatibility-by-construction.md",
+      "depends_on": [
+        "verify-platform-atomvm-compatibility-by-construction"
+      ],
+      "wave": 3,
+      "effort": "S",
+      "risk": "Toolchain drift (OTP/gleam/rebar versions) is the likely failure mode and is environmental, needing a pinned-versions note rather than code fixes.",
+      "statement": "unchanged from b3-c1-043: Platform guarantees close on a fresh-clone transcript, the strongest available by-construction evidence.",
+      "claim": "close-platform-atomvm-compatibility-by-construction — platform guarantees close on a fresh-clone transcript, the strongest available by-construction evidence.",
+      "source_citation": "sliceC section 7 platform batch (b1-c1-053/066/062/054/064/063)",
+      "confidence": 0.87,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-044",
+      "wp_id": "close-process-baseline-program-dossier",
+      "kind": "close",
+      "backing_detail_ids": [
+        "baseline-program-dossier",
+        "engine-instances-scaling-research",
+        "full-scope-gleam-anchor",
+        "marathon-run-position",
+        "roadmap-constituent-reconciliation",
+        "runtime-gap-features-reference"
+      ],
+      "deliverable": "The process/decision gaps close by reconciling each record with current state (anchor row re-scoped to this feature, marathon gates re-registered, constituent rows advanced per the reconciliation protocol, runtime-gap rows dispositioned) with scaling-research resolved per its rule-request.",
+      "acceptance_evidence": "Updated roadmap/marathon state plus a per-detail_id reconciliation table committed at docs/research/fullscope-gleam/phase2-verify/close-process-baseline-program-dossier.md",
+      "depends_on": [
+        "verify-process-baseline-program-dossier",
+        "rule-process-engine-instances-scaling-research"
+      ],
+      "wave": 3,
+      "effort": "S",
+      "risk": "Roadmap-row mutation is engineer-gated (advisory tools only), so this close records decisions rather than auto-advancing rows.",
+      "statement": "Process records close by reconciliation so the feature's drift controls start from a true baseline.",
+      "claim": "close-process-baseline-program-dossier — process records close by reconciliation so the feature's drift controls start from a true baseline.",
+      "source_citation": "sliceC section 7 process batch (b1-c1-065/073/059/076/060/072)",
+      "confidence": 0.85,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-045",
+      "wp_id": "close-proofs-proof-dist-deref-convergence",
+      "kind": "close",
+      "backing_detail_ids": [
+        "proof-dist-deref-convergence",
+        "proof-writer-mgu-value-copy"
+      ],
+      "deliverable": "PI:14 is re-confirmed green and PI:17 is discharged in the owner-directed Lean-not-SPIN form (Lean proof, prose, T057 adversarial dist-deref suite, INDEX entry) unblocking the distributed acceptance chain.",
+      "acceptance_evidence": "Sorry-free Lean artifact for PI:17 plus the T057 suite green under wsl gleam test, both indexed per contracts/proof-obligations.md; record in docs/research/fullscope-gleam/phase2-verify/close-proofs-proof-dist-deref-convergence.md",
+      "depends_on": [
+        "verify-proofs-proof-dist-deref-convergence"
+      ],
+      "wave": 3,
+      "effort": "L",
+      "risk": "A Lean convergence proof over deferred-local-assignment is genuinely hard and its failure mode is a spec-level counterexample requiring owner discussion, not a workaround; split point if it slips: T057 adversarial dist-deref suite first, the Lean artifact as its own owner-reviewed sub-WP",
+      "statement": "The open M2-gating proof obligation is discharged in its mandated form rather than waived.",
+      "claim": "close-proofs-proof-dist-deref-convergence — the open M2-gating proof obligation is discharged in its mandated form rather than waived.",
+      "source_citation": "sliceC section 7 proofs batch (b1-c1-025, b1-c1-024)",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-046",
+      "wp_id": "build-fe-be-process-split",
+      "kind": "build",
+      "backing_detail_ids": [
+        "repl-engine-split-binary-wire-mvp",
+        "engine-review-dossier",
+        "premise-reconciliation-compiler-location",
+        "embedded-switch-role-framing",
+        "engine-state-snapshot-persistence",
+        "liveness-crash-restart-host",
+        "multi-client-control-program",
+        "restore-and-resume-link-reestablish"
+      ],
+      "deliverable": "The Gleam FE/BE process split is implemented per the closed requirements baseline: a BE engine process behind the frozen engine-facade and result-envelope interfaces (source text on the wire per the ruled MVP decision), an FE client process, BEAM-supervised liveness/crash-restart, an engine-state snapshot seam, and a GLP multi-client control program, with restore-and-resume staged per the dossier chain.",
+      "acceptance_evidence": "A committed e2e script under glp_gleam/test/febe/ that a fresh session runs via wsl gleam test: starts BE and FE as separate processes, loads and runs a program over the wire, kills and restarts the FE without engine loss, snapshots and restores engine state, and drives two concurrent clients through the control program",
+      "depends_on": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "close-engine-engine-composition-root",
+        "close-codec-compiled-il-on-the-wire",
+        "freeze-result-envelope-interface",
+        "freeze-engine-facade-interface"
+      ],
+      "wave": 4,
+      "effort": "L",
+      "risk": "The split rides frozen builder-1 interfaces and the ruled wire decision, so any late interface change forces rework across FE, BE and the embeddability build behind it; split point if it slips: BE+FE wire e2e first, then snapshot/restore, then the multi-client control program",
+      "statement": "The FE/BE process-split chain is delivered as one wave-4 build on frozen interfaces with a kill-restart e2e as its proof.",
+      "claim": "build-fe-be-process-split — the FE/BE process-split chain is delivered as one wave-4 build on frozen interfaces with a kill-restart e2e as its proof.",
+      "source_citation": "sliceC section 7 febe batch (b1-c1-048, b1-c1-039, b1-c1-040, b1-c1-074, b1-c1-043, b1-c1-044, b1-c1-047, b1-c1-045)",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-047",
+      "wp_id": "build-yngenios-embeddability",
+      "kind": "build",
+      "backing_detail_ids": [
+        "embeddability-service-box",
+        "qhsm-yngenios-integration-design",
+        "embedded-switch-role-framing"
+      ],
+      "deliverable": "Yngenios embeddability is delivered at requirements level per the ratified contract: a durable-listener service-box API surface on the engine facade (store-kernel scope per the escalated Gabi decision), a QHSM packaging design instantiated against the split BE from build-fe-be-process-split, and a compiling Gleam API stub proving the boundary.",
+      "acceptance_evidence": "The embeddability contract plus a compiling service-box API stub under glp_gleam/ (wsl gleam build green) with a boundary test embedding the BE engine behind the frozen engine-facade interface, and engineer sign-off recorded in the contract document",
+      "depends_on": [
+        "verify-embed-embeddability-service-box",
+        "close-embed-embeddability-service-box",
+        "build-fe-be-process-split",
+        "freeze-engine-facade-interface",
+        "freeze-result-envelope-interface"
+      ],
+      "wave": 4,
+      "effort": "L",
+      "risk": "Requirements-level scope is easy to inflate into a full yngenios integration, which does not exist in-repo and must stay out of this feature; split point if it slips: contract ratification first, the compiling boundary stub second",
+      "statement": "Embeddability lands as a ratified contract plus a compiling boundary stub on the split engine, exactly requirements-level as mandated.",
+      "claim": "build-yngenios-embeddability — embeddability lands as a ratified contract plus a compiling boundary stub on the split engine, exactly requirements-level as mandated.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052), embedded-switch-role-framing (b1-c1-074); header requirements-level note",
+      "confidence": 0.8,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c2-048",
+      "wp_id": "accept-full-scope-regression",
+      "kind": "accept",
+      "backing_detail_ids": [
+        "acceptance-sweep-and-polish",
+        "cross-runtime-pair-capstone",
+        "regression-guard",
+        "test-harness-corpus-parity",
+        "transport-parity-all-gating"
+      ],
+      "deliverable": "Whole-feature integration acceptance: one fresh-session execution of the complete matrix — all runtime suites, corpus parity, the 16/16 cross-runtime capstone, and the identical-outcomes transport matrix — assembled as the feature's final all-green evidence.",
+      "acceptance_evidence": "A single documented command sequence run by a fresh session: bash test/run_all_tests.sh, the C# suites, wsl gleam test, the 206/206 corpus-parity rig, run_link_tests_cross_gleam.sh 16/16, and the loopback/TCP/QUIC-WS matrix — all green, recorded as SC-001..SC-009 rows in specs/050-full-gleam-combined/acceptance.md",
+      "depends_on": [
+        "close-acceptance-acceptance-sweep-and-polish",
+        "close-parity-differential-harness",
+        "close-link-inbound-pump",
+        "close-quicws-link-completion-live-repl-bridge",
+        "close-transports-multi-accept-transport-extension",
+        "build-fe-be-process-split",
+        "build-yngenios-embeddability"
+      ],
+      "wave": 5,
+      "effort": "L",
+      "risk": "As the terminal gate it aggregates every upstream risk, and a single red row blocks the feature by design; split point if it slips: per-suite green gates recorded individually before the single combined fresh-session run",
+      "statement": "The feature closes on one fresh-session all-green run of the full cross-runtime and cross-transport matrix.",
+      "claim": "accept-full-scope-regression — the feature closes on one fresh-session all-green run of the full cross-runtime and cross-transport matrix.",
+      "source_citation": "sliceC section 7: acceptance-sweep-and-polish (b1-c1-075), cross-runtime-pair-capstone (b1-c1-036), regression-guard (b1-c1-023), test-harness-corpus-parity (b1-c1-019), transport-parity-all-gating (b1-c1-037)",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    },
+    {
+      "claim_id": "b3-c1-049",
+      "wp_id": "accept-febe-embeddability",
+      "kind": "accept",
+      "backing_detail_ids": [
+        "embeddability-service-box",
+        "qhsm-yngenios-integration-design",
+        "repl-engine-split-binary-wire-mvp",
+        "restore-and-resume-link-reestablish"
+      ],
+      "deliverable": "Integration acceptance of the FE/BE and embeddability deliverables: a fresh session executes the FE/BE kill-restart e2e, the snapshot/restore path, and the embeddability boundary stub build, and confirms the recorded engineer sign-offs.",
+      "acceptance_evidence": "Fresh-session run of glp_gleam/test/febe/ e2e plus the embeddability boundary test via wsl gleam test, with results and sign-off references appended to specs/050-full-gleam-combined/acceptance.md",
+      "depends_on": [
+        "build-fe-be-process-split",
+        "build-yngenios-embeddability"
+      ],
+      "wave": 5,
+      "effort": "M",
+      "risk": "Acceptance of a requirements-level embeddability deliverable rests partly on sign-off records, which must be verified as present rather than assumed.",
+      "statement": "unchanged from b3-c1-049: The FE/BE and embeddability chain gets its own wave-5 acceptance so the terminal regression gate is not its only proof.",
+      "claim": "accept-febe-embeddability — the FE/BE and embeddability chain gets its own wave-5 acceptance so the terminal regression gate is not its only proof.",
+      "source_citation": "sliceC section 7: embeddability-service-box (b1-c1-051), qhsm-yngenios-integration-design (b1-c1-052), repl-engine-split-binary-wire-mvp (b1-c1-048), restore-and-resume-link-reestablish (b1-c1-045)",
+      "confidence": 0.82,
+      "builder_id": "builder-3",
+      "slice_id": "slice-unconfirmed-gaps"
+    }
+  ],
+  "coverage_map": {
+    "acceptance-sweep-and-polish": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-acceptance-acceptance-sweep-and-polish",
+        "close-acceptance-acceptance-sweep-and-polish",
+        "accept-full-scope-regression"
+      ],
+      "reason": ""
+    },
+    "antlr-shared-grammar-spike": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "superseded — owner-recorded R1 absorption: hand-ported recursive-descent parser on BEAM, no ANTLR target; Glp.g4 remains a dossier-level follow-on; close WP is the fallback if the ruling rejects [rule-request WP: rule-compiler-antlr-shared-grammar-spike; fallback close WP: close-compiler-antlr-shared-grammar-spike per E3e default-in-feature]",
+      "verify_wp": "verify-compiler-antlr-shared-grammar-spike"
+    },
+    "arithmetic-expression": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "atomvm-compatibility-by-construction": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "baseline-program-dossier": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-process-baseline-program-dossier",
+        "close-process-baseline-program-dossier"
+      ],
+      "reason": ""
+    },
+    "build-test-topology-windows": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "bytecode-instruction-set": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-bytecode-bytecode-instruction-set",
+        "close-bytecode-bytecode-instruction-set"
+      ],
+      "reason": ""
+    },
+    "bytecode-lint": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-bytecode-bytecode-instruction-set",
+        "close-bytecode-bytecode-instruction-set"
+      ],
+      "reason": ""
+    },
+    "bytecode-mode-conversion": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-bytecode-bytecode-instruction-set",
+        "close-bytecode-bytecode-instruction-set"
+      ],
+      "reason": ""
+    },
+    "channel-convention": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-langsurface-channel-convention",
+        "close-langsurface-channel-convention"
+      ],
+      "reason": ""
+    },
+    "clause-programming-idioms": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-langsurface-channel-convention",
+        "close-langsurface-channel-convention"
+      ],
+      "reason": ""
+    },
+    "compile-mode-directive": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "compiled-il-on-the-wire": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "post-feature-follow-on — owner-recorded 026 reconciliation keeps source text on the wire for the MVP with compiler relocation a deliberately-deferred follow-up (roadmap [refined], no spec dir); close WP is the fallback if the ruling rejects [rule-request WP: rule-codec-compiled-il-on-the-wire; fallback close WP: close-codec-compiled-il-on-the-wire per E3e default-in-feature]",
+      "verify_wp": "verify-codec-compiled-il-on-the-wire"
+    },
+    "compiler-strict-mode": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "crdt-convergence": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-wireproto-crdt-convergence",
+        "close-wireproto-crdt-convergence"
+      ],
+      "reason": ""
+    },
+    "cross-runtime-pair-capstone": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-acceptance-acceptance-sweep-and-polish",
+        "close-acceptance-acceptance-sweep-and-polish",
+        "accept-full-scope-regression"
+      ],
+      "reason": ""
+    },
+    "differential-harness": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "durable-mesh-messaging": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-wireproto-crdt-convergence",
+        "close-wireproto-crdt-convergence"
+      ],
+      "reason": ""
+    },
+    "embeddability-service-box": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-embed-embeddability-service-box",
+        "close-embed-embeddability-service-box",
+        "build-yngenios-embeddability",
+        "accept-febe-embeddability"
+      ],
+      "reason": ""
+    },
+    "embedded-switch-role-framing": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split",
+        "build-yngenios-embeddability"
+      ],
+      "reason": ""
+    },
+    "engine-composition-root": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-engine-engine-composition-root",
+        "close-engine-engine-composition-root"
+      ],
+      "reason": ""
+    },
+    "engine-csharp-parity": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "engine-instances-scaling-research": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "post-feature-follow-on — C++/LLVM/many-instances research rows are roadmap ambitions with no spec dirs, beyond the full-scope Gleam delivery feature; close WP is the fallback if the ruling rejects [rule-request WP: rule-process-engine-instances-scaling-research; fallback close WP: close-process-baseline-program-dossier per E3e default-in-feature]",
+      "verify_wp": "verify-process-baseline-program-dossier"
+    },
+    "engine-review-dossier": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split"
+      ],
+      "reason": ""
+    },
+    "engine-state-snapshot-persistence": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split"
+      ],
+      "reason": ""
+    },
+    "external-io": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "full-scope-gleam-anchor": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-process-baseline-program-dossier",
+        "close-process-baseline-program-dossier"
+      ],
+      "reason": ""
+    },
+    "gap-fork-case-corpus": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "guard-defined": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-guards-guard-defined",
+        "close-guards-guard-defined"
+      ],
+      "reason": ""
+    },
+    "guard-purity": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-guards-guard-defined",
+        "close-guards-guard-defined"
+      ],
+      "reason": ""
+    },
+    "heap-value-copy-semantics": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "il-codec": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-codec-compiled-il-on-the-wire",
+        "close-codec-compiled-il-on-the-wire"
+      ],
+      "reason": ""
+    },
+    "il-codec-round-trip": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-codec-compiled-il-on-the-wire",
+        "close-codec-compiled-il-on-the-wire"
+      ],
+      "reason": ""
+    },
+    "inbound-pump": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "instance-load-and-run": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "instance-network-join": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "langpair-dart-gleam": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "link-acceptance": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "link-capability-gate": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "link-completion-live-repl-bridge": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-quicws-link-completion-live-repl-bridge",
+        "close-quicws-link-completion-live-repl-bridge"
+      ],
+      "reason": ""
+    },
+    "link-reliability": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "link-seam": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "link-transport-seam": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-link-inbound-pump",
+        "close-link-inbound-pump"
+      ],
+      "reason": ""
+    },
+    "liveness-crash-restart-host": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split"
+      ],
+      "reason": ""
+    },
+    "marathon-run-position": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-process-baseline-program-dossier",
+        "close-process-baseline-program-dossier"
+      ],
+      "reason": ""
+    },
+    "mesh-full-mesh-native-quic": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "duplicate-of — the separately promoted glp-native-quic-link feature with the C# REPL ruled as host and no recorded Gleam-instance role; close WP is the fallback if the ruling rejects [rule-request WP: rule-quicws-mesh-full-mesh-native-quic; fallback close WP: close-quicws-link-completion-live-repl-bridge per E3e default-in-feature]",
+      "verify_wp": "verify-quicws-link-completion-live-repl-bridge"
+    },
+    "message-envelope": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-wireproto-crdt-convergence",
+        "close-wireproto-crdt-convergence"
+      ],
+      "reason": ""
+    },
+    "module-dynamic-dispatch": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "module-static-linking": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "monitor-primitive-verification": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "multi-accept-transport-extension": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-transports-multi-accept-transport-extension",
+        "close-transports-multi-accept-transport-extension"
+      ],
+      "reason": ""
+    },
+    "multi-client-control-program": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split"
+      ],
+      "reason": ""
+    },
+    "multiagent-boot-loader": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-multiagent-multiagent-boot-loader",
+        "close-multiagent-multiagent-boot-loader"
+      ],
+      "reason": ""
+    },
+    "multiagent-global-send": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-multiagent-multiagent-boot-loader",
+        "close-multiagent-multiagent-boot-loader"
+      ],
+      "reason": ""
+    },
+    "multiagent-isolate-manager": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-multiagent-multiagent-boot-loader",
+        "close-multiagent-multiagent-boot-loader"
+      ],
+      "reason": ""
+    },
+    "output-capture-seam": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-engine-engine-composition-root",
+        "close-engine-engine-composition-root"
+      ],
+      "reason": ""
+    },
+    "parser-recursive-descent": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "performance-sanity-bound": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "port-source-basis-dart": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "premise-reconciliation-compiler-location": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split"
+      ],
+      "reason": ""
+    },
+    "profile-c-quic-acceptance": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-quicws-link-completion-live-repl-bridge",
+        "close-quicws-link-completion-live-repl-bridge"
+      ],
+      "reason": ""
+    },
+    "program-corpus": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness"
+      ],
+      "reason": ""
+    },
+    "proof-dist-deref-convergence": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-proofs-proof-dist-deref-convergence",
+        "close-proofs-proof-dist-deref-convergence"
+      ],
+      "reason": ""
+    },
+    "proof-writer-mgu-value-copy": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-proofs-proof-dist-deref-convergence",
+        "close-proofs-proof-dist-deref-convergence"
+      ],
+      "reason": ""
+    },
+    "qhsm-yngenios-integration-design": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-embed-embeddability-service-box",
+        "close-embed-embeddability-service-box",
+        "build-yngenios-embeddability",
+        "accept-febe-embeddability"
+      ],
+      "reason": ""
+    },
+    "quic-host": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-quicws-link-completion-live-repl-bridge",
+        "close-quicws-link-completion-live-repl-bridge"
+      ],
+      "reason": ""
+    },
+    "quiescence-oracle": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-transports-multi-accept-transport-extension",
+        "close-transports-multi-accept-transport-extension"
+      ],
+      "reason": ""
+    },
+    "reduce-metainterpreter": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-compiler-antlr-shared-grammar-spike",
+        "close-compiler-antlr-shared-grammar-spike"
+      ],
+      "reason": ""
+    },
+    "reference-envelope-and-capture-seam": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-engine-engine-composition-root",
+        "close-engine-engine-composition-root"
+      ],
+      "reason": ""
+    },
+    "regression-guard": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness",
+        "accept-full-scope-regression"
+      ],
+      "reason": ""
+    },
+    "repl-boot-command": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-repl-repl-boot-command",
+        "close-repl-repl-boot-command"
+      ],
+      "reason": ""
+    },
+    "repl-bytecode-command": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-repl-repl-boot-command",
+        "close-repl-repl-boot-command"
+      ],
+      "reason": ""
+    },
+    "repl-engine-split-binary-wire-mvp": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split",
+        "accept-febe-embeddability"
+      ],
+      "reason": ""
+    },
+    "repl-limit-command": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-repl-repl-boot-command",
+        "close-repl-repl-boot-command"
+      ],
+      "reason": ""
+    },
+    "repl-trace-command": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-repl-repl-boot-command",
+        "close-repl-repl-boot-command"
+      ],
+      "reason": ""
+    },
+    "restore-and-resume-link-reestablish": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-febe-embedded-switch-role-framing",
+        "close-febe-embedded-switch-role-framing",
+        "build-fe-be-process-split",
+        "accept-febe-embeddability"
+      ],
+      "reason": ""
+    },
+    "result-envelope-builder": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-codec-compiled-il-on-the-wire",
+        "close-codec-compiled-il-on-the-wire"
+      ],
+      "reason": ""
+    },
+    "result-envelope-codec": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-codec-compiled-il-on-the-wire",
+        "close-codec-compiled-il-on-the-wire"
+      ],
+      "reason": ""
+    },
+    "roadmap-constituent-reconciliation": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-process-baseline-program-dossier",
+        "close-process-baseline-program-dossier"
+      ],
+      "reason": ""
+    },
+    "runtime-gap-features-reference": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-process-baseline-program-dossier",
+        "close-process-baseline-program-dossier"
+      ],
+      "reason": ""
+    },
+    "scheduler-fairness": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "schema-language": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-wireproto-crdt-convergence",
+        "close-wireproto-crdt-convergence"
+      ],
+      "reason": ""
+    },
+    "srsw-anonymous-writer": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-langsurface-channel-convention",
+        "close-langsurface-channel-convention"
+      ],
+      "reason": ""
+    },
+    "stream-mutual-reference": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "subtree-scaffold": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-platform-atomvm-compatibility-by-construction",
+        "close-platform-atomvm-compatibility-by-construction"
+      ],
+      "reason": ""
+    },
+    "suspension-abandonment": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "suspension-diagnostics": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "system-predicate-registry": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-runtime-arithmetic-expression",
+        "close-runtime-arithmetic-expression"
+      ],
+      "reason": ""
+    },
+    "term-codec-tlv": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-codec-compiled-il-on-the-wire",
+        "close-codec-compiled-il-on-the-wire"
+      ],
+      "reason": ""
+    },
+    "test-harness-corpus-parity": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-parity-differential-harness",
+        "close-parity-differential-harness",
+        "accept-full-scope-regression"
+      ],
+      "reason": ""
+    },
+    "transport-parity-all-gating": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-transports-multi-accept-transport-extension",
+        "close-transports-multi-accept-transport-extension",
+        "accept-full-scope-regression"
+      ],
+      "reason": ""
+    },
+    "type-guard-set": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-langsurface-channel-convention",
+        "close-langsurface-channel-convention"
+      ],
+      "reason": ""
+    },
+    "type-parameterized": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-langsurface-channel-convention",
+        "close-langsurface-channel-convention"
+      ],
+      "reason": ""
+    },
+    "untrusted-frame-hardening": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-transports-multi-accept-transport-extension",
+        "close-transports-multi-accept-transport-extension"
+      ],
+      "reason": ""
+    },
+    "websocket-framing": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-quicws-link-completion-live-repl-bridge",
+        "close-quicws-link-completion-live-repl-bridge"
+      ],
+      "reason": ""
+    },
+    "wire-registry": {
+      "status": "covered",
+      "wp_ids": [
+        "verify-wireproto-crdt-convergence",
+        "close-wireproto-crdt-convergence"
+      ],
+      "reason": ""
+    },
+    "zmq-comm-base": {
+      "status": "out-of-scope-proposed",
+      "wp_ids": [],
+      "reason": "external-dependency/post-feature-follow-on — blocked-by the reference-side multi-protocol-link-layer and explicitly absent from the Gleam transport contract (loopback/TCP/QUIC only); close WP is the fallback if the ruling rejects [rule-request WP: rule-transports-zmq-comm-base; fallback close WP: close-transports-multi-accept-transport-extension per E3e default-in-feature]",
+      "verify_wp": "verify-transports-multi-accept-transport-extension"
+    }
+  },
+  "retractions": [
+    {
+      "claim_id": "b3-c1-016",
+      "reason": "superseded by b3-c2-016 - acceptance_evidence tightened to concrete runnable commands/paths (R2/E3d)"
+    },
+    {
+      "claim_id": "b3-c1-021",
+      "reason": "superseded by b3-c2-021 - E1 naming: kind-prefix for rule-request is 'rule' - wp_id renamed"
+    },
+    {
+      "claim_id": "b3-c1-022",
+      "reason": "superseded by b3-c2-022 - E1 naming: kind-prefix for rule-request is 'rule' - wp_id renamed"
+    },
+    {
+      "claim_id": "b3-c1-023",
+      "reason": "superseded by b3-c2-023 - E1 naming: kind-prefix for rule-request is 'rule' - wp_id renamed"
+    },
+    {
+      "claim_id": "b3-c1-024",
+      "reason": "superseded by b3-c2-024 - E1 naming: kind-prefix for rule-request is 'rule' - wp_id renamed"
+    },
+    {
+      "claim_id": "b3-c1-025",
+      "reason": "superseded by b3-c2-025 - E1 naming: kind-prefix for rule-request is 'rule' - wp_id renamed"
+    },
+    {
+      "claim_id": "b3-c1-026",
+      "reason": "superseded by b3-c2-026 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-029",
+      "reason": "superseded by b3-c2-029 - depends_on re-pointed to the E1-correct 'rule-' wp_id; R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-032",
+      "reason": "superseded by b3-c2-032 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-034",
+      "reason": "superseded by b3-c2-034 - depends_on re-pointed to the E1-correct 'rule-' wp_id; R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-035",
+      "reason": "superseded by b3-c2-035 - depends_on re-pointed to the E1-correct 'rule-' wp_id; R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-036",
+      "reason": "superseded by b3-c2-036 - depends_on re-pointed to the E1-correct 'rule-' wp_id"
+    },
+    {
+      "claim_id": "b3-c1-042",
+      "reason": "superseded by b3-c2-042 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-044",
+      "reason": "superseded by b3-c2-044 - depends_on re-pointed to the E1-correct 'rule-' wp_id"
+    },
+    {
+      "claim_id": "b3-c1-045",
+      "reason": "superseded by b3-c2-045 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-046",
+      "reason": "superseded by b3-c2-046 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-047",
+      "reason": "superseded by b3-c2-047 - R6: L-effort risk note now names the split point"
+    },
+    {
+      "claim_id": "b3-c1-048",
+      "reason": "superseded by b3-c2-048 - R6: L-effort risk note now names the split point"
+    }
+  ]
+}
