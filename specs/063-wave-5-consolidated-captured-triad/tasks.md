@@ -21,7 +21,7 @@ board-flagged before work starts.
 
 ## Phase 2: Foundational (blocking prerequisites)
 
-- [ ] T004 Verify `csharp/glp_quick_host` + `glp_quick` build/run baseline on this tree (dotnet build + pytest) and record the pre-change verdict counts in specs/063-wave-5-consolidated-captured-triad/baseline.md
+- [X] T004 Verify `csharp/glp_quick_host` + `glp_quick` build/run baseline on this tree (dotnet build + pytest) and record the pre-change verdict counts in specs/063-wave-5-consolidated-captured-triad/baseline.md
 - [ ] T005 Add additive migration `codeconv/src/codeconv/db/migrations/versions/0011_msmesh_schema.py` (tables per data-model.md: station, mailbox, message, delivery_position, dlq, gap_event) + single-head test `codeconv/tests/test_migration_0011_single_head.py` (heads == [0011])
 - [ ] T006 [P] Implement `ms_message/src/ms_message/protocol.py` — signal/fetch/fetch_batch/friend_lookup/friend_reply message shapes (contracts/mesh-messaging-protocol.md), transport-agnostic payload encode/decode
 
