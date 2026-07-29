@@ -574,5 +574,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/059-full-scope-gleam-glp-implementation/plan.md`
+`specs/063-wave-5-consolidated-captured-triad/plan.md`
 <!-- BUILDKIT END -->
