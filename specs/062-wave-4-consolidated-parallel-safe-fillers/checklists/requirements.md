@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,10 +31,10 @@
 
 ## Notes
 
-- Two [NEEDS CLARIFICATION] markers remain in the spec's "Open clarifications" block by design;
-  both are scope-critical and are deliberately deferred to `/bk-clarify`:
-  1. US3 (compiled-IL-on-the-wire) — working capability vs. feasibility spike in this wave.
-  2. US5 (§1.14 items) — proposal-only (assumed) vs. approve-and-implement in this wave.
+- Both prior clarifications resolved in the 2026-07-29 clarify session:
+  1. US3 (compiled-IL-on-the-wire) → **fully working, hardened runtime capability** this wave.
+  2. US5 (§1.14 items) → **approve-and-implement** (operator approval recorded 2026-07-29);
+     written §1.14 proposals still authored per discipline before each implementation lands.
 - A minor implementation-adjacent term ("ZMQ") appears because it names a specific roadmap item;
   it identifies the item, not a prescribed implementation approach.
-- Items marked incomplete require spec updates before `/bk-clarify` or `/bk-plan`.
+- Checklist complete — ready for `/bk-plan`.

@@ -30,6 +30,19 @@ The eleven consolidated items (roadmap slugs, by rank):
 `zmq-comm-base`, `many-instances-shared-static-memory-cooperative-scheduling`,
 `nested-structure-head-matching` (§1.14).
 
+## Clarifications
+
+### Session 2026-07-29
+
+- Q: US3 (compiled-IL-on-the-wire + factor-out-compiler) — working capability or feasibility
+  spike this wave? → A: **A fully working, hardened runtime capability in this wave** (not a
+  spike).
+- Q: US5 — the two §1.14 language items (`abandon-operation`, `nested-structure-head-matching`)
+  — proposal-only or approve-and-implement? → A: **Approve-and-implement — YES.** The operator
+  (Gabi, language owner) grants §1.14 approval to implement both this wave. A written §1.14
+  proposal (exact semantics, FCP reference, type-system impact, test plan) is still authored per
+  discipline and references this recorded approval; it does not re-gate the go-ahead.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Depgraph tooling enhancements (Priority: P1)
@@ -89,16 +102,20 @@ signed off independently of the other slices.
 ### User Story 3 - Engine & transport extensions (Priority: P2)
 
 As a runtime engineer, I want the compiled-IL-on-the-wire work (factoring the compiler out so
-compiled intermediate form can cross the wire), the multi-accept TCP transport extension, and
-the ZMQ base communication primitives, so the distributed runtime has the transport and
-compiler seams the later spines depend on.
+compiled intermediate form can cross the wire) delivered as a **fully working, hardened runtime
+capability** this wave, plus the multi-accept TCP transport extension and the ZMQ base
+communication primitives, so the distributed runtime has the transport and compiler seams the
+later spines depend on.
 
-**Why this priority**: Real runtime capability with tests, but larger and riskier than the
-tooling slice; independent of US1/US2 and of each other.
+**Why this priority**: Real runtime capability with tests. Per the clarification, compiled-IL-
+on-the-wire is a **production-grade, hardened** deliverable this wave (not a spike):
+error/failure paths handled, malformed/incompatible IL rejected safely, and results verified
+equal to local execution under load. Independent of US1/US2 and of each other.
 
 **Independent Test**: Each extension is covered by its own runtime/unit tests that pass under
 the existing suites without regressing the baselines (REPL suite; Gleam/C# suites as
-applicable).
+applicable). Compiled-IL-on-the-wire additionally passes hardening tests (malformed IL,
+version-mismatch, transport failure mid-transfer).
 
 **Acceptance Scenarios**:
 
@@ -108,7 +125,10 @@ applicable).
 2. **Given** the compiler factored out, **When** a program is compiled to intermediate form on
    one side and sent over the wire, **Then** the receiving side executes it with results equal
    to local execution.
-3. **Given** the ZMQ base primitives, **When** a sender and receiver base are wired, **Then**
+3. **Given** compiled-IL-on-the-wire in production use, **When** malformed IL, an incompatible
+   IL version, or a mid-transfer transport failure occurs, **Then** the receiver rejects/recovers
+   safely with a diagnostic and without corrupting engine state (hardening).
+4. **Given** the ZMQ base primitives, **When** a sender and receiver base are wired, **Then**
    a round-trip message is delivered and covered by a test.
 
 ---
@@ -132,29 +152,34 @@ compiles, and reaches the expected succeeded/suspended outcome, added as a regre
 
 ---
 
-### User Story 5 - GLP language items (Priority: P3, GATED — implementation deferred)
+### User Story 5 - GLP language items (Priority: P3, APPROVED — implement this wave)
 
-As the language owner, I want the two proposed GLP language changes — the abandon operation
-(FCP-exact) and nested-structure matching in the HEAD phase — captured with a written §1.14
-proposal, so they can be approved or rejected before any implementation touches the language.
+As the language owner, I want the two GLP language changes — the abandon operation (FCP-exact)
+and nested-structure matching in the HEAD phase — implemented this wave, each preceded by a
+written §1.14 proposal that documents exact semantics and the FCP reference.
 
-**Why this priority**: These change what the language *is*. Per DISCIPLINE.md §1.14 they
-cannot be implemented without a written proposal and the operator's express approval. This
-wave delivers the **proposal artifacts only**; implementation is explicitly out of scope until
-approval is granted.
+**Why this priority**: These change what the language *is*. Per the clarification, the operator
+(language owner) has granted §1.14 **approve-and-implement** for both (2026-07-29). Discipline is
+still honoured: a written §1.14 proposal (motivation, exact semantics, FCP reference for the
+abandon operation, type-system impact, test plan) is authored for each and recorded against this
+approval **before** its implementation lands; the proposal is a design artifact, not a re-gate.
+Semantics are drawn from the authoritative sources (Shapiro/FCP; the sibling GLP repo), never
+guessed (CLAUDE.md — "never program based on ignorance of GLP").
 
-**Independent Test**: A written §1.14 proposal exists for each item (motivation, exact
-semantics, FCP reference for the abandon operation, type-system impact, test plan) and is
-presented for approval. No language/runtime code is changed under this wave for these two
-items.
+**Independent Test**: For each item, (a) a written §1.14 proposal exists and references the
+recorded approval, and (b) the implemented behaviour type-checks, compiles, and runs via the
+REPL pipeline with new positive and negative regression tests, without regressing the REPL
+baseline.
 
 **Acceptance Scenarios**:
 
-1. **Given** the abandon-operation proposal, **When** it is delivered, **Then** it states exact
-   semantics with the FCP reference and a test plan, and is marked "awaiting §1.14 approval".
-2. **Given** the nested-structure-head-matching proposal, **When** it is delivered, **Then** it
-   states the exact HEAD-phase matching semantics and type-system impact, and is marked
-   "awaiting §1.14 approval".
+1. **Given** the abandon-operation §1.14 proposal delivered and the operation implemented, **When**
+   an abandon is exercised, **Then** behaviour matches the FCP-exact semantics stated in the
+   proposal and is covered by positive + negative regression tests.
+2. **Given** the nested-structure-head-matching §1.14 proposal delivered and the feature
+   implemented, **When** a clause head matches a nested structure, **Then** HEAD-phase matching
+   behaves per the proposal's stated semantics, the type checker accepts it, and regression tests
+   (including SRSW/mode cases) pass.
 
 ---
 
@@ -165,9 +190,9 @@ items.
   nodes.
 - How does the system handle a cross-run trend request with only one recorded run? → It
   reports that at least two runs are required; it does not emit a degenerate trend.
-- What happens if the operator does **not** approve a §1.14 item? → The item stays deferred;
-  the wave still closes on the other slices, and the deferred item is recorded as such (it does
-  not block the wave).
+- What if a §1.14 written proposal, once drafted, surfaces a semantic problem? → Stop and report
+  to the operator before implementing (Bug/Language protocol); the recorded approval covers the
+  agreed direction, not a semantics error. The other slices proceed regardless.
 - How is a feasibility study that concludes "no-go" handled? → A no-go is a valid, complete
   deliverable; the study is done, and any dependent roadmap item is annotated accordingly.
 - What happens if an engine/transport extension would regress a baseline suite? → It is not
@@ -190,14 +215,18 @@ items.
 - **FR-005**: The compiler MUST be factored so that compiled intermediate form can be produced
   independently of execution and transmitted over the wire, with remote execution results equal
   to local execution.
+- **FR-005a**: Compiled-IL-on-the-wire MUST be hardened for production use: malformed IL and
+  incompatible IL versions MUST be rejected safely with a diagnostic, and a transport failure
+  mid-transfer MUST NOT corrupt engine state.
 - **FR-006**: The runtime MUST provide ZMQ base send/receive communication primitives covered
   by a round-trip test.
 - **FR-007**: A multi-client control program written in GLP MUST be provided that type-checks,
   compiles, and runs to a documented outcome, added as a regression case.
-- **FR-008**: The system MUST deliver a written §1.14 proposal for the abandon operation
-  (FCP-exact semantics + test plan) and for nested-structure HEAD-phase matching (exact
-  semantics + type-system impact). Implementation of either MUST NOT proceed without the
-  operator's recorded approval.
+- **FR-008**: For each of the two §1.14 language items, the system MUST deliver a written §1.14
+  proposal (abandon operation: FCP-exact semantics + test plan; nested-structure HEAD-phase
+  matching: exact semantics + type-system impact) that references the operator's recorded
+  approval (2026-07-29), and MUST then implement it with positive + negative regression tests.
+  Semantics MUST be sourced from FCP / the sibling GLP repo, never guessed.
 - **FR-009**: Each implemented slice MUST NOT regress the established test baselines (REPL
   suite; codeconv pytest; Gleam/C# suites where touched). A regression is a stop-and-report,
   not a workaround (DISCIPLINE.md §1.2/§1.8).
@@ -242,9 +271,11 @@ items.
 - Feasibility items (research-programme/LLVM, C++ engine, many-instances scheduling) are
   delivered as **written studies/ADRs**, not full implementations — they are feasibility
   questions by nature. Full builds, if any, are follow-on roadmap features.
-- The two §1.14 items are **proposal-only** in this wave; their implementation is out of scope
-  until the operator approves the written proposals. A non-approval defers the item without
-  blocking wave close.
+- US3 compiled-IL-on-the-wire is delivered as a **fully working, hardened runtime capability**
+  this wave (clarified 2026-07-29), not a spike.
+- The two §1.14 items are **approved for implement this wave** (operator approval recorded
+  2026-07-29); each is preceded by a written §1.14 proposal authored per discipline. Semantics
+  come from FCP / the sibling GLP repo, never guessed.
 - "Parallel-safe" holds within the wave: the eleven items have no hard ordering constraints on
   each other, so slices proceed independently and in any order.
 - Existing shipped transport/link surface (from prior waves) is reused for the engine/transport
@@ -254,12 +285,4 @@ items.
 - Wave-5 is roadmap-recorded as depending on Wave-4 output; that dependency stays recorded and is
   coordinated on the shared scheduler board.
 
-### Open clarifications (to resolve in `/bk-clarify`)
-
-- [NEEDS CLARIFICATION: Should the compiled-IL-on-the-wire + factor-out-compiler slice (US3) be
-  delivered as a working runtime capability in this wave, or reduced to a feasibility/spike
-  deliverable like US2? It is the largest and riskiest engine item and may not fit a "filler"
-  wave.]
-- [NEEDS CLARIFICATION: For the two §1.14 items, is the desired Wave-4 deliverable the written
-  proposals only (assumed here), or does the operator intend to approve-and-implement within this
-  wave? This determines whether US5 stays gated/deferred or becomes in-scope implementation.]
+_All open clarifications resolved in the 2026-07-29 clarify session (see ## Clarifications)._
