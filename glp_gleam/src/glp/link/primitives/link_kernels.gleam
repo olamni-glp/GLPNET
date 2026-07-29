@@ -149,6 +149,7 @@ fn link_setup(
                           out_writer: out_writer,
                           faults_cursors: [faults_writer],
                           established: False,
+                          out_closed: False,
                           closed: False,
                         )
                       let state =

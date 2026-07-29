@@ -62,7 +62,12 @@ pub type Cursors {
     faults_cursors: List(Int),
     /// The rendezvous resolved and the handle holds a live endpoint.
     established: Bool,
-    /// Set once the link is being / has been torn down.
+    /// Our own sender gracefully closed (`Out = []` — TCP half-close): the
+    /// egress drain stops, but RECEIVING CONTINUES — closing our sender never
+    /// stops the inbound side of a bilateral link (the pump-loop rule).
+    out_closed: Bool,
+    /// The link is fully down (peer end-of-stream, `_link_close`, or a failed
+    /// establishment) — terminal for the link.
     closed: Bool,
   )
 }

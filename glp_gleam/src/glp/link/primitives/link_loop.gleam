@@ -258,7 +258,7 @@ fn drain_egress(
     case dict.get(state.cursors, id) {
       Error(_) -> #(sched, state)
       Ok(c) ->
-        case c.established && !c.closed {
+        case c.established && !c.closed && !c.out_closed {
           False -> #(sched, state)
           True -> drain_chain(sched, state, id, c.out_writer)
         }
@@ -396,8 +396,11 @@ fn ship_one(
   }
 }
 
-/// The graceful `Out = []` teardown: close the endpoint (the peer's recv ends
-/// with EOS), emit the terminal `closed(LinkId, eos)`, mark closed, reclaim.
+/// The graceful `Out = []` SENDER close (FR-010): half-close the endpoint (the
+/// transport's `close` is a shutdown-write — the peer's recv ends with EOS) and
+/// stop draining. RECEIVING CONTINUES — closing our own sender never stops the
+/// inbound side of a bilateral link; the link goes terminal only on the peer's
+/// end-of-stream (`LinkPeerClosed`), a `_link_close`, or a permanent fault.
 fn graceful_close(
   sched: scheduler.Engine,
   state: LinkState,
@@ -407,13 +410,5 @@ fn graceful_close(
     Ok(handle) -> handle.endpoint.close()
     Error(_) -> Nil
   }
-  let state =
-    LinkState(..state, registry: link_registry.remove(state.registry, id))
-  fault_out(
-    sched,
-    state,
-    id,
-    link_terms.closed_term(id, link_terms.graceful_reason),
-    close: True,
-  )
+  #(sched, with_cursors(state, id, fn(c) { Cursors(..c, out_closed: True) }))
 }
