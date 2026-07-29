@@ -66,6 +66,33 @@ errors, then `python -m pytest -q -rs`):
   it expects `cert_mismatch` (the handshake never starts). Environment-level
   defect in the Gleam/quicer runtime on this host; root-cause during US1
   per the T004 note.
+## T009/T010 — mesh_dup_id regression scenario + provenance finding (2026-07-30, 063 @ d5a0ac63)
+
+`csharp/glp_link.tests/MeshDupIdRegressionTests.cs` (4 tests, selected by
+`dotnet test csharp/glp_link.tests --filter mesh_dup_id`) drives the internal
+`Mesh` router directly: incumbent keeps the route on a duplicate announce
+(rejection visible as `WARN dup-id` in the mesh's own output), the newcomer's
+DEATH never evicts the live incumbent (the audited `Program.cs:253` symptom),
+clean departure leaves no stale route, and the rejected newcomer becomes
+addressable under a fresh id.
+
+- **Verdict: 4/4 PASS against the current code — the audited symptom does NOT
+  reproduce.** Per T010's second arm: **provenance finding recorded** — the
+  eviction guard in `Mesh.Remove` (conditional
+  `TryRemove(KeyValuePair(id, link))`) and the no-hijack `Register` landed
+  in-tree between the 2026-07-02 audit and this wave (the in-code guard
+  comment's provenance was unverified until now); no fix was required, and
+  NO change was made to `Program.cs`.
+- **Witness validity proven by mutation check**: temporarily reverting
+  `Mesh.Remove` to the audited naive eviction (`_byId.TryRemove(id, out _)`)
+  makes `mesh_dup_id_newcomer_death_never_evicts_the_live_incumbent` FAIL
+  (1F/3P), satisfying C2's "MUST fail against the audited defect behaviour";
+  the mutation was reverted byte-identically (git diff empty) and the
+  scenario re-verified green. The scenario ships as the closure witness.
+- Full `glp_link.tests` after adding the scenario + the
+  glp_quick_host project reference/InternalsVisibleTo wiring:
+  **156/156, 0 skips** (baseline 152 + the 4 scenario tests).
+
 - **Operational hazard (reported)**: the two failing profile-C tests LEAK
   their spawned `glp_quick_host` server processes on teardown; the orphans
   hold `bin/Debug/net10.0/glp_link.dll` open and break the next
