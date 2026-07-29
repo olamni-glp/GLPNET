@@ -1,0 +1,41 @@
+<!--
+  GlpReplClient — the thin terminal REPL client for the 061 split (T002; R7:
+  a minimal client holding NO local language context — the engine bootstraps
+  the prelude, FR-003). Renders 038 envelope results; distinguishes transport
+  failure from goal failure (FR-007).
+
+  CLOBBER-SAFE: no Dart preimage, lives OUTSIDE out/csharp.
+
+  References glp_link (TcpTransport + FrameCodec) + glp_split_protocol ONLY —
+  no direct runtime project reference (R7 thin client).
+
+  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.ReplClient</RootNamespace>
+    <AssemblyName>glp_repl_client</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+    <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+    <!-- 038 envelope decode for rendering RESULT responses (T012). glp_result_codec is
+         fully STANDALONE (its only ref is the zero-dependency glp_wire_registry constants
+         leaf) — adding it keeps the R7 thin-client stance intact: no runtime project, no
+         language context, just the pure value-type codec the wire contract mandates. -->
+    <ProjectReference Include="..\glp_result_codec\GlpResultCodec.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_engine_host.tests" />
+  </ItemGroup>
+
+</Project>

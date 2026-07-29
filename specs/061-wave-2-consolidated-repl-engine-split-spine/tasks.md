@@ -18,17 +18,17 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `csharp/glp_split_protocol/GlpSplitProtocol.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` only — the tiny shared wire-protocol library both sides use without the client touching the runtime) and `csharp/glp_engine_host/GlpEngineHost.csproj` (net8.0, refs `out/csharp/glp_runtime_net.csproj`, `csharp/glp_link/GlpLink.csproj`, `csharp/glp_result_codec/GlpResultCodec.csproj`, `csharp/glp_split_protocol/GlpSplitProtocol.csproj`) with empty `Program.cs`; `dotnet build` green
-- [ ] T002 [P] Create `csharp/glp_repl_client/GlpReplClient.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` + `csharp/glp_split_protocol/GlpSplitProtocol.csproj` only — R7 thin client, no runtime ref) with empty `Program.cs`; `dotnet build` green
-- [ ] T003 [P] Create `csharp/glp_supervisor/GlpSupervisor.csproj` (net8.0, Microsoft.Extensions.Hosting for BackgroundService) with empty `Program.cs`; `dotnet build` green
-- [ ] T004 [P] Create `csharp/glp_engine_host.tests/GlpEngineHost.Tests.csproj` (xUnit, refs the three new projects) with one placeholder test; `dotnet test` green
-- [ ] T005 Record suite baseline: run `bash test/run_all_tests.sh` + `dotnet test` across `csharp/*.tests`; commit baseline note in `specs/061-wave-2-consolidated-repl-engine-split-spine/baseline.md` (Constitution VII)
+- [X] T001 Create `csharp/glp_split_protocol/GlpSplitProtocol.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` only — the tiny shared wire-protocol library both sides use without the client touching the runtime) and `csharp/glp_engine_host/GlpEngineHost.csproj` (net8.0, refs `out/csharp/glp_runtime_net.csproj`, `csharp/glp_link/GlpLink.csproj`, `csharp/glp_result_codec/GlpResultCodec.csproj`, `csharp/glp_split_protocol/GlpSplitProtocol.csproj`) with empty `Program.cs`; `dotnet build` green
+- [X] T002 [P] Create `csharp/glp_repl_client/GlpReplClient.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` + `csharp/glp_split_protocol/GlpSplitProtocol.csproj` only — R7 thin client, no runtime ref) with empty `Program.cs`; `dotnet build` green
+- [X] T003 [P] Create `csharp/glp_supervisor/GlpSupervisor.csproj` (net8.0, Microsoft.Extensions.Hosting for BackgroundService) with empty `Program.cs`; `dotnet build` green
+- [X] T004 [P] Create `csharp/glp_engine_host.tests/GlpEngineHost.Tests.csproj` (xUnit, refs the three new projects) with one placeholder test; `dotnet test` green
+- [X] T005 Record suite baseline: run `bash test/run_all_tests.sh` + `dotnet test` across `csharp/*.tests`; commit baseline note in `specs/061-wave-2-consolidated-repl-engine-split-spine/baseline.md` (Constitution VII)
 
 ## Phase 2: Foundational (blocking prerequisites for all stories)
 
-- [ ] T006 Define REQUEST/RESPONSE payload types + kind bytes (contracts/wire-protocol.md table) in `csharp/glp_split_protocol/WireProtocol.cs` (shared constants project — both host and client reference it)
-- [ ] T007 Implement request/response frame encode/decode over `FrameCodec` in `csharp/glp_split_protocol/RequestResponseCodec.cs` — request_id u64 echo, UTF-8 bodies, loud-fail on unknown kind/trailing bytes (wire-protocol rules 3)
-- [ ] T008 [P] xUnit round-trip + loud-fail tests for the frame codec in `csharp/glp_engine_host.tests/RequestResponseCodecTests.cs`
+- [X] T006 Define REQUEST/RESPONSE payload types + kind bytes (contracts/wire-protocol.md table) in `csharp/glp_split_protocol/WireProtocol.cs` (shared constants project — both host and client reference it)
+- [X] T007 Implement request/response frame encode/decode over `FrameCodec` in `csharp/glp_split_protocol/RequestResponseCodec.cs` — request_id u64 echo, UTF-8 bodies, loud-fail on unknown kind/trailing bytes (wire-protocol rules 3)
+- [X] T008 [P] xUnit round-trip + loud-fail tests for the frame codec in `csharp/glp_engine_host.tests/RequestResponseCodecTests.cs`
 
 ## Phase 3: US1 — Run GLP goals from a separate client process (P1) 🎯 MVP
 

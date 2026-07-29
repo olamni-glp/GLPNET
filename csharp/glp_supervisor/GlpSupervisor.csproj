@@ -1,0 +1,35 @@
+<!--
+  GlpSupervisor — the liveness + supervised-restart host for the 061 engine
+  (T003; contracts/supervision.md). Hosts the engine as a child process behind
+  a .NET BackgroundService: one binary runs as console (dev/test) and as a
+  Windows service (deploy) — FR-025, Windows-first, contract portable.
+
+  MVP liveness is HOST-TIMER ONLY (DEF-F1/§1.14: the self-prove GLP goal is
+  proposal-only this wave — see FR-021).
+
+  CLOBBER-SAFE: no Dart preimage, lives OUTSIDE out/csharp.
+
+  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.Supervisor</RootNamespace>
+    <AssemblyName>glp_supervisor</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="glp_engine_host.tests" />
+  </ItemGroup>
+
+</Project>
