@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="glp_engine_host.tests" />
+    <InternalsVisibleTo Include="GlpEngineHost.Tests" />
   </ItemGroup>
 
 </Project>
