@@ -2159,6 +2159,24 @@ done
 echo ""
 
 # =============================================================================
+# SECTION I: US5 CROSS-RUNTIME DISTRIBUTED SUITE (Gleam × C#; feature 060
+# T047/FR-030 — results report alongside the other sections). Needs gleam on
+# PATH + the built C# REPL; absent either, an EXPLICIT skip (never silent).
+# =============================================================================
+echo "=== Section I: Cross-runtime Gleam × C# link suite (US5) ==="
+CSREPL_BIN="out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+if command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
+    if bash test/parity/cross_runtime/run_all.sh; then
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "ok"
+    else
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "FAILED (scenario detail above)"
+    fi
+else
+    echo "  SKIP: cross-runtime suite — needs gleam on PATH + built C# REPL ($CSREPL_BIN)"
+fi
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))
