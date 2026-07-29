@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ms_message"
+version = "0.1.0"
+description = "ms-message — /ms-message durable first-hop mesh-messaging tool: Kafka-style signal-then-fetch on mailboxes with WAL durability, PGlite hot tier (msmesh schema) aging to DuckLake, dense per-sender sequences, retention classes, friend-lookup and DLQ (feature 063 US2)"
+requires-python = ">=3.11"
+dependencies = [
+  "typer",
+]
+
+[project.optional-dependencies]
+# The DuckLake aging tier sits behind the lake.py seam (research R6); hosts
+# without the extra degrade LOUDLY to PGlite-only — never silently.
+lake = [
+  "duckdb",
+]
+dev = [
+  "pytest>=7",
+]
+
+[project.scripts]
+ms-message = "ms_message.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

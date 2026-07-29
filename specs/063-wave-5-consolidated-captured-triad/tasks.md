@@ -15,15 +15,16 @@ board-flagged before work starts.
 
 ## Phase 1: Setup
 
-- [ ] T001 Scaffold the `ms_message/` Python package (pyproject.toml, src/ms_message/, tests/) mirroring the glp_quick layout, per plan.md structure
-- [ ] T002 [P] Scaffold `.claude/skills/ms-message/SKILL.md` (originator/recipient/status/dlq command surface per contracts/mesh-messaging-protocol.md)
-- [ ] T003 [P] Create `docs/three-role-orchestration/` with an empty engagements/ dir and a stub PROTOCOL.md header
+- [X] T001 Scaffold the `ms_message/` Python package (pyproject.toml, src/ms_message/, tests/) mirroring the glp_quick layout, per plan.md structure
+- [X] T002 [P] Scaffold `.claude/skills/ms-message/SKILL.md` (originator/recipient/status/dlq command surface per contracts/mesh-messaging-protocol.md)
+- [X] T003 [P] Create `docs/three-role-orchestration/` with an empty engagements/ dir and a stub PROTOCOL.md header
 
 ## Phase 2: Foundational (blocking prerequisites)
 
 - [X] T004 Verify `csharp/glp_quick_host` + `glp_quick` build/run baseline on this tree (dotnet build + pytest) and record the pre-change verdict counts in specs/063-wave-5-consolidated-captured-triad/baseline.md
-- [ ] T005 Add additive migration `codeconv/src/codeconv/db/migrations/versions/0011_msmesh_schema.py` (tables per data-model.md: station, mailbox, message, delivery_position, dlq, gap_event) + single-head test `codeconv/tests/test_migration_0011_single_head.py` (heads == [0011])
-- [ ] T006 [P] Implement `ms_message/src/ms_message/protocol.py` — signal/fetch/fetch_batch/friend_lookup/friend_reply message shapes (contracts/mesh-messaging-protocol.md), transport-agnostic payload encode/decode
+- [X] T005 Add additive migration `codeconv/src/codeconv/db/migrations/versions/0011_msmesh_schema.py` (tables per data-model.md: station, mailbox, message, delivery_position, dlq, gap_event) + single-head test `codeconv/tests/test_migration_0011_single_head.py` (heads == [0011])
+  — DEVIATION (recorded): feature 035 (`0011_enrich_provenance`) had already advanced the head to 0011 before this wave, so the msmesh migration landed as `0012_msmesh_schema.py` (head 0011→0012) with authoritative test `test_migration_0012_single_head.py` (heads == [0012]); the 0011 test was repurposed to the interior-link assertion, the same convention 035 applied to 0010's. The task's binding intent — additive, single linear head (Constitution VI-a) — is unchanged.
+- [X] T006 [P] Implement `ms_message/src/ms_message/protocol.py` — signal/fetch/fetch_batch/friend_lookup/friend_reply message shapes (contracts/mesh-messaging-protocol.md), transport-agnostic payload encode/decode
 
 ## Phase 3: User Story 1 — QUIC+WS link completion (P1) — MVP
 
