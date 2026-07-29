@@ -10,6 +10,8 @@
 import gleam/io
 import gleam/list
 import glp/engine
+import glp/link/transports/loopback
+import glp/link/transports/tcp
 import glp/repl/commands.{type Session, Session}
 
 /// Default reduction limit until `:limit <n>` overrides it (engine `default_fuel`).
@@ -20,8 +22,17 @@ const default_limit = 1_000_000
 /// normalizes them); the `✓ Loaded …`, binding, and `→ status` lines are the
 /// parity-bearing output.
 pub fn run() -> Nil {
+  // The composition root assembles this instance's transport capabilities
+  // (T050.C3 — the base acceptance set: loopback + tcp). Injecting them arms
+  // the link layer: goals run under the link-aware loop and the `_link_*`
+  // kernels are live.
   let session =
-    Session(engine: engine.new(), trace: False, limit: default_limit)
+    Session(
+      engine: engine.new()
+        |> engine.with_transports([loopback.new(), tcp.new()]),
+      trace: False,
+      limit: default_limit,
+    )
   io.println("GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit")
   loop(session)
 }

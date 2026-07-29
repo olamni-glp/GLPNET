@@ -52,6 +52,7 @@ import glp/engine/goal_format
 import glp/engine/kernels
 import glp/engine/runner.{type RunnerFault, type SpawnReq, SpawnReq}
 import glp/engine/types.{type Activation, type RunQueue, Activation}
+import glp/link/primitives/link_runtime.{type LinkState}
 import glp/mad/global_name
 import glp/mad/globalize.{type Spawn}
 import glp/mad/mad_kernels.{type MadState, MadState}
@@ -390,8 +391,9 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
       // bytecode, not the main program (Dart rt.getGoalProgram).
       let goal_program = program_for(engine, act.goal_id)
       case runner.reduce(goal_program, ctx, act.resume_pc, reduction_budget) {
-        // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine, not this
-        // pure scheduler — always `None` on this path, ignored here.
+        // `mad` (T050.A2 madGLP state) is threaded by the A3 MadEngine and `link`
+        // (T050.C2) by the link-aware step, not this pure scheduler — always
+        // `None` on this path, ignored here.
         runner.Reduced(
           heap: h,
           woken: woken,
@@ -400,6 +402,7 @@ pub fn step(engine: Engine, reduction_budget: Int) -> #(Engine, StepOutcome) {
           remote: remote,
           sends: sends,
           mad: _,
+          link: _,
         ) -> {
           let engine =
             Engine(
@@ -514,6 +517,7 @@ pub fn step_mad(
           remote: remote,
           sends: sends,
           mad: mad_o,
+          link: _,
         ) -> {
           // In madGLP mode the runner always returns `Some` (we injected `Some`);
           // `None` would be an engine invariant break — treat it as no effect.
@@ -598,6 +602,144 @@ pub fn step_mad(
   }
 }
 
+// ── link-aware stepping (T050.C2) ─────────────────────────────────────────────
+//
+// Like `step_mad`, but threading a `LinkState` so the `_link_*` effectful kernels
+// are reachable inside `reduce`. The link layer emits no lowered spawns — its
+// blocking work runs in per-link BEAM processes reporting to the engine loop's
+// subject (link_runtime), so this step only threads the state.
+
+/// One link-aware reduction: `step` with `link_in` injected and the advanced
+/// `LinkState` returned.
+pub fn step_link(
+  engine: Engine,
+  reduction_budget: Int,
+  link_in: LinkState,
+) -> #(Engine, StepOutcome, LinkState) {
+  case types.dequeue(engine.queue) {
+    Error(_) -> #(engine, StepIdle, link_in)
+    Ok(#(act, queue)) -> {
+      let engine = Engine(..engine, queue: queue)
+      let ctx =
+        runner.with_link(runner.new_context(engine.heap, act.regs), link_in)
+      let goal_program = program_for(engine, act.goal_id)
+      case runner.reduce(goal_program, ctx, act.resume_pc, reduction_budget) {
+        runner.Reduced(
+          heap: h,
+          woken: woken,
+          spawned: spawned,
+          output: out,
+          remote: remote,
+          sends: sends,
+          mad: _,
+          link: link_o,
+        ) -> {
+          // Link mode injected `Some`; `None` would be an invariant break —
+          // treat it as no effect.
+          let link_out = case link_o {
+            Some(l) -> l
+            None -> link_in
+          }
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+              output: list.append(engine.output, out),
+            )
+          let engine = trace_reduction(engine, act, spawned, h)
+          let #(engine, spawned_ids) =
+            list.map_fold(spawned, engine, spawn_goal)
+          let engine = inherit_program(engine, act.goal_id, spawned_ids)
+          case apply_remote_spawns(engine, remote) {
+            Error(reason) -> #(
+              engine,
+              StepErrored(runner.Malformed(reason)),
+              link_in,
+            )
+            Ok(#(engine, remote_ids)) ->
+              case apply_channel_sends(engine, sends) {
+                Error(reason) -> #(
+                  engine,
+                  StepErrored(runner.Malformed(reason)),
+                  link_in,
+                )
+                Ok(engine) -> {
+                  let engine = list.fold(woken, engine, reactivate)
+                  let woken_ids = list.map(woken, fn(ref) { ref.goal_id })
+                  #(
+                    engine,
+                    StepReduced(
+                      act.goal_id,
+                      act.procedure,
+                      woken_ids,
+                      list.append(spawned_ids, remote_ids),
+                    ),
+                    link_out,
+                  )
+                }
+              }
+          }
+        }
+        runner.Suspended(heap: h, on: on) -> {
+          let engine = suspend_goal(Engine(..engine, heap: h), act, on)
+          let engine = trace_terminal(engine, act, h, " \u{2192} suspended")
+          let on_list = on |> set.to_list |> list.sort(int.compare)
+          #(engine, StepSuspended(act.goal_id, act.procedure, on_list), link_in)
+        }
+        runner.Failed(heap: h) -> {
+          let engine =
+            Engine(
+              ..engine,
+              heap: h,
+              goals: dict.delete(engine.goals, act.goal_id),
+            )
+          let engine = trace_terminal(engine, act, h, " \u{2192} failed")
+          #(engine, StepFailed(act.goal_id, act.procedure), link_in)
+        }
+        runner.BudgetExhausted(heap: h) -> #(
+          Engine(..engine, heap: h),
+          StepErrored(runner.Malformed(
+            "reduction budget exhausted in goal " <> act.procedure,
+          )),
+          link_in,
+        )
+        runner.RunnerError(reason: fault) -> #(
+          engine,
+          StepErrored(fault),
+          link_in,
+        )
+      }
+    }
+  }
+}
+
+/// `run` with the link state threaded through every step (T050.C2): run to
+/// quiescence (or the fuel cap), returning the advanced `LinkState`.
+pub fn run_link(
+  engine: Engine,
+  reduction_budget: Int,
+  fuel: Int,
+  link_state: LinkState,
+) -> #(Engine, RunStatus, LinkState) {
+  case fuel <= 0 {
+    True -> #(engine, OutOfFuel, link_state)
+    False -> {
+      let #(engine, outcome, link_state) =
+        step_link(engine, reduction_budget, link_state)
+      case outcome {
+        StepIdle -> #(engine, terminal_status(engine), link_state)
+        StepReduced(..) ->
+          run_link(engine, reduction_budget, fuel - 1, link_state)
+        StepSuspended(..) ->
+          run_link(engine, reduction_budget, fuel - 1, link_state)
+        StepFailed(..) -> #(engine, Failed, link_state)
+        StepErrored(fault) -> #(engine, Errored(fault), link_state)
+      }
+    }
+  }
+}
+
 /// Lower each `global_send` spawn into a runnable `global_send/3` goal and enqueue it
 /// (spec §4 / §5.1 reader branch). The spawn's `watch_addr` is the WRITER of the
 /// watched pair; the goal reads its paired READER `Y?`, so its `known(Y?)` guard
@@ -662,6 +804,15 @@ pub fn bind_and_wake(
         <> " already bound",
       )
   }
+}
+
+/// Re-enqueue every goal in `woken` (the public seam for externally-performed
+/// heap binds whose `GoalRef`s the caller collected — the link fault fan-out).
+pub fn wake_all(
+  engine: Engine,
+  woken: List(suspension.GoalRef),
+) -> Engine {
+  list.fold(woken, engine, reactivate)
 }
 
 /// The terminal status once the queue has drained (T029 cap 1): USER goals

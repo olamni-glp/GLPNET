@@ -37,6 +37,8 @@ import glp/compiler/project_linker
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
+import glp/link/primitives/link_loop
+import glp/link/primitives/link_runtime
 import glp/link/seam/link_scheme.{type LinkScheme}
 import glp/link/seam/transport.{type Transport}
 import glp/parser/ast
@@ -524,7 +526,19 @@ fn run_goal(
     new_sched(engine, boot.heap)
     |> scheduler.with_trace(trace)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
-  let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+  // With transport leaves injected, run under the link-aware loop (T050.C2):
+  // the `_link_*` kernels become reachable and quiescence stays live while
+  // link I/O is outstanding. Without leaves, the pure run is unchanged.
+  let #(sched, status) = case engine.transports {
+    [] -> scheduler.run(sched, default_reduction_budget, fuel)
+    leaves ->
+      link_loop.drive(
+        sched,
+        default_reduction_budget,
+        fuel,
+        link_runtime.new_state(leaves),
+      )
+  }
 
   use #(envelope, output) <- result.try(finish_run(
     sched,
