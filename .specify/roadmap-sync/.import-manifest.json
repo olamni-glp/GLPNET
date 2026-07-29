@@ -51,6 +51,16 @@
       "status": "applied"
     },
     {
+      "applied_lines": 40,
+      "file_name": "gavriella__glpnet__20260728T112629Z.json",
+      "file_sha256": "121706b666437ff4867d683df89831669a190534f156d83cfdbfe59872a8fe9f",
+      "imported_at": "2026-07-29T10:48:22.280000+00:00",
+      "line_count": 2490,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
       "applied_lines": 931,
       "file_name": "gavriellas__glpnet__20260703T005655Z.json",
       "file_sha256": "a7e7d7c3d80d418aa8460e1a072a036a1e6e200504cd6f82e961bf35f57928c5",
@@ -306,6 +316,16 @@
       "file_sha256": "3489e0deab6bea1b96d04041958f2a5e6ab175510be7befb7c12b78fca001413",
       "imported_at": "2026-07-28T10:28:34.260000+00:00",
       "line_count": 2259,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260728T112314Z.json",
+      "file_sha256": "7152b3bb55ca8174f148b36049516a0f80771b57375546740409897ea121ea84",
+      "imported_at": "2026-07-29T10:48:22.280000+00:00",
+      "line_count": 2490,
       "source_host": "olamnit",
       "source_repo": "glpnet",
       "status": "applied"
