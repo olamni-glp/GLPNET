@@ -30,11 +30,13 @@ from codeconv.db.engine import build_engine
 
 from .algorithm import DepgraphResult, compute
 from .json_writer import write_depgraph_json
+from .subgraph import dirty_set
 from .tombstone_writer import (
     update_conversion_keys,
     update_depgraph_keys,
     write_tombstone_with_extras,
 )
+from .trends import TrendError, compute_trends
 
 
 def register(dbos_app: Any) -> None:
@@ -276,6 +278,302 @@ def run_compute(
         "dry_run": dry_run,
         "run_id": run_id,
         "duration_seconds": round(duration, 3),
+    }
+
+
+# ---------------------------------------------------------------------------
+# mark-and-recompute (feature 062, US1 / FR-001)
+# ---------------------------------------------------------------------------
+
+
+def _read_graph_and_build_rows(engine: Engine) -> dict:
+    """Read inventory+conversions, run the pure algorithm, build per-file rows.
+
+    Returns a dict with ``nodes``, ``edges`` (dangling-filtered), ``file_rows``
+    (fully populated incl. ``target_path``), the run-level metric counts, and
+    ``last_discover_run_id`` / ``dangling_edges_dropped``. On an empty
+    inventory it returns ``{"error": <summary>}`` (exit 2), matching
+    :func:`run_compute`.
+
+    This shares the *pure* graph computation (:func:`compute` +
+    :func:`_derive_statuses`) with :func:`run_compute`; it deliberately does
+    NOT reuse ``run_compute``'s atomic-write path (that stays untouched under
+    the no-regression gate). The read/derive/build steps mirror
+    ``run_compute`` steps 1–5 so a marked recompute produces byte-identical
+    row values for the nodes it touches.
+    """
+    with engine.connect() as conn:
+        nodes = [
+            r[0]
+            for r in conn.execute(
+                text("SELECT path FROM codeconv.dart_files")
+            ).all()
+        ]
+        if not nodes:
+            return {
+                "error": {
+                    "ok": False,
+                    "exit_code": 2,
+                    "error": "No inventoried files. Run /codeconv-discover first.",
+                    "files_total": 0,
+                }
+            }
+        node_set = set(nodes)
+        edges_raw = [
+            (r[0], r[1])
+            for r in conn.execute(
+                text("SELECT from_path, to_path FROM codeconv.dart_imports")
+            ).all()
+        ]
+        # Dangling-edge filter: identical rule to run_compute — an import of a
+        # not-yet-inventoried in-subtree file is dropped here (self-healing),
+        # never deleted from dart_imports.
+        edges = [(u, v) for (u, v) in edges_raw if u in node_set and v in node_set]
+        dangling_edges_dropped = len(edges_raw) - len(edges)
+        conv_rows = conn.execute(
+            text(
+                "SELECT path, started_at, completed_at FROM codeconv.dart_conversions"
+            )
+        ).all()
+        last_discover_run_id = conn.execute(
+            text(
+                "SELECT id FROM codeconv.discover_runs "
+                "WHERE completed_at IS NOT NULL "
+                "ORDER BY completed_at DESC LIMIT 1"
+            )
+        ).scalar()
+
+    conv_by_path: dict[str, tuple[Optional[datetime], Optional[datetime]]] = {}
+    for path, started, completed in conv_rows:
+        conv_by_path[path] = (started, completed)
+
+    result = compute(nodes, edges)
+    statuses = _derive_statuses(result, conv_by_path)
+
+    file_rows = []
+    for path in sorted(nodes):
+        status = statuses[path]
+        started, completed = conv_by_path.get(path, (None, None))
+        file_rows.append(
+            {
+                "path": path,
+                "topo_level": result.topo_level[path],
+                "cycle_group_id": result.cycle_group_id[path],
+                "ready": status == "ready",
+                "status": status,
+                "dependency_count": len(result.dependencies[path]),
+                "caller_count": len(result.callers[path]),
+                "depends_on": result.dependencies[path],
+                "depended_on_by": result.callers[path],
+                "conversion_started_at": _iso_or_none(started),
+                "conversion_completed_at": _iso_or_none(completed),
+                "target_path": None,
+            }
+        )
+
+    with engine.connect() as conn:
+        target_rows = conn.execute(
+            text(
+                "SELECT path, target_path FROM codeconv.dart_conversions "
+                "WHERE target_path IS NOT NULL"
+            )
+        ).all()
+    target_by_path = {r[0]: r[1] for r in target_rows}
+    for row in file_rows:
+        if row["path"] in target_by_path:
+            row["target_path"] = target_by_path[row["path"]]
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "dangling_edges_dropped": dangling_edges_dropped,
+        "last_discover_run_id": last_discover_run_id,
+        "file_rows": file_rows,
+        "ready_count": sum(1 for r in file_rows if r["status"] == "ready"),
+        "in_progress_count": sum(
+            1 for r in file_rows if r["status"] == "in_progress"
+        ),
+        "converted_count": sum(1 for r in file_rows if r["status"] == "converted"),
+        "cycle_count": result.cycle_count,
+    }
+
+
+def run_mark_and_recompute(
+    *,
+    repo_root: Path,
+    data_dir: Optional[Path] = None,
+    marks: Sequence[str],
+    dry_run: bool = False,
+    quiet: bool = False,
+) -> dict:
+    """Recompute only the marked subgraph + its transitive dependents.
+
+    Contract ``specs/062-.../contracts/depgraph-cli.md`` § mark-and-recompute
+    (spec FR-001): marks the given nodes + everything that (transitively)
+    depends on them dirty, recomputes ONLY that subgraph, preserves every
+    unmarked row. Unknown marked paths → reported, nothing recomputed, exit 1
+    (no fabricated nodes — spec Edge Cases).
+
+    No new schema head (Constitution VI-a / T011): the per-node ``computed_at``
+    bump on the dirty rows is the recompute trace; a ``depgraph_runs`` row is
+    intentionally NOT written (its ``mode`` CHECK does not admit a new mode
+    and widening it would require a migration, which this slice forbids).
+    """
+    repo_root = Path(repo_root).resolve()
+
+    if not marks:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "error": "no --mark paths given; nothing to recompute",
+            "nodes_recomputed": 0,
+        }
+
+    endpoint = acquire_or_discover(repo_root, ready_timeout=30.0, data_dir=data_dir)
+    engine = build_engine(endpoint)
+
+    picture = _read_graph_and_build_rows(engine)
+    if "error" in picture:
+        return picture["error"]
+
+    node_set = set(picture["nodes"])
+    requested = list(dict.fromkeys(marks))  # de-dup, preserve order
+    unknown = sorted(m for m in requested if m not in node_set)
+    if unknown:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "error": "unknown path(s); recomputed nothing",
+            "unknown_paths": unknown,
+            "nodes_recomputed": 0,
+        }
+
+    dirty = dirty_set(requested, picture["edges"])
+    rows_by_path = {row["path"]: row for row in picture["file_rows"]}
+    # Only nodes that both are dirty and have a computed row are written.
+    dirty_paths = sorted(p for p in dirty if p in rows_by_path)
+    preserved = sorted(p for p in node_set if p not in dirty)
+
+    if not dry_run:
+        with engine.begin() as conn:
+            for path in dirty_paths:
+                row = rows_by_path[path]
+                conn.execute(
+                    text(
+                        "UPDATE codeconv.dart_depgraph SET "
+                        "  topo_level = :topo_level, "
+                        "  cycle_group_id = :cycle_group_id, "
+                        "  ready = :ready, "
+                        "  status = :status, "
+                        "  dependency_count = :dependency_count, "
+                        "  caller_count = :caller_count, "
+                        "  computed_at = NOW() "
+                        "WHERE path = :path"
+                    ),
+                    {
+                        "topo_level": row["topo_level"],
+                        "cycle_group_id": row["cycle_group_id"],
+                        "ready": row["ready"],
+                        "status": row["status"],
+                        "dependency_count": row["dependency_count"],
+                        "caller_count": row["caller_count"],
+                        "path": path,
+                    },
+                )
+
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "marked": sorted(requested),
+        "nodes_recomputed": len(dirty_paths),
+        "nodes_preserved": len(preserved),
+        "recomputed_paths": dirty_paths,
+        "dry_run": dry_run,
+    }
+
+
+# ---------------------------------------------------------------------------
+# trends (feature 062, US1 / FR-002)
+# ---------------------------------------------------------------------------
+
+
+def run_trends(
+    *,
+    repo_root: Path,
+    data_dir: Optional[Path] = None,
+    run_ids: Optional[Sequence[str]] = None,
+    quiet: bool = False,
+) -> dict:
+    """Deterministic, secret-redacted cross-run trend report (spec FR-002).
+
+    Reads >=2 recorded ``compute`` runs (either the explicit ``run_ids`` or,
+    when none given, all completed compute runs) and emits per-metric deltas
+    via the pure :func:`compute_trends`. Byte-identical on unchanged inputs;
+    <2 runs → exit 1 (spec Edge Cases). Derived artifact — nothing persisted.
+    """
+    repo_root = Path(repo_root).resolve()
+    endpoint = acquire_or_discover(repo_root, ready_timeout=30.0, data_dir=data_dir)
+    engine = build_engine(endpoint)
+
+    select_cols = (
+        "id, started_at, files_total, ready_count, in_progress_count, "
+        "converted_count, cycle_count"
+    )
+    with engine.connect() as conn:
+        if run_ids:
+            requested = list(dict.fromkeys(run_ids))
+            rows = conn.execute(
+                text(
+                    f"SELECT {select_cols} FROM codeconv.depgraph_runs "
+                    "WHERE id = ANY(:ids)"
+                ),
+                {"ids": requested},
+            ).all()
+            found = {str(r[0]) for r in rows}
+            missing = sorted(rid for rid in requested if rid not in found)
+            if missing:
+                return {
+                    "ok": False,
+                    "exit_code": 1,
+                    "error": "unknown run id(s)",
+                    "unknown_run_ids": missing,
+                }
+        else:
+            rows = conn.execute(
+                text(
+                    f"SELECT {select_cols} FROM codeconv.depgraph_runs "
+                    "WHERE mode = 'compute' AND completed_at IS NOT NULL"
+                )
+            ).all()
+
+    runs = [
+        {
+            "id": str(r[0]),
+            "started_at": _iso_or_none(r[1]),
+            "files_total": r[2],
+            "ready_count": r[3],
+            "in_progress_count": r[4],
+            "converted_count": r[5],
+            "cycle_count": r[6],
+        }
+        for r in rows
+    ]
+
+    try:
+        report = compute_trends(runs)
+    except TrendError as exc:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "error": str(exc),
+            "run_count": len(runs),
+        }
+
+    return {
+        "ok": True,
+        "exit_code": 0,
+        "run_count": report["run_count"],
+        "report": report,
     }
 
 

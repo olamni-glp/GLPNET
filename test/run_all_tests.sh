@@ -963,6 +963,22 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# --- A31: 062 US4 multi-client control program (per-client streams + broadcast + merge) ---
+echo "--- A31: 062 US4 multi-client control program ---"
+a31=$($DART run "$REPL" <<HEREDOC
+$TYPED/multi_client_control.glp
+control_demo(X).
+:quit
+HEREDOC
+2>&1)
+
+check "US4 control_demo loads (type-checks + compiles)" "Loaded:" "$a31"
+check "US4 control_demo succeeds" "succeeds" "$a31"
+check "US4 client c1 replies pong" "pong(c1)" "$a31"
+check "US4 client c2 replies pong" "pong(c2)" "$a31"
+check "US4 client c3 replies pong" "pong(c3)" "$a31"
+check "US4 clients reply bye" "bye(c1)" "$a31"
+
 SECTION_A_PASS=$PASS
 SECTION_A_FAIL=$FAIL
 
