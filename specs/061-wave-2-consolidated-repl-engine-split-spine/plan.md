@@ -110,8 +110,13 @@ specs/061-wave-2-consolidated-repl-engine-split-spine/
 ### Source Code (repository root)
 
 ```text
+csharp/glp_split_protocol/               # NEW: tiny shared wire-protocol library (constants + codec)
+├── GlpSplitProtocol.csproj              #   refs glp_link only — lets the client stay runtime-free (R7)
+├── WireProtocol.cs                      #   payload types + kind bytes (contracts/wire-protocol.md)
+└── RequestResponseCodec.cs              #   frame encode/decode over FrameCodec
+
 csharp/glp_engine_host/                  # NEW (R5): the long-lived engine host
-├── GlpEngineHost.csproj                 #   refs out/csharp runtime + glp_link + glp_result_codec
+├── GlpEngineHost.csproj                 #   refs out/csharp runtime + glp_link + glp_result_codec + glp_split_protocol
 ├── Program.cs                           #   start empty | --from-snapshot <seq> | --store <dir>
 ├── EngineServer.cs                      #   one-accept TCP loopback listener; request loop
 ├── RequestDispatcher.cs                 #   LOAD_SOURCE / RUN_GOAL / SNAPSHOT / STATUS / SHUTDOWN
@@ -126,7 +131,7 @@ csharp/glp_engine_host/                  # NEW (R5): the long-lived engine host
     └── FileSnapshotStore.cs             #   JSON/file fallback
 
 csharp/glp_repl_client/                  # NEW (R7): thin terminal client
-├── GlpReplClient.csproj
+├── GlpReplClient.csproj                 #   refs glp_link + glp_split_protocol ONLY (no runtime)
 ├── Program.cs                           #   REPL loop; transport-vs-goal failure split (FR-007)
 └── ClientChannel.cs                     #   FrameCodec framing over TcpTransport
 
@@ -148,7 +153,8 @@ docs/research/repl-engine-separation/models/   # NEW: full verification models (
 └── uppaal/     # timed liveness/supervision (verifyta)
 ```
 
-**Structure Decision**: three new satellite projects beside the existing
+**Structure Decision**: four new satellite projects (incl. the tiny shared
+protocol library that keeps the client runtime-free per R7) beside the existing
 `csharp/*` libraries (matching the 038/041 convention of clobber-safe new
 dirs), one net-new file in `glp_link` (RewireHandle — the only touch on a
 shipped library, additive), zero changes to the single-process REPL. The

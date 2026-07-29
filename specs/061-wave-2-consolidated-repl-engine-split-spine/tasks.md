@@ -18,16 +18,16 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `csharp/glp_engine_host/GlpEngineHost.csproj` (net8.0, refs `out/csharp/glp_runtime_net.csproj`, `csharp/glp_link/GlpLink.csproj`, `csharp/glp_result_codec/GlpResultCodec.csproj`) with empty `Program.cs`; `dotnet build` green
-- [ ] T002 [P] Create `csharp/glp_repl_client/GlpReplClient.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` only — R7 thin client) with empty `Program.cs`; `dotnet build` green
+- [ ] T001 Create `csharp/glp_split_protocol/GlpSplitProtocol.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` only — the tiny shared wire-protocol library both sides use without the client touching the runtime) and `csharp/glp_engine_host/GlpEngineHost.csproj` (net8.0, refs `out/csharp/glp_runtime_net.csproj`, `csharp/glp_link/GlpLink.csproj`, `csharp/glp_result_codec/GlpResultCodec.csproj`, `csharp/glp_split_protocol/GlpSplitProtocol.csproj`) with empty `Program.cs`; `dotnet build` green
+- [ ] T002 [P] Create `csharp/glp_repl_client/GlpReplClient.csproj` (net8.0, refs `csharp/glp_link/GlpLink.csproj` + `csharp/glp_split_protocol/GlpSplitProtocol.csproj` only — R7 thin client, no runtime ref) with empty `Program.cs`; `dotnet build` green
 - [ ] T003 [P] Create `csharp/glp_supervisor/GlpSupervisor.csproj` (net8.0, Microsoft.Extensions.Hosting for BackgroundService) with empty `Program.cs`; `dotnet build` green
 - [ ] T004 [P] Create `csharp/glp_engine_host.tests/GlpEngineHost.Tests.csproj` (xUnit, refs the three new projects) with one placeholder test; `dotnet test` green
 - [ ] T005 Record suite baseline: run `bash test/run_all_tests.sh` + `dotnet test` across `csharp/*.tests`; commit baseline note in `specs/061-wave-2-consolidated-repl-engine-split-spine/baseline.md` (Constitution VII)
 
 ## Phase 2: Foundational (blocking prerequisites for all stories)
 
-- [ ] T006 Define REQUEST/RESPONSE payload types + kind bytes (contracts/wire-protocol.md table) in `csharp/glp_engine_host/protocol/WireProtocol.cs` (shared constants; client compiles against the same file via link or project ref)
-- [ ] T007 Implement request/response frame encode/decode over `FrameCodec` in `csharp/glp_engine_host/protocol/RequestResponseCodec.cs` — request_id u64 echo, UTF-8 bodies, loud-fail on unknown kind/trailing bytes (wire-protocol rules 3)
+- [ ] T006 Define REQUEST/RESPONSE payload types + kind bytes (contracts/wire-protocol.md table) in `csharp/glp_split_protocol/WireProtocol.cs` (shared constants project — both host and client reference it)
+- [ ] T007 Implement request/response frame encode/decode over `FrameCodec` in `csharp/glp_split_protocol/RequestResponseCodec.cs` — request_id u64 echo, UTF-8 bodies, loud-fail on unknown kind/trailing bytes (wire-protocol rules 3)
 - [ ] T008 [P] xUnit round-trip + loud-fail tests for the frame codec in `csharp/glp_engine_host.tests/RequestResponseCodecTests.cs`
 
 ## Phase 3: US1 — Run GLP goals from a separate client process (P1) 🎯 MVP
@@ -59,6 +59,7 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 - [ ] T022 [US2] Wire SNAPSHOT + SHUTDOWN(graceful final snapshot) request kinds through `RequestDispatcher.cs`; client `:snapshot` command in `csharp/glp_repl_client/Program.cs`
 - [ ] T023 [P] [US2] xUnit tests in `csharp/glp_engine_host.tests/SnapshotTests.cs`: blob round-trip `decode(encode(state))==state`, non-quiescent deferral, empty-engine snapshot/restore, in-flight-snapshot coalescing (edge cases)
 - [ ] T024 [P] [US2] xUnit store tests in `csharp/glp_engine_host.tests/SnapshotStoreTests.cs`: torn-write never listed (kill during Write → Latest()==previous seq), seq monotonic across backends, fallback loud-report
+- [ ] T024a [US2] Restore-equivalence probe test in `csharp/glp_engine_host.tests/RestoreEquivalenceTests.cs`: load programs + run goals to a known state, snapshot, boot a SECOND engine `--from-snapshot`, run the state-revealing probe set against both and assert identical answers (SC-004, US2 independent test)
 
 **Checkpoint**: US1+US2 = durable save-points; probes identical pre/post restore.
 
@@ -83,7 +84,7 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 
 - [ ] T031 [US4] Implement `csharp/glp_link/primitives/RewireHandle.cs` (NEW, additive — DEF-E1): adopt restored possibly-bound In/Out/Faults cells, register idempotently via `LinkRegistry.GetOrEstablish`, wire cursors at restored positions, arm drainer/pump; the `LinkEstablish.cs:38-43` unbound guards stay untouched for the normal path
 - [ ] T032 [US4] Restore-order gating in `csharp/glp_engine_host/snapshot/SnapshotRestore.cs`: persistent constructs → links re-established from definitions (peer-unreachable ⇒ local work proceeds, link drain waits — edge case) → cursors re-wired → drain resumes; discard post-snapshot in-flight work (at-most-once, FR-032)
-- [ ] T033 [P] [US4] xUnit tests in `csharp/glp_engine_host.tests/RewireTests.cs`: adopt pre-bound cells (the post-restore state that aborts `WireEstablishedLink` today), idempotent re-registration, cursor-position resume
+- [ ] T033 [P] [US4] xUnit tests in `csharp/glp_engine_host.tests/RewireTests.cs`: adopt pre-bound cells (the post-restore state that aborts `WireEstablishedLink` today), idempotent re-registration, cursor-position resume, and mid-restore client behaviour — only STATUS/PING answered, ENGINE_BUSY for the rest until restore completes (wire rule 4, spec edge case)
 - [ ] T034 [US4] Kill-and-restart correctness test in `csharp/glp_engine_host.tests/KillAndRestartTests.cs`: stream committed results to a peer over an established link, kill engine mid-stream, supervisor restarts, assert peer-observable committed stream ≡ uninterrupted run (no loss/duplication of committed work; in-flight = transport failure + resubmit) — FR-033/SC-002, deterministic
 - [ ] T035 [P] [US4] TLA+ model in `docs/research/repl-engine-separation/models/tla/`: crash/restore/resume state machine, at-most-once committed-stream consistency over all crash points (FR-040); `run.ps1`+`RESULT.md`+`tool-versions.txt`
 
