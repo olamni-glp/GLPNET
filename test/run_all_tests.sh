@@ -2164,9 +2164,11 @@ echo ""
 # PATH + the built C# REPL; absent either, an EXPLICIT skip (never silent).
 # =============================================================================
 echo "=== Section I: Cross-runtime Gleam × C# link suite (US5) ==="
-CSREPL_BIN="out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# SCRIPT_DIR-anchored: the suite cd'd into glp_runtime/ at the top, so relative
+# repo-root paths do not resolve here.
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 if command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
-    if bash test/parity/cross_runtime/run_all.sh; then
+    if bash "$SCRIPT_DIR/parity/cross_runtime/run_all.sh"; then
         check "US5 cross-runtime suite (Gleam × C#)" "ok" "ok"
     else
         check "US5 cross-runtime suite (Gleam × C#)" "ok" "FAILED (scenario detail above)"
