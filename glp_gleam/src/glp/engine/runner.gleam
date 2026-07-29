@@ -491,6 +491,23 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.Transmit(module_var_index, functor, arity) ->
       transmit(ctx, module_var_index, functor, arity)
 
+    // ── T063: list-cell shorthands + S-position variable ────────────────────
+    // Faithful equivalents of three instructions the Gleam codegen never emits
+    // (lists lower to `"."/2` structures via Head/PutStructure; HEAD structure
+    // variables to UnifyVariable). The Dart runner dispatches them defensively
+    // (runner.dart:4381 HeadList, :4490 PutList, :1044 HeadVariable) even though
+    // Dart codegen also never emits them, so the Gleam runner routes them to its
+    // already-tested structure handlers for parity rather than aborting.
+    // `HeadList`/`PutList` = Head/PutStructure over the `"."/2` cons cell (§6.6/
+    // §7.6); `HeadVariable` = `UnifyVariable` — the §8.1/§8.2 unified writer/reader
+    // at the current S position (Dart comment: "unified … structure variable (at S
+    // position)", READ extracts, WRITE builds).
+    opcodes.HeadList(arg_slot) ->
+      head_structure(program, ctx, pc, ".", 2, arg_slot)
+    opcodes.PutList(arg_slot) -> put_structure(ctx, ".", 2, arg_slot)
+    opcodes.HeadVariable(var_index, is_reader) ->
+      unify_variable(program, ctx, pc, var_index, is_reader)
+
     // ── Not yet ported (surfaced, never silently skipped) ───────────────────
     _ -> Stop(RunnerError(Unimplemented(opcodes.mnemonic(op))))
   }
