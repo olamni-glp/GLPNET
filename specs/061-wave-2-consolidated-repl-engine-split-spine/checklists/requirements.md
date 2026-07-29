@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **3 markers open, deliberate**
+- [x] No [NEEDS CLARIFICATION] markers remain — resolved in /bk-clarify session 2026-07-29
 - [x] Requirements are testable and unambiguous (outside the 3 open markers)
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,12 +31,13 @@
 
 ## Notes
 
-- The 3 open [NEEDS CLARIFICATION] markers (FR-014 quiescence/trigger set,
+- The 3 [NEEDS CLARIFICATION] markers (FR-014 quiescence/trigger set,
   FR-015 timer re-arm semantics, FR-032 crash-boundary commit/replay
-  semantics) carry the U-P1/U-P2/U-P5/U-P6/U-P7 forks that the Deferral
-  Register (DEF-D2, DEF-X3) explicitly anchors for resolution with the
-  engineer at this feature's spec/clarify step. They are the designated
-  input to `/bk-clarify` and must be resolved there before `/bk-plan`.
+  semantics) carried the U-P1/U-P2/U-P5/U-P6/U-P7 forks anchored by the
+  Deferral Register (DEF-D2, DEF-X3). All three were resolved with the
+  engineer in the /bk-clarify session of 2026-07-29 (see the spec's
+  Clarifications section), plus the R15 verification-tool selection
+  (SPIN + TLA+ + UPPAAL) in FR-040. Spec is ready for `/bk-plan`.
 - Binding pre-specify decisions (R3/R5/R6/R7/R11/R14; DEF-D1/E1/E2/F1/F2)
   are recorded in the spec's "Pre-Specify Obligations Applied" section.
   References to the engine/link/codec landscape in FRs describe WHAT is

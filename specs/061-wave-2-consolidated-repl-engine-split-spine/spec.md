@@ -36,6 +36,15 @@ It builds on the shipped result-envelope codec (feature 038,
 `result-codec-and-framecodec-ride`) and the shipped link-establish core
 (feature 025, `multi-protocol-link-layer`).
 
+## Clarifications
+
+### Session 2026-07-29
+
+- Q: How should "quiescent" be defined for snapshotting, and which triggers are in scope? → A: Quiescent = empty goal queue with no reduction in flight and the client transport drained (suspended goals and armed timers are allowed and captured); triggers = explicit on-demand request plus automatic snapshot on graceful shutdown — no periodic snapshotting in this wave.
+- Q: Should a restored timer fire at its original absolute deadline, or re-arm with the remaining time as of the snapshot? → A: Remaining-time re-arm — the snapshot stores each timer's remaining duration and restore re-arms from that; behaviour is independent of downtime length and no expired-timer storm fires on restore.
+- Q: At a crash, what counts as "committed" work, and is replaying in-flight requests permitted? → A: Committed = everything captured in the last complete snapshot plus result envelopes already handed to the transport; work in flight after that snapshot is discarded on restore — no replay in this wave (at-most-once); the client/peer sees a transport failure for the in-flight request and re-submits. Replay (§10.9) stays a recorded deferral.
+- Q: Which verification tool(s) model the full client↔engine protocol (R15 selection)? → A: SPIN + TLA+ + UPPAAL together — SPIN for the wire protocol (deadlock-freedom, unspecified receptions, progress), TLA+ for the crash/restore/resume state consistency, UPPAAL for the timed liveness/supervision properties.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run GLP goals from a separate client process (Priority: P1)
@@ -241,15 +250,19 @@ committed results are exactly consistent with an uninterrupted run.
 - **FR-013**: The store MUST expose: write snapshot, read latest complete
   snapshot, read snapshot by sequence, and list snapshots; a torn or
   incomplete write MUST never be returned as a valid snapshot.
-- **FR-014**: A snapshot request against a non-quiescent engine MUST be
-  refused or explicitly deferred until quiescence, with the behaviour
-  reported to the requester; the engine MUST NOT emit an inconsistent
-  snapshot. [NEEDS CLARIFICATION: exact quiescence definition and snapshot
-  trigger set (on-demand only? also on graceful shutdown? periodic?) —
-  U-P2/U-P5 are anchored to be resolved at this spec]
-- **FR-015**: Pending timer state MUST be captured such that on restore,
-  timer semantics are preserved. [NEEDS CLARIFICATION: timer re-arm
-  semantics on restore — remaining-time vs absolute-deadline (U-P1)]
+- **FR-014**: The engine is quiescent when the goal queue is empty, no
+  reduction is in flight, and the client transport is drained; suspended
+  goals and armed timers are permitted in a quiescent engine and are
+  captured. Snapshots are triggered on explicit on-demand request and
+  automatically on graceful shutdown; periodic snapshotting is out of scope
+  for this wave. A snapshot request against a non-quiescent engine MUST be
+  deferred until quiescence (with its pending state reported to the
+  requester); the engine MUST NOT emit an inconsistent snapshot.
+- **FR-015**: Pending timer state MUST be captured as each timer's remaining
+  duration at snapshot time; on restore, each timer re-arms with that
+  remaining duration (remaining-time semantics). Restore MUST NOT fire
+  timers whose absolute deadline passed during downtime as an immediate
+  batch; downtime length MUST NOT change observable timer ordering.
 
 **Liveness + supervised restart (US3)**
 
@@ -283,20 +296,24 @@ committed results are exactly consistent with an uninterrupted run.
 - **FR-032**: After restore, the engine MUST re-wire its cursors and resume
   draining committed work such that the peer-observable committed result
   stream is consistent with an uninterrupted run — no committed work lost or
-  duplicated. [NEEDS CLARIFICATION: kill semantics and egress ordering for
-  work in flight at crash time (U-P6/U-P7) — what exactly counts as
-  "committed" at the crash boundary, and is replay of in-flight requests
-  permitted (§10.9/DEF-X3)?]
+  duplicated. Committed = state captured in the last complete snapshot plus
+  result envelopes already handed to the transport. Work in flight after
+  that snapshot is discarded on restore — no replay in this wave
+  (at-most-once); the client/peer observes a transport failure for the
+  in-flight request and re-submits. In-flight-request replay (§10.9)
+  remains a recorded deferral (DEF-X3).
 - **FR-033**: A kill-and-restart correctness test exercising US4 end-to-end
   MUST be added to the permanent test suite.
 
 **Cross-cutting**
 
-- **FR-040**: The complete client↔engine wire protocol introduced by this
-  wave MUST be modelled and checked with the adopted pragmatic verification
-  tier (deadlock-freedom, no unspecified receptions, and named progress /
-  liveness properties), fulfilling the full-protocol obligation anchored here
-  (R14/DEF-A3); formal proof work remains off the critical path (R11).
+- **FR-040**: The complete client↔engine protocol introduced by this wave
+  MUST be modelled and checked with three tools per the R15 selection made
+  at this spec step: SPIN for the wire protocol (deadlock-freedom, no
+  unspecified receptions, named progress properties — fulfilling R14/DEF-A3),
+  TLA+ for crash/restore/resume state consistency, and UPPAAL for the timed
+  liveness/supervision properties; formal proof work remains off the
+  critical path (R11).
 - **FR-041**: Every seed's metric table MUST be produced per the shared
   template (R8) with the protocol-verification row mandatory (R14).
 - **FR-042**: Core GLP language surface MUST NOT change in this wave; any
