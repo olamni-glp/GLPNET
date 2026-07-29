@@ -13,10 +13,10 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **2 markers open, deliberately
-      carried to /bk-clarify** (US3 scope fork: adopt-existing vs GLP-native;
-      FR-003 mesh-fix defect baseline)
-- [x] Requirements are testable and unambiguous (except the 2 marked)
+- [x] No [NEEDS CLARIFICATION] markers remain — both resolved in /bk-clarify
+      (Session 2026-07-29): mesh-fix baseline + US3 scope from repo records;
+      wire-carriage + first-hop scope boundary engineer-accepted
+- [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined

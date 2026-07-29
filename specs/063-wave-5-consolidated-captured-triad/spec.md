@@ -30,6 +30,53 @@ roadmap records wave-5 blocked-by wave-4: any wave-5 material that depends on
 wave-4 output is sequenced LAST, and a hard collision is flagged on the shared
 scheduler board — never worked around.
 
+## Clarifications
+
+### Session 2026-07-29
+
+- Q: What is the authoritative "mesh fix" acceptance baseline (FR-003)? →
+  A: Resolved from the record (2026-07-02 036 fidelity audit, carried in the
+  roadmap profile of `http3-quic-ws-link-completion`): the **dup-id mesh
+  eviction bug at `Program.cs:253`** — the regression scenario is a mesh where
+  a duplicate peer id no longer evicts a live peer.
+- Q: What does "live glp_repl bridge" mean? → A: Resolved from the same
+  record: today the tool bridges only the message ENVELOPE — the `--repl`
+  flag is accepted but the live REPL process-I/O bridge is inert. Completion
+  means a genuine GLP REPL runs over the link via the established link-message
+  interface.
+- Q: What does "build + re-verify" cover? → A: Resolved from the same record:
+  the C# host library is not built in-tree, so 9 integration tests skip and
+  the prototype's 18/104-green claim is unreproducible; completion builds it
+  in-tree and re-runs the suite so every scenario has a reproducible verdict.
+  The Profile-A stack description is also corrected (the Gleam profile relays;
+  the reference stack terminates QUIC).
+- Q: US3 scope — adopt the existing buildkit 3-role capability or build a
+  GLP-native triad implementation? → A: Resolved from the roadmap record: the
+  feature is the **formalization of the proven ad-hoc method, designed for
+  migration to buildkit** — and that migration has landed (the installed
+  toolchain ships the 3-role task-team capability). US3 is therefore
+  adopt-and-operationalize: run real glpnet engagements through the formal
+  protocol (seeded by the recorded method-and-dogfood document), record the
+  evidence, and close the roadmap item. Building GLP-native agent triads is
+  explicitly NOT this feature.
+- Q: Durable-mesh scope source? → A: The wave delivers the **first-hop
+  prototype** exactly as captured in the operator's intake brief
+  (`docs/roadmap-intake/durable-mesh-messaging-protocol.md`): directly-
+  identifiable targets only; multi-hop routing is future work.
+- Q: Signal/fetch wire carriage — reuse the QUIC+WS link or a separate
+  control/data split? → A: (engineer-accepted suggestion) US2 rides the
+  existing link-layer surface **transport-agnostically**: any link transport
+  carries signal and fetch; TCP-backed evidence is acceptable for US2, with
+  QUIC+WS exercised once US1 lands. This decouples US1 and US2 for the
+  operator-directed parallel run.
+- Q: Which intake elements are IN the first-hop prototype vs future? → A:
+  (engineer-accepted default, per the Assumptions) IN: signal-then-fetch on
+  mailboxes/topics, WAL + hot/analytical tiering, dense per-sender sequence +
+  gap detection, retention classes, basic friend-lookup, dead-letter queue,
+  originator/recipient CLI. FUTURE: multi-hop routing, the routing-policy
+  language (must-have waypoints/excludes), replica advertisement, QoS/uptime
+  profiles.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Complete the QUIC+WS link into the live REPL (Priority: P1)
@@ -68,54 +115,67 @@ prototype-only tooling.
 
 ---
 
-### User Story 2 - Durable mesh messaging that survives disconnects (Priority: P2)
+### User Story 2 - Durable first-hop mesh messaging (signal-then-fetch) (Priority: P2)
 
-A GLP program on one mesh peer sends a message to a peer that is currently
-offline (or becomes offline mid-delivery). The sender's node stores the
-message durably, signals availability when the peer reappears, and the peer
-fetches what it missed (signal-then-fetch). A node restart loses no accepted
-message: the durable tier (write-ahead journal over the node's local store)
-replays undelivered messages. Delivery is at-least-once with duplicate
-suppression at the receiver, so a program observes each message once.
+An operator brings up an **originator** instance and one or more **recipient**
+instances from the command line (the messaging tool the intake brief names).
+The originator accepts content for a named mailbox/topic addressed to a
+directly-identifiable target (LAN or defined internet-reachable host — this
+wave is the **first hop only**; multi-hop routing is future). Delivery is
+Kafka-style **signal-then-fetch**: the originator signals the target that new
+content is available; the recipient fetches at its own pace. Messages carry a
+**dense per-sender sequence** (no gaps), so a gap is a detectable, named loss.
+Every accepted message survives restart via a **write-ahead journal** with a
+tiered durable store (recent messages hot, older messages aged to the
+analytical tier); duplicate suppression at the recipient holds across
+restarts. A sender that cannot resolve a target (station id with no address)
+may ask its **known connections (friends)** whether they know it; an
+unresolvable message goes to a **dead-letter queue**, never silently dropped.
 
 **Why this priority**: The live mesh (US1) is connection-oriented — a dropped
-peer loses in-flight traffic. Durable delivery is what turns the mesh into a
-messaging fabric programs can rely on.
+peer loses in-flight traffic. The durable first hop is the floor of the
+resilient multi-hop mesh the intake brief targets.
 
-**Independent Test**: On a two-peer mesh, take the receiver offline, send N
-messages, restart the SENDER process, bring the receiver back, and observe all
-N messages arrive exactly once at the program level, in order per sender.
+**Independent Test**: Bring up originator + recipient; take the recipient
+offline; send N messages; restart the ORIGINATOR; bring the recipient back;
+observe all N arrive exactly once, in per-sender dense-sequence order, and a
+message to an unknown station id lands in the dead-letter queue.
 
 **Acceptance Scenarios**:
 
-1. **Given** an offline peer, **When** a program sends messages to it, **Then**
-   the messages are accepted and durably stored, and the sender's program is
-   not blocked indefinitely.
-2. **Given** stored undelivered messages and a sender restart, **When** the
-   receiver reappears, **Then** it is signalled, fetches the backlog, and every
-   accepted message is delivered — none lost, none delivered twice to the
-   program.
-3. **Given** a receiver that was offline during sends, **When** it fetches,
-   **Then** per-sender order is preserved.
+1. **Given** an offline recipient, **When** the originator accepts messages
+   for it, **Then** they are journalled durably and the originator is not
+   blocked indefinitely.
+2. **Given** journalled undelivered messages and an originator restart,
+   **When** the recipient reappears, **Then** it is signalled, fetches the
+   backlog at its own pace (resumable), and every accepted message is
+   delivered — none lost, none observed twice.
+3. **Given** a fetched backlog, **Then** per-sender dense-sequence order holds
+   and any gap is reported as a named loss, never silently skipped.
+4. **Given** a message addressed to a station id with no resolvable address,
+   **When** friend lookup also fails, **Then** the message lands in the
+   dead-letter queue with a stated reason.
+5. **Given** retention classes (ephemeral / time-windowed / effectively
+   permanent) declared at the source, **Then** expiry follows the declared
+   class.
 
 ---
 
 ### User Story 3 - Formal 3-role agent-team orchestration (Priority: P3)
 
 An engineer running substantial planning or execution work convenes a formal
-3-role team — a planner who drafts the method, an independent critic who
-red-teams it, and builders who execute disjoint slices — with the roles,
-hand-offs, convergence loop, and evidence rules stated as a written, reusable
-protocol rather than ad-hoc practice. The engineer invokes the orchestration
-for a concrete piece of glpnet work and receives an attributed, convergent
-result with the deciding engineer in the loop at every gate.
+3-role team — planner, independent critic, and builders on disjoint evidence
+slices — through the capability that grew out of this repo's proven ad-hoc
+method and has since migrated into the installed toolchain. This wave
+**adopts and operationalizes** it for glpnet: the written protocol (seeded by
+the recorded method-and-dogfood document) is exercised on real wave-5 work,
+the practical evidence is recorded, and the roadmap item is closed as
+delivered. Building GLP-native agent triads is explicitly out of scope
+(resolved from the roadmap record — see Clarifications).
 
 **Why this priority**: Valuable process capability, but it does not gate the
-mesh deliverables and carries the widest scope uncertainty
-[NEEDS CLARIFICATION: is this the adoption/operationalization of the existing
-buildkit 3-role task-team capability for glpnet work, or a NEW GLP-native
-implementation (agent triads written in GLP running on the multi-agent
-runtime)? The two readings differ by an order of magnitude in scope].
+mesh deliverables; its build-scope is small now that the migration has landed
+— the work is operationalization and evidence.
 
 **Independent Test**: Run one planning engagement and one execution engagement
 through the documented protocol on real wave-5 work items; verify each
@@ -175,41 +235,60 @@ round unchanged.
 
 **Link completion (US1)**
 
-- **FR-001**: The live GLP REPL MUST be able to establish the HTTP/3 (QUIC) +
-  WebSocket channel-link from a GLP goal, with either side initiating, using
-  the same link surface as the existing transports.
+- **FR-001**: The QUIC+WS link MUST carry a genuine live GLP REPL session —
+  the currently-inert REPL process bridge is completed through the established
+  link-message interface, so "run GLP over the link" means a real REPL at each
+  end, not envelope relay.
 - **FR-002**: Ground terms exchanged over the completed link MUST arrive
   byte-identical, in per-sender order, matching the existing link-layer
   guarantees.
 - **FR-003**: Three or more live instances MUST form the duplex mesh with
-  every peer-pair able to exchange messages; the recorded mesh defect
-  [NEEDS CLARIFICATION: pin the authoritative defect record for the "mesh fix"
-  — which failing scenario/symptom from the 036 line is the acceptance
-  baseline?] MUST be demonstrated fixed by a regression scenario.
-- **FR-004**: The full stack MUST build clean from the current tree, and every
-  prototype demo scenario MUST be re-run against the completed implementation
-  with an explicit per-scenario verdict.
+  every peer-pair able to exchange messages; the recorded dup-id mesh
+  eviction defect (a duplicate peer id evicting a live peer — the 036
+  fidelity-audit finding) MUST be demonstrated fixed by a regression scenario.
+- **FR-004**: The full stack, including the host library the integration
+  tests need, MUST build clean from the current tree, and the prototype's
+  full suite MUST re-run with an explicit per-scenario verdict — the 9
+  currently-skipped integration tests execute, making the prototype's green
+  claim reproducible.
 - **FR-005**: A link fault (peer loss, refused establishment, capability
   mismatch) MUST surface as an explicit, reasoned report on the existing
   fault-monitor surface — never a silent stall or a garbled stream.
+- **FR-005a**: The stack-profile documentation MUST be corrected to the
+  audited reality: the relay profile relays; the reference stack terminates
+  QUIC.
 
 **Durable mesh messaging (US2)**
 
-- **FR-006**: A node MUST accept a program's outbound message for an offline
-  peer, store it durably, and acknowledge acceptance to the program without
-  blocking it indefinitely.
-- **FR-007**: Message delivery MUST follow signal-then-fetch: the holder
-  signals availability; the receiver fetches when ready; a fetch MUST be
+- **FR-006**: An originator MUST accept a message for a named mailbox/topic
+  addressed to a directly-identifiable target (first-hop scope), store it
+  durably, and acknowledge acceptance without blocking the sender
+  indefinitely — including while the target is offline.
+- **FR-007**: Delivery MUST follow signal-then-fetch: the holder signals the
+  target that content awaits on a mailbox/topic (the signal need not carry
+  the content); the recipient fetches at its own pace; a fetch MUST be
   resumable after interruption.
 - **FR-008**: Accepted messages MUST survive process restart via a write-ahead
-  journal over the node's durable local store; on restart the node MUST resume
-  delivery of undelivered messages without operator intervention.
+  journal over a tiered durable store — recent messages served from the hot
+  tier, older messages aged to the analytical tier with catch-up queries
+  spanning both; on restart the node resumes delivery without operator
+  intervention.
 - **FR-009**: Delivery MUST be at-least-once on the wire with duplicate
-  suppression at the receiving node, so a program observes each accepted
-  message exactly once; suppression MUST hold across restarts.
-- **FR-010**: Per-sender message order MUST be preserved end-to-end.
+  suppression at the recipient, so each accepted message is observed exactly
+  once; suppression MUST hold across restarts.
+- **FR-010**: Each sender's messages MUST carry a dense, fully-serializable
+  per-sender sequence; order is preserved end-to-end and a sequence gap is a
+  detected, named loss (triggering re-fetch where a source is known), never a
+  silent skip.
 - **FR-011**: A durable-tier failure (store unwritable, journal corrupt) MUST
   produce an explicit refusal or a named fault — never silent loss.
+- **FR-011a**: A message whose target cannot be resolved to an address —
+  including after asking known connections (the basic friend-lookup) — MUST
+  land in a dead-letter queue with a stated reason.
+- **FR-011b**: Content retention MUST honor the class declared at the source:
+  ephemeral, time-windowed, or effectively permanent.
+- **FR-011c**: The operator MUST be able to bring up originator and recipient
+  instances from the command line for test scenarios.
 
 **3-role orchestration (US3)**
 
@@ -239,13 +318,20 @@ round unchanged.
   carries the existing link-layer frame and fault contracts.
 - **Mesh**: the set of live instances and their pairwise links; peer-to-peer,
   no hub.
-- **Durable message**: a program-level message accepted for delivery; carries
-  sender, destination, per-sender sequence, and a stable identity used for
-  duplicate suppression.
-- **Message journal**: the node-local durable record of accepted-but-
-  undelivered messages, replayed on restart.
-- **Availability signal**: the lightweight notice a holder sends a reappeared
-  peer that messages await fetch.
+- **Durable message**: a message accepted for delivery; carries sender,
+  target, mailbox/topic, dense per-sender sequence, retention class, and a
+  stable identity used for duplicate suppression.
+- **Mailbox/topic**: the named stream a message is published to and fetched
+  from; the unit a signal refers to.
+- **Message journal**: the node-local durable record (write-ahead) of
+  accepted messages, replayed on restart; backed by the tiered store (hot
+  tier for recent, analytical tier for aged content).
+- **Availability signal**: the lightweight notice a holder sends a target
+  that content awaits on a mailbox/topic (content not necessarily included).
+- **Dead-letter queue**: the durable parking place, with reasons, for
+  messages whose target cannot be resolved.
+- **Friend lookup**: the basic ask-your-known-connections resolution step for
+  a target known only by station id.
 - **Triad engagement**: one run of the planning or execution protocol —
   its roles, inputs, attributed claims, critic verdicts, and engineer
   decisions.
@@ -278,16 +364,17 @@ round unchanged.
   link layer (the reference implementation and its shipped mirror); extending
   the completed QUIC+WS transport to the newest runtime port follows the same
   seam but is not gated by this wave.
-- The durable local tier reuses the node's existing embedded store (the same
-  store family the repo already standardizes on) — no new external service.
-- Durable messaging rides ABOVE the existing link layer (any transport the
-  link supports), so it does not depend on the QUIC completion to be testable
-  — TCP-backed tests are acceptable evidence for US2.
+- The durable tier follows the intake brief's tiering: the repo's standard
+  embedded store as the hot tier, aging into its analytical companion — no
+  new external service.
 - At-least-once + receiver-side duplicate suppression is the delivery model;
   end-to-end exactly-once at the transport level is explicitly out of scope.
-- The 3-role orchestration deliverable is gated by the scope clarification in
-  US3; until ruled, estimates treat it as the smaller (adopt/operationalize)
-  reading.
+- US2 is the FIRST-HOP prototype per the intake brief: multi-hop routing, the
+  full routing-policy language (must-have waypoints/excludes), replica
+  advertisement, and QoS/uptime profiles are future building blocks unless
+  the wave's clarifications pull specific ones in.
+- US3 is adopt-and-operationalize (resolved from the roadmap record); no
+  GLP-native agent implementation in this wave.
 - Wave-4's language-gated items (the two §1.14 GLP-language proposals) are not
   expected to collide with this wave; if a collision emerges it goes to the
   scheduler board per FR-015.
