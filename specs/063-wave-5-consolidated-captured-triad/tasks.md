@@ -31,8 +31,10 @@ board-flagged before work starts.
 **Goal**: live REPL over the link; mesh dup-id defect proven fixed; suite reproducible.
 **Independent test**: quickstart.md US1 — two REPLs linked, goal evaluated cross-host; `mesh_dup_id` scenario green; 0 dll-skips.
 
-- [ ] T007 [US1] In-tree build path for the C# host library the 9 skipped integration tests load: wire `csharp/glp_quick_host` output into `out/csharp/` (dotnet build) and satisfy the tests' load condition (remove an explicit skip attribute ONLY if one is hard-coded; a dll-presence gate resolves by the build alone) (audit gap (c), contract C3)
-- [ ] T008 [US1] Run the un-skipped integration suite; per Bug-Protocol report (not fix) any failure the dll exposes; record verdicts in baseline.md (contract C3)
+- [X] T007 [US1] In-tree build path for the C# host library the 9 skipped integration tests load: wire `csharp/glp_quick_host` output into `out/csharp/` (dotnet build) and satisfy the tests' load condition (remove an explicit skip attribute ONLY if one is hard-coded; a dll-presence gate resolves by the build alone) (audit gap (c), contract C3)
+  — resolved by the build alone: the load condition reads `csharp/glp_quick_host/bin/…/glp_quick_host.dll` (not out/csharp); no hard-coded skip attribute exists; see baseline.md T007/T008 section
+- [X] T008 [US1] Run the un-skipped integration suite; per Bug-Protocol report (not fix) any failure the dll exposes; record verdicts in baseline.md (contract C3)
+  — 185/2F/1S; the audited "9 skipped" reconciled to the 9 dll-gated glp_quick pytest modules; both failures = pre-existing profile-C `quicer NIF failed to start` (reported, not fixed); profile-C teardown leak of host processes reported
 - [ ] T009 [US1] Write the `mesh_dup_id` regression scenario in `csharp/glp_link.tests/MeshDupIdRegressionTests.cs`: A/B live, C announces B's id — incumbent survives, traffic keeps flowing to B, refresh visible (contract C2; R1: the scenario decides whether the audited symptom still reproduces)
 - [ ] T010 [US1] If T009 reproduces the audited defect: fix `Mesh` id learn/evict in `csharp/glp_quick_host/Program.cs` so a newcomer never evicts a live incumbent; re-run T009 green. If T009 passes as-is: record the provenance finding in baseline.md (guard already landed) and keep the scenario as the closure witness
 - [ ] T011 [US1] Complete the `--repl` live bridge in `csharp/glp_quick_host/Program.cs`: spawn the REPL child, bridge stdio ⇄ link-message envelopes (one line/result per message), surface child death as a link fault (contract C1, R2)

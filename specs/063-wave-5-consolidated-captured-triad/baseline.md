@@ -29,3 +29,47 @@ glp_link.tests — either the dll gap has since been closed (this repo builds
 out/csharp/* routinely now) or the audited 9 live in a different suite
 (glp_quick side?). T007/T008 must reconcile this divergence explicitly
 against the audit record before claiming C3 done — never assume.
+
+## T007/T008 — divergence RECONCILED + un-skipped suite verdicts (2026-07-30, 063 @ 0d2dacbc)
+
+**The audited "9 skipped integration tests" are the 9 dll-gated pytest
+modules in `glp_quick/tests/`, NOT glp_link.tests** (whose only skip guards
+are QUIC-platform gates): `test_csharp_adapter`, `test_mesh`, `test_demo`,
+`test_gleam` (dll + Gleam-toolchain gate), and the five
+`tests/integration/test_us{1,2,4,5,6}_*_mesh` modules. Each carries
+`pytest.mark.skipif(not host_dll_path().exists(), ...)` — the audited
+9-skip state reproduces exactly when the host dll is absent.
+
+**Load condition (verified in code)**: `glp_quick.stacks.csharp.host_dll_path()`
+reads `csharp/glp_quick_host/bin/{Debug,Release}/net10.0/glp_quick_host.dll`
+(override `GLPQUICK_HOST_DLL`) — the project's own standard `dotnet build`
+output, NOT `out/csharp/` (the tasks.md T007 wording assumed out/csharp; the
+only out/csharp artifact the tier needs is `out/csharp/glp_repl`, which
+`test_us5_repl_page_mesh` gates on separately and which IS built on this
+tree). No hard-coded skip attribute exists; the build alone closes the gate.
+
+**Un-skipped suite verdicts** (`dotnet build csharp/glp_quick_host` → 0
+errors, then `python -m pytest -q -rs`):
+
+    2 failed, 185 passed, 1 skipped
+
+- The 1 skip is `test_gleam.py:62` — "Profile C IS built here — the
+  not-built guard cannot fire" — a deliberate inverse-guard negative
+  control, NOT dll-attributable. **C3's 0-dll-skips clause is satisfied.**
+- The 2 failures are the SAME two pre-existing profile-C failures recorded
+  at T004 (not exposed by the un-skip — they already ran at baseline).
+  Root token now captured per Bug-Protocol (report, not fix):
+  `LinkError: quic_unsupported: quicer NIF failed to start: {quicer, ...}`
+  — the Gleam profile-C client's quicer/msquic NIF fails to LOAD at runtime
+  on this host even though `profile_c_built()` reports built;
+  `test_profile_c_pin_mismatch_rejected` then sees `quic_unsupported` where
+  it expects `cert_mismatch` (the handshake never starts). Environment-level
+  defect in the Gleam/quicer runtime on this host; root-cause during US1
+  per the T004 note.
+- **Operational hazard (reported)**: the two failing profile-C tests LEAK
+  their spawned `glp_quick_host` server processes on teardown; the orphans
+  hold `bin/Debug/net10.0/glp_link.dll` open and break the next
+  `dotnet build` with MSB3027/MSB3021 file locks (observed and cleaned twice
+  this session: 3 orphans from the predecessor's baseline run, then 3+1 from
+  this session's runs). Test-teardown defect in the profile-C failure path —
+  reported here, not masked.
