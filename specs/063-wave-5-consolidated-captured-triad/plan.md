@@ -64,7 +64,7 @@ thousands of journalled messages per drill
   first (the current code shows an eviction guard whose provenance is
   unverified against the audit symptom) — report/fix, never mask. PASS.
 - **III SRSW**: no GLP clauses are planned to change; any incidental .glp work
-  obeys SRSW. No `skipSRSW`. PASS.
+  obeys SRSW, and no escape option is proposed or used. PASS.
 - **IV-a Language Authority**: no language surface changes anywhere in this
   wave. PASS. **IV-b**: no engine internals touched. PASS.
 - **V Claude-only LM**: US3 uses the installed buildkit capability (Claude

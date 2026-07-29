@@ -275,7 +275,7 @@ round unchanged.
   intervention.
 - **FR-009**: Delivery MUST be at-least-once on the wire with duplicate
   suppression at the recipient, so each accepted message is observed exactly
-  once; suppression MUST hold across restarts.
+  once by the recipient's consumer; suppression MUST hold across restarts.
 - **FR-010**: Each sender's messages MUST carry a dense, fully-serializable
   per-sender sequence; order is preserved end-to-end and a sequence gap is a
   detected, named loss (triggering re-fetch where a source is known), never a

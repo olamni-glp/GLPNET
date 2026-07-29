@@ -30,13 +30,13 @@ board-flagged before work starts.
 **Goal**: live REPL over the link; mesh dup-id defect proven fixed; suite reproducible.
 **Independent test**: quickstart.md US1 — two REPLs linked, goal evaluated cross-host; `mesh_dup_id` scenario green; 0 dll-skips.
 
-- [ ] T007 [US1] In-tree build path for the C# host library the 9 skipped integration tests load: wire `csharp/glp_quick_host` output into `out/csharp/` (dotnet build) and remove the skip condition in `csharp/glp_link.tests` (audit gap (c), contract C3)
+- [ ] T007 [US1] In-tree build path for the C# host library the 9 skipped integration tests load: wire `csharp/glp_quick_host` output into `out/csharp/` (dotnet build) and satisfy the tests' load condition (remove an explicit skip attribute ONLY if one is hard-coded; a dll-presence gate resolves by the build alone) (audit gap (c), contract C3)
 - [ ] T008 [US1] Run the un-skipped integration suite; per Bug-Protocol report (not fix) any failure the dll exposes; record verdicts in baseline.md (contract C3)
 - [ ] T009 [US1] Write the `mesh_dup_id` regression scenario in `csharp/glp_link.tests/MeshDupIdRegressionTests.cs`: A/B live, C announces B's id — incumbent survives, traffic keeps flowing to B, refresh visible (contract C2; R1: the scenario decides whether the audited symptom still reproduces)
 - [ ] T010 [US1] If T009 reproduces the audited defect: fix `Mesh` id learn/evict in `csharp/glp_quick_host/Program.cs` so a newcomer never evicts a live incumbent; re-run T009 green. If T009 passes as-is: record the provenance finding in baseline.md (guard already landed) and keep the scenario as the closure witness
 - [ ] T011 [US1] Complete the `--repl` live bridge in `csharp/glp_quick_host/Program.cs`: spawn the REPL child, bridge stdio ⇄ link-message envelopes (one line/result per message), surface child death as a link fault (contract C1, R2)
 - [ ] T012 [P] [US1] Plumb `--repl` through the Python CLI in `glp_quick/src/` (server + client roles) with the REPL exe path argument (contract C1)
-- [ ] T013 [US1] End-to-end scenario: two instances, `--repl` both ends, goal evaluated remotely, result returned — scripted in `glp_quick/tests/test_repl_bridge.py` (quickstart US1)
+- [ ] T013 [US1] End-to-end scenario: two instances, `--repl` both ends, goal evaluated remotely, result returned — scripted in `glp_quick/tests/test_repl_bridge.py`, asserting the SC-001 envelope (link-up + first result within the 5-minute wall-clock bound; scripted runs land in seconds)
 - [ ] T014 [US1] Re-run the full 036 demo suite; produce the per-scenario verdict table superseding the 18/104 claim; append to baseline.md (contract C3, SC-003)
 - [ ] T015 [P] [US1] Correct the stack-profile wording (relay profile relays; reference stack terminates QUIC) at its single authoritative doc site (contract C4, FR-005a)
 
@@ -52,7 +52,7 @@ board-flagged before work starts.
 - [ ] T020 [US2] Implement recipient role in `ms_message/src/ms_message/cli.py`: signal handling, resumable fetch from position, exactly-once observation via delivery_position, gap_event recording (FR-007..FR-010, R7)
 - [ ] T021 [US2] Implement `ms_message/src/ms_message/lake.py`: DuckLake aging + hot∪lake catch-up query behind the seam, LOUD PGlite-only degradation (R6)
 - [ ] T022 [US2] Retention sweep (ephemeral/time-windowed/permanent) in store.py + CLI `status` summary (FR-011b, contract guarantees 6)
-- [ ] T023 [US2] Unit tests: WAL replay, size policy, dedup across restart, gap detection in `ms_message/tests/` (contract guarantees 1–3)
+- [ ] T023 [US2] Unit tests: WAL replay, size policy, dedup across restart, gap detection, AND the FR-011 failure paths (store unwritable / journal corrupt ⇒ explicit refusal or named fault, never silent loss) in `ms_message/tests/` (contract guarantees 1–3 + 5)
 - [ ] T024 [US2] The SC-004 drill script `ms_message/tests/drill_disconnect.py` (N=1,000, recipient offline, originator restart, exactly-once in order, bounded waits) + wire into `test/run_all_tests.sh` as an explicit section or documented standalone gate (SC-004/SC-005)
 - [ ] T025 [US2] QUIC-leg evidence (after US1): one drill pass with the link over QUIC+WS; TCP remains the default evidence path (R3)
 
