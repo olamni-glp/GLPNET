@@ -16,12 +16,29 @@ namespace GlpRuntime.Link.Primitives;
 /// <remarks>
 /// Runner-thread only: adoption binds nothing but registers heap OnBind callbacks
 /// and pump cursors, so it must not race a running reduction. The at-most-once
-/// crash boundary (FR-032) is enforced by the egress walk: every stream element
-/// bound BEFORE the snapshot was shipped at bind time (the drainer ships
-/// synchronously on bind), so the drainer re-arms at the first UNBOUND tail —
-/// committed work is never re-shipped (no duplication) and every post-restore
-/// bind ships (no loss).
+/// crash boundary (FR-032) is enforced by the shipped-count egress walk
+/// (<see cref="LinkHandle.EgressShippedCount"/>, persisted in snapshot section
+/// 0x09): the first count elements are never re-shipped (no duplication), bound
+/// elements past the count — bound pre-snapshot but never handed to the
+/// transport because the synchronous ship threw — are re-shipped on the fresh
+/// connection (no loss), and the drainer then arms at the first unbound tail.
 /// </remarks>
+/// <summary>
+/// A restore-time re-ship failed after some elements already shipped: carries the
+/// ACHIEVED shipped count so the caller updates its durable definition before a
+/// retry — retrying with the stale count would duplicate the already-re-shipped
+/// elements (FR-032).
+/// </summary>
+public sealed class RewireEgressException : Exception
+{
+    public int AchievedShippedCount { get; }
+    public RewireEgressException(int achievedShippedCount, Exception inner)
+        : base($"re-ship failed after {achievedShippedCount} shipped element(s): {inner.Message}", inner)
+    {
+        AchievedShippedCount = achievedShippedCount;
+    }
+}
+
 public static class RewireHandle
 {
     private const string ListCons = ".";
@@ -88,7 +105,22 @@ public static class RewireHandle
             handle.EgressShippedCount = egressShippedCount == int.MinValue
                 ? int.MaxValue // legacy sentinel: skip all bound (no re-ship)
                 : egressShippedCount;
-            ResumeEgress(rt, link, handle, ora);
+            try
+            {
+                ResumeEgress(rt, link, handle, ora);
+            }
+            catch (Exception ex)
+            {
+                // A transport fault mid-re-ship: EgressShippedCount already reflects
+                // every SUCCESSFUL ship (advanced per element). Deregister the
+                // half-adopted handle so the retry's Adopt re-runs the full wiring
+                // instead of hitting the idempotent early-return with a dead
+                // endpoint, and hand the achieved count to the caller so its
+                // durable definition retries WITHOUT duplicating (codexreview
+                // 20260730T070051Z cycle 3 reship-transport-fault).
+                link.Links.Remove(id);
+                throw new RewireEgressException(handle.EgressShippedCount, ex);
+            }
         }
 
         // Ingress: resume the pump at the restored In tail. A null In cursor means
@@ -149,6 +181,9 @@ public static class RewireHandle
                     try
                     {
                         LinkEgress.ShipGround(heap, handle, cons.Args[0]);
+                        // Advance PER successful ship: a transport fault on a LATER
+                        // element must not rewind the count (retry would duplicate).
+                        handle.EgressShippedCount = consumed + 1;
                     }
                     catch (PayloadCodecException)
                     {

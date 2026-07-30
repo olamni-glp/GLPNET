@@ -201,11 +201,13 @@ public sealed class EngineServer
         // Bound the allocation BEFORE trusting the header: an unauthenticated
         // 4-byte header must not command a 2 GB buffer (codexreview
         // 20260730T070051Z unbounded-frame-allocation). The bound matches the
-        // framing stack's own contract — FrameCodec refuses payloads above this
-        // on encode, so a larger header is a wire-contract violation, not data.
-        if (len > FrameCodec.MaxPayloadBytes)
+        // framing stack's own contract — FrameCodec refuses payloads above
+        // MaxPayloadBytes on encode; the small slack covers the FrameCodec frame
+        // header around a max-size payload (the length prefix wraps the whole
+        // frame, not the bare payload — cycle-3 off-by-header note).
+        if (len > FrameCodec.MaxPayloadBytes + 1024)
             throw new IOException(
-                $"frame length {len} exceeds FrameCodec.MaxPayloadBytes {FrameCodec.MaxPayloadBytes}");
+                $"frame length {len} exceeds FrameCodec.MaxPayloadBytes {FrameCodec.MaxPayloadBytes} (+1 KiB frame-header slack)");
         if (len == 0)
             return Array.Empty<byte>();
 

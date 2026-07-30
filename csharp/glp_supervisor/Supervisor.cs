@@ -361,6 +361,12 @@ public sealed class Supervisor : BackgroundService
         {
             if (_child is { HasExited: true })
             {
+                // Drain the async stderr pump before consulting it: HasExited can
+                // observe the exit BEFORE ErrorDataReceived delivered the final
+                // lines — the parameterless WaitForExit waits for the redirected
+                // streams to complete (codexreview 20260730T070051Z cycle 3
+                // restore-failed-marker-stderr-drain-race).
+                try { _child.WaitForExit(); } catch (SystemException) { }
                 // ONLY a self-reported restore failure triggers the previous-seq
                 // fallback — any other pre-listen death (port in use, bad args)
                 // is a generic crash for the taxonomy/backoff path, never a

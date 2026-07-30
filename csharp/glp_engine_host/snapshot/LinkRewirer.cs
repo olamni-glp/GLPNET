@@ -47,6 +47,7 @@ public sealed class LinkRewirer : IDisposable
     // this incarnation could not reach the peer.
     private readonly Dictionary<LinkId, RestoredLinkDefinition> _outstanding = new();
     private int _pending;
+    private volatile bool _disposed;
 
     public LinkRewirer(GlpRuntimeEngine rt, LinkRuntime link)
     {
@@ -95,6 +96,15 @@ public sealed class LinkRewirer : IDisposable
             var endpoint = def.Role == LinkRole.Listener
                 ? await transport.ListenAsync(def.Id.Scheme, def.Id.Endpoint, opts, cts.Token).ConfigureAwait(false)
                 : await transport.ConnectAsync(def.Id.Scheme, def.Id.Endpoint, opts, cts.Token).ConfigureAwait(false);
+            if (_disposed)
+            {
+                // Host shut down while this rendezvous was in flight — nothing will
+                // ever ApplyReady; dispose rather than park a live socket forever
+                // (cycle-3 dispose/in-flight residual).
+                await endpoint.DisposeAsync().ConfigureAwait(false);
+                Interlocked.Decrement(ref _pending);
+                return;
+            }
             _ready.Enqueue((def, endpoint));
             // _pending stays up until ApplyReady adopts it on the request thread.
         }
@@ -140,7 +150,14 @@ public sealed class LinkRewirer : IDisposable
             }
             catch (Exception ex)
             {
-                // Definition stays OUTSTANDING (capturable) — loud, never silently gone.
+                // Definition stays OUTSTANDING (capturable) — loud, never silently
+                // gone. A mid-re-ship fault reports the ACHIEVED shipped count;
+                // fold it into the durable definition so a later retry (or the
+                // next snapshot) never re-ships the already-delivered elements.
+                if (ex is RewireEgressException ree)
+                    lock (_outstanding)
+                        _outstanding[item.Def.Id] = item.Def with
+                        { EgressShippedCount = ree.AchievedShippedCount };
                 var line = $"{item.Def.Id}: adoption failed: {ex.Message}";
                 lock (_failed) _failed.Add(line);
                 Console.Error.WriteLine($"glp_engine_host: LINK RE-WIRE FAILED {line}");
@@ -159,6 +176,7 @@ public sealed class LinkRewirer : IDisposable
     /// </summary>
     public void Dispose()
     {
+        _disposed = true; // in-flight rendezvous self-dispose on completion
         while (_ready.TryDequeue(out var item))
         {
             try { item.Endpoint.DisposeAsync().AsTask().GetAwaiter().GetResult(); }

@@ -212,6 +212,17 @@ public static class Program
             engine, session, quiescence, store, link, rootSelfSource, restoredUnits, rewirer);
         var server = new EngineServer(listen, dispatcher);
 
+        // The wire is unauthenticated (LOAD_SOURCE executes arbitrary GLP;
+        // SHUTDOWN stops the engine) — loopback is the MVP contract. A
+        // non-loopback bind is an explicit operator choice; warn loudly.
+        if (!IPAddress.IsLoopback(listen.Address))
+        {
+            Console.Error.WriteLine(
+                $"glp_engine_host: WARNING --listen {listen} is NOT loopback: the split protocol is " +
+                "unauthenticated (any connecting peer can load and run code). TCP loopback is the MVP " +
+                "trust boundary (spec FR-001/plan constraint); non-loopback exposure is at your own risk.");
+        }
+
         Console.WriteLine($"glp_engine_host: prelude {rootSelfGlpPath}");
         Console.WriteLine($"glp_engine_host: snapshot store {storeDir}" +
                           (primary is null ? " (file fallback only — no PGLite primary configured)" : " + PGLite primary"));

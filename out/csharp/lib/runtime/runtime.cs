@@ -82,13 +82,16 @@ public class GlpRuntimeEngine
     private int _pendingTimers = 0;
 
     /// <summary>Number of pending timers in wait() guards.</summary>
-    public int PendingTimers => _pendingTimers;
+    public int PendingTimers => Volatile.Read(ref _pendingTimers);
 
-    /// <summary>Increment the pending-timers counter.</summary>
-    public void IncrementPendingTimers() => _pendingTimers++;
+    /// <summary>Increment the pending-timers counter. Atomic: timer callbacks
+    /// decrement from thread-pool threads while the runner increments/reads —
+    /// a torn ++/-- could lose a count and wedge the 061 quiescence gate
+    /// (Quiescence.DisarmTimersForCapture's PendingTimers consistency check).</summary>
+    public void IncrementPendingTimers() => Interlocked.Increment(ref _pendingTimers);
 
-    /// <summary>Decrement the pending-timers counter.</summary>
-    public void DecrementPendingTimers() => _pendingTimers--;
+    /// <summary>Decrement the pending-timers counter (atomic — see increment).</summary>
+    public void DecrementPendingTimers() => Interlocked.Decrement(ref _pendingTimers);
 
     // ── Wait state tracking for wait() guards ────────────────────────────────
 

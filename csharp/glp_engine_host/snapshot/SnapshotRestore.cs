@@ -135,6 +135,9 @@ public static class SnapshotRestore
         {
             int id = heapReader.ReadVarUInt();
             int addr = heapReader.ReadVarUInt();
+            if (mutualRefs.ContainsKey(id))
+                throw new SnapshotException(
+                    $"corrupt snapshot: MutualRef#{id} appears twice in the mutual-ref table");
             mutualRefs[id] = new MutualRefTerm(addr, id); // 061 restore ctor — Id preserved
         }
 

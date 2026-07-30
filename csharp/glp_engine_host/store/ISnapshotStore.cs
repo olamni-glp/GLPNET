@@ -187,8 +187,22 @@ public sealed class SnapshotStore
         if (primary is null) return fallback;
         if (fallback is null) return primary;
 
+        RequireUnforked(primaryList, _fallback.List());
+
+        return fallback.Value.Seq > primary.Value.Item1 ? fallback : primary;
+    }
+
+    /// <summary>
+    /// The fork guard shared by every read path that composes both backends
+    /// (Latest AND List — the supervisor derives its restore seq from List, so a
+    /// guard on Latest alone leaves the supervised path exposed; codexreview
+    /// 20260730T070051Z cycle 3 supervised-restore-bypasses-fork-guard).
+    /// </summary>
+    private static void RequireUnforked(
+        IReadOnlyList<SnapshotMeta>? primaryList, IReadOnlyList<SnapshotMeta> fallbackList)
+    {
         var pTop = primaryList?.Count > 0 ? primaryList[^1] : null;
-        var fTop = _fallback.List() is { Count: > 0 } fl ? fl[^1] : null;
+        var fTop = fallbackList.Count > 0 ? fallbackList[^1] : null;
         if (pTop != null && fTop != null &&
             ((pTop.Seq > fTop.Seq && pTop.CreatedUtcMs < fTop.CreatedUtcMs) ||
              (fTop.Seq > pTop.Seq && fTop.CreatedUtcMs < pTop.CreatedUtcMs)))
@@ -200,8 +214,6 @@ public sealed class SnapshotStore
                 "Refusing to pick a side silently; reconcile the stores (likely seqs " +
                 "minted on the fallback during a primary outage).");
         }
-
-        return fallback.Value.Seq > primary.Value.Item1 ? fallback : primary;
     }
 
     /// <summary>Exact complete snapshot by seq (primary first, then fallback).</summary>
@@ -224,23 +236,32 @@ public sealed class SnapshotStore
         return _fallback.BySeq(seq);
     }
 
-    /// <summary>All complete snapshots across both backends, deduplicated by seq, ascending.</summary>
+    /// <summary>All complete snapshots across both backends, deduplicated by seq, ascending.
+    /// Runs the same fork guard as <see cref="Latest"/> — the supervisor's restore
+    /// path derives its seq from this list.</summary>
     public IReadOnlyList<SnapshotMeta> List()
     {
+        var fallbackList = _fallback.List();
         var bySeq = new SortedDictionary<ulong, SnapshotMeta>();
-        foreach (var m in _fallback.List())
+        foreach (var m in fallbackList)
             bySeq[m.Seq] = m;
         if (_primary != null)
         {
+            IReadOnlyList<SnapshotMeta>? primaryList = null;
             try
             {
-                foreach (var m in _primary.List())
-                    bySeq[m.Seq] = m; // primary preferred on a tie
+                primaryList = _primary.List();
             }
             catch (SnapshotStoreException) { throw; }
             catch (Exception ex)
             {
                 _report($"primary snapshot store '{_primary.Name}' unavailable on list ({ex.Message})");
+            }
+            if (primaryList != null)
+            {
+                RequireUnforked(primaryList, fallbackList);
+                foreach (var m in primaryList)
+                    bySeq[m.Seq] = m; // primary preferred on a tie
             }
         }
         return bySeq.Values.ToList();

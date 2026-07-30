@@ -29,7 +29,11 @@ engine-pre-rendered bindings, length-prefixed UTF-8 output blob) ·
 5. SNAPSHOT on a busy engine → `DEFERRED`, then executes at next quiescence;
    the eventual completion is observable via STATUS (seq advances).
 6. SHUTDOWN: engine takes a final snapshot (graceful trigger, FR-014), ACKs
-   with the final seq, exits 0.
+   with the final seq, exits 0. When the engine is NOT quiescent (or link
+   rewires are pending), the final snapshot is SKIPPED LOUDLY — the ACK body
+   says so (`final_snapshot=skipped(...)`, plus `parked_snapshot=unfulfilled`
+   if a DEFERRED snapshot was parked) — because an inconsistent snapshot is
+   never permitted (FR-014). A taken final snapshot subsumes a parked one.
 7. PING answers `ACK` within the supervisor's timeout budget whenever the
    engine event loop is alive (also during restore — rule 4).
 8. Crash boundary: a request with no terminal response ⇒ transport failure at

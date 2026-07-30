@@ -20,7 +20,7 @@ public sealed record CrashRecord(
     string EngineIdentity,
     int? ExitCode,
     CrashDetection Detection,
-    string RestartOutcome,       // "restored(seq)" | "unrecoverable(reason)"
+    string RestartOutcome,       // "restarting" (durable at detection, contract step 1) | "restored(seq)" | "restored(fresh)" | "unrecoverable(reason)" — a crash yields the detection record THEN its completion record (append-only pair)
     double BackoffAppliedMs);
 
 /// <summary>The supervisor's derived live-status surface (overwritten in place).</summary>
