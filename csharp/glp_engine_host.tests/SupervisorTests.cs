@@ -121,8 +121,17 @@ public class SupervisorTests : IDisposable
                       supervisor.EnginePid is int pid && pid != firstPid,
                 TimeSpan.FromSeconds(30), "crash recorded + replacement healthy");
 
-            // Crash-record completeness (FR-024, data-model.md CrashRecord).
-            var record = supervisor.Log.History().Single();
+            // Crash-record completeness (FR-024, data-model.md CrashRecord;
+            // contracts/supervision.md steps 1+4): a DURABLE detection record lands
+            // BEFORE backoff/restart, then the completion record when the
+            // replacement serves.
+            var history = supervisor.Log.History();
+            Assert.Equal(2, history.Count);
+            var detected = history[0];
+            Assert.Equal($"engine-{port}", detected.EngineIdentity);
+            Assert.Equal("restarting", detected.RestartOutcome); // step 1: durable at detection
+            Assert.True(detected.Detection is CrashDetection.Exit or CrashDetection.PingTimeout);
+            var record = history[1];
             Assert.Equal($"engine-{port}", record.EngineIdentity);
             Assert.True(record.TimestampUtc > DateTimeOffset.UtcNow.AddMinutes(-5));
             Assert.Equal("restored(1)", record.RestartOutcome); // AS-3: from the latest snapshot

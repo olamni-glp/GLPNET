@@ -105,6 +105,7 @@ public static class Program
         {
             session.TransitionTo(EngineState.Restoring);
             byte[]? blobBytes;
+            ulong? expectedSeq = null;
             if (fromSnapshot == "latest")
             {
                 var latest = store.Latest();
@@ -114,6 +115,7 @@ public static class Program
                     return 66;
                 }
                 blobBytes = latest.Value.Blob;
+                expectedSeq = latest.Value.Seq;
             }
             else if (ulong.TryParse(fromSnapshot, out var seq))
             {
@@ -123,6 +125,7 @@ public static class Program
                     Console.Error.WriteLine($"glp_engine_host: --from-snapshot {seq}: no such complete snapshot");
                     return 66;
                 }
+                expectedSeq = seq;
             }
             else
             {
@@ -134,6 +137,17 @@ public static class Program
             try
             {
                 var blob = SnapshotBlob.Decode(blobBytes);
+                // Header-context checks (codexreview 20260730T070051Z): a store
+                // mis-index (blob under the wrong seq) is corruption — refuse; a
+                // foreign engine identity is a legitimate operator migration but
+                // never silent.
+                if (expectedSeq is ulong want && blob.Seq != want)
+                    throw new SnapshotException(
+                        $"store returned blob seq={blob.Seq} for requested seq={want} (store mis-index)");
+                if (!string.Equals(blob.EngineIdentity, engineIdentity, StringComparison.Ordinal))
+                    Console.Error.WriteLine(
+                        $"glp_engine_host: WARNING restoring snapshot of '{blob.EngineIdentity}' " +
+                        $"into '{engineIdentity}' (cross-identity restore — operator intent assumed)");
                 var restored = SnapshotRestore.Restore(blob, rootSelfGlpPath);
                 engine = restored.Engine;
                 restoredUnits = restored.Units;
@@ -143,10 +157,18 @@ public static class Program
                     $"({restoredUnits.Count} unit(s), heap={engine.Runtime.Heap.Hp} cells, " +
                     $"{restoredLinks.Count} link definition(s))");
             }
-            catch (SnapshotException ex)
+            catch (Exception ex)
             {
-                // Corrupt-snapshot surface — the supervisor's taxonomy input (FR-023).
-                Console.Error.WriteLine($"glp_engine_host: RESTORE FAILED: {ex.Message}");
+                // ANY decode/restore failure is a restore failure — the supervisor's
+                // DEF-F2 previous-seq fallback gates on this exact "RESTORE FAILED"
+                // marker (Supervisor.TryStartRestoringAsync), so a corrupt blob whose
+                // damage surfaces as an OverflowException / codec exception deep
+                // inside a section must take the SAME loud path as a SnapshotException
+                // — otherwise the supervisor re-drives the corrupt seq into
+                // repeated_immediate_crash instead of falling back (codexreview
+                // 20260730T070051Z corrupt-section-exceptions-bypass-taxonomy).
+                Console.Error.WriteLine(
+                    $"glp_engine_host: RESTORE FAILED: {ex.GetType().Name}: {ex.Message}");
                 return 65;
             }
             session.TransitionTo(EngineState.Serving);
@@ -203,6 +225,10 @@ public static class Program
         {
             Console.Error.WriteLine($"glp_engine_host: {ex.Message}");
             return 65;
+        }
+        finally
+        {
+            rewirer?.Dispose(); // established-but-never-adopted endpoints
         }
 
         Console.WriteLine("glp_engine_host: shutdown complete");

@@ -12,7 +12,9 @@ an established link (bind ⇒ ship as ONE atomic runner-thread step, because
 `LinkEgress.ShipGround` runs synchronously inside the bind's `OnBind` callback),
 quiescence-gated snapshots (a between-steps copy of the bound chain), a crash allowed between
 ANY two steps (bounded budget), and supervised restore that reloads the last complete snapshot
-and re-arms egress at the first UNSHIPPED tail (`RewireHandle.UnshippedTailWriter`'s walk).
+and re-arms egress at the first UNSHIPPED position (`RewireHandle.ResumeEgress`'s
+shipped-count walk — the count, persisted in section 0x09, is what makes "unshipped"
+well-defined even when a pre-snapshot bind's synchronous ship threw).
 Values carry the driver's monotone issue order; each is issued exactly once (the no-replay
 crash boundary — in-flight-request replay stays deferred, DEF-X3).
 

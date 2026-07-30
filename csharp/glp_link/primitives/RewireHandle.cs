@@ -40,7 +40,7 @@ public static class RewireHandle
         GlpRuntimeEngine rt, LinkRuntime link, LinkId id, LinkRole role,
         Func<ILinkEndpoint> establish,
         int? inWriterAddr, int? outReaderAddr, int? faultsWriterAddr,
-        IReadOnlyList<int> monitorCursors)
+        IReadOnlyList<int> monitorCursors, int egressShippedCount = int.MinValue)
     {
         var heap = rt.Heap;
 
@@ -71,11 +71,25 @@ public static class RewireHandle
         // Distributed-GC hook — same registration the normal establish path makes.
         link.Reclaimer.Register(id, () => link.Links.Remove(id));
 
-        // Egress: re-arm at the first UNSHIPPED (unbound) tail of the restored Out
-        // stream, never on a bound cell (heap.OnBind fires IMMEDIATELY on a bound
-        // writer, which would re-ship committed work — FR-032 forbids duplication).
-        if (outReaderAddr is int ora && UnshippedTailWriter(heap, ora) is int tailWriter)
-            LinkEstablish.ArmEgress(rt, link, handle, tailWriter);
+        // Egress: resume at the snapshotted SHIPPED-COUNT position, not merely the
+        // first unbound tail. The two differ exactly when a pre-snapshot bind's
+        // synchronous ship THREW (transport fault at bind time): that element is
+        // bound in the restored heap but never reached the transport — skipping
+        // it would lose snapshot-committed work (FR-032 no-loss; codexreview
+        // 20260730T070051Z bound-stream-is-not-delivery-commit). Bound elements
+        // past the count are re-shipped on the fresh connection (clean framing —
+        // the faulted connection died with its partial frame), then the drainer
+        // arms at the first unbound tail. Already-shipped elements are never
+        // re-shipped (no duplication). A negative sentinel (pre-count snapshots
+        // do not exist in production) treats every bound element as shipped —
+        // the old walk's semantics.
+        if (outReaderAddr is int ora)
+        {
+            handle.EgressShippedCount = egressShippedCount == int.MinValue
+                ? int.MaxValue // legacy sentinel: skip all bound (no re-ship)
+                : egressShippedCount;
+            ResumeEgress(rt, link, handle, ora);
+        }
 
         // Ingress: resume the pump at the restored In tail. A null In cursor means
         // the peer had already ended the stream pre-snapshot — nothing to pump.
@@ -89,36 +103,86 @@ public static class RewireHandle
     }
 
     /// <summary>
-    /// Walk the restored Out stream from its original reader to the first UNBOUND
-    /// tail writer — the resume point for the egress drainer. Null when there is
-    /// nothing to arm (stream closed with <c>[]</c>, or not a stream shape).
+    /// Walk the restored Out stream from its original reader: skip the
+    /// <see cref="LinkHandle.EgressShippedCount"/> already-shipped elements
+    /// (never re-shipped — no duplication), RE-SHIP any further bound elements
+    /// (bound-but-send-failed pre-crash — no loss), and arm the drainer at the
+    /// first unbound tail. Leaves <see cref="LinkHandle.EgressShippedCount"/> at
+    /// the true consumed count for the next capture. A transport failure during
+    /// a re-ship propagates — the adoption fails loudly and the definition stays
+    /// outstanding for a later retry.
     /// </summary>
-    internal static int? UnshippedTailWriter(HeapFCP heap, int outReaderAddr)
+    private static void ResumeEgress(GlpRuntimeEngine rt, LinkRuntime link, LinkHandle handle, int outReaderAddr)
     {
+        var heap = rt.Heap;
+        int toSkip = handle.EgressShippedCount;
+        int consumed = 0;
         Term cursor = new VarRef(outReaderAddr);
-        // Bounded by the heap size: each step either lands on an unbound writer
-        // (return), moves to a strictly-later stream tail, or exits.
+        // Bounded by the heap size: each step either terminates or moves to a
+        // strictly-later stream tail.
         for (int guard = 0; guard <= heap.Hp; guard++)
         {
             if (cursor is VarRef vr)
             {
                 int? writer = heap.IsWriter(vr.Addr) ? vr.Addr : heap.TryWriterForReader(vr.Addr);
                 if (writer is not int w)
-                    return null; // unpaired reader — nothing drainable
+                {
+                    Finish(handle, toSkip, consumed); // unpaired reader — nothing drainable
+                    return;
+                }
                 if (!heap.IsFullyBound(w))
-                    return w;    // the first unshipped position
+                {
+                    Finish(handle, toSkip, consumed);
+                    LinkEstablish.ArmEgress(rt, link, handle, w);
+                    return;
+                }
                 cursor = heap.Dereference(new VarRef(w));
                 continue;
             }
             if (cursor is StructTerm { Functor: ListCons } cons && cons.Args.Count == 2)
             {
-                cursor = cons.Args[1]; // already-shipped element — skip to the tail
+                if (consumed >= toSkip)
+                {
+                    // Bound pre-snapshot but never handed to the transport — the
+                    // synchronous ship threw at bind time. Re-ship on the fresh
+                    // connection (the faulted one died with any partial frame).
+                    try
+                    {
+                        LinkEgress.ShipGround(heap, handle, cons.Args[0]);
+                    }
+                    catch (PayloadCodecException)
+                    {
+                        // Mirror the live drainer's drop semantics: the element is
+                        // consumed-dead and the drain stops here.
+                        Console.WriteLine("[link rewire] restored outbound term rejected by the payload codec — dropped");
+                        handle.EgressShippedCount = consumed + 1;
+                        return;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        Console.WriteLine("[link rewire] restored non-ground term at Out — ground-relay gate violated; dropped");
+                        handle.EgressShippedCount = consumed + 1;
+                        return;
+                    }
+                }
+                consumed++;
+                cursor = cons.Args[1];
                 continue;
             }
-            return null; // [] (closed stream) or a non-stream value — nothing to arm
+            Finish(handle, toSkip, consumed); // [] (closed) or non-stream — nothing to arm
+            return;
         }
         throw new InvalidOperationException(
             $"restored Out stream from reader {outReaderAddr} does not terminate — cyclic snapshot data");
+    }
+
+    private static void Finish(LinkHandle handle, int toSkip, int consumed)
+    {
+        if (toSkip != int.MaxValue && consumed < toSkip)
+            throw new InvalidOperationException(
+                $"restored shipped-count {toSkip} exceeds the {consumed} element(s) bound on the " +
+                "restored Out stream — corrupt snapshot");
+        handle.EgressShippedCount = consumed;
     }
 
     private static void RequireKind(

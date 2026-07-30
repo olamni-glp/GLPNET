@@ -53,3 +53,19 @@ model participates.
 - Canonical (WSL2): `models/spin/run.sh` → three verifier runs, asserts `errors: 0` on each.
 - Windows wrapper: `models/spin/run.ps1` → forwards to `run.sh` via `wsl.exe -d Ubuntu`.
 - Tool versions: `models/spin/tool-versions.txt` — SPIN 6.5.1, gcc 15.2.0, WSL2 Ubuntu.
+
+## Declared abstraction boundaries (recorded 2026-07-30, codexreview 20260730T070051Z)
+
+Three implemented behaviours are deliberately OUTSIDE this model's statespace — the
+PASS verdict covers the modelled protocol, not these:
+
+1. **Shutdown's final snapshot can be SKIPPED loudly** (non-quiescent engine / pending
+   link rewires); the model always takes it. The skip is a safety choice (never an
+   inconsistent snapshot, FR-014) that does not affect the modelled liveness/deadlock
+   properties — the ACK still terminates the exchange.
+2. **Deferred-snapshot completion fires on later dispatcher entries**, not autonomously;
+   the model's internal completion transition abstracts that scheduling (fair traffic —
+   the supervisor pings — makes the abstraction sound in deployment).
+3. **The second-client refusal (wire rule 1) is not modelled** — the model is the
+   single-client protocol (FR-002); the refusal path is covered by
+   `EngineServerTests.SecondClient_IsRefusedLoudly_WhileFirstIsActive`.

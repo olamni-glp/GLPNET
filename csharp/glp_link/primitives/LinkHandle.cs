@@ -48,6 +48,17 @@ public sealed class LinkHandle
     /// </summary>
     public LinkRole? Role { get; set; }
 
+    /// <summary>
+    /// Count of Out-stream elements the egress drainer has SUCCESSFULLY shipped
+    /// (feature 061 US4, additive): incremented only after <c>ShipGround</c>
+    /// returned. Snapshot section 0x09 persists it so restore resumes the drain
+    /// at the first UNSHIPPED position — a cell that was bound but whose
+    /// synchronous ship threw (transport fault at bind time) is re-shipped on
+    /// the re-established connection instead of silently skipped (FR-032
+    /// no-loss for snapshot-committed work). Runner-thread only.
+    /// </summary>
+    public int EgressShippedCount { get; set; }
+
     // --- heap stream cursors, set by '_link_setup' during establishment ---
 
     /// <summary>The writer the host extends as inbound frames arrive (the program reads <c>In</c>).</summary>

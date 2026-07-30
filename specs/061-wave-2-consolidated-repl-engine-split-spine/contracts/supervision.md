@@ -35,6 +35,19 @@ CrashRecord, surface loudly to the operator (FR-023). No silent loops.
 
 ## Timing obligation
 
-Detect→restart→restore ≤ ping_interval + ping_timeout + restore(snapshot)
-(SC-003) — modelled in UPPAAL (FR-040) with the interval/timeout/backoff as
+Detect→restart→restore ≤ ping_interval + ping_timeout + backoff + restore(snapshot)
+(SC-003) — the backoff term is the same contract's mandated step 2
+(backoff_initial in the healthy-first-crash case, up to backoff_max in a storm);
+the original sentence omitted it, flagged by the UPPAAL model's bound analysis
+(`models/uppaal/RESULT.md` spec-precision note, reconciled at the 061 wave
+close). Modelled in UPPAAL (FR-040) with the interval/timeout/backoff as
 parameters; verdicts in `docs/research/repl-engine-separation/models/uppaal/`.
+
+## Topology (MVP)
+
+The supervisor is the engine's ONE wire client (FR-002): it holds the single
+client slot and pings over it. Operator queries (`--status`/`--history`) read
+the supervisor's durable status/crash-log files, not the wire; peers interact
+over LINKS, which are independent of the client slot. An interactive REPL
+client and supervision are therefore mutually exclusive on one engine in the
+MVP — a supervised multi-client control surface is the deferred DEF-A2 scope.

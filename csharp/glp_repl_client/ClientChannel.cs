@@ -69,7 +69,18 @@ public sealed class ClientChannel : IAsyncDisposable
             throw new ClientTransportException($"engine connection lost while sending: {ex.Message}", ex);
         }
 
-        byte[]? responseBytes = await _endpoint.RecvBytesAsync(ct).ConfigureAwait(false);
+        // TcpEndpoint already converts receive-side IO faults to null; the wrap
+        // here is the belt for any endpoint that throws instead — a transport
+        // break must NEVER surface as anything but ClientTransportException (FR-007).
+        byte[]? responseBytes;
+        try
+        {
+            responseBytes = await _endpoint.RecvBytesAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or System.Net.Sockets.SocketException or ObjectDisposedException)
+        {
+            throw new ClientTransportException($"engine connection lost while receiving: {ex.Message}", ex);
+        }
         if (responseBytes is null)
             throw new ClientTransportException(
                 "engine connection lost before a response arrived (the request has no terminal " +
@@ -77,8 +88,17 @@ public sealed class ClientChannel : IAsyncDisposable
 
         var response = RequestResponseCodec.DecodeResponseFrame(responseBytes);
         if (response.RequestId != request.RequestId)
+        {
+            // request_id 0 marks an engine-side error raised BEFORE the id could be
+            // decoded (a malformed frame) or the one-client refusal — surface the
+            // engine's structured error text rather than discarding it behind a
+            // bare id-mismatch (FR-006; codexreview 20260730T070051Z).
+            if (response.RequestId == 0 && response.Kind == ResponseKind.ProtocolError)
+                throw new SplitProtocolException(
+                    $"engine PROTOCOL_ERROR (pre-decode, request_id 0): {response.BodyText()}");
             throw new SplitProtocolException(
                 $"response echoes request_id {response.RequestId}, expected {request.RequestId} (wire rule 2)");
+        }
         return response;
     }
 

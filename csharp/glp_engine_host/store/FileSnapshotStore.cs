@@ -71,7 +71,11 @@ public sealed class FileSnapshotStore : ISnapshotBackend
             throw new SnapshotStoreException(
                 $"snapshot seq {seq} already exists in the file store (monotonic-seq violation)");
 
-        // 1. Blob: temp-write → fsync → atomic rename.
+        // 1. Blob: temp-write → fsync → atomic rename. Overwrite is SAFE and
+        // necessary: the manifest is the only completeness record, so a blob file
+        // at this path can only be an ORPHAN from a crash between blob-rename and
+        // manifest-write (codexreview 20260730T070051Z: overwrite:false made that
+        // orphan permanently block every retry of the seq — snapshots wedged).
         var blobPath = BlobPath(seq);
         var tmp = blobPath + ".tmp";
         using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -79,7 +83,7 @@ public sealed class FileSnapshotStore : ISnapshotBackend
             fs.Write(blob);
             fs.Flush(flushToDisk: true);
         }
-        File.Move(tmp, blobPath, overwrite: false);
+        File.Move(tmp, blobPath, overwrite: true);
 
         // 2. Manifest LAST — the completeness commit point (FR-013).
         manifest.Add(new ManifestEntry(seq, createdUtcMs, blob.LongLength, formatVersion));

@@ -43,6 +43,17 @@ public static class RequestResponseCodec
                 $"expected REQUEST payload type 0x{SplitPayloadType.Request:X2}, got 0x{payloadType:X2}");
         if (kind is < (byte)RequestKind.LoadSource or > (byte)RequestKind.Ping)
             throw new SplitProtocolException($"unknown request kind 0x{kind:X2}");
+        // Wire contract: "bodies empty unless noted" — only LOAD_SOURCE and
+        // RUN_GOAL carry a body. A body on the other kinds is a malformed
+        // request, refused loudly rather than silently ignored (wire rule 3;
+        // codexreview 20260730T070051Z request-kind-body-not-validated).
+        if (body.Length > 0 &&
+            (RequestKind)kind is RequestKind.Snapshot or RequestKind.Status
+                or RequestKind.Shutdown or RequestKind.Ping)
+        {
+            throw new SplitProtocolException(
+                $"request kind 0x{kind:X2} must carry an empty body, got {body.Length} byte(s)");
+        }
         return new RequestFrame(requestId, (RequestKind)kind, body);
     }
 

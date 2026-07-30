@@ -89,7 +89,15 @@ public sealed class SnapshotStore
         {
             try { primaryMax = _primary.MaxSeq(); }
             catch (SnapshotStoreException) { throw; }
-            catch { primaryMax = 0; /* unavailable — the write path reports loudly */ }
+            catch (Exception ex)
+            {
+                // Loud at RESERVATION time, not just at write: seqs minted while the
+                // primary is unreachable may sit below seqs the primary already
+                // holds — the fork is detected loudly on the next read (Latest).
+                primaryMax = 0;
+                _report($"primary snapshot store '{_primary.Name}' unavailable while reserving " +
+                        $"the next seq ({ex.Message}) — seq derives from the file fallback only");
+            }
         }
         ulong fallbackMax = _fallback.MaxSeq();
         return Math.Max(primaryMax, fallbackMax) + 1;
@@ -148,13 +156,25 @@ public sealed class SnapshotStore
         }
     }
 
-    /// <summary>Latest complete snapshot across both backends (primary preferred on a tie).</summary>
+    /// <summary>
+    /// Latest complete snapshot across both backends (primary preferred on a
+    /// tie). Refuses LOUDLY on a forked seq namespace — a higher-seq snapshot
+    /// that is OLDER by creation time than the other backend's latest means seqs
+    /// were minted during a primary outage below seqs the primary already held;
+    /// silently picking either side could resurrect stale state (codexreview
+    /// 20260730T070051Z seq-regression-stale-restore). The operator reconciles.
+    /// </summary>
     public (ulong Seq, byte[] Blob)? Latest()
     {
+        IReadOnlyList<SnapshotMeta>? primaryList = null;
         (ulong, byte[])? primary = null;
         if (_primary != null)
         {
-            try { primary = _primary.Latest(); }
+            try
+            {
+                primaryList = _primary.List();
+                primary = _primary.Latest();
+            }
             catch (SnapshotStoreException) { throw; }
             catch (Exception ex)
             {
@@ -166,6 +186,21 @@ public sealed class SnapshotStore
 
         if (primary is null) return fallback;
         if (fallback is null) return primary;
+
+        var pTop = primaryList?.Count > 0 ? primaryList[^1] : null;
+        var fTop = _fallback.List() is { Count: > 0 } fl ? fl[^1] : null;
+        if (pTop != null && fTop != null &&
+            ((pTop.Seq > fTop.Seq && pTop.CreatedUtcMs < fTop.CreatedUtcMs) ||
+             (fTop.Seq > pTop.Seq && fTop.CreatedUtcMs < pTop.CreatedUtcMs)))
+        {
+            throw new SnapshotStoreException(
+                $"snapshot seq namespace FORKED: primary latest seq={pTop.Seq} " +
+                $"(created {pTop.CreatedUtcMs}) vs fallback latest seq={fTop.Seq} " +
+                $"(created {fTop.CreatedUtcMs}) — the higher seq is the older snapshot. " +
+                "Refusing to pick a side silently; reconcile the stores (likely seqs " +
+                "minted on the fallback during a primary outage).");
+        }
+
         return fallback.Value.Seq > primary.Value.Item1 ? fallback : primary;
     }
 

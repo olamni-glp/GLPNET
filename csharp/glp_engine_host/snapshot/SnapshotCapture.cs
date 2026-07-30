@@ -47,7 +47,8 @@ public static class SnapshotCapture
         string rootSelfSource,
         IReadOnlyList<DisarmedTimer> disarmedTimers,
         string engineIdentity,
-        ulong seq)
+        ulong seq,
+        IReadOnlyList<RestoredLinkDefinition>? outstandingLinks = null)
     {
         var rt = engine.Runtime;
         var moduleNameByProgram = BuildModuleNameMap(rt);
@@ -62,7 +63,7 @@ public static class SnapshotCapture
             [SnapshotSection.Timers] = EncodeTimers(rt, disarmedTimers),
             [SnapshotSection.InfrastructureGoalIds] = EncodeInfraIds(rt),
             [SnapshotSection.GlpChannels] = EncodeChannels(rt),
-            [SnapshotSection.LinkDefinitions] = EncodeLinks(linkRuntime),
+            [SnapshotSection.LinkDefinitions] = EncodeLinks(linkRuntime, outstandingLinks),
         };
 
         return new SnapshotBlob(
@@ -463,17 +464,22 @@ public static class SnapshotCapture
 
     // ----------------------------------------------- 0x09 link definitions
 
-    private static byte[] EncodeLinks(LinkRuntime? linkRuntime)
+    private static byte[] EncodeLinks(
+        LinkRuntime? linkRuntime, IReadOnlyList<RestoredLinkDefinition>? outstandingLinks)
     {
         var w = new ByteWriter();
-        if (linkRuntime is null)
-        {
-            w.WriteVarUInt(0);
-            return w.TakeBytes();
-        }
+        var handles = linkRuntime?.Links.Handles
+            ?? (IReadOnlyDictionary<GlpRuntime.Link.Seam.LinkId, LinkHandle>)
+               new Dictionary<GlpRuntime.Link.Seam.LinkId, LinkHandle>();
+        // Un-re-established definitions from a prior restore stay DURABLE: a link
+        // whose peer was unreachable this incarnation is re-emitted verbatim so
+        // the NEXT restore retries it — never silently dropped from 0x09
+        // (US4 edge case; codexreview 20260730T070051Z).
+        var carried = (outstandingLinks ?? Array.Empty<RestoredLinkDefinition>())
+            .Where(d => !handles.ContainsKey(d.Id))
+            .ToList();
 
-        var handles = linkRuntime.Links.Handles;
-        w.WriteVarUInt(handles.Count);
+        w.WriteVarUInt(handles.Count + carried.Count);
         foreach (var (id, handle) in handles)
         {
             // Role first: restore cannot re-establish (listen vs connect) without it
@@ -507,6 +513,36 @@ public static class SnapshotCapture
             w.WriteVarUInt(handle.MonitorCursors.Count);
             foreach (var c in handle.MonitorCursors)
                 w.WriteVarUInt(c);
+            w.WriteVarUInt(handle.EgressShippedCount); // restore-resume egress cursor (FR-032)
+        }
+        foreach (var def in carried)
+        {
+            w.WriteByte(def.Role switch
+            {
+                GlpRuntime.Link.Seam.LinkRole.Listener => (byte)0,
+                GlpRuntime.Link.Seam.LinkRole.Connector => (byte)1,
+                _ => throw new SnapshotException($"carried link {def.Id} has unknown role {def.Role}"),
+            });
+            w.WriteString(def.Id.Scheme.Name);
+            w.WriteString(def.Id.Endpoint.Host);
+            WriteNullableAddr(w, def.Id.Endpoint.Port);
+            if (def.Id.Nonce.IsInteger)
+            {
+                w.WriteByte(0);
+                w.WriteInt64LE(def.Id.Nonce.IntValue);
+            }
+            else
+            {
+                w.WriteByte(1);
+                w.WriteString(def.Id.Nonce.StringValue!);
+            }
+            WriteNullableAddr(w, def.InWriterAddr);
+            WriteNullableAddr(w, def.OutReaderAddr);
+            WriteNullableAddr(w, def.FaultsWriterAddr);
+            w.WriteVarUInt(def.MonitorCursors.Count);
+            foreach (var c in def.MonitorCursors)
+                w.WriteVarUInt(c);
+            w.WriteVarUInt(def.EgressShippedCount);
         }
         return w.TakeBytes();
     }

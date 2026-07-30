@@ -186,6 +186,14 @@ public sealed class Supervisor : BackgroundService
         _crashTimes.Add(now);
         Console.Error.WriteLine(
             $"glp_supervisor: engine death detected ({detection}, exit={exitCode?.ToString() ?? "n/a"})");
+        // Contract step 1 (supervision.md "Crash handling"): the CrashRecord is
+        // DURABLE at detection — before backoff/restart — so a supervisor that
+        // dies mid-backoff or cycles on a never-healthy replacement still leaves
+        // the crash in crash-log.jsonl (FR-022/FR-024). The replacement's outcome
+        // lands as the follow-up "restored(seq)" / "unrecoverable(...)" record
+        // (append-only completion, contract step 4).
+        _crashLog.Append(new CrashRecord(
+            now, _config.EngineIdentity, exitCode, detection, "restarting", 0));
 
         if (UnrecoverableTaxonomy.IsExplicitPoison(exitCode))
         {
@@ -262,29 +270,59 @@ public sealed class Supervisor : BackgroundService
     /// </summary>
     private async Task<ulong?> StartEngineWithRestoreFallbackAsync(CancellationToken ct)
     {
-        IReadOnlyList<SnapshotMeta> snapshots;
-        try
+        // store_unavailable is a TAXONOMY verdict ("both backends down" — DEF-F2),
+        // not a first-IOException verdict: a transient manifest-read race (the
+        // engine child atomically replacing manifest.json mid-read) must not stop
+        // the restart loop permanently. Bounded retries absorb the transient case;
+        // only a persistent failure classifies (codexreview 20260730T070051Z
+        // transient-read-classified-unrecoverable). The PGLite connection is
+        // disposed per attempt — the old path leaked one open connection to the
+        // bridge-guarded cluster per restart cycle.
+        IReadOnlyList<SnapshotMeta>? snapshots = null;
+        Exception? lastStoreError = null;
+        for (int attempt = 0; attempt < 3 && snapshots is null; attempt++)
         {
-            var fileBackend = new FileSnapshotStore(_config.StoreRoot, _config.EngineIdentity);
-            ISnapshotBackend? primary = null;
-            var pgConn = Environment.GetEnvironmentVariable("GLP_SNAPSHOT_PG_CONN");
-            if (!string.IsNullOrWhiteSpace(pgConn))
+            if (attempt > 0)
+                await Task.Delay(250, ct).ConfigureAwait(false);
+            NpgsqlSnapshotDb? db = null;
+            try
             {
-                try { primary = PgliteSnapshotStore.Open(new NpgsqlSnapshotDb(pgConn), _config.EngineIdentity); }
-                catch (Exception ex)
+                var fileBackend = new FileSnapshotStore(_config.StoreRoot, _config.EngineIdentity);
+                ISnapshotBackend? primary = null;
+                var pgConn = Environment.GetEnvironmentVariable("GLP_SNAPSHOT_PG_CONN");
+                if (!string.IsNullOrWhiteSpace(pgConn))
                 {
-                    Console.Error.WriteLine(
-                        $"glp_supervisor: primary snapshot store unavailable ({ex.Message}) — file fallback only");
+                    try
+                    {
+                        db = new NpgsqlSnapshotDb(pgConn);
+                        primary = PgliteSnapshotStore.Open(db, _config.EngineIdentity);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine(
+                            $"glp_supervisor: primary snapshot store unavailable ({ex.Message}) — file fallback only");
+                    }
                 }
+                var store = new SnapshotStore(primary, fileBackend,
+                    msg => Console.Error.WriteLine($"glp_supervisor: SNAPSHOT STORE DEGRADED: {msg}"));
+                snapshots = store.List();
             }
-            var store = new SnapshotStore(primary, fileBackend,
-                msg => Console.Error.WriteLine($"glp_supervisor: SNAPSHOT STORE DEGRADED: {msg}"));
-            snapshots = store.List();
+            catch (Exception ex)
+            {
+                lastStoreError = ex;
+                Console.Error.WriteLine(
+                    $"glp_supervisor: snapshot store read failed (attempt {attempt + 1}/3): {ex.Message}");
+            }
+            finally
+            {
+                db?.Dispose();
+            }
         }
-        catch (Exception ex)
+        if (snapshots is null)
         {
-            // Neither backend can even be consulted — store_unavailable (DEF-F2).
-            Console.Error.WriteLine($"glp_supervisor: snapshot store unavailable: {ex.Message}");
+            // Persistently unreadable — store_unavailable (DEF-F2).
+            Console.Error.WriteLine(
+                $"glp_supervisor: snapshot store unavailable: {lastStoreError?.Message}");
             throw new UnrecoverableException(UnrecoverableReason.StoreUnavailable);
         }
 
@@ -379,6 +417,7 @@ public sealed class Supervisor : BackgroundService
         };
         child.BeginOutputReadLine();
         child.BeginErrorReadLine();
+        _child?.Dispose(); // the superseded (exited/killed) child's process handle
         _child = child;
         WriteStatus("starting");
     }

@@ -18,6 +18,7 @@ using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 
+using GlpRuntime.Link.Reliability;
 using GlpRuntime.SplitProtocol;
 
 namespace GlpRuntime.EngineHost;
@@ -150,7 +151,8 @@ public sealed class EngineServer
                 response = ResponseFrame.Text(requestId, ResponseKind.ProtocolError, ex.Message);
             }
 
-            var bytes = RequestResponseCodec.EncodeResponseFrame(response, ++_messageId);
+            var bytes = RequestResponseCodec.EncodeResponseFrame(
+                response, Interlocked.Increment(ref _messageId));
             try
             {
                 await WriteFrameAsync(stream, bytes, ct).ConfigureAwait(false);
@@ -168,7 +170,11 @@ public sealed class EngineServer
         {
             var refusal = ResponseFrame.Text(0UL, ResponseKind.ProtocolError,
                 "engine already serves one client (FR-002: one engine, one client)");
-            var bytes = RequestResponseCodec.EncodeResponseFrame(refusal, ++_messageId);
+            // Interlocked: this task races the serving task's increment (both emit
+            // frames concurrently) — duplicate message ids would break the framing
+            // stack's dedup contract.
+            var bytes = RequestResponseCodec.EncodeResponseFrame(
+                refusal, Interlocked.Increment(ref _messageId));
             await WriteFrameAsync(tcp.GetStream(), bytes, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException)
@@ -192,6 +198,14 @@ public sealed class EngineServer
         int len = BinaryPrimitives.ReadInt32BigEndian(header);
         if (len < 0)
             throw new IOException($"negative frame length {len}");
+        // Bound the allocation BEFORE trusting the header: an unauthenticated
+        // 4-byte header must not command a 2 GB buffer (codexreview
+        // 20260730T070051Z unbounded-frame-allocation). The bound matches the
+        // framing stack's own contract — FrameCodec refuses payloads above this
+        // on encode, so a larger header is a wire-contract violation, not data.
+        if (len > FrameCodec.MaxPayloadBytes)
+            throw new IOException(
+                $"frame length {len} exceeds FrameCodec.MaxPayloadBytes {FrameCodec.MaxPayloadBytes}");
         if (len == 0)
             return Array.Empty<byte>();
 

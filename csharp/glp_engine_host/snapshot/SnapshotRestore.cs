@@ -46,7 +46,8 @@ public sealed record RestoredLinkDefinition(
     int? InWriterAddr,
     int? OutReaderAddr,
     int? FaultsWriterAddr,
-    IReadOnlyList<int> MonitorCursors);
+    IReadOnlyList<int> MonitorCursors,
+    int EgressShippedCount);
 
 /// <summary>
 /// A restored engine + the reloaded unit list (the host re-records it for future
@@ -100,6 +101,8 @@ public static class SnapshotRestore
         {
             engine.SuppressActivation = false;
         }
+        if (!unitsReader.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the units section");
 
         // Merged module bytecode: ONE object per module, reused for ModuleTerm
         // cells, goal program keys, and runner registration — identity-consistent.
@@ -135,7 +138,21 @@ public static class SnapshotRestore
             mutualRefs[id] = new MutualRefTerm(addr, id); // 061 restore ctor — Id preserved
         }
 
+        // Every decoded heap address must land inside the restored heap — an
+        // out-of-range reference is corrupt data that would otherwise crash at
+        // USE time, after the engine left `restoring` (FR-030 requires the
+        // verification BEFORE serving; codexreview 20260730T070051Z
+        // snapshot-references-not-range-validated).
         int hp = heapReader.ReadVarUInt();
+        int RequireAddr(int a, string what) =>
+            a >= 0 && a < hp
+                ? a
+                : throw new SnapshotException(
+                    $"corrupt snapshot: {what} address {a} outside the restored heap (hp={hp})");
+
+        foreach (var (id, m) in mutualRefs)
+            RequireAddr(m.CurrentWriterAddr, $"MutualRef#{id} writer");
+
         for (int addr = 0; addr < hp; addr++)
         {
             byte tagByte = heapReader.ReadByte();
@@ -150,10 +167,11 @@ public static class SnapshotRestore
             object? value = content switch
             {
                 SnapshotCellContent.Null => null,
-                SnapshotCellContent.Pointer => new Pointer(heapReader.ReadVarUInt()),
+                SnapshotCellContent.Pointer => new Pointer(
+                    RequireAddr(heapReader.ReadVarUInt(), $"cell {addr} Pointer target")),
                 SnapshotCellContent.SuspensionChain => DecodeChain(heapReader, records),
-                SnapshotCellContent.WriterContent => DecodeWriterContent(heapReader, records),
-                SnapshotCellContent.Term => DecodeTerm(heapReader, mutualRefs, MergedFor),
+                SnapshotCellContent.WriterContent => DecodeWriterContent(heapReader, records, RequireAddr),
+                SnapshotCellContent.Term => DecodeTerm(heapReader, mutualRefs, MergedFor, RequireAddr),
                 _ => throw new SnapshotException(
                     $"corrupt snapshot: unknown cell content variant 0x{content:X2} at address {addr}"),
             };
@@ -169,7 +187,7 @@ public static class SnapshotRestore
         rt.Suspended.Clear();
         for (int i = 0; i < suspendedCount; i++)
         {
-            int readerAddr = tables.ReadVarUInt();
+            int readerAddr = RequireAddr(tables.ReadVarUInt(), "suspended-index reader");
             int refCount = tables.ReadVarUInt();
             var set = new HashSet<GoalRef>();
             for (int j = 0; j < refCount; j++)
@@ -186,7 +204,7 @@ public static class SnapshotRestore
             for (int j = 0; j < slotCount; j++)
             {
                 int slot = tables.ReadVarUInt();
-                slots[slot] = DecodeTerm(tables, mutualRefs, MergedFor);
+                slots[slot] = DecodeTerm(tables, mutualRefs, MergedFor, RequireAddr);
             }
             rt.SetGoalEnv(goalId, new CallEnv(slots));
         }
@@ -230,12 +248,16 @@ public static class SnapshotRestore
         var counters = new ByteReader(blob.Section(SnapshotSection.NextGoalId));
         engine.NextReplGoalId = counters.ReadVarUInt();
         rt.NextGoalId = counters.ReadVarUInt();
+        if (!counters.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the counters section");
 
         // ---- 0x07: infrastructure goal ids ----
         var infra = new ByteReader(blob.Section(SnapshotSection.InfrastructureGoalIds));
         int infraCount = infra.ReadVarUInt();
         for (int i = 0; i < infraCount; i++)
             rt.InfrastructureGoalIds.Add(infra.ReadVarUInt());
+        if (!infra.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the infrastructure-ids section");
 
         // ---- 0x08: GLP channels (writer cursors into the restored heap) ----
         var channels = new ByteReader(blob.Section(SnapshotSection.GlpChannels));
@@ -243,9 +265,11 @@ public static class SnapshotRestore
         for (int i = 0; i < channelCount; i++)
         {
             string name = channels.ReadString();
-            int writerAddr = channels.ReadVarUInt();
+            int writerAddr = RequireAddr(channels.ReadVarUInt(), $"channel '{name}' writer");
             rt.GlpChannels[name] = new GlpChannelHandle(rt.Heap, writerAddr);
         }
+        if (!channels.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the channels section");
 
         // Runners: identity-consistent registration for serve + module goals.
         if (anyServeGoal || channelCount > 0)
@@ -258,6 +282,8 @@ public static class SnapshotRestore
         int queueCount = queue.ReadVarUInt();
         for (int i = 0; i < queueCount; i++)
             rt.Gq.Enqueue(new GoalRef(queue.ReadVarUInt(), queue.ReadVarUInt()));
+        if (!queue.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the goal-queue section");
 
         // ---- 0x09: link definitions — decoded for the re-wire path (T031/T032).
         // Re-establishment itself runs AFTER the link layer is installed on the
@@ -293,9 +319,10 @@ public static class SnapshotRestore
             var cursors = new List<int>(cursorCount);
             for (int j = 0; j < cursorCount; j++)
                 cursors.Add(links.ReadVarUInt());
+            int shipped = links.ReadVarUInt();
             linkDefs.Add(new RestoredLinkDefinition(
                 new LinkId(scheme, new LinkAddress(host, port), nonce),
-                role, inWriter, outReader, faultsWriter, cursors));
+                role, inWriter, outReader, faultsWriter, cursors, shipped));
         }
         if (!links.AtEnd)
             throw new SnapshotException("corrupt snapshot: trailing bytes in the link-definitions section");
@@ -306,14 +333,23 @@ public static class SnapshotRestore
         for (int i = 0; i < waitCount; i++)
         {
             int goalId = timers.ReadVarUInt();
-            int readerId = timers.ReadVarUInt();
+            int readerId = RequireAddr(timers.ReadVarUInt(), $"wait-reader of goal {goalId}");
             rt.SetWaitReader(goalId, readerId);
         }
         int timerCount = timers.ReadVarUInt();
+        var armTimers = new List<(int WriterAddr, long RemainingMs)>(timerCount);
         for (int i = 0; i < timerCount; i++)
         {
-            int writerAddr = timers.ReadVarUInt();
+            int writerAddr = RequireAddr(timers.ReadVarUInt(), "timer writer");
             long remaining = timers.ReadInt64LE();
+            armTimers.Add((writerAddr, remaining));
+        }
+        if (!timers.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the timers section");
+        // Arm only after the section validated end-to-end — a timer that fires
+        // must never race a restore that is about to throw.
+        foreach (var (writerAddr, remaining) in armTimers)
+        {
             rt.IncrementPendingTimers();
             BytecodeRunner.StartGlpTimer((int)Math.Min(remaining, int.MaxValue), rt, writerAddr);
         }
@@ -345,9 +381,10 @@ public static class SnapshotRestore
         return head;
     }
 
-    private static WriterContent DecodeWriterContent(ByteReader r, List<SuspensionRecord> records)
+    private static WriterContent DecodeWriterContent(
+        ByteReader r, List<SuspensionRecord> records, Func<int, string, int> requireAddr)
     {
-        int readerAddr = r.ReadVarUInt();
+        int readerAddr = requireAddr(r.ReadVarUInt(), "WriterContent paired reader");
         return new WriterContent(readerAddr, DecodeChain(r, records));
     }
 
@@ -362,7 +399,8 @@ public static class SnapshotRestore
     private static RtTerm DecodeTerm(
         ByteReader r,
         IReadOnlyDictionary<int, MutualRefTerm> mutualRefs,
-        Func<string, BytecodeProgram> mergedFor)
+        Func<string, BytecodeProgram> mergedFor,
+        Func<int, string, int> requireAddr)
     {
         byte tag = r.ReadByte();
         switch (tag)
@@ -385,11 +423,11 @@ public static class SnapshotRestore
                 int arity = r.ReadVarUInt();
                 var args = new List<RtTerm>();
                 for (int i = 0; i < arity; i++)
-                    args.Add(DecodeTerm(r, mutualRefs, mergedFor));
+                    args.Add(DecodeTerm(r, mutualRefs, mergedFor, requireAddr));
                 return new RtStructTerm(functor, args);
             }
             case SnapshotTermTag.VarRef:
-                return new RtVarRef(r.ReadVarUInt());
+                return new RtVarRef(requireAddr(r.ReadVarUInt(), "VarRef"));
             case SnapshotTermTag.MutualRef:
             {
                 int id = r.ReadVarUInt();

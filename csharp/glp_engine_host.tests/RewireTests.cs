@@ -81,7 +81,7 @@ public class RewireTests : IDisposable
             engine, link, id, LinkRole.Connector,
             () => transport.ConnectAsync(LinkScheme.Loopback, id.Endpoint, LinkOptions.Default)
                 .GetAwaiter().GetResult(),
-            inW, outR, faultsW, new[] { faultsW });
+            inW, outR, faultsW, new[] { faultsW }, egressShippedCount: 2); // a, b shipped pre-crash
         var peer = await listenTask;
 
         // Registered + cursors at their RESTORED positions (US4 AS-2).
@@ -106,6 +106,41 @@ public class RewireTests : IDisposable
         engine.Heap.BindVariable(tailW, new StructTerm(".", new Term[] { new ConstTerm("c"), new VarRef(t3r) }));
         var shipped = Assert.IsType<ConstTerm>(DecodeShippedTerm((await firstFrame)!));
         Assert.Equal("c", shipped.Value);
+        Assert.Equal(3, handle.EgressShippedCount); // a, b (restored) + c (live)
+
+        link.Pump.Dispose();
+        await peer.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Adopt_BoundButUnshippedElement_IsReShipped_NoLoss()
+    {
+        // FR-032 no-loss: the snapshot says only ONE of the two bound elements was
+        // handed to the transport (the second bind's synchronous ship threw when
+        // the transport faulted pre-crash). The rewire must re-ship exactly the
+        // unshipped bound element — never the shipped one, never nothing.
+        var (engine, link, transport, inW, _, outR, faultsW, tailW) = RestoredState();
+        var id = LoopbackId("chan-rewire-reship");
+
+        var listenTask = transport.ListenAsync(LinkScheme.Loopback, id.Endpoint, LinkOptions.Default);
+        var handle = RewireHandle.Adopt(
+            engine, link, id, LinkRole.Connector,
+            () => transport.ConnectAsync(LinkScheme.Loopback, id.Endpoint, LinkOptions.Default)
+                .GetAwaiter().GetResult(),
+            inW, outR, faultsW, new[] { faultsW }, egressShippedCount: 1); // only "a" was shipped
+        var peer = await listenTask;
+
+        // The peer receives the re-shipped "b" first...
+        var frame1 = Assert.IsType<ConstTerm>(DecodeShippedTerm((await peer.RecvBytesAsync())!));
+        Assert.Equal("b", frame1.Value);
+        Assert.Equal(2, handle.EgressShippedCount);
+
+        // ...and the drain is live at the tail: a fresh bind ships next.
+        var (_, t3r) = engine.Heap.AllocateVariable();
+        engine.Heap.BindVariable(tailW, new StructTerm(".", new Term[] { new ConstTerm("c"), new VarRef(t3r) }));
+        var frame2 = Assert.IsType<ConstTerm>(DecodeShippedTerm((await peer.RecvBytesAsync())!));
+        Assert.Equal("c", frame2.Value);
+        Assert.Equal(3, handle.EgressShippedCount);
 
         link.Pump.Dispose();
         await peer.DisposeAsync();
@@ -217,6 +252,7 @@ public class RewireTests : IDisposable
         Assert.Equal(outR, def.OutReaderAddr);
         Assert.Equal(faultsW, def.FaultsWriterAddr);
         Assert.Equal(new[] { faultsW }, def.MonitorCursors);
+        Assert.Equal(0, def.EgressShippedCount); // nothing shipped before capture
 
         link.Pump.Dispose();
         await peer.DisposeAsync();
@@ -241,7 +277,7 @@ public class RewireTests : IDisposable
         {
             new RestoredLinkDefinition(
                 LoopbackId("chan-nobody-listens"), LinkRole.Connector,
-                null, null, null, Array.Empty<int>()),
+                null, null, null, Array.Empty<int>(), 0),
         });
         var dispatcher = new RequestDispatcher(
             engine, session, new Quiescence(engine), store,

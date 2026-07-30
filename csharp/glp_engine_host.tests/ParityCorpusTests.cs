@@ -6,10 +6,13 @@
 //
 // Corpus: Section-A programs from test/run_all_tests.sh that run on the C#
 // runtime (A2 append/reverse/copy, A3 quicksort incl. suspension, A15 :=
-// arithmetic, plus a compile-error probe). The full Section-A sweep stays the
-// Dart suite's job; this corpus is the C#-compatible representative subset —
-// cases beyond it are NOT covered here (no silent-cap: the corpus is the
-// explicit list below).
+// arithmetic). The full Section-A sweep stays the Dart suite's job; this
+// corpus is the C#-compatible representative subset — cases beyond it are NOT
+// covered here (no silent-cap: the corpus is the explicit list below). The
+// compile-error/engine-stays-usable path is covered by EngineServerTests
+// (structured RESULT + FR-006), not this corpus; the comparison here is the
+// binding + status lines of the ground-only envelope subset (captured-output
+// parity is implied by the R3 blob riding the same envelope both sides render).
 
 using System.Text;
 

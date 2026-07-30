@@ -29,7 +29,7 @@ using GlpRuntime.Runtime;
 
 namespace GlpRuntime.EngineHost.Snapshot;
 
-public sealed class LinkRewirer
+public sealed class LinkRewirer : IDisposable
 {
     // Same rendezvous budgets as the '_link_setup' kernel (LinkSetupKernel.Establish).
     private static readonly TimeSpan ListenerBudget = TimeSpan.FromSeconds(180);
@@ -39,12 +39,29 @@ public sealed class LinkRewirer
     private readonly LinkRuntime _link;
     private readonly ConcurrentQueue<(RestoredLinkDefinition Def, ILinkEndpoint Endpoint)> _ready = new();
     private readonly List<string> _failed = new();
+    // Definitions not yet ADOPTED (establishing, ready, or failed). A failed
+    // re-establishment must never make the durable definition vanish from the
+    // next snapshot's section 0x09 (codexreview 20260730T070051Z
+    // failed-link-definition-dropped-from-future-snapshots): the capture path
+    // re-emits these, so the link is retried on the NEXT restore even though
+    // this incarnation could not reach the peer.
+    private readonly Dictionary<LinkId, RestoredLinkDefinition> _outstanding = new();
     private int _pending;
 
     public LinkRewirer(GlpRuntimeEngine rt, LinkRuntime link)
     {
         _rt = rt;
         _link = link;
+    }
+
+    /// <summary>
+    /// Definitions still awaiting adoption (establishing / ready / failed) —
+    /// merged into snapshot section 0x09 by the capture path so an
+    /// un-re-established link stays durable. Request-thread only.
+    /// </summary>
+    public IReadOnlyList<RestoredLinkDefinition> OutstandingDefinitions
+    {
+        get { lock (_outstanding) return _outstanding.Values.ToArray(); }
     }
 
     /// <summary>Rewires establishing or established-but-not-yet-adopted. Snapshots defer while &gt; 0.</summary>
@@ -61,6 +78,7 @@ public sealed class LinkRewirer
     {
         foreach (var def in definitions)
         {
+            lock (_outstanding) _outstanding[def.Id] = def;
             Interlocked.Increment(ref _pending);
             _ = Task.Run(() => EstablishAsync(def));
         }
@@ -104,14 +122,25 @@ public sealed class LinkRewirer
         {
             try
             {
+                bool preRegistered = _link.Links.Contains(item.Def.Id);
                 RewireHandle.Adopt(
                     _rt, _link, item.Def.Id, item.Def.Role, () => item.Endpoint,
                     item.Def.InWriterAddr, item.Def.OutReaderAddr, item.Def.FaultsWriterAddr,
-                    item.Def.MonitorCursors);
+                    item.Def.MonitorCursors, item.Def.EgressShippedCount);
+                if (preRegistered)
+                {
+                    // Idempotent re-adoption: the registry kept the existing handle,
+                    // so THIS pre-established endpoint was never wired — dispose it
+                    // rather than leak a live socket (codexreview 20260730T070051Z
+                    // duplicate-rewire-endpoint-leak).
+                    item.Endpoint.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+                lock (_outstanding) _outstanding.Remove(item.Def.Id);
                 Console.WriteLine($"glp_engine_host: link re-established {item.Def.Id} (drain resumed)");
             }
             catch (Exception ex)
             {
+                // Definition stays OUTSTANDING (capturable) — loud, never silently gone.
                 var line = $"{item.Def.Id}: adoption failed: {ex.Message}";
                 lock (_failed) _failed.Add(line);
                 Console.Error.WriteLine($"glp_engine_host: LINK RE-WIRE FAILED {line}");
@@ -120,6 +149,20 @@ public sealed class LinkRewirer
             {
                 Interlocked.Decrement(ref _pending);
             }
+        }
+    }
+
+    /// <summary>
+    /// Host shutdown: dispose every established-but-never-adopted endpoint so no
+    /// live socket/listener outlives the host (codexreview 20260730T070051Z
+    /// established-endpoint-never-disposed).
+    /// </summary>
+    public void Dispose()
+    {
+        while (_ready.TryDequeue(out var item))
+        {
+            try { item.Endpoint.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
+            catch (Exception) { /* best-effort teardown */ }
         }
     }
 }

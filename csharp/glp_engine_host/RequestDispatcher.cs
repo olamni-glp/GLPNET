@@ -260,6 +260,7 @@ public sealed class RequestDispatcher
     {
         // FR-014: graceful shutdown triggers an automatic final snapshot.
         string finalNote;
+        bool finalTaken = false;
         if (_rewirer is { Pending: > 0 } rw)
         {
             // Never a snapshot that silently drops a not-yet-re-established link
@@ -270,7 +271,8 @@ public sealed class RequestDispatcher
         {
             try
             {
-                finalNote = TryTakeSnapshot(out var seq, out var degradations)
+                finalTaken = TryTakeSnapshot(out var seq, out var degradations);
+                finalNote = finalTaken
                     ? $"final_snapshot_seq={seq}" +
                       (degradations.Count > 0 ? " DEGRADED: " + string.Join("; ", degradations) : "")
                     : "final_snapshot=skipped(timer fired during disarm — engine not quiescent)";
@@ -285,6 +287,14 @@ public sealed class RequestDispatcher
             // Never an inconsistent snapshot (FR-014) — skip loudly instead.
             finalNote = "final_snapshot=skipped(engine not quiescent: " +
                         $"{_engine.Runtime.Gq.Length} goal(s) queued)";
+        }
+        // A parked DEFERRED snapshot is SUBSUMED by a taken final snapshot; a
+        // skipped final leaves it unfulfilled — say so rather than silently
+        // abandoning the earlier DEFERRED promise (wire rule 5/6).
+        if (_quiescence.SnapshotPending)
+        {
+            if (finalTaken) _quiescence.ClearPending();
+            else finalNote += " parked_snapshot=unfulfilled";
         }
 
         _session.TransitionTo(EngineState.ShuttingDown);
@@ -314,7 +324,7 @@ public sealed class RequestDispatcher
                 seq = _store.NextSeq();
                 var blob = SnapshotCapture.Capture(
                     _engine, _linkRuntime, _units, _rootSelfSource, disarmed,
-                    _session.EngineIdentity, seq);
+                    _session.EngineIdentity, seq, _rewirer?.OutstandingDefinitions);
                 var encoded = blob.Encode();
                 _store.Write(blob, encoded, seq);
                 LastSnapshotSeq = seq;
