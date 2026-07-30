@@ -15,8 +15,14 @@ dotnet run --project csharp/glp_engine_host -- --listen 127.0.0.1:7461
 dotnet run --project csharp/glp_repl_client -- --connect 127.0.0.1:7461
 ```
 
-In the client: `load programs/tests/typed/<file>.glp` then `goal.` — output
+In the client: `load ./programs/tests/typed/<file>.glp` then `goal.` — output
 must match the single-process REPL (`out/csharp/glp_repl`) for the same input.
+(Path resolution mirrors the single-process REPL exactly: `/`, `./`, `../`
+prefixes are used as-is; a bare name gets the REPL's `glp/` prefix.)
+
+Verified end-to-end 2026-07-30 (T041): load → goal (`Y = 42`) → `:snapshot`
+(seq=1, loud file-fallback degradation) → kill → `--from-snapshot latest`
+(restored 1 unit, heap intact) → goal (`Y = 10`) on the restored engine.
 
 ## Snapshot (US2)
 
