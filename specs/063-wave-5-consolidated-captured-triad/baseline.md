@@ -118,6 +118,25 @@ Every scenario prints its explicit verdict (no silent PASS); the two NOT-RUN
 rows are the demo's own honest attributions, unchanged in scope from 036's
 followup-full-acceptance brief.
 
+## T033 — full-suite re-verify on the branch (2026-07-30, 063 @ 3a8566cd + E2 fix pass)
+
+Aggregate green across every changed surface, plus the unaffected REPL suite:
+
+| Suite | Command | Verdict |
+|---|---|---|
+| Unified REPL suite (A–S, incl. Section S ms_message drill) | `bash test/run_all_tests.sh` | **534/534, 0 failed** (Section S: SC-004 drill N=1000 PASS + ms_message unit PASS) |
+| C# link+host | `dotnet test csharp/glp_link.tests` | **156/156, 0 skips** (incl. the 4 mesh_dup_id witnesses) |
+| glp_quick pytest | `python -m pytest` | **188 passed**, 2 failed (pre-existing profile-C `quicer` NIF, unchanged from T004), 1 skipped (designed inverse guard) — the +1 vs T014 is E2's new child-death fault test |
+| ms_message pytest | `python -m pytest` | **36/36** (protocol + WAL + lake degradation + QUIC leg) |
+| SC-004 disconnect drill | `ms_message/tests/drill_disconnect.py 1000` | **5/5 PASS** (exactly-once, in order, restart-durable) |
+
+The E2 fix pass (6 US1-diff defects) is confined to `glp_quick_host/`,
+`glp_quick/`, `SKILL.md`, and one test — no `glp_runtime`/`glp_gleam`/
+`programs` change, so the REPL suite is unaffected; re-run confirms 534/534.
+The 2 profile-C failures are the SAME pre-existing environment defect recorded
+at T004 (Gleam `quicer`/MsQuic NIF fails to load on this host); this wave
+neither introduced nor obscured them.
+
 - **Operational hazard (reported)**: the two failing profile-C tests LEAK
   their spawned `glp_quick_host` server processes on teardown; the orphans
   hold `bin/Debug/net10.0/glp_link.dll` open and break the next

@@ -82,11 +82,13 @@ board-flagged before work starts.
   — run 20260730T005639Z-bf19 (bk-3rtask, codex critic cross-provider): 50 attributed claims, 32C/2R/16E, one real cross-artifact conflict (0011/0012 staleness) found + fixed in-engagement, 6 spec-improvement escalates left open for the engineer; record complete
 - [X] T028 [US3] Engagement E2: code-review triad over the US1 completion diff; record in `docs/three-role-orchestration/engagements/E2-us1-code-review.md`
   — run 20260730T012529Z-bf52 (bk-3rtask code adapter, codex critic): first method draft fully refuted by the blind red-team → honest singleton-by-design revision; 51 claims, 28C/22E/1R; **6 real US1-diff defects found AND fixed** (silent-stall on write failure, cross-goal block misattribution, timeout/block dup-reply race, unlocked child stdin, mesh-before-spawn race, link_status injection + trailing-garbage parse), cp-02/cp-07 control-plane fixes, st-08 child-death test added; glp_link.tests 156/156, glp_quick 188 passed; pre-existing findings reported to backlog not fixed
-- [ ] T029 [US3] Closure evidence: link E1/E2 + PROTOCOL.md into the roadmap item (notes update), per contract deliverable 3
+- [X] T029 [US3] Closure evidence: link E1/E2 + PROTOCOL.md into the roadmap item (notes update), per contract deliverable 3
+  — durable in-repo closure record `docs/three-role-orchestration/CLOSURE.md` links PROTOCOL.md + E1 + E2; the roadmap-item notes linkage + advance is folded into T030 wave-close (engineer keystroke), which this record is the evidence for
 
 ## Phase 6: User Story 4 — wave close roadmap advance (P4)
 
 - [ ] T030 [US4] At wave close: advance `http3-quic-ws-link-completion`, `durable-mesh-messaging-protocol`, `three-role-agent-team-orchestration` to delivered/closed with receipts; export + publish per fleet sync protocol (FR-014, SC-007)
+  — PARKED on the engineer keystroke: this mutates the shared roadmap + publishes under this host's identity to the fleet, and pairs with the GitFlow ship (buildkit); both are wave-close state mutations, not autonomous
 
 ## Phase 7: Polish & cross-cutting
 
@@ -94,7 +96,8 @@ board-flagged before work starts.
   — `ms_message/.gitignore` (committed with T001) covers `.data/`; verified no stray working files in the tree; C# build outputs already ignored
 - [X] T032 [P] Update quickstart.md with any CLI-surface drift discovered during implementation
   — US1 commands corrected to the real surface (`--addr/--port/--cert`, `--repl <dll>`, tmsg goal form, demo re-verify command); US2 commands verified drift-free
-- [ ] T033 Full-suite re-verify on the branch (REPL suite + dotnet + pytest + the drill) and stage-seam UPDATE with verdict counts
+- [X] T033 Full-suite re-verify on the branch (REPL suite + dotnet + pytest + the drill) and stage-seam UPDATE with verdict counts
+  — REPL 534/534 (incl. Section S), glp_link.tests 156/156, glp_quick 188P/2F(pre-existing)/1S, ms_message 36/36, SC-004 drill 5/5; table in baseline.md T033; stage-seam UPDATE fanned
 
 ## Dependencies
 
