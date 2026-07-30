@@ -48,8 +48,8 @@ in parallel (different files, no incomplete-task dependency).
 **Goal**: hardened compiled-IL-on-the-wire + factor-out-compiler, multi-accept transport, ZMQ base.
 **Independent test**: ≥2 clients served; remote exec == local; malformed/version/failure rejected safely; ZMQ round-trip. Depends on T004.
 
-- [ ] T015 [US3] Factor the compiler so compiled IL is produced independently of execution (engine line per R-3)
-- [ ] T016 [US3] Implement the compiled-IL wire envelope per `contracts/compiled-il-wire-envelope.md` (il_version, compiled_form, integrity_digest, source_metadata)
+- [X] T015 [US3] Factor the compiler so compiled IL is produced independently of execution (engine line per R-3) — **VERIFIED present** in C# `csharp/glp_il_codec`: `IlCodec.Encode/Decode` serializes compiled bytecode with no execution; `ExecuteEquivalenceTests` proves `Decode(Encode(p))` executes identically to the original (FR-003). Baseline `dotnet test glp_il_codec.tests` = 45/45 (T022 anchor).
+- [X] T016 [US3] Implement the compiled-IL wire envelope per `contracts/compiled-il-wire-envelope.md` (il_version, compiled_form, integrity_digest, source_metadata) — `csharp/glp_il_codec/CompiledIlEnvelope.cs`: record + `CompiledIlEnvelopeCodec` (Encode/Decode/Wrap/Unwrap). `il_version`=semver (major-compat gate), `compiled_form`=IlCodec bytes, `integrity_digest`=SHA-256, `source_metadata`=module id. Verifying `Decode` realizes receiver obligations 1-2 (reject incompatible version / digest mismatch, loud, no execute). Tests `CompiledIlEnvelopeTests.cs` (6): round-trip, execute-equivalence, digest-mismatch/incompatible/unrecognized-version/truncated all rejected. **il_codec 51/51**.
 - [ ] T017 [US3] Implement receiver: compile-on-A → send → execute-on-B, result equals local execution
 - [ ] T018 [US3] Harden receiver (FR-005a): reject unknown/incompatible il_version + digest mismatch with diagnostic; mid-transfer failure leaves engine state unchanged
 - [ ] T019 [P] [US3] Implement `multi-accept` transport extension (≥2 concurrent clients, none dropped)
