@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|
 | DEF-A1 | Dart-mirror **byte-parity** for the result codec (R4) | MVP ships C#-only; don't gate the first split on a second runtime | Specify the result codec to FR-060/061 byte-parity; add the Dart mirror + golden-file test | R4; §2.5; §12r7; memo #5 | open |
 | DEF-A2 | **Multi-client / multi-accept** (#10, then #13) | one engine/one client is the MVP; N-clients needs the deferred multi-accept loop | Specify #10 (multi-accept) → #13 (GLP control program) | §4.2/§4.5; memo #10/#13 | open |
-| DEF-A3 | **Full Promela/SPIN model of the complete wire protocol / result envelope** (R14: #1a ships only a minimal-handshake spike) | the full envelope/protocol is not designed until #5/#6 | Model the complete front↔back protocol in Promela; check deadlock-freedom + named liveness with SPIN (or an armoury alternative per R15) | R14; #1a spec FR-081; §2.3 | open — *anchored: #1a DELIVERED the minimal-handshake real-SPIN spike — deadlock-free + `request_eventually_answered` **PASS** on real SPIN 6.5.1 (`spikes/spin/RESULT.md`); the FULL protocol model stays at #5/#6* |
+| DEF-A3 | **Full Promela/SPIN model of the complete wire protocol / result envelope** (R14: #1a ships only a minimal-handshake spike) | the full envelope/protocol is not designed until #5/#6 | Model the complete front↔back protocol in Promela; check deadlock-freedom + named liveness with SPIN (or an armoury alternative per R15) | R14; #1a spec FR-081; §2.3 | done (→061) — *full-protocol SPIN model executed on real SPIN 6.5.1: all six request kinds + restore window + deferral + shutdown; deadlock-freedom + no unspecified receptions + `request_eventually_answered` + `deferred_snapshot_eventually_completes` all PASS, full statespace (`docs/research/repl-engine-separation/models/spin/RESULT.md`)* |
 
 ## Anchor B — Before #4 (IL codec spike) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
@@ -34,20 +34,20 @@
 ## Anchor D — Before #7 (persistence) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
 |---|---|---|---|---|---|
-| DEF-D1 | **#7 scope expansion** — `_waitReaders`, `GlpEngine._goalId`, `InfrastructureGoalIds`, `GlpChannels` | dossier scope line omitted them | Add to the snapshot blob (omission loses timers/collides goal-ids/breaks routing) | memo #7 | open |
-| DEF-D2 | Persistence forks U-P1–U-P7 (timer re-arm; quiescence def; address-stability; blob format; resume trigger; egress ordering; kill semantics) | settle with the persistence design | Resolve the U-P set at #7 spec | DECISIONS-FOR-OWNER §4 (U-P1-7) | open |
+| DEF-D1 | **#7 scope expansion** — `_waitReaders`, `GlpEngine._goalId`, `InfrastructureGoalIds`, `GlpChannels` | dossier scope line omitted them | Add to the snapshot blob (omission loses timers/collides goal-ids/breaks routing) | memo #7 | done (→061) — *full FR-010 set captured in snapshot format_version 1: `_waitReaders` as remaining-duration entries (0x06), both goal-id counters (0x04), `InfrastructureGoalIds` (0x07), `GlpChannels` (0x08); restore-then-recapture byte-identical (`SnapshotTests`)* |
+| DEF-D2 | Persistence forks U-P1–U-P7 (timer re-arm; quiescence def; address-stability; blob format; resume trigger; egress ordering; kill semantics) | settle with the persistence design | Resolve the U-P set at #7 spec | DECISIONS-FOR-OWNER §4 (U-P1-7) | done (→061) — *U-P set resolved at the 061 spec/clarify: timer re-arm = remaining duration (FR-015), quiescence = queue empty ∧ no in-flight reduction ∧ transport drained (FR-014), verbatim addresses (FR-011), GSNP format_version-1 blob (contracts/snapshot-store.md), `--from-snapshot` resume, egress = synchronous ship-on-bind, at-most-once kill semantics (FR-032)* |
 
 ## Anchor E — Before #9 (restore-and-resume) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
 |---|---|---|---|---|---|
-| DEF-E1 | **`RewireHandle`** (net-new ~30 lines) | `WireEstablishedLink` aborts on pre-bound cells (`LinkEstablish.cs:38-43`) — the post-restore state | Specify a rewire path that adopts restored heap addrs | memo #9 | open |
-| DEF-E2 | **Verbatim-address snapshot** constraint on #7 (else external refs break) | cheapest correctness path; stable-logical-id layer is the alternative | Mandate verbatim Cells restore in #7; revisit if a logical-id layer is needed | §12r5; memo #9 | open |
+| DEF-E1 | **`RewireHandle`** (net-new ~30 lines) | `WireEstablishedLink` aborts on pre-bound cells (`LinkEstablish.cs:38-43`) — the post-restore state | Specify a rewire path that adopts restored heap addrs | memo #9 | done (→061) — *`RewireHandle.Adopt` shipped (csharp/glp_link/primitives/RewireHandle.cs): adopts restored pre-bound cells, idempotent via the shared registry, egress re-armed at the first unshipped tail; `LinkEstablish` guards untouched; `RewireTests` 6/6 + FR-033 kill-and-restart deterministic* |
+| DEF-E2 | **Verbatim-address snapshot** constraint on #7 (else external refs break) | cheapest correctness path; stable-logical-id layer is the alternative | Mandate verbatim Cells restore in #7; revisit if a logical-id layer is needed | §12r5; memo #9 | done (→061) — *verbatim Cells restore mandated (FR-011) and shipped: heap section 0x01 preserves addresses exactly; prelude-drift integrity check refuses a changed self.glp; no logical-id layer needed this wave* |
 
 ## Anchor F — Before #8 (liveness) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
 |---|---|---|---|---|---|
-| DEF-F1 | **Self-prove liveness GLP goal** | requires a **NEW system predicate = LANGUAGE-AUTHORITY gate** (Gabi approval required before any implementation) | Propose the predicate to Gabi (language authority) BEFORE specifying it; MVP liveness = host timer only | memo #8; CLAUDE.md §1.14 | open |
-| DEF-F2 | Unrecoverable-state taxonomy; platform (Windows-only MVP); FR-057 placement | settle with the host design | Resolve at #8 spec | memo #8 | open |
+| DEF-F1 | **Self-prove liveness GLP goal** | requires a **NEW system predicate = LANGUAGE-AUTHORITY gate** (Gabi approval required before any implementation) | Propose the predicate to Gabi (language authority) BEFORE specifying it; MVP liveness = host timer only | memo #8; CLAUDE.md §1.14 | open — *proposal DELIVERED (061 T028: `docs/research/repl-engine-separation/self-prove-liveness-proposal.md`, propose-only per §1.14); awaiting the language authority's ruling; zero implementation* |
+| DEF-F2 | Unrecoverable-state taxonomy; platform (Windows-only MVP); FR-057 placement | settle with the host design | Resolve at #8 spec | memo #8 | done (→061) — *taxonomy shipped (`UnrecoverableTaxonomy`): repeated_immediate_crash / corrupt_latest_snapshot (previous-seq fallback once) / store_unavailable / explicit_poison; Windows-first supervised host, contract kept portable (FR-025); `SupervisorTests` 3/3* |
 
 ## Anchor G — Before #11 (compiled-IL + factor-out-compiler) `/buildkit-specify`
 | ID | Deferred | Why deferred | Follow-up action | Source | Status |
