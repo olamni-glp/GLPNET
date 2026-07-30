@@ -65,6 +65,60 @@ pub fn setup_goal(heap: Heap, atom: ast.Atom) -> Result(BootResult, String) {
   Ok(BootResult(state.heap, regs, state.query_var_writers))
 }
 
+/// The result of booting a CONJUNCTION of goals over ONE shared heap + variable
+/// environment (Dart `_runConjunction` / `_setupConjunctionArg`, glp_engine.dart:612,
+/// :977). A variable NAME shared across the goals — e.g. `P` produced in goal 1 and
+/// consumed as `P?` in goal 2 — resolves to the SAME heap pair, so the goals
+/// communicate exactly as a clause-body conjunction does. `goal_regs` are the per-goal
+/// positional argument registers in goal order (one `XRegs` per goal); `query_var_writers`
+/// accumulate in first-occurrence order ACROSS all goals (the parity invariant — Dart's
+/// single shared `queryVarWriters`/`varNameToId` maps threaded through every goal).
+pub type ConjunctionBoot {
+  ConjunctionBoot(
+    heap: Heap,
+    goal_regs: List(XRegs),
+    query_var_writers: List(#(String, Int)),
+  )
+}
+
+/// Materialise a list of conjunction goals over one shared heap + variable environment
+/// (Dart `_runConjunction`'s goal loop). Each atom's arguments are set up with the SAME
+/// `_setupArgument` builders the single-goal path uses (Dart's `_setupConjunctionArg` is
+/// byte-for-byte the same var/const/struct/list logic), but the `BootState` — heap,
+/// name→writer table, and query-writer list — is THREADED across every goal instead of
+/// reset per goal. `Error(reason)` names the first deferred/unsupported argument shape.
+pub fn setup_goals(
+  heap: Heap,
+  atoms: List(ast.Atom),
+) -> Result(ConjunctionBoot, String) {
+  let state = BootState(heap, dict.new(), [])
+  use #(state, regs_rev) <- result.try(setup_goals_loop(state, atoms, []))
+  Ok(ConjunctionBoot(
+    state.heap,
+    list.reverse(regs_rev),
+    state.query_var_writers,
+  ))
+}
+
+fn setup_goals_loop(
+  state: BootState,
+  atoms: List(ast.Atom),
+  acc: List(XRegs),
+) -> Result(#(BootState, List(XRegs)), String) {
+  case atoms {
+    [] -> Ok(#(state, acc))
+    [atom, ..rest] -> {
+      use #(state, regs) <- result.try(setup_args(
+        state,
+        atom.args,
+        0,
+        program.new_regs(),
+      ))
+      setup_goals_loop(state, rest, [regs, ..acc])
+    }
+  }
+}
+
 fn setup_args(
   state: BootState,
   args: List(ast.Term),
