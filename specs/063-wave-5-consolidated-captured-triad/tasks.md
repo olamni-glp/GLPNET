@@ -76,7 +76,8 @@ board-flagged before work starts.
 **Goal**: written protocol + two recorded engagements on real wave-5 gates.
 **Independent test**: an engagement runs with every operator step named in PROTOCOL.md; conflicts escalate visibly.
 
-- [ ] T026 [P] [US3] Write `docs/three-role-orchestration/PROTOCOL.md` from the recorded method doc + installed capability contract (role charters, blind-then-cross-verify, false-consensus guard, authority order, convergence caps, evidence/attribution, engineer gates; contract deliverable 1)
+- [X] T026 [P] [US3] Write `docs/three-role-orchestration/PROTOCOL.md` from the recorded method doc + installed capability contract (role charters, blind-then-cross-verify, false-consensus guard, authority order, convergence caps, evidence/attribution, engineer gates; contract deliverable 1)
+  — distilled from docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md + spec-051; references both, duplicates neither; every operator step named (§3)
 - [ ] T027 [US3] Engagement E1: plan-review triad over this wave's plan artifacts; record in `docs/three-role-orchestration/engagements/E1-plan-review.md` (attributed claims, critic verdicts, escalations, engineer decisions)
 - [ ] T028 [US3] Engagement E2: code-review triad over the US1 completion diff; record in `docs/three-role-orchestration/engagements/E2-us1-code-review.md`
 - [ ] T029 [US3] Closure evidence: link E1/E2 + PROTOCOL.md into the roadmap item (notes update), per contract deliverable 3
