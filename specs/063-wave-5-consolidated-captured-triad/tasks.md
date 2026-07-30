@@ -68,7 +68,8 @@ board-flagged before work starts.
   — 35/35 (22 protocol + 10 WAL incl. FR-011 refusals + 3 loud lake degradation)
 - [X] T024 [US2] The SC-004 drill script `ms_message/tests/drill_disconnect.py` (N=1,000, recipient offline, originator restart, exactly-once in order, bounded waits) + wire into `test/run_all_tests.sh` as an explicit section or documented standalone gate (SC-004/SC-005)
   — drill 5/5 PASS at N=1000; wired as run_all_tests.sh Section S (explicit skip line where the venv is absent)
-- [ ] T025 [US2] QUIC-leg evidence (after US1): one drill pass with the link over QUIC+WS; TCP remains the default evidence path (R3)
+- [X] T025 [US2] QUIC-leg evidence (after US1): one drill pass with the link over QUIC+WS; TCP remains the default evidence path (R3)
+  — `ms_message/tests/test_quic_leg.py`: N=100 signal→fetch→fetch_batch over two real glp_quick_host processes (genuine QUIC/TLS/WS), exactly-once in order, durable WAL position; suite 36/36; TCP drill re-verified 5/5 after the build_fetch_batch refactor
 
 ## Phase 5: User Story 3 — 3-role orchestration operationalized (P3)
 

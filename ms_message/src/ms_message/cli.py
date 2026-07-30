@@ -91,6 +91,35 @@ def _parse_ep(ep: str) -> tuple:
     return host or "127.0.0.1", int(port)
 
 
+def build_fetch_batch(wal: Wal, station: str, req: "protocol.Fetch") -> tuple:
+    """Answer one fetch from the WAL truth (carrier-agnostic, R3 — shared by
+    the TCP serve loop and the QUIC-leg evidence). Returns
+    ``(batch, acked, served)``: the wire batch, the identities position-acked
+    as fetched (everything below ``from_seq``), and those newly signalled.
+    The CALLER journals the marks (WAL first) and mirrors the store."""
+    st = wal.replay()
+    acked = [(snd, s) for (snd, s), meta in sorted(st.messages.items())
+             if snd == station and s < req.from_seq and meta.state in ("journalled", "signalled")]
+    entries: list = []
+    served: list = []
+    expected = req.from_seq
+    high_water = max((s for (snd, s) in st.messages if snd == station), default=0)
+    for (snd, s), meta in sorted(st.messages.items()):
+        if snd != station or meta.mailbox != req.mailbox_id or s < req.from_seq:
+            continue
+        if meta.state in ("dead", "expired"):
+            continue
+        if len(entries) >= min(req.max_count, FETCH_BATCH_MAX):
+            break
+        if s != expected:  # a hole is an EXPLICIT gap marker, never silent (guarantee 3)
+            entries.append(protocol.GapMarker(expected_seq=expected, got_seq=s))
+        entries.append(protocol.BatchMessage(snd, s, wal.read_content(meta.content_ref)))
+        if meta.state == "journalled":
+            served.append((snd, s))
+        expected = s + 1
+    return protocol.FetchBatch(req.mailbox_id, tuple(entries), high_water), acked, served
+
+
 # ------------------------------------------------------------------ originator (T019)
 @app.command()
 def originator(
@@ -188,35 +217,17 @@ def originator(
             conn.close()
 
     def _answer_fetch(conn: socket.socket, req: protocol.Fetch) -> None:
-        st = wal.replay()
-        # position-ack: everything below from_seq is observed by the requester (guarantee 2).
-        acked = [(snd, s) for (snd, s), meta in sorted(st.messages.items())
-                 if snd == station and s < req.from_seq and meta.state in ("journalled", "signalled")]
+        batch, acked, served = build_fetch_batch(wal, station, req)
+        # WAL marks first (the truth); the store mirror is two batch transactions.
         for snd, s in acked:
             wal.mark(station, s, "fetched")
-        entries: list = []
-        served = []
-        expected = req.from_seq
-        for (snd, s), meta in sorted(st.messages.items()):
-            if snd != station or meta.mailbox != req.mailbox_id or s < req.from_seq:
-                continue
-            if meta.state in ("dead", "expired"):
-                continue
-            if len(entries) >= min(req.max_count, FETCH_BATCH_MAX):
-                break
-            if s != expected:  # a hole is an EXPLICIT gap marker, never silent (guarantee 3)
-                entries.append(protocol.GapMarker(expected_seq=expected, got_seq=s))
-            entries.append(protocol.BatchMessage(snd, s, wal.read_content(meta.content_ref)))
-            if meta.state == "journalled":
-                wal.mark(station, s, "signalled")
-                served.append((snd, s))
-            expected = s + 1
-        # WAL marks above are per-record (the truth); the store mirror is two batch transactions.
+        for snd, s in served:
+            wal.mark(station, s, "signalled")
         if acked:
             store.set_states_batch(acked, "fetched")
         if served:
             store.set_states_batch(served, "signalled")
-        _send_payload(conn, protocol.FetchBatch(req.mailbox_id, tuple(entries), _high_water()))
+        _send_payload(conn, batch)
 
     try:
         while deadline is None or time.monotonic() < deadline:
