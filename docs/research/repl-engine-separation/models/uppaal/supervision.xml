@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+<declaration>
+// 061 T030 — timed model of the supervision loop (contracts/supervision.md,
+// SC-003, FR-040). Time unit = 100 ms so the shipped defaults stay small ints.
+//
+//   ping_interval 5 s   ping_timeout 3 s   backoff_initial 1 s
+//   backoff_max  30 s   restore bound 10 s crash_threshold 3 (DEF-F2)
+//
+// The supervisor is the engine's one wire client (FR-002): it pings on a
+// timer; a missing ack within PT (or no up-signal within the boot window)
+// counts as death; each death increments the crash count; at THRESHOLD the
+// DEF-F2 taxonomy stops the loop (modelled as the absorbing Stopped state —
+// no silent restart loops). gdead measures time since the MOST RECENT death
+// (the engine resets it on every crash edge), so the bound query is per
+// recovery cycle, matching SC-003's "detect → restart → restore" reading.
+
+const int PI       = 50;   // ping_interval  (5.0 s)
+const int PT       = 30;   // ping_timeout   (3.0 s)
+const int BI       = 10;   // backoff_initial (1.0 s)
+const int BMAX     = 300;  // backoff_max    (30.0 s)
+const int RESTORE  = 100;  // restore upper bound (10.0 s)
+const int THRESHOLD = 3;   // crash_threshold (DEF-F2)
+
+// Boot-confirmation window the supervisor grants a replacement engine.
+const int BOOTWIN  = PI + PT + RESTORE;
+
+// SC-003 detect→restart→restore bound, per recovery cycle. The worst case is
+// a crash DURING boot: the supervisor may sit out the remaining boot window
+// (&lt;= BOOTWIN) before detecting, then backoff (&lt;= BMAX), then restore
+// (&lt;= RESTORE).
+const int BOUND = BOOTWIN + BMAX + RESTORE;
+
+broadcast chan ping, ack, restart, up, crash;
+clock gdead;                       // time since the most recent death
+int[0,THRESHOLD] crashes = 0;      // deaths detected (monotone; DEF-F2)
+</declaration>
+<template>
+<name>Engine</name>
+<declaration>clock e;</declaration>
+<location id="id0"><name>Serving</name></location>
+<location id="id1"><name>Down</name></location>
+<location id="id2"><name>Booting</name><label kind="invariant">e &lt;= RESTORE</label></location>
+<location id="id3"><name>Reply</name><committed/></location>
+<init ref="id0"/>
+<transition><source ref="id0"/><target ref="id3"/><label kind="synchronisation">ping?</label></transition>
+<transition><source ref="id3"/><target ref="id0"/><label kind="synchronisation">ack!</label></transition>
+<transition><source ref="id0"/><target ref="id1"/><label kind="synchronisation">crash!</label><label kind="assignment">gdead = 0</label></transition>
+<transition><source ref="id2"/><target ref="id1"/><label kind="synchronisation">crash!</label><label kind="assignment">gdead = 0</label></transition>
+<transition><source ref="id1"/><target ref="id2"/><label kind="synchronisation">restart?</label><label kind="assignment">e = 0</label></transition>
+<transition><source ref="id2"/><target ref="id0"/><label kind="synchronisation">up!</label></transition>
+</template>
+<template>
+<name>Supervisor</name>
+<declaration>clock p, t, b, w;</declaration>
+<location id="id10"><name>Watching</name><label kind="invariant">p &lt;= PI</label></location>
+<location id="id11"><name>PingWait</name><label kind="invariant">t &lt;= PT</label></location>
+<location id="id12"><name>Classify</name><committed/></location>
+<location id="id13"><name>Backoff</name><label kind="invariant">b &lt;= BMAX</label></location>
+<location id="id14"><name>WaitUp</name><label kind="invariant">w &lt;= BOOTWIN</label></location>
+<location id="id15"><name>Stopped</name></location>
+<init ref="id10"/>
+<transition><source ref="id10"/><target ref="id11"/><label kind="guard">p == PI</label><label kind="synchronisation">ping!</label><label kind="assignment">t = 0</label></transition>
+<transition><source ref="id11"/><target ref="id10"/><label kind="synchronisation">ack?</label><label kind="assignment">p = 0</label></transition>
+<transition><source ref="id11"/><target ref="id12"/><label kind="guard">t == PT</label></transition>
+<transition><source ref="id12"/><target ref="id15"/><label kind="guard">crashes + 1 &gt;= THRESHOLD</label><label kind="assignment">crashes = THRESHOLD</label></transition>
+<transition><source ref="id12"/><target ref="id13"/><label kind="guard">crashes + 1 &lt; THRESHOLD</label><label kind="assignment">crashes = crashes + 1, b = 0</label></transition>
+<transition><source ref="id13"/><target ref="id14"/><label kind="guard">b &gt;= BI</label><label kind="synchronisation">restart!</label><label kind="assignment">w = 0</label></transition>
+<transition><source ref="id14"/><target ref="id10"/><label kind="synchronisation">up?</label><label kind="assignment">p = 0</label></transition>
+<transition><source ref="id14"/><target ref="id12"/><label kind="guard">w == BOOTWIN</label></transition>
+</template>
+<system>
+system Engine, Supervisor;
+</system>
+</nta>

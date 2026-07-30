@@ -68,11 +68,11 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 **Goal**: supervisor pings, records crashes, restarts from latest snapshot, stops on unrecoverable states.
 **Independent test**: quickstart.md "Supervised run" — kill engine PID; supervisor detects within ping interval, restarts, engine healthy.
 
-- [ ] T025 [US3] Implement `csharp/glp_supervisor/Supervisor.cs`: BackgroundService hosting engine child process; PING over the wire every `ping_interval`; death = exit OR ping_timeout (contracts/supervision.md); restart via `--from-snapshot latest`; backoff initial/multiplier/max (SupervisorConfig)
-- [ ] T026 [P] [US3] Implement `csharp/glp_supervisor/CrashLog.cs`: append-only CrashRecord persistence + `--history`/`--status` operator queries (FR-024, data-model.md CrashRecord)
-- [ ] T027 [US3] Implement `csharp/glp_supervisor/UnrecoverableTaxonomy.cs`: repeated_immediate_crash / corrupt_latest_snapshot (previous-seq fallback once) / store_unavailable / explicit_poison → stop restarting, persist classification, loud operator surface (FR-023, DEF-F2)
-- [ ] T028 [P] [US3] Write the DEF-F1 proposal memo `docs/research/repl-engine-separation/self-prove-liveness-proposal.md`: the self-prove GLP liveness goal as a language-authority proposal to Gabi — PROPOSAL ONLY, zero implementation (FR-021, §1.14)
-- [ ] T029 [P] [US3] xUnit tests in `csharp/glp_engine_host.tests/SupervisorTests.cs`: kill→detect→restart within ping budget, backoff progression, taxonomy stop (restart-storm edge case), crash-record completeness
+- [X] T025 [US3] Implement `csharp/glp_supervisor/Supervisor.cs`: BackgroundService hosting engine child process; PING over the wire every `ping_interval`; death = exit OR ping_timeout (contracts/supervision.md); restart via `--from-snapshot latest`; backoff initial/multiplier/max (SupervisorConfig)
+- [X] T026 [P] [US3] Implement `csharp/glp_supervisor/CrashLog.cs`: append-only CrashRecord persistence + `--history`/`--status` operator queries (FR-024, data-model.md CrashRecord)
+- [X] T027 [US3] Implement `csharp/glp_supervisor/UnrecoverableTaxonomy.cs`: repeated_immediate_crash / corrupt_latest_snapshot (previous-seq fallback once) / store_unavailable / explicit_poison → stop restarting, persist classification, loud operator surface (FR-023, DEF-F2)
+- [X] T028 [P] [US3] Write the DEF-F1 proposal memo `docs/research/repl-engine-separation/self-prove-liveness-proposal.md`: the self-prove GLP liveness goal as a language-authority proposal to Gabi — PROPOSAL ONLY, zero implementation (FR-021, §1.14)
+- [X] T029 [P] [US3] xUnit tests in `csharp/glp_engine_host.tests/SupervisorTests.cs`: kill→detect→restart within ping budget, backoff progression, taxonomy stop (restart-storm edge case), crash-record completeness
 - [ ] T030 [P] [US3] UPPAAL timed model in `docs/research/repl-engine-separation/models/uppaal/`: ping interval/timeout/backoff automata, detect-restart bound (SC-003); `run.ps1`+`RESULT.md`+`tool-versions.txt` (FR-040)
 
 **Checkpoint**: unattended engine service; no silent death, no restart loops.

@@ -26,6 +26,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <!-- T025/FR-025: the same binary hosts as a Windows service (deploy) and a
+         console (dev/test) — contract portable. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- T025: the supervisor probes/restarts through shipped pieces rather than
+         duplicating them (VIII): the engine host's snapshot store classes decide
+         "is there a snapshot / which previous seq" (taxonomy fallback), and the
+         thin client's ClientChannel carries the liveness PING (wire rule 7). -->
+    <ProjectReference Include="..\glp_engine_host\GlpEngineHost.csproj" />
+    <ProjectReference Include="..\glp_repl_client\GlpReplClient.csproj" />
   </ItemGroup>
 
   <ItemGroup>
