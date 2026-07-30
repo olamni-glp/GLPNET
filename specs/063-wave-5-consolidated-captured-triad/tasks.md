@@ -88,8 +88,10 @@ board-flagged before work starts.
 
 ## Phase 7: Polish & cross-cutting
 
-- [ ] T031 [P] Gitignore entries for `ms_message/.data/` (WAL/lake) and any new build outputs
-- [ ] T032 [P] Update quickstart.md with any CLI-surface drift discovered during implementation
+- [X] T031 [P] Gitignore entries for `ms_message/.data/` (WAL/lake) and any new build outputs
+  — `ms_message/.gitignore` (committed with T001) covers `.data/`; verified no stray working files in the tree; C# build outputs already ignored
+- [X] T032 [P] Update quickstart.md with any CLI-surface drift discovered during implementation
+  — US1 commands corrected to the real surface (`--addr/--port/--cert`, `--repl <dll>`, tmsg goal form, demo re-verify command); US2 commands verified drift-free
 - [ ] T033 Full-suite re-verify on the branch (REPL suite + dotnet + pytest + the drill) and stage-seam UPDATE with verdict counts
 
 ## Dependencies

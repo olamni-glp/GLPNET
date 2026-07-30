@@ -3,16 +3,20 @@
 ## US1 — link two live REPLs over QUIC+WS (after completion)
 
 ```bash
-# Host A (server end)
-python -m glp_quick --server --bind <A-ip>:4433 --repl out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe
+# Host A (server end) — glp-quick is the console script (or glp_quick/.venv python -m glp_quick.cli)
+glp-quick --server --addr <A-ip> --port 4433 --cert <shared-cert-dir> --repl out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.dll
 # Host B (client end)
-python -m glp_quick --client --connect <A-ip>:4433 --repl out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe
-# At B's prompt: type a goal; A's REPL evaluates it; result returns to B.
+glp-quick --client --addr <A-ip> --port 4433 --cert <shared-cert-dir> --repl out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.dll
+# At B's prompt: send `tmsg(repl_goal,"P1","<goal>.")` to the peer; its REPL
+# evaluates it and the tmsg(repl_result,...) returns to B (scripted form:
+# glp_quick/tests/test_repl_bridge.py — both directions in ~9 s).
 ```
 
 Mesh regression: `dotnet test csharp/glp_link.tests --filter mesh_dup_id`
-Full re-verify: `(cd out/csharp/glp_quick_host && dotnet build)` then the 036
-demo suite script — every scenario prints an explicit verdict.
+Full re-verify: `dotnet build csharp/glp_quick_host` then
+`glp-quick demo --addr 127.0.0.1 --port <udp> --cert <dir> --stack csharp --clients 3`
+— every scenario prints an explicit verdict (superseding table:
+specs/063-.../baseline.md §T014).
 
 ## US2 — durable first-hop messaging drill (SC-004)
 
