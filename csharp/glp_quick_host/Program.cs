@@ -73,14 +73,61 @@ internal static class Program
         Console.Error.WriteLine($"LINK_UP {endpoint.Id}");
         endpoint.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
 
+        // 063 US1 T011 (contract C1): with --repl, a live GLP REPL child is bridged onto this link —
+        // a directed inbound envelope's payload is one goal line to the child; each of the child's
+        // rendered result blocks returns as ONE envelope to the goal's sender.
+        ReplChild? repl = null;
+        if (opts.ReplPath is not null)
+            repl = ReplChild.Spawn(opts.ReplPath,
+                (requester, page, block) => SendSafeAsync(endpoint,
+                    ComposeEnvelope(opts.SelfId, requester, Tmsg.ReplResult(page, block)), life.Token),
+                exit => _ = SendSafeAsync(endpoint,
+                    ComposeEnvelope(opts.SelfId, Broadcast, Tmsg.LinkStatus("repl_down", $"repl child exited ({exit})")), life.Token));
+
         // The client lives for the LINK's lifetime, NOT stdin's: stdin EOF (a one-shot / piped /
         // non-interactive shell) must NOT tear the link down — it only stops accepting new sends.
         // We exit when the peer closes the link (recv returns) or the process is killed.
         _ = StdinToLinkAsync(endpoint, life.Token);
-        await LinkToStdoutAsync(endpoint, stdout, life).ConfigureAwait(false);
+        await LinkToStdoutAsync(endpoint, stdout, life, repl, opts.SelfId).ConfigureAwait(false);
         life.Cancel();
+        if (repl is not null) await repl.DisposeAsync().ConfigureAwait(false);
         await endpoint.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
+    }
+
+    private const string Broadcast = "broadcast";
+
+    /// <summary>One L5 envelope (wire-contract.md shape) composed host-side for REPL replies/notices.</summary>
+    private static byte[] ComposeEnvelope(string from, string to, string payload)
+    {
+        var obj = new Dictionary<string, object?>
+        {
+            ["msg_id"] = Guid.NewGuid().ToString("N"),
+            ["from"] = from,
+            ["to"] = to,
+            ["seq"] = null,
+            ["payload"] = payload,
+        };
+        return JsonSerializer.SerializeToUtf8Bytes(obj);
+    }
+
+    /// <summary>Send one frame, degrading a transport failure to an explicit DROP (never a crash).</summary>
+    private static async Task SendSafeAsync(ILinkEndpoint link, byte[] frame, CancellationToken ct)
+    {
+        try { await link.SendBytesAsync(frame, ct).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
+        { Console.Error.WriteLine($"DROP send-failed {link.Id}: {ex.Message}"); }
+    }
+
+    /// <summary>Feed one directed inbound <c>tmsg(repl_goal, "Page", "goal.")</c> to the REPL child
+    /// (the one 040 terminal codec — chat/page/etc. payloads are NOT goals and never feed the REPL);
+    /// a dead child answers with an explicit repl_result refusal, never a silent stall (C1).</summary>
+    private static async Task FeedReplAsync(ReplChild repl, string selfId, string from, string payload,
+        Func<byte[], Task> sendBack)
+    {
+        if (string.IsNullOrEmpty(from) || !Tmsg.TryParseReplGoal(payload, out var page, out var goal)) return;
+        if (repl.Alive) repl.Feed(from, page, goal);
+        else await sendBack(ComposeEnvelope(selfId, from, Tmsg.ReplResult(page, "[repl error: repl_down]"))).ConfigureAwait(false);
     }
 
     private static async Task<ILinkEndpoint> ConnectWithReadinessAsync(QuicTransport transport, LinkAddress addr, bool retry, CancellationToken ct)
@@ -108,7 +155,8 @@ internal static class Program
                 await endpoint.SendBytesAsync(Encoding.UTF8.GetBytes(line), ct).ConfigureAwait(false);
     }
 
-    private static async Task LinkToStdoutAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life)
+    private static async Task LinkToStdoutAsync(ILinkEndpoint endpoint, TextWriter stdout, CancellationTokenSource life,
+        ReplChild? repl = null, string selfId = "server")
     {
         while (!life.IsCancellationRequested)
         {
@@ -116,7 +164,26 @@ internal static class Program
             if (frame is null) { Console.Error.WriteLine("LINK_CLOSED"); life.Cancel(); return; }
             await stdout.WriteLineAsync(Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
             await stdout.FlushAsync().ConfigureAwait(false);
+            // T011: a directed envelope is a goal for the bridged REPL (broadcasts are chat, not goals).
+            if (repl is not null && TryParseEnvelope(frame, out var from, out var to, out var payload) && to != Broadcast)
+                await FeedReplAsync(repl, selfId, from, payload,
+                    bytes => SendSafeAsync(endpoint, bytes, life.Token)).ConfigureAwait(false);
         }
+    }
+
+    private static bool TryParseEnvelope(byte[] frame, out string from, out string to, out string payload)
+    {
+        from = ""; to = ""; payload = "";
+        try
+        {
+            using var doc = JsonDocument.Parse(frame);
+            var r = doc.RootElement;
+            from = r.GetProperty("from").GetString() ?? "";
+            to = r.GetProperty("to").GetString() ?? "";
+            payload = r.GetProperty("payload").GetString() ?? "";
+            return true;
+        }
+        catch { return false; }
     }
 
     // ---------------------------------------------------------------- server role: mesh router (US2)
@@ -124,7 +191,26 @@ internal static class Program
     {
         await using var listener = await transport.CreateListenerAsync(addr, LinkOptions.Default, life.Token).ConfigureAwait(false);
         Console.Error.WriteLine($"READY server {addr}"); // listener bound — clients may connect
-        var mesh = new Mesh(opts.SelfId, stdout);
+
+        // 063 US1 T011 (contract C1): with --repl, envelopes directed to SelfId also feed the live
+        // REPL child; each rendered block routes back to the goal's sender through the mesh.
+        Mesh mesh = null!;
+        ReplChild? repl = null;
+        if (opts.ReplPath is not null)
+            repl = ReplChild.Spawn(opts.ReplPath,
+                (requester, page, block) => mesh.RouteAsync(
+                    ComposeEnvelope(opts.SelfId, requester, Tmsg.ReplResult(page, block)), fromSelf: true, srcLink: null, life.Token),
+                exit =>
+                {
+                    // a spawn failure fires before the mesh exists; the FAULT line already surfaced
+                    if (mesh is not null)
+                        _ = mesh.RouteAsync(ComposeEnvelope(opts.SelfId, Broadcast,
+                            Tmsg.LinkStatus("repl_down", $"repl child exited ({exit})")), fromSelf: true, srcLink: null, life.Token);
+                });
+        mesh = new Mesh(opts.SelfId, stdout, repl is null
+            ? null
+            : (from, payload) => FeedReplAsync(repl, opts.SelfId, from, payload,
+                bytes => mesh.RouteAsync(bytes, fromSelf: true, srcLink: null, life.Token)));
 
         // The server's own stdio endpoint participates as `SelfId` (preserves US1: client→server).
         var selfPump = SelfStdioPumpAsync(mesh, life.Token);
@@ -148,6 +234,7 @@ internal static class Program
             _ = ClientPumpAsync(mesh, link, () => Interlocked.Decrement(ref active), life.Token);
         }
         await selfPump.ConfigureAwait(false);
+        if (repl is not null) await repl.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
     }
 
@@ -195,11 +282,11 @@ internal static class Program
         await link.DisposeAsync().ConfigureAwait(false);
     }
 
-    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId)
+    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId, string? ReplPath)
     {
         public static Opts Parse(string[] args)
         {
-            string? role = null, addr = null, cert = null, selfId = "server";
+            string? role = null, addr = null, cert = null, selfId = "server", replPath = null;
             int port = 0, maxClients = 3;
             bool retry = false;
             for (int i = 0; i < args.Length; i++)
@@ -212,6 +299,7 @@ internal static class Program
                     case "--cert": cert = Req(args, ++i); break;
                     case "--max-clients": maxClients = int.Parse(Req(args, ++i)); break;
                     case "--id": selfId = Req(args, ++i); break;
+                    case "--repl": replPath = Req(args, ++i); break;
                     case "--retry": retry = true; break;
                     default: throw new ArgumentException($"unknown arg '{args[i]}'");
                 }
@@ -220,7 +308,7 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
             if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
-            return new Opts(role, addr, port, cert, maxClients, retry, selfId!);
+            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, replPath);
         }
 
         private static string Req(string[] args, int i) =>
@@ -243,11 +331,15 @@ internal sealed class Mesh
     private readonly SemaphoreSlim _stdoutLock = new(1, 1);
     private readonly ConcurrentDictionary<string, ILinkEndpoint> _byId = new();
     private readonly ConcurrentDictionary<ILinkEndpoint, string> _idOf = new();
+    private readonly Func<string, string, Task>? _onSelfDirected;
 
-    public Mesh(string selfId, TextWriter stdout)
+    /// <param name="onSelfDirected">Optional (from, payload) hook invoked for envelopes directed to
+    /// <paramref name="selfId"/> — the T011 REPL-bridge seam. Broadcasts never hit it (chat, not goals).</param>
+    public Mesh(string selfId, TextWriter stdout, Func<string, string, Task>? onSelfDirected = null)
     {
         _selfId = selfId;
         _stdout = stdout;
+        _onSelfDirected = onSelfDirected;
     }
 
     public void Remove(ILinkEndpoint link)
@@ -281,7 +373,7 @@ internal sealed class Mesh
 
     public async Task RouteAsync(byte[] frame, bool fromSelf, ILinkEndpoint? srcLink, CancellationToken ct)
     {
-        if (!TryRoute(frame, out string from, out string to))
+        if (!TryRoute(frame, out string from, out string to, out string payload))
         {
             Console.Error.WriteLine("DROP malformed-envelope");
             return;
@@ -290,7 +382,13 @@ internal sealed class Mesh
         if (!fromSelf && srcLink is not null && !string.IsNullOrEmpty(from))
             Register(srcLink, from);
 
-        if (to == _selfId) { await WriteSelfAsync(frame, ct).ConfigureAwait(false); return; }
+        if (to == _selfId)
+        {
+            await WriteSelfAsync(frame, ct).ConfigureAwait(false);
+            if (!fromSelf && _onSelfDirected is not null)
+                await _onSelfDirected(from, payload).ConfigureAwait(false);
+            return;
+        }
 
         if (to == Broadcast)
         {
@@ -305,15 +403,16 @@ internal sealed class Mesh
         else Console.Error.WriteLine($"DROP no-route to={to}");
     }
 
-    private static bool TryRoute(byte[] frame, out string from, out string to)
+    private static bool TryRoute(byte[] frame, out string from, out string to, out string payload)
     {
-        from = ""; to = "";
+        from = ""; to = ""; payload = "";
         try
         {
             using var doc = JsonDocument.Parse(frame);
             var r = doc.RootElement;
             from = r.GetProperty("from").GetString() ?? "";
             to = r.GetProperty("to").GetString() ?? "";
+            payload = r.TryGetProperty("payload", out var p) ? p.GetString() ?? "" : "";
             return true;
         }
         catch { return false; }
@@ -335,5 +434,285 @@ internal sealed class Mesh
         try { await link.SendBytesAsync(frame, ct).ConfigureAwait(false); }
         catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
         { Console.Error.WriteLine($"DROP send-failed {link.Id}: {ex.Message}"); }
+    }
+}
+
+/// <summary>
+/// The C# half of the 040 terminal ``tmsg(...)`` ground-term codec, restricted to the three shapes
+/// the T011 REPL bridge speaks: parse <c>tmsg(repl_goal, "Page", "goal.")</c>, emit
+/// <c>tmsg(repl_result, "Page", "Rendered")</c> and <c>tmsg(link_status, State, "Detail")</c>.
+/// The escaping mirrors <c>glp_quick/terminal/protocol.py</c> exactly (backslash, quote,
+/// \n/\r/\t, and the ground-relay neutralization of the <c>_w(</c> / <c>_r(</c> heads) so the two
+/// codec halves cannot drift on these shapes (constitution VIII: protocol.py stays authoritative).
+/// </summary>
+internal static class Tmsg
+{
+    private static string Esc(string s)
+    {
+        var sb = new StringBuilder(s.Length + 8);
+        foreach (var c in s)
+            sb.Append(c switch
+            {
+                '\\' => "\\\\",
+                '"' => "\\\"",
+                '\n' => "\\n",
+                '\r' => "\\r",
+                '\t' => "\\t",
+                _ => c.ToString(),
+            });
+        // Neutralize the ground-relay placeholder heads inside string content (protocol.py _esc).
+        return sb.ToString().Replace("_w(", "_w\\(").Replace("_r(", "_r\\(");
+    }
+
+    public static string ReplResult(string page, string rendered) =>
+        $"tmsg(repl_result,\"{Esc(page)}\",\"{Esc(rendered)}\")";
+
+    public static string LinkStatus(string state, string detail) =>
+        $"tmsg(link_status,{state},\"{Esc(detail)}\")";
+
+    public static bool TryParseReplGoal(string payload, out string page, out string goal)
+    {
+        page = ""; goal = "";
+        var s = payload.TrimStart();
+        const string head = "tmsg(";
+        if (!s.StartsWith(head, StringComparison.Ordinal)) return false;
+        int i = head.Length;
+        SkipWs(s, ref i);
+        const string kind = "repl_goal";
+        if (i + kind.Length > s.Length || s.AsSpan(i, kind.Length).ToString() != kind) return false;
+        i += kind.Length;
+        SkipWs(s, ref i);
+        if (i >= s.Length || s[i] != ',') return false;
+        i++;
+        if (!TryQuoted(s, ref i, out page)) return false;
+        SkipWs(s, ref i);
+        if (i >= s.Length || s[i] != ',') return false;
+        i++;
+        if (!TryQuoted(s, ref i, out goal)) return false;
+        SkipWs(s, ref i);
+        return i < s.Length && s[i] == ')';
+    }
+
+    private static void SkipWs(string s, ref int i)
+    {
+        while (i < s.Length && (s[i] is ' ' or '\t' or '\r' or '\n')) i++;
+    }
+
+    private static bool TryQuoted(string s, ref int i, out string value)
+    {
+        value = "";
+        SkipWs(s, ref i);
+        if (i >= s.Length || s[i] != '"') return false;
+        i++;
+        var sb = new StringBuilder();
+        while (i < s.Length)
+        {
+            var c = s[i];
+            if (c == '\\' && i + 1 < s.Length)
+            {
+                var n = s[i + 1];
+                sb.Append(n switch { 'n' => '\n', 'r' => '\r', 't' => '\t', _ => n }); // \\ \" \( \) fall through
+                i += 2;
+                continue;
+            }
+            if (c == '"') { i++; value = sb.ToString(); return true; }
+            sb.Append(c);
+            i++;
+        }
+        return false; // unterminated string
+    }
+}
+
+/// <summary>
+/// 063 US1 T011 (contract C1, research R2) — a supervised GLP REPL child bridged onto the link's
+/// message envelopes: one directed envelope payload = one goal line to the child's stdin; one
+/// rendered result BLOCK (stdout lines until a quiet window) = one envelope back to the goal's
+/// sender. Child death surfaces as an explicit <c>FAULT repl_down</c> on the host's fault stream
+/// plus a <c>repl_down</c> notice envelope — never a silent stall; later goals to a dead child are
+/// answered with an explicit <c>repl_down</c> refusal (bounded silence). Mirrors the quiet-drain
+/// discipline of the Python-side <c>ReplBridge</c> (repl_link.py): quiet 600 ms, block cap 6 s.
+/// </summary>
+internal sealed class ReplChild : IAsyncDisposable
+{
+    private static readonly TimeSpan Quiet = TimeSpan.FromMilliseconds(600);
+    private static readonly TimeSpan BlockCap = TimeSpan.FromSeconds(6);
+
+    private readonly System.Diagnostics.Process _proc;
+    private readonly Func<string, string, string, Task> _reply;   // (requester, page, block)
+    private readonly CancellationTokenSource _own = new();
+    private volatile Tuple<string, string>? _current;              // (requester, page) of the latest goal
+    private volatile bool _sawGoal;                                // pre-goal output is banner, not a result
+    private int _goalGen;                                          // generation of the latest goal
+    private int _answeredGen;                                      // generation last answered by a block
+
+    public bool Alive => !_proc.HasExited;
+
+    private ReplChild(System.Diagnostics.Process proc, Func<string, string, string, Task> reply, Action<int> onDeath)
+    {
+        _proc = proc;
+        _reply = reply;
+        _ = PumpBlocksAsync();
+        _ = PumpStderrAsync();
+        _ = Task.Run(async () =>
+        {
+            await _proc.WaitForExitAsync().ConfigureAwait(false);
+            Console.Error.WriteLine($"FAULT repl_down exit={_proc.ExitCode}");
+            onDeath(_proc.ExitCode);
+        });
+    }
+
+    /// <summary>Spawn the REPL (a .dll runs via the current dotnet host; anything else executes
+    /// directly). A spawn failure is the same explicit fault as a death — never a silent absence.</summary>
+    public static ReplChild? Spawn(string path, Func<string, string, string, Task> reply, Action<int> onDeath)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            var host = Environment.ProcessPath;
+            psi.FileName = host is not null && Path.GetFileNameWithoutExtension(host).Equals("dotnet", StringComparison.OrdinalIgnoreCase)
+                ? host : "dotnet";
+            psi.ArgumentList.Add(path);
+        }
+        else
+        {
+            psi.FileName = path;
+        }
+        try
+        {
+            var proc = System.Diagnostics.Process.Start(psi)
+                ?? throw new InvalidOperationException("Process.Start returned null");
+            return new ReplChild(proc, reply, onDeath);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"FAULT repl_down spawn: {ex.Message}");
+            onDeath(-1);
+            return null;
+        }
+    }
+
+    /// <summary>One goal line in (C1: one line ⇒ one message consumed). A goal whose evaluation
+    /// renders nothing within the wait cap is answered <c>(no output)</c> — mirroring the Python
+    /// <c>ReplBridge.evaluate</c> contract — so the requester never waits unbounded (C1).</summary>
+    public void Feed(string requester, string page, string goalLine)
+    {
+        var gen = Interlocked.Increment(ref _goalGen);
+        _current = Tuple.Create(requester, page);
+        _sawGoal = true;
+        try
+        {
+            _proc.StandardInput.WriteLine(goalLine);
+            _proc.StandardInput.Flush();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"FAULT repl_down write: {ex.Message}");
+            return;
+        }
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(BlockCap + Quiet + Quiet, _own.Token).ConfigureAwait(false);
+                if (Volatile.Read(ref _goalGen) == gen && Volatile.Read(ref _answeredGen) < gen)
+                {
+                    Volatile.Write(ref _answeredGen, gen);
+                    await _reply(requester, page, "(no output)").ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) { /* disposed */ }
+        });
+    }
+
+    /// <summary>Assemble stdout lines into result blocks by quiet-window drain; each block replies
+    /// as ONE envelope to the current requester (pre-goal banner lines log to stderr only).</summary>
+    private async Task PumpBlocksAsync()
+    {
+        var reader = _proc.StandardOutput;
+        var lines = System.Threading.Channels.Channel.CreateUnbounded<string>();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                string? line;
+                while ((line = await reader.ReadLineAsync(_own.Token).ConfigureAwait(false)) is not null)
+                    lines.Writer.TryWrite(line);
+            }
+            catch (OperationCanceledException) { /* disposed */ }
+            finally { lines.Writer.Complete(); }
+        });
+
+        var block = new List<string>();
+        try
+        {
+            await PumpBlocksCoreAsync(lines.Reader, block).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { /* disposed */ }
+    }
+
+    private async Task PumpBlocksCoreAsync(System.Threading.Channels.ChannelReader<string> lines, List<string> block)
+    {
+        while (await lines.WaitToReadAsync(_own.Token).ConfigureAwait(false))
+        {
+            var blockStart = DateTime.UtcNow;
+            while (lines.TryRead(out var l)) block.Add(l);
+            // Extend the block until the child goes quiet (or the cap forces the flush).
+            while (DateTime.UtcNow - blockStart < BlockCap)
+            {
+                using var quiet = CancellationTokenSource.CreateLinkedTokenSource(_own.Token);
+                quiet.CancelAfter(Quiet);
+                try
+                {
+                    if (!await lines.WaitToReadAsync(quiet.Token).ConfigureAwait(false)) break;
+                }
+                catch (OperationCanceledException) when (!_own.IsCancellationRequested) { break; }
+                while (lines.TryRead(out var l)) block.Add(l);
+            }
+            var current = _current;
+            var text = string.Join("\n", block).Trim();
+            block.Clear();
+            if (text.Length == 0) continue;
+            if (!_sawGoal || current is null)
+            {
+                Console.Error.WriteLine($"REPL_BANNER {text.Replace('\n', ' ')}");
+                continue;
+            }
+            Volatile.Write(ref _answeredGen, Volatile.Read(ref _goalGen));
+            await _reply(current.Item1, current.Item2, text).ConfigureAwait(false);
+        }
+    }
+
+    private async Task PumpStderrAsync()
+    {
+        try
+        {
+            string? line;
+            while ((line = await _proc.StandardError.ReadLineAsync(_own.Token).ConfigureAwait(false)) is not null)
+                Console.Error.WriteLine($"REPL_ERR {line}");
+        }
+        catch (OperationCanceledException) { /* disposed */ }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _own.Cancel();
+        try
+        {
+            if (!_proc.HasExited)
+            {
+                try { _proc.StandardInput.Close(); } catch (IOException) { }
+                if (!_proc.WaitForExit(2000)) _proc.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException) { /* already gone */ }
+        _proc.Dispose();
+        await Task.CompletedTask;
     }
 }

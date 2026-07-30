@@ -39,9 +39,12 @@ board-flagged before work starts.
   — 4 tests, 4/4 PASS; witness validity proven by mutation check (naive eviction ⇒ 1F); glp_link.tests 156/156
 - [X] T010 [US1] If T009 reproduces the audited defect: fix `Mesh` id learn/evict in `csharp/glp_quick_host/Program.cs` so a newcomer never evicts a live incumbent; re-run T009 green. If T009 passes as-is: record the provenance finding in baseline.md (guard already landed) and keep the scenario as the closure witness
   — second arm taken: symptom does not reproduce; provenance finding recorded in baseline.md; Program.cs unchanged
-- [ ] T011 [US1] Complete the `--repl` live bridge in `csharp/glp_quick_host/Program.cs`: spawn the REPL child, bridge stdio ⇄ link-message envelopes (one line/result per message), surface child death as a link fault (contract C1, R2)
-- [ ] T012 [P] [US1] Plumb `--repl` through the Python CLI in `glp_quick/src/` (server + client roles) with the REPL exe path argument (contract C1)
-- [ ] T013 [US1] End-to-end scenario: two instances, `--repl` both ends, goal evaluated remotely, result returned — scripted in `glp_quick/tests/test_repl_bridge.py`, asserting the SC-001 envelope (link-up + first result within the 5-minute wall-clock bound; scripted runs land in seconds)
+- [X] T011 [US1] Complete the `--repl` live bridge in `csharp/glp_quick_host/Program.cs`: spawn the REPL child, bridge stdio ⇄ link-message envelopes (one line/result per message), surface child death as a link fault (contract C1, R2)
+  — host `--repl <path>` spawns the REPL child (ReplChild); goals arrive as the existing `tmsg(repl_goal,…)` codec shape, result blocks return as ONE `tmsg(repl_result,…)` each (C# Tmsg codec half mirrors terminal/protocol.py); child death ⇒ `FAULT repl_down` + `tmsg(link_status,repl_down,…)` notice; dead-child goals answered with an explicit refusal; no-output goals answered `(no output)` (ReplBridge parity)
+- [X] T012 [P] [US1] Plumb `--repl` through the Python CLI in `glp_quick/src/` (server + client roles) with the REPL exe path argument (contract C1)
+  — `--repl` now accepts csharp | dart | a REPL exe/dll path; path threads cli→link_console→adapter (`repl_path`+`self_id` kwargs on start_server/start_client); gleam adapter refuses loudly (csharp-stack scope)
+- [X] T013 [US1] End-to-end scenario: two instances, `--repl` both ends, goal evaluated remotely, result returned — scripted in `glp_quick/tests/test_repl_bridge.py`, asserting the SC-001 envelope (link-up + first result within the 5-minute wall-clock bound; scripted runs land in seconds)
+  — 2/2 pass in ~9 s over real QUIC: both directions evaluated remotely, SC-001 bound asserted, chat-is-not-a-goal isolation verified; full glp_quick suite 187/2F(pre-existing)/1S
 - [ ] T014 [US1] Re-run the full 036 demo suite; produce the per-scenario verdict table superseding the 18/104 claim; append to baseline.md (contract C3, SC-003)
 - [ ] T015 [P] [US1] Correct the stack-profile wording (relay profile relays; reference stack terminates QUIC) at its single authoritative doc site (contract C4, FR-005a)
 
