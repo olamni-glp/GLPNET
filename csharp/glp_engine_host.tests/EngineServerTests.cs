@@ -6,6 +6,7 @@ using System.Net;
 
 using GlpRuntime.Engine;
 using GlpRuntime.EngineHost;
+using GlpRuntime.EngineHost.Store;
 using GlpRuntime.ReplClient;
 using GlpRuntime.ResultCodec;
 using GlpRuntime.SplitProtocol;
@@ -23,13 +24,23 @@ public sealed class EngineHostFixture : IAsyncDisposable
     public int Port { get; }
     public RequestDispatcher Dispatcher { get; }
 
+    /// <summary>Per-fixture file store root (T022 composition; deleted on dispose).</summary>
+    public string StoreDir { get; }
+
     public EngineHostFixture()
     {
         var rootSelfGlp = GlpRuntime.EngineHost.Program.ResolveRootSelfGlpPath();
         var engine = new GlpEngine(rootSelfGlp);
         var session = new EngineSession("engine-test");
         session.TransitionTo(EngineState.Serving);
-        Dispatcher = new RequestDispatcher(engine, session);
+        StoreDir = Path.Combine(Path.GetTempPath(), $"glpsnap-test-{Guid.NewGuid():N}");
+        var store = new SnapshotStore(
+            primary: null,
+            fallback: new FileSnapshotStore(StoreDir, "engine-test"),
+            report: _ => { });
+        Dispatcher = new RequestDispatcher(
+            engine, session, new Quiescence(engine), store,
+            linkRuntime: null, rootSelfSource: File.ReadAllText(rootSelfGlp));
 
         Port = FreePort();
         var server = new EngineServer(new IPEndPoint(IPAddress.Loopback, Port), Dispatcher);
@@ -54,6 +65,7 @@ public sealed class EngineHostFixture : IAsyncDisposable
         try { await _serverTask.WaitAsync(TimeSpan.FromSeconds(10)); }
         catch (OperationCanceledException) { }
         _cts.Dispose();
+        try { Directory.Delete(StoreDir, recursive: true); } catch (IOException) { }
     }
 }
 

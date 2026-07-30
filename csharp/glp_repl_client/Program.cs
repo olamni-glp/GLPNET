@@ -67,7 +67,7 @@ public static class Program
         }
 
         Console.WriteLine($"Connected to engine at {host}:{port}");
-        Console.WriteLine("Input: load <file.glp> to load, goal. to execute; :status, :quit");
+        Console.WriteLine("Input: load <file.glp> to load, goal. to execute; :status, :snapshot, :quit");
         Console.WriteLine();
 
         await using (channel)
@@ -98,6 +98,25 @@ public static class Program
                         var response = await channel.RoundTripAsync(
                             RequestFrame.Empty(channel.NextRequestId(), RequestKind.Status));
                         Console.WriteLine(response.BodyText());
+                        continue;
+                    }
+
+                    if (trimmed is ":snapshot")
+                    {
+                        // T022: on-demand snapshot. ACK carries "snapshot seq=N"
+                        // (plus any loud store-degradation note, US2/AS-4);
+                        // DEFERRED means parked pending quiescence (wire rule 5) —
+                        // check :status for the pending/last-seq state.
+                        var response = await channel.RoundTripAsync(
+                            RequestFrame.Empty(channel.NextRequestId(), RequestKind.Snapshot));
+                        Console.WriteLine(response.Kind switch
+                        {
+                            ResponseKind.Ack => response.BodyText(),
+                            ResponseKind.Deferred =>
+                                "snapshot deferred (engine busy) — it fires at the next quiescence; see :status",
+                            ResponseKind.EngineBusy => "Engine busy (restoring) — try again shortly",
+                            _ => $"!! protocol error: {response.BodyText()}",
+                        });
                         continue;
                     }
 

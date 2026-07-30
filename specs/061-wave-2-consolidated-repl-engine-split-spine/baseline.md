@@ -46,3 +46,15 @@ requires the client to render 038 envelopes, which requires the envelope codec.
 `glp_result_codec` is fully standalone (its only reference is the
 zero-dependency `glp_wire_registry` constants leaf), so adding it preserves the
 R7 thin-client intent: no runtime project reference, no language context.
+
+## LinkRegistry accessor deviation recorded (US2/T018): + `Handles` getter
+
+plan.md's structure note says the "only touch on a shipped library" in glp_link
+is the net-new `RewireHandle.cs` (US4/T031). T018's binding DEF-D1 mandate —
+capture link definitions + cursor positions into snapshot section 0x09 —
+requires ENUMERATING the LinkId→LinkHandle registry, which `LinkRegistry`
+exposed no way to do (TryGet/Contains/Count only). Added exactly one additive,
+read-only member: `public IReadOnlyDictionary<LinkId, LinkHandle> Handles`
+(csharp/glp_link/primitives/LinkRegistry.cs). No existing member changed;
+registration stays with `GetOrEstablish`; the plan sentence anticipated new
+FILES, not a one-line getter the DEF-D1 scope makes necessary.

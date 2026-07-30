@@ -36,6 +36,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 061 T021: PGlite-primary snapshot store (store/PgliteSnapshotStore.cs) —
+         same version as the 041 precedent (glp_crdtmsg NpgsqlColabOpDb). -->
+    <PackageReference Include="Npgsql" Version="8.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="GlpEngineHost.Tests" />
   </ItemGroup>
 

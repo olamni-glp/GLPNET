@@ -1,16 +1,28 @@
-// glp_engine_host entry point (T011). Bootstraps the engine (root
+// glp_engine_host entry point (T011/T019/T022). Bootstraps the engine (root
 // programs/self.glp prelude, FR-003), installs the link layer (the 025 kernels
 // + tcp/loopback leaves — the engine side of the split owns all language
 // context; the client has none, R7), then serves the split protocol on
 // --listen until SHUTDOWN (exit 0) or a fatal startup error.
 //
 //   glp_engine_host --listen 127.0.0.1:7461
+//                   [--store <dir>]                    file-fallback root
+//                                                      (default <repo>/.glpsnap)
+//                   [--from-snapshot latest|<seq>]     restore before serving
 //
-// US2 adds --store <dir> / --from-snapshot latest|<seq> (T019/T022).
+// Snapshot store (FR-012): primary = PGLite over the repo's bridge-guarded
+// cluster when GLP_SNAPSHOT_PG_CONN is set (041 precedent); fallback = the
+// gitignored file store under --store. No primary configured ⇒ every write
+// reports the degradation loudly (US2/AS-4).
+//
+// Restore (FR-030) runs to completion BEFORE the listener opens: a client
+// connecting mid-restore sees a connection refusal (transport-level), never an
+// answer from a half-restored state. (US4/T033 revisits mid-restore STATUS.)
 
 using System.Net;
 
 using GlpRuntime.Engine;
+using GlpRuntime.EngineHost.Snapshot;
+using GlpRuntime.EngineHost.Store;
 using GlpRuntime.Link.Primitives;
 using GlpRuntime.Link.Transports;
 
@@ -21,6 +33,8 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         IPEndPoint? listen = null;
+        string? storeDir = null;
+        string? fromSnapshot = null;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -28,9 +42,16 @@ public static class Program
                 case "--listen" when i + 1 < args.Length:
                     listen = ParseEndpoint(args[++i]);
                     break;
+                case "--store" when i + 1 < args.Length:
+                    storeDir = args[++i];
+                    break;
+                case "--from-snapshot" when i + 1 < args.Length:
+                    fromSnapshot = args[++i];
+                    break;
                 default:
                     Console.Error.WriteLine($"glp_engine_host: unknown argument '{args[i]}'");
-                    Console.Error.WriteLine("usage: glp_engine_host --listen <host:port>");
+                    Console.Error.WriteLine(
+                        "usage: glp_engine_host --listen <host:port> [--store <dir>] [--from-snapshot latest|<seq>]");
                     return 64;
             }
         }
@@ -50,9 +71,89 @@ public static class Program
             Console.Error.WriteLine($"glp_engine_host: {ex.Message}");
             return 66;
         }
+        var rootSelfSource = File.ReadAllText(rootSelfGlpPath);
 
-        // FR-003: the ENGINE bootstraps the prelude; the client stays thin.
-        var engine = new GlpEngine(rootSelfGlpPath);
+        var engineIdentity = $"engine-{listen.Port}";
+        var session = new EngineSession(engineIdentity);
+
+        // ---- snapshot store composition (T020/T021) ----
+        storeDir ??= Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(rootSelfGlpPath))!, ".glpsnap");
+        var fileBackend = new FileSnapshotStore(storeDir, engineIdentity);
+        ISnapshotBackend? primary = null;
+        var pgConn = Environment.GetEnvironmentVariable("GLP_SNAPSHOT_PG_CONN");
+        if (!string.IsNullOrWhiteSpace(pgConn))
+        {
+            try
+            {
+                primary = PgliteSnapshotStore.Open(new NpgsqlSnapshotDb(pgConn), engineIdentity);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"glp_engine_host: primary snapshot store unavailable at startup ({ex.Message}) — " +
+                    "continuing on the file fallback (US2/AS-4)");
+            }
+        }
+        var store = new SnapshotStore(primary, fileBackend,
+            msg => Console.Error.WriteLine($"glp_engine_host: SNAPSHOT STORE DEGRADED: {msg}"));
+
+        // ---- engine: fresh, or restored from a snapshot (FR-030) ----
+        GlpEngine engine;
+        IReadOnlyList<LoadedUnit> restoredUnits = Array.Empty<LoadedUnit>();
+        if (fromSnapshot is not null)
+        {
+            session.TransitionTo(EngineState.Restoring);
+            byte[]? blobBytes;
+            if (fromSnapshot == "latest")
+            {
+                var latest = store.Latest();
+                if (latest is null)
+                {
+                    Console.Error.WriteLine("glp_engine_host: --from-snapshot latest: no snapshot exists");
+                    return 66;
+                }
+                blobBytes = latest.Value.Blob;
+            }
+            else if (ulong.TryParse(fromSnapshot, out var seq))
+            {
+                blobBytes = store.BySeq(seq);
+                if (blobBytes is null)
+                {
+                    Console.Error.WriteLine($"glp_engine_host: --from-snapshot {seq}: no such complete snapshot");
+                    return 66;
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    $"glp_engine_host: --from-snapshot expects latest|<seq>, got '{fromSnapshot}'");
+                return 64;
+            }
+
+            try
+            {
+                var blob = SnapshotBlob.Decode(blobBytes);
+                var restored = SnapshotRestore.Restore(blob, rootSelfGlpPath);
+                engine = restored.Engine;
+                restoredUnits = restored.Units;
+                Console.WriteLine(
+                    $"glp_engine_host: restored snapshot seq={blob.Seq} " +
+                    $"({restoredUnits.Count} unit(s), heap={engine.Runtime.Heap.Hp} cells)");
+            }
+            catch (SnapshotException ex)
+            {
+                // Corrupt-snapshot surface — the supervisor's taxonomy input (FR-023).
+                Console.Error.WriteLine($"glp_engine_host: RESTORE FAILED: {ex.Message}");
+                return 65;
+            }
+            session.TransitionTo(EngineState.Serving);
+        }
+        else
+        {
+            // FR-003: the ENGINE bootstraps the prelude; the client stays thin.
+            engine = new GlpEngine(rootSelfGlpPath);
+            session.TransitionTo(EngineState.Serving);
+        }
 
         // Composition root (025 pattern, mirrors out/csharp/glp_repl/Program.cs):
         // install the link kernels + the MVP transport leaves. QUIC + macaroon
@@ -61,13 +162,14 @@ public static class Program
         link.Transports.Register(new TcpTransport());
         link.Transports.Register(new LoopbackTransport());
 
-        var session = new EngineSession($"engine-{listen.Port}");
-        session.TransitionTo(EngineState.Serving);
-
-        var dispatcher = new RequestDispatcher(engine, session);
+        var quiescence = new Quiescence(engine);
+        var dispatcher = new RequestDispatcher(
+            engine, session, quiescence, store, link, rootSelfSource, restoredUnits);
         var server = new EngineServer(listen, dispatcher);
 
         Console.WriteLine($"glp_engine_host: prelude {rootSelfGlpPath}");
+        Console.WriteLine($"glp_engine_host: snapshot store {storeDir}" +
+                          (primary is null ? " (file fallback only — no PGLite primary configured)" : " + PGLite primary"));
         Console.WriteLine($"glp_engine_host: serving on {listen} (one client, FR-002)");
 
         try
