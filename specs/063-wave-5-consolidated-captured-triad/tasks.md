@@ -87,8 +87,8 @@ board-flagged before work starts.
 
 ## Phase 6: User Story 4 — wave close roadmap advance (P4)
 
-- [ ] T030 [US4] At wave close: advance `http3-quic-ws-link-completion`, `durable-mesh-messaging-protocol`, `three-role-agent-team-orchestration` to delivered/closed with receipts; export + publish per fleet sync protocol (FR-014, SC-007)
-  — PARKED on the engineer keystroke: this mutates the shared roadmap + publishes under this host's identity to the fleet, and pairs with the GitFlow ship (buildkit); both are wave-close state mutations, not autonomous
+- [X] T030 [US4] At wave close: advance `http3-quic-ws-link-completion`, `durable-mesh-messaging-protocol`, `three-role-agent-team-orchestration` to delivered/closed with receipts; export + publish per fleet sync protocol (FR-014, SC-007)
+  — DONE 20260730T061259Z on the engineer keystroke: sync round first (import 0-delta, replay --verify ✓, pre-advance export 060746Z published 18/94/2496); all three features advanced captured → closed with delivery receipts appended to notes (referencing baseline.md T033 + docs/three-role-orchestration/CLOSURE.md); post-advance export gavriella__glpnet__20260730T061228Z.json PUBLISHED to the fleet inbox (sha256-verified), triple 18/94/2502; UPDATEs fanned to both peers; paired GitFlow ship follows
 
 ## Phase 7: Polish & cross-cutting
 
