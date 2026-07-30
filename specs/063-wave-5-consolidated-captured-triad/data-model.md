@@ -2,7 +2,10 @@
 
 US2 owns the data model (US1 reuses spec-025's entities unchanged; US3 is
 documentation + records). Hot tier = `msmesh` schema (PGlite, additive
-migration 0011); aged tier = DuckLake parquet mirroring the same shapes.
+migration — planned as 0011, LANDED as **0012** because feature 035 had
+already advanced the head to 0011; deviation recorded at tasks.md T005,
+surfaced by engagement E1); aged tier = DuckLake parquet mirroring the same
+shapes.
 
 ## msmesh.station
 

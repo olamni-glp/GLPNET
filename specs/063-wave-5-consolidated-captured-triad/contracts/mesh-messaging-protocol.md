@@ -46,7 +46,9 @@ ground payloads.
 ## Storage contract
 
 - Hot tier: `msmesh` schema (see data-model.md) in the repo cluster via the
-  shared bridge; migration `0011` additive, single-head.
+  shared bridge; migration additive, single-head (planned `0011`, landed
+  `0012` — head already advanced by feature 035; deviation at tasks.md T005,
+  surfaced by engagement E1).
 - WAL/message files per R4 policy under the tool's data dir (gitignored).
 - Aging to DuckLake per R6, behind the lake seam; degradation to
   PGlite-only is LOUD (named warning) and preserves all guarantees except

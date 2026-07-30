@@ -78,7 +78,8 @@ board-flagged before work starts.
 
 - [X] T026 [P] [US3] Write `docs/three-role-orchestration/PROTOCOL.md` from the recorded method doc + installed capability contract (role charters, blind-then-cross-verify, false-consensus guard, authority order, convergence caps, evidence/attribution, engineer gates; contract deliverable 1)
   — distilled from docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md + spec-051; references both, duplicates neither; every operator step named (§3)
-- [ ] T027 [US3] Engagement E1: plan-review triad over this wave's plan artifacts; record in `docs/three-role-orchestration/engagements/E1-plan-review.md` (attributed claims, critic verdicts, escalations, engineer decisions)
+- [X] T027 [US3] Engagement E1: plan-review triad over this wave's plan artifacts; record in `docs/three-role-orchestration/engagements/E1-plan-review.md` (attributed claims, critic verdicts, escalations, engineer decisions)
+  — run 20260730T005639Z-bf19 (bk-3rtask, codex critic cross-provider): 50 attributed claims, 32C/2R/16E, one real cross-artifact conflict (0011/0012 staleness) found + fixed in-engagement, 6 spec-improvement escalates left open for the engineer; record complete
 - [ ] T028 [US3] Engagement E2: code-review triad over the US1 completion diff; record in `docs/three-role-orchestration/engagements/E2-us1-code-review.md`
 - [ ] T029 [US3] Closure evidence: link E1/E2 + PROTOCOL.md into the roadmap item (notes update), per contract deliverable 3
 
