@@ -93,6 +93,31 @@ addressable under a fresh id.
   glp_quick_host project reference/InternalsVisibleTo wiring:
   **156/156, 0 skips** (baseline 152 + the 4 scenario tests).
 
+## T014 — full 036 demo-suite re-verify: the table that SUPERSEDES "18/104" (2026-07-30, 063 @ 1590ce30)
+
+The audited claim "18/104 green" (036 T039, 2026-07-01: 18 glp_quick pytest +
+104 glp_link xUnit) is superseded by this current, reproducible count — the
+suites have since grown (features 040/050/063) and everything the dll gates
+now RUNS:
+
+| Suite / scenario | Command | Verdict (2026-07-30) |
+|---|---|---|
+| glp_quick pytest (incl. all 9 dll-gated modules + the T013 bridge tests) | `glp_quick/.venv/Scripts/python -m pytest` | **187 passed, 2 failed (pre-existing profile-C quicer-NIF env), 1 skipped (designed inverse guard)** |
+| glp_link.tests xUnit (incl. mesh_dup_id) | `dotnet test csharp/glp_link.tests` | **156/156, 0 skips** |
+| Demo SC-001 real on-wire QUIC/HTTP-3 handshake | `glp-quick demo --addr 127.0.0.1 --port 44741 --cert <dir> --stack csharp --clients 3` | PASS |
+| Demo SC-002 full-duplex GLP-message exchange | 〃 | PASS |
+| Demo SC-002b peer-to-peer duplex mesh (to-routing + broadcast) | 〃 | PASS |
+| Demo SC-003 ≥3 concurrent isolated clients | 〃 | PASS |
+| Demo SC-004 single-client-failure resilience | 〃 | PASS |
+| Demo SC-005 shared self-signed cert (SPKI pin) only trust anchor | 〃 | PASS |
+| Demo SC-006 cross-stack csharp ≡ gleam | 〃 | NOT-RUN (needs `--stack gleam`; profile-C runtime is the recorded env defect on this host) |
+| Two-host LAN acceptance (036 T040) | 〃 | NOT-RUN (second host; 036 full-acceptance feature scope) |
+| Overall demo run criteria | 〃 | **PASS** |
+
+Every scenario prints its explicit verdict (no silent PASS); the two NOT-RUN
+rows are the demo's own honest attributions, unchanged in scope from 036's
+followup-full-acceptance brief.
+
 - **Operational hazard (reported)**: the two failing profile-C tests LEAK
   their spawned `glp_quick_host` server processes on teardown; the orphans
   hold `bin/Debug/net10.0/glp_link.dll` open and break the next

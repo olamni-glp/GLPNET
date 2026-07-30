@@ -45,8 +45,10 @@ board-flagged before work starts.
   — `--repl` now accepts csharp | dart | a REPL exe/dll path; path threads cli→link_console→adapter (`repl_path`+`self_id` kwargs on start_server/start_client); gleam adapter refuses loudly (csharp-stack scope)
 - [X] T013 [US1] End-to-end scenario: two instances, `--repl` both ends, goal evaluated remotely, result returned — scripted in `glp_quick/tests/test_repl_bridge.py`, asserting the SC-001 envelope (link-up + first result within the 5-minute wall-clock bound; scripted runs land in seconds)
   — 2/2 pass in ~9 s over real QUIC: both directions evaluated remotely, SC-001 bound asserted, chat-is-not-a-goal isolation verified; full glp_quick suite 187/2F(pre-existing)/1S
-- [ ] T014 [US1] Re-run the full 036 demo suite; produce the per-scenario verdict table superseding the 18/104 claim; append to baseline.md (contract C3, SC-003)
-- [ ] T015 [P] [US1] Correct the stack-profile wording (relay profile relays; reference stack terminates QUIC) at its single authoritative doc site (contract C4, FR-005a)
+- [X] T014 [US1] Re-run the full 036 demo suite; produce the per-scenario verdict table superseding the 18/104 claim; append to baseline.md (contract C3, SC-003)
+  — demo PASS with per-criterion verdicts (SC-006/two-host honestly NOT-RUN); superseding counts: glp_quick 187P/2F(pre-existing)/1S, glp_link.tests 156/156; table in baseline.md
+- [X] T015 [P] [US1] Correct the stack-profile wording (relay profile relays; reference stack terminates QUIC) at its single authoritative doc site (contract C4, FR-005a)
+  — authoritative statement now in .claude/skills/glp-quick/SKILL.md (relay Profile A terminates no QUIC; C#/Profile C terminate in-process); 036 spec/tasks left as shipped history per C4's reference-elsewhere rule
 
 ## Phase 4: User Story 2 — durable first-hop mesh messaging (P2)
 

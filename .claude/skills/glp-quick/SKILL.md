@@ -27,8 +27,14 @@ per-stack data-plane runtimes (C#/.NET reference first, then Gleam).
 | `glp-quick --client --addr <server-ip\|name> --port <udp> --cert <dir> [--stack csharp\|gleam] [--repl csharp\|dart]` | Connect a client: real QUIC/HTTP-3 handshake trusting **only** the shared cert by SPKI pin, bring up the WebSocket link, bridge a GLP REPL, exchange full-duplex (FR-001/002/008a). |
 | `glp-quick demo --addr <server-ip> --port <udp> --cert <dir> [--stack csharp\|gleam] [--clients 3]` | LAN-IP conformance demo (SC-001..SC-006): 1 server + N≥3 clients, real on-wire handshake, full-duplex, ≥3-REPL mesh, concurrent isolation, single-failure resilience. Pass/fail per criterion. |
 
-For `--stack gleam`, an optional `--profile a|c` selects the deployment profile (A: AtomVM +
-native QUIC side-process; C: full BEAM + `quicer`/MsQuic in-process; default `c`). The
+For `--stack gleam`, an optional `--profile a|c` selects the deployment profile (default `c`).
+
+**Stack-profile truth (the authoritative statement — other docs reference this, 063 US1 C4/FR-005a):**
+the **C# reference stack terminates QUIC** in-process (`quic_termination: in_process`).
+**Gleam Profile A is a relay profile: it relays, it terminates no QUIC** — the Gleam/BEAM
+channel-link logic drives the verified C# host as a native genuine-QUIC **side-process**
+(`quic_termination: side_process`; `real_quic` is truthfully attributed to that side-process).
+**Gleam Profile C terminates QUIC in-process on the full BEAM** (`quicer`/MsQuic). The
 operator-visible surface is otherwise identical across stacks (FR-010 / SC-006).
 
 ## Trust model (FR-003 / SC-005)
