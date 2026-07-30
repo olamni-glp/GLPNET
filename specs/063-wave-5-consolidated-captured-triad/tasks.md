@@ -55,15 +55,19 @@ board-flagged before work starts.
 **Goal**: signal-then-fetch with WAL durability, exactly-once observation, DLQ.
 **Independent test**: quickstart.md US2 drill — N=1,000 offline+restart, exactly-once, in order; unknown target → DLQ.
 
-- [ ] T016 [P] [US2] Implement `ms_message/src/ms_message/wal.py`: append-only WAL + size-policy message files (shared/own/split per R4), replay-on-restart, dense-sequence assertion
-- [ ] T017 [P] [US2] Implement `ms_message/src/ms_message/store.py`: msmesh hot-tier access via the shared `codeconv.bridge_client` (stations, mailboxes, messages, delivery_position, dlq, gap_event; R5)
-- [ ] T018 [US2] Implement `ms_message/src/ms_message/dlq.py`: park-with-reason, list, re-drive (contract guarantees 5; R8)
-- [ ] T019 [US2] Implement originator role in `ms_message/src/ms_message/cli.py`: accept→WAL→store→signal reachable targets; friend-lookup then DLQ for unresolvables (FR-006, FR-007, FR-011a)
-- [ ] T020 [US2] Implement recipient role in `ms_message/src/ms_message/cli.py`: signal handling, resumable fetch from position, exactly-once observation via delivery_position, gap_event recording (FR-007..FR-010, R7)
-- [ ] T021 [US2] Implement `ms_message/src/ms_message/lake.py`: DuckLake aging + hot∪lake catch-up query behind the seam, LOUD PGlite-only degradation (R6)
-- [ ] T022 [US2] Retention sweep (ephemeral/time-windowed/permanent) in store.py + CLI `status` summary (FR-011b, contract guarantees 6)
-- [ ] T023 [US2] Unit tests: WAL replay, size policy, dedup across restart, gap detection, AND the FR-011 failure paths (store unwritable / journal corrupt ⇒ explicit refusal or named fault, never silent loss) in `ms_message/tests/` (contract guarantees 1–3 + 5)
-- [ ] T024 [US2] The SC-004 drill script `ms_message/tests/drill_disconnect.py` (N=1,000, recipient offline, originator restart, exactly-once in order, bounded waits) + wire into `test/run_all_tests.sh` as an explicit section or documented standalone gate (SC-004/SC-005)
+- [X] T016 [P] [US2] Implement `ms_message/src/ms_message/wal.py`: append-only WAL + size-policy message files (shared/own/split per R4), replay-on-restart, dense-sequence assertion
+- [X] T017 [P] [US2] Implement `ms_message/src/ms_message/store.py`: msmesh hot-tier access via the shared `codeconv.bridge_client` (stations, mailboxes, messages, delivery_position, dlq, gap_event; R5)
+  — via the canonical `codeconv.db.engine.connect`; batch transactions (`_exec_many`) after the N=1000 drill exposed a per-row transaction storm racing a concurrent process's dialect init on the single-writer bridge
+- [X] T018 [US2] Implement `ms_message/src/ms_message/dlq.py`: park-with-reason, list, re-drive (contract guarantees 5; R8)
+- [X] T019 [US2] Implement originator role in `ms_message/src/ms_message/cli.py`: accept→WAL→store→signal reachable targets; friend-lookup then DLQ for unresolvables (FR-006, FR-007, FR-011a)
+- [X] T020 [US2] Implement recipient role in `ms_message/src/ms_message/cli.py`: signal handling, resumable fetch from position, exactly-once observation via delivery_position, gap_event recording (FR-007..FR-010, R7)
+- [X] T021 [US2] Implement `ms_message/src/ms_message/lake.py`: DuckLake aging + hot∪lake catch-up query behind the seam, LOUD PGlite-only degradation (R6)
+- [X] T022 [US2] Retention sweep (ephemeral/time-windowed/permanent) in store.py + CLI `status` summary (FR-011b, contract guarantees 6)
+  — sweep lives in store.sweep_retention + `status --sweep`; unit-level sweep test deferred to the bridge-gated tier (T033 full re-verify covers it operationally)
+- [X] T023 [US2] Unit tests: WAL replay, size policy, dedup across restart, gap detection, AND the FR-011 failure paths (store unwritable / journal corrupt ⇒ explicit refusal or named fault, never silent loss) in `ms_message/tests/` (contract guarantees 1–3 + 5)
+  — 35/35 (22 protocol + 10 WAL incl. FR-011 refusals + 3 loud lake degradation)
+- [X] T024 [US2] The SC-004 drill script `ms_message/tests/drill_disconnect.py` (N=1,000, recipient offline, originator restart, exactly-once in order, bounded waits) + wire into `test/run_all_tests.sh` as an explicit section or documented standalone gate (SC-004/SC-005)
+  — drill 5/5 PASS at N=1000; wired as run_all_tests.sh Section S (explicit skip line where the venv is absent)
 - [ ] T025 [US2] QUIC-leg evidence (after US1): one drill pass with the link over QUIC+WS; TCP remains the default evidence path (R3)
 
 ## Phase 5: User Story 3 — 3-role orchestration operationalized (P3)
