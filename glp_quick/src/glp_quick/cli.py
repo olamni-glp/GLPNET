@@ -49,8 +49,10 @@ def _validate_repl(repl: str) -> "tuple[ReplKind, Optional[str]]":
         return repl, None  # type: ignore[return-value]
     if repl.lower().endswith((".dll", ".exe")) or "/" in repl or "\\" in repl:
         p = Path(repl)
-        if not p.exists():
-            raise typer.BadParameter(f"--repl path not found: {repl}")
+        # E2 finding cp-02: the path branch must admit only an existing regular .dll/.exe file —
+        # a directory or extensionless slash-path is a refusal, never a spawn attempt.
+        if not p.is_file() or p.suffix.lower() not in (".dll", ".exe"):
+            raise typer.BadParameter(f"--repl path must be an existing .dll/.exe file: {repl}")
         return "csharp", str(p.resolve())
     raise typer.BadParameter("--repl must be 'csharp' | 'dart' | a path to a GLP REPL (.exe/.dll)")
 
@@ -207,6 +209,11 @@ def main(
         raise typer.Exit(code=code)
     except LinkError as e:
         typer.echo(f"{role} failed: {e}", err=True)
+        raise typer.Exit(code=1)
+    except NotImplementedError as e:
+        # E2 finding cp-07: the gleam adapters' loud --repl refusal must surface as a clean
+        # CLI error, never an unhandled traceback.
+        typer.echo(f"{role} refused: {e}", err=True)
         raise typer.Exit(code=1)
 
 

@@ -103,6 +103,44 @@ def test_repl_bridge_both_directions_sc001(cert_dir):
         ad.stop(server)
 
 
+def test_repl_child_death_surfaces_as_fault_not_stall(cert_dir, tmp_path):
+    """C1 third bullet (E2 finding st-08): REPL child death MUST surface as an explicit
+    link-visible fault — a tmsg(link_status,repl_down,...) notice reaches the peer, and a
+    goal sent to the dead child is answered with an explicit refusal, never a silent stall."""
+    # A real .dll file that is NOT a runnable app: dotnet exits almost immediately -> child death.
+    dead = tmp_path / "dead_repl.dll"
+    dead.write_bytes(b"not a real assembly")
+    port = _free_udp_port()
+    ad = CSharpStackAdapter()
+    server = ad.start_server("127.0.0.1", port, cert_dir, 3, "csharp")
+    client = ad.start_client("127.0.0.1", port, cert_dir, "csharp",
+                             repl_path=str(dead), self_id="tester")
+    try:
+        client.send(GlpMessage(sender="tester", to="server", payload="__connected__"))
+
+        # 1) The death notice is link-visible at the peer (broadcast link_status).
+        deadline = time.monotonic() + 30
+        saw_notice = False
+        while time.monotonic() < deadline and not saw_notice:
+            msg = server.recv(timeout=5)
+            if msg is None:
+                continue
+            tm = protocol.decode(msg.payload)
+            if tm.kind == "link_status" and tm.fields and str(tm.fields[0]) == "repl_down":
+                saw_notice = True
+        assert saw_notice, "no tmsg(link_status,repl_down,...) notice reached the peer"
+
+        # 2) A goal to the dead child gets an explicit refusal, never silence.
+        server.send(GlpMessage(sender="server", to="tester",
+                               payload=protocol.repl_goal("P1", "true.")))
+        res = _await_repl_result(server, "tester", "P1", 30)
+        assert res is not None, "goal to a dead REPL child stalled silently"
+        assert "repl_down" in res.fields[1]
+    finally:
+        ad.stop(client)
+        ad.stop(server)
+
+
 def test_repl_bridge_chat_is_not_a_goal(cert_dir):
     """A directed chat payload must NOT feed the REPL — only tmsg(repl_goal, ...) does (C1/R2)."""
     repl = str(_glp_repl_dll())

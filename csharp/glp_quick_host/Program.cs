@@ -164,8 +164,9 @@ internal static class Program
             if (frame is null) { Console.Error.WriteLine("LINK_CLOSED"); life.Cancel(); return; }
             await stdout.WriteLineAsync(Encoding.UTF8.GetString(frame)).ConfigureAwait(false);
             await stdout.FlushAsync().ConfigureAwait(false);
-            // T011: a directed envelope is a goal for the bridged REPL (broadcasts are chat, not goals).
-            if (repl is not null && TryParseEnvelope(frame, out var from, out var to, out var payload) && to != Broadcast)
+            // T011: a directed envelope addressed to THIS endpoint is a goal for the bridged REPL
+            // (broadcasts are chat; third-party-directed envelopes are never fed — E2 finding host-15).
+            if (repl is not null && TryParseEnvelope(frame, out var from, out var to, out var payload) && to == selfId)
                 await FeedReplAsync(repl, selfId, from, payload,
                     bytes => SendSafeAsync(endpoint, bytes, life.Token)).ConfigureAwait(false);
         }
@@ -194,23 +195,27 @@ internal static class Program
 
         // 063 US1 T011 (contract C1): with --repl, envelopes directed to SelfId also feed the live
         // REPL child; each rendered block routes back to the goal's sender through the mesh.
+        // The mesh is constructed BEFORE the child spawns so the death callback can never observe
+        // an unassigned mesh, even for a child that exits immediately (E2 finding host-06); the
+        // self-directed hook reads the repl local through the closure and no-ops until assignment.
         Mesh mesh = null!;
         ReplChild? repl = null;
+        mesh = new Mesh(opts.SelfId, stdout, opts.ReplPath is null
+            ? null
+            : (from, payload) =>
+            {
+                var r = repl;
+                return r is null
+                    ? Task.CompletedTask
+                    : FeedReplAsync(r, opts.SelfId, from, payload,
+                        bytes => mesh.RouteAsync(bytes, fromSelf: true, srcLink: null, life.Token));
+            });
         if (opts.ReplPath is not null)
             repl = ReplChild.Spawn(opts.ReplPath,
                 (requester, page, block) => mesh.RouteAsync(
                     ComposeEnvelope(opts.SelfId, requester, Tmsg.ReplResult(page, block)), fromSelf: true, srcLink: null, life.Token),
-                exit =>
-                {
-                    // a spawn failure fires before the mesh exists; the FAULT line already surfaced
-                    if (mesh is not null)
-                        _ = mesh.RouteAsync(ComposeEnvelope(opts.SelfId, Broadcast,
-                            Tmsg.LinkStatus("repl_down", $"repl child exited ({exit})")), fromSelf: true, srcLink: null, life.Token);
-                });
-        mesh = new Mesh(opts.SelfId, stdout, repl is null
-            ? null
-            : (from, payload) => FeedReplAsync(repl, opts.SelfId, from, payload,
-                bytes => mesh.RouteAsync(bytes, fromSelf: true, srcLink: null, life.Token)));
+                exit => _ = mesh.RouteAsync(ComposeEnvelope(opts.SelfId, Broadcast,
+                    Tmsg.LinkStatus("repl_down", $"repl child exited ({exit})")), fromSelf: true, srcLink: null, life.Token));
 
         // The server's own stdio endpoint participates as `SelfId` (preserves US1: client→server).
         var selfPump = SelfStdioPumpAsync(mesh, life.Token);
@@ -467,8 +472,15 @@ internal static class Tmsg
     public static string ReplResult(string page, string rendered) =>
         $"tmsg(repl_result,\"{Esc(page)}\",\"{Esc(rendered)}\")";
 
-    public static string LinkStatus(string state, string detail) =>
-        $"tmsg(link_status,{state},\"{Esc(detail)}\")";
+    public static string LinkStatus(string state, string detail)
+    {
+        // E2 host-08: `state` sits at an unquoted atom position — constrain it to atom-safe
+        // characters so no caller can ever forge term structure through it (injection-proof
+        // by construction, not by call-site discipline).
+        var atom = new string(state.Where(c => c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_').ToArray());
+        if (atom.Length == 0) atom = "unknown";
+        return $"tmsg(link_status,{atom},\"{Esc(detail)}\")";
+    }
 
     public static bool TryParseReplGoal(string payload, out string page, out string goal)
     {
@@ -490,7 +502,10 @@ internal static class Tmsg
         i++;
         if (!TryQuoted(s, ref i, out goal)) return false;
         SkipWs(s, ref i);
-        return i < s.Length && s[i] == ')';
+        if (i >= s.Length || s[i] != ')') return false;
+        i++;
+        SkipWs(s, ref i);
+        return i == s.Length; // E2 host-09: trailing garbage after ')' is a malformed payload, refused
     }
 
     private static void SkipWs(string s, ref int i)
@@ -537,15 +552,34 @@ internal sealed class ReplChild : IAsyncDisposable
     private static readonly TimeSpan Quiet = TimeSpan.FromMilliseconds(600);
     private static readonly TimeSpan BlockCap = TimeSpan.FromSeconds(6);
 
+    /// <summary>One in-flight goal: requester, page, and its generation (E2 host-04 —
+    /// blocks are attributed to the goal CAPTURED at emit time, never re-read fields).</summary>
+    private sealed record Goal(string Requester, string Page, int Gen);
+
     private readonly System.Diagnostics.Process _proc;
     private readonly Func<string, string, string, Task> _reply;   // (requester, page, block)
     private readonly CancellationTokenSource _own = new();
-    private volatile Tuple<string, string>? _current;              // (requester, page) of the latest goal
+    private readonly object _stdinLock = new();                    // E2 host-05: child stdin is not thread-safe
+    private volatile Goal? _current;                               // the latest goal (atomically swapped)
     private volatile bool _sawGoal;                                // pre-goal output is banner, not a result
     private int _goalGen;                                          // generation of the latest goal
-    private int _answeredGen;                                      // generation last answered by a block
+    private int _answeredGen;                                      // highest generation answered (CAS-raised only)
 
     public bool Alive => !_proc.HasExited;
+
+    /// <summary>Raise <paramref name="target"/> to at least <paramref name="value"/> atomically;
+    /// returns true iff THIS call performed the raise (E2 host-02: the answered transition is a
+    /// single winner — the '(no output)' timeout never fires once a real block answered, and a
+    /// late real block after a timeout is still delivered as an explicit correction, never lost).</summary>
+    private static bool RaiseTo(ref int target, int value)
+    {
+        while (true)
+        {
+            int seen = Volatile.Read(ref target);
+            if (seen >= value) return false;
+            if (Interlocked.CompareExchange(ref target, value, seen) == seen) return true;
+        }
+    }
 
     private ReplChild(System.Diagnostics.Process proc, Func<string, string, string, Task> reply, Action<int> onDeath)
     {
@@ -604,16 +638,22 @@ internal sealed class ReplChild : IAsyncDisposable
     public void Feed(string requester, string page, string goalLine)
     {
         var gen = Interlocked.Increment(ref _goalGen);
-        _current = Tuple.Create(requester, page);
+        _current = new Goal(requester, page, gen);
         _sawGoal = true;
         try
         {
-            _proc.StandardInput.WriteLine(goalLine);
-            _proc.StandardInput.Flush();
+            lock (_stdinLock) // E2 host-05: concurrent mesh clients must not interleave goal bytes
+            {
+                _proc.StandardInput.WriteLine(goalLine);
+                _proc.StandardInput.Flush();
+            }
         }
         catch (Exception ex)
         {
+            // E2 host-01: a failed write still ANSWERS the requester — never a silent stall (C1).
             Console.Error.WriteLine($"FAULT repl_down write: {ex.Message}");
+            if (RaiseTo(ref _answeredGen, gen))
+                _ = _reply(requester, page, "[repl error: repl_down]");
             return;
         }
         _ = Task.Run(async () =>
@@ -621,11 +661,8 @@ internal sealed class ReplChild : IAsyncDisposable
             try
             {
                 await Task.Delay(BlockCap + Quiet + Quiet, _own.Token).ConfigureAwait(false);
-                if (Volatile.Read(ref _goalGen) == gen && Volatile.Read(ref _answeredGen) < gen)
-                {
-                    Volatile.Write(ref _answeredGen, gen);
+                if (Volatile.Read(ref _goalGen) == gen && RaiseTo(ref _answeredGen, gen))
                     await _reply(requester, page, "(no output)").ConfigureAwait(false);
-                }
             }
             catch (OperationCanceledException) { /* disposed */ }
         });
@@ -684,8 +721,11 @@ internal sealed class ReplChild : IAsyncDisposable
                 Console.Error.WriteLine($"REPL_BANNER {text.Replace('\n', ' ')}");
                 continue;
             }
-            Volatile.Write(ref _answeredGen, Volatile.Read(ref _goalGen));
-            await _reply(current.Item1, current.Item2, text).ConfigureAwait(false);
+            // E2 host-04: attribute the block to the goal captured HERE (requester+page+gen travel
+            // together); the answered mark raises only to THAT goal's generation, so a stale block
+            // can never suppress a newer goal's timeout reply. Real blocks are always delivered.
+            RaiseTo(ref _answeredGen, current.Gen);
+            await _reply(current.Requester, current.Page, text).ConfigureAwait(false);
         }
     }
 

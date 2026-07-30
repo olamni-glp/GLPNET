@@ -23,8 +23,8 @@ per-stack data-plane runtimes (C#/.NET reference first, then Gleam).
 | Command | Effect |
 |---|---|
 | `glp-quick cert generate --out <dir> [--days 365]` | Generate the shared self-signed cert + key; print the **SPKI SHA-256 pin** (FR-003). Distribute `glpquick.pem` + fingerprint out-of-band. |
-| `glp-quick --server --addr <ip\|name> --port <udp> --cert <dir> [--stack csharp\|gleam] [--max-clients 3] [--repl csharp\|dart]` | Start a server: bind UDP, load the shared cert, launch+supervise the stack runtime, accept ≤ max-clients isolated links, bridge a GLP REPL to each (FR-005/FR-008b). |
-| `glp-quick --client --addr <server-ip\|name> --port <udp> --cert <dir> [--stack csharp\|gleam] [--repl csharp\|dart]` | Connect a client: real QUIC/HTTP-3 handshake trusting **only** the shared cert by SPKI pin, bring up the WebSocket link, bridge a GLP REPL, exchange full-duplex (FR-001/002/008a). |
+| `glp-quick --server --addr <ip\|name> --port <udp> --cert <dir> [--stack csharp\|gleam] [--max-clients 3] [--repl csharp\|dart\|<path-to-glp_repl.dll/.exe>]` | Start a server: bind UDP, load the shared cert, launch+supervise the stack runtime, accept ≤ max-clients isolated links. A `--repl <path>` (063 US1, contract C1) makes the HOST spawn that GLP REPL as a live child and bridge its stdio over the link's `tmsg(repl_goal/repl_result)` envelopes. |
+| `glp-quick --client --addr <server-ip\|name> --port <udp> --cert <dir> [--stack csharp\|gleam] [--repl csharp\|dart\|<path-to-glp_repl.dll/.exe>]` | Connect a client: real QUIC/HTTP-3 handshake trusting **only** the shared cert by SPKI pin, bring up the WebSocket link, exchange full-duplex; `--repl <path>` bridges a live REPL child exactly as on the server (FR-001/002/008a, C1). |
 | `glp-quick demo --addr <server-ip> --port <udp> --cert <dir> [--stack csharp\|gleam] [--clients 3]` | LAN-IP conformance demo (SC-001..SC-006): 1 server + N≥3 clients, real on-wire handshake, full-duplex, ≥3-REPL mesh, concurrent isolation, single-failure resilience. Pass/fail per criterion. |
 
 For `--stack gleam`, an optional `--profile a|c` selects the deployment profile (default `c`).
@@ -49,11 +49,15 @@ out-of-band before connecting.
 
 Every failure is a clear, distinct terminal signal — never a silent hang or half-open link:
 `cert_mismatch`, `alpn_version_mismatch`, `udp_blocked`, `server_not_ready`, `link_dropped`,
-`over_capacity`.
+`over_capacity`. REPL-child death (063 US1, C1) surfaces as `FAULT repl_down` on the host's
+fault stream plus a `tmsg(link_status,repl_down,…)` notice envelope to the peers; goals sent
+to a dead child are answered with an explicit `[repl error: repl_down]` result, never stalled.
 
 ## Notes
 
-- Status: scaffolding (Phase 1/2 of `tasks.md`). Behaviour lands per the user-story phases
-  (US1 MVP onward). Until the data-plane stacks are wired, subcommands run as skeletons/mocks.
+- Status: LIVE (036 shipped; 063 US1 completed the live REPL bridge — `--repl <path>` spawns
+  a real REPL child bridged over the link, proven both directions over genuine QUIC by
+  `glp_quick/tests/test_repl_bridge.py`). The `--repl <path>` live bridge is csharp-stack-only
+  this wave; the gleam stack refuses it loudly.
 - The C# data plane is the cross-platform reference (`System.Net.Quic`/MsQuic, GA in .NET 9) and
   **must** pass the full real-QUIC LAN demo before the Gleam stack starts (FR-010).

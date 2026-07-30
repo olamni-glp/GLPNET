@@ -80,7 +80,8 @@ board-flagged before work starts.
   — distilled from docs/research/three-role-agent-teams/METHOD-AND-DOGFOOD.md + spec-051; references both, duplicates neither; every operator step named (§3)
 - [X] T027 [US3] Engagement E1: plan-review triad over this wave's plan artifacts; record in `docs/three-role-orchestration/engagements/E1-plan-review.md` (attributed claims, critic verdicts, escalations, engineer decisions)
   — run 20260730T005639Z-bf19 (bk-3rtask, codex critic cross-provider): 50 attributed claims, 32C/2R/16E, one real cross-artifact conflict (0011/0012 staleness) found + fixed in-engagement, 6 spec-improvement escalates left open for the engineer; record complete
-- [ ] T028 [US3] Engagement E2: code-review triad over the US1 completion diff; record in `docs/three-role-orchestration/engagements/E2-us1-code-review.md`
+- [X] T028 [US3] Engagement E2: code-review triad over the US1 completion diff; record in `docs/three-role-orchestration/engagements/E2-us1-code-review.md`
+  — run 20260730T012529Z-bf52 (bk-3rtask code adapter, codex critic): first method draft fully refuted by the blind red-team → honest singleton-by-design revision; 51 claims, 28C/22E/1R; **6 real US1-diff defects found AND fixed** (silent-stall on write failure, cross-goal block misattribution, timeout/block dup-reply race, unlocked child stdin, mesh-before-spawn race, link_status injection + trailing-garbage parse), cp-02/cp-07 control-plane fixes, st-08 child-death test added; glp_link.tests 156/156, glp_quick 188 passed; pre-existing findings reported to backlog not fixed
 - [ ] T029 [US3] Closure evidence: link E1/E2 + PROTOCOL.md into the roadmap item (notes update), per contract deliverable 3
 
 ## Phase 6: User Story 4 — wave close roadmap advance (P4)
