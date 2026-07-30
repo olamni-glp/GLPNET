@@ -42,6 +42,7 @@ public sealed class RequestDispatcher
     private readonly Quiescence _quiescence;
     private readonly SnapshotStore _store;
     private readonly LinkRuntime? _linkRuntime;
+    private readonly LinkRewirer? _rewirer;
     private readonly string _rootSelfSource;
     private readonly List<LoadedUnit> _units;
     private int _loadCounter;
@@ -64,13 +65,15 @@ public sealed class RequestDispatcher
         SnapshotStore store,
         LinkRuntime? linkRuntime,
         string rootSelfSource,
-        IEnumerable<LoadedUnit>? restoredUnits = null)
+        IEnumerable<LoadedUnit>? restoredUnits = null,
+        LinkRewirer? rewirer = null)
     {
         _engine = engine;
         _session = session;
         _quiescence = quiescence;
         _store = store;
         _linkRuntime = linkRuntime;
+        _rewirer = rewirer;
         _rootSelfSource = rootSelfSource;
         _units = restoredUnits?.ToList() ?? new List<LoadedUnit>();
         _loadCounter = _units.Count; // restored units keep their names; new loads continue after them
@@ -89,6 +92,12 @@ public sealed class RequestDispatcher
         {
             return ResponseFrame.Empty(request.RequestId, ResponseKind.EngineBusy);
         }
+
+        // US4/T032: adopt any link whose re-establishment rendezvous completed —
+        // this request thread is the engine host's runner thread, the one safe
+        // place for the heap-touching re-wire (cursors, egress OnBind, pump).
+        if (_session.State == EngineState.Serving)
+            _rewirer?.ApplyReady();
 
         ResponseFrame response;
         try
@@ -114,8 +123,11 @@ public sealed class RequestDispatcher
 
         // FR-014: a parked snapshot fires at the next quiescent moment. The
         // current request already has its terminal response; the deferred
-        // snapshot's outcome is observable via STATUS.
+        // snapshot's outcome is observable via STATUS. A pending link rewire
+        // defers too — a not-yet-re-established link must never silently vanish
+        // from the next snapshot's section 0x09 (US4/T032).
         if (_quiescence.SnapshotPending && _quiescence.IsQuiescent &&
+            _rewirer is not { Pending: > 0 } &&
             _session.State == EngineState.Serving)
         {
             try
@@ -210,15 +222,21 @@ public sealed class RequestDispatcher
             $"loaded_programs={_engine.LoadedPrograms.Count} " +
             $"pending_snapshot={pending} " +
             $"last_snapshot_seq={(LastSnapshotSeq?.ToString() ?? "none")}";
+        if (_rewirer is { } rw)
+        {
+            // US4 restore surface: links awaiting re-establishment + loud failures.
+            body += $" pending_link_rewires={rw.Pending} failed_link_rewires={rw.Failed.Count}";
+        }
         return ResponseFrame.Text(request.RequestId, ResponseKind.Ack, body);
     }
 
     private ResponseFrame Snapshot(RequestFrame request)
     {
-        if (!_quiescence.IsQuiescent)
+        if (!_quiescence.IsQuiescent || _rewirer is { Pending: > 0 })
         {
             // FR-014: defer, report the parked state (wire rule 5) — never an
-            // inconsistent snapshot.
+            // inconsistent snapshot. Pending link rewires defer for the same
+            // reason: capture would drop the not-yet-registered link (US4/T032).
             _quiescence.ParkSnapshotRequest();
             return ResponseFrame.Empty(request.RequestId, ResponseKind.Deferred);
         }
@@ -242,7 +260,13 @@ public sealed class RequestDispatcher
     {
         // FR-014: graceful shutdown triggers an automatic final snapshot.
         string finalNote;
-        if (_quiescence.IsQuiescent)
+        if (_rewirer is { Pending: > 0 } rw)
+        {
+            // Never a snapshot that silently drops a not-yet-re-established link
+            // (US4/T032) — skip loudly, exactly like the non-quiescent case.
+            finalNote = $"final_snapshot=skipped({rw.Pending} link rewire(s) still pending)";
+        }
+        else if (_quiescence.IsQuiescent)
         {
             try
             {

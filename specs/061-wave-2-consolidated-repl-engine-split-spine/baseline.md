@@ -58,3 +58,17 @@ read-only member: `public IReadOnlyDictionary<LinkId, LinkHandle> Handles`
 (csharp/glp_link/primitives/LinkRegistry.cs). No existing member changed;
 registration stays with `GetOrEstablish`; the plan sentence anticipated new
 FILES, not a one-line getter the DEF-D1 scope makes necessary.
+
+## LinkHandle role deviation recorded (US4/T031): + `Role` property + 3 stamp lines
+
+contracts/snapshot-store.md mandates section 0x09 carry "LinkId, **role**,
+endpoint params, cursor positions" — restore cannot know whether
+re-establishment listens or connects without it. No shipped type recorded the
+role: `LinkHandle` had no field, and the endpoint classes are role-agnostic
+(`TcpEndpoint` is one class for both ends). Added one additive nullable
+property `LinkHandle.Role` plus a post-success stamp line in each of the three
+establish kernels (`LinkSetupKernel` = parsed role; `LinkRequestKernel` =
+Connector; `LinkAcceptKernel` = Listener). `LinkEstablish.WireEstablishedLink`
+itself is untouched (its unbound guards stay, research.md D9). Capture
+loud-fails on a null role rather than persisting an un-re-establishable link.
+Same class of additive-capture-seam change as the `Handles` getter above.

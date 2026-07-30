@@ -37,6 +37,17 @@ public sealed class LinkHandle
     /// </summary>
     public IPayloadCodec Codec { get; }
 
+    /// <summary>
+    /// The establishment role this end played (feature 061 US4, additive): stamped by
+    /// the establish kernels (path A: the parsed role; path B: request ⇒ connector,
+    /// accept ⇒ listener) and by <see cref="RewireHandle.Adopt"/>. Snapshot section
+    /// 0x09 persists it so restore knows whether re-establishment listens or connects
+    /// (contracts/snapshot-store.md: "LinkId, role, endpoint params, cursor positions").
+    /// Null only on a handle established before any stamp site ran — capture loud-fails
+    /// on that rather than persisting an un-re-establishable link.
+    /// </summary>
+    public LinkRole? Role { get; set; }
+
     // --- heap stream cursors, set by '_link_setup' during establishment ---
 
     /// <summary>The writer the host extends as inbound frames arrive (the program reads <c>In</c>).</summary>

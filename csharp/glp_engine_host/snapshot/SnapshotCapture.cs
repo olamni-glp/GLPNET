@@ -476,6 +476,18 @@ public static class SnapshotCapture
         w.WriteVarUInt(handles.Count);
         foreach (var (id, handle) in handles)
         {
+            // Role first: restore cannot re-establish (listen vs connect) without it
+            // (contracts/snapshot-store.md 0x09: "LinkId, role, endpoint params, cursor
+            // positions"). A handle without a stamped role is un-re-establishable —
+            // loud-fail rather than persist a snapshot that cannot restore (FR-014).
+            w.WriteByte(handle.Role switch
+            {
+                GlpRuntime.Link.Seam.LinkRole.Listener => (byte)0,
+                GlpRuntime.Link.Seam.LinkRole.Connector => (byte)1,
+                null => throw new SnapshotException(
+                    $"link {id} has no recorded establishment role — cannot persist a re-establishable definition"),
+                _ => throw new SnapshotException($"link {id} has unknown role {handle.Role}"),
+            });
             w.WriteString(id.Scheme.Name);
             w.WriteString(id.Endpoint.Host);
             WriteNullableAddr(w, id.Endpoint.Port);

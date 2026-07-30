@@ -24,6 +24,7 @@
 
 using GlpRuntime.Bytecode;
 using GlpRuntime.Engine;
+using GlpRuntime.Link.Seam;
 using GlpRuntime.ResultCodec;
 using GlpRuntime.Runtime;
 
@@ -34,8 +35,28 @@ using RtVarRef = GlpRuntime.Runtime.VarRef;
 
 namespace GlpRuntime.EngineHost.Snapshot;
 
-/// <summary>A restored engine + the reloaded unit list (the host re-records it for future snapshots).</summary>
-public sealed record RestoredEngine(GlpEngine Engine, IReadOnlyList<LoadedUnit> Units);
+/// <summary>
+/// One durable link definition decoded from snapshot section 0x09 (US4/T032):
+/// everything the re-wire path needs to re-establish the transport per the
+/// recorded role and adopt the restored cursors (contracts/snapshot-store.md).
+/// </summary>
+public sealed record RestoredLinkDefinition(
+    LinkId Id,
+    LinkRole Role,
+    int? InWriterAddr,
+    int? OutReaderAddr,
+    int? FaultsWriterAddr,
+    IReadOnlyList<int> MonitorCursors);
+
+/// <summary>
+/// A restored engine + the reloaded unit list (the host re-records it for future
+/// snapshots) + the link definitions awaiting re-establishment (US4: the caller
+/// hands them to the rewirer AFTER the link layer is installed — T032 order).
+/// </summary>
+public sealed record RestoredEngine(
+    GlpEngine Engine,
+    IReadOnlyList<LoadedUnit> Units,
+    IReadOnlyList<RestoredLinkDefinition> Links);
 
 public static class SnapshotRestore
 {
@@ -238,13 +259,46 @@ public static class SnapshotRestore
         for (int i = 0; i < queueCount; i++)
             rt.Gq.Enqueue(new GoalRef(queue.ReadVarUInt(), queue.ReadVarUInt()));
 
-        // ---- 0x09: link definitions — US4's re-wire path (T031/T032) ----
+        // ---- 0x09: link definitions — decoded for the re-wire path (T031/T032).
+        // Re-establishment itself runs AFTER the link layer is installed on the
+        // restored engine (Program.cs order: restore → LinkKernels.Install →
+        // LinkRewirer), so this section only decodes the durable definitions.
         var links = new ByteReader(blob.Section(SnapshotSection.LinkDefinitions));
         int linkCount = links.ReadVarUInt();
-        if (linkCount > 0)
-            throw new SnapshotException(
-                $"snapshot carries {linkCount} link definition(s); link re-establishment " +
-                "arrives with US4 (T031 RewireHandle + T032) — refusing a partial restore");
+        var linkDefs = new List<RestoredLinkDefinition>(linkCount);
+        for (int i = 0; i < linkCount; i++)
+        {
+            byte roleByte = links.ReadByte();
+            var role = roleByte switch
+            {
+                0 => LinkRole.Listener,
+                1 => LinkRole.Connector,
+                _ => throw new SnapshotException(
+                    $"corrupt snapshot: unknown link role 0x{roleByte:X2} in section 0x09"),
+            };
+            var scheme = LinkScheme.Of(links.ReadString());
+            string host = links.ReadString();
+            int? port = ReadNullableAddr(links);
+            var nonce = links.ReadByte() switch
+            {
+                0 => LinkNonce.Int(links.ReadInt64LE()),
+                1 => LinkNonce.Str(links.ReadString()),
+                var b => throw new SnapshotException(
+                    $"corrupt snapshot: unknown link nonce kind 0x{b:X2} in section 0x09"),
+            };
+            int? inWriter = ReadNullableAddr(links);
+            int? outReader = ReadNullableAddr(links);
+            int? faultsWriter = ReadNullableAddr(links);
+            int cursorCount = links.ReadVarUInt();
+            var cursors = new List<int>(cursorCount);
+            for (int j = 0; j < cursorCount; j++)
+                cursors.Add(links.ReadVarUInt());
+            linkDefs.Add(new RestoredLinkDefinition(
+                new LinkId(scheme, new LinkAddress(host, port), nonce),
+                role, inWriter, outReader, faultsWriter, cursors));
+        }
+        if (!links.AtEnd)
+            throw new SnapshotException("corrupt snapshot: trailing bytes in the link-definitions section");
 
         // ---- 0x06: timers, LAST (a zero-remaining timer fires immediately) ----
         var timers = new ByteReader(blob.Section(SnapshotSection.Timers));
@@ -264,10 +318,19 @@ public static class SnapshotRestore
             BytecodeRunner.StartGlpTimer((int)Math.Min(remaining, int.MaxValue), rt, writerAddr);
         }
 
-        return new RestoredEngine(engine, units);
+        return new RestoredEngine(engine, units, linkDefs);
     }
 
     // ---------------------------------------------------------------- decode helpers
+
+    private static int? ReadNullableAddr(ByteReader r) =>
+        r.ReadByte() switch
+        {
+            0 => null,
+            1 => r.ReadVarUInt(),
+            var b => throw new SnapshotException(
+                $"corrupt snapshot: invalid nullable-address flag 0x{b:X2} in section 0x09"),
+        };
 
     private static SuspensionListNode? DecodeChain(ByteReader r, List<SuspensionRecord> records)
     {

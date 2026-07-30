@@ -100,6 +100,7 @@ public static class Program
         // ---- engine: fresh, or restored from a snapshot (FR-030) ----
         GlpEngine engine;
         IReadOnlyList<LoadedUnit> restoredUnits = Array.Empty<LoadedUnit>();
+        IReadOnlyList<RestoredLinkDefinition> restoredLinks = Array.Empty<RestoredLinkDefinition>();
         if (fromSnapshot is not null)
         {
             session.TransitionTo(EngineState.Restoring);
@@ -136,9 +137,11 @@ public static class Program
                 var restored = SnapshotRestore.Restore(blob, rootSelfGlpPath);
                 engine = restored.Engine;
                 restoredUnits = restored.Units;
+                restoredLinks = restored.Links;
                 Console.WriteLine(
                     $"glp_engine_host: restored snapshot seq={blob.Seq} " +
-                    $"({restoredUnits.Count} unit(s), heap={engine.Runtime.Heap.Hp} cells)");
+                    $"({restoredUnits.Count} unit(s), heap={engine.Runtime.Heap.Hp} cells, " +
+                    $"{restoredLinks.Count} link definition(s))");
             }
             catch (SnapshotException ex)
             {
@@ -162,9 +165,29 @@ public static class Program
         link.Transports.Register(new TcpTransport());
         link.Transports.Register(new LoopbackTransport());
 
+        // Host policy: with a live link, the engine's pump loop camps on
+        // TryApplyNext for InboundPumpWait per idle break (default 30 s — a REPL
+        // camping for frames is fine; a request/response server is not). Keep
+        // link-goal requests prompt; frames arriving between requests are applied
+        // by the next request's drain (US4/T034 relies on this cadence).
+        engine.InboundPumpWait = TimeSpan.FromMilliseconds(100);
+
+        // US4/T032 restore-order gating: with the link layer installed, re-establish
+        // every restored link definition per its recorded role in the background
+        // (peer-unreachable ⇒ local work proceeds); adoption lands on the request
+        // thread via RequestDispatcher → LinkRewirer.ApplyReady.
+        LinkRewirer? rewirer = null;
+        if (restoredLinks.Count > 0)
+        {
+            rewirer = new LinkRewirer(engine.Runtime, link);
+            rewirer.Begin(restoredLinks);
+            Console.WriteLine(
+                $"glp_engine_host: re-establishing {restoredLinks.Count} link(s) from snapshot definitions");
+        }
+
         var quiescence = new Quiescence(engine);
         var dispatcher = new RequestDispatcher(
-            engine, session, quiescence, store, link, rootSelfSource, restoredUnits);
+            engine, session, quiescence, store, link, rootSelfSource, restoredUnits, rewirer);
         var server = new EngineServer(listen, dispatcher);
 
         Console.WriteLine($"glp_engine_host: prelude {rootSelfGlpPath}");
