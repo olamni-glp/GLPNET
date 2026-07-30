@@ -19,7 +19,7 @@ delivered-as-study / explicitly deferred), with **no item silently dropped**.
 | SC-003 | Multi-accept ≥2 clients, zero dropped | **delivered** | T019; `MultiAcceptTests` (2+5 clients, distinct links, PendingCount 0); glp_link 161/161 |
 | SC-004 | Compiled-IL-on-the-wire remote == local | **delivered** | T016–T018 + T021; execute-on-B == local (succeed/fail/suspend), incl. over real ZMQ; il_codec 64/64 |
 | SC-005 | GLP multi-client control program + regression case | **delivered** | T023–T025; REPL Section A31; `control_demo` → succeeds |
-| SC-006 | No baseline regression | **delivered** | REPL 546/546, engine `dart test` 11/11, il_codec 64/64, glp_link 161/161, wire_registry 6/6, engine sln 0 errors. **Gleam re-baseline pending at T037** (gated on the (b) capability). |
+| SC-006 | No baseline regression | **delivered** | REPL 546/546, engine `dart test` 11/11, il_codec 64/64, glp_link 161/161, wire_registry 6/6, engine sln 0 errors, **Gleam 514/514** (508 base + 6 (b) tests). |
 | SC-007 | §1.14 proposals + zero unapproved lang/runtime change | **delivered** | T026/T027 proposals; operator approvals recorded; NO Dart structural change (parity-verify + pins only) |
 | SC-008 | Every item terminal, nothing dropped | **this ledger** | see below |
 
@@ -32,12 +32,15 @@ delivered-as-study / explicitly deferred), with **no item silently dropped**.
   deferred study). **Delivered** as `ZmqTransport` (NetMQ PAIR base) + envelope-over-ZMQ
   execute-on-B (T020–T022).
 - **Decision (b) — Gleam REPL conjunction-query gap:** an orthogonal Gleam-MVP frontend
-  limitation surfaced during US5 T030 (the Gleam REPL parser rejects `a, b.`
-  conjunction goals; Dart already accepts them). Operator ruled "build it as a full MVP
-  capability via `/bk-3rtask`." **In progress — tracked, not dropped:** a `/bk-3rtask`
-  team is implementing it in `glp_gleam/` in parallel; it ships in **this same increment**
-  (T037 ship is gated on its completion + a green Gleam re-baseline). This is the item's
-  recorded terminal path; it is NOT silently dropped.
+  limitation surfaced during US5 T030 (the Gleam REPL parser rejected `a, b.` conjunction
+  goals; Dart already accepts them). Operator ruled "build it as a full MVP capability via
+  `/bk-3rtask`." **DELIVERED** (commit `e17a9185`): built in `glp_gleam/` only (engine.gleam
+  + goal_boot.gleam + `conjunction_query_test.gleam`, reusing Dart's synthetic-wrapper +
+  shared-heap conjunction lowering); **Gleam re-baseline 508 → 514/514** (+6 tests, zero
+  regression — one transient TCP link-test timeout was the memory-documented spawned-process
+  flake, green on re-run). `build_person(P), get_age(P?, A)` → `A = thirty, → succeeds`,
+  matching Dart. No §1.14 engagement (REPL-frontend plumbing). Verified by re-running
+  `gleam test` in this session (not relayed). Terminal: **delivered**.
 
 ## Phase 8 remaining
 
