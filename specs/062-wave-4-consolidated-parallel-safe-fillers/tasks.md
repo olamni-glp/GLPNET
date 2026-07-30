@@ -82,7 +82,7 @@ remove, `_ClauseVar`/`_TentativeStruct`/fallbacks (IV-b). Depends on T005.
 
 ## Phase 8: Polish & cross-cutting
 
-- [ ] T034 [P] Advance each delivered roadmap sub-item to its terminal state; confirm no item silently dropped (SC-008)
+- [X] T034 [P] Advance each delivered roadmap sub-item to its terminal state; confirm no item silently dropped (SC-008) — `TERMINAL-STATE.md` ledger: all 8 SCs mapped to delivered evidence; US1–US5 + decision (a) ZMQ **delivered**; US2 **delivered-as-study**; decision (b) Gleam conjunction-query gap **in progress/tracked** (ships this increment, T037-gated) — nothing silently dropped. SC-006 Gleam re-baseline deferred to T037.
 - [ ] T035 [P] `/bk-codify` any coordination/pipeline wins + improvements per the directive's GEPA/DSPy meta-task
 - [ ] T036 Post stage-seam UPDATEs to the fleet lead at each phase completion (specify..close) with receipts (directive #4)
 - [ ] T037 Final full-suite green sweep across all touched runtimes; then hand to `/bk-analyze` → `/bk-implement`
