@@ -1,0 +1,9 @@
+# Tool versions — full wire-protocol SPIN model (feature 061, T015 / FR-040)
+#
+# Real-tool versions (recorded 2026-07-29 on host ariellas):
+spin: 6.5.1 (20 December 2019)   # prebuilt linux64 from nimble-code/Spin Bin/spin651_linux64.gz
+gcc: 15.2.0 (Ubuntu 15.2.0-16ubuntu1)
+install-path: WSL2 Ubuntu, ~/.local/bin/spin (sudo-free prebuilt; same binary pin as the 027 spike)
+host: WSL2, Ubuntu (default distro), Windows 11 Pro 10.0.26100
+# End-to-end chain verified 2026-07-29: spin -a -> gcc -O2 pan.c -> ./pan -a -f -N <claim> and
+# ./pan (safety variant) all ran clean (errors: 0 on all three runs).

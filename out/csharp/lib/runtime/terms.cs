@@ -111,6 +111,18 @@ public sealed class MutualRefTerm : Term, IEquatable<MutualRefTerm>
         Id = _nextId++;
     }
 
+    /// <summary>
+    /// 061 additive snapshot seam (IV-b): restore-time constructor preserving a
+    /// snapshotted Id. Bumps the shared counter past the restored Id so freshly
+    /// allocated MutualRefs never collide with restored ones (Id backs equality).
+    /// </summary>
+    public MutualRefTerm(int currentWriterAddr, int restoredId)
+    {
+        _currentWriterAddr = currentWriterAddr;
+        Id = restoredId;
+        if (_nextId <= restoredId) _nextId = restoredId + 1;
+    }
+
     /// <summary>Get/set the current writer address.</summary>
     public int CurrentWriterAddr
     {

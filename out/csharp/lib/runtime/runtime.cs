@@ -82,18 +82,69 @@ public class GlpRuntimeEngine
     private int _pendingTimers = 0;
 
     /// <summary>Number of pending timers in wait() guards.</summary>
-    public int PendingTimers => _pendingTimers;
+    public int PendingTimers => Volatile.Read(ref _pendingTimers);
 
-    /// <summary>Increment the pending-timers counter.</summary>
-    public void IncrementPendingTimers() => _pendingTimers++;
+    /// <summary>Increment the pending-timers counter. Atomic: timer callbacks
+    /// decrement from thread-pool threads while the runner increments/reads —
+    /// a torn ++/-- could lose a count and wedge the 061 quiescence gate
+    /// (Quiescence.DisarmTimersForCapture's PendingTimers consistency check).</summary>
+    public void IncrementPendingTimers() => Interlocked.Increment(ref _pendingTimers);
 
-    /// <summary>Decrement the pending-timers counter.</summary>
-    public void DecrementPendingTimers() => _pendingTimers--;
+    /// <summary>Decrement the pending-timers counter (atomic — see increment).</summary>
+    public void DecrementPendingTimers() => Interlocked.Decrement(ref _pendingTimers);
 
     // ── Wait state tracking for wait() guards ────────────────────────────────
 
     /// <summary>Maps goalId to the reader ID that the timer will signal.</summary>
     private readonly Dictionary<int, int> _waitReaders = new();
+
+    // ── 061 additive snapshot seam (IV-b) ────────────────────────────────────
+    //
+    // Read-only views + restore setters over the private per-goal tables, plus a
+    // deadline registry for wait()/wait_until() timers so a snapshot can capture
+    // remaining durations (FR-015) and disarm/re-arm timers around capture.
+    // Additive only: no existing member is changed or removed.
+
+    /// <summary>061: read-only view of the goalId→readerId wait table (FR-015 capture).</summary>
+    public IReadOnlyDictionary<int, int> WaitReadersView => _waitReaders;
+
+    /// <summary>061: read-only view of the per-goal CallEnv table (FR-010 capture).</summary>
+    public IReadOnlyDictionary<int, CallEnv> GoalEnvsView => _goalEnvs;
+
+    /// <summary>061: read-only view of the per-goal program-key table (FR-010 capture).</summary>
+    public IReadOnlyDictionary<int, object?> GoalProgramsView => _goalPrograms;
+
+    /// <summary>061: read-only view of the per-goal module-context table (FR-010 capture).</summary>
+    public IReadOnlyDictionary<int, object?> GoalModuleContextsView => _goalModuleContexts;
+
+    /// <summary>061: read-only view of the per-goal tail-recursion budgets (FR-010 capture).</summary>
+    public IReadOnlyDictionary<int, int> BudgetsView => _budgets;
+
+    /// <summary>061: restore a goal's tail-recursion budget (SnapshotRestore only).</summary>
+    public void SetBudget(int g, int b) => _budgets[g] = b;
+
+    /// <summary>
+    /// 061: one armed wait()/wait_until() timer — the System.Threading.Timer plus the
+    /// absolute deadline it was armed for, so capture can compute the remaining
+    /// duration (FR-015) and disarm the timer for a consistent snapshot.
+    /// </summary>
+    public sealed class PendingGlpTimer
+    {
+        public System.Threading.Timer Timer { get; }
+        public long DeadlineUnixMs { get; }
+        public PendingGlpTimer(System.Threading.Timer timer, long deadlineUnixMs)
+        {
+            Timer = timer;
+            DeadlineUnixMs = deadlineUnixMs;
+        }
+    }
+
+    /// <summary>
+    /// 061: armed-timer registry keyed by the writer address the timer will bind.
+    /// Guard every access with <c>lock (PendingGlpTimers)</c> — timer callbacks
+    /// remove their entry from a thread-pool thread.
+    /// </summary>
+    public Dictionary<int, PendingGlpTimer> PendingGlpTimers { get; } = new();
 
     // ── Suspension tracking (spec section 8.4) ───────────────────────────────
 

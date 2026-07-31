@@ -5654,6 +5654,10 @@ public sealed class BytecodeRunner
         System.Threading.Timer? timer = null;
         timer = new System.Threading.Timer(_ =>
         {
+            // 061 additive snapshot seam (IV-b): deregister BEFORE binding so a
+            // concurrent capture never sees a fired timer as still armed.
+            lock (rt.PendingGlpTimers)
+                rt.PendingGlpTimers.Remove(writerAddr);
             // Bind writer to 0 (any value works)
             var reactivated = rt.Heap.BindWriterConst(writerAddr, 0);
             // Enqueue reactivated goals and clean up suspended map
@@ -5664,8 +5668,23 @@ public sealed class BytecodeRunner
             // Decrement pending timer count
             rt.DecrementPendingTimers();
             timer?.Dispose();
-        }, null, ms < 0 ? 0 : ms, System.Threading.Timeout.Infinite);
+        }, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        // 061 additive snapshot seam (IV-b): record the deadline (FR-015 remaining-time
+        // capture), then arm. Register-before-arm so the registry never misses a
+        // firing timer; the callback tolerates its own already-removed entry.
+        long deadline = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (ms < 0 ? 0 : ms);
+        lock (rt.PendingGlpTimers)
+            rt.PendingGlpTimers[writerAddr] = new GlpRuntimeEngine.PendingGlpTimer(timer, deadline);
+        timer.Change(ms < 0 ? 0 : ms, System.Threading.Timeout.Infinite);
     }
+
+    /// <summary>
+    /// 061 additive snapshot seam (IV-b): re-arm a restored wait()/wait_until() timer
+    /// with its snapshotted remaining duration (FR-015). Delegates to the same
+    /// private timer path the wait guards use — one timer implementation, not two.
+    /// </summary>
+    public static void StartGlpTimer(int ms, GlpRuntimeEngine rt, int writerAddr) =>
+        _startGlpTimer(ms, rt, writerAddr);
 
     /// <summary>Check structural equality of two ground terms (with cycle detection).</summary>
     private static bool _termsEqual(object? a, object? b, RunnerContext cx, HashSet<(int, int)>? visited = null)

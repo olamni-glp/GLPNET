@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [v2026.07.31.1] - 2026-07-31
+
+### Changed
+- Merge pull request #118 from olamni-glp/061-wave-2-consolidated-repl-engine-split-spine
+- refine(codexreview): cycle 3/3 [diff/general]
+- refine(codexreview): cycle 2/4 [diff/general]
+- impl(061): T041 partial - quickstart verified end-to-end with real binaries, load-path form corrected; roadmap advance stays blocked on GitFlow ship
+- impl(061): polish T036-T039 - R8 metric tables (R14 rows), machine-check scan 0 violations, full-suite diff zero regression, DEFERRALS A3/D1/D2/E1/E2/F2 done(061), F1 delivery annotated
+- impl(061): US4 restore-resume - RewireHandle adopt path, 0x09 role, LinkRewirer restore-order gating, FR-033 kill-and-restart deterministic, TLA+ TLC PASS, 62/62 + REPL 532/532
+- impl(061): US3 supervision - BackgroundService supervisor, crash log, DEF-F2 taxonomy, DEF-F1 memo, 55/55; UPPAAL model authored (verdict license-blocked)
+- impl(061): US2 snapshot + persistence - quiescence-gated capture/restore, two-backend store, 52/52 + REPL 532/532
+- impl(061): T040 Anchor-A MVP-gate review - PASS, DEF-A3 discharged
+- impl(061): US1 split MVP - engine host, thin client, parity corpus, SPIN full-protocol PASS
+- impl(061): Phase 1+2 - four project skeletons, wire protocol, codec + tests, suite baseline
+- analyze(061): apply top remediations - shared protocol lib, SC-004 probe test, mid-restore test
+- tasks(061): 41-task dependency-ordered breakdown for wave-2
+- plan(061): wave-2 engine split spine implementation plan
+- spec(061): clarify session - 4 answers integrated, markers resolved
+- spec(061): wave-2 REPL engine split spine specification
+- fleet sync 0-delta import + QUIC-link twin dedupe merge - export 18/94/2493 published; retro report 050
+- Merge pull request #117 from olamni-glp/main
+
 ## [v2026.07.29.1] - 2026-07-29
 
 ### Added
