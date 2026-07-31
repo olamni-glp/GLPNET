@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+# WAL, message files, and the DuckLake aging tier live under the data dir
+# (plan.md storage contract) — working data, never committed
+.data/
