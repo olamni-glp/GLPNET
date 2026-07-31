@@ -22,4 +22,9 @@
     <ProjectReference Include="..\glp_link\GlpLink.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 063 US1 T009: the mesh_dup_id regression scenario drives the internal Mesh router directly. -->
+    <InternalsVisibleTo Include="glp_link.tests" />
+  </ItemGroup>
+
 </Project>

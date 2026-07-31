@@ -108,12 +108,18 @@ class GleamStackAdapter(StackAdapter):
         # honesty is enforced at spawn time — profile_c_not_built unless the quicer build exists.
         return {"real_quic": True, "quic_termination": "in_process"}
 
-    def start_server(self, bind: str, port: int, cert: Path, max_clients: int, repl: ReplKind) -> Handle:
+    def start_server(self, bind: str, port: int, cert: Path, max_clients: int, repl: ReplKind,
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
+        if repl_path is not None:  # loud refusal, never a silent drop (063 US1 is csharp-stack scoped)
+            raise NotImplementedError("--repl <path> live bridge is csharp-stack-only this wave (063 US1)")
         host_args = ["--role", "server", "--addr", bind, "--port", str(port),
                      "--cert", str(cert), "--max-clients", str(max_clients)]
         return self._spawn(host_args, await_token="READY", peer_ids=[f"server@{bind}:{port}"])
 
-    def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind) -> Handle:
+    def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind,
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
+        if repl_path is not None:
+            raise NotImplementedError("--repl <path> live bridge is csharp-stack-only this wave (063 US1)")
         host_args = ["--role", "client", "--addr", server_addr, "--port", str(port), "--cert", str(cert)]
         return self._spawn(host_args, await_token="LINK_UP", peer_ids=[f"server@{server_addr}:{port}"])
 
