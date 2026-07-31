@@ -97,7 +97,7 @@ buildkit-file-id: 04cf9466-9a14-4ffc-b1b4-967065e4eb0f
 - [X] T038 Re-run full suites (`bash test/run_all_tests.sh` + all `dotnet test`) and diff against T005 baseline — zero regression (SC-005, Constitution VII)
 - [X] T039 Update `docs/research/repl-engine-separation/reconciliation/DEFERRALS.md` statuses: DEF-A3 → done(→061), DEF-D1/D2 → done(→061), DEF-E1/E2 → done(→061), DEF-F2 → done(→061); DEF-F1 stays open (proposal delivered, approval pending)
 - [X] T040 Run the Anchor-A MVP-gate review (re-read Deferral Register Anchor A + full rescan) after US1 ships; record outcomes in `specs/061-wave-2-consolidated-repl-engine-split-spine/mvp-gate-review.md` (FR-043)
-- [ ] T041 At wave close: advance the four consolidated roadmap features (`repl-engine-process-split-mvp`, `engine-state-snapshot-and-persistence-api`, `liveness-crash-restart-host`, `restore-and-resume-with-link-reestablish`) shipped→closed with evidence refs (FR-043); quickstart.md verified end-to-end
+- [X] T041 At wave close: advance the four consolidated roadmap features (`repl-engine-process-split-mvp`, `engine-state-snapshot-and-persistence-api`, `liveness-crash-restart-host`, `restore-and-resume-with-link-reestablish`) shipped→closed with evidence refs (FR-043); quickstart.md verified end-to-end
 
 ## Dependencies
 
