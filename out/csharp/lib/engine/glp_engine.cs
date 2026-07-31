@@ -192,6 +192,61 @@ public sealed class GlpEngine
     /// <summary>Compiled serve/2 bytecode for activateModule().</summary>
     public BytecodeProgram ServeBytecode => _serveBytecode;
 
+    // ── 061 additive snapshot seam (IV-b) ────────────────────────────────────
+
+    /// <summary>
+    /// 061: the engine's next REPL goal id (`_goalId`), exposed for snapshot capture
+    /// and restore (contract section 0x04 — collision-free resumption, DEF-D1).
+    /// </summary>
+    public int NextReplGoalId
+    {
+        get => _goalId;
+        set => _goalId = value;
+    }
+
+    /// <summary>
+    /// 061: when true, <see cref="LoadSource"/> skips the auto-activation of modules
+    /// with exports. Restore-time only: activation side effects (channel allocation,
+    /// serve-goal spawn, ModuleTerm heap store) are already present verbatim in the
+    /// snapshot; re-running them would corrupt the restored heap. Default false —
+    /// normal behaviour unchanged.
+    /// </summary>
+    public bool SuppressActivation { get; set; } = false;
+
+    /// <summary>061: read-only view of loaded modules (snapshot capture/restore).</summary>
+    public IReadOnlyDictionary<string, ModuleInfo> LoadedModulesView => _loadedModules;
+
+    /// <summary>
+    /// 061: rebuild the merged per-module bytecode exactly as activation builds it
+    /// (module program merged with root self.glp), so restore can reconstruct
+    /// ModuleTerm/runner/goal-program identity for a snapshotted module.
+    /// </summary>
+    public BytecodeProgram BuildMergedModuleBytecode(string moduleName)
+    {
+        if (!_loadedModules.TryGetValue(moduleName, out var moduleInfo))
+            throw new InvalidOperationException(
+                $"snapshot restore: module \"{moduleName}\" is not loaded");
+        _loadedPrograms.TryGetValue("__root_self__", out var rootSelf);
+        return rootSelf != null ? moduleInfo.Program.Merge(rootSelf) : moduleInfo.Program;
+    }
+
+    /// <summary>
+    /// 061: rebuild a goal's ReplModuleContext deterministically from the loaded
+    /// module (restore of the per-goal module-context table). Loud-fail on an
+    /// unknown module — never a silently absent context.
+    /// </summary>
+    public object BuildModuleContextForRestore(string moduleName)
+    {
+        if (!_loadedModules.TryGetValue(moduleName, out var moduleInfo))
+            throw new InvalidOperationException(
+                $"snapshot restore: module \"{moduleName}\" is not loaded");
+        var ctx = _BuildModuleContext(moduleInfo, CombinedProgram);
+        if (ctx == null)
+            throw new InvalidOperationException(
+                $"snapshot restore: module context for \"{moduleName}\" could not be rebuilt");
+        return ctx;
+    }
+
     // ── Constructor ───────────────────────────────────────────────────────────
 
     /// <summary>
@@ -304,7 +359,10 @@ public sealed class GlpEngine
 
         // Auto-activate modules with exports for dynamic dispatch.
         // Merge with root self.glp so dispatched procedures can find :=/2 etc.
-        if (moduleInfo.HasExports)
+        // 061 additive snapshot seam (IV-b): SuppressActivation gates this at
+        // restore time only — the activation side effects are already in the
+        // snapshotted heap. Default false, so normal loads are unchanged.
+        if (moduleInfo.HasExports && !SuppressActivation)
         {
             _loadedPrograms.TryGetValue("__root_self__", out var rootSelf);
             var moduleBytecode = rootSelf != null ? program.Merge(rootSelf) : program;
