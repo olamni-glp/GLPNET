@@ -1,0 +1,11 @@
+UPPAAL 5.0.0 (rev. 714BA9DB36F49691), June 2023 — linux64
+  installed: WSL2 Ubuntu 26.04 LTS, ~/tools/uppaal-5.0.0-linux64/
+  source: https://download.uppaal.org/uppaal-5.0/uppaal-5.0.0/uppaal-5.0.0-linux64.zip
+  verifyta --version verified 2026-07-30
+
+LICENSE STATUS (2026-07-30): verifyta 5.x refuses to verify without a license
+key ("License does not cover verifier" / "license key is not set"). Academic
+keys are free but issuance requires registration — an engineer action the
+implementation session does not take unilaterally. 5.0.0-beta5 probed too:
+same gate. No 4.1.x (pre-license) build is published on uppaal.org/downloads
+any more (404 on all known 4.1 URL shapes).

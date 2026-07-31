@@ -55,7 +55,12 @@ public static class LinkAcceptKernel
         if (!link.Pending.Remove(id, out var endpoint))
             return LinkEstablish.Abort(Who, $"no pending request for {id} — request_listener must surface it first");
 
-        return LinkEstablish.WireEstablishedLink(
+        var result = LinkEstablish.WireEstablishedLink(
             rt, link, id, () => endpoint, args[2], args[3], args[4], Who, preGated: true);
+        // 061 US4: the accepter is the LISTENER half of the handshake — recorded for
+        // snapshot section 0x09 re-establishment (contracts/snapshot-store.md).
+        if (result == BodyKernelResult.Success && link.Links.TryGet(id, out var handle))
+            handle.Role = LinkRole.Listener;
+        return result;
     }
 }
