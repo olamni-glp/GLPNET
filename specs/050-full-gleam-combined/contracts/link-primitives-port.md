@@ -231,17 +231,27 @@ behavior, now normative for the Gleam port:
    (`tcp.gleam` `connect_retry`, 100 ms backoff over the connect budget) — recorded here so the
    obligation is normative, not incidental.
 
-   *Implementation note (barrier, 2026-08-02):* the truncation mechanism was the peer's half-close
-   (`LinkPeerClosed`) marking the link fully `closed` — which both gated off `drain_egress` for our
-   still-bound `Out` chain AND let `drive` return with the pump still blocked in `recv`, so the VM
-   halt closed the socket abortively (RST) and dropped the shipped-but-unacked tail. Fix: a
-   `Cursors.in_ended` half-close flag (symmetric to `out_closed`); the link is terminal only when
-   BOTH directions end (or `_link_close`/permanent fault); `should_wait` gains
-   `has_unfinished_close` (established ∧ out_closed ∧ ¬closed) so the run stays live — bounded by
-   `wait_timeout_ms` — until the close handshake completes and the pump exits normally (orderly
-   socket close). The `EgressWouldBlock` arm of the barrier is vacuous in base scope: the send
-   window releases synchronously on transport acceptance, so a parked chain cannot persist across
-   passes (re-check if T052 reliability makes release asynchronous).
+   *Implementation note (2026-08-02) — THREE stacked half-close defects, found in order:*
+   (a) `LinkPeerClosed` marked the link fully `closed`, gating `drain_egress` off our still-bound
+   `Out` chain and letting `drive` return early. Fix: a `Cursors.in_ended` half-close flag
+   (symmetric to `out_closed`); terminal only when BOTH directions end (or `_link_close`/permanent
+   fault); `should_wait` gains `has_unfinished_close` (established ∧ out_closed ∧ ¬closed), bounded
+   by `wait_timeout_ms`.
+   (b) `pump_loop` returned on the peer's FIN — but the pump is the socket's CONTROLLING process
+   (its exit closes the socket), so an early peer FIN killed the socket under the undrained egress.
+   Fix: a `release` exit-gate Subject carried in `LinkEstablished`; the pump lingers after
+   `LinkPeerClosed` until the engine loop confirms the link terminal, then exits (orderly close).
+   (c) **The decisive one: OTP's `{exit_on_close, true}` default** — a passive-mode gen_tcp socket
+   auto-closes the ENTIRE port (write side included) the moment `recv` observes the peer's FIN, so
+   a peer that half-closes at establishment (a pure consumer whose `Out = []` FINs immediately)
+   raced our drain: pump-recv-sees-FIN before the sends → `{error, closed}`, frames lost, both
+   ends "succeed". Diagnosed by control experiment (6/6 green against a never-closing raw
+   listener; ~30% loss against the C# consumer). Fix: `{exit_on_close, false}` on both
+   `tcp_listen` and `tcp_connect` in `glp_link_tcp_ffi.erl` — ordinary TCP half-close semantics,
+   the oracle runtimes' behavior. Verified: 8/8 single-scenario repro green post-fix.
+   The `EgressWouldBlock` arm of the barrier is vacuous in base scope: the send window releases
+   synchronously on transport acceptance (re-check if T052 reliability makes release
+   asynchronous).
 
 ---
 

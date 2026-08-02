@@ -15,9 +15,16 @@
          tcp_send/2, tcp_recv/2, tcp_shutdown_write/1, tcp_close/1]).
 
 %% Bind a passive IPv4-loopback listener on Port (0 = OS-assigned).
+%% {exit_on_close, false}: OTP's default (true) closes the WHOLE socket — write
+%% side included — the moment a passive recv observes the peer's FIN, so a peer
+%% that half-closes early (a pure consumer whose Out = [] FINs at establishment)
+%% would kill our still-draining egress ({error, closed} on send). The oracles
+%% (C#/Dart) have ordinary TCP half-close semantics; this restores parity (D-9).
+%% Accepted sockets inherit the listener's options.
 tcp_listen(Port) ->
     gen_tcp:listen(Port, [binary, {active, false}, {packet, 0},
-                          {reuseaddr, true}, {ip, {127, 0, 0, 1}}]).
+                          {reuseaddr, true}, {exit_on_close, false},
+                          {ip, {127, 0, 0, 1}}]).
 
 %% Accept one client (blocking up to Timeout ms), disable Nagle so each frame ships
 %% promptly (parity with Dart tcpNoDelay / C# NoDelay).
@@ -42,7 +49,8 @@ tcp_connect(Host, Port, Timeout) ->
                <<"127.0.0.1">> -> {127, 0, 0, 1};
                _ -> binary_to_list(Host)
            end,
-    case gen_tcp:connect(Addr, Port, [binary, {active, false}, {packet, 0}], Timeout) of
+    case gen_tcp:connect(Addr, Port, [binary, {active, false}, {packet, 0},
+                                      {exit_on_close, false}], Timeout) of
         {ok, Sock} ->
             inet:setopts(Sock, [{nodelay, true}]),
             {ok, Sock};
