@@ -1,0 +1,35 @@
+<!--
+  glp_engine_host.tests — xUnit suite for the 061 split spine (T004):
+  request/response codec, engine server, quiescence, snapshot round-trip,
+  store torn-write, supervisor, rewire, kill-and-restart (FR-033).
+
+  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+    <ProjectReference Include="..\glp_engine_host\GlpEngineHost.csproj" />
+    <ProjectReference Include="..\glp_repl_client\GlpReplClient.csproj" />
+    <ProjectReference Include="..\glp_supervisor\GlpSupervisor.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -41,4 +41,12 @@ public sealed class LinkRegistry
 
     /// <summary>Number of established links.</summary>
     public int Count => _handles.Count;
+
+    /// <summary>
+    /// 061 additive snapshot seam: read-only enumeration of established handles so
+    /// SnapshotCapture can serialize link definitions + cursor positions
+    /// (contract section 0x09, DEF-D1). Read-only — registration stays with
+    /// <see cref="GetOrEstablish"/>.
+    /// </summary>
+    public IReadOnlyDictionary<LinkId, LinkHandle> Handles => _handles;
 }

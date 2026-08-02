@@ -129,3 +129,6 @@ glp_gleam/.parity_run.glp
 # docs/coop-milestones/ (the mstack pattern: live state out of git, deliberate
 # deterministic exports in - same split as .specify/roadmap-sync/exports).
 COOP/
+
+# 061 engine-host snapshot file-fallback store (gitignored per contracts/snapshot-store.md)
+.glpsnap/

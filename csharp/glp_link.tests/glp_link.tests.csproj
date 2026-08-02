@@ -23,6 +23,9 @@
     <!-- feature 050 US2: CrdtMsgOnLinkTests drives the crdtmsg payload codec (glp_crdtmsg → glp_link);
          the test project may reference both leaves (no cycle: test → {glp_link, glp_crdtmsg}). -->
     <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
+    <!-- feature 063 US1 T009: MeshDupIdRegressionTests drives the 036 host's internal Mesh router
+         (InternalsVisibleTo in glp_quick_host.csproj); no cycle: test → {glp_link, glp_quick_host}. -->
+    <ProjectReference Include="..\glp_quick_host\glp_quick_host.csproj" />
   </ItemGroup>
 
 </Project>

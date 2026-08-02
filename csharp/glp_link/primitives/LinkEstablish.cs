@@ -146,6 +146,7 @@ public static class LinkEstablish
         try
         {
             LinkEgress.ShipGround(heap, handle, cons.Args[0]);
+            handle.EgressShippedCount++; // 061 US4: the restore-resume egress cursor
         }
         catch (PayloadCodecException)
         {

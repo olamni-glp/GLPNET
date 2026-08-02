@@ -40,9 +40,14 @@ public static class LinkSetupKernel
             return LinkEstablish.Abort(Who, ex.Message);
         }
 
-        return LinkEstablish.WireEstablishedLink(
+        var result = LinkEstablish.WireEstablishedLink(
             rt, link, id, () => Establish(link, id, role),
             args[2], args[3], args[4], Who);
+        // 061 US4: record the establishment role so snapshot section 0x09 can persist
+        // a re-establishable definition (contracts/snapshot-store.md).
+        if (result == BodyKernelResult.Success && link.Links.TryGet(id, out var handle))
+            handle.Role = role;
+        return result;
     }
 
     /// <summary>Open the transport leaf for <paramref name="id"/> in <paramref name="role"/> and build the endpoint.</summary>

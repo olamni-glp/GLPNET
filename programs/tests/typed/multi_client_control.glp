@@ -1,0 +1,51 @@
+%% multi_client_control.glp — a multi-client control program (feature 062, US4 / FR-007).
+%%
+%% A controller coordinates N clients over per-client streams (the GLP-first
+%% concurrency surface, DISCIPLINE §1.12). The controller BROADCASTS a ground
+%% command stream to every client (ground-guard replication — the distribute
+%% idiom, SRSW-safe per typed-glp-manual §3.3), each client runs as its own
+%% process consuming its input stream and producing a reply stream, and the
+%% controller MERGES the reply streams into one observable result.
+%%
+%% Documented outcome (SC-005): `control_demo(X).` SUCCEEDS with X bound to a
+%% closed 6-element list holding pong(c1),bye(c1),pong(c2),bye(c2),pong(c3),
+%% bye(c3) (merge interleaving order may vary; all six replies are present).
+%%
+%% Test goal (no struct-in-list literal in the goal — known REPL limitation):
+%%   control_demo(X).
+
+%% ---- Types ----
+Command ::= ping ; stop.
+Reply   ::= pong(Constant) ; bye(Constant).
+
+%% ---- A client process: reads Commands on its input stream, writes Replies. ----
+procedure client(Constant?, Stream(Command)?, Stream(Reply)).
+client(Id, [ping|In], [pong(Id?)|Out?]) :- ground(Id?) | client(Id?, In?, Out).
+client(Id, [stop|_], [bye(Id?)]) :- ground(Id?) | true.
+client(_, [], []).
+
+%% ---- Broadcast one ground command stream to three per-client streams. ----
+procedure broadcast3(Stream(Command)?, Stream(Command), Stream(Command), Stream(Command)).
+broadcast3([C|Cs], [C?|A?], [C?|B?], [C?|D?]) :- ground(C?) |
+    broadcast3(Cs?, A, B, D).
+broadcast3([], [], [], []).
+
+%% ---- Fair merge of two streams (canonical 4-clause; parameterized). ----
+procedure merge(Stream(X)?, Stream(X)?, Stream(X)).
+merge([X|Xs], Ys, [X?|Zs?]) :- merge(Ys?, Xs?, Zs).
+merge(Xs, [Y|Ys], [Y?|Zs?]) :- merge(Xs?, Ys?, Zs).
+merge(Xs, [], Xs?).
+merge([], Ys, Ys?).
+
+%% ---- Merge three reply streams into one. ----
+procedure merge3(Stream(Reply)?, Stream(Reply)?, Stream(Reply)?, Stream(Reply)).
+merge3(A, B, C, Out?) :- merge(A?, B?, M), merge(M?, C?, Out).
+
+%% ---- The controller: broadcast [ping, stop] to c1/c2/c3, collect replies. ----
+procedure control_demo(Stream(Reply)).
+control_demo(Out?) :-
+    broadcast3([ping, stop], S1, S2, S3),
+    client(c1, S1?, R1),
+    client(c2, S2?, R2),
+    client(c3, S3?, R3),
+    merge3(R1?, R2?, R3?, Out).

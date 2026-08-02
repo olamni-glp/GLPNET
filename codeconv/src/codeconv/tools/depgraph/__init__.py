@@ -29,10 +29,12 @@ import typer
 from .workflow import (
     register,
     run_compute,
+    run_mark_and_recompute,
     run_mark_completed,
     run_mark_started,
     run_rebuild_conversions_from_tombstones,
     run_stamp_tombstones,
+    run_trends,
 )
 
 
@@ -222,6 +224,84 @@ def rebuild_conversions_from_tombstones(
         quiet=quiet,
         header="rebuild-conversions-from-tombstones",
     )
+
+
+@app.command("mark-and-recompute")
+def mark_and_recompute(
+    ctx: typer.Context,
+    marks: Optional[list[str]] = typer.Option(
+        None,
+        "--mark",
+        help="File path to mark dirty (repeatable). Its transitive dependents "
+        "are recomputed too; unmarked results are preserved.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Compute the dirty subgraph; write nothing."
+    ),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress logging."),
+    json_summary: bool = typer.Option(
+        False, "--json", help="Emit JSON summary on stdout."
+    ),
+) -> None:
+    """Recompute only the marked subgraph + its transitive dependents (US1)."""
+    repo_root = _ctx_repo_root(ctx)
+    data_dir = _ctx_data_dir(ctx)
+    quiet, json_summary = _ctx_flags(ctx, quiet, json_summary)
+    summary = run_mark_and_recompute(
+        repo_root=repo_root,
+        data_dir=data_dir,
+        marks=list(marks or []),
+        dry_run=dry_run,
+        quiet=quiet,
+    )
+    _emit_summary(
+        summary, json_summary=json_summary, quiet=quiet, header="mark-and-recompute"
+    )
+
+
+@app.command("trends")
+def trends(
+    ctx: typer.Context,
+    runs: Optional[list[str]] = typer.Option(
+        None,
+        "--runs",
+        help="Recorded depgraph run id to include (repeatable; >=2). "
+        "Omit to use all completed compute runs.",
+    ),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress logging."),
+    json_summary: bool = typer.Option(
+        False, "--json", help="Emit the full summary envelope as JSON."
+    ),
+) -> None:
+    """Deterministic, secret-redacted cross-run trend report (US1)."""
+    repo_root = _ctx_repo_root(ctx)
+    data_dir = _ctx_data_dir(ctx)
+    quiet, json_summary = _ctx_flags(ctx, quiet, json_summary)
+    summary = run_trends(
+        repo_root=repo_root,
+        data_dir=data_dir,
+        run_ids=list(runs) if runs else None,
+        quiet=quiet,
+    )
+    code = int(summary.get("exit_code", 0) or 0)
+    if summary.get("ok") and "report" in summary:
+        # The report body is the deterministic deliverable: canonical JSON,
+        # byte-identical on unchanged inputs (sorted keys, no wall-clock).
+        if json_summary:
+            typer.echo(
+                _json.dumps(summary, indent=2, sort_keys=True, default=str)
+            )
+        else:
+            typer.echo(
+                _json.dumps(summary["report"], indent=2, sort_keys=True, default=str)
+            )
+    else:
+        _emit_summary(
+            summary, json_summary=json_summary, quiet=quiet, header="trends"
+        )
+        return
+    if code != 0:
+        raise typer.Exit(code)
 
 
 def _emit_summary(

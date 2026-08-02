@@ -514,31 +514,30 @@ fn run_goal(
   fuel: Int,
   trace: Bool,
 ) -> Result(#(ResultEnvelope, List(String), List(String)), String) {
-  use atom <- result.try(parse_goal(goal))
-  let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
-  use entry <- result.try(
-    program.label_pc(engine.program, label)
-    |> result.replace_error("predicate " <> label <> " not found"),
-  )
-  use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
+  // A single goal (`a.`) and a conjunction (`a, b.`) share one path: parse to a
+  // list of atoms (one element for a single goal), boot each over ONE shared heap +
+  // variable environment (so goals communicate through shared logic variables), and
+  // drain PER GOAL. This mirrors the Dart split `_runSingleGoal` / `_runConjunction`
+  // (glp_engine.dart:492/:612): a single goal is one enqueue+drain, a conjunction is
+  // an enqueue+drain per conjunct over the persistent scheduler, so a producer bind
+  // in a later goal wakes an earlier suspended consumer. The aggregate status
+  // latches suspension exactly as Dart's `anySuspended` (glp_engine.dart:693,740).
+  use atoms <- result.try(parse_goals(goal))
+  use boot <- result.try(goal_boot.setup_goals(heap.new(), atoms))
 
   let sched =
     new_sched(engine, boot.heap)
     |> scheduler.with_trace(trace)
-  let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
-  // With transport leaves injected, run under the link-aware loop (T050.C2):
-  // the `_link_*` kernels become reachable and quiescence stays live while
-  // link I/O is outstanding. Without leaves, the pure run is unchanged.
-  let #(sched, status) = case engine.transports {
-    [] -> scheduler.run(sched, default_reduction_budget, fuel)
-    leaves ->
-      link_loop.drive(
-        sched,
-        default_reduction_budget,
-        fuel,
-        link_runtime.new_state(leaves),
-      )
-  }
+  use #(sched, status) <- result.try(drain_goals(
+    sched,
+    engine.program,
+    engine.transports,
+    atoms,
+    boot.goal_regs,
+    fuel,
+    False,
+    scheduler.Success,
+  ))
 
   use #(envelope, output) <- result.try(finish_run(
     sched,
@@ -546,6 +545,100 @@ fn run_goal(
     status,
   ))
   Ok(#(envelope, output, scheduler.trace_lines(sched)))
+}
+
+/// Boot and drain each goal in turn over the persistent scheduler (Dart
+/// `_runConjunction`'s per-goal `gq.enqueue` + `drainAsyncWithStatus`,
+/// glp_engine.dart:647–696). A predicate whose `functor/arity` is absent surfaces
+/// the reference "predicate … not found" failure (checked inside the loop, so any
+/// preceding goal has already run — Dart validates per goal too). A Failed /
+/// OutOfFuel / Errored drain STOPS the run with that status (Dart `break`). The
+/// aggregate status follows Dart exactly:
+///   - the FINAL drain governs the terminal state — if it is still `Suspended`, its
+///     real blocking readers are reported (this keeps single-goal parity: one goal
+///     that suspends reports its own readers, unchanged);
+///   - otherwise, if ANY earlier drain suspended (even one since woken by a later
+///     producer), the aggregate is `Suspended` with no live readers — Dart's latched
+///     `anySuspended` (a mutually-suspending conjunction that completes still reports
+///     suspended, bindings and all);
+///   - else `Success`.
+fn drain_goals(
+  sched: scheduler.Engine,
+  prog: BytecodeProgram,
+  transports: List(Transport),
+  atoms: List(ast.Atom),
+  goal_regs: List(program.XRegs),
+  fuel: Int,
+  any_suspended: Bool,
+  last_status: scheduler.RunStatus,
+) -> Result(#(scheduler.Engine, scheduler.RunStatus), String) {
+  case atoms, goal_regs {
+    [], [] ->
+      case last_status {
+        // The final drain is genuinely suspended → report its real readers.
+        scheduler.Suspended(_) -> Ok(#(sched, last_status))
+        _ ->
+          case any_suspended {
+            True -> Ok(#(sched, scheduler.Suspended([])))
+            False -> Ok(#(sched, scheduler.Success))
+          }
+      }
+    [atom, ..rest_atoms], [regs, ..rest_regs] -> {
+      let label = atom.functor <> "/" <> int.to_string(ast.atom_arity(atom))
+      use entry <- result.try(
+        program.label_pc(prog, label)
+        |> result.replace_error("predicate " <> label <> " not found"),
+      )
+      let #(sched, _goal_id) = scheduler.boot(sched, label, entry, regs)
+      // Per-goal drain dispatches on transports (T050.C2): with transport
+      // leaves injected, drive under the link-aware loop so `_link_*` kernels
+      // are reachable and quiescence stays live while link I/O is outstanding;
+      // without leaves, the pure run is unchanged. `link_loop.drive` does not
+      // return LinkState, so each goal's drive starts from a fresh state —
+      // exact for a single goal (the only specced transports case); a
+      // conjunction over transports gets per-goal fresh link state.
+      let #(sched, status) = case transports {
+        [] -> scheduler.run(sched, default_reduction_budget, fuel)
+        leaves ->
+          link_loop.drive(
+            sched,
+            default_reduction_budget,
+            fuel,
+            link_runtime.new_state(leaves),
+          )
+      }
+      case status {
+        scheduler.Success ->
+          drain_goals(
+            sched,
+            prog,
+            transports,
+            rest_atoms,
+            rest_regs,
+            fuel,
+            any_suspended,
+            scheduler.Success,
+          )
+        scheduler.Suspended(_) ->
+          drain_goals(
+            sched,
+            prog,
+            transports,
+            rest_atoms,
+            rest_regs,
+            fuel,
+            True,
+            status,
+          )
+        // Failed / OutOfFuel / Errored: Dart `break` — stop with this status.
+        _ -> Ok(#(sched, status))
+      }
+    }
+    _, _ ->
+      // setup_goals returns exactly one register file per atom — a length mismatch
+      // is a broken invariant, surfaced (never a silent wrong result).
+      Error("goal-boot: conjunction atom/register count mismatch")
+  }
 }
 
 /// Build the result envelope + captured output from a finished scheduler run
@@ -638,6 +731,78 @@ fn finish_step(
     Ok(#(envelope, output)) -> #(cleared, Done(envelope, output))
     Error(reason) -> #(cleared, Errored(reason))
   }
+}
+
+/// Parse a REPL goal string into the list of atoms to boot. A single goal (`a.`)
+/// yields one atom; a conjunction (`a, b.` — a top-level comma) yields one atom per
+/// conjunct. Mirrors the Dart `runGoal` dispatch (glp_engine.dart:374): detect a
+/// top-level comma (`_isConjunction`), and for a conjunction parse it as the body of
+/// a synthetic wrapper clause `_conj_wrapper_ :- <goals>.` so the comma is a valid
+/// body separator (a bare `a, b.` is NOT a valid clause head — that is the reported
+/// parse error). Each body `Goal` becomes an `Atom` over its uniform functor/args
+/// view (Dart `Atom(g.functor, g.args)`, glp_engine.dart:635).
+fn parse_goals(goal: String) -> Result(List(ast.Atom), String) {
+  let trimmed = string.trim(goal)
+  let base = case string.ends_with(trimmed, ".") {
+    True -> string.trim(string.drop_end(trimmed, 1))
+    False -> trimmed
+  }
+  case is_conjunction(base) {
+    True -> parse_conjunction_goals(base)
+    False -> {
+      use atom <- result.try(parse_goal(goal))
+      Ok([atom])
+    }
+  }
+}
+
+/// Is there a top-level `,` (outside any `(...)` / `[...]`)? Faithful port of the
+/// Dart `_isConjunction` depth scan (glp_engine.dart:750): `(`/`[` deepen, `)`/`]`
+/// close, and a comma at depth 0 is the conjunction separator.
+fn is_conjunction(query: String) -> Bool {
+  scan_conjunction(string.to_graphemes(query), 0)
+}
+
+fn scan_conjunction(chars: List(String), depth: Int) -> Bool {
+  case chars {
+    [] -> False
+    [c, ..rest] ->
+      case c {
+        "(" | "[" -> scan_conjunction(rest, depth + 1)
+        ")" | "]" -> scan_conjunction(rest, depth - 1)
+        "," if depth == 0 -> True
+        _ -> scan_conjunction(rest, depth)
+      }
+  }
+}
+
+/// Parse a conjunction body by wrapping it in a synthetic clause and returning its
+/// body goals as atoms (Dart `_runConjunction`, glp_engine.dart:612–635).
+fn parse_conjunction_goals(base: String) -> Result(List(ast.Atom), String) {
+  use tokens <- result.try(
+    lexer.tokenize("_conj_wrapper_ :- " <> base <> ".")
+    |> result.map_error(fn(e) { "parse: " <> string.inspect(e) }),
+  )
+  use module <- result.try(
+    parser.parse_module(tokens)
+    |> result.map_error(fn(e) { "parse: " <> string.inspect(e) }),
+  )
+  case module.procedures {
+    [ast.Procedure(clauses: [clause, ..], ..), ..] ->
+      case clause.body {
+        Some([_, ..] as goals) -> Ok(list.map(goals, goal_to_atom))
+        Some([]) | None -> Error("No goals in conjunction")
+      }
+    _ -> Error("Could not parse conjunction")
+  }
+}
+
+/// A body `Goal` as an `Atom` over its uniform functor/args view (Dart
+/// `Atom(g.functor, g.args, g.line, g.column)`, glp_engine.dart:635). A `RemoteGoal`
+/// / `SpawnGoal` surfaces its `#`/`@` functor + term-encoded args, exactly as the
+/// Dart uniform view does.
+fn goal_to_atom(goal: ast.Goal) -> ast.Atom {
+  ast.Atom(ast.goal_functor(goal), ast.goal_args(goal), ast.goal_pos(goal))
 }
 
 /// Parse a goal string into its head atom. The goal is a unit-clause head (Dart

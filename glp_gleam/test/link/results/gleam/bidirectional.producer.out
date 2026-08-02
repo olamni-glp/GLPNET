@@ -1,0 +1,8 @@
+   Compiled in 0.14s
+    Running glp/link/link_repl.main
+GLP (gleam link) — link-driver REPL; :quit to exit
+✓ Loaded: ../programs/tests/link/bidi.glp
+Got = [10, 20, 30]
+→ succeeds
+
+Goodbye!

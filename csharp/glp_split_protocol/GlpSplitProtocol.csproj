@@ -1,0 +1,40 @@
+<!--
+  GlpSplitProtocol — the tiny shared client↔engine wire-protocol library for the
+  061 REPL/engine split (feature 061, T001). Payload kind bytes + request/response
+  codec over the shipped FrameCodec (contracts/wire-protocol.md).
+
+  CLOBBER-SAFE (same rule as GlpLink/GlpCrdtMsg): no Dart preimage, lives OUTSIDE
+  out/csharp, so the codeconv regen oracle never names it as an output.
+
+  References glp_link ONLY (FrameCodec + TcpTransport) — this is what lets the
+  thin client stay free of a direct runtime reference (R7): both GlpEngineHost
+  and GlpReplClient share these payload types without the client pulling in the
+  engine surface.
+
+  TargetFramework note: plan.md says .NET 8, but every project in the reference
+  chain (glp_link → out/csharp/glp_runtime_net) is net10.0 and the repo SDK is
+  10.0.302 — net8.0 cannot reference net10.0, so net10.0 is the only version
+  that satisfies the tasks' own build-green criterion. Recorded as a plan
+  deviation in specs/061-.../baseline.md.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.SplitProtocol</RootNamespace>
+    <AssemblyName>glp_split_protocol</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GlpEngineHost.Tests" />
+  </ItemGroup>
+
+</Project>

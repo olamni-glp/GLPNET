@@ -1,0 +1,14 @@
+% abandon_stream.glp - focused abandon-operation pin (062 US5 §1.14 item 1;
+% specs/062-wave-4-consolidated-parallel-safe-fillers/proposals/abandon-operation.md §7).
+% In the non-empty clause the anonymous writer `_` at the list-tail position
+% captures-and-drops the input stream tail: the writer binds, raises NO
+% suspension, and the tail is left unreferenced (GC-eligible). This is the named
+% abandon operation - an anonymous WRITER where a reader would otherwise sit
+% (typed-glp-manual §9.1). The empty clause is required for exhaustive coverage
+% of Stream(Constant); it does not itself abandon anything.
+
+FirstResult ::= first(Constant) ; empty.
+
+exported procedure first_only(Stream(Constant)?, FirstResult).
+first_only([X | _], first(X?)).
+first_only([], empty).

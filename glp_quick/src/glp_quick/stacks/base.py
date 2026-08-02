@@ -119,10 +119,15 @@ class StackAdapter(ABC):
         cert: Path,
         max_clients: int,
         repl: ReplKind,
+        *,
+        repl_path: Optional[str] = None,
+        self_id: Optional[str] = None,
     ) -> Handle:
         """Launch + supervise the server-role runtime: bind the UDP port, load the shared cert,
         accept up to ``max_clients`` isolated client links (FR-005/FR-011). ``bind`` is a LAN IP
-        or machine name; ``cert`` is the shared-cert directory."""
+        or machine name; ``cert`` is the shared-cert directory. ``repl_path`` (063 US1, contract
+        C1) makes the host spawn that GLP REPL as a child and bridge its stdio over the link
+        envelopes; ``self_id`` is the endpoint id the host answers as."""
 
     @abstractmethod
     def start_client(
@@ -131,9 +136,13 @@ class StackAdapter(ABC):
         port: int,
         cert: Path,
         repl: ReplKind,
+        *,
+        repl_path: Optional[str] = None,
+        self_id: Optional[str] = None,
     ) -> Handle:
         """Launch + supervise the client-role runtime: real QUIC handshake (SPKI-pinned to the
-        shared cert), bring up the WebSocket link (FR-001/FR-002/FR-003)."""
+        shared cert), bring up the WebSocket link (FR-001/FR-002/FR-003). ``repl_path`` /
+        ``self_id`` as in :meth:`start_server` (063 US1 live bridge)."""
 
     @abstractmethod
     def health(self, handle: Handle) -> Status:

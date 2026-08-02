@@ -1,0 +1,48 @@
+<!--
+  GlpEngineHost — the long-lived GLP engine host process (feature 061, T001; R5:
+  a NEW separately startable component, not a mode flag on the existing REPL).
+  Owns the engine state, serves one thin client over TCP loopback
+  (contracts/wire-protocol.md), snapshots at quiescence (contracts/snapshot-store.md),
+  and restores/resumes on restart.
+
+  CLOBBER-SAFE: no Dart preimage, lives OUTSIDE out/csharp.
+
+  References:
+    - out/csharp/glp_runtime_net : the converted engine + runtime (GlpEngine, scheduler).
+    - glp_link                   : TcpTransport + FrameCodec (the wire, D1).
+    - glp_result_codec           : 038 ResultEnvelope/ResultEnvelopeCodec (D2).
+    - glp_split_protocol         : shared request/response payload types (T001).
+
+  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GlpRuntime.EngineHost</RootNamespace>
+    <AssemblyName>glp_engine_host</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\out\csharp\glp_runtime_net.csproj" />
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+    <ProjectReference Include="..\glp_result_codec\GlpResultCodec.csproj" />
+    <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 061 T021: PGlite-primary snapshot store (store/PgliteSnapshotStore.cs) —
+         same version as the 041 precedent (glp_crdtmsg NpgsqlColabOpDb). -->
+    <PackageReference Include="Npgsql" Version="8.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GlpEngineHost.Tests" />
+  </ItemGroup>
+
+</Project>

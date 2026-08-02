@@ -39,6 +39,7 @@ def run(
     repl: str,
     max_clients: int = 3,
     self_id: Optional[str] = None,
+    repl_path: Optional[str] = None,
 ) -> int:
     """Run a link console in the given role until the link closes / Ctrl-C. Returns an exit code."""
     adapter = _adapter(stack, profile)
@@ -48,10 +49,12 @@ def run(
     quiet = bool(os.environ.get("GLPQUICK_QUIET"))
 
     if role == "server":
-        handle = adapter.start_server(addr, port, cert, max_clients, repl)  # type: ignore[arg-type]
+        handle = adapter.start_server(addr, port, cert, max_clients, repl,  # type: ignore[arg-type]
+                                      repl_path=repl_path, self_id=sid)
         default_to = BROADCAST
     else:
-        handle = adapter.start_client(addr, port, cert, repl)  # type: ignore[arg-type]
+        handle = adapter.start_client(addr, port, cert, repl,  # type: ignore[arg-type]
+                                      repl_path=repl_path, self_id=sid)
         default_to = "server"
 
     print(f"[glp-quick] {role} '{sid}' linked on {addr}:{port} (stack={stack}). "
