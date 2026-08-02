@@ -122,3 +122,6 @@ glp_gleam/.parity_run.glp
 
 # 3rtask run evidence (orchestration artifacts, not source)
 .specify/3rtask/runs/
+
+# 061 engine-host snapshot file-fallback store (gitignored per contracts/snapshot-store.md)
+.glpsnap/

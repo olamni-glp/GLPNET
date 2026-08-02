@@ -1,5 +1,56 @@
 ## [Unreleased]
 
+## [v2026.07.31.2] - 2026-07-31
+
+### Changed
+- Merge pull request #121 from olamni-glp/063-wave-5-consolidated-captured-triad
+- Merge origin/develop into 063 (resolve buildkit feature-pointer conflicts, keep 063)
+- bk-close retro mirror + post-T041 roadmap export + trust key refresh
+- T041 complete - wave feature released, four consolidated features closed with receipts, quickstart verified; 41/42 (T030 key-gated)
+- Merge pull request #120 from olamni-glp/main
+- impl(063): roadmap-sync import manifest + host trust key from T030 sync round
+- impl(063): T030 wave-close - triad advanced to closed with receipts, exports 060746Z+061228Z published to fleet (18/94/2502), UPDATEs fanned
+- impl(063): T029 closure evidence + T033 full re-verify - CLOSURE.md links E1/E2/PROTOCOL; suites REPL 534, glp_link 156, glp_quick 188, ms_message 36, drill 5/5; T030+ship parked on engineer keystroke
+- impl(063): T028 engagement E2 + fix pass - 3-blind code review found 6 real US1-diff defects, all fixed (silent-stall, block misattribution, dup-reply race, unlocked stdin, mesh-before-spawn, injection/trailing-parse) + cp-02/cp-07 + st-08 test; glp_link 156/156, glp_quick 188 passed
+- impl(063): T027 engagement E1 complete - 3-blind-builder plan review, codex critic 32C/2R/16E, 0011/0012 staleness conflict found and fixed, 6 spec-improvement escalates open for engineer
+- impl(063): T031-T032 polish - quickstart US1 CLI drift corrected, gitignore coverage verified
+- impl(063): T026 three-role PROTOCOL.md - operator runbook distilled from method doc + spec-051, references not duplicates
+- impl(063): T025 US2 complete - QUIC-leg drill over real link 100/100 exactly-once, build_fetch_batch extracted carrier-agnostic, suite 36/36, TCP drill 5/5
+- impl(063): T016-T024 US2 core - WAL+store+dlq+lake+roles, unit 35/35, SC-004 drill 5/5 at N=1000, Section S wired, batch-transaction fix for bridge contention
+- impl(063): T014-T015 US1 complete - demo suite PASS per-criterion, 18/104 superseded by 187+156 table, profile wording corrected at authoritative site
+- impl(063): T011-T013 live REPL bridge - host spawns REPL child, tmsg repl_goal/repl_result over the link, both directions proven over real QUIC in 9s, 187 passed no regressions
+- impl(063): T009-T010 mesh_dup_id closure witness - 4/4 pass, symptom not reproducing, provenance recorded, mutation check proves witness, glp_link.tests 156/156
+- impl(063): T007-T008 audit divergence reconciled - the 9 dll-gated modules are glp_quick pytest tier, build closes the gate, 185/2F/1S verdicts recorded, quicer NIF root token + teardown leak reported
+- impl(063): T001-T006 setup+foundational - ms_message scaffold, msmesh migration 0012 (head 0011->0012, deviation recorded), protocol shapes 22/22, migration family 15/15
+- impl(063): T004 baseline recorded - host builds clean, glp_quick 185/2F/1S (pre-existing profile-C fails), glp_link.tests 152/0 skips (audit divergence flagged for T007/T008)
+- analyze(063): top remediations applied - C1 token in plan gate note, FR-011 failure-path coverage, SC-001 timing assertion, T007 skip-mechanism honesty, FR-009 wording
+- tasks(063): 33 tasks across 7 phases - US1 MVP 9, US2 10, US3 4, US4 1; deps + parallel lanes + FR-015 discipline
+- plan(063): full plan artifacts - R1-R10 research, msmesh data model, 3 contracts, quickstart; constitution gates PASS
+- clarify(063): all markers resolved - mesh-fix baseline + US3 scope from records, wire-carriage + first-hop boundary engineer-accepted, US2 aligned to intake brief
+- spec(063): wave-5 consolidated captured triad - 4 user stories, 15 FRs, 2 clarify markers carried to /bk-clarify
+
+## [v2026.07.31.1] - 2026-07-31
+
+### Changed
+- Merge pull request #118 from olamni-glp/061-wave-2-consolidated-repl-engine-split-spine
+- refine(codexreview): cycle 3/3 [diff/general]
+- refine(codexreview): cycle 2/4 [diff/general]
+- impl(061): T041 partial - quickstart verified end-to-end with real binaries, load-path form corrected; roadmap advance stays blocked on GitFlow ship
+- impl(061): polish T036-T039 - R8 metric tables (R14 rows), machine-check scan 0 violations, full-suite diff zero regression, DEFERRALS A3/D1/D2/E1/E2/F2 done(061), F1 delivery annotated
+- impl(061): US4 restore-resume - RewireHandle adopt path, 0x09 role, LinkRewirer restore-order gating, FR-033 kill-and-restart deterministic, TLA+ TLC PASS, 62/62 + REPL 532/532
+- impl(061): US3 supervision - BackgroundService supervisor, crash log, DEF-F2 taxonomy, DEF-F1 memo, 55/55; UPPAAL model authored (verdict license-blocked)
+- impl(061): US2 snapshot + persistence - quiescence-gated capture/restore, two-backend store, 52/52 + REPL 532/532
+- impl(061): T040 Anchor-A MVP-gate review - PASS, DEF-A3 discharged
+- impl(061): US1 split MVP - engine host, thin client, parity corpus, SPIN full-protocol PASS
+- impl(061): Phase 1+2 - four project skeletons, wire protocol, codec + tests, suite baseline
+- analyze(061): apply top remediations - shared protocol lib, SC-004 probe test, mid-restore test
+- tasks(061): 41-task dependency-ordered breakdown for wave-2
+- plan(061): wave-2 engine split spine implementation plan
+- spec(061): clarify session - 4 answers integrated, markers resolved
+- spec(061): wave-2 REPL engine split spine specification
+- fleet sync 0-delta import + QUIC-link twin dedupe merge - export 18/94/2493 published; retro report 050
+- Merge pull request #117 from olamni-glp/main
+
 ## [v2026.07.29.1] - 2026-07-29
 
 ### Added

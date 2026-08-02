@@ -162,13 +162,23 @@ class CSharpStackAdapter(StackAdapter):
     def capabilities(self) -> dict:
         return {"real_quic": True, "quic_termination": "in_process"}
 
-    def start_server(self, bind: str, port: int, cert: Path, max_clients: int, repl: ReplKind) -> Handle:
+    def start_server(self, bind: str, port: int, cert: Path, max_clients: int, repl: ReplKind,
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
         args = ["--role", "server", "--addr", bind, "--port", str(port),
                 "--cert", str(cert), "--max-clients", str(max_clients)]
+        if self_id:
+            args += ["--id", self_id]
+        if repl_path:  # 063 US1 (contract C1): the host spawns + bridges the live GLP REPL child
+            args += ["--repl", repl_path]
         return self._spawn(args, await_token="READY", peer_ids=[f"server@{bind}:{port}"])
 
-    def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind) -> Handle:
+    def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind,
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
         args = ["--role", "client", "--addr", server_addr, "--port", str(port), "--cert", str(cert)]
+        if self_id:
+            args += ["--id", self_id]
+        if repl_path:
+            args += ["--repl", repl_path]
         return self._spawn(args, await_token="LINK_UP", peer_ids=[f"server@{server_addr}:{port}"])
 
     def health(self, handle: Handle) -> Status:

@@ -2212,6 +2212,31 @@ done
 echo ""
 
 # =============================================================================
+# SECTION S: MS_MESSAGE DURABLE MESH MESSAGING (063 US2 — SC-004 DRILL GATE)
+# =============================================================================
+# The SC-004 disconnect drill (N=1000: recipient offline, originator restart,
+# exactly-once in-order delivery, zero re-observations on recipient restart)
+# is the acceptance gate for the durable first-hop mesh-messaging tool
+# (specs/063-wave-5-consolidated-captured-triad, T024). Standalone gate:
+#   ms_message/.venv/Scripts/python ms_message/tests/drill_disconnect.py 1000
+# Runs only where the ms_message venv exists (Windows/glpnet host); an absent
+# venv prints an EXPLICIT skip line — never a silent pass.
+echo "=== Section S: ms_message durable mesh messaging (SC-004 drill) ==="
+
+MSMSG_PY="$GLP_DIR/ms_message/.venv/Scripts/python.exe"
+[ -f "$MSMSG_PY" ] || MSMSG_PY="$GLP_DIR/ms_message/.venv/bin/python"
+if [ -f "$MSMSG_PY" ]; then
+    output=$("$MSMSG_PY" "$GLP_DIR/ms_message/tests/drill_disconnect.py" 1000 2>&1)
+    check "S-1: SC-004 disconnect drill N=1000 (exactly-once, in order)" "=> PASS" "$output"
+    output=$("$MSMSG_PY" -m pytest "$GLP_DIR/ms_message/tests" -q 2>&1)
+    check "S-2: ms_message unit suite green" " passed" "$output"
+else
+    echo "SKIP Section S: ms_message venv absent — standalone gate: ms_message/tests/drill_disconnect.py (see section header)"
+fi
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))

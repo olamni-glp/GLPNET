@@ -41,10 +41,20 @@ def _validate_stack(stack: str) -> StackName:
     return stack  # type: ignore[return-value]
 
 
-def _validate_repl(repl: str) -> ReplKind:
-    if repl not in ("csharp", "dart"):
-        raise typer.BadParameter("--repl must be 'csharp' or 'dart'")
-    return repl  # type: ignore[return-value]
+def _validate_repl(repl: str) -> "tuple[ReplKind, Optional[str]]":
+    """``csharp``/``dart`` select a REPL kind (the pre-063 surface); a filesystem path to a GLP
+    REPL (.exe or .dll) selects the 063 US1 live bridge — the host spawns that REPL as a child
+    and bridges its stdio over the link envelopes (contract C1). Returns ``(kind, path|None)``."""
+    if repl in ("csharp", "dart"):
+        return repl, None  # type: ignore[return-value]
+    if repl.lower().endswith((".dll", ".exe")) or "/" in repl or "\\" in repl:
+        p = Path(repl)
+        # E2 finding cp-02: the path branch must admit only an existing regular .dll/.exe file —
+        # a directory or extensionless slash-path is a refusal, never a spawn attempt.
+        if not p.is_file() or p.suffix.lower() not in (".dll", ".exe"):
+            raise typer.BadParameter(f"--repl path must be an existing .dll/.exe file: {repl}")
+        return "csharp", str(p.resolve())
+    raise typer.BadParameter("--repl must be 'csharp' | 'dart' | a path to a GLP REPL (.exe/.dll)")
 
 
 def _validate_profile(stack: str, profile: Optional[str]) -> Optional[GleamProfile]:
@@ -157,7 +167,7 @@ def main(
     stack: str = typer.Option("csharp", "--stack", help="csharp | gleam."),
     profile: Optional[str] = typer.Option(None, "--profile", help="gleam only: a | c."),
     max_clients: int = typer.Option(3, "--max-clients", help="Server: max concurrent clients (≥3).", min=1),
-    repl: str = typer.Option("csharp", "--repl", help="GLP REPL to bridge: csharp | dart."),
+    repl: str = typer.Option("csharp", "--repl", help="GLP REPL to bridge: csharp | dart | a path to a GLP REPL exe/dll (live bridge, 063 US1)."),
     retry: bool = typer.Option(False, "--retry", help="Client: retry while server-not-ready."),
     tui: bool = typer.Option(False, "--tui", help="Virtual IBM-3270-style full-screen chat UX (block-mode, pages, PF keys)."),
 ) -> None:
@@ -172,7 +182,7 @@ def main(
 
     stack_ = _validate_stack(stack)
     profile_ = _validate_profile(stack_, profile) or "a"
-    repl_ = _validate_repl(repl)
+    repl_, repl_path = _validate_repl(repl)
     if addr is None or port is None or cert is None:
         raise typer.BadParameter("--addr, --port and --cert are required for --server/--client")
     _require_cert_dir(cert)
@@ -188,14 +198,22 @@ def main(
 
     try:
         if use_tui:
+            if repl_path is not None:
+                raise typer.BadParameter("--repl <path> (the live bridge) runs on the plain console, not --tui")
             from glp_quick.tui import run_tui
             code = run_tui(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients)
         else:
             from glp_quick.link_console import run as run_link
-            code = run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients)
+            code = run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients,
+                            repl_path=repl_path)
         raise typer.Exit(code=code)
     except LinkError as e:
         typer.echo(f"{role} failed: {e}", err=True)
+        raise typer.Exit(code=1)
+    except NotImplementedError as e:
+        # E2 finding cp-07: the gleam adapters' loud --repl refusal must surface as a clean
+        # CLI error, never an unhandled traceback.
+        typer.echo(f"{role} refused: {e}", err=True)
         raise typer.Exit(code=1)
 
 

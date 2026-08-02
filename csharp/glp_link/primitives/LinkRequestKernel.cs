@@ -77,7 +77,12 @@ public static class LinkRequestKernel
             return LinkEstablish.Abort(Who, $"connect/handshake failed for {id}: {ex.Message}");
         }
 
-        return LinkEstablish.WireEstablishedLink(
+        var result = LinkEstablish.WireEstablishedLink(
             rt, link, id, () => endpoint, args[2], args[3], args[4], Who, preGated: true);
+        // 061 US4: the requester is the CONNECTOR half of the handshake — recorded for
+        // snapshot section 0x09 re-establishment (contracts/snapshot-store.md).
+        if (result == BodyKernelResult.Success && link.Links.TryGet(id, out var handle))
+            handle.Role = LinkRole.Connector;
+        return result;
     }
 }
