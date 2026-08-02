@@ -1,0 +1,8 @@
+   Compiled in 0.13s
+    Running glp/link/link_repl.main
+GLP (gleam link) — link-driver REPL; :quit to exit
+✓ Loaded: ../programs/tests/link/pc.glp
+X = []
+→ succeeds
+
+Goodbye!

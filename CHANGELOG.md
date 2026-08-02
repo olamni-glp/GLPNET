@@ -1,5 +1,33 @@
 ## [Unreleased]
 
+## [v2026.08.02.1] - 2026-08-02
+
+### Added
+- Gleam REPL conjunction-query MVP capability (parity w/ Dart; gleam 514/514, +6 tests)
+
+### Changed
+- Merge pull request #124 from olamni-glp/062-wave-4-consolidated-parallel-safe-fillers
+- Merge remote-tracking branch 'origin/develop' into 062-wave-4-consolidated-parallel-safe-fillers
+- COOP updates
+- roadmap: sync import 7 peer exports (9 lines), export 18/95/2523, published 083957Z
+- Merge pull request #123 from olamni-glp/main
+- ship-prep — T001 closed, /bk-analyze clean (0 critical, 100% coverage), safe-restart handover
+- T037 final full-suite sweep GREEN across all runtimes (REPL 546, Gleam 514, C# green); ship gated
+- Phase 8 T036 fleet UPDATE posted + (b) Gleam delivered (514/514); T034 ledger updated
+- Phase 8 T034 terminal-state ledger (SC-008) + T035 codify win note
+- impl(062): US3 T020-T022 — NetMQ ZMQ transport (PAIR base) + envelope-over-zmq execute-on-B; il_codec 64/64, link 161/161
+- impl(062): US3 T019 — role-aware Loopback multi-accept (>=2 clients, distinct links; glp_link 154/154)
+- impl(062): US3 T017-T018 — receiver execute-on-B==local + hardening (il_codec 61/61)
+- impl(062): US3 T015-T016 — compiled-IL wire envelope (il_version/digest/source_meta over IlCodec), il_codec 51/51
+- US5 pins T031-T033 — REPL A32+SectionC, engine unit, 3-way parity 0-diverge (REPL 546/546, engine 11/11)
+- US5 parity confirmed (Dart/C#/Gleam) + US3 mapped; fork=both, baselines captured
+- safe-restart handover — US1/US2/US4 done+green, US3/US5 gated on 2 operator rulings
+- impl(062): US1 depgraph mark-and-recompute+trends, US2 studies, US4 control program (US1 66/66, US4 538/538 green)
+- tasks(062): 37 tasks across 8 phases, by user story; US5 §1.14 proposal-gated
+- plan(062): impl plan + research + data-model + quickstart + contracts; constitution PASS, §1.14 semantics external-source-gated
+- clarify(062): resolve US3=hardened runtime capability, US5=§1.14 approve-and-implement (operator approval 2026-07-29)
+- spec(062): Wave 4 consolidated parallel-safe fillers — 11-item wave spec, §1.14 items gated/deferred
+
 ## [v2026.07.31.2] - 2026-07-31
 
 ### Changed

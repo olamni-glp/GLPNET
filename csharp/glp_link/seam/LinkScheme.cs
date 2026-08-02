@@ -29,6 +29,11 @@ public readonly struct LinkScheme : IEquatable<LinkScheme>
     /// (GA in .NET 9+, cross-platform), gated on <c>QuicListener</c>/<c>QuicConnection.IsSupported</c>.</summary>
     public static readonly LinkScheme Quic = new("quic");
 
+    /// <summary>ZeroMQ (NetMQ) transport — bilateral point-to-point over a PAIR socket
+    /// pair carrying opaque frames (feature 062 US3, T020). Cross-process over
+    /// <c>tcp://</c>; selected by <c>link_id("zmq", ep(Host, Port), Nonce)</c>.</summary>
+    public static readonly LinkScheme Zmq = new("zmq");
+
     public static readonly LinkScheme Ws = new("ws");
     public static readonly LinkScheme Wss = new("wss");
     public static readonly LinkScheme Https = new("https");

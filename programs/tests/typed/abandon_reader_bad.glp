@@ -1,0 +1,8 @@
+% abandon_reader_bad.glp - NEGATIVE (must be REJECTED at load). An anonymous
+% READER `_?` in a clause position is not permitted: only anonymous WRITERS are
+% allowed as the abandon operation (typed-glp-manual §9.1). This pins the abandon
+% negative control (062 US5 §1.14 item 1; proposals/abandon-operation.md §7): a
+% `_?` in a head slot must be rejected, not silently accepted.
+
+exported procedure abandon_bad(Stream(Constant)?, Constant).
+abandon_bad([X | _?], X?).

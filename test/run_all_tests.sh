@@ -963,6 +963,56 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# --- A31: 062 US4 multi-client control program (per-client streams + broadcast + merge) ---
+echo "--- A31: 062 US4 multi-client control program ---"
+a31=$($DART run "$REPL" <<HEREDOC
+$TYPED/multi_client_control.glp
+control_demo(X).
+:quit
+HEREDOC
+2>&1)
+
+check "US4 control_demo loads (type-checks + compiles)" "Loaded:" "$a31"
+check "US4 control_demo succeeds" "succeeds" "$a31"
+check "US4 client c1 replies pong" "pong(c1)" "$a31"
+check "US4 client c2 replies pong" "pong(c2)" "$a31"
+check "US4 client c3 replies pong" "pong(c3)" "$a31"
+check "US4 clients reply bye" "bye(c1)" "$a31"
+
+# --- A32: 062 US5 §1.14 pins — nested-structure head matching + abandon-operation ---
+# Pins the parity-confirmed semantics (T029/T030) as Dart-REPL regressions.
+# Nested WRITE (make_person), nested READ (get_age/get_city), nested soft-fail
+# (age/=weight mismatch), and abandon-operation (anonymous writer `_` drops the
+# stream tail in first_only). Negative (_? reader) lives in Section C.
+echo "--- A32: 062 US5 nested-structure + abandon pins ---"
+a32=$($DART run "$REPL" <<HEREDOC
+$TYPED/struct_demo.glp
+$TYPED/abandon_stream.glp
+make_person(alice, thirty, seattle, P).
+get_age(person(alice, age(thirty), city(seattle)), A).
+get_city(person(alice, age(thirty), city(seattle)), C).
+get_age(person(alice, weight(eighty), city(seattle)), A2).
+first_only([a, b, c], Y).
+first_only([], Z).
+:quit
+HEREDOC
+2>&1)
+
+check "US5 nested WRITE make_person" "P = person(alice, age(thirty), city(seattle))" "$a32"
+check "US5 nested READ get_age" "A = thirty" "$a32"
+check "US5 nested READ get_city" "C = seattle" "$a32"
+check "US5 nested soft-fail (functor mismatch)" "A2 = <unbound>" "$a32"
+check "US5 abandon stream-tail first_only" "Y = first(a)" "$a32"
+check "US5 abandon empty coverage" "Z = empty" "$a32"
+a32_seq=$(echo "$a32" | grep -oE '→ (succeeds|failed|suspended)' | tr '\n' ' ')
+if [ "$a32_seq" = "→ succeeds → succeeds → succeeds → failed → succeeds → succeeds " ]; then
+    echo "  PASS: US5 pin outcome sequence (3 succeed, soft-fail, 2 succeed)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: US5 pin outcome sequence (got: $a32_seq)"
+    FAIL=$((FAIL + 1))
+fi
+
 SECTION_A_PASS=$PASS
 SECTION_A_FAIL=$FAIL
 
@@ -1278,6 +1328,9 @@ NEGATIVE_FILES=(
     "$TYPED/decline_neq_bad.glp"
     "$TYPED/decline_struct_diseq_bad.glp"
     "$TYPED/decline_reader_bad.glp"
+    # 062 US5 §1.14 item 1 (abandon-operation) negative: _? anonymous reader
+    # in a clause position must be rejected (typed-glp-manual §9.1).
+    "$TYPED/abandon_reader_bad.glp"
 )
 
 # Build REPL input with :clear between each negative file
