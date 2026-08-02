@@ -1,0 +1,10 @@
+    Waiting for build directory lock
+    Waiting for build directory lock
+   Compiled in 0.16s
+    Running glp/link/link_repl.main
+GLP (gleam link) — link-driver REPL; :quit to exit
+✓ Loaded: ../programs/tests/link/bidi.glp
+Got = [1, 2, 3]
+→ succeeds
+
+Goodbye!

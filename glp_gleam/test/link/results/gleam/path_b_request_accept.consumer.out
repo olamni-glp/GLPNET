@@ -1,0 +1,8 @@
+   Compiled in 0.14s
+    Running glp/link/link_repl.main
+GLP (gleam link) — link-driver REPL; :quit to exit
+✓ Loaded: ../programs/tests/link/pathb.glp
+Got = [100, 200, 300]
+→ succeeds
+
+Goodbye!

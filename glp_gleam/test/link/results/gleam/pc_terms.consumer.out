@@ -1,0 +1,9 @@
+    Waiting for build directory lock
+   Compiled in 0.15s
+    Running glp/link/link_repl.main
+GLP (gleam link) — link-driver REPL; :quit to exit
+✓ Loaded: ../programs/tests/link/pc.glp
+Got = [pt(1, 2), pt(3, 4)]
+→ succeeds
+
+Goodbye!
