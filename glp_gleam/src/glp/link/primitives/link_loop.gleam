@@ -69,10 +69,15 @@ pub fn drive(
 
 /// Wait while a link is still establishing (its egress cannot drain and its
 /// pump cannot start until the rendezvous resolves — even when every goal
-/// already reduced), or while suspended goals could be unblocked by inbound
-/// link traffic.
+/// already reduced), while a graceful close handshake is still in flight (the
+/// D-9 run-termination barrier — returning would halt the VM with the pump
+/// still in `recv`, closing the socket abortively and truncating the shipped
+/// tail), or while suspended goals could be unblocked by inbound link traffic.
 fn should_wait(status: RunStatus, state: LinkState) -> Bool {
-  case link_runtime.has_pending_establish(state) {
+  case
+    link_runtime.has_pending_establish(state)
+    || link_runtime.has_unfinished_close(state)
+  {
     True -> True
     False ->
       case status {
@@ -114,17 +119,24 @@ fn apply_msg(
     LinkPumpFault(id, signal) ->
       fault_out(sched, state, id, link_terms.from_signal(signal), close: False)
     LinkPeerClosed(id) -> {
-      // The peer cleanly ended the stream: end the program's In with `[]`, emit
-      // the terminal closed(LinkId, eos) on the monitors, and mark the link
-      // closed (FR-024 graceful path).
+      // The peer cleanly ended THEIR sender (half-close, D-9): end the
+      // program's In with `[]` and emit closed(LinkId, eos) on the monitors —
+      // but the link goes terminal ONLY once our own sender has also closed.
+      // Marking it closed here would suppress our un-drained egress (the
+      // drain gate skips closed links) and let the run return with frames
+      // still un-shipped — the graceful-close truncation this fixes.
       let #(sched, state) =
         fault_out(
           sched,
           state,
           id,
           link_terms.closed_term(id, link_terms.graceful_reason),
-          close: True,
+          close: False,
         )
+      let state =
+        with_cursors(state, id, fn(c) {
+          Cursors(..c, in_ended: True, closed: c.closed || c.out_closed)
+        })
       case dict.get(state.cursors, id) {
         Error(_) -> #(sched, state)
         Ok(c) ->
@@ -410,5 +422,12 @@ fn graceful_close(
     Ok(handle) -> handle.endpoint.close()
     Error(_) -> Nil
   }
-  #(sched, with_cursors(state, id, fn(c) { Cursors(..c, out_closed: True) }))
+  // Both directions ended → the link is terminal (D-9); with only our side
+  // closed, `has_unfinished_close` keeps the loop waiting for the peer's FIN.
+  #(
+    sched,
+    with_cursors(state, id, fn(c) {
+      Cursors(..c, out_closed: True, closed: c.closed || c.in_ended)
+    }),
+  )
 }

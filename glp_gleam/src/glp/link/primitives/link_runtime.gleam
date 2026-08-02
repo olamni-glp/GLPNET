@@ -66,7 +66,13 @@ pub type Cursors {
     /// egress drain stops, but RECEIVING CONTINUES — closing our sender never
     /// stops the inbound side of a bilateral link (the pump-loop rule).
     out_closed: Bool,
-    /// The link is fully down (peer end-of-stream, `_link_close`, or a failed
+    /// The PEER's sender gracefully closed (their end-of-stream — the symmetric
+    /// half-close, D-9): our In ended, but SENDING CONTINUES — the peer closing
+    /// their sender never suppresses our un-drained egress. The link is terminal
+    /// only when BOTH directions have ended (or on `_link_close` / a permanent
+    /// fault), never on this flag alone.
+    in_ended: Bool,
+    /// The link is fully down (both directions ended, `_link_close`, or a failed
     /// establishment) — terminal for the link.
     closed: Bool,
   )
@@ -122,6 +128,21 @@ pub fn has_pending_establish(state: LinkState) -> Bool {
   state.cursors
   |> dict.values
   |> list.any(fn(c) { !c.closed && !c.established })
+}
+
+/// Any link whose graceful close handshake is still in flight: our sender
+/// closed (`Out = []`, FIN shipped) but the peer's end-of-stream has not yet
+/// arrived. The engine loop must NOT return here (D-9 run-termination barrier):
+/// the pump — the socket's controlling process — must stay in `recv` until the
+/// peer's FIN, so the socket closes ORDERLY on the pump's normal exit. A VM
+/// halt while the pump still blocks in `recv` closes the socket abortively
+/// (RST) and silently truncates the just-shipped tail — the exact loss the
+/// graceful-close contract (025 DESIGN-DOSSIER §4) forbids. Bounded by the
+/// loop's `wait_timeout_ms` give-up (SC-007).
+pub fn has_unfinished_close(state: LinkState) -> Bool {
+  state.cursors
+  |> dict.values
+  |> list.any(fn(c) { c.established && c.out_closed && !c.closed })
 }
 
 /// The establishment role (mirrors the substrate's two rendezvous halves;

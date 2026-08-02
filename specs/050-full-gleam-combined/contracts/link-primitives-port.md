@@ -210,6 +210,39 @@ base through the ingress **without** building dedup; a duplicate frame is out-of
 (R-2 lives in T052). `link_close` GC (C8) reclaims registry/handle entries only — not the full
 distributed GC.
 
+**D-9 (run-termination barrier + connector dial-retry). RULED 2026-08-02 (Gabi), closes the
+graceful-close truncation race.** Two obligations the Dart/C# oracle enforced only as implementation
+behavior, now normative for the Gleam port:
+
+1. *Run-termination barrier.* On terminal status (`Success`/`Failed`), the link-aware loop
+   (`link_loop.drive`) MUST NOT return while any established, un-closed link still has a bound,
+   un-drained `Out` chain (including a chain parked on `EgressWouldBlock`), or while an establishment
+   is pending whose resolution would let such a chain drain. The graceful stream-end close (`Out`
+   tail `[]`) completes its shutdown-write before the run returns. The existing bounded give-up
+   (`wait_timeout_ms`, SC-007) still applies — a timeout surfaces on the monitors as a fault; silent
+   truncation of a gracefully-closed stream is never a permitted outcome. Rationale: 025
+   DESIGN-DOSSIER §4 (graceful close = the consumer's `consume([])` fires **after** every sent
+   value) + FR-018/FR-053 (send order preserved **on the wire**) are per-link contracts the engine
+   exit path must not void.
+2. *Connector dial-retry (oracle parity).* A refused dial is NOT terminal while the connect budget
+   remains: retry with backoff until the budget cancels, exactly as the oracles do
+   (`csharp/glp_link/transports/TcpTransport.cs:58`, `glp_runtime/lib/link/transports/tcp_transport.dart:60`
+   — "listener not up yet — back off and retry"). VERIFIED already present in the Gleam port
+   (`tcp.gleam` `connect_retry`, 100 ms backoff over the connect budget) — recorded here so the
+   obligation is normative, not incidental.
+
+   *Implementation note (barrier, 2026-08-02):* the truncation mechanism was the peer's half-close
+   (`LinkPeerClosed`) marking the link fully `closed` — which both gated off `drain_egress` for our
+   still-bound `Out` chain AND let `drive` return with the pump still blocked in `recv`, so the VM
+   halt closed the socket abortively (RST) and dropped the shipped-but-unacked tail. Fix: a
+   `Cursors.in_ended` half-close flag (symmetric to `out_closed`); the link is terminal only when
+   BOTH directions end (or `_link_close`/permanent fault); `should_wait` gains
+   `has_unfinished_close` (established ∧ out_closed ∧ ¬closed) so the run stays live — bounded by
+   `wait_timeout_ms` — until the close handshake completes and the pump exits normally (orderly
+   socket close). The `EgressWouldBlock` arm of the barrier is vacuous in base scope: the send
+   window releases synchronously on transport acceptance, so a parked chain cannot persist across
+   passes (re-check if T052 reliability makes release asynchronous).
+
 ---
 
 ## 6. Risks carried into implementation (from `link-primitives.md §8`)
