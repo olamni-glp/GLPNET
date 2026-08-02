@@ -18,8 +18,10 @@
 //// NON-FATALLY.
 
 import gleam/dict
+import gleam/erlang/process
 import gleam/io
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/result
 import glp/link/primitives/capability_gate
 import glp/link/primitives/link_registry
@@ -152,6 +154,7 @@ fn link_setup(
                           out_closed: False,
                           in_ended: False,
                           closed: False,
+                          release: None,
                         )
                       let state =
                         LinkState(
@@ -262,6 +265,12 @@ pub fn teardown(
   case emit_fault(heap, c.faults_cursors, terminal) {
     Error(why) -> abort("'_link_close'/2", why)
     Ok(#(heap, new_cursors, woken)) -> {
+      // Abrupt teardown is terminal — release the pump (the socket's
+      // controlling process) so it exits and the socket closes orderly (D-9).
+      case c.release {
+        Some(release) -> process.send(release, Nil)
+        None -> Nil
+      }
       let c =
         Cursors(..c, faults_cursors: new_cursors, closed: True)
       LinkEffect(

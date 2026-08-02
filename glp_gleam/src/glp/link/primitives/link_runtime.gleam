@@ -21,6 +21,7 @@
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/list
+import gleam/option.{type Option}
 import glp/link/primitives/capability_gate.{type GateRegistry}
 import glp/link/primitives/link_handle
 import glp/link/primitives/link_pump.{Delivered, PeerClosed, PumpFault}
@@ -35,8 +36,13 @@ import glp/link/seam/transport.{type Transport}
 /// What a per-link process reports back to the engine loop's subject.
 pub type LinkMsg {
   /// The transport rendezvous resolved — the link is live; the reporting
-  /// process is now this link's pump.
-  LinkEstablished(id: LinkId, endpoint: Endpoint)
+  /// process is now this link's pump. `release` is the pump's own exit gate
+  /// (D-9): the pump is the socket's controlling process, so it must NOT exit
+  /// — which closes the socket — until the engine loop confirms the link is
+  /// terminal in BOTH directions. The loop sends on `release` at every
+  /// terminal transition; the pump exits (closing the socket orderly) only
+  /// then.
+  LinkEstablished(id: LinkId, endpoint: Endpoint, release: Subject(Nil))
   /// The rendezvous failed (refused / timed out) — terminal for the attempt.
   LinkEstablishFailed(id: LinkId, signal: LinkFaultSignal)
   /// In-order decoded payloads became deliverable (the pump's `Delivered`).
@@ -75,6 +81,10 @@ pub type Cursors {
     /// The link is fully down (both directions ended, `_link_close`, or a failed
     /// establishment) — terminal for the link.
     closed: Bool,
+    /// The pump's exit gate (D-9): send `Nil` here when the link goes terminal
+    /// so the pump — the socket's controlling process — exits and the socket
+    /// closes ORDERLY. `None` until `LinkEstablished` delivers it.
+    release: Option(Subject(Nil)),
   )
 }
 
@@ -186,8 +196,12 @@ pub fn spawn_establish(
               )),
             )
           Ok(handle) -> {
-            process.send(subject, LinkEstablished(id, endpoint))
-            pump_loop(subject, id, handle)
+            // The pump's exit gate lives in the pump process (Subjects are
+            // owner-received): the engine loop sends on it once the link is
+            // terminal in both directions.
+            let release = process.new_subject()
+            process.send(subject, LinkEstablished(id, endpoint, release))
+            pump_loop(subject, id, handle, release)
           }
         }
     }
@@ -195,23 +209,38 @@ pub fn spawn_establish(
   Nil
 }
 
+/// How long the pump lingers for its release after the peer's end-of-stream.
+/// Longer than the engine loop's own 30 s bounded give-up: if the loop gave
+/// up and the VM is halting anyway, the pump's exit no longer matters.
+const release_timeout_ms = 60_000
+
 fn pump_loop(
   subject: Subject(LinkMsg),
   id: LinkId,
   handle: link_handle.LinkHandle,
+  release: Subject(Nil),
 ) -> Nil {
   case link_pump.pump_once(handle) {
-    #(handle, Delivered([])) -> pump_loop(subject, id, handle)
+    #(handle, Delivered([])) -> pump_loop(subject, id, handle, release)
     #(handle, Delivered(payloads)) -> {
       process.send(subject, LinkInbound(id, payloads))
-      pump_loop(subject, id, handle)
+      pump_loop(subject, id, handle, release)
     }
-    #(_, PeerClosed) -> process.send(subject, LinkPeerClosed(id))
+    #(_, PeerClosed) -> {
+      process.send(subject, LinkPeerClosed(id))
+      // D-9: the peer ended THEIR sender — but this process owns the socket,
+      // and exiting here closes it under our possibly-undrained egress (the
+      // graceful-close truncation). Linger until the engine loop confirms the
+      // link terminal (or the bounded give-up passes), THEN exit — an orderly
+      // close with every shipped frame already in the kernel.
+      let _ = process.receive(release, release_timeout_ms)
+      Nil
+    }
     #(handle, PumpFault(signal)) -> {
       // The frame was rejected, never delivered; the link may still recover
       // (transient) — keep pumping, the monitor observed the fault (FR-008).
       process.send(subject, LinkPumpFault(id, signal))
-      pump_loop(subject, id, handle)
+      pump_loop(subject, id, handle, release)
     }
   }
 }

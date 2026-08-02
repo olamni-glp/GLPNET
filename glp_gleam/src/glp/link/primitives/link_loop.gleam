@@ -15,6 +15,7 @@
 import gleam/erlang/process
 import gleam/io
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import glp/engine/scheduler.{type RunStatus, Suspended}
 import glp/link/primitives/link_egress
@@ -95,9 +96,12 @@ fn apply_msg(
   msg: link_runtime.LinkMsg,
 ) -> #(scheduler.Engine, LinkState) {
   case msg {
-    LinkEstablished(id, endpoint) ->
+    LinkEstablished(id, endpoint, release) ->
       case link_handle.new(id, link_options.default(), endpoint) {
-        Error(reason) ->
+        Error(reason) -> {
+          // Terminal without ever storing the cursor's release — free the
+          // pump directly so it exits rather than lingering in recv.
+          process.send(release, Nil)
           fault_out(
             sched,
             state,
@@ -105,13 +109,19 @@ fn apply_msg(
             link_terms.perm_fail_term(id, "handle construction failed: " <> reason),
             close: True,
           )
+        }
         Ok(handle) -> {
           let state =
             LinkState(
               ..state,
               registry: link_registry.put(state.registry, handle),
             )
-          #(sched, with_cursors(state, id, fn(c) { Cursors(..c, established: True) }))
+          #(
+            sched,
+            with_cursors(state, id, fn(c) {
+              Cursors(..c, established: True, release: Some(release))
+            }),
+          )
         }
       }
     LinkEstablishFailed(id, signal) ->
@@ -137,6 +147,7 @@ fn apply_msg(
         with_cursors(state, id, fn(c) {
           Cursors(..c, in_ended: True, closed: c.closed || c.out_closed)
         })
+      let state = release_pump_if_terminal(state, id)
       case dict.get(state.cursors, id) {
         Error(_) -> #(sched, state)
         Ok(c) ->
@@ -424,10 +435,27 @@ fn graceful_close(
   }
   // Both directions ended → the link is terminal (D-9); with only our side
   // closed, `has_unfinished_close` keeps the loop waiting for the peer's FIN.
-  #(
-    sched,
+  let state =
     with_cursors(state, id, fn(c) {
       Cursors(..c, out_closed: True, closed: c.closed || c.in_ended)
-    }),
-  )
+    })
+  #(sched, release_pump_if_terminal(state, id))
+}
+
+/// D-9: once a link is terminal, release its pump — the socket's controlling
+/// process — so it exits and the socket closes ORDERLY while the VM is still
+/// alive. Idempotent at the subject level (a second send is consumed by no one;
+/// the pump exits on the first).
+fn release_pump_if_terminal(state: LinkState, id: LinkId) -> LinkState {
+  case dict.get(state.cursors, id) {
+    Ok(c) ->
+      case c.closed, c.release {
+        True, Some(release) -> {
+          process.send(release, Nil)
+          state
+        }
+        _, _ -> state
+      }
+    Error(_) -> state
+  }
 }
