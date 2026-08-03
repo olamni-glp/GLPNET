@@ -43,11 +43,11 @@ SPDX-License-Identifier: MIT
 
 ## Phase 5 — US3: IL on the wire (P3)
 
-- [ ] T021 [US3] Add LOAD_IL/RUN_GOAL_IL request kinds to csharp/glp_split_protocol/WireProtocol.cs per contracts/il-request-kind.md (062 CompiledIlEnvelope unchanged; typed refusal taxonomy)
-- [ ] T022 [US3] Client-side compile+ship in csharp/glp_repl_client (compiler reference moves to the client project; per-session path choice, never mixed per module)
-- [ ] T023 [US3] Engine-side IL execute path in csharp/glp_engine_host with no compiler reference on the execute path (project-file assertion + build check)
-- [ ] T024 [P] [US3] Create the csharp/glp_split_protocol.tests xUnit project (does not exist yet — add to solution) with il-request round-trip + refusal taxonomy suites; corpus equivalence sweep (IL path vs text path diff empty, SC-003)
-- [ ] T025 [US3] US3 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
+- [X] T021 [US3] Add LOAD_IL/RUN_GOAL_IL request kinds to csharp/glp_split_protocol/WireProtocol.cs per contracts/il-request-kind.md (062 CompiledIlEnvelope unchanged; typed refusal taxonomy)
+- [X] T022 [US3] Client-side compile+ship in csharp/glp_repl_client (compiler reference moves to the client project; per-session path choice, never mixed per module)
+- [X] T023 [US3] Engine-side IL execute path in csharp/glp_engine_host with no compiler reference on the execute path (project-file assertion + build check)
+- [X] T024 [P] [US3] Create the csharp/glp_split_protocol.tests xUnit project (does not exist yet — add to solution) with il-request round-trip + refusal taxonomy suites; corpus equivalence sweep (IL path vs text path diff empty, SC-003)
+- [X] T025 [US3] US3 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
 
 ## Phase 6 — US4: FE/BE split + embeddability builds, then 059 sweep (P4)
 
