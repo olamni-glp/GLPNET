@@ -132,6 +132,16 @@
     },
     {
       "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260802T143832Z.json",
+      "file_sha256": "a5f313abf9d3c45ea37f6059854785685b73a2a1ec77e36d44cd40324c07cdf9",
+      "imported_at": "2026-08-03T12:15:07.291000+00:00",
+      "line_count": 2536,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
       "file_name": "gavriellas__glpnet__20260703T005655Z.json",
       "file_sha256": "a7e7d7c3d80d418aa8460e1a072a036a1e6e200504cd6f82e961bf35f57928c5",
       "imported_at": "2026-07-03T00:56:57.959000+00:00",
