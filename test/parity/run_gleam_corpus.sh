@@ -26,6 +26,7 @@ command -v gleam >/dev/null 2>&1 || { echo "run_gleam_corpus.sh: gleam not on PA
 declare -A CLASS CLASS_REASON
 if [ -f "$SCRIPT_DIR/expected.list" ]; then
     while IFS= read -r l; do
+        l="${l%$'\r'}"   # CR-tolerant: a CRLF checkout must not corrupt block ids (059 T051 root cause)
         case "$l" in ''|'#'*) continue ;; esac
         k="${l%% *}"; r="${l#* }"; b="${r%% *}"; why="${r#* }"
         CLASS["$b"]="$k"; CLASS_REASON["$b"]="$why"
@@ -40,9 +41,16 @@ run_gleam() { ( cd "$GLEAM_DIR" && gleam run ) 2>/dev/null; }
 
 extract_segment() { awk -v idx="$2" '/^@@@SEG@@@/{n=substr($0,10)+0;inseg=(n==idx);next} inseg{print}' "$1"; }
 
-AGREE=0; DIVERGE=0; BLOCKED=0; GAPFORK=0
+AGREE=0; DIVERGE=0; BLOCKED=0; GAPFORK=0; OOS_MISSING=0; ATTEMPTED=0
 DIVERGED_BLOCKS=""; GLEAM_MS=0
 mkdir -p "$GOLDENS/gleam"
+
+# Three-verdict report (T025/T026, contracts/corpus-report.md): every attempted
+# case emits exactly one `verdict:` line — pass | fail{expected,observed} |
+# out_of_scope{reason} — and the aggregate block must satisfy P + F + O == N.
+verdict_pass() { echo "  verdict: pass case=$1"; }
+verdict_fail() { echo "  verdict: fail case=$1 expected=$2 observed=$3"; }
+verdict_oos()  { echo "  verdict: out_of_scope case=$1 reason=$2"; }
 
 # ---------------------------------------------------------------------------
 record_and_diff_block() {
@@ -50,12 +58,17 @@ record_and_diff_block() {
     eval "files=( \"\${_BLK_FILES[@]}\" )"; eval "goals=( \"\${_BLK_GOALS[@]}\" )"
     [ -n "$FILTER" ] && [ "$FILTER" != "$id" ] && return 0
 
+    ATTEMPTED=$((ATTEMPTED+1))
     local cls="${CLASS[$id]:-}"
     if [ "$cls" = "blocked" ]; then
-        BLOCKED=$((BLOCKED+1)); echo "  BLOCKED  $id — ${CLASS_REASON[$id]}"; return 0
+        BLOCKED=$((BLOCKED+1)); echo "  BLOCKED  $id — ${CLASS_REASON[$id]}"
+        verdict_oos "$id" "blocked: ${CLASS_REASON[$id]}"; return 0
     fi
     local golden="$GOLDENS/runtime/$id.golden"
-    [ -f "$golden" ] || { echo "  MISSING golden for $id" >&2; DIVERGE=$((DIVERGE+1)); return 0; }
+    # Missing golden ⇒ out_of_scope with a reason, NEVER pass and no longer a
+    # bare divergence (contract invariant 3; the T027/T028a ruling fixed the
+    # CRLF harness defect, so any remaining miss is genuine golden drift).
+    [ -f "$golden" ] || { echo "  MISSING golden for $id" >&2; OOS_MISSING=$((OOS_MISSING+1)); verdict_oos "$id" "golden missing — 059 T051 drift"; return 0; }
 
     # Build the Gleam session: load each file separately (engine.load ACCUMULATES,
     # Dart-faithful), then run goals. No concatenation -- that would put a shared
@@ -86,12 +99,21 @@ record_and_diff_block() {
 
     if diff -q <(grep -v '^# ' "$golden") "$gout" >/dev/null 2>&1; then
         AGREE=$((AGREE+1)); echo "  AGREE    $id (${#goals[@]} goals)"
+        verdict_pass "$id"
     elif [ "$cls" = "gap" ] || [ "$cls" = "fork" ]; then
         GAPFORK=$((GAPFORK+1)); echo "  ${cls^^}  $id — ${CLASS_REASON[$id]} (expected divergence)"
+        verdict_oos "$id" "$cls: ${CLASS_REASON[$id]}"
     else
         DIVERGE=$((DIVERGE+1)); DIVERGED_BLOCKS+=" $id"
         echo "  DIVERGE  $id:"
         diff <(grep -v '^# ' "$golden") "$gout" | sed 's/^/      /' | head -20
+        # Named divergence (contract invariant 5): the first differing golden
+        # line vs the first differing Gleam line — the runtime's own outcome
+        # classification/binding at the point of divergence.
+        local exp obs
+        exp="$(diff <(grep -v '^# ' "$golden") "$gout" | grep '^<' | head -1 | sed 's/^< //')"
+        obs="$(diff <(grep -v '^# ' "$golden") "$gout" | grep '^>' | head -1 | sed 's/^> //')"
+        verdict_fail "$id" "${exp:-\(absent\)}" "${obs:-\(absent\)}"
     fi
 }
 
@@ -106,12 +128,13 @@ run_load_section() {
     start="$(now_ms)"; raw="$(printf '%s' "$input" | run_gleam | tr -d '\r')"; end="$(now_ms)"
     GLEAM_MS=$((GLEAM_MS + end - start))
     for p in "${paths[@]}"; do
+        ATTEMPTED=$((ATTEMPTED+1))
         local gtok dtok line
         line="$(printf '%s\n' "$raw" | grep -F "../$p" | grep -E 'Loaded:|Error loading' | head -1)"
         gtok="$(printf '%s' "$line" | classify_load | cut -f1)"
         dtok="$(awk -F'\t' -v k="$p" '$1==k{print $2}' "$GOLDENS/load.golden")"
-        if [ "$gtok" = "$dtok" ]; then AGREE=$((AGREE+1));
-        else DIVERGE=$((DIVERGE+1)); DIVERGED_BLOCKS+=" load:$p"; echo "  DIVERGE  load $p: gleam=$gtok dart=$dtok"; fi
+        if [ "$gtok" = "$dtok" ]; then AGREE=$((AGREE+1)); verdict_pass "load:$p";
+        else DIVERGE=$((DIVERGE+1)); DIVERGED_BLOCKS+=" load:$p"; echo "  DIVERGE  load $p: gleam=$gtok dart=$dtok"; verdict_fail "load:$p" "$dtok" "$gtok"; fi
     done
     echo "  load section $section: compared ${#paths[@]} files"
 }
@@ -119,6 +142,7 @@ run_load_section() {
 run_guardcase() {
     local id="$1"; shift; local clause="$*"
     [ -n "$FILTER" ] && [ "$FILTER" != "E" ] && [ "$FILTER" != "$id" ] && return 0
+    ATTEMPTED=$((ATTEMPTED+1))
     printf '%s\n' "$clause" > "$TMP_GLP"
     local raw line gtok dtok start end
     start="$(now_ms)"; raw="$(printf 'load .parity_run.glp\n:quit\n' | run_gleam | tr -d '\r')"; end="$(now_ms)"
@@ -126,8 +150,8 @@ run_guardcase() {
     line="$(printf '%s\n' "$raw" | grep -E 'Loaded:|Error loading' | head -1)"
     gtok="$(printf '%s' "$line" | classify_load | cut -f1)"
     dtok="$(awk -F'\t' -v k="E:$id" '$1==k{print $2}' "$GOLDENS/load.golden")"
-    if [ "$gtok" = "$dtok" ]; then AGREE=$((AGREE+1)); echo "  AGREE    guard E:$id ($gtok)";
-    else DIVERGE=$((DIVERGE+1)); DIVERGED_BLOCKS+=" E:$id"; echo "  DIVERGE  guard E:$id: gleam=$gtok dart=$dtok"; fi
+    if [ "$gtok" = "$dtok" ]; then AGREE=$((AGREE+1)); echo "  AGREE    guard E:$id ($gtok)"; verdict_pass "E:$id";
+    else DIVERGE=$((DIVERGE+1)); DIVERGED_BLOCKS+=" E:$id"; echo "  DIVERGE  guard E:$id: gleam=$gtok dart=$dtok"; verdict_fail "E:$id" "$dtok" "$gtok"; fi
 }
 
 # --- parse corpus.list + drive (same grammar as the recorder) ---------------
@@ -135,6 +159,7 @@ _BLK_ID=""; _BLK_FILES=(); _BLK_GOALS=(); declare -a LOAD_B LOAD_C LOAD_D; LOAD_
 flush_block() { [ -z "$_BLK_ID" ] && return 0; record_and_diff_block "$_BLK_ID"; _BLK_ID=""; _BLK_FILES=(); _BLK_GOALS=(); }
 echo "=== Gleam corpus runner (feature 050 T039) ==="
 while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"   # CR-tolerant: a CRLF checkout must not corrupt block ids (059 T051 root cause)
     case "$line" in ''|'#'*) continue ;; esac
     tok="${line%% *}"; rest="${line#"$tok"}"; rest="${rest# }"
     case "$tok" in
@@ -159,5 +184,33 @@ echo "  agree=$AGREE  diverge=$DIVERGE  blocked=$BLOCKED  gap/fork=$GAPFORK"
 [ -n "$DIVERGED_BLOCKS" ] && echo "  diverged:$DIVERGED_BLOCKS"
 echo "  wall-clock: gleam=${GLEAM_MS}ms  dart=${DART_MS}ms  bound=10x"
 if [ "$DART_MS" -gt 0 ] && [ "$GLEAM_MS" -le $((10*DART_MS)) ]; then echo "  10x bound: PASS"; else echo "  10x bound: (partial run or FAIL — full run required for SC-009)"; fi
+
+# --- three-verdict aggregate block (T025/T026, contracts/corpus-report.md) ---
+# pass = agreements; fail = real divergences; out_of_scope = blocked + verified
+# expected-divergences (gap/fork) + missing-golden, each with a reason above.
+OOS=$((BLOCKED + GAPFORK + OOS_MISSING))
+TOTAL=$((AGREE + DIVERGE + OOS))
+echo ""
+echo "total:        $TOTAL"
+echo "pass:         $AGREE"
+echo "fail:         $DIVERGE"
+echo "out_of_scope: $OOS"
+# Completeness invariant (SC-002): every attempted case produced exactly one
+# verdict. A shortfall is a RUNNER defect, reported as such — never silence.
+if [ "$ATTEMPTED" -ne "$TOTAL" ]; then
+    echo "  COMPLETENESS VIOLATION: attempted=$ATTEMPTED but P+F+O=$TOTAL — runner defect (SC-002)"
+    exit 3
+fi
+# SC-001 gate (T031): in-scope pass rate = P/(P+F); below 95% FAILS the phase —
+# escalate (Bug Protocol on each named fail), never proceed past it.
+INSCOPE=$((AGREE + DIVERGE))
+if [ "$INSCOPE" -gt 0 ]; then
+    RATE=$((100 * AGREE / INSCOPE))
+    echo "in_scope_pass_rate: ${RATE}% ($AGREE/$INSCOPE)"
+    if [ "$RATE" -lt 95 ]; then
+        echo "  SC-001 GATE FAIL: in-scope pass rate ${RATE}% < 95% — escalate, do not proceed"
+        [ "$DIVERGE" -eq 0 ] && exit 4
+    fi
+fi
 [ "$DIVERGE" -eq 0 ] && echo "  RESULT: 100% agreement on in-scope cases" || echo "  RESULT: $DIVERGE divergence(s) to classify (Bug Protocol)"
 exit "$DIVERGE"

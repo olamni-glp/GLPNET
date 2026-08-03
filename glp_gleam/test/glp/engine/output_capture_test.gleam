@@ -60,7 +60,7 @@ pub fn output_is_a_kernel_test() {
 // `_output`(hello): one captured line, heap unchanged (same value back), no wakes.
 pub fn dispatch_output_captures_line_test() {
   let h = heap.new()
-  let assert Ok(kernels.KSuccess(_h, [], ["hello"])) =
+  let assert Ok(kernels.KSuccess(_h, [], ["hello"], [])) =
     kernels.dispatch(h, "_output", 1, [atom("hello")])
 }
 
@@ -74,7 +74,7 @@ emit(X) :- ground(X?) | '_output'(X?)."
 // by run_with_limit_capturing (ahead of the outcome), and the run succeeds.
 pub fn output_captured_end_to_end_test() {
   let e = engine.new()
-  let assert Ok(e) = engine.load(e, emit_source)
+  let assert Ok(e) = engine.load(e, "emit", emit_source)
   let #(_e, env, output) =
     engine.run_with_limit_capturing(e, "emit(hello)", 1_000_000)
 

@@ -7,6 +7,7 @@
 //// negatives here are the SRSW-neg + type-neg half of T030's smoke set.
 
 import gleam/option.{None, Some}
+import gleam/string
 import gleeunit/should
 import glp/analysis/type_ast.{Pos}
 import glp/bytecode/program
@@ -15,6 +16,9 @@ import glp/codec/term_codec
 import glp/diagnostics
 import glp/engine
 import glp/engine/goal_boot
+import glp/link/seam/link_scheme
+import glp/link/seam/transport
+import glp/link/transports/loopback
 import glp/parser/ast
 import glp/runtime/heap
 import glp/runtime/terms
@@ -55,14 +59,14 @@ pub fn new_reads_disk_prelude_test() {
 // Loading a clean program prepends the prelude and exposes the user procedure.
 pub fn load_valid_adds_user_procedure_test() {
   let eng = engine.new_with_prelude("")
-  let assert Ok(eng) = engine.load(eng, good_source)
+  let assert Ok(eng) = engine.load(eng, "good", good_source)
   let assert Ok(_) = program.label_pc(engine.program(eng), "flip/2")
 }
 
 // T030 load-time negative #1 — SRSW violation rejects at the SRSW stage.
 pub fn load_srsw_negative_rejects_test() {
   let eng = engine.new_with_prelude("")
-  let assert Error(err) = engine.load(eng, srsw_negative)
+  let assert Error(err) = engine.load(eng, "srsw_neg", srsw_negative)
   err.stage
   |> should.equal(diagnostics.SrswStage)
   err.class
@@ -72,7 +76,7 @@ pub fn load_srsw_negative_rejects_test() {
 // T030 load-time negative #2 — a type error rejects at the type-check stage.
 pub fn load_type_negative_rejects_test() {
   let eng = engine.new_with_prelude("")
-  let assert Error(err) = engine.load(eng, type_negative)
+  let assert Error(err) = engine.load(eng, "type_neg", type_negative)
   err.stage
   |> should.equal(diagnostics.TypeCheckStage)
   err.class
@@ -101,7 +105,7 @@ pub fn run_assignment_binds_result_test() {
 // produced query var (Out) reported as a var→writer, exactly one blocking reader.
 pub fn run_suspended_goal_reports_suspension_test() {
   let eng = engine.new_with_prelude("")
-  let assert Ok(eng) = engine.load(eng, good_source)
+  let assert Ok(eng) = engine.load(eng, "good", good_source)
   let #(_eng, env) = engine.run(eng, "flip(In?, Out)")
 
   env.status
@@ -145,4 +149,131 @@ pub fn goal_boot_builds_const_list_test() {
   // Head is the inline constant 1; tail is a further cons (structural check).
   let assert terms.StructTerm(".", [terms.ConstTerm(terms.ConstInt(1)), _tail]) =
     cell
+}
+
+// ── transport injection seam (wave-3 T007/T008, gap G6) ──────────────────────
+
+// A fresh engine holds no transports; injecting loopback makes exactly that
+// scheme resolvable through the composition root, and an uninjected scheme
+// (tcp) reports Error(Nil) — never auto-instantiated.
+pub fn transport_injection_seam_test() {
+  let eng = engine.new_with_prelude("")
+  should.equal(engine.transports(eng), [])
+  let assert Error(Nil) = engine.transport_for(eng, link_scheme.loopback())
+
+  let eng2 = engine.with_transports(eng, [loopback.new()])
+  let assert Ok(t) = engine.transport_for(eng2, link_scheme.loopback())
+  should.be_true(transport.serves(t, link_scheme.loopback()))
+  let assert Error(Nil) = engine.transport_for(eng2, link_scheme.tcp())
+}
+
+// with_transports REPLACES the injected set (composition-root semantics: the
+// set is assembled once, in one place — not accumulated behind the caller's back).
+pub fn with_transports_replaces_test() {
+  let eng =
+    engine.new_with_prelude("")
+    |> engine.with_transports([loopback.new()])
+    |> engine.with_transports([])
+  should.equal(engine.transports(eng), [])
+  let assert Error(Nil) = engine.transport_for(eng, link_scheme.loopback())
+}
+
+// ── re-load replacement (wave-3 T012, FR-015) ─────────────────────────────
+
+const v2_source = "Bit ::= zero ; one.
+procedure flop(Bit?, Bit).
+flop(zero, one).
+flop(one, zero)."
+
+// Re-loading the SAME name replaces its definitions: after v2 (flop/2 only),
+// v1's flip/2 label is gone from the runnable program — stale definitions are
+// unreachable (Dart `_loadedPrograms[name] = program` map overwrite).
+pub fn reload_same_name_replaces_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, "m", good_source)
+  let assert Ok(_) = program.label_pc(engine.program(eng), "flip/2")
+  let assert Ok(eng) = engine.load(eng, "m", v2_source)
+  let assert Ok(_) = program.label_pc(engine.program(eng), "flop/2")
+  program.label_pc(engine.program(eng), "flip/2")
+  |> should.equal(Error(Nil))
+}
+
+// Distinct names still ACCUMULATE (the multi-file corpus session semantics):
+// both files' procedures stay reachable.
+pub fn distinct_names_accumulate_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, "m1", good_source)
+  let assert Ok(eng) = engine.load(eng, "m2", v2_source)
+  let assert Ok(_) = program.label_pc(engine.program(eng), "flip/2")
+  let assert Ok(_) = program.label_pc(engine.program(eng), "flop/2")
+}
+
+// ── T014: SRSW rejection names the variable and the clause (FR-005) ─────────
+
+// The staged diagnostic carries the offending variable name AND the clause
+// identity (procedure signature + line) — Dart `sig: Line N: …` format.
+pub fn srsw_error_names_variable_and_clause_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Error(err) = engine.load(eng, "srsw_neg", srsw_negative)
+  should.be_true(string.contains(err.reason, "dup/3"))
+  should.be_true(string.contains(err.reason, "\"X\""))
+  should.be_true(string.contains(err.reason, "Line "))
+}
+
+// ── T015: a failed load leaves the engine usable, prior program intact ──────
+
+pub fn failed_load_leaves_engine_usable_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, "good", good_source)
+  // A rejected load returns Error and MUST NOT damage the engine value …
+  let assert Error(_) = engine.load(eng, "bad", srsw_negative)
+  // … so the prior program still loads goals and runs (FR-003).
+  let assert Ok(_) = program.label_pc(engine.program(eng), "flip/2")
+  let #(_eng, env) = engine.run(eng, "flip(zero, Out)")
+  env.status
+  |> should.equal(result_envelope.Success)
+}
+
+// ── T018: suspension is reported distinctly from failure (FR-006) ──────────
+
+// A suspended goal: status Suspended AND no error. A failed goal: status Failed
+// AND an error present. The two outcomes are never conflated.
+pub fn suspension_is_distinct_from_failure_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, "good", good_source)
+  let #(_e1, suspended) = engine.run(eng, "flip(In?, Out)")
+  suspended.status
+  |> should.equal(result_envelope.Suspended)
+  suspended.error
+  |> should.equal(None)
+
+  let #(_e2, failed) = engine.run(eng, "no_such(1)")
+  failed.status
+  |> should.equal(result_envelope.Failed)
+  let assert Some(_) = failed.error
+}
+
+// ── T018a: writer-MGU polarity survives the registry-rebuilt program ────────
+
+// After a re-load through the loaded-programs registry (T012's rebuild path),
+// a goal still binds ONLY its writer: the result arrives as a resolved binding
+// on the query writer, with no reader bound and no writer-to-writer binding
+// (FR-007; closes analyze finding C1 at the loader level — the ModuleTerm-level
+// re-verify belongs to the dispatch subsystem work).
+pub fn writer_mgu_survives_reload_rebuild_test() {
+  let eng = engine.new_with_prelude("")
+  let assert Ok(eng) = engine.load(eng, "m", v2_source)
+  let assert Ok(eng) = engine.load(eng, "m", good_source)
+  let #(_eng, env) = engine.run(eng, "flip(zero, Out)")
+  env.status
+  |> should.equal(result_envelope.Success)
+  // Out (the writer) carries the binding; nothing else was bound.
+  env.resolved_bindings
+  |> should.equal([
+    #("Out", term_codec.ConstTerm(term_codec.ConstAtom("one"))),
+  ])
+  env.var_to_writer
+  |> should.equal([])
+  env.suspended
+  |> should.equal([])
 }

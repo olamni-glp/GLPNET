@@ -52,6 +52,8 @@ import glp/bytecode/opcodes.{type LabelName, type Op}
 import glp/bytecode/program.{type BytecodeProgram, type XRegs}
 import glp/engine/arith.{type NumV, NInt, NReal}
 import glp/engine/kernels
+import glp/link/primitives/link_kernels
+import glp/link/primitives/link_runtime.{type LinkState}
 import glp/mad/mad_kernels.{type MadState}
 import glp/runtime/heap.{type Heap, type HeapError, Bound, Unbound}
 import glp/runtime/suspension.{type GoalRef}
@@ -78,9 +80,22 @@ pub type ReduceOutcome {
     woken: List(GoalRef),
     spawned: List(SpawnReq),
     output: List(String),
+    /// Module-dispatch spawn requests from `_activate/2` (wave-3): the kernel is
+    /// heap-only, so the spawns ride out as data for the scheduler to resolve
+    /// against its module registry (the `output` precedent).
+    remote: List(kernels.RemoteSpawn),
+    /// Channel-send requests from `Distribute`/`Transmit` (wave-3): resolved
+    /// module name + the built goal term, applied by the scheduler via
+    /// `channel_send` (Dart sends inline on `rt.glpChannels`; the pure runner
+    /// threads the effect out as data).
+    sends: List(#(String, Term)),
     /// madGLP effect state after this reduction (T050.A2) — `None` unless the goal
     /// ran in madGLP mode (`ctx.mad` was `Some`). The A3 MadEngine reads M_p from here.
     mad: Option(MadState),
+    /// Link effect state after this reduction (T050.C2) — `None` unless the goal
+    /// ran with the link layer armed (`ctx.link` was `Some`). The link-aware
+    /// scheduler step reads the advanced registry/cursors from here.
+    link: Option(LinkState),
   )
   /// All clauses were exhausted with a non-empty goal-level suspension set: the
   /// goal suspends on the writer addresses in `on` (reactivate when any binds).
@@ -216,11 +231,22 @@ pub type RunnerContext {
     /// Captured `_output/1` program-output lines accumulated during this reduction
     /// (T034), handed to the scheduler on `Reduced` (never touches the heap).
     output: List(String),
+    /// Module-dispatch spawn requests accumulated from `_activate/2` kernel calls
+    /// this reduction (wave-3); threaded out on `Reduced.remote` like `output`.
+    remote_spawns: List(kernels.RemoteSpawn),
+    /// Channel-send requests accumulated from `Distribute`/`Transmit` this
+    /// reduction (wave-3); threaded out on `Reduced.sends`.
+    sends: List(#(String, Term)),
     /// madGLP effect state (W_p + M_p + reader-spawns), present only in madGLP mode
     /// (T050.A2). The effectful `_send` kernel reads/updates it deep inside `reduce`;
     /// threaded out on `Reduced` like `output`. `None` for ordinary (non-mad) runs, so
     /// a `_send` in a non-mad reduction fails non-fatally (the goal fails).
     mad: Option(MadState),
+    /// Link effect state (transports + registry + cursors), present only when the
+    /// engine runs with the link layer armed (T050.C2). The effectful `_link_*`
+    /// kernels read/update it at the Spawn label-miss; threaded out on `Reduced`
+    /// like `mad`. `None` → a `_link_*` call fails non-fatally (the goal fails).
+    link: Option(LinkState),
   )
 }
 
@@ -247,7 +273,10 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
     parent_stack: [],
     in_body: False,
     output: [],
+    remote_spawns: [],
+    sends: [],
     mad: None,
+    link: None,
   )
 }
 
@@ -256,6 +285,13 @@ pub fn new_context(heap: Heap, regs: XRegs) -> RunnerContext {
 /// its updated `MadState` returns on `Reduced`).
 pub fn with_mad(ctx: RunnerContext, state: MadState) -> RunnerContext {
   RunnerContext(..ctx, mad: Some(state))
+}
+
+/// Inject link effect state into a reduction context (the link-aware scheduler
+/// step sets this before `reduce` so the effectful `_link_*` kernels are
+/// reachable and the advanced `LinkState` returns on `Reduced`).
+pub fn with_link(ctx: RunnerContext, state: LinkState) -> RunnerContext {
+  RunnerContext(..ctx, link: Some(state))
 }
 
 /// Run one reduction of the goal whose procedure entry PC is `kappa`, over
@@ -324,9 +360,27 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
     opcodes.NoMoreClauses -> Stop(no_more_clauses(ctx))
     opcodes.Commit -> commit(program, ctx, pc)
     opcodes.Proceed ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.remote_spawns,
+        ctx.sends,
+        ctx.mad,
+        ctx.link,
+      ))
     opcodes.Halt ->
-      Stop(Reduced(ctx.heap, ctx.woken, ctx.spawn_reqs, ctx.output, ctx.mad))
+      Stop(Reduced(
+        ctx.heap,
+        ctx.woken,
+        ctx.spawn_reqs,
+        ctx.output,
+        ctx.remote_spawns,
+        ctx.sends,
+        ctx.mad,
+        ctx.link,
+      ))
 
     // ── HEAD phase: constants ───────────────────────────────────────────────
     opcodes.HeadConstant(value, arg_slot) ->
@@ -366,6 +420,13 @@ fn step(program: BytecodeProgram, ctx: RunnerContext, op: Op, pc: Int) -> Step {
       body_element_var(ctx, var_index, is_reader)
     opcodes.SetConstant(value) -> body_element_const(ctx, value)
     opcodes.Spawn(label, arity) -> spawn(program, ctx, label, arity)
+
+    // ── BODY phase: module-dispatch channel RPC (wave-3; Dart runner.dart:
+    // 3375-3479) ────────────────────────────────────────────────────────────
+    opcodes.Distribute(import_index, functor, arity) ->
+      distribute(program, ctx, import_index, functor, arity)
+    opcodes.Transmit(module_var_index, functor, arity) ->
+      transmit(ctx, module_var_index, functor, arity)
 
     // ── GUARD phase: pure three-valued tests (slice 21e / T023) ─────────────
     opcodes.Otherwise ->
@@ -1888,13 +1949,14 @@ fn spawn(
           }
         })
       case kernels.dispatch(ctx.heap, proc_name, arity, args) {
-        Ok(kernels.KSuccess(heap, woken, output)) ->
+        Ok(kernels.KSuccess(heap, woken, output, spawns)) ->
           Advance(
             RunnerContext(
               ..ctx,
               heap: heap,
               woken: list.append(ctx.woken, woken),
               output: list.append(ctx.output, output),
+              remote_spawns: list.append(ctx.remote_spawns, spawns),
               arg_slots: dict.new(),
             ),
           )
@@ -1906,10 +1968,158 @@ fn spawn(
               "body kernel " <> label <> " aborted: " <> detail,
             )),
           )
-        // Not a pure kernel → try the madGLP effectful seam (`_send`; T050.A2).
-        Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
+        // Not a pure kernel → try the link seam (T050.C2), then madGLP (`_send`).
+        Error(_) -> link_spawn(ctx, label, proc_name, arity, args)
       }
     }
+  }
+}
+
+// Distribute (Dart runner.dart:3375-3424) — static RPC to the imported module
+// at a known index. BODY-only: outside BODY it is a no-op skip (Dart's
+// `if (cx.inBody)` guard falls through to `pc++`). Build the goal struct from
+// the collected arg slots, resolve the import index to the module name on the
+// goal's OWN program (Dart resolves via `replCtx.imports`), and thread the
+// channel send out as data for the scheduler, which owns the channels. An
+// unknown import index is a hard error (Dart: `RunResult.terminated`).
+fn distribute(
+  program: BytecodeProgram,
+  ctx: RunnerContext,
+  import_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.in_body {
+    False -> Advance(ctx)
+    True ->
+      case program.import_name(program, import_index) {
+        Error(_) ->
+          Stop(RunnerError(Malformed(
+            "distribute: no target for import index "
+            <> int.to_string(import_index)
+            <> " ("
+            <> functor
+            <> "/"
+            <> int.to_string(arity)
+            <> ")",
+          )))
+        Ok(name) -> emit_channel_send(ctx, name, functor, arity)
+      }
+  }
+}
+
+// Transmit (Dart runner.dart:3426-3479) — dynamic RPC to a module resolved at
+// runtime from clause variable X<module_var_index>: a constant, or a VarRef
+// dereferenced to one; its printable value is the channel name. An unresolvable
+// module var is a hard error (Dart: `RunResult.terminated`).
+fn transmit(
+  ctx: RunnerContext,
+  module_var_index: Int,
+  functor: String,
+  arity: Int,
+) -> Step {
+  case ctx.in_body {
+    False -> Advance(ctx)
+    True ->
+      case resolve_module_name(ctx, module_var_index) {
+        Error(_) ->
+          Stop(RunnerError(Malformed(
+            "transmit: could not resolve module name from X"
+            <> int.to_string(module_var_index)
+            <> " ("
+            <> functor
+            <> "/"
+            <> int.to_string(arity)
+            <> ")",
+          )))
+        Ok(name) -> emit_channel_send(ctx, name, functor, arity)
+      }
+  }
+}
+
+/// Build the goal struct from the collected arg slots (Dart: non-null slots in
+/// order) and append the send request; arg slots clear (Dart `argSlots.clear`).
+fn emit_channel_send(
+  ctx: RunnerContext,
+  name: String,
+  functor: String,
+  arity: Int,
+) -> Step {
+  let args =
+    upto(arity)
+    |> list.filter_map(fn(i) { dict.get(ctx.arg_slots, i) })
+  Advance(
+    RunnerContext(
+      ..ctx,
+      sends: list.append(ctx.sends, [#(name, StructTerm(functor, args))]),
+      arg_slots: dict.new(),
+    ),
+  )
+}
+
+/// Resolve the Transmit module variable to a channel name (Dart: `clauseVars
+/// [idx]` as a ConstTerm, or a VarRef dereferenced to one).
+fn resolve_module_name(
+  ctx: RunnerContext,
+  var_index: Int,
+) -> Result(String, Nil) {
+  case dict.get(ctx.clause_vars, var_index) {
+    Ok(CVTerm(t)) -> const_module_name(ctx.heap, t)
+    Ok(CVAddr(addr)) -> const_module_name(ctx.heap, VarRef(addr))
+    _ -> Error(Nil)
+  }
+}
+
+fn const_module_name(heap: Heap, term: Term) -> Result(String, Nil) {
+  case term {
+    ConstTerm(ConstAtom(name)) -> Ok(name)
+    ConstTerm(ConstString(name)) -> Ok(name)
+    VarRef(addr) ->
+      case dval(heap, addr) {
+        Bound(v) -> const_module_name(heap, v)
+        _ -> Error(Nil)
+      }
+    _ -> Error(Nil)
+  }
+}
+
+/// The link effectful dispatch at a BODY Spawn label-miss (T050.C2), reached after
+/// the pure `kernels.dispatch` misses and BEFORE the madGLP seam. When the
+/// reduction carries a `LinkState`, run the link kernel: `LinkEffect` threads the
+/// advanced registry/cursors + heap forward; `LinkAbort` FAILS the goal
+/// NON-FATALLY (the Dart `[ABORT]` + BodyKernelResult.abort surface). A link
+/// kernel outside link mode (`ctx.link == None`) also fails non-fatally; anything
+/// else falls through to the madGLP seam, exactly as before.
+fn link_spawn(
+  ctx: RunnerContext,
+  label: LabelName,
+  proc_name: String,
+  arity: Int,
+  args: List(Term),
+) -> Step {
+  case ctx.link {
+    Some(state) ->
+      case link_kernels.dispatch(ctx.heap, state, proc_name, arity, args) {
+        Ok(link_kernels.LinkEffect(heap, state, woken)) ->
+          Advance(
+            RunnerContext(
+              ..ctx,
+              heap: heap,
+              woken: list.append(ctx.woken, woken),
+              link: Some(state),
+              arg_slots: dict.new(),
+            ),
+          )
+        Ok(link_kernels.LinkAbort(_detail)) -> Stop(Failed(ctx.heap))
+        Error(_) -> mad_spawn(ctx, label, proc_name, arity, args)
+      }
+    None ->
+      case link_kernels.is_kernel(proc_name, arity) {
+        // A link kernel invoked with no link layer armed fails non-fatally,
+        // never crashes the engine.
+        True -> Stop(Failed(ctx.heap))
+        False -> mad_spawn(ctx, label, proc_name, arity, args)
+      }
   }
 }
 

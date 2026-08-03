@@ -64,7 +64,12 @@ FAIL=0
 
 check_aot() {
     local name="$1" pattern="$2" output="$3"
-    if echo "$output" | grep -q -- "$pattern"; then
+    # -i: NTFS reports canonical directory case (e.g. D:\BSTDEV\...\GLPNET), so the
+    # exe's self-reported path may differ in case from the repo-relative patterns
+    # depending on the invoking cwd — case-insensitive matching keeps the check
+    # cwd-independent on Windows (observed 2026-08-02: suite cwd canonicalized to
+    # uppercase → the glp(net)? path pattern missed → false FAIL).
+    if echo "$output" | grep -qi -- "$pattern"; then
         echo "  PASS: $name"
         PASS=$((PASS + 1))
     else

@@ -1,50 +1,73 @@
-# Restart pointer — NOT a work ledger (updated 2026-07-04)
+# Restart pointer — NOT a work ledger (updated 2026-07-27)
 
 > Intentionally thin. The **roadmap + buildkit pipeline / marathon state** are the source of truth
 > (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Do not resume from a hand-written plan.
 
-## 🔴 Tooling gotcha that bit the 2026-07-04 session — read first
-Two buildkit installs exist. Use the RIGHT one:
-- `D:/bstdev/research/buildkit/.venv/Scripts/python.exe` → **buildkit-cli 2026.7.1.1** — HAS
-  `roadmap {export,import,replay}` + `upgrade` + `deploy`. **Use this for roadmap sync / upgrade / deploy.**
-- `D:/bstdev/research/buildkit/.venv313` → **stale 2026.6.27.1** — LACKS import/export. The old CLAUDE.md
-  "run via .venv313" note is out of date for these commands. (marathon/DBOS may still need 3.13 — verify.)
+## 🔴 Environment gotchas — read first (2026-07-27, post drive-swap)
+
+The machine rebuild left several things unset. A fresh shell needs:
+
+```
+$env:PATH = "C:\Program Files\nodejs;C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;$env:PATH"
+$env:PYTHONUTF8 = 1
+```
+
+- **`node` is NOT on PATH** — every `buildkit_cli` command that touches PGlite exits 2 with
+  "Node 20+ not found on PATH" until you prepend it. Node itself is fine (v24.18.0).
+- **`git` and `gh` are NOT on PATH** either.
+- **git `safe.directory`** was needed (files carry the old machine's SID); already added globally for
+  both `D:/BSTDEV/research/GLP/GLPNET` and the lowercase spelling.
+- **git identity** is set **repo-locally** to `vonwenm <mvw@bancstreet.com>` (matches commit history;
+  there was no global identity at all).
+- **`gh`** is authenticated as `vonwenm` (keyring). `gh pr merge` is now in
+  `.claude/settings.local.json`'s allow-list.
+- **`python -m buildkit_cli.*` works with system Python 3.14** — no venv needed for roadmap/pipeline/
+  marathon. `buildkit-roadmap` / `buildkit-size` console scripts are **not** on PATH
+  (`buildkit_cli.size` does not exist as a module — sizing steps skip silently).
 
 ## How to locate yourself on any restart
-1. **Feature states** → `<.venv python> -m buildkit_cli.roadmap status` (25 epics / 140 features).
-   `next` → recommends the build order.
-2. `.specify/feature.json` → `specs/040-rcopy-file-transfer-service` (shipped; a finished pointer, not WIP).
-3. Branch **`develop`** @ pushed HEAD; tree clean. `main` = **v2026.07.04.3**; develop = main + F3 retro + sync chores.
 
-## DONE this session (2026-07-04, all committed+pushed)
-- **Ship**: cut **v2026.07.04.1** from develop (`buildkit release`, PR #75 merged, back-merge #76). main later
-  advanced to **v2026.07.04.3** from the other host (gavriellas).
-- **Fixed red baseline before ship**: `test_duplicate_announced_id_never_evicts_the_incumbent` — ROOT CAUSE was a
-  **stale `glp_quick_host.dll`** (2026-06-28, pre-040-routing-fix), not a code bug. Rebuilt host (killed 6 orphaned
-  host procs holding the dll lock) → glp_quick **178 pass / 1 skip**. No source change (bin/ gitignored).
-- **Roadmap CRDT sync**: `roadmap import`→`export`→`import` (olamnit↔gavriellas), idempotent. Pulled in the 11
-  features that looked "missing" pre-import (crdtmsg-*, glp-gleam-*, three-role-agent-team, cross-runtime tests).
+1. **Roadmap** → `python -m buildkit_cli.roadmap status` (56 closed / 37 open across 10 epics).
+2. **Active feature** → `.specify/feature.json` = `specs/060-wave3-full-gleam-chain`.
+3. **Pipeline** → `python -m buildkit_cli.pipeline.cli status`.
+4. **Marathon** → `python -m buildkit_cli.marathon resume --feature wave-3-consolidated-full-gleam-chain`
+   (run `mrun-e300493d5a6d`). Rehearsed 2026-07-27, exits 0 and reports the position from durable rows.
+   Note: `buildkit_cli.marathon` takes **`--feature`**, not `--run` — `--run` is the *codeconv* 030
+   harness's flag (CLAUDE.md § Multi-Stage Task Persistence), a different tool. `status` / `position` /
+   `doctor` take the same `--feature`.
 
-## NEXT (post-restart, in order) — per owner directive 2026-07-04 (rev. 083x)
-0. **✅ DONE — roadmap dedup.** The 55 dup-GUID groups from the olamnit↔gavriellas CRDT merge were
-   resolved via NEW buildkit soft-tombstone primitives (`delete/reject/supersede/merge` + epic
-   `delete`), landed on buildkit branch **`roadmap-dedup-primitives`** (commit `bcb866a`, 8 tests
-   green, regression-clean). 55 features superseded + 7 empty dup epics deleted → **0 dup groups,
-   78 live features, 18 epics**. Backup export `…083157Z.json` (pre) + `…083445Z.json` (post).
-   The tombstones are standard CRDT (`action='tombstoned'`), so the dedup **persists even without
-   merging the buildkit branch** (develop's fold already honours tombstones). `/bk-codify` note
-   `cn-20260704T083015-4ebcfa42` seeds the proper spec-driven `dedup` feature later.
-   **`/bk-upgrade` + `/bk-deploy` SKIPPED** per owner (2026-07-04).
-1. **Marathon the roadmap** via **/bk-marathon**: per feature run
-   specify→clarify→plan→tasks→analyze(top remedies)→implement→codexreview→close→commit/push/merge,
-   checkpointing for safe restart after clarify/analyze/implement/close and after MVP within implement.
-   **`roadmap next` now recommends `crdtmsg-mvp`** (CRDT multi-format messaging MVP, state=promoted) —
-   START HERE with `/bk-specify` (research already done: `docs/research/crdt-multiformat-messaging/`).
-   **Host-blocked** (skip/defer here): `http3-quic-ws-link-full-acceptance`
-   (Profile C needs MSVC quicer NIF; two-host e2e needs the `gavri` host).
-   Buildkit branch `roadmap-dedup-primitives` is ready to ship to buildkit `develop` (optional; not
-   required for the dedup to hold).
+## Where things stand (2026-07-27)
+
+- **059** `full-scope-gleam-glp-implementation` — **merged to develop** (PR #115, merge `f08940ce`).
+  Carries a live escalation: T051 parity **44 missing corpus goldens** (evidence-reproducibility drift).
+  Wave 3 inherits it as FR-018a/FR-018b/SC-010.
+- **060** `wave3-full-gleam-chain` — branch `060-wave3-full-gleam-chain`, off develop.
+  Pipeline: specify ✅ clarify ✅ plan ✅ tasks ✅ analyze ✅ → **implement is next**.
+  Marathon `mrun-e300493d5a6d`: **5/10 steps complete**.
+
+## NEXT — `/bk-implement` on 060
+
+Artifacts are all on disk under `specs/060-wave3-full-gleam-chain/`:
+`spec.md` (34 FR, 10 SC, 5 user stories) · `plan.md` · `research.md` (decisions D1–D4, gap analysis
+G1–G10) · `data-model.md` · `quickstart.md` · `contracts/{repl-commands,link-handshake,corpus-report}.md`
+· `tasks.md` (**52 tasks, 8 phases, MVP = phases 1–3**) · `analysis-findings.md`.
+
+**Before writing any code**: Phase 1 T001–T004 capture the non-regression baseline
+(`gleam test` in `glp_gleam/`, expected **465 green**; `bash test/run_all_tests.sh`). Constitution VII
+makes this non-negotiable — a change against a red baseline cannot be attributed.
+
+**Two open findings from analyze** (see `analysis-findings.md`, not yet applied):
+- **C1 (HIGH)** — FR-007 writer-MGU has no task, though this wave changes the loader and engine seam.
+- **B1 (MEDIUM)** — the Bug-Protocol "STOP, don't regenerate a golden from the runtime under test"
+  obligation is prose under Phase 5, not inside task T029.
+
+**Advisory, unresolved**: wave 3 is roadmap-state `captured` and recorded blocked-by
+`wave-2-consolidated-repl-engine-split-spine`, which has not been built — the owner accepted jumping
+that order. The roadmap will **not** auto-link this spec (slug `wave-3-consolidated-full-gleam-chain`
+vs dir `060-wave3-full-gleam-chain`); Constitution VIII marks that clause advisory.
 
 ## History (done — do not resume)
-- `037-virtual-3270-term` folded into **040** (shipped). `036-http3-quic-ws-link` shipped v2026.07.02.3;
-  `038` v2026.07.02.1; `039` v2026.06.30.1. Earlier: 034/035/030.
+
+- 2026-07-27: roadmap sweep (39 `released` → `closed`); 059 merged; 060 specified through analyze.
+- Earlier: `037` folded into **040** (shipped). `036` v2026.07.02.3; `038` v2026.07.02.1;
+  `039` v2026.06.30.1. Earlier still: 034/035/030.

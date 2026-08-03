@@ -201,3 +201,52 @@ pub fn nonwriter_output_aborts_test() {
 pub fn unregistered_kernel_is_error_test() {
   let assert Error(Nil) = kernels.dispatch(heap.new(), "_frobnicate", 3, [])
 }
+
+// ── _copy/2 (wave-3 T005; Dart copyKernel, body_kernels.dart:527-535) ────────
+
+pub fn copy_is_registered_test() {
+  let assert True = kernels.is_kernel("_copy", 2)
+}
+
+// _copy(42, Z) → Z = 42: the deref'd source is bound to the output writer.
+pub fn copy_const_binds_output_test() {
+  let #(h, z, _) = heap.allocate_variable(heap.new())
+  let assert Ok(kernels.KSuccess(heap: h2, ..)) =
+    kernels.dispatch(h, "_copy", 2, [ConstTerm(ConstInt(42)), VarRef(z)])
+  let assert Ok(#(_, heap.Bound(ConstTerm(ConstInt(42))))) = heap.deref(h2, z)
+}
+
+// _copy derefs a bound chain: with X bound to f(1), _copy(X, Z) binds Z to the
+// VALUE f(1), not to the var reference (Dart _deref before _bindResult).
+pub fn copy_derefs_bound_source_test() {
+  let #(h, x, _) = heap.allocate_variable(heap.new())
+  let src = terms.StructTerm("f", [ConstTerm(ConstInt(1))])
+  let assert Ok(#(h, _)) = heap.bind_writer(h, x, src)
+  let #(h, z, _) = heap.allocate_variable(h)
+  let assert Ok(kernels.KSuccess(heap: h2, ..)) =
+    kernels.dispatch(h, "_copy", 2, [VarRef(x), VarRef(z)])
+  let assert Ok(#(_, heap.Bound(terms.StructTerm("f", [ConstTerm(ConstInt(1))])))) =
+    heap.deref(h2, z)
+}
+
+// _copy is an IDENTITY copy, not a fresh-variable rename: a struct containing
+// an unbound var is copied SHARING that var (same addr), never renaming it.
+pub fn copy_shares_unbound_inner_var_test() {
+  let #(h, _, inner_rd) = heap.allocate_variable(heap.new())
+  let #(h, z, _) = heap.allocate_variable(h)
+  let src = terms.StructTerm("g", [VarRef(inner_rd)])
+  let assert Ok(kernels.KSuccess(heap: h2, ..)) =
+    kernels.dispatch(h, "_copy", 2, [src, VarRef(z)])
+  let assert Ok(#(_, heap.Bound(terms.StructTerm("g", [VarRef(got)])))) =
+    heap.deref(h2, z)
+  let assert True = got == inner_rd
+}
+
+// Output not a writer aborts (Dart _bindResult), same as every kernel.
+pub fn copy_nonwriter_output_aborts_test() {
+  let assert Ok(kernels.KAbort(_)) =
+    kernels.dispatch(heap.new(), "_copy", 2, [
+      ConstTerm(ConstInt(1)),
+      ConstTerm(ConstInt(2)),
+    ])
+}

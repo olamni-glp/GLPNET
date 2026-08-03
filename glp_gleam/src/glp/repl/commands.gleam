@@ -13,6 +13,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/list
 import gleam/string
+import glp/bytecode/program
 import glp/engine.{type Engine}
 import glp/repl/results
 
@@ -28,6 +29,14 @@ pub type Command {
   Load(String)
   /// A goal to execute (trailing `.` already stripped).
   Goal(String)
+  /// `:bytecode` / `:bc` — dump every loaded program's bytecode (wave-3 T019;
+  /// Dart glp_repl.dart:203 — no argument, iterates `engine.loadedPrograms`).
+  Bytecode
+  /// `:boot …` — the Dart reference runs a multi-isolate play via
+  /// IsolateManager (glp_repl.dart:189); that machinery is the multiagent boot
+  /// loader (gap G9, US4), so on this instance the command reports its
+  /// deferral instead of misreading the line as a goal (wave-3 T020).
+  Boot
   /// An empty line — a no-op (Dart `continue`).
   Blank
 }
@@ -61,10 +70,15 @@ fn classify(t: String) -> Command {
   case t {
     ":quit" | ":q" -> Quit
     ":trace" | ":t" -> ToggleTrace
+    ":bytecode" | ":bc" -> Bytecode
     _ ->
       case string.starts_with(t, ":limit") {
         True -> parse_limit(t)
-        False -> classify_load_or_goal(t)
+        False ->
+          case string.starts_with(t, ":boot") {
+            True -> Boot
+            False -> classify_load_or_goal(t)
+          }
       }
   }
 }
@@ -131,6 +145,19 @@ pub fn execute(
       False,
     )
     LimitUsage(msg) -> #(session, [msg], False)
+    // `:bytecode` is READ-ONLY (contract invariant 6): it renders from the
+    // engine value and returns the session unchanged — no heap, no program,
+    // no session mutation.
+    Bytecode -> #(session, render_bytecode(session.engine), False)
+    Boot -> #(
+      session,
+      [
+        ":boot runs a multi-isolate play via the multiagent boot loader, "
+        <> "which is not yet ported to this instance (deferred to the module-"
+        <> "dispatch subsystem work; 059 close-repl-boot-command scope question).",
+      ],
+      False,
+    )
     Load(path) -> execute_load(session, path)
     Goal(text) -> {
       let #(_engine, env, output, traces) =
@@ -151,6 +178,26 @@ pub fn execute(
   }
 }
 
+/// Render every loaded program's bytecode (Dart glp_repl.dart:203-213: "No
+/// programs loaded" when empty; else a `Bytecode for <name>:` header, a 60-char
+/// rule, and the per-PC op lines — display format is not a parity surface,
+/// v2.16 §0.5).
+fn render_bytecode(eng: Engine) -> List(String) {
+  case engine.loaded_programs(eng) {
+    [] -> ["No programs loaded"]
+    loaded ->
+      list.flat_map(loaded, fn(entry) {
+        let #(name, prog) = entry
+        [
+          "",
+          "Bytecode for " <> name <> ":",
+          string.repeat("=", 60),
+          ..string.split(program.to_disassembly(prog), "\n")
+        ]
+      })
+  }
+}
+
 fn execute_load(
   session: Session,
   path: String,
@@ -162,7 +209,7 @@ fn execute_load(
       False,
     )
     Ok(source) ->
-      case engine.load(session.engine, source) {
+      case engine.load(session.engine, path, source) {
         Ok(engine) -> #(
           Session(..session, engine: engine),
           ["✓ Loaded: " <> path],

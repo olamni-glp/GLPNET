@@ -1,0 +1,41 @@
+{
+  "schema": "coop-crdt-failover/v1",
+  "project": "glpnet",
+  "priority_order": [
+    "I",
+    "H",
+    "G"
+  ],
+  "seq": 1,
+  "merge_semantics": {
+    "inbox": "add-only union; never rename or delete; UTC-prefixed filenames",
+    "status/<host>.md": "host-owned; last-writer-wins by its own host only",
+    "SYNC-POINT.json": "max(seq) wins; tie -> newest each direction, bump seq"
+  },
+  "identity_law": "verified `hostname` lowercased is the ONLY host id (gavriella, ariellas, olamnit)",
+  "host_aliases_legacy": {
+    "gavri": "gavriella",
+    "olamnit-mislabel-2026-07": "see R1 ledger in legacy channel"
+  },
+  "hosts": {
+    "gavriella": {
+      "letter_for_peers": "I",
+      "share": "\\192.168.0.108\\GAVRI_D\\coop",
+      "local": "D:\\coop",
+      "role": "PRIMARY"
+    },
+    "ariellas": {
+      "letter_for_peers": "H",
+      "share": "\\Ariellas\\ariellas_D\\coop",
+      "local": "D:\\coop",
+      "role": "failover 1"
+    },
+    "olamnit": {
+      "letter_for_peers": "G",
+      "share": "\\Olamnit\\Olamnit_D\\coop",
+      "local": "D:\\coop",
+      "role": "failover 2"
+    }
+  },
+  "legacy_channel": "G:\\BSTDEV\\research\\glp\\glpnet\\COOP\\ (in-tree, RETIRED for new traffic 2026-07-28; stands as read-only history)"
+}
