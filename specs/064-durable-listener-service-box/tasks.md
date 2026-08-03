@@ -46,8 +46,8 @@ SPDX-License-Identifier: MIT
 **Goal**: QUIC connector retries until budget, TCP parity.
 **Independent test**: dial-before-listen drill; budget-exhaustion behavior unchanged.
 
-- [ ] T010 [P] [US3] Retry loop in `csharp/glp_link/transports/QuicTransport.cs` `ConnectAsync` per `contracts/quic-connect-retry.md`: `while(true)` + catch-refused/unreachable + `Task.Delay(100, ct)`, pre-establishment failures only, budget = existing kernel ct; mirror the TCP comment ("listener not up yet — back off and retry")
-- [ ] T011 [US3] Retry tests `csharp/glp_link.tests/QuicConnectRetryTests.cs`: dial-before-listen succeeds once listener arms (SC-003), never-arms fails only at ct exhaustion with existing fault surface (US3 scenario 2)
+- [x] T010 [P] [US3] Retry loop in `csharp/glp_link/transports/QuicTransport.cs` `ConnectAsync` per `contracts/quic-connect-retry.md`: `while(true)` + catch-refused/unreachable + `Task.Delay(100, ct)`, pre-establishment failures only, budget = existing kernel ct; mirror the TCP comment ("listener not up yet — back off and retry")
+- [x] T011 [US3] Retry tests `csharp/glp_link.tests/QuicConnectRetryTests.cs`: dial-before-listen succeeds once listener arms (SC-003), never-arms fails only at ct exhaustion with existing fault surface (US3 scenario 2)
 
 ## Phase 6: Polish & cross-cutting
 

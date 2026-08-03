@@ -166,7 +166,30 @@ public sealed class QuicTransport : ILinkTransport
             },
         };
 
-        var connection = await QuicConnection.ConnectAsync(clientOptions, ct).ConfigureAwait(false);
+        // feature 064 (FR-008 / contracts/quic-connect-retry.md): the connector's goal may activate
+        // BEFORE the listener has bound (independent processes — and, with the resume hook, before a
+        // restarting service box has re-armed); retry a refused/unreachable dial until ct (the
+        // kernel's ConnectTimeout) cancels, so establishment is timing-independent rather than a hard
+        // race. Exact parity with TcpTransport.ConnectAsync — role-order independence (FR-004).
+        // ONLY the pre-establishment connect retries; stream-open and bootstrap keep fail-fast
+        // semantics (a peer that accepted then broke is a real fault, not a not-yet-listening peer).
+        QuicConnection connection;
+        while (true)
+        {
+            try
+            {
+                connection = await QuicConnection.ConnectAsync(clientOptions, ct).ConfigureAwait(false);
+                break;
+            }
+            catch (QuicException e) when (e.QuicError is QuicError.ConnectionRefused or QuicError.ConnectionTimeout)
+            {
+                await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
+            }
+            catch (SocketException)
+            {
+                await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
+            }
+        }
         var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct).ConfigureAwait(false);
         // The outbound stream is not realized on the wire until first write — the bootstrap request
         // (connector writes first) opens it and unblocks the listener's AcceptInboundStreamAsync.
