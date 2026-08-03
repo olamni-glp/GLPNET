@@ -31,8 +31,11 @@ pub fn format_atom_test() {
 }
 
 pub fn format_string_test() {
+  // A STRING displays WITH its quotes (the Dart reference stores the quotes in
+  // the value and prints bare, so its visible output is quoted — US5 T044
+  // cross-runtime display parity fixed the earlier bare rendering here).
   results.format_term(ConstTerm(ConstString("hi")))
-  |> should.equal("hi")
+  |> should.equal("\"hi\"")
 }
 
 pub fn format_nil_is_empty_list_test() {

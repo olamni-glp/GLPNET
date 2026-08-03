@@ -6,10 +6,13 @@
 //// exhaustion) / :quit. The full subprocess `gleam run` path is exercised by the
 //// US3 corpus runner; here the semantics are pinned deterministically in-process.
 
+import gleam/list
+import gleam/string
 import gleeunit/should
 import glp/engine
 import glp/repl/commands.{
-  Blank, Goal, LimitUsage, Load, Quit, Session, SetLimit, ToggleTrace,
+  Blank, Boot, Bytecode, Goal, LimitUsage, Load, Quit, Session, SetLimit,
+  ToggleTrace,
 }
 
 fn fresh_session() -> commands.Session {
@@ -117,4 +120,74 @@ pub fn execute_blank_is_noop_test() {
   let #(_session, output, quit) = commands.execute(fresh_session(), Blank)
   output |> should.equal([])
   quit |> should.be_false
+}
+
+// ── wave-3 T019/T020: :bytecode / :boot (contracts/repl-commands.md) ─────────
+
+pub fn parse_bytecode_and_alias_test() {
+  commands.parse(":bytecode") |> should.equal(Bytecode)
+  commands.parse(":bc") |> should.equal(Bytecode)
+}
+
+pub fn parse_boot_test() {
+  commands.parse(":boot play1.glp") |> should.equal(Boot)
+}
+
+// With nothing loaded, the reference message (Dart glp_repl.dart:205).
+pub fn execute_bytecode_empty_test() {
+  let #(_session, output, quit) =
+    commands.execute(fresh_session(), Bytecode)
+  output |> should.equal(["No programs loaded"])
+  quit |> should.be_false
+}
+
+// After a load, the dump carries the per-program header and PC lines — and the
+// command is READ-ONLY: the session comes back unchanged (T024, contract
+// invariant 6).
+pub fn execute_bytecode_dumps_and_is_readonly_test() {
+  let fresh = fresh_session()
+  let eng = fresh.engine
+  let assert Ok(eng) =
+    engine.load(
+      eng,
+      "m",
+      "Bit ::= zero ; one.
+procedure flip(Bit?, Bit).
+flip(zero, one).
+flip(one, zero).",
+    )
+  let session = Session(..fresh, engine: eng)
+  let #(session2, output, quit) = commands.execute(session, Bytecode)
+  quit |> should.be_false
+  // Header present…
+  should.be_true(list.contains(output, "Bytecode for m:"))
+  // …with at least one disassembly line beyond header+rule.
+  should.be_true(list.length(output) > 3)
+  // Read-only: the session value is identical (engine, trace, limit untouched).
+  session2 |> should.equal(session)
+}
+
+// :boot reports its deferral (multiagent boot loader not yet ported) and leaves
+// the session usable — never misread as a goal.
+pub fn execute_boot_reports_deferral_test() {
+  let #(session2, output, quit) = commands.execute(fresh_session(), Boot)
+  quit |> should.be_false
+  let assert [line] = output
+  should.be_true(string.contains(line, "not yet ported"))
+  // Session stays usable: a goal still runs afterwards.
+  let #(_s, out2, _) = commands.execute(session2, Goal("X := 1+1"))
+  should.be_true(list.contains(out2, "X = 2"))
+}
+
+// ── wave-3 T021: an unknown procedure leaves the session usable ──────────────
+
+pub fn execute_unknown_procedure_leaves_session_usable_test() {
+  let session = fresh_session()
+  let #(session2, out1, quit) =
+    commands.execute(session, Goal("no_such_pred(1)"))
+  quit |> should.be_false
+  should.be_true(list.contains(out1, "→ failed"))
+  // The next command on the SAME session works (contract invariant 1).
+  let #(_s, out2, _) = commands.execute(session2, Goal("X := 2+2"))
+  should.be_true(list.contains(out2, "X = 4"))
 }

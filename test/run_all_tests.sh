@@ -2212,6 +2212,27 @@ done
 echo ""
 
 # =============================================================================
+# SECTION I: US5 CROSS-RUNTIME DISTRIBUTED SUITE (Gleam × C#; feature 060
+# T047/FR-030 — results report alongside the other sections). Needs gleam on
+# PATH + the built C# REPL; absent either, an EXPLICIT skip (never silent).
+# =============================================================================
+echo "=== Section I: Cross-runtime Gleam × C# link suite (US5) ==="
+# SCRIPT_DIR-anchored: the suite cd'd into glp_runtime/ at the top, so relative
+# repo-root paths do not resolve here.
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+if command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
+    if bash "$SCRIPT_DIR/parity/cross_runtime/run_all.sh"; then
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "ok"
+    else
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "FAILED (scenario detail above)"
+    fi
+else
+    echo "  SKIP: cross-runtime suite — needs gleam on PATH + built C# REPL ($CSREPL_BIN)"
+fi
+
+echo ""
+
+# =============================================================================
 # SECTION S: MS_MESSAGE DURABLE MESH MESSAGING (063 US2 — SC-004 DRILL GATE)
 # =============================================================================
 # The SC-004 disconnect drill (N=1000: recipient offline, originator restart,

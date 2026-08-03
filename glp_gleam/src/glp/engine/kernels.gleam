@@ -53,11 +53,32 @@ import glp/runtime/terms.{
 /// rely on: `mwm_copy` threads `Ref → Ref1`).
 const mutual_ref_functor = "$mutual_ref"
 
+/// The functor of the GLP module sentinel term (wave-3 module dispatch). The Dart
+/// runtime has a dedicated `ModuleTerm` variant wrapping the module's bytecode;
+/// Gleam maps it to the ground struct `'$module'(<registryIdx:int>)` indexing the
+/// scheduler-level module registry — the same precedent as `$mutual_ref`.
+const module_functor = "$module"
+
+/// A module-dispatch spawn request emitted by `_activate/2` (Dart `activateKernel`,
+/// body_kernels.dart:867-878, which enqueues the goal directly): run `label` in the
+/// module registered at `module_idx`, with `args` as its argument registers.
+/// Kernels are heap-only by contract, so the spawn is threaded OUT as data — the
+/// `_output` precedent: `KSuccess.spawns` → `runner.Reduced.remote` → scheduler.
+pub type RemoteSpawn {
+  RemoteSpawn(module_idx: Int, label: String, args: List(Term))
+}
+
 /// The two-valued outcome of a body kernel (Dart `BodyKernelResult`), carrying the
-/// updated heap, any goals reactivated by binding the output writer, and any
-/// captured program-output lines (`_output`/1 — empty for the arithmetic kernels).
+/// updated heap, any goals reactivated by binding the output writer, any captured
+/// program-output lines (`_output`/1), and any module-dispatch spawn requests
+/// (`_activate`/2 — empty for every other kernel).
 pub type KernelOutcome {
-  KSuccess(heap: Heap, woken: List(GoalRef), output: List(String))
+  KSuccess(
+    heap: Heap,
+    woken: List(GoalRef),
+    output: List(String),
+    spawns: List(RemoteSpawn),
+  )
   KAbort(detail: String)
 }
 
@@ -87,11 +108,16 @@ pub fn is_kernel(name: String, arity: Int) -> Bool {
     | "_ceil", 2 -> True
     // Univ (=../2) — list↔compound (Dart listToTupleKernel / tupleToListKernel).
     "_list_to_tuple", 2 | "_tuple_to_list", 2 -> True
+    // Identity/copy (Dart copyKernel, body_kernels.dart:527) — reduce metainterp.
+    "_copy", 2 -> True
     // Mutual-reference (O(1) stream append; mwm/2) — Dart mutualRef kernels.
     "_allocate_mutual_reference", 2
     | "_stream_append", 3
     | "_close_mutual_reference", 1 -> True
     "_output", 1 -> True
+    // Module dispatch (wave-3): spawn a goal inside a registered module's
+    // bytecode — Dart activateKernel (body_kernels.dart:820).
+    "_activate", 2 -> True
     _, _ -> False
   }
 }
@@ -168,6 +194,11 @@ pub fn dispatch(
           ))
         _ -> Ok(KAbort("_tuple_to_list: first argument must be a structure"))
       }
+    // Identity/copy (Dart copyKernel, body_kernels.dart:527-535): deref the
+    // source and bind the output writer to it — an identity copy of the deref'd
+    // value, NOT a fresh-variable rename. Unblocks the reduce metainterpreter
+    // (059 verdict b3-c1-004: reduce PARTIAL, blocked on missing _copy/2).
+    "_copy", 2, [src, out] -> Ok(bind_term(heap, out, deref_term(heap, src)))
     // ── mutual reference (O(1) stream append) — Dart mutualRef kernels ────────
     // allocate(Ref, Out): Out is the (unbound writer) stream head; Ref becomes a
     // sentinel capturing Out's writer addr as the current append point.
@@ -226,7 +257,7 @@ pub fn dispatch(
           case find_open_tail(heap, start) {
             Ok(tail) ->
               case heap.bind_writer(heap, tail, ConstTerm(ConstAtom("nil"))) {
-                Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, []))
+                Ok(#(h2, woken)) -> Ok(KSuccess(h2, woken, [], []))
                 Error(_) ->
                   Ok(KAbort("_close_mutual_reference: open tail already bound"))
               }
@@ -240,7 +271,32 @@ pub fn dispatch(
     // no writer bound, no reactivations (Dart `outputKernel` — the side effect is
     // the output, threaded as data here rather than `print`ed inline).
     "_output", 1, [t] ->
-      Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)]))
+      Ok(KSuccess(heap, [], [output_capture.format_ground_term(heap, t)], []))
+    // '_activate'(Module?, Goal?) — module dispatch (Dart activateKernel,
+    // body_kernels.dart:820): Module? must deref to a '$module'(idx) sentinel
+    // (Dart: a ModuleTerm — anything else aborts); Goal? derefs to the remote
+    // call struct. The spawn itself is emitted as DATA (heap-only contract);
+    // the scheduler resolves idx → bytecode and label → entry PC — a label
+    // miss silently succeeds there (Dart fallback). A non-struct Goal silently
+    // succeeds here (Dart: `goalArg is! StructTerm → success`). The goal's arg
+    // terms pass through UNCHANGED — VarRefs keep their heap addresses, so
+    // writer/reader polarity is preserved (Dart storeTermOnHeap round-trip).
+    "_activate", 2, [module_arg, goal_arg] ->
+      case module_ref_idx(heap, module_arg) {
+        Error(_) ->
+          Ok(KAbort(
+            "_activate: first argument must be a '$module' reference",
+          ))
+        Ok(idx) ->
+          case deref_term(heap, goal_arg) {
+            StructTerm(functor, gargs) -> {
+              let label =
+                functor <> "/" <> int.to_string(list.length(gargs))
+              Ok(KSuccess(heap, [], [], [RemoteSpawn(idx, label, gargs)]))
+            }
+            _ -> Ok(KSuccess(heap, [], [], []))
+          }
+      }
     _, _, _ -> Error(Nil)
   }
 }
@@ -294,7 +350,7 @@ fn bind_term(heap: Heap, out: Term, value: Term) -> KernelOutcome {
       case heap.is_writer(heap, addr) {
         True ->
           case heap.bind_writer(heap, addr, value) {
-            Ok(#(h2, woken)) -> KSuccess(h2, woken, [])
+            Ok(#(h2, woken)) -> KSuccess(h2, woken, [], [])
             Error(_) -> KAbort("body kernel: output writer already bound")
           }
         False -> KAbort("body kernel: output argument is not a writer")
@@ -360,6 +416,21 @@ pub fn is_mutual_ref(term: Term) -> Bool {
   }
 }
 
+/// The ground module sentinel `'$module'(idx)` — the canonical constructor (the
+/// scheduler's `register_module`/`activate_module` mint these; `_activate/2`
+/// consumes them).
+pub fn module_sentinel(idx: Int) -> Term {
+  StructTerm(module_functor, [ConstTerm(ConstInt(idx))])
+}
+
+/// Extract the registry index from a module sentinel (deref'd through the heap).
+fn module_ref_idx(heap: Heap, term: Term) -> Result(Int, Nil) {
+  case deref_term(heap, term) {
+    StructTerm(f, [ConstTerm(ConstInt(i))]) if f == module_functor -> Ok(i)
+    _ -> Error(Nil)
+  }
+}
+
 /// Walk a partially-built stream (`'.'/2` cons cells) from `addr` to the terminal
 /// writer of its still-open tail (Dart's mutated `currentWriterAddr`). An empty
 /// stream (addr itself unbound) returns addr's terminal; a non-cons/closed value
@@ -377,8 +448,8 @@ fn find_open_tail(heap: Heap, addr: Int) -> Result(Int, Nil) {
 /// wakes across the two binds `_stream_append` performs).
 fn carry_woken(earlier: List(GoalRef), outcome: KernelOutcome) -> KernelOutcome {
   case outcome {
-    KSuccess(h, woken, output) ->
-      KSuccess(h, list.append(earlier, woken), output)
+    KSuccess(h, woken, output, spawns) ->
+      KSuccess(h, list.append(earlier, woken), output, spawns)
     KAbort(_) -> outcome
   }
 }

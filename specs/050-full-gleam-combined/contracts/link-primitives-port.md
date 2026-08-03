@@ -210,6 +210,49 @@ base through the ingress **without** building dedup; a duplicate frame is out-of
 (R-2 lives in T052). `link_close` GC (C8) reclaims registry/handle entries only — not the full
 distributed GC.
 
+**D-9 (run-termination barrier + connector dial-retry). RULED 2026-08-02 (Gabi), closes the
+graceful-close truncation race.** Two obligations the Dart/C# oracle enforced only as implementation
+behavior, now normative for the Gleam port:
+
+1. *Run-termination barrier.* On terminal status (`Success`/`Failed`), the link-aware loop
+   (`link_loop.drive`) MUST NOT return while any established, un-closed link still has a bound,
+   un-drained `Out` chain (including a chain parked on `EgressWouldBlock`), or while an establishment
+   is pending whose resolution would let such a chain drain. The graceful stream-end close (`Out`
+   tail `[]`) completes its shutdown-write before the run returns. The existing bounded give-up
+   (`wait_timeout_ms`, SC-007) still applies — a timeout surfaces on the monitors as a fault; silent
+   truncation of a gracefully-closed stream is never a permitted outcome. Rationale: 025
+   DESIGN-DOSSIER §4 (graceful close = the consumer's `consume([])` fires **after** every sent
+   value) + FR-018/FR-053 (send order preserved **on the wire**) are per-link contracts the engine
+   exit path must not void.
+2. *Connector dial-retry (oracle parity).* A refused dial is NOT terminal while the connect budget
+   remains: retry with backoff until the budget cancels, exactly as the oracles do
+   (`csharp/glp_link/transports/TcpTransport.cs:58`, `glp_runtime/lib/link/transports/tcp_transport.dart:60`
+   — "listener not up yet — back off and retry"). VERIFIED already present in the Gleam port
+   (`tcp.gleam` `connect_retry`, 100 ms backoff over the connect budget) — recorded here so the
+   obligation is normative, not incidental.
+
+   *Implementation note (2026-08-02) — THREE stacked half-close defects, found in order:*
+   (a) `LinkPeerClosed` marked the link fully `closed`, gating `drain_egress` off our still-bound
+   `Out` chain and letting `drive` return early. Fix: a `Cursors.in_ended` half-close flag
+   (symmetric to `out_closed`); terminal only when BOTH directions end (or `_link_close`/permanent
+   fault); `should_wait` gains `has_unfinished_close` (established ∧ out_closed ∧ ¬closed), bounded
+   by `wait_timeout_ms`.
+   (b) `pump_loop` returned on the peer's FIN — but the pump is the socket's CONTROLLING process
+   (its exit closes the socket), so an early peer FIN killed the socket under the undrained egress.
+   Fix: a `release` exit-gate Subject carried in `LinkEstablished`; the pump lingers after
+   `LinkPeerClosed` until the engine loop confirms the link terminal, then exits (orderly close).
+   (c) **The decisive one: OTP's `{exit_on_close, true}` default** — a passive-mode gen_tcp socket
+   auto-closes the ENTIRE port (write side included) the moment `recv` observes the peer's FIN, so
+   a peer that half-closes at establishment (a pure consumer whose `Out = []` FINs immediately)
+   raced our drain: pump-recv-sees-FIN before the sends → `{error, closed}`, frames lost, both
+   ends "succeed". Diagnosed by control experiment (6/6 green against a never-closing raw
+   listener; ~30% loss against the C# consumer). Fix: `{exit_on_close, false}` on both
+   `tcp_listen` and `tcp_connect` in `glp_link_tcp_ffi.erl` — ordinary TCP half-close semantics,
+   the oracle runtimes' behavior. Verified: 8/8 single-scenario repro green post-fix.
+   The `EgressWouldBlock` arm of the barrier is vacuous in base scope: the send window releases
+   synchronously on transport acceptance (re-check if T052 reliability makes release
+   asynchronous).
+
 ---
 
 ## 6. Risks carried into implementation (from `link-primitives.md §8`)

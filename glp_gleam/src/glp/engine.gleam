@@ -31,10 +31,16 @@ import glp/analysis/type_checker/type_checker.{type TypeWarning}
 import glp/bytecode/program.{type BytecodeProgram}
 import glp/codec/result_envelope.{type ResultEnvelope}
 import glp/codec/result_envelope_builder as builder
+import gleam/erlang/charlist.{type Charlist}
 import glp/compiler/loader
+import glp/compiler/project_linker
 import glp/diagnostics.{type StagedError}
 import glp/engine/goal_boot
 import glp/engine/scheduler
+import glp/link/primitives/link_loop
+import glp/link/primitives/link_runtime
+import glp/link/seam/link_scheme.{type LinkScheme}
+import glp/link/seam/transport.{type Transport}
 import glp/parser/ast
 import glp/parser/lexer
 import glp/parser/parser
@@ -51,6 +57,26 @@ const prelude_path = "../programs/self.glp"
 /// var→writer / suspended entries (never in a bound-only envelope such as `X := 2+3`);
 /// pin a parity value here if a suspended-var corpus case is later recorded.
 const instance_id = "gleam"
+
+/// serve/2 system predicate (embedded — verbatim Dart `_serveSource`,
+/// glp_engine.dart:71-82). The dynamic-dispatch service loop: reads goals off a
+/// module's GLP channel and dispatches each via `'_activate'`. Compiled once at
+/// engine construction through the NON-typechecked path (`compile_prelude`) —
+/// Dart compiles it with `CompileOptions()` where `typeCheck = false`
+/// (compiler.dart:27), and `_activate/2` is deliberately absent from the
+/// type-check prelude in both runtimes — then merged into the runnable program
+/// so `activate_module` can spawn `serve/2` from it.
+const serve_source = "-mode(system).
+
+procedure serve(_?, Stream(_)?).
+serve(Module, [Goal | In]) :-
+    ground(Module?) |
+    '_activate'(Module?, Goal?),
+    serve(Module?, In?).
+serve(_, []) :-
+    otherwise |
+    true.
+"
 
 /// Instruction budget per goal reduction (REPL `:limit` overrides this later).
 const default_reduction_budget = 1_000_000
@@ -72,6 +98,28 @@ pub opaque type Engine {
     /// An in-progress interactive run (the `start`/`step` seam), or `None` between
     /// runs. One-shot `run` never touches it (its scheduler state is internal).
     session: Option(RunSession),
+    /// Constructor-injected transport leaves (wave-3 T007, gap G6: the 059
+    /// engine-composition-root verdict was PARTIAL — kernels compiled-in, no
+    /// transport injection seam). The link layer (US4) selects a leaf by scheme
+    /// via `transport_for`; an engine with `[]` simply holds no links. Injection
+    /// here — never a compiled-in registry — keeps the composition root the ONE
+    /// place an instance's capabilities are assembled.
+    transports: List(Transport),
+    /// Loaded user programs keyed by load name, in first-load order (wave-3
+    /// T012, FR-015 — Dart `_loadedPrograms[name] = program`: a LinkedHashMap
+    /// overwrite REPLACES in place, preserving the original position). The
+    /// runnable `program` is always rebuilt from this registry, so a re-load's
+    /// stale definitions are unreachable by construction.
+    loaded: List(#(String, BytecodeProgram)),
+    /// The compiled embedded `serve/2` program (Dart `_serveBytecode`), merged
+    /// into every runnable program so activation can spawn the service loop.
+    serve_program: BytecodeProgram,
+    /// Modules auto-activated for dynamic dispatch, in load order: module name →
+    /// its dispatchable bytecode (the module merged with the prelude, Dart
+    /// glp_engine.dart:310 `program.merge(rootSelf)`). Applied to each run's
+    /// scheduler at goal boot — Dart activates once on its persistent runtime;
+    /// the Gleam scheduler is per-run, so activation replays per run.
+    activations: List(#(String, BytecodeProgram)),
   )
 }
 
@@ -109,29 +157,40 @@ pub fn new() -> Engine {
 /// test/embedding seam; `new()` is this over the on-disk self.glp). A prelude that
 /// fails to compile panics LOUDLY — same trusted-invariant contract as `new()`.
 pub fn new_with_prelude(prelude_source: String) -> Engine {
-  case loader.compile_prelude(prelude_source) {
-    Ok(prelude_program) ->
+  case loader.compile_prelude(prelude_source), loader.compile_prelude(serve_source) {
+    Ok(prelude_program), Ok(serve_program) ->
       Engine(
         prelude_program: prelude_program,
         prelude_source: prelude_source,
-        program: prelude_program,
+        program: program.merge(serve_program, prelude_program),
         warnings: [],
         session: None,
+        transports: [],
+        loaded: [],
+        serve_program: serve_program,
+        activations: [],
       )
-    Error(staged) ->
+    Error(staged), _ ->
       panic as {
         "engine.new: prelude (programs/self.glp) failed to compile: "
+        <> string.inspect(staged)
+      }
+    _, Error(staged) ->
+      panic as {
+        "engine.new: embedded serve/2 failed to compile: "
         <> string.inspect(staged)
       }
   }
 }
 
-/// Run the full load pipeline over `source` and, on success, ACCUMULATE it onto the
-/// engine's current runnable program (Dart `GlpEngine.loadSource` stores each file in
-/// `_loadedPrograms[name]` and `combinedProgram` concatenates them all). Merging into
-/// `engine.program` (prelude + any prior loads) rather than the bare prelude means a
-/// second `load` no longer discards the first — so a multi-file Dart REPL session
-/// (Section-A blocks that co-load several files) reproduces on the Gleam instance.
+/// Run the full load pipeline over `source` and, on success, store it in the
+/// loaded-programs registry under `name` (Dart `GlpEngine.loadSource(name, source)`:
+/// `_loadedPrograms[name] = program`) and rebuild the runnable program. Distinct
+/// names ACCUMULATE in first-load order — a multi-file Dart REPL session (Section-A
+/// blocks that co-load several files) reproduces on the Gleam instance. Re-loading
+/// an EXISTING name REPLACES that entry in place (FR-015, wave-3 T012): the
+/// combined program is rebuilt from the registry, so the replaced file's stale
+/// definitions are unreachable — exactly Dart's LinkedHashMap overwrite.
 ///
 /// Op/label order is `[prelude, file1, …, fileN]` and `from_ops` is first-occurrence-
 /// wins, matching Dart `combinedProgram`'s insertion order (a predicate defined in an
@@ -140,15 +199,72 @@ pub fn new_with_prelude(prelude_source: String) -> Engine {
 /// against the prelude (Dart checks each `loadSource` against its self.glp ancestor
 /// scope, not against other loaded files), so self-contained corpus files load cleanly.
 /// A staged rejection propagates unchanged; the engine is left untouched on failure.
-pub fn load(engine: Engine, source: String) -> Result(Engine, StagedError) {
+pub fn load(
+  engine: Engine,
+  name: String,
+  source: String,
+) -> Result(Engine, StagedError) {
   use outcome <- result.try(loader.load(source, engine.prelude_source))
+  let loaded = upsert(engine.loaded, name, outcome.program)
+  // Auto-activate modules with exports for dynamic dispatch (Dart
+  // glp_engine.dart:306-317). The dispatchable bytecode is the module merged
+  // with the prelude, so dispatched procedures find `:=`/2 etc. The module
+  // name comes from `-module(...)`, falling back to the load name (Dart
+  // `_moduleNameFromFilename`). A re-load replaces its activation in place.
+  let activations = case outcome.exported_signatures {
+    [] -> engine.activations
+    _ ->
+      upsert(
+        engine.activations,
+        option.unwrap(outcome.module_name, name),
+        program.merge(outcome.program, engine.prelude_program),
+      )
+  }
   Ok(
     Engine(
       ..engine,
-      program: program.merge(outcome.program, engine.program),
+      loaded: loaded,
+      program: rebuild_program(
+        engine.prelude_program,
+        engine.serve_program,
+        loaded,
+      ),
       warnings: outcome.warnings,
+      activations: activations,
     ),
   )
+}
+
+/// Replace `name`'s entry in place (preserving its position — the Dart
+/// LinkedHashMap overwrite), or append a first-time load.
+fn upsert(
+  loaded: List(#(String, BytecodeProgram)),
+  name: String,
+  prog: BytecodeProgram,
+) -> List(#(String, BytecodeProgram)) {
+  case list.any(loaded, fn(p) { p.0 == name }) {
+    True ->
+      list.map(loaded, fn(p) {
+        case p.0 == name {
+          True -> #(name, prog)
+          False -> p
+        }
+      })
+    False -> list.append(loaded, [#(name, prog)])
+  }
+}
+
+/// The runnable program, rebuilt from the registry: `[prelude, serve, file1, …,
+/// fileN]` in first-load order (Dart `combinedProgram` folds
+/// `_loadedPrograms.values`; serve rides along so activation can spawn it).
+fn rebuild_program(
+  prelude: BytecodeProgram,
+  serve: BytecodeProgram,
+  loaded: List(#(String, BytecodeProgram)),
+) -> BytecodeProgram {
+  list.fold(loaded, program.merge(serve, prelude), fn(acc, pair) {
+    program.merge(pair.1, acc)
+  })
 }
 
 /// The current runnable program (prelude alone, or prelude + last loaded module).
@@ -167,6 +283,144 @@ pub fn prelude_source(engine: Engine) -> String {
 /// surface renders these.
 pub fn warnings(engine: Engine) -> List(TypeWarning) {
   engine.warnings
+}
+
+/// The loaded user programs in first-load order (name, program) — the REPL
+/// `:bytecode` surface iterates this (Dart `engine.loadedPrograms.entries`).
+pub fn loaded_programs(engine: Engine) -> List(#(String, BytecodeProgram)) {
+  engine.loaded
+}
+
+// ── project loading: static linking (wave-3 T009, FR-008; Dart loadProject) ──
+
+/// Load an entire project directory via static linking (Dart
+/// `GlpEngine.loadProject`, glp_engine.dart:331): recursively discover `.glp`
+/// modules (skipping `boot_direct.glp` / `mad_boot.glp` / `mad_boot/`),
+/// type-check each independently against its ancestor `self.glp` scope, link
+/// into ONE flat program (top module auto-detected), compile, and store it
+/// under `"__project__"` in the loaded registry (participates in
+/// `rebuild_program`; re-load replaces). Any stage failure returns
+/// `Error(reason)` with the engine untouched.
+pub fn load_project(engine: Engine, dir: String) -> Result(Engine, String) {
+  let dir = string.replace(dir, "\\", "/")
+  let rel_paths =
+    erl_wildcard(charlist.from_string(dir <> "/**/*.glp"))
+    |> list.map(charlist.to_string)
+    |> list.map(fn(p) { string.replace(p, "\\", "/") })
+    |> list.sort(string.compare)
+    |> list.filter_map(fn(p) {
+      case string.starts_with(p, dir <> "/") {
+        True -> Ok(string.drop_start(p, string.length(dir) + 1))
+        False -> Error(Nil)
+      }
+    })
+    |> list.filter(fn(p) { !skip_project_file(p) })
+  use <- bool_guard(
+    rel_paths == [],
+    "no modules found in " <> dir,
+  )
+  use files <- result.try(
+    list.try_map(rel_paths, fn(rel) {
+      case read_file(dir <> "/" <> rel) {
+        Ok(bits) ->
+          case bit_array.to_string(bits) {
+            Ok(source) -> Ok(#(rel, source))
+            Error(_) -> Error("project read: " <> rel <> " is not valid UTF-8")
+          }
+        Error(_) -> Error("project read: cannot read " <> rel)
+      }
+    }),
+  )
+  let root_name = last_component(dir)
+  use modules <- result.try(project_linker.discover(
+    files,
+    root_name,
+    engine.prelude_source,
+  ))
+  use _ <- result.try(project_linker.type_check_project(
+    modules,
+    loader.prelude_units(engine.prelude_source),
+  ))
+  let top = project_linker.detect_top_module(modules)
+  let linked = project_linker.link_project(modules, top)
+  use prog <- result.try(
+    loader.compile_linked(linked, engine.prelude_source)
+    |> result.map_error(fn(staged) {
+      "project compile: " <> string.inspect(staged)
+    }),
+  )
+  let loaded = upsert(engine.loaded, "__project__", prog)
+  Ok(
+    Engine(
+      ..engine,
+      loaded: loaded,
+      program: rebuild_program(
+        engine.prelude_program,
+        engine.serve_program,
+        loaded,
+      ),
+    ),
+  )
+}
+
+/// Dart discoverProject's exclusions: `boot_direct.glp` (direct-call copy of
+/// boot.glp), `mad_boot.glp`, and anything under a `mad_boot/` directory
+/// (madGLP boot procedures, loaded on top of the linked project).
+fn skip_project_file(rel: String) -> Bool {
+  let parts = string.split(rel, "/")
+  let base = case list.last(parts) {
+    Ok(b) -> b
+    Error(_) -> rel
+  }
+  base == "boot_direct.glp"
+  || base == "mad_boot.glp"
+  || list.contains(parts, "mad_boot")
+}
+
+fn last_component(path: String) -> String {
+  case list.last(string.split(path, "/")) {
+    Ok(last) -> last
+    Error(_) -> path
+  }
+}
+
+fn bool_guard(
+  condition: Bool,
+  reason: String,
+  continue: fn() -> Result(a, String),
+) -> Result(a, String) {
+  case condition {
+    True -> Error(reason)
+    False -> continue()
+  }
+}
+
+@external(erlang, "filelib", "wildcard")
+fn erl_wildcard(pattern: Charlist) -> List(Charlist)
+
+// ── transport injection seam (wave-3 T007, gap G6) ───────────────────────────
+
+/// Inject the transport leaves this instance may hold links over (replacing any
+/// previously injected set). The composition-root seam: transports arrive as
+/// constructed values — the engine never instantiates one itself, so a test can
+/// inject loopback only, an embedded host can inject none, and US4's link layer
+/// injects the acceptance set (loopback + tcp) without touching this module.
+pub fn with_transports(engine: Engine, transports: List(Transport)) -> Engine {
+  Engine(..engine, transports: transports)
+}
+
+/// The injected transport leaves (`[]` for a fresh engine).
+pub fn transports(engine: Engine) -> List(Transport) {
+  engine.transports
+}
+
+/// Select the injected leaf serving `scheme` (first match wins, mirroring the
+/// registry's selection-by-membership — seam/transport.serves). `Error(Nil)`
+/// means no injected leaf serves the scheme: the caller reports an unsupported
+/// scheme; nothing is ever auto-instantiated (FR-025's seam stays open — the
+/// unproven schemes remain selectable exactly here, with no link-layer change).
+pub fn transport_for(engine: Engine, scheme: LinkScheme) -> Result(Transport, Nil) {
+  list.find(engine.transports, fn(t) { transport.serves(t, scheme) })
 }
 
 // ── run: goal → ResultEnvelope (T029 Slice 2) ────────────────────────────────
@@ -229,6 +483,31 @@ pub fn run_with_limit_traced(
   #(engine, envelope, output, traces)
 }
 
+/// A run's scheduler over the engine's program + boot heap, with every
+/// auto-activated module registered and its `serve/2` loop spawned (Dart
+/// activates once on its persistent runtime, glp_activation.dart; the Gleam
+/// scheduler is per-run, so activation replays at each goal boot). A missing
+/// `serve/2` label with activations pending is a broken engine invariant —
+/// panic loudly, never a user diagnostic.
+fn new_sched(engine: Engine, boot_heap: heap.Heap) -> scheduler.Engine {
+  let sched = scheduler.new(engine.program, boot_heap)
+  case engine.activations {
+    [] -> sched
+    _ -> {
+      let serve_entry = case program.label_pc(engine.program, "serve/2") {
+        Ok(pc) -> pc
+        Error(_) ->
+          panic as "engine: serve/2 missing from the runnable program"
+      }
+      list.fold(engine.activations, sched, fn(sched, act) {
+        let #(mod_name, mod_prog) = act
+        let #(sched, idx) = scheduler.register_module(sched, mod_prog)
+        scheduler.activate_module(sched, mod_name, idx, "serve/2", serve_entry)
+      })
+    }
+  }
+}
+
 fn run_goal(
   engine: Engine,
   goal: String,
@@ -247,11 +526,12 @@ fn run_goal(
   use boot <- result.try(goal_boot.setup_goals(heap.new(), atoms))
 
   let sched =
-    scheduler.new(engine.program, boot.heap)
+    new_sched(engine, boot.heap)
     |> scheduler.with_trace(trace)
   use #(sched, status) <- result.try(drain_goals(
     sched,
     engine.program,
+    engine.transports,
     atoms,
     boot.goal_regs,
     fuel,
@@ -285,6 +565,7 @@ fn run_goal(
 fn drain_goals(
   sched: scheduler.Engine,
   prog: BytecodeProgram,
+  transports: List(Transport),
   atoms: List(ast.Atom),
   goal_regs: List(program.XRegs),
   fuel: Int,
@@ -309,12 +590,29 @@ fn drain_goals(
         |> result.replace_error("predicate " <> label <> " not found"),
       )
       let #(sched, _goal_id) = scheduler.boot(sched, label, entry, regs)
-      let #(sched, status) = scheduler.run(sched, default_reduction_budget, fuel)
+      // Per-goal drain dispatches on transports (T050.C2): with transport
+      // leaves injected, drive under the link-aware loop so `_link_*` kernels
+      // are reachable and quiescence stays live while link I/O is outstanding;
+      // without leaves, the pure run is unchanged. `link_loop.drive` does not
+      // return LinkState, so each goal's drive starts from a fresh state —
+      // exact for a single goal (the only specced transports case); a
+      // conjunction over transports gets per-goal fresh link state.
+      let #(sched, status) = case transports {
+        [] -> scheduler.run(sched, default_reduction_budget, fuel)
+        leaves ->
+          link_loop.drive(
+            sched,
+            default_reduction_budget,
+            fuel,
+            link_runtime.new_state(leaves),
+          )
+      }
       case status {
         scheduler.Success ->
           drain_goals(
             sched,
             prog,
+            transports,
             rest_atoms,
             rest_regs,
             fuel,
@@ -322,7 +620,16 @@ fn drain_goals(
             scheduler.Success,
           )
         scheduler.Suspended(_) ->
-          drain_goals(sched, prog, rest_atoms, rest_regs, fuel, True, status)
+          drain_goals(
+            sched,
+            prog,
+            transports,
+            rest_atoms,
+            rest_regs,
+            fuel,
+            True,
+            status,
+          )
         // Failed / OutOfFuel / Errored: Dart `break` — stop with this status.
         _ -> Ok(#(sched, status))
       }
@@ -376,7 +683,7 @@ pub fn start(engine: Engine, goal: String) -> Result(Engine, String) {
     |> result.replace_error("predicate " <> label <> " not found"),
   )
   use boot <- result.try(goal_boot.setup_goal(heap.new(), atom))
-  let sched = scheduler.new(engine.program, boot.heap)
+  let sched = new_sched(engine, boot.heap)
   let #(sched, _goal_id) = scheduler.boot(sched, label, entry, boot.regs)
   Ok(Engine(..engine, session: Some(RunSession(sched, boot.query_var_writers))))
 }

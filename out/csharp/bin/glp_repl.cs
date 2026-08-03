@@ -296,32 +296,41 @@ public static class Program
             {
                 string filename;
                 if (trimmed.StartsWith("load ", StringComparison.Ordinal))
+                {
                     filename = trimmed.Substring(5).Trim();
-                else if (!trimmed.Contains(' '))
-                    filename = trimmed;
+                }
                 else
-                    filename = string.Empty;
+                {
+                    // Treat the whole input as the filename. This supports paths with
+                    // spaces (e.g. "programs/book 2/...") and Windows drive letters.
+                    filename = trimmed;
+                }
+                // Strip surrounding quotes if user wrapped the path
+                if ((filename.StartsWith("\"", StringComparison.Ordinal) && filename.EndsWith("\"", StringComparison.Ordinal)) ||
+                    (filename.StartsWith("'", StringComparison.Ordinal) && filename.EndsWith("'", StringComparison.Ordinal)))
+                {
+                    filename = filename.Substring(1, filename.Length - 2);
+                }
 
                 if (filename.Length > 0)
                 {
                     try
                     {
                         // Resolve path (mirrors Dart File path logic)
-                        string sourcePath;
-                        if (filename.StartsWith("/", StringComparison.Ordinal) ||
+                        // Treat as absolute/relative path if it has a drive letter, leading
+                        // slash/dot, or contains a path separator. Otherwise look under glp/.
+                        var hasPathish = filename.StartsWith("/", StringComparison.Ordinal) ||
                             filename.StartsWith("../", StringComparison.Ordinal) ||
-                            filename.StartsWith("./", StringComparison.Ordinal))
-                        {
-                            sourcePath = filename;
-                        }
-                        else
-                        {
-                            sourcePath = Path.Combine("glp", filename);
-                        }
+                            filename.StartsWith("./", StringComparison.Ordinal) ||
+                            filename.StartsWith("\\", StringComparison.Ordinal) ||
+                            filename.Contains('/') ||
+                            filename.Contains('\\') ||
+                            (filename.Length >= 2 && filename[1] == ':');
+                        string sourcePath = hasPathish ? filename : Path.Combine("glp", filename);
 
                         if (!File.Exists(sourcePath))
                         {
-                            Console.WriteLine($"Error: File not found: {sourcePath}");
+                            Console.WriteLine($"Error loading {sourcePath}: File not found");
                             continue;
                         }
 

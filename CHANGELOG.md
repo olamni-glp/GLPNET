@@ -1,5 +1,79 @@
 ## [Unreleased]
 
+## [v2026.08.03.1] - 2026-08-03
+
+### Added
+- T043-T048 cross-runtime Gleam x C# suite 18/18 + string display parity fix + run_all_tests.sh Section I wiring
+- wire link kernels into Gleam engine - K1/K6/K7 + payload codec + link-aware run loop, gleam test 563 green
+- C1 link_terms + transport_registry Gleam port (contracts/link-primitives-port.md)
+- T039 multiagent boot loader - AST-native spawn-directive extraction (no Dart regex/strip), per-agent MadEngine boot with net-in slot, drive loop routing messages to Receive; 4 tests; 563 green, corpus 206/0. US4 COMPLETE
+- US4 L2-L4 - link primitives per amended contract: capability gate, handle, registry, establish core (verify-before-act, either role), egress (window+sequence+frames), pump (parse-reassemble-order, rules 2/4/5), fault lattice + bounded-silence <=30s; 12 tests over loopback+TCP; 559 green, corpus 206/0
+- US4 L1 - reliability state machines ported (link_sequencer, inbound_ordering, frame_reassembler, send_window) per amended contract; roadmap import applied 2 peer export files; 547 green
+- T030+T031 - determinism verified (two identical full runs), SC-001 gate enforced in corpus runner (100pct 206/206, zero exceptions), recorded in research.md
+- T028 named divergences in run_differential.sh + T017 dissolved by ratified lint disposition; C# REPL empty-output condition surfaced
+- T025+T026 - three-verdict corpus report per contract, per-case verdict lines with expected/observed, aggregate block, completeness invariant P+F+O==N enforced exit 3; full run 206/206/0/0
+- T011+T016 - late resolution both arms proven (call-time resolution per FR-008, Dart parity), multi-module co-load, duplicate first-load-wins, re-load replacement; 547 green
+- T009 project static linker - discover/ancestor-scope/type-check-each/link/compile per Dart loadProject, facade load_project, Section F oracle plays 1-7 + fplay1/2/4 green; 542 green, corpus 206/0
+- dispatch B3 - embedded serve/2 via compile_prelude, auto-activate exported modules per run, Distribute/Transmit as data-threaded channel sends, program import table; Section L oracle L1-L3 green; 537 green, corpus 206/0
+- dispatch B2 - _activate/2 kernel emits RemoteSpawn as data, runner threads Reduced.remote, scheduler resolves vs module registry + 7 dispatch tests; 534 green, corpus 206/0
+- dispatch B1 - scheduler module registry, per-goal programs, infrastructure goals, channels + channel_send/activate_module seams; 527 green
+- US2 T019-T024 - :bytecode/:bc full-program dump per Dart reference, :boot deferral to G9, session-safety + read-only tests; contract amended to reference; 527 green, corpus gate 206/0 held
+- T012+T014/T015/T018/T018a US1 remainder - name-keyed load registry with replace-in-place, 6 verification tests; 521 green, corpus gate 206/0 held; T013 lint disposition proposed
+- T007/T008 engine transport-injection seam - with_transports/transport_for on the composition root + 2 tests; gleam test 515 green
+- T005/T006 _copy/2 kernel - faithful port of Dart copyKernel + 5 gleeunit tests; gleam test 513 green
+
+### Fixed
+- exit_on_close false on gen_tcp sockets - OTP default auto-closed the whole port on peer FIN, killing undrained egress (D-9 root cause c); repro 8/8 green
+- pump holds socket open until link terminal - release-subject exit gate; pump exit on peer FIN was closing the socket under undrained egress (D-9 root cause)
+- D-9 run-termination barrier - peer half-close no longer terminal alone (in_ended flag), should_wait holds until close handshake completes, fixes graceful-close truncation race
+- Section I gate uses SCRIPT_DIR-anchored paths - suite cwd is glp_runtime, relative check always skipped
+- sender close is half-close not link death - Gleam x C# pc.glp passes BOTH directions, gleam test 563 green
+- mirror Dart path-ish resolution in load (drive letters, backslash, embedded separators, quoted paths) - relative/absolute loads no longer mangled with glp\ prefix; three-way differential AGREE
+- repair UTF-8 double-encoding + BOM introduced by PowerShell Set-Content rewrites in engine_test, output_capture_test, tasks.md
+- CR-tolerant parity-harness parse + LF pin for test/parity - resolves 059 T051 (44 false MISSING goldens were CRLF-corrupted block ids)
+
+### Changed
+- Merge pull request #127 from olamni-glp/060-wave3-full-gleam-chain
+- roadmap: sync round - import 5 peer files/29 lines, reconcile clean, 0 duplicates, export 18/95/2536 published 143832Z, replay-verify OK
+- case-insensitive path check - NTFS canonical case made the self.glp load-path check cwd-dependent (false FAIL from canonical-case cwd)
+- Merge origin/develop (post-062) into 060: keep-060 pointers, additive gitignore+suite sections, develop manifest, engine.gleam integrates 062 conjunction drain_goals with 060 link-aware per-goal drive
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- post-ship close-out retrospective (3 findings, token ledger reconciles, marathon discharged 9/9)
+- roadmap: sync import (5 files/30 lines) + export 18/95/2531, published 092034Z
+- Merge pull request #126 from olamni-glp/main
+- olamnit 160428Z zero-delta import verified - fleet re-converged 18/94/2493, dedupe wave closed
+- sync cycle - imported ariellas dedupe merge (+1 line, quic-link twin merged), reconcile no-op, converged 18/94/2493, re-exported + published
+- milestone-2 snapshot - R3 ACK-CONVERGED fleet-wide 18/95/2492, F1 round closed (R1+R2+advance-directive+R3 complete on all three hosts)
+- import-manifest update for 145518Z fold import
+- operator advance-directive fold - imported ariellas 145518Z (+2 lines, wave-3 closed), converged 18/95/2492, re-exported + published; R3 triple fixed, olamnit sole open item
+- R2 - imported olamnit's 40-line delta, converged 18/95/2490, re-exported + published; R3 awaits peer R2 completes
+- untrack live COOP mailbox (gitignored per operator ruling - no in-branch logic for live dialogue) + milestone snapshot 1: PROTOCOL-DRIVES v1 adopted, gavriella-ariellas verified converged
+- stage 2 vs ariellas - imported 163 lines, converged 18/94/2450, re-exported; olamnit stage 1 still open
+- commit local mailbox mirror updates (seq 29 + PROTOCOL amendment, advanced by a concurrent session on this host)
+- COOP protocol portable write-up - three-host drive-letter law, identity-by-hostname, CRDT action dialogue, sync stage gating (for yngenios-windows adaptation)
+- tick T039 - US4 complete
+- tick T032-T038, T040-T042 - US4 link primitives delivered per amended contract
+- sync stage 1 - import 2 peer files, reconcile no-op, shipped/released already closed, merged 2 umbrella dupes into wave-3-consolidated, export
+- spec(060): amend link-handshake contract to reference mechanisms per owner ruling - frame-version rejection, capability gate, path-A/B establishment, reasoned refusal; rules 1-7 re-anchored
+- research(060): US4 dossier - link-layer subsystem map + SPEC CONFLICT: link-handshake.md Hello/Accept/Refuse absent from both references (frame-version byte + capability gate + path-B rendezvous are the real mechanisms); ruling requested
+- tick T050 - non-regression set green: gleam 547 (baseline 508), REPL 532/532
+- tick T009 - static linker delivered, Section F oracle green
+- research(060): T009 dossier - project static linking subsystem map, Dart loadProject chain to Gleam loci, skipGlobalSRSW is reference-sanctioned, F oracle plan
+- tick T010 - dynamic dispatch delivered as B1-B3, locus per G1 dossier, Section L oracle green
+- tick T013 - lint disposition ratified via marathon trace T013-lint-disposition
+- research(060): concrete Gleam mapping for module dispatch - sentinel struct not Term variant, per-goal programs, _activate as data-threaded spawn, 7-point plan
+- research(060): G1 design dossier - module dispatch subsystem map (ModuleTerm/serve/channels/_activate), corrected locus vs tasks.md
+- baseline(060): final T003 corpus baseline 206/0 - 100pct agreement post CRLF fix, clean verified run
+- spec(060): revise FR-018a/FR-018b/SC-010 + T027/T028a/T029 per Bug Protocol ruling - harness defect, nothing regenerated
+- baseline(060): T001-T004 checkpoint-zero - gleam 508, REPL 532/532, corpus rc=44 root-caused to CRLF harness artifact (ruling pending)
+- tasks(060): close analyze findings C1/B1/A1/U1 - add T018a writer-MGU + T028a bug-protocol gate, harden T031 and T042
+- correct marathon resume flag in restart pointer (--feature, not --run)
+- persist analyze findings + refresh restart pointer for /bk-implement handoff
+- tasks(060): 52 tasks across 8 phases, one per user story, MVP = US1
+- plan(060): implementation plan, phase-0 research, data model, quickstart, 3 contracts
+- clarify(060): resolve 4 scope questions - grammar, transports, AtomVM, corpus goldens
+- spec(060): wave 3 consolidated Full Gleam chain - spec.md + requirements checklist
+
 ## [v2026.08.02.1] - 2026-08-02
 
 ### Added

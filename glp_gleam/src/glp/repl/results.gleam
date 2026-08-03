@@ -35,7 +35,12 @@ pub fn format_term(term: Term) -> String {
     ConstTerm(ConstAtom(a)) -> a
     ConstTerm(ConstInt(i)) -> int.to_string(i)
     ConstTerm(ConstReal(f)) -> float.to_string(f)
-    ConstTerm(ConstString(s)) -> s
+    // The Dart reference stores a STRING constant with its surrounding quotes
+    // and prints the value bare — so its visible output carries the quotes.
+    // The Gleam model stores the raw text (distinct ConstString variant), so
+    // the faithful display re-adds them (`Got = ["alice", "bob"]`, never
+    // `[alice, bob]` — cross-runtime display parity, US5 T044).
+    ConstTerm(ConstString(s)) -> "\"" <> s <> "\""
     StructTerm(".", [head, tail]) -> format_list(head, tail, [])
     StructTerm(functor, args) ->
       functor <> "(" <> string.join(list.map(args, format_term), ", ") <> ")"

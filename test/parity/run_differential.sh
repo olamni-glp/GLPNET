@@ -64,11 +64,20 @@ if ! command -v gleam >/dev/null 2>&1; then echo "  (gleam not on PATH — skipp
 printf -- '--- dart ---\n%s\n--- csharp ---\n%s\n--- gleam ---\n%s\n' \
   "$DART_OUT" "${CS_OUT:-<skipped>}" "${GL_OUT:-<skipped>}"
 
-# Count divergent pairs among the runtimes that actually ran.
+# Count divergent pairs among the runtimes that actually ran. Every divergent
+# pair emits a NAMED `verdict: fail` line — case id + both normalized outcomes,
+# actionable without re-running (T028, FR-017, contracts/corpus-report.md
+# invariant 5). The first runtime named in the pair is the expectation side
+# (dart is the reference whenever it participates).
+CASE_ID="$PROG::$GOAL"
+compact() { printf '%s' "$1" | tr '\n' ';' | sed 's/;*$//'; }
 pairs=0; diverged=""
 cmp_pair() {  # $1=name-a $2=out-a $3=ok-a  $4=name-b $5=out-b $6=ok-b
   [ "$3" = 1 ] && [ "$6" = 1 ] || return 0
-  if [ "$2" != "$5" ]; then pairs=$((pairs+1)); diverged+=" $1/$4"; fi
+  if [ "$2" != "$5" ]; then
+    pairs=$((pairs+1)); diverged+=" $1/$4"
+    echo "verdict: fail case=$CASE_ID pair=$1/$4 expected=$(compact "$2") observed=$(compact "$5")"
+  fi
 }
 cmp_pair dart "$DART_OUT" "$D_OK" csharp "$CS_OUT" "$C_OK"
 cmp_pair dart "$DART_OUT" "$D_OK" gleam "$GL_OUT" "$G_OK"
@@ -76,6 +85,7 @@ cmp_pair csharp "$CS_OUT" "$C_OK" gleam "$GL_OUT" "$G_OK"
 
 echo ""
 if [ "$pairs" -eq 0 ]; then
+  echo "verdict: pass case=$CASE_ID"
   echo "RESULT: all runtimes AGREE (normalized)"
 else
   echo "RESULT: $pairs divergent pair(s):$diverged"

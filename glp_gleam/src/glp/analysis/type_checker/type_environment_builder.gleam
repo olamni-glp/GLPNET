@@ -151,8 +151,10 @@ pub fn extract_clauses(module: ast.SourceModule) -> List(ast.Clause) {
 // =============================================================================
 
 /// Build a `TypeEnvironment` from a module's type definitions and procedure
-/// declarations (Dart `_buildEnvironmentFromModule`).
-fn build_environment_from_module(
+/// declarations (Dart `_buildEnvironmentFromModule`; public because the
+/// project linker's ancestor-scope layering builds per-self.glp scopes with it,
+/// as Dart `_buildAncestorScope` does via `buildScopeFromModule`).
+pub fn build_environment_from_module(
   module: ast.SourceModule,
   check_redefinitions: Bool,
   resolve_aliases_now: Bool,

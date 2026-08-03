@@ -191,6 +191,7 @@ flush_block() {
 }
 
 while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"   # CR-tolerant: a CRLF checkout must not corrupt block ids (059 T051 root cause)
     case "$line" in
         ''|'#'*) continue ;;
     esac
