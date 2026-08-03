@@ -76,7 +76,8 @@ fn sample_env() -> TypeEnvironment {
 }
 
 fn dfa() -> program_dfa.ProgramDfa {
-  program_dfa.build_program_dfa(sample_env())
+  let assert Ok(dfa) = program_dfa.build_program_dfa(sample_env())
+  dfa
 }
 
 fn const_int(i: Int) -> ast.Term {
