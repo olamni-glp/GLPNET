@@ -35,7 +35,7 @@ risk), then US1 (STOP at the §1.14 gate on T010).
 
 **Purpose**: Establish the known-good baseline before any change (Constitution VII).
 
-- [ ] T001 Capture and record a green test baseline across suites before any change: REPL
+- [X] T001 Capture and record a green test baseline across suites before any change: REPL
   (`export DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart; bash test/run_all_tests.sh`), C#
   engine (`dotnet build` + `dotnet test`), and Gleam (`glp_gleam/`); note the pass counts in the
   feature's marathon/verification trail.
@@ -48,7 +48,7 @@ risk), then US1 (STOP at the §1.14 gate on T010).
 
 **⚠️ CRITICAL**: T001 baseline MUST be green before any story work begins.
 
-- [ ] T002 Confirm dependency posture for the IL-parity comparison: verify compiled-IL-on-the-wire
+- [X] T002 Confirm dependency posture for the IL-parity comparison: verify compiled-IL-on-the-wire
   (#11) and the il-codec round-trip (#4) are delivered/available (wave-4/062, specs/050) so
   bytecode can be serialized and compared deterministically; record the finding in research/report.
 
@@ -64,14 +64,14 @@ delivered as the anonymous-writer discard semantic (062 US5).
 **Independent Test**: Source search returns zero references to the removed stub and the C# solution
 builds green with baselines unchanged (SC-005, SC-006).
 
-- [ ] T003 [US2] Confirm the stub is dead: search the C#/Dart trees for `AbandonOps` /
+- [X] T003 [US2] Confirm the stub is dead: search the C#/Dart trees for `AbandonOps` /
   `AbandonWriter` references (`grep -rn` over `out/csharp/`, `csharp/`, excluding
   `runtime/abandon.cs`); expect zero production callers. If a caller exists → STOP and report
   (Bug-Protocol II); do not proceed.
-- [ ] T004 [US2] Remove the dead stub `out/csharp/lib/runtime/abandon.cs` (`git rm`), only after
+- [X] T004 [US2] Remove the dead stub `out/csharp/lib/runtime/abandon.cs` (`git rm`), only after
   T003 confirms zero callers.
-- [ ] T005 [US2] Rebuild the C# engine solution to zero errors after removal.
-- [ ] T006 [US2] Re-run the baselines (REPL + C# + Gleam) and confirm no new failures vs T001
+- [X] T005 [US2] Rebuild the C# engine solution to zero errors after removal.
+- [X] T006 [US2] Re-run the baselines (REPL + C# + Gleam) and confirm no new failures vs T001
   (SC-006).
 
 **Checkpoint**: US2 fully functional and independently verified.
@@ -87,11 +87,11 @@ feasibility report. Additive spike; production parsers untouched (FR-010).
 **Independent Test**: `REPORT.md` states a verdict; coverage (SC-001) and IL parity (SC-002) are
 recorded; zero accepted-syntax changes landed without a §1.14 approval (SC-004).
 
-- [ ] T007 [P] [US1] Acquire the ANTLR4 complete jar (≥4.13) into `spike/antlr4-glp-grammar/`; if
+- [X] T007 [P] [US1] Acquire the ANTLR4 complete jar (≥4.13) into `spike/antlr4-glp-grammar/`; if
   acquisition is blocked in-environment, document the degradation (grammar + manual coverage
   argument) per spec Assumption.
-- [ ] T008 [P] [US1] Create spike scaffolding `spike/antlr4-glp-grammar/{corpus/,harness/,gen/}`.
-- [ ] T009 [US1] Select a representative corpus subset from `programs/tests/typed/` (+ a few
+- [X] T008 [P] [US1] Create spike scaffolding `spike/antlr4-glp-grammar/{corpus/,harness/,gen/}`.
+- [X] T009 [US1] Select a representative corpus subset from `programs/tests/typed/` (+ a few
   book/lib examples) into `spike/antlr4-glp-grammar/corpus/` (or a manifest referencing
   `programs/`), exercising declarations, guards, reader/writer modes, `::=` unions, `=..`/`..=`,
   module `#` calls, lists/structs, and ≥1 negative control (e.g. `abandon_reader_bad.glp`).
