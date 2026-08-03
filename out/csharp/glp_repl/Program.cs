@@ -127,7 +127,8 @@ internal static class EntryPoint
                 {
                     try
                     {
-                        terms.Add(wal.Decode(op, isReader => engine.Runtime.Heap.AllocateVariable().Item1));
+                        terms.Add(wal.Decode(op, _ => throw new InvalidOperationException(
+                            "resume replay received a non-ground payload (embedded variable)")));
                     }
                     catch (Exception e)
                     {
@@ -186,10 +187,12 @@ internal static class EntryPoint
             Console.WriteLine($"resume: goal finished ({result.Status})");
             if (result.Error is not null)
                 Console.WriteLine($"resume: goal error: {result.Error}");
-            // A Failed (or errored) result is not an armed service — uninstall the hooks
-            // just like a thrown goal. Suspended is the NORMAL terminal state of an armed
-            // listener service: its hooks must stay live.
-            if (result.Failed || result.Error is not null)
+            // Suspended is the SOLE armed state: a suspended listener's hooks must stay
+            // live. Every other terminal state (Failed, errored, or a Success whose goal
+            // ran to completion) is not an armed service — uninstall the hooks just like
+            // a thrown goal, so a later interactive link cannot see the service's replay
+            // or append into its WAL.
+            if (!result.Suspended)
                 Disarm();
         }
         catch (Exception e)
