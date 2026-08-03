@@ -148,10 +148,17 @@ internal static class EntryPoint
         if (wal is not null)
             link.Pump.OnDelivered = (_, term) => wal.Append(term, Console.WriteLine);
 
+        // The hooks belong to a SUCCESSFULLY armed service only. Every failure path below
+        // falls through to the interactive REPL (FR-009) — with the hooks still live, a
+        // manual link opened there would receive the failed service's replay and append its
+        // own traffic into the service's WAL. Uninstall them on failure.
+        void Disarm() { link.Pump.ReplaySource = null; link.Pump.OnDelivered = null; }
+
         var programPath = Path.Combine(reg.RepoRoot, reg.Program);
         if (!File.Exists(programPath))
         {
             Console.WriteLine($"resume: program load failed: {programPath}: File not found");
+            Disarm();
             return;
         }
         try
@@ -159,12 +166,14 @@ internal static class EntryPoint
             if (!engine.LoadFile(programPath))
             {
                 Console.WriteLine($"resume: program load failed: {reg.Program} (rejected by the load pipeline)");
+                Disarm();
                 return;
             }
         }
         catch (Exception e)
         {
             Console.WriteLine($"resume: program load failed: {e.Message}");
+            Disarm();
             return;
         }
 
@@ -178,6 +187,7 @@ internal static class EntryPoint
         catch (Exception e)
         {
             Console.WriteLine($"resume: goal failed: {e.Message}");
+            Disarm();
         }
     }
 }

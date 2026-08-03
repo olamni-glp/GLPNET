@@ -119,10 +119,21 @@ public sealed class QuicTransport : ILinkTransport
     private static async Task<ILinkEndpoint> AcceptOneAsync(QuicListener listener, LinkAddress local, CancellationToken ct)
     {
         var connection = await listener.AcceptConnectionAsync(ct).ConfigureAwait(false);
-        var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
-        var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
-        var nonce = LinkNonce.Str(connection.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString());
-        return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, nonce), connection, stream, ws);
+        try
+        {
+            var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
+            var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
+            var nonce = LinkNonce.Str(connection.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString());
+            return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, nonce), connection, stream, ws);
+        }
+        catch
+        {
+            // Stream-accept / bootstrap failed AFTER the connection was accepted (mirror of the
+            // dial-path guard in ConnectAsync) — dispose the accepted connection before rethrowing
+            // so it never leaks; the dispose itself must never mask the original exception.
+            try { await connection.DisposeAsync().ConfigureAwait(false); } catch { }
+            throw;
+        }
     }
 
     /// <summary>A bound QUIC listener that accepts many isolated client links (US2 T025).</summary>
@@ -201,8 +212,9 @@ public sealed class QuicTransport : ILinkTransport
         catch
         {
             // Stream-open / bootstrap failed AFTER the connect succeeded (fail-fast by design, see
-            // above) — dispose the established connection before rethrowing so it never leaks.
-            await connection.DisposeAsync().ConfigureAwait(false);
+            // above) — dispose the established connection before rethrowing so it never leaks;
+            // the dispose itself must never mask the original exception.
+            try { await connection.DisposeAsync().ConfigureAwait(false); } catch { }
             throw;
         }
     }

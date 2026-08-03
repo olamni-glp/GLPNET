@@ -35,12 +35,16 @@ normalize() {
 
 [ -f "$CSREPL" ] || { echo "ERROR: C# REPL not built at $CSREPL"; exit 1; }
 
-# Preserve any operator registration. The WAL is removed on exit: the host appends
-# every drill message durably (OnDelivered installs whenever the WAL opens), and a
-# later real service with replay:true must never replay drill garbage as history.
+# Preserve any operator registration AND any real service WAL (moved aside, like
+# the registration). The drill runs on a FRESH WAL: the host appends every drill
+# message durably (OnDelivered installs whenever the WAL opens), and a later real
+# service with replay:true must never replay drill garbage as history — so the
+# drill's own WAL is removed on exit, then the operator's is restored intact.
 SAVED=""
 if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
-restore() { rm -f "$REG"; rm -rf "$WAL"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi }
+SAVED_WAL=""
+if [ -d "$WAL" ]; then SAVED_WAL="$WAL.drill-saved"; mv "$WAL" "$SAVED_WAL"; fi
+restore() { rm -f "$REG"; rm -rf "$WAL"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi; if [ -n "$SAVED_WAL" ] && [ -d "$SAVED_WAL" ]; then mv "$SAVED_WAL" "$WAL"; fi }
 trap restore EXIT
 
 echo "=== 064 US1 resume drill ==="

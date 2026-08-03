@@ -82,8 +82,29 @@ internal static class ResumeConfig
                 return false;
             }
 
-            var enabled = !root.TryGetProperty("enabled", out var en) || en.ValueKind != JsonValueKind.False;
-            var replay = !root.TryGetProperty("replay", out var rp) || rp.ValueKind != JsonValueKind.False;
+            // The v1 schema declares these as booleans: a present flag whose value is not
+            // literal true/false (e.g. "enabled":"false") is malformed and takes the same
+            // named-diagnostic + inert path as any other invalid file (FR-009).
+            var enabled = true;
+            if (root.TryGetProperty("enabled", out var en))
+            {
+                if (en.ValueKind != JsonValueKind.True && en.ValueKind != JsonValueKind.False)
+                {
+                    diag($"resume: invalid registration at {path}: 'enabled' is not a boolean");
+                    return false;
+                }
+                enabled = en.ValueKind == JsonValueKind.True;
+            }
+            var replay = true;
+            if (root.TryGetProperty("replay", out var rp))
+            {
+                if (rp.ValueKind != JsonValueKind.True && rp.ValueKind != JsonValueKind.False)
+                {
+                    diag($"resume: invalid registration at {path}: 'replay' is not a boolean");
+                    return false;
+                }
+                replay = rp.ValueKind == JsonValueKind.True;
+            }
 
             registration = new ResumeRegistration(
                 Program: prog.GetString()!,
