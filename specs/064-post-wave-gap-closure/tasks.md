@@ -39,7 +39,7 @@ SPDX-License-Identifier: MIT
 - [X] T017 [US2] Rework csharp/glp_engine_host/EngineServer.cs: accept N clients, register each session with the A31 control program merge tree, route replies per session, discard pending replies on client crash without wedging the merge loop
 - [X] T018 [P] [US2] xUnit suite csharp/glp_engine_host.tests/MultiClientServeTests.cs: 3 concurrent clients, interleaved goals, per-client reply isolation, disconnect-one survives
 - [X] T019 [US2] US2 checkpoint: engine-host + REPL suites green, scoped commit+push, marathon checkpoint
-- [ ] T020 [US2] MVP GATE (Anchor review): record specs/064-post-wave-gap-closure/mvp-gate-review.md over US1+US2 evidence (clarify Q4)
+- [X] T020 [US2] MVP GATE (Anchor review): record specs/064-post-wave-gap-closure/mvp-gate-review.md over US1+US2 evidence (clarify Q4)
 
 ## Phase 5 — US3: IL on the wire (P3)
 
