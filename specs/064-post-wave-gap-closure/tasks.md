@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 
 ## Phase 1 — Setup
 
-- [ ] T001 Record baselines green and commit checkpoint: bash test/run_all_tests.sh; glp_gleam/smoke.sh; dotnet test csharp suites; test/parity/run_gleam_corpus.sh; test/parity/cross_runtime/run_all.sh — counts recorded in specs/064-post-wave-gap-closure/baseline.md
-- [ ] T002 [P] Read the C# link remote-binding + quiescence sources end-to-end and record the parity checklist (message kinds, ordering, MGU checks) in specs/064-post-wave-gap-closure/parity-checklist.md (D1/D2 evidence anchor)
+- [X] T001 Record baselines green and commit checkpoint: bash test/run_all_tests.sh; glp_gleam/smoke.sh; dotnet test csharp suites; test/parity/run_gleam_corpus.sh; test/parity/cross_runtime/run_all.sh — counts recorded in specs/064-post-wave-gap-closure/baseline.md
+- [X] T002 [P] Read the C# link remote-binding + quiescence sources end-to-end and record the parity checklist (message kinds, ordering, MGU checks) in specs/064-post-wave-gap-closure/parity-checklist.md (D1/D2 evidence anchor)
 
 ## Phase 2 — Foundational (blocking)
 
