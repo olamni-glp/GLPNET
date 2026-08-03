@@ -56,8 +56,8 @@ SPDX-License-Identifier: MIT
 - [X] T028 [P] [US4] Two-process split test: standard REPL scenarios through FE↔BE equal single-process results for the regression corpus (contracts/febe-split.md acceptance 1)
 - [X] T029 [US4] Cross-runtime FE/BE smoke both directions (Gleam FE ↔ C# BE; C# thin client ↔ Gleam BE, text kinds)
 - [X] T030 [US4] Implement glp_gleam/src/glp_embed.gleam (load/run/observe surface, G3-A) + minimal host program test glp_gleam/test/glp_embed_host_test.gleam
-- [ ] T031 [US4] Discharge the 059 acceptance sweep: QUIC gate (bridge evidence), T094 full-scope regression accept across Dart/C#/Gleam, SC-sweep rows — evidence recorded in specs/059-full-scope-gleam-glp-implementation/tasks.md checkboxes + a close-out note; remaining true residuals recorded as explicit deferrals
-- [ ] T032 [US4] US4 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
+- [X] T031 [US4] Discharge the 059 acceptance sweep: QUIC gate (bridge evidence), T094 full-scope regression accept across Dart/C#/Gleam, SC-sweep rows — evidence recorded in specs/059-full-scope-gleam-glp-implementation/tasks.md checkboxes + a close-out note; remaining true residuals recorded as explicit deferrals
+- [X] T032 [US4] US4 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
 
 ## Phase 7 — US5: small residuals (P5)
 
