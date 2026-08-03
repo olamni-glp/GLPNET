@@ -44,6 +44,19 @@ public sealed class LinkPump : IInboundPump, IDisposable
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
 
     /// <summary>
+    /// Feature 064 (FR-004, contracts/message-log-and-replay.md) — optional host-owned
+    /// delivery observer. Invoked on the RUNNER thread, once per DATA term actually
+    /// delivered to the program (post-reassembly, post-ordering, post-dedup), immediately
+    /// BEFORE the heap bind that lets the program observe it — so a host that persists
+    /// here is durable before the program can act. Never invoked for graceful-close or
+    /// fault items. <c>null</c> (the default) ⇒ behavior byte-identical to pre-064.
+    /// An observer that throws must not corrupt the ingress: the throw is caught and
+    /// surfaced, and delivery proceeds (availability over durability — the both-backends
+    /// -fail policy in the contract).
+    /// </summary>
+    public Action<LinkId, Term>? OnDelivered { get; set; }
+
+    /// <summary>
     /// Register an established link with the pump: bump the live-link count and start
     /// its background receive loop. Called by <c>'_link_setup'</c> after the handle's
     /// <see cref="LinkHandle.InWriterAddr"/> ingress cursor is wired.
@@ -119,6 +132,21 @@ public sealed class LinkPump : IInboundPump, IDisposable
                 _engine.EnqueueReactivatedGoal(act);
             item.Handle.InWriterAddr = null; // stream terminated; no further extension
             return true;
+        }
+
+        // 064: durability precedes observation — the host-owned observer (if any) sees this
+        // delivered term BEFORE the bind below makes it visible to the program (FR-004).
+        if (OnDelivered is { } observer)
+        {
+            try
+            {
+                observer(item.Handle.Id, item.Value!);
+            }
+            catch (Exception e)
+            {
+                // Loud, never silent; delivery still proceeds (contract's both-backends-fail policy).
+                Console.WriteLine($"[link ingress] delivery observer failed: {e.Message}");
+            }
         }
 
         // Extend the In stream by one ground term (design ref §1.6 B6): mint a fresh
