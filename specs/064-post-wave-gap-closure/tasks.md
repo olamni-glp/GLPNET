@@ -36,8 +36,8 @@ SPDX-License-Identifier: MIT
 
 - [X] T015 [US2] Extend csharp/glp_link/transports/TcpTransport.cs ListenAsync to a continuous multi-accept loop (remove the one-accept-then-Stop deferral; keep single-accept behavior available for existing callers)
 - [X] T016 [US2] Create csharp/glp_engine_host/ClientSession.cs (per-client channel pair, session_id, active|draining|closed lifecycle, RoutedReply routing per data-model.md)
-- [ ] T017 [US2] Rework csharp/glp_engine_host/EngineServer.cs: accept N clients, register each session with the A31 control program merge tree, route replies per session, discard pending replies on client crash without wedging the merge loop
-- [ ] T018 [P] [US2] xUnit suite csharp/glp_engine_host.tests/MultiClientServeTests.cs: 3 concurrent clients, interleaved goals, per-client reply isolation, disconnect-one survives
+- [X] T017 [US2] Rework csharp/glp_engine_host/EngineServer.cs: accept N clients, register each session with the A31 control program merge tree, route replies per session, discard pending replies on client crash without wedging the merge loop
+- [X] T018 [P] [US2] xUnit suite csharp/glp_engine_host.tests/MultiClientServeTests.cs: 3 concurrent clients, interleaved goals, per-client reply isolation, disconnect-one survives
 - [ ] T019 [US2] US2 checkpoint: engine-host + REPL suites green, scoped commit+push, marathon checkpoint
 - [ ] T020 [US2] MVP GATE (Anchor review): record specs/064-post-wave-gap-closure/mvp-gate-review.md over US1+US2 evidence (clarify Q4)
 

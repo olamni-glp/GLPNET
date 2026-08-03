@@ -7,12 +7,11 @@
 //// US3 corpus runner; here the semantics are pinned deterministically in-process.
 
 import gleam/list
-import gleam/string
 import gleeunit/should
 import glp/engine
 import glp/repl/commands.{
-  Blank, Boot, Bytecode, Goal, LimitUsage, Load, Quit, Session, SetLimit,
-  ToggleTrace,
+  Blank, Boot, BootUsage, Bytecode, Goal, LimitUsage, Load, Quit, Session,
+  SetLimit, ToggleTrace,
 }
 
 fn fresh_session() -> commands.Session {
@@ -130,7 +129,12 @@ pub fn parse_bytecode_and_alias_test() {
 }
 
 pub fn parse_boot_test() {
-  commands.parse(":boot play1.glp") |> should.equal(Boot)
+  commands.parse(":boot play1.glp") |> should.equal(Boot("play1.glp"))
+  // Dart surface: an optional trailing timeoutSec rides along (unused on the
+  // synchronous instance); a bare `:boot` is the reference usage line.
+  commands.parse(":boot mad_boot/play1.glp 30")
+  |> should.equal(Boot("mad_boot/play1.glp"))
+  commands.parse(":boot") |> should.equal(BootUsage)
 }
 
 // With nothing loaded, the reference message (Dart glp_repl.dart:205).
@@ -167,16 +171,25 @@ flip(one, zero).",
   session2 |> should.equal(session)
 }
 
-// :boot reports its deferral (multiagent boot loader not yet ported) and leaves
-// the session usable — never misread as a goal.
-pub fn execute_boot_reports_deferral_test() {
-  let #(session2, output, quit) = commands.execute(fresh_session(), Boot)
+// :boot on a missing play file reports the reference error (Dart
+// glp_repl.dart:501) and leaves the session usable — never misread as a goal.
+// The success-path scenario lives in boot_command_test.gleam (064 T033).
+pub fn execute_boot_missing_file_test() {
+  let #(session2, output, quit) =
+    commands.execute(fresh_session(), Boot("does/not/exist.glp"))
   quit |> should.be_false
-  let assert [line] = output
-  should.be_true(string.contains(line, "not yet ported"))
+  output
+  |> should.equal(["Error: boot file not found: does/not/exist.glp"])
   // Session stays usable: a goal still runs afterwards.
   let #(_s, out2, _) = commands.execute(session2, Goal("X := 1+1"))
   should.be_true(list.contains(out2, "X = 2"))
+}
+
+// A bare `:boot` prints the reference usage line (Dart glp_repl.dart:192).
+pub fn execute_boot_usage_test() {
+  let #(_session, output, quit) = commands.execute(fresh_session(), BootUsage)
+  quit |> should.be_false
+  output |> should.equal(["Usage: :boot <bootfile.glp> [timeoutSec]"])
 }
 
 // ── wave-3 T021: an unknown procedure leaves the session usable ──────────────
