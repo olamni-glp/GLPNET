@@ -69,8 +69,8 @@ SPDX-License-Identifier: MIT
 ## Phase 8 — Polish & close
 
 - [ ] T037 Full zero-regression sweep across every suite (FR-010) + record final counts vs T001 baseline in baseline.md
-- [ ] T038 [P] Record the two gated deferrals durably (native BEAM QUIC-WS leaf; any §1.14-blocked sub-scope if one arose) in specs/064-post-wave-gap-closure/DEFERRALS.md
-- [ ] T039 [P] Roadmap bookkeeping rider: advance the six delivered-but-open Full-Gleam rows + antlr4 supersession per the 3rtask verdicts (buildkit-roadmap advance/supersede), export+publish sync
+- [X] T038 [P] Record the two gated deferrals durably (native BEAM QUIC-WS leaf; any §1.14-blocked sub-scope if one arose) in specs/064-post-wave-gap-closure/DEFERRALS.md
+- [X] T039 [P] Roadmap bookkeeping rider: advance the six delivered-but-open Full-Gleam rows + antlr4 supersession per the 3rtask verdicts (buildkit-roadmap advance/supersede), export+publish sync
 - [ ] T040 /bk-codexreview over the full diff (plan-first, adversarial); apply confirmed fixes; re-run sweep
 - [ ] T041 Ship via buildkit GitFlow (announce CalVer to the fleet BEFORE cutting; buildkit ship --skip-preflight) then /bk-close (retro + roadmap advance 064)
 
