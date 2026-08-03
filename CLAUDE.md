@@ -229,9 +229,13 @@ If unified tests fail unexpectedly, common causes:
 
 **Gleam smoke gate (glp_gleam/smoke.sh) on this host (ariellas, 2026-08-03):** must run INSIDE WSL (Git Bash picks up the Windows Erlang and fails the OTP pin) with the user-space OTP 25 build on PATH:
 ```
-wsl bash -lc 'export PATH=$HOME/otp-25.3.2.8/bin:$PATH; cd /mnt/d/bstdev/research/glp/glpnet/glp_gleam && ./smoke.sh'
+wsl bash -lc 'export PATH="$HOME/otp-25.3.2.8/bin:$PATH"; cd /mnt/d/bstdev/research/glp/glpnet/glp_gleam && ./smoke.sh'
 ```
-OTP 25.3.2.8 was built from source at `~/otp-25.3.2.8` in WSL (Ubuntu 26.04 system OTP is 27; the source build needs `CFLAGS="-O2 -std=gnu17"` and `--disable-jit` on GCC≥15 or `dist.c` fails on the C23 bool clash). After switching OTP versions, `rm -rf glp_gleam/build` first — mixed-OTP artifacts crash `gleam test` with `{undef, glp_gleam@@main}`.
+**Quote the PATH export.** The unquoted form (`export PATH=$HOME/...:$PATH`) is mangled by the space-bearing Windows PATH entries WSL inherits, so the OTP 25 build is silently not picked up.
+
+OTP 25.3.2.8 was built from source at `~/otp-25.3.2.8` in WSL (Ubuntu 26.04 system OTP is 27; the source build needs `CFLAGS="-O2 -std=gnu17"` and `--disable-jit` on GCC≥15 or `dist.c` fails on the C23 bool clash). After switching OTP versions, `rm -rf glp_gleam/build` first — mixed-OTP artifacts crash `gleam test` with `{undef, glp_gleam@@main}`, `{corrupt atom table}`, or `features_not_allowed [maybe_expr]`.
+
+🔴 **`glp_gleam/build/` is single-OTP.** The WSL suite (`gleam test`, OTP 25) and the Windows-side Section I cross-runtime harness (`test/parity/cross_runtime/run_all.sh`, which calls `gleam run` from Git Bash under the Windows Erlang) cannot share one `build/`. Whichever ran last owns it; the other fails at beam load with "please re-compile this module with an Erlang/OTP NN compiler". Run them **serially with `rm -rf glp_gleam/build` in between** — never treat the resulting load error as a code regression.
 
 For sibling-repo (Mac/Linux) test invocation, see appendix.
 

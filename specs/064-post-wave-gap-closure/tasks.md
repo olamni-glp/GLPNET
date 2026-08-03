@@ -71,7 +71,7 @@ SPDX-License-Identifier: MIT
 - [X] T037 Full zero-regression sweep across every suite (FR-010) + record final counts vs T001 baseline in baseline.md
 - [X] T038 [P] Record the two gated deferrals durably (native BEAM QUIC-WS leaf; any §1.14-blocked sub-scope if one arose) in specs/064-post-wave-gap-closure/DEFERRALS.md
 - [X] T039 [P] Roadmap bookkeeping rider: advance the six delivered-but-open Full-Gleam rows + antlr4 supersession per the 3rtask verdicts (buildkit-roadmap advance/supersede), export+publish sync
-- [ ] T040 /bk-codexreview over the full diff (plan-first, adversarial); apply confirmed fixes; re-run sweep
+- [x] T040 /bk-codexreview over the full diff (plan-first, adversarial); apply confirmed fixes; re-run sweep — run 20260803T214953Z, capped@3; 11 fixes applied + 2 self-introduced regressions caught and fixed; 4 escalations recorded; report: t040-codexreview.md
 - [ ] T041 Ship via buildkit GitFlow (announce CalVer to the fleet BEFORE cutting; buildkit ship --skip-preflight) then /bk-close (retro + roadmap advance 064)
 
 ## Dependencies
