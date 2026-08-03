@@ -61,7 +61,7 @@ SPDX-License-Identifier: MIT
 
 ## Phase 7 — US5: small residuals (P5)
 
-- [ ] T033 [P] [US5] Implement :boot in glp_gleam/src/glp/repl/commands.gleam (multi-isolate plays, G9) + scenario test
+- [X] T033 [P] [US5] Implement :boot in glp_gleam/src/glp/repl/commands.gleam (multi-isolate plays, G9) + scenario test
 - [X] T034 [P] [US5] Complete glp_gleam/src/glp/bytecode/lint.gleam checks per docs/glp-bytecode-v216-complete.md (well-formedness of the v2.16 instruction stream: opcode validity, operand arity, HEAD/GUARD/BODY placement) + known-bad-program test
 - [X] T035 [P] [US5] Fix the param_arity panic (reported error, REPL survives) + regression test in glp_gleam/test
 - [ ] T036 [US5] US5 checkpoint; scoped commit+push, marathon checkpoint
