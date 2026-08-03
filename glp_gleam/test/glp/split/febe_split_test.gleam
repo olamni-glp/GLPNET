@@ -250,3 +250,56 @@ pub fn raw_wire_ping_and_il_refusal_test() {
   ep.close()
   assert_clean_exit(done)
 }
+
+// ── wire rule 2: the id-0 exemption is PROTOCOL_ERROR-only ───────────────────
+
+/// A rogue BE: accept one client, read its one request, answer with `response`
+/// (whatever id/kind the test wants), then hold the socket open.
+fn rogue_be(port: Int, response: wire.ResponseFrame) -> Nil {
+  let leaf = tcp.new()
+  case
+    leaf.listen(
+      link_scheme.tcp(),
+      link_address.endpoint("127.0.0.1", port),
+      link_options.default(),
+    )
+  {
+    Ok(ep) -> {
+      let assert Ok(Some(_request)) = ep.recv()
+      let assert Ok(bytes) = wire.encode_response_frame(response, 1)
+      let _ = ep.send(bytes)
+      process.sleep(2000)
+    }
+    Error(_) -> Nil
+  }
+}
+
+// A RESULT carrying request_id 0 is a desynchronised stream, NOT this goal's
+// answer: the FE refuses it (exit code 70, wire rule 2) instead of rendering
+// it — the C# ClientChannel refuses the same bytes.
+pub fn zero_id_result_is_refused_test() {
+  process.spawn(fn() {
+    rogue_be(34_776, wire.ResponseFrame(0, wire.ResultKind, <<0xFF>>))
+  })
+  let assert Ok(fe) = client.connect("127.0.0.1", 34_776)
+  let #(_fe, lines, step) = client.execute_line(fe, "true.")
+  step |> should.equal(client.Fatal(70))
+  list.any(lines, fn(line) { string.contains(line, "does not echo") })
+  |> should.be_true
+}
+
+// The exemption itself survives: a PRE-DECODE PROTOCOL_ERROR legitimately
+// carries id 0 (the BE could not read the id) and is still surfaced to the
+// operator, with the session left serving.
+pub fn zero_id_protocol_error_is_still_accepted_test() {
+  process.spawn(fn() {
+    rogue_be(
+      34_777,
+      wire.ResponseFrame(0, wire.ProtocolError, <<"bad frame":utf8>>),
+    )
+  })
+  let assert Ok(fe) = client.connect("127.0.0.1", 34_777)
+  let #(_fe, lines, step) = client.execute_line(fe, "true.")
+  step |> should.equal(Continue)
+  lines |> should.equal(["!! protocol error: bad frame", ""])
+}

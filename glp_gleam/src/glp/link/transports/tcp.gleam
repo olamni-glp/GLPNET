@@ -21,8 +21,10 @@
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process
+import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
+import glp/link/reliability/frame_codec
 import glp/link/seam/endpoint.{type Endpoint, Endpoint}
 import glp/link/seam/link_address.{type LinkAddress}
 import glp/link/seam/link_fault.{
@@ -152,6 +154,12 @@ fn connect_retry(
 // Endpoint over one duplex socket
 // ---------------------------------------------------------------------------
 
+/// Slack over `frame_codec.max_payload_bytes` for one inbound length prefix:
+/// the prefix wraps the whole FrameCodec frame (22-byte header included), not
+/// the bare payload. Same 1 KiB the normative C# `EngineServer.ReadFrameAsync`
+/// allows.
+const frame_header_slack = 1024
+
 /// Wrap one connected socket as a seam endpoint carrying 4-byte big-endian
 /// length-prefixed frames. Public so multi_accept (T010) reuses the exact same
 /// framing endpoint for every accepted socket instead of duplicating it.
@@ -179,16 +187,44 @@ pub fn make_endpoint(id: LinkId, sock: Socket) -> Endpoint {
         Ok(<<len:int-size(32)-big>>) ->
           case len == 0 {
             True -> Ok(Some(<<>>))
+            // Bound the allocation BEFORE trusting the header: the length is an
+            // UNSIGNED 32-bit int, so 4 attacker bytes must not command a
+            // multi-GB `gen_tcp:recv` (codexreview 064 cycle-2
+            // unbounded-frame-allocation). Same bound as the normative C#
+            // `EngineServer.ReadFrameAsync` — the framing stack's own
+            // `max_payload_bytes` plus 1 KiB of slack, because the length prefix
+            // wraps the whole FrameCodec frame, not the bare payload.
             False ->
-              case ffi_recv(sock, len) {
-                Ok(body) -> Ok(Some(body))
-                Error(_) -> {
-                  process.send(
-                    faults,
-                    LinkFaultSignal(id, Transient, "tcp: peer closed mid-frame"),
-                  )
-                  Ok(None)
+              case len > frame_codec.max_payload_bytes + frame_header_slack {
+                True -> {
+                  let signal =
+                    LinkFaultSignal(
+                      id,
+                      Permanent,
+                      "tcp: frame length "
+                        <> int.to_string(len)
+                        <> " exceeds max_payload_bytes "
+                        <> int.to_string(frame_codec.max_payload_bytes)
+                        <> " (+1 KiB frame-header slack)",
+                    )
+                  process.send(faults, signal)
+                  Error(signal)
                 }
+                False ->
+                  case ffi_recv(sock, len) {
+                    Ok(body) -> Ok(Some(body))
+                    Error(_) -> {
+                      process.send(
+                        faults,
+                        LinkFaultSignal(
+                          id,
+                          Transient,
+                          "tcp: peer closed mid-frame",
+                        ),
+                      )
+                      Ok(None)
+                    }
+                  }
               }
           }
         // A 4-byte read that is not 4 bytes is impossible with gen_tcp exact-recv;

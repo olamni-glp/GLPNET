@@ -29,11 +29,14 @@
 //// engine state): every operation returns the successor handle, so a host
 //// process can thread it through its own loop (e.g. a gen_server state).
 ////
-//// CWD convention: construction reads the root prelude from
-//// `../programs/self.glp` (via `engine.new`) — the host must run from the
-//// `glp_gleam/` package root, the same convention `gleam test` / `gleam run`
-//// use. No transports are injected: an embedded engine holds no links (the
-//// composition-root seam stays with the host's own entry point).
+//// Prelude: `load` reads the root prelude from `../programs/self.glp` — the
+//// `glp_gleam/` package-root convention `gleam test` / `gleam run` use. A host
+//// installed elsewhere gets the typed `PreludeNotFound` (never a crash — the
+//// panic in `engine.new` is not a host-facing diagnostic) and supplies the
+//// prelude source itself through `load_with_prelude`, the CWD-independent seam
+//// (`engine.new_with_prelude`). No transports are injected: an embedded engine
+//// holds no links (the composition-root seam stays with the host's own entry
+//// point).
 
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
@@ -62,6 +65,10 @@ pub type EmbedError {
   /// A project-directory load failed (no modules found, unreadable module,
   /// link/type/compile failure — `reason` is engine.load_project's diagnostic).
   ProjectRejected(path: String, reason: String)
+  /// The root prelude could not be read from `path` — the host is not running
+  /// from the `glp_gleam/` package root of a glpnet checkout. Use
+  /// `load_with_prelude` to supply the prelude source directly.
+  PreludeNotFound(path: String)
 }
 
 /// One observable event of an embedded run, in emission order: each `run`
@@ -77,30 +84,57 @@ pub type EmbedEvent {
 /// starts from).
 const default_limit = 1_000_000
 
+/// The root prelude's path under the `glp_gleam/` package-root convention (the
+/// same path `engine.new` reads).
+const default_prelude_path = "../programs/self.glp"
+
 /// Load a project into a fresh embedded engine. `project_path` ending `.glp`
 /// loads that single file through the full staged pipeline; any other path is
 /// loaded as a project directory (static linking). The returned handle carries
-/// the prelude + the loaded program and an empty event queue.
+/// the prelude + the loaded program and an empty event queue. The prelude is
+/// read from `../programs/self.glp`; a host whose working directory is not the
+/// `glp_gleam/` package root gets `PreludeNotFound` (never a crash) and should
+/// call `load_with_prelude` instead.
 pub fn load(project_path: String) -> Result(EmbedHandle, EmbedError) {
-  case string.ends_with(project_path, ".glp") {
-    True -> load_file(project_path)
-    False -> load_directory(project_path)
+  case read_source(default_prelude_path) {
+    Error(_) -> Error(PreludeNotFound(default_prelude_path))
+    Ok(prelude) -> load_with_prelude(project_path, prelude)
   }
 }
 
-fn load_file(path: String) -> Result(EmbedHandle, EmbedError) {
+/// `load` over an explicitly-supplied root-prelude source — the CWD-independent
+/// embedding seam (`engine.new_with_prelude`), for a host installed anywhere on
+/// the machine (it may carry the prelude in its own release/priv dir).
+pub fn load_with_prelude(
+  project_path: String,
+  prelude_source: String,
+) -> Result(EmbedHandle, EmbedError) {
+  let eng = engine.new_with_prelude(prelude_source)
+  case string.ends_with(project_path, ".glp") {
+    True -> load_file(eng, project_path)
+    False -> load_directory(eng, project_path)
+  }
+}
+
+fn load_file(
+  eng: engine.Engine,
+  path: String,
+) -> Result(EmbedHandle, EmbedError) {
   case read_source(path) {
     Error(_) -> Error(SourceNotFound(path))
     Ok(source) ->
-      case engine.load(engine.new(), path, source) {
+      case engine.load(eng, path, source) {
         Ok(eng) -> Ok(EmbedHandle(engine: eng, pending: []))
         Error(staged) -> Error(LoadRejected(path, staged))
       }
   }
 }
 
-fn load_directory(dir: String) -> Result(EmbedHandle, EmbedError) {
-  case engine.load_project(engine.new(), dir) {
+fn load_directory(
+  eng: engine.Engine,
+  dir: String,
+) -> Result(EmbedHandle, EmbedError) {
+  case engine.load_project(eng, dir) {
     Ok(eng) -> Ok(EmbedHandle(engine: eng, pending: []))
     Error(reason) -> Error(ProjectRejected(dir, reason))
   }

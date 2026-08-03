@@ -112,6 +112,38 @@ pub fn half_close_at_establishment_keeps_write_side_test() {
   multi_accept.stop(listener)
 }
 
+// An accepted link nobody ever took is CLOSED at stop, not leaked: the pump
+// reclaims it from the broker and closes the socket, so the peer sees the FIN
+// (its blocking recv ends) instead of the BEAM holding the port for the node's
+// lifetime (codexreview 064 cycle-2 socket-fd-leak).
+pub fn stop_closes_accepted_but_untaken_sockets_test() {
+  let addr = link_address.endpoint("127.0.0.1", 34_734)
+  let opts = link_options.default()
+  let assert Ok(listener) = multi_accept.listen(link_scheme.tcp(), addr, opts)
+
+  let connected = process.new_subject()
+  let back = process.new_subject()
+  process.spawn(fn() {
+    let t = tcp.new()
+    case t.connect(link_scheme.tcp(), addr, opts) {
+      Ok(client) -> {
+        process.send(connected, True)
+        // Never taken by any consumer: this recv only ends when the listener's
+        // stop releases the accepted-but-untaken socket.
+        process.send(back, client.recv())
+      }
+      Error(_) -> process.send(connected, False)
+    }
+  })
+  let assert Ok(True) = process.receive(connected, 5000)
+  // Let the accept pump take its slice and buffer the socket.
+  process.sleep(200)
+
+  multi_accept.stop(listener)
+  let assert Ok(got) = process.receive(back, 5000)
+  got |> should.equal(Ok(None))
+}
+
 pub fn establish_composes_n_listener_links_test() {
   let scheme = link_scheme.tcp()
   let addr = link_address.endpoint("127.0.0.1", 34_733)

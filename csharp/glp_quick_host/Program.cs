@@ -224,9 +224,19 @@ internal static class Program
         // acceptor joins Gleam peers to this mesh as ordinary clients — same pump, same routing,
         // same capacity budget (the bridge is a relay, not a protocol translator).
         var capacity = new ClientCapacity(opts.MaxClients);
+        var bridgeBound = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Task bridge = opts.BridgePort is int bridgePort
-            ? BridgeAcceptor.RunAsync(mesh, LinkAddress.Endpoint(opts.BridgeAddr, bridgePort), capacity, life.Token)
+            ? BridgeAcceptor.RunAsync(mesh, LinkAddress.Endpoint(opts.BridgeAddr, bridgePort), capacity, life.Token, bridgeBound)
             : Task.CompletedTask;
+        if (opts.BridgePort is not null)
+        {
+            // Serve only once the bridge is really bound: a bind failure rethrows here
+            // (→ ERR bind_failed, ExitBindFailed) instead of leaving a bridgeless host
+            // that exits 0 after a harness saw BRIDGE_READY.
+            await Task.WhenAny(bridgeBound.Task, bridge).ConfigureAwait(false);
+            if (bridge.IsFaulted)
+                await bridge.ConfigureAwait(false);
+        }
 
         while (!life.IsCancellationRequested)
         {

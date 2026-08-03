@@ -363,6 +363,20 @@ public sealed class EngineServer
             {
                 // the transport is already gone — nothing owed to it
             }
+            // The session left `sessions` above, so RunMultiClientAsync's teardown
+            // loop can no longer dispose it: release the transport's handles HERE
+            // (socket, stream, send lock) or every departed client leaks them.
+            // Ordering is safe — CloseAsync already ran, so no reply can still be
+            // queued for delivery; a delivery in flight fails with
+            // ObjectDisposedException, which DeliverRoutedRepliesAsync absorbs.
+            try
+            {
+                await session.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException)
+            {
+                // the transport is already gone — nothing owed to it
+            }
         }
     }
 
@@ -417,9 +431,10 @@ public sealed class EngineServer
 
     /// <summary>
     /// Deliver every reply queued on the session's outbound channel to its
-    /// connection (the serve loop is the channel's single reader; delivery is
-    /// inline so a terminal ACK — e.g. SHUTDOWN's — is flushed before the loop
-    /// advances). A transport failure mid-delivery closes ONLY this session
+    /// connection (delivery is inline so a terminal ACK — e.g. SHUTDOWN's — is
+    /// flushed before the loop advances; this drain races CloseAsync's drain on
+    /// the recv-pump thread, which is why the channel is multi-reader —
+    /// ClientSession._outbound). A transport failure mid-delivery closes ONLY this session
     /// (remaining replies are discarded by CloseAsync) and never propagates.
     /// </summary>
     private async Task DeliverRoutedRepliesAsync(ClientSession session)

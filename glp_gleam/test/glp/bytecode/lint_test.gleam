@@ -133,6 +133,28 @@ pub fn body_op_before_commit_reported_test() {
   |> should.equal(["BODY_OP_IN_HEAD"])
 }
 
+// A pre-commit `proceed` is reported ONCE and does not desynchronise the phase
+// machine: `proceed` closes its clause, so the well-formed clause that follows
+// is not blamed for the defect (no spurious MISPLACED_CONTROL /
+// TRUNCATED_CLAUSE cascade).
+pub fn proceed_before_commit_does_not_cascade_test() {
+  let result =
+    lint_ops([
+      opcodes.Label("f/0"),
+      opcodes.ClauseTry,
+      // The defect: the clause body starts (and ends) before its commit.
+      opcodes.Proceed,
+      opcodes.Label("f/0_c2"),
+      opcodes.ClauseTry,
+      opcodes.Commit,
+      opcodes.Proceed,
+      opcodes.Label("f/0_end"),
+      opcodes.NoMoreClauses,
+    ])
+  codes(result)
+  |> should.equal(["BODY_OP_IN_HEAD"])
+}
+
 // HEAD op after commit.
 pub fn head_op_in_body_reported_test() {
   let result =

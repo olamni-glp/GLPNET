@@ -84,15 +84,16 @@ public sealed class IlSession
     }
 
     /// <summary>
-    /// Build the RUN_GOAL_IL body for a goal line. A bare `name` runs the
-    /// compiled nullary entry by reference; anything else (arguments, a
-    /// conjunction) is compiled into a one-shot inline wrapper program.
+    /// Build the RUN_GOAL_IL body for a goal that has ALREADY had its terminating
+    /// `.` removed (the REPL line reader owns that strip — Program.cs — exactly as
+    /// it does for the text path; stripping again here would silently accept a
+    /// malformed `foo..` that the text path reports as a parse error). A bare
+    /// `name` runs the compiled nullary entry by reference; anything else
+    /// (arguments, a conjunction) is compiled into a one-shot inline wrapper.
     /// </summary>
     public RunGoalIlBody GoalBody(string goal)
     {
         var trimmed = goal.Trim();
-        if (trimmed.EndsWith('.'))
-            trimmed = trimmed[..^1].Trim();
 
         if (IsBareNullary(trimmed))
             return new RunGoalIlBody($"{trimmed}/0", null);

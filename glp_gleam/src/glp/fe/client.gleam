@@ -190,10 +190,17 @@ fn round_trip(
                 Ok(response) ->
                   // Wire rule 2: the response echoes the request's id —
                   // except a pre-decode PROTOCOL_ERROR, which carries id 0
-                  // (the BE could not read the id).
+                  // (the BE could not read the id). The exemption is gated on
+                  // that KIND: a RESULT/ACK carrying id 0 is a desynchronised
+                  // stream, never this goal's answer (C# ClientChannel refuses
+                  // it too — codexreview 064 cycle-2
+                  // wire-rule2-echo-check-divergence).
                   case
                     response.request_id == request.request_id
-                    || response.request_id == 0
+                    || {
+                      response.request_id == 0
+                      && response.kind == wire.ProtocolError
+                    }
                   {
                     True -> Ok(#(client, response))
                     False ->

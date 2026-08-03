@@ -17,6 +17,25 @@
 // The driver rides `-mode(system).` (the embedded madGLP-predicates precedent)
 // because it calls the reserved '_output'/1 kernel after a ground/1 guard —
 // the exact send_to_user/1 shape from GlpEngine's embedded source.
+//
+// SCOPE OF THIS GATE (honest reading — deferral D064-10). SC-003 words the claim
+// as "the full regression corpus … 100% agreement"; what is actually evidenced
+// here is narrower, in three named ways:
+//   1. TWELVE representative programs from programs/tests/typed, not the whole
+//      regression corpus.
+//   2. Every case is driven by a NULLARY `run_case`, so the observable value
+//      rides the captured '_output' blob and BOTH paths render zero bindings
+//      (the assertions below are Assert.Empty on both sides, by construction).
+//      Programs whose result is a query-variable binding are therefore outside
+//      this comparison — the IL path renders no bindings at all
+//      (glp_repl_client/IlSession.cs header), which is the recorded IL-path
+//      shape, not something this gate measures.
+//   3. RunIlPathAsync always ships `new RunGoalIlBody(goalRef, null)`, so the
+//      INLINE one-shot envelope (the path every goal with arguments or a
+//      conjunction takes) is never compared against the text path here;
+//      IlSessionTests exercises it in isolation only.
+// Closing 1–3 is D064-10 in specs/064-post-wave-gap-closure/DEFERRALS.md. Do not
+// re-word the header into a broader claim without widening the cases first.
 
 using System.Text;
 

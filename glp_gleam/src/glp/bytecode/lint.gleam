@@ -178,14 +178,25 @@ fn step_phase(
         ])
         _ ->
           case is_body_only(op) {
-            True -> #(phase, [
-              LintIssue(
-                body_op_in_head,
-                "body-only op " <> opcodes.mnemonic(op) <> " before commit (spec §4.2: BODY only)",
-                pc,
-              ),
-              ..rev_issues
-            ])
+            True -> {
+              let rev_issues = [
+                LintIssue(
+                  body_op_in_head,
+                  "body-only op " <> opcodes.mnemonic(op) <> " before commit (spec §4.2: BODY only)",
+                  pc,
+                ),
+                ..rev_issues
+              ]
+              // Resync after reporting: a misplaced body-only op still has its
+              // own bracketing effect, and `proceed` CLOSES the clause (§9.3).
+              // Staying in HeadGuard would blame the next, well-formed clause
+              // for this one's defect (codexreview 064 cycle-2
+              // lint-phase-desync-cascade).
+              case op {
+                opcodes.Proceed -> #(PredicateLevel, rev_issues)
+                _ -> #(phase, rev_issues)
+              }
+            }
             // Head/get/guard families and the structure/put families (put-*
             // pre-commit is the §7 guard-argument-setup exception).
             False -> #(phase, rev_issues)

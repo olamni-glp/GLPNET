@@ -70,15 +70,20 @@ public sealed class TcpTransport : ILinkTransport
     /// <see cref="ConnectAsync"/> gives each client (FR-002 both-ends-equivalent);
     /// per-client identity is the session layer's concern (064 ClientSession.session_id),
     /// not the transport's.
+    /// <para><paramref name="onBound"/> fires once, synchronously, the moment the OS listener
+    /// is bound — the seam a caller needs to publish a readiness token only AFTER the bind
+    /// really succeeded (a failed bind throws out of the first enumeration step instead).</para>
     /// </remarks>
     public async IAsyncEnumerable<ILinkEndpoint> AcceptLoopAsync(
         LinkScheme scheme, LinkAddress local, LinkOptions opts,
-        [EnumeratorCancellation] CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default,
+        Action? onBound = null)
     {
         Require(scheme);
         int port = RequirePort(local, "listen");
         var listener = new TcpListener(ParseIp(local.Host), port);
         listener.Start();
+        onBound?.Invoke();
         try
         {
             while (true)

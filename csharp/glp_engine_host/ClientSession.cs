@@ -47,8 +47,13 @@ public sealed class ClientSession : IAsyncDisposable
 {
     private readonly Channel<RequestFrame> _inbound =
         Channel.CreateUnbounded<RequestFrame>(new UnboundedChannelOptions { SingleReader = true });
+    // SingleReader = false: the outbound queue has TWO readers — the serve loop
+    // drains it for delivery (EngineServer.DeliverRoutedRepliesAsync) while
+    // CloseAsync drains it from the recv-pump thread on disconnect. The
+    // lock-free single-consumer channel is unsafe under that race, so the
+    // multi-consumer implementation is the correct one here.
     private readonly Channel<RoutedReply> _outbound =
-        Channel.CreateUnbounded<RoutedReply>(new UnboundedChannelOptions { SingleReader = true });
+        Channel.CreateUnbounded<RoutedReply>(new UnboundedChannelOptions { SingleReader = false });
     private readonly object _lock = new();
 
     /// <summary>The session's stable identity — the reply-routing key (data-model.md).</summary>

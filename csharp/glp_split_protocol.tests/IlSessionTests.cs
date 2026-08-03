@@ -18,15 +18,26 @@ public class IlSessionTests
     [Fact]
     public void BareNullaryGoal_ShipsAsGoalRef_NoInlineEnvelope()
     {
-        var body = Client.Value.GoalBody("run_case.");
+        var body = Client.Value.GoalBody("run_case");
         Assert.Equal("run_case/0", body.GoalRef);
         Assert.Null(body.InlineEnvelope);
     }
 
     [Fact]
+    public void TrailingTerminator_IsNotStrippedTwice()
+    {
+        // The REPL line reader strips the ONE terminating '.' (Program.cs) for the
+        // text and IL paths alike. A second strip here would turn the malformed
+        // `foo..` — a parse error on the text path — into the valid bare label
+        // `foo/0`, so this layer must NOT strip: the leftover '.' rides into the
+        // one-shot wrapper and the local compiler refuses it loudly.
+        Assert.ThrowsAny<Exception>(() => Client.Value.GoalBody("run_case."));
+    }
+
+    [Fact]
     public void GoalWithArguments_CompilesIntoAOneShotInlineEnvelope()
     {
-        var body = Client.Value.GoalBody("test_constant(foo, R), out_term(R?).");
+        var body = Client.Value.GoalBody("test_constant(foo, R), out_term(R?)");
         Assert.Equal(IlSession.OneShotGoalRef, body.GoalRef);
         Assert.NotNull(body.InlineEnvelope);
         // The inline bytes are a verifiable 062 envelope whose program carries
@@ -58,7 +69,7 @@ public class IlSessionTests
         Assert.Equal(ResponseKind.Ack, load.Kind);
 
         // …and the same shape it ships for a goal with arguments:
-        var body = Client.Value.GoalBody("test_constant(foo, R), out_term(R?).");
+        var body = Client.Value.GoalBody("test_constant(foo, R), out_term(R?)");
         var run = await host.SendAsync(new RequestFrame(
             ++id, RequestKind.RunGoalIl, body.Encode()));
         Assert.Equal(ResponseKind.Result, run.Kind);
@@ -74,6 +85,6 @@ public class IlSessionTests
     {
         // SRSW violation in the one-shot wrapper — the CLIENT's compiler rejects
         // it before anything touches the wire (no silent text fallback).
-        Assert.ThrowsAny<Exception>(() => Client.Value.GoalBody("p(X?, X?)."));
+        Assert.ThrowsAny<Exception>(() => Client.Value.GoalBody("p(X?, X?)"));
     }
 }

@@ -137,6 +137,44 @@ public class BridgeRelayTests
         }
     }
 
+    /// <summary>
+    /// A busy bridge port must fail LOUDLY (T040 cycle-2 `bind-failure-swallowed`):
+    /// BRIDGE_READY is published only from the transport's post-bind seam, so a bind
+    /// that never happens publishes nothing and the acceptor task faults instead of
+    /// completing normally — the host cannot exit 0 advertising a bridge it never bound.
+    /// </summary>
+    [Fact]
+    public async Task bridge_bind_failure_is_loud_no_ready_token_and_the_task_faults()
+    {
+        int port = FreeTcpPort();
+        var occupant = new TcpListener(IPAddress.Loopback, port);
+        occupant.Start(); // the port is already owned — the bridge's bind must refuse
+        var mesh = new Mesh("server", TextWriter.Null);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var bound = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var prevErr = Console.Error;
+        var err = new StringWriter();
+        Console.SetError(err); // the ERR bridge_bind_failed diagnostic is the point of the test
+        try
+        {
+            var ex = await Assert.ThrowsAsync<SocketException>(() =>
+                BridgeAcceptor.RunAsync(mesh, LinkAddress.Endpoint("127.0.0.1", port), new ClientCapacity(3), stop.Token, bound));
+            Assert.Equal(SocketError.AddressAlreadyInUse, ex.SocketErrorCode);
+            // Readiness FAILS rather than silently pending (the .Exception read also
+            // observes it, so no unobserved-task exception escapes this test).
+            Assert.True(bound.Task.IsFaulted);
+            Assert.IsType<SocketException>(bound.Task.Exception!.InnerException);
+            Assert.Contains("ERR bridge_bind_failed", err.ToString());
+            Assert.DoesNotContain("BRIDGE_READY", err.ToString()); // no READY for a port nothing listens on
+        }
+        finally
+        {
+            Console.SetError(prevErr);
+            occupant.Stop();
+        }
+    }
+
     [Fact]
     public async Task bridge_peer_disconnect_leaves_the_mesh_serving_later_peers()
     {

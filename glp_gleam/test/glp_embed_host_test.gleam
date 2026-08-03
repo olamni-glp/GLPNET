@@ -15,6 +15,8 @@
 ////     SourceNotFound, a missing project directory → ProjectRejected, a
 ////     failed goal → a Failed envelope carrying the reference reason.
 
+import gleam/bit_array
+import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/option.{Some}
 import gleeunit/should
@@ -31,6 +33,18 @@ const emit_fixture_path = "test/glp_embed_host_fixture.glp"
 
 fn atom(a: String) -> term_codec.Term {
   ConstTerm(ConstAtom(a))
+}
+
+// A host reading its own prelude source (its release/priv dir in production;
+// the repo copy here) — no engine/repl import, just bytes.
+@external(erlang, "file", "read_file")
+fn read_file(path: String) -> Result(BitArray, Dynamic)
+
+fn read_text(path: String) -> Result(String, Nil) {
+  case read_file(path) {
+    Ok(bits) -> bit_array.to_string(bits)
+    Error(_) -> Error(Nil)
+  }
 }
 
 // ── the host scenario: load a program, run a goal, documented outcome ────────
@@ -95,6 +109,21 @@ pub fn host_missing_project_dir_is_typed_error_test() {
   |> should.equal(
     Error(ProjectRejected("does/not/exist", "no modules found in does/not/exist")),
   )
+}
+
+// The CWD-independent seam: a host that carries its own prelude source loads
+// and runs WITHOUT `../programs/self.glp` being resolvable from its working
+// directory — the surface never panics on the host's CWD (codexreview 064
+// cycle-2 embeddability-cwd-panic).
+pub fn host_supplies_its_own_prelude_test() {
+  let assert Ok(prelude) = read_text("../programs/self.glp")
+  let assert Ok(handle) =
+    glp_embed.load_with_prelude(struct_demo_path, prelude)
+  let #(_handle, env) =
+    glp_embed.run(handle, "build_person(P), get_age(P?, A)")
+  env.status |> should.equal(Success)
+  list.key_find(env.resolved_bindings, "A")
+  |> should.equal(Ok(atom("thirty")))
 }
 
 // A goal against a missing predicate surfaces as a Failed envelope carrying

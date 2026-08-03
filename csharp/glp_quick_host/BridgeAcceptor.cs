@@ -20,17 +20,28 @@ internal static class BridgeAcceptor
     /// <summary>
     /// Accept Gleam peers on <paramref name="local"/> continuously until <paramref name="ct"/>
     /// cancels (reusing <see cref="TcpTransport.AcceptLoopAsync"/>, 064 T015 — none dropped).
-    /// <c>BRIDGE_READY</c> is advisory: the OS bind happens on the loop's first advance, and
-    /// dialers follow the fleet dial-retry norm (D-9), so READY-before-bind is not a race.
-    /// A bind failure is an explicit <c>ERR bridge_bind_failed</c>, never a silent absence.
+    /// <c>BRIDGE_READY</c> is printed only AFTER the OS listener is bound (the transport's
+    /// <c>onBound</c> seam), so a harness that waits on the token can never proceed against a
+    /// port nothing listens on. A BIND failure is an explicit <c>ERR bridge_bind_failed</c>
+    /// AND is rethrown — the host fails loudly (same contract as
+    /// <c>EngineServer</c>'s bind refusal), never exits 0 with no bridge.
+    /// <paramref name="bound"/>, when supplied, completes on a successful bind and faults on a
+    /// bind failure, so the caller can gate serving on the bridge being really up.
     /// </summary>
-    public static async Task RunAsync(Mesh mesh, LinkAddress local, ClientCapacity capacity, CancellationToken ct)
+    public static async Task RunAsync(Mesh mesh, LinkAddress local, ClientCapacity capacity, CancellationToken ct,
+        TaskCompletionSource? bound = null)
     {
         var transport = new TcpTransport();
-        Console.Error.WriteLine($"BRIDGE_READY {local}");
+        bool isBound = false;
+        void OnBound()
+        {
+            isBound = true;
+            Console.Error.WriteLine($"BRIDGE_READY {local}");
+            bound?.TrySetResult();
+        }
         try
         {
-            await foreach (var link in transport.AcceptLoopAsync(LinkScheme.Tcp, local, LinkOptions.Default, ct).ConfigureAwait(false))
+            await foreach (var link in transport.AcceptLoopAsync(LinkScheme.Tcp, local, LinkOptions.Default, ct, OnBound).ConfigureAwait(false))
             {
                 if (!capacity.TryAdmit())
                 {
@@ -45,6 +56,9 @@ internal static class BridgeAcceptor
         catch (SocketException ex)
         {
             Console.Error.WriteLine($"ERR bridge_bind_failed {ex.SocketErrorCode}: {ex.Message}");
+            bound?.TrySetException(ex);
+            if (!isBound)
+                throw; // the bridge never came up — FR-004 was not delivered, so fail loudly
         }
     }
 }
