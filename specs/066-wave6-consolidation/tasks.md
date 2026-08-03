@@ -40,10 +40,10 @@ three rows' evidence links resolve.
 **Goal**: atomic-toolchain-installs + batch-roadmap-advance closed.
 **Independent test**: each item's own verification green; roadmap rows closed; receipts published.
 
-- [ ] T006 [P] [US2] Read the roadmap brief for `atomic-toolchain-installs-venv-swap-post-install-smoke` (`python -m buildkit_cli.roadmap brief atomic-toolchain-installs-venv-swap-post-install-smoke`); implement per its profile (buildkit deploy/venv tooling area), with its named verification (venv swap + post-install smoke) green
-- [ ] T007 [US2] Dispose `atomic-toolchain-installs-venv-swap-post-install-smoke` per contracts/disposition-protocol.md: roadmap advance → closed, ledger row + evidence (commits, verification transcript), receipt fanned in next sync round
-- [ ] T008 [P] [US2] Read the roadmap brief for `batch-roadmap-advance-calver-version-dir-normalisation`; implement per profile (roadmap advance batching + CalVer version-dir normalisation in buildkit tooling), verification green
-- [ ] T009 [US2] Dispose `batch-roadmap-advance-calver-version-dir-normalisation` per protocol (advance → closed, ledger + evidence, receipt)
+- [x] T006 [P] [US2] atomic-toolchain-installs implemented — buildkit branch feat/atomic-toolchain-installs @ 554836f6 pushed (fresh-venv + junction flip + post-flip verify + rollback at the ship/release reinstall seam — the repo's only pip-based toolchain seam; deploy installer already atomic, documented); 11/11 new tests + ship package 204/204
+- [ ] T007 [US2] Dispose `atomic-toolchain-installs-venv-swap-post-install-smoke` — ⛔GATE(engineer landing): roadmap advance → closed once feat/atomic-toolchain-installs lands on the buildkit side (merge/ship = engineer)
+- [x] T008 [P] [US2] batch-roadmap-advance + CalVer normalisation implemented — buildkit branch feat/batch-roadmap-advance-calver-normalisation @ 634d4a0a pushed (multi-id + --from/--all single-window batch, single-id contract preserved; normalize at read/compare seams + reuse-before-create at install); +13 tests green (1 pre-existing baseline failure reproduced on clean tree)
+- [ ] T009 [US2] Dispose `batch-roadmap-advance-calver-version-dir-normalisation` — ⛔GATE(engineer landing): advance → closed once feat/batch-roadmap-advance-calver-normalisation lands on the buildkit side
 
 ## Phase 5: US3 — Promoted singletons (P3)
 
