@@ -31,3 +31,8 @@
 ## Zero-regression rule for 064 checkpoints
 
 Every checkpoint compares against THIS table. Any suite count decrease = STOP. Section I compares against 12/18 host-local (and 18/18 must be re-verified before ship on an OTP-25 environment or after the Windows OTP 25 install).
+
+## Checkpoint T019 (US2) + T036 (US5) — 2026-08-03
+
+link 171 · il_codec 64 · engine_host 73 · wire_registry 6 · split_protocol 46 · gleam 591. All >= baseline+new; zero regression.
+Flake note: one glp_link failure appeared ONLY with the Gleam suite running concurrently in WSL (WSL2 shares localhost; both suites bind TCP ports); 4/4 green serial. Rule: run C# and Gleam suites serially on this host; recorded for the GEPA/tooling backlog.

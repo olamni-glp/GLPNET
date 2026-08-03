@@ -38,7 +38,7 @@ SPDX-License-Identifier: MIT
 - [X] T016 [US2] Create csharp/glp_engine_host/ClientSession.cs (per-client channel pair, session_id, active|draining|closed lifecycle, RoutedReply routing per data-model.md)
 - [X] T017 [US2] Rework csharp/glp_engine_host/EngineServer.cs: accept N clients, register each session with the A31 control program merge tree, route replies per session, discard pending replies on client crash without wedging the merge loop
 - [X] T018 [P] [US2] xUnit suite csharp/glp_engine_host.tests/MultiClientServeTests.cs: 3 concurrent clients, interleaved goals, per-client reply isolation, disconnect-one survives
-- [ ] T019 [US2] US2 checkpoint: engine-host + REPL suites green, scoped commit+push, marathon checkpoint
+- [X] T019 [US2] US2 checkpoint: engine-host + REPL suites green, scoped commit+push, marathon checkpoint
 - [ ] T020 [US2] MVP GATE (Anchor review): record specs/064-post-wave-gap-closure/mvp-gate-review.md over US1+US2 evidence (clarify Q4)
 
 ## Phase 5 — US3: IL on the wire (P3)
@@ -64,7 +64,7 @@ SPDX-License-Identifier: MIT
 - [X] T033 [P] [US5] Implement :boot in glp_gleam/src/glp/repl/commands.gleam (multi-isolate plays, G9) + scenario test
 - [X] T034 [P] [US5] Complete glp_gleam/src/glp/bytecode/lint.gleam checks per docs/glp-bytecode-v216-complete.md (well-formedness of the v2.16 instruction stream: opcode validity, operand arity, HEAD/GUARD/BODY placement) + known-bad-program test
 - [X] T035 [P] [US5] Fix the param_arity panic (reported error, REPL survives) + regression test in glp_gleam/test
-- [ ] T036 [US5] US5 checkpoint; scoped commit+push, marathon checkpoint
+- [X] T036 [US5] US5 checkpoint; scoped commit+push, marathon checkpoint
 
 ## Phase 8 — Polish & close
 
