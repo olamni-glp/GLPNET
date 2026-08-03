@@ -190,11 +190,21 @@ public sealed class QuicTransport : ILinkTransport
                 await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
             }
         }
-        var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct).ConfigureAwait(false);
-        // The outbound stream is not realized on the wire until first write — the bootstrap request
-        // (connector writes first) opens it and unblocks the listener's AcceptInboundStreamAsync.
-        var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: true, ct).ConfigureAwait(false);
-        return new QuicEndpoint(new LinkId(LinkScheme.Quic, remote, LinkNonce.Int(port)), connection, stream, ws);
+        try
+        {
+            var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct).ConfigureAwait(false);
+            // The outbound stream is not realized on the wire until first write — the bootstrap request
+            // (connector writes first) opens it and unblocks the listener's AcceptInboundStreamAsync.
+            var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: true, ct).ConfigureAwait(false);
+            return new QuicEndpoint(new LinkId(LinkScheme.Quic, remote, LinkNonce.Int(port)), connection, stream, ws);
+        }
+        catch
+        {
+            // Stream-open / bootstrap failed AFTER the connect succeeded (fail-fast by design, see
+            // above) — dispose the established connection before rethrowing so it never leaks.
+            await connection.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>

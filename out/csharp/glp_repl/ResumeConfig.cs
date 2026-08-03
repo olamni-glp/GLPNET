@@ -49,14 +49,24 @@ internal static class ResumeConfig
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             var root = doc.RootElement;
 
-            if (!root.TryGetProperty("version", out var v) || v.ValueKind != JsonValueKind.Number)
+            // A non-object root would make TryGetProperty THROW past the catch filter below —
+            // guard it into the same named-diagnostic + REPL-continues path (FR-009).
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                diag($"resume: invalid registration at {path}: root is not a JSON object");
+                return false;
+            }
+            // TryGetInt32 (not GetInt32): a numeric version outside Int32 must be a diagnostic,
+            // not a FormatException that escapes the catch filter (FR-009).
+            if (!root.TryGetProperty("version", out var v) || v.ValueKind != JsonValueKind.Number
+                || !v.TryGetInt32(out var version))
             {
                 diag($"resume: invalid registration at {path}: missing numeric 'version'");
                 return false;
             }
-            if (v.GetInt32() != 1)
+            if (version != 1)
             {
-                diag($"resume: unsupported version {v.GetInt32()} in {path}");
+                diag($"resume: unsupported version {version} in {path}");
                 return false;
             }
             if (!root.TryGetProperty("program", out var prog) || prog.ValueKind != JsonValueKind.String

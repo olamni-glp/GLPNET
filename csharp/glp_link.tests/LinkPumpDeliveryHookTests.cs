@@ -119,6 +119,29 @@ public class LinkPumpDeliveryHookTests
         await peer.DisposeAsync();
     }
 
+    // Review fix F7 — durability precedes action (FR-004): the observer runs BEFORE the heap
+    // bind that extends the In stream, so a host that persists in the observer is durable
+    // before the program can observe the term. The In cursor is read from inside the observer:
+    // still unbound at observation time, bound to the delivered term afterwards.
+    [Fact]
+    public async Task OnDelivered_RunsBeforeTheHeapBind()
+    {
+        var (engine, link, peer, inReader) = await SetupAsync();
+        bool? unboundAtObservation = null;
+        link.Pump.OnDelivered = (_, _) =>
+            unboundAtObservation = engine.Heap.Dereference(new VarRef(inReader)) is VarRef;
+
+        await PeerSendAsync(peer, new ConstTerm("gamma"), seq: 0);
+        Assert.True(engine.InboundPump!.TryApplyNext(TimeSpan.FromSeconds(3)));
+
+        Assert.True(unboundAtObservation); // the In stream was NOT yet extended when the observer ran
+        var cons = Assert.IsType<StructTerm>(engine.Heap.Dereference(new VarRef(inReader)));
+        Assert.Equal("gamma", Assert.IsType<ConstTerm>(engine.Heap.Dereference(cons.Args[0])).Value);
+
+        link.Pump.Dispose();
+        await peer.DisposeAsync();
+    }
+
     // T006d — an observer that throws is loud but never breaks ingress (availability over
     // durability; the contract's both-backends-fail policy).
     [Fact]

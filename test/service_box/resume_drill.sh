@@ -16,9 +16,12 @@
 # duration; any pre-existing one is preserved and restored.
 # =============================================================================
 set -u
+# Drills own a fresh file WAL; a shared pglite journal must never be touched by tests.
+unset COLAB_PG_CONN
 SB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CSREPL="$SB_ROOT/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 REG="$SB_ROOT/glpservice/resume.json"
+WAL="$SB_ROOT/glpservice/wal"
 BASELINE="$SB_ROOT/test/service_box/baseline_startup.txt"
 PORT=9207
 PASS=0; FAIL=0
@@ -32,10 +35,12 @@ normalize() {
 
 [ -f "$CSREPL" ] || { echo "ERROR: C# REPL not built at $CSREPL"; exit 1; }
 
-# Preserve any operator registration.
+# Preserve any operator registration. The WAL is removed on exit: the host appends
+# every drill message durably (OnDelivered installs whenever the WAL opens), and a
+# later real service with replay:true must never replay drill garbage as history.
 SAVED=""
 if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
-restore() { rm -f "$REG"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi }
+restore() { rm -f "$REG"; rm -rf "$WAL"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi }
 trap restore EXIT
 
 echo "=== 064 US1 resume drill ==="

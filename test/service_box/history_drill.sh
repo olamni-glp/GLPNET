@@ -16,6 +16,8 @@
 # the release gate — pass N as $1 for the full run).
 # =============================================================================
 set -u
+# Drills own a fresh file WAL; a shared pglite journal must never be touched by tests.
+unset COLAB_PG_CONN
 SB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CSREPL="$SB_ROOT/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 REG="$SB_ROOT/glpservice/resume.json"
