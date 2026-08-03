@@ -29,7 +29,14 @@ public sealed class LinkPump : IInboundPump, IDisposable
     /// data term (<c>In</c>-stream extension), a graceful close, or a fault term to fan
     /// out to the link's monitor cursors (<see cref="Fault"/>, T034).
     /// </summary>
-    private readonly record struct InboundItem(LinkHandle Handle, Term? Value, bool Close, bool Fault);
+    /// <param name="Replayed">
+    /// 064: this item came from the host's durable log (boot replay), not the wire. It is
+    /// delivered to the program through the ORDINARY path — indistinguishable from live traffic —
+    /// but the delivery observer is NOT invoked for it, so replay never re-appends what it
+    /// replays (FR-005 idempotence).
+    /// </param>
+    private readonly record struct InboundItem(
+        LinkHandle Handle, Term? Value, bool Close, bool Fault, bool Replayed = false);
 
     private readonly GlpRuntimeEngine _engine;
     private readonly BlockingCollection<InboundItem> _inbox = new(new ConcurrentQueue<InboundItem>());
@@ -57,6 +64,16 @@ public sealed class LinkPump : IInboundPump, IDisposable
     public Action<LinkId, Term>? OnDelivered { get; set; }
 
     /// <summary>
+    /// Feature 064 (FR-005, contracts/message-log-and-replay.md) — optional boot-replay source.
+    /// When set, <see cref="AddLink"/> drains it into the inbox for the new link BEFORE starting
+    /// that link's receive loop, so the program observes its durable history first, through the
+    /// ordinary delivery path, and only then any live traffic (history-precedes-live, with no
+    /// window in which a fast peer could interleave). Replayed items never reach
+    /// <see cref="OnDelivered"/>. <c>null</c> (the default) ⇒ no replay.
+    /// </summary>
+    public Func<LinkId, IEnumerable<Term>>? ReplaySource { get; set; }
+
+    /// <summary>
     /// Register an established link with the pump: bump the live-link count and start
     /// its background receive loop. Called by <c>'_link_setup'</c> after the handle's
     /// <see cref="LinkHandle.InWriterAddr"/> ingress cursor is wired.
@@ -73,6 +90,13 @@ public sealed class LinkPump : IInboundPump, IDisposable
         // thread-safe inbox — never the heap (T034).
         Action<LinkFaultSignal> onFault = signal => EnqueueFault(handle, signal);
         handle.Endpoint.OnFault += onFault;
+        // 064: drain the durable history into the inbox BEFORE the receive loop starts, so the
+        // program sees history first and a fast peer cannot interleave live traffic into it.
+        if (ReplaySource is { } replay)
+        {
+            foreach (var term in replay(handle.Id))
+                _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false, Replayed: true), _cts.Token);
+        }
         // _faultSubs + _recvLoops share one lock: Dispose reads both to detach handlers and join loops.
         lock (_faultSubs)
         {
@@ -136,7 +160,9 @@ public sealed class LinkPump : IInboundPump, IDisposable
 
         // 064: durability precedes observation — the host-owned observer (if any) sees this
         // delivered term BEFORE the bind below makes it visible to the program (FR-004).
-        if (OnDelivered is { } observer)
+        // A REPLAYED item is skipped: it came from the log, so re-appending it would break
+        // replay idempotence (FR-005 / SC-002's byte-identical second restart).
+        if (!item.Replayed && OnDelivered is { } observer)
         {
             try
             {
