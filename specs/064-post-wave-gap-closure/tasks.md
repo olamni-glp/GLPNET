@@ -28,7 +28,7 @@ SPDX-License-Identifier: MIT
 - [ ] T009 [P] [US1] gleeunit suite glp_gleam/test/glp/link/quiescence_test.gleam incl. the adversarial delayed-DIST_BIND safety case
 - [X] T010 [US1] Implement glp_gleam/src/glp/link/transports/multi_accept.gleam (N concurrent inbound links, none dropped; {exit_on_close, false} + D-9 barrier per FR-012)
 - [X] T011 [P] [US1] gleeunit suite glp_gleam/test/glp/link/multi_accept_test.gleam (two concurrent dials, half-close at establishment)
-- [ ] T012 [US1] Implement the C# bridge acceptor in csharp/glp_quick_host (Gleam-facing TCP acceptor relaying FrameCodec frames to the QUIC-WS mesh) + glp_gleam/src/glp/link/transports/bridge_client.gleam dial helper (D3)
+- [X] T012 [US1] Implement the C# bridge acceptor in csharp/glp_quick_host (Gleam-facing TCP acceptor relaying FrameCodec frames to the QUIC-WS mesh) + glp_gleam/src/glp/link/transports/bridge_client.gleam dial helper (D3)
 - [ ] T013 [US1] Extend test/parity/cross_runtime with dist-unify/quiescence/multi-link/bridge scenarios, both directions, committed .out results; run ×10 loops (SC-001)
 - [ ] T014 [US1] US1 checkpoint: all suites green (zero regression vs T001), scoped commit+push, marathon checkpoint
 
