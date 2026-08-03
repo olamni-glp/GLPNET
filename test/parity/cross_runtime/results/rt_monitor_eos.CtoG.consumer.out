@@ -1,0 +1,15 @@
+╔════════════════════════════════════════╗
+║  GLP REPL - With Type Checking         ║
+╚════════════════════════════════════════╝
+
+Build: 459be1b2 roadmap: sync round (import 2 files/0 lines), export 18/98/2635 published 210353Z
+Compiled: 2026-02-01 (GlpEngine refactor)
+Working directory: D:\bstdev\research\glp\glpnet
+
+Input: filename.glp to load, or goal to execute
+Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
+
+Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+
+GLP> ✓ Loaded: programs/tests/link/mon.glp
+GLP> 

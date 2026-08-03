@@ -1,0 +1,17 @@
+   Compiled in 0.29s
+    Running glp_gleam.main
+[31;1mruntime error[39m: Erlang error[0m
+
+A function was called but it did not exist.
+
+stacktrace:
+  gleam/bit_array.to_string[90m unknown source[0m
+  glp/engine.read_prelude_from_disk[90m src/glp/engine.gleam:890[0m
+  glp/engine.new[90m src/glp/engine.gleam:161[0m
+  glp/repl/repl.run[90m src/glp/repl/repl.gleam:35[0m
+
+=ERROR REPORT==== 3-Aug-2026::22:17:31.817000 ===
+beam\beam_load.c(604): Error loading function 'gleam@bit_array':is_utf8/1:
+  please re-compile this module with an Erlang/OTP 29 compiler or update your Erlang/OTP version
+
+
