@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 |---|---|---|---|---|---|
 | ITEM-01 atomic-toolchain-installs-venv-swap-post-install-smoke | US2 | story | parked | G3.R5, OPS.buildkit-repo | roadmap: refined; brief re-read 2026-08-03: medium-large (deploy/install.py + upgrade + ship reinstall; junction swap) and its core design is exactly ruling R5's question — parks until R5 lands |
 | ITEM-02 batch-roadmap-advance-calver-version-dir-normalisation | US2 | story | parked | OPS.buildkit-repo | roadmap: refined; brief re-read: small/additive (roadmap CLI batch args + deploy/versions.py normaliser) — ready the moment the buildkit repo is workable |
-| ITEM-03 glp-runtime-consol | US3 | story | pending | — | roadmap: promoted; handover seed bc5ea232 |
+| ITEM-03 glp-runtime-consol | US3 | story | closed | — | runtime-consol-inventory.md: (B) abandon.cs tombstoned (build 0 errors, suites green @ develop baseline 165/184), (A) superseded by Option-B rider; roadmap advanced → closed |
 | ITEM-04 post-wave-consolidation-verified-gap-closure-repl-engine-full-gleam | EXTERNAL | external-gate | parked | EXT.ariellas | ariellas' feature (mrun-35df7ddfe4ec); their US receipts will dispose it |
 | ITEM-05 qr-link-provisioning | US3 | story | pending | — | roadmap: promoted |
 | ITEM-06 antlr4-shared-grammar-spike | US4 | story | **superseded (by peer rider)** | — | ariellas 210601Z: "antlr4 superseded (G5)" under the Option-B re-scope ruling; roadmap rider executed with their implement-complete receipts @ 459be1b2 |
