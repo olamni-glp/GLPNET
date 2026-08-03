@@ -54,7 +54,7 @@ SPDX-License-Identifier: MIT
 - [X] T026 [US4] Implement the Gleam BE process entrypoint glp_gleam/src/glp/be/server.gleam (engine+scheduler behind the split protocol over the Gleam TCP transport; exit taxonomy mirrors C# engine host; FR-012 socket norms)
 - [X] T027 [US4] Implement the Gleam FE thin REPL loop glp_gleam/src/glp/fe/client.gleam (existing command surface over the split protocol)
 - [X] T028 [P] [US4] Two-process split test: standard REPL scenarios through FE↔BE equal single-process results for the regression corpus (contracts/febe-split.md acceptance 1)
-- [ ] T029 [US4] Cross-runtime FE/BE smoke both directions (Gleam FE ↔ C# BE; C# thin client ↔ Gleam BE, text kinds)
+- [X] T029 [US4] Cross-runtime FE/BE smoke both directions (Gleam FE ↔ C# BE; C# thin client ↔ Gleam BE, text kinds)
 - [X] T030 [US4] Implement glp_gleam/src/glp_embed.gleam (load/run/observe surface, G3-A) + minimal host program test glp_gleam/test/glp_embed_host_test.gleam
 - [ ] T031 [US4] Discharge the 059 acceptance sweep: QUIC gate (bridge evidence), T094 full-scope regression accept across Dart/C#/Gleam, SC-sweep rows — evidence recorded in specs/059-full-scope-gleam-glp-implementation/tasks.md checkboxes + a close-out note; remaining true residuals recorded as explicit deferrals
 - [ ] T032 [US4] US4 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
