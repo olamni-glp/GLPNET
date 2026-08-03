@@ -12,20 +12,20 @@ SPDX-License-Identifier: MIT
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `glpservice/` runtime hygiene: gitignore `glpservice/resume.json` + `glpservice/wal/` in `.gitignore`, and commit the operator sample `glpservice/resume.json.sample` (contract schema v1, quickstart values)
+- [x] T001 Add `glpservice/` runtime hygiene: gitignore `glpservice/resume.json` + `glpservice/wal/` in `.gitignore`, and commit the operator sample `glpservice/resume.json.sample` (contract schema v1, quickstart values)
 
 ## Phase 2: Foundational
 
-- [ ] T002 Record the green baseline before any code change (Constitution VII): `dotnet test` for `csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests`, and `bash test/run_all_tests.sh`; note counts in the commit message. ALSO capture the pre-feature no-registration REPL startup transcript to `test/service_box/baseline_startup.txt` (piped `:quit`) — T005 scenario 3 and T014's SC-005 check diff against it
+- [x] T002 Record the green baseline before any code change (Constitution VII): `dotnet test` for `csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests`, and `bash test/run_all_tests.sh`; note counts in the commit message. ALSO capture the pre-feature no-registration REPL startup transcript to `test/service_box/baseline_startup.txt` (piped `:quit`) — T005 scenario 3 and T014's SC-005 check diff against it
 
 ## Phase 3: User Story 1 — Listener survives a REPL restart (P1, MVP)
 
 **Goal**: registered service re-arms on launch with zero operator input.
 **Independent test**: quickstart flow — register, restart, peer connects; plus the three US1 acceptance scenarios.
 
-- [ ] T003 [US1] Registration reader in the shim project: new hand-authored `out/csharp/glp_repl/ResumeConfig.cs` — walk-up discovery of `glpservice/resume.json` (SharedCertMaterial idiom), JSON parse + v1 validation + `enabled`/`replay` defaults, diagnostics exactly per `contracts/resume-registration.md` (invalid ⇒ named line, absent ⇒ silent)
-- [ ] T004 [US1] Resume execution in `out/csharp/glp_repl/Program.cs` (`AfterEngineCreated` closure): print `resume: arming <goal> from <program>`, load the registered program (interactive-load semantics), run the goal synchronously (typed-input semantics, R2); load/goal failure ⇒ named diagnostic and fall through to the prompt (FR-009); zero-registration path byte-identical (SC-005)
-- [ ] T005 [US1] Restart drill script `test/service_box/resume_drill.sh` (piped-stdin, loopback QUIC): scenario 1 register+restart+peer-connect (SC-001 ≤10 s), scenario 2 missing-program diagnostic, scenario 3 no-file transcript identical to pre-feature capture
+- [x] T003 [US1] Registration reader in the shim project: new hand-authored `out/csharp/glp_repl/ResumeConfig.cs` — walk-up discovery of `glpservice/resume.json` (SharedCertMaterial idiom), JSON parse + v1 validation + `enabled`/`replay` defaults, diagnostics exactly per `contracts/resume-registration.md` (invalid ⇒ named line, absent ⇒ silent)
+- [x] T004 [US1] Resume execution in `out/csharp/glp_repl/Program.cs` (`AfterEngineCreated` closure): print `resume: arming <goal> from <program>`, load the registered program (interactive-load semantics), run the goal synchronously (typed-input semantics, R2); load/goal failure ⇒ named diagnostic and fall through to the prompt (FR-009); zero-registration path byte-identical (SC-005)
+- [x] T005 [US1] Restart drill script `test/service_box/resume_drill.sh` (piped-stdin, loopback QUIC): scenario 1 register+restart+peer-connect (SC-001 ≤10 s), scenario 2 missing-program diagnostic, scenario 3 no-file transcript identical to pre-feature capture
 
 **Checkpoint**: US1 alone = viable MVP (self-healing service without history).
 
