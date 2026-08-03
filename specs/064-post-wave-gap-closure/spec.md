@@ -12,6 +12,15 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 **Status**: Draft
 **Input**: User description: "Close the residual gaps confirmed by 3rtask run 20260803T133715Z-20ac (curator report at .specify/3rtask/runs/20260803T133715Z-20ac/curator_report.md) against develop @ 14c28169: Gleam link tail; 059 close-out block; C# serve path; IL-on-the-wire completion; small residuals. Spike follow-ons explicitly OUT. Any new GLP language surface is Section-1.14 gated (propose-only)."
 
+## Clarifications
+
+### Session 2026-08-03
+
+- Q: Distributed unification scope (FR-001) — full FCP-style parity with the C# link, or a declared subset covering the recorded 050 scenarios? → A: Full C# parity (the C# link is the reference; semantics must match exactly, writer-MGU preserved across the link).
+- Q: QUIC-WS route for the Gleam side (FR-004) — native BEAM QUIC-WS leaf (quicer NIF, the 036 Profile-C deferral) or bridge Gleam peers through the existing C# QUIC-WS endpoint? → A: Bridge route — Gleam peers join QUIC-WS meshes via the C# QUIC-WS bridge; the native BEAM leaf is recorded as a gated deferral.
+- Q: 059 close-out boundary (US4/FR-008) — build the FE/BE process split (T091–T093) and yngenios embeddability (G3-A) inside this feature, or verify-and-record them as deferrals? → A: BUILD both inside this feature; US4 is a build-then-discharge story, not a bookkeeping sweep.
+- Q: MVP cut for incremental ship — US1 alone, or US1+US2 before the first gate review? → A: US1 and more ("US1 and more", read as US1+US2: Gleam link tail at full C# parity plus the C# multi-client serve path form the MVP gate; US3–US5 follow under incremental reviews).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Gleam link reaches functional parity with the C# link (Priority: P1)
@@ -27,7 +36,7 @@ A distributed-GLP developer running two Gleam instances (or a Gleam×C# pair) ne
 1. **Given** two linked Gleam instances, **When** a goal on instance A shares a non-ground variable with a goal on instance B and B binds it, **Then** A observes the binding and the computation completes with the same result as the single-instance run.
 2. **Given** a distributed computation across two linked instances, **When** all goals have succeeded or suspended with no in-flight messages, **Then** the quiescence oracle reports quiescent, and never reports quiescent while a message is in flight.
 3. **Given** one Gleam listener, **When** two peers dial it concurrently, **Then** both links establish and exchange terms without either being dropped.
-4. **Given** a Gleam peer with the QUIC-WS leaf configured, **When** it dials a C# QUIC-WS endpoint, **Then** the link establishes and the standard scenario set passes both directions.
+4. **Given** a Gleam peer configured to use the C# QUIC-WS bridge, **When** it joins a QUIC-WS mesh through the bridge, **Then** the link establishes and the standard scenario set passes both directions.
 
 ---
 
@@ -61,17 +70,19 @@ A REPL user on the thin client loads a program; the client compiles it and sends
 
 ---
 
-### User Story 4 - 059 umbrella close-out: acceptance sweep and process-split builds (Priority: P4)
+### User Story 4 - 059 umbrella close-out: FE/BE split + embeddability builds, then acceptance sweep (Priority: P4)
 
-The Full-Gleam programme owner completes the 059 umbrella's open close-out block: the FE/BE process split builds, the embeddability build (G3-A), the QUIC gate, the full-scope regression accept (T094), and the SC-sweep/discharge tasks — so the umbrella feature can be verified DONE against its own spec rather than remaining a 59/98 partial.
+The Full-Gleam programme owner BUILDS the 059 umbrella's open close-out block (engineer ruling, Session 2026-08-03): the Gleam FE/BE process split (T091–T093 — a standalone front-end process talking to a back-end engine process), the yngenios embeddability build (G3-A — the Gleam engine consumable as an embedded component), and then discharges the QUIC gate, the full-scope regression accept (T094), and the SC-sweep/discharge tasks — so the umbrella feature is verified DONE against its own spec.
 
-**Why this priority**: Mostly verification and build wiring over work delivered by P1–P3; it is the umbrella's bookkeeping-with-teeth and lands last.
+**Why this priority**: The two builds are the umbrella's largest remaining structural work; they depend on P1 (link semantics) and land after the pure-gap stories.
 
-**Independent Test**: 059's tasks.md acceptance tasks check off against recorded evidence; the full-scope regression accept runs green across Dart/C#/Gleam suites.
+**Independent Test**: The FE process and BE process build and run a full REPL session split across two OS processes; the embeddability build produces an artifact a host program can load and drive; 059's acceptance tasks then check off against recorded evidence with the full-scope regression accept green across Dart/C#/Gleam suites.
 
 **Acceptance Scenarios**:
 
-1. **Given** P1–P3 complete, **When** the 059 acceptance sweep runs, **Then** every SC row has recorded evidence and the umbrella's open tasks reduce to zero or to explicitly recorded deferrals.
+1. **Given** the FE/BE split built, **When** a user runs the standard REPL scenarios through the FE process, **Then** results equal the single-process REPL for the regression corpus.
+2. **Given** the embeddability artifact, **When** a minimal host program loads it and runs a goal, **Then** the goal completes with the documented outcome.
+3. **Given** the builds complete, **When** the 059 acceptance sweep runs, **Then** every SC row has recorded evidence and the umbrella's open tasks reduce to zero or to explicitly recorded deferrals.
 
 ---
 
@@ -103,11 +114,11 @@ A REPL user gets the `:boot` command on the Gleam REPL (G9 deferral), the byteco
 - **FR-001**: The Gleam link MUST support distributed unification of non-ground terms with semantics identical to the C# link (writer-MGU preserved across the link).
 - **FR-002**: The Gleam link MUST provide a quiescence oracle that reports quiescent exactly when no goal can advance and no message is in flight, and integrates with the existing fault lattice.
 - **FR-003**: The Gleam link MUST accept multiple concurrent inbound links on one listener (multi-accept) with none dropped.
-- **FR-004**: The Gleam link MUST provide a QUIC-WS transport leaf interoperable with the existing C# QUIC-WS endpoint.
+- **FR-004**: Gleam peers MUST be able to join QUIC-WS meshes via the existing C# QUIC-WS endpoint acting as a bridge (Gleam↔bridge over an existing Gleam transport, bridge↔mesh over QUIC-WS); a native BEAM QUIC-WS leaf is OUT of this feature and recorded as a gated deferral.
 - **FR-005**: The C# TCP transport MUST accept clients continuously (multi-accept loop), and the engine host MUST serve multiple concurrent clients through the shipped GLP control program, with per-client reply routing.
 - **FR-006**: The split protocol MUST define an IL request kind carrying the existing CompiledIlEnvelope; the thin client MUST compile locally and ship IL; the engine execute path MUST NOT reference the compiler.
 - **FR-007**: IL-path results MUST be equivalent to text-path results over the full regression corpus; malformed/skewed envelopes MUST be refused with the recorded error taxonomy.
-- **FR-008**: The 059 umbrella's open acceptance tasks MUST be discharged with recorded evidence or explicit recorded deferrals (FE/BE split builds, embeddability build, QUIC gate, T094 regression accept, SC-sweep).
+- **FR-008**: The Gleam FE/BE process split (059 T091–T093) and the yngenios embeddability build (G3-A) MUST be built and verified inside this feature; the remaining 059 acceptance tasks (QUIC gate, T094 regression accept, SC-sweep) MUST then be discharged with recorded evidence or explicit recorded deferrals.
 - **FR-009**: The Gleam REPL MUST support `:boot` for multi-isolate plays; bytecode-lint MUST perform its documented checks; the `param_arity` panic MUST become a reported error with a regression test.
 - **FR-010**: All existing suites (REPL, Dart, C#, Gleam, parity corpus, cross-runtime Section I) MUST remain green at every checkpoint; zero regression is a hard gate.
 - **FR-011**: Any change requiring new GLP language surface (guards, kernels, directives, types) MUST be raised as a Section-1.14 proposal and implemented only after explicit engineer approval; absent approval, the affected sub-scope is delivered host-side or recorded as a gated deferral.
