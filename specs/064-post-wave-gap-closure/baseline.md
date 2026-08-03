@@ -41,3 +41,7 @@ Flake note: one glp_link failure appeared ONLY with the Gleam suite running conc
 
 link 171 · il_codec 64 · engine_host 73 · wire_registry 6 · split_protocol 46 · gleam 618 (serial runs). Zero regression.
 US4 delivered: FE/BE split (T026-T028 + two-OS-process smoke), embed surface (T030), cross-runtime smoke (T029, binding-render divergence recorded), 059 sweep (T031: 16 discharged, 23 deferrals, 5 engineer flags in close-out-064.md).
+
+## Final sweep T037 — 2026-08-03
+
+REPL A/B/C 381/381 · link 171 · il_codec 64 · engine_host 73 · wire_registry 6 · split_protocol 46 · gleam 618. Zero regression vs T001 across the board; net +100 C#/Gleam tests added by 064.
