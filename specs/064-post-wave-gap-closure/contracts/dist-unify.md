@@ -1,5 +1,8 @@
 # Contract — distributed unification (dist_unify)
 
+> **TRANSFERRED (Option-B ruling, 2026-08-03):** this contract describes a protocol the C# reference does NOT implement (see ../parity-checklist.md). It leaves 064 unchanged-in-content as the seed draft for the `distributed-unification-quiescence-protocol` roadmap feature, where it must be re-anchored per the checklist amendments A-1..A-9 before any implementation.
+
+
 **Parity target**: the C# link's remote-binding protocol, byte-for-byte on the wire and rule-for-rule in semantics. FCP Savannah (`unify.c`) is the interpretive tie-breaker. Zero new GLP language surface (§1.14).
 
 ## Message kinds (per-link, over the reliability layer)

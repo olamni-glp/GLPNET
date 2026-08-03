@@ -16,21 +16,21 @@ SPDX-License-Identifier: MIT
 
 ## Phase 2 — Foundational (blocking)
 
-- [ ] T003 Extend the Gleam link seam with the four dist-unify message kinds (VAR_EXPORT/DIST_BIND/DIST_SUSPEND/DIST_FAULT) as frame types in glp_gleam/src/glp/link/reliability/frame_codec.gleam + the C# mirror in csharp/glp_link/seam (byte-parity table updated; no behavior yet)
-- [ ] T004 [P] Add CENSUS_REQ/CENSUS_REP frame kinds to the same seam files (quiescence contract §Protocol)
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T003 Extend the Gleam link seam with the four dist-unify message kinds (VAR_EXPORT/DIST_BIND/DIST_SUSPEND/DIST_FAULT) as frame types in glp_gleam/src/glp/link/reliability/frame_codec.gleam + the C# mirror in csharp/glp_link/seam (byte-parity table updated; no behavior yet)
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T004 [P] Add CENSUS_REQ/CENSUS_REP frame kinds to the same seam files (quiescence contract §Protocol)
 
 ## Phase 3 — US1: Gleam link tail (P1)
 
-- [ ] T005 [US1] Implement glp_gleam/src/glp/link/primitives/dist_unify.gleam per contracts/dist-unify.md (writer-MGU rules 1–5, RemoteVarRef/DistBindMsg/RemoteSuspension from data-model.md)
-- [ ] T006 [US1] Wire dist_unify into the engine suspension path (glp_gleam/src/glp/engine/runner.gleam additive dispatch arm; remote suspension reactivation on DIST_BIND)
-- [ ] T007 [P] [US1] gleeunit suite glp_gleam/test/glp/link/dist_unify_test.gleam: bind/chained/suspend-reactivate/writer-writer-fault/malformed-fault cases
-- [ ] T008 [US1] Implement glp_gleam/src/glp/link/primitives/quiescence.gleam per contracts/quiescence.md (census rounds, verdict rules, bounded-silence fault)
-- [ ] T009 [P] [US1] gleeunit suite glp_gleam/test/glp/link/quiescence_test.gleam incl. the adversarial delayed-DIST_BIND safety case
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T005 [US1] Implement glp_gleam/src/glp/link/primitives/dist_unify.gleam per contracts/dist-unify.md (writer-MGU rules 1–5, RemoteVarRef/DistBindMsg/RemoteSuspension from data-model.md)
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T006 [US1] Wire dist_unify into the engine suspension path (glp_gleam/src/glp/engine/runner.gleam additive dispatch arm; remote suspension reactivation on DIST_BIND)
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T007 [P] [US1] gleeunit suite glp_gleam/test/glp/link/dist_unify_test.gleam: bind/chained/suspend-reactivate/writer-writer-fault/malformed-fault cases
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T008 [US1] Implement glp_gleam/src/glp/link/primitives/quiescence.gleam per contracts/quiescence.md (census rounds, verdict rules, bounded-silence fault)
+- [~] RESCOPED-OUT (Option-B ruling 2026-08-03; transferred to distributed-unification-quiescence-protocol feature) — T009 [P] [US1] gleeunit suite glp_gleam/test/glp/link/quiescence_test.gleam incl. the adversarial delayed-DIST_BIND safety case
 - [X] T010 [US1] Implement glp_gleam/src/glp/link/transports/multi_accept.gleam (N concurrent inbound links, none dropped; {exit_on_close, false} + D-9 barrier per FR-012)
 - [X] T011 [P] [US1] gleeunit suite glp_gleam/test/glp/link/multi_accept_test.gleam (two concurrent dials, half-close at establishment)
 - [X] T012 [US1] Implement the C# bridge acceptor in csharp/glp_quick_host (Gleam-facing TCP acceptor relaying FrameCodec frames to the QUIC-WS mesh) + glp_gleam/src/glp/link/transports/bridge_client.gleam dial helper (D3)
-- [ ] T013 [US1] Extend test/parity/cross_runtime with dist-unify/quiescence/multi-link/bridge scenarios, both directions, committed .out results; run ×10 loops (SC-001)
-- [ ] T014 [US1] US1 checkpoint: all suites green (zero regression vs T001), scoped commit+push, marathon checkpoint
+- [~] T013 [US1] RESCOPED (Option-B): dist-unify/quiescence scenarios transferred; multi-link + bridge coverage stands via gleeunit suites (T011/T012) + the T029 cross-runtime smoke; full cross_runtime harness extension deferred to the OTP-25 environment (host 12/18 deviation, baseline.md)
+- [X] T014 [US1] US1 checkpoint (as re-scoped: T010-T012 delivered; T003-T009/T013 transferred per Option-B): all suites green (zero regression vs T001), scoped commit+push, marathon checkpoint
 
 ## Phase 4 — US2: C# multi-client serve path (P2)
 

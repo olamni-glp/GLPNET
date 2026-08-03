@@ -20,6 +20,7 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 - Q: QUIC-WS route for the Gleam side (FR-004) — native BEAM QUIC-WS leaf (quicer NIF, the 036 Profile-C deferral) or bridge Gleam peers through the existing C# QUIC-WS endpoint? → A: Bridge route — Gleam peers join QUIC-WS meshes via the C# QUIC-WS bridge; the native BEAM leaf is recorded as a gated deferral.
 - Q: 059 close-out boundary (US4/FR-008) — build the FE/BE process split (T091–T093) and yngenios embeddability (G3-A) inside this feature, or verify-and-record them as deferrals? → A: BUILD both inside this feature; US4 is a build-then-discharge story, not a bookkeeping sweep.
 - Q: MVP cut for incremental ship — US1 alone, or US1+US2 before the first gate review? → A: US1 and more ("US1 and more", read as US1+US2: Gleam link tail at full C# parity plus the C# multi-client serve path form the MVP gate; US3–US5 follow under incremental reviews).
+- Q (2026-08-03, post-T002 evidence): the parity checklist proved the C# link implements NO distributed unification and NO distributed quiescence oracle (ground-relay by 050 D-4 ruling; file:line evidence in parity-checklist.md) — Q1's "full C# parity" premise was false; keep dist-unify/quiescence in 064 as a NEW two-runtime protocol, or re-scope? → A: **Option B — re-scope.** Dist-unify + quiescence leave 064 and become their own spec-first, engineer-gated roadmap feature (a new protocol designed for BOTH runtimes, anchored on the madGLP writer-MGU machinery, FCP as tie-breaker). US1 in 064 re-scopes to the verified real gaps: Gleam multi-accept, QUIC-WS bridge access, cross-runtime coverage. FR-001/FR-002 are transferred, not deleted.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -111,8 +112,8 @@ A REPL user gets the `:boot` command on the Gleam REPL (G9 deferral), the byteco
 
 ### Functional Requirements
 
-- **FR-001**: The Gleam link MUST support distributed unification of non-ground terms with semantics identical to the C# link (writer-MGU preserved across the link).
-- **FR-002**: The Gleam link MUST provide a quiescence oracle that reports quiescent exactly when no goal can advance and no message is in flight, and integrates with the existing fault lattice.
+- **FR-001** *(TRANSFERRED by Option-B ruling, Session 2026-08-03)*: distributed unification is NOT a 064 requirement — the C# reference has none (parity-checklist.md); the requirement transfers to the new `distributed-unification-quiescence-protocol` roadmap feature as a two-runtime protocol design.
+- **FR-002** *(TRANSFERRED, same ruling)*: the distributed quiescence oracle transfers with FR-001; the C# link's local snapshot-gating quiescence (061 FR-014) remains the only quiescence surface and is unchanged by 064.
 - **FR-003**: The Gleam link MUST accept multiple concurrent inbound links on one listener (multi-accept) with none dropped.
 - **FR-004**: Gleam peers MUST be able to join QUIC-WS meshes via the existing C# QUIC-WS endpoint acting as a bridge (Gleam↔bridge over an existing Gleam transport, bridge↔mesh over QUIC-WS); a native BEAM QUIC-WS leaf is OUT of this feature and recorded as a gated deferral.
 - **FR-005**: The C# TCP transport MUST accept clients continuously (multi-accept loop), and the engine host MUST serve multiple concurrent clients through the shipped GLP control program, with per-client reply routing.
