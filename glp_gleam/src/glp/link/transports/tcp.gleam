@@ -37,9 +37,13 @@ import glp/link/seam/transport.{type Transport, Transport}
 // gen_tcp FFI (glp_link_tcp_ffi.erl)
 // ---------------------------------------------------------------------------
 
-type ListenSocket
+/// The gen_tcp listen socket (opaque FFI handle). Public so multi_accept (T010)
+/// can drive its own accept loop against the same FFI without re-declaring an
+/// incompatible phantom type.
+pub type ListenSocket
 
-type Socket
+/// The gen_tcp connected socket (opaque FFI handle). Public for the same reason.
+pub type Socket
 
 @external(erlang, "glp_link_tcp_ffi", "tcp_listen")
 fn ffi_listen(port: Int) -> Result(ListenSocket, Dynamic)
@@ -148,7 +152,10 @@ fn connect_retry(
 // Endpoint over one duplex socket
 // ---------------------------------------------------------------------------
 
-fn make_endpoint(id: LinkId, sock: Socket) -> Endpoint {
+/// Wrap one connected socket as a seam endpoint carrying 4-byte big-endian
+/// length-prefixed frames. Public so multi_accept (T010) reuses the exact same
+/// framing endpoint for every accepted socket instead of duplicating it.
+pub fn make_endpoint(id: LinkId, sock: Socket) -> Endpoint {
   let faults = process.new_subject()
   Endpoint(
     id: id,

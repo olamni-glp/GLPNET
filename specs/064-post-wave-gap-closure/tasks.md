@@ -26,16 +26,16 @@ SPDX-License-Identifier: MIT
 - [ ] T007 [P] [US1] gleeunit suite glp_gleam/test/glp/link/dist_unify_test.gleam: bind/chained/suspend-reactivate/writer-writer-fault/malformed-fault cases
 - [ ] T008 [US1] Implement glp_gleam/src/glp/link/primitives/quiescence.gleam per contracts/quiescence.md (census rounds, verdict rules, bounded-silence fault)
 - [ ] T009 [P] [US1] gleeunit suite glp_gleam/test/glp/link/quiescence_test.gleam incl. the adversarial delayed-DIST_BIND safety case
-- [ ] T010 [US1] Implement glp_gleam/src/glp/link/transports/multi_accept.gleam (N concurrent inbound links, none dropped; {exit_on_close, false} + D-9 barrier per FR-012)
-- [ ] T011 [P] [US1] gleeunit suite glp_gleam/test/glp/link/multi_accept_test.gleam (two concurrent dials, half-close at establishment)
+- [X] T010 [US1] Implement glp_gleam/src/glp/link/transports/multi_accept.gleam (N concurrent inbound links, none dropped; {exit_on_close, false} + D-9 barrier per FR-012)
+- [X] T011 [P] [US1] gleeunit suite glp_gleam/test/glp/link/multi_accept_test.gleam (two concurrent dials, half-close at establishment)
 - [ ] T012 [US1] Implement the C# bridge acceptor in csharp/glp_quick_host (Gleam-facing TCP acceptor relaying FrameCodec frames to the QUIC-WS mesh) + glp_gleam/src/glp/link/transports/bridge_client.gleam dial helper (D3)
 - [ ] T013 [US1] Extend test/parity/cross_runtime with dist-unify/quiescence/multi-link/bridge scenarios, both directions, committed .out results; run ×10 loops (SC-001)
 - [ ] T014 [US1] US1 checkpoint: all suites green (zero regression vs T001), scoped commit+push, marathon checkpoint
 
 ## Phase 4 — US2: C# multi-client serve path (P2)
 
-- [ ] T015 [US2] Extend csharp/glp_link/transports/TcpTransport.cs ListenAsync to a continuous multi-accept loop (remove the one-accept-then-Stop deferral; keep single-accept behavior available for existing callers)
-- [ ] T016 [US2] Create csharp/glp_engine_host/ClientSession.cs (per-client channel pair, session_id, active|draining|closed lifecycle, RoutedReply routing per data-model.md)
+- [X] T015 [US2] Extend csharp/glp_link/transports/TcpTransport.cs ListenAsync to a continuous multi-accept loop (remove the one-accept-then-Stop deferral; keep single-accept behavior available for existing callers)
+- [X] T016 [US2] Create csharp/glp_engine_host/ClientSession.cs (per-client channel pair, session_id, active|draining|closed lifecycle, RoutedReply routing per data-model.md)
 - [ ] T017 [US2] Rework csharp/glp_engine_host/EngineServer.cs: accept N clients, register each session with the A31 control program merge tree, route replies per session, discard pending replies on client crash without wedging the merge loop
 - [ ] T018 [P] [US2] xUnit suite csharp/glp_engine_host.tests/MultiClientServeTests.cs: 3 concurrent clients, interleaved goals, per-client reply isolation, disconnect-one survives
 - [ ] T019 [US2] US2 checkpoint: engine-host + REPL suites green, scoped commit+push, marathon checkpoint
