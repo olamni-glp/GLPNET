@@ -51,9 +51,9 @@ SPDX-License-Identifier: MIT
 
 ## Phase 6: Polish & cross-cutting
 
-- [ ] T012 Wire the two drills into `test/run_all_tests.sh` as a new explicit-skip section (never a silent pass; skip line names the standalone gates), following Section I/S conventions
-- [ ] T013 [P] Verify `quickstart.md` end-to-end as written (fresh clone semantics: sample → rename → run → restart → history back); fix any drifted line
-- [ ] T014 Full non-regression gate: `dotnet test` (glp_link.tests, glp_crdtmsg.tests) + `bash test/run_all_tests.sh` green vs T002 baseline; SC-004 check = zero language-surface diff (suites pass unmodified); SC-005 check = no-registration startup transcript identical
+- [x] T012 Wire the two drills into `test/run_all_tests.sh` as a new explicit-skip section (never a silent pass; skip line names the standalone gates), following Section I/S conventions
+- [x] T013 [P] Verify `quickstart.md` end-to-end as written (fresh clone semantics: sample → rename → run → restart → history back); fix any drifted line
+- [x] T014 Full non-regression gate: `dotnet test` (glp_link.tests, glp_crdtmsg.tests) + `bash test/run_all_tests.sh` green vs T002 baseline; SC-004 check = zero language-surface diff (suites pass unmodified); SC-005 check = no-registration startup transcript identical
 
 ## Dependencies
 
