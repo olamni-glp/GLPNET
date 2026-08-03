@@ -82,7 +82,7 @@ three rows' evidence links resolve.
 **Goal**: 3 captured items leave captured state via recorded engineer decisions.
 **Independent test**: no captured-state rows at wave close; decisions recorded.
 
-- [ ] T024 [P] [US6] buildkit-coordination-optimisation-gepa-dspy: fill profile (`edit-feature`), run review propose-scores, package build/defer/reject proposal for the engineer per D7
+- [x] T024 [P] [US6] buildkit-coordination-optimisation-gepa-dspy: fill profile (`edit-feature`), run review propose-scores, package build/defer/reject proposal for the engineer per D7 — DONE: profile already complete; agent-proposed scores + DEFER-ON-THIS-HOST (peer-led, ariellas queue) proposal packaged in triage/US6-proposals.md; decision = engineer's (T027)
 - [ ] T025 [P] [US6] ⛔GATE(G2) ynet-human-memorable-decentralized-naming-resolver: same triage packaging (profile + scores + proposal), noting 065-track dependency
 - [ ] T026 [P] [US6] ⛔GATE(G2) ynet-mobile-background-battery-budget-scheduling-policy: same triage packaging
 - [ ] T027 [US6] Record the engineer's three decisions (roadmap command per decision, ledger rows, marathon trace); a build decision graduates to promoted for a follow-on feature (FR-009), never into wave-6

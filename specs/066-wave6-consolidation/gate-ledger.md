@@ -17,14 +17,15 @@ SPDX-License-Identifier: MIT
 | G2 | track (065) | open | specs/065 specified @ d2ea81e9; mrun-7939e12b5b70; its FR-008 5-escalate gate cascades | ITEM-11 disposition; T025/T026 |
 | G3.R1–R5 | ruling (3rtask fa8a) | open | evidence-inventory.md R1–R5 | 065 stories (cascade via G2); any wave story touching the audited seams |
 | G3.R6–R12 | ruling (064 review) | open | evidence-inventory.md R6–R12 | T022 (R6/R7 replay semantics); T023 (R6–R12 as 059-acceptance caveats) |
-| EXT.ariellas | external-ownership | open | 064-post-wave-gap-closure seams 1–5 receipts (153205Z); carve-out CONFIRM 153920Z; **implement receipts NOT yet posted** | T021/T022 receipt consumption; ITEM-04; verification caveat on ITEM-12..18 closures |
+| EXT.ariellas | external-ownership | open | 064-post-wave-gap-closure seams 1–5 receipts (153205Z); carve-out CONFIRM 153920Z; implement receipts 459be1b2 (210601Z); ship (their T041) pending | T021/T022 receipt consumption; ITEM-04; verification caveat on ITEM-12..18 closures |
+| OPS.buildkit-repo | operational | open | D:\bstdev\research\buildkit on foreign branch fix/opskit-pglite-package-dir with 4 modified .specify files (another session's WIP, 2026-08-03 ~2150Z) — not this session's to resolve; engineer word needed to branch/stash there | ITEM-01, ITEM-02 (US2 implementation lands in the buildkit repo) |
 
 ## Items (18 rows = the 150440Z snapshot)
 
 | item_id | group | disposition_path | state | blocked_by | evidence |
 |---|---|---|---|---|---|
-| ITEM-01 atomic-toolchain-installs-venv-swap-post-install-smoke | US2 | story | pending | — | roadmap: refined |
-| ITEM-02 batch-roadmap-advance-calver-version-dir-normalisation | US2 | story | pending | — | roadmap: refined |
+| ITEM-01 atomic-toolchain-installs-venv-swap-post-install-smoke | US2 | story | parked | G3.R5, OPS.buildkit-repo | roadmap: refined; brief re-read 2026-08-03: medium-large (deploy/install.py + upgrade + ship reinstall; junction swap) and its core design is exactly ruling R5's question — parks until R5 lands |
+| ITEM-02 batch-roadmap-advance-calver-version-dir-normalisation | US2 | story | parked | OPS.buildkit-repo | roadmap: refined; brief re-read: small/additive (roadmap CLI batch args + deploy/versions.py normaliser) — ready the moment the buildkit repo is workable |
 | ITEM-03 glp-runtime-consol | US3 | story | pending | — | roadmap: promoted; handover seed bc5ea232 |
 | ITEM-04 post-wave-consolidation-verified-gap-closure-repl-engine-full-gleam | EXTERNAL | external-gate | parked | EXT.ariellas | ariellas' feature (mrun-35df7ddfe4ec); their US receipts will dispose it |
 | ITEM-05 qr-link-provisioning | US3 | story | pending | — | roadmap: promoted |
