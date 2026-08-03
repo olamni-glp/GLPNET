@@ -27,7 +27,7 @@ public sealed class EngineHostFixture : IAsyncDisposable
     /// <summary>Per-fixture file store root (T022 composition; deleted on dispose).</summary>
     public string StoreDir { get; }
 
-    public EngineHostFixture()
+    public EngineHostFixture(EngineServeMode mode = EngineServeMode.SingleClient)
     {
         var rootSelfGlp = GlpRuntime.EngineHost.Program.ResolveRootSelfGlpPath();
         var engine = new GlpEngine(rootSelfGlp);
@@ -43,7 +43,7 @@ public sealed class EngineHostFixture : IAsyncDisposable
             linkRuntime: null, rootSelfSource: File.ReadAllText(rootSelfGlp));
 
         Port = FreePort();
-        var server = new EngineServer(new IPEndPoint(IPAddress.Loopback, Port), Dispatcher);
+        var server = new EngineServer(new IPEndPoint(IPAddress.Loopback, Port), Dispatcher, mode);
         _serverTask = Task.Run(() => server.RunAsync(_cts.Token));
     }
 

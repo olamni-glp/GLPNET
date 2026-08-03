@@ -35,6 +35,7 @@ public static class Program
         IPEndPoint? listen = null;
         string? storeDir = null;
         string? fromSnapshot = null;
+        var serveMode = EngineServeMode.SingleClient; // 061 FR-002 default; 064 US2 opt-in below
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -48,10 +49,13 @@ public static class Program
                 case "--from-snapshot" when i + 1 < args.Length:
                     fromSnapshot = args[++i];
                     break;
+                case "--multi-client":
+                    serveMode = EngineServeMode.MultiClient; // 064 US2/FR-005
+                    break;
                 default:
                     Console.Error.WriteLine($"glp_engine_host: unknown argument '{args[i]}'");
                     Console.Error.WriteLine(
-                        "usage: glp_engine_host --listen <host:port> [--store <dir>] [--from-snapshot latest|<seq>]");
+                        "usage: glp_engine_host --listen <host:port> [--store <dir>] [--from-snapshot latest|<seq>] [--multi-client]");
                     return 64;
             }
         }
@@ -210,7 +214,7 @@ public static class Program
         var quiescence = new Quiescence(engine);
         var dispatcher = new RequestDispatcher(
             engine, session, quiescence, store, link, rootSelfSource, restoredUnits, rewirer);
-        var server = new EngineServer(listen, dispatcher);
+        var server = new EngineServer(listen, dispatcher, serveMode);
 
         // The wire is unauthenticated (LOAD_SOURCE executes arbitrary GLP;
         // SHUTDOWN stops the engine) — loopback is the MVP contract. A
@@ -226,7 +230,9 @@ public static class Program
         Console.WriteLine($"glp_engine_host: prelude {rootSelfGlpPath}");
         Console.WriteLine($"glp_engine_host: snapshot store {storeDir}" +
                           (primary is null ? " (file fallback only — no PGLite primary configured)" : " + PGLite primary"));
-        Console.WriteLine($"glp_engine_host: serving on {listen} (one client, FR-002)");
+        Console.WriteLine(serveMode == EngineServeMode.MultiClient
+            ? $"glp_engine_host: serving on {listen} (multi-client, 064 FR-005)"
+            : $"glp_engine_host: serving on {listen} (one client, FR-002)");
 
         try
         {
