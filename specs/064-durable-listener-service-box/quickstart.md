@@ -8,7 +8,12 @@ SPDX-License-Identifier: MIT
 
 ## Register the chat service (once)
 
-Create `glpservice/resume.json` at the repo root:
+Copy the checked-in sample to the live registration name (both at the repo
+root) — or create the file by hand with the same content:
+
+```
+cp glpservice/resume.json.sample glpservice/resume.json
+```
 
 ```json
 {
@@ -30,8 +35,20 @@ Expected startup lines (after the banner):
 
 ```
 resume: arming main(olamnit, R). from programs/tests/quic/quic_chat.glp
+resume: <N> message(s) in the log (<backend>); replayed to the service when its link establishes
+```
+
+`<backend>` is `pglite` (COLAB_PG_CONN configured) or `file` (the
+`glpservice/wal/` fallback). The replay itself happens when the service's link
+establishes — that is when the program's `In` stream exists to receive it — so
+the
+
+```
 resume: replayed <N> message(s)
 ```
+
+line prints at the first peer connection, with the full history delivered to
+the program strictly before that link's live traffic.
 
 The listener is accepting; a peer (`main(gavri, R).` on the other host) can
 connect and chat. Kill the process, run it again — the service re-arms itself
