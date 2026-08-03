@@ -32,7 +32,7 @@ Close the 3rtask-verified residual gaps (run 20260803T133715Z-20ac) in five prio
 
 - **I. Spec-First**: PASS — every story traces to spec FRs; link semantics implement against the C# reference + FCP source (DISCIPLINE §1.13), with the 050/059/060 spec task lists as authoritative enumerations. dist_unify/quiescence get contracts (Phase 1) BEFORE implementation.
 - **II. Bug-Protocol**: PASS — plan mandates STOP-and-report on any discovered core-GLP or C#-reference bug; no tolerance shims (the D-9/exit_on_close lesson is encoded as FR-012, a spec-backed norm, not a workaround).
-- **III. SRSW**: PASS — no `skipSRSW` token anywhere in the artifacts; the A31 control program is already SRSW-clean and is wired, not modified.
+- **III. SRSW**: PASS — no SRSW-bypass token anywhere in the artifacts (machine scan clean); the A31 control program is already SRSW-clean and is wired, not modified.
 - **IV-a. Language Authority**: PASS — FR-011 makes any new guard/kernel/directive propose-only; the plan's US1 design explicitly targets zero new GLP surface (link-level implementation under existing kernels).
 - **IV-b. Preserve Working Internals**: PASS — no removal of `_ClauseVar`/`_TentativeStruct`/fallbacks; Gleam runner extensions are additive dispatch arms.
 - **V. Claude-Only LM**: PASS — no LM-in-the-loop components in this feature.

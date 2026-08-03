@@ -46,7 +46,7 @@ SPDX-License-Identifier: MIT
 - [ ] T021 [US3] Add LOAD_IL/RUN_GOAL_IL request kinds to csharp/glp_split_protocol/WireProtocol.cs per contracts/il-request-kind.md (062 CompiledIlEnvelope unchanged; typed refusal taxonomy)
 - [ ] T022 [US3] Client-side compile+ship in csharp/glp_repl_client (compiler reference moves to the client project; per-session path choice, never mixed per module)
 - [ ] T023 [US3] Engine-side IL execute path in csharp/glp_engine_host with no compiler reference on the execute path (project-file assertion + build check)
-- [ ] T024 [P] [US3] xUnit suites: il-request round-trip + refusal taxonomy in csharp/glp_split_protocol.tests; corpus equivalence sweep (IL path vs text path diff empty, SC-003)
+- [ ] T024 [P] [US3] Create the csharp/glp_split_protocol.tests xUnit project (does not exist yet — add to solution) with il-request round-trip + refusal taxonomy suites; corpus equivalence sweep (IL path vs text path diff empty, SC-003)
 - [ ] T025 [US3] US3 checkpoint + incremental review note; scoped commit+push, marathon checkpoint
 
 ## Phase 6 — US4: FE/BE split + embeddability builds, then 059 sweep (P4)
@@ -62,7 +62,7 @@ SPDX-License-Identifier: MIT
 ## Phase 7 — US5: small residuals (P5)
 
 - [ ] T033 [P] [US5] Implement :boot in glp_gleam/src/glp/repl/commands.gleam (multi-isolate plays, G9) + scenario test
-- [ ] T034 [P] [US5] Complete glp_gleam/src/glp/bytecode/lint.gleam documented checks + known-bad-program test
+- [ ] T034 [P] [US5] Complete glp_gleam/src/glp/bytecode/lint.gleam checks per docs/glp-bytecode-v216-complete.md (well-formedness of the v2.16 instruction stream: opcode validity, operand arity, HEAD/GUARD/BODY placement) + known-bad-program test
 - [ ] T035 [P] [US5] Fix the param_arity panic (reported error, REPL survives) + regression test in glp_gleam/test
 - [ ] T036 [US5] US5 checkpoint; scoped commit+push, marathon checkpoint
 
