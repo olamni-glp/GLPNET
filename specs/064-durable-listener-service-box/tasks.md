@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 
 ## Phase 2: Foundational
 
-- [ ] T002 Record the green baseline before any code change (Constitution VII): `dotnet test` for `csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests`, and `bash test/run_all_tests.sh`; note counts in the commit message
+- [ ] T002 Record the green baseline before any code change (Constitution VII): `dotnet test` for `csharp/glp_link.tests` + `csharp/glp_crdtmsg.tests`, and `bash test/run_all_tests.sh`; note counts in the commit message. ALSO capture the pre-feature no-registration REPL startup transcript to `test/service_box/baseline_startup.txt` (piped `:quit`) — T005 scenario 3 and T014's SC-005 check diff against it
 
 ## Phase 3: User Story 1 — Listener survives a REPL restart (P1, MVP)
 
@@ -35,7 +35,7 @@ SPDX-License-Identifier: MIT
 **Independent test**: SC-002 drill (100 messages → restart → complete/ordered/no-dup → second restart byte-identical).
 
 - [ ] T006 [P] [US2] Additive delivery hook in `csharp/glp_link/primitives/LinkPump.cs`: nullable `OnDelivered(LinkId, Term)` invoked in `TryApplyNext`'s data case immediately before the heap bind; null ⇒ byte-identical; unit test `csharp/glp_link.tests/LinkPumpDeliveryHookTests.cs` (fires once per delivered term, ordered, not on close/fault items)
-- [ ] T007 [US2] WAL composition in the shim: new `out/csharp/glp_repl/ServiceWal.cs` — `PgliteOpWal` primary (existing `COLAB_PG_CONN` convention, the single `.pgdb/` cluster) with file `OpWal` fallback under `glpservice/wal/`, primary-then-loud-degrade (061 composer discipline); appender registered on the T006 hook only when an enabled registration exists; append completes before the hook returns (FR-004)
+- [ ] T007 [US2] WAL composition in the shim: new `out/csharp/glp_repl/ServiceWal.cs` — `PgliteOpWal` primary (existing `COLAB_PG_CONN` convention, the single `.pgdb/` cluster) with file `OpWal` fallback under `glpservice/wal/`, primary-then-loud-degrade (061 composer discipline); appender registered on the T006 hook only when an enabled registration exists; append completes before the hook returns (FR-004); both-backends-fail ⇒ deliver anyway + the contract's named diagnostic on every affected delivery (analyze U1 policy)
 - [ ] T008 [US2] Boot replay per `contracts/message-log-and-replay.md`: after program load, before goal arm — read `Ops` ascending, present to the service through the same inbound delivery shape as live traffic (history precedes live, program-indistinguishable); observer registration deferred until replay completes (no re-append); `resume: replayed <N> message(s)` line; replay failure ⇒ named diagnostic then arm with the replayed prefix. NOTE: the delivery-shape mechanism (pre-seeded pump delivery vs. replay source ahead of the link stream) is the one open implementation choice — resolve inside the contract's constraints, record the choice in the code comment + PR notes
 - [ ] T009 [US2] SC-002 drill: `test/service_box/history_drill.sh` (N=100 restart drill + double-restart byte-identity) and `csharp/glp_crdtmsg.tests/ReplayIdempotenceTests.cs` (replay reads never append; dot-key dedup on crash-replay overlap)
 

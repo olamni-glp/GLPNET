@@ -22,6 +22,13 @@ SPDX-License-Identifier: MIT
    the existing `COLAB_PG_CONN` convention — Constitution VI-b), `OpWal` file
    fallback under `glpservice/wal/`, primary-then-loud-degrade (the 061
    composer discipline). Append idempotence comes from the op's dot key.
+4. **Both-backends-fail policy (analyze remediation U1)**: if primary AND
+   fallback appends fail, the host prints the named diagnostic
+   `resume: WAL append failed on both backends: <cause>` and DELIVERS the
+   message anyway — availability over durability for the chat MVP. FR-004's
+   guarantee is explicitly scoped to "whenever at least one backend is
+   writable"; a both-backends outage is loud, never silent, and every
+   subsequent delivery repeats the diagnostic until a backend recovers.
 
 ## Replay side
 

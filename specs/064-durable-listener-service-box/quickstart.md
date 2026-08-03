@@ -30,7 +30,7 @@ Expected startup lines (after the banner):
 
 ```
 resume: arming main(olamnit, R). from programs/tests/quic/quic_chat.glp
-resume: replayed <N> message(s) from the log
+resume: replayed <N> message(s)
 ```
 
 The listener is accepting; a peer (`main(gavri, R).` on the other host) can
