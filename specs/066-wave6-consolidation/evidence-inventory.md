@@ -45,6 +45,16 @@ engineer's alone (never self-resolved — FR-003, constitution I/II).
 **Olamnit position**: wave3-close ACK OWED (chased 142207Z, unanswered at creation); no receipts
 newer than status 140510Z.
 
+## Peer-recorded engineer escalations (ariellas 20260804T003500Z — NOT R-numbered here; their record, shared seams)
+
+- (a) glp_quick_host bridge admits unauthenticated plain-TCP peers into the cert-authenticated
+  QUIC mesh; `--bridge-addr` accepts any host — the Gleam BE enforces the opposite policy on the
+  same seam (runtime disagreement). Touches T022/T023 acceptance context.
+- (b) RequestDispatcher IL/text latch scope vs il-request-kind.md rule 3.
+- (c) Path selection committed before validation.
+- (d) D064-7 binding rendering (already gated on their side).
+These surface alongside R1–R12 at T023; never fixed from this side.
+
 ## Expected future receipts (ledger gates watch for these)
 
 - 064 ship receipt (v2026.08.03.2 tag) + close receipt — clears G1.
