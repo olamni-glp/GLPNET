@@ -18,7 +18,7 @@ One of the 18 rows of the 150440Z not-closed snapshot.
 | Field | Meaning | Constraints |
 |---|---|---|
 | item_id | roadmap feature_id | immutable; must exist in the roadmap journal |
-| group | S1..S6 story group or EXTERNAL | exactly one |
+| group | US1..US6 story group or EXTERNAL | exactly one |
 | disposition_path | story / external-gate / triage | exactly one (FR-001) |
 | state | pending → active → parked(ruling/gate) → terminal | terminal = closed \| deferred \| rejected \| superseded |
 | evidence | receipt stamp(s), commit hash(es), roadmap row state | required non-empty at terminal (FR-002) |

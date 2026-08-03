@@ -33,7 +33,7 @@ three rows' evidence links resolve.
 - [ ] T004 [US1] Fill the 18-row items table from the 150440Z snapshot (recompute the not-closed set via `python -m buildkit_cli.roadmap --json status` and reconcile against the snapshot list; any drift is recorded, snapshot stays the boundary per D1/assumptions), mapping each to story/external-gate/triage with initial state
 - [ ] T005 [US1] Mechanical completeness check: verify contract invariants 1–6 (18 rows, no empty disposition cells, parked⇒blocked_by, terminal⇒evidence) and record the check transcript in the marathon trace; commit ledger + inventory (file-scoped)
 
-**Checkpoint**: ledger authoritative — all later tasks update it in the same commit as their event.
+**Checkpoint**: ledger authoritative — all later tasks update it in the same commit as their event. Marathon discipline (FR-010): every story close = a marathon checkpoint/trace row; every disposition = a trace row; parked items = marathon park/sequence, so cold resume derives position from durable rows alone.
 
 ## Phase 4: US2 — Standalone quick wins (P2)
 
@@ -50,10 +50,10 @@ three rows' evidence links resolve.
 **Goal**: glp-runtime-consol + qr-link-provisioning delivered or engineer-deferred.
 **Independent test**: per-item acceptance from spec US3 scenarios.
 
-- [ ] T010 [US3] glp-runtime-consol: read `docs/` handover seeded at develop HEAD (`git log --oneline -1 bc5ea232` — "glp-runtime-consol pipeline restart handover, 3rtask gap-audit seed") + the roadmap brief; build the inventory of specified-but-unimplemented runtime features with per-feature disposition proposal (implement here vs defer with rationale)
+- [ ] T010 [US3] glp-runtime-consol: read `docs/` handover seeded at develop HEAD (`git log --oneline -1 bc5ea232` — "glp-runtime-consol pipeline restart handover, 3rtask gap-audit seed") + the roadmap brief; build the inventory of specified-but-unimplemented runtime features with per-feature disposition proposal (implement here vs defer with rationale). LANGUAGE-AUTHORITY SCREEN (constitution IV-a): any inventory entry touching the GLP language surface (guards, system predicates, body kernels, directives, type-system features, primitive types) is PROPOSAL-ONLY — surfaced for the owner's explicit approval, never implement-here
 - [ ] T011 [US3] glp-runtime-consol: implement the inventory's implement-here set in `glp_runtime/` under existing suite gates (Section A–C conventions; regression tests per repo Test Protocol); full REPL suite green at checkpoint
 - [ ] T012 [US3] Dispose glp-runtime-consol (advance → closed with suite evidence; any deferred inventory entries carry engineer-recorded rationale — surface proposals, never self-decide defers)
-- [ ] T013 [P] [US3] qr-link-provisioning: read the roadmap brief; deliver per profile (QR link + cert provisioning artifact — generated PDF or hub display page — against the existing link/cert surfaces); acceptance = a peer can establish a link+cert from the artifact as profiled
+- [ ] T013 [P] [US3] qr-link-provisioning: read the roadmap brief; deliver per profile (QR link + cert provisioning artifact — generated PDF or hub display page — against the existing link/cert surfaces); acceptance = a peer can establish a link+cert from the artifact as profiled; LOCAL VERIFY = loopback-equivalent (both endpoints on this host consuming the generated artifact), full two-host e2e recorded as host-bound residual per the 064-quickstart precedent
 - [ ] T014 [US3] Dispose qr-link-provisioning per protocol (ledger + evidence + receipt)
 
 ## Phase 6: US4 — ANTLR4 shared-grammar spike (P4)
@@ -103,6 +103,9 @@ three rows' evidence links resolve.
 - US6 T024∥T025∥T026 (gated rows on G2) → T027.
 - T028–T030 last.
 - ⛔GATE tasks park per FR-003 — a parked chain does NOT block US2/US3/US6 progress (D3).
+- Sync discipline (FR-007): EVERY story close (each phase checkpoint) triggers a sync round
+  (import/reconcile/export/replay-verify) publishing its dispositions; T030 is the FINAL round,
+  not the only one.
 
 ## Implementation strategy
 
