@@ -16,8 +16,8 @@ evidence (FR-003/FR-005); parked is a normal, recorded state, not a failure.
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline checkpoint: verify tree clean on `066-wave6-consolidation`, record current suite baselines in the marathon trace (full REPL 551/551 @ 51be73c5-era, glp_link 172, glp_crdtmsg 188, gleam 569 — re-run only what a story later touches; note counts in trace row)
-- [ ] T002 Evidence inventory in `specs/066-wave6-consolidation/evidence-inventory.md`: enumerate rulings R1–R12 (5 × 3rtask run 20260803T134739Z-fa8a escalations.md + 7 × 064 codexreview adjudications, with source paths/stamps) and the current peer receipts (ariellas 153205Z/153920Z/205616Z; olamnit position) — the ledger's evidence sources
+- [x] T001 Baseline checkpoint: verify tree clean on `066-wave6-consolidation`, record current suite baselines in the marathon trace (full REPL 551/551 @ 51be73c5-era, glp_link 172, glp_crdtmsg 188, gleam 569 — re-run only what a story later touches; note counts in trace row)
+- [x] T002 Evidence inventory in `specs/066-wave6-consolidation/evidence-inventory.md`: enumerate rulings R1–R12 (5 × 3rtask run 20260803T134739Z-fa8a escalations.md + 7 × 064 codexreview adjudications, with source paths/stamps) and the current peer receipts (ariellas 153205Z/153920Z/205616Z; olamnit position) — the ledger's evidence sources
 
 ## Phase 2: Foundational
 
@@ -29,9 +29,9 @@ evidence (FR-003/FR-005); parked is a normal, recorded state, not a failure.
 **Independent test**: contract invariants 1–6 of `contracts/gate-ledger.md` all hold; spot-check
 three rows' evidence links resolve.
 
-- [ ] T003 [US1] Create `specs/066-wave6-consolidation/gate-ledger.md` gates table: G1 (064 ship-state, open, blocks S4-link stories), G2 (065 track, open, blocks S6 YNET rows), G3.R1–R12 (each with source ref from T002, blocked-story list), EXT.ariellas (open, blocks T015/T016 receipt-consumption starts) — per contracts/gate-ledger.md
-- [ ] T004 [US1] Fill the 18-row items table from the 150440Z snapshot (recompute the not-closed set via `python -m buildkit_cli.roadmap --json status` and reconcile against the snapshot list; any drift is recorded, snapshot stays the boundary per D1/assumptions), mapping each to story/external-gate/triage with initial state
-- [ ] T005 [US1] Mechanical completeness check: verify contract invariants 1–6 (18 rows, no empty disposition cells, parked⇒blocked_by, terminal⇒evidence) and record the check transcript in the marathon trace; commit ledger + inventory (file-scoped)
+- [x] T003 [US1] Create `specs/066-wave6-consolidation/gate-ledger.md` gates table: G1 (064 ship-state, open, blocks S4-link stories), G2 (065 track, open, blocks S6 YNET rows), G3.R1–R12 (each with source ref from T002, blocked-story list), EXT.ariellas (open, blocks T015/T016 receipt-consumption starts) — per contracts/gate-ledger.md
+- [x] T004 [US1] Fill the 18-row items table from the 150440Z snapshot (recompute the not-closed set via `python -m buildkit_cli.roadmap --json status` and reconcile against the snapshot list; any drift is recorded, snapshot stays the boundary per D1/assumptions), mapping each to story/external-gate/triage with initial state
+- [x] T005 [US1] Mechanical completeness check: verify contract invariants 1–6 (18 rows, no empty disposition cells, parked⇒blocked_by, terminal⇒evidence) and record the check transcript in the marathon trace; commit ledger + inventory (file-scoped)
 
 **Checkpoint**: ledger authoritative — all later tasks update it in the same commit as their event. Marathon discipline (FR-010): every story close = a marathon checkpoint/trace row; every disposition = a trace row; parked items = marathon park/sequence, so cold resume derives position from durable rows alone.
 
