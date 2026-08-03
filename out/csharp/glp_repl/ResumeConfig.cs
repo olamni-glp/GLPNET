@@ -75,6 +75,19 @@ internal static class ResumeConfig
                 diag($"resume: invalid registration at {path}: missing 'program'");
                 return false;
             }
+            // Contract: a repo-relative `.glp` path, resolved against the discovered repo
+            // root. A rooted value would make the host's Path.Combine silently discard the
+            // repo root, and a '..' segment escapes it — both take the same named-diagnostic
+            // + inert path as any other invalid file (FR-009). Forward slashes (the sample's
+            // spelling) remain valid.
+            var program = prog.GetString()!;
+            if (Path.IsPathRooted(program)
+                || Array.Exists(program.Split('/', '\\'), s => s == "..")
+                || !program.EndsWith(".glp", StringComparison.Ordinal))
+            {
+                diag($"resume: invalid registration at {path}: 'program' must be a repo-relative .glp path");
+                return false;
+            }
             if (!root.TryGetProperty("goal", out var goal) || goal.ValueKind != JsonValueKind.String
                 || string.IsNullOrWhiteSpace(goal.GetString()))
             {

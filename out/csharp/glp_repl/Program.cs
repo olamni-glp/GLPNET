@@ -151,8 +151,11 @@ internal static class EntryPoint
         // The hooks belong to a SUCCESSFULLY armed service only. Every failure path below
         // falls through to the interactive REPL (FR-009) — with the hooks still live, a
         // manual link opened there would receive the failed service's replay and append its
-        // own traffic into the service's WAL. Uninstall them on failure.
-        void Disarm() { link.Pump.ReplaySource = null; link.Pump.OnDelivered = null; }
+        // own traffic into the service's WAL. Uninstall them on failure, then release the
+        // WAL backend (its pglite connection would otherwise leak for the process lifetime).
+        // Hooks first: AddLink drains ReplaySource synchronously before its receive loop
+        // starts, so once both are null no new drain can reach the disposed backend.
+        void Disarm() { link.Pump.ReplaySource = null; link.Pump.OnDelivered = null; wal?.Dispose(); }
 
         var programPath = Path.Combine(reg.RepoRoot, reg.Program);
         if (!File.Exists(programPath))
@@ -183,6 +186,11 @@ internal static class EntryPoint
             Console.WriteLine($"resume: goal finished ({result.Status})");
             if (result.Error is not null)
                 Console.WriteLine($"resume: goal error: {result.Error}");
+            // A Failed (or errored) result is not an armed service — uninstall the hooks
+            // just like a thrown goal. Suspended is the NORMAL terminal state of an armed
+            // listener service: its hooks must stay live.
+            if (result.Failed || result.Error is not null)
+                Disarm();
         }
         catch (Exception e)
         {

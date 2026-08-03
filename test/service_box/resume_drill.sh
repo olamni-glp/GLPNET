@@ -41,11 +41,11 @@ normalize() {
 # service with replay:true must never replay drill garbage as history — so the
 # drill's own WAL is removed on exit, then the operator's is restored intact.
 SAVED=""
-if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
 SAVED_WAL=""
-if [ -d "$WAL" ]; then SAVED_WAL="$WAL.drill-saved"; mv "$WAL" "$SAVED_WAL"; fi
 restore() { rm -f "$REG"; rm -rf "$WAL"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi; if [ -n "$SAVED_WAL" ] && [ -d "$SAVED_WAL" ]; then mv "$SAVED_WAL" "$WAL"; fi }
 trap restore EXIT
+if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
+if [ -d "$WAL" ]; then SAVED_WAL="$WAL.drill-saved"; mv "$WAL" "$SAVED_WAL"; fi
 
 echo "=== 064 US1 resume drill ==="
 

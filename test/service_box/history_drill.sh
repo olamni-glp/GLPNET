@@ -30,14 +30,14 @@ check() { if [ "$2" -eq 0 ]; then echo "  PASS: $1"; PASS=$((PASS+1)); else echo
 [ -f "$CSREPL" ] || { echo "ERROR: C# REPL not built at $CSREPL"; exit 1; }
 
 SAVED=""
-if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
 # The drill owns a FRESH log: history assertions are about this run only. Any real
 # service WAL is moved aside (like the registration) and restored intact on exit;
 # the drill's own WAL is removed so replay:true never sees drill garbage later.
 SAVED_WAL=""
-if [ -d "$WAL" ]; then SAVED_WAL="$WAL.drill-saved"; mv "$WAL" "$SAVED_WAL"; fi
 restore() { rm -f "$REG"; rm -rf "$WAL"; if [ -n "$SAVED" ] && [ -f "$SAVED" ]; then mv "$SAVED" "$REG"; fi; if [ -n "$SAVED_WAL" ] && [ -d "$SAVED_WAL" ]; then mv "$SAVED_WAL" "$WAL"; fi }
 trap restore EXIT
+if [ -f "$REG" ]; then SAVED="$REG.drill-saved"; mv "$REG" "$SAVED"; fi
+if [ -d "$WAL" ]; then SAVED_WAL="$WAL.drill-saved"; mv "$WAL" "$SAVED_WAL"; fi
 
 write_reg() {  # $1 = replay flag
     cat > "$REG" <<EOF
