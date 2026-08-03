@@ -9,6 +9,8 @@
 //// deterministic ports per test avoid intra-run collisions (tcp_test holds
 //// 34_721–34_723, primitives_test 34_741; this suite uses 34_731–34_733).
 
+import gleam/dynamic.{type Dynamic}
+import gleam/erlang/atom
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option, None, Some}
 import gleeunit/should
@@ -142,6 +144,29 @@ pub fn stop_closes_accepted_but_untaken_sockets_test() {
   multi_accept.stop(listener)
   let assert Ok(got) = process.receive(back, 5000)
   got |> should.equal(Ok(None))
+}
+
+// The pump latches ONLY on a per-listener fault. A per-connection transient —
+// `econnaborted` when a client RSTs between SYN and accept — and any reason the
+// classifier does not enumerate keep the listener accepting, exactly as the
+// pre-064 pump did; only fd/memory exhaustion (or a dead listen socket) ends
+// accepting.
+pub fn accept_error_classification_latches_only_permanent_test() {
+  accept_error_kind("timeout") |> should.equal("timeout")
+  accept_error_kind("closed") |> should.equal("closed")
+  accept_error_kind("econnaborted") |> should.equal("transient")
+  accept_error_kind("einval") |> should.equal("transient")
+  accept_error_kind("enotconn") |> should.equal("transient")
+  accept_error_kind("emfile") |> should.equal("fault")
+  accept_error_kind("enfile") |> should.equal("fault")
+  accept_error_kind("enomem") |> should.equal("fault")
+}
+
+@external(erlang, "glp_link_tcp_ffi", "tcp_accept_error_kind")
+fn ffi_accept_error_kind(reason: Dynamic) -> String
+
+fn accept_error_kind(reason: String) -> String {
+  ffi_accept_error_kind(atom.to_dynamic(atom.create(reason)))
 }
 
 pub fn establish_composes_n_listener_links_test() {

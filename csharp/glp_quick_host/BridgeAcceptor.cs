@@ -25,8 +25,12 @@ internal static class BridgeAcceptor
     /// port nothing listens on. A BIND failure is an explicit <c>ERR bridge_bind_failed</c>
     /// AND is rethrown — the host fails loudly (same contract as
     /// <c>EngineServer</c>'s bind refusal), never exits 0 with no bridge.
-    /// <paramref name="bound"/>, when supplied, completes on a successful bind and faults on a
-    /// bind failure, so the caller can gate serving on the bridge being really up.
+    /// <paramref name="bound"/>, when supplied, is the caller's SINGLE gate: it completes on a
+    /// successful bind and faults with the bind exception otherwise, so awaiting it alone decides
+    /// the bind outcome — never a second observation of this method's Task, which faults only
+    /// after the throw below unwinds (cycle-3 bind-gate-race). Every path out of the loop either
+    /// binds (the callback completes it) or fails before the bind (a catch faults it), so the
+    /// gate can never hang.
     /// </summary>
     public static async Task RunAsync(Mesh mesh, LinkAddress local, ClientCapacity capacity, CancellationToken ct,
         TaskCompletionSource? bound = null)
@@ -56,9 +60,18 @@ internal static class BridgeAcceptor
         catch (SocketException ex)
         {
             Console.Error.WriteLine($"ERR bridge_bind_failed {ex.SocketErrorCode}: {ex.Message}");
-            bound?.TrySetException(ex);
             if (!isBound)
+            {
+                bound?.TrySetException(ex);
                 throw; // the bridge never came up — FR-004 was not delivered, so fail loudly
+            }
+        }
+        catch (Exception ex) when (!isBound)
+        {
+            // Any other pre-bind failure must reach the gate too — an unresolved
+            // readiness task would park the caller forever.
+            bound?.TrySetException(ex);
+            throw;
         }
     }
 }

@@ -38,14 +38,27 @@ tcp_accept(LSock, Timeout) ->
             Error
     end.
 
-%% Classify a tcp_accept/2 error reason for a continuous accept loop: the two
-%% NORMAL conditions (an idle accept slice; the listener closed by stop) vs a
-%% real fault (emfile/enfile/...) that must reach a consumer instead of being
-%% retried silently at ~100Hz forever (codexreview 064 cycle-2
-%% error-collapsing-silent-failure).
+%% Classify a tcp_accept/2 error reason for a continuous accept loop: the NORMAL
+%% conditions (an idle accept slice; the listener closed by stop) and the
+%% PER-CONNECTION transients vs a per-LISTENER fault (emfile/enfile/...) that
+%% must reach a consumer instead of being retried silently at ~100Hz forever
+%% (codexreview 064 cycle-2 error-collapsing-silent-failure).
+%%
+%% Only the enumerated per-listener reasons latch. Everything else — including
+%% `econnaborted` (a client that RSTs between SYN and accept) and `einval` (some
+%% inet_backend teardown orders) — is per-CONNECTION and retried, so an unknown
+%% or one-off reason can never permanently end accepting (cycle-3
+%% accept-fault-busy-spin).
 tcp_accept_error_kind(timeout) -> <<"timeout">>;
 tcp_accept_error_kind(closed) -> <<"closed">>;
-tcp_accept_error_kind(_Other) -> <<"fault">>.
+%% Process/system fd exhaustion, out of memory, or a listen socket that can
+%% never accept again: retrying these is a hot spin no consumer can observe.
+tcp_accept_error_kind(emfile) -> <<"fault">>;
+tcp_accept_error_kind(enfile) -> <<"fault">>;
+tcp_accept_error_kind(enomem) -> <<"fault">>;
+tcp_accept_error_kind(enotsock) -> <<"fault">>;
+tcp_accept_error_kind(ebadf) -> <<"fault">>;
+tcp_accept_error_kind(_Other) -> <<"transient">>.
 
 tcp_close_listener(LSock) ->
     gen_tcp:close(LSock),

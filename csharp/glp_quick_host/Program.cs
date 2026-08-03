@@ -230,12 +230,13 @@ internal static class Program
             : Task.CompletedTask;
         if (opts.BridgePort is not null)
         {
-            // Serve only once the bridge is really bound: a bind failure rethrows here
-            // (→ ERR bind_failed, ExitBindFailed) instead of leaving a bridgeless host
-            // that exits 0 after a harness saw BRIDGE_READY.
-            await Task.WhenAny(bridgeBound.Task, bridge).ConfigureAwait(false);
-            if (bridge.IsFaulted)
-                await bridge.ConfigureAwait(false);
+            // Serve only once the bridge is really bound. ONE synchronization point:
+            // the acceptor completes this task on a successful bind and faults it with
+            // the bind exception, which rethrows HERE (→ ERR bind_failed,
+            // ExitBindFailed) — never a bridgeless host that exits 0 after a harness
+            // saw BRIDGE_READY. Observing the acceptor Task instead would race its
+            // unwind (cycle-3 bind-gate-race).
+            await bridgeBound.Task.ConfigureAwait(false);
         }
 
         while (!life.IsCancellationRequested)

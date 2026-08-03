@@ -158,13 +158,19 @@ public class BridgeRelayTests
         Console.SetError(err); // the ERR bridge_bind_failed diagnostic is the point of the test
         try
         {
-            var ex = await Assert.ThrowsAsync<SocketException>(() =>
-                BridgeAcceptor.RunAsync(mesh, LinkAddress.Endpoint("127.0.0.1", port), new ClientCapacity(3), stop.Token, bound));
+            var acceptor = BridgeAcceptor.RunAsync(
+                mesh, LinkAddress.Endpoint("127.0.0.1", port), new ClientCapacity(3), stop.Token, bound);
+
+            // THE GATE, exactly as Program.RunMeshServerAsync awaits it: the bind
+            // outcome must surface from this ONE task, with no second observation of
+            // the acceptor Task (which faults only after its unwind — cycle-3
+            // bind-gate-race, where the losing interleaving served bridgeless).
+            var gate = await Assert.ThrowsAsync<SocketException>(() => bound.Task);
+            Assert.Equal(SocketError.AddressAlreadyInUse, gate.SocketErrorCode);
+
+            // …and the acceptor itself still fails loudly rather than returning normally.
+            var ex = await Assert.ThrowsAsync<SocketException>(() => acceptor);
             Assert.Equal(SocketError.AddressAlreadyInUse, ex.SocketErrorCode);
-            // Readiness FAILS rather than silently pending (the .Exception read also
-            // observes it, so no unobserved-task exception escapes this test).
-            Assert.True(bound.Task.IsFaulted);
-            Assert.IsType<SocketException>(bound.Task.Exception!.InnerException);
             Assert.Contains("ERR bridge_bind_failed", err.ToString());
             Assert.DoesNotContain("BRIDGE_READY", err.ToString()); // no READY for a port nothing listens on
         }

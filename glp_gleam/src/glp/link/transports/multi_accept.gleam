@@ -225,18 +225,12 @@ fn accept_pump(
         }
         Error(reason) ->
           case ffi_accept_error_kind(reason) {
-            // {error, timeout} = an idle slice; {error, closed} = stop() closed
-            // the listener (the ctl check above ends the loop next spin).
-            "timeout" | "closed" -> {
-              process.sleep(10)
-              accept_pump(lsock, ctl, broker, addr, port, n)
-            }
-            // A permanent OS fault (emfile/enfile/…): retrying it at ~100Hz
+            // A per-LISTENER fault (emfile/enfile/…): retrying it at ~100Hz
             // forever is a silent hot spin no consumer can observe. Report it
             // as a REASONED Permanent signal (link_establish rule 7 — never
             // silence) and cease accepting; the process still parks, since it
             // controls the sockets it already accepted.
-            _ -> {
+            "fault" -> {
               process.send(
                 broker,
                 AcceptFailed(fault_addr(
@@ -247,6 +241,16 @@ fn accept_pump(
                 )),
               )
               park(ctl, broker)
+            }
+            // {error, timeout} = an idle slice; {error, closed} = stop() closed
+            // the listener (the ctl check above ends the loop next spin);
+            // "transient" = a PER-CONNECTION reason (econnaborted from a client
+            // that RSTs between SYN and accept, …) or any unclassified one —
+            // the listener is still healthy, so keep accepting exactly as the
+            // pre-064 pump did.
+            _ -> {
+              process.sleep(10)
+              accept_pump(lsock, ctl, broker, addr, port, n)
             }
           }
       }
@@ -364,8 +368,18 @@ fn take_next(
       Error(fault_here(listener, Permanent, "multi-accept broker unresponsive"))
     Ok(Taken(ep)) -> Ok(ep)
     // The pump's own permanent fault, surfaced verbatim instead of a generic
-    // "no inbound link within budget".
-    Ok(Failed(signal)) -> Error(signal)
+    // "no inbound link within budget" — but paced exactly like an empty buffer
+    // (the caller's budget, 50ms slices). Answering the latch INSTANTLY would
+    // busy-spin a consumer that re-arms with no sleep of its own, e.g. the BE's
+    // accept loop (cycle-3 accept-fault-busy-spin).
+    Ok(Failed(signal)) ->
+      case remaining_ms <= 0 {
+        True -> Error(signal)
+        False -> {
+          process.sleep(50)
+          take_next(listener, remaining_ms - 50)
+        }
+      }
     Ok(Stopped) ->
       Error(fault_here(listener, Permanent, "multi-accept listener stopped"))
     Ok(Empty) ->
