@@ -11,9 +11,12 @@
 // (see specs/020-trace-equivalence-fidelity/contracts/trace_normalization.md);
 // the Dart golden under glp_runtime/ is never modified (R10 / HARD GATE 6).
 
+using System;
+using System.IO;
 using System.Threading.Tasks;
 
 using GlpRuntime.CrdtMsg.Bridge;
+using GlpRuntime.Engine;
 using GlpRuntime.Link.Primitives;
 using GlpRuntime.Link.Seam;
 using GlpRuntime.Link.Transports;
@@ -70,7 +73,70 @@ internal static class EntryPoint
             // startup; quicGate.Value materializes the real gate at that point.
             link.PayloadCodecs.Register(LinkScheme.Quic,
                 new LazyCrdtMsgPayloadCodec(() => new CrdtMsgPayloadCodec(quicGate.Value)));
+
+            // feature 064 — durable listener service box (gavri variant), T004: the
+            // resume-goal hook. Runs AFTER the link wiring above (the registered goal
+            // may arm a QUIC listener) and BEFORE the interactive loop the converted
+            // Main enters. With no registration file this is a single silent probe
+            // (SC-005). Contract: specs/064-durable-listener-service-box/contracts/
+            // resume-registration.md.
+            RunResumeGoal(engine);
         };
         return GlpRuntime.Repl.Program.Main(args);
+    }
+
+    // Replays the operator's exact manual sequence for the registered service:
+    // load the program (interactive-load semantics), then run the goal
+    // (typed-input semantics), synchronously — the engine's runner is
+    // single-threaded and a background dispatch would race the interactive
+    // loop (research.md R2). Every failure is a named diagnostic and falls
+    // through to the normal prompt (FR-009).
+    private static void RunResumeGoal(GlpEngine engine)
+    {
+        if (!ResumeConfig.TryLoad(Console.WriteLine, out var reg) || reg is null)
+            return;
+        if (!reg.Enabled)
+        {
+            Console.WriteLine("resume: registration present but disabled");
+            return;
+        }
+
+        Console.WriteLine($"resume: arming {reg.Goal} from {reg.Program}");
+
+        // T008 inserts WAL replay here — history precedes live traffic, and the
+        // delivery observer is registered only after replay completes
+        // (contracts/message-log-and-replay.md).
+
+        var programPath = Path.Combine(reg.RepoRoot, reg.Program);
+        if (!File.Exists(programPath))
+        {
+            Console.WriteLine($"resume: program load failed: {programPath}: File not found");
+            return;
+        }
+        try
+        {
+            if (!engine.LoadFile(programPath))
+            {
+                Console.WriteLine($"resume: program load failed: {reg.Program} (rejected by the load pipeline)");
+                return;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"resume: program load failed: {e.Message}");
+            return;
+        }
+
+        try
+        {
+            var result = engine.RunGoalAsync(reg.Goal).GetAwaiter().GetResult();
+            Console.WriteLine($"resume: goal finished ({result.Status})");
+            if (result.Error is not null)
+                Console.WriteLine($"resume: goal error: {result.Error}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"resume: goal failed: {e.Message}");
+        }
     }
 }
