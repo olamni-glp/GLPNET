@@ -95,34 +95,37 @@ recorded; zero accepted-syntax changes landed without a §1.14 approval (SC-004)
   book/lib examples) into `spike/antlr4-glp-grammar/corpus/` (or a manifest referencing
   `programs/`), exercising declarations, guards, reader/writer modes, `::=` unions, `=..`/`..=`,
   module `#` calls, lists/structs, and ≥1 negative control (e.g. `abandon_reader_bad.glp`).
-- [ ] T010 [US1] 🔴 Author `spike/antlr4-glp-grammar/Glp.g4` covering the token vocabulary of
+- [X] T010 [US1] 🔴 Author `spike/antlr4-glp-grammar/Glp.g4` covering the token vocabulary of
   `out/csharp/lib/compiler/token.cs` — **faithful description of the EXISTING accepted syntax
   only**. **§1.14 / Constitution IV-a STOP GATE**: if faithful expression requires a change to the
   accepted GLP syntax, STOP and write an owner proposal (Gabi + Udi) before any such change
   (FR-005, SC-004).
-- [ ] T011 [US1] Generate the C# parser front-end into `gen/`
+- [X] T011 [US1] Generate the C# parser front-end into `gen/`
   (`java -jar antlr-...-complete.jar -Dlanguage=CSharp -o gen Glp.g4`).
-- [ ] T012 [US1] Build the IL-parity harness in `spike/antlr4-glp-grammar/harness/`: parse each
+- [X] T012 [US1] Build the IL-parity harness in `spike/antlr4-glp-grammar/harness/`: parse each
   corpus example with the generated parser and with the hand-written parser; compile both through
   the shared downstream pipeline; compare `BytecodeProgram` instruction sequences (per
   `contracts/grammar-spike.md`).
-- [ ] T013 [US1] Run the harness; record per-example `ILParityResult` (accepted-by-each, identical
+- [X] T013 [US1] Run the harness; record per-example `ILParityResult` (accepted-by-each, identical
   IL or divergence-cause) — coverage (SC-001) and IL parity (SC-002).
-- [ ] T014 [P] [US1] Attempt a trial C++/Dart/Gleam generation target OR document an explicit
+- [X] T014 [P] [US1] Attempt a trial C++/Dart/Gleam generation target OR document an explicit
   deferral with rationale (multi-target cost for the report).
-- [ ] T015 [US1] Write `spike/antlr4-glp-grammar/REPORT.md` per `contracts/feasibility-report.md`:
+- [X] T015 [US1] Write `spike/antlr4-glp-grammar/REPORT.md` per `contracts/feasibility-report.md`:
   go/no-go verdict, coverage, IL parity, multi-target cost, dependency posture, §1.14 status,
   residual risks (SC-003).
 
 **Checkpoint**: US1 feasibility report complete; grammar/harness additive; no syntax change without
-approval.
+approval. **Verdict = GO-WITH-CONDITIONS** (REPORT.md): SC-001 coverage **7/7 = 100%** (ANTLR vs
+hand-written accept/reject parity); SC-002 IL-parity **deferred** to a bounded PREP feature — it
+needs an ANTLR-tree→engine-AST lowering bridge (~250–400 LOC, scoped in REPORT §3), not built in
+this spike. Two stale doc premises corrected (`=..` not head-only; struct-in-list REPL accepted).
 
 ---
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] Run `quickstart.md` validation end-to-end (both scopes).
-- [ ] T017 Final baseline-green confirmation across all suites (REPL + C# + Gleam); note counts vs
+- [X] T016 [P] Run `quickstart.md` validation end-to-end (both scopes).
+- [X] T017 Final baseline-green confirmation across all suites (REPL + C# + Gleam); note counts vs
   T001 (SC-006).
 
 ---

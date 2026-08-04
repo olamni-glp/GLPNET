@@ -1,0 +1,5 @@
+# Regenerable / heavy artifacts — not committed (T007/T011 document how to recreate).
+antlr-*-complete.jar
+gen/
+harness/bin/
+harness/obj/
