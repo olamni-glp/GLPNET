@@ -46,9 +46,11 @@ vetoable at analyze/review; a veto reopens the affected sections.
 - Q: Does revocation propagate mesh-wide or bind at the join seam? → A: Join/rejoin-seam
   enforcement only — an already-connected revoked device is cut at its next
   reconnect/re-authentication, not force-disconnected mesh-wide. (delegated default)
-- Q: What binds a derived credential to a device? → A: A device-generated keypair fingerprint
-  captured at provisioning, plus a human-entered device label at session start; audit records
-  carry both. (delegated default)
+- Q: What binds a derived credential to a device? → A: A per-device keypair minted at
+  provisioning (hub-side, in the session; the private key exists only in the encrypted payload,
+  never on hub disk), identified by its SPKI fingerprint captured at mint, plus a human-entered
+  device label at session start; audit records carry both. (delegated default; refined at
+  analyze per research R-003 — one-scan provisioning precludes a device-side CSR channel)
 - Q: Default validity/enforcement values? → A: Provisioning session window 10 minutes; derived
   credential TTL 30 days; revocation enforcement at the join seam within 60 seconds — all three
   are engineer-configurable (registered as key configurable items). (delegated default)

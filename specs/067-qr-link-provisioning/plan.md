@@ -57,8 +57,8 @@ rendered/persisted-as-image/printed (FR-002/FR-005/FR-006); reject tokens stay i
   research.md R-003 and folded back into the spec's clarify trail at analyze if upheld.
 - **II. Bug-Protocol / No-Workarounds**: PASS — plan adds no tolerance paths; loaders stay
   fail-closed; a validation failure is a loud `ERR` refusal, never a fallback.
-- **III. SRSW**: PASS — no GLP code in this feature (Python + C# only); no `skipSRSW` token in
-  any artifact.
+- **III. SRSW**: PASS — no GLP code in this feature (Python + C# only); the forbidden
+  SRSW-escape token appears in no artifact.
 - **IV-a/IV-b. Language Authority / Preserve Internals**: PASS — no GLP language surface, no
   runtime internals touched.
 - **V. Claude-Only LM**: PASS — no LM in the feature path at all.
