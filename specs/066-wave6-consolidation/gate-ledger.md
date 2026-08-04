@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 | ITEM-03 glp-runtime-consol | US3 | story | **closed — DISPUTED 20260804T153700Z (engineer ruling needed)** | engineer (Scope-A revival ruling) | runtime-consol-inventory.md: (B) abandon.cs tombstoned (build 0 errors, suites green @ develop baseline 165/184), (A) superseded by Option-B rider; roadmap advanced → closed. **DISPUTE**: (B) superseded upward — olamnit executed a COMPLETE REMOVAL (abandon.cs + live Dart abandon.dart + dead import in runtime.dart + inventory reconcile; engine 0-err, dart analyze clean, REPL 547/547, branch 066-abandon-stub-cleanup @ 6c9cb8f1) which subsumes the tombstone, so (B) stands. (A) OVERTURNED — see ITEM-06: the antlr4 spike was §1.14-APPROVED by Gabi+Udi 20260804, one day after the rider this closure relied on, so a feature with live in-flight work sits at `closed` because of MY advance. ariellas FLAGged the closed state 153600Z suspecting a CRDT state-regression; ANSWERED 153700Z — single-host deliberate origin, NOT a regression, no defect to open. Repair proposed (not executed): olamnit re-advances + publishes; I import. I do not own the feature and will not reverse a peer-rider disposition on peer testimony |
 | ITEM-04 post-wave-consolidation-verified-gap-closure-repl-engine-full-gleam | EXTERNAL | external-gate | **disposed — closed by owner 20260804T163500Z** | — | ariellas' feature (mrun-35df7ddfe4ec); their receipts disposed it: shipped **v2026.08.04.1** (tag verified on origin from this host) + /bk-close complete (retro `…20260804T162757Z936b7b`, 0 stale actions), roadmap advanced promoted→shipped→released→closed by the owner. Nothing for wave-6 to advance — the disposition is theirs and it is done |
 | ITEM-05 qr-link-provisioning | US3 | story | parked (graduation proposal) | engineer decision | Brief re-read 2026-08-03: MANDATORY first-class security hardening (Gabi correction 2026-07-08 — trunk key never rendered; short-lived per-device derived credentials, encrypted QR payloads, audit+revocation as preconditions) + Android consumer pairing (olamnit-assistant) ⇒ PROPOSAL: graduate to its own /bk-specify pipeline per the brief's own hand-off, not an in-wave task; wave-6 records deferred-to-own-feature once the engineer confirms |
-| ITEM-06 antlr4-shared-grammar-spike | US4 | story | **superseded (by peer rider) — CONTRADICTED 20260804T153550Z (engineer ruling needed)** | engineer (which ruling governs) | ariellas 210601Z: "antlr4 superseded (G5)" under the Option-B re-scope ruling; roadmap rider executed with their implement-complete receipts @ 459be1b2. **CONTRADICTION**: olamnit 20260804T153401Z reports the antlr4 shared-grammar spike **§1.14 gate APPROVED (Gabi + Udi, 20260804)** with Glp.g4 authoring next → C# parser gen → coverage + IL-parity harness → REPORT.md. The approval post-dates the rider by one day and is higher authority. Open question put to ariellas 153550Z: was G5 supersession **064-scoped** (→ ledger wording fix only) or **repo-wide** (→ two engineer rulings genuinely collide)? NOT re-disposed from this side — a rider-recorded disposition is not reversed on a second peer message |
+| ITEM-06 antlr4-shared-grammar-spike | US4 | story | **RESOLVED 20260804T174506Z — the supersession is STALE; revived, owned by olamnit/065** (roadmap state change still engineer-gated, see tooling gap) | engineer (roadmap re-open mechanism only — the *substance* is settled) | **RESOLUTION**: olamnit confirmed the discriminator I asked for — **§1.14 approval dated 20260804, authority Gabi + Udi** (owner + language authority, DISCIPLINE §1.14 / Constitution IV-a), **scope: faithful, additive `Glp.g4` describing the EXISTING accepted GLP syntax, no syntax change, under their 065 line**. It post-dates ariellas' 210601Z "antlr4 superseded (G5)" rider by one day and is the later, higher authority ⇒ it **revives Scope A**. Already implemented on their side: `Glp.g4` + generated C# parser + coverage harness, **SC-001 7/7 parity**, `REPORT.md` GO-WITH-CONDITIONS (SC-002 IL-parity deferred to a PREP feature), committed `365e64cc`/`ce44ba0b` pushed. My prior evidence retained: | ariellas 210601Z: "antlr4 superseded (G5)" under the Option-B re-scope ruling; roadmap rider executed with their implement-complete receipts @ 459be1b2. **CONTRADICTION**: olamnit 20260804T153401Z reports the antlr4 shared-grammar spike **§1.14 gate APPROVED (Gabi + Udi, 20260804)** with Glp.g4 authoring next → C# parser gen → coverage + IL-parity harness → REPORT.md. The approval post-dates the rider by one day and is higher authority. Open question put to ariellas 153550Z: was G5 supersession **064-scoped** (→ ledger wording fix only) or **repo-wide** (→ two engineer rulings genuinely collide)? NOT re-disposed from this side — a rider-recorded disposition is not reversed on a second peer message |
 | ITEM-07 durable-listener-service-box (064) | EXTERNAL | external-gate | parked | G1 | own track; ship-ready; engineer keystroke pending |
 | ITEM-08 ynet-human-memorable-decentralized-naming-resolver | US6 | triage | pending | G2 | roadmap: captured |
 | ITEM-09 ynet-mobile-background-battery-budget-scheduling-policy | US6 | triage | pending | G2 | roadmap: captured |
@@ -141,3 +141,52 @@ graduation confirm. No peer dependency remains on the critical path.
   scope for the Gleam↔bridge leg and the two runtimes ship **opposite defaults on that one seam**.
   That asymmetry is jointly ours once the engineer rules; it stays in our evidence inventory,
   unfixed from this side.
+
+## FLEET FINDING — `closed` is a one-way door in the roadmap CLI (engineer decision needed)
+
+Surfaced by olamnit 20260804T174506Z while answering the ITEM-06 contradiction, and it outranks
+the individual dispute that exposed it:
+
+> "the roadmap `reconcile`/`advance` tooling currently can't reverse a `closed` state, so the
+> mechanism itself needs the engineer too"
+
+**Why this matters beyond one row.** `closed` is reachable by a **single host's** advance but is
+**not reversible by any host's** advance, in a fleet whose three journals merge by CRDT union.
+That combination means one host can permanently pin a shared feature's state on evidence that a
+peer later overturns — which is exactly what happened here:
+
+1. I advanced `glp-runtime-consol` → `closed` (wave-6 ITEM-03) on a premise that included
+   ariellas' G5 supersession of Scope A.
+2. A **later, higher engineer authority** (§1.14, 20260804, Gabi + Udi) revived Scope A under
+   olamnit's 065.
+3. The row is now wrong on every host, and **no host can advance it back** — the repair needs the
+   engineer both for the ruling *and* for the mechanism.
+
+This shape recurs every time a consolidation wave disposes an item a peer later revives, so it is
+not a one-off. Recorded as a fleet finding, **not** fixed from this side.
+
+**Companion item, same class**: ariellas' `.import-manifest.json` conflict-on-every-multi-host-ship
+(third occurrence: `b5998681`, `7e1c055e`, `0d2739b1`). Both are "multi-host roadmap mechanics need
+an engineer decision, not a per-host workaround". My position on that one, if asked: gitignore the
+mirror — the PGlite catalog is authoritative and the manifest is a derived projection. olamnit has
+since confirmed **no objection to a re-derive** (their 174506Z), so the fleet has no dissent on the
+substance, only an unmade decision.
+
+## Peer-round record — 2026-08-04 evening (all three hosts converged)
+
+- **ITEM-06 CONTRADICTION → RESOLVED** (above). The substance is settled by olamnit's confirmation;
+  only the roadmap re-open remains, blocked by the tooling gap.
+- **ITEM-03 Scope-B**: olamnit agreed the annotation — complete removal @ `6c9cb8f1` subsumes the
+  tombstone; no re-open on that half.
+- **CONFLICT-2 (066 number) — CLOSED**: olamnit accepted renumber-at-merge in full; first-lander
+  (`066-wave6-consolidation`, ours) keeps 066; their `066-abandon-stub-cleanup` renumbers at merge;
+  their next branch is 068+; `067` is ours. Directory names differ ⇒ no path conflict.
+- **CalVer**: olamnit ANNOUNCEd `v2026.08.04.2` for their 065 (antlr4 US1 + Scope B, `ce44ba0b`);
+  **ACKed uncontested from here** — our 064 is not mid-cut and will re-announce for whatever is
+  free when it finally cuts. Verified `v2026.08.04.1` (ariellas) is the only 08-04 tag on origin.
+- **Fleet fact worth the engineer's attention**: *all three hosts* are now blocked on the same
+  interactive ship approval — ariellas hit it on 064 (before their engineer cleared it), olamnit
+  reports it for 065, and this host hit it on both buildkit branches. It is one systemic gate, not
+  three independent stalls.
+- **Repo-wide trunk-key finding**: three-for-three — both peers have explicitly declined to fix it
+  independently, so no host will fork history behind the others' backs.
