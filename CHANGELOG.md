@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [v2026.08.04.2] - 2026-08-04
+
+### Fixed
+- commit ANTLR-generated gen/ so the spike harness builds from a clean checkout (codexreview HIGH: gen/ was gitignored but Harness.csproj compiles it — SC-001 now reproducible-from-source w/o jar/Java)
+- remove dead AbandonOps stub (US2/Scope B) — abandon is anon-writer discard (062 US5)
+
+### Changed
+- Merge pull request #133 from olamni-glp/065-glp-runtime-consol
+- Merge remote-tracking branch 'origin/develop' into 065-glp-runtime-consol
+- .specify updates
+- impl(065): US1 antlr4 grammar spike T010-T017 — faithful Glp.g4 (§1.14-approved) + generated C# parser + coverage harness (SC-001 7/7 parity) + REPORT (GO-WITH-CONDITIONS, SC-002 IL-bridge deferred); REPL 547/547
+- sync round — import 28 files/164 lines (guid-union, 0 re-seq), converge to 18/99/2740, export+publish olamnit; replay-verify OK
+- bk-close retro mirror (5 findings) + post-ship roadmap advance to closed + export 18/99/2740
+- Merge pull request #132 from olamni-glp/main
+- mid-pipeline restart handover — US2 done, US1 at §1.14 gate, codex fixed, 066 F1/F2 review
+- spike(065): US1 antlr4 prep (T007-T009) + STOP at T010 §1.14 gate — written owner proposal, awaiting Gabi+Udi
+- tasks(065): glp-runtime-consol — 17 tasks, US2 first (no gate), US1 spike (T010 §1.14 gate)
+- plan(065): glp-runtime-consol plan + research + design artifacts (spike additive, IV-a gated)
+- spec(065): glp-runtime-consol — antlr4 grammar spike + abandon dead-stub cleanup
+
 ## [v2026.08.04.1] - 2026-08-04
 
 ### Changed
