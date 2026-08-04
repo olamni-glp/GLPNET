@@ -1,0 +1,8 @@
+% glp_embed_host_fixture.glp — minimal embedded-host program (feature 064,
+% T030). One output-emitting predicate so the host test can observe a
+% ProgramOutput event ahead of the run's Outcome (the output_capture_test
+% emit shape).
+-mode(system).
+
+procedure emit(Constant?).
+emit(X) :- ground(X?) | '_output'(X?).

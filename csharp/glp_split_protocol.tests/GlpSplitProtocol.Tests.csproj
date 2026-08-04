@@ -1,0 +1,41 @@
+<!--
+  glp_split_protocol.tests — xUnit suite for the 064 US3 IL request kinds
+  (T024; contracts/il-request-kind.md): LOAD_IL/RUN_GOAL_IL round-trip, the
+  062 hardening refusal taxonomy as typed responses, the text/IL never-mixed
+  session gate, the corpus equivalence sweep (IL path == text path over
+  programs/tests/typed, SC-003), and the compiler-absence build assertion over
+  the engine host's IL execute path.
+
+  csproj shape mirrors glp_engine_host.tests (the repo's per-project
+  `dotnet test csharp/<project>` suite convention — no solution file).
+
+  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+    <ProjectReference Include="..\glp_engine_host\GlpEngineHost.csproj" />
+    <ProjectReference Include="..\glp_repl_client\GlpReplClient.csproj" />
+    <ProjectReference Include="..\glp_il_codec\GlpIlCodec.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 
 using GlpRuntime.Link.Seam;
 
@@ -43,8 +44,65 @@ public sealed class TcpTransport : ILinkTransport
         }
         finally
         {
-            // One link per listen for the base MVP (a multi-accept loop is a transport-leaf
-            // concern, Phase 6); stop the listener so the port is released for re-use.
+            // One link per listen for the base MVP; stop the listener so the port is
+            // released for re-use. Multi-client servers use <see cref="AcceptLoopAsync"/>
+            // (feature 064 US2, T015) — this single-accept path is preserved unchanged
+            // for existing callers.
+            listener.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Continuous multi-accept loop (feature 064 US2, T015): bind ONE OS listener on
+    /// <paramref name="local"/> and yield an <see cref="ILinkEndpoint"/> for every client
+    /// that connects, until <paramref name="ct"/> cancels — none dropped (connects that
+    /// arrive between yields queue in the OS accept backlog). Cancellation ends the
+    /// enumeration cleanly (no throw) and stops the listener so the port is released.
+    /// </summary>
+    /// <remarks>
+    /// This is the TCP counterpart of <see cref="MultiAcceptListener.AcceptManyAsync"/>,
+    /// which cannot serve TCP: it composes over N CONCURRENT <see cref="ListenAsync"/>
+    /// parks on one address, but each TCP listen binds the port, so the second concurrent
+    /// bind would refuse with address-in-use — a raw socket needs one bound listener and a
+    /// serial accept loop instead. Honors the D-9 point-to-point base: each accept is an
+    /// independent bilateral link, never a fan-out hub. All accepted endpoints carry the
+    /// listen-side <see cref="LinkId"/> (nonce = port), matching what
+    /// <see cref="ConnectAsync"/> gives each client (FR-002 both-ends-equivalent);
+    /// per-client identity is the session layer's concern (064 ClientSession.session_id),
+    /// not the transport's.
+    /// <para><paramref name="onBound"/> fires once, synchronously, the moment the OS listener
+    /// is bound — the seam a caller needs to publish a readiness token only AFTER the bind
+    /// really succeeded (a failed bind throws out of the first enumeration step instead).</para>
+    /// </remarks>
+    public async IAsyncEnumerable<ILinkEndpoint> AcceptLoopAsync(
+        LinkScheme scheme, LinkAddress local, LinkOptions opts,
+        [EnumeratorCancellation] CancellationToken ct = default,
+        Action? onBound = null)
+    {
+        Require(scheme);
+        int port = RequirePort(local, "listen");
+        var listener = new TcpListener(ParseIp(local.Host), port);
+        listener.Start();
+        onBound?.Invoke();
+        try
+        {
+            while (true)
+            {
+                TcpClient client;
+                try
+                {
+                    client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    yield break; // stopped — clean termination, finally releases the port
+                }
+                Configure(client);
+                yield return new TcpEndpoint(new LinkId(LinkScheme.Tcp, local, LinkNonce.Int(port)), client);
+            }
+        }
+        finally
+        {
             listener.Stop();
         }
     }

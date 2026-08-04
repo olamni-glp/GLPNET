@@ -14,18 +14,26 @@
 ////   builder keeps exactly one canonical state per (baseName, isDual), Gleam's
 ////   full-record structural equality (used for the transition `Dict` keys) is
 ////   equivalent on every reachable state — `dual` preserves isFinal/isProcedure.
-//// - Dart throws `UnknownTypeError`/`StateError`; those are invariant violations
-////   (the checker validates type references upstream), so the port panics the
-////   same way rather than threading a Result (matching type_conversion.gleam).
+//// - Dart's `StateError` sites are invariant violations (the checker validates
+////   system states upstream), so the port panics the same way. Dart's
+////   `UnknownTypeError`, by contrast, IS reachable from user input (e.g. a
+////   parameterized-type arity mismatch leaves the raw name unexpanded —
+////   programs/tests/typed/param_arity_mismatch.glp) and in Dart is a CATCHABLE
+////   exception the loader wraps into a graceful diagnostic. Feature 064 T035
+////   (wave-2 Finding F1, rulings.md): the automaton build therefore returns
+////   `Result(_, DfaBuildError)` instead of panicking, so the loader surfaces
+////   the same `UnknownTypeError: <name>` message as a staged type-check error
+////   and the REPL survives.
 
 import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/set.{type Set}
 import glp/analysis/type_ast.{
-  type ConstValue, type ProcDecl, type TypeDef, type TypeEnvironment,
+  type ConstValue, type Pos, type ProcDecl, type TypeDef, type TypeEnvironment,
   type TypeExpr,
 }
 import glp/analysis/type_checker/mode.{type Mode, Input, Output}
@@ -67,6 +75,14 @@ pub type Automaton {
 /// The complete DFA for a typed GLP program.
 pub type ProgramDfa {
   ProgramDfa(states: Dict(String, DfaState), automata: Dict(String, Automaton))
+}
+
+/// A user-reachable automaton-build failure (Dart `UnknownTypeError` — a
+/// catchable exception there; a returned error here, 064 T035 / Finding F1).
+/// `name` is rendered exactly as the Dart message tail (`Stream?` keeps its
+/// complement mark).
+pub type DfaBuildError {
+  UnknownTypeError(name: String, pos: Pos)
 }
 
 // ============================================================================
@@ -283,8 +299,11 @@ pub fn get_automaton(dfa: ProgramDfa, type_name: String) -> Automaton {
 // ============================================================================
 
 /// Build the complete program DFA from the type environment
-/// (Dart `buildProgramDFA`).
-pub fn build_program_dfa(env: TypeEnvironment) -> ProgramDfa {
+/// (Dart `buildProgramDFA`). An unknown type reference reaching automaton
+/// construction is returned as `UnknownTypeError`, never panicked (064 T035).
+pub fn build_program_dfa(
+  env: TypeEnvironment,
+) -> Result(ProgramDfa, DfaBuildError) {
   // States for defined types (both T and T?), created BEFORE any automata so
   // cross-type references resolve.
   let states_with_types =
@@ -312,28 +331,36 @@ pub fn build_program_dfa(env: TypeEnvironment) -> ProgramDfa {
     })
 
   // Automata for defined types (T with declared modes, T? with all flipped).
-  let automata_with_types =
-    list.fold(dict.to_list(env.types), system_automata(states), fn(acc, entry) {
-      let #(type_name, type_def) = entry
-      acc
-      |> dict.insert(type_name, build_type_automaton(type_def, states, False))
-      |> dict.insert(
-        type_name <> "?",
-        build_type_automaton(type_def, states, True),
-      )
-    })
+  use automata_with_types <- result.try(
+    list.try_fold(
+      dict.to_list(env.types),
+      system_automata(states),
+      fn(acc, entry) {
+        let #(type_name, type_def) = entry
+        use plain <- result.try(build_type_automaton(type_def, states, False))
+        use dual <- result.try(build_type_automaton(type_def, states, True))
+        Ok(
+          acc
+          |> dict.insert(type_name, plain)
+          |> dict.insert(type_name <> "?", dual),
+        )
+      },
+    ),
+  )
   // Procedure automata.
-  let automata =
-    list.fold(
+  use automata <- result.try(
+    list.try_fold(
       dict.to_list(env.procedures),
       automata_with_types,
       fn(acc, entry) {
         let #(proc_key, proc_decl) = entry
-        dict.insert(acc, proc_key, build_procedure_automaton(proc_decl, states))
+        use automaton <- result.try(build_procedure_automaton(proc_decl, states))
+        Ok(dict.insert(acc, proc_key, automaton))
       },
-    )
+    ),
+  )
 
-  ProgramDfa(states, automata)
+  Ok(ProgramDfa(states, automata))
 }
 
 /// The 13 system states (complement pairs plus the anonymous final).
@@ -389,15 +416,15 @@ fn build_type_automaton(
   type_def: TypeDef,
   states: Dict(String, DfaState),
   is_dual: Bool,
-) -> Automaton {
+) -> Result(Automaton, DfaBuildError) {
   let start_state_name = case is_dual {
     True -> type_def.name <> "?"
     False -> type_def.name
   }
   let start_state = get_state(states, start_state_name)
 
-  let #(transitions, accepted_primitives) =
-    list.fold(
+  use #(transitions, accepted_primitives) <- result.try(
+    list.try_fold(
       type_def.alternatives,
       #(dict.new(), set.new()),
       fn(acc, alt) {
@@ -412,20 +439,20 @@ fn build_type_automaton(
             }
           _ -> primitives
         }
-        let transitions =
-          add_type_transitions(
-            start_state,
-            alt,
-            Output,
-            states,
-            transitions,
-            is_dual,
-          )
-        #(transitions, primitives)
+        use transitions <- result.try(add_type_transitions(
+          start_state,
+          alt,
+          Output,
+          states,
+          transitions,
+          is_dual,
+        ))
+        Ok(#(transitions, primitives))
       },
-    )
+    ),
+  )
 
-  Automaton(start_state, transitions, accepted_primitives)
+  Ok(Automaton(start_state, transitions, accepted_primitives))
 }
 
 /// Add transitions from a type alternative (Dart `_addTypeTransitions`).
@@ -438,41 +465,47 @@ fn add_type_transitions(
   states: Dict(String, DfaState),
   transitions: Dict(#(DfaState, TransitionLabel), DfaState),
   is_dual: Bool,
-) -> Dict(#(DfaState, TransitionLabel), DfaState) {
+) -> Result(Dict(#(DfaState, TransitionLabel), DfaState), DfaBuildError) {
   case alt {
     type_ast.ConstantAlt(value, _) -> {
       let label = transition_label_constant_value(value)
-      dict.insert(transitions, #(from_state, label), get_state(states, "_FINAL_"))
+      Ok(dict.insert(
+        transitions,
+        #(from_state, label),
+        get_state(states, "_FINAL_"),
+      ))
     }
     type_ast.ListNilAlt(_) -> {
       let label = transition_label_constant_symbol("[]")
-      dict.insert(transitions, #(from_state, label), get_state(states, "_FINAL_"))
+      Ok(dict.insert(
+        transitions,
+        #(from_state, label),
+        get_state(states, "_FINAL_"),
+      ))
     }
     type_ast.ListConsAlt(head, tail, _) -> {
       let head_mode = maybe_flip(mode_of(head, context_mode), is_dual)
       let tail_mode = maybe_flip(mode_of(tail, context_mode), is_dual)
       let head_label = transition_label_functor("[|]", 2, 1, Some(head_mode))
       let tail_label = transition_label_functor("[|]", 2, 2, Some(tail_mode))
-      transitions
-      |> dict.insert(
-        #(from_state, head_label),
-        resolve_type_expr(head, states, is_dual),
-      )
-      |> dict.insert(
-        #(from_state, tail_label),
-        resolve_type_expr(tail, states, is_dual),
+      use head_state <- result.try(resolve_type_expr(head, states, is_dual))
+      use tail_state <- result.try(resolve_type_expr(tail, states, is_dual))
+      Ok(
+        transitions
+        |> dict.insert(#(from_state, head_label), head_state)
+        |> dict.insert(#(from_state, tail_label), tail_state),
       )
     }
     type_ast.StructAlt(functor, args, _) -> {
       let arity = list.length(args)
-      list.index_fold(args, transitions, fn(acc, arg_type, i) {
+      args
+      |> list.index_map(fn(arg_type, i) { #(arg_type, i) })
+      |> list.try_fold(transitions, fn(acc, indexed) {
+        let #(arg_type, i) = indexed
         let arg_mode = maybe_flip(mode_of(arg_type, context_mode), is_dual)
         let label = transition_label_functor(functor, arity, i + 1, Some(arg_mode))
-        dict.insert(acc, #(from_state, label), resolve_type_expr(
-          arg_type,
-          states,
-          is_dual,
-        ))
+        use target <- result.try(resolve_type_expr(arg_type, states, is_dual))
+        Ok(dict.insert(acc, #(from_state, label), target))
       })
     }
     type_ast.DiffListAlt(content, hole, _) -> {
@@ -480,18 +513,16 @@ fn add_type_transitions(
       let hole_mode = maybe_flip(mode_of(hole, context_mode), is_dual)
       let content_label = transition_label_functor("\\", 2, 1, Some(content_mode))
       let hole_label = transition_label_functor("\\", 2, 2, Some(hole_mode))
-      transitions
-      |> dict.insert(
-        #(from_state, content_label),
-        resolve_type_expr(content, states, is_dual),
-      )
-      |> dict.insert(
-        #(from_state, hole_label),
-        resolve_type_expr(hole, states, is_dual),
+      use content_state <- result.try(resolve_type_expr(content, states, is_dual))
+      use hole_state <- result.try(resolve_type_expr(hole, states, is_dual))
+      Ok(
+        transitions
+        |> dict.insert(#(from_state, content_label), content_state)
+        |> dict.insert(#(from_state, hole_label), hole_state),
       )
     }
     // TypeRef / PrimitiveModeAlt as a bare alternative: no transitions.
-    _ -> transitions
+    _ -> Ok(transitions)
   }
 }
 
@@ -514,36 +545,40 @@ fn mode_of(expr: TypeExpr, context_mode: Mode) -> Mode {
 }
 
 /// Resolve a type expression to a DFA state (Dart `_resolveTypeExpr`) — XOR of
-/// the reference's own complement with the automaton complement flag.
+/// the reference's own complement with the automaton complement flag. An
+/// unknown type reference is returned (Dart's catchable `UnknownTypeError`),
+/// never panicked (064 T035).
 fn resolve_type_expr(
   expr: TypeExpr,
   states: Dict(String, DfaState),
   is_dual: Bool,
-) -> DfaState {
+) -> Result(DfaState, DfaBuildError) {
   case expr {
     type_ast.PrimitiveModeAlt(is_input, _) -> {
       let final_is_complement = is_input != is_dual
       case final_is_complement {
-        True -> get_state(states, "_?")
-        False -> get_state(states, "_")
+        True -> Ok(get_state(states, "_?"))
+        False -> Ok(get_state(states, "_"))
       }
     }
-    type_ast.TypeRef(name, is_input, _, _) -> {
+    type_ast.TypeRef(name, is_input, _, pos) -> {
       let final_is_complement = is_input != is_dual
       case name {
-        "Integer" -> primitive_state(states, "Integer", final_is_complement)
-        "Real" -> primitive_state(states, "Real", final_is_complement)
-        "Number" -> primitive_state(states, "Number", final_is_complement)
-        "String" -> primitive_state(states, "String", final_is_complement)
-        "Any" -> primitive_state(states, "Any", final_is_complement)
+        "Integer" -> Ok(primitive_state(states, "Integer", final_is_complement))
+        "Real" -> Ok(primitive_state(states, "Real", final_is_complement))
+        "Number" -> Ok(primitive_state(states, "Number", final_is_complement))
+        "String" -> Ok(primitive_state(states, "String", final_is_complement))
+        "Any" -> Ok(primitive_state(states, "Any", final_is_complement))
         _ -> {
           let target_name = case final_is_complement {
             True -> name <> "?"
             False -> name
           }
           case dict.get(states, target_name) {
-            Ok(s) -> s
-            Error(_) -> panic as { "UnknownTypeError: " <> name }
+            Ok(s) -> Ok(s)
+            // Dart raised `UnknownTypeError: <name>` here (message keeps the
+            // bare name, matching the former panic text).
+            Error(_) -> Error(UnknownTypeError(name, pos))
           }
         }
       }
@@ -564,24 +599,47 @@ fn primitive_state(
 }
 
 /// Build an automaton for a procedure declaration (Dart
-/// `_buildProcedureAutomaton`). Argument transitions have no mode.
+/// `_buildProcedureAutomaton`). Argument transitions have no mode. An unknown
+/// argument type (e.g. a parameterized-type arity mismatch leaving the raw
+/// name unexpanded — Finding F1's `Stream(Integer, String)?`) is returned as
+/// `UnknownTypeError`, never panicked (064 T035).
 fn build_procedure_automaton(
   proc_decl: ProcDecl,
   states: Dict(String, DfaState),
-) -> Automaton {
+) -> Result(Automaton, DfaBuildError) {
   let proc_state = get_state(states, type_ast.qualified_key(proc_decl))
   let arity = type_ast.arity(proc_decl)
-  let transitions =
-    list.index_fold(proc_decl.arg_types, dict.new(), fn(acc, arg_type, i) {
+  use transitions <- result.try(
+    proc_decl.arg_types
+    |> list.index_map(fn(arg_type, i) { #(arg_type, i) })
+    |> list.try_fold(dict.new(), fn(acc, indexed) {
+      let #(arg_type, i) = indexed
       let label = transition_label_functor(proc_decl.name, arity, i + 1, None)
       let target_name = get_full_type_name(arg_type)
-      let target = case dict.get(states, target_name) {
-        Ok(s) -> s
-        Error(_) -> panic as { "UnknownTypeError: " <> target_name }
+      case dict.get(states, target_name) {
+        Ok(target) -> Ok(dict.insert(acc, #(proc_state, label), target))
+        // Dart raised `UnknownTypeError: <full name>` here (the full name
+        // keeps the complement mark — `Stream?`, matching the former panic
+        // text and the Dart/C# diagnostic).
+        Error(_) -> Error(UnknownTypeError(target_name, expr_pos(arg_type)))
       }
-      dict.insert(acc, #(proc_state, label), target)
-    })
-  Automaton(proc_state, transitions, set.new())
+    }),
+  )
+  Ok(Automaton(proc_state, transitions, set.new()))
+}
+
+/// The source position of a type expression (for the returned
+/// `UnknownTypeError` — every `TypeExpr` variant carries its `Pos`).
+fn expr_pos(expr: TypeExpr) -> Pos {
+  case expr {
+    type_ast.TypeRef(_, _, _, pos) -> pos
+    type_ast.ConstantAlt(_, pos) -> pos
+    type_ast.StructAlt(_, _, pos) -> pos
+    type_ast.ListNilAlt(pos) -> pos
+    type_ast.ListConsAlt(_, _, pos) -> pos
+    type_ast.PrimitiveModeAlt(_, pos) -> pos
+    type_ast.DiffListAlt(_, _, pos) -> pos
+  }
 }
 
 /// The full type name including `?` for input mode (Dart `_getFullTypeName`).
