@@ -67,7 +67,6 @@
     <Compile Include="lib/multiagent/payload_serializer.cs" />
     <Compile Include="lib/multiagent/repl_play_runner.cs" />
     <Compile Include="lib/multiagent/variable_table.cs" />
-    <Compile Include="lib/runtime/abandon.cs" />
     <Compile Include="lib/runtime/body_kernels.cs" />
     <Compile Include="lib/runtime/cells.cs" />
     <Compile Include="lib/runtime/commit.cs" />

@@ -1,0 +1,8 @@
+# Heavy binary — not committed (T007 documents re-download; only needed to *re*generate gen/).
+antlr-*-complete.jar
+harness/bin/
+harness/obj/
+# NOTE: gen/ (the ANTLR-generated C# parser, T011) IS committed so the harness builds
+# from a clean checkout with only a NuGet restore + the engine project reference — no
+# jar/Java needed to reproduce the SC-001 coverage result. Regenerate with the T011
+# command in REPORT.md if Glp.g4 changes.

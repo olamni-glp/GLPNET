@@ -1,0 +1,37 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+
+IL-parity / coverage harness for the antlr4-glp-grammar spike (T012/T013).
+Compiles the ANTLR-generated parser (../gen) against the ANTLR C# runtime and
+references the production engine for the hand-written parser (ground truth).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>glp_grammar_spike_harness</AssemblyName>
+    <RootNamespace>GlpGrammarSpike</RootNamespace>
+    <!-- The generated parser is ANTLR boilerplate; silence its analyzer noise. -->
+    <NoWarn>CS3021;CS0108;CS0114;CS0162;CS0219;CS8981</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ANTLR-generated front-end (T011). -->
+    <Compile Include="..\gen\GlpLexer.cs" />
+    <Compile Include="..\gen\GlpParser.cs" />
+    <Compile Include="..\gen\GlpBaseListener.cs" />
+    <Compile Include="..\gen\GlpListener.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The production engine: hand-written Lexer/Parser = the ground truth. -->
+    <ProjectReference Include="..\..\..\out\csharp\glp_runtime_net.csproj" />
+  </ItemGroup>
+</Project>
