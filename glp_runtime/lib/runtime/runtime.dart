@@ -5,7 +5,6 @@ import 'machine_state.dart';
 import 'heap_fcp.dart';
 import 'suspend_ops.dart';
 import 'commit.dart';
-import 'abandon.dart';
 import 'fairness.dart';
 import 'system_predicates.dart';
 import 'body_kernels.dart';
