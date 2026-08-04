@@ -1,0 +1,8 @@
+   Compiled in 0.13s
+    Running glp_gleam.main
+GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
+GLP> ✓ Loaded: ../programs/tests/link/mon.glp
+GLP> R = res([7, 8, 9], [closed(link_id("tcp", ep("127.0.0.1", 9130), 1), "eos")])
+→ succeeds
+
+GLP> Goodbye!

@@ -1,0 +1,8 @@
+   Compiled in 0.13s
+    Running glp_gleam.main
+GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
+GLP> ✓ Loaded: ../programs/tests/link/mon.glp
+GLP> X = res([], [])
+→ succeeds
+
+GLP> Goodbye!

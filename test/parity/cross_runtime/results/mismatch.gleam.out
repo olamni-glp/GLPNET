@@ -1,0 +1,11 @@
+   Compiled in 0.13s
+    Running glp_gleam.main
+GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
+GLP> ✓ Loaded: ../programs/tests/link/pc.glp
+GLP> [ABORT] '_link_setup'/5: no transport registered for scheme 'bogus'
+Link = ch(X20, X22)
+Faults = X14
+→ failed
+Error: goal failed: no matching clause
+
+GLP> Goodbye!

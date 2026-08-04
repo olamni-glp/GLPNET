@@ -1,0 +1,18 @@
+╔════════════════════════════════════════╗
+║  GLP REPL - With Type Checking         ║
+╚════════════════════════════════════════╝
+
+Build: 848ad8a4 docs(065): mid-pipeline restart handover — US2 done, US1 at §1.14 gate, codex fixed, 066 F1/F2 review
+Compiled: 2026-02-01 (GlpEngine refactor)
+Working directory: D:\bstdev\research\glp\glpnet
+
+Input: filename.glp to load, or goal to execute
+Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
+
+Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+
+GLP> ✓ Loaded: programs/tests/link/bidi.glp
+GLP> Got = [1, 2, 3]
+→ succeeds
+
+GLP> Goodbye!
