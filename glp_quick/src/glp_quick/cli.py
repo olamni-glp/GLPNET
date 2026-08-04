@@ -32,6 +32,11 @@ app = typer.Typer(
 cert_app = typer.Typer(no_args_is_help=True, help="Shared self-signed certificate operations (FR-003).")
 app.add_typer(cert_app, name="cert")
 
+# feature 067 — QR-code link + cert provisioning (derived credentials; trunk key never rendered)
+from glp_quick.provision.cli_commands import provision_app  # noqa: E402
+
+app.add_typer(provision_app, name="provision")
+
 _SKELETON = "[glp-quick:skeleton]"
 
 

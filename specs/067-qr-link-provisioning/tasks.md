@@ -13,7 +13,7 @@ repo discipline is test-gated (Constitution VII).
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `segno` and `fpdf2` to `glp_quick/pyproject.toml` dependencies; create package
+- [X] T001 Add `segno` and `fpdf2` to `glp_quick/pyproject.toml` dependencies; create package
       skeleton `glp_quick/src/glp_quick/provision/__init__.py`; install into `glp_quick/.venv`
 - [ ] T002 Verify `glpquick-cert/` (and add `glpquick-derived/`) are gitignored; create the
       `glpquick-cert/provision/` store path convention in `glp_quick/src/glp_quick/provision/__init__.py`
@@ -21,18 +21,18 @@ repo discipline is test-gated (Constitution VII).
 
 ## Phase 2: Foundational (blocking all user stories)
 
-- [ ] T003 [P] Implement `derive_device_cert()` in `glp_quick/src/glp_quick/cert.py`: mint
+- [X] T003 [P] Implement `derive_device_cert()` in `glp_quick/src/glp_quick/cert.py`: mint
       device keypair + trunk-signed TTL-bounded cert (default 30 days) + SPKI fingerprint,
       reusing the existing pin math; private key returned in memory only (research R-003)
-- [ ] T004 [P] Implement scrypt+AES-256-GCM envelope + 6-word one-time passphrase generation in
+- [X] T004 [P] Implement scrypt+AES-256-GCM envelope + 6-word one-time passphrase generation in
       `glp_quick/src/glp_quick/provision/crypto.py` per contracts/payload-contract.md §2
-- [ ] T005 [P] Implement bundle build/serialize + GQP1 chunking + order-independent assembly
+- [X] T005 [P] Implement bundle build/serialize + GQP1 chunking + order-independent assembly
       with named errors (missing/corrupt/conflicting/version_mismatch) in
       `glp_quick/src/glp_quick/provision/bundle.py` per contracts/payload-contract.md §§1,3,4
-- [ ] T006 Implement append-only JSONL stores (audit/revoked/issued, per data-model.md) in
+- [X] T006 Implement append-only JSONL stores (audit/revoked/issued, per data-model.md) in
       `glp_quick/src/glp_quick/provision/audit.py` and `glp_quick/src/glp_quick/provision/revoke.py`
       — rows carry fingerprints/labels/timestamps only, never key material
-- [ ] T007 [P] Foundational unit tests in `glp_quick/tests/unit/test_provision_crypto.py` and
+- [X] T007 [P] Foundational unit tests in `glp_quick/tests/unit/test_provision_crypto.py` and
       `glp_quick/tests/unit/test_provision_bundle.py`: envelope roundtrip, wrong-passphrase
       no-partial-plaintext, chunk assembly matrix with contract error tokens
 
@@ -45,16 +45,16 @@ with derived material; trunk key never rendered.
 **Independent test**: two-host (or loopback) provision per quickstart.md — join succeeds with
 zero manual cert copying; no trunk key bytes in any rendered output.
 
-- [ ] T008 [US1] Implement `ProvisioningSession` lifecycle (open→rendered→redeemed/expired/
+- [X] T008 [US1] Implement `ProvisioningSession` lifecycle (open→rendered→redeemed/expired/
       aborted, 10-min default window, crash-recovery marks interrupted sessions expired) in
       `glp_quick/src/glp_quick/provision/session.py`
-- [ ] T009 [P] [US1] Implement segno terminal/ANSI QR rendering on a hub display page
+- [X] T009 [P] [US1] Implement segno terminal/ANSI QR rendering on a hub display page
       (display-only, passphrase shown once alongside, zero image-file writes) in
       `glp_quick/src/glp_quick/provision/qr_render.py` (+ page wiring in
       `glp_quick/src/glp_quick/terminal/pages.py`)
-- [ ] T010 [US1] Add `provision` typer sub-app with `session` and `join` commands (exit codes
+- [X] T010 [US1] Add `provision` typer sub-app with `session` and `join` commands (exit codes
       per contracts/cli-contract.md) in `glp_quick/src/glp_quick/cli.py`
-- [ ] T011 [US1] Implement consumer intake → `glpquick-derived/` writer (abort-safe: no
+- [X] T011 [US1] Implement consumer intake → `glpquick-derived/` writer (abort-safe: no
       plaintext on disk before final decrypt) in `glp_quick/src/glp_quick/provision/join.py`
 - [ ] T012 [US1] Implement `DerivedCredentialValidator` (trunk-signature check against pinned
       trunk SPKI, validity window ±90 s skew bound, revocation-set membership) in
@@ -67,9 +67,9 @@ zero manual cert copying; no trunk key bytes in any rendered output.
       in `glp_quick/src/glp_quick/stacks/csharp.py` and `glp_quick/src/glp_quick/cli.py`
 - [ ] T015 [P] [US1] C# acceptance tests (trunk accepted; derived valid/expired/not-yet-valid/
       self-signed matrix) in `csharp/glp_link.tests/DerivedCredentialTests.cs`
-- [ ] T016 [US1] Loopback integration test mint→render→join→mesh-accept in
+- [X] T016 [US1] Loopback integration test mint→render→join→mesh-accept in
       `glp_quick/tests/integration/test_provision_flow.py`
-- [ ] T017 [US1] Negative render-path tests (SC-003): no trunk-key bytes in QR payloads,
+- [X] T017 [US1] Negative render-path tests (SC-003): no trunk-key bytes in QR payloads,
       terminal output, audit rows, or any store, in
       `glp_quick/tests/unit/test_provision_posture.py`
 
@@ -81,7 +81,7 @@ zero manual cert copying; no trunk key bytes in any rendered output.
 **Independent test**: provision→revoke→rejoin-refused (`cert_revoked`); second device
 unaffected; audit answers SC-004 alone.
 
-- [ ] T018 [US2] Add `revoke` and `audit` commands (issued⋈revoked join, `--json`) in
+- [X] T018 [US2] Add `revoke` and `audit` commands (issued⋈revoked join, `--json`) in
       `glp_quick/src/glp_quick/cli.py` + `glp_quick/src/glp_quick/provision/revoke.py`
 - [ ] T019 [US2] Revocation enforcement in the listener: mtime-triggered reload re-checked per
       accept (≥ every 10 s), corrupt-file ⇒ derived path fail-closed while trunk path stays up,
@@ -107,11 +107,11 @@ unaffected; audit answers SC-004 alone.
 
 ## Phase 6: User Story 4 — Printable non-secret hand-off (P4)
 
-- [ ] T024 [US4] Implement non-secret PDF page (endpoint/pin/session/instructions; API accepts
+- [X] T024 [US4] Implement non-secret PDF page (endpoint/pin/session/instructions; API accepts
       only non-secret fields; posture-citing refusal otherwise, audited) in
       `glp_quick/src/glp_quick/provision/pdf_render.py` + `pdf` command in
       `glp_quick/src/glp_quick/cli.py`
-- [ ] T025 [P] [US4] Tests: generated PDF byte-scan contains no key material or envelope chunks;
+- [X] T025 [P] [US4] Tests: generated PDF byte-scan contains no key material or envelope chunks;
       secret-content request refuses + audits, in `glp_quick/tests/unit/test_provision_pdf.py`
 
 ## Phase 7: Polish & Cross-Cutting
@@ -140,3 +140,36 @@ MVP = Phase 1+2+3 (US1): one-scan onboarding with the full mandatory posture (de
 credential, encryption, display-only render, mint/render/issue audit rows come with T006/T008).
 US2 completes the lifecycle preconditions (revocation+audit surfaces), then US3 unblocks the
 Android consumer, then US4 convenience. Each phase ends green on both suites before the next.
+
+## Implementation status — 2026-08-04
+
+**Done (15/27)**: Python producer + lifecycle + consumer intake, fully tested.
+`glp_quick/src/glp_quick/provision/` (crypto, bundle, session, qr_render, pdf_render, audit,
+join, cli_commands) + `derive_device_cert`/`verify_derived_against_trunk` in `cert.py` + the
+`glp-quick provision` sub-app. Tests: **39 new, all green** (20 payload-contract, 9 posture/SC-003
+negatives, 10 integration). Full `glp_quick` suite **227 passed, 1 skipped, 2 failed** — both
+failures are `tests/test_gleam.py` Profile-C `quic_unsupported`, **reproduced on a clean stashed
+tree**, i.e. a pre-existing host-environment gap (quicer NIF not built), not a regression.
+
+**T002 — PARTIAL, and the reason the C# seam is not started.** `glpquick-derived/` and
+`glpquick-cert/provision/` are now gitignored and the store convention exists. The *verify* half
+FAILS: `glpquick-cert/{glpquick.key,.pem,.pfx,.fingerprint}` are **tracked in git** and on origin
+(the `.gitignore:114` rule is inert — the files predate it, added on or before `94fbe87d`). Raised
+to the engineer under the Bug Protocol; nothing was changed, and the warning is recorded inline in
+`.gitignore`.
+
+**Not started (12/27) — deliberately, not for lack of time:**
+
+- **T012–T015, T019–T021 (the C# acceptance seam)** — extending `QuicTransport`'s
+  `PinValidationCallback` to accept trunk-signed derived certs changes the mesh's **trust
+  boundary**. Doing that while the trunk private key's exposure status is unresolved would build
+  a new acceptance path on credential material of unknown standing. The Python side is designed
+  so this is a clean, self-contained follow-up: `verify_derived_against_trunk` already implements
+  the exact signature check the C# validator must mirror, and
+  `contracts/join-seam-contract.md` specifies the token set and the revocation-reload behaviour.
+- **T022–T023 (published decode vectors)** — the vector generator should emit from the *frozen*
+  contract; freezing it before the seam is implemented risks publishing a format the seam then
+  forces to change. The consumer contract itself (`contracts/payload-contract.md`) is complete
+  and implementable today.
+- **T026–T027 (quickstart validation + full-suite sign-off)** — both need the seam, since the
+  quickstart's final step is an actual mesh join.

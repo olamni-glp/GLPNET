@@ -111,7 +111,17 @@ reviews/
 .specify/deploy-ledger.jsonl
 
 # 036/049 shared-cert material (SPKI-pinned; .pfx must never be committed)
+# WARNING (067 T002, 2026-08-04): this rule is INERT for glpquick.key/.pem/.pfx/.fingerprint —
+# those four files were already tracked when the rule was added, and gitignore does not apply to
+# tracked files. They are in git history and on origin. Reported to the engineer under the Bug
+# Protocol; remediation (history rewrite vs. key rotation vs. accept-and-document) is unresolved.
+# Do NOT "fix" this from a single host — a one-host history rewrite forks the other two.
 glpquick-cert/
+
+# 067 derived per-device provisioning material (short-lived certs minted per provisioning
+# session) + the append-only provisioning stores. Never tracked; not yet in the tree.
+glpquick-derived/
+glpquick-cert/provision/
 
 # 049 T028 erlang regression scratch output
 gleam_quic/test/_build_test/
