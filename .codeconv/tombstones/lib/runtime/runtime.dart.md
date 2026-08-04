@@ -5,7 +5,6 @@ purpose: 'Central GLP runtime state (GlpRuntime): owns heap, goal queue, system 
 key_idea: Holds parallel GoalId-keyed maps (env, program, module-context, budget) plus a suspended reader-varId -> Set<GoalRef> index; commitSigmaHat delegates to CommitOps then enqueues reactivated goals; tailReduce cycles a per-goal budget for fair preemption.
 dependencies:
 - lib/bytecode/runner.dart
-- lib/runtime/abandon.dart
 - lib/runtime/body_kernels.dart
 - lib/runtime/commit.dart
 - lib/runtime/fairness.dart
