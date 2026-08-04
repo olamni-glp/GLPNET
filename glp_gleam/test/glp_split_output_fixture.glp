@@ -1,0 +1,8 @@
+% Fixture for the 064 T028 FE/BE split test (test/glp/split/febe_split_test.gleam):
+% a minimal program whose body emits captured `_output/1` text, so the R3
+% captured-output blob is exercised across the split wire. Mirrors the
+% output_capture_test emit source.
+-mode(system).
+
+procedure emit(Constant?).
+emit(X) :- ground(X?) | '_output'(X?).

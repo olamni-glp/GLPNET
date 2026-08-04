@@ -41,18 +41,26 @@ public static class RequestResponseCodec
         if (payloadType != SplitPayloadType.Request)
             throw new SplitProtocolException(
                 $"expected REQUEST payload type 0x{SplitPayloadType.Request:X2}, got 0x{payloadType:X2}");
-        if (kind is < (byte)RequestKind.LoadSource or > (byte)RequestKind.Ping)
+        if (kind is < (byte)RequestKind.LoadSource or > (byte)RequestKind.RunGoalIl)
             throw new SplitProtocolException($"unknown request kind 0x{kind:X2}");
-        // Wire contract: "bodies empty unless noted" — only LOAD_SOURCE and
-        // RUN_GOAL carry a body. A body on the other kinds is a malformed
-        // request, refused loudly rather than silently ignored (wire rule 3;
-        // codexreview 20260730T070051Z request-kind-body-not-validated).
+        // Wire contract: "bodies empty unless noted" — only LOAD_SOURCE, RUN_GOAL,
+        // LOAD_IL and RUN_GOAL_IL carry a body. A body on the other kinds is a
+        // malformed request, refused loudly rather than silently ignored (wire
+        // rule 3; codexreview 20260730T070051Z request-kind-body-not-validated).
         if (body.Length > 0 &&
             (RequestKind)kind is RequestKind.Snapshot or RequestKind.Status
                 or RequestKind.Shutdown or RequestKind.Ping)
         {
             throw new SplitProtocolException(
                 $"request kind 0x{kind:X2} must carry an empty body, got {body.Length} byte(s)");
+        }
+        // 064 US3: an IL request without a body cannot carry an envelope/goal_ref —
+        // malformed at the wire layer, refused loudly (contracts/il-request-kind.md).
+        if (body.Length == 0 &&
+            (RequestKind)kind is RequestKind.LoadIl or RequestKind.RunGoalIl)
+        {
+            throw new SplitProtocolException(
+                $"request kind 0x{kind:X2} must carry a non-empty body");
         }
         return new RequestFrame(requestId, (RequestKind)kind, body);
     }
@@ -64,7 +72,7 @@ public static class RequestResponseCodec
         if (payloadType != SplitPayloadType.Response)
             throw new SplitProtocolException(
                 $"expected RESPONSE payload type 0x{SplitPayloadType.Response:X2}, got 0x{payloadType:X2}");
-        if (kind is < (byte)ResponseKind.Result or > (byte)ResponseKind.EngineBusy)
+        if (kind is < (byte)ResponseKind.Result or > (byte)ResponseKind.IlRefused)
             throw new SplitProtocolException($"unknown response kind 0x{kind:X2}");
         return new ResponseFrame(requestId, (ResponseKind)kind, body);
     }

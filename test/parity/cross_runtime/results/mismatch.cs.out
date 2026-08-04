@@ -1,0 +1,21 @@
+╔════════════════════════════════════════╗
+║  GLP REPL - With Type Checking         ║
+╚════════════════════════════════════════╝
+
+Build: 5cce0109 refine(codexreview): cycle 3 regression fixes - accept-fault classification+pacing, bridge bind-gate race
+Compiled: 2026-02-01 (GlpEngine refactor)
+Working directory: D:\BSTDEV\research\glp\glpnet
+
+Input: filename.glp to load, or goal to execute
+Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
+
+Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
+
+GLP> ✓ Loaded: programs/tests/link/pc.glp
+GLP> [ABORT] '_link_setup'/5: transport establishment failed for link_id(bogus, 127.0.0.1:9260, 1): no transport registered for scheme 'bogus'
+ERROR: Body kernel _link_setup/5 aborted
+Link = ch(X20, X22)
+Faults = <unbound>
+→ failed
+
+GLP> Goodbye!
