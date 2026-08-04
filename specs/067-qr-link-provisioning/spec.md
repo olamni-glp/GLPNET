@@ -31,6 +31,30 @@ requirement below may be waived, deferred, or time-boxed away:
 6. Every render, issuance, and revocation is **audited**, and a working **revocation path** exists
    for every credential issued through this feature.
 
+## Clarifications
+
+### Session 2026-08-04
+
+Answers adopted as delegated defaults: the engineer re-issued the full pipeline chain command
+mid-clarify (2026-08-04), delegating the open questions to the suggested defaults below. Each is
+vetoable at analyze/review; a veto reopens the affected sections.
+
+- Q: How do mesh hosts accept a derived credential while 036 manual-pin trunk trust stays
+  unchanged? → A: Short-lived per-device certificates signed by the trunk key — every existing
+  host verifies against the already-pinned trunk with no new distribution channel; revocation is
+  enforced by a hub-checked revocation list at the join seam. (delegated default)
+- Q: Does revocation propagate mesh-wide or bind at the join seam? → A: Join/rejoin-seam
+  enforcement only — an already-connected revoked device is cut at its next
+  reconnect/re-authentication, not force-disconnected mesh-wide. (delegated default)
+- Q: What binds a derived credential to a device? → A: A device-generated keypair fingerprint
+  captured at provisioning, plus a human-entered device label at session start; audit records
+  carry both. (delegated default)
+- Q: Default validity/enforcement values? → A: Provisioning session window 10 minutes; derived
+  credential TTL 30 days; revocation enforcement at the join seam within 60 seconds — all three
+  are engineer-configurable (registered as key configurable items). (delegated default)
+- Q: Is the printable non-secret PDF story in scope? → A: Yes, kept at P4, strictly non-secret
+  material only. (delegated default)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One-scan desktop host onboarding via hub display page (Priority: P1)
@@ -188,15 +212,16 @@ audited.
 - **FR-002**: The producer MUST NEVER include trunk private-key material (the shared pfx/private
   key) in any rendered output — QR, PDF, display page, log, or audit record — in any encoding;
   any path that would do so MUST refuse with a posture-citing error.
-- **FR-003**: Provisioned credential material MUST be short-lived (bounded validity window),
-  per-device (bound to a device identity presented or assigned at provisioning), and revocable,
-  derived from — but never equal to — the trunk material.
+- **FR-003**: Provisioned credential material MUST be short-lived (bounded validity window,
+  default 30 days, configurable), per-device (bound to a device-generated keypair fingerprint
+  captured at provisioning plus a human-entered device label), and revocable, derived from — but
+  never equal to — the trunk material.
 - **FR-004**: Every secret-bearing QR payload MUST be encrypted; the decryption secret (one-time
   passphrase or out-of-band key) MUST travel on a separate channel from the QR imagery, and a
   wrong decryption secret MUST fail cleanly without exposing partial plaintext.
 - **FR-005**: The hub display page MUST render provisioning sessions display-only: sessions have
-  an explicit validity window, expire visibly, and no secret-bearing image is persisted to disk,
-  cache, or export by the producer.
+  an explicit validity window (default 10 minutes, configurable), expire visibly, and no
+  secret-bearing image is persisted to disk, cache, or export by the producer.
 - **FR-006**: The generated PDF MUST carry non-secret material only (endpoint, SPKI pin,
   instructions, session reference); requests to embed secret material in printable/persistable
   output MUST be refused and audited.
@@ -207,8 +232,9 @@ audited.
   audit record (actor, device identity, timestamp, event kind, outcome) queryable by the
   operator.
 - **FR-009**: The operator MUST be able to revoke an issued derived credential; a revoked
-  credential MUST be refused at join/rejoin within one declared enforcement interval, without
-  affecting other devices, and revocation MUST NOT require changing the trunk material.
+  credential MUST be refused at join/rejoin within one declared enforcement interval (default 60
+  seconds at the join seam, configurable), without affecting other devices, and revocation MUST
+  NOT require changing the trunk material.
 - **FR-010**: A provisioning session MUST be single-redemption: after a successful redemption (or
   expiry) the session's payload MUST be unusable, and repeat redemption attempts MUST be refused
   and audited.
@@ -269,11 +295,13 @@ audited.
   room); the joining device has a camera or can ingest captured QR images.
 - The one-time passphrase travels by an existing human channel (spoken, typed, messaged) and is
   out of scope to transport programmatically.
-- Per-device derived credentials are anchored in the existing 036 trunk trust without changing
-  how existing endpoints authenticate; the exact derivation and acceptance mechanism is a design
-  decision for the planning stage, bounded by FR-003/FR-009/FR-012.
-- Revocation enforcement is anchored at the mesh's join/accept seam (the hub/producer side);
-  mesh-wide push of revocation state beyond the join seam is not assumed.
+- Per-device derived credentials are short-lived per-device certificates signed by the trunk key
+  (Clarifications 2026-08-04): existing endpoints verify them against the already-pinned trunk,
+  so 036 trust anchoring is unchanged; detailed certificate profile and issuance mechanics are
+  planning-stage decisions bounded by FR-003/FR-009/FR-012.
+- Revocation enforcement is anchored at the mesh's join/accept seam via a hub-checked revocation
+  list (Clarifications 2026-08-04); an already-connected revoked device is cut at its next
+  reconnect/re-authentication — mesh-wide push of revocation state is out of scope.
 - The operator initiating a provisioning session at the hub console is authorized to do so under
   the existing operational model; no new operator-identity system is introduced, but the audit
   record captures the acting identity as known to the host.
