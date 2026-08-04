@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 | G2 | track (065) | open | specs/065 specified @ d2ea81e9; mrun-7939e12b5b70; its FR-008 5-escalate gate cascades | ITEM-11 disposition; T025/T026 |
 | G3.R1–R5 | ruling (3rtask fa8a) | open | evidence-inventory.md R1–R5 | 065 stories (cascade via G2); any wave story touching the audited seams |
 | G3.R6–R12 | ruling (064 review) | open | evidence-inventory.md R6–R12 | T022 (R6/R7 replay semantics); T023 (R6–R12 as 059-acceptance caveats) |
-| EXT.ariellas | external-ownership | open — **cause reclassified 20260804T153153Z: engineer-blocked, not peer-silence** | 064-post-wave-gap-closure seams 1–5 receipts (153205Z); carve-out CONFIRM 153920Z; implement receipts 459be1b2 (210601Z); ship (their T041) pending. **20260804T010500Z (read late — see poll-filter defect below)**: their T040 codexreview COMPLETE (run 20260803T214953Z, capped@3; 43 merged plan items, 37 finding identities, 3 refuted, 34 surfaced, 11 fixes, a third adversarial pass caught 2 fix-introduced regressions, both fixed); post-fix sweep REPL 547/546 (the single Section-I failure was a mixed-OTP glp_gleam/build collision, 0 failures in isolation after clean rebuild), Gleam 625, C# 172/47/73 + 815 tree-wide; merge conflict with olamnit's develop resolved via `import --rebuild-manifest` (merge 0d2739b1) → **PR #130 MERGEABLE/CLEAN**. Their ship needs the same interactive engineer approval ours does ⇒ the receipts were never imminent. Re-polled 153153Z | T021/T022 receipt consumption; ITEM-04; verification caveat on ITEM-12..18 closures |
+| EXT.ariellas | external-ownership | **SATISFIED 20260804T163500Z — independently verified** (ship + close receipts both landed; gate CLOSED). **T023 is NOT thereby runnable** — see the gate-arithmetic note below: tasks.md has T023 ⛔GATE(T022) and T022 ⛔GATE(T021, EXT.ariellas-US2, **G1**), so T023 now blocks solely on **G1 (our 064 ship keystroke)** plus the G3.R6–R12 rulings. The wave-8 restart brief's shorthand "their receipts clear EXT.ariellas → unblock T023" was one gate short | **SHIP RECEIPT v2026.08.04.1**: tag on origin `a3ac99d7` → commit `71f63f8c`; verified from this host — `git ls-remote --tags` shows the tag, `71f63f8c` **IS** `origin/main`, and `git merge-base --is-ancestor origin/main origin/develop` PASSES (back-merge landed, main fully contained in develop). PRs #130 (feature→develop) / #131 (release→main) / #132 (back-merge) all merged. Their ship verification gate 4/5 — the single MISS is `cli_reinstalled` (their host's CLI stale at 2026.7.30.1, exit 5 = local-tooling warning, not a workflow failure; nothing on the wire affected). **CLOSE RECEIPT**: retro `retro-064-post-wave-gap-closure-20260804T162757Z936b7b` persisted + committed `2cc238e5` on develop; action reconciliation 0 stale / 0 offers; roadmap advanced promoted→shipped→released→closed; export 18/99/2740 published. Prior evidence retained: | 064-post-wave-gap-closure seams 1–5 receipts (153205Z); carve-out CONFIRM 153920Z; implement receipts 459be1b2 (210601Z); ship (their T041) pending. **20260804T010500Z (read late — see poll-filter defect below)**: their T040 codexreview COMPLETE (run 20260803T214953Z, capped@3; 43 merged plan items, 37 finding identities, 3 refuted, 34 surfaced, 11 fixes, a third adversarial pass caught 2 fix-introduced regressions, both fixed); post-fix sweep REPL 547/546 (the single Section-I failure was a mixed-OTP glp_gleam/build collision, 0 failures in isolation after clean rebuild), Gleam 625, C# 172/47/73 + 815 tree-wide; merge conflict with olamnit's develop resolved via `import --rebuild-manifest` (merge 0d2739b1) → **PR #130 MERGEABLE/CLEAN**. Their ship needs the same interactive engineer approval ours does ⇒ the receipts were never imminent. Re-polled 153153Z | T021/T022 receipt consumption; ITEM-04; verification caveat on ITEM-12..18 closures |
 | EXT.olamnit | external-ownership | **satisfied 20260804T153401Z** | wave3-close broadcast ACK (BROADCAST-20260803T120017Z + chase 142207Z) landed after ~27 h: olamnit box `[x 20260804T153401Z]`, receipts of understanding recorded (060 shipped+closed v2026.08.03.1 via PR #127/#128/#129 @ fb980c51; D-9 run-termination-barrier + connector-dial-retry NORMATIVE; `{exit_on_close,false}` BEAM gotcha; CalVer ledger). They corrected their earlier 140315Z "nothing owed" — their cursor was behind the broadcast. ACK-RECEIVED given for their 065/066 UPDATE at 153550Z | — (thread closed; no longer blocks) |
 | OPS.buildkit-repo | operational | open | D:\bstdev\research\buildkit on foreign branch fix/opskit-pglite-package-dir with 4 modified .specify files (another session's WIP, 2026-08-03 ~2150Z) — not this session's to resolve; engineer word needed to branch/stash there | ITEM-01, ITEM-02 (US2 implementation lands in the buildkit repo) |
 
@@ -28,7 +28,7 @@ SPDX-License-Identifier: MIT
 | ITEM-01 atomic-toolchain-installs-venv-swap-post-install-smoke | US2 | story | implemented (parked: engineer landing) | engineer merge/ship (buildkit side) | UNPARKED by engineer directive ~2200Z (R5 direction: junction-swap proceeds, validation via post-flip verify+rollback — encoded). Implemented on buildkit branch feat/atomic-toolchain-installs @ 554836f6 PUSHED (ship/atomic_install.py: fresh venv + junction flip + smoke + rollback; wired at the only pip seam = ship/release reinstall; deploy installer already atomic — documented). Tests 11/11 new + ship pkg 204/204. Closes after the branch lands |
 | ITEM-02 batch-roadmap-advance-calver-version-dir-normalisation | US2 | story | implemented (parked: engineer landing) | engineer merge/ship (buildkit side) | Implemented on buildkit branch feat/batch-roadmap-advance-calver-normalisation @ 634d4a0a PUSHED (multi-id + --from/--all one-window batch; CalVer normalize at read/compare seams + reuse-before-create; nothing deletes dirs; requested-spelling deviation documented). +13 tests green; **2** (corrected 20260804T153900Z, was "1") pre-existing baseline failures reproduced on clean base a073e82d: `tests/deploy/test_chain_apply.py::test_ref_only_head_row_halts_apply_defensively` and `tests/roadmap/test_lifecycle.py::test_migration_0014_widens_an_existing_4state_catalog` — neither is a branch regression. Scoped gate 20260804: `tests/roadmap/` + `tests/deploy/` 350 passed / 1 failed / 11 errors, where all 11 errors were pgdb-lock contention from a concurrent local full-suite run (clean re-run of those 12: 61 passed / 2 failed = the two baseline failures). Ship attempted repeatedly and **refused by the local auto-mode classifier** (not by buildkit) — awaits the engineer keystroke; env gaps fixed en route (pytest-rerunfailures + pytest-timeout were undeclared/missing; worktree src must be on PYTHONPATH or tests import the main checkout's foreign branch). Closes after the branch lands |
 | ITEM-03 glp-runtime-consol | US3 | story | **closed — DISPUTED 20260804T153700Z (engineer ruling needed)** | engineer (Scope-A revival ruling) | runtime-consol-inventory.md: (B) abandon.cs tombstoned (build 0 errors, suites green @ develop baseline 165/184), (A) superseded by Option-B rider; roadmap advanced → closed. **DISPUTE**: (B) superseded upward — olamnit executed a COMPLETE REMOVAL (abandon.cs + live Dart abandon.dart + dead import in runtime.dart + inventory reconcile; engine 0-err, dart analyze clean, REPL 547/547, branch 066-abandon-stub-cleanup @ 6c9cb8f1) which subsumes the tombstone, so (B) stands. (A) OVERTURNED — see ITEM-06: the antlr4 spike was §1.14-APPROVED by Gabi+Udi 20260804, one day after the rider this closure relied on, so a feature with live in-flight work sits at `closed` because of MY advance. ariellas FLAGged the closed state 153600Z suspecting a CRDT state-regression; ANSWERED 153700Z — single-host deliberate origin, NOT a regression, no defect to open. Repair proposed (not executed): olamnit re-advances + publishes; I import. I do not own the feature and will not reverse a peer-rider disposition on peer testimony |
-| ITEM-04 post-wave-consolidation-verified-gap-closure-repl-engine-full-gleam | EXTERNAL | external-gate | parked | EXT.ariellas | ariellas' feature (mrun-35df7ddfe4ec); their US receipts will dispose it |
+| ITEM-04 post-wave-consolidation-verified-gap-closure-repl-engine-full-gleam | EXTERNAL | external-gate | **disposed — closed by owner 20260804T163500Z** | — | ariellas' feature (mrun-35df7ddfe4ec); their receipts disposed it: shipped **v2026.08.04.1** (tag verified on origin from this host) + /bk-close complete (retro `…20260804T162757Z936b7b`, 0 stale actions), roadmap advanced promoted→shipped→released→closed by the owner. Nothing for wave-6 to advance — the disposition is theirs and it is done |
 | ITEM-05 qr-link-provisioning | US3 | story | parked (graduation proposal) | engineer decision | Brief re-read 2026-08-03: MANDATORY first-class security hardening (Gabi correction 2026-07-08 — trunk key never rendered; short-lived per-device derived credentials, encrypted QR payloads, audit+revocation as preconditions) + Android consumer pairing (olamnit-assistant) ⇒ PROPOSAL: graduate to its own /bk-specify pipeline per the brief's own hand-off, not an in-wave task; wave-6 records deferred-to-own-feature once the engineer confirms |
 | ITEM-06 antlr4-shared-grammar-spike | US4 | story | **superseded (by peer rider) — CONTRADICTED 20260804T153550Z (engineer ruling needed)** | engineer (which ruling governs) | ariellas 210601Z: "antlr4 superseded (G5)" under the Option-B re-scope ruling; roadmap rider executed with their implement-complete receipts @ 459be1b2. **CONTRADICTION**: olamnit 20260804T153401Z reports the antlr4 shared-grammar spike **§1.14 gate APPROVED (Gabi + Udi, 20260804)** with Glp.g4 authoring next → C# parser gen → coverage + IL-parity harness → REPORT.md. The approval post-dates the rider by one day and is higher authority. Open question put to ariellas 153550Z: was G5 supersession **064-scoped** (→ ledger wording fix only) or **repo-wide** (→ two engineer rulings genuinely collide)? NOT re-disposed from this side — a rider-recorded disposition is not reversed on a second peer message |
 | ITEM-07 durable-listener-service-box (064) | EXTERNAL | external-gate | parked | G1 | own track; ship-ready; engineer keystroke pending |
@@ -42,7 +42,7 @@ SPDX-License-Identifier: MIT
 | ITEM-15 glp-test-corpus-port-and-runner | US5 | story | **closed (by peer)** | — | journal: closed 20260803T205509Z; same caveat |
 | ITEM-16 glp-gleam-link-layer | US5 | story | **closed (by peer)** | — | journal: closed 20260803T205606Z; same caveat; overlaps their US1 touch-set |
 | ITEM-17 cross-runtime-csharp-gleam-distributed-tests | US5 | story | **closed (by peer)** | — | journal: closed 20260803T205513Z; same caveat |
-| ITEM-18 full-scope-gleam-glp-implementation | US5 | story | pending | EXT.ariellas (US4 sweep receipts), G3.R6–R12 (059-acceptance caveats) | roadmap: specified (specs/059); T023 reconcile is the wave's verification hook for ITEM-06/12–17 closures too |
+| ITEM-18 full-scope-gleam-glp-implementation | US5 | story | pending | ~~EXT.ariellas~~ **SATISFIED 163500Z**; remaining: **G1** (via T022 — our 064 ship keystroke) + G3.R6–R12 (059-acceptance caveats) | roadmap: specified (specs/059); T023 reconcile is the wave's verification hook for ITEM-06/12–17 closures too |
 
 ## Drift record (T004 reconcile, 2026-08-03 ~2110Z)
 
@@ -92,3 +92,52 @@ SPDX-License-Identifier: MIT
   published, replay-verify ✓) and 153951Z after importing ariellas' 153531Z + olamnit's rows
   (79 new journal lines; 99 live / 12 not-closed / 0 dups; export 18/99/2737 published;
   replay-verify ✓).
+
+## T023 gate arithmetic — recorded 20260804T164000Z (why the ext-gate clearing did NOT start US5's tail)
+
+EXT.ariellas is satisfied and independently verified, but **T023 did not become runnable**.
+tasks.md is explicit:
+
+- `T023 ⛔GATE(T022)`
+- `T022 ⛔GATE(T021, EXT.ariellas-US2, G1)`
+- `US5 strictly serial T017→…→T023, start gated on T016-go + EXT receipts (+G1 at T022)`
+
+Two gates therefore remain in front of T023, neither peer-owned:
+
+1. **G1 — our own 064 ship state.** `064-durable-listener-service-box` is ship-ready
+   (551/551, codexreview capped@5-escalations-only, 51be73c5) and **not cut**; it awaits the
+   engineer keystroke. ariellas has now taken `v2026.08.04.1`, so ours takes **`.2` or next
+   free** with a fresh announce + `git tag -l`/`ls-remote` re-check at the cut (the day may roll).
+2. **G3.R6–R12** — the 064-review rulings carried as 059-acceptance caveats (evidence-inventory).
+
+**Nothing was run out of order.** T017–T022 correspond to ITEM-12..17, all disposed
+`closed (by peer)` under ariellas' rider — wave-6 does not rebuild them (FR-004) — but the
+*task-level* gates T021/T022 still require our local verification of their US1/US2 receipts plus
+G1 before the T023 reconcile is entitled to run. Recording this rather than forcing the reconcile:
+running T023 now would produce a disposition resting on an unverified 064 ship state, which is
+exactly the "inherited-not-verified scoping premise" ariellas' own retrospective names as
+systematic finding #3.
+
+**Consequence for the wave**: with EXT.ariellas closed and EXT.olamnit closed, **every remaining
+wave-6 gate is engineer-owned** — G1 (064 ship), G2 (065 track), G3.R1–R12 (rulings), the two
+buildkit branch landings (ITEM-01/02), the ITEM-03/ITEM-06 contradictions, and ITEM-05's
+graduation confirm. No peer dependency remains on the critical path.
+
+### Peer intelligence consumed from their 163500Z receipt (acted on where it is ours)
+
+- **`.import-manifest.json` conflicts on every multi-host ship — third occurrence**
+  (`b5998681`, `7e1c055e`, `0d2739b1`), same mechanical repair each time. ariellas proposes
+  gitignoring the mirror (the PGlite catalog is authoritative and the manifest is derivable) or a
+  merge driver that runs the rebuild. **This will hit our 064 ship too.** Not fixed unilaterally —
+  it is a fleet-wide convention change and needs the engineer, but it is now a *known* pre-ship
+  hazard for G1, not a surprise.
+- **A fixer's own green run is not evidence a finding closed** — 2 of their 11 review fixes
+  introduced new defects caught only by a separate post-fix adversarial pass. Adopt for our
+  /bk-codexreview fix mode at T029.
+- **`glp_gleam/build` is single-OTP**, so WSL and Windows runs collide and the failure
+  masquerades as a code regression (they have documented it in CLAUDE.md).
+- **4 T040 escalations** remain engineer items in `specs/064-post-wave-gap-closure/t040-escalations.md`;
+  the load-bearing one is the **bridge trust boundary** — FR-004 is silent on authentication/bind
+  scope for the Gleam↔bridge leg and the two runtimes ship **opposite defaults on that one seam**.
+  That asymmetry is jointly ours once the engineer rules; it stays in our evidence inventory,
+  unfixed from this side.
