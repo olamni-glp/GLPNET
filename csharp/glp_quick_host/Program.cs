@@ -220,7 +220,25 @@ internal static class Program
         // The server's own stdio endpoint participates as `SelfId` (preserves US1: client→server).
         var selfPump = SelfStdioPumpAsync(mesh, life.Token);
 
-        int active = 0;
+        // 064 US1 T012 (research D3, FR-004): with --bridge-port, a Gleam-facing plain-TCP
+        // acceptor joins Gleam peers to this mesh as ordinary clients — same pump, same routing,
+        // same capacity budget (the bridge is a relay, not a protocol translator).
+        var capacity = new ClientCapacity(opts.MaxClients);
+        var bridgeBound = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task bridge = opts.BridgePort is int bridgePort
+            ? BridgeAcceptor.RunAsync(mesh, LinkAddress.Endpoint(opts.BridgeAddr, bridgePort), capacity, life.Token, bridgeBound)
+            : Task.CompletedTask;
+        if (opts.BridgePort is not null)
+        {
+            // Serve only once the bridge is really bound. ONE synchronization point:
+            // the acceptor completes this task on a successful bind and faults it with
+            // the bind exception, which rethrows HERE (→ ERR bind_failed,
+            // ExitBindFailed) — never a bridgeless host that exits 0 after a harness
+            // saw BRIDGE_READY. Observing the acceptor Task instead would race its
+            // unwind (cycle-3 bind-gate-race).
+            await bridgeBound.Task.ConfigureAwait(false);
+        }
+
         while (!life.IsCancellationRequested)
         {
             ILinkEndpoint link;
@@ -228,17 +246,17 @@ internal static class Program
             catch (OperationCanceledException) { break; }
             catch (QuicException ex) { Console.Error.WriteLine($"ACCEPT_FAULT {ex.QuicError}: {ex.Message}"); continue; }
 
-            if (Interlocked.Increment(ref active) > opts.MaxClients)
+            if (!capacity.TryAdmit())
             {
-                Interlocked.Decrement(ref active);
                 Console.Error.WriteLine($"REJECT over_capacity {link.Id}"); // T026: clear over-capacity reject
                 _ = RejectOverCapacityAsync(link);
                 continue;
             }
-            Console.Error.WriteLine($"CLIENT_UP {link.Id} ({active}/{opts.MaxClients})");
-            _ = ClientPumpAsync(mesh, link, () => Interlocked.Decrement(ref active), life.Token);
+            Console.Error.WriteLine($"CLIENT_UP {link.Id} ({capacity.Active}/{capacity.Max})");
+            _ = ClientPumpAsync(mesh, link, capacity.Release, life.Token);
         }
         await selfPump.ConfigureAwait(false);
+        await bridge.ConfigureAwait(false);
         if (repl is not null) await repl.DisposeAsync().ConfigureAwait(false);
         return ExitOk;
     }
@@ -253,8 +271,10 @@ internal static class Program
                 await mesh.RouteAsync(Encoding.UTF8.GetBytes(line), fromSelf: true, srcLink: null, ct).ConfigureAwait(false);
     }
 
-    /// <summary>One isolated client link: register it, route its envelopes, and clean up on drop (FR-006/SC-004).</summary>
-    private static async Task ClientPumpAsync(Mesh mesh, ILinkEndpoint link, Action onGone, CancellationToken ct)
+    /// <summary>One isolated client link: register it, route its envelopes, and clean up on drop
+    /// (FR-006/SC-004). Internal: the T012 bridge acceptor pumps its TCP-accepted Gleam peers
+    /// through this SAME path, so a bridge peer is indistinguishable from a QUIC client here.</summary>
+    internal static async Task ClientPumpAsync(Mesh mesh, ILinkEndpoint link, Action onGone, CancellationToken ct)
     {
         link.OnFault += f => Console.Error.WriteLine($"FAULT {f.Kind} {f.Reason}");
         try
@@ -276,7 +296,7 @@ internal static class Program
         }
     }
 
-    private static async Task RejectOverCapacityAsync(ILinkEndpoint link)
+    internal static async Task RejectOverCapacityAsync(ILinkEndpoint link)
     {
         try
         {
@@ -287,12 +307,15 @@ internal static class Program
         await link.DisposeAsync().ConfigureAwait(false);
     }
 
-    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId, string? ReplPath)
+    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId, string? ReplPath,
+        int? BridgePort, string BridgeAddr)
     {
         public static Opts Parse(string[] args)
         {
             string? role = null, addr = null, cert = null, selfId = "server", replPath = null;
             int port = 0, maxClients = 3;
+            int? bridgePort = null;
+            string bridgeAddr = "127.0.0.1"; // Gleam peers dial loopback by default (bridge on the mesh host)
             bool retry = false;
             for (int i = 0; i < args.Length; i++)
             {
@@ -305,6 +328,8 @@ internal static class Program
                     case "--max-clients": maxClients = int.Parse(Req(args, ++i)); break;
                     case "--id": selfId = Req(args, ++i); break;
                     case "--repl": replPath = Req(args, ++i); break;
+                    case "--bridge-port": bridgePort = int.Parse(Req(args, ++i)); break; // T012: Gleam-facing TCP acceptor
+                    case "--bridge-addr": bridgeAddr = Req(args, ++i); break;
                     case "--retry": retry = true; break;
                     default: throw new ArgumentException($"unknown arg '{args[i]}'");
                 }
@@ -313,7 +338,9 @@ internal static class Program
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
             if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
-            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, replPath);
+            if (bridgePort is < 1 or > 65535) throw new ArgumentException("--bridge-port in [1,65535] required");
+            if (bridgePort is not null && role != "server") throw new ArgumentException("--bridge-port requires --role server (the bridge is a mesh-server leg)");
+            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, replPath, bridgePort, bridgeAddr);
         }
 
         private static string Req(string[] args, int i) =>

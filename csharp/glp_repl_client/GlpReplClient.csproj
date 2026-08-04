@@ -32,6 +32,14 @@
          leaf) — adding it keeps the R7 thin-client stance intact: no runtime project, no
          language context, just the pure value-type codec the wire contract mandates. -->
     <ProjectReference Include="..\glp_result_codec\GlpResultCodec.csproj" />
+    <!-- 064 US3 (T022, contracts/il-request-kind.md rule 5): THE COMPILER MOVES
+         INTO THE CLIENT. In `-path il` sessions the client compiles locally
+         (full pipeline via GlpEngine) and ships CompiledIlEnvelope frames; the
+         engine executes without compiling. The R7 thin-client stance now holds
+         for TEXT sessions only — the IL session deliberately carries the
+         language context client-side (that is the point of US3). -->
+    <ProjectReference Include="..\..\out\csharp\glp_runtime_net.csproj" />
+    <ProjectReference Include="..\glp_il_codec\GlpIlCodec.csproj" />
   </ItemGroup>
 
   <ItemGroup>
