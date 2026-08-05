@@ -98,10 +98,10 @@ unaffected; audit answers SC-004 alone.
 **Goal**: contract + vectors sufficient for an out-of-repo consumer, no live mesh needed.
 **Independent test**: decode all vectors per contracts/payload-contract.md §5 alone.
 
-- [ ] T022 [US3] Generate the six vector files (synthetic throwaway material only) into
+- [X] T022 [US3] Generate the six vector files (synthetic throwaway material only) into
       `glp_quick/tests/vectors/provision/` via a deterministic generator in
       `glp_quick/tests/vectors/provision/generate_vectors.py`
-- [ ] T023 [P] [US3] Vector self-conformance test (valid vectors assemble byte-identically incl.
+- [X] T023 [P] [US3] Vector self-conformance test (valid vectors assemble byte-identically incl.
       shuffled order; each invalid vector yields its named error) in
       `glp_quick/tests/unit/test_provision_vectors.py`
 
@@ -167,9 +167,12 @@ to the engineer under the Bug Protocol; nothing was changed, and the warning is 
   so this is a clean, self-contained follow-up: `verify_derived_against_trunk` already implements
   the exact signature check the C# validator must mirror, and
   `contracts/join-seam-contract.md` specifies the token set and the revocation-reload behaviour.
-- **T022–T023 (published decode vectors)** — the vector generator should emit from the *frozen*
-  contract; freezing it before the seam is implemented risks publishing a format the seam then
-  forces to change. The consumer contract itself (`contracts/payload-contract.md`) is complete
-  and implementable today.
+- ~~**T022–T023 (published decode vectors)**~~ — **DONE 2026-08-05.** The earlier deferral
+  reasoning was wrong and is retracted: it conflated two independent surfaces. The QR payload
+  contract is **producer ↔ Android consumer**; the C# acceptance seam consumes the *derived
+  certificate*, not the QR wire format. Nothing the seam does can force a GQP1 format change, so
+  the vectors were never gated on it. Six vectors generated
+  (`tests/vectors/provision/`, synthetic throwaway keys only) + 10 conformance tests, all green —
+  US3 is now independently implementable with no live mesh.
 - **T026–T027 (quickstart validation + full-suite sign-off)** — both need the seam, since the
   quickstart's final step is an actual mesh join.
