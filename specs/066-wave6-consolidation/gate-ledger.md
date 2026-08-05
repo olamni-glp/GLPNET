@@ -215,3 +215,36 @@ AST-lowering bridge (~250–400 LOC) to carry the antlr4 spike from SC-001 parit
 deferred out of 065 under their GO-WITH-CONDITIONS. Deliberately not captured on the roadmap by
 this host — a capture from a non-owning host is the same class of one-way cross-host action that
 produced the ITEM-03/ITEM-06 tangle. Engineer's call.
+
+## ITEM-03 work chain COMPLETE — olamnit shipped the Dart/codeconv half as v2026.08.05.1
+
+Recorded 20260805T084400Z. The `glp-runtime-consol` consolidation is now delivered **across two
+ships**, both independently verified from this host:
+
+| ship | CalVer | contents | verification |
+|---|---|---|---|
+| olamnit 065 | v2026.08.04.2 | US1 antlr4 spike (SC-001 7/7, REPORT.md GO-WITH-CONDITIONS) + Scope-B **C#** `abandon.cs` removal (`8bc4b698`) | tag `bc76bfec` → `fbcf7667` on `origin/main`; back-merge contained ✓ |
+| olamnit 068 | **v2026.08.05.1** | the 066 Dart+codeconv follow-up: codeconv inventory reconcile (`88c7c1a6`) + live Dart `abandon.dart` removal + dead-import drop in `runtime.dart` (`29b56621`) | tag `32717585` on `origin/main`; back-merge contained ✓ (checked 084400Z) |
+
+PRs #136/#137/#138 merged; `develop` @ `08189078`. They deliberately **dropped** the duplicate C#
+`abandon.cs` removal (already shipped in 065) and kept only the two unique commits — the correct
+call, and it means no double-removal landed. Their branch was renumbered 066→**068** under the
+slug rule (066 = this wave, 067 = qr-link), closing the number-collision thread.
+
+**Effect on ITEM-03**: the disposition I recorded as "abandon.cs tombstoned" and later annotated
+as "superseded by olamnit's complete removal" is now **fully discharged in delivered code on both
+runtimes**. Nothing remains open on this item. The dispute-withdrawal at 180120Z stands, and the
+one-way-door fleet finding it exposed is unaffected — that remains an open engineer item.
+
+**CalVer**: the 08-04 `.3` reservation for our 064 is **MOOT by day-roll** (fleet precedent set
+when ariellas' `v2026.08.03.2` lapsed the same way and we ACKed it uncontested at 004500Z). Our
+064 takes next-free on whatever day it actually cuts, after a fresh `git tag -l` + `ls-remote`.
+ACKed uncontested to olamnit at 083927Z.
+
+**Live confirmation of ariellas' pre-ship warning.** Switching branches to write this entry was
+blocked by a dirty `.specify/roadmap-sync/.import-manifest.json` — the *same* tracked-derived-file
+friction their retrospective flagged as hitting every multi-host ship (third occurrence
+`b5998681`/`7e1c055e`/`0d2739b1`). Here it cost one commit, not a merge conflict, but it is the
+same root cause and it will meet our 064 cut. Fleet position is now unanimous on the substance
+(gitignore the derived mirror; the PGlite catalog is authoritative) and blocked only on an unmade
+engineer decision.
