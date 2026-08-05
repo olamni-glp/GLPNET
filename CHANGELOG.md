@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [v2026.08.05.1] - 2026-08-05
+
+### Changed
+- Merge pull request #136 from olamni-glp/068-abandon-stub-cleanup
+- .specify updates
+- complete abandon.dart removal — delete dead throw-stub + drop its unused import from runtime.dart (0 call sites; analyze clean; REPL 547/547 green)
+- reconcile codeconv inventory for retired abandon.dart — rm 3 stale artifacts (tombstone/plan/spec) + drop 2 dangling graph edges; PGLite inventory empty (no DB row to retire)
+- roadmap: sync round (import 2 files/0 lines), 0 live dupes, export 18/99/2740
+- roadmap: sync round (import 8 files/0 lines), 0 live dupes, export 18/99/2740 published 181033Z
+- SHIPPED+CLOSED handover — v2026.08.04.2; open follow-ups (066 Dart+codeconv, SC-002 PREP, tracked keys, reconcile defect)
+- Merge pull request #135 from olamni-glp/main
+
 ## [v2026.08.04.2] - 2026-08-04
 
 ### Fixed
