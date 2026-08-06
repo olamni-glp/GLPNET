@@ -108,5 +108,28 @@ check "idempotence: second restart replays identical history plus the appended l
 
 echo "======================================"
 echo "history drill: PASS=$PASS FAIL=$FAIL"
+
+# SC-002 verdict, stated by the drill itself (2026-08-06 review fix).
+# The gate is ">=100 messages". This drill defaults to N=12 and said so in a comment,
+# but a passing 12-run was still being cited as SC-002 evidence at the discharge site.
+# A comment cannot stop a misquote; a verdict line can. Never print "SC-002 satisfied"
+# unless the run actually met the gate.
+SC002_MIN=100
+if [ "$FAIL" -ne 0 ]; then
+  echo "SC-002: NOT SATISFIED — drill had $FAIL failure(s)"
+elif [ "$N" -lt "$SC002_MIN" ]; then
+  echo "SC-002: NOT SATISFIED — ran N=$N, gate requires N>=$SC002_MIN."
+  echo "        This run is a smoke pass ONLY and must not be cited as SC-002 evidence."
+  echo "        For the release gate run: bash test/service_box/history_drill.sh $SC002_MIN"
+else
+  echo "SC-002: SATISFIED — N=$N >= $SC002_MIN, all checks green"
+fi
+
+# Backend-coverage verdict: these drills unset COLAB_PG_CONN, so the pglite PRIMARY and the
+# primary-fails-degrade-to-fallback composition are BOTH unexercised here. With no
+# COLAB_PG_CONN the fallback is null, so a degraded append cannot even occur — which is why
+# the replay-skips-fallback defect stayed invisible. Say so, every run.
+echo "COVERAGE: file WAL only (COLAB_PG_CONN unset) — pglite primary and the"
+echo "          primary-degrade-to-fallback replay path are NOT covered by this drill."
 echo "======================================"
 exit "$FAIL"

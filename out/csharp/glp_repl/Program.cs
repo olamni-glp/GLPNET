@@ -117,8 +117,14 @@ internal static class EntryPoint
             // happen when the service's link establishes — that is when the program's In stream
             // exists to receive it (contracts/message-log-and-replay.md). History still strictly
             // precedes live traffic on that link.
-            Console.WriteLine($"resume: {wal.Ops.Count} message(s) in the log ({wal.BackendName}); "
-                + "replayed to the service when its link establishes");
+            // The count is the MERGED log across both backends (ServiceWal.Ops). When any op
+            // exists only in the file fallback the boot line says so explicitly — a degraded
+            // append is an operational event, and reporting it under the primary's name alone is
+            // how those messages stayed invisible before the F-BLOCKER fix.
+            var fallbackOnly = wal.FallbackOnlyCount;
+            Console.WriteLine($"resume: {wal.Ops.Count} message(s) in the log ({wal.BackendName}"
+                + (fallbackOnly > 0 ? $" + {fallbackOnly} from the degraded file fallback" : "")
+                + "); replayed to the service when its link establishes");
             var replayed = 0;
             link.Pump.ReplaySource = _ =>
             {

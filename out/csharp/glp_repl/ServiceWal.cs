@@ -120,8 +120,64 @@ internal sealed class ServiceWal : IDisposable
     /// <summary>
     /// The service's OWN ops in receipt (commit) order — the replay source. The primary backend
     /// may be the SHARED colab journal, so foreign peers' rows are filtered out (review fix F1).
+    /// <para>
+    /// Reads BOTH backends (review fix F-BLOCKER, 2026-08-06). <see cref="Append"/> writes to the
+    /// file fallback whenever the primary throws, and reports success; reading only
+    /// <c>_primary</c> therefore made every degraded append permanently and SILENTLY absent from
+    /// replay — the exact messages a durability feature exists to keep. The constructor already
+    /// took the counter across both backends ("so a prior run's degraded appends can never
+    /// collide"), so the asymmetry was replay-only: the write path and the counter knew about the
+    /// fallback, the read path did not.
+    /// </para>
+    /// <para>
+    /// Ordering and de-duplication both key on the dot counter, which is exact rather than a
+    /// heuristic merge: <see cref="Append"/> assigns <c>_counter + 1</c> per message, so for this
+    /// peer the counter IS the receipt sequence, is unique per message, and is totally ordered
+    /// across backends. Deduplication matters because a dot may legitimately exist in both logs
+    /// (e.g. a primary append that committed but whose acknowledgement was lost, retried into the
+    /// fallback) — replaying it twice would break the SC-002 exactly-once guarantee that the dot
+    /// exists to provide.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<Op> Ops => _primary.Ops.Where(op => op.Id.PeerName == PeerName).ToList();
+    public IReadOnlyList<Op> Ops
+    {
+        get
+        {
+            var merged = new SortedDictionary<long, Op>();
+            foreach (var op in _primary.Ops)
+                if (op.Id.PeerName == PeerName)
+                    merged[op.Id.Counter] = op;
+            if (_fallback is not null)
+                foreach (var op in _fallback.Ops)
+                    if (op.Id.PeerName == PeerName)
+                        merged.TryAdd(op.Id.Counter, op); // primary wins a same-dot collision
+            return merged.Values.ToList();
+        }
+    }
+
+    /// <summary>
+    /// How many of this service's ops live ONLY in the file fallback — i.e. arrived through a
+    /// degraded append. Zero on a healthy run. Surfaced at boot so a non-zero value is visible
+    /// rather than folded into a single count labelled with the primary's name: before the
+    /// F-BLOCKER fix these ops were not merely mislabelled, they were absent from replay, and a
+    /// silent recovery is how that stayed invisible.
+    /// </summary>
+    public int FallbackOnlyCount
+    {
+        get
+        {
+            if (_fallback is null) return 0;
+            var primaryDots = new HashSet<long>();
+            foreach (var op in _primary.Ops)
+                if (op.Id.PeerName == PeerName)
+                    primaryDots.Add(op.Id.Counter);
+            var n = 0;
+            foreach (var op in _fallback.Ops)
+                if (op.Id.PeerName == PeerName && !primaryDots.Contains(op.Id.Counter))
+                    n++;
+            return n;
+        }
+    }
 
     /// <summary>
     /// Durably append one delivered ground term. Called from the pump's runner-thread delivery
