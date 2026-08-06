@@ -31,6 +31,14 @@ Throughout this document, "SC-002" in the feature title/context refers to the **
 criterion. This spec's own measurable outcomes are numbered `SC-001…` in the Success Criteria
 section below and are independent of that naming.
 
+## Clarifications
+
+### Session 2026-08-06
+
+- Q: What is the concrete coverage floor for the "expanded corpus" (FR-005/SC-002), given "exhaustive" is unmeasurable? → A: The full set of existing `programs/` book/lib/plays files that both front-ends already accept, PLUS ≥1 dedicated program per distinct guard, operator, and type-alternative construct enumerated from the shared grammar; coverage is complete when every such construct appears in ≥1 corpus program.
+- Q: For the `mod`-as-functor tokenization divergence (FR-007), resolve in the grammar or accept as bounded? → A: Attempt the lexer-predicate/island fix first so `mod(...)` call forms tokenize as a functor; only record it as an explicit bounded non-adoption condition if that fix proves infeasible within this feature's scope (production adoption requires `mod(...)` call forms to work).
+- Q: What is the stop criterion for the "adversarial fuzzing" (FR-006/SC-003)? → A: A bounded, grammar-driven generative fuzz with a fixed iteration budget (default 10,000 generated inputs) over the prediction-sensitive corners; the gate is zero unexplained IL divergences across the budget, and any divergence halts the run for diagnosis.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Prove IL parity on the representative corpus (Priority: P1)
@@ -151,13 +159,17 @@ re-running any harness.
   IL for byte-identity, using the delivered deterministic IL-serialization as the equality oracle.
 - **FR-004**: Each parity comparison MUST yield a per-input verdict of MATCH or DIVERGE, and MUST
   localize any divergence to at least the offending input and its first differing instruction.
-- **FR-005**: The parity corpus MUST be expanded beyond the 7 spike files to include book/lib/plays
-  programs and coverage of every guard, operator, and type-alternative corner of the accepted
-  language.
+- **FR-005**: The parity corpus MUST be expanded beyond the 7 spike files to include every existing
+  `programs/` book/lib/plays file that both front-ends accept, PLUS at least one dedicated program per
+  distinct guard, operator, and type-alternative construct enumerated from the shared grammar. Corpus
+  coverage is complete only when every such construct appears in at least one corpus program.
 - **FR-006**: Variable-versus-comparison dispatch and deep type-alternative nesting MUST be exercised
-  by adversarial fuzz inputs, not only by curated corpus files.
-- **FR-007**: The `mod`-as-functor tokenization divergence MUST be either resolved in the shared
-  grammar's tokenization or recorded as an explicit, bounded condition that constrains adoption.
+  by a bounded, grammar-driven generative fuzz (default budget 10,000 generated inputs), not only by
+  curated corpus files; any IL divergence MUST halt the fuzz run for diagnosis.
+- **FR-007**: The `mod`-as-functor tokenization divergence MUST first be addressed by a
+  lexer-predicate/island fix so `mod(...)` call forms tokenize as a functor; only if that fix is
+  infeasible within this feature's scope may it be recorded as an explicit, bounded condition that
+  constrains adoption.
 - **FR-008**: Any IL divergence discovered MUST be diagnosed to root cause and either fixed in the
   bridge or reported as a bounded finding; no divergence may be silently accepted.
 - **FR-009**: Every parity result MUST be recorded in a form reviewable without re-running the harness
@@ -191,11 +203,13 @@ re-running any harness.
 
 - **SC-001**: 100% of the 7-file representative corpus produces byte-identical compiled IL between the
   two front-ends (closes the spike's SC-002 on the corpus that motivated it).
-- **SC-002**: 100% of the expanded corpus (book/lib/plays + all guard/operator/type-alternative
-  corners) produces either byte-identical IL or a divergence traced to a documented, bounded cause —
-  zero unexplained divergences.
-- **SC-003**: Adversarial fuzzing of the prediction-sensitive corners (variable-versus-comparison,
-  deep type-alternatives) completes with zero unexplained IL divergences.
+- **SC-002**: 100% of the expanded corpus — every accepted `programs/` book/lib/plays file plus ≥1
+  program per distinct guard/operator/type-alternative construct of the grammar — produces either
+  byte-identical IL or a divergence traced to a documented, bounded cause; zero unexplained
+  divergences.
+- **SC-003**: The bounded generative fuzz (default 10,000 inputs) over the prediction-sensitive
+  corners (variable-versus-comparison, deep type-alternatives) completes with zero unexplained IL
+  divergences.
 - **SC-004**: A production-adoption decision exists, states a single verdict, cites the parity
   results, and enumerates every residual boundary condition — reviewable without re-running any
   harness.
