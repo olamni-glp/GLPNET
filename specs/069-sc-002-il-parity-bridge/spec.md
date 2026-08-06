@@ -35,7 +35,7 @@ section below and are independent of that naming.
 
 ### Session 2026-08-06
 
-- Q: What is the concrete coverage floor for the "expanded corpus" (FR-005/SC-002), given "exhaustive" is unmeasurable? → A: The full set of existing `programs/` book/lib/plays files that both front-ends already accept, PLUS ≥1 dedicated program per distinct guard, operator, and type-alternative construct enumerated from the shared grammar; coverage is complete when every such construct appears in ≥1 corpus program.
+- Q: What is the concrete coverage floor for the "expanded corpus" (FR-005/SC-002), given "exhaustive" is unmeasurable? → A: The set of accepted `.glp` programs drawn from across the `programs/` tree (e.g. `typed_book/`, `lib/`, `plays/`, `tests/typed/`) that both front-ends already accept, PLUS ≥1 dedicated program per distinct guard, operator, and type-alternative construct enumerated from the shared grammar; coverage is complete when every such construct appears in ≥1 corpus program. (Note: there is no `programs/book/` dir — the book corpus lives under `typed_book/`/`book 2/`.)
 - Q: For the `mod`-as-functor tokenization divergence (FR-007), resolve in the grammar or accept as bounded? → A: Attempt the lexer-predicate/island fix first so `mod(...)` call forms tokenize as a functor; only record it as an explicit bounded non-adoption condition if that fix proves infeasible within this feature's scope (production adoption requires `mod(...)` call forms to work).
 - Q: What is the stop criterion for the "adversarial fuzzing" (FR-006/SC-003)? → A: A bounded, grammar-driven generative fuzz with a fixed iteration budget (default 10,000 generated inputs) over the prediction-sensitive corners; the gate is zero unexplained IL divergences across the budget, and any divergence halts the run for diagnosis.
 
@@ -91,9 +91,9 @@ per-file parity comparison, and confirming zero unexplained divergences across t
 
 **Acceptance Scenarios**:
 
-1. **Given** the expanded corpus (book/lib/plays + all guard/operator/type-alt corners), **When** the
-   parity comparison runs, **Then** every file yields a MATCH or a divergence traced to a documented,
-   bounded cause.
+1. **Given** the expanded corpus (accepted `programs/` files across `typed_book/`/`lib/`/`plays/`/
+   `tests/typed/` + all guard/operator/type-alt corners), **When** the parity comparison runs, **Then**
+   every file yields a MATCH or a divergence traced to a documented, bounded cause.
 2. **Given** adversarial fuzz inputs targeting variable-versus-comparison dispatch and deep
    type-alternative nesting, **When** they are compiled through both front-ends, **Then** no
    unexplained IL divergence is produced.
@@ -159,10 +159,11 @@ re-running any harness.
   IL for byte-identity, using the delivered deterministic IL-serialization as the equality oracle.
 - **FR-004**: Each parity comparison MUST yield a per-input verdict of MATCH or DIVERGE, and MUST
   localize any divergence to at least the offending input and its first differing instruction.
-- **FR-005**: The parity corpus MUST be expanded beyond the 7 spike files to include every existing
-  `programs/` book/lib/plays file that both front-ends accept, PLUS at least one dedicated program per
-  distinct guard, operator, and type-alternative construct enumerated from the shared grammar. Corpus
-  coverage is complete only when every such construct appears in at least one corpus program.
+- **FR-005**: The parity corpus MUST be expanded beyond the 7 spike files to include accepted `.glp`
+  programs drawn from across the `programs/` tree (e.g. `typed_book/`, `lib/`, `plays/`, `tests/typed/`)
+  that both front-ends accept, PLUS at least one dedicated program per distinct guard, operator, and
+  type-alternative construct enumerated from the shared grammar. Corpus coverage is complete only when
+  every such construct appears in at least one corpus program.
 - **FR-006**: Variable-versus-comparison dispatch and deep type-alternative nesting MUST be exercised
   by a bounded, grammar-driven generative fuzz (default budget 10,000 generated inputs), not only by
   curated corpus files; any IL divergence MUST halt the fuzz run for diagnosis.
@@ -203,10 +204,10 @@ re-running any harness.
 
 - **SC-001**: 100% of the 7-file representative corpus produces byte-identical compiled IL between the
   two front-ends (closes the spike's SC-002 on the corpus that motivated it).
-- **SC-002**: 100% of the expanded corpus — every accepted `programs/` book/lib/plays file plus ≥1
-  program per distinct guard/operator/type-alternative construct of the grammar — produces either
-  byte-identical IL or a divergence traced to a documented, bounded cause; zero unexplained
-  divergences.
+- **SC-002**: 100% of the expanded corpus — accepted `.glp` programs drawn from across `programs/`
+  (`typed_book/`, `lib/`, `plays/`, `tests/typed/`, …) plus ≥1 program per distinct
+  guard/operator/type-alternative construct of the grammar — produces either byte-identical IL or a
+  divergence traced to a documented, bounded cause; zero unexplained divergences.
 - **SC-003**: The bounded generative fuzz (default 10,000 inputs) over the prediction-sensitive
   corners (variable-versus-comparison, deep type-alternatives) completes with zero unexplained IL
   divergences.
@@ -227,9 +228,10 @@ re-running any harness.
   counts as a divergence to diagnose, not a pass.
 - The shared grammar targets the ANTLR-supported languages; the Gleam runtime is explicitly outside
   the "one grammar" claim and is treated as a bounding condition, not a gap to close here.
-- The expanded corpus is drawn from the repository's existing `programs/` tree (book/lib/plays) plus
-  small purpose-built files for any guard/operator/type-alt corner not otherwise exercised; exhaustive
-  coverage of the language corners is the target, not a fixed file count.
+- The expanded corpus is drawn from the repository's existing `programs/` tree (e.g. `typed_book/`,
+  `lib/`, `plays/`, `tests/typed/`; there is no `programs/book/` dir) plus small purpose-built files
+  for any guard/operator/type-alt corner not otherwise exercised; complete construct coverage is the
+  target, not a fixed file count.
 - The production-adoption decision is a recommendation for the language authority (Gabi + Udi) to
   ratify per DISCIPLINE §1.14; this feature produces the evidence and the recommendation, not a
   unilateral production cut-over.

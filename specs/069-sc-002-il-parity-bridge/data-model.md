@@ -51,7 +51,7 @@ REPORT §3. This table is the coverage contract, not an approximation to shortcu
 - **ParityResult**: `{ input_id, verdict: MATCH | DIVERGE, first_diff_offset?, cause? }`. One per
   corpus/fuzz input. `cause` is set only for a DIVERGE that traces to a documented bounded condition
   (e.g. `mod`-functor if D5's fix is deferred); an un-caused DIVERGE is a defect (FR-008).
-- **CorpusEntry**: `{ file, source: book|lib|plays|per-construct, constructs_covered[] }`. The union
+- **CorpusEntry**: `{ file, source: typed_book|lib|plays|tests-typed|per-construct, constructs_covered[] }`. The union
   of `constructs_covered` across all entries MUST cover every enumerated grammar construct (FR-005
   coverage floor).
 - **FuzzInput**: `{ index, seed, target_corner: var-vs-comparison | deep-type-alt, source_text }`.

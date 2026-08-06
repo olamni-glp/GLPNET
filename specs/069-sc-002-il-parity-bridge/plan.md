@@ -54,7 +54,7 @@ glue; expanded corpus (accepted book/lib/plays + per-construct programs); bounde
 | I. Spec-First | Spec exists, grounded verbatim in `spike/antlr4-glp-grammar/REPORT.md` §3/§7; plan traces to it. | PASS |
 | II. Bug-Protocol / No-Workarounds | FR-008 requires every IL divergence be diagnosed to root cause and fixed or reported as a bounded finding — no masking. No try/catch "robustness" over divergences. | PASS |
 | III. SRSW inviolable | No GLP clauses are authored; this is C# tooling over GLP source. No `skipSRSW` token anywhere in the artifacts. | PASS (N/A) |
-| IV-a. Language Authority | FR-010/SC-005: production parsers untouched, zero accepted-syntax change. The bridge is downstream of parse; the `mod`-functor lexer fix (FR-007) is tokenization of *existing* syntax (REPORT §6), not a new guard/predicate/kernel/directive. The grammar itself was already §1.14-approved in 065. | PASS |
+| IV-a. Language Authority | FR-010/SC-005: production parsers untouched, zero accepted-syntax change. The bridge is downstream of parse; the `mod`-functor lexer fix (FR-007) is tokenization of *existing* syntax (REPORT §6), not a new guard/predicate/kernel/directive. The grammar itself was already §1.14-approved in 065 — because that edit re-touches the owner-approved `Glp.g4`, T016 carries an explicit propose-first §1.14 re-confirm before landing. | PASS |
 | IV-b. Preserve Working Internals | The production engine, parser, and all load-bearing internals are read-only inputs to the bridge; nothing is removed. | PASS |
 | V. Claude-Only LM / No External API | No LM in the loop; fuzzing is deterministic grammar-driven generation, not model-backed. No `openai`/`litellm`/`OPENAI_API_KEY`. | PASS |
 | VI-a/b. Persistence | No DB migrations; no new PGLite cluster; corpus is plain files. | PASS (N/A) |
@@ -91,7 +91,7 @@ spike/antlr4-glp-grammar/
 │   ├── IlParityComparator.cs #   both front-ends -> BytecodeProgram -> IlCodec bytes -> compare
 │   ├── GrammarFuzzer.cs      #   bounded generative fuzz over prediction-sensitive corners
 │   └── Parity.csproj
-├── corpus/                   # EXPANDED — MANIFEST.md + accepted book/lib/plays + per-construct files
+├── corpus/                   # EXPANDED — MANIFEST.md + accepted programs/ (typed_book,lib,plays,tests/typed) + per-construct files
 ├── harness/                  # EXISTING coverage harness, extended to drive the parity run
 └── RESULTS.md, DECISION.md   # NEW — reviewable per-file parity table + adoption decision (SC-004/006)
 ```

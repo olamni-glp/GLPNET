@@ -10,8 +10,9 @@ SPDX-License-Identifier: MIT
 
 ## Corpus coverage floor (FR-005 / clarification 2026-08-06)
 
-- **C1 — Real programs**: the corpus includes every `programs/` book/lib/plays `.glp` file that BOTH
-  front-ends accept at parse level. Files rejected by one front-end are logged as divergences, not
+- **C1 — Real programs**: the corpus includes accepted `.glp` files drawn from across the `programs/`
+  tree (e.g. `typed_book/`, `lib/`, `plays/`, `tests/typed/`; there is no `programs/book/` dir) that
+  BOTH front-ends accept at parse level. Files rejected by one front-end are logged as divergences, not
   silently dropped.
 - **C2 — Per-construct floor**: for every distinct guard, operator, and type-alternative construct
   enumerated from `Glp.g4`, at least one corpus program exercises it. `MANIFEST.md` carries the
