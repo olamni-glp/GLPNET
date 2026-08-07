@@ -24,9 +24,9 @@ product, so verification tasks are included as first-class (not optional extras)
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `spike/antlr4-glp-grammar/bridge/Bridge.csproj` and `spike/antlr4-glp-grammar/parity/Parity.csproj` referencing `gen/`, `out/csharp/lib/compiler/`, and `csharp/glp_il_codec/`; add both to the harness solution/build.
-- [ ] T002 [P] Enumerate every rule of `spike/antlr4-glp-grammar/Glp.g4` and every distinct guard / operator / type-alternative construct into `spike/antlr4-glp-grammar/corpus/CONSTRUCTS.md` (the coverage-floor + lowering-mapping checklist — data-model LoweringMapping, FR-005).
-- [ ] T003 [P] Verify toolchain per quickstart.md (dotnet 10.0.301, `Antlr4.Runtime.Standard` 4.13.1, Java 17 + vendored ANTLR 4.13.2 jar for regen); record versions in `spike/antlr4-glp-grammar/RESULTS.md` header.
+- [X] T001 Create `spike/antlr4-glp-grammar/bridge/Bridge.csproj` and `spike/antlr4-glp-grammar/parity/Parity.csproj` referencing `gen/`, `out/csharp/lib/compiler/`, and `csharp/glp_il_codec/`; add both to the harness solution/build.
+- [X] T002 [P] Enumerate every rule of `spike/antlr4-glp-grammar/Glp.g4` and every distinct guard / operator / type-alternative construct into `spike/antlr4-glp-grammar/corpus/CONSTRUCTS.md` (the coverage-floor + lowering-mapping checklist — data-model LoweringMapping, FR-005).
+- [X] T003 [P] Verify toolchain per quickstart.md (dotnet 10.0.301, `Antlr4.Runtime.Standard` 4.13.1, Java 17 + vendored ANTLR 4.13.2 jar for regen); record versions in `spike/antlr4-glp-grammar/RESULTS.md` header.
 
 ---
 
@@ -34,9 +34,9 @@ product, so verification tasks are included as first-class (not optional extras)
 
 **⚠️ CRITICAL**: shared plumbing both stories depend on. The production front-end path works here; the bridge front-end arrives in US1.
 
-- [ ] T004 Implement `spike/antlr4-glp-grammar/bridge/PipelineDriver.cs`: compile an engine AST (`out/csharp/lib/compiler/ast.cs`) to `BytecodeProgram` by invoking the existing shared pipeline (partial-eval → analyzer → compiler/codegen) with NO new engine capability (research D3, contract G3).
-- [ ] T005 Implement `spike/antlr4-glp-grammar/parity/IlParityComparator.cs` core: serialize a `BytecodeProgram` via `csharp/glp_il_codec/IlCodec.cs`, byte-compare two IL blobs, and produce a `ParityResult { verdict, first_diff_offset, cause }` with first-diff localization (FR-003/FR-004, contract P1/P2). Wire the PRODUCTION front-end (`out/csharp/lib/compiler/parser.cs` → PipelineDriver) as side B; leave side A (bridge) pluggable.
-- [ ] T006 Implement `spike/antlr4-glp-grammar/parity/ResultsWriter.cs` + extend `spike/antlr4-glp-grammar/harness/Program.cs` with `--parity`/`--fuzz`/`--budget`/`--corpus` flags that append a reviewable per-input table to `spike/antlr4-glp-grammar/RESULTS.md` (FR-009, contract P5).
+- [X] T004 Implement `spike/antlr4-glp-grammar/bridge/PipelineDriver.cs`: compile an engine AST (`out/csharp/lib/compiler/ast.cs`) to `BytecodeProgram` by invoking the existing shared pipeline (partial-eval → analyzer → compiler/codegen) with NO new engine capability (research D3, contract G3).
+- [X] T005 Implement `spike/antlr4-glp-grammar/parity/IlParityComparator.cs` core: serialize a `BytecodeProgram` via `csharp/glp_il_codec/IlCodec.cs`, byte-compare two IL blobs, and produce a `ParityResult { verdict, first_diff_offset, cause }` with first-diff localization (FR-003/FR-004, contract P1/P2). Wire the PRODUCTION front-end (`out/csharp/lib/compiler/parser.cs` → PipelineDriver) as side B; leave side A (bridge) pluggable.
+- [X] T006 Implement `spike/antlr4-glp-grammar/parity/ResultsWriter.cs` + extend `spike/antlr4-glp-grammar/harness/Program.cs` with `--parity`/`--fuzz`/`--budget`/`--corpus` flags that append a reviewable per-input table to `spike/antlr4-glp-grammar/RESULTS.md` (FR-009, contract P5).
 
 **Checkpoint**: production side compiles to IL and serializes; comparator + results table ready for a bridge to plug into.
 
@@ -48,13 +48,13 @@ product, so verification tasks are included as first-class (not optional extras)
 
 **Independent Test**: `dotnet run -- --parity --corpus ../corpus` over the original 7 files → 100% MATCH in RESULTS.md.
 
-- [ ] T007 [US1] Add the parity assertion over the 7-file spike corpus to the harness (expected: all MATCH); confirm it FAILS before the visitor exists (bridge side A unimplemented).
-- [ ] T008 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 1 — terms: struct, list (incl. nested + struct-in-list), variable/anon `_` with writer/reader `?` marking, constants (number/string/atom) → `ast.cs` nodes (data-model LoweringMapping).
-- [ ] T009 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 2 — clause/head/guard-conjunction/body-conjunction with the three-phase HEAD/GUARD/BODY split → `ast.cs` nodes.
-- [ ] T010 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 3 — operator exprs (arith, comparison, `mod` infix, `=..`, `:=`, `=`) and type-alternative/type-def nodes → `ast.cs` nodes.
-- [ ] T011 [US1] Implement `bridge/GlpLoweringVisitor.cs` group 4 — module + directive rules with soft-keyword predicates preserved (REPORT §6); wire the `Lower(ModuleContext)` entry point (contract G2).
-- [ ] T012 [US1] Add a static G1 check: assert one visitor override per `Glp.g4` rule; an unmapped rule throws, never silently passes (contract G1).
-- [ ] T013 [US1] Plug the bridge as comparator side A; run `--parity` over the 7-file corpus; diagnose any DIVERGE to root cause and fix in the bridge — no silent acceptance (FR-008). Record 7/7 MATCH in RESULTS.md (SC-001).
+- [X] T007 [US1] Add the parity assertion over the 7-file spike corpus to the harness (expected: all MATCH); confirm it FAILS before the visitor exists (bridge side A unimplemented).
+- [X] T008 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 1 — terms: struct, list (incl. nested + struct-in-list), variable/anon `_` with writer/reader `?` marking, constants (number/string/atom) → `ast.cs` nodes (data-model LoweringMapping).
+- [X] T009 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 2 — clause/head/guard-conjunction/body-conjunction with the three-phase HEAD/GUARD/BODY split → `ast.cs` nodes.
+- [X] T010 [P] [US1] Implement `bridge/GlpLoweringVisitor.cs` group 3 — operator exprs (arith, comparison, `mod` infix, `=..`, `:=`, `=`) and type-alternative/type-def nodes → `ast.cs` nodes.
+- [X] T011 [US1] Implement `bridge/GlpLoweringVisitor.cs` group 4 — module + directive rules with soft-keyword predicates preserved (REPORT §6); wire the `Lower(ModuleContext)` entry point (contract G2).
+- [X] T012 [US1] Add a static G1 check: assert one visitor override per `Glp.g4` rule; an unmapped rule throws, never silently passes (contract G1).
+- [X] T013 [US1] Plug the bridge as comparator side A; run `--parity` over the 7-file corpus; diagnose any DIVERGE to root cause and fix in the bridge — no silent acceptance (FR-008). Record 7/7 MATCH in RESULTS.md (SC-001).
 
 **Checkpoint**: SC-001 met — representative-corpus IL parity proven; the bridge exists end-to-end.
 
