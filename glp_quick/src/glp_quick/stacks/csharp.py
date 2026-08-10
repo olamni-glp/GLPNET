@@ -12,6 +12,7 @@ import os
 import queue
 import shutil
 import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Optional, Sequence
@@ -152,6 +153,11 @@ class CSharpHandle(Handle):
             line = raw.rstrip(b"\r\n").decode("utf-8", "replace")
             if line.startswith("LINK_CLOSED") or line.startswith("FAULT"):
                 self._closed_reason = line
+            elif line.startswith("PROVISION_REDEEMED") or line.startswith("ERR "):
+                # 067 join-seam-contract §Single-redemption: provisioning event lines are "picked
+                # up by the Python supervisor" — surface them on the supervising console's stderr
+                # (the hub operator sees the redemption; a session can consume the line, T020).
+                print(line, file=sys.stderr, flush=True)
 
 
 class CSharpStackAdapter(StackAdapter):

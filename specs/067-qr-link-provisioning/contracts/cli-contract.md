@@ -4,7 +4,11 @@ All subcommands validate the cert dir first (existing `_require_cert_dir` behavi
 with the posture-citing error `provision_posture` on any path that would render/persist/print
 trunk key material (FR-002).
 
-## `glp-quick provision session --label <device-label> [--window-min 10] [--ttl-days 30]`
+## `glp-quick provision session --label <device-label> --addr <ip|name> --port <udp> [--window-min 10] [--ttl-days 30]`
+
+`--addr`/`--port` name the link endpoint the joining device will connect to — they travel
+inside the encrypted bundle (data-model.md `ProvisioningBundle.endpoint`; folded back from the
+T026 loopback validation, which found them omitted here).
 
 Mint device keypair + trunk-signed cert; build bundle; render chunked QR to the hub terminal
 display page with the one-time passphrase shown alongside (once); block until redeemed /

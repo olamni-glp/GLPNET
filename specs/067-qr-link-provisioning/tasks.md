@@ -56,16 +56,16 @@ zero manual cert copying; no trunk key bytes in any rendered output.
       per contracts/cli-contract.md) in `glp_quick/src/glp_quick/cli.py`
 - [X] T011 [US1] Implement consumer intake → `glpquick-derived/` writer (abort-safe: no
       plaintext on disk before final decrypt) in `glp_quick/src/glp_quick/provision/join.py`
-- [ ] T012 [US1] Implement `DerivedCredentialValidator` (trunk-signature check against pinned
+- [X] T012 [US1] Implement `DerivedCredentialValidator` (trunk-signature check against pinned
       trunk SPKI, validity window ±90 s skew bound, revocation-set membership) in
       `csharp/glp_link/transports/DerivedCredentialValidator.cs` per contracts/join-seam-contract.md
-- [ ] T013 [US1] Extend `PinValidationCallback` (trunk pin OR valid derived cert) + new
+- [X] T013 [US1] Extend `PinValidationCallback` (trunk pin OR valid derived cert) + new
       `ERR cert_expired` / `ERR cert_revoked` tokens in
       `csharp/glp_link/transports/QuicTransport.cs` (fail-closed preserved; `cert_mismatch`
       semantics unchanged)
-- [ ] T014 [US1] Plumb `--derived-dir` through client role + map new `ERR` tokens to exit codes
+- [X] T014 [US1] Plumb `--derived-dir` through client role + map new `ERR` tokens to exit codes
       in `glp_quick/src/glp_quick/stacks/csharp.py` and `glp_quick/src/glp_quick/cli.py`
-- [ ] T015 [P] [US1] C# acceptance tests (trunk accepted; derived valid/expired/not-yet-valid/
+- [X] T015 [P] [US1] C# acceptance tests (trunk accepted; derived valid/expired/not-yet-valid/
       self-signed matrix) in `csharp/glp_link.tests/DerivedCredentialTests.cs`
 - [X] T016 [US1] Loopback integration test mint→render→join→mesh-accept in
       `glp_quick/tests/integration/test_provision_flow.py`
@@ -83,13 +83,13 @@ unaffected; audit answers SC-004 alone.
 
 - [X] T018 [US2] Add `revoke` and `audit` commands (issued⋈revoked join, `--json`) in
       `glp_quick/src/glp_quick/cli.py` + `glp_quick/src/glp_quick/provision/revoke.py`
-- [ ] T019 [US2] Revocation enforcement in the listener: mtime-triggered reload re-checked per
+- [X] T019 [US2] Revocation enforcement in the listener: mtime-triggered reload re-checked per
       accept (≥ every 10 s), corrupt-file ⇒ derived path fail-closed while trunk path stays up,
       in `csharp/glp_link/transports/DerivedCredentialValidator.cs`
-- [ ] T020 [US2] Single-redemption/replay refusal (`ERR session_replayed`) + `PROVISION_REDEEMED
+- [X] T020 [US2] Single-redemption/replay refusal (`ERR session_replayed`) + `PROVISION_REDEEMED
       <fingerprint>` event line consumed by the Python session in
       `csharp/glp_quick_host/Program.cs` and `glp_quick/src/glp_quick/provision/session.py`
-- [ ] T021 [P] [US2] Tests: revoke-mid-listen enforced ≤ 60 s, re-provision-after-revoke, audit
+- [X] T021 [P] [US2] Tests: revoke-mid-listen enforced ≤ 60 s, re-provision-after-revoke, audit
       completeness (SC-004), replay refusal, in `csharp/glp_link.tests/DerivedCredentialTests.cs`
       and `glp_quick/tests/unit/test_provision_lifecycle.py`
 

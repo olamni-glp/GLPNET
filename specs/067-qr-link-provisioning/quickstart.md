@@ -5,8 +5,10 @@ End-to-end walkthrough once implemented (mirrors US1/US2 acceptance).
 ## Provision a new desktop host (US1)
 
 ```bash
-# Hub (already-provisioned host, holds glpquick-cert/)
-glp-quick provision session --label "gavri-laptop"
+# Hub (already-provisioned host, holds glpquick-cert/; mesh server already running via
+# `glp-quick --server ...`). --addr/--port name the link endpoint the device should join —
+# they travel inside the encrypted bundle (T026 validation: the command fails without them).
+glp-quick provision session --label "gavri-laptop" --addr <hub-lan-ip> --port <udp>
 #  → terminal page shows ≤8 QR codes + one-time passphrase (displayed once)
 #  → speak/type the passphrase to the person at the new host
 
@@ -14,10 +16,15 @@ glp-quick provision session --label "gavri-laptop"
 glp-quick provision join --input chunks.txt
 #  → prompts for passphrase → writes glpquick-derived/
 
-# New host joins the mesh with derived material
+# New host joins the mesh with derived material (endpoint defaults from glpquick-derived/)
 glp-quick --client --derived-dir glpquick-derived
-#  → hub session flips to 'redeemed'; audit rows: render, issue, redeem
+#  → the hub's server console prints `PROVISION_REDEEMED <fingerprint>` (the supervisor
+#    surfaces the accept-seam event line); audit rows: issue, render, redeem
 ```
+
+Validated on loopback 2026-08-11 (T026): cert generate → server up → session → join →
+derived-client mesh join with redemption observed, end-to-end in **11.4 s** — SC-001's
+under-5-minute bound holds with wide margin.
 
 ## Verify the posture (US1-4 / SC-003)
 
