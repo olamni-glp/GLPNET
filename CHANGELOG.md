@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [v2026.08.10.1] - 2026-08-10
+
+### Fixed
+- untrack glpquick-cert key material + OTP floor instead of equality pin
+
+### Changed
+- Merge pull request #139 from olamni-glp/069-tracked-key-remediation
+- merge: origin/develop into 069 (union import manifest)
+- roadmap: sync round - import 1 peer file/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- roadmap: sync round - 0-delta import (fleet converged), reconcile in sync, 0 live dupes, export 18/100/2760 published
+- roadmap: sync round (import 2 files/15 lines), 0 live dupes, export 18/100/2760
+- roadmap import manifest
+- roadmap: sync round — import 6 peer files (5 lines, 0 dupes), export+publish 18/100/2760
+- roadmap: sync round after promotes (5 promoted), 0 live dupes, export 18/99/2745
+- Merge pull request #138 from olamni-glp/main
+
 ## [v2026.08.05.1] - 2026-08-05
 
 ### Changed
