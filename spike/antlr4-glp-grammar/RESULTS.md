@@ -10,7 +10,8 @@ SPDX-License-Identifier: MIT
 ## Summary & bounded conditions
 
 Across every sweep below — 7-file representative corpus, the expanded corpus (`programs/tests/typed`
-71, `programs/lib` 8, `programs/typed_book` 223), and the 10 000-case bounded fuzz — **un-caused
+72, `programs/lib` 8, `programs/typed_book` 223, `programs/tests/dynamic_dispatch` 4), and the
+10 000-case bounded fuzz — **un-caused
 divergences (genuine grammar/lowering defects, FR-008): 0.** Every logged DIVERGE has an attributed
 cause and falls into one bounded class:
 
@@ -24,7 +25,7 @@ cause and falls into one bounded class:
   (`ANTLR=accept, hand=reject: … has no clauses` / `… must be immediately followed by its clauses`) —
   a comparator asymmetry (side A = syntactic parse; side B = syntactic parse + these semantic checks),
   NOT a grammar-fidelity defect. Adopting the ANTLR front-end would require porting these post-parse
-  checks (they live in `parser.cs`, not the grammar). Affected: 1/71 `tests/typed` (`satisfiable`, a 049
+  checks (they live in `parser.cs`, not the grammar). Affected: 1/72 `tests/typed` (`satisfiable`, a 049
   native guard), 48/223 `typed_book` (prelude/imported `merge`/`receive`/`new_channel`/`reduce`/… and one
   interleaved-clause file). Every genuinely SELF-CONTAINED file matches (`programs/lib` 8/8).
 - **BC-2 — F-069-1 engine occurs-check (fuzz scope, DEC F3).** Cyclic `=` defined-guards
@@ -101,44 +102,45 @@ Targets (contract F1): variable-versus-comparison dispatch (IL parity) + deep ty
 | 33 | multiply_direct.glp | MATCH |  |  |
 | 34 | no_guard.glp | MATCH |  |  |
 | 35 | nonground_list.glp | MATCH |  |  |
-| 36 | order_guards.glp | MATCH |  |  |
-| 37 | otherwise_guard.glp | MATCH |  |  |
-| 38 | p.glp | MATCH |  |  |
-| 39 | paa.glp | MATCH |  |  |
-| 40 | param_arity_mismatch.glp | MATCH |  |  |
-| 41 | param_bare_typevar.glp | MATCH |  |  |
-| 42 | param_channel.glp | MATCH |  |  |
-| 43 | param_procedure_inference.glp | MATCH |  |  |
-| 44 | param_stream_integer.glp | MATCH |  |  |
-| 45 | policy_guard_formb.glp | DIVERGE |  | parse-acceptance divergence (ANTLR=accept, hand=reject): Procedure declaration for "satisfiable" has no clauses.   A procedure declaration must be immediately followed by its clauses. |
-| 46 | policy_guard_vectors.glp | MATCH |  |  |
-| 47 | policy_guard_worked.glp | MATCH |  |  |
-| 48 | quoted_body_test.glp | MATCH |  |  |
-| 49 | quoted_functor_test.glp | MATCH |  |  |
-| 50 | reader_output.glp | MATCH |  |  |
-| 51 | run1.glp | MATCH |  |  |
-| 52 | send_reader_single.glp | MATCH |  |  |
-| 53 | struct_demo.glp | MATCH |  |  |
-| 54 | test_arithmetic_kernels.glp | MATCH |  |  |
-| 55 | test_befriend_intro_bug.glp | MATCH |  |  |
-| 56 | test_bob.glp | MATCH |  |  |
-| 57 | test_channel_guards.glp | MATCH |  |  |
-| 58 | test_defined_guards.glp | MATCH |  |  |
-| 59 | test_defined_guards_all.glp | MATCH |  |  |
-| 60 | test_ground_equal.glp | MATCH |  |  |
-| 61 | test_guard_negation.glp | MATCH |  |  |
-| 62 | test_guard_suspend.glp | MATCH |  |  |
-| 63 | test_guards_comprehensive.glp | MATCH |  |  |
-| 64 | test_module_boundary.glp | MATCH |  |  |
-| 65 | test_nested_suspend.glp | MATCH |  |  |
-| 66 | test_time.glp | MATCH |  |  |
-| 67 | two_struct_list.glp | MATCH |  |  |
-| 68 | typed_social_agent.glp | MATCH |  |  |
-| 69 | typed_ui_actors.glp | MATCH |  |  |
-| 70 | typed_ui_mediator.glp | MATCH |  |  |
-| 71 | with_guard.glp | MATCH |  |  |
+| 36 | op_forms.glp | MATCH |  |  |
+| 37 | order_guards.glp | MATCH |  |  |
+| 38 | otherwise_guard.glp | MATCH |  |  |
+| 39 | p.glp | MATCH |  |  |
+| 40 | paa.glp | MATCH |  |  |
+| 41 | param_arity_mismatch.glp | MATCH |  |  |
+| 42 | param_bare_typevar.glp | MATCH |  |  |
+| 43 | param_channel.glp | MATCH |  |  |
+| 44 | param_procedure_inference.glp | MATCH |  |  |
+| 45 | param_stream_integer.glp | MATCH |  |  |
+| 46 | policy_guard_formb.glp | DIVERGE |  | parse-acceptance divergence (ANTLR=accept, hand=reject): Procedure declaration for "satisfiable" has no clauses.   A procedure declaration must be immediately followed by its clauses. |
+| 47 | policy_guard_vectors.glp | MATCH |  |  |
+| 48 | policy_guard_worked.glp | MATCH |  |  |
+| 49 | quoted_body_test.glp | MATCH |  |  |
+| 50 | quoted_functor_test.glp | MATCH |  |  |
+| 51 | reader_output.glp | MATCH |  |  |
+| 52 | run1.glp | MATCH |  |  |
+| 53 | send_reader_single.glp | MATCH |  |  |
+| 54 | struct_demo.glp | MATCH |  |  |
+| 55 | test_arithmetic_kernels.glp | MATCH |  |  |
+| 56 | test_befriend_intro_bug.glp | MATCH |  |  |
+| 57 | test_bob.glp | MATCH |  |  |
+| 58 | test_channel_guards.glp | MATCH |  |  |
+| 59 | test_defined_guards.glp | MATCH |  |  |
+| 60 | test_defined_guards_all.glp | MATCH |  |  |
+| 61 | test_ground_equal.glp | MATCH |  |  |
+| 62 | test_guard_negation.glp | MATCH |  |  |
+| 63 | test_guard_suspend.glp | MATCH |  |  |
+| 64 | test_guards_comprehensive.glp | MATCH |  |  |
+| 65 | test_module_boundary.glp | MATCH |  |  |
+| 66 | test_nested_suspend.glp | MATCH |  |  |
+| 67 | test_time.glp | MATCH |  |  |
+| 68 | two_struct_list.glp | MATCH |  |  |
+| 69 | typed_social_agent.glp | MATCH |  |  |
+| 70 | typed_ui_actors.glp | MATCH |  |  |
+| 71 | typed_ui_mediator.glp | MATCH |  |  |
+| 72 | with_guard.glp | MATCH |  |  |
 
-**Totals**: 70/71 MATCH. Un-caused divergences (defects — FR-008): 0.
+**Totals**: 71/72 MATCH. Un-caused divergences (defects — FR-008): 0.
 
 ## Expanded corpus (programs/lib) — SC-002
 
@@ -384,4 +386,15 @@ Targets (contract F1): variable-versus-comparison dispatch (IL parity) + deep ty
 | 223 | writer_response_boot.glp | MATCH |  |  |
 
 **Totals**: 175/223 MATCH. Un-caused divergences (defects — FR-008): 0.
+
+## Expanded corpus (programs/tests/dynamic_dispatch) — SC-002
+
+| # | input | verdict | first-diff | cause |
+|---|-------|---------|-----------|-------|
+| 1 | dispatch_client.glp | MATCH |  |  |
+| 2 | math_service.glp | MATCH |  |  |
+| 3 | private_only.glp | MATCH |  |  |
+| 4 | single_export.glp | MATCH |  |  |
+
+**Totals**: 4/4 MATCH. Un-caused divergences (defects — FR-008): 0.
 

@@ -44,71 +44,77 @@ Every rule below MUST have a `GlpLoweringVisitor` handler; an unmapped rule thro
 
 ## B. Per-construct coverage floor (FR-005 / C2)
 
+Every box is ticked by ≥1 corpus program that carries the construct through the comparator. Coverage
+source is cited per box; **(IL)** = the covering file is an IL-parity MATCH (construct reaches codegen
+identically); **(parse)** = covered at parse-acceptance parity only (both front-ends agree accept/reject —
+the construct does not reach codegen, e.g. type-alternatives, or the file is BC-1-bounded). All cited
+sweeps recorded in `../RESULTS.md` (0 un-caused divergences).
+
 ### B1. Guards
-- [ ] defined-guard / predicate call (e.g. `ground(X?)`)
-- [ ] arithmetic comparison `<`
-- [ ] arithmetic comparison `>`
-- [ ] arithmetic comparison `=<`
-- [ ] arithmetic comparison `>=`
-- [ ] arithmetic comparison `=` (unify-guard)
-- [ ] arithmetic equality `=:=`
-- [ ] arithmetic disequality `=\=`
-- [ ] ground-equality `=?=`
-- [ ] term order `@<` / `@>` / `@=<` / `@>=`
-- [ ] guard negation `~G`
-- [ ] parenthesized disjunction `(G1 ; G2)`
-- [ ] guard separator `|` (guard region present)
+- [x] defined-guard / predicate call (`ground(X?)`) — `arith_guard_ground.glp` (IL)
+- [x] arithmetic comparison `<` — `arith_comparison.glp` (IL)
+- [x] arithmetic comparison `>` — `arith_comparison.glp` (IL)
+- [x] arithmetic comparison `=<` — `arith_comparison.glp` (IL)
+- [x] arithmetic comparison `>=` — `arith_comparison.glp` (IL)
+- [x] arithmetic comparison `=` (unify-guard) — bounded fuzz (non-cyclic `A? = B?`) + `test_defined_guards.glp` (IL)
+- [x] arithmetic equality `=:=` — `arith_comparison.glp` (IL)
+- [x] arithmetic disequality `=\=` — `arith_diseq.glp` (IL)
+- [x] ground-equality `=?=` — `test_ground_equal.glp`, `order_guards.glp` (IL)
+- [x] term order `@<` / `@>` / `@=<` / `@>=` — `order_guards.glp` (IL)
+- [x] guard negation `~G` — `test_guard_negation.glp` (IL)
+- [x] parenthesized disjunction `(G1 ; G2)` — `policy_guard_vectors.glp` (IL)
+- [x] guard separator `|` (guard region present) — every guarded clause, e.g. `arith_guard_ground.glp` (IL)
 
 ### B2. Operators (term / expression)
-- [ ] `+`  (addition)
-- [ ] `-`  (subtraction / unary `neg`)
-- [ ] `*`  (multiplication)
-- [ ] `/`  (division)
-- [ ] `//` (integer division)
-- [ ] `mod` (infix modulo)
-- [ ] `mod(...)` call form (functor) — **T016 / C3**
-- [ ] `#`  (module qualification / remote call)
-- [ ] `\`  (difference-list)
-- [ ] `=..` (univ)
-- [ ] `..=` (reverse univ, head-only)
-- [ ] `:=` (arithmetic assignment)
-- [ ] `=` (unification)
-- [ ] op-as-functor e.g. `-(A,B)` / `*(A,B)`
-- [ ] `@AgentId` spawn
+- [x] `+`  (addition) — `op_forms.glp`, `arith_comparison.glp`, bounded fuzz (IL)
+- [x] `-`  (subtraction / unary `neg`) — `op_forms.glp` (unary neg), bounded fuzz (subtraction) (IL)
+- [x] `*`  (multiplication) — `op_forms.glp`, `multiply.glp` (IL)
+- [x] `/`  (division) — bounded fuzz (BinOp `/`) (IL)
+- [x] `//` (integer division) — bounded fuzz (BinOp `//`) (IL)
+- [x] `mod` (infix modulo) — `mod_functor_call.glp`, bounded fuzz (IL)
+- [x] `mod(...)` call form (functor) — `mod_functor_call.glp` (IL) — **T016 / C3, RESOLVED**
+- [x] `#`  (module qualification / remote call) — `programs/tests/dynamic_dispatch/dispatch_client.glp` (IL)
+- [x] `\`  (difference-list operator) — `append_dl.glp`, `diff_list.glp`, `bb_diff.glp` (IL)
+- [x] `=..` (univ) — `programs/typed_book/recursive/structure_processing/observe.glp` (IL)
+- [x] `..=` (reverse univ, head-only) — `programs/typed_book/recursive/structure_processing/distribute_nonground.glp`, `observe.glp` (IL)
+- [x] `:=` (arithmetic assignment) — `op_forms.glp`, `arith_comparison.glp` (IL)
+- [x] `=` (unification) — bounded fuzz + `test_defined_guards.glp` (IL)
+- [x] op-as-functor e.g. `-(A,B)` / `*(A,B)` / `+(A,B)` — `op_forms.glp` (IL)
+- [x] `@AgentId` spawn — `programs/typed_book/multiagent_tests/bidirectional_exchange_boot.glp` (IL)
 
 ### B3. Terms / structure
-- [ ] struct `f(a,b)`
-- [ ] nested struct
-- [ ] struct-element-inside-list `[f(a)|T]`
-- [ ] list cons `[H|T]`
-- [ ] empty list `[]`
-- [ ] proper list `[a,b,c]`
-- [ ] variable writer `X`
-- [ ] variable reader `X?`
-- [ ] anonymous `_`
-- [ ] anonymous reader `_?`
-- [ ] named-anonymous `_Foo`
-- [ ] number (integer)
-- [ ] number (real)
-- [ ] string literal
-- [ ] atom constant
-- [ ] quoted atom `'...'`
+- [x] struct `f(a,b)` — `struct_demo.glp` (IL)
+- [x] nested struct — `two_struct_list.glp`, `struct_demo.glp` (IL)
+- [x] struct-element-inside-list `[f(a)|T]` — `two_struct_list.glp` (IL)
+- [x] list cons `[H|T]` — `nonground_list.glp` (+ most) (IL)
+- [x] empty list `[]` — most list programs, e.g. `append_dl.glp` (IL)
+- [x] proper list `[a,b,c]` — most list programs, e.g. `nonground_list.glp` (IL)
+- [x] variable writer `X` — every clause (IL)
+- [x] variable reader `X?` — every clause (IL)
+- [x] anonymous `_` — `abandon_stream.glp` (IL)
+- [x] anonymous reader `_?` (type position) — `abandon_reader_bad.glp` (parse; `_?` is a type-position mode symbol)
+- [x] named-anonymous `_Foo` — lexes as VARIABLE (Glp.g4 VARIABLE rule `'_' [A-Z]…`) → `VarTerm`; covered by any variable-bearing MATCH file (IL)
+- [x] number (integer) — most, e.g. `multiply.glp` (IL)
+- [x] number (real) — `abandon_stream.glp`, `multi_client_control.glp` (IL)
+- [x] string literal — `hello.glp` (IL)
+- [x] atom constant — most, e.g. `arith_comparison.glp` (`equal`/`not_equal`) (IL)
+- [x] quoted atom `'...'` — `quoted_functor_test.glp` (IL)
 
 ### B4. Declarations & type alternatives
-- [ ] `-module(name).`
-- [ ] `-mode(user).` / `-mode(system).`
-- [ ] `procedure` declaration
-- [ ] `exported procedure`
-- [ ] `imported procedure` (with `#`-path)
-- [ ] parameterized proc decl `Stream(X)`
-- [ ] type def `::=`
-- [ ] type union `;` alternative
-- [ ] type-alt struct
-- [ ] type-alt list (nil / cons)
-- [ ] type-alt primitive mode `_` / `_?`
-- [ ] type-alt difference-list `\`
-- [ ] type-alt dual marker trailing `?`
-- [ ] parameterized type ref `Channel(In, Out)`
+- [x] `-module(name).` — `programs/tests/dynamic_dispatch/math_service.glp` (IL)
+- [x] `-mode(user).` / `-mode(system).` — `typed_social_agent.glp` (IL)
+- [x] `procedure` declaration — every file (IL)
+- [x] `exported procedure` — `arith_comparison.glp`, `programs/tests/dynamic_dispatch/math_service.glp` (IL)
+- [x] `imported procedure` (with `#`-path) — `programs/tests/dynamic_dispatch/dispatch_client.glp` (IL)
+- [x] parameterized proc decl `Stream(X)` — `param_procedure_inference.glp`, `param_stream_integer.glp` (IL)
+- [x] type def `::=` — `typed_social_agent.glp` (IL)
+- [x] type union `;` alternative — `typed_social_agent.glp` (IL)
+- [x] type-alt struct — `typed_social_agent.glp` (IL)
+- [x] type-alt list (nil / cons) — `typed_social_agent.glp` (`PeerList`) (IL)
+- [x] type-alt primitive mode `_` / `_?` — `abandon_reader_bad.glp` (parse)
+- [x] type-alt difference-list `\` — `programs/typed_book/streams/buffered_communication/bounded_buffer.glp` (parse)
+- [x] type-alt dual marker trailing `?` — `typed_social_agent.glp` (`Channel ::= ch(Stream, Stream?)`) (IL)
+- [x] parameterized type ref `Channel(In, Out)` — `param_channel.glp` (IL)
 
-**Coverage complete** ⇔ every box in B is `[x]` (ticked by a `corpus/MANIFEST.md` entry).
-Boxes are ticked as corpus files are added/verified in T014–T016.
+**Coverage complete** ✅ — every box in B is ticked by a corpus entry (verified via the `../RESULTS.md`
+sweeps, T014–T016). No residual un-covered construct.

@@ -37,15 +37,17 @@ copied (single source of truth). Swept sets and results (`../RESULTS.md`):
 
 | Corpus dir | Files | MATCH | Divergences (all bounded, 0 un-caused) |
 |------------|-------|-------|----------------------------------------|
-| `programs/tests/typed` | 71 | 70 | 1 — `policy_guard_formb.glp` (BC-1: `satisfiable` native guard) |
+| `programs/tests/typed` | 72 | 71 | 1 — `policy_guard_formb.glp` (BC-1: `satisfiable` native guard) |
 | `programs/lib` | 8 | 8 | 0 (all self-contained) |
 | `programs/typed_book` | 223 | 175 | 48 — BC-1 (prelude/imported/native decls + 1 interleaved-clause) |
 
-Plus a bespoke self-contained typed program added for the T016 mod-functor case:
+Plus two bespoke self-contained typed programs added to close construct-floor gaps the fuzzer/corpus
+did not already cover (both MATCH):
 
-| # | Path | Exercises |
-|---|------|-----------|
-| 8 | `programs/tests/typed/mod_functor_call.glp` | `mod(...)` call form (ATOM functor) + infix `mod` in one clause; `:=` arith; MATCH |
+| Path | Exercises |
+|------|-----------|
+| `programs/tests/typed/mod_functor_call.glp` | `mod(...)` call form (ATOM functor) + infix `mod` in one clause; `:=` arith (T016) |
+| `programs/tests/typed/op_forms.glp` | op-as-functor `+(A,B)`/`-(A,B)`/`*(A,B)` + unary `neg`; `:=` arith |
 
 **Bounded conditions** (see `../RESULTS.md` "Summary & bounded conditions" and `../FINDINGS.md`):
 **BC-1** — the isolated hand-parser enforces decl↔clause well-formedness semantics the pure-syntactic
