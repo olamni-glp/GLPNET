@@ -248,3 +248,30 @@ friction their retrospective flagged as hitting every multi-host ship (third occ
 same root cause and it will meet our 064 cut. Fleet position is now unanimous on the substance
 (gitignore the derived mirror; the PGlite catalog is authoritative) and blocked only on an unmade
 engineer decision.
+
+## 🏁 US2 LANDED — ITEM-01 + ITEM-02 disposed 2026-08-10 (the engineer merged both PRs)
+
+Verified independently from this host (never on the peer's report alone):
+
+| PR | branch | merged | merge commit | feature commit in `origin/develop`? |
+|---|---|---|---|---|
+| **#299** | `feat/batch-roadmap-advance-calver-normalisation` | 2026-08-10T17:42:11Z | `57c60d29` | `634d4a0a` ✓ contained |
+| **#300** | `feat/atomic-toolchain-installs` | 2026-08-10T17:42:23Z | `b8b2bfa5` | `554836f6` ✓ contained |
+
+- **ITEM-01 atomic-toolchain-installs** → **disposed (landed)**. Roadmap advanced → `shipped`.
+- **ITEM-02 batch-advance + CalVer normalisation** → **disposed (landed)**. Roadmap advanced →
+  `shipped`.
+
+**Why `shipped` and not `closed`.** Both landed on buildkit's `develop`; buildkit has **not** cut
+a release containing them. `shipped` is the accurate state, and — per this ledger's own one-way-door
+finding — `closed` is reachable by one host's advance and reversible by none, so it is not a state
+to enter on an assumption. They advance to `released`/`closed` when buildkit tags a release that
+contains them. **Engineer's call if a direct close is preferred.**
+
+**This clears `OPS.buildkit-repo` as a blocker for US2** — the two US2 items no longer wait on
+anything in the buildkit repo.
+
+**What the merge did NOT clear**: buildkit's own trunk was ~200-tests-red at merge time (base
+`develop` = 200 failed/6976 passed since 2026-07-30; #299 matched that set exactly with +13
+passing; #300's single extra failure was an unreproducible ship-resume flake). Landing these
+features does not fix that trunk, which remains an unowned buildkit work item.
