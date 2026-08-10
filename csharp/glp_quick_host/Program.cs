@@ -252,8 +252,7 @@ internal static class Program
         // A join presenting a fingerprint that already has a LIVE connection from a different remote
         // endpoint is refused (`session_replayed`); the first join of a fingerprint is reported as
         // `PROVISION_REDEEMED <fingerprint>` so the Python session marks itself redeemed.
-        var liveFingerprints = new ConcurrentDictionary<string, ILinkEndpoint>();
-        var redeemedSeen = new ConcurrentDictionary<string, byte>();
+        var redemptions = new RedemptionTracker(trunkPin);
 
         // 063 US1 T011 (contract C1): with --repl, envelopes directed to SelfId also feed the live
         // REPL child; each rendered block routes back to the goal's sender through the mesh.
@@ -300,24 +299,20 @@ internal static class Program
 
             // 067 T020: single-redemption replay refusal for DERIVED identities (trunk links exempt).
             string? fp = (link as IPeerCertEndpoint)?.RemoteSpkiPin;
-            bool isDerived = fp is not null && trunkPin is not null && !string.Equals(fp, trunkPin, StringComparison.Ordinal);
-            if (isDerived)
+            var admit = redemptions.Admit(fp, link);
+            if (admit == AdmitOutcome.Replayed)
             {
-                if (liveFingerprints.TryGetValue(fp!, out var incumbent) && !ReferenceEquals(incumbent, link))
-                {
-                    Console.Error.WriteLine($"ERR session_replayed {fp} already live on {incumbent.Id}; refusing {link.Id}");
-                    await link.DisposeAsync().ConfigureAwait(false);
-                    continue;
-                }
-                liveFingerprints[fp!] = link;
-                if (redeemedSeen.TryAdd(fp!, 1))
-                    Console.Error.WriteLine($"PROVISION_REDEEMED {fp}"); // first-join observation (Python session → redeemed)
+                Console.Error.WriteLine($"ERR session_replayed {fp} already live; refusing {link.Id}");
+                await link.DisposeAsync().ConfigureAwait(false);
+                continue;
             }
+            if (admit == AdmitOutcome.FirstJoin)
+                Console.Error.WriteLine($"PROVISION_REDEEMED {fp}"); // first-join observation (Python session → redeemed)
 
             if (Interlocked.Increment(ref active) > opts.MaxClients)
             {
                 Interlocked.Decrement(ref active);
-                if (isDerived) liveFingerprints.TryRemove(new KeyValuePair<string, ILinkEndpoint>(fp!, link));
+                redemptions.Release(fp, link);
                 Console.Error.WriteLine($"REJECT over_capacity {link.Id}"); // T026: clear over-capacity reject
                 _ = RejectOverCapacityAsync(link);
                 continue;
@@ -326,7 +321,7 @@ internal static class Program
             _ = ClientPumpAsync(mesh, link, () =>
             {
                 Interlocked.Decrement(ref active);
-                if (isDerived) liveFingerprints.TryRemove(new KeyValuePair<string, ILinkEndpoint>(fp!, link));
+                redemptions.Release(fp, link);
             }, life.Token);
         }
         await selfPump.ConfigureAwait(false);
@@ -534,6 +529,55 @@ internal sealed class Mesh
         try { await link.SendBytesAsync(frame, ct).ConfigureAwait(false); }
         catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
         { Console.Error.WriteLine($"DROP send-failed {link.Id}: {ex.Message}"); }
+    }
+}
+
+/// <summary>How the redemption tracker classified an accepted link's peer identity (067 T020).</summary>
+internal enum AdmitOutcome
+{
+    /// <summary>Trunk identity (or no reported identity) — the tracker does not apply.</summary>
+    NotDerived,
+
+    /// <summary>First join ever seen for this derived fingerprint — emit <c>PROVISION_REDEEMED</c>.</summary>
+    FirstJoin,
+
+    /// <summary>A later, non-conflicting join of a known fingerprint (e.g. reconnect after drop).</summary>
+    Rejoin,
+
+    /// <summary>The fingerprint already has a LIVE connection on a different link — refuse
+    /// <c>session_replayed</c> (join-seam-contract §Single-redemption, FR-010).</summary>
+    Replayed,
+}
+
+/// <summary>
+/// Single-redemption tracking for derived credentials at the mesh accept seam (067 T020): one live
+/// connection per derived fingerprint; the first join is the redemption observation. Trunk-pinned
+/// links are exempt — the shared identity is presented by every legacy endpoint by design.
+/// </summary>
+internal sealed class RedemptionTracker
+{
+    private readonly string? _trunkPin;
+    private readonly ConcurrentDictionary<string, object> _live = new();
+    private readonly ConcurrentDictionary<string, byte> _seen = new();
+
+    public RedemptionTracker(string? trunkPin) => _trunkPin = trunkPin;
+
+    /// <summary>Classify (and, for a derived identity, register) one accepted link.</summary>
+    public AdmitOutcome Admit(string? remoteSpkiPin, object link)
+    {
+        if (remoteSpkiPin is null || _trunkPin is null || string.Equals(remoteSpkiPin, _trunkPin, StringComparison.Ordinal))
+            return AdmitOutcome.NotDerived;
+        var holder = _live.GetOrAdd(remoteSpkiPin, link);
+        if (!ReferenceEquals(holder, link))
+            return AdmitOutcome.Replayed; // a different link is live under this credential
+        return _seen.TryAdd(remoteSpkiPin, 1) ? AdmitOutcome.FirstJoin : AdmitOutcome.Rejoin;
+    }
+
+    /// <summary>Release a link's registration on drop/reject (a later rejoin is then admissible).</summary>
+    public void Release(string? remoteSpkiPin, object link)
+    {
+        if (remoteSpkiPin is not null)
+            _live.TryRemove(new KeyValuePair<string, object>(remoteSpkiPin, link));
     }
 }
 
