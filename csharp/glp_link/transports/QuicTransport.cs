@@ -39,19 +39,38 @@ public sealed class QuicTransport : ILinkTransport
     // too (mutual auth). Possession of the cert+key proves membership; the SPKI pin is the anchor.
     private readonly X509Certificate2 _sharedCert;
     private readonly string _expectedSpkiPin;
+    private readonly DerivedCredentialValidator? _derivedValidator;
+    private volatile string? _lastRefusalToken;
+    private volatile string? _lastRefusalDetail;
 
     /// <summary>
     /// Configure the leaf with the shared trust material (loaded from the cert dir by the host /
     /// adapter). <paramref name="sharedCert"/> must carry the private key (server + client present it);
     /// <paramref name="expectedSpkiPin"/> is the pinned <c>base64(SHA-256(SPKI))</c> value.
+    /// <paramref name="derivedValidator"/> (feature 067) optionally admits trunk-signed derived
+    /// certificates in addition to the exact trunk pin; without it, behaviour is exactly the 036
+    /// trunk-pin-only check (FR-012: existing endpoints unchanged).
     /// </summary>
-    public QuicTransport(X509Certificate2 sharedCert, string expectedSpkiPin)
+    public QuicTransport(X509Certificate2 sharedCert, string expectedSpkiPin,
+        DerivedCredentialValidator? derivedValidator = null)
     {
         _sharedCert = sharedCert ?? throw new ArgumentNullException(nameof(sharedCert));
         if (string.IsNullOrWhiteSpace(expectedSpkiPin))
             throw new ArgumentException("a non-empty SPKI pin is required", nameof(expectedSpkiPin));
         _expectedSpkiPin = expectedSpkiPin.Trim();
+        _derivedValidator = derivedValidator;
     }
+
+    /// <summary>
+    /// The 067 <c>ERR</c> token (<c>cert_mismatch</c> / <c>cert_expired</c> / <c>cert_revoked</c>)
+    /// of the most recent refusal by <see cref="PinValidationCallback"/>, or null if the last
+    /// evaluation accepted. Diagnostic surface for the host's token emission — the refusal itself
+    /// is the returned <c>false</c> (the handshake fails regardless of anyone reading this).
+    /// </summary>
+    public string? LastRefusalToken => _lastRefusalToken;
+
+    /// <summary>Human detail accompanying <see cref="LastRefusalToken"/>.</summary>
+    public string? LastRefusalDetail => _lastRefusalDetail;
 
     public IReadOnlyCollection<LinkScheme> SupportedSchemes => Schemes;
 
@@ -175,21 +194,57 @@ public sealed class QuicTransport : ILinkTransport
     }
 
     /// <summary>
-    /// The shared-cert SPKI pin check (FR-003). Waives ONLY the no-CA-chain + hostname-mismatch
-    /// errors (trust is the pin, not the name); never blanket-accepts. A pin mismatch ⇒ reject ⇒
-    /// the handshake fails cleanly (the <c>cert_mismatch</c> path, FR-019).
+    /// The shared-cert SPKI pin check (FR-003), extended by 067: accept iff the presented cert's
+    /// pin equals the trunk pin (constant-time, unchanged), OR — when a
+    /// <see cref="DerivedCredentialValidator"/> was configured — it is a valid trunk-signed derived
+    /// credential (signature + validity window + revocation, join-seam-contract §2). Waives ONLY
+    /// the no-CA-chain + hostname-mismatch errors (trust is the pin, not the name); never
+    /// blanket-accepts. Any other certificate ⇒ reject ⇒ the handshake fails cleanly with the
+    /// recorded token (<c>cert_mismatch</c> semantics preserved, FR-019).
     /// </summary>
     private bool PinValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors)
     {
         if (certificate is null)
-            return false; // no peer cert — cannot pin
+        {
+            Refuse("cert_mismatch", "no peer certificate presented — cannot pin");
+            return false;
+        }
         const SslPolicyErrors waived = SslPolicyErrors.RemoteCertificateChainErrors | SslPolicyErrors.RemoteCertificateNameMismatch;
         if ((errors & ~waived) != SslPolicyErrors.None)
+        {
+            Refuse("cert_mismatch", $"non-waivable TLS policy error: {errors & ~waived}");
             return false; // e.g. RemoteCertificateNotAvailable — a real failure, not waivable
+        }
         var presented = certificate as X509Certificate2 ?? X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
-        return CryptographicOperations.FixedTimeEquals(
+        bool trunkMatch = CryptographicOperations.FixedTimeEquals(
             System.Text.Encoding.ASCII.GetBytes(SpkiPin(presented)),
             System.Text.Encoding.ASCII.GetBytes(_expectedSpkiPin));
+        if (trunkMatch)
+        {
+            _lastRefusalToken = null;
+            _lastRefusalDetail = null;
+            return true; // trunk identity (existing, unchanged)
+        }
+        if (_derivedValidator is null)
+        {
+            Refuse("cert_mismatch", "peer SPKI pin does not match the pinned trunk value");
+            return false; // 036 behaviour: pin-only, no derived path configured
+        }
+        var verdict = _derivedValidator.Validate(presented);
+        if (verdict.IsAccepted)
+        {
+            _lastRefusalToken = null;
+            _lastRefusalDetail = null;
+            return true;
+        }
+        Refuse(verdict.Token, verdict.Detail);
+        return false;
+    }
+
+    private void Refuse(string token, string detail)
+    {
+        _lastRefusalToken = token;
+        _lastRefusalDetail = detail;
     }
 
     private static void Require(LinkScheme scheme)

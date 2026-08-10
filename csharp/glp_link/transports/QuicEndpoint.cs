@@ -10,6 +10,17 @@ using GlpRuntime.Link.Seam;
 namespace GlpRuntime.Link.Transports;
 
 /// <summary>
+/// A link endpoint that can report its authenticated peer's SPKI SHA-256 pin (feature 067):
+/// the identity established by the TLS handshake, used by the mesh host for redemption
+/// observation + single-redemption replay refusal (join-seam-contract §Single-redemption).
+/// </summary>
+public interface IPeerCertEndpoint
+{
+    /// <summary>The peer certificate's <c>base64(SHA-256(SPKI))</c>, or null if unavailable.</summary>
+    string? RemoteSpkiPin { get; }
+}
+
+/// <summary>
 /// One established QUIC+WS link end (feature 036): a live <see cref="QuicConnection"/> with one
 /// bidirectional <see cref="QuicStream"/> carrying a <b>genuine RFC 6455 WebSocket link</b>
 /// (<see cref="WebSocketOverQuic"/>), reusing spec 025's <see cref="ILinkEndpoint"/> seam so the
@@ -21,7 +32,7 @@ namespace GlpRuntime.Link.Transports;
 /// <see cref="RecvBytesAsync"/> (self-delimiting), matching the <see cref="TcpEndpoint"/> precedent.
 /// Send and recv run on different threads (one concurrent reader + one writer on the stream).
 /// </remarks>
-internal sealed class QuicEndpoint : ILinkEndpoint
+internal sealed class QuicEndpoint : ILinkEndpoint, IPeerCertEndpoint
 {
     private readonly QuicConnection _connection;
     private readonly QuicStream _stream;
@@ -29,6 +40,9 @@ internal sealed class QuicEndpoint : ILinkEndpoint
     private int _closed;
 
     public LinkId Id { get; }
+
+    /// <inheritdoc/>
+    public string? RemoteSpkiPin { get; }
 
     public event Action<LinkFaultSignal>? OnFault;
 
@@ -38,6 +52,18 @@ internal sealed class QuicEndpoint : ILinkEndpoint
         _connection = connection;
         _stream = stream;
         _ws = ws;
+        try
+        {
+            var remote = connection.RemoteCertificate;
+            RemoteSpkiPin = remote is null
+                ? null
+                : QuicTransport.SpkiPin(remote as System.Security.Cryptography.X509Certificates.X509Certificate2
+                    ?? System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadCertificate(remote.GetRawCertData()));
+        }
+        catch (Exception)
+        {
+            RemoteSpkiPin = null; // identity reporting is diagnostic — never fail link construction on it
+        }
     }
 
     public async Task SendBytesAsync(ReadOnlyMemory<byte> frame, CancellationToken ct = default)
