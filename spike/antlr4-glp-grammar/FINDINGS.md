@@ -13,9 +13,18 @@ pipeline that both front-ends feed, exposed because the fuzz drives many valid p
 
 ## F-069-1 🔴 Production-engine stack overflow: `DefinedGuardEvaluator._ApplySubstitution` (no occurs-check)
 
-**Status:** REPORTED — awaiting engineer decision (Bug Protocol; FR-010 forbids the bridge touching
-production). NOT a parity divergence: both front-ends reach the identical shared `PipelineDriver` and
-crash identically, so this is a shared-pipeline robustness defect, not an A-vs-B mismatch.
+**Status:** DECISION MADE — **DEC F3** (Gabi, 2026-08-11): do BOTH. (a) File the production engine
+occurs-check defect as its OWN bug feature (out of FR-010 scope for 069 — the bridge must not touch
+production). (b) Scope the parity fuzzer to NON-CYCLIC `=` guards (`GrammarFuzzer.Guard`: the two
+operands of a `=` draw from disjoint variable sets) and record F-069-1 as a bounded condition carried
+into `DECISION.md` (T020) and `RESULTS.md`. A cyclic `=` guard never yields IL, so narrowing generation
+loses no parity coverage. With the scope applied, `--fuzz --budget 10000` completes clean: 5623 valid
+IL-parity MATCH, 4377 both-reject, **0 un-caused divergences** (SC-003). This reproducer file is retained
+as the durable F-069-1 witness for the filed engine bug.
+
+Originally REPORTED per Bug Protocol (Bug Protocol; FR-010 forbids the bridge touching production). NOT a
+parity divergence: both front-ends reach the identical shared `PipelineDriver` and crash identically, so
+this is a shared-pipeline robustness defect, not an A-vs-B mismatch.
 
 **Discovered by:** `--fuzz` at deterministic index 23 (seed 2654435769).
 
