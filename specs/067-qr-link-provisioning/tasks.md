@@ -15,7 +15,7 @@ repo discipline is test-gated (Constitution VII).
 
 - [X] T001 Add `segno` and `fpdf2` to `glp_quick/pyproject.toml` dependencies; create package
       skeleton `glp_quick/src/glp_quick/provision/__init__.py`; install into `glp_quick/.venv`
-- [ ] T002 Verify `glpquick-cert/` (and add `glpquick-derived/`) are gitignored; create the
+- [X] T002 Verify `glpquick-cert/` (and add `glpquick-derived/`) are gitignored; create the
       `glpquick-cert/provision/` store path convention in `glp_quick/src/glp_quick/provision/__init__.py`
       (paths only — no secret ever lands in git)
 
