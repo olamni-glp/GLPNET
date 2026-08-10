@@ -109,6 +109,24 @@ class ProvisioningSession:
         )
         return self.chunks
 
+    def observe_event_line(self, line: str) -> bool:
+        """Consume one host stderr event line (067 T020, join-seam-contract §Single-redemption).
+
+        ``PROVISION_REDEEMED <fingerprint>`` for THIS session's minted credential marks the
+        session redeemed (first successful mesh join observed at the hub accept seam). Returns
+        True iff the line redeemed this session; every other line (other fingerprints, other
+        events, an already-settled session) is ignored.
+        """
+        parts = line.strip().split()
+        if len(parts) != 2 or parts[0] != "PROVISION_REDEEMED":
+            return False
+        if self.derived is None or parts[1] != self.derived.spki_pin:
+            return False
+        if self.state != "rendered":
+            return False  # already redeemed/expired/aborted — a duplicate observation is not an error
+        self.redeem()
+        return True
+
     def redeem(self) -> None:
         """Mark the session redeemed — single-redemption (FR-010)."""
         if self.state == "redeemed":

@@ -20,6 +20,7 @@ from glp_quick.repl_link import GlpMessage
 from glp_quick.stacks.base import Handle, ReplKind, StackAdapter, StackName, Status
 
 # FR-019 failure tokens the host emits on stderr (`ERR <token> ...`) → these exit codes.
+# 8-10 are the 067 derived-credential refusals (contracts/join-seam-contract.md).
 _EXIT_TOKEN = {
     2: "usage",
     3: "cert_mismatch",
@@ -27,6 +28,9 @@ _EXIT_TOKEN = {
     5: "udp_blocked",
     6: "quic_unsupported",
     7: "bind_failed",
+    8: "cert_expired",
+    9: "cert_revoked",
+    10: "session_replayed",
 }
 
 
@@ -173,8 +177,13 @@ class CSharpStackAdapter(StackAdapter):
         return self._spawn(args, await_token="READY", peer_ids=[f"server@{bind}:{port}"])
 
     def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind,
-                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
-        args = ["--role", "client", "--addr", server_addr, "--port", str(port), "--cert", str(cert)]
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None,
+                     derived_dir: Optional[Path] = None) -> Handle:
+        args = ["--role", "client", "--addr", server_addr, "--port", str(port)]
+        if derived_dir is not None:  # 067: present the derived credential instead of the shared pfx
+            args += ["--derived-dir", str(derived_dir)]
+        else:
+            args += ["--cert", str(cert)]
         if self_id:
             args += ["--id", self_id]
         if repl_path:
