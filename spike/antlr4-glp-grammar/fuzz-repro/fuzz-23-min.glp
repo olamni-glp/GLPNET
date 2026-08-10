@@ -1,0 +1,6 @@
+% Minimal reproducer for F-069-1 (see ../FINDINGS.md): compiling this self-referential '=' defined
+% guard stack-overflows GlpRuntime.Compiler.DefinedGuardEvaluator._ApplySubstitution (no occurs-check).
+% 'A' may legally occur twice because Number is a constant type (SRSW relaxation, manual §3).
+procedure p(Number?, Number?, Constant).
+p(A, B, yes) :- A? = B? * A? | true.
+p(_, _, no) :- otherwise | true.

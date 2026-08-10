@@ -19,6 +19,5 @@ SPDX-License-Identifier: MIT
 | 6 | typed_social_agent.glp | MATCH |  |  |
 | 7 | abandon_reader_bad.glp | MATCH |  |  |
 
-**Totals**: 7/7 MATCH.
+**Totals**: 7/7 MATCH. Un-caused divergences (defects — FR-008): 0.
 
-Un-caused divergences (defects — FR-008): 0.

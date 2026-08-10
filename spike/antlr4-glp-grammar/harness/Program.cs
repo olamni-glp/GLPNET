@@ -50,7 +50,31 @@ namespace GlpGrammarSpike
             bool fuzz = HasFlag(args, "--fuzz");
             string corpusDir = OptValue(args, "--corpus");
 
-            if (fuzz) { Console.Error.WriteLine("--fuzz is implemented in US2 (T017/T018); not yet available."); return 3; }
+            string genIdx = OptValue(args, "--gen");
+            if (genIdx != null && int.TryParse(genIdx, out int gi))
+            {
+                uint gseed = GlpGrammarSpike.Parity.GrammarFuzzer.DefaultSeed;
+                string gss = OptValue(args, "--seed");
+                if (gss != null && uint.TryParse(gss, out uint gsv)) gseed = gsv;
+                var gen = GlpGrammarSpike.Parity.GrammarFuzzer.Generate(gi, gseed);
+                Console.WriteLine("----- fuzz#" + gi + " (seed=" + gseed + ") -----");
+                Console.WriteLine(gen.Source);
+                var d = IlParityComparator.Diagnose(gen.Source, root);
+                Console.WriteLine("ANTLR : parse=" + d.AParse + (d.AParseErr != null ? " [" + d.AParseErr + "]" : "") + "; compile=" + d.ACompile + (d.ACompErr != null ? " [" + d.ACompErr + "]" : ""));
+                Console.WriteLine("hand  : parse=" + d.BParse + (d.BParseErr != null ? " [" + d.BParseErr + "]" : "") + "; compile=" + d.BCompile + (d.BCompErr != null ? " [" + d.BCompErr + "]" : ""));
+                return 0;
+            }
+
+            if (fuzz)
+            {
+                int budget = 10000;
+                string bs = OptValue(args, "--budget");
+                if (bs != null && int.TryParse(bs, out int bv) && bv > 0) budget = bv;
+                uint seed = GlpGrammarSpike.Parity.GrammarFuzzer.DefaultSeed;
+                string ss = OptValue(args, "--seed");
+                if (ss != null && uint.TryParse(ss, out uint sv)) seed = sv;
+                return RunFuzz(root, budget, seed);
+            }
             if (parity) return RunParity(root, corpusDir);
             return RunCoverage(root);
         }
@@ -110,6 +134,62 @@ namespace GlpGrammarSpike
             Console.WriteLine("IL parity: " + match + "/" + results.Count + " MATCH; un-caused divergences: " + unCaused + ".");
             Console.WriteLine("Results written to " + resultsPath);
             return (match == results.Count) ? 0 : 1;
+        }
+
+        // ── Bounded generative fuzz (feature 069 US2, T017/T018) ─────────────────
+        // Deterministic (index+seed) valid-program generation through the SAME comparator; halt on the
+        // first un-caused divergence with the reproducing input captured (FR-006, contract F2/F4).
+        private static int RunFuzz(string root, int budget, uint seed)
+        {
+            // G1 static assertion: every Glp.g4 rule has a lowering method (contract, T012).
+            GlpGrammarSpike.Bridge.GlpLoweringVisitor.AssertRuleCoverage();
+
+            int matched = 0, bothReject = 0;
+            ParityResult firstDiverge = null;
+            string reproSrc = null;
+            int reproIndex = -1;
+
+            for (int i = 0; i < budget; i++)
+            {
+                var gen = GlpGrammarSpike.Parity.GrammarFuzzer.Generate(i, seed);
+                var r = IlParityComparator.Compare(gen.Id, gen.Source, root);
+                if (r.IsMatch)
+                {
+                    // A "both reject" MATCH means the generated program was invalid — count it separately so
+                    // a low valid-yield (fuzz not actually exercising IL) is visible, never silently hidden.
+                    if (r.Cause != null && r.Cause.StartsWith("both reject")) bothReject++;
+                    else matched++;
+                    continue;
+                }
+                firstDiverge = r; reproSrc = gen.Source; reproIndex = i;
+                break; // halt-on-divergence (F4)
+            }
+
+            string resultsPath = Path.Combine(root, "spike", "antlr4-glp-grammar", "RESULTS.md");
+            const string title = "Bounded fuzz — SC-003";
+
+            if (firstDiverge != null)
+            {
+                string dir = Path.Combine(root, "spike", "antlr4-glp-grammar", "fuzz-repro");
+                Directory.CreateDirectory(dir);
+                string reproPath = Path.Combine(dir, "fuzz-" + reproIndex + ".glp");
+                File.WriteAllText(reproPath, reproSrc);
+                ResultsWriter.WriteFuzz(resultsPath, title, budget, matched, bothReject, reproIndex, firstDiverge, seed, reproPath, Toolchain);
+
+                string off = firstDiverge.FirstDiffOffset >= 0 ? (" @" + firstDiverge.FirstDiffOffset) : "";
+                Console.WriteLine("FUZZ DIVERGENCE at index " + reproIndex + ": " + firstDiverge.Cause + off);
+                Console.WriteLine("Repro written to " + reproPath);
+                Console.WriteLine("valid IL-parity MATCH before halt: " + matched + "; both-reject (invalid gen): " + bothReject
+                    + "; budget consumed: " + (reproIndex + 1) + "/" + budget);
+                Console.WriteLine("Results written to " + resultsPath);
+                return 1;
+            }
+
+            ResultsWriter.WriteFuzz(resultsPath, title, budget, matched, bothReject, -1, null, seed, null, Toolchain);
+            Console.WriteLine("Bounded fuzz complete: budget=" + budget + ", seed=" + seed + ".");
+            Console.WriteLine("valid IL-parity MATCH: " + matched + "; both-reject (invalid gen): " + bothReject + "; un-caused divergences: 0.");
+            Console.WriteLine("Results written to " + resultsPath);
+            return 0;
         }
 
         // ── Legacy accept/reject coverage (feature 065) ──────────────────────────

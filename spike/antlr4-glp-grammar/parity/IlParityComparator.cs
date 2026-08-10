@@ -81,6 +81,25 @@ namespace GlpGrammarSpike.Parity
             return res;
         }
 
+        // Per-front-end status for one source — used by the harness --gen diagnostic and divergence
+        // triage (T018/T019). Surfaces the error strings the Compare() "both reject" path folds away.
+        public sealed class DiagResult
+        {
+            public bool AParse, BParse, ACompile, BCompile;
+            public string AParseErr, BParseErr, ACompErr, BCompErr;
+        }
+
+        public static DiagResult Diagnose(string source, string repoRoot)
+        {
+            PipelineDriver.EnsureInitialized(repoRoot);
+            var d = new DiagResult();
+            var aCtx = ParseAntlr(source, out string aErr); d.AParse = aCtx != null; d.AParseErr = aErr;
+            var bMod = ParseHand(source, out string bErr); d.BParse = bMod != null; d.BParseErr = bErr;
+            if (d.AParse) { var il = TryCompileA(aCtx, out string ace); d.ACompile = il != null; d.ACompErr = ace; }
+            if (d.BParse) { var il = TryCompileB(bMod, out string bce); d.BCompile = il != null; d.BCompErr = bce; }
+            return d;
+        }
+
         private static GlpParser.ModuleContext ParseAntlr(string src, out string firstErr)
         {
             var input = CharStreams.fromString(src);
