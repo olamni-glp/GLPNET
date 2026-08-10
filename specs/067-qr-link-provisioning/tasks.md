@@ -116,11 +116,14 @@ unaffected; audit answers SC-004 alone.
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T026 Validate quickstart.md end-to-end on loopback with a timed run asserting the SC-001
+- [X] T026 Validate quickstart.md end-to-end on loopback with a timed run asserting the SC-001
       under-5-minute bound; fold any friction back into the contracts (single source of truth)
       in `specs/067-qr-link-provisioning/quickstart.md`
-- [ ] T027 Full suites green + baseline compare: `glp_quick` pytest (unit+integration) and
+- [X] T027 Full suites green + baseline compare: `glp_quick` pytest (unit+integration) and
       `dotnet test csharp/glp_link.tests`; record counts in the marathon trace
+      (2026-08-11: pytest 243 passed/1 skipped + the 2 pre-existing gleam Profile-C env
+      failures, unchanged from baseline; dotnet 184/184 — 165 baseline + 19 new; intermittent
+      parallel-load flakes in the real-QUIC tests pre-date this work and pass in re-runs)
 
 ## Dependencies
 
