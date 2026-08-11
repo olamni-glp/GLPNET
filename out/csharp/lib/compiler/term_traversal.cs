@@ -19,6 +19,13 @@
 // The cycle guard (Phase 3/4) lands ON this module so it is defined exactly once
 // for the substitution/resolve family and once for the structural family.
 
+using System.Runtime.CompilerServices;
+
+// Test seam: the standalone structural-guard probe (SC-001/SC-006) is the ONLY
+// consumer of the internal StructuralGuard; a cyclic AST node reaching the codegen
+// walkers can only be built programmatically, not authored in GLP source.
+[assembly: InternalsVisibleTo("term_traversal_probe")]
+
 namespace GlpRuntime.Compiler;
 
 /// <summary>
@@ -416,4 +423,62 @@ internal static class TermTraversal
     /// <summary>PE semantics: UnderscoreTerm OR a VarTerm named exactly "_".</summary>
     internal static readonly Func<Term, bool> PeIsUnderscore =
         term => term is UnderscoreTerm || (term is VarTerm v && v.Name == "_");
+}
+
+/// <summary>
+/// Feature 077 (US1/US2, contract C2) — cycle guard for the STRUCTURAL walkers
+/// (codegen structure/ground emitters, the analyzer mark/ground walkers, and the
+/// linker's Goal-graph resolver). These walk a Term/Goal tree that is normally
+/// acyclic; a self-referential node can only arise from programmatic AST
+/// construction and has no var-name to key on, so this guard keys on reference
+/// IDENTITY: a node object re-encountered on the active DFS path is a cycle
+/// (raised as a catchable CompileError, not a StackOverflow — SC-001). Enter/Exit
+/// are balanced, so a DAG-shared subterm and a deep acyclic term are NOT cycles
+/// (SC-006/FR-006). A large total-step fuel bound is a secondary backstop.
+///
+/// Instances are per-traversal: the walkers create one at the top-level entry,
+/// reuse it through recursion, and drop it on exit (one guard per walker family so
+/// a same-node cross-call — e.g. _IsGroundTerm(lt) inside _GenerateArgument… — is
+/// never a false cycle).
+/// </summary>
+internal sealed class StructuralGuard
+{
+    // Sized far above the maximum legitimate compiler term/goal node count across
+    // the REPL corpus (Analyze A1); a genuine deep acyclic term never trips it,
+    // while a self-referential node is caught by identity at its (small) cycle
+    // period long before the fuel matters.
+    internal const long DefaultFuel = 8_000_000;
+
+    private readonly HashSet<object> _active = new(ReferenceEqualityComparer.Instance);
+    private readonly string _phase;
+    private long _fuel;
+
+    internal StructuralGuard(string phase, long fuel = DefaultFuel)
+    {
+        _phase = phase;
+        _fuel  = fuel;
+    }
+
+    /// <summary>Enter a Term node; throws CompileError on an identity cycle or fuel exhaustion.</summary>
+    internal void Enter(Term node)
+    {
+        if (--_fuel < 0)
+            throw TermTraversal.CyclicTermError(node, _phase, "traversal budget exhausted");
+        if (!_active.Add(node))
+            throw TermTraversal.CyclicTermError(node, _phase, "self-referential node");
+    }
+
+    internal void Exit(Term node) => _active.Remove(node);
+
+    /// <summary>Enter a Goal node (linker Goal-graph); throws CompileError on cycle/exhaustion.</summary>
+    internal void EnterGoal(Goal node)
+    {
+        if (--_fuel < 0 || !_active.Add(node))
+            throw new CompileError(
+                "Cyclic goal graph detected during linking: the goal refers to itself and " +
+                "cannot be finitely resolved.",
+                node.Line, node.Column, phase: _phase);
+    }
+
+    internal void ExitGoal(Goal node) => _active.Remove(node);
 }

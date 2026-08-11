@@ -113,6 +113,16 @@ public sealed class CodeGenContext
 /// </summary>
 public sealed class CodeGenerator
 {
+    // Feature 077 structural cycle guards (reentrancy-aware; one per walker family so a
+    // same-node cross-call — e.g. _IsGroundTerm(lt) inside _GenerateArgumentStructureElement —
+    // is not a false cycle). Created at the top-level entry, reused through recursion, dropped
+    // on top-level exit. Turns a programmatically-cyclic AST node into a CompileError instead of
+    // a StackOverflow (FR-004/SC-001); DAG-shared + deep acyclic terms still pass (SC-006).
+    private StructuralGuard? _headStructGuard;
+    private StructuralGuard? _bodyStructGuard;
+    private StructuralGuard? _groundGuard;
+    private StructuralGuard? _groundValueGuard;
+
     public Bc.BytecodeProgram Generate(AnnotatedProgram program) =>
         GenerateWithMetadata(program).Program;
 
@@ -369,6 +379,12 @@ public sealed class CodeGenerator
     private void _GenerateStructureElement(Term term, VariableTable varTable, CodeGenContext ctx, bool inHead)
     {
         // Called during structure traversal (S register in use)
+        // Feature 077 structural cycle guard (reentrancy-aware; see field decls).
+        bool _top = _headStructGuard is null;
+        var _sg = _headStructGuard ??= new StructuralGuard("codegen");
+        try
+        {
+        _sg.Enter(term);
 
         if (term is VarTerm vt)
         {
@@ -448,6 +464,8 @@ public sealed class CodeGenerator
             // Anonymous variable in structure
             ctx.Emit(new Bc.UnifyVoid(count: 1));
         }
+        }
+        finally { _sg.Exit(term); if (_top) _headStructGuard = null; }
     }
 
     private void _GenerateGuard(Guard guard, VariableTable varTable, CodeGenContext ctx)
@@ -669,46 +687,65 @@ public sealed class CodeGenerator
     // Check if a term is fully ground (contains no variables)
     private bool _IsGroundTerm(Term term)
     {
-        if (term is VarTerm) return false;
-        if (term is ConstTerm) return true;
-        if (term is ListTerm lt)
+        bool _top = _groundGuard is null;
+        var _sg = _groundGuard ??= new StructuralGuard("codegen");
+        try
         {
-            if (lt.IsNil) return true;
-            return (lt.Head is null || _IsGroundTerm(lt.Head)) &&
-                   (lt.Tail is null || _IsGroundTerm(lt.Tail));
+            _sg.Enter(term);
+            if (term is VarTerm) return false;
+            if (term is ConstTerm) return true;
+            if (term is ListTerm lt)
+            {
+                if (lt.IsNil) return true;
+                return (lt.Head is null || _IsGroundTerm(lt.Head)) &&
+                       (lt.Tail is null || _IsGroundTerm(lt.Tail));
+            }
+            if (term is StructTerm st)
+                return st.Args.All(arg => _IsGroundTerm(arg));
+            return false;
         }
-        if (term is StructTerm st)
-            return st.Args.All(arg => _IsGroundTerm(arg));
-        return false;
+        finally { _sg.Exit(term); if (_top) _groundGuard = null; }
     }
 
     // Currently unused — preserved per CLAUDE.md preserve-working-code
     // Convert a ground term to a value tree (JSON-shaped representation)
     private object? _GroundTermToValue(Term term)
     {
-        if (term is ConstTerm ct) return ct.Value;
-        if (term is ListTerm lt)
+        bool _top = _groundValueGuard is null;
+        var _sg = _groundValueGuard ??= new StructuralGuard("codegen");
+        try
         {
-            if (lt.IsNil) return "nil"; // Empty list as 'nil'
-            var head = lt.Head is not null ? _GroundTermToValue(lt.Head) : null;
-            var tail = lt.Tail is not null ? _GroundTermToValue(lt.Tail) : null;
-            return new List<object?> { head, tail }; // Represent as 2-element list for cons cell
-        }
-        if (term is StructTerm st)
-        {
-            return new Dictionary<string, object?>
+            _sg.Enter(term);
+            if (term is ConstTerm ct) return ct.Value;
+            if (term is ListTerm lt)
             {
-                ["functor"] = st.Functor,
-                ["args"] = st.Args.Select(arg => _GroundTermToValue(arg)).ToList()
-            };
+                if (lt.IsNil) return "nil"; // Empty list as 'nil'
+                var head = lt.Head is not null ? _GroundTermToValue(lt.Head) : null;
+                var tail = lt.Tail is not null ? _GroundTermToValue(lt.Tail) : null;
+                return new List<object?> { head, tail }; // Represent as 2-element list for cons cell
+            }
+            if (term is StructTerm st)
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["functor"] = st.Functor,
+                    ["args"] = st.Args.Select(arg => _GroundTermToValue(arg)).ToList()
+                };
+            }
+            return null;
         }
-        return null;
+        finally { _sg.Exit(term); if (_top) _groundValueGuard = null; }
     }
 
     // Helper for building structure elements INSIDE argument structures
     // Different from _GenerateStructureElement which is for HEAD/GUARD unification
     private void _GenerateArgumentStructureElement(Term term, VariableTable varTable, CodeGenContext ctx)
     {
+        bool _top = _bodyStructGuard is null;
+        var _sg = _bodyStructGuard ??= new StructuralGuard("codegen");
+        try
+        {
+        _sg.Enter(term);
         if (term is VarTerm vt)
         {
             var varInfo = varTable.GetVar(vt.Name);
@@ -785,12 +822,19 @@ public sealed class CodeGenerator
         {
             ctx.Emit(new Bc.UnifyVoid(count: 1));
         }
+        }
+        finally { _sg.Exit(term); if (_top) _bodyStructGuard = null; }
     }
 
     // Helper for building structure elements in BODY phase
     // Handles both ground and non-ground structures (with variables)
     private void _GenerateStructureElementInBody(Term term, VariableTable varTable, CodeGenContext ctx)
     {
+        bool _top = _bodyStructGuard is null;
+        var _sg = _bodyStructGuard ??= new StructuralGuard("codegen");
+        try
+        {
+        _sg.Enter(term);
         if (term is VarTerm vt)
         {
             var varInfo = varTable.GetVar(vt.Name);
@@ -841,6 +885,8 @@ public sealed class CodeGenerator
             int tempReg = ctx.AllocateTemp();
             ctx.Emit(new Bcv2.SetVariable(tempReg, isReader: false));
         }
+        }
+        finally { _sg.Exit(term); if (_top) _bodyStructGuard = null; }
     }
 
     // Helper for building list tails in BODY phase
@@ -848,6 +894,11 @@ public sealed class CodeGenerator
     // Mutually recursive with _GenerateStructureElementInBody
     private void _GenerateListTailInBody(Term term, VariableTable varTable, CodeGenContext ctx)
     {
+        bool _top = _bodyStructGuard is null;
+        var _sg = _bodyStructGuard ??= new StructuralGuard("codegen");
+        try
+        {
+        _sg.Enter(term);
         if (term is ListTerm lt)
         {
             if (lt.IsNil)
@@ -871,5 +922,7 @@ public sealed class CodeGenerator
             // Tail is a variable or other term — use standard handling
             _GenerateStructureElementInBody(term, varTable, ctx);
         }
+        }
+        finally { _sg.Exit(term); if (_top) _bodyStructGuard = null; }
     }
 }

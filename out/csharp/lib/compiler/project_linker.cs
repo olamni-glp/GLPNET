@@ -380,7 +380,23 @@ public static class ProjectLinker
         string moduleName,
         IReadOnlyCollection<string> localSigs,
         IReadOnlyDictionary<string, string> ancestorSelfProcs)
+        => ResolveGoal(goal, moduleName, localSigs, ancestorSelfProcs,
+                       new StructuralGuard("term_traversal"));
+
+    // Feature 077 (T020): the Goal-graph resolver recurses through nested SpawnGoal
+    // wrappers (identity-preserving). A self-referential SpawnGoal chain would recurse
+    // forever; the structural guard raises a catchable CompileError instead (contract
+    // C3 — the linker's cyclic signal is a CompileError, not the plain Exception).
+    private static Goal ResolveGoal(
+        Goal goal,
+        string moduleName,
+        IReadOnlyCollection<string> localSigs,
+        IReadOnlyDictionary<string, string> ancestorSelfProcs,
+        StructuralGuard g)
     {
+        g.EnterGoal(goal);
+        try
+        {
         // RemoteGoal: M' # p(...) → M':p(...)
         if (goal is RemoteGoal rg)
         {
@@ -398,7 +414,7 @@ public static class ProjectLinker
         // SpawnGoal: resolve inner goal, keep wrapper.
         if (goal is SpawnGoal sg)
         {
-            var resolvedInner = ResolveGoal(sg.InnerGoal, moduleName, localSigs, ancestorSelfProcs);
+            var resolvedInner = ResolveGoal(sg.InnerGoal, moduleName, localSigs, ancestorSelfProcs, g);
             // Allocate a new SpawnGoal ONLY if the inner goal was actually rewritten.
             // ReferenceEquals = Dart's identical() — identity-preserving on no-op.
             if (!ReferenceEquals(resolvedInner, sg.InnerGoal))
@@ -418,6 +434,8 @@ public static class ProjectLinker
 
         // Prelude/stdlib/body kernel — leave unchanged.
         return goal;
+        }
+        finally { g.ExitGoal(goal); }
     }
 
     /// <summary>Find the ProcDecl for a procedure in a module (non-imported only).</summary>

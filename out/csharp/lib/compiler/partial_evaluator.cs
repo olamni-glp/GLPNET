@@ -434,19 +434,29 @@ public class PartialEvaluator
         return null;
     }
 
-    private static bool IsGround(Term term)
+    private static bool IsGround(Term term) => IsGround(term, new StructuralGuard("partial_evaluator"));
+
+    // Feature 077 (Analyze F1): IsGround walks Term STRUCTURE (not the substitution
+    // map), so it takes the identity/fuel structural guard — a cyclic input Term
+    // surfaces as a CompileError instead of a StackOverflow (SC-001).
+    private static bool IsGround(Term term, StructuralGuard g)
     {
-        if (term is VarTerm)        return false;
-        if (term is UnderscoreTerm) return true;
-        if (term is ConstTerm)      return true;
-        if (term is StructTerm s)   return s.Args.All(IsGround);
-        if (term is ListTerm l)
+        g.Enter(term);
+        try
         {
-            if (l.IsNil) return true;
-            var headG = l.Head is null || IsGround(l.Head);
-            var tailG = l.Tail is null || IsGround(l.Tail);
-            return headG && tailG;
+            if (term is VarTerm)        return false;
+            if (term is UnderscoreTerm) return true;
+            if (term is ConstTerm)      return true;
+            if (term is StructTerm s)   return s.Args.All(a => IsGround(a, g));
+            if (term is ListTerm l)
+            {
+                if (l.IsNil) return true;
+                var headG = l.Head is null || IsGround(l.Head, g);
+                var tailG = l.Tail is null || IsGround(l.Tail, g);
+                return headG && tailG;
+            }
+            return false;
         }
-        return false;
+        finally { g.Exit(term); }
     }
 }

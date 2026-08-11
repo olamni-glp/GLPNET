@@ -319,6 +319,14 @@ public sealed class Analyzer
     private Dictionary<string, ProcDecl> _procDecls = new(StringComparer.Ordinal);
     private CompileMode _compileMode = CompileMode.User;
 
+    // Feature 077 structural cycle guards (reentrancy-aware) for the AST-structure
+    // walkers reassigned here from the substitution family (Analyze F1): these walk
+    // Term structure, not the substitution map, so they take the identity/fuel guard.
+    // A cyclic Term surfaces as a CompileError instead of a StackOverflow (SC-001).
+    private StructuralGuard? _extractGroundGuard;
+    private StructuralGuard? _markTypeGuard;
+    private StructuralGuard? _analyzeTermGuard;
+
     public Analyzer() { }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -780,40 +788,54 @@ public sealed class Analyzer
 
     private void _ExtractAndMarkGroundedVars(Term term, VariableTable varTable)
     {
-        switch (term)
+        bool _top = _extractGroundGuard is null;
+        var _sg = _extractGroundGuard ??= new StructuralGuard("analyzer");
+        try
         {
-            case VarTerm v:
-                varTable.MarkGrounded(v.Name);
-                break;
-            case StructTerm s:
-                foreach (var arg in s.Args)
-                    _ExtractAndMarkGroundedVars(arg, varTable);
-                break;
-            case ListTerm l:
-                if (l.Head is not null) _ExtractAndMarkGroundedVars(l.Head, varTable);
-                if (l.Tail is not null) _ExtractAndMarkGroundedVars(l.Tail, varTable);
-                break;
-            // ConstTerm / UnderscoreTerm: no variables to extract
+            _sg.Enter(term);
+            switch (term)
+            {
+                case VarTerm v:
+                    varTable.MarkGrounded(v.Name);
+                    break;
+                case StructTerm s:
+                    foreach (var arg in s.Args)
+                        _ExtractAndMarkGroundedVars(arg, varTable);
+                    break;
+                case ListTerm l:
+                    if (l.Head is not null) _ExtractAndMarkGroundedVars(l.Head, varTable);
+                    if (l.Tail is not null) _ExtractAndMarkGroundedVars(l.Tail, varTable);
+                    break;
+                // ConstTerm / UnderscoreTerm: no variables to extract
+            }
         }
+        finally { _sg.Exit(term); if (_top) _extractGroundGuard = null; }
     }
 
     private void _MarkVarsInTermAsTypeGrounded(Term term, VariableTable varTable)
     {
-        switch (term)
+        bool _top = _markTypeGuard is null;
+        var _sg = _markTypeGuard ??= new StructuralGuard("analyzer");
+        try
         {
-            case VarTerm v:
-                varTable.MarkTypeGrounded(v.Name);
-                break;
-            case StructTerm s:
-                foreach (var arg in s.Args)
-                    _MarkVarsInTermAsTypeGrounded(arg, varTable);
-                break;
-            case ListTerm l:
-                if (l.Head is not null) _MarkVarsInTermAsTypeGrounded(l.Head, varTable);
-                if (l.Tail is not null) _MarkVarsInTermAsTypeGrounded(l.Tail, varTable);
-                break;
-            // ConstTerm / UnderscoreTerm: no variables
+            _sg.Enter(term);
+            switch (term)
+            {
+                case VarTerm v:
+                    varTable.MarkTypeGrounded(v.Name);
+                    break;
+                case StructTerm s:
+                    foreach (var arg in s.Args)
+                        _MarkVarsInTermAsTypeGrounded(arg, varTable);
+                    break;
+                case ListTerm l:
+                    if (l.Head is not null) _MarkVarsInTermAsTypeGrounded(l.Head, varTable);
+                    if (l.Tail is not null) _MarkVarsInTermAsTypeGrounded(l.Tail, varTable);
+                    break;
+                // ConstTerm / UnderscoreTerm: no variables
+            }
         }
+        finally { _sg.Exit(term); if (_top) _markTypeGuard = null; }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -822,6 +844,11 @@ public sealed class Analyzer
 
     private void _AnalyzeTerm(Term term, VariableTable varTable, bool inHeadOrBody = true)
     {
+        bool _top = _analyzeTermGuard is null;
+        var _sg = _analyzeTermGuard ??= new StructuralGuard("analyzer");
+        try
+        {
+        _sg.Enter(term);
         switch (term)
         {
             case VarTerm v:
@@ -855,6 +882,8 @@ public sealed class Analyzer
 
             // UnderscoreTerm: no variables to track
         }
+        }
+        finally { _sg.Exit(term); if (_top) _analyzeTermGuard = null; }
     }
 
     // ────────────────────────────────────────────────────────────────────────
