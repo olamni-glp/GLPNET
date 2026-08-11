@@ -47,6 +47,16 @@ public sealed class RequestDispatcher
     private readonly List<LoadedUnit> _units;
     private int _loadCounter;
 
+    /// <summary>064 US3: the per-session load/run path (contracts/il-request-kind.md
+    /// rule 3) — a client chooses text OR IL per session, never mixed per module.</summary>
+    private enum SessionPath { Unchosen, Text, Il }
+
+    private SessionPath _sessionPath = SessionPath.Unchosen;
+
+    /// <summary>064 US3: the compiler-free IL load/execute path (created on first
+    /// IL request; see IlExecutePath.cs for the no-compiler discipline).</summary>
+    private IlExecutePath? _ilPath;
+
     /// <summary>Set once SHUTDOWN has been ACKed; the server loop then exits 0 (wire rule 6).</summary>
     public bool ShutdownRequested { get; private set; }
 
@@ -77,6 +87,10 @@ public sealed class RequestDispatcher
         _rootSelfSource = rootSelfSource;
         _units = restoredUnits?.ToList() ?? new List<LoadedUnit>();
         _loadCounter = _units.Count; // restored units keep their names; new loads continue after them
+        // Restored units are text-path source records (snapshot 0x05) — a restore
+        // resumes a TEXT session; mixing IL into it is refused like any other mix.
+        if (_units.Count > 0)
+            _sessionPath = SessionPath.Text;
     }
 
     /// <summary>
@@ -99,6 +113,13 @@ public sealed class RequestDispatcher
         if (_session.State == EngineState.Serving)
             _rewirer?.ApplyReady();
 
+        // 064 US3 (contract rule 3): text and IL are per-session paths, never
+        // mixed — and NEVER silently converted into each other. The first
+        // load/run request locks the session's path; the other family is then
+        // refused loudly as a protocol error.
+        if (PathViolation(request.Kind) is { } violation)
+            return ResponseFrame.Text(request.RequestId, ResponseKind.ProtocolError, violation);
+
         ResponseFrame response;
         try
         {
@@ -106,6 +127,9 @@ public sealed class RequestDispatcher
             {
                 RequestKind.LoadSource => LoadSource(request),
                 RequestKind.RunGoal => await RunGoalAsync(request).ConfigureAwait(false),
+                RequestKind.LoadIl => (_ilPath ??= new IlExecutePath()).Load(request),
+                RequestKind.RunGoalIl => await (_ilPath ??= new IlExecutePath())
+                    .RunGoalAsync(request).ConfigureAwait(false),
                 RequestKind.Status => Status(request),
                 RequestKind.Ping => ResponseFrame.Text(request.RequestId, ResponseKind.Ack, "pong"),
                 RequestKind.Snapshot => Snapshot(request),
@@ -146,6 +170,35 @@ public sealed class RequestDispatcher
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// 064 US3 session-path gate (contracts/il-request-kind.md rule 3). Returns
+    /// the refusal text when the request's family conflicts with the session's
+    /// locked path; locks the path on the first load/run request; null = proceed.
+    /// Non-load/run kinds (STATUS/PING/SNAPSHOT/SHUTDOWN) are path-neutral.
+    /// </summary>
+    private string? PathViolation(RequestKind kind)
+    {
+        var family = kind switch
+        {
+            RequestKind.LoadSource or RequestKind.RunGoal => SessionPath.Text,
+            RequestKind.LoadIl or RequestKind.RunGoalIl => SessionPath.Il,
+            _ => SessionPath.Unchosen, // path-neutral kind
+        };
+        if (family == SessionPath.Unchosen)
+            return null;
+        if (_sessionPath == SessionPath.Unchosen)
+        {
+            _sessionPath = family;
+            return null;
+        }
+        if (_sessionPath == family)
+            return null;
+        return $"session path is {(_sessionPath == SessionPath.Text ? "TEXT" : "IL")}: " +
+               $"request kind 0x{(byte)kind:X2} belongs to the " +
+               $"{(family == SessionPath.Text ? "text" : "IL")} path — text and IL are never " +
+               "mixed per session, and there is no silent fallback (contracts/il-request-kind.md rule 3)";
     }
 
     private ResponseFrame LoadSource(RequestFrame request)
@@ -226,6 +279,12 @@ public sealed class RequestDispatcher
         {
             // US4 restore surface: links awaiting re-establishment + loud failures.
             body += $" pending_link_rewires={rw.Pending} failed_link_rewires={rw.Failed.Count}";
+        }
+        if (_ilPath is { } il)
+        {
+            // 064 US3 surface — present only once the session went IL, so text
+            // sessions' STATUS body is byte-identical to the 061 shape.
+            body += $" session_path=il il_modules={il.ModuleRefs.Count}";
         }
         return ResponseFrame.Text(request.RequestId, ResponseKind.Ack, body);
     }

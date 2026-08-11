@@ -1,0 +1,19 @@
+%% Minimal two-isolate play for the REPL `:boot` scenario test (064 T033).
+%% Two spawn directives boot two agents: alice announces her identity;
+%% bob computes over the prelude's `:=`/2 (proving the play runs merged
+%% with the prelude, the Dart isolates' self.glp + play composition) and
+%% outputs the result once known (the guard sequences the output after the
+%% assignment — `_output` itself never suspends). The trailing `_` slot is
+%% each agent's net-in reader (isolate-boot spec v0.4 §4.1).
+-mode(system).
+
+procedure hello(_?, _?).
+hello(A, _) :- '_output'(A?).
+
+procedure compute(_?, _?).
+compute(_, _) :- X := 20+3, show(X?).
+
+procedure show(_?).
+show(V) :- known(V?) | '_output'(V?).
+
+boot :- hello(alice, _)@alice, compute(bob, _)@bob.

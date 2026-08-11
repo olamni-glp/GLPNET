@@ -33,6 +33,14 @@
     <ProjectReference Include="..\glp_link\GlpLink.csproj" />
     <ProjectReference Include="..\glp_result_codec\GlpResultCodec.csproj" />
     <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+    <!-- 064 US3 (T023): CompiledIlEnvelope verify/decode for the LOAD_IL /
+         RUN_GOAL_IL execute path (IlExecutePath.cs). NOTE the compiler cannot be
+         factored out at the ASSEMBLY level: glp_runtime_net is monolithic
+         (runtime sources reference GlpRuntime.Compiler) and the text kinds keep
+         the full pipeline during the deprecation window. The enforced
+         no-compiler boundary is the IlExecutePath type — asserted by
+         glp_split_protocol.tests/CompilerAbsenceTests over its compiled IL. -->
+    <ProjectReference Include="..\glp_il_codec\GlpIlCodec.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -14,8 +14,16 @@ import gleam/int
 import gleam/list
 import gleam/string
 import glp/bytecode/program
+import glp/compiler/loader
 import glp/engine.{type Engine}
+import glp/engine/scheduler
+import glp/mad/boot_loader
+import glp/mad/mad_engine
+import glp/parser/ast
+import glp/parser/lexer
+import glp/parser/parser
 import glp/repl/results
+import glp/runtime/terms.{type Term, ConstAtom, ConstTerm}
 
 /// A parsed REPL line (the contract's command set; unrecognized input is a Goal,
 /// matching the Dart fall-through to `runGoal`).
@@ -32,11 +40,19 @@ pub type Command {
   /// `:bytecode` / `:bc` — dump every loaded program's bytecode (wave-3 T019;
   /// Dart glp_repl.dart:203 — no argument, iterates `engine.loadedPrograms`).
   Bytecode
-  /// `:boot …` — the Dart reference runs a multi-isolate play via
-  /// IsolateManager (glp_repl.dart:189); that machinery is the multiagent boot
-  /// loader (gap G9, US4), so on this instance the command reports its
-  /// deferral instead of misreading the line as a goal (wave-3 T020).
-  Boot
+  /// `:boot <playfile.glp> [timeoutSec]` — run a multi-isolate play (Dart
+  /// glp_repl.dart:189 `_runBoot` via IsolateManager). On this instance the
+  /// isolate machinery is the wave-3 multiagent boot loader (gap G9, US4;
+  /// glp/mad/boot_loader): read the play file, extract the `boot/0` spawn
+  /// directives from the parsed AST, boot one `MadEngine` per directive over
+  /// the play program merged with the prelude (the Dart isolates' self.glp +
+  /// play composition), and `drive` synchronously to quiescence. The optional
+  /// `timeoutSec` is accepted for surface compatibility but unused: the
+  /// synchronous drive terminates at quiescence (or loudly on fuel
+  /// exhaustion) — there is no wall-clock to bound (064 T033).
+  Boot(String)
+  /// A `:boot` with no play path — carries the reference usage line.
+  BootUsage
   /// An empty line — a no-op (Dart `continue`).
   Blank
 }
@@ -76,7 +92,7 @@ fn classify(t: String) -> Command {
         True -> parse_limit(t)
         False ->
           case string.starts_with(t, ":boot") {
-            True -> Boot
+            True -> parse_boot(t)
             False -> classify_load_or_goal(t)
           }
       }
@@ -92,6 +108,18 @@ fn parse_limit(t: String) -> Command {
         _ -> LimitUsage("Error: limit must be a positive integer")
       }
     _ -> LimitUsage("Usage: :limit <number>")
+  }
+}
+
+/// `:boot <bootfile.glp> [timeoutSec]` (Dart glp_repl.dart:189-201): the first
+/// token after `:boot` is the play path; a trailing numeric token (Dart's
+/// wall-clock timeout) is accepted and ignored — the Gleam drive is synchronous
+/// to quiescence.
+fn parse_boot(t: String) -> Command {
+  let parts = t |> string.split(" ") |> list.filter(fn(s) { s != "" })
+  case parts {
+    [":boot", path, ..] -> Boot(strip_quotes(path))
+    _ -> BootUsage
   }
 }
 
@@ -149,15 +177,11 @@ pub fn execute(
     // engine value and returns the session unchanged — no heap, no program,
     // no session mutation.
     Bytecode -> #(session, render_bytecode(session.engine), False)
-    Boot -> #(
-      session,
-      [
-        ":boot runs a multi-isolate play via the multiagent boot loader, "
-        <> "which is not yet ported to this instance (deferred to the module-"
-        <> "dispatch subsystem work; 059 close-repl-boot-command scope question).",
-      ],
-      False,
-    )
+    // `:boot` is READ-ONLY w.r.t. the session (like `:bytecode`): the play runs
+    // in its own per-agent MadEngines over its own program; the REPL engine,
+    // trace flag, and limit come back untouched.
+    Boot(path) -> #(session, execute_boot(session, path), False)
+    BootUsage -> #(session, ["Usage: :boot <bootfile.glp> [timeoutSec]"], False)
     Load(path) -> execute_load(session, path)
     Goal(text) -> {
       let #(_engine, env, output, traces) =
@@ -195,6 +219,118 @@ fn render_bytecode(eng: Engine) -> List(String) {
           ..string.split(program.to_disassembly(prog), "\n")
         ]
       })
+  }
+}
+
+/// Total drive-loop step iterations a play may take before the boot loader's
+/// loud non-quiescence error (the boot-loader test suite's drive fuel; the
+/// per-step reduction budget is the session's `:limit`).
+const boot_drive_fuel = 10_000
+
+/// Run a multi-isolate play (Dart `_runBoot`, glp_repl.dart:486): read the boot
+/// file, extract the `boot/0` spawn directives, compile the play over the
+/// prelude, boot one agent per directive, drive to quiescence, and render the
+/// per-agent captured output as `[agentId] line` (the Dart `onUIOutput`
+/// rendering). Error wording follows the Dart reference: a missing file and a
+/// play that fails to parse report `Error: boot file not found:` /
+/// `Error parsing boot file:`; failures past parsing report `Boot failed:`.
+fn execute_boot(session: Session, path: String) -> List(String) {
+  case read_source(path) {
+    Error(_) -> ["Error: boot file not found: " <> path]
+    Ok(source) -> run_boot(session, path, source)
+  }
+}
+
+fn run_boot(session: Session, path: String, source: String) -> List(String) {
+  case parse_play(source) {
+    Error(detail) -> ["Error parsing boot file: " <> detail]
+    Ok(module) ->
+      case boot_loader.extract_directives(module) {
+        Error(reason) -> ["Error parsing boot file: " <> reason]
+        Ok(directives) ->
+          case compile_play(session, source) {
+            Error(detail) -> ["Boot failed: " <> detail]
+            Ok(prog) ->
+              case boot_loader.boot_agents(prog, directives) {
+                Error(reason) -> ["Boot failed: " <> reason]
+                Ok(play) ->
+                  case
+                    boot_loader.drive(play, session.limit, boot_drive_fuel)
+                  {
+                    Error(reason) -> ["Boot failed: " <> reason]
+                    Ok(play) -> render_play(path, directives, play)
+                  }
+              }
+          }
+      }
+  }
+}
+
+fn parse_play(source: String) -> Result(ast.SourceModule, String) {
+  case lexer.tokenize(source) {
+    Error(e) -> Error(string.inspect(e))
+    Ok(tokens) ->
+      case parser.parse_module(tokens) {
+        Error(e) -> Error(string.inspect(e))
+        Ok(module) -> Ok(module)
+      }
+  }
+}
+
+/// The play program each agent runs: the play source compiled on the boot
+/// loader's stage set (parse → SRSW → PE → codegen, no fatal type check — the
+/// T039 boot path), merged over the compiled prelude so prelude procedures
+/// (`:=`/2 …) resolve — the Gleam composition of the Dart isolates' "self.glp
+/// then the play project" load order (prelude ops first, first-occurrence-wins).
+fn compile_play(
+  session: Session,
+  source: String,
+) -> Result(program.BytecodeProgram, String) {
+  case loader.compile_prelude(source) {
+    Error(staged) -> Error(string.inspect(staged))
+    Ok(play_prog) ->
+      case loader.compile_prelude(engine.prelude_source(session.engine)) {
+        Error(staged) -> Error(string.inspect(staged))
+        Ok(prelude_prog) -> Ok(program.merge(play_prog, prelude_prog))
+      }
+  }
+}
+
+/// The success block: the Dart boot banner (`Booting N … from <path>`, the
+/// agent list), each agent's captured `_output/1` lines as `[agentId] line`
+/// (directive order — the Dart per-isolate `onUIOutput` prefix), and a
+/// quiescence footer (the synchronous analogue of Dart's `✓ Shutdown
+/// complete`). Display format is not a parity surface.
+fn render_play(
+  path: String,
+  directives: List(boot_loader.SpawnDirective),
+  play: boot_loader.Play,
+) -> List(String) {
+  let ids = list.map(directives, fn(d) { d.agent_id })
+  let agent_lines =
+    list.flat_map(boot_loader.agents(play), fn(entry) {
+      let #(agent, me) = entry
+      let id = agent_label(agent)
+      scheduler.captured_output(mad_engine.engine(me))
+      |> list.map(fn(line) { "[" <> id <> "] " <> line })
+    })
+  list.flatten([
+    [
+      "Booting "
+        <> int.to_string(list.length(ids))
+        <> " agents from "
+        <> path,
+      "  agents: " <> string.join(ids, ", "),
+    ],
+    agent_lines,
+    ["✓ Play quiesced"],
+  ])
+}
+
+fn agent_label(agent: Term) -> String {
+  case agent {
+    ConstTerm(ConstAtom(id)) -> id
+    other -> string.inspect(other)
   }
 }
 

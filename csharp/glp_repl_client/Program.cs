@@ -28,6 +28,7 @@ public static class Program
         Console.OutputEncoding = Encoding.UTF8;
 
         string? connect = null;
+        string path = "text";
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -35,9 +36,20 @@ public static class Program
                 case "--connect" when i + 1 < args.Length:
                     connect = args[++i];
                     break;
+                // 064 US3 (T022): the load/run path is chosen PER SESSION and
+                // never mixed per module (contracts/il-request-kind.md rule 3).
+                // "il" compiles locally and ships CompiledIlEnvelope frames.
+                case "--path" when i + 1 < args.Length:
+                    path = args[++i];
+                    if (path is not ("text" or "il"))
+                    {
+                        Console.Error.WriteLine($"glp_repl_client: --path expects text|il, got '{path}'");
+                        return 64;
+                    }
+                    break;
                 default:
                     Console.Error.WriteLine($"glp_repl_client: unknown argument '{args[i]}'");
-                    Console.Error.WriteLine("usage: glp_repl_client --connect <host:port>");
+                    Console.Error.WriteLine("usage: glp_repl_client --connect <host:port> [--path text|il]");
                     return 64;
             }
         }
@@ -45,6 +57,20 @@ public static class Program
         {
             Console.Error.WriteLine("glp_repl_client: --connect <host:port> is required");
             return 64;
+        }
+
+        IlSession? il = null;
+        if (path == "il")
+        {
+            try
+            {
+                il = IlSession.Create();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"glp_repl_client: cannot start IL session: {ex.Message}");
+                return 66;
+            }
         }
 
         var idx = connect.LastIndexOf(':');
@@ -68,6 +94,25 @@ public static class Program
 
         Console.WriteLine($"Connected to engine at {host}:{port}");
         Console.WriteLine("Input: load <file.glp> to load, goal. to execute; :status, :snapshot, :quit");
+        if (il is not null)
+        {
+            Console.WriteLine("IL session: modules compile LOCALLY and ship as IL; goals run by " +
+                              "reference (bindings are not rendered on the IL path — use a text " +
+                              "session when bindings matter).");
+            // The engine cannot compile the prelude on its IL path — ship it first.
+            try
+            {
+                var preludeResponse = await channel.RoundTripAsync(new RequestFrame(
+                    channel.NextRequestId(), RequestKind.LoadIl, il.PreludeEnvelope()));
+                if (!RenderIlLoadResponse(preludeResponse, IlSession.PreludeModuleRef))
+                    return 70;
+            }
+            catch (ClientTransportException ex)
+            {
+                Console.Error.WriteLine($"!! transport failure: {ex.Message}");
+                return 69;
+            }
+        }
         Console.WriteLine();
 
         await using (channel)
@@ -122,11 +167,17 @@ public static class Program
 
                     if (trimmed.EndsWith(".glp", StringComparison.Ordinal))
                     {
-                        await LoadFileAsync(channel, trimmed);
+                        if (il is not null)
+                            await LoadFileIlAsync(channel, il, trimmed);
+                        else
+                            await LoadFileAsync(channel, trimmed);
                         continue;
                     }
 
-                    await RunGoalAsync(channel, trimmed);
+                    if (il is not null)
+                        await RunGoalIlAsync(channel, il, trimmed);
+                    else
+                        await RunGoalAsync(channel, trimmed);
                 }
                 catch (ClientTransportException ex)
                 {
@@ -144,7 +195,12 @@ public static class Program
         return 0;
     }
 
-    private static async Task LoadFileAsync(ClientChannel channel, string trimmed)
+    /// <summary>Filename + path resolution shared by the text and IL load paths.
+    /// Mirrors the single-process REPL exactly (parity): /, ../, ./ prefixes
+    /// used as-is, else Path.Combine("glp", name) — where a rooted Windows path
+    /// also wins over the "glp" prefix. Null = not a load line / missing file
+    /// (already reported).</summary>
+    private static (string Filename, string SourcePath)? ResolveLoad(string trimmed)
     {
         string filename;
         if (trimmed.StartsWith("load ", StringComparison.Ordinal))
@@ -152,11 +208,8 @@ public static class Program
         else if (!trimmed.Contains(' '))
             filename = trimmed;
         else
-            return;
+            return null;
 
-        // Path resolution mirrors the single-process REPL exactly (parity):
-        // /, ../, ./ prefixes used as-is, else Path.Combine("glp", name) —
-        // where a rooted Windows path also wins over the "glp" prefix.
         string sourcePath;
         if (filename.StartsWith("/", StringComparison.Ordinal) ||
             filename.StartsWith("../", StringComparison.Ordinal) ||
@@ -172,8 +225,17 @@ public static class Program
         if (!File.Exists(sourcePath))
         {
             Console.WriteLine($"Error: File not found: {sourcePath}");
-            return;
+            return null;
         }
+        return (filename, sourcePath);
+    }
+
+    private static async Task LoadFileAsync(ClientChannel channel, string trimmed)
+    {
+        var resolved = ResolveLoad(trimmed);
+        if (resolved is null)
+            return;
+        var (filename, sourcePath) = resolved.Value;
 
         // FR-001: the client ships SOURCE TEXT; the full pipeline runs engine-side.
         var source = await File.ReadAllTextAsync(sourcePath);
@@ -217,6 +279,101 @@ public static class Program
         }
         Console.WriteLine();
     }
+
+    // ---- 064 US3: the IL session's load/run half (compile local, ship IL) ----
+
+    private static async Task LoadFileIlAsync(ClientChannel channel, IlSession il, string trimmed)
+    {
+        var resolved = ResolveLoad(trimmed);
+        if (resolved is null)
+            return;
+        var (filename, sourcePath) = resolved.Value;
+
+        byte[] envelope;
+        try
+        {
+            var source = await File.ReadAllTextAsync(sourcePath);
+            // The full pipeline runs HERE (contract rule 5) — compile/type errors
+            // render exactly as loudly as the engine's text path would.
+            envelope = il.CompileUnit(source, filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading {filename}: {ex.Message}");
+            return;
+        }
+
+        var response = await channel.RoundTripAsync(new RequestFrame(
+            channel.NextRequestId(), RequestKind.LoadIl, envelope));
+        if (RenderIlLoadResponse(response, filename))
+            Console.WriteLine($"✓ Loaded (IL): {filename}");
+    }
+
+    private static async Task RunGoalIlAsync(ClientChannel channel, IlSession il, string goal)
+    {
+        RunGoalIlBody body;
+        try
+        {
+            body = il.GoalBody(goal);
+        }
+        catch (Exception ex)
+        {
+            // A goal that does not compile is a LOUD local error — never a
+            // silent retry over the text path (contract rule 3).
+            Console.WriteLine($"Error compiling goal: {ex.Message}");
+            return;
+        }
+
+        var response = await channel.RoundTripAsync(new RequestFrame(
+            channel.NextRequestId(), RequestKind.RunGoalIl, body.Encode()));
+        switch (response.Kind)
+        {
+            case ResponseKind.Result:
+                RenderEnvelope(ResultEnvelopeCodec.Decode(response.Body));
+                break;
+            case ResponseKind.IlRefused:
+                var refusal = IlRefusal.Decode(response.Body);
+                Console.WriteLine($"!! IL refused ({RefusalWord(refusal.Code)}): {refusal.Reason}");
+                break;
+            case ResponseKind.EngineBusy:
+                Console.WriteLine("Engine busy (restoring) — try again shortly");
+                break;
+            default:
+                Console.WriteLine($"!! protocol error: {response.BodyText()}");
+                break;
+        }
+        Console.WriteLine();
+    }
+
+    /// <summary>Render a LOAD_IL response; true = loaded (caller prints the ✓ line).</summary>
+    private static bool RenderIlLoadResponse(ResponseFrame response, string moduleRef)
+    {
+        switch (response.Kind)
+        {
+            case ResponseKind.Ack:
+                return true;
+            case ResponseKind.IlRefused:
+                var refusal = IlRefusal.Decode(response.Body);
+                Console.WriteLine(
+                    $"Error loading {moduleRef} — IL refused ({RefusalWord(refusal.Code)}): {refusal.Reason}");
+                return false;
+            case ResponseKind.EngineBusy:
+                Console.WriteLine("Engine busy (restoring) — try again shortly");
+                return false;
+            default:
+                Console.WriteLine($"!! protocol error: {response.BodyText()}");
+                return false;
+        }
+    }
+
+    private static string RefusalWord(IlRefusalCode code) => code switch
+    {
+        IlRefusalCode.Malformed => "malformed",
+        IlRefusalCode.IlVersionMismatch => "il_version_mismatch",
+        IlRefusalCode.DigestMismatch => "digest_mismatch",
+        IlRefusalCode.MidTransferTruncation => "mid_transfer_truncation",
+        _ => $"0x{(byte)code:X2}",
+    };
 
     private static void RenderEnvelope(ResultEnvelope envelope)
     {

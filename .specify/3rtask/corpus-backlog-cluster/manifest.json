@@ -1,0 +1,36 @@
+{
+  "slices": [
+    {
+      "slice_id": "glp-core",
+      "description": "GLP language/runtime/type-checker issue corpus: known-issues Issues 1-6 (madGLP localize/globalize writer-reader address defects, type-checker rejection of well-typed `=` with reader) + CLAUDE.md Known limitations (`=..` rejected in clause bodies, structs-inside-lists in REPL goals), with the implicated source areas for root-cause exploration.",
+      "sources": [
+        ".specify/3rtask/corpus-backlog-cluster/slice-a-glp-core-issues-1-6.md",
+        "glp_runtime/lib/multiagent/mad_helpers.dart",
+        "glp_runtime/lib/analysis/type_checker/well_typed_clause.dart",
+        "glp_runtime/lib/analysis/type_checker/prelude.dart",
+        "glp_runtime/bin/glp_repl.dart"
+      ],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "pglite-infra",
+      "description": "PGLite/DBOS infrastructure issue corpus: known-issues Issues 7-9 (DBOS-on-PGLite four required launch hooks, exFAT premise-void mitigation retained as convention, PG16 shared cluster vs PG17 bridge migration gated/pending + noted doc staleness), with the workaround code and the gated migration runbook.",
+      "sources": [
+        ".specify/3rtask/corpus-backlog-cluster/slice-b-infra-issues-7-9.md",
+        "codeconv/src/codeconv/db/engine.py",
+        "codeconv/src/codeconv/_vendor/dbos_pglite_patch.py",
+        "docs/pglite-0.4-cluster-migration-runbook.md"
+      ],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "acceptance-deferrals",
+      "description": "Acceptance/deferral ledger corpus: known-issues Issue 10 (glptutorial deferred run-shapes + corpus-golden items), Issue 11 (036 three deferred acceptance items, already carved into a promoted roadmap feature), and the feature-041 crdtmsg MVP deferral ledger (host-blocked parity/two-host runs, COSE wrapper, policy-guard proposal gated on DISCIPLINE 1.14, run_all_tests.sh Windows-runner mismatch, C# REPL bare-underscore goal rejection), with the carve-out brief.",
+      "sources": [
+        ".specify/3rtask/corpus-backlog-cluster/slice-c-acceptance-issues-10-11-041.md",
+        "specs/036-http3-quic-ws-link/followup-full-acceptance-brief.md"
+      ],
+      "assigned_to": "builder-3"
+    }
+  ]
+}

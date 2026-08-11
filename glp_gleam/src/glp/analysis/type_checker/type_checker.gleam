@@ -162,10 +162,22 @@ pub fn check_module(
     expanded_module,
     Some(base_env),
   ))
-  let dfa = program_dfa.build_program_dfa(type_env)
-  let procedures = option.unwrap(transformed_procedures, module.procedures)
-  let clauses = list.flat_map(procedures, fn(p) { p.clauses })
-  Ok(check(type_env, dfa, clauses))
+  // 064 T035 (wave-2 Finding F1): an unknown type reaching automaton
+  // construction is a returned error, not a panic — surfaced as a TypeError so
+  // the loader wraps it into a staged diagnostic (Dart parity: the loader
+  // catches Dart's `UnknownTypeError` and prints `UnknownTypeError: <name>`).
+  case program_dfa.build_program_dfa(type_env) {
+    Error(program_dfa.UnknownTypeError(name, pos)) ->
+      Ok(TypeCheckResult(
+        [TypeError("UnknownTypeError: " <> name, pos.line, pos.column, None)],
+        [],
+      ))
+    Ok(dfa) -> {
+      let procedures = option.unwrap(transformed_procedures, module.procedures)
+      let clauses = list.flat_map(procedures, fn(p) { p.clauses })
+      Ok(check(type_env, dfa, clauses))
+    }
+  }
 }
 
 /// Parse and type-check GLP source (Dart `checkSource`). The source is parsed by

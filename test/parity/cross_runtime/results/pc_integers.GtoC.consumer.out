@@ -1,0 +1,50 @@
+Downloading packages
+ Downloaded 3 packages in 0.28s
+  Compiling gleam_stdlib
+  Compiling gleam_erlang
+  Compiling gleeunit
+  Compiling glp_gleam
+warning: Empty module
+
+Module 'glp/analysis' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+warning: Empty module
+
+Module 'glp/bytecode' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+warning: Empty module
+
+Module 'glp/compiler' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+warning: Empty module
+
+Module 'glp/link' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+warning: Empty module
+
+Module 'glp/lint' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+warning: Empty module
+
+Module 'glp/multiagent' contains no public definitions.
+
+Hint: You can safely remove this module.
+
+   Compiled in 11.73s
+    Running glp_gleam.main
+GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
+GLP> ✓ Loaded: ../programs/tests/link/pc.glp
+GLP> Got = [10, 20, 30]
+→ succeeds
+
+GLP> Goodbye!

@@ -1,5 +1,114 @@
 ## [Unreleased]
 
+## [v2026.08.10.1] - 2026-08-10
+
+### Fixed
+- untrack glpquick-cert key material + OTP floor instead of equality pin
+
+### Changed
+- Merge pull request #139 from olamni-glp/069-tracked-key-remediation
+- merge: origin/develop into 069 (union import manifest)
+- roadmap: sync round - import 1 peer file/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- roadmap: sync round - 0-delta import (fleet converged), reconcile in sync, 0 live dupes, export 18/100/2760 published
+- roadmap: sync round (import 2 files/15 lines), 0 live dupes, export 18/100/2760
+- roadmap import manifest
+- roadmap: sync round — import 6 peer files (5 lines, 0 dupes), export+publish 18/100/2760
+- roadmap: sync round after promotes (5 promoted), 0 live dupes, export 18/99/2745
+- Merge pull request #138 from olamni-glp/main
+
+## [v2026.08.05.1] - 2026-08-05
+
+### Changed
+- Merge pull request #136 from olamni-glp/068-abandon-stub-cleanup
+- .specify updates
+- complete abandon.dart removal — delete dead throw-stub + drop its unused import from runtime.dart (0 call sites; analyze clean; REPL 547/547 green)
+- reconcile codeconv inventory for retired abandon.dart — rm 3 stale artifacts (tombstone/plan/spec) + drop 2 dangling graph edges; PGLite inventory empty (no DB row to retire)
+- roadmap: sync round (import 2 files/0 lines), 0 live dupes, export 18/99/2740
+- roadmap: sync round (import 8 files/0 lines), 0 live dupes, export 18/99/2740 published 181033Z
+- SHIPPED+CLOSED handover — v2026.08.04.2; open follow-ups (066 Dart+codeconv, SC-002 PREP, tracked keys, reconcile defect)
+- Merge pull request #135 from olamni-glp/main
+
+## [v2026.08.04.2] - 2026-08-04
+
+### Fixed
+- commit ANTLR-generated gen/ so the spike harness builds from a clean checkout (codexreview HIGH: gen/ was gitignored but Harness.csproj compiles it — SC-001 now reproducible-from-source w/o jar/Java)
+- remove dead AbandonOps stub (US2/Scope B) — abandon is anon-writer discard (062 US5)
+
+### Changed
+- Merge pull request #133 from olamni-glp/065-glp-runtime-consol
+- Merge remote-tracking branch 'origin/develop' into 065-glp-runtime-consol
+- .specify updates
+- impl(065): US1 antlr4 grammar spike T010-T017 — faithful Glp.g4 (§1.14-approved) + generated C# parser + coverage harness (SC-001 7/7 parity) + REPORT (GO-WITH-CONDITIONS, SC-002 IL-bridge deferred); REPL 547/547
+- sync round — import 28 files/164 lines (guid-union, 0 re-seq), converge to 18/99/2740, export+publish olamnit; replay-verify OK
+- bk-close retro mirror (5 findings) + post-ship roadmap advance to closed + export 18/99/2740
+- Merge pull request #132 from olamni-glp/main
+- mid-pipeline restart handover — US2 done, US1 at §1.14 gate, codex fixed, 066 F1/F2 review
+- spike(065): US1 antlr4 prep (T007-T009) + STOP at T010 §1.14 gate — written owner proposal, awaiting Gabi+Udi
+- tasks(065): glp-runtime-consol — 17 tasks, US2 first (no gate), US1 spike (T010 §1.14 gate)
+- plan(065): glp-runtime-consol plan + research + design artifacts (spike additive, IV-a gated)
+- spec(065): glp-runtime-consol — antlr4 grammar spike + abandon dead-stub cleanup
+
+## [v2026.08.04.1] - 2026-08-04
+
+### Changed
+- Merge pull request #130 from olamni-glp/064-post-wave-gap-closure
+- roadmap: sync round (import 7 files/3 lines), GEPA feature scored+promoted, export 18/99/2737 published; T040 escalation determinations recorded
+- Merge remote-tracking branch 'origin/develop' into 064-post-wave-gap-closure
+- impl(064): T040 codexreview complete - 11 fixes, 2 regressions caught, 4 escalations, sweep green
+- refine(codexreview): cycle 3 regression fixes - accept-fault classification+pacing, bridge bind-gate race
+- refine(codexreview): cycle 2/3 [diff/general]
+- cross-runtime parity harness run outputs (T029 evidence)
+- roadmap: sync round (import 2 files/20 lines), 0 live dupes, export 18/99/2655 published 214119Z
+- roadmap: sync round (import 2 files/0 lines), export 18/98/2635 published 210353Z
+- impl(064): T037 final zero-regression sweep green (REPL 381, CS 360, gleam 618)
+- impl(064): T039 roadmap rider - 6 Full-Gleam rows closed, antlr4 superseded (G5), protocol feature captured; export 18/98/2635 published
+- impl(064): T038 DEFERRALS register (9 durable deferrals, gates named)
+- impl(064): T020 MVP gate review PASS (US1 rescoped + US2, evidence table, 2 recorded partials)
+- impl(064): Option-B ruling encoded - US1 rescoped, FR-001/002 transferred to new distributed-unification-quiescence-protocol feature (captured on roadmap), contracts bannered, T014 checkpoint
+- impl(064): T032 US4 checkpoint green (gleam 618, all C# suites; sweep flags recorded)
+- impl(064): T031 059 acceptance sweep (9 discharged-by-064, 7 earlier, 23 recorded deferrals, 5 flags for engineer)
+- check off T029
+- impl(064): T029 cross-runtime FE/BE smoke both directions (wire clean; RESULT-binding rendering divergence characterized)
+- check off T026-T028
+- impl(064): T026-T028 gleam FE/BE process split over ported split-protocol wire codec (gleam 618, two-OS-process smoke verified)
+- check off T030
+- impl(064): T030 glp_embed load/run/observe surface (G3-A, gleam 597, host-only test)
+- impl(064): T019+T036 checkpoints green (link 171, il 64, host 73, wire 6, split 46, gleam 591; serial-suite rule recorded)
+- check off T033
+- impl(064): T033 gleam :boot via T039 boot loader (gleam 591, live-verified two-agent play)
+- impl(064): T017 EngineServer multi-client mode (opt-in, 061 single-client preserved) + T018 suite (engine_host 73; A31 GLP-merge recorded partial, 1.14-gated)
+- impl(064): T025 US3 checkpoint review note (3 recorded deviations), tasks checked
+- impl(064): T021-T024 IL request kinds, client-side compile+ship, compiler-free IlExecutePath, split_protocol.tests 46 (corpus equivalence 12/12)
+- check off T012 in tasks.md
+- impl(064): T012 QUIC-WS bridge acceptor on glp_quick_host + gleam bridge_client dial helper (glp_link 171, gleam 588)
+- impl(064): T034 bytecode lint (v2.16 operand+phase checks) + T035 param_arity panic to typed error per F1 ruling (gleam 588)
+- impl(064): T010 gleam multi-accept transport + T011 suite (gleam 572, per-accept nonce, exit_on_close inherited, zero regression)
+- impl(064): T015 TcpTransport.AcceptLoopAsync + T016 ClientSession/RoutedReply (glp_link 168, engine_host 69, zero regression)
+- impl(064): T001 baselines green (381 REPL, 298 CS, 569 gleam, 206/206 corpus; Section I 12/18 host deviation recorded) + T002 parity checklist
+- roadmap: sync import 2 files (2 lines), export 18/98/2614, published 153819Z
+- analyze(064): 0 critical, top-3 remediations applied (split_protocol.tests creation, scan self-mention, lint anchor)
+- tasks(064): 41 dependency-ordered tasks across 5 stories, MVP gate US1+US2
+- plan(064): implementation plan + research + data-model + 4 contracts + quickstart
+- clarify(064): four engineer rulings encoded (full C# parity, bridge route, build FE/BE+embeddability, US1+US2 MVP)
+- roadmap: sync import 7 files (44 lines), export 18/98/2612, published 144831Z
+- glp-runtime-consol pipeline restart handover (3rtask gap-audit seed)
+- spec(064): post-wave gap closure specification (3rtask-verified inventory)
+- roadmap: close 12 wave-4/062+050-delivered features (3rtask hygiene); export + publish olamnit__glpnet__20260803T140210Z.json
+- roadmap: rebuild import-manifest after rebase (glp-runtime-consol)
+- roadmap: add+promote glp-runtime-consol (3rtask gap-audit seed); export + publish olamnit__glpnet__20260803T135406Z.json
+- roadmap: close waves 2/4/5 per engineer directive, sync import 5 files (8 lines), export 18/95/2551
+- roadmap: sync import 4 files/5 lines (incl 064 spec-link) + export, published olamnit__glpnet__20260803T132333Z.json
+- roadmap: advance released waves 2/4/5 -> closed; export + publish olamnit__glpnet__20260803T131923Z.json
+- roadmap: rebuild import-manifest mirror from catalog after rebase
+- roadmap: sync import 4 peer exports (9 lines) + export 18/95/2540, published 122835Z
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- roadmap: sync round - import 1 file/4 lines (wave-2 + wave-4 advanced released by peers), 0 duplicates, export 18/95/2540 published 122743Z, replay-verify OK
+- roadmap: sync import 4 peer exports (13 lines), repair wave-2/4 state regression, export 18/95/2540
+- roadmap: manifest row for own 121535Z export (verification round, zero journal delta)
+- roadmap: post-ship sync round - import 1 file/0 lines, reconcile clean, 0 duplicates, export 18/95/2536 published 121535Z, replay-verify OK
+- post-ship close-out retrospective (3 findings incl exit_on_close root cause, nothing to reconcile)
+- Merge pull request #129 from olamni-glp/main
+
 ## [v2026.08.03.1] - 2026-08-03
 
 ### Added

@@ -67,3 +67,25 @@ pub fn type_negative_test() {
   err.class
   |> should.equal(diagnostics.TypeError)
 }
+
+// 064 T035 regression (wave-2 Finding F1, verify-langsurface-channel-convention):
+// a parameterized-type ARITY MISMATCH (Stream/1 referenced as Stream/2, the
+// programs/tests/typed/param_arity_mismatch.glp shape) leaves the raw name
+// unexpanded; the unknown type then reaches program_dfa automaton construction,
+// which formerly PANICKED (`panic as "UnknownTypeError: Stream?"`,
+// program_dfa.gleam:580) and crashed the REPL. It must instead surface as a
+// returned staged type-check diagnostic carrying the Dart-identical message
+// (`UnknownTypeError: Stream?`) — the loader survives.
+const param_arity_mismatch = "Stream(X) ::= [] ; [X | Stream(X)].
+procedure bad(Stream(Integer, String)?).
+bad([])."
+
+pub fn param_arity_mismatch_is_reported_not_panicked_test() {
+  let assert Error(err) = loader.load(param_arity_mismatch, "")
+  err.stage
+  |> should.equal(diagnostics.TypeCheckStage)
+  err.class
+  |> should.equal(diagnostics.TypeError)
+  err.reason
+  |> should.equal("UnknownTypeError: Stream?")
+}

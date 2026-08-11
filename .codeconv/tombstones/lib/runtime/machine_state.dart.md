@@ -33,7 +33,6 @@ callers:
 - lib/multiagent/archive-irma-2026-01-30/tests/two_hop_flow_test.dart
 - lib/multiagent/isolate_manager.dart
 - lib/multiagent/mad_context.dart
-- lib/runtime/abandon.dart
 - lib/runtime/body_kernels.dart
 - lib/runtime/commit.dart
 - lib/runtime/external_io.dart
