@@ -246,7 +246,19 @@ internal static class TermTraversal
     // Substitution application family
     // ========================================================================
 
-    internal static Term ApplySubstitution(Term term, IReadOnlyDictionary<string, Term> subst)
+    internal static Term ApplySubstitution(Term term, IReadOnlyDictionary<string, Term> subst) =>
+        ApplySubstitution(term, subst, new HashSet<string>(StringComparer.Ordinal));
+
+    // Feature 077 (US1/US2, FR-004) — cycle guard on the substitution-closure walker.
+    // ApplySubstitution follows subst[name] transitively; a self-referential binding
+    // (X -> ...X..., the F-069-1 shape) recursed forever -> uncatchable StackOverflow.
+    // `active` holds the var NAMES on the CURRENT resolution path (var-name keyed,
+    // generalising the ResolveTerm visited-set into one guard). Re-following a name
+    // already on the active path is an unbreakable cycle -> hard-fail with a catchable
+    // CompileError. Add/remove is balanced (finally), so a DAG (same name resolved on
+    // sibling paths) and a deep acyclic chain are NOT cycles (FR-005/FR-006).
+    private static Term ApplySubstitution(
+        Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> active)
     {
         if (term is VarTerm varTerm)
         {
@@ -255,22 +267,49 @@ internal static class TermTraversal
             {
                 if (varTerm.IsReader && replacement is VarTerm rv && !rv.IsReader)
                     return new VarTerm(rv.Name, true, rv.Line, rv.Column);
-                return ApplySubstitution(replacement, subst);   // transitive-closure
+                if (!active.Add(varTerm.Name))
+                    throw CyclicTermError(varTerm, "term_traversal");
+                try { return ApplySubstitution(replacement, subst, active); }   // transitive-closure
+                finally { active.Remove(varTerm.Name); }
             }
             return term;
         }
         if (term is StructTerm s)
-            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst)).ToList(), s.Line, s.Column);
+            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst, active)).ToList(), s.Line, s.Column);
         if (term is ListTerm l)
         {
             if (l.IsNil) return l;
             return new ListTerm(
-                l.Head is not null ? ApplySubstitution(l.Head, subst) : null,
-                l.Tail is not null ? ApplySubstitution(l.Tail, subst) : null,
+                l.Head is not null ? ApplySubstitution(l.Head, subst, active) : null,
+                l.Tail is not null ? ApplySubstitution(l.Tail, subst, active) : null,
                 l.Line, l.Column);
         }
         if (term is UnderscoreTerm) return term;
         return term;   // ConstTerm passthrough
+    }
+
+    // ========================================================================
+    // Cyclic-term diagnostic (feature 077, FR-004 / contract C3)
+    // ========================================================================
+
+    /// <summary>
+    /// The catchable diagnostic raised when a term traversal detects an unbreakable
+    /// cycle — replaces the former uncatchable StackOverflowException (SC-001).
+    /// Names the offending node where possible; caught by the existing compile driver.
+    /// </summary>
+    internal static CompileError CyclicTermError(Term at, string phase, string? detail = null)
+    {
+        var what = at switch
+        {
+            VarTerm v    => $" (variable '{v.Name}')",
+            StructTerm s => $" (functor '{s.Functor}/{s.Args.Count}')",
+            _            => "",
+        };
+        var suffix = detail is null ? "" : $" [{detail}]";
+        return new CompileError(
+            $"Cyclic term detected during compile-time traversal{what}{suffix}: the term refers to " +
+            "itself (occurs-check violation) and cannot be finitely resolved.",
+            at.Line, at.Column, phase: phase);
     }
 
     internal static Atom ApplySubstitutionToAtom(Atom atom, IReadOnlyDictionary<string, Term> subst) =>

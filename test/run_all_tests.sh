@@ -2258,6 +2258,62 @@ fi
 echo ""
 
 # =============================================================================
+# SECTION T: GUARDED TERM-TRAVERSAL — CYCLIC-TERM COMPILER DIAGNOSTICS (077)
+# =============================================================================
+# Feature 077 turns the F-069-1 crash class (a cyclic Term overflowing the C#
+# compiler's substitution/resolve walkers with an uncatchable StackOverflow)
+# into a catchable CompileError diagnostic (FR-004). These load cyclic and
+# acyclic GLP programs into the C# REPL and assert: cyclic => diagnostic + NO
+# stack overflow + clean exit (SC-001/SC-002); deep-acyclic + DAG => load OK,
+# never falsely rejected (SC-006/FR-006). The structural-family guard is
+# additionally unit-probed (out/csharp/term_traversal_probe) since a cyclic
+# AST node reaching codegen can only be built programmatically, not authored.
+echo "=== Section T: Guarded term-traversal cyclic diagnostics (077) ==="
+# set +e for this whole section: the C# REPL exits non-zero on some diagnostics and
+# `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
+# the suite (same hazard the cross-runtime section guards above). check() never exits.
+set +e
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
+# CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
+CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
+if [ -f "$CSREPL_BIN" ]; then
+    # T-1/T-2: cyclic `=` defined guard — catchable diagnostic, no StackOverflow.
+    out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/cyclic_eq.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
+    check "T-1: cyclic-= compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
+    if echo "$out" | grep -q "Stack overflow"; then
+        check "T-2: cyclic-= raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
+    else
+        check "T-2: cyclic-= raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
+    fi
+
+    # T-3: deep-acyclic program must still load — not falsely rejected (SC-006 / FR-006).
+    if [ -f "$CYCLIC_DIR/deep_acyclic.glp" ]; then
+        out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/deep_acyclic.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
+        if echo "$out" | grep -qE "Cyclic term detected|Stack overflow|Error loading"; then
+            check "T-3: deep-acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
+        else
+            check "T-3: deep-acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
+        fi
+    fi
+
+    # T-4: structural-family guard unit probe — cyclic AST => CompileError, deep+DAG OK
+    # (a cyclic AST node reaching codegen can only be built programmatically, not authored).
+    PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/net10.0/term_traversal_probe.exe"
+    if [ -f "$PROBE" ]; then
+        out=$("$PROBE" 2>&1)
+        check "T-4: structural + var-name guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
+    else
+        echo "  SKIP: term_traversal_probe not built ($PROBE)"
+    fi
+else
+    echo "  SKIP: Section T — built C# REPL not found ($CSREPL_BIN)"
+fi
+set -e
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))

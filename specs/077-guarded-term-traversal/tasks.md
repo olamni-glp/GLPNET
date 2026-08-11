@@ -18,8 +18,8 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 ## Phase 1: Setup
 
-- [ ] T001 Capture the green baseline: run `DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart.exe bash test/run_all_tests.sh` (expect 547/547) and `cd out/csharp && dotnet build && dotnet test` (0 errors, green); record counts in the commit message (DISCIPLINE §2.2).
-- [ ] T002 [P] Record the pre-fix crash: add a disabled/skipped xUnit test in `out/csharp` that documents the F-069-1 repro (`p(X,s(X))` called `p(Y,Y)` → self-referential subst) and its current `StackOverflowException`, referencing feature 069 SC-003; keep skipped until the guard exists (SC-002 baseline).
+- [X] T001 Capture the green baseline: run `DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart.exe bash test/run_all_tests.sh` (expect 547/547) and `cd out/csharp && dotnet build && dotnet test` (0 errors, green); record counts in the commit message (DISCIPLINE §2.2).
+- [X] T002 [P] Record the pre-fix crash: add a disabled/skipped xUnit test in `out/csharp` that documents the F-069-1 repro (`p(X,s(X))` called `p(Y,Y)` → self-referential subst) and its current `StackOverflowException`, referencing feature 069 SC-003; keep skipped until the guard exists (SC-002 baseline).
 
 ## Phase 2: Foundational — US3 consolidation (dedup NOW) — creates the shared module
 
@@ -27,15 +27,15 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 **Independent test**: after this phase the full REPL + engine suites are byte-identical to baseline, and the duplicated methods exist in exactly one place.
 
-- [ ] T003 [US3] Create the shared module file `out/csharp/lib/compiler/term_traversal.cs` (namespace `GlpRuntime.Compiler`) with a static/`internal` class hosting the shared primitives; no logic yet, just the skeleton + file-id header.
-- [ ] T004 [US3] Move the identical primitives into the shared module (one copy each): `GlpUnifyForPE`, `SubstSet`, `CheckCompatible`, `ResolveTerm` (keep its `HashSet<string> visited`), `ApplySubstitution`, `ApplySubstitutionToAtom/Guard/Goal`, `CollectVarNames`, `ApplyRenaming`. Source of truth = the two identical copies (analyzer `_`-prefixed 1290–1377, PE 636–712).
-- [ ] T005 [US3] Parameterise divergence #1/#3 (anonymous-var semantics): add a `Func<Term,bool> isAnonymous` parameter to `UnifyTerms` and the renaming filter; analyzer callers pass `StartsWith('_')` semantics (`_IsAnonymous`, 1283), PE callers pass `== "_"` semantics (`IsUnderscore`, 628). Do NOT pick a winner — preserve both (research.md; §II no-silent-behaviour-change).
-- [ ] T006 [US3] Parameterise divergence #2 (fresh-var prefix): `RenameUnitClauseVars` takes a `string freshVarPrefix` (analyzer `"PE_"`, PE `"PE"`); unify the counter to `long`.
-- [ ] T007 [US3] Normalise divergence #5: shared `ResolveSubstitution` returns `IReadOnlyDictionary<string,Term>`; give PE-internal mutating callers a local copy.
-- [ ] T008 [US3] Move the shared `UnifyTerms` into the module (with the `isAnonymous` param from T005); leave divergence #4 (`TransformClause`/`TransformDefinedGuards` orchestration + PE's `BuiltinProcedures`/`allProcedures` arms) IN their owning classes — only the primitives move.
-- [ ] T009 [US3] Repoint `analyzer.cs` `DefinedGuardEvaluator` to call the shared module (delete its `_`-prefixed copies 1066–1377 that moved); keep analyzer-only orchestration (`_TransformClause`, `_CollectUnitClauses`).
-- [ ] T010 [US3] Repoint `partial_evaluator.cs` `PartialEvaluator` to call the shared module (delete its moved copies 383–712); keep PE-only Stage-2 (`UnfoldReduceCalls`, `RenameClauseVars`, `SimplifyGuards`, etc.) and the divergence-#4 orchestration.
-- [ ] T011 [US3] Parity gate: rebuild `out/csharp` (0 errors) and run the full REPL suite — MUST be 547/547 identical to T001 baseline. Any diff ⇒ STOP (a divergence was flattened; the §II trap — fix before proceeding). Commit the consolidation.
+- [X] T003 [US3] Create the shared module file `out/csharp/lib/compiler/term_traversal.cs` (namespace `GlpRuntime.Compiler`) with a static/`internal` class hosting the shared primitives; no logic yet, just the skeleton + file-id header.
+- [X] T004 [US3] Move the identical primitives into the shared module (one copy each): `GlpUnifyForPE`, `SubstSet`, `CheckCompatible`, `ResolveTerm` (keep its `HashSet<string> visited`), `ApplySubstitution`, `ApplySubstitutionToAtom/Guard/Goal`, `CollectVarNames`, `ApplyRenaming`. Source of truth = the two identical copies (analyzer `_`-prefixed 1290–1377, PE 636–712).
+- [X] T005 [US3] Parameterise divergence #1/#3 (anonymous-var semantics): add a `Func<Term,bool> isAnonymous` parameter to `UnifyTerms` and the renaming filter; analyzer callers pass `StartsWith('_')` semantics (`_IsAnonymous`, 1283), PE callers pass `== "_"` semantics (`IsUnderscore`, 628). Do NOT pick a winner — preserve both (research.md; §II no-silent-behaviour-change).
+- [X] T006 [US3] Parameterise divergence #2 (fresh-var prefix): `RenameUnitClauseVars` takes a `string freshVarPrefix` (analyzer `"PE_"`, PE `"PE"`); unify the counter to `long`.
+- [X] T007 [US3] Normalise divergence #5: shared `ResolveSubstitution` returns `IReadOnlyDictionary<string,Term>`; give PE-internal mutating callers a local copy.
+- [X] T008 [US3] Move the shared `UnifyTerms` into the module (with the `isAnonymous` param from T005); leave divergence #4 (`TransformClause`/`TransformDefinedGuards` orchestration + PE's `BuiltinProcedures`/`allProcedures` arms) IN their owning classes — only the primitives move.
+- [X] T009 [US3] Repoint `analyzer.cs` `DefinedGuardEvaluator` to call the shared module (delete its `_`-prefixed copies 1066–1377 that moved); keep analyzer-only orchestration (`_TransformClause`, `_CollectUnitClauses`).
+- [X] T010 [US3] Repoint `partial_evaluator.cs` `PartialEvaluator` to call the shared module (delete its moved copies 383–712); keep PE-only Stage-2 (`UnfoldReduceCalls`, `RenameClauseVars`, `SimplifyGuards`, etc.) and the divergence-#4 orchestration.
+- [X] T011 [US3] Parity gate: rebuild `out/csharp` (0 errors) and run the full REPL suite — MUST be 547/547 identical to T001 baseline. Any diff ⇒ STOP (a divergence was flattened; the §II trap — fix before proceeding). Commit the consolidation.
 
 ## Phase 3: US1+US2 — cycle guard on the substitution/resolve family (var-name keyed)
 
