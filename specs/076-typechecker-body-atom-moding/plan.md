@@ -115,7 +115,7 @@ Complexity Tracking entries).*
   at root cause; the existing `done(Done)` workaround is retired, not entrenched. No
   robustness masking: ill-moded clauses keep failing.
 - **III. SRSW inviolable**: PASS — the rule *relies on* SRSW (uniqueness of the licensed
-  writer); no `skipSRSW` token anywhere in these artifacts outside this scan statement.
+  writer); no SRSW-escape option is proposed or used anywhere in these artifacts.
 - **IV-a. Language Authority**: PASS by construction — the §1.14 proposal above is the
   gate; implementation is blocked until Gabi's express approval is recorded (spec
   FR-001/FR-009/SC-005, marathon discharge item `1.14-ruling`).
@@ -142,6 +142,7 @@ specs/076-typechecker-body-atom-moding/
 ├── quickstart.md        # Phase 1 — repro, baseline, verify procedure
 ├── contracts/
 │   └── body-atom-moding-rule.md   # Acceptance matrix + diagnostics contract
+├── baseline.md          # Implement stage (T001/T014) — recorded suite counts
 └── tasks.md             # Phase 2 (/bk-tasks — NOT created by /bk-plan)
 ```
 

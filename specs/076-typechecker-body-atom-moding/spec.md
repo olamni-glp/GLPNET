@@ -169,8 +169,8 @@ previously-rejected programs must still be rejected for the same reasons.
   negative type-check test MUST retain its rejecting verdict.
 - **FR-006**: Mode-mismatch diagnostics MUST continue to identify the variable, the
   argument position, and the expected vs. actual mode for rejected clauses.
-- **FR-007**: Regression tests MUST be added to the unified suite: at least one positive
-  test (the Issue 4 shape, plus a non-`=` generalisation) in the positive type-check
+- **FR-007**: Regression tests MUST be added to the unified suite: at least two positive
+  tests (the Issue 4 shape, and a non-`=` generalisation) in the positive type-check
   section, and at least one negative control in the negative type-check section, with
   test programs under `programs/tests/typed/` carrying `procedure` declarations.
 - **FR-008**: `docs/known-issues.md` Issue 4 MUST be closed with the resolution recorded,
