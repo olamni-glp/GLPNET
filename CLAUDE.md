@@ -318,6 +318,8 @@ For sibling-repo (Mac) merge paths, see appendix.
 
 ## Multi-Stage Task Persistence & Restart-Resume
 
+**buildkit CLI python (this host):** `python -m buildkit_cli....` fails on the system Python (no `buildkit_cli`); use `D:\BSTDEV\tools\mstack\.bk-venv\Scripts\python.exe -m buildkit_cli....` — the `buildkit-*` exes live in that same `Scripts\` dir.
+
 The **roadmap + the buildkit pipeline state are the source of truth** for where work
 stands — never a hand-maintained ledger or a hand-written restart prompt (those drift
 stale and send restarts into finished work). On restart (fresh session, post-compaction,
