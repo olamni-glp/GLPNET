@@ -45,8 +45,8 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 - [ ] T012 [US1] In `term_traversal.cs`, add the shared var-name cycle guard for the substitution/resolve family: generalise the `ResolveTerm` `visited` mechanism into one guard entry point used by `ApplySubstitution`, `UnifyTerms`, `ResolveTerm`, `ApplyRenaming`, `CollectVarNames` (contracts C1). One implementation only (SC-003).
 - [ ] T013 [US1] On a declared unbreakable cycle, raise `new CompileError(message, line, column, phase: "analyzer")` naming the offending variable (contracts C3; error.cs:13). Reconcile with `ResolveTerm`'s existing inner return-revisited-node short-circuit: inner benign self-ref may still terminate the closure; an unresolvable structural cycle surfaces as `CompileError` (research.md Open item 2).
-- [ ] T014 [P] [US2] Route analyzer's remaining substitution-family walkers through the shared guard: `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823), `_ApplySubstitutionToGoal` (1377).
-- [ ] T015 [P] [US2] Route PE's remaining substitution-family walkers through the shared guard: `ApplySubstitutionToGoal` (712), `IsGround` (770).
+- [ ] T014 [P] [US2] Route analyzer's remaining **substitution-closure** walkers through the shared var-name guard: `_ApplySubstitutionToGoal` (1377). *(Analyze F1: the mark/ground walkers `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823) walk AST structure and do NOT follow the substitution map — they are routed through the structural guard in Phase 4 (T019a), not here.)*
+- [ ] T015 [P] [US2] Route PE's remaining substitution-closure walkers through the shared var-name guard: `ApplySubstitutionToGoal` (712). *(`IsGround` (770) walks AST structure → structural guard, T019a.)*
 - [ ] T016 [US1] xUnit tests: feed a cyclic `Term` (F-069-1 shape) to each substitution/resolve walker → assert `CompileError`, bounded time, no `StackOverflowException` (SC-001). Un-skip the T002 repro; assert it now compiles to a diagnostic (SC-002).
 - [ ] T017 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
 
@@ -56,8 +56,9 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 **Independent test**: a constructed cyclic `Term` fed to each codegen/linker walker → `CompileError`; a deep acyclic + DAG term traverse OK (SC-006).
 
-- [ ] T018 [US1] In `term_traversal.cs`, add the shared structural guard (fuel bound and/or `HashSet<Term>` under `ReferenceEqualityComparer.Instance`) — contracts C2. One implementation (SC-003). Size fuel so no legitimate deep acyclic program trips it (FR-006).
+- [ ] T018 [US1] In `term_traversal.cs`, add the shared structural guard (fuel bound and/or `HashSet<Term>` under `ReferenceEqualityComparer.Instance`) — contracts C2. One implementation (SC-003). Fuel sizing basis (Analyze A1): derive the bound from the maximum legitimate term depth observed across the REPL corpus with a safety multiplier, so a genuine deep acyclic term (FR-006) never trips it while a self-referential node is caught quickly.
 - [ ] T019 [P] [US2] Route the six `codegen.cs` walkers through the structural guard: `_GenerateStructureElement` (369), `_IsGroundTerm` (670), `_GroundTermToValue` (687), `_GenerateArgumentStructureElement` (710), `_GenerateStructureElementInBody` (792), `_GenerateListTailInBody` (849); raise `CompileError(phase:"codegen")` on cycle.
+- [ ] T019a [P] [US2] Route the AST-structure walkers (reassigned from Phase 3 per Analyze F1) through the structural guard: analyzer `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823); PE `IsGround` (770). These walk `Term` structure, not the substitution map, so they take the fuel/identity guard.
 - [ ] T020 [P] [US2] Route `project_linker.cs` `ResolveGoal` (378) through the structural guard (Goal-graph, identity-preserving); raise `CompileError` on cycle (note: linker currently throws plain `Exception` — use `CompileError` for the cyclic signal per contracts C3).
 - [ ] T021 [US1] xUnit tests: constructed cyclic `Term` → each codegen/linker walker → `CompileError`, bounded, no overflow (SC-001). Deep-acyclic + DAG-shared term → both traverse OK, NOT falsely rejected (SC-006).
 - [ ] T022 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
@@ -91,4 +92,4 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 ## Task count
 
-26 tasks — Setup 2, US3/Foundational 9, US1+US2 subst-family 6, US1+US2 structural 5, Polish 4. Test tasks included (SC-001/002/005/006 demand them).
+27 tasks — Setup 2, US3/Foundational 9, US1+US2 subst-family 6, US1+US2 structural 6 (incl. T019a reassigned per Analyze F1), Polish 4. Test tasks included (SC-001/002/005/006 demand them).
