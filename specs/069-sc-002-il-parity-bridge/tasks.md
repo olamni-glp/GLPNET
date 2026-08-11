@@ -66,12 +66,12 @@ product, so verification tasks are included as first-class (not optional extras)
 
 **Independent Test**: `--parity --corpus` over the expanded set and `--fuzz --budget 10000` both complete with zero un-caused divergences.
 
-- [ ] T014 [US2] Populate `corpus/` with accepted `.glp` files drawn from across `programs/` (e.g. `typed_book/`, `lib/`, `plays/`, `tests/typed/`; note there is no `programs/book/`) via a both-front-end accept filter (log one-sided rejects as divergences) and update `corpus/MANIFEST.md` (contract C1/C4).
-- [ ] T015 [US2] Add ≥1 dedicated corpus program per construct in `corpus/CONSTRUCTS.md` until every construct is ticked (coverage floor complete — FR-005/C2).
-- [ ] T016 [US2] `mod`-functor fix: add a lexer predicate/island in `Glp.g4` so `mod(` → functor atom else `MOD`; regenerate `gen/`; add `mod(...)` call-form corpus files (research D5, contract C3). If infeasible in scope, record it as a bounded condition in RESULTS.md instead. 🔴 **§1.14 propose-first**: `Glp.g4` is an owner-approved artifact (065); propose this lexer change to Gabi+Udi and get approval BEFORE it lands (Constitution IV-a) — it is faithful tokenization of existing syntax, not an accepted-syntax change, but the approved grammar must not be re-edited unilaterally.
-- [ ] T017 [P] [US2] Implement `parity/GrammarFuzzer.cs`: deterministic (index+fixed-seed) generation of valid programs targeting variable-versus-comparison dispatch and deep type-alternative nesting (contract F1/F3/F5).
-- [ ] T018 [US2] Wire `--fuzz --budget N` (default 10000) to run generated inputs through the comparator, halting on the first un-caused divergence with the reproducing input captured (FR-006, contract F2/F4).
-- [ ] T019 [US2] Run expanded-corpus `--parity` + `--fuzz`; diagnose/fix every divergence or record its bounded cause; land RESULTS.md showing zero un-caused divergences (SC-002, SC-003, SC-006).
+- [X] T014 [US2] Populate `corpus/` with accepted `.glp` files drawn from across `programs/` (e.g. `typed_book/`, `lib/`, `plays/`, `tests/typed/`; note there is no `programs/book/`) via a both-front-end accept filter (log one-sided rejects as divergences) and update `corpus/MANIFEST.md` (contract C1/C4). — DONE: swept tests/typed 71/72, lib 8/8, typed_book 175/223, dynamic_dispatch 4/4; referenced in place; 0 un-caused; all rejects BC-1-bounded (RESULTS.md).
+- [X] T015 [US2] Add ≥1 dedicated corpus program per construct in `corpus/CONSTRUCTS.md` until every construct is ticked (coverage floor complete — FR-005/C2). — DONE: every B-box ticked w/ cited IL/parse file; added `op_forms.glp` (op-as-functor/neg) + `mod_functor_call.glp` to close gaps.
+- [X] T016 [US2] `mod`-functor fix: add a lexer predicate/island in `Glp.g4` so `mod(` → functor atom else `MOD`; regenerate `gen/`; add `mod(...)` call-form corpus files (research D5, contract C3). — DONE (DEC U3, Gabi+Udi approved): `MOD : 'mod' { InputStream.LA(1) != '(' }?`; regen; `mod_functor_call.glp` MATCH; 7/7 + fuzz unregressed.
+- [X] T017 [P] [US2] Implement `parity/GrammarFuzzer.cs`: deterministic (index+fixed-seed) generation of valid programs targeting variable-versus-comparison dispatch and deep type-alternative nesting (contract F1/F3/F5).
+- [X] T018 [US2] Wire `--fuzz --budget N` (default 10000) to run generated inputs through the comparator, halting on the first un-caused divergence with the reproducing input captured (FR-006, contract F2/F4).
+- [X] T019 [US2] Run expanded-corpus `--parity` + `--fuzz`; diagnose/fix every divergence or record its bounded cause; land RESULTS.md showing zero un-caused divergences (SC-002, SC-003, SC-006). — DONE: fuzz 10000 = 0 un-caused (DEC F3 non-cyclic scope); all corpus divergences BC-1-bounded.
 
 **Checkpoint**: SC-002 + SC-003 met — parity holds at coverage-floor breadth and under fuzz.
 
@@ -83,7 +83,7 @@ product, so verification tasks are included as first-class (not optional extras)
 
 **Independent Test**: `DECISION.md` exists, states one verdict, cites RESULTS.md, and lists every residual condition — reviewable without re-running the harness.
 
-- [ ] T020 [US3] Author `spike/antlr4-glp-grammar/DECISION.md`: verdict (adopt / adopt-with-conditions / do-not-adopt), evidence refs into RESULTS.md, and enumerated bounded conditions — Dart-target maturity, Gleam-not-an-ANTLR-target, and the `mod`-functor status from T016 (FR-011, SC-004).
+- [X] T020 [US3] Author `spike/antlr4-glp-grammar/DECISION.md`: verdict (adopt / adopt-with-conditions / do-not-adopt), evidence refs into RESULTS.md, and enumerated bounded conditions — Dart-target maturity, Gleam-not-an-ANTLR-target, and the `mod`-functor status from T016 (FR-011, SC-004). — DONE: verdict ADOPT-WITH-CONDITIONS; BC-1 (hand-parser post-parse semantics), BC-2 (F-069-1), BC-3 (Dart maturity), BC-4 (Gleam-not-ANTLR); mod-functor RESOLVED.
 
 **Checkpoint**: SC-004 met — the feature's terminal deliverable is ready for language-authority ratification (Gabi + Udi, DISCIPLINE §1.14).
 
@@ -91,10 +91,10 @@ product, so verification tasks are included as first-class (not optional extras)
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] xUnit unit tests in `parity/` for IlParityComparator first-diff localization and GrammarFuzzer determinism (same index+seed ⇒ same input).
-- [ ] T022 Run the production regression baseline `export DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart && bash test/run_all_tests.sh`; confirm the 546–547 baseline is unchanged (FR-010 held — research D7).
-- [ ] T023 Run full quickstart.md end-to-end (build → parity → fuzz → read RESULTS/DECISION) as an acceptance pass.
-- [ ] T024 [P] Update `spike/antlr4-glp-grammar/REPORT.md` §3/§7 to reference SC-002 closure and link RESULTS.md/DECISION.md (single-source traceability — Constitution VIII).
+- [X] T021 [P] xUnit unit tests in `parity/` for IlParityComparator first-diff localization and GrammarFuzzer determinism (same index+seed ⇒ same input). — DONE: `parity/tests/ParityTests.cs` 12/12 pass (FirstDiff 5, determinism 6, DEC F3 non-cyclic-= invariant 1).
+- [~] T022 Run the production regression baseline `export DART=/c/src/flutter/bin/cache/dart-sdk/bin/dart && bash test/run_all_tests.sh`; confirm the 546–547 baseline is unchanged (FR-010 held — research D7). — IN PROGRESS: A 221/0, B 110/0, C 50/0 so far; production code untouched (only spike/ + 2 curated-list-excluded typed test files).
+- [X] T023 Run full quickstart.md end-to-end (build → parity → fuzz → read RESULTS/DECISION) as an acceptance pass. — DONE: build + `--parity` (SC-001 7/7) + expanded sweeps (SC-002) + `--fuzz 10000` (SC-003) all run this session; RESULTS.md/DECISION.md present; quickstart.md corrected (corpus referenced in place, not `../corpus`).
+- [X] T024 [P] Update `spike/antlr4-glp-grammar/REPORT.md` §3/§7 to reference SC-002 closure and link RESULTS.md/DECISION.md (single-source traceability — Constitution VIII). — DONE.
 
 ---
 
