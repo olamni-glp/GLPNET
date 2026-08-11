@@ -1,5 +1,57 @@
 ## [Unreleased]
 
+## [v2026.08.11.1] - 2026-08-11
+
+### Added
+- US3 T020 DECISION.md (ADOPT-WITH-CONDITIONS, BC-1..BC-4 enumerated) + T024 REPORT.md SC-002-closed cross-refs
+- US2 T015 per-construct coverage floor complete — op_forms.glp closes op-as-functor/neg gap; all B-boxes ticked w/ cited IL/parse coverage; +dynamic_dispatch 4/4 (# / imported)
+- US2 T014 expanded corpus — sweep tests/typed(70/71) + lib(8/8) + typed_book(175/223), 0 un-caused divergences; all rejects bounded BC-1 (SC-002)
+- US2 T016 DEC U3 — mod-functor lexer predicate (Gabi+Udi approved); mod(...) call-form parity MATCH, 7/7 corpus + fuzz unregressed
+- US2 T018/T019 DEC F3 — scope fuzzer non-cyclic =; full-budget fuzz 10000 clean, 0 un-caused divergences (SC-003)
+- US1 IL-parity bridge — 7/7 byte-identical IL (SC-001)
+
+### Fixed
+- untrack glpquick-cert key material + OTP floor instead of equality pin
+
+### Changed
+- Merge pull request #147 from olamni-glp/069-sc-002-il-parity-bridge
+- Merge remote-tracking branch 'origin/develop' into 069-sc-002-il-parity-bridge
+- test updates
+- Merge pull request #146 from olamni-glp/075-backlog-cluster-3rtask
+- Merge pull request #145 from olamni-glp/074-roadmap-sync-postimplement
+- regenerate cross_runtime parity result banners (build-hash + cwd-casing) from T022 run
+- sync export (19 epics/102 features/2795 lines) — +GLP compiler robustness epic w/ occurs-check + guarded-traversal features (3rtask run 20260811T085855Z-8d6f); dedup-first dep
+- roadmap: backlog root-cause sweep - 3rtask run a625 clusters 15 actionables into 7 features under new epic, 24 no-feature dispositions, export 19/107/2856 published 112740Z
+- 3rtask: backlog-cluster corpus slices + manifest (research run input)
+- T022 regression — 0 failures across all executed sections (A/B/C 221/110/50); run stopped in known-flaky late multi-isolate; production untouched (FR-010 held)
+- T023/T024 — correct quickstart corpus usage (referenced-in-place, --project form) + mark T014-T024 done in tasks.md
+- T021 xUnit — FirstDiff localization (5) + fuzzer determinism (6) + DEC F3 non-cyclic-= invariant (1); 12/12 pass
+- roadmap: sync round - import gavriella 230104Z + ariellas 174815Z (2 lines), reconcile in sync, 0 live dupes, replay-verify OK, export 18/100/2762 published 235444Z
+- wip(069): US2 T017/T018 fuzzer+wiring+ResultsWriter upsert; fuzz surfaced engine SO bug F-069-1 (blocked)
+- Merge pull request #144 from olamni-glp/073-roadmap-sync-postqueue
+- roadmap: sync round - import gavriella 055225Z (0 lines, converged), reconcile in sync, replay-verify OK, export 18/100/2760 published 174815Z
+- Merge pull request #143 from olamni-glp/072-3rtask-808a-dispositions
+- 3rtask 808a disposition round - staging adopted, O1-O7 worked, O1/O2 rulings proposed
+- Merge pull request #142 from olamni-glp/071-postship-roadmap-sync
+- roadmap: sync round post-ship v2026.08.10.1 - 7 peer files/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- Merge pull request #141 from olamni-glp/main
+- Merge pull request #140 from olamni-glp/release/v2026.08.10.1
+- release: v2026.08.10.1
+- Merge pull request #139 from olamni-glp/069-tracked-key-remediation
+- merge: origin/develop into 069 (union import manifest)
+- roadmap: sync round - import 1 peer file/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- roadmap: sync round - 0-delta import (fleet converged), reconcile in sync, 0 live dupes, export 18/100/2760 published
+- roadmap: sync round (import 2 files/15 lines), 0 live dupes, export 18/100/2760
+- roadmap import manifest
+- roadmap: sync round — import 6 peer files (5 lines, 0 dupes), export+publish 18/100/2760
+- analyze(069): apply remediations — corpus dir names (typed_book not book), T016 §1.14 re-confirm
+- tasks(069): 24 tasks across 6 phases, organized by US1/US2/US3
+- plan(069): impl plan + research + data-model + contracts + quickstart
+- spec(069): clarify corpus floor, mod-functor fix-first, bounded fuzz budget
+- spec: SC-002 IL-parity bridge — parse-tree->engine lowering + adoption decision (069)
+- roadmap: sync round after promotes (5 promoted), 0 live dupes, export 18/99/2745
+- Merge pull request #138 from olamni-glp/main
+
 ## [v2026.08.10.1] - 2026-08-10
 
 ### Fixed

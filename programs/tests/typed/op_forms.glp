@@ -1,0 +1,17 @@
+% op_forms.glp - operator FORMS the fuzzer does not emit: op-as-functor and unary neg.
+% op-as-functor: an arithmetic operator IMMEDIATELY followed by `(` is a functor application,
+%   `+(A,B)` -> StructTerm("+",[A,B]) (parser.cs:1020, precedes unary-minus). Exercises the
+%   op-as-functor arithPrimary/primary alternative (Glp.g4 lines 194/224).
+% unary neg: `-X` (MINUS not glued to a digit) -> StructTerm("neg",[X]).
+
+exported procedure plus_functor(Number?, Number?, Number).
+plus_functor(X, Y, Z?) :- Z := +(X?, Y?).
+
+exported procedure minus_functor(Number?, Number?, Number).
+minus_functor(X, Y, Z?) :- Z := -(X?, Y?).
+
+exported procedure star_functor(Number?, Number?, Number).
+star_functor(X, Y, Z?) :- Z := *(X?, Y?).
+
+exported procedure unary_neg(Number?, Number).
+unary_neg(X, Z?) :- Z := -X?.

@@ -1,0 +1,42 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+
+Lowering bridge (feature 069, T001/T004/T008-T012): ANTLR parse tree -> engine AST
+(ast.cs nodes) + the pipeline driver that compiles a lowered Module to BytecodeProgram.
+Compiles the ANTLR-generated front-end (../gen) here so gen types live in exactly ONE
+assembly; the parity project + harness reference this project rather than re-compiling gen.
+Production is untouched (FR-010) — glp_runtime_net is a read-only ProjectReference.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Match the ANTLR-generated files' expectations (as the harness does). -->
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>glp_grammar_spike_bridge</AssemblyName>
+    <RootNamespace>GlpGrammarSpike.Bridge</RootNamespace>
+    <!-- The generated parser is ANTLR boilerplate; silence its analyzer noise. -->
+    <NoWarn>CS3021;CS0108;CS0114;CS0162;CS0219;CS8981;CS8632</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ANTLR-generated front-end (regenerated with -visitor for the bridge). -->
+    <Compile Include="..\gen\GlpLexer.cs" />
+    <Compile Include="..\gen\GlpParser.cs" />
+    <Compile Include="..\gen\GlpBaseListener.cs" />
+    <Compile Include="..\gen\GlpListener.cs" />
+    <Compile Include="..\gen\GlpBaseVisitor.cs" />
+    <Compile Include="..\gen\GlpVisitor.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The production engine (ground-truth AST + compile pipeline). Read-only (FR-010). -->
+    <ProjectReference Include="..\..\..\out\csharp\glp_runtime_net.csproj" />
+  </ItemGroup>
+</Project>

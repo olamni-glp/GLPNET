@@ -1,0 +1,29 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+
+IL-parity comparator + bounded fuzz (feature 069, T005/T006/T017/T018). Runs both
+front-ends through the identical PipelineDriver, serializes each BytecodeProgram with
+glp_il_codec, and byte-compares. References the bridge (front-end A + pipeline) and the
+il-codec equality oracle; the engine comes in transitively through both.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>glp_grammar_spike_parity</AssemblyName>
+    <RootNamespace>GlpGrammarSpike.Parity</RootNamespace>
+  </PropertyGroup>
+
+  <!-- The xUnit test project lives under parity/tests/; keep its sources out of this library. -->
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\bridge\Bridge.csproj" />
+    <ProjectReference Include="..\..\..\csharp\glp_il_codec\GlpIlCodec.csproj" />
+  </ItemGroup>
+</Project>
