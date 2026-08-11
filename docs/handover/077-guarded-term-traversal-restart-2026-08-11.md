@@ -2,6 +2,30 @@
 
 **Date:** 2026-08-11
 **Author:** Claude (Opus 4.8) session, host Olamnit
+**Status:** ✅ **IMPLEMENT COMPLETE (session 4)** — all 27 tasks done, 4 phase commits on branch `077-guarded-term-traversal` (LOCAL-UNPUSHED). NEXT = `/bk-codexreview` → `/bk-ship`+release → `/bk-close`.
+
+---
+
+## Session-4 update — /bk-implement COMPLETE
+
+All 27 tasks in `tasks.md` are done. Committed in 4 phase checkpoints (each behind a full-suite parity gate):
+
+1. `796acfcf` — **Phase 2 (US3 dedup)**: consolidated the PE/analyzer unify/substitution/resolve machinery into ONE shared module `out/csharp/lib/compiler/term_traversal.cs` (`TermTraversal`). All 5 divergences PRESERVED via parameters (not flattened): #1/#3 anonymous-var (`AnalyzerIsAnonymous` = `StartsWith('_')` vs `PeIsUnderscore` = `== "_"`), #2 fresh-var prefix + `long` counter, #5 `IReadOnlyDictionary` return; #4 `TransformClause` orchestration kept in the owning classes. REPL 547/547.
+2. `70824192` — **Phase 3 (var-name guard)**: `ApplySubstitution` (the CONFIRMED F-069-1 crash site — `PartialEvaluator.ApplySubstitution`, since PE runs before the analyzer) now carries a var-name active-path set; a self-referential binding raises a catchable `CompileError` (`CyclicTermError`, FR-004) instead of the uncatchable `StackOverflow`. `error.cs`: `term_traversal`→Semantic mapping (T023). Section T added. REPL 549/549.
+3. `1c3b4eba` — **Phase 4 (structural guard)**: `StructuralGuard` (identity active-path + fuel backstop) wired to the 6 codegen walkers + 3 analyzer mark/ground walkers (reentrancy-field) + PE `IsGround` + linker `ResolveGoal` (threaded-param). New console probe `out/csharp/term_traversal_probe` (InternalsVisibleTo, in the sln) proves cyclic→CompileError + deep(6000)/DAG→OK. REPL 550/550.
+4. `3920a5e7` — **Phase 5 (finalize)**: Section T generalized over every `programs/tests/cyclic/cyclic_*.glp` (T024, demonstrates the whole cyclic-`=` CLASS); `spec.md` Status→Implemented; `docs/known-issues.md` Issue 0 resolved + cross-ref to the occurs-check feature.
+
+**Final gates:** REPL Section T 5/5 PASS (cyclic_eq + cyclic_list → `Cyclic term detected` diagnostic, no overflow; probe → CompileError + deep/DAG OK); full `dotnet build` sln 0 errors. Full suite **551/552** — the single failure is the DOCUMENTED ~1/6 **Gleam×C# cross-runtime rendezvous-timing flake** (`bidirectional`/`link_both_ways`; toggles run-to-run; it also failed in the PRISTINE pre-change baseline; orthogonal to this compiler-only feature per FR-008). Not a regression.
+
+**🔴 Two carry-over flags for `/bk-codexreview`:**
+1. **Divergence-#1 owner review** — the anonymous-var semantics (`StartsWith('_')` vs `== "_"`) are preserved as two behaviours via the `isAnonymous` param, NOT unified. Any future unification is a separate owner-approved decision (§II no-silent-behaviour-change).
+2. **Test-reality adaptation** — there is NO xUnit harness for the `out/csharp` compiler tree (the `test/*.cs` are Dart mirror-stubs; the compiler is regression-tested through the REPL suite Section I, exactly as feature 069's T022 established). The tasks' xUnit test items (T002/T016/T021/T024) were satisfied through the reality-matching channels: durable `.glp` repro programs + REPL Section T (end-to-end, the F-069-1 path) + a dependency-free console probe (the structural family, which a GLP program cannot express). This is a documented adaptation, not a skip — every SC has a concrete automated check.
+
+**Push status:** the 4 commits are LOCAL (push not yet authorized per CLAUDE.md "push only when the user asks"). Pushing the branch is the recommended safe-restart checkpoint before codexreview.
+
+---
+
+## (Original session-3 handover below)
 **Status:** Pipeline specify→analyze COMPLETE; NEXT = `/bk-implement` in a NEW session
 
 ---
