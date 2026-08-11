@@ -29,6 +29,12 @@ Two design escalations from that run were **resolved by Gabi on 2026-08-11** and
 
 This feature is **foundational, mandatory, and first**: the occurs-checked-substitution-pipeline feature (closing F-069-1) has a hard dependency on the consolidated module this feature produces.
 
+## Clarifications
+
+### Session 2026-08-11
+
+- Q: On a detected cycle (revisited node / exhausted fuel), what is the controlled outcome — hard-fail with a `CompileError`, or return the revisited node and let traversal terminate? → A: **Hard-fail, raising a `CompileError`** (a distinct, catchable compiler diagnostic). Rationale: (1) consistent with the sibling occurs-check feature's stated outcome ("graceful `UnifyFail`/`CompileError`"), so both the bind-time check and the traversal backstop surface the same diagnosable failure class; (2) returning a revisited node risks silently producing incorrect compiled output, violating the no-silent-failure discipline (DISCIPLINE §5.2) — a loud `CompileError` is diagnosable, a quietly-wrong codegen is not. This is a compiler-behaviour choice (defining behaviour where there was previously an uncatchable `StackOverflowException`), NOT a GLP language-definition change, so it is settled here without a §1.14 propose-first gate (see FR-007).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Cyclic term no longer crashes the compiler (Priority: P1)
@@ -92,7 +98,7 @@ As a compiler maintainer, I want the duplicated unifier/substitution/resolve mac
 - **FR-001**: The compiler MUST provide a single shared term-traversal utility that bounds every traversal via a visited-set and/or a fuel/step bound, such that no traversal of any `Term` graph — cyclic or acyclic — can recurse without bound.
 - **FR-002**: Every identified compiler term walker MUST route its traversal through the shared utility. The identified set is: `ApplySubstitution`, `ResolveTerm`, `ApplyRenaming` (consolidated), the six `codegen.cs` walkers, and `project_linker.cs`'s `ResolveGoal` (~11 walkers total).
 - **FR-003**: The duplicated unifier/substitution/resolve machinery currently maintained separately in `analyzer.cs` and `partial_evaluator.cs` MUST be consolidated into ONE shared module consumed by both, leaving no second copy.
-- **FR-004**: When the shared utility detects a cycle (a revisited node / exhausted fuel), it MUST produce a controlled, catchable outcome — never a `StackOverflowException` and never silent process death. *(The exact controlled outcome — hard-fail with a `CompileError` vs. return-the-revisited-node — is the one open design decision, resolved at `/bk-clarify`; see Assumptions.)*
+- **FR-004**: When the shared utility detects a cycle (a revisited node / exhausted fuel), it MUST hard-fail by raising a distinct, catchable `CompileError` — never a `StackOverflowException`, never silent process death, and never a silently-returned revisited node that could yield incorrect compiled output. *(Decided at `/bk-clarify` 2026-08-11; see Clarifications.)*
 - **FR-005**: On acyclic input, every guarded walker MUST produce results identical to the pre-feature behaviour (behaviour-preserving on the common path; no regression in the existing REPL/engine suites).
 - **FR-006**: The guard MUST distinguish a genuine cycle (a node reachable from itself) from a merely deep or DAG-shared acyclic term, so that legitimate large acyclic terms are not falsely rejected.
 - **FR-007**: This feature MUST NOT change the GLP language definition or what a well-formed program means. It hardens traversal against an input that previously produced undefined behaviour (a crash); it introduces no new guard, predicate, directive, or type-system feature. *(Distinguishes this feature from the sibling occurs-check feature, which does carry a §1.14 language-authority question.)*
@@ -117,7 +123,7 @@ As a compiler maintainer, I want the duplicated unifier/substitution/resolve mac
 
 ## Assumptions
 
-- **Open decision deferred to `/bk-clarify`**: the controlled outcome on a detected cycle (FR-004) is either (a) hard-fail raising a `CompileError`, or (b) return the revisited node and let traversal terminate. The spec is written to accommodate either; the decision is a compiler-behaviour choice (choosing defined behaviour where there previously was an uncatchable crash), **not** a GLP language change, so it is settled by Gabi at clarify without a §1.14 propose-first-with-Udi gate. The sibling occurs-check feature is where the §1.14 reject-vs-accept language question lives.
+- **Resolved at `/bk-clarify` (2026-08-11)**: the controlled outcome on a detected cycle (FR-004) is **hard-fail raising a `CompileError`** — see Clarifications. This was a compiler-behaviour choice (defined behaviour replacing an uncatchable crash), not a GLP language change, so it needed no §1.14 propose-first-with-Udi gate. The sibling occurs-check feature is where the §1.14 reject-vs-accept language question lives.
 - The visited-set / fuel-bound approach is assumed to be the implementation vehicle; the specific mechanism (identity visited-set, structural visited-set, fuel counter, or a combination) is a `/bk-plan` decision.
 - The ~11 walkers enumerated by 3rtask run `20260811T085855Z-8d6f` are assumed complete; `/bk-plan` will re-verify the enumeration against current `out/csharp/lib/compiler/` source before routing.
 - This feature is behaviour-preserving on all currently-valid (acyclic) programs; the only behaviour change is for inputs that previously crashed the compiler.
