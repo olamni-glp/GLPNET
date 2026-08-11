@@ -905,7 +905,8 @@ public sealed class Analyzer
 /// </summary>
 public sealed class DefinedGuardEvaluator
 {
-    private int _varCounter = 0;
+    // Divergence #2 (spec 077): unified to long across analyzer + PE.
+    private long _varCounter = 0;
 
     // ────────────────────────────────────────────────────────────────────────
     // Entry point
@@ -1001,8 +1002,10 @@ public sealed class DefinedGuardEvaluator
                             $"Defined guard \"{guard.Predicate}\" cannot be negated",
                             guard.Line, guard.Column, phase: "analyzer");
 
-                    var renamedArgs = _RenameUnitClauseVars(unitArgs);
-                    var result      = _GlpUnifyForPE(guard.Args, renamedArgs);
+                    var renamedArgs = TermTraversal.RenameUnitClauseVars(
+                        unitArgs, "PE_", ref _varCounter, TermTraversal.AnalyzerIsAnonymous);
+                    var result      = TermTraversal.GlpUnifyForPE(
+                        guard.Args, renamedArgs, TermTraversal.AnalyzerIsAnonymous);
 
                     switch (result)
                     {
@@ -1023,14 +1026,14 @@ public sealed class DefinedGuardEvaluator
                                 guard.Line, guard.Column, phase: "analyzer");
 
                         case UnifySuccess success:
-                            currentHead = _ApplySubstitutionToAtom(currentHead, success.Substitution);
+                            currentHead = TermTraversal.ApplySubstitutionToAtom(currentHead, success.Substitution);
                             var restGuards = currentGuards.GetRange(i + 1, currentGuards.Count - i - 1)
-                                .Select(g => _ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                                .Select(g => TermTraversal.ApplySubstitutionToGuard(g, success.Substitution)).ToList();
                             remainingGuards = remainingGuards
-                                .Select(g => _ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                                .Select(g => TermTraversal.ApplySubstitutionToGuard(g, success.Substitution)).ToList();
                             if (currentBody is not null)
                                 currentBody = currentBody
-                                    .Select(g => _ApplySubstitutionToGoal(g, success.Substitution)).ToList();
+                                    .Select(g => TermTraversal.ApplySubstitutionToGoal(g, success.Substitution)).ToList();
                             currentGuards = new List<Guard>(remainingGuards.Count + restGuards.Count);
                             currentGuards.AddRange(remainingGuards);
                             currentGuards.AddRange(restGuards);
@@ -1057,338 +1060,5 @@ public sealed class DefinedGuardEvaluator
             body:   currentBody,
             line:   clause.Line,
             column: clause.Column);
-    }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Variable renaming
-    // ────────────────────────────────────────────────────────────────────────
-
-    private List<Term> _RenameUnitClauseVars(IReadOnlyList<Term> args)
-    {
-        var varNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var arg in args)
-            _CollectVarNames(arg, varNames);
-
-        var renaming = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var name in varNames)
-            if (!name.StartsWith('_'))
-                renaming[name] = $"PE_{_varCounter++}";
-
-        return args.Select(arg => _ApplyRenaming(arg, renaming)).ToList();
-    }
-
-    private static void _CollectVarNames(Term term, HashSet<string> names)
-    {
-        switch (term)
-        {
-            case VarTerm v:
-                names.Add(v.Name);
-                break;
-            case StructTerm s:
-                foreach (var arg in s.Args) _CollectVarNames(arg, names);
-                break;
-            case ListTerm l:
-                if (l.Head is not null) _CollectVarNames(l.Head, names);
-                if (l.Tail is not null) _CollectVarNames(l.Tail, names);
-                break;
-        }
-    }
-
-    private static Term _ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming)
-    {
-        switch (term)
-        {
-            case VarTerm v when v.Name == "_":
-                return new UnderscoreTerm(v.Line, v.Column);
-            case VarTerm v when renaming.TryGetValue(v.Name, out var newName):
-                return new VarTerm(newName, v.IsReader, v.Line, v.Column);
-            case VarTerm:
-                return term;
-            case StructTerm s:
-                return new StructTerm(s.Functor,
-                    s.Args.Select(a => _ApplyRenaming(a, renaming)).ToList(),
-                    s.Line, s.Column);
-            case ListTerm l:
-                return new ListTerm(
-                    l.Head is not null ? _ApplyRenaming(l.Head, renaming) : null,
-                    l.Tail is not null ? _ApplyRenaming(l.Tail, renaming) : null,
-                    l.Line, l.Column);
-            case UnderscoreTerm:
-                return term;
-            default:
-                return term;  // ConstTerm passthrough
-        }
-    }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // GLP three-valued compile-time unification
-    // ────────────────────────────────────────────────────────────────────────
-
-    private UnifyResult _GlpUnifyForPE(IReadOnlyList<Term> callArgs, IReadOnlyList<Term> unitArgs)
-    {
-        if (callArgs.Count != unitArgs.Count)
-            return new UnifyFail($"Arity mismatch: {callArgs.Count} vs {unitArgs.Count}");
-
-        var substitution  = new Dictionary<string, Term>(StringComparer.Ordinal);
-        var suspensionSet = new HashSet<string>(StringComparer.Ordinal);
-
-        // Phase 1: Collection
-        for (int i = 0; i < callArgs.Count; i++)
-        {
-            var result = _UnifyTerms(callArgs[i], unitArgs[i], substitution, suspensionSet);
-            if (result is not null) return result;
-        }
-
-        // Phase 2: Resolution
-        var unresolvedReaders = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var readerName in suspensionSet)
-            if (!substitution.ContainsKey(readerName)) unresolvedReaders.Add(readerName);
-        if (unresolvedReaders.Count > 0) return new UnifySuspend(unresolvedReaders);
-
-        return new UnifySuccess(_ResolveSubstitution(substitution));
-    }
-
-    private static void _SubstSet(Dictionary<string, Term> subst, string key, Term value)
-    {
-        if (subst.TryGetValue(key, out var old)
-            && old is VarTerm oldVar && !oldVar.IsReader
-            && value is not VarTerm)
-        {
-            if (!subst.ContainsKey(oldVar.Name)) subst[oldVar.Name] = value;
-        }
-        subst[key] = value;
-    }
-
-    private UnifyResult? _UnifyTerms(
-        Term callArg, Term unitArg,
-        Dictionary<string, Term> subst, HashSet<string> suspSet)
-    {
-        if (_IsAnonymous(callArg) || _IsAnonymous(unitArg)) return null;
-
-        // Call arg is writer
-        if (callArg is VarTerm callVar && !callVar.IsReader)
-        {
-            if      (unitArg is VarTerm unitW && !unitW.IsReader) subst[unitW.Name] = callVar;
-            else if (unitArg is VarTerm unitR &&  unitR.IsReader) subst[unitR.Name] = callVar;
-            else                                                   subst[callVar.Name] = unitArg;
-            return null;
-        }
-
-        // Call arg is reader
-        if (callArg is VarTerm callReader && callReader.IsReader)
-        {
-            var writerName = callReader.Name;
-            if (unitArg is VarTerm uW && !uW.IsReader)
-            {
-                subst[uW.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
-            }
-            else if (unitArg is VarTerm uR && uR.IsReader)
-            {
-                subst[uR.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
-                suspSet.Add(writerName);
-            }
-            else
-            {
-                suspSet.Add(writerName);
-                if (subst.TryGetValue(writerName, out var existing))
-                {
-                    var compat = _CheckCompatible(existing, unitArg, subst, suspSet);
-                    if (compat is not null) return compat;
-                }
-                else
-                {
-                    subst[writerName] = unitArg;
-                }
-            }
-            return null;
-        }
-
-        // Call arg is constant
-        if (callArg is ConstTerm callConst)
-        {
-            if (unitArg is ConstTerm unitConst)
-                return object.Equals(callConst.Value, unitConst.Value)
-                    ? null
-                    : new UnifyFail($"Constant mismatch: {callConst.Value} vs {unitConst.Value}");
-            if (unitArg is VarTerm uW2 && !uW2.IsReader) { _SubstSet(subst, uW2.Name, callArg); return null; }
-            if (unitArg is VarTerm uR2 &&  uR2.IsReader) { _SubstSet(subst, uR2.Name, callArg); return null; }
-            return new UnifyFail($"Constant {callConst.Value} cannot match structure {unitArg}");
-        }
-
-        // Call arg is structure
-        if (callArg is StructTerm callStruct)
-        {
-            if (unitArg is StructTerm unitStruct)
-            {
-                if (callStruct.Functor != unitStruct.Functor || callStruct.Args.Count != unitStruct.Args.Count)
-                    return new UnifyFail($"Functor mismatch: {callStruct.Functor}/{callStruct.Args.Count} vs {unitStruct.Functor}/{unitStruct.Args.Count}");
-                for (int i = 0; i < callStruct.Args.Count; i++)
-                {
-                    var r = _UnifyTerms(callStruct.Args[i], unitStruct.Args[i], subst, suspSet);
-                    if (r is not null) return r;
-                }
-                return null;
-            }
-            if (unitArg is VarTerm uW3 && !uW3.IsReader) { _SubstSet(subst, uW3.Name, callArg); return null; }
-            if (unitArg is VarTerm uR3 &&  uR3.IsReader) { _SubstSet(subst, uR3.Name, callArg); return null; }
-            return new UnifyFail($"Structure {callStruct.Functor} cannot match {unitArg}");
-        }
-
-        // Call arg is list
-        if (callArg is ListTerm callList)
-        {
-            if (unitArg is ListTerm unitList)
-            {
-                if (callList.IsNil && unitList.IsNil) return null;
-                if (callList.IsNil != unitList.IsNil) return new UnifyFail("List structure mismatch: nil vs non-nil");
-                if (callList.Head is not null && unitList.Head is not null)
-                {
-                    var r = _UnifyTerms(callList.Head, unitList.Head, subst, suspSet);
-                    if (r is not null) return r;
-                }
-                if (callList.Tail is not null && unitList.Tail is not null)
-                {
-                    var r = _UnifyTerms(callList.Tail, unitList.Tail, subst, suspSet);
-                    if (r is not null) return r;
-                }
-                return null;
-            }
-            if (unitArg is VarTerm uW4 && !uW4.IsReader) { _SubstSet(subst, uW4.Name, callArg); return null; }
-            if (unitArg is VarTerm uR4 &&  uR4.IsReader) { _SubstSet(subst, uR4.Name, callArg); return null; }
-            return new UnifyFail($"List cannot match {unitArg}");
-        }
-
-        return new UnifyFail($"Unhandled case: {callArg.GetType().Name} vs {unitArg.GetType().Name}");
-    }
-
-    private UnifyResult? _CheckCompatible(
-        Term existing, Term newTerm,
-        Dictionary<string, Term> subst, HashSet<string> suspSet)
-    {
-        if (existing is ConstTerm e && newTerm is ConstTerm n)
-        {
-            if (!object.Equals(e.Value, n.Value))
-                return new UnifyFail($"Incompatible bindings: {e.Value} vs {n.Value}");
-            return null;
-        }
-        if (existing is StructTerm es && newTerm is StructTerm ns)
-        {
-            if (es.Functor != ns.Functor || es.Args.Count != ns.Args.Count)
-                return new UnifyFail($"Incompatible structures: {es.Functor} vs {ns.Functor}");
-            return null;
-        }
-        return null;
-    }
-
-    private static bool _IsAnonymous(Term term) =>
-        term is UnderscoreTerm || (term is VarTerm v && v.Name.StartsWith('_'));
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Substitution resolution (chain flattening + cycle protection)
-    // ────────────────────────────────────────────────────────────────────────
-
-    private static IReadOnlyDictionary<string, Term> _ResolveSubstitution(
-        Dictionary<string, Term> subst)
-    {
-        var resolved = new Dictionary<string, Term>(StringComparer.Ordinal);
-        foreach (var entry in subst)
-            resolved[entry.Key] = _ResolveTerm(entry.Value, subst,
-                new HashSet<string>(StringComparer.Ordinal));
-        return resolved;
-    }
-
-    private static Term _ResolveTerm(
-        Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> visited)
-    {
-        if (term is VarTerm varTerm)
-        {
-            if (visited.Contains(varTerm.Name)) return term;
-            if (subst.TryGetValue(varTerm.Name, out var bound))
-            {
-                visited.Add(varTerm.Name);
-                var resolved = _ResolveTerm(bound, subst, visited);
-                if (varTerm.IsReader && resolved is VarTerm rv && !rv.IsReader)
-                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
-                return resolved;
-            }
-            return term;
-        }
-        if (term is StructTerm s)
-            return new StructTerm(s.Functor,
-                s.Args.Select(a => _ResolveTerm(a, subst,
-                    new HashSet<string>(visited, StringComparer.Ordinal))).ToList(),
-                s.Line, s.Column);
-        if (term is ListTerm l)
-        {
-            if (l.IsNil) return l;
-            return new ListTerm(
-                l.Head is not null ? _ResolveTerm(l.Head, subst,
-                    new HashSet<string>(visited, StringComparer.Ordinal)) : null,
-                l.Tail is not null ? _ResolveTerm(l.Tail, subst,
-                    new HashSet<string>(visited, StringComparer.Ordinal)) : null,
-                l.Line, l.Column);
-        }
-        return term;
-    }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Substitution application family
-    // ────────────────────────────────────────────────────────────────────────
-
-    private static Term _ApplySubstitution(Term term, IReadOnlyDictionary<string, Term> subst)
-    {
-        if (term is VarTerm varTerm)
-        {
-            if (varTerm.Name == "_") return term;
-            if (subst.TryGetValue(varTerm.Name, out var replacement))
-            {
-                if (varTerm.IsReader && replacement is VarTerm rv && !rv.IsReader)
-                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
-                return _ApplySubstitution(replacement, subst);
-            }
-            return term;
-        }
-        if (term is StructTerm s)
-            return new StructTerm(s.Functor,
-                s.Args.Select(a => _ApplySubstitution(a, subst)).ToList(),
-                s.Line, s.Column);
-        if (term is ListTerm l)
-        {
-            if (l.IsNil) return l;
-            return new ListTerm(
-                l.Head is not null ? _ApplySubstitution(l.Head, subst) : null,
-                l.Tail is not null ? _ApplySubstitution(l.Tail, subst) : null,
-                l.Line, l.Column);
-        }
-        if (term is UnderscoreTerm) return term;
-        return term;  // ConstTerm passthrough
-    }
-
-    private static Atom _ApplySubstitutionToAtom(Atom atom, IReadOnlyDictionary<string, Term> subst) =>
-        new Atom(atom.Functor,
-            atom.Args.Select(a => _ApplySubstitution(a, subst)).ToList(),
-            atom.Line, atom.Column);
-
-    private static Guard _ApplySubstitutionToGuard(Guard guard, IReadOnlyDictionary<string, Term> subst) =>
-        new Guard(guard.Predicate,
-            guard.Args.Select(a => _ApplySubstitution(a, subst)).ToList(),
-            guard.Line, guard.Column, negated: guard.Negated);
-
-    private static Goal _ApplySubstitutionToGoal(Goal goal, IReadOnlyDictionary<string, Term> subst)
-    {
-        if (goal is RemoteGoal rg)
-        {
-            var newModule = _ApplySubstitution(rg.Module, subst);
-            var newInner  = _ApplySubstitutionToGoal(rg.Goal, subst);
-            return new RemoteGoal(newModule, newInner, rg.Line, rg.Column);
-        }
-        if (goal is SpawnGoal sg)
-        {
-            var newInner = _ApplySubstitutionToGoal(sg.InnerGoal, subst);
-            return new SpawnGoal(newInner, sg.AgentId, sg.Line, sg.Column);
-        }
-        return new Goal(goal.Functor,
-            goal.Args.Select(a => _ApplySubstitution(a, subst)).ToList(),
-            goal.Line, goal.Column);
     }
 }

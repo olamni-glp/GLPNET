@@ -1,0 +1,7 @@
+% F-069-1 repro: cyclic `=` defined guard (X unified with s(X)).
+% `=` is the self.glp defined guard `X? = X`; reducing `X = s(X?)` builds a
+% self-referential substitution X -> s(X?). Pre-077: StackOverflow in
+% PartialEvaluator.ApplySubstitution. Post-077: a CompileError diagnostic.
+Wrap ::= s(Wrap) ; zero.
+procedure loopy(Wrap).
+loopy(X) :- X = s(X?) | true.
