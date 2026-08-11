@@ -132,3 +132,11 @@ COOP/
 
 # 061 engine-host snapshot file-fallback store (gitignored per contracts/snapshot-store.md)
 .glpsnap/
+
+# Roadmap-sync import manifest — DERIVED mirror of the PGlite catalog, which is the
+# authority (FR-018: `roadmap import --rebuild-manifest` regenerates it from the catalog).
+# Tracked, it conflicted on every multi-host ship (3+ occurrences) because each host's
+# import order differs while the catalog state converges. Fleet was unanimous on the fix;
+# engineer ruled it 2026-08-11. The deterministic exports under exports/ stay tracked —
+# same live-state-out / deliberate-exports-in split as COOP/ above.
+.specify/roadmap-sync/.import-manifest.json
