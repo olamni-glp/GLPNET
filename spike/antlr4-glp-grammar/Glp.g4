@@ -290,11 +290,16 @@ BACKSLASH : '\\' ;
 AT        : '@' ;
 
 // Keywords (only these two are keywords, lexer.cs:237-246).
-// DIVERGENCE(mod-functor): the hand-lexer emits ATOM `mod` when the next char is
-// `(` (a predicate call `mod(...)`), else keyword MOD (lexer.cs:237). ANTLR cannot
-// peek past the token; here `mod` is always MOD. Documented in REPORT.md; the
-// corpus uses `mod` only as the infix arithmetic operator, so parity holds on it.
-MOD       : 'mod' ;
+// mod-functor (RESOLVED — feature 069 T016, Gabi + Udi approval 2026-08-11): the hand-lexer emits
+// ATOM `mod` when the next char is `(` (a predicate call `mod(...)`), else keyword MOD
+// (lexer.cs:237-246). A lexer semantic predicate reproduces this exactly — MOD matches only when the
+// next input char is NOT `(`, so `mod(` fails this rule and falls through to ATOM (whose
+// `[a-z][a-zA-Z0-9_]*` rule also matches `mod`), while `A mod B`, `mod)`, and a lone `mod` still lex
+// as MOD. This is FAITHFUL tokenization of the EXISTING accepted syntax (§1.14 / IV-a): it changes no
+// accepted syntax, only which token `mod(` produces, matching the hand-lexer. `InputStream.LA(1)` is
+// the next char — the public Lexer.InputStream (IIntStream) property; the runtime's `_input` field is
+// not accessible to a generated subclass in another assembly. See REPORT.md §7.
+MOD       : 'mod' { InputStream.LA(1) != '(' }? ;
 PROCEDURE : 'procedure' ;
 
 // READER = a VARIABLE immediately followed by `?` (lexer.cs:250-258). Declared

@@ -2,14 +2,14 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: 5cce0109 refine(codexreview): cycle 3 regression fixes - accept-fault classification+pacing, bridge bind-gate race
+Build: 8dffffdd chore(test): regenerate cross_runtime parity result banners (build-hash + cwd-casing) from T022 run
 Compiled: 2026-02-01 (GlpEngine refactor)
-Working directory: D:\BSTDEV\research\glp\glpnet
+Working directory: D:\bstdev\research\glp\glpnet
 
 Input: filename.glp to load, or goal to execute
 Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 
-Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
+Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
 
 GLP> ✓ Loaded: programs/tests/link/bidi.glp
 GLP> Got = [10, 20, 30]
