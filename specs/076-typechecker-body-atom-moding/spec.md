@@ -45,6 +45,14 @@ an explicit semantics proposal and receive Gabi's express approval **before any
 implementation**. The specify/clarify/plan stages of this feature exist to formulate that
 proposal; nothing in this document pre-approves it.
 
+## Clarifications
+
+### Session 2026-08-11
+
+- Q: Locus of the fix — checker rule, `=` redeclaration, or both? → A: Fix the checker: body-atom mode derivation incorporates head-binding context (the §2A flip rule applied clause-wide); `=`'s declaration in `programs/self.glp` stays as is.
+- Q: Nesting-depth scope — depth-composed or top-level only? → A: Depth-composed: the rule applies at any nesting depth in body-atom arguments, flips composed along the type path exactly as §2A does for heads.
+- Q: Where is the §1.14 approval recorded? → A: Proposal as a dedicated section in `plan.md`; Gabi's express approval recorded as a Clarifications entry in `spec.md` plus a marathon trace row on `mrun-d086da8a860f`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Assignment with a head-flipped variable type-checks (Priority: P1)
@@ -144,12 +152,15 @@ previously-rejected programs must still be rejected for the same reasons.
   of head-flipped variable pairs MUST be produced and MUST receive Gabi's express
   approval (§1.14) before any implementation work begins. The proposal MUST state the
   rule in terms of the typed-GLP mode system (declared modes, the §2A flip rule, SRSW
-  pairing), not in terms of the current implementation.
+  pairing), not in terms of the current implementation. It is authored as a dedicated
+  section of `plan.md` (Clarification Q3).
 - **FR-002**: Under the approved rule, the type checker MUST accept a body-atom variable
   occurrence at a declared reader (consume) position whenever the occurrence is the SRSW
   pair of a head occurrence whose position flipped the variable's effective mode — i.e.,
   body-atom mode derivation MUST incorporate head-binding context rather than surface
-  annotation alone.
+  annotation alone. The rule applies at any nesting depth in body-atom arguments, with
+  mode flips composed along the declared type path exactly as §2A composes them for
+  heads (Clarification Q2).
 - **FR-003**: The Issue 4 example MUST type-check, load, and execute via the REPL, using
   `=` directly (no workaround restructuring).
 - **FR-004**: The rule MUST apply uniformly to all procedures with declared reader
@@ -196,8 +207,10 @@ previously-rejected programs must still be rejected for the same reasons.
 - **SC-004**: `docs/known-issues.md` Issue 4 is marked resolved with its stale prelude
   claim corrected; no other open issue references the `=` workaround as required
   practice.
-- **SC-005**: A §1.14 approval record (the approved semantics proposal and Gabi's
-  express approval) exists in the feature's artifacts before any implementation commit.
+- **SC-005**: A §1.14 approval record exists before any implementation commit, in the
+  agreed form (Clarification Q3): the semantics proposal as a dedicated section in
+  `plan.md`, Gabi's express approval as a Clarifications entry in `spec.md`, and a
+  marathon trace row on `mrun-d086da8a860f`.
 
 ## Assumptions
 
@@ -212,5 +225,8 @@ previously-rejected programs must still be rejected for the same reasons.
   crdtmsg post-MVP) are separate roadmap features and out of scope here.
 - The feature changes the type checker's acceptance, not the runtime: programs accepted
   under the new rule execute under existing runtime semantics unchanged.
+- The fix locus is the checker's body-atom mode derivation only; the `=` declaration
+  (`procedure =(_?, _).` / `X? = X.`) and all other prelude declarations in
+  `programs/self.glp` are out of scope and remain unchanged (Clarification Q1).
 - Baseline discipline applies: full suite green and committed before any change; re-run
   and committed after (CLAUDE.md Test Protocol).
