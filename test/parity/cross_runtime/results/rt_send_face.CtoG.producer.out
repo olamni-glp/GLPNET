@@ -1,4 +1,4 @@
-   Compiled in 0.35s
+   Compiled in 0.18s
     Running glp_gleam.main
 GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
 GLP> ✓ Loaded: ../programs/tests/link/pc.glp

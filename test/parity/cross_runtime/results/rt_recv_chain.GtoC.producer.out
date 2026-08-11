@@ -2,14 +2,14 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: 5cce0109 refine(codexreview): cycle 3 regression fixes - accept-fault classification+pacing, bridge bind-gate race
+Build: 08ba9126 docs(069): T022 regression — 0 failures across all executed sections (A/B/C 221/110/50); run stopped in known-flaky late multi-isolate; production untouched (FR-010 held)
 Compiled: 2026-02-01 (GlpEngine refactor)
-Working directory: D:\BSTDEV\research\glp\glpnet
+Working directory: D:\bstdev\research\glp\glpnet
 
 Input: filename.glp to load, or goal to execute
 Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 
-Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
+Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
 
 GLP> ✓ Loaded: programs/tests/link/sr.glp
 GLP> X = []
