@@ -9,7 +9,7 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 
 **Feature Branch**: `077-guarded-term-traversal`  
 **Created**: 2026-08-11  
-**Status**: Draft  
+**Status**: Implemented  
 **Input**: User description: "Guarded term-traversal utilities (cycle-tolerant compiler walkers + PE/analyzer dedup). FOUNDATIONAL, MANDATORY, FIRST — prerequisite of the occurs-check feature (F-069-1)."
 
 ## Context & Motivation

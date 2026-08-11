@@ -2278,14 +2278,20 @@ CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
 CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
 if [ -f "$CSREPL_BIN" ]; then
-    # T-1/T-2: cyclic `=` defined guard — catchable diagnostic, no StackOverflow.
-    out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/cyclic_eq.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
-    check "T-1: cyclic-= compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
-    if echo "$out" | grep -q "Stack overflow"; then
-        check "T-2: cyclic-= raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
-    else
-        check "T-2: cyclic-= raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
-    fi
+    # T-1/T-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
+    # compile to a catchable Cyclic-term diagnostic with NO StackOverflow (SC-001/
+    # SC-002, T024). Glob POSIX-side; pass the Windows path to the native REPL.
+    for prog in "$SCRIPT_DIR"/../programs/tests/cyclic/cyclic_*.glp; do
+        [ -f "$prog" ] || continue
+        name=$(basename "$prog")
+        out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$name" | timeout 60 "$CSREPL_BIN" 2>&1)
+        check "T-1 [$name]: compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
+        if echo "$out" | grep -q "Stack overflow"; then
+            check "T-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
+        else
+            check "T-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
+        fi
+    done
 
     # T-3: deep-acyclic program must still load — not falsely rejected (SC-006 / FR-006).
     if [ -f "$CYCLIC_DIR/deep_acyclic.glp" ]; then

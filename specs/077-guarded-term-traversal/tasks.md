@@ -43,12 +43,12 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 **Independent test**: the F-069-1 repro compiles to a caught `CompileError`, not a `StackOverflowException`; acyclic parity holds.
 
-- [ ] T012 [US1] In `term_traversal.cs`, add the shared var-name cycle guard for the substitution/resolve family: generalise the `ResolveTerm` `visited` mechanism into one guard entry point used by `ApplySubstitution`, `UnifyTerms`, `ResolveTerm`, `ApplyRenaming`, `CollectVarNames` (contracts C1). One implementation only (SC-003).
-- [ ] T013 [US1] On a declared unbreakable cycle, raise `new CompileError(message, line, column, phase: "analyzer")` naming the offending variable (contracts C3; error.cs:13). Reconcile with `ResolveTerm`'s existing inner return-revisited-node short-circuit: inner benign self-ref may still terminate the closure; an unresolvable structural cycle surfaces as `CompileError` (research.md Open item 2).
-- [ ] T014 [P] [US2] Route analyzer's remaining **substitution-closure** walkers through the shared var-name guard: `_ApplySubstitutionToGoal` (1377). *(Analyze F1: the mark/ground walkers `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823) walk AST structure and do NOT follow the substitution map — they are routed through the structural guard in Phase 4 (T019a), not here.)*
-- [ ] T015 [P] [US2] Route PE's remaining substitution-closure walkers through the shared var-name guard: `ApplySubstitutionToGoal` (712). *(`IsGround` (770) walks AST structure → structural guard, T019a.)*
-- [ ] T016 [US1] xUnit tests: feed a cyclic `Term` (F-069-1 shape) to each substitution/resolve walker → assert `CompileError`, bounded time, no `StackOverflowException` (SC-001). Un-skip the T002 repro; assert it now compiles to a diagnostic (SC-002).
-- [ ] T017 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
+- [X] T012 [US1] In `term_traversal.cs`, add the shared var-name cycle guard for the substitution/resolve family: generalise the `ResolveTerm` `visited` mechanism into one guard entry point used by `ApplySubstitution`, `UnifyTerms`, `ResolveTerm`, `ApplyRenaming`, `CollectVarNames` (contracts C1). One implementation only (SC-003).
+- [X] T013 [US1] On a declared unbreakable cycle, raise `new CompileError(message, line, column, phase: "analyzer")` naming the offending variable (contracts C3; error.cs:13). Reconcile with `ResolveTerm`'s existing inner return-revisited-node short-circuit: inner benign self-ref may still terminate the closure; an unresolvable structural cycle surfaces as `CompileError` (research.md Open item 2).
+- [X] T014 [P] [US2] Route analyzer's remaining **substitution-closure** walkers through the shared var-name guard: `_ApplySubstitutionToGoal` (1377). *(Analyze F1: the mark/ground walkers `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823) walk AST structure and do NOT follow the substitution map — they are routed through the structural guard in Phase 4 (T019a), not here.)*
+- [X] T015 [P] [US2] Route PE's remaining substitution-closure walkers through the shared var-name guard: `ApplySubstitutionToGoal` (712). *(`IsGround` (770) walks AST structure → structural guard, T019a.)*
+- [X] T016 [US1] xUnit tests: feed a cyclic `Term` (F-069-1 shape) to each substitution/resolve walker → assert `CompileError`, bounded time, no `StackOverflowException` (SC-001). Un-skip the T002 repro; assert it now compiles to a diagnostic (SC-002).
+- [X] T017 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
 
 ## Phase 4: US1+US2 — cycle guard on the structural family (fuel / identity keyed)
 
@@ -56,19 +56,19 @@ All source paths are under `out/csharp/lib/compiler/` unless noted. The REPL sui
 
 **Independent test**: a constructed cyclic `Term` fed to each codegen/linker walker → `CompileError`; a deep acyclic + DAG term traverse OK (SC-006).
 
-- [ ] T018 [US1] In `term_traversal.cs`, add the shared structural guard (fuel bound and/or `HashSet<Term>` under `ReferenceEqualityComparer.Instance`) — contracts C2. One implementation (SC-003). Fuel sizing basis (Analyze A1): derive the bound from the maximum legitimate term depth observed across the REPL corpus with a safety multiplier, so a genuine deep acyclic term (FR-006) never trips it while a self-referential node is caught quickly.
-- [ ] T019 [P] [US2] Route the six `codegen.cs` walkers through the structural guard: `_GenerateStructureElement` (369), `_IsGroundTerm` (670), `_GroundTermToValue` (687), `_GenerateArgumentStructureElement` (710), `_GenerateStructureElementInBody` (792), `_GenerateListTailInBody` (849); raise `CompileError(phase:"codegen")` on cycle.
-- [ ] T019a [P] [US2] Route the AST-structure walkers (reassigned from Phase 3 per Analyze F1) through the structural guard: analyzer `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823); PE `IsGround` (770). These walk `Term` structure, not the substitution map, so they take the fuel/identity guard.
-- [ ] T020 [P] [US2] Route `project_linker.cs` `ResolveGoal` (378) through the structural guard (Goal-graph, identity-preserving); raise `CompileError` on cycle (note: linker currently throws plain `Exception` — use `CompileError` for the cyclic signal per contracts C3).
-- [ ] T021 [US1] xUnit tests: constructed cyclic `Term` → each codegen/linker walker → `CompileError`, bounded, no overflow (SC-001). Deep-acyclic + DAG-shared term → both traverse OK, NOT falsely rejected (SC-006).
-- [ ] T022 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
+- [X] T018 [US1] In `term_traversal.cs`, add the shared structural guard (fuel bound and/or `HashSet<Term>` under `ReferenceEqualityComparer.Instance`) — contracts C2. One implementation (SC-003). Fuel sizing basis (Analyze A1): derive the bound from the maximum legitimate term depth observed across the REPL corpus with a safety multiplier, so a genuine deep acyclic term (FR-006) never trips it while a self-referential node is caught quickly.
+- [X] T019 [P] [US2] Route the six `codegen.cs` walkers through the structural guard: `_GenerateStructureElement` (369), `_IsGroundTerm` (670), `_GroundTermToValue` (687), `_GenerateArgumentStructureElement` (710), `_GenerateStructureElementInBody` (792), `_GenerateListTailInBody` (849); raise `CompileError(phase:"codegen")` on cycle.
+- [X] T019a [P] [US2] Route the AST-structure walkers (reassigned from Phase 3 per Analyze F1) through the structural guard: analyzer `_ExtractAndMarkGroundedVars` (781), `_MarkVarsInTermAsTypeGrounded` (800), `_AnalyzeTerm` (823); PE `IsGround` (770). These walk `Term` structure, not the substitution map, so they take the fuel/identity guard.
+- [X] T020 [P] [US2] Route `project_linker.cs` `ResolveGoal` (378) through the structural guard (Goal-graph, identity-preserving); raise `CompileError` on cycle (note: linker currently throws plain `Exception` — use `CompileError` for the cyclic signal per contracts C3).
+- [X] T021 [US1] xUnit tests: constructed cyclic `Term` → each codegen/linker walker → `CompileError`, bounded, no overflow (SC-001). Deep-acyclic + DAG-shared term → both traverse OK, NOT falsely rejected (SC-006).
+- [X] T022 [US1] Parity gate: rebuild + full REPL suite = 547/547; commit.
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T023 [P] Optionally add a `"term_traversal"` phase mapping in `CategoryFromPhase` (`error.cs:33`) if the cyclic errors warrant their own category (mapping addition, not a language change — FR-007).
-- [ ] T024 [P] Verify SC-002 end-to-end: run the feature-069 SC-003 fuzz corpus with cyclic-`=` inputs directly (no non-cyclic-scoping workaround); confirm diagnostics, no crash.
-- [ ] T025 Final parity + inventory audit: confirm exactly ONE guard impl per family and ONE shared primitives module (grep for residual duplicated method names in analyzer/PE); full REPL 547/547 + `dotnet test` green (SC-003/004/005). Update spec Status → Implemented.
-- [ ] T026 [P] Update `docs/known-issues.md` if the F-069-1 entry exists there; cross-reference the sibling occurs-check feature (which now lands its single change on this consolidated module).
+- [X] T023 [P] Optionally add a `"term_traversal"` phase mapping in `CategoryFromPhase` (`error.cs:33`) if the cyclic errors warrant their own category (mapping addition, not a language change — FR-007).
+- [X] T024 [P] Verify SC-002 end-to-end: run the feature-069 SC-003 fuzz corpus with cyclic-`=` inputs directly (no non-cyclic-scoping workaround); confirm diagnostics, no crash.
+- [X] T025 Final parity + inventory audit: confirm exactly ONE guard impl per family and ONE shared primitives module (grep for residual duplicated method names in analyzer/PE); full REPL 547/547 + `dotnet test` green (SC-003/004/005). Update spec Status → Implemented.
+- [X] T026 [P] Update `docs/known-issues.md` if the F-069-1 entry exists there; cross-reference the sibling occurs-check feature (which now lands its single change on this consolidated module).
 
 ---
 
