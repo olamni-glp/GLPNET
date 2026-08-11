@@ -1,0 +1,28 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+
+xUnit unit tests for the parity comparator + grammar fuzzer (feature 069, T021).
+Covers IlParityComparator.FirstDiff first-diff localization and GrammarFuzzer determinism +
+the DEC F3 non-cyclic-`=` generation invariant (F-069-1 regression guard). Pure/no-pipeline.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>glp_grammar_spike_parity_tests</AssemblyName>
+    <RootNamespace>GlpGrammarSpike.Parity.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Parity.csproj" />
+  </ItemGroup>
+</Project>

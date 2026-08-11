@@ -144,7 +144,9 @@ namespace GlpGrammarSpike.Parity
             catch (Exception e) { err = e.Message; return null; }
         }
 
-        private static int FirstDiff(byte[] a, byte[] b)
+        // First differing byte offset, or -1 if identical. When one is a strict prefix of the other,
+        // the offset is the shorter length (P2 first-diff localization). Public for unit testing (T021).
+        public static int FirstDiff(byte[] a, byte[] b)
         {
             int n = Math.Min(a.Length, b.Length);
             for (int i = 0; i < n; i++) if (a[i] != b[i]) return i;

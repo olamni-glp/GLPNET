@@ -17,6 +17,11 @@ il-codec equality oracle; the engine comes in transitively through both.
     <RootNamespace>GlpGrammarSpike.Parity</RootNamespace>
   </PropertyGroup>
 
+  <!-- The xUnit test project lives under parity/tests/; keep its sources out of this library. -->
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\bridge\Bridge.csproj" />
     <ProjectReference Include="..\..\..\csharp\glp_il_codec\GlpIlCodec.csproj" />
