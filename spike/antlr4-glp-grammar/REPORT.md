@@ -54,7 +54,16 @@ spike verifies the parser, not the checker.
 
 ---
 
-## 3. IL parity (SC-002) — **not demonstrated in-spike; bridge scoped**
+> **UPDATE (feature 069, 2026-08-11): SC-002 CLOSED.** The lowering bridge scoped below was built
+> under feature `069-sc-002-il-parity-bridge`; IL parity is now demonstrated example-by-example with
+> **0 un-caused divergences** across the 7-file corpus (SC-001 7/7), the expanded corpus
+> (`tests/typed`, `lib`, `typed_book`, `dynamic_dispatch`), and a 10 000-case bounded fuzz (SC-003).
+> Evidence: [`RESULTS.md`](RESULTS.md). Adoption verdict (**ADOPT-WITH-CONDITIONS**) + bounded
+> conditions: [`DECISION.md`](DECISION.md). The `mod`-functor divergence noted in §6/§7 is RESOLVED
+> (lexer predicate, Gabi + Udi approved). The residual risks in §7 are superseded by DECISION.md's
+> bounded conditions BC-1…BC-4.
+
+## 3. IL parity (SC-002) — ~~not demonstrated in-spike; bridge scoped~~ **CLOSED by feature 069 (see update above)**
 
 The generated parser emits an ANTLR parse tree; the engine's downstream pipeline
 (SRSW → partial-eval → type-check → compile → `BytecodeProgram`) consumes the engine's own AST
@@ -130,6 +139,13 @@ Two items are **grammar engineering, not syntax changes**, and are carried as fi
 ---
 
 ## 7. Residual risks & recommendation
+
+> **UPDATE (feature 069): this recommendation is DONE.** The PREP feature was
+> `069-sc-002-il-parity-bridge`: the bridge is built, SC-002 is closed with example-by-example IL
+> parity over the expanded corpus, and the adoption decision is delivered
+> (**ADOPT-WITH-CONDITIONS**, [`DECISION.md`](DECISION.md)). The residual risks below are now the
+> enumerated bounded conditions BC-1…BC-4 in DECISION.md (the `mod`-functor risk is RESOLVED).
+> Production parsers remain untouched (FR-010).
 
 **Recommendation:** GO to a bounded **PREP feature** that (1) builds the parse-tree→engine-AST
 lowering bridge (§3), (2) closes SC-002 with example-by-example IL parity over an expanded corpus,

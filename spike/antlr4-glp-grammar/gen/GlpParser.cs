@@ -143,6 +143,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitModule(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitModule(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -225,6 +231,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitItem(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitItem(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -295,6 +307,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitDirective(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitDirective(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -404,6 +422,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitModuleName(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitModuleName(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -478,6 +502,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitProcDecl(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitProcDecl(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -585,6 +615,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitProcName(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitProcName(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -658,6 +694,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitProcNameToken(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitProcNameToken(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -729,6 +771,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitArgType(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitArgType(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -907,6 +955,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTypeDef(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTypeDef(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -1011,6 +1065,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTypeAlt(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTypeAlt(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -1085,6 +1145,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTypeExpr(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTypeExpr(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -1264,6 +1330,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTypePrimary(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTypePrimary(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -1507,6 +1579,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTypeList(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTypeList(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -1637,6 +1715,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitClause(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitClause(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -1748,6 +1832,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitHead(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitHead(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -1890,6 +1980,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitAtomApp(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitAtomApp(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -1978,6 +2074,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitGoal(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitGoal(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -2134,6 +2236,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitGoalOrGuard(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitGoalOrGuard(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -2220,6 +2328,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitGoalOrGuardInner(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitGoalOrGuardInner(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -2415,6 +2529,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitCmpOp(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitCmpOp(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -2477,6 +2597,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitArith(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitArith(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -2618,6 +2744,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitArithPrimary(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitArithPrimary(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -2844,6 +2976,12 @@ public partial class GlpParser : Parser {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitTerm(this);
 		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitTerm(this);
+			else return visitor.VisitChildren(this);
+		}
 	}
 
 	[RuleVersion(0)]
@@ -3028,6 +3166,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitPrimary(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitPrimary(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 
@@ -3254,6 +3398,12 @@ public partial class GlpParser : Parser {
 		public override void ExitRule(IParseTreeListener listener) {
 			IGlpListener typedListener = listener as IGlpListener;
 			if (typedListener != null) typedListener.ExitList(this);
+		}
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IGlpVisitor<TResult> typedVisitor = visitor as IGlpVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitList(this);
+			else return visitor.VisitChildren(this);
 		}
 	}
 

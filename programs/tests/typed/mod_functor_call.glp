@@ -1,0 +1,16 @@
+% mod_functor_call.glp - `mod` in CALL/FUNCTOR form `mod(...)`.
+% The lexer emits ATOM `mod` when `mod` is immediately followed by `(`, else keyword MOD.
+% So `mod(` heads a normal functor application in head / goal / term positions, while a
+% space-separated `mod` stays the infix arithmetic operator. Exercises the mod-functor
+% tokenization (feature 069 T016): before the fix the ANTLR lexer made `mod` always MOD and
+% rejected `mod(...)` in head/goal (where atomApp requires ATOM); now both front-ends agree.
+
+% `mod` as a user PROCEDURE name — `mod(` in HEAD atomApp position; the body uses the
+% space-separated infix `mod` (keyword MOD) in the SAME clause:
+exported procedure mod(Number?, Number?, Number).
+mod(X, Y, Z?) :- Z := X? mod Y?.
+
+% `mod(...)` as an arithmetic term in a `:=` RHS (term-context functor application →
+% StructTerm("mod",[X?,Y?]), the same node infix `X? mod Y?` produces):
+exported procedure use_mod(Number?, Number?, Number).
+use_mod(X, Y, Z?) :- Z := mod(X?, Y?).
