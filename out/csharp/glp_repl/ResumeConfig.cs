@@ -1,0 +1,156 @@
+// feature 064 — durable listener service box (gavri variant), T003.
+//
+// Resume-goal registration reader. Contract:
+// specs/064-durable-listener-service-box/contracts/resume-registration.md
+//
+// The registration is a repo-root convention file `glpservice/resume.json`,
+// discovered by walking up from AppContext.BaseDirectory — the same idiom
+// SharedCertMaterial.ResolveCertDir uses for glpquick-cert/ and the converted
+// REPL uses for programs/self.glp. An absent file means the feature is fully
+// inert (SC-005): no output, no delay, no behavior change. All persistence in
+// this feature is host-owned — ZERO new GLP language surface (FR-006).
+
+using System;
+using System.IO;
+using System.Text.Json;
+
+namespace GlpRuntime.Repl.Host;
+
+/// <summary>One parsed, validated resume-goal registration (schema v1).</summary>
+internal sealed record ResumeRegistration(
+    string Program,
+    string Goal,
+    bool Enabled,
+    bool Replay,
+    string SourcePath,
+    string RepoRoot);
+
+internal static class ResumeConfig
+{
+    private const string DirName = "glpservice";
+    private const string FileName = "resume.json";
+
+    /// <summary>
+    /// Try to discover and parse the registration. Returns false with no output
+    /// when the file is absent (the inert path). Parse/validation failures print
+    /// one named diagnostic via <paramref name="diag"/> and return false — the
+    /// REPL always continues (FR-009).
+    /// </summary>
+    public static bool TryLoad(Action<string> diag, out ResumeRegistration? registration)
+    {
+        registration = null;
+        var found = Discover();
+        if (found is null)
+            return false;
+        var (path, repoRoot) = found.Value;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            var root = doc.RootElement;
+
+            // A non-object root would make TryGetProperty THROW past the catch filter below —
+            // guard it into the same named-diagnostic + REPL-continues path (FR-009).
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                diag($"resume: invalid registration at {path}: root is not a JSON object");
+                return false;
+            }
+            // TryGetInt32 (not GetInt32): a numeric version outside Int32 must be a diagnostic,
+            // not a FormatException that escapes the catch filter (FR-009).
+            if (!root.TryGetProperty("version", out var v) || v.ValueKind != JsonValueKind.Number
+                || !v.TryGetInt32(out var version))
+            {
+                diag($"resume: invalid registration at {path}: missing numeric 'version'");
+                return false;
+            }
+            if (version != 1)
+            {
+                diag($"resume: unsupported version {version} in {path}");
+                return false;
+            }
+            if (!root.TryGetProperty("program", out var prog) || prog.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(prog.GetString()))
+            {
+                diag($"resume: invalid registration at {path}: missing 'program'");
+                return false;
+            }
+            // Contract: a repo-relative `.glp` path, resolved against the discovered repo
+            // root. A rooted value would make the host's Path.Combine silently discard the
+            // repo root, and a '..' segment escapes it — both take the same named-diagnostic
+            // + inert path as any other invalid file (FR-009). Forward slashes (the sample's
+            // spelling) remain valid.
+            var program = prog.GetString()!;
+            if (Path.IsPathRooted(program)
+                || Array.Exists(program.Split('/', '\\'), s => s == "..")
+                || !program.EndsWith(".glp", StringComparison.Ordinal))
+            {
+                diag($"resume: invalid registration at {path}: 'program' must be a repo-relative .glp path");
+                return false;
+            }
+            if (!root.TryGetProperty("goal", out var goal) || goal.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(goal.GetString()))
+            {
+                diag($"resume: invalid registration at {path}: missing 'goal'");
+                return false;
+            }
+
+            // The v1 schema declares these as booleans: a present flag whose value is not
+            // literal true/false (e.g. "enabled":"false") is malformed and takes the same
+            // named-diagnostic + inert path as any other invalid file (FR-009).
+            var enabled = true;
+            if (root.TryGetProperty("enabled", out var en))
+            {
+                if (en.ValueKind != JsonValueKind.True && en.ValueKind != JsonValueKind.False)
+                {
+                    diag($"resume: invalid registration at {path}: 'enabled' is not a boolean");
+                    return false;
+                }
+                enabled = en.ValueKind == JsonValueKind.True;
+            }
+            var replay = true;
+            if (root.TryGetProperty("replay", out var rp))
+            {
+                if (rp.ValueKind != JsonValueKind.True && rp.ValueKind != JsonValueKind.False)
+                {
+                    diag($"resume: invalid registration at {path}: 'replay' is not a boolean");
+                    return false;
+                }
+                replay = rp.ValueKind == JsonValueKind.True;
+            }
+
+            registration = new ResumeRegistration(
+                Program: prog.GetString()!,
+                Goal: goal.GetString()!,
+                Enabled: enabled,
+                Replay: replay,
+                SourcePath: path,
+                RepoRoot: repoRoot);
+            return true;
+        }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        {
+            diag($"resume: invalid registration at {path}: {e.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Walk up from AppContext.BaseDirectory to the first ancestor holding
+    /// glpservice/resume.json. Null when no ancestor has one (the common,
+    /// silent case). Unknown extra keys in the file are ignored by TryLoad
+    /// (forward-compatible per contract).
+    /// </summary>
+    private static (string path, string repoRoot)? Discover()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            var candidate = Path.Combine(dir.FullName, DirName, FileName);
+            if (File.Exists(candidate))
+                return (candidate, dir.FullName);
+            dir = dir.Parent;
+        }
+        return null;
+    }
+}

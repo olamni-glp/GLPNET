@@ -1,0 +1,11 @@
+╔════════════════════════════════════════╗
+║  GLP REPL - With Type Checking         ║
+╚════════════════════════════════════════╝
+
+
+Input: filename.glp to load, or goal to execute
+Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
+
+Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+
+GLP> Goodbye!

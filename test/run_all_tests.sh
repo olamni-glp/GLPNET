@@ -2258,6 +2258,31 @@ fi
 echo ""
 
 # =============================================================================
+# SECTION T: 064 DURABLE LISTENER SERVICE BOX DRILLS (T012)
+# =============================================================================
+# The US1 restart drill (register + relaunch + peer-connect, missing-program
+# diagnostic, SC-005 transcript identity) and the US2 history drill (durable
+# append before observation, replay in receipt order exactly once, idempotent
+# second restart) from specs/064-durable-listener-service-box. Both need the
+# built C# REPL + DOTNET_ROOT + QUIC trust material; absent the exe, an
+# EXPLICIT skip line names the standalone gates — never a silent pass.
+# The history drill runs at its default N (SC-002's N=100 is the release gate,
+# run standalone: bash test/service_box/history_drill.sh 100).
+echo "=== Section T: 064 service-box drills (resume + history) ==="
+
+SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+if [ -f "$SBREPL_BIN" ]; then
+    output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
+    check "T-1: US1 resume drill (auto-arm, diagnostics, SC-005 transcript)" "resume drill: PASS=7 FAIL=0" "$output"
+    output=$(bash "$SCRIPT_DIR/service_box/history_drill.sh" 2>&1)
+    check "T-2: US2 history drill (order, exactly-once, idempotent restart)" "history drill: PASS=4 FAIL=0" "$output"
+else
+    echo "SKIP Section T: C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
+fi
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))
