@@ -140,3 +140,8 @@ COOP/
 # engineer ruled it 2026-08-11. The deterministic exports under exports/ stay tracked —
 # same live-state-out / deliberate-exports-in split as COOP/ above.
 .specify/roadmap-sync/.import-manifest.json
+
+# 064 durable-listener-service-box: operator registration + WAL file fallback
+# (runtime artifacts; the committed sample is glpservice/resume.json.sample)
+glpservice/resume.json
+glpservice/wal/

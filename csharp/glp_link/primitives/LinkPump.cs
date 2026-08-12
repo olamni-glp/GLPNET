@@ -29,7 +29,14 @@ public sealed class LinkPump : IInboundPump, IDisposable
     /// data term (<c>In</c>-stream extension), a graceful close, or a fault term to fan
     /// out to the link's monitor cursors (<see cref="Fault"/>, T034).
     /// </summary>
-    private readonly record struct InboundItem(LinkHandle Handle, Term? Value, bool Close, bool Fault);
+    /// <param name="Replayed">
+    /// 064: this item came from the host's durable log (boot replay), not the wire. It is
+    /// delivered to the program through the ORDINARY path — indistinguishable from live traffic —
+    /// but the delivery observer is NOT invoked for it, so replay never re-appends what it
+    /// replays (FR-005 idempotence).
+    /// </param>
+    private readonly record struct InboundItem(
+        LinkHandle Handle, Term? Value, bool Close, bool Fault, bool Replayed = false);
 
     private readonly GlpRuntimeEngine _engine;
     private readonly BlockingCollection<InboundItem> _inbox = new(new ConcurrentQueue<InboundItem>());
@@ -42,6 +49,29 @@ public sealed class LinkPump : IInboundPump, IDisposable
 
     public LinkPump(GlpRuntimeEngine engine) =>
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+
+    /// <summary>
+    /// Feature 064 (FR-004, contracts/message-log-and-replay.md) — optional host-owned
+    /// delivery observer. Invoked on the RUNNER thread, once per DATA term actually
+    /// delivered to the program (post-reassembly, post-ordering, post-dedup), immediately
+    /// BEFORE the heap bind that lets the program observe it — so a host that persists
+    /// here is durable before the program can act. Never invoked for graceful-close or
+    /// fault items. <c>null</c> (the default) ⇒ behavior byte-identical to pre-064.
+    /// An observer that throws must not corrupt the ingress: the throw is caught and
+    /// surfaced, and delivery proceeds (availability over durability — the both-backends
+    /// -fail policy in the contract).
+    /// </summary>
+    public Action<LinkId, Term>? OnDelivered { get; set; }
+
+    /// <summary>
+    /// Feature 064 (FR-005, contracts/message-log-and-replay.md) — optional boot-replay source.
+    /// When set, <see cref="AddLink"/> drains it into the inbox for the new link BEFORE starting
+    /// that link's receive loop, so the program observes its durable history first, through the
+    /// ordinary delivery path, and only then any live traffic (history-precedes-live, with no
+    /// window in which a fast peer could interleave). Replayed items never reach
+    /// <see cref="OnDelivered"/>. <c>null</c> (the default) ⇒ no replay.
+    /// </summary>
+    public Func<LinkId, IEnumerable<Term>>? ReplaySource { get; set; }
 
     /// <summary>
     /// Register an established link with the pump: bump the live-link count and start
@@ -60,6 +90,13 @@ public sealed class LinkPump : IInboundPump, IDisposable
         // thread-safe inbox — never the heap (T034).
         Action<LinkFaultSignal> onFault = signal => EnqueueFault(handle, signal);
         handle.Endpoint.OnFault += onFault;
+        // 064: drain the durable history into the inbox BEFORE the receive loop starts, so the
+        // program sees history first and a fast peer cannot interleave live traffic into it.
+        if (ReplaySource is { } replay)
+        {
+            foreach (var term in replay(handle.Id))
+                _inbox.Add(new InboundItem(handle, term, Close: false, Fault: false, Replayed: true), _cts.Token);
+        }
         // _faultSubs + _recvLoops share one lock: Dispose reads both to detach handlers and join loops.
         lock (_faultSubs)
         {
@@ -119,6 +156,23 @@ public sealed class LinkPump : IInboundPump, IDisposable
                 _engine.EnqueueReactivatedGoal(act);
             item.Handle.InWriterAddr = null; // stream terminated; no further extension
             return true;
+        }
+
+        // 064: durability precedes observation — the host-owned observer (if any) sees this
+        // delivered term BEFORE the bind below makes it visible to the program (FR-004).
+        // A REPLAYED item is skipped: it came from the log, so re-appending it would break
+        // replay idempotence (FR-005 / SC-002's byte-identical second restart).
+        if (!item.Replayed && OnDelivered is { } observer)
+        {
+            try
+            {
+                observer(item.Handle.Id, item.Value!);
+            }
+            catch (Exception e)
+            {
+                // Loud, never silent; delivery still proceeds (contract's both-backends-fail policy).
+                Console.WriteLine($"[link ingress] delivery observer failed: {e.Message}");
+            }
         }
 
         // Extend the In stream by one ground term (design ref §1.6 B6): mint a fresh

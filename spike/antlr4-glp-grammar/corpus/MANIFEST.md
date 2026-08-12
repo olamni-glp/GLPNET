@@ -25,4 +25,32 @@ calls, lists/structs/difference-lists, anonymous `_`, and ≥1 negative control 
 
 **Note (spike status)**: the corpus is fixed here as the intended parity set. Running the
 generated parser against it (coverage SC-001) and computing IL parity (SC-002) is **gated behind
-the §1.14 approval to author `Glp.g4`** — see `../PROPOSAL-1.14.md`.
+the §1.14 approval to author `Glp.g4`** — see `../PROPOSAL-1.14.md`. That gate is now cleared
+(authored 2026-08-04, Gabi + Udi); SC-001 = 7/7 MATCH (`../RESULTS.md`).
+
+## Expanded corpus (T014 — SC-002)
+
+The expanded corpus is drawn IN PLACE from across `programs/` via a both-front-end accept filter
+(the harness `--parity --corpus <dir>` sweeps every `*.glp` recursively; one-sided rejects are logged
+as divergences with an attributed cause, never silently dropped — FR-008). Referenced in place, not
+copied (single source of truth). Swept sets and results (`../RESULTS.md`):
+
+| Corpus dir | Files | MATCH | Divergences (all bounded, 0 un-caused) |
+|------------|-------|-------|----------------------------------------|
+| `programs/tests/typed` | 72 | 71 | 1 — `policy_guard_formb.glp` (BC-1: `satisfiable` native guard) |
+| `programs/lib` | 8 | 8 | 0 (all self-contained) |
+| `programs/typed_book` | 223 | 175 | 48 — BC-1 (prelude/imported/native decls + 1 interleaved-clause) |
+
+Plus two bespoke self-contained typed programs added to close construct-floor gaps the fuzzer/corpus
+did not already cover (both MATCH):
+
+| Path | Exercises |
+|------|-----------|
+| `programs/tests/typed/mod_functor_call.glp` | `mod(...)` call form (ATOM functor) + infix `mod` in one clause; `:=` arith (T016) |
+| `programs/tests/typed/op_forms.glp` | op-as-functor `+(A,B)`/`-(A,B)`/`*(A,B)` + unary `neg`; `:=` arith |
+
+**Bounded conditions** (see `../RESULTS.md` "Summary & bounded conditions" and `../FINDINGS.md`):
+**BC-1** — the isolated hand-parser enforces decl↔clause well-formedness semantics the pure-syntactic
+ANTLR grammar does not (prelude/import/native context + decl-clause adjacency); every genuinely
+self-contained file matches. **BC-2** — F-069-1 engine occurs-check (fuzz scoped to non-cyclic `=`,
+DEC F3). **mod-functor** — RESOLVED (T016).
