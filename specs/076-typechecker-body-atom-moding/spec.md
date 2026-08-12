@@ -53,6 +53,21 @@ proposal; nothing in this document pre-approves it.
 - Q: Nesting-depth scope — depth-composed or top-level only? → A: Depth-composed: the rule applies at any nesting depth in body-atom arguments, flips composed along the type path exactly as §2A does for heads.
 - Q: Where is the §1.14 approval recorded? → A: Proposal as a dedicated section in `plan.md`; Gabi's express approval recorded as a Clarifications entry in `spec.md` plus a marathon trace row on `mrun-d086da8a860f`.
 
+### Session 2026-08-12 — §1.14 APPROVAL (gate discharged)
+
+- Q: Does Gabi expressly approve the §1.14 semantics proposal in `plan.md`
+  ("§1.14 Semantics Proposal" — occurrence-pair licensing: a **writer** body-atom
+  occurrence with derived structural mode ↓ is mode-consistent iff the paired **reader**
+  occurrence of the same variable appears in the head at a flip-derived ↑ position,
+  depth-composed per §2A, uniformly for all procedures, with `programs/self.glp`
+  unchanged)? → **A: APPROVED.** Gabi, 2026-08-12, verbatim: *"§1.14 type-checker
+  semantics — YES"*, with the direction to fix 076 *"DURABLY"*.
+- Consequence: FR-001 satisfied; FR-009 does not trigger — the approved rule is exactly
+  the rule as proposed (no divergence). Implementation proceeds only after the
+  authoritative spec `docs/type system/well-typed-clause.md` is amended (T003).
+- Recorded the same session (governs fleet sequencing, not this rule): ONE-AT-A-TIME is
+  **fleet-wide**.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Assignment with a head-flipped variable type-checks (Priority: P1)

@@ -22,7 +22,7 @@ involution, uniformly for all procedures, with no change to `programs/self.glp`.
 The rule is a GLP type-system semantics change and is **hard-gated on Gabi's §1.14
 approval** of the proposal below before any implementation.
 
-## §1.14 Semantics Proposal (AWAITING GABI'S EXPRESS APPROVAL — HARD GATE)
+## §1.14 Semantics Proposal (✅ APPROVED by Gabi 2026-08-12 — GATE DISCHARGED)
 
 *Stated against the type system, not the implementation (spec FR-001). Approval is
 recorded per Clarification Q3: a Clarifications entry in spec.md + a marathon trace row
