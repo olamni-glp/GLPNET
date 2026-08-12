@@ -1,5 +1,39 @@
 ## [Unreleased]
 
+## [v2026.08.12.1] - 2026-08-12
+
+### Added
+- T007-T009 US2 durable history - IOpWal reuse (pglite primary, file fallback), replay drained pre-recv-loop at link establish, replayed items never re-appended; history drill 4/4 (order + exactly-once + idempotent restart)
+- T006 additive LinkPump.OnDelivered hook - runner-thread, once per delivered term, pre-bind (FR-004); 4/4 tests incl. dedup + close + throwing-observer
+- T010+T011 US3 QUIC connector dial-retry (TCP parity, FR-008) - retry refused/timeout until ct, stream+bootstrap keep fail-fast; glp_link 167/167 (was 165)
+- T003+T004 resume-goal hook - walk-up registration reader + synchronous arm in AfterEngineCreated; smoke: SC-005 transcript identical, arm/missing/disabled paths verified
+- T001 glpservice hygiene - gitignore runtime artifacts, commit registration sample
+
+### Changed
+- Merge pull request #150 from olamni-glp/064-durable-listener-service-box
+- merge develop into 064 (second pass - develop advanced during ship)
+- Merge pull request #149 from olamni-glp/main
+- merge develop into 064-durable-listener-service-box before ship
+- refine(codexreview): cycle 4/5 [diff/general]
+- refine(codexreview): cycle 3/4 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- refine(codexreview): cycle 1/3 [diff/general]
+- T012-T014 ticked - N=100 history drill PASS=4/0 (clean re-run after drill-collision contamination), quickstart local verify green, glp_link 171/171 + glp_crdtmsg 188/188, full suite 551/551 incl Section T
+- roadmap: import ariellas 153819Z export (2 files/0 lines, journal already converged 18/98/2614), reconcile clean
+- roadmap: sync round - import 6 files/45 lines (consumes ariellas 144831Z), reconcile clean, 0 duplicates, export 18/98/2614 published 150440Z, replay-verify OK
+- test+docs(064): T012 Section T wires resume+history drills into run_all_tests.sh (explicit-skip, names standalone gates); T013 quickstart drift fixed (sample->rename flow, replay-at-link-establish expected lines)
+- restore T009 replay-idempotence unit tests - replay reads never append, double-restart byte-identity, dot-key dedup on crash-replay overlap, both WAL backends; glp_crdtmsg 188/188
+- roadmap: capture + promote ynet-consolidation from 3rtask run 20260803T134739Z-fa8a (54 confirmed claims, evidence-derived build order)
+- roadmap: sync round - 0-delta import (fleet converged), reconcile clean, 0 duplicates, export 18/95/2551 published 140423Z, replay-verify OK
+- roadmap: sync round - import 6 files/6 lines, reconcile clean, 0 duplicates, export 18/95/2551 published 134205Z, replay-verify OK
+- T005 US1 restart drill 7/7 green - two launches auto-arm + receive, SC-005 transcript identical; drill listener emits via _output (resume hook prints only its own diagnostics)
+- T002 baselines - glp_link 165/165, crdtmsg 184/184, REPL suite in flight; normalized no-registration startup transcript captured
+- analyze(064): 5 findings 0 CRITICAL, coverage 100pct; applied top remediations U1 (both-backends-fail policy) I1 (baseline transcript) I2 (diagnostic wording)
+- tasks(064): 14 tasks across US1-US3 + polish, MVP=US1, T008 delivery-shape flagged as the one open implementation choice
+- plan(064): R1-R7 design - shim resume hook, IOpWal reuse, LinkPump delivery hook, QUIC retry parity; 3 contracts, constitution PASS
+- roadmap: engineer-directed close of the three released wave features (2/4/5), export 18/95/2545 published 124431Z
+- spec(064): durable-listener-service-box gavri variant - 3 user stories, 9 FRs, 5 SCs, zero GLP language surface (FR-006)
+
 ## [v2026.08.11.1] - 2026-08-11
 
 ### Added
