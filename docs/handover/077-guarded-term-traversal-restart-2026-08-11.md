@@ -2,7 +2,34 @@
 
 **Date:** 2026-08-11
 **Author:** Claude (Opus 4.8) session, host Olamnit
-**Status:** ✅ **IMPLEMENT COMPLETE (session 4)** — all 27 tasks done, 4 phase commits on branch `077-guarded-term-traversal` (LOCAL-UNPUSHED). NEXT = `/bk-codexreview` → `/bk-ship`+release → `/bk-close`.
+**Status:** ✅ **IMPLEMENT COMPLETE + CODEXREVIEW CONVERGED (session 5, 2026-08-12).** NEXT = `/bk-ship`+release → `/bk-close`.
+
+---
+
+## Session-5 update — /bk-codexreview COMPLETE (converged@3), 5 findings fixed
+
+Plan-first adversarial review (local Claude reviewers + codex CLI), run `20260812T175553Z`, 3 cycles,
+deterministic merge **converged@3** (both teams 0 new findings in cycle 3). Full suite **554/554**
+throughout (added 2 acyclic fixtures + real-walker probe checks). Two fix commits atop `ce0419d4`:
+`5eea888c` (cycle-1 fixes) → `316b8bcc` (cycle-2 fixes).
+
+Five defects found & fixed (0 residual) — see `specs/077-guarded-term-traversal/research.md` Decision 5:
+1. **HIGH, reachable regression** — codegen `_GenerateListTailInBody` double-`Enter` → spurious cyclic
+   error on valid `box([1|Xs?])`. Fixed (guard only the ListTerm self-recursion arm). Reproduced + regression-guarded.
+2. **HIGH** — the initial fuel-only guard on the shared walkers was INEFFECTIVE (stack overflows before
+   8M fuel). Fixed with an IDENTITY guard (`StructuralGuard.Scope`) on `UnifyTerms`/`CollectVarNames`/
+   `ApplyRenaming`/`ApplySubstitution`/`ResolveTerm`.
+3. **MED** — `ResolveTerm` structural arms unguarded → now identity-guarded; VarTerm arm keeps Decision-1
+   return-revisited (resolves the research Decision-4 open item).
+4. **MED/INFO** — missing acyclic fixtures + silently-skipping T-3/T-4 → fixtures added, tests FAIL LOUD;
+   probe extended to exercise the REAL walkers on a constructed cycle.
+
+**Review record:** `reviews/077-guarded-term-traversal/20260812T175553Z/` (verdict.md + per-cycle artifacts;
+verdict CLI labels "unconfirmed" only because manual named commits were used per CLAUDE.md stage-by-name,
+not its `commit-cycle` path — the authoritative convergence signal is the merge `converged:true`).
+
+**NOTE (carried):** `git ls-files | grep glpquick` = none on this host; only `glpquick-cert/glpquick.macaroon.key`
+present, so the fleet "buildkit ship destroys trust material" hazard does NOT threaten this host's 077 ship.
 
 ---
 

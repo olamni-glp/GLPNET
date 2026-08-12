@@ -62,3 +62,48 @@ The two copies are **not** identical. Each divergence is reconciled explicitly; 
 
 - **Divergence #1 (anonymous semantics)** is the one behaviour-sensitive point. The plan preserves both via parameterisation; `/bk-analyze` should confirm the parameterisation is faithful and flag whether the owner wants the two eventually unified (a separate feature).
 - The `ResolveTerm` return-revisited-node behaviour (existing) vs FR-004 outer hard-fail must be reconciled coherently in the shared module: inner resolve may still short-circuit a self-reference to terminate, but an unresolvable structural cycle surfaces as `CompileError`. Tasks must make this boundary explicit and tested.
+
+---
+
+## Decision 5 — Codexreview hardening (2026-08-12, run `20260812T175553Z`, converged@3)
+
+A plan-first adversarial review (local Claude reviewers + codex CLI, 3 cycles) surfaced and closed
+five defects; the deterministic merge converged at cycle 3 (both teams 0 new findings). Full suite
+554/554 throughout.
+
+1. **Codegen false-positive (HIGH, reachable regression).** `codegen._GenerateListTailInBody`
+   `Enter`ed a node then delegated the SAME object to `_GenerateStructureElementInBody`, which
+   re-`Enter`ed it on the shared identity guard → a spurious `CyclicTermError` on a valid ACYCLIC
+   body partial-list nested in a struct (e.g. `box([1|Xs?])`). Empirically reproduced through the C#
+   REPL. Fix: guard only the `ListTerm` self-recursion arm; the variable/other-tail arm delegates
+   without a second `Enter`. Regression-guarded by `deep_acyclic.glp`.
+
+2. **Fuel-only guard is INEFFECTIVE for the shared walkers (HIGH).** The first fix routed
+   `UnifyTerms`/`CollectVarNames`/`ApplyRenaming`/`ApplySubstitution` through a fuel-only
+   `Step()` (8M budget). codex correctly showed this never fires: a cyclic term recurses unbounded
+   in DEPTH and overflows the .NET stack (~thousands of frames) long before 8M fuel is spent — and a
+   fuel bound low enough to pre-empt the stack would falsely reject a legitimately deep (depth-6000)
+   acyclic term. **Lesson: for recursive-descent walkers, IDENTITY (catch the cycle at its period),
+   not fuel, is the load-bearing guard.** Fix: `StructuralGuard.Scope(term)` (RAII `using var`,
+   identity + fuel backstop) on every shared walker. Safe here because these walkers re-descend into
+   DISTINCT children (never re-delegate the same node — the codegen footgun); balanced Exit keeps
+   DAG/deep terms passing.
+
+3. **`ResolveTerm` reconciliation (resolves the Decision-4 open item).** Its structural arms now
+   carry the identity guard (a programmatically structural-cyclic subst value → catchable
+   `CompileError`); its **VarTerm arm keeps the pre-existing return-revisited behaviour** for a
+   var-name substitution cycle (Decision-1 do-not-regress). A structural cycle cannot reach it
+   through the VarTerm arm alone (it must pass a guarded structural node; `visited` is copied across
+   the structural boundary). This is the "inner resolve may short-circuit a self-reference to
+   terminate, but an unresolvable structural cycle surfaces as `CompileError`" boundary the plan
+   asked for.
+
+4. **Positive cycle-detection coverage + fail-loud tests.** `term_traversal_probe` (InternalsVisibleTo)
+   now calls the REAL walkers with a constructed self-referential `StructTerm` and asserts a catchable
+   `CompileError`, plus deep(6000)/DAG no-false-positive. `deep_acyclic.glp`/`dag_shared.glp` added;
+   Section T-3/T-4 FAIL LOUD on a missing fixture/probe (a silent skip is what hid defect #1).
+
+**Deliberate boundary (not a defect):** `ApplySubstitutionToGoal`'s goal-NESTING recursion is a
+Goal-graph, not a Term walk; a cyclic Goal graph is the linker `ResolveGoal` family's concern (guarded
+via `EnterGoal`/`ExitGoal`). The var-name `active` set on `ApplySubstitution` and the identity `Scope`
+guard coexist (they catch disjoint cycle classes; whichever trips first raises the same diagnostic).
