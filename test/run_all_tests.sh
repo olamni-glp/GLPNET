@@ -2311,14 +2311,19 @@ if [ -f "$CSREPL_BIN" ]; then
         fi
     done
 
-    # T-4: structural-family guard unit probe — cyclic AST => CompileError, deep+DAG OK
-    # (a cyclic AST node reaching codegen can only be built programmatically, not authored).
+    # T-4: structural + REAL-walker guard probe — a programmatically cyclic AST node =>
+    # catchable CompileError; deep/DAG acyclic terms traverse OK (SC-001/SC-003/SC-006).
+    # A cyclic AST node can only be built programmatically (not authored in GLP source), so
+    # this probe (InternalsVisibleTo) is the ONLY positive cycle-DETECTION assertion. The
+    # C# REPL is built (we are inside its guard); the probe ships in the SAME solution, so a
+    # MISSING probe FAILS LOUD — it does NOT silently skip, which would leave the
+    # cycle-detection guarantee ungated (codexreview 077).
     PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/net10.0/term_traversal_probe.exe"
     if [ -f "$PROBE" ]; then
         out=$("$PROBE" 2>&1)
-        check "T-4: structural + var-name guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
+        check "T-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
     else
-        echo "  SKIP: term_traversal_probe not built ($PROBE)"
+        check "T-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
     fi
 else
     echo "  SKIP: Section T — built C# REPL not found ($CSREPL_BIN)"

@@ -88,7 +88,7 @@ internal static class TermTraversal
         Func<Term, bool> isAnonymous, StructuralGuard? guard = null)
     {
         guard ??= new StructuralGuard("term_traversal");
-        guard.Step(callArg);   // fuel-only cycle guard (FR-002 defense-in-depth)
+        using var _sc = guard.Scope(callArg);   // identity cycle guard (FR-002 defense-in-depth)
         // (a) Anonymous on either side: success, no binding
         if (isAnonymous(callArg) || isAnonymous(unitArg)) return null;
 
@@ -220,15 +220,19 @@ internal static class TermTraversal
         return resolved;
     }
 
-    private static Term ResolveTerm(Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> visited)
+    private static Term ResolveTerm(
+        Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> visited, StructuralGuard? guard = null)
     {
         if (term is VarTerm varTerm)
         {
+            // var-name cycles keep their Decision-1 return-revisited behaviour (do NOT
+            // regress): no identity guard on the VarTerm arm, so a var-name substitution
+            // cycle is broken by `visited`, exactly as before.
             if (visited.Contains(varTerm.Name)) return term;   // cycle — return as-is
             if (subst.TryGetValue(varTerm.Name, out var bound))
             {
                 visited.Add(varTerm.Name);
-                var resolved = ResolveTerm(bound, subst, visited);
+                var resolved = ResolveTerm(bound, subst, visited, guard);
                 // Reader-status preservation: reader var resolving to writer var returns reader var
                 if (varTerm.IsReader && resolved is VarTerm rv && !rv.IsReader)
                     return new VarTerm(rv.Name, true, rv.Line, rv.Column);
@@ -236,16 +240,21 @@ internal static class TermTraversal
             }
             return term;
         }
+        // Structural arms: identity guard turns a programmatically self-referential
+        // StructTerm/ListTerm subst value (codex-#2, structural) into a catchable
+        // CompileError instead of a StackOverflow, mirroring the sibling walkers.
+        guard ??= new StructuralGuard("term_traversal");
+        using var _sc = guard.Scope(term);
         if (term is StructTerm s)
             return new StructTerm(s.Functor,
-                s.Args.Select(a => ResolveTerm(a, subst, new HashSet<string>(visited, StringComparer.Ordinal))).ToList(),
+                s.Args.Select(a => ResolveTerm(a, subst, new HashSet<string>(visited, StringComparer.Ordinal), guard)).ToList(),
                 s.Line, s.Column);
         if (term is ListTerm l)
         {
             if (l.IsNil) return l;
             return new ListTerm(
-                l.Head is not null ? ResolveTerm(l.Head, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
-                l.Tail is not null ? ResolveTerm(l.Tail, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
+                l.Head is not null ? ResolveTerm(l.Head, subst, new HashSet<string>(visited, StringComparer.Ordinal), guard) : null,
+                l.Tail is not null ? ResolveTerm(l.Tail, subst, new HashSet<string>(visited, StringComparer.Ordinal), guard) : null,
                 l.Line, l.Column);
         }
         return term;   // ConstTerm / UnderscoreTerm unchanged
@@ -270,11 +279,12 @@ internal static class TermTraversal
         Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> active, StructuralGuard? guard = null)
     {
         // The var-name `active` set catches the reachable substitution cycle (X -> ...X...,
-        // the F-069-1 shape). The fuel-only `guard` is defense-in-depth for the STRUCTURAL
-        // arms (codex-#1): a programmatically-constructed self-referential StructTerm/ListTerm
-        // that never revisits a var name is caught here instead of overflowing the stack.
+        // the F-069-1 shape). The identity `guard` (Scope) is defense-in-depth for the
+        // STRUCTURAL arms (codex-#1): a programmatically-constructed self-referential
+        // StructTerm/ListTerm that never revisits a var name is caught at its cycle period
+        // here, as a catchable CompileError, instead of overflowing the stack.
         guard ??= new StructuralGuard("term_traversal");
-        guard.Step(term);
+        using var _sc = guard.Scope(term);
         if (term is VarTerm varTerm)
         {
             if (varTerm.Name == "_") return term;   // underscore unchanged
@@ -358,7 +368,7 @@ internal static class TermTraversal
     internal static void CollectVarNames(Term term, HashSet<string> names, StructuralGuard? guard = null)
     {
         guard ??= new StructuralGuard("term_traversal");
-        guard.Step(term);   // fuel-only cycle guard (FR-002 defense-in-depth)
+        using var _sc = guard.Scope(term);   // identity cycle guard (FR-002 defense-in-depth)
         switch (term)
         {
             case VarTerm varTerm:
@@ -378,7 +388,7 @@ internal static class TermTraversal
     internal static Term ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming, StructuralGuard? guard = null)
     {
         guard ??= new StructuralGuard("term_traversal");
-        guard.Step(term);   // fuel-only cycle guard (FR-002 defense-in-depth)
+        using var _sc = guard.Scope(term);   // identity cycle guard (FR-002 defense-in-depth)
         switch (term)
         {
             case VarTerm varTerm when varTerm.Name == "_":
@@ -483,22 +493,31 @@ internal sealed class StructuralGuard
     internal void Exit(Term node) => _active.Remove(node);
 
     /// <summary>
-    /// Feature 077 (codexreview): count one traversal step against the fuel budget
-    /// ONLY — no identity tracking. For the shared substitution/renaming/unify walkers,
-    /// which descend into fresh child nodes and never re-delegate the same node object,
-    /// a fuel bound is sufficient AND safe: any finite term (including a deep or
-    /// DAG-shared one) costs finite steps and passes, while a programmatically-built
-    /// self-referential node exhausts the (very large, corpus-sized) fuel and raises a
-    /// catchable CompileError instead of an uncatchable StackOverflow (FR-002/SC-003
-    /// defense-in-depth). Identity tracking is avoided here because it would add cost
-    /// without catching anything the fuel bound does not, and — as the codegen
-    /// list-tail false-positive showed — mis-placed identity Enter/Exit can flag valid
-    /// acyclic terms; the fuel bound cannot.
+    /// Feature 077 (codexreview): RAII-style guarded scope for the shared substitution/
+    /// renaming/unify/resolve walkers. Enters the node on construction (throwing a
+    /// catchable CompileError on an identity cycle or fuel exhaustion) and Exits it on
+    /// Dispose, so a <c>using var _ = guard.Scope(term);</c> at the top of a recursive
+    /// walker gives the same balanced Enter/try-finally-Exit discipline the codegen
+    /// walkers use, in one line, on every return path.
+    ///
+    /// IDENTITY (not fuel-only) is REQUIRED here: a cyclic term recurses unboundedly in
+    /// DEPTH and would blow the .NET stack long before an 8M fuel counter is exhausted,
+    /// whereas identity catches the cycle at its (small) period; and a fuel bound low
+    /// enough to pre-empt the stack would falsely reject a legitimately deep (e.g.
+    /// depth-6000) acyclic term. Balanced Exit keeps a DAG-shared subterm — the same
+    /// node object at two sibling positions — from reading as a cycle. These walkers
+    /// only ever re-descend into DISTINCT child nodes (never re-delegate the same node,
+    /// which is what caused the codegen list-tail false positive), so identity here is
+    /// safe.
     /// </summary>
-    internal void Step(Term node)
+    internal GuardScope Scope(Term node) => new GuardScope(this, node);
+
+    internal readonly struct GuardScope : IDisposable
     {
-        if (--_fuel < 0)
-            throw TermTraversal.CyclicTermError(node, _phase, "traversal budget exhausted");
+        private readonly StructuralGuard _guard;
+        private readonly Term _node;
+        internal GuardScope(StructuralGuard guard, Term node) { _guard = guard; _node = node; guard.Enter(node); }
+        public void Dispose() => _guard.Exit(_node);
     }
 
     /// <summary>Enter a Goal node (linker Goal-graph); throws CompileError on cycle/exhaustion.</summary>

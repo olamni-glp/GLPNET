@@ -72,5 +72,50 @@ void Walk(Term t, StructuralGuard g)
     catch (Exception e) { Bad($"DAG-shared falsely rejected: {e.Message}"); }
 }
 
+// 5. The REAL shared substitution/renaming/unify/resolve walkers (not just a local mirror)
+//    must convert a constructed structural cycle into a catchable CompileError. This is the
+//    positive direction of the 077 codexreview fix: fuel-only was insufficient (a cyclic term
+//    recurses in DEPTH and blows the .NET stack long before an 8M fuel bound); identity via
+//    StructuralGuard.Scope catches the cycle at its period.
+StructTerm SelfRefStruct()
+{
+    var args = new List<Term>();
+    var s = new StructTerm("s", args, 0, 0);
+    args.Add(s);                            // s.Args[0] == s  (closed after construction)
+    return s;
+}
+
+void ExpectCyclic(string name, Action act)
+{
+    try { act(); Bad($"{name} did NOT raise on a cyclic term"); }
+    catch (CompileError e) when (e.Message.Contains("Cyclic", StringComparison.Ordinal))
+        { Ok($"{name} -> CompileError on cyclic term"); }
+    catch (Exception e) { Bad($"{name} raised {e.GetType().Name}, not CompileError"); }
+}
+
+ExpectCyclic("CollectVarNames",    () => TermTraversal.CollectVarNames(SelfRefStruct(), new HashSet<string>()));
+ExpectCyclic("ApplyRenaming",      () => TermTraversal.ApplyRenaming(SelfRefStruct(), new Dictionary<string, string>()));
+ExpectCyclic("ApplySubstitution",  () => TermTraversal.ApplySubstitution(SelfRefStruct(), new Dictionary<string, Term>()));
+ExpectCyclic("UnifyTerms",         () => TermTraversal.UnifyTerms(SelfRefStruct(), SelfRefStruct(),
+                                            new Dictionary<string, Term>(), new HashSet<string>(), _ => false));
+ExpectCyclic("ResolveSubstitution", () => TermTraversal.ResolveSubstitution(
+                                            new Dictionary<string, Term> { ["X"] = SelfRefStruct() }));
+
+// 6. The REAL walkers must NOT falsely reject a deep-acyclic term (depth 6000) …
+{
+    Term deep = new ConstTerm("base", 0, 0);
+    for (int i = 0; i < 6000; i++) deep = new StructTerm("n", new List<Term> { deep }, 0, 0);
+    try { TermTraversal.CollectVarNames(deep, new HashSet<string>()); Ok("CollectVarNames deep-acyclic (6000) OK"); }
+    catch (Exception e) { Bad($"CollectVarNames falsely rejected deep-acyclic: {e.Message}"); }
+}
+
+// 7. … nor a DAG-shared subterm (same node object at two positions).
+{
+    var shared = new StructTerm("sub", new List<Term> { new ConstTerm("x", 0, 0) }, 0, 0);
+    var dag    = new StructTerm("p", new List<Term> { shared, shared }, 0, 0);
+    try { TermTraversal.CollectVarNames(dag, new HashSet<string>()); Ok("CollectVarNames DAG-shared OK"); }
+    catch (Exception e) { Bad($"CollectVarNames falsely rejected DAG: {e.Message}"); }
+}
+
 Console.WriteLine(fails == 0 ? "PROBE OK" : $"PROBE FAILED ({fails} failure(s))");
 return fails == 0 ? 0 : 1;
