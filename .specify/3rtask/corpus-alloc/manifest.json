@@ -1,0 +1,7 @@
+{
+  "slices": [
+    {"slice_id": "portfolio", "description": "The 25 open roadmap features to allocate: state, epic, WSJF/RICE, spec path, plus recorded sequencing/blocking facts.", "sources": [".specify/3rtask/corpus-alloc/slice-a-portfolio.md"], "assigned_to": "builder-1"},
+    {"slice_id": "hosts", "description": "Per-host capability, current load and constraint evidence for ARIELLAS, OLAMNIT and GAVRIELLA: declared scheduler caps, scheduler cards, coop status files.", "sources": [".specify/3rtask/corpus-alloc/slice-b-hosts.md"], "assigned_to": "builder-2"},
+    {"slice_id": "protocol", "description": "Protocol and tooling constraints the design must satisfy: coop CRDT protocol v2, scheduler CPM/PERT contract, pipeline stage order, marathon advisory semantics, safe-restart and sync-round obligations, known fleet traps.", "sources": [".specify/3rtask/corpus-alloc/slice-c-protocol.md"], "assigned_to": "builder-3"}
+  ]
+}
