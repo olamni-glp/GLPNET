@@ -2293,15 +2293,23 @@ if [ -f "$CSREPL_BIN" ]; then
         fi
     done
 
-    # T-3: deep-acyclic program must still load — not falsely rejected (SC-006 / FR-006).
-    if [ -f "$CYCLIC_DIR/deep_acyclic.glp" ]; then
-        out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/deep_acyclic.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
-        if echo "$out" | grep -qE "Cyclic term detected|Stack overflow|Error loading"; then
-            check "T-3: deep-acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
+    # T-3: acyclic fixtures MUST still load — not falsely rejected (SC-006 / FR-006).
+    # deep_acyclic covers the body-phase partial-list-in-struct shape ([h|Var] nested in a
+    # struct) that the 077 codexreview found the codegen structural guard falsely rejecting;
+    # dag_shared covers a shared (DAG) subterm. A MISSING fixture FAILS LOUD — a silent skip
+    # is exactly what let that codegen false-positive go undetected (codexreview 077).
+    for acy in deep_acyclic dag_shared; do
+        if [ -f "$CYCLIC_DIR/$acy.glp" ]; then
+            out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$acy.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
+            if echo "$out" | grep -qE "Cyclic term detected|Stack overflow|Error loading"; then
+                check "T-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
+            else
+                check "T-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
+            fi
         else
-            check "T-3: deep-acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
+            check "T-3 [$acy]: fixture present (SC-006 coverage)" "present" "MISSING-FIXTURE"
         fi
-    fi
+    done
 
     # T-4: structural-family guard unit probe — cyclic AST => CompileError, deep+DAG OK
     # (a cyclic AST node reaching codegen can only be built programmatically, not authored).

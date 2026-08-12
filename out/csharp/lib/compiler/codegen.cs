@@ -894,35 +894,44 @@ public sealed class CodeGenerator
     // Mutually recursive with _GenerateStructureElementInBody
     private void _GenerateListTailInBody(Term term, VariableTable varTable, CodeGenContext ctx)
     {
-        bool _top = _bodyStructGuard is null;
-        var _sg = _bodyStructGuard ??= new StructuralGuard("codegen");
-        try
-        {
-        _sg.Enter(term);
+        // Feature 077 (codexreview fix): guard ONLY the ListTerm self-recursion arm —
+        // that arm recurses on the tail via _GenerateListTailInBody and so can form a
+        // cons-cell cycle (L = [h|L]) that must be caught. The non-list arm delegates the
+        // SAME node object to _GenerateStructureElementInBody, which owns that node's
+        // Enter/Exit; Entering it here as well would double-add the same identity on the
+        // active path and raise a SPURIOUS "cyclic term" on a legitimate acyclic partial
+        // list such as a body goal `box([1|Xs?])`. Guarding only the self-recursing arm
+        // keeps genuine cons-cell cycles caught while removing the false positive.
         if (term is ListTerm lt)
         {
-            if (lt.IsNil)
+            bool _top = _bodyStructGuard is null;
+            var _sg = _bodyStructGuard ??= new StructuralGuard("codegen");
+            try
             {
-                ctx.Emit(new Bc.SetConstant("nil"));
-            }
-            else
-            {
-                // Tail is another list: build nested cons cell
-                ctx.Emit(new Bc.PutStructure(".", 2, -1)); // -1 = building inside parent structure
+                _sg.Enter(term);
+                if (lt.IsNil)
+                {
+                    ctx.Emit(new Bc.SetConstant("nil"));
+                }
+                else
+                {
+                    // Tail is another list: build nested cons cell
+                    ctx.Emit(new Bc.PutStructure(".", 2, -1)); // -1 = building inside parent structure
 
-                if (lt.Head is not null)
-                    _GenerateStructureElementInBody(lt.Head, varTable, ctx);
+                    if (lt.Head is not null)
+                        _GenerateStructureElementInBody(lt.Head, varTable, ctx);
 
-                if (lt.Tail is not null)
-                    _GenerateListTailInBody(lt.Tail, varTable, ctx);
+                    if (lt.Tail is not null)
+                        _GenerateListTailInBody(lt.Tail, varTable, ctx);
+                }
             }
+            finally { _sg.Exit(term); if (_top) _bodyStructGuard = null; }
         }
         else
         {
-            // Tail is a variable or other term — use standard handling
+            // Tail is a variable or other term — delegate; _GenerateStructureElementInBody
+            // owns the Enter/Exit for this node (do NOT Enter it here — see comment above).
             _GenerateStructureElementInBody(term, varTable, ctx);
         }
-        }
-        finally { _sg.Exit(term); if (_top) _bodyStructGuard = null; }
     }
 }

@@ -85,8 +85,10 @@ internal static class TermTraversal
     internal static UnifyResult? UnifyTerms(
         Term callArg, Term unitArg,
         Dictionary<string, Term> subst, HashSet<string> suspSet,
-        Func<Term, bool> isAnonymous)
+        Func<Term, bool> isAnonymous, StructuralGuard? guard = null)
     {
+        guard ??= new StructuralGuard("term_traversal");
+        guard.Step(callArg);   // fuel-only cycle guard (FR-002 defense-in-depth)
         // (a) Anonymous on either side: success, no binding
         if (isAnonymous(callArg) || isAnonymous(unitArg)) return null;
 
@@ -149,7 +151,7 @@ internal static class TermTraversal
                     return new UnifyFail($"Functor mismatch: {callStruct.Functor}/{callStruct.Args.Count} vs {unitStruct.Functor}/{unitStruct.Args.Count}");
                 for (int i = 0; i < callStruct.Args.Count; i++)
                 {
-                    var r = UnifyTerms(callStruct.Args[i], unitStruct.Args[i], subst, suspSet, isAnonymous);
+                    var r = UnifyTerms(callStruct.Args[i], unitStruct.Args[i], subst, suspSet, isAnonymous, guard);
                     if (r is not null) return r;
                 }
                 return null;
@@ -168,12 +170,12 @@ internal static class TermTraversal
                 if (callList.IsNil != unitList.IsNil) return new UnifyFail("List structure mismatch: nil vs non-nil");
                 if (callList.Head is not null && unitList.Head is not null)
                 {
-                    var r = UnifyTerms(callList.Head, unitList.Head, subst, suspSet, isAnonymous);
+                    var r = UnifyTerms(callList.Head, unitList.Head, subst, suspSet, isAnonymous, guard);
                     if (r is not null) return r;
                 }
                 if (callList.Tail is not null && unitList.Tail is not null)
                 {
-                    var r = UnifyTerms(callList.Tail, unitList.Tail, subst, suspSet, isAnonymous);
+                    var r = UnifyTerms(callList.Tail, unitList.Tail, subst, suspSet, isAnonymous, guard);
                     if (r is not null) return r;
                 }
                 return null;
@@ -265,8 +267,14 @@ internal static class TermTraversal
     // CompileError. Add/remove is balanced (finally), so a DAG (same name resolved on
     // sibling paths) and a deep acyclic chain are NOT cycles (FR-005/FR-006).
     private static Term ApplySubstitution(
-        Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> active)
+        Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> active, StructuralGuard? guard = null)
     {
+        // The var-name `active` set catches the reachable substitution cycle (X -> ...X...,
+        // the F-069-1 shape). The fuel-only `guard` is defense-in-depth for the STRUCTURAL
+        // arms (codex-#1): a programmatically-constructed self-referential StructTerm/ListTerm
+        // that never revisits a var name is caught here instead of overflowing the stack.
+        guard ??= new StructuralGuard("term_traversal");
+        guard.Step(term);
         if (term is VarTerm varTerm)
         {
             if (varTerm.Name == "_") return term;   // underscore unchanged
@@ -276,19 +284,19 @@ internal static class TermTraversal
                     return new VarTerm(rv.Name, true, rv.Line, rv.Column);
                 if (!active.Add(varTerm.Name))
                     throw CyclicTermError(varTerm, "term_traversal");
-                try { return ApplySubstitution(replacement, subst, active); }   // transitive-closure
+                try { return ApplySubstitution(replacement, subst, active, guard); }   // transitive-closure
                 finally { active.Remove(varTerm.Name); }
             }
             return term;
         }
         if (term is StructTerm s)
-            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst, active)).ToList(), s.Line, s.Column);
+            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst, active, guard)).ToList(), s.Line, s.Column);
         if (term is ListTerm l)
         {
             if (l.IsNil) return l;
             return new ListTerm(
-                l.Head is not null ? ApplySubstitution(l.Head, subst, active) : null,
-                l.Tail is not null ? ApplySubstitution(l.Tail, subst, active) : null,
+                l.Head is not null ? ApplySubstitution(l.Head, subst, active, guard) : null,
+                l.Tail is not null ? ApplySubstitution(l.Tail, subst, active, guard) : null,
                 l.Line, l.Column);
         }
         if (term is UnderscoreTerm) return term;
@@ -347,26 +355,30 @@ internal static class TermTraversal
     // Variable name collection + renaming
     // ========================================================================
 
-    internal static void CollectVarNames(Term term, HashSet<string> names)
+    internal static void CollectVarNames(Term term, HashSet<string> names, StructuralGuard? guard = null)
     {
+        guard ??= new StructuralGuard("term_traversal");
+        guard.Step(term);   // fuel-only cycle guard (FR-002 defense-in-depth)
         switch (term)
         {
             case VarTerm varTerm:
                 names.Add(varTerm.Name);
                 break;
             case StructTerm s:
-                foreach (var arg in s.Args) CollectVarNames(arg, names);
+                foreach (var arg in s.Args) CollectVarNames(arg, names, guard);
                 break;
             case ListTerm l:
-                if (l.Head is not null) CollectVarNames(l.Head, names);
-                if (l.Tail is not null) CollectVarNames(l.Tail, names);
+                if (l.Head is not null) CollectVarNames(l.Head, names, guard);
+                if (l.Tail is not null) CollectVarNames(l.Tail, names, guard);
                 break;
             // ConstTerm / UnderscoreTerm: silent no-op — no default arm (matches Dart no-else)
         }
     }
 
-    internal static Term ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming)
+    internal static Term ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming, StructuralGuard? guard = null)
     {
+        guard ??= new StructuralGuard("term_traversal");
+        guard.Step(term);   // fuel-only cycle guard (FR-002 defense-in-depth)
         switch (term)
         {
             case VarTerm varTerm when varTerm.Name == "_":
@@ -378,11 +390,11 @@ internal static class TermTraversal
             case VarTerm:
                 return term;
             case StructTerm s:
-                return new StructTerm(s.Functor, s.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), s.Line, s.Column);
+                return new StructTerm(s.Functor, s.Args.Select(a => ApplyRenaming(a, renaming, guard)).ToList(), s.Line, s.Column);
             case ListTerm l:
                 return new ListTerm(
-                    l.Head is not null ? ApplyRenaming(l.Head, renaming) : null,
-                    l.Tail is not null ? ApplyRenaming(l.Tail, renaming) : null,
+                    l.Head is not null ? ApplyRenaming(l.Head, renaming, guard) : null,
+                    l.Tail is not null ? ApplyRenaming(l.Tail, renaming, guard) : null,
                     l.Line, l.Column);
             case UnderscoreTerm:
                 return term;
@@ -469,6 +481,25 @@ internal sealed class StructuralGuard
     }
 
     internal void Exit(Term node) => _active.Remove(node);
+
+    /// <summary>
+    /// Feature 077 (codexreview): count one traversal step against the fuel budget
+    /// ONLY — no identity tracking. For the shared substitution/renaming/unify walkers,
+    /// which descend into fresh child nodes and never re-delegate the same node object,
+    /// a fuel bound is sufficient AND safe: any finite term (including a deep or
+    /// DAG-shared one) costs finite steps and passes, while a programmatically-built
+    /// self-referential node exhausts the (very large, corpus-sized) fuel and raises a
+    /// catchable CompileError instead of an uncatchable StackOverflow (FR-002/SC-003
+    /// defense-in-depth). Identity tracking is avoided here because it would add cost
+    /// without catching anything the fuel bound does not, and — as the codegen
+    /// list-tail false-positive showed — mis-placed identity Enter/Exit can flag valid
+    /// acyclic terms; the fuel bound cannot.
+    /// </summary>
+    internal void Step(Term node)
+    {
+        if (--_fuel < 0)
+            throw TermTraversal.CyclicTermError(node, _phase, "traversal budget exhausted");
+    }
 
     /// <summary>Enter a Goal node (linker Goal-graph); throws CompileError on cycle/exhaustion.</summary>
     internal void EnterGoal(Goal node)
