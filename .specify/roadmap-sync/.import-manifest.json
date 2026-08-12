@@ -341,6 +341,16 @@
       "status": "applied"
     },
     {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260812T075547Z.json",
+      "file_sha256": "e0bb0282d051b8fb6ecfd32d065a67907d22141b2ac2b04c9924e71ff1bb44d5",
+      "imported_at": "2026-08-12T10:29:55.455000+00:00",
+      "line_count": 3265,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
       "applied_lines": 181,
       "file_name": "gavriella__glpnet__20260728T094815Z.json",
       "file_sha256": "27eac09e8aa287b6d47f54aaed5fc9c996bd0944aa10918dea4086cfb1a83950",
@@ -706,6 +716,26 @@
       "file_sha256": "9cf5191ea2bdb364213cfe63be946c64b14336dcbb43bf3e571840e56e8cf6c8",
       "imported_at": "2026-08-12T05:13:23.444000+00:00",
       "line_count": 3146,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 1,
+      "file_name": "gavriella__glpnet__20260812T081208Z.json",
+      "file_sha256": "175a20e51d6fe3edd9820f1d258c419529c116dec9e74d88c476ec964aa5075e",
+      "imported_at": "2026-08-12T10:29:55.455000+00:00",
+      "line_count": 3266,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260812T090855Z.json",
+      "file_sha256": "175a20e51d6fe3edd9820f1d258c419529c116dec9e74d88c476ec964aa5075e",
+      "imported_at": "2026-08-12T10:29:55.455000+00:00",
+      "line_count": 3266,
       "source_host": "gavriella",
       "source_repo": "glpnet",
       "status": "applied"
