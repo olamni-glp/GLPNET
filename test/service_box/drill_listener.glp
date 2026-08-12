@@ -1,0 +1,37 @@
+% test/service_box/drill_listener.glp — 064 US1/US2 drill service (test asset, not product).
+%
+% A minimal durable-service program for the resume drills: bind a QUIC listener one-bind on the
+% drill endpoint, consume the peer's chat envelopes, and EMIT each received envelope via the
+% '_output'/1 system predicate so the drill can assert receipt from the process transcript.
+% (A real service reports through its own side effects; the resume hook prints only its own
+% arming/replay/failure diagnostics per contracts/resume-registration.md — it does not print
+% goal bindings.)
+%
+% Message model + listener shape are the proven ones from programs/tests/quic/quic_chat_onebind.glp
+% (FR-019: server_listener unchanged, "quic" is data, no new kernels).
+-mode(system).
+
+CrdtModel ::= none ; state_based ; op_based.
+Policy    ::= policy(Stream(Constant), Stream(Constant), Stream(Constant)).
+Section   ::= section(Integer, Stream(Integer)).
+CrdtMsg   ::= crdtmsg(Constant, Constant, Constant, Integer, Policy, CrdtModel, Stream(Section)).
+
+% drill_recv/3 — arm the listener on Host:Port, then emit whatever arrives.
+procedure drill_recv(Constant?, Integer?, Stream(_)).
+drill_recv(Host, Port, Got?) :- ground(Host?), ground(Port?) |
+    server_listener(link_id("quic", ep(Host?, Port?), 1), Link, _),
+    drill_consume_link(Link?, Got).
+
+procedure drill_consume_link(Link(_, _)?, Stream(_)).
+drill_consume_link(ch(In, []), Got?) :- drill_consume(In?, Got).
+
+% Each ground element is emitted as received(<envelope>) before threading into the output stream,
+% so the drill sees one transcript line per delivered message, in receipt order.
+procedure drill_consume(Stream(_)?, Stream(_)).
+drill_consume([V|In], [V?|Rest?]) :- ground(V?) |
+    drill_emit(V?),
+    drill_consume(In?, Rest).
+drill_consume([], []).
+
+procedure drill_emit(_?).
+drill_emit(V) :- ground(V?) | '_output'(received(V?)).
