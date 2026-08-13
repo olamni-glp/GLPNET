@@ -10,13 +10,39 @@
 
 ## 🔴 PGLite data-dir — use the repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
-**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, all 🔴 ABSOLUTE:
-
 1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established.
-2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place. **One sanctioned exception: `G:\BSTDEV\research\glp\glpnet\COOP\`** — the bk-colab mailbox (**read/write OK**). Everything else under G: glpnet stays observe-only.
-3. **Drive topology:** `GAVRI_VOL_D` is a **shared volume** — it is **G: on this host (OLAMNIT)** and **D: on the colleague host (GAVRI)**. So `G:\BSTDEV\research\glp\glpnet` here == `D:\BSTDEV\research\glp\glpnet` on GAVRI (same files). The bk-colab COOP mailbox lives on this volume so both hosts share it; the channel is **asynchronous** (the volume is not always mounted on both at once). See `COOP/PROTOCOL.md` and `/bk-colab` (in design).
 
-🔴 **The COOP mailbox in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a STALE COPY — do not read it as the channel.** It rode along in the drive swap and sits at seq 3 (2026-06-15). The live channel is **only** on the shared volume (`G:\...\COOP\`). Read the peer at `G:\...\COOP\gavri\handoff.md`; write your own side at `G:\...\COOP\olamnit\handoff.md`. Both `handoff.md` files are **newest-seq-first with older seqs preserved below** — so **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread (PROTOCOL.md rule 3's "full snapshot" is satisfied by prepending). OLAMNIT runs **more than one workstream** through this one mailbox — state which workstream you are in your seq block, and do not answer asks you have no standing on.
+### 🔴 Host identity and channel root — VERIFIED 2026-08-13, supersedes the 2026-06-12 drive-swap block
+
+The 2026-06-12 block described this host as **OLAMNIT** with the shared volume at **G:**. **Both facts are now false on this machine, and obeying them writes your handoff into the void.** Verified mechanically 2026-08-13:
+
+| Fact | Verified value |
+|---|---|
+| `hostname` | **`Ariellas`** — *not* OLAMNIT. OLAMNIT is a **separate peer host**. |
+| Local volumes | **C, D, E only.** There is **no G: drive.** D: label is `ARIELLA_D` (not `OLAMNIT_01`). |
+| Live coop board | **`\\192.168.0.108\GAVRI_D\coop\glpnet`** — mapped at **both `I:` and `H:`** (`net use`). |
+| Fleet participants | `ariellas` (this host), `gavriella`, `olamnit` |
+
+🔴 **`I:` and `H:` are SMB mappings, not local volumes** — they are session-scoped and can vanish. Always confirm the root resolves before trusting a read (`Test-Path I:\coop\glpnet`). A missing mapping must be treated as *"I cannot see the board"*, **never** as *"the board is empty"*.
+
+🔴 **The COOP directory in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a husk — do not read it as the channel.** It contains no `handoff.md` for any host. Several buildkit tools **default** to it and then report empty results. `buildkit-scheduler` must always be given `--root I:/coop/glpnet/sched`; with no `--root` it silently falls back to the retired in-tree path and reports `fallback_used=True`.
+
+### 🔴 Channel delivery contract (three instances of one defect — Aug 11, 12, 13 2026)
+
+Message layout on the live board:
+
+```
+I:\coop\glpnet\                       ← BROADCAST-*.md and board-wide signals  (notification)
+I:\coop\glpnet\inbox\<host>\          ← directed messages TO that host         (DELIVERY)
+I:\coop\glpnet\roadmap-sync\inbox\    ← the roadmap export publish leg
+I:\coop\glpnet\sched\                 ← scheduler board (pass --root explicitly)
+```
+
+1. **Anything that discharges another host's declared hold MUST be written to `inbox/<host>/`.** Board root is notification only. On 2026-08-11 a `WAIT-RELEASED` note was posted to the board root and never to `inbox/olamnit/`; olamnit held correctly for two days and was then wrongly broadcast as "silent" and "the sole blocker".
+2. **Silence must be provable, never inferred.** No "host X is N days silent" claim without a receipt naming **every root and path scanned** plus the last-seen stamp per host. Scan the board root *and* every inbox — senders use both.
+3. 🔴 **Never take a one-way action off a silence reading** — no reboot override, no roadmap tombstone, no "sole blocker" broadcast. Require a positive receipt first. This rule alone would have prevented all three recorded instances.
+4. Peer handoffs are **newest-seq-first with older seqs preserved below** — **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread.
+5. This host runs **more than one workstream** through the mailbox — state which workstream you are in your block, and do not answer asks you have no standing on.
 
 The canonical cluster is now the repo-local one. Every `codeconv` invocation that talks to the bridge passes:
 
