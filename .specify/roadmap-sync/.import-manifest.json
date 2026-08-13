@@ -411,6 +411,16 @@
       "status": "applied"
     },
     {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260813T215152Z.json",
+      "file_sha256": "84743ab7d116ffea1044731d855412e5c5143f153b563d2638e9d1dfccd5a90c",
+      "imported_at": "2026-08-13T23:19:09.698000+00:00",
+      "line_count": 3457,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
       "applied_lines": 181,
       "file_name": "gavriella__glpnet__20260728T094815Z.json",
       "file_sha256": "27eac09e8aa287b6d47f54aaed5fc9c996bd0944aa10918dea4086cfb1a83950",
