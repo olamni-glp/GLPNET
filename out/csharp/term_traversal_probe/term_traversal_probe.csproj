@@ -1,0 +1,29 @@
+<!--
+  term_traversal_probe — feature 077 structural-guard probe.
+
+  A tiny, dependency-free console exe (no xUnit, no NuGet restore beyond the SDK)
+  that exercises GlpRuntime.Compiler.StructuralGuard directly: a cyclic AST node
+  raises a catchable CompileError (SC-001), while deep-acyclic and DAG-shared terms
+  traverse cleanly (SC-006). A cyclic AST node reaching the codegen/linker walkers
+  can only be built programmatically (the parser builds trees; the Phase-3 guard
+  stops the PE emitting cycles), so it cannot be expressed as a .glp program —
+  hence this probe rather than a REPL fixture. Run from test/run_all_tests.sh
+  Section T. Sees the library's internal StructuralGuard via InternalsVisibleTo.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>term_traversal_probe</AssemblyName>
+    <RootNamespace>GlpRuntime.Compiler.Probe</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_runtime_net.csproj" />
+  </ItemGroup>
+
+</Project>

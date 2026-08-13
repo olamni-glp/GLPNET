@@ -210,8 +210,10 @@ public class PartialEvaluator
                             $"Defined guard \"{guard.Predicate}\" cannot be negated",
                             guard.Line, guard.Column, phase: "analyzer");
 
-                    var renamedArgs = RenameUnitClauseVars(unitArgs);
-                    var result      = GlpUnifyForPE(guard.Args, renamedArgs);
+                    var renamedArgs = TermTraversal.RenameUnitClauseVars(
+                        unitArgs, "PE", ref _varCounter, TermTraversal.PeIsUnderscore);
+                    var result      = TermTraversal.GlpUnifyForPE(
+                        guard.Args, renamedArgs, TermTraversal.PeIsUnderscore);
 
                     switch (result)
                     {
@@ -232,14 +234,14 @@ public class PartialEvaluator
                                 guard.Line, guard.Column, phase: "analyzer");
 
                         case UnifySuccess success:
-                            currentHead = ApplySubstitutionToAtom(currentHead, success.Substitution);
+                            currentHead = TermTraversal.ApplySubstitutionToAtom(currentHead, success.Substitution);
                             var restGuards = currentGuards.GetRange(i + 1, currentGuards.Count - i - 1)
-                                .Select(g => ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                                .Select(g => TermTraversal.ApplySubstitutionToGuard(g, success.Substitution)).ToList();
                             remainingGuards = remainingGuards
-                                .Select(g => ApplySubstitutionToGuard(g, success.Substitution)).ToList();
+                                .Select(g => TermTraversal.ApplySubstitutionToGuard(g, success.Substitution)).ToList();
                             if (currentBody is not null)
                                 currentBody = currentBody
-                                    .Select(g => ApplySubstitutionToGoal(g, success.Substitution)).ToList();
+                                    .Select(g => TermTraversal.ApplySubstitutionToGoal(g, success.Substitution)).ToList();
                             currentGuards = new List<Guard>(remainingGuards.Count + restGuards.Count);
                             currentGuards.AddRange(remainingGuards);
                             currentGuards.AddRange(restGuards);
@@ -310,7 +312,7 @@ public class PartialEvaluator
             var callPattern      = reduceCall.Args[0];
             var callResult       = reduceCall.Args[1];
 
-            var result = GlpUnifyForPE(new[] { callPattern }, new[] { factPattern });
+            var result = TermTraversal.GlpUnifyForPE(new[] { callPattern }, new[] { factPattern }, TermTraversal.PeIsUnderscore);
             switch (result)
             {
                 case UnifyFail:
@@ -319,22 +321,22 @@ public class PartialEvaluator
 
                 case UnifySuccess success:
                 {
-                    var resultUnify = GlpUnifyForPE(new[] { callResult }, new[] { factReplacement });
+                    var resultUnify = TermTraversal.GlpUnifyForPE(new[] { callResult }, new[] { factReplacement }, TermTraversal.PeIsUnderscore);
                     var fullSubst   = new Dictionary<string, Term>(success.Substitution, StringComparer.Ordinal);
                     if (resultUnify is UnifySuccess rs)
                         foreach (var kv in rs.Substitution) fullSubst[kv.Key] = kv.Value;
 
-                    var newHead = ApplySubstitutionToAtom(clause.Head, fullSubst);
+                    var newHead = TermTraversal.ApplySubstitutionToAtom(clause.Head, fullSubst);
 
                     List<Guard>? newGuards = null;
                     if (clause.Guards is not null && clause.Guards.Count > 0)
-                        newGuards = clause.Guards.Select(g => ApplySubstitutionToGuard(g, fullSubst)).ToList();
+                        newGuards = clause.Guards.Select(g => TermTraversal.ApplySubstitutionToGuard(g, fullSubst)).ToList();
 
                     var newBody = new List<Goal>();
                     for (int i = 0; i < clause.Body.Count; i++)
                     {
                         if (i == reduceIndex) continue;
-                        newBody.Add(ApplySubstitutionToGoal(clause.Body[i], fullSubst));
+                        newBody.Add(TermTraversal.ApplySubstitutionToGoal(clause.Body[i], fullSubst));
                     }
                     if (newBody.Count == 0)
                         newBody = new List<Goal> { new Goal("true", new List<Term>(), clause.Line, clause.Column) };
@@ -362,10 +364,10 @@ public class PartialEvaluator
         CollectVarNamesFromAtom(clause.Head, varNames);
         if (clause.Guards is not null)
             foreach (var guard in clause.Guards)
-                foreach (var arg in guard.Args) CollectVarNames(arg, varNames);
+                foreach (var arg in guard.Args) TermTraversal.CollectVarNames(arg, varNames);
         if (clause.Body is not null)
             foreach (var goal in clause.Body)
-                foreach (var arg in goal.Args) CollectVarNames(arg, varNames);
+                foreach (var arg in goal.Args) TermTraversal.CollectVarNames(arg, varNames);
 
         var renaming = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var name in varNames)
@@ -373,359 +375,24 @@ public class PartialEvaluator
 
         var newHead   = ApplyRenamingToAtom(clause.Head, renaming);
         List<Guard>? newGuards = clause.Guards?.Select(g =>
-            new Guard(g.Predicate, g.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column, negated: g.Negated)).ToList();
+            new Guard(g.Predicate, g.Args.Select(a => TermTraversal.ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column, negated: g.Negated)).ToList();
         List<Goal>? newBody = clause.Body?.Select(g =>
-            new Goal(g.Functor, g.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column)).ToList();
+            new Goal(g.Functor, g.Args.Select(a => TermTraversal.ApplyRenaming(a, renaming)).ToList(), g.Line, g.Column)).ToList();
 
         return new Clause(newHead, guards: newGuards, body: newBody, line: clause.Line, column: clause.Column);
     }
 
-    private List<Term> RenameUnitClauseVars(IReadOnlyList<Term> args)
-    {
-        var varNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var arg in args) CollectVarNames(arg, varNames);
-        var renaming = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var name in varNames)
-            if (name != "_") renaming[name] = $"PE{_varCounter++}";
-        return args.Select(arg => ApplyRenaming(arg, renaming)).ToList();
-    }
-
-    // ========================================================================
-    // Variable name collection
-    // ========================================================================
-
-    private static void CollectVarNames(Term term, HashSet<string> names)
-    {
-        switch (term)
-        {
-            case VarTerm varTerm:
-                names.Add(varTerm.Name);
-                break;
-            case StructTerm s:
-                foreach (var arg in s.Args) CollectVarNames(arg, names);
-                break;
-            case ListTerm l:
-                if (l.Head is not null) CollectVarNames(l.Head, names);
-                if (l.Tail is not null) CollectVarNames(l.Tail, names);
-                break;
-            // ConstTerm / UnderscoreTerm: silent no-op — no default arm (matches Dart no-else)
-        }
-    }
+    // Stage-2-only helpers. The shared primitives (CollectVarNames, ApplyRenaming,
+    // RenameUnitClauseVars, the unify/subst/resolve family) live in TermTraversal
+    // (feature 077 consolidation — SC-004, no second copy).
 
     private static void CollectVarNamesFromAtom(Atom atom, HashSet<string> names)
     {
-        foreach (var arg in atom.Args) CollectVarNames(arg, names);
-    }
-
-    // ========================================================================
-    // Renaming application
-    // ========================================================================
-
-    private static Term ApplyRenaming(Term term, IReadOnlyDictionary<string, string> renaming)
-    {
-        switch (term)
-        {
-            case VarTerm varTerm when varTerm.Name == "_":
-                // Underscore demotion (load-bearing): VarTerm("_") → fresh UnderscoreTerm
-                return new UnderscoreTerm(varTerm.Line, varTerm.Column);
-            case VarTerm varTerm when renaming.TryGetValue(varTerm.Name, out var newName):
-                // Reader-status preservation: renamed VarTerm keeps its IsReader flag
-                return new VarTerm(newName, varTerm.IsReader, varTerm.Line, varTerm.Column);
-            case VarTerm:
-                return term;
-            case StructTerm s:
-                return new StructTerm(s.Functor, s.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), s.Line, s.Column);
-            case ListTerm l:
-                return new ListTerm(
-                    l.Head is not null ? ApplyRenaming(l.Head, renaming) : null,
-                    l.Tail is not null ? ApplyRenaming(l.Tail, renaming) : null,
-                    l.Line, l.Column);
-            case UnderscoreTerm:
-                return term;
-            default:
-                return term;   // ConstTerm passthrough
-        }
+        foreach (var arg in atom.Args) TermTraversal.CollectVarNames(arg, names);
     }
 
     private static Atom ApplyRenamingToAtom(Atom atom, IReadOnlyDictionary<string, string> renaming) =>
-        new Atom(atom.Functor, atom.Args.Select(a => ApplyRenaming(a, renaming)).ToList(), atom.Line, atom.Column);
-
-    // ========================================================================
-    // GLP three-valued compile-time unification
-    // ========================================================================
-
-    private UnifyResult GlpUnifyForPE(IReadOnlyList<Term> callArgs, IReadOnlyList<Term> unitArgs)
-    {
-        if (callArgs.Count != unitArgs.Count)
-            return new UnifyFail($"Arity mismatch: {callArgs.Count} vs {unitArgs.Count}");
-
-        var substitution  = new Dictionary<string, Term>(StringComparer.Ordinal);
-        var suspensionSet = new HashSet<string>(StringComparer.Ordinal);
-
-        // Phase 1: Collection
-        for (int i = 0; i < callArgs.Count; i++)
-        {
-            var result = UnifyTerms(callArgs[i], unitArgs[i], substitution, suspensionSet);
-            if (result is not null) return result;
-        }
-
-        // Phase 2: Resolution
-        var unresolvedReaders = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var readerName in suspensionSet)
-            if (!substitution.ContainsKey(readerName)) unresolvedReaders.Add(readerName);
-        if (unresolvedReaders.Count > 0) return new UnifySuspend(unresolvedReaders);
-
-        return new UnifySuccess(ResolveSubstitution(substitution));
-    }
-
-    /// <summary>
-    /// Pairwise term unification.
-    /// Returns null on success (null-as-success convention); non-null on failure.
-    /// </summary>
-    private UnifyResult? UnifyTerms(
-        Term callArg, Term unitArg,
-        Dictionary<string, Term> subst, HashSet<string> suspSet)
-    {
-        // (a) Underscore on either side: success, no binding
-        if (IsUnderscore(callArg) || IsUnderscore(unitArg)) return null;
-
-        // (b) Call arg is writer
-        if (callArg is VarTerm callVar && !callVar.IsReader)
-        {
-            if      (unitArg is VarTerm unitVar && !unitVar.IsReader) subst[unitVar.Name] = callVar;
-            else if (unitArg is VarTerm unitR   &&  unitR.IsReader)   subst[unitR.Name]   = callVar;
-            else                                                       subst[callVar.Name] = unitArg;
-            return null;
-        }
-
-        // (c) Call arg is reader
-        if (callArg is VarTerm callReader && callReader.IsReader)
-        {
-            var writerName = callReader.Name;
-            if (unitArg is VarTerm uW && !uW.IsReader)
-            {
-                subst[uW.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
-            }
-            else if (unitArg is VarTerm uR && uR.IsReader)
-            {
-                subst[uR.Name] = new VarTerm(writerName, false, callReader.Line, callReader.Column);
-                suspSet.Add(writerName);
-            }
-            else
-            {
-                suspSet.Add(writerName);
-                if (subst.TryGetValue(writerName, out var existing))
-                {
-                    var compat = CheckCompatible(existing, unitArg, subst, suspSet);
-                    if (compat is not null) return compat;
-                }
-                else
-                {
-                    subst[writerName] = unitArg;
-                }
-            }
-            return null;
-        }
-
-        // (d) Call arg is constant
-        if (callArg is ConstTerm callConst)
-        {
-            if (unitArg is ConstTerm unitConst)
-                return object.Equals(callConst.Value, unitConst.Value)
-                    ? null
-                    : new UnifyFail($"Constant mismatch: {callConst.Value} vs {unitConst.Value}");
-            if (unitArg is VarTerm unitW && !unitW.IsReader) { SubstSet(subst, unitW.Name, callArg); return null; }
-            if (unitArg is VarTerm unitR &&  unitR.IsReader) { SubstSet(subst, unitR.Name, callArg); return null; }
-            return new UnifyFail($"Constant {callConst.Value} cannot match structure {unitArg}");
-        }
-
-        // (e) Call arg is structure
-        if (callArg is StructTerm callStruct)
-        {
-            if (unitArg is StructTerm unitStruct)
-            {
-                if (callStruct.Functor != unitStruct.Functor || callStruct.Args.Count != unitStruct.Args.Count)
-                    return new UnifyFail($"Functor mismatch: {callStruct.Functor}/{callStruct.Args.Count} vs {unitStruct.Functor}/{unitStruct.Args.Count}");
-                for (int i = 0; i < callStruct.Args.Count; i++)
-                {
-                    var r = UnifyTerms(callStruct.Args[i], unitStruct.Args[i], subst, suspSet);
-                    if (r is not null) return r;
-                }
-                return null;
-            }
-            if (unitArg is VarTerm uW2 && !uW2.IsReader) { SubstSet(subst, uW2.Name, callArg); return null; }
-            if (unitArg is VarTerm uR2 &&  uR2.IsReader) { SubstSet(subst, uR2.Name, callArg); return null; }
-            return new UnifyFail($"Structure {callStruct.Functor} cannot match {unitArg}");
-        }
-
-        // (f) Call arg is list
-        if (callArg is ListTerm callList)
-        {
-            if (unitArg is ListTerm unitList)
-            {
-                if (callList.IsNil && unitList.IsNil) return null;
-                if (callList.IsNil != unitList.IsNil) return new UnifyFail("List structure mismatch: nil vs non-nil");
-                if (callList.Head is not null && unitList.Head is not null)
-                {
-                    var r = UnifyTerms(callList.Head, unitList.Head, subst, suspSet);
-                    if (r is not null) return r;
-                }
-                if (callList.Tail is not null && unitList.Tail is not null)
-                {
-                    var r = UnifyTerms(callList.Tail, unitList.Tail, subst, suspSet);
-                    if (r is not null) return r;
-                }
-                return null;
-            }
-            if (unitArg is VarTerm uW3 && !uW3.IsReader) { SubstSet(subst, uW3.Name, callArg); return null; }
-            if (unitArg is VarTerm uR3 &&  uR3.IsReader) { SubstSet(subst, uR3.Name, callArg); return null; }
-            return new UnifyFail($"List cannot match {unitArg}");
-        }
-
-        return new UnifyFail($"Unhandled case: {callArg.GetType().Name} vs {unitArg.GetType().Name}");
-    }
-
-    /// <summary>
-    /// Substitution setter with alias-chain propagation.
-    /// When subst[key] was aliased to a writer Y and the new value is concrete,
-    /// also propagate: subst[Y] = value (so ResolveSubstitution can find Y's binding).
-    /// </summary>
-    private static void SubstSet(Dictionary<string, Term> subst, string key, Term value)
-    {
-        if (subst.TryGetValue(key, out var old)
-            && old is VarTerm oldVar && !oldVar.IsReader
-            && value is not VarTerm)
-        {
-            if (!subst.ContainsKey(oldVar.Name)) subst[oldVar.Name] = value;
-        }
-        subst[key] = value;
-    }
-
-    /// <summary>
-    /// Loose structural compatibility check between an existing and a proposed binding.
-    /// Deliberately under-specified (returns null/accept for most cases); preserved verbatim.
-    /// </summary>
-    private UnifyResult? CheckCompatible(
-        Term existing, Term newTerm,
-        Dictionary<string, Term> subst, HashSet<string> suspSet)
-    {
-        if (existing is ConstTerm e && newTerm is ConstTerm n)
-        {
-            if (!object.Equals(e.Value, n.Value))
-                return new UnifyFail($"Incompatible bindings: {e.Value} vs {n.Value}");
-            return null;
-        }
-        if (existing is StructTerm es && newTerm is StructTerm ns)
-        {
-            if (es.Functor != ns.Functor || es.Args.Count != ns.Args.Count)
-                return new UnifyFail($"Incompatible structures: {es.Functor} vs {ns.Functor}");
-            return null;
-        }
-        return null;   // loose-accept for variable cases (deeper check deferred)
-    }
-
-    /// <summary>True when term is UnderscoreTerm OR VarTerm with Name "_".</summary>
-    private static bool IsUnderscore(Term term) =>
-        term is UnderscoreTerm
-        || (term is VarTerm varTerm && varTerm.Name == "_");
-
-    // ========================================================================
-    // Substitution resolution (chain flattening + cycle protection)
-    // ========================================================================
-
-    private static Dictionary<string, Term> ResolveSubstitution(Dictionary<string, Term> subst)
-    {
-        var resolved = new Dictionary<string, Term>(StringComparer.Ordinal);
-        foreach (var entry in subst)
-            resolved[entry.Key] = ResolveTerm(entry.Value, subst, new HashSet<string>(StringComparer.Ordinal));
-        return resolved;
-    }
-
-    private static Term ResolveTerm(Term term, IReadOnlyDictionary<string, Term> subst, HashSet<string> visited)
-    {
-        if (term is VarTerm varTerm)
-        {
-            if (visited.Contains(varTerm.Name)) return term;   // cycle — return as-is
-            if (subst.TryGetValue(varTerm.Name, out var bound))
-            {
-                visited.Add(varTerm.Name);
-                var resolved = ResolveTerm(bound, subst, visited);
-                // Reader-status preservation: reader var resolving to writer var returns reader var
-                if (varTerm.IsReader && resolved is VarTerm rv && !rv.IsReader)
-                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
-                return resolved;
-            }
-            return term;
-        }
-        if (term is StructTerm s)
-            return new StructTerm(s.Functor,
-                s.Args.Select(a => ResolveTerm(a, subst, new HashSet<string>(visited, StringComparer.Ordinal))).ToList(),
-                s.Line, s.Column);
-        if (term is ListTerm l)
-        {
-            if (l.IsNil) return l;
-            return new ListTerm(
-                l.Head is not null ? ResolveTerm(l.Head, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
-                l.Tail is not null ? ResolveTerm(l.Tail, subst, new HashSet<string>(visited, StringComparer.Ordinal)) : null,
-                l.Line, l.Column);
-        }
-        return term;   // ConstTerm / UnderscoreTerm unchanged
-    }
-
-    // ========================================================================
-    // Substitution application family
-    // ========================================================================
-
-    private static Term ApplySubstitution(Term term, IReadOnlyDictionary<string, Term> subst)
-    {
-        if (term is VarTerm varTerm)
-        {
-            if (varTerm.Name == "_") return term;   // underscore unchanged
-            if (subst.TryGetValue(varTerm.Name, out var replacement))
-            {
-                if (varTerm.IsReader && replacement is VarTerm rv && !rv.IsReader)
-                    return new VarTerm(rv.Name, true, rv.Line, rv.Column);
-                return ApplySubstitution(replacement, subst);   // transitive-closure
-            }
-            return term;
-        }
-        if (term is StructTerm s)
-            return new StructTerm(s.Functor, s.Args.Select(a => ApplySubstitution(a, subst)).ToList(), s.Line, s.Column);
-        if (term is ListTerm l)
-        {
-            if (l.IsNil) return l;
-            return new ListTerm(
-                l.Head is not null ? ApplySubstitution(l.Head, subst) : null,
-                l.Tail is not null ? ApplySubstitution(l.Tail, subst) : null,
-                l.Line, l.Column);
-        }
-        if (term is UnderscoreTerm) return term;
-        return term;   // ConstTerm passthrough
-    }
-
-    private static Atom ApplySubstitutionToAtom(Atom atom, IReadOnlyDictionary<string, Term> subst) =>
-        new Atom(atom.Functor, atom.Args.Select(a => ApplySubstitution(a, subst)).ToList(), atom.Line, atom.Column);
-
-    private static Guard ApplySubstitutionToGuard(Guard guard, IReadOnlyDictionary<string, Term> subst) =>
-        new Guard(guard.Predicate, guard.Args.Select(a => ApplySubstitution(a, subst)).ToList(), guard.Line, guard.Column, negated: guard.Negated);
-
-    private static Goal ApplySubstitutionToGoal(Goal goal, IReadOnlyDictionary<string, Term> subst)
-    {
-        // Preserve RemoteGoal wrapper (M # proc(...))
-        if (goal is RemoteGoal rg)
-        {
-            var newModule = ApplySubstitution(rg.Module, subst);
-            var newInner  = ApplySubstitutionToGoal(rg.Goal, subst);
-            return new RemoteGoal(newModule, newInner, rg.Line, rg.Column);
-        }
-        // Preserve SpawnGoal wrapper (Goal@Agent)
-        if (goal is SpawnGoal sg)
-        {
-            var newInner = ApplySubstitutionToGoal(sg.InnerGoal, subst);
-            return new SpawnGoal(newInner, sg.AgentId, sg.Line, sg.Column);
-        }
-        return new Goal(goal.Functor, goal.Args.Select(a => ApplySubstitution(a, subst)).ToList(), goal.Line, goal.Column);
-    }
+        new Atom(atom.Functor, atom.Args.Select(a => TermTraversal.ApplyRenaming(a, renaming)).ToList(), atom.Line, atom.Column);
 
     // ========================================================================
     // Guard simplification (post-specialisation redundancy table)
@@ -767,19 +434,29 @@ public class PartialEvaluator
         return null;
     }
 
-    private static bool IsGround(Term term)
+    private static bool IsGround(Term term) => IsGround(term, new StructuralGuard("partial_evaluator"));
+
+    // Feature 077 (Analyze F1): IsGround walks Term STRUCTURE (not the substitution
+    // map), so it takes the identity/fuel structural guard — a cyclic input Term
+    // surfaces as a CompileError instead of a StackOverflow (SC-001).
+    private static bool IsGround(Term term, StructuralGuard g)
     {
-        if (term is VarTerm)        return false;
-        if (term is UnderscoreTerm) return true;
-        if (term is ConstTerm)      return true;
-        if (term is StructTerm s)   return s.Args.All(IsGround);
-        if (term is ListTerm l)
+        g.Enter(term);
+        try
         {
-            if (l.IsNil) return true;
-            var headG = l.Head is null || IsGround(l.Head);
-            var tailG = l.Tail is null || IsGround(l.Tail);
-            return headG && tailG;
+            if (term is VarTerm)        return false;
+            if (term is UnderscoreTerm) return true;
+            if (term is ConstTerm)      return true;
+            if (term is StructTerm s)   return s.Args.All(a => IsGround(a, g));
+            if (term is ListTerm l)
+            {
+                if (l.IsNil) return true;
+                var headG = l.Head is null || IsGround(l.Head, g);
+                var tailG = l.Tail is null || IsGround(l.Tail, g);
+                return headG && tailG;
+            }
+            return false;
         }
-        return false;
+        finally { g.Exit(term); }
     }
 }
