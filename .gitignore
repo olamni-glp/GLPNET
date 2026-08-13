@@ -133,6 +133,12 @@ COOP/
 # 061 engine-host snapshot file-fallback store (gitignored per contracts/snapshot-store.md)
 .glpsnap/
 
+# Roadmap-sync derived import bookkeeping — regenerated from the PGlite catalog (the
+# authority) on every round. Multi-megabyte and per-host divergent by construction, so
+# tracking it reintroduces the manifest conflict the engineer ruled out on 2026-08-11.
+# Duplicated here from 077 because PR #153 has not landed yet; it collapses on merge.
+.specify/roadmap-sync/.import-provenance/
+
 # 064 durable-listener-service-box: operator registration + WAL file fallback
 # (runtime artifacts; the committed sample is glpservice/resume.json.sample)
 glpservice/resume.json
