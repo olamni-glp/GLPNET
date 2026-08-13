@@ -2283,6 +2283,81 @@ fi
 echo ""
 
 # =============================================================================
+# SECTION U: GUARDED TERM-TRAVERSAL — CYCLIC-TERM COMPILER DIAGNOSTICS (077)
+# =============================================================================
+# Feature 077 turns the F-069-1 crash class (a cyclic Term overflowing the C#
+# compiler's substitution/resolve walkers with an uncatchable StackOverflow)
+# into a catchable CompileError diagnostic (FR-004). These load cyclic and
+# acyclic GLP programs into the C# REPL and assert: cyclic => diagnostic + NO
+# stack overflow + clean exit (SC-001/SC-002); deep-acyclic + DAG => load OK,
+# never falsely rejected (SC-006/FR-006). The structural-family guard is
+# additionally unit-probed (out/csharp/term_traversal_probe) since a cyclic
+# AST node reaching codegen can only be built programmatically, not authored.
+echo "=== Section U: Guarded term-traversal cyclic diagnostics (077) ==="
+# set +e for this whole section: the C# REPL exits non-zero on some diagnostics and
+# `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
+# the suite (same hazard the cross-runtime section guards above). check() never exits.
+set +e
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
+# CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
+CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
+if [ -f "$CSREPL_BIN" ]; then
+    # U-1/U-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
+    # compile to a catchable Cyclic-term diagnostic with NO StackOverflow (SC-001/
+    # SC-002, T024). Glob POSIX-side; pass the Windows path to the native REPL.
+    for prog in "$SCRIPT_DIR"/../programs/tests/cyclic/cyclic_*.glp; do
+        [ -f "$prog" ] || continue
+        name=$(basename "$prog")
+        out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$name" | timeout 60 "$CSREPL_BIN" 2>&1)
+        check "U-1 [$name]: compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
+        if echo "$out" | grep -q "Stack overflow"; then
+            check "U-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
+        else
+            check "U-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
+        fi
+    done
+
+    # U-3: acyclic fixtures MUST still load — not falsely rejected (SC-006 / FR-006).
+    # deep_acyclic covers the body-phase partial-list-in-struct shape ([h|Var] nested in a
+    # struct) that the 077 codexreview found the codegen structural guard falsely rejecting;
+    # dag_shared covers a shared (DAG) subterm. A MISSING fixture FAILS LOUD — a silent skip
+    # is exactly what let that codegen false-positive go undetected (codexreview 077).
+    for acy in deep_acyclic dag_shared; do
+        if [ -f "$CYCLIC_DIR/$acy.glp" ]; then
+            out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$acy.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
+            if echo "$out" | grep -qE "Cyclic term detected|Stack overflow|Error loading"; then
+                check "U-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
+            else
+                check "U-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
+            fi
+        else
+            check "U-3 [$acy]: fixture present (SC-006 coverage)" "present" "MISSING-FIXTURE"
+        fi
+    done
+
+    # U-4: structural + REAL-walker guard probe — a programmatically cyclic AST node =>
+    # catchable CompileError; deep/DAG acyclic terms traverse OK (SC-001/SC-003/SC-006).
+    # A cyclic AST node can only be built programmatically (not authored in GLP source), so
+    # this probe (InternalsVisibleTo) is the ONLY positive cycle-DETECTION assertion. The
+    # C# REPL is built (we are inside its guard); the probe ships in the SAME solution, so a
+    # MISSING probe FAILS LOUD — it does NOT silently skip, which would leave the
+    # cycle-detection guarantee ungated (codexreview 077).
+    PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/net10.0/term_traversal_probe.exe"
+    if [ -f "$PROBE" ]; then
+        out=$("$PROBE" 2>&1)
+        check "U-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
+    else
+        check "U-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
+    fi
+else
+    echo "  SKIP: Section U — built C# REPL not found ($CSREPL_BIN)"
+fi
+set -e
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))

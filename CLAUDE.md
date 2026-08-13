@@ -574,5 +574,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/064-durable-listener-service-box/plan.md`
+`specs/077-guarded-term-traversal/plan.md`
 <!-- BUILDKIT END -->

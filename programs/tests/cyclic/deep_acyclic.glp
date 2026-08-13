@@ -1,0 +1,19 @@
+% deep_acyclic.glp — feature 077 SC-006 / FR-006 acyclic regression fixture.
+%
+% This program is ACYCLIC and MUST compile cleanly (no "Cyclic term detected",
+% no StackOverflow). It exercises the exact shape that the codexreview found the
+% codegen structural guard falsely rejecting: a BODY-phase structure that wraps a
+% PARTIAL LIST with a variable tail ([1, 2, 3 | Xs?]), nested inside further
+% structure. Before the fix, _GenerateListTailInBody double-entered the variable
+% tail node on the shared identity guard and raised a SPURIOUS cycle error.
+%
+% Driven by test/run_all_tests.sh Section T-3.
+
+IntList ::= [] ; [Integer | IntList].
+Nested ::= wrap(IntList) ; deep(Nested).
+
+procedure sink(Nested?).
+sink(_).
+
+procedure emit(IntList?).
+emit(Xs) :- ground(Xs?) | sink(deep(deep(wrap([1, 2, 3 | Xs?])))).
