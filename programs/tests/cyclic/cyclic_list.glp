@@ -1,0 +1,7 @@
+% Cyclic `=` via a self-referential list: X = [a | X] (an infinite list). Same
+% F-069-1 crash class as cyclic_eq (069 DEC F3 excluded these); post-077 it must
+% compile to a Cyclic-term diagnostic, never a StackOverflow.
+Sym ::= a ; b.
+CList ::= [] ; [Sym | CList].
+procedure loopl(CList).
+loopl(X) :- X = [a | X?] | true.
