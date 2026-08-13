@@ -33,11 +33,15 @@ public class CompileError : Exception
     private static ErrorCategory? CategoryFromPhase(string phase) =>
         phase switch
         {
-            "lexer"    => ErrorCategory.Lexical,
-            "parser"   => ErrorCategory.Syntax,
-            "analyzer" => ErrorCategory.Semantic,
-            "codegen"  => ErrorCategory.Codegen,
-            _          => null,
+            "lexer"          => ErrorCategory.Lexical,
+            "parser"         => ErrorCategory.Syntax,
+            "analyzer"       => ErrorCategory.Semantic,
+            "codegen"        => ErrorCategory.Codegen,
+            // feature 077: cyclic-term traversal diagnostics (FR-004). A mapping
+            // addition, not a language change (FR-007). Semantic: an occurs-check
+            // violation is a meaning-level compile error, like SRSW.
+            "term_traversal" => ErrorCategory.Semantic,
+            _                => null,
         };
 
     public override string ToString()

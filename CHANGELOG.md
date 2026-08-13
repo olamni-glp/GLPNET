@@ -1,5 +1,35 @@
 ## [Unreleased]
 
+## [v2026.08.13.1] - 2026-08-13
+
+### Added
+- finalize — generalized Section T over cyclic_*.glp (T024), spec Implemented, known-issues resolved; 551/552 (1 pre-existing Gleam×C# flake)
+- structural cycle guard on codegen/analyzer/linker walkers (US1/US2 structural family) + probe; REPL 550/550
+- var-name cycle guard on substitution-closure walker (US1/US2 subst family); F-069-1 crash -> catchable CompileError; REPL 549/549
+- consolidate PE/analyzer term-traversal into shared term_traversal.cs (US3 dedup) + F-069-1 repro; REPL 547/547
+
+### Fixed
+- codexreview c2 — identity guard (not fuel) on shared walkers + ResolveTerm; real-walker probe; T-4 fail-loud
+- codexreview — codegen partial-list false-cycle + fuel-guard shared walkers + acyclic fixtures
+
+### Changed
+- Merge pull request #154 from olamni-glp/077-guarded-term-traversal
+- test updates
+- Merge origin/develop into 077 (064 back-merge): keep 077 pointers; union test Section T(064)+U(077); take develop import-manifest
+- record codexreview hardening (Decision 5, converged@3) + handover session-5 update
+- sync round — import 1 (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879
+- Merge pull request #152 from olamni-glp/main
+- sync round — import 1 peer file (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879
+- sync round — import 1 (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879 (077 implement complete)
+- safe-restart handover — /bk-implement COMPLETE (27 tasks, 4 phase commits), NEXT=/bk-codexreview; divergence-#1 + test-reality flags for review
+- safe-restart handover — pipeline specify→analyze complete, NEXT=/bk-implement; 5 divergences + owner-review flag captured
+- sync round — import 8 files (converged, 0 new lines), reconcile in-sync, replay-verify OK, 0 live dupes; export 19/102/2879 w/ Features A/B WSJF/RICE scored (B=4.2/2800, A=6.0/2000)
+- analyze(077): apply top remediations — F1 reassign mark/ground walkers to structural guard (new T019a); A1 fuel-sizing basis; 0 critical, 100% coverage
+- tasks(077): 26 tasks, dedup-first (US3 foundational P2) then cycle-guard P3/P4; MVP=P1+P2+P3 closes F-069-1 + unblocks occurs-check
+- plan(077): grounded ~21-walker inventory + 2-flavor cycle guard + 5 consolidation divergences (dedup is behaviour-sensitive); research/data-model/contract/quickstart; Constitution PASS
+- clarify(077): FR-004 cyclic-outcome = hard-fail CompileError (no-silent-failure; consistent w/ sibling occurs-check; not a 1.14 change)
+- spec(077): guarded term-traversal utilities (cycle-tolerant walkers + PE/analyzer dedup) — 3 P1 stories, 8 FRs, 6 SCs; FR-004 cyclic-outcome deferred to clarify
+
 ## [v2026.08.12.1] - 2026-08-12
 
 ### Added
