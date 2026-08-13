@@ -45025,6 +45025,108 @@
         "dependencies": [],
         "scores": []
       }
+    },
+    {
+      "declared_project": null,
+      "entity_kind": "epic",
+      "file_name": "olamnit__glpnet__20260813T114614Z.json",
+      "guid": "01KZR4B3NN9K4YC2YQME6MD55D",
+      "local_project": "glpnet",
+      "name_or_slug": "GLP compiler robustness (occurs-check & term-traversal hardening)",
+      "reason": "untagged",
+      "refused_at": "2026-08-13T18:22:58.855000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": null,
+      "entity_kind": "feature",
+      "file_name": "olamnit__glpnet__20260813T114614Z.json",
+      "guid": "01KZR4C3Y29B8C74ASKH0XX8ME",
+      "local_project": "glpnet",
+      "name_or_slug": "occurs-checked-substitution-pipeline-compiler-bind-time-occurs-check",
+      "reason": "untagged",
+      "refused_at": "2026-08-13T18:22:58.855000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-11T12:05:58.575000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KZR4C3Y29B8C74ASKH0XX8ME",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KZR4C5HA1BGCW5DNKVANR4RF"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T14:00:27.013000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZR4C3Y29B8C74ASKH0XX8ME",
+            "rice": 2000.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 3,
+              "impact": 2,
+              "reach": 50
+            },
+            "wsjf": 6.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 5,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": null,
+      "entity_kind": "feature",
+      "file_name": "olamnit__glpnet__20260813T114614Z.json",
+      "guid": "01KZR4C5HA1BGCW5DNKVANR4RF",
+      "local_project": "glpnet",
+      "name_or_slug": "guarded-term-traversal-utilities-cycle-tolerant-compiler-walkers-pe-analyzer-dedup",
+      "reason": "untagged",
+      "refused_at": "2026-08-13T18:22:58.855000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-11T12:05:58.575000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KZR4C3Y29B8C74ASKH0XX8ME",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KZR4C5HA1BGCW5DNKVANR4RF"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T14:00:25.497000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZR4C5HA1BGCW5DNKVANR4RF",
+            "rice": 2800.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 5,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
     }
   ],
   "schema_version": "1"
