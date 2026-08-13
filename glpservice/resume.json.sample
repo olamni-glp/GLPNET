@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "program": "programs/tests/quic/quic_chat.glp",
+  "goal": "main(olamnit, R).",
+  "enabled": true,
+  "replay": true
+}

@@ -2258,7 +2258,32 @@ fi
 echo ""
 
 # =============================================================================
-# SECTION T: GUARDED TERM-TRAVERSAL — CYCLIC-TERM COMPILER DIAGNOSTICS (077)
+# SECTION T: 064 DURABLE LISTENER SERVICE BOX DRILLS (T012)
+# =============================================================================
+# The US1 restart drill (register + relaunch + peer-connect, missing-program
+# diagnostic, SC-005 transcript identity) and the US2 history drill (durable
+# append before observation, replay in receipt order exactly once, idempotent
+# second restart) from specs/064-durable-listener-service-box. Both need the
+# built C# REPL + DOTNET_ROOT + QUIC trust material; absent the exe, an
+# EXPLICIT skip line names the standalone gates — never a silent pass.
+# The history drill runs at its default N (SC-002's N=100 is the release gate,
+# run standalone: bash test/service_box/history_drill.sh 100).
+echo "=== Section T: 064 service-box drills (resume + history) ==="
+
+SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+if [ -f "$SBREPL_BIN" ]; then
+    output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
+    check "T-1: US1 resume drill (auto-arm, diagnostics, SC-005 transcript)" "resume drill: PASS=7 FAIL=0" "$output"
+    output=$(bash "$SCRIPT_DIR/service_box/history_drill.sh" 2>&1)
+    check "T-2: US2 history drill (order, exactly-once, idempotent restart)" "history drill: PASS=4 FAIL=0" "$output"
+else
+    echo "SKIP Section T: C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
+fi
+
+echo ""
+
+# =============================================================================
+# SECTION U: GUARDED TERM-TRAVERSAL — CYCLIC-TERM COMPILER DIAGNOSTICS (077)
 # =============================================================================
 # Feature 077 turns the F-069-1 crash class (a cyclic Term overflowing the C#
 # compiler's substitution/resolve walkers with an uncatchable StackOverflow)
@@ -2268,7 +2293,7 @@ echo ""
 # never falsely rejected (SC-006/FR-006). The structural-family guard is
 # additionally unit-probed (out/csharp/term_traversal_probe) since a cyclic
 # AST node reaching codegen can only be built programmatically, not authored.
-echo "=== Section T: Guarded term-traversal cyclic diagnostics (077) ==="
+echo "=== Section U: Guarded term-traversal cyclic diagnostics (077) ==="
 # set +e for this whole section: the C# REPL exits non-zero on some diagnostics and
 # `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
 # the suite (same hazard the cross-runtime section guards above). check() never exits.
@@ -2278,22 +2303,22 @@ CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
 CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
 if [ -f "$CSREPL_BIN" ]; then
-    # T-1/T-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
+    # U-1/U-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
     # compile to a catchable Cyclic-term diagnostic with NO StackOverflow (SC-001/
     # SC-002, T024). Glob POSIX-side; pass the Windows path to the native REPL.
     for prog in "$SCRIPT_DIR"/../programs/tests/cyclic/cyclic_*.glp; do
         [ -f "$prog" ] || continue
         name=$(basename "$prog")
         out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$name" | timeout 60 "$CSREPL_BIN" 2>&1)
-        check "T-1 [$name]: compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
+        check "U-1 [$name]: compiles to a Cyclic-term diagnostic (SC-002)" "Cyclic term detected" "$out"
         if echo "$out" | grep -q "Stack overflow"; then
-            check "T-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
+            check "U-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "STACK-OVERFLOW-PRESENT"
         else
-            check "T-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
+            check "U-2 [$name]: raises NO StackOverflow (SC-001)" "no-overflow" "no-overflow"
         fi
     done
 
-    # T-3: acyclic fixtures MUST still load — not falsely rejected (SC-006 / FR-006).
+    # U-3: acyclic fixtures MUST still load — not falsely rejected (SC-006 / FR-006).
     # deep_acyclic covers the body-phase partial-list-in-struct shape ([h|Var] nested in a
     # struct) that the 077 codexreview found the codegen structural guard falsely rejecting;
     # dag_shared covers a shared (DAG) subterm. A MISSING fixture FAILS LOUD — a silent skip
@@ -2302,16 +2327,16 @@ if [ -f "$CSREPL_BIN" ]; then
         if [ -f "$CYCLIC_DIR/$acy.glp" ]; then
             out=$(printf 'load %s\n:quit\n' "$CYCLIC_DIR/$acy.glp" | timeout 60 "$CSREPL_BIN" 2>&1)
             if echo "$out" | grep -qE "Cyclic term detected|Stack overflow|Error loading"; then
-                check "T-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
+                check "U-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "FALSELY-REJECTED"
             else
-                check "T-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
+                check "U-3 [$acy]: acyclic loads, not falsely rejected (SC-006)" "loads-ok" "loads-ok"
             fi
         else
-            check "T-3 [$acy]: fixture present (SC-006 coverage)" "present" "MISSING-FIXTURE"
+            check "U-3 [$acy]: fixture present (SC-006 coverage)" "present" "MISSING-FIXTURE"
         fi
     done
 
-    # T-4: structural + REAL-walker guard probe — a programmatically cyclic AST node =>
+    # U-4: structural + REAL-walker guard probe — a programmatically cyclic AST node =>
     # catchable CompileError; deep/DAG acyclic terms traverse OK (SC-001/SC-003/SC-006).
     # A cyclic AST node can only be built programmatically (not authored in GLP source), so
     # this probe (InternalsVisibleTo) is the ONLY positive cycle-DETECTION assertion. The
@@ -2321,12 +2346,12 @@ if [ -f "$CSREPL_BIN" ]; then
     PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/net10.0/term_traversal_probe.exe"
     if [ -f "$PROBE" ]; then
         out=$("$PROBE" 2>&1)
-        check "T-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
+        check "U-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
     else
-        check "T-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
+        check "U-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
     fi
 else
-    echo "  SKIP: Section T — built C# REPL not found ($CSREPL_BIN)"
+    echo "  SKIP: Section U — built C# REPL not found ($CSREPL_BIN)"
 fi
 set -e
 
