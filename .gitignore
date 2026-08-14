@@ -133,6 +133,20 @@ COOP/
 # 061 engine-host snapshot file-fallback store (gitignored per contracts/snapshot-store.md)
 .glpsnap/
 
+# Roadmap-sync import manifest — DERIVED mirror of the PGlite catalog, which is the
+# authority (FR-018: `roadmap import --rebuild-manifest` regenerates it from the catalog).
+# Tracked, it conflicted on every multi-host ship (3+ occurrences) because each host's
+# import order differs while the catalog state converges. Fleet was unanimous on the fix;
+# engineer ruled it 2026-08-11. The deterministic exports under exports/ stay tracked —
+# same live-state-out / deliberate-exports-in split as COOP/ above.
+.specify/roadmap-sync/.import-manifest.json
+
+# Same class, same reasoning: per-host DERIVED import bookkeeping regenerated from the
+# catalog on every round. Multi-megabyte and divergent per host by construction, so
+# tracking them reintroduces exactly the conflict the manifest ruling removed.
+.specify/roadmap-sync/.import-provenance/
+.specify/roadmap-sync/.import-refused.json
+
 # 064 durable-listener-service-box: operator registration + WAL file fallback
 # (runtime artifacts; the committed sample is glpservice/resume.json.sample)
 glpservice/resume.json
