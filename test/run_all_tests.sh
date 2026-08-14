@@ -2269,7 +2269,12 @@ echo ""
 # The history drill runs at its default N (SC-002's N=100 is the release gate,
 # run standalone: bash test/service_box/history_drill.sh 100).
 echo "=== Section T: 064 service-box drills (resume + history) ==="
-
+# set +e for this whole section (same guard Section U and the cross-runtime sections use):
+# the drills `exit $FAIL` (non-zero) when QUIC trust material (glpquick.pfx) is absent on a
+# host, and `output=$(bash drill.sh)` under the script's top-level `set -e` would then ABORT
+# the entire suite — killing every later section instead of recording a section FAIL. check()
+# never exits, so guarding here turns a host-specific drill failure into a normal FAIL line.
+set +e
 SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 if [ -f "$SBREPL_BIN" ]; then
     output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
@@ -2279,6 +2284,7 @@ if [ -f "$SBREPL_BIN" ]; then
 else
     echo "SKIP Section T: C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
 fi
+set -e
 
 echo ""
 
