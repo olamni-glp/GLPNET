@@ -24,12 +24,55 @@ Notes:
   after this run. Re-running the WSL `gleam test` suite requires `rm -rf glp_gleam/build`
   first — a beam-load error there is NOT a code regression.
 
+## Pre-change baseline re-confirmed — 2026-08-14 (this session, before any edit)
+
+Re-run at `daabe346` in the new session the marathon required, before touching the
+checker:
+
+- REPL suite: `Total: 547 | Passed: 547 | Failed: 0` — ALL TESTS PASSED (exit 0).
+  Section A 221, Section B 110, Section C 50. **Section I link_both_ways: PASS=4 FAIL=0.**
+- Dart unit tests (`cd glp_runtime && dart test`): **441 passed / 5 skipped / 5 failed**.
+  The 5 failures are pre-existing and unrelated to the type checker:
+  - `test/compiler/partial_evaluator_test.dart` — guard validation ×2
+  - `test/module/module_hierarchy_test.dart` — self.glp chain discovery ×3
+
 ## Post-change verification (T014)
 
-Not yet run — the checker change is deferred to the implement stage, which the marathon
-run `mrun-d086da8a860f` requires to happen in a NEW session after a safe restart
-("implement: /bk-implement complete in NEW session (safe restart before), both suites
-green vs baseline").
+Run at the same host, same commands.
 
-The post-change gate is: **547/547 with zero regressions**, plus the new FR-007 tests
-(2 positive in Section B, 1 negative in Section C) green on top.
+- REPL suite: `Total: 550 | Passed: 549 | Failed: 1`.
+  - **Section A 221/221** (= baseline)
+  - **Section B 112/112** (= baseline 110 + `issue4_bind_later` + `head_flip_general`)
+  - **Section C 51/51** (= baseline 50 + `head_flip_negative`)
+  - Sections D–H, J–S: unchanged.
+  - **Section I cross-runtime Gleam × C#**: `link_both_ways` PASS=2 FAIL=2
+    (`pc_integers [C→G]`, `bidirectional [C→G]`). `round_trip` 12/12 and `mismatch` 2/2
+    still pass.
+- New unit tests: `test/analysis/type_checker/body_atom_licensing_test.dart` — **19/19 pass.**
+
+### The one failure is NOT attributable to this feature
+
+Stated as fact with the evidence, not as an assumption:
+
+1. **The failing harness contains no Dart.** `test/parity/cross_runtime/link_both_ways.sh`
+   drives exactly two processes — `gleam run` from `glp_gleam/` and the C# REPL at
+   `out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe` (`lib.sh:24-25,44-46`). The Dart
+   type checker this feature changes is never invoked on that path.
+2. **Neither runtime artifact changed.** `glp_repl.exe` and `glp_gleam/build/` both carry
+   mtime 2026-08-06, i.e. unchanged since long before this session.
+3. **It reproduces in isolation**, so it is not a one-off flake:
+   `bash test/parity/cross_runtime/link_both_ways.sh` → PASS=2 FAIL=2, exit 2.
+4. The failure surface is transport, not semantics: the C# consumer reports
+   `System.IO.IOException: ... An established connection was aborted by the software in
+   your host machine` and `Got = []`. Only the C→G direction fails; G→C passes.
+
+What changed between the green baseline and the failure was **host state, not code**: two
+unified-suite runs went concurrent (a killed background run orphaned its process tree),
+Git-Bash hit `fork: Resource temporarily unavailable` / `0xC0000142`, and the orphaned
+trees were then force-killed. No stray `glp_repl.exe`, `beam`, `erl`, `gleam` or `dotnet`
+process survives, so the residue is not a live listener.
+
+**Per CLAUDE.md Bug Protocol this is reported, not worked around.** SC-002 ("zero
+regressions relative to the pre-change baseline") is therefore **not signed off** here:
+every type-checker-relevant section is green and at the expected counts, but the suite as
+a whole is 549/550 and the cross-runtime link defect is open and needs a decision.

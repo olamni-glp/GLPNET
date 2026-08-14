@@ -100,39 +100,78 @@ Removed `_registerWriteBackCallbacks()`, `_sendWriteBack()`, and all call sites 
 
 ## Issue 4: Type checker rejects well-typed `=` with reader argument
 
-**Status**: Open
+**Status**: Fixed — feature `076-typechecker-body-atom-moding`, 2026-08-14
 **Discovered**: 2026-02-10
 **Affects**: Any typed program using `=` (unification) with a reader variable
 
 ### Summary
 
-The type checker rejects the following well-typed clause:
+The type checker rejected the following well-typed clause:
 
 ```prolog
 procedure bind_later(_).
-bind_later(Done?) :- wait(1000) | done(Done).
+bind_later(Done?) :- wait(1000) | Done = done.
 ```
 
 Error: "Variable mode mismatch: writer requires ↑ (produce), got ↓ (consume)" for `Done` at the `=` call site (or equivalent body atom).
 
 ### Analysis
 
-The prelude declares `=` as:
+`=` is declared in `programs/self.glp` (lines 86-87) as:
 
 ```prolog
 procedure =(_?, _).
-X = X?.
+X? = X.
 ```
 
-Position 0 is `_?` (reader), position 1 is `_` (writer). In the clause `bind_later(Done?)`, `Done` is the reader of the writer passed by the caller. Using `Done` as the first argument of `=` (the `_?` position) should be well-typed since `Done` is already a reader. The type checker incorrectly rejects this.
+(The built-in type prelude — `glp_runtime/lib/analysis/type_checker/prelude.dart`,
+`typePrelude` — is the empty string. All type definitions, procedure declarations and
+unit clauses live in `programs/self.glp` and reach a module through the `self.glp` scope
+chain. The earlier text here said "the prelude declares" and quoted the clause as
+`X = X?`; both were wrong.)
 
-### Workaround
+Argument 1 is `_?` (consume), argument 2 is `_` (produce). In `bind_later(Done?)` the
+head occurrence sits at a produce position, so `Done?` is a *head-flipped reader* — an
+output hole the clause must fill through the pair's unique writer `Done`. Passing that
+writer to `=` at its declared consume position delegates the binding to the callee. The
+checker derived each body-atom leaf's mode from the surface annotation alone, with no
+head-binding context, so it never recognised the delegation and rejected the clause.
 
-Use `done(Done)` instead of `Done = done` to avoid `=` entirely.
+### Resolution
+
+`docs/type system/well-typed-clause.md` gained the **Occurrence-Pair Licensing**
+amendment to Definition 5.7 clause 2 (approved by Gabi under DISCIPLINE §1.14 on
+2026-08-12): a **writer** occurrence in a body atom with derived structural mode ↓ is
+mode-consistent iff the paired **reader** occurrence appears in the head at a
+flip-derived ↑ position. The rule is depth-composed by mode involution
+(typed-glp-manual §2A) and uniform across all procedures — `=` has no special case.
+
+Implementation: `checkClause` derives the head-hole set from the moded head's variable
+records and threads it to variable-leaf consistency in
+`glp_runtime/lib/analysis/type_checker/program_dfa.dart`. Nothing else changed —
+`programs/self.glp` is untouched, and no runtime, compiler or partial-evaluator
+behaviour was altered.
+
+Ill-moded programs are still rejected: a writer at ↓ whose pair is absent, occurs in the
+body, or occurs in the head at a ↓ position remains a mode mismatch, and its diagnostic
+now names the missing licence. The symmetric case (a reader at ↑ in a body atom) is
+deliberately not licensed.
+
+Regression tests: `programs/tests/typed/issue4_bind_later.glp` and
+`programs/tests/typed/head_flip_general.glp` (suite Section B),
+`programs/tests/typed/head_flip_negative.glp` (Section C),
+`glp_runtime/test/analysis/type_checker/body_atom_licensing_test.dart`.
+
+The former workaround — writing `done(Done)` to avoid `=` — is no longer required. It
+remains valid GLP (a writer at a declared produce position was always accepted) and is
+kept alongside the licensed form in `issue4_bind_later.glp` as a no-regression control.
 
 ### Files Involved
 
-- `glp_runtime/lib/analysis/type_checker/` — type checker implementation
+- `glp_runtime/lib/analysis/type_checker/program_dfa.dart` — variable-leaf consistency (the licensing predicate)
+- `glp_runtime/lib/analysis/type_checker/well_typed_clause.dart` — head-hole derivation and threading
+- `glp_runtime/lib/analysis/type_checker/well_typed_term.dart` — pass-through on the leaf-check path
+- `docs/type system/well-typed-clause.md` — authoritative rule
 
 ---
 

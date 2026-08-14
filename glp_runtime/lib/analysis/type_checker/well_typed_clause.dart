@@ -262,11 +262,26 @@ ClauseCheckResult checkClause(
     variableLocations[entry.key] = 'head';
   }
 
+  // Occurrence-pair licensing evidence (Definition 5.7 clause 2 amendment,
+  // feature 076). modedHead complements every head variable (Definition 5.5), so
+  // a HEAD-FLIPPED READER — surface `X?` written at a flip-derived produce
+  // position, i.e. an output hole — is recorded here under the writer-form key
+  // `X` with produce mode, while a surface head writer at a consume position is
+  // recorded under `X?`. Only consistent head leaves are recorded at all.
+  // Membership of the writer-form key is therefore exactly the head-hole
+  // evidence the amendment requires. Head entries only: the set is computed
+  // before the body loop, so body occurrences can never license each other.
+  final licensedWriters = <String>{
+    for (final entry in headResult.variableTypes.entries)
+      if (!entry.key.endsWith('?') && entry.value.mode == Mode.produce)
+        entry.key,
+  };
+
   // Step 2: Check each body atom
   for (int i = 0; i < clause.bodyAtoms.length; i++) {
     final atom = clause.bodyAtoms[i];
     final (atomResult, modedAtomTerm) = _checkBodyAtomWithTerm(atom, i, dfa, env,
-        callerVarTypes: allVariableTypes);
+        callerVarTypes: allVariableTypes, licensedWriters: licensedWriters);
 
     if (modedAtomTerm != null) {
       constructedModedBodyAtoms.add(modedAtomTerm);
@@ -466,9 +481,10 @@ WellTypedResult _checkBodyAtom(
   ProgramDFA dfa,
   TypeEnvironment env, {
   Map<String, VariableTypeInfo>? callerVarTypes,
+  Set<String>? licensedWriters,
 }) {
   final (result, _) = _checkBodyAtomWithTerm(atom, atomIndex, dfa, env,
-      callerVarTypes: callerVarTypes);
+      callerVarTypes: callerVarTypes, licensedWriters: licensedWriters);
   return result;
 }
 
@@ -480,17 +496,19 @@ WellTypedResult _checkBodyAtom(
   ProgramDFA dfa,
   TypeEnvironment env, {
   Map<String, VariableTypeInfo>? callerVarTypes,
+  Set<String>? licensedWriters,
 }) {
   // Handle SpawnGoal (Goal@Agent) - type-check the inner goal
   if (atom is ast.SpawnGoal) {
     // Recursively type-check the inner goal
     return _checkBodyAtomWithTerm(atom.innerGoal, atomIndex, dfa, env,
-        callerVarTypes: callerVarTypes);
+        callerVarTypes: callerVarTypes, licensedWriters: licensedWriters);
   }
 
   // Handle RemoteGoal (M # proc(...)) - type-check against imported declaration
   if (atom is ast.RemoteGoal) {
-    return _checkRemoteGoal(atom, atomIndex, dfa, env);
+    return _checkRemoteGoal(atom, atomIndex, dfa, env,
+        licensedWriters: licensedWriters);
   }
 
   // Skip builtin goals (true, otherwise, :=)
@@ -540,7 +558,8 @@ WellTypedResult _checkBodyAtom(
     final modedAtomTerm = producedTerm(atom, procDecl, typeEnv: env);
 
     // Check each argument against its declared type's automaton
-    final result = _checkModedTermPerArg(modedAtomTerm, procDecl, dfa);
+    final result = _checkModedTermPerArg(modedAtomTerm, procDecl, dfa,
+        licensedWriters: licensedWriters);
     return (result, modedAtomTerm);
   } on ArityMismatchError catch (e) {
     return (WellTypedResult.failure([
@@ -562,8 +581,9 @@ WellTypedResult _checkBodyAtom(
   ast.RemoteGoal remote,
   int atomIndex,
   ProgramDFA dfa,
-  TypeEnvironment env,
-) {
+  TypeEnvironment env, {
+  Set<String>? licensedWriters,
+}) {
   // Dynamic dispatch (variable module) — skip type checking
   if (remote.isDynamic) {
     return (WellTypedResult.success({}), null);
@@ -608,7 +628,8 @@ WellTypedResult _checkBodyAtom(
   // Type-check the inner goal's arguments against the imported declaration
   try {
     final modedAtomTerm = producedTerm(innerGoal, procDecl, typeEnv: env);
-    final result = _checkModedTermPerArg(modedAtomTerm, procDecl, dfa);
+    final result = _checkModedTermPerArg(modedAtomTerm, procDecl, dfa,
+        licensedWriters: licensedWriters);
     return (result, modedAtomTerm);
   } on ArityMismatchError catch (e) {
     return (WellTypedResult.failure([
@@ -626,8 +647,9 @@ WellTypedResult _checkBodyAtom(
 WellTypedResult _checkModedTermPerArg(
   ModedTerm modedTerm,
   ProcDecl decl,
-  ProgramDFA dfa,
-) {
+  ProgramDFA dfa, {
+  Set<String>? licensedWriters,
+}) {
   final errors = <WellTypedError>[];
   final variableTypes = <String, VariableTypeInfo>{};
 
@@ -665,7 +687,8 @@ WellTypedResult _checkModedTermPerArg(
     final argPaths = paths(argTerm);
 
     for (final path in argPaths) {
-      final result = checkPathAgainstAutomaton(path, argAutomaton, dfa);
+      final result = checkPathAgainstAutomaton(path, argAutomaton, dfa,
+          licensedWriters: licensedWriters);
 
       if (!result.isConsistent) {
         errors.add(InconsistentPathError(path, result.reason ?? 'Unknown'));
