@@ -421,6 +421,16 @@
       "status": "applied"
     },
     {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260813T232034Z.json",
+      "file_sha256": "84743ab7d116ffea1044731d855412e5c5143f153b563d2638e9d1dfccd5a90c",
+      "imported_at": "2026-08-14T09:40:15.315000+00:00",
+      "line_count": 3457,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
       "applied_lines": 181,
       "file_name": "gavriella__glpnet__20260728T094815Z.json",
       "file_sha256": "27eac09e8aa287b6d47f54aaed5fc9c996bd0944aa10918dea4086cfb1a83950",
@@ -826,6 +836,16 @@
       "file_sha256": "b6a47564e025593f238a47e4171c6e83267888db00ba23909858de4d5a3d2526",
       "imported_at": "2026-08-13T21:50:29.561000+00:00",
       "line_count": 3444,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 1,
+      "file_name": "gavriella__glpnet__20260814T001807Z.json",
+      "file_sha256": "09cf90fbcadce98f1cbb5a7ee6d7cddc2a7ae4c26dfa3b9421c18a03fe3e6122",
+      "imported_at": "2026-08-14T09:40:15.315000+00:00",
+      "line_count": 3458,
       "source_host": "gavriella",
       "source_repo": "glpnet",
       "status": "applied"
@@ -1256,6 +1276,26 @@
       "file_sha256": "1ed4f0d6b1e9f30abb1d991771ab1e30b6815b5e7aa576550052f9337f435be2",
       "imported_at": "2026-08-13T21:50:29.561000+00:00",
       "line_count": 3457,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260813T234923Z.json",
+      "file_sha256": "abb375b42039f0efdb6df4e85d33297f23721cc2cf6e175404cbd04be6711317",
+      "imported_at": "2026-08-14T09:40:15.315000+00:00",
+      "line_count": 3458,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 1,
+      "file_name": "olamnit__glpnet__20260814T002859Z.json",
+      "file_sha256": "c6f66aa9f6c2d2aa164313857fd4227e04ca0e94986fc04c28136d59339cfc31",
+      "imported_at": "2026-08-14T09:40:15.315000+00:00",
+      "line_count": 3459,
       "source_host": "olamnit",
       "source_repo": "glpnet",
       "status": "applied"
