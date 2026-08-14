@@ -2,7 +2,7 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: 5c22ac7c 076: record Gabi's 1.14 approval + amend well-typed-clause spec with occurrence-pair licensing
+Build: daabe346 codify: D1/D4 are CLASS-B wiring gaps; 3-way 3rtask merge-schema defect
 Compiled: 2026-02-01 (GlpEngine refactor)
 Working directory: D:\BSTDEV\research\glp\glpnet
 
@@ -12,7 +12,7 @@ Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
 
 GLP> ✓ Loaded: programs/tests/link/pc.glp
-GLP> Got = [10, 20, 30]
+GLP> Got = []
 → succeeds
 
 GLP> Goodbye!

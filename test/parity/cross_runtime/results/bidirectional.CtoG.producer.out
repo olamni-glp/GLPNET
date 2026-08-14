@@ -1,8 +1,8 @@
-   Compiled in 1.06s
+   Compiled in 0.95s
     Running glp_gleam.main
 GLP (gleam) — type a goal or `load <file>.glp`; :quit to exit
 GLP> ✓ Loaded: ../programs/tests/link/bidi.glp
-GLP> Got = [10, 20, 30]
-→ succeeds
+GLP> Got = X2
+→ suspended
 
 GLP> Goodbye!
