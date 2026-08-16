@@ -1,6 +1,46 @@
 {
   "applied": [
     {
+      "applied_lines": 0,
+      "file_name": "ariellas__buildkit__20260814T132139Z.json",
+      "file_sha256": "86b0f0b497f9d7f36e9c74552242baa93a705fff87676b8664e8eb7f4bf895a7",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 4173,
+      "source_host": "ariellas",
+      "source_repo": "buildkit",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__buildkit__20260814T135654Z.json",
+      "file_sha256": "760db0741be4e0edd7d61fb85e4409fa6a5d27963e45a3051d3c6fc6550cf7c6",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 4185,
+      "source_host": "ariellas",
+      "source_repo": "buildkit",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__buildkit__20260814T151306Z.json",
+      "file_sha256": "66e6ebc1644538f0530c45cfd96509d5003cb06788f14940a295490d1f87e72f",
+      "imported_at": "2026-08-14T15:28:48.521000+00:00",
+      "line_count": 4510,
+      "source_host": "ariellas",
+      "source_repo": "buildkit",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__buildkit__20260816T082505Z.json",
+      "file_sha256": "12effe620edf414363fd5183788ced8d1b0f489e9fbf50c5cc50960663ceaa82",
+      "imported_at": "2026-08-16T09:20:25.727000+00:00",
+      "line_count": 4785,
+      "source_host": "ariellas",
+      "source_repo": "buildkit",
+      "status": "applied"
+    },
+    {
       "applied_lines": 191,
       "file_name": "ariellas__glpnet__20260728T103006Z.json",
       "file_sha256": "3842e51c1c8e83004f8ce02980fa5752704ecacff252c35f7028cba938d44a5f",
@@ -328,6 +368,186 @@
       "line_count": 3266,
       "source_host": "ariellas",
       "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 1,
+      "file_name": "ariellas__glpnet__20260813T163415Z.json",
+      "file_sha256": "bf209a816937fab10d2a895f36c565c2561d0d2c8732024a0c53df41a0cf3eff",
+      "imported_at": "2026-08-13T16:35:42.092000+00:00",
+      "line_count": 3267,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260813T182501Z.json",
+      "file_sha256": "eeb3907bcb209b7081007f424d167d95be1bb475c267aabc39ac5a987a711508",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3444,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260813T215152Z.json",
+      "file_sha256": "84743ab7d116ffea1044731d855412e5c5143f153b563d2638e9d1dfccd5a90c",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3457,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260813T232034Z.json",
+      "file_sha256": "84743ab7d116ffea1044731d855412e5c5143f153b563d2638e9d1dfccd5a90c",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3457,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T094329Z.json",
+      "file_sha256": "64fea262f8bbdcf99ca9fabd357fdea24010be55b7548e0531ee74c4f9a492e9",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3459,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T110932Z.json",
+      "file_sha256": "64fea262f8bbdcf99ca9fabd357fdea24010be55b7548e0531ee74c4f9a492e9",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3459,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T115025Z.json",
+      "file_sha256": "64fea262f8bbdcf99ca9fabd357fdea24010be55b7548e0531ee74c4f9a492e9",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3459,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 124,
+      "file_name": "ariellas__glpnet__20260814T125204Z.json",
+      "file_sha256": "31c3d111ff27cc843ac8d45c2812fffc0cf990bcd79e773f763e90c83effb3d8",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3583,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T130005Z.json",
+      "file_sha256": "31c3d111ff27cc843ac8d45c2812fffc0cf990bcd79e773f763e90c83effb3d8",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3583,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T132810Z.json",
+      "file_sha256": "253097d0c89a923ded55498546ebd23dde31ce435e99a9ea3e21e51d3bf325b5",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3584,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 124,
+      "file_name": "ariellas__glpnet__20260814T135031Z.json",
+      "file_sha256": "42d970093248a78ed92a56beaab815f13fbc2fbca7419e46217a42c8b30a854e",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3708,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T140255Z.json",
+      "file_sha256": "42d970093248a78ed92a56beaab815f13fbc2fbca7419e46217a42c8b30a854e",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3708,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260814T150807Z.json",
+      "file_sha256": "993035433b9af68d1b513665152721c7aca7c84b5d5dfd43d88281f5af96ea9e",
+      "imported_at": "2026-08-14T15:28:48.521000+00:00",
+      "line_count": 3713,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260816T082731Z.json",
+      "file_sha256": "54a511f6321fd0974dc4f7eaa6e3bbb412f1153b37726cc43bab05643613dd40",
+      "imported_at": "2026-08-16T09:20:25.727000+00:00",
+      "line_count": 3713,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__yngenios-windows__20260814T131627Z.json",
+      "file_sha256": "cb2fa7c8e5e7e13b6a2fa85dcfba86cd9f154a4390a60433c4d01df544a38200",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3496,
+      "source_host": "ariellas",
+      "source_repo": "yngenios-windows",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__yngenios-windows__20260814T135637Z.json",
+      "file_sha256": "6ed53dae9535cf898aceb81c29e1ef5f4d288fa8599b3d78f424602a9095a846",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3505,
+      "source_host": "ariellas",
+      "source_repo": "yngenios-windows",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__yngenios-windows__20260814T151054Z.json",
+      "file_sha256": "5ce85c4696a82152d6fe18f8af2c7e473f70e691544c715f3ebec5fa301e0bd5",
+      "imported_at": "2026-08-14T15:28:48.521000+00:00",
+      "line_count": 3734,
+      "source_host": "ariellas",
+      "source_repo": "yngenios-windows",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "ariellas__yngenios-windows__20260816T082415Z.json",
+      "file_sha256": "5ce85c4696a82152d6fe18f8af2c7e473f70e691544c715f3ebec5fa301e0bd5",
+      "imported_at": "2026-08-16T09:20:25.727000+00:00",
+      "line_count": 3734,
+      "source_host": "ariellas",
+      "source_repo": "yngenios-windows",
       "status": "applied"
     },
     {
@@ -726,6 +946,86 @@
       "file_sha256": "175a20e51d6fe3edd9820f1d258c419529c116dec9e74d88c476ec964aa5075e",
       "imported_at": "2026-08-13T11:41:16.531000+00:00",
       "line_count": 3266,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260813T200747Z.json",
+      "file_sha256": "b6a47564e025593f238a47e4171c6e83267888db00ba23909858de4d5a3d2526",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3444,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260814T001807Z.json",
+      "file_sha256": "09cf90fbcadce98f1cbb5a7ee6d7cddc2a7ae4c26dfa3b9421c18a03fe3e6122",
+      "imported_at": "2026-08-14T00:28:29.687000+00:00",
+      "line_count": 3458,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260814T102116Z.json",
+      "file_sha256": "4832887147b9082dddac76fd8448bbabaf337063ee19368165c55d926b3743d4",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3459,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260814T130608Z.json",
+      "file_sha256": "af0c834741a2c686f30410807d7023c361f58f625103bc5fa94f7bb607c6ec04",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3583,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 1,
+      "file_name": "gavriella__glpnet__20260814T131757Z.json",
+      "file_sha256": "9507df3f13280ea7acbb1a65462b147611cfc3589ebc0e1211c81e0b12dd6a25",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3584,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 5,
+      "file_name": "gavriella__glpnet__20260814T140227Z.json",
+      "file_sha256": "55a5edc531f202a1212c5fe143707908353a0cdc3339a50372739995127bef04",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3589,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260814T152625Z.json",
+      "file_sha256": "a47c7a379374f477e5c12759d085e8f2ddb69cd4860896bc95bee1ac47729c6b",
+      "imported_at": "2026-08-14T15:28:48.521000+00:00",
+      "line_count": 3713,
+      "source_host": "gavriella",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "gavriella__glpnet__20260816T083720Z.json",
+      "file_sha256": "a47c7a379374f477e5c12759d085e8f2ddb69cd4860896bc95bee1ac47729c6b",
+      "imported_at": "2026-08-16T09:20:25.727000+00:00",
+      "line_count": 3713,
       "source_host": "gavriella",
       "source_repo": "glpnet",
       "status": "applied"
@@ -1156,6 +1456,76 @@
       "file_sha256": "4637c7233352cc575f8d7ae944e2ab0bc35294d4bbfb3a6c0611eb9f6b8ef507",
       "imported_at": "2026-08-12T09:17:03.951000+00:00",
       "line_count": 2879,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 3,
+      "file_name": "olamnit__glpnet__20260813T114614Z.json",
+      "file_sha256": "396c2b51ad380e8c37f3b923494f6bc613f508975cc44bb86cf895a1bed278a5",
+      "imported_at": "2026-08-13T16:35:42.092000+00:00",
+      "line_count": 3440,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260813T163612Z.json",
+      "file_sha256": "f4bc8b7fc825155824da686824fbc2ec8a3251d5bde1e99fb111b302a5cb7b4d",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3444,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260813T202711Z.json",
+      "file_sha256": "1ed4f0d6b1e9f30abb1d991771ab1e30b6815b5e7aa576550052f9337f435be2",
+      "imported_at": "2026-08-13T23:48:42.663000+00:00",
+      "line_count": 3457,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260813T234923Z.json",
+      "file_sha256": "abb375b42039f0efdb6df4e85d33297f23721cc2cf6e175404cbd04be6711317",
+      "imported_at": "2026-08-14T00:28:29.687000+00:00",
+      "line_count": 3458,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260814T002859Z.json",
+      "file_sha256": "c6f66aa9f6c2d2aa164313857fd4227e04ca0e94986fc04c28136d59339cfc31",
+      "imported_at": "2026-08-14T13:27:20.109000+00:00",
+      "line_count": 3459,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260814T132840Z.json",
+      "file_sha256": "cb9f3f2e68fa3f040baab1957eaf89ddfaec697fe4d2951656ee77279129d721",
+      "imported_at": "2026-08-14T14:05:17.171000+00:00",
+      "line_count": 3584,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260814T140800Z.json",
+      "file_sha256": "de9d7dd244428bdf7060073a1a806f21b06ef9f5f6db643daf20791ef292a643",
+      "imported_at": "2026-08-14T14:28:21.086000+00:00",
+      "line_count": 3713,
       "source_host": "olamnit",
       "source_repo": "glpnet",
       "status": "applied"
