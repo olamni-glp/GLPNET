@@ -8,6 +8,12 @@ From repo root, one-liner (scripted REPL use — `echo -e`, never heredoc):
 echo -e 'load programs/tests/typed/issue4_bind_later.glp\n:quit' | dart run glp_runtime/bin/glp_repl.dart
 ```
 
+
+> **Host note (ariellas, verified 2026-08-16):** `dart` is not on PATH here. Prefix the
+> repro and unit-test commands with the SDK path, e.g.
+> `export PATH="/d/BSTDEV/tools/dart-sdk/bin:$PATH"` — see CLAUDE.md. The suite command
+> already carries `DART=...` for this reason.
+
 (The test program is created by the implement stage; until then, any file containing
 `procedure bind_later(_).` and `bind_later(Done?) :- wait(1000) | Done = done.`
 reproduces: "Variable mode mismatch: writer requires ↑ (produce), got ↓ (consume)".)

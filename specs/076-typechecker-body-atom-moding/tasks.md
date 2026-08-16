@@ -76,7 +76,7 @@
 
 - [X] T013 [P] Close known-issues Issue 4 in docs/known-issues.md: Status → Fixed with resolution + feature/commit reference; correct the stale prelude claim (declarations live in programs/self.glp; built-in type prelude empty) per curator doc-corrections sweep
 - [x] T014 Final verification: both suites green vs T001 baseline (zero regressions, SC-002); counts recorded in specs/076-typechecker-body-atom-moding/baseline.md; commit (files by name)
-- [ ] T015 Run quickstart.md end-to-end as written (repro line now loads; gate check shows `1.14-ruling` satisfied); fix any doc drift found
+- [x] T015 Run quickstart.md end-to-end as written (repro line now loads; gate check shows `1.14-ruling` satisfied); fix any doc drift found
 
 ---
 
