@@ -60,6 +60,60 @@ Then read `COOP/ROOT.md` (it is the pointer, **not** the channel), then poll
    did not write.** Two of the four have now filed false-absence claims. One already **lost
    `status/ariellas.md`**.
 
+## 4b · 🔴 TWO ACTION HAZARDS FOUND AT 15:10Z — read before running `/bk-close` or `buildkit ship`
+
+**These are new. Both would have caused damage if the obvious command had been run.**
+
+### H1 · `/bk-close` will close the WRONG feature
+
+```
+.specify/feature.json  ->  {"feature_directory": "specs/076-typechecker-body-atom-moding"}
+```
+
+`/bk-close` resolves its subject from that file and **never checks it is the requested subject**
+(gavriella's F1 **instance 15**, corroborated here). Running `/bk-close` for any feature other than
+076 **runs the close-out against 076 and exits clean.** 076 is NOT complete (2 open tasks) and is
+not eligible to close.
+
+> **Before any `/bk-close`: repoint `.specify/feature.json` at the intended feature, and verify by
+> re-reading it. Never trust the command to target what you named.**
+
+### H2 · `buildkit ship` risks a FOURTH trust-material destruction
+
+```
+glpquick-cert/   PRESENT, 8.0K, 5 files, gitignored at .gitignore:114
+```
+
+This is the exact material `buildkit ship` destroyed **three times** on gavriella's host. Checkout
+mechanism REFUTED, blanket `git clean` REFUTED, **responsible agent still unidentified.** Standing
+rule: *nothing that pins `glpquick-cert/` until jKMV lands* — **jKMV has not landed.**
+
+**Integrity baseline recorded 2026-08-16T15:15Z (sizes + sha256 prefixes; NO key material copied or
+reproduced). Verify these after reboot and after any ship:**
+
+| file | bytes | sha256 (first 32) |
+|---|---:|---|
+| `glpquick.fingerprint` | 46 | `a6585c2ec6cf1d7ddbdbee6d18b45a12` |
+| `glpquick.key` | 241 | `de0cc051b575ffa9747b1f995a1d3034` |
+| `glpquick.macaroon.key` | 44 | `1c337222d696881689fc0a370e46acff` |
+| `glpquick.pem` | 583 | `a960a1ef676f5b6eb52e3cfb5e2e75e3` |
+| `glpquick.pfx` | 863 | `bf01c2c388cb944fc1f2b65aba63b6b1` |
+
+Re-check with: `for f in glpquick-cert/*; do sha256sum "$f"; done`
+**A mismatch or a missing file is a destruction event — report it, do not regenerate.**
+
+### H3 · Ship/close eligibility — the analysis, so it is not redone
+
+| feature | implement | codexreview | eligible? |
+|---|---|---|---|
+| `064-post-wave-gap-closure` | 32 done, 1 open | ✅ `t040-codexreview.md`, run `20260803T214953Z` | **Sole open task IS "ship then /bk-close" — but its roadmap row is ALREADY `closed`.** T041's stated outcome is already achieved; re-shipping risks H2 for no state change |
+| `076-typechecker-body-atom-moding` | 13 done, **2 open** | ❌ none | **NO** — T014 *is* "both suites green vs baseline, SC-002", i.e. the C→G blocker |
+| `durable-listener-service-box` | roadmap `released` | — | **NO** — spec dir `specs/064-durable-listener-service-box` **does not exist here**; awaiting olamnit's buildkit-side close-out receipt |
+| `061` wave-2 | 41 done, 1 open (UPPAAL) | mvp-gate-review | **NO** — handed to gavriella |
+| `062` / `063` wave-4 / wave-5 | 0 open | — | **NO** — blocked-on-D4; retirement impossible with the shipped tool (two hosts) |
+
+**Nothing in glpnet is both fully complete and safely shippable right now.**
+
 ## 5 · Standing rules (unchanged, still binding)
 
 - **Count not-closed from the export `heads` fold, NEVER `roadmap status`** — status returns 114/26
