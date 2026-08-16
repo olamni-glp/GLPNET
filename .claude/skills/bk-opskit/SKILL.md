@@ -1,7 +1,7 @@
 ---
 name: "bk-opskit"
-description: "BK-OpsKit: advisory entry point + integration document for porting OpsKit into buildkit. Explains what BK-OpsKit is and its do-first role in the OpsKit-into-buildkit epic, and resolves the on-disk path to the authoritative bk-opskit-integration.md (the component→target map, target layout + interface contracts + naming convention, the canonical-base-plus-rebase merge contract, and the recorded-but-open OD-001 resync decision). A stub: it ports no OpsKit behavior. Advisory & read-only — never switches branches, edits files, blocks a merge, or auto-invokes a buildkit-* command (FR-011)."
-argument-hint: "[info|doc|where] or a question about the OpsKit→buildkit integration; [--sections] [--json] [--project-root <path>]"
+description: "BK-OpsKit: buildkit-native operator-session + AWS VPC operations toolkit (spec-054 merge). Named operator contexts (init/list/show/switch — credential POINTERS only, never material), read-only AWS discovery over the 54-leaf resource registry (describe/get/list/sts only; posture + refusal gates exit 2 and never auto-remediate), a Codex-CLI code-review loop with persistence + BreenLake trends, the baseline AWS tagging schema (load/certify/validate — pure, no-event validate hot path), PGLite cluster-upgrade tooling, and the advisory info/doc/where surfaces over the authoritative bk-opskit-integration.md. State is additive in buildkit's PGlite catalog; every output path is secret-redacted. Advisory — never switches branches, blocks a merge, or auto-invokes a buildkit-* command (FR-027)."
+argument-hint: "[init <name> --vpc-id --region --account-id | list | show <name> | switch <name> | discover [--tier 1-4|--complete] [--confirm] | codexreview | tagging load|certify|validate | pglite-upgrade <verb> | info | doc [--sections] | where] [--json]"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
   author: "buildkit"
@@ -20,48 +20,72 @@ $ARGUMENTS
 
 ## What this does
 
-`/bk-opskit` is the advisory entry point for **BK-OpsKit** — the buildkit-native home for the
-OpsKit operator-session + AWS-VPC-operations toolkit. It is item #1 of the OpsKit-into-buildkit
-epic: it stands up the skeleton and points at the single authoritative integration document,
-`bk-opskit-integration.md`. It **ports no OpsKit behavior yet** — that is the two downstream
-prelim-refactor features.
+`/bk-opskit` is **BK-OpsKit** — the buildkit-native home for the OpsKit operator-session +
+AWS-VPC-operations toolkit, fully merged and hardened by spec-054 (R4 component architecture:
+`cli/`, `kernel/`, `registry/`, `components/{discover,tagging,codexreview,init,…}`).
 
-The integration document is the system of record. It carries:
+It carries five capability families, each also reachable as its own sub-skill
+(`/bk-opskit-init`, `/bk-opskit-discover`, `/bk-opskit-codexreview`, `/bk-opskit-tagging`,
+`/bk-opskit-envset`):
 
-- the **exhaustive component→target map** (every OpsKit public module, CLI subcommand, `opskit-*`
-  skill, and public callable — mapped to a target or marked out-of-scope with a reason),
-- the **target module + skill layout** and the **mechanical naming convention**,
-- the **public interface contracts** down to the public-callable level,
-- the **canonical-base-plus-rebase merge contract** (Gavri's contribution lands first; OLAMNIT/
-  Marcelle rebases onto it), and
-- the **recorded-but-unresolved OD-001 resync decision** (gated on GitHub-mechanism research).
+- **Operator contexts** — named operator/VPC/region/account bindings that drive
+  connect/assess/discover. Credential *pointers* at most; credential material is never stored,
+  echoed, or persisted.
+- **Discovery** — read-only AWS resource discovery across the 54 registry-dispatched resource
+  leaves (per-VPC and per-account), tiered 1–4, with posture gates that refuse (exit 2) rather
+  than remediate.
+- **Codexreview** — local Codex CLI code review with cached verdicts, secret-scan refusal on
+  the diff, and BreenLake trend emission.
+- **Tagging** — the baseline AWS asset tagging schema: `load` a certified schema, `certify` a
+  baseline, `validate` assets against it (pure, side-effect-free hot path; DB-backed rule kinds
+  degrade to an explicit `org_enum_unavailable` finding when the baseline is absent).
+- **PGLite upgrade** — the gated cluster-upgrade flow (clusters / quiesce-check / snapshot /
+  backup / dry-run / revendor / restore / verify / rollback).
 
-`breenlake` is treated as an **external dependency boundary** — characterised, not ported.
+The advisory `info` / `doc` / `where` surfaces still resolve the authoritative
+`bk-opskit-integration.md` (the component→target map and merge contract).
 
 ## How to run it
 
 ```
-buildkit-opskit info     # what BK-OpsKit is + its do-first role  (advisory; auto-invokes nothing)
-buildkit-opskit doc      # resolve + print the path to bk-opskit-integration.md
-buildkit-opskit doc --sections   # also print the document's section index
-buildkit-opskit where    # skeleton package path + registered surfaces
+buildkit-opskit init <name> --vpc-id <vpc-…> --region <r> --account-id <12-digit>
+buildkit-opskit list
+buildkit-opskit show <name>
+buildkit-opskit switch <name>
+buildkit-opskit discover --tier 1 --confirm
+buildkit-opskit codexreview
+buildkit-opskit tagging validate
+buildkit-opskit pglite-upgrade clusters
+buildkit-opskit info
+buildkit-opskit doc --sections
+buildkit-opskit where
 ```
 
-All subcommands accept `--json`; `info`/`doc` accept `--project-root <path>` to override doc
-resolution. From a coding agent, `/bk-opskit` reaches the same surface.
+Line by line: create an OpsContext · list configured contexts · one context's bindings +
+posture · switch the active context · read-only discovery (tiers 1-4, or `--complete`) ·
+Codex review of the working diff · validate assets against the certified baseline ·
+cluster-upgrade tooling · what BK-OpsKit is · the integration document's path (+ section
+index) · package path + registered surfaces.
 
-## Exit codes
+Most subcommands accept `--json`; `info`/`doc` accept `--project-root <path>`. From a coding
+agent, `/bk-opskit` reaches the same surface.
 
-- `0` — success (including the advisory "here is the doc / here is the role").
-- `1` — usage error / invalid arguments.
-- `2` — environment error (e.g. `bk-opskit-integration.md` cannot be located).
+## Exit codes (ratified S4 contract)
 
-## Boundaries (do NOT) — FR-011, Constitution I & VII
+- `0` — success.
+- `1` — usage error / malformed input (bad flags, malformed schema name, unparseable edits).
+- `2` — refusal or environment error (posture gate, loose permissions, missing doc/context,
+  AWS posture override malformed inputs excepted per the S4 re-map).
+
+## Boundaries (do NOT) — FR-027, Constitution I & VII
 
 - Advisory only: it auto-invokes **no** `/bk-*` or `buildkit-*` pipeline command.
-- It switches **no** branch, edits/stages/commits **no** file, and blocks **no** merge.
-- It performs **no** OpsKit behavior — no AWS calls, no environment mutation, no port. It is a stub.
-- It writes **no** secret to a durable sink: any echoed text is secret-redacted first (FR-012).
+- It switches **no** branch, edits/stages/commits **no** repo file outside its declared
+  outputs, and blocks **no** merge.
+- AWS interaction is **read-only** (describe/get/list/sts); posture/refusal gates refuse with
+  exit 2 and never auto-remediate.
+- It writes **no** secret to a durable sink: every output path is secret-redacted first
+  (FR-024); credential material is never persisted (credential pointers only).
 
 **Registry upkeep (spec-028 FR-004)**: run
 `python -m buildkit_cli.registry touch --tool buildkit-opskit` from the project root. It marks the
