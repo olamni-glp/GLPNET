@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 # Feature Specification: Occurs-checked substitution pipeline (compiler bind-time occurs-check)
 
-**Feature Branch**: `078-occurs-checked-substitution`
+**Feature Branch**: `080-occurs-checked-substitution`
 **Created**: 2026-08-14
 **Status**: Draft — 🔴 BLOCKED on a §1.14 language-authority decision by Udi (see Clarifications / FR-002)
 **Input**: User description: "Occurs-checked substitution pipeline (compiler bind-time occurs-check) … the core question (UnifyFail vs CompileError when the occurs-check fires) is Udi's express decision to make. The spec MUST present both options as an OPEN clarification for Udi and MUST NOT decide the semantics."
