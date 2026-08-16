@@ -76,3 +76,54 @@ process survives, so the residue is not a live listener.
 regressions relative to the pre-change baseline") is therefore **not signed off** here:
 every type-checker-relevant section is green and at the expected counts, but the suite as
 a whole is 549/550 and the cross-runtime link defect is open and needs a decision.
+
+## ✅ SC-002 SIGNED — 2026-08-16T20:25Z (T014 complete)
+
+**The C→G failure was host-state contamination. It does not reproduce on a clean host.**
+
+Isolated re-run first, on a host verified free of `glp_repl` / `beam` / `erl` / `gleam` /
+`dotnet` processes and with no concurrent suite:
+
+```
+bash test/parity/cross_runtime/link_both_ways.sh
+  PASS: pc_integers   [G→C]      PASS: pc_integers   [C→G]
+  PASS: bidirectional [G→C]      PASS: bidirectional [C→G]
+  US5 link_both_ways: PASS=4 FAIL=0        EXIT=0
+```
+
+Then the **full** suite (the isolated script proves attribution; only the full suite signs
+SC-002):
+
+```
+DART=/d/BSTDEV/tools/dart-sdk/bin/dart.exe bash test/run_all_tests.sh
+  Section A: 221 passed, 0 failed        (= baseline 221)
+  Section B: 112 passed, 0 failed        (= baseline 110 + issue4_bind_later + head_flip_general)
+  Section C:  51 passed, 0 failed        (= baseline  50 + head_flip_negative)
+  Section I: link_both_ways 4/4 · round_trip 12/12 · mismatch 2/2
+  Total: 550 | Passed: 550 | Failed: 0   ALL TESTS PASSED!   (0 FAIL lines)
+```
+
+Dart unit tests (T014 requires **both** suites):
+
+```
+glp_runtime> dart test   →  460 passed / 5 skipped / 5 failed
+  baseline was            →  441 passed / 5 skipped / 5 failed
+  441 + 19 (new body_atom_licensing tests) = 460  ✓
+```
+
+The 5 failures are **identical to baseline, verified by name** — not merely equal in count:
+
+- `test/compiler/partial_evaluator_test.dart` — guard validation ×2
+- `test/module/module_hierarchy_test.dart` — self.glp chain discovery ×3
+
+**⇒ Zero regressions on both suites. SC-002 SIGNED.**
+
+### Why the earlier run was red — root cause, for the record
+
+Two unified-suite runs went concurrent (a killed background run orphaned its process tree);
+Git-Bash hit `fork: Resource temporarily unavailable` / `0xC0000142`; the orphaned trees were
+force-killed. The residue broke the C→G socket only. **Nothing in the code changed between the
+red and green runs** — `glp_repl.exe` and `glp_gleam/build/` still carry mtime 2026-08-06.
+
+**Standing rule confirmed by this episode: never start a second suite run while one is live,
+and never kill a running suite** — an orphaned tree is exactly what produces this failure.
