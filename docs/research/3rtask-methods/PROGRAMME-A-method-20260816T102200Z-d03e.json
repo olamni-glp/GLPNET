@@ -1,0 +1,106 @@
+{
+ "elements": [
+  {
+   "id": "E1",
+   "kind": "procedure",
+   "text": "Each builder investigates only its assigned evidence slice by name (git-integration-topology -> builder-1, coop-board-substrate -> builder-2, scheduler-flow-source -> builder-3) and MUST NOT read files or run commands outside that slice's declared source list; any cross-slice read invalidates that builder's findings for this cycle. Cross-verification of any singleton claim (a claim only one builder's slice-evidence supports) against sibling-slice evidence is NOT performed by builders -- builders remain strictly BLIND to each other's material for the whole cycle. That cross-verification happens exclusively at the Critic's adjudication step (see E17), which is the one NON-BLIND point in the method."
+  },
+  {
+   "id": "E2",
+   "kind": "source_partition",
+   "text": "builder-1 (git-integration-topology) is restricted to git-only commands against D:/BSTDEV/research/buildkit: git branch -a, git merge-base --is-ancestor <branch> develop|main, git log --oneline develop..<branch>, git show --stat <commit> where <commit> may be f11a432b, bc203794, OR ANY OTHER commit SHA the builder discovers via git log/git branch/git worktree list/git reflog output within this slice (git show --stat is authorized against any commit the builder finds this way, not only the two named seed commits), git worktree list, git reflog -- no file reads outside a `git show --stat` output, and no reads of D:/coop or buildkit_cli source files. Builder-1 is ADDITIONALLY authorized to read FULL COMMIT DIFF CONTENT via 'git show <sha>' (not merely 'git show --stat') for ANY commit it discovers, because E15's confirmation test requires diff-content evidence that a commit introduces a code path writing the literal ready state."
+  },
+  {
+   "id": "E3",
+   "kind": "source_partition",
+   "text": "builder-2 (coop-board-substrate) is restricted to filesystem enumeration and content reads under D:/coop/*/sched/** (caps/, calendar/, ops/, cards/, views/, signals/) -- directory listing and content reads of ANY file under these roots are authorized regardless of serialization format (JSONL, single-record-per-file, or otherwise); no git commands, no git metadata reads (e.g. .git/, git log/show/blame/reflog output), and no buildkit_cli source reads."
+  },
+  {
+   "id": "E4",
+   "kind": "source_partition",
+   "text": "builder-3 (scheduler-flow-source) is restricted to reading current-working-tree Python source under D:/BSTDEV/research/buildkit/src/buildkit_cli/scheduler/__main__.py, .../scheduler/engine/**, buildkit_cli/flow/__main__.py, and .../flow/** -- no git history commands (log/show/blame/reflog) and no reads under D:/coop."
+  },
+  {
+   "id": "E5",
+   "kind": "question",
+   "text": "For each branch listed by `git branch -a` in D:/BSTDEV/research/buildkit, EXCLUDING symbolic remote HEAD pointer entries (any line matching `origin/HEAD -> origin/<branch>` or otherwise containing ` -> `, which are aliases to another listed branch and not independent tips -- skip these, do not evaluate them as branches), is that branch's tip an ancestor of the integration base per `git merge-base --is-ancestor <branch> <resolved-integration-base-ref>`? The integration base MUST be resolved to a single fully-qualified ref, tested in this exact precedence order via `git show-ref --verify --quiet <ref>`, stopping at the first success: (1) refs/heads/develop, (2) refs/remotes/origin/develop, (3) refs/heads/main, (4) refs/remotes/origin/main. The builder MUST use the resolved fully-qualified ref (never the bare name `develop` or `main`) as `<resolved-integration-base-ref>` in every `git merge-base --is-ancestor` invocation, and MUST record that exact fully-qualified ref string plus the show-ref exit status that selected it. Report a per-branch yes/no table with the exact command and exit status used for each, plus one line stating the resolved fully-qualified integration-base ref."
+  },
+  {
+   "id": "E6",
+   "kind": "question",
+   "text": "Per `git show --stat f11a432b` and `git show --stat bc203794`, do either of these commits touch a file path containing any of: 'sched', 'scheduler', 'flow', 'promote', 'promotion', 'ready'? List the exact touched file paths verbatim from the --stat output."
+  },
+  {
+   "id": "E7",
+   "kind": "question",
+   "text": "Does `git worktree list` or `git reflog` surface any commit or branch tip that is NOT reachable from the integration base resolved in E5 (e.g. only present in a worktree checkout or a dangling reflog entry)? For every such candidate SHA, the builder MUST (a) run `git merge-base --is-ancestor <sha> <integration-base>` to confirm non-reachability, citing the exit status, and (b) run `git show --stat <sha>` (authorized for any discovered commit per E2) to check whether its --stat output touches a file path containing any of the E6 substrings ('sched','scheduler','flow','promote','promotion','ready'). Only a candidate satisfying BOTH (a) confirmed non-reachable AND (b) a matching touched path counts as evidence of an unmerged promotion/readiness writer -- worktree/reflog presence alone establishes neither reachability nor writer relevance. Cite the exact worktree path or reflog SHA, both command outputs, or state that none exists. Non-reachability PLUS a path-name match is explicitly NOT sufficient evidence of a promotion/readiness writer; such a candidate must additionally satisfy E15's diff-content functional test, or be reported as inconclusive."
+  },
+  {
+   "id": "E8",
+   "kind": "question",
+   "text": "For every <channel>/sched root found under D:/coop, which of the subdirectories caps/, calendar/, ops/, cards/, views/, signals/ exist (present/absent), listed per channel by name?"
+  },
+  {
+   "id": "E9",
+   "kind": "question",
+   "text": "For every <channel>/sched root under D:/coop, what is the total count of op records (defined as: one op record = one JSONL line in ops/*) and the total count of cards, reported per channel? A card's counting unit is defined by rule: if cards/* files are JSONL-formatted with one record per line, one card = one JSONL line; if instead cards/* stores one card per discrete file (no internal JSONL splitting), one card = one file. The builder MUST first inspect the actual on-disk format of cards/* for that channel and apply whichever rule matches observed reality -- do not assume. If a channel's cards/* storage does not cleanly match either rule (e.g. mixed, nested, or multi-record-per-file), the builder MUST NOT silently pick a convention: it must report the counting unit it actually observed (e.g. 'N files, each containing M records' with a per-file or itemized breakdown) alongside the count, so the unit is auditable. Content reads of cards/* files -- whether JSONL or discrete single-record files -- are authorized under E3's slice boundary regardless of serialization format; the restriction in E3 is on which directories/roots may be read (D:/coop/*/sched/** only, no git, no buildkit_cli source), not on file format within that scope."
+  },
+  {
+   "id": "E10",
+   "kind": "question",
+   "text": "For every <channel>/sched root under D:/coop, how many distinct actor-id spellings appear across caps/ records, and how many cards (using the card-counting unit established per E9) have a state field whose value is exactly 'ready'? The actor id is the value of the top-level `actor` field of each caps/ JSONL record (exact case-sensitive string comparison); if a channel's records instead use `actor_id` and have no `actor` field, use `actor_id` for that channel and note which field name was actually used. Malformed records (invalid JSON, or valid JSON missing both `actor` and `actor_id`) MUST be excluded from the actor-id count and separately reported as a malformed-record count per channel, never silently dropped or counted as a blank actor id. Duplicate records (identical actor id and identical remaining fields, appearing more than once -- e.g. from a replayed CRDT op-log) count as ONE distinct actor-id spelling, not one per occurrence; distinctness is by spelling, not by record count. The ready-count may legitimately be zero -- report the number, not a boolean. As with E9, content reads of caps/ and cards/* files under D:/coop/*/sched/** are authorized under E3 regardless of serialization format (JSONL or discrete per-record files); only the root/directory boundary and the git/buildkit_cli exclusions in E3 apply, not file format."
+  },
+  {
+   "id": "E11",
+   "kind": "question",
+   "text": "Enumerate every distinct call site in the current working tree of buildkit_cli/scheduler/** and buildkit_cli/flow/** that appends or writes an op/card record (e.g. any function that appends to an op log or writes card state). For each site give file:line and the literal state-value string it writes, if any."
+  },
+  {
+   "id": "E12",
+   "kind": "question",
+   "text": "In the current working tree of buildkit_cli/scheduler/** and buildkit_cli/flow/**, what does the 'onboard' code path create -- which record kind(s) (cap/op/card/other) and with what initial state value -- cited by file:line?"
+  },
+  {
+   "id": "E13",
+   "kind": "question",
+   "text": "Across every append/write call site enumerated in E11 and E12, does any shipped code path (present in the current working tree, non-test, reachable from a CLI entry point in scheduler/__main__.py or flow/__main__.py) write or transition a card's state field to the literal value 'ready'? Answer yes/no, and list file:line evidence for EVERY candidate site examined, including sites that write other state values but never 'ready'."
+  },
+  {
+   "id": "E14",
+   "kind": "rubric",
+   "text": "A negative answer (e.g. 'no such commit touches a promotion path', 'no ready-state card exists', 'no code path writes ready') is valid evidence of absence ONLY when the builder cites the exhaustive search performed within its slice (every branch checked for E5/E7, every channel enumerated for E8-E10, every append/write call site enumerated for E11/E13) and states the resulting empty set explicitly. An unsupported 'I found nothing' with no cited search scope is INVALID and must be flagged by the Critic as insufficient, not accepted as evidence of absence."
+  },
+  {
+   "id": "E15",
+   "kind": "rubric",
+   "text": "The candidate root cause -- 'promotion/readiness-writer code exists but lives on a branch unmerged into the integration base' -- is a claim about FUNCTIONAL integration, not mere path-name matching, and its disposition requires cross-checking builder-1's git findings (E5/E6/E7) against builder-3's source findings (E11-E13). CONFIRMED (root cause holds) only when ALL of: (a) per E6/E7, a commit on a branch that is NOT an ancestor of the integration base (per E5's is-ancestor result) is shown, from that commit's own diff content (not merely its --stat file-path list), to introduce or modify a code path that writes the literal state value 'ready' to a card/op record; AND (b) that same code path -- the specific function/call site identified in (a) -- is shown, per E11-E13, to be absent from the integration base (i.e. no equivalent call site reachable from a CLI entry point in the current working tree writes 'ready'). Together (a) and (b) show the only candidate ready-writer is both unmerged and functionally missing from the integrated tree. REFUTED (root cause does not hold) when EITHER, with equally demanding positive evidence: (a) the branch carrying the commit identified via functional diff-content evidence in the CONFIRM test IS an ancestor of the integration base per E5, so the functionally-verified ready-writer is not actually unmerged; OR (b) per E11-E13, a call site reachable from a CLI entry point in the current working tree (already an ancestor of the integration base) is shown, from its own source content, to actually write the literal value 'ready' to a card's state field -- i.e. a functional, integrated readiness writer already exists, so an unmerged branch cannot be the cause of starvation. A path-name substring match alone (E6/E7 touched-path evidence with no diff-content confirmation that the touched code actually writes 'ready') is INSUFFICIENT to either confirm or refute this root cause under either branch of the test above and supports NEITHER verdict; it must be reported as inconclusive, explicitly flagged as 'path match only, no functional confirmation', pending diff-content or source-content evidence. In either REFUTE case, starvation must be attributed elsewhere (substrate emptiness per builder-2's E8-E10, or an absent write-path per builder-3's E11-E13), and the refutation must be reported explicitly rather than the run silently re-confirming the original hypothesis. INTEGRATION BASE DEFINITION (binding): the integration base is the fully-qualified git ref resolved in E5 (refs/heads/develop, else refs/remotes/origin/develop, else the main equivalent) — it is NEVER builder-3's current working tree, which is an unmerged checkout and carries no integration status. Builder-1 establishes presence/absence in the integration base from git content at that ref alone. Builder-3's working-tree findings describe only what is present in an unmerged checkout and may corroborate but NEVER establish integration."
+  },
+  {
+   "id": "E16",
+   "kind": "budget",
+   "text": "Each builder is bounded to its own declared evidence-slice source list only (no exploratory search of the full repo, filesystem, or git history beyond what is listed in E2/E3/E4). E14's exhaustive-coverage requirement is MANDATORY and ALWAYS WINS over the citation budget: every branch in scope for E5/E7, every channel in scope for E8-E10, and every append/write call site in scope for E11/E13 MUST be checked and cited regardless of count -- exhaustive coverage of these enumerated, closed sets is never truncated for budget reasons. The 20-discrete-citation target applies ONLY to discretionary follow-up beyond that mandatory enumeration (e.g. sampling extra JSONL records for color, or chasing an optional tangential lead within the declared slice): once the mandatory enumerated sets are fully cited, the builder should stop further discretionary exploration at roughly 20 additional citations, but must never omit a required citation from the mandatory sets to stay under 20. If the mandatory enumeration itself exceeds 20 citations, the builder MUST exceed the budget and complete it, explicitly noting the overrun rather than truncating coverage."
+  },
+  {
+   "id": "E17",
+   "kind": "procedure",
+   "text": "Because no builder may read outside its declared slice (E2/E3/E4), cross-verification of a singleton claim (a claim corroborated by only one builder's cited evidence) happens exclusively at the Critic's adjudication step, and only there. The Critic is NOT blind: it receives all three builders' full cited evidence (commands+output, file:line citations, JSONL citations) and, for any singleton claim material to a root-cause determination (per E15), checks whether that claim's premises are corroborated, contradicted, or simply unaddressed by the OTHER builders' already-recorded citations -- e.g. cross-checking builder-1's branch/commit findings against builder-3's write-site findings as E15 requires. The Critic MUST NOT re-route one builder's raw findings to another builder for a second blind pass -- doing so would violate the disjoint-slice blindness that the partition in E2/E3/E4 depends on, and would let one builder's framing contaminate another's independent read of its own slice. If the Critic's cross-check of already-recorded citations is insufficient to adjudicate a claim (e.g. the fact needed to corroborate or refute it falls outside all three declared slices and was never captured by any builder), the Critic MUST ESCALATE that claim rather than dispatching a new blind query itself; the Planner may then expand the relevant slice's source list for the next cycle."
+  }
+ ],
+ "source_partition": {
+  "git-integration-topology": "builder-1",
+  "coop-board-substrate": "builder-2",
+  "scheduler-flow-source": "builder-3"
+ },
+ "questions": [
+  "For each branch listed by `git branch -a` in D:/BSTDEV/research/buildkit (excluding symbolic remote HEAD aliases), is that branch's tip an ancestor of the deterministically-resolved integration base (develop, falling back to main if develop does not exist) per `git merge-base --is-ancestor <branch> <integration-base>`?",
+  "Do commits f11a432b and bc203794 (per `git show --stat`) touch any file path containing 'sched', 'scheduler', 'flow', 'promote', 'promotion', or 'ready'?",
+  "Does `git worktree list` or `git reflog` surface any promotion/readiness-writer commit or branch not reachable from the integration base, confirmed by both a non-ancestor check and a matching `git show --stat` touched path?",
+  "For every <channel>/sched root under D:/coop, which of caps/ calendar/ ops/ cards/ views/ signals/ exist?",
+  "For every <channel>/sched root under D:/coop, what are the total op-record (JSONL-line) and card counts, using the card-counting unit that matches the actually-observed on-disk format?",
+  "For every <channel>/sched root under D:/coop, how many distinct actor-id spellings exist in caps/ (by the defined actor/actor_id field, excluding malformed records, deduped by spelling not occurrence), and how many cards have state exactly 'ready'?",
+  "Enumerate every op/card-append call site in buildkit_cli/scheduler/** and buildkit_cli/flow/** in the current working tree, with the literal state value each writes.",
+  "What does the onboard code path in scheduler/flow create, and with what initial state value?",
+  "Does any shipped code path in scheduler/flow write or transition a card's state to the literal value 'ready'?"
+ ],
+ "rubric_id": "research-review"
+}
