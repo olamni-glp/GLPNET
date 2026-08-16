@@ -512,6 +512,16 @@
     },
     {
       "applied_lines": 0,
+      "file_name": "ariellas__glpnet__20260816T121141Z.json",
+      "file_sha256": "9f45e87a275d8006139e4afcda9e0b3921a50981e1b02c8ed8a7da1d3b11724b",
+      "imported_at": "2026-08-16T12:32:16.648000+00:00",
+      "line_count": 3715,
+      "source_host": "ariellas",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
       "file_name": "ariellas__yngenios-windows__20260814T131627Z.json",
       "file_sha256": "cb2fa7c8e5e7e13b6a2fa85dcfba86cd9f154a4390a60433c4d01df544a38200",
       "imported_at": "2026-08-14T13:27:20.109000+00:00",
@@ -1556,6 +1566,16 @@
       "file_sha256": "0fb13afe800dddb80787b4dd704dbbf8f94c77f3212638e1734339d81e98f252",
       "imported_at": "2026-08-16T11:15:10.781000+00:00",
       "line_count": 3713,
+      "source_host": "olamnit",
+      "source_repo": "glpnet",
+      "status": "applied"
+    },
+    {
+      "applied_lines": 0,
+      "file_name": "olamnit__glpnet__20260816T111705Z.json",
+      "file_sha256": "ec4673511cc7c9f620b7204342bfff7fc32aae54ce51fbcf375f1f887a85855b",
+      "imported_at": "2026-08-16T12:32:16.648000+00:00",
+      "line_count": 3715,
       "source_host": "olamnit",
       "source_repo": "glpnet",
       "status": "applied"
