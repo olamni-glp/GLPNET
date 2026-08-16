@@ -215,6 +215,139 @@ movement is self-generated is not reporting work — it is reporting itself.** S
 
 ---
 
+---
+
+# TIER 5 — observed but not previously raised (completeness pass, 19:20Z)
+
+These were measured during this session and recorded in findings, but never put to the engineer as
+decisions. Raising them so the register is actually complete.
+
+## glpnet#D17 · Import refusals are silent, and growing fast
+
+**Measured on this host: 4 350 refused entities** — 2 980 `foreign`, 1 370 `untagged` — **up from
+2 470 five hours earlier.** `import` reports files, lines, skips and licence warnings; **it never
+reports refusals.** They go to `.import-refused.json` and the command reports success.
+`replay --verify` then returns ✓, because HEAD matches the journal it was *allowed* to build.
+
+**Tension.** `foreign` refusal is arguably correct policy (don't merge another project's rows);
+`untagged` (1 370, `declared_project: null`) is most likely pre-tagging legacy being dropped on the
+floor. **Neither is visible in any surface a human reads.**
+
+**Recommendation:** `import` prints refusal counts by reason in normal output; `replay --verify`
+refuses ✓ while unexplained refusals stand. **Separately, rule on the 1 370 untagged** — legacy to
+adopt, or genuinely discardable?
+
+## glpnet#D18 · `--notes` has no `--notes-file`, so rows become permanently unappendable
+
+`edit-feature --notes` resends the **whole body** on the command line against a 32 767-char OS cap.
+At the cap a row cannot be appended, corrected, or even typo-fixed, **because any edit requires
+passing the entire body back**. gavriella's superset row is ~2 600 chars from that ceiling.
+
+**Tension.** The notes field is a **summary** surface being used as an **archive** — by all three
+lanes, including me.
+
+**Recommendation:** add `--notes-file PATH` (or accept `-`), and move long-form analysis to
+git-tracked documents with the row carrying a pointer. glpnet is safe today (largest row 3 089 B,
+9.4 % of cap) — this is a fleet fix, not a glpnet one.
+
+## glpnet#D19 · Missing `.license` sidecars are a latent re-scan bomb
+
+**76 exports on the glpnet leg have no `.license` sidecar** (+16 on `ariellas#olamnit-assistant`).
+They are quiet **only because they are `skipped (already applied)` and not re-scanned.**
+
+**Tension — and this is the sharp part, from `ariellas#olamnit-assistant` `191500Z`:** anything
+forcing a re-scan — **`--rebuild-manifest`, a catalog restore, or a fresh clone** — walks every one
+of them back through the signature path, **which is exactly where `skipped_untrusted` is minted**.
+On a repaired schema that is a skip; on today's schema it is a **CheckViolation that aborts the whole
+import**.
+
+**Recommendation: fix the D13 schema BEFORE anyone runs `--rebuild-manifest` or restores a catalog.**
+The ordering is not obvious from the crash alone and it is easy to do in the wrong order while
+trying to *repair* the crash.
+
+## glpnet#D20 · Spec-number ALLOCATION, not just citation
+
+`<repo>#<nnn>` (ruled) fixes *citation*. **Allocation remains uncoordinated:** `078` collided across
+two lanes; `031` is a **three-way collision spanning two repos**. Each host picks "next free" from
+its own checkout.
+
+**Recommendation:** either a shared allocator, or an explicit rule that numbers are **repo-local and
+never fleet-unique** — with `<repo>#<nnn>` mandatory everywhere. The second is nearly free and is
+probably right; the current state is neither.
+
+## glpnet#D21 · jKMV root cause is still unidentified after three destructions
+
+`glpquick-cert/` has been destroyed **three times** by `buildkit ship`. Checkout mechanism REFUTED,
+blanket `git clean` REFUTED, **responsible agent still unidentified.** The mitigation is a hold
+(D5), which is not a fix.
+
+**Tension.** A hold that blocks shipping indefinitely is a growing cost, and **no investigation is
+currently assigned.**
+
+**Recommendation:** assign the investigation, or accept the hold as permanent and change the
+workflow (e.g. move trust material out of the repo entirely).
+
+## glpnet#D22 · Programme B is DRAFT — who red-teams it, and when?
+
+Its own status: *"DRAFT — not frozen. Freeze only after a blind planning-Critic red-team on the host
+that runs it."* @olamnit owns the curation seam.
+
+**Recommendation:** confirm olamnit performs the red-team-then-freeze before any B run. **Nobody
+should run a DRAFT method and report its output as a curated result.**
+
+## glpnet#D23 · Six 3rtask method documents across five channels, no index
+
+`buildkit/methods` (×2), `programmes`, `olamnit/artifacts`, `mstack/analysis` (×3),
+`tefl/methodology`. **Three lanes independently asked for artifacts that already existed** — and I
+twice reported them absent from guessed paths (instance 19).
+
+**Tension.** This is a **discovery** problem misdiagnosed all session as a **coordination** problem.
+
+**Recommendation:** one index file at a ruled canonical path, listing every method artifact with its
+channel. Cheaper than one more round of asking.
+
+## glpnet#D24 · Two audit items deferred and never decided
+
+From `flow-gate-audit-2026-08-14.md`: **T3** (`starved` fires only on zero proposals — re-tune once
+T1/T2 land) and **T5** (a single `held_out` roll-up with per-reason counts, so hold-out is a
+*reported state* rather than an absence). Both remain unowned.
+
+**Recommendation:** fold both into the W5 gate-honesty wave — same class, same owner.
+
+## glpnet#D25 · `gavriellas` (trailing s) — an identity split nobody has ruled
+
+`ariellas#olamnit-assistant` measured export files under **`gavriellas__olamnit-assistant__*`** —
+a trailing-s spelling — and reports the **round barrier counts 4 hosts against a 3-host roster.**
+
+**Tension.** This is `glpnet#Q7` (actor-id grammar) reappearing in a *different* surface — export
+filenames rather than board `caps/` — and my Q7 ruling did not cover filenames.
+
+**Recommendation:** extend the canonical `<host>` grammar to export filenames, and rule whether the
+`gavriellas__*` exports are adopted or orphaned. **A barrier that counts 4 of 3 will never close.**
+
+## glpnet#D26 · WP intake schema must be agreed BEFORE anyone writes a WP
+
+Engineer **R3** (via `ariellas#olamnit-assistant`): *build WP intake with an **agreed cross-host
+schema**; keep promotion human-clocked; **no auto-promoter**.*
+
+**Tension.** Three lanes are poised to write WPs. **Without the agreed schema first we repeat
+`ospark`** — 12 `allocate` ops with `workstation_id=null`, routing to no lane.
+
+**Recommendation:** agree the schema on-channel before any lane writes a WP. This is the one item
+where acting *first* is strictly worse than waiting.
+
+## glpnet#D27 · The sync chain does not fail closed
+
+Distinct from D13's one-line fix. **After the import crashed, `reconcile`, `dedupe`, `export` and
+`replay --verify ✓` all reported green.** `ariellas#olamnit-assistant` confirms the signature is
+indistinguishable: *"if the crash were present here, all four of those lines would have looked
+identical."*
+
+**Recommendation:** a failed step must fail the round. **`replay --verify ✓` must not be the
+headline of a round whose import aborted** — that is the false-green class in the sync chain itself.
+
+---
+
 ## Summary — what needs a word from the engineer
 
 | # | Decision | Cost of delay |
