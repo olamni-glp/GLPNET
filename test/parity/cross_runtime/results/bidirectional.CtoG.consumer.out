@@ -2,7 +2,7 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: daabe346 codify: D1/D4 are CLASS-B wiring gaps; 3-way 3rtask merge-schema defect
+Build: ace23df8 roadmap: sync round 20260816T201957Z
 Compiled: 2026-02-01 (GlpEngine refactor)
 Working directory: D:\BSTDEV\research\glp\glpnet
 
@@ -12,88 +12,7 @@ Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
 
 GLP> ✓ Loaded: programs/tests/link/bidi.glp
-GLP> → failed
-Error: System.IO.IOException: Unable to write data to the transport connection: An established connection was aborted by the software in your host machine..
- ---> System.Net.Sockets.SocketException (10053): An established connection was aborted by the software in your host machine.
-   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
-   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
-   at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
-   at System.Net.Sockets.NetworkStream.WriteAsync(ReadOnlyMemory`1 buffer, CancellationToken cancellationToken)
-   at GlpRuntime.Link.Transports.TcpEndpoint.SendBytesAsync(ReadOnlyMemory`1 frame, CancellationToken ct) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\transports\TcpTransport.cs:line 125
-   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
-   at GlpRuntime.Link.Transports.TcpEndpoint.SendBytesAsync(ReadOnlyMemory`1 frame, CancellationToken ct)
-   at GlpRuntime.Link.Primitives.LinkEgress.ShipGround(HeapFCP heap, LinkHandle handle, Term msg) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEgress.cs:line 60
-   at GlpRuntime.Link.Primitives.LinkEstablish.OnOutboundBind(GlpRuntimeEngine rt, LinkRuntime link, LinkHandle handle, Term bound) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEstablish.cs:line 148
-   at GlpRuntime.Link.Primitives.LinkEstablish.<>c__DisplayClass3_0.<ArmEgress>b__0(Term bound) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEstablish.cs:line 123
-   at GlpRuntime.Runtime.HeapFCP.FirePendingCallback(Int32 writerAddr) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\heap_fcp.cs:line 547
-   at GlpRuntime.Runtime.CommitOps.ApplySigmaHatFCP(HeapFCP heap, Dictionary`2 sigmaHat) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\commit.cs:line 115
-   at GlpRuntime.Bytecode.BytecodeRunner.ExecCommit(RunnerContext cx, Commit op) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 1049
-   at GlpRuntime.Bytecode.BytecodeRunner.Dispatch(RunnerContext cx, Object op) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 560
-   at GlpRuntime.Bytecode.BytecodeRunner.RunWithStatus(RunnerContext cx) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 528
-   at GlpRuntime.Runtime.Scheduler.DrainWithStatus(Int32 maxCycles, Boolean debug, Boolean showBindings, Boolean debugOutput) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\scheduler.cs:line 510
-   at GlpRuntime.Runtime.Scheduler.DrainAsyncWithStatus(Int32 maxCycles, Boolean debug, Boolean showBindings, Boolean debugOutput) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\scheduler.cs:line 611
-   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
-   at GlpRuntime.Runtime.Scheduler.DrainAsyncWithStatus(Int32 maxCycles, Boolean debug, Boolean showBindings, Boolean debugOutput)
-   at GlpRuntime.Engine.GlpEngine._RunSingleGoalAsync(String trimmed) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\engine\glp_engine.cs:line 603
-   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
-   at GlpRuntime.Engine.GlpEngine._RunSingleGoalAsync(String trimmed)
-   at GlpRuntime.Engine.GlpEngine.RunGoalAsync(String goalText) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\engine\glp_engine.cs:line 418
-   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
-   at GlpRuntime.Engine.GlpEngine.RunGoalAsync(String goalText)
-   at GlpRuntime.Repl.Program.Main(String[] args) in D:\BSTDEV\research\glp\glpnet\out\csharp\bin\glp_repl.cs:line 351
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-   at GlpRuntime.Repl.Program.GetGitCommitAsync() in D:\BSTDEV\research\glp\glpnet\out\csharp\bin\glp_repl.cs:line 719
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-   at System.IO.StreamReader.ReadToEndAsyncInternal(CancellationToken cancellationToken)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
-   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-   at System.IO.StreamReader.ReadBufferAsync(CancellationToken cancellationToken)
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-   at System.IO.Strategies.BufferedFileStreamStrategy.ReadFromNonSeekableAsync(Memory`1 destination, CancellationToken cancellationToken)
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-   at System.Threading.AsyncOverSyncWithIoCancellation.InvokeAsync[TState,TResult](Func`2 func, TState state, CancellationToken cancellationToken)
-   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Threading.ThreadPoolWorkQueue.Dispatch()
-   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
-   at System.Threading.Thread.StartCallback()
---- End of stack trace from previous location ---
-
-   --- End of inner exception stack trace ---
-   at GlpRuntime.Link.Transports.TcpEndpoint.SendBytesAsync(ReadOnlyMemory`1 frame, CancellationToken ct) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\transports\TcpTransport.cs:line 125
-   at GlpRuntime.Link.Primitives.LinkEgress.ShipGround(HeapFCP heap, LinkHandle handle, Term msg) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEgress.cs:line 60
-   at GlpRuntime.Link.Primitives.LinkEstablish.OnOutboundBind(GlpRuntimeEngine rt, LinkRuntime link, LinkHandle handle, Term bound) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEstablish.cs:line 148
-   at GlpRuntime.Link.Primitives.LinkEstablish.<>c__DisplayClass3_0.<ArmEgress>b__0(Term bound) in D:\BSTDEV\research\glp\glpnet\csharp\glp_link\primitives\LinkEstablish.cs:line 123
-   at GlpRuntime.Runtime.HeapFCP.FirePendingCallback(Int32 writerAddr) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\heap_fcp.cs:line 547
-   at GlpRuntime.Runtime.CommitOps.ApplySigmaHatFCP(HeapFCP heap, Dictionary`2 sigmaHat) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\commit.cs:line 115
-   at GlpRuntime.Bytecode.BytecodeRunner.ExecCommit(RunnerContext cx, Commit op) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 1049
-   at GlpRuntime.Bytecode.BytecodeRunner.Dispatch(RunnerContext cx, Object op) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 560
-   at GlpRuntime.Bytecode.BytecodeRunner.RunWithStatus(RunnerContext cx) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\bytecode\runner.cs:line 528
-   at GlpRuntime.Runtime.Scheduler.DrainWithStatus(Int32 maxCycles, Boolean debug, Boolean showBindings, Boolean debugOutput) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\scheduler.cs:line 510
-   at GlpRuntime.Runtime.Scheduler.DrainAsyncWithStatus(Int32 maxCycles, Boolean debug, Boolean showBindings, Boolean debugOutput) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\runtime\scheduler.cs:line 611
-   at GlpRuntime.Engine.GlpEngine._RunSingleGoalAsync(String trimmed) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\engine\glp_engine.cs:line 603
-   at GlpRuntime.Engine.GlpEngine.RunGoalAsync(String goalText) in D:\BSTDEV\research\glp\glpnet\out\csharp\lib\engine\glp_engine.cs:line 418
+GLP> Got = [1, 2, 3]
+→ succeeds
 
 GLP> Goodbye!
