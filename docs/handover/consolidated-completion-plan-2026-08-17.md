@@ -52,5 +52,11 @@ NOTE: the durable-fix code is already merged to buildkit develop; this wave is r
 - **Scheduler rootcause + durable remediation** — Programme B decision brief (`docs/handover/coordination-remediation-programmeB-decision-brief-2026-08-17.md`, `c4976297`) + A1–A4 engineer rulings → Wave 2.
 - **Consolidated-hardening charter** — 3rtask run `d920` curator_report (7 capabilities → one spine; 4 contracts resolved) → Wave 0 (codify+roadmap) then Wave 5 (build).
 
+## Refinements (JIT engineer rulings, 2026-08-17)
+- **079** ships as a **US3+US2 increment now** (FR-001 deferred per C1); **US1** is its own SHIP-TOKEN-gated follow-up (de-risks the release from the R-1b core-touch uncertainty).
+- **#1 verification-receipts** builds **MVP receipt-primitive first** (EMPTY/UNREAD/UNSEARCHABLE + fault-injection harness → fastest unblock of the 5 dependents), then per-seam rollout across the 6 seams.
+- **consolidated-hardening-spine** stays **Wave 5** (builds after #1 + traceability items harden its component capabilities).
+- **Connectivity/Gleam overlap cluster** (#43/#33/#32/#34/#35/#54/ynet): a cheap read-only **shipped-state verification** (git log / suites / spec status) runs **before Wave 4** to catch done-but-not-closed items and avoid re-doing delivered work.
+
 ## Safe-restart protocol
 On restart: mandatory reading → `buildkit-marathon status --feature glpnet-consolidated-completion` (position from durable rows) → resume the current wave/item at its pipeline stage → JIT structured questions to the engineer at every open block. Ship gates always STOP for SHIP-TOKEN.
