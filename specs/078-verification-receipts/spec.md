@@ -137,6 +137,16 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 
 ## Requirements *(mandatory)*
 
+## Clarifications
+
+### Session 2026-08-17
+
+- **Q: Is FR-008 absolute, or phased against adoption?** → **Phased.** A receipt binds only where the producing area has declared adoption; unadopted areas keep working and emit a visible non-adoption marker. Engineer ruling, encoded in FR-008.
+- **Q: Who declares adoption, and where does the declaration live?** → A **single checked-in adoption manifest** enumerating every area named in FR-017, each with its state and the date it was set. Behaviour never implies adoption. Encoded as FR-019.
+- **Q: What prevents an area from silently never declaring, making FR-008 vacuous?** → **Absence is an error, not a pass and not non-adoption.** An unlisted area causes a refusal that names the missing declaration. Encoded as FR-020, with SC-002's denominator pinned to FR-017's enumeration in FR-021.
+
+*Resolution rationale:* the phased ruling alone would have left FR-008 satisfiable by declaring nothing — SC-002 measures coverage *within declared areas*, so an empty declaration set met it trivially. FR-019/020/021 close that hole without weakening the phasing.
+
 ### Functional Requirements
 
 **The invariant**
@@ -157,7 +167,7 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 
 **Consumers**
 
-- **FR-008**: Any consumer of a check verdict MUST refuse a verdict lacking a conforming receipt, rather than defaulting to treating it as a pass.
+- **FR-008**: Any consumer of a check verdict MUST refuse a verdict lacking a conforming receipt, rather than defaulting to treating it as a pass — binding wherever the producing area has **declared adoption** per FR-019. Where an area has declared non-adoption, its verdicts remain usable and MUST carry a visible non-adoption marker. An area with **no declaration at all** is not non-adoption: it is an error under FR-020.
 - **FR-009**: An aggregating check MUST NOT report success while any constituent is UNREAD or UNSEARCHABLE; constituent outcomes propagate to the aggregate.
 - **FR-010**: Where a check reports counts, the receipt MUST allow those counts to be reconciled against the target's true size, so a falsified or impossible count is detectable.
 
@@ -177,6 +187,9 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 
 - **FR-017**: Every declared area — 3rtask, codexreview, build gate, coop protocol, roadmap sync, test harness — MUST report its adoption state honestly, including non-adoption.
 - **FR-018**: Adoption reporting MUST state per-area coverage explicitly; absence of a report MUST NOT be readable as full coverage.
+- **FR-019**: Adoption MUST be declared explicitly, per area, in a single checked-in adoption manifest that **enumerates every area named in FR-017**. Each entry records the area, its adoption state, and the date that state was set. The manifest is the sole authority for whether FR-008 binds; no area may be inferred adopted from its behaviour, and emitting a conforming receipt does not by itself constitute a declaration.
+- **FR-020**: The absence of an area's entry from the adoption manifest MUST be an error — never a pass, and never equivalent to declared non-adoption. A consumer encountering an unlisted area MUST refuse under FR-008 and name the missing declaration under FR-011.
+- **FR-021**: The denominator of SC-002 is fixed by FR-019's enumeration, not by the set of areas that happen to have declared. An empty or partial declaration set therefore cannot satisfy SC-002 — it fails FR-020 first.
 
 ### Key Entities
 
@@ -186,6 +199,7 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 - **Outcome classification**: Exactly one of PASS, EMPTY, UNREAD, UNSEARCHABLE, FAIL.
 - **Override**: A recorded engineer decision to proceed past a refusal, carrying a rationale and remaining visible thereafter.
 - **Adoption report**: The honest per-area statement of which checks emit conforming receipts and which do not.
+- **Adoption manifest**: The single checked-in enumeration of every area named in FR-017, each with an explicit adoption state and the date it was set. It is the sole authority for whether FR-008 binds; an area absent from it is an error, not a pass.
 
 ## Success Criteria *(mandatory)*
 
