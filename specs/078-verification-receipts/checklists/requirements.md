@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 ## Requirement Completeness
 
 - [x] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous
+- [ ] Requirements are testable and unambiguous — **FAILS at Iteration 2, see below**
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 
 ## Feature Readiness
 
-- [x] All functional requirements have clear acceptance criteria
+- [ ] All functional requirements have clear acceptance criteria — **FAILS at Iteration 2 (FR-013)**
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
@@ -76,10 +76,47 @@ challenge them rather than having to reverse-engineer them:
   switch. If `/bk-clarify` finds that too strict for routine work, that is the right place to
   revisit it.
 
+**Iteration 2 — 2026-08-18. Two items REVOKED. This checklist was a stale green.**
+
+Iteration 1 was validated on 2026-08-12 and never re-run. Since then `/bk-clarify` rewrote FR-008
+to phased and added FR-019/FR-020/FR-021. The checklist was still reporting **16 of 16 pass** on a
+specification it had not read in that form.
+
+That is this feature's own defect class, sitting in this feature's own quality gate: *a check that
+reports a pass without having run against its intended target.* It is recorded here rather than
+quietly re-ticked, because it is the cheapest available demonstration of why FR-001 exists — and
+because the ticks were **true when made**, which is precisely what makes a stale gate dangerous.
+
+**Revoked — "Requirements are testable and unambiguous".** Five requirements are not, each raised
+as an engineer decision on 2026-08-18:
+
+| block | requirement | what is missing |
+|---|---|---|
+| 24 | FR-002 / FR-004 | a receipt has no defined location, so FR-008's consumer cannot know where to look or what "absent" means |
+| 25 | FR-013 | *"expected"* is undefined, so a run containing zero checks satisfies it trivially — the same vacuity shape FR-019/020/021 just closed for FR-008, one requirement later |
+| 27 | FR-005 | "bounded in size" names no bound, so SC-004 has nothing to assert against |
+| 28 | FR-012 | the override has no scope, expiry or authority, so one recorded override can silently authorise every future refusal of its kind |
+| 29 | SC-003 | the reader and the 20 samples are undefined, so the criterion is unfalsifiable by its own author |
+
+**Revoked — "All functional requirements have clear acceptance criteria".** FR-013 has none, for
+the reason in block 25: an undefined *expected* set cannot be asserted against.
+
+**Not revoked, and worth saying explicitly.** Iteration 1's judgement calls hold up. The three
+resolved-by-default decisions were resolved correctly and were flagged as revisitable. The
+self-consistency pass (FR-016, the malformed-receipt edge case, SC-007) was the right call and is
+why this feature is not merely an instance of its own defect. And Iteration 1 *itself* named the
+FR-012 override tension and said clarify was the right place to revisit it — which is block 28,
+found independently six days later. The failure here is not judgement, it is the **absence of a
+re-validation trigger**: nothing invalidates a checklist when the spec it checks is edited.
+
+**Open recommendation (engineer, register block 37):** add that trigger, under the same
+"absence is an error" rule as FR-020 — a checklist whose spec has changed since its last
+validation reports UNREAD, never a pass.
+
 ## Notes
 
-- Items marked incomplete require spec updates before `/bk-clarify` or `/bk-plan`. None are
-  incomplete at this iteration.
+- Items marked incomplete require spec updates before `/bk-clarify` or `/bk-plan`. **Two are
+  incomplete at Iteration 2** and are the substance of the open clarify stage.
 - **Recommended next stage: `/bk-clarify`** rather than straight to `/bk-plan`. Not because
   anything is ambiguous, but because the three resolved-by-default decisions above are exactly the
   kind that are cheap to change now and expensive after planning.
