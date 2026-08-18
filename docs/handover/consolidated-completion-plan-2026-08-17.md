@@ -37,7 +37,8 @@ NOTE: the durable-fix code is already merged to buildkit develop; this wave is r
 #24 per-host-toolchain-contract · #30 multi-host-state-discipline · #34 seam-specification · #35 single-source-of-truth · #59 product-defect-burn-down.
 
 ### Wave 4 — high-WSJF promoted (GLP/runtime + connectivity)
-#3 glptutorial-golden (6.50) · #15 type-checker-body-atom-moding/076 (4.20) · #21 front-end-goal-term (3.60) · #43 full-scope-gleam (specified, 059) · #33 041-cross-runtime-two-host (2.62) · #36 crdtmsg-post-mvp (2.40).
+#3 glptutorial-golden (6.50) · #21 front-end-goal-term (3.60) · #43 full-scope-gleam (specified, 059) · #33 041-cross-runtime-two-host (2.62) · #36 crdtmsg-post-mvp (2.40).
+- **REMOVED: #15 type-checker-body-atom-moding/076** — ARIELLAS' lane, shipping via PR #169 (2026-08-18). Sibling read-only; olamnit does not build or touch it (engineer-ruled 2026-08-18).
 
 ### Wave 5 — remaining promoted/specified
 #49 wave6-consolidation (066) · #32 ynet-consolidation (065) · #46 buildkit-coord-opt GEPA/DSPy (2.00) · #54 distributed-unification-quiescence (1.62) · #60/#57 ynet naming+mobile · the new consolidated-hardening feature (after its charter→roadmap).
