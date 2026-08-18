@@ -1,0 +1,10 @@
+{
+  "_comment": "Per-repo adoption manifest (feature 078, FR-019/020/021). The sole authority for whether FR-008 binds in glpnet. Every FR-017 glpnet area MUST be enumerated. An area absent from this list is an ERROR (FR-020), never a pass and never equivalent to non-adoption. MVP: the reference check is adopted; the four real glpnet areas flip to 'adopted' as each US4 retrofit lands.",
+  "areas": [
+    { "area": "reference",    "state": "adopted",     "since": "2026-08-18" },
+    { "area": "build-gate",   "state": "non-adopted", "since": "2026-08-18" },
+    { "area": "coop",         "state": "non-adopted", "since": "2026-08-18" },
+    { "area": "roadmap-sync", "state": "non-adopted", "since": "2026-08-18" },
+    { "area": "test-harness", "state": "non-adopted", "since": "2026-08-18" }
+  ]
+}
