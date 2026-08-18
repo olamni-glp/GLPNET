@@ -55,12 +55,15 @@ class GlobalName {
 
 /// Information needed to spawn a global_send goal
 ///
-/// Represents the goal: `global_send(readerAddr, globalName, destAgent)`
+/// Represents the goal: `global_send(onBindWriterAddr, globalName, destAgent)`
 ///
 /// See: madGLP-spec.md Section 4
 class GlobalSendSpawn {
-  /// Address of the reader to watch (the ? end of the variable pair)
-  final int readerAddr;
+  /// Writer address used as the `heap.onBind` key. The paired reader (the `?`
+  /// end) becomes known when this writer is bound, which fires the goal. Named
+  /// for the value it holds (a writer key), not the reader it conceptually
+  /// watches. (079 R-3: was mis-named `readerAddr`.)
+  final int onBindWriterAddr;
 
   /// Global name identifying the link
   final GlobalName globalName;
@@ -69,14 +72,14 @@ class GlobalSendSpawn {
   final String destAgent;
 
   GlobalSendSpawn({
-    required this.readerAddr,
+    required this.onBindWriterAddr,
     required this.globalName,
     required this.destAgent,
   });
 
   @override
   String toString() =>
-      'GlobalSendSpawn(reader=$readerAddr, name=$globalName, dest=$destAgent)';
+      'GlobalSendSpawn(onBindWriter=$onBindWriterAddr, name=$globalName, dest=$destAgent)';
 }
 
 /// A variable reference in a term (for globalize/localize)
@@ -203,11 +206,11 @@ GlobalizeResult globalize({
       globalNames.add(globalName);
 
       // Spawn global_send(Y?, _r(p,i), q)
-      // Note: GlobalSendSpawn.readerAddr is used as the key for heap.onBind(),
+      // Note: GlobalSendSpawn.onBindWriterAddr is the key for heap.onBind(),
       // which is indexed by *writer* address. We pass writerAddr so the
       // callback fires when bindVariable is called on Y.
       spawns.add(GlobalSendSpawn(
-        readerAddr: v.writerAddr,
+        onBindWriterAddr: v.writerAddr,
         globalName: globalName,
         destAgent: remoteAgent,
       ));
@@ -258,11 +261,11 @@ LocalizeResult localize({
 
       // Spawn global_send(Y_q?, _w(p,i), p)
       // When q assigns Y_q, Y_q? becomes known, gs fires and sends value to p.
-      // Note: GlobalSendSpawn.readerAddr is used as the key for heap.onBind(),
+      // Note: GlobalSendSpawn.onBindWriterAddr is the key for heap.onBind(),
       // which is indexed by *writer* address. We pass writerAddr so the callback
       // fires when bindVariable(writerAddr, ...) is called.
       spawns.add(GlobalSendSpawn(
-        readerAddr: writerAddr,
+        onBindWriterAddr: writerAddr,
         globalName: gn,
         destAgent: gn.agent, // Send back to agent p who created the name
       ));
