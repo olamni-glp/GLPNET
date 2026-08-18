@@ -8,3 +8,14 @@ test/parity/goldens/**  text eol=lf
 test/parity/*.sh        text eol=lf
 test/parity/lib/*.sh    text eol=lf
 test/*.sh               text eol=lf
+
+# Signed roadmap exports are byte-compared evidence too (register block 38).
+# Each export carries a key_id and a detached signature over its bytes, so a CRLF
+# checkout makes a peer verify a byte-different document and the signature fails.
+# Reproduces the ospark escalation (".gitattributes lacks *.json text eol=lf while
+# tracking 26 Ed25519-signed exports") and is the same mechanism as 059 T051, where
+# a CRLF checkout of corpus.list made all 44 runtime goldens report MISSING.
+# Pin only — existing tracked exports are NOT renormalised, so no concurrent
+# checkout is dirtied mid-marathon.
+.specify/roadmap-sync/exports/*.json         text eol=lf
+.specify/roadmap-sync/exports/*.json.license text eol=lf
