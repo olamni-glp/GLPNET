@@ -46,7 +46,7 @@ cr_require_csharp() {
 # prints a wall-clock "Compiled in N.NNs" line; left in, it makes every run
 # rewrite all 34 artifacts and every parallel branch conflict on them.
 cr_strip_nondet() {
-    sed -E 's/^([[:space:]]*Compiled in )[0-9]+(\.[0-9]+)?s[[:space:]]*$/\1<elided>s/'
+    sed -E -e 's/^([[:space:]]*Compiled in )[0-9]+(\.[0-9]+)?s[[:space:]]*$/\1<elided>s/' -e 's/^(Build: ).*$/\1<elided>/' -e 's/^(Working directory: ).*$/\1<elided>/' -e 's/^(Loaded root self\.glp from: ).*$/\1<elided>/'
 }
 
 gleam_repl() {

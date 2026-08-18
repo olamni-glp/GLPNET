@@ -2,14 +2,14 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: ace23df8 roadmap: sync round 20260816T201957Z
+Build: <elided>
 Compiled: 2026-02-01 (GlpEngine refactor)
-Working directory: D:\BSTDEV\research\glp\glpnet
+Working directory: <elided>
 
 Input: filename.glp to load, or goal to execute
 Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 
-Loaded root self.glp from: D:\BSTDEV\research\glp\glpnet\programs\self.glp
+Loaded root self.glp from: <elided>
 
 GLP> ✓ Loaded: programs/tests/link/pc.glp
 GLP> Got = ["alice", "bob", "carol"]
