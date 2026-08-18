@@ -2,7 +2,7 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: 314040e1 marathon programme backlog captured to a TRACKED FILE because buildkit-marathon capture failed 8x and EXITED 0 every time - store catalog dir is empty, pglite_init_failed, writes silently lost while status still reads from the .md mirror; same false-green class as the rest of the session. Records the 11 discharge items, the B1-B5 superset ownership, the 4 wave-0 honesty fixes assigned to W5, 6 repo-local defects, the 077 stale-build resolution, and 7 standing rules adopted
+Build: f2a85903 codify: stale-git-ref lesson - comparing against a local tracking branch produced a false headline finding (50-commit-stale develop); rule extended to require origin/<branch> measurement
 Compiled: 2026-02-01 (GlpEngine refactor)
 Working directory: D:\bstdev\research\glp\glpnet
 
