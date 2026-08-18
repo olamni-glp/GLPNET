@@ -19,3 +19,10 @@ test/*.sh               text eol=lf
 # checkout is dirtied mid-marathon.
 .specify/roadmap-sync/exports/*.json         text eol=lf
 .specify/roadmap-sync/exports/*.json.license text eol=lf
+
+# Receipt contracts + conformance vectors are byte-compared evidence (spec 078 research R8).
+# A receipt or schema that differs only by line ending fails verification for reasons having
+# nothing to do with the check it describes. Same mechanism as 059 T051 and the signed exports.
+specs/*/contracts/*.json              text eol=lf
+specs/*/contracts/conformance/*.json  text eol=lf
+.specify/receipts/**/*.json           text eol=lf
