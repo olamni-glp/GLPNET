@@ -58,5 +58,11 @@ NOTE: the durable-fix code is already merged to buildkit develop; this wave is r
 - **consolidated-hardening-spine** stays **Wave 5** (builds after #1 + traceability items harden its component capabilities).
 - **Connectivity/Gleam overlap cluster** (#43/#33/#32/#34/#35/#54/ynet): a cheap read-only **shipped-state verification** (git log / suites / spec status) runs **before Wave 4** to catch done-but-not-closed items and avoid re-doing delivered work.
 
+## Execution protocol (JIT engineer rulings, tier 3)
+- **079 baseline**: baseline the **multiagent Dart suite** (`dart test test/multiagent/`) + REPL suite **through Section S**; the **Section-T abort is pre-existing/orthogonal** (064 unguarded-abort + missing glpquick.pfx) — do NOT pull 064 into Wave 0.
+- **Wave 2 (scheduler)**: does NOT block the program — **Waves 3–5 proceed in parallel**; Wave 2 stays **coordinator-pending**, unblocks on gavriella's COOP confirm of the A1+A2 release train + per-host deploy.
+- **Marathon shape**: keep the ONE program-marathon (`mrun-7f0b400450f3`) as portfolio index (roadmap authoritative); **spawn a dedicated per-feature marathon ONLY for the LARGE items** (#1 verification-receipts, consolidated-hardening-spine, scheduler) for fine checkpoint/resume. Light closes/chores stay roadmap-tracked.
+- **Wave 0 autonomy**: the fresh session **runs each item to its natural gate autonomously**; JIT-question the engineer only at a genuine block/tension or a ship gate (ship gates always STOP for SHIP-TOKEN).
+
 ## Safe-restart protocol
 On restart: mandatory reading → `buildkit-marathon status --feature glpnet-consolidated-completion` (position from durable rows) → resume the current wave/item at its pipeline stage → JIT structured questions to the engineer at every open block. Ship gates always STOP for SHIP-TOKEN.
