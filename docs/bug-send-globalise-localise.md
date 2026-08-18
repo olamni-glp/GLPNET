@@ -254,6 +254,22 @@ The write-back mechanism (`_registerWriteBackCallbacks`, `_sendWriteBack`) was a
 
 Globalize-reader correctly creates only an entry at p, with no onBind and no goal. The `global_send` is spawned at q by `localize`. The test programs need to use the correct polarity.
 
+## Verdict — three_agent_pipeline_boot (2026-08-18, feature 079 US2 / FR-005)
+
+**FALSE POSITIVE — RETIRED.** The `three_agent_pipeline_boot` scenario
+(`glp_runtime/test/multiagent/multiagent_glp_test.dart` → *"three-agent pipeline: produce →
+transform → consume"*) runs **deterministically green** — verified 2/2 runs via
+`dart test test/multiagent/multiagent_glp_test.dart --name "pipeline"` → *"All tests passed!"*.
+The globalise/send residual flagged in this report is a **stale false positive, not a live
+defect**: the Fixes Applied (Fix 1/2/3) resolved the real bugs. No repro to file; the madGLP
+false-positive test hazard is retired (SC-004).
+
+**Note (079 US3):** the `GlobalSendSpawn` / `GlobalSendGoal.readerAddr` field referenced in
+Fix 1 was renamed to `onBindWriterAddr` — it holds a **writer** address used as the
+`heap.onBind` index (the paired reader becomes known when that writer binds), not a reader
+address. The Fix-1 description above is historically accurate about the *value* (`writerAddr`);
+only the field *name* changed.
+
 ## Files Involved
 
 - `glp_runtime/lib/multiagent/mad_context.dart` — `_extractTermVarsRecursive`, `send`, `registerGlobalSendSpawns`
