@@ -151,3 +151,6 @@ COOP/
 # (runtime artifacts; the committed sample is glpservice/resume.json.sample)
 glpservice/resume.json
 glpservice/wal/
+
+# bk-flow board<->pipeline links (machine-local run ids)
+.specify/flow/links/
