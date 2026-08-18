@@ -1166,6 +1166,16 @@ POSITIVE_FILES=(
     "$TYPED/order_guards.glp"
     "$TYPED/atom_guard.glp"
 
+    # --- feature 076 (known-issues Issue 4): occurrence-pair licensing. A body-atom
+    #     WRITER at a declared consume position is mode-consistent when its SRSW pair
+    #     is a head-flipped reader (an output hole). issue4_bind_later pins the
+    #     canonical `=` shape plus the pre-076 workaround form; head_flip_general
+    #     pins the same rule over user-defined procedures at depth 1 and depth 2
+    #     (rule: docs/type system/well-typed-clause.md, Definition 5.7 clause 2
+    #     amendment; matrix row 3). ---
+    "$TYPED/issue4_bind_later.glp"
+    "$TYPED/head_flip_general.glp"
+
     # --- parameterized types ---
     "$TYPED/param_stream_integer.glp"
     "$TYPED/param_channel.glp"
@@ -1331,6 +1341,11 @@ NEGATIVE_FILES=(
     # 062 US5 §1.14 item 1 (abandon-operation) negative: _? anonymous reader
     # in a clause position must be rejected (typed-glp-manual §9.1).
     "$TYPED/abandon_reader_bad.glp"
+    # feature 076 negative control (matrix row 4): the occurrence-pair license
+    # requires the head hole as positive evidence, so a body-atom writer at a
+    # consume position whose pair is absent, is in the body, or is at a head
+    # consume position must still be rejected - no over-acceptance.
+    "$TYPED/head_flip_negative.glp"
 )
 
 # Build REPL input with :clear between each negative file
@@ -2269,7 +2284,12 @@ echo ""
 # The history drill runs at its default N (SC-002's N=100 is the release gate,
 # run standalone: bash test/service_box/history_drill.sh 100).
 echo "=== Section T: 064 service-box drills (resume + history) ==="
-
+# set +e for this whole section (same guard Section U and the cross-runtime sections use):
+# the drills `exit $FAIL` (non-zero) when QUIC trust material (glpquick.pfx) is absent on a
+# host, and `output=$(bash drill.sh)` under the script's top-level `set -e` would then ABORT
+# the entire suite — killing every later section instead of recording a section FAIL. check()
+# never exits, so guarding here turns a host-specific drill failure into a normal FAIL line.
+set +e
 SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 if [ -f "$SBREPL_BIN" ]; then
     output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
@@ -2279,6 +2299,7 @@ if [ -f "$SBREPL_BIN" ]; then
 else
     echo "SKIP Section T: C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
 fi
+set -e
 
 echo ""
 

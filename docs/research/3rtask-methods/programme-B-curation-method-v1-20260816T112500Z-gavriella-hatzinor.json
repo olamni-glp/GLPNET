@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "programme_id": "programme-B-curation-v1",
+  "authored_by": "gavriella (hatzinor lane)",
+  "authored_at": "2026-08-16T11:25:00Z",
+  "status": "DRAFT — not frozen. Freeze only after a blind planning-Critic red-team on the host that runs it.",
+  "purpose": "Solution-option EVALUATION + DESIGN + SYNTHESIS + CURATION. Consumes the terminated output of Programme A (an option set) and produces a DECISION-READY DOSSIER for the engineer. It does NOT merge, does NOT choose, and does NOT ship.",
+  "task_type": "plan",
+  "rubric_id": "plan-review",
+
+  "preconditions": [
+    "Programme A has terminated and produced >=2 candidate options. If only 1 candidate exists there is nothing to curate — run /bk-codexreview on it instead.",
+    "Every candidate is identified by an immutable ref (branch@sha), never by branch name alone — branch names move.",
+    "A dirty tree or protected branch refuses at preflight; run --review-only if the tree cannot be cleaned."
+  ],
+
+  "slice_rule_when_evidence_is_branches": {
+    "problem": "Programme A's candidates COLLIDE by construction — three writers editing the same three files. Slicing by FILE is therefore impossible: the slices would overlap 100% and fake corroboration.",
+    "rule": "Slice by CANDIDATE, one candidate per blind builder. Builder-i sees ONLY candidate-i's diff vs the merge-base, plus the shared rubric. It never sees a sibling candidate.",
+    "why_this_preserves_blindness": "Disjointness is over EVIDENCE, not over questions. Three builders answering the SAME rubric questions against THREE different diffs is the cleanest possible partition: identical lens, disjoint evidence.",
+    "anti_anchoring": "A builder that saw a rival diff would grade relative to it. Per-candidate blindness forces each candidate to be graded on its own merits against a fixed rubric, which is what makes the scores comparable at merge time.",
+    "materialisation": "Do NOT hand a builder a live branch (it can git-log its way to the siblings). Materialise each candidate as a static diff artifact vs the common merge-base, write it to its own directory, and cite that path as the slice source.",
+    "shared_context_is_allowed": "The merge-base tree is shared by all three slices. That is legitimate — it is the COMMON BASELINE, not contested evidence. Declare it explicitly in the manifest description so the independence audit is not surprised by it."
+  },
+
+  "elements": [
+    {"id": "B1", "kind": "rubric", "text": "Every candidate is scored on the SAME fixed rubric, each dimension 0-5 with the score justified by an exact file:line citation from that candidate's own diff: (a) correctness of the state transition it introduces; (b) test evidence carried WITH the change (count assertions, not files); (c) blast radius = files touched outside the scheduler package; (d) reversibility — can it be reverted as one commit; (e) conformance to the canonical stage list and to existing op-type/schema contracts; (f) observability — does it make its own failure loud, or can it fail silently."},
+    {"id": "B2", "kind": "question", "text": "For each candidate, state what it does that the others CANNOT do — the unique capability lost if this candidate is discarded. This is the salvage list and it is the single most important output of the run: it converts a 3-way either/or into an explicit inventory of what a synthesis must preserve."},
+    {"id": "B3", "kind": "question", "text": "For each candidate, state its DEFECTS as an adopted baseline: what would have to be fixed after adoption. Cite lines. A candidate with no stated defects is under-examined, not perfect — the Critic must REFUTE any all-clean scorecard."},
+    {"id": "B4", "kind": "procedure", "text": "Collision map: for every file touched by more than one candidate, record the hunks that overlap and classify each as (i) trivially reconcilable, (ii) semantically conflicting — two different designs for the same behaviour, or (iii) mutually exclusive. Class (ii) and (iii) are what make this a curation decision rather than a merge."},
+    {"id": "B5", "kind": "question", "text": "SYNTHESIS candidate: is there a composition that takes the salvage list (B2) from all candidates and satisfies the collision map (B4)? Describe it as a concrete change plan against the merge-base. If no synthesis is possible, say so explicitly and state which capability must be sacrificed — never silently drop one."},
+    {"id": "B6", "kind": "budget", "text": "Max 20 scored claims per builder plus ONE consolidated 'what my candidate cannot tell me' block of at most 6 bullets, which does not count against the ceiling."},
+    {"id": "B7", "kind": "procedure", "text": "CURATION IS AN ENGINEER DECISION. The run's terminal artifact is a decision-ready dossier: scorecards, salvage list, collision map, synthesis option, and a RECOMMENDATION with its dissent recorded. The recommendation is advisory. The run MUST emit the choice as an open ESCALATE and MUST NOT merge, rebase, cherry-pick, close or delete any candidate. Discarding two lanes' work is not an agent's call."},
+    {"id": "B8", "kind": "procedure", "text": "Negative-evidence rule: 'candidate X does not handle Y' requires a citation of where it WOULD have to appear plus evidence of absence (a grep that returns nothing, quoted). Unsupported absence claims are rejected at adjudication — absence of proof is the easiest way to smear a rival candidate."},
+    {"id": "B9", "kind": "procedure", "text": "The Critic is seated NON-BLIND across all candidates, because comparison is precisely the non-blind task. It receives all three scorecards plus the collision map and must (a) re-score any dimension where two builders applied the rubric inconsistently, (b) name any scorecard that is internally incoherent, (c) adjudicate the synthesis option adversarially. Prefer the cross-provider codex Critic; degrade to Claude LOUDLY with a recorded reduced-independence warning, never silently."},
+    {"id": "B10", "kind": "question", "text": "DEPLOYABILITY across repos and hosts: for the recommended option, what must be true for it to reach every lane — is it release-gated, does it need a version bump, does each host need a redeploy, and does any host pin a version that would not receive it? A remediation that lands only on the authoring host has not been deployed, and this element exists because that has already happened repeatedly."},
+    {"id": "B11", "kind": "question", "text": "What NEW silent-failure surface does the recommended option introduce? Every remediation in this problem domain has so far been a silent-failure fix that itself failed silently. Require an explicit answer, including how the change announces its own malfunction."}
+  ],
+
+  "source_partition": {
+    "candidate-1": "builder-1",
+    "candidate-2": "builder-2",
+    "candidate-3": "builder-3"
+  },
+
+  "questions": [
+    "Which candidate is the best ADOPTION BASELINE, on cited rubric evidence rather than on size or recency?",
+    "What must be salvaged from the candidates NOT adopted, and is a synthesis that preserves it feasible?",
+    "What does adoption cost across every repo and host, and which lanes would silently not receive it?",
+    "Which parts of this decision are genuinely the engineer's, and what does each option foreclose?"
+  ],
+
+  "run_directions": {
+    "invocation": "buildkit-3rtask preflight --task-type plan --subject '<the curation question, as a REFERENCE not pasted diffs>' --manifest <candidates.json> --builders 3 --min-cycles 2 --max-cycles 3 --token-budget <N> [--review-only]",
+    "subject_must_be_size_invariant": "The subject names the candidates by branch@sha and points at the dossier. NEVER paste diff bodies into the subject — 359,474 insertions on one candidate would overflow the context window. The BRIEF carries names; the BUILDER reads its own diff from its slice path.",
+    "critic": "codex (cross-provider) strongly preferred here. The Critic is adjudicating between lanes' work; same-provider self-adjudication on a contested curation is the weakest possible configuration.",
+    "cycles": "min 2. Cycle 1 scores candidates; cycle 2 re-examines specifically the dimensions the Critic re-scored and tests the synthesis option, which usually does not exist until cycle 1 has produced the salvage list.",
+    "freeze_order": "Curator freeze happens BEFORE any /bk-codexreview delegation. Reason: codexreview reviews a DIFF for defects; it has no opinion on which of three rival designs should exist. Sequence: Programme B freezes the chosen design -> the design is implemented -> /bk-codexreview reviews that implementation. Delegating to codexreview first asks a code reviewer to make a portfolio decision, which it will answer confidently and wrongly.",
+    "composition_with_programme_A": "A terminates when the option set stops growing (loop-until-dry, not a fixed count). Its output — the option set with provenance — IS B's manifest input. Do not re-run A to feed B; if A terminated, its option set is the input. Re-running A re-discovers the same options and costs a cycle."
+  },
+
+  "hard_refusals": [
+    "Never merge, rebase, cherry-pick, force-push, close or delete a candidate branch.",
+    "Never resolve the curation ESCALATE inside the run — record the engineer's stated resolution only.",
+    "Never write into another lane's board or repo to enact the outcome."
+  ]
+}

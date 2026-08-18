@@ -1,0 +1,33 @@
+% head_flip_negative.glp - NEGATIVE (must be REJECTED at load).
+%
+% Feature 076 US3: the occurrence-pair license requires POSITIVE evidence - a
+% head-flipped reader (an output hole) for the same variable. Without it, a
+% writer at a declared consume position is still a mode mismatch. Acceptance
+% matrix row 4 in specs/076-typechecker-body-atom-moding/contracts/
+% body-atom-moding-rule.md; rule in docs/type system/well-typed-clause.md,
+% "Amendment to Definition 5.7 clause 2 - Occurrence-Pair Licensing".
+%
+% Three unlicensed shapes, one per row-4 exclusion:
+%   no_pair/1           - the pair is absent altogether
+%   pair_in_body/1      - the pair occurs in the body, not the head
+%   pair_at_head_down/1 - the pair occurs in the head at a CONSUME position,
+%                         which is not a hole (and is itself ill-moded)
+
+Reply ::= ok ; err.
+
+procedure sink(Reply?).
+sink(ok).
+sink(err).
+
+%% (a) pair absent: R has no reader occurrence anywhere in the clause.
+procedure no_pair(Reply).
+no_pair(ok) :- sink(R).
+
+%% (b) pair in the body: the reader R? occurs in a body atom, never in the head.
+procedure pair_in_body(Reply).
+pair_in_body(ok) :- sink(R), sink(R?).
+
+%% (c) pair in the head at a consume position: `R?` at a Reply? argument is not
+%% an output hole, so nothing licenses the body writer.
+procedure pair_at_head_down(Reply?).
+pair_at_head_down(R?) :- sink(R).
