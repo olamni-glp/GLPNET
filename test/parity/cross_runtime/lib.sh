@@ -41,15 +41,23 @@ cr_require_csharp() {
 }
 
 # gleam_repl <out> <glp-rel-to-repo> <goal> — one Gleam REPL process.
+# Strip non-deterministic lines from captured peer output so the committed
+# results/*.out artifacts are byte-stable across runs. The Gleam toolchain
+# prints a wall-clock "Compiled in N.NNs" line; left in, it makes every run
+# rewrite all 34 artifacts and every parallel branch conflict on them.
+cr_strip_nondet() {
+    sed -E 's/^([[:space:]]*Compiled in )[0-9]+(\.[0-9]+)?s[[:space:]]*$/\1<elided>s/'
+}
+
 gleam_repl() {
     ( cd "$CR_GLEAM_DIR" && printf 'load ../%s\n%s\n:quit\n' "$2" "$3" \
-        | timeout "$PEER_TIMEOUT" gleam run ) > "$1" 2>&1
+        | timeout "$PEER_TIMEOUT" gleam run ) 2>&1 | cr_strip_nondet > "$1"
 }
 
 # cs_repl <out> <glp-rel-to-repo> <goal> — one C# REPL process (repo-root cwd).
 cs_repl() {
     ( cd "$CR_ROOT" && printf 'load %s\n%s\n:quit\n' "$2" "$3" \
-        | timeout "$PEER_TIMEOUT" "$CR_CSREPL" ) > "$1" 2>&1
+        | timeout "$PEER_TIMEOUT" "$CR_CSREPL" ) 2>&1 | cr_strip_nondet > "$1"
 }
 
 # cross_test NAME GLP CONS_GOAL PROD_GOAL EXPECT_CONS [EXPECT_PROD]
