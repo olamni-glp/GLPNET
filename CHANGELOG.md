@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [v2026.08.18.2] - 2026-08-18
+
+### Fixed
+- rename GlobalSendSpawn/Goal.readerAddr -> onBindWriterAddr (R-3 mis-named field held an onBind writer key, not a reader addr); update all refs + docs; multiagent 102/5 green (baseline parity)
+
+### Changed
+- Merge pull request #172 from olamni-glp/079-madglp-writer-reader-discipline
+- set active feature=079 for ship gate (feature.json)
+- Merge remote-tracking branch 'origin/develop' into 079-madglp-writer-reader-discipline
+- close #6/#12/#14/#28 (released->closed, open-action check passed); re-export
+- sync round 10 export - 20 epics 115 features 3741 journal lines
+- sync export 20/116/3733 (in-sync, 0 dupes, replay-verified); +consolidated-hardening-spine; import skipped (R5 fleet-crash)
+- remove #15/076 from olamnit Wave 4 — ariellas' lane, shipping via PR #169 (sibling read-only)
+- Merge pull request #171 from olamni-glp/main
+- three_agent_pipeline_boot verdict = FALSE POSITIVE retired (2/2 green, FR-005/SC-004); T016 satisfied-by-inspection (no Open/Fixed inconsistency exists); note US3 readerAddr->onBindWriterAddr rename
+- tier-3 execution rulings — 079 baseline (multiagent+SectionS), Wave2 parallel, per-feature marathon for large items, Wave0 autonomy
+- JIT refinements — 079 US3+US2 increment ship, #1 MVP-first, hardening Wave5, overlap-cluster verify pre-Wave4
+- glpnet consolidated completion plan — mrun-7f0b400450f3, 6 dependency-ordered waves, 4 parked blockers, hardening-charter + scheduler-Programme-B folded in
+- tasks(079): madGLP writer-reader audit — 20 tasks, US1 core-touch gated (R-1b STOP + SHIP-TOKEN), US2/US3 clean closes; risk-first US3->US2->US1
+- plan(079): madGLP writer-reader audit — 🔴 R-1 scope split (writerAddr+1 is bound-writer path, not dead code); R-2/R-3 clean; STOP-report guard on core heap-format
+- spec(079): madGLP writer-reader address-discipline closure — specify+clarify; audit-first N/N+1 fallback removal + 2 residuals, NOT §1.14
+
 ## [v2026.08.18.1] - 2026-08-18
 
 ### Added
