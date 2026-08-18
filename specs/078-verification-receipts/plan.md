@@ -151,6 +151,40 @@ Outputs: `data-model.md`, `contracts/*.schema.json`, `contracts/conformance/`, `
 **Post-design constitution re-check: PASS.** No principle is affected by the design above; VI-b
 remains satisfied by avoidance and the avoidance is now explicit in the artifact list.
 
+## Delivery sequencing — this feature implements across two repositories
+
+*Register block 51, adopted 2026-08-18 under the standing instruction to proceed. Provisional and
+reversible: it changes sequencing, not requirements.*
+
+FR-024 puts the contract in **buildkit**; the test-harness consumer is in **glpnet**. `/bk-ship` is a
+single-repo conductor (commit → preflight → push → PR → release → tag → back-merge), so a feature
+whose acceptance spans two repositories has no supported single ship. **Decision: ship in two ordered
+releases, each single-repo, mirroring FR-024's own model.**
+
+| wave | repo | contents | gate to the next wave |
+|---|---|---|---|
+| **W1 — contract** | buildkit `glpnet-lane/toolchain-integrity-fixes` | `receipts/` package, the 3 schemas, `bound.py`, `manifest.py`, `conformance.py`, the Python emitter + `verify()` consumer, unit tests | conformance suite green **and a version released**, so glpnet has something to pin |
+| **W2 — first adopter** | glpnet `078-verification-receipts` | bash emitter, `run_all_tests.sh` per-section receipts keyed `(letter, slug)`, adoption + expected-checks manifests, the fault-injection suite (US3) | US3 green with every injected fault refusing loudly (SC-001, SC-007) |
+| **W3 — retrofit** | both | the remaining declared areas adopt, per US4; adoption manifest updated per area as it lands | SC-002 measured against FR-019's enumeration |
+
+**Why this ordering rather than the alternatives.** Splitting into two roadmap features was rejected:
+it fragments a feature whose whole thesis is that a contract and its adoption are one thing, and the
+roadmap already carries the dependency edges that would have justified the split. Shipping glpnet
+alone was rejected: it leaves the authoritative contract unreleased, so the consumer would pin
+nothing.
+
+**Consequences the task decomposition must honour:**
+
+1. **W1 tasks carry no glpnet dependency**; W2 tasks each depend on a *released* buildkit version, not
+   on a branch. A W2 task that reads buildkit source directly reintroduces the copy-divergence FR-024
+   forbids.
+2. **The bash emitter is W2, not W1**, even though it implements the same contract — research R4 makes
+   the harness the honest first adopter precisely because it is the runtime that cannot reuse the
+   Python code, so it must exercise the contract-as-document rather than the contract-as-import.
+3. **The marathon's single `/bk-ship 078` discharge item understates this.** It is satisfied by W1's
+   release plus W2's release, not by one invocation. Recorded here so the discharge gate is not
+   quietly reinterpreted at ship time.
+
 ## Complexity tracking
 
 *No constitutional violations, so this table is empty by design rather than by omission.*
