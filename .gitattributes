@@ -8,3 +8,9 @@ test/parity/goldens/**  text eol=lf
 test/parity/*.sh        text eol=lf
 test/parity/lib/*.sh    text eol=lf
 test/*.sh               text eol=lf
+
+# Cross-runtime parity CAPTURES are byte-compared evidence too. Without this pin
+# every suite run rewrites all 34 results/*.out with CRLF and the tree reports
+# dirty with ZERO content change (measured 2026-08-18) — noise that can mask a
+# real parity diff, the same hazard the four-source timing elision closed.
+test/parity/cross_runtime/results/*.out text eol=lf
