@@ -1,0 +1,31 @@
+{
+  "slices": [
+    {
+      "slice_id": "portfolio",
+      "description": "The WHAT: the 25 not-closed roadmap features to allocate - identity, state, WSJF/RICE, spec path, hard blocking edges, engineer sequencing directive, and what duration data honestly exists.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-a-portfolio.md",
+        ".specify/3rtask/corpus-alloc/slice-a-portfolio-update-20260813.md"
+      ],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "hosts",
+      "description": "The WHO: per-host capability, declared scheduler caps and their freshness, current load, availability, delivery track record and host-specific constraints for ARIELLAS, OLAMNIT and GAVRIELLA.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-b-hosts.md",
+        ".specify/3rtask/corpus-alloc/slice-b-hosts-update-20260813.md"
+      ],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "protocol",
+      "description": "The HOW: coop CRDT protocol v2 and the W1-W14 work protocol, the scheduler CPM/PERT contract, pipeline stage order, marathon advisory semantics, safe-restart and sync-round obligations, and the known defects in the tooling itself.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-c-protocol.md",
+        ".specify/3rtask/corpus-alloc/slice-c-protocol-update-20260813.md"
+      ],
+      "assigned_to": "builder-3"
+    }
+  ]
+}

@@ -2,14 +2,14 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: 3c0cf4de Merge origin/develop into 077 (064 back-merge): keep 077 pointers; union test Section T(064)+U(077); take develop import-manifest
+Build: <elided>
 Compiled: 2026-02-01 (GlpEngine refactor)
-Working directory: D:\bstdev\research\glp\glpnet
+Working directory: <elided>
 
 Input: filename.glp to load, or goal to execute
 Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 
-Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+Loaded root self.glp from: <elided>
 
 GLP> ✓ Loaded: programs/tests/link/mon.glp
 GLP> X = res([], [])

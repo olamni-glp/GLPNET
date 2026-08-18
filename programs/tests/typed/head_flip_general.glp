@@ -1,0 +1,47 @@
+% head_flip_general.glp - POSITIVE (must LOAD clean).
+%
+% Feature 076 US2: occurrence-pair licensing is a general rule of the type
+% system, not an `=`-special-case. Authoritative rule: docs/type system/
+% well-typed-clause.md, "Amendment to Definition 5.7 clause 2 - Occurrence-Pair
+% Licensing"; acceptance matrix row 3 in
+% specs/076-typechecker-body-atom-moding/contracts/body-atom-moding-rule.md.
+%
+% Two licensed shapes, both over ordinary user-defined procedures:
+%   make_reply/1        - licensed occurrence at top level (depth 1)
+%   make_reply_nested/1 - licensed occurrence at depth 2, inside a structure
+%                         argument, with the mode composed by involution
+%                         (typed-glp-manual section 2A)
+% In both callers the head occurrence is a head-flipped reader: `R?` written at
+% a produce position, i.e. an output hole the clause must fill.
+
+Reply ::= ok ; err.
+Bundle ::= bundle(Constant, Reply).
+
+%% --- callees: declared reader (consume) positions ---
+
+procedure sink(Reply?).
+sink(ok).
+sink(err).
+
+procedure sink_bundle(Bundle?).
+sink_bundle(bundle(_, R)) :- sink(R?).
+
+%% --- callers: head hole at a produce position, writer delegated to the callee ---
+
+%% Depth 1: `sink` declares Reply? (consume); the writer R sits at that position
+%% and is licensed by the head hole R?.
+procedure make_reply(Reply).
+make_reply(R?) :- sink(R).
+
+%% Depth 2: arg 1 of sink_bundle is Bundle? (consume); inside bundle/2 the Reply
+%% slot carries no `?` in the type definition, so the mode stays consume - the
+%% writer R at that nested position is licensed by the same head hole. The
+%% checker's path for it is (bundle/2, 0, input) -> (R, 2, input), i.e. the mode
+%% composed by involution, which is what this clause pins.
+%% This clause is an ACCEPTANCE test: goal make_reply_nested(S) suspends, because
+%% a consume position is where the callee READS (its own head flip turns the
+%% surface writer into a reader), so nothing binds the hole. Binding at a consume
+%% position is the symmetric callee-end shape, which the 076 amendment
+%% deliberately does not license.
+procedure make_reply_nested(Reply).
+make_reply_nested(R?) :- sink_bundle(bundle(tag, R)).
