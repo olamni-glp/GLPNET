@@ -17,8 +17,11 @@ import 'global_writers_table.dart';
 ///
 /// See: madGLP-spec.md Section 4
 class GlobalSendGoal {
-  /// Address of the reader to watch
-  final int readerAddr;
+  /// Writer address used as the `heap.onBind` key. The paired reader (the `?`
+  /// end being watched) becomes known when this writer is bound, which is what
+  /// fires the goal. Named for the value it holds (a writer key), not the
+  /// reader it conceptually watches. (079 R-3: was mis-named `readerAddr`.)
+  final int onBindWriterAddr;
 
   /// Global name identifying the link (_w(p,i) or _r(p,i))
   final GlobalName globalName;
@@ -27,7 +30,7 @@ class GlobalSendGoal {
   final String destination;
 
   GlobalSendGoal({
-    required this.readerAddr,
+    required this.onBindWriterAddr,
     required this.globalName,
     required this.destination,
   });
@@ -35,7 +38,7 @@ class GlobalSendGoal {
   /// Create from a GlobalSendSpawn (conversion from spawn info to goal)
   factory GlobalSendGoal.fromSpawn(GlobalSendSpawn spawn) {
     return GlobalSendGoal(
-      readerAddr: spawn.readerAddr,
+      onBindWriterAddr: spawn.onBindWriterAddr,
       globalName: spawn.globalName,
       destination: spawn.destAgent,
     );
@@ -43,7 +46,7 @@ class GlobalSendGoal {
 
   @override
   String toString() =>
-      'GlobalSendGoal(reader=$readerAddr, name=$globalName, dest=$destination)';
+      'GlobalSendGoal(onBindWriter=$onBindWriterAddr, name=$globalName, dest=$destination)';
 }
 
 /// Result of firing a global_send goal
@@ -89,7 +92,8 @@ class GlobalSendRegistry {
   /// Agent ID for this registry (used when globalizing values)
   final String agentId;
 
-  /// Pending goals indexed by reader address
+  /// Pending goals indexed by onBind writer address (the writer whose binding
+  /// makes the watched reader known — see GlobalSendGoal.onBindWriterAddr).
   final Map<int, GlobalSendGoal> _goals = {};
 
   GlobalSendRegistry(this.agentId);
@@ -99,7 +103,7 @@ class GlobalSendRegistry {
   /// If the reader is already known (bound), the goal should fire immediately.
   /// This is handled by the caller checking the reader state before registering.
   void register(GlobalSendGoal goal) {
-    _goals[goal.readerAddr] = goal;
+    _goals[goal.onBindWriterAddr] = goal;
   }
 
   /// Register multiple goals from spawn information
@@ -109,11 +113,11 @@ class GlobalSendRegistry {
     }
   }
 
-  /// Check if there's a goal watching this reader address
-  bool hasGoalFor(int readerAddr) => _goals.containsKey(readerAddr);
+  /// Check if there's a goal keyed on this onBind writer address
+  bool hasGoalFor(int writerAddr) => _goals.containsKey(writerAddr);
 
-  /// Get the goal watching this reader address (if any)
-  GlobalSendGoal? getGoalFor(int readerAddr) => _goals[readerAddr];
+  /// Get the goal keyed on this onBind writer address (if any)
+  GlobalSendGoal? getGoalFor(int writerAddr) => _goals[writerAddr];
 
   /// Called when a writer is bound to a value.
   ///
@@ -137,7 +141,7 @@ class GlobalSendRegistry {
     required GlobalWritersTable table,
     required List<TermVar> Function(Object?) extractVariables,
   }) {
-    // The writer and reader share the same address in our model
+    // Goals are keyed by the onBind writer address, so look up by writerAddr.
     final goal = _goals.remove(writerAddr);
     if (goal == null) return null;
 

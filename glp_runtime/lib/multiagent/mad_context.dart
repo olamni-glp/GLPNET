@@ -170,8 +170,8 @@ class MadContext {
     for (final newGoal in result.newGoals) {
       _trace('[MAD $agentId] global_send spawned new goal: ${newGoal.globalName}');
       globalSendRegistry.register(newGoal);
-      runtime.heap.onBind(newGoal.readerAddr, (Term value) {
-        onWriterBound(newGoal.readerAddr, value);
+      runtime.heap.onBind(newGoal.onBindWriterAddr, (Term value) {
+        onWriterBound(newGoal.onBindWriterAddr, value);
       });
     }
   }
@@ -215,8 +215,8 @@ class MadContext {
   void registerGlobalSendSpawns(List<GlobalSendSpawn> spawns) {
     for (final spawn in spawns) {
       globalSendRegistry.register(GlobalSendGoal.fromSpawn(spawn));
-      runtime.heap.onBind(spawn.readerAddr, (Term value) {
-        onWriterBound(spawn.readerAddr, value);
+      runtime.heap.onBind(spawn.onBindWriterAddr, (Term value) {
+        onWriterBound(spawn.onBindWriterAddr, value);
       });
       _trace('[MAD $agentId] registered global_send goal: ${spawn.globalName} -> ${spawn.destAgent}');
     }
