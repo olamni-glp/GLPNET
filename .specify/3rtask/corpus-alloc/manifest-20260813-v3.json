@@ -1,0 +1,32 @@
+{
+  "slices": [
+    {
+      "slice_id": "baseline-portfolio-and-current-protocol",
+      "description": "The 2026-08-12 portfolio snapshot (features, states, scores, spec paths, sequencing) PLUS the current protocol/tooling-defect record (coop CRDT rules, scheduler and marathon contracts, known defects). Spans the WHAT and the HOW.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-a-portfolio.md",
+        ".specify/3rtask/corpus-alloc/slice-c-protocol-update-20260813.md"
+      ],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "baseline-hosts-and-current-portfolio",
+      "description": "The 2026-08-12 host snapshot (declared caps, status files, per-host history) PLUS the current portfolio record (state changes, blocking edges, duration data, engineer sequencing directive) INCLUDING the authoritative post-sync 2026-08-13T18:25Z portfolio refresh. Spans the WHO and the WHAT.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-b-hosts.md",
+        ".specify/3rtask/corpus-alloc/slice-a-portfolio-update-20260813.md",
+        ".specify/3rtask/corpus-alloc/slice-a-portfolio-refresh-20260813T1825Z.md"
+      ],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "baseline-protocol-and-current-hosts",
+      "description": "The 2026-08-12 protocol snapshot (coop protocol v2 text, pipeline and scheduler semantics) PLUS the current host record (availability, caps freshness, load, host-specific constraints). Spans the HOW and the WHO.",
+      "sources": [
+        ".specify/3rtask/corpus-alloc/slice-c-protocol.md",
+        ".specify/3rtask/corpus-alloc/slice-b-hosts-update-20260813.md"
+      ],
+      "assigned_to": "builder-3"
+    }
+  ]
+}
