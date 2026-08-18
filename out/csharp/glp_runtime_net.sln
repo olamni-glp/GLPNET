@@ -1,23 +1,60 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-# glp_runtime_net — converted-C# GLP runtime + REPL (feature 020).
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "glp_runtime_net", "glp_runtime_net.csproj", "{A0000001-0000-0000-0000-000000000001}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "glp_repl", "glp_repl\glp_repl.csproj", "{A0000002-0000-0000-0000-000000000002}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "term_traversal_probe", "term_traversal_probe\term_traversal_probe.csproj", "{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{A0000001-0000-0000-0000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A0000001-0000-0000-0000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Debug|x64.Build.0 = Debug|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Debug|x86.Build.0 = Debug|Any CPU
 		{A0000001-0000-0000-0000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0000001-0000-0000-0000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Release|x64.ActiveCfg = Release|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Release|x64.Build.0 = Release|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Release|x86.ActiveCfg = Release|Any CPU
+		{A0000001-0000-0000-0000-000000000001}.Release|x86.Build.0 = Release|Any CPU
 		{A0000002-0000-0000-0000-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A0000002-0000-0000-0000-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Debug|x64.Build.0 = Debug|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Debug|x86.Build.0 = Debug|Any CPU
 		{A0000002-0000-0000-0000-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0000002-0000-0000-0000-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Release|x64.ActiveCfg = Release|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Release|x64.Build.0 = Release|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Release|x86.ActiveCfg = Release|Any CPU
+		{A0000002-0000-0000-0000-000000000002}.Release|x86.Build.0 = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|x64.Build.0 = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Debug|x86.Build.0 = Debug|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|x64.ActiveCfg = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|x64.Build.0 = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|x86.ActiveCfg = Release|Any CPU
+		{3EC50D39-AA16-4229-9E4D-5D6D6791CC85}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

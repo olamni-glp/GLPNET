@@ -119,10 +119,21 @@ public sealed class QuicTransport : ILinkTransport
     private static async Task<ILinkEndpoint> AcceptOneAsync(QuicListener listener, LinkAddress local, CancellationToken ct)
     {
         var connection = await listener.AcceptConnectionAsync(ct).ConfigureAwait(false);
-        var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
-        var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
-        var nonce = LinkNonce.Str(connection.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString());
-        return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, nonce), connection, stream, ws);
+        try
+        {
+            var stream = await connection.AcceptInboundStreamAsync(ct).ConfigureAwait(false);
+            var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: false, ct).ConfigureAwait(false);
+            var nonce = LinkNonce.Str(connection.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString());
+            return new QuicEndpoint(new LinkId(LinkScheme.Quic, local, nonce), connection, stream, ws);
+        }
+        catch
+        {
+            // Stream-accept / bootstrap failed AFTER the connection was accepted (mirror of the
+            // dial-path guard in ConnectAsync) — dispose the accepted connection before rethrowing
+            // so it never leaks; the dispose itself must never mask the original exception.
+            try { await connection.DisposeAsync().ConfigureAwait(false); } catch { }
+            throw;
+        }
     }
 
     /// <summary>A bound QUIC listener that accepts many isolated client links (US2 T025).</summary>
@@ -166,12 +177,46 @@ public sealed class QuicTransport : ILinkTransport
             },
         };
 
-        var connection = await QuicConnection.ConnectAsync(clientOptions, ct).ConfigureAwait(false);
-        var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct).ConfigureAwait(false);
-        // The outbound stream is not realized on the wire until first write — the bootstrap request
-        // (connector writes first) opens it and unblocks the listener's AcceptInboundStreamAsync.
-        var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: true, ct).ConfigureAwait(false);
-        return new QuicEndpoint(new LinkId(LinkScheme.Quic, remote, LinkNonce.Int(port)), connection, stream, ws);
+        // feature 064 (FR-008 / contracts/quic-connect-retry.md): the connector's goal may activate
+        // BEFORE the listener has bound (independent processes — and, with the resume hook, before a
+        // restarting service box has re-armed); retry a refused/unreachable dial until ct (the
+        // kernel's ConnectTimeout) cancels, so establishment is timing-independent rather than a hard
+        // race. Exact parity with TcpTransport.ConnectAsync — role-order independence (FR-004).
+        // ONLY the pre-establishment connect retries; stream-open and bootstrap keep fail-fast
+        // semantics (a peer that accepted then broke is a real fault, not a not-yet-listening peer).
+        QuicConnection connection;
+        while (true)
+        {
+            try
+            {
+                connection = await QuicConnection.ConnectAsync(clientOptions, ct).ConfigureAwait(false);
+                break;
+            }
+            catch (QuicException e) when (e.QuicError is QuicError.ConnectionRefused or QuicError.ConnectionTimeout)
+            {
+                await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
+            }
+            catch (SocketException)
+            {
+                await Task.Delay(100, ct).ConfigureAwait(false); // listener not up yet — back off and retry
+            }
+        }
+        try
+        {
+            var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, ct).ConfigureAwait(false);
+            // The outbound stream is not realized on the wire until first write — the bootstrap request
+            // (connector writes first) opens it and unblocks the listener's AcceptInboundStreamAsync.
+            var ws = await ConnectBootstrap.BootstrapAsync(stream, isConnector: true, ct).ConfigureAwait(false);
+            return new QuicEndpoint(new LinkId(LinkScheme.Quic, remote, LinkNonce.Int(port)), connection, stream, ws);
+        }
+        catch
+        {
+            // Stream-open / bootstrap failed AFTER the connect succeeded (fail-fast by design, see
+            // above) — dispose the established connection before rethrowing so it never leaks;
+            // the dispose itself must never mask the original exception.
+            try { await connection.DisposeAsync().ConfigureAwait(false); } catch { }
+            throw;
+        }
     }
 
     /// <summary>

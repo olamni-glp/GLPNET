@@ -10,39 +10,13 @@
 
 ## 🔴 PGLite data-dir — use the repo-local cluster `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 
+**2026-06-12 (drive swap, Gabi-directed):** The machine was rebuilt. The old D: (label `GAVRI_VOL_D`) is now mounted as **G:**; the new D: (label `OLAMNIT_01`) carries the working repo and is **NTFS** (passes the CLI filesystem guard). Rules from Gabi, all 🔴 ABSOLUTE:
+
 1. **Recreating `C:\pglite\research\glpnet` is STRICTLY PROHIBITED.** The old canonical C: cluster is gone and must not be re-established.
+2. **Never use `G:\BSTDEV\research\glp\glpnet` directly** — it is a copy-from-only archive. Copy what you need from it onto D:; never run anything against it in place. **One sanctioned exception: `G:\BSTDEV\research\glp\glpnet\COOP\`** — the bk-colab mailbox (**read/write OK**). Everything else under G: glpnet stays observe-only.
+3. **Drive topology:** `GAVRI_VOL_D` is a **shared volume** — it is **G: on this host (OLAMNIT)** and **D: on the colleague host (GAVRI)**. So `G:\BSTDEV\research\glp\glpnet` here == `D:\BSTDEV\research\glp\glpnet` on GAVRI (same files). The bk-colab COOP mailbox lives on this volume so both hosts share it; the channel is **asynchronous** (the volume is not always mounted on both at once). See `COOP/PROTOCOL.md` and `/bk-colab` (in design).
 
-### 🔴 Host identity and channel root — VERIFIED 2026-08-13, supersedes the 2026-06-12 drive-swap block
-
-The 2026-06-12 block described this host as **OLAMNIT** with the shared volume at **G:**. **Both facts are now false on this machine, and obeying them writes your handoff into the void.** Verified mechanically 2026-08-13:
-
-| Fact | Verified value |
-|---|---|
-| `hostname` | **`Ariellas`** — *not* OLAMNIT. OLAMNIT is a **separate peer host**. |
-| Local volumes | **C, D, E only.** There is **no G: drive.** D: label is `ARIELLA_D` (not `OLAMNIT_01`). |
-| Live coop board | **`\\192.168.0.108\GAVRI_D\coop\glpnet`** — mapped at **both `I:` and `H:`** (`net use`). |
-| Fleet participants | `ariellas` (this host), `gavriella`, `olamnit` |
-
-🔴 **`I:` and `H:` are SMB mappings, not local volumes** — they are session-scoped and can vanish. Always confirm the root resolves before trusting a read (`Test-Path I:\coop\glpnet`). A missing mapping must be treated as *"I cannot see the board"*, **never** as *"the board is empty"*.
-
-🔴 **The COOP directory in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a husk — do not read it as the channel.** It contains no `handoff.md` for any host. Several buildkit tools **default** to it and then report empty results. `buildkit-scheduler` must always be given `--root I:/coop/glpnet/sched`; with no `--root` it silently falls back to the retired in-tree path and reports `fallback_used=True`.
-
-### 🔴 Channel delivery contract (three instances of one defect — Aug 11, 12, 13 2026)
-
-Message layout on the live board:
-
-```
-I:\coop\glpnet\                       ← BROADCAST-*.md and board-wide signals  (notification)
-I:\coop\glpnet\inbox\<host>\          ← directed messages TO that host         (DELIVERY)
-I:\coop\glpnet\roadmap-sync\inbox\    ← the roadmap export publish leg
-I:\coop\glpnet\sched\                 ← scheduler board (pass --root explicitly)
-```
-
-1. **Anything that discharges another host's declared hold MUST be written to `inbox/<host>/`.** Board root is notification only. On 2026-08-11 a `WAIT-RELEASED` note was posted to the board root and never to `inbox/olamnit/`; olamnit held correctly for two days and was then wrongly broadcast as "silent" and "the sole blocker".
-2. **Silence must be provable, never inferred.** No "host X is N days silent" claim without a receipt naming **every root and path scanned** plus the last-seen stamp per host. Scan the board root *and* every inbox — senders use both.
-3. 🔴 **Never take a one-way action off a silence reading** — no reboot override, no roadmap tombstone, no "sole blocker" broadcast. Require a positive receipt first. This rule alone would have prevented all three recorded instances.
-4. Peer handoffs are **newest-seq-first with older seqs preserved below** — **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread.
-5. This host runs **more than one workstream** through the mailbox — state which workstream you are in your block, and do not answer asks you have no standing on.
+🔴 **The COOP mailbox in the repo (`D:\bstdev\research\glp\glpnet\COOP\`) is a STALE COPY — do not read it as the channel.** It rode along in the drive swap and sits at seq 3 (2026-06-15). The live channel is **only** on the shared volume (`G:\...\COOP\`). Read the peer at `G:\...\COOP\gavri\handoff.md`; write your own side at `G:\...\COOP\olamnit\handoff.md`. Both `handoff.md` files are **newest-seq-first with older seqs preserved below** — so **PREPEND a new seq block; never overwrite the file wholesale**, or you destroy the peer thread (PROTOCOL.md rule 3's "full snapshot" is satisfied by prepending). OLAMNIT runs **more than one workstream** through this one mailbox — state which workstream you are in your seq block, and do not answer asks you have no standing on.
 
 The canonical cluster is now the repo-local one. Every `codeconv` invocation that talks to the bridge passes:
 
@@ -250,18 +224,6 @@ REPL test suite is the primary signal — run it before unit tests. If a bug is 
 If unified tests fail unexpectedly, common causes:
 - **Stale REPL kernel snapshot** at `glp_runtime/.dart_tool/repl.dill` — delete it and re-run.
 - Wrong working directory — must run from repo root.
-- **`/home/user/dart-sdk/bin/dart: No such file` (every test FAILs)** — `dart` is not on this host's PATH; the suite's fallback is the Linux path. Run with `DART=/d/BSTDEV/tools/dart-sdk/bin/dart.exe bash test/run_all_tests.sh` (this host's SDK lives at `D:\BSTDEV\tools\dart-sdk`).
-- **Section I `File not found: glp\programs/...` from the C# REPL** — stale `out/csharp` binary predating the hasPathish load fix; rebuild: `cd out/csharp/glp_repl && dotnet build`.
-
-**Gleam smoke gate (glp_gleam/smoke.sh) on this host (ariellas, 2026-08-03):** must run INSIDE WSL (Git Bash picks up the Windows Erlang and fails the OTP pin) with the user-space OTP 25 build on PATH:
-```
-wsl bash -lc 'export PATH="$HOME/otp-25.3.2.8/bin:$PATH"; cd /mnt/d/bstdev/research/glp/glpnet/glp_gleam && ./smoke.sh'
-```
-**Quote the PATH export.** The unquoted form (`export PATH=$HOME/...:$PATH`) is mangled by the space-bearing Windows PATH entries WSL inherits, so the OTP 25 build is silently not picked up.
-
-OTP 25.3.2.8 was built from source at `~/otp-25.3.2.8` in WSL (Ubuntu 26.04 system OTP is 27; the source build needs `CFLAGS="-O2 -std=gnu17"` and `--disable-jit` on GCC≥15 or `dist.c` fails on the C23 bool clash). After switching OTP versions, `rm -rf glp_gleam/build` first — mixed-OTP artifacts crash `gleam test` with `{undef, glp_gleam@@main}`, `{corrupt atom table}`, or `features_not_allowed [maybe_expr]`.
-
-🔴 **`glp_gleam/build/` is single-OTP.** The WSL suite (`gleam test`, OTP 25) and the Windows-side Section I cross-runtime harness (`test/parity/cross_runtime/run_all.sh`, which calls `gleam run` from Git Bash under the Windows Erlang) cannot share one `build/`. Whichever ran last owns it; the other fails at beam load with "please re-compile this module with an Erlang/OTP NN compiler". Run them **serially with `rm -rf glp_gleam/build` in between** — never treat the resulting load error as a code regression.
 
 For sibling-repo (Mac/Linux) test invocation, see appendix.
 
@@ -343,8 +305,6 @@ For sibling-repo (Mac) merge paths, see appendix.
 ---
 
 ## Multi-Stage Task Persistence & Restart-Resume
-
-**buildkit CLI python (this host):** `python -m buildkit_cli....` fails on the system Python (no `buildkit_cli`); use `D:\BSTDEV\tools\mstack\.bk-venv\Scripts\python.exe -m buildkit_cli....` — the `buildkit-*` exes live in that same `Scripts\` dir.
 
 The **roadmap + the buildkit pipeline state are the source of truth** for where work
 stands — never a hand-maintained ledger or a hand-written restart prompt (those drift
@@ -614,5 +574,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/076-typechecker-body-atom-moding/plan.md`
+`specs/077-guarded-term-traversal/plan.md`
 <!-- BUILDKIT END -->

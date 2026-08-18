@@ -1,5 +1,121 @@
 ## [Unreleased]
 
+## [v2026.08.13.1] - 2026-08-13
+
+### Added
+- finalize — generalized Section T over cyclic_*.glp (T024), spec Implemented, known-issues resolved; 551/552 (1 pre-existing Gleam×C# flake)
+- structural cycle guard on codegen/analyzer/linker walkers (US1/US2 structural family) + probe; REPL 550/550
+- var-name cycle guard on substitution-closure walker (US1/US2 subst family); F-069-1 crash -> catchable CompileError; REPL 549/549
+- consolidate PE/analyzer term-traversal into shared term_traversal.cs (US3 dedup) + F-069-1 repro; REPL 547/547
+
+### Fixed
+- codexreview c2 — identity guard (not fuel) on shared walkers + ResolveTerm; real-walker probe; T-4 fail-loud
+- codexreview — codegen partial-list false-cycle + fuel-guard shared walkers + acyclic fixtures
+
+### Changed
+- Merge pull request #154 from olamni-glp/077-guarded-term-traversal
+- test updates
+- Merge origin/develop into 077 (064 back-merge): keep 077 pointers; union test Section T(064)+U(077); take develop import-manifest
+- record codexreview hardening (Decision 5, converged@3) + handover session-5 update
+- sync round — import 1 (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879
+- Merge pull request #152 from olamni-glp/main
+- sync round — import 1 peer file (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879
+- sync round — import 1 (converged, 0 new lines), reconcile in-sync, replay-verify OK; export 19/102/2879 (077 implement complete)
+- safe-restart handover — /bk-implement COMPLETE (27 tasks, 4 phase commits), NEXT=/bk-codexreview; divergence-#1 + test-reality flags for review
+- safe-restart handover — pipeline specify→analyze complete, NEXT=/bk-implement; 5 divergences + owner-review flag captured
+- sync round — import 8 files (converged, 0 new lines), reconcile in-sync, replay-verify OK, 0 live dupes; export 19/102/2879 w/ Features A/B WSJF/RICE scored (B=4.2/2800, A=6.0/2000)
+- analyze(077): apply top remediations — F1 reassign mark/ground walkers to structural guard (new T019a); A1 fuel-sizing basis; 0 critical, 100% coverage
+- tasks(077): 26 tasks, dedup-first (US3 foundational P2) then cycle-guard P3/P4; MVP=P1+P2+P3 closes F-069-1 + unblocks occurs-check
+- plan(077): grounded ~21-walker inventory + 2-flavor cycle guard + 5 consolidation divergences (dedup is behaviour-sensitive); research/data-model/contract/quickstart; Constitution PASS
+- clarify(077): FR-004 cyclic-outcome = hard-fail CompileError (no-silent-failure; consistent w/ sibling occurs-check; not a 1.14 change)
+- spec(077): guarded term-traversal utilities (cycle-tolerant walkers + PE/analyzer dedup) — 3 P1 stories, 8 FRs, 6 SCs; FR-004 cyclic-outcome deferred to clarify
+
+## [v2026.08.12.1] - 2026-08-12
+
+### Added
+- T007-T009 US2 durable history - IOpWal reuse (pglite primary, file fallback), replay drained pre-recv-loop at link establish, replayed items never re-appended; history drill 4/4 (order + exactly-once + idempotent restart)
+- T006 additive LinkPump.OnDelivered hook - runner-thread, once per delivered term, pre-bind (FR-004); 4/4 tests incl. dedup + close + throwing-observer
+- T010+T011 US3 QUIC connector dial-retry (TCP parity, FR-008) - retry refused/timeout until ct, stream+bootstrap keep fail-fast; glp_link 167/167 (was 165)
+- T003+T004 resume-goal hook - walk-up registration reader + synchronous arm in AfterEngineCreated; smoke: SC-005 transcript identical, arm/missing/disabled paths verified
+- T001 glpservice hygiene - gitignore runtime artifacts, commit registration sample
+
+### Changed
+- Merge pull request #150 from olamni-glp/064-durable-listener-service-box
+- merge develop into 064 (second pass - develop advanced during ship)
+- Merge pull request #149 from olamni-glp/main
+- merge develop into 064-durable-listener-service-box before ship
+- refine(codexreview): cycle 4/5 [diff/general]
+- refine(codexreview): cycle 3/4 [diff/general]
+- refine(codexreview): cycle 2/3 [diff/general]
+- refine(codexreview): cycle 1/3 [diff/general]
+- T012-T014 ticked - N=100 history drill PASS=4/0 (clean re-run after drill-collision contamination), quickstart local verify green, glp_link 171/171 + glp_crdtmsg 188/188, full suite 551/551 incl Section T
+- roadmap: import ariellas 153819Z export (2 files/0 lines, journal already converged 18/98/2614), reconcile clean
+- roadmap: sync round - import 6 files/45 lines (consumes ariellas 144831Z), reconcile clean, 0 duplicates, export 18/98/2614 published 150440Z, replay-verify OK
+- test+docs(064): T012 Section T wires resume+history drills into run_all_tests.sh (explicit-skip, names standalone gates); T013 quickstart drift fixed (sample->rename flow, replay-at-link-establish expected lines)
+- restore T009 replay-idempotence unit tests - replay reads never append, double-restart byte-identity, dot-key dedup on crash-replay overlap, both WAL backends; glp_crdtmsg 188/188
+- roadmap: capture + promote ynet-consolidation from 3rtask run 20260803T134739Z-fa8a (54 confirmed claims, evidence-derived build order)
+- roadmap: sync round - 0-delta import (fleet converged), reconcile clean, 0 duplicates, export 18/95/2551 published 140423Z, replay-verify OK
+- roadmap: sync round - import 6 files/6 lines, reconcile clean, 0 duplicates, export 18/95/2551 published 134205Z, replay-verify OK
+- T005 US1 restart drill 7/7 green - two launches auto-arm + receive, SC-005 transcript identical; drill listener emits via _output (resume hook prints only its own diagnostics)
+- T002 baselines - glp_link 165/165, crdtmsg 184/184, REPL suite in flight; normalized no-registration startup transcript captured
+- analyze(064): 5 findings 0 CRITICAL, coverage 100pct; applied top remediations U1 (both-backends-fail policy) I1 (baseline transcript) I2 (diagnostic wording)
+- tasks(064): 14 tasks across US1-US3 + polish, MVP=US1, T008 delivery-shape flagged as the one open implementation choice
+- plan(064): R1-R7 design - shim resume hook, IOpWal reuse, LinkPump delivery hook, QUIC retry parity; 3 contracts, constitution PASS
+- roadmap: engineer-directed close of the three released wave features (2/4/5), export 18/95/2545 published 124431Z
+- spec(064): durable-listener-service-box gavri variant - 3 user stories, 9 FRs, 5 SCs, zero GLP language surface (FR-006)
+
+## [v2026.08.11.1] - 2026-08-11
+
+### Added
+- US3 T020 DECISION.md (ADOPT-WITH-CONDITIONS, BC-1..BC-4 enumerated) + T024 REPORT.md SC-002-closed cross-refs
+- US2 T015 per-construct coverage floor complete — op_forms.glp closes op-as-functor/neg gap; all B-boxes ticked w/ cited IL/parse coverage; +dynamic_dispatch 4/4 (# / imported)
+- US2 T014 expanded corpus — sweep tests/typed(70/71) + lib(8/8) + typed_book(175/223), 0 un-caused divergences; all rejects bounded BC-1 (SC-002)
+- US2 T016 DEC U3 — mod-functor lexer predicate (Gabi+Udi approved); mod(...) call-form parity MATCH, 7/7 corpus + fuzz unregressed
+- US2 T018/T019 DEC F3 — scope fuzzer non-cyclic =; full-budget fuzz 10000 clean, 0 un-caused divergences (SC-003)
+- US1 IL-parity bridge — 7/7 byte-identical IL (SC-001)
+
+### Fixed
+- untrack glpquick-cert key material + OTP floor instead of equality pin
+
+### Changed
+- Merge pull request #147 from olamni-glp/069-sc-002-il-parity-bridge
+- Merge remote-tracking branch 'origin/develop' into 069-sc-002-il-parity-bridge
+- test updates
+- Merge pull request #146 from olamni-glp/075-backlog-cluster-3rtask
+- Merge pull request #145 from olamni-glp/074-roadmap-sync-postimplement
+- regenerate cross_runtime parity result banners (build-hash + cwd-casing) from T022 run
+- sync export (19 epics/102 features/2795 lines) — +GLP compiler robustness epic w/ occurs-check + guarded-traversal features (3rtask run 20260811T085855Z-8d6f); dedup-first dep
+- roadmap: backlog root-cause sweep - 3rtask run a625 clusters 15 actionables into 7 features under new epic, 24 no-feature dispositions, export 19/107/2856 published 112740Z
+- 3rtask: backlog-cluster corpus slices + manifest (research run input)
+- T022 regression — 0 failures across all executed sections (A/B/C 221/110/50); run stopped in known-flaky late multi-isolate; production untouched (FR-010 held)
+- T023/T024 — correct quickstart corpus usage (referenced-in-place, --project form) + mark T014-T024 done in tasks.md
+- T021 xUnit — FirstDiff localization (5) + fuzzer determinism (6) + DEC F3 non-cyclic-= invariant (1); 12/12 pass
+- roadmap: sync round - import gavriella 230104Z + ariellas 174815Z (2 lines), reconcile in sync, 0 live dupes, replay-verify OK, export 18/100/2762 published 235444Z
+- wip(069): US2 T017/T018 fuzzer+wiring+ResultsWriter upsert; fuzz surfaced engine SO bug F-069-1 (blocked)
+- Merge pull request #144 from olamni-glp/073-roadmap-sync-postqueue
+- roadmap: sync round - import gavriella 055225Z (0 lines, converged), reconcile in sync, replay-verify OK, export 18/100/2760 published 174815Z
+- Merge pull request #143 from olamni-glp/072-3rtask-808a-dispositions
+- 3rtask 808a disposition round - staging adopted, O1-O7 worked, O1/O2 rulings proposed
+- Merge pull request #142 from olamni-glp/071-postship-roadmap-sync
+- roadmap: sync round post-ship v2026.08.10.1 - 7 peer files/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- Merge pull request #141 from olamni-glp/main
+- Merge pull request #140 from olamni-glp/release/v2026.08.10.1
+- release: v2026.08.10.1
+- Merge pull request #139 from olamni-glp/069-tracked-key-remediation
+- merge: origin/develop into 069 (union import manifest)
+- roadmap: sync round - import 1 peer file/0 lines (converged), 0 live dupes, export 18/100/2760 published
+- roadmap: sync round - 0-delta import (fleet converged), reconcile in sync, 0 live dupes, export 18/100/2760 published
+- roadmap: sync round (import 2 files/15 lines), 0 live dupes, export 18/100/2760
+- roadmap import manifest
+- roadmap: sync round — import 6 peer files (5 lines, 0 dupes), export+publish 18/100/2760
+- analyze(069): apply remediations — corpus dir names (typed_book not book), T016 §1.14 re-confirm
+- tasks(069): 24 tasks across 6 phases, organized by US1/US2/US3
+- plan(069): impl plan + research + data-model + contracts + quickstart
+- spec(069): clarify corpus floor, mod-functor fix-first, bounded fuzz budget
+- spec: SC-002 IL-parity bridge — parse-tree->engine lowering + adoption decision (069)
+- roadmap: sync round after promotes (5 promoted), 0 live dupes, export 18/99/2745
+- Merge pull request #138 from olamni-glp/main
+
 ## [v2026.08.10.1] - 2026-08-10
 
 ### Fixed

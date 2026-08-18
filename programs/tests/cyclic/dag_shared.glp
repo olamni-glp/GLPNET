@@ -1,0 +1,18 @@
+% dag_shared.glp — feature 077 SC-006 / FR-006 acyclic (DAG) regression fixture.
+%
+% A term with a SHARED (repeated) sub-value is a DAG, not a cycle, and MUST compile
+% cleanly. The guarded walkers must distinguish a revisited-name / shared-subterm
+% (finite, allowed) from a genuine self-referential cycle (infinite, rejected).
+% Constant-type sharing (Integer) is SRSW-legal via the ground relaxation, so the
+% reader X? may appear in several positions of the constructed term.
+%
+% Driven by test/run_all_tests.sh Section T-3.
+
+Triple ::= triple(Integer, Integer, Integer).
+Boxed  ::= boxed(Triple, Triple).
+
+procedure consume(Boxed?).
+consume(_).
+
+procedure build(Integer?).
+build(X) :- ground(X?) | consume(boxed(triple(X?, X?, X?), triple(X?, X?, X?))).

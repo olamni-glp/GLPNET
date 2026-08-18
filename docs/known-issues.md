@@ -1,5 +1,17 @@
 # GLP Known Issues
 
+## Issue 0: Cyclic `Term` overflows the C# compiler's substitution/resolve walkers (F-069-1 / BC-2)
+
+**Status**: Resolved (feature 077, `v2026.08.*`)
+**Discovered**: feature 069 (SC-003 fuzz); the fuzzer had to *exclude* cyclic `=` guards (DEC F3) to avoid it
+**Affects**: `out/csharp/lib/compiler/` — a cyclic `Term` (e.g. `X = s(X)`, a defined-guard reduction with an occurs-check violation) drove `PartialEvaluator.ApplySubstitution` (and the other unguarded term walkers) into unbounded recursion → an **uncatchable `StackOverflowException`** that killed the process.
+
+### Resolution
+
+Feature **077 (guarded-term-traversal)**: the duplicated PE/analyzer unify/substitution/resolve machinery was consolidated into one shared module `out/csharp/lib/compiler/term_traversal.cs`, and every recursive `Term`/`Goal` walker is now cycle-guarded — the substitution/resolve family by a var-name active-path set, the codegen/analyzer/linker structural family by an identity/fuel `StructuralGuard`. A cyclic term now raises a **catchable `CompileError`** (occurs-check-violation diagnostic, FR-004) in bounded time. Regression: `programs/tests/cyclic/*.glp` + `out/csharp/term_traversal_probe` (Section T of `test/run_all_tests.sh`).
+
+The sibling **occurs-check feature** (roadmap Feature A) lands its single bind-time occurs-check on this consolidated module — it is *blocked-by* 077.
+
 ## Issue 1: Localize uses writer address where reader address is needed
 
 **Status**: Open
