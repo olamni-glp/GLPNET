@@ -46,7 +46,7 @@ void main() {
       //   - readerAddr is actually the writer address (used as onBind key)
       // Spec Section 5.2: "spawn global_send(Y_q?, _w(p,i), p)"
       expect(result.spawns.length, 1);
-      expect(result.spawns[0].readerAddr, 100); // writer addr for onBind
+      expect(result.spawns[0].onBindWriterAddr, 100); // writer addr for onBind
       expect(result.spawns[0].globalName, GlobalName.writer('p', 5));
       expect(result.spawns[0].destAgent, 'p');
 
@@ -131,7 +131,7 @@ void main() {
 
       //   - spawn info for Y_q's gs: global_send(Y_q?, _w(p,1), p)
       expect(result.spawns.length, 1);
-      expect(result.spawns[0].readerAddr, 300); // First pair's writer address
+      expect(result.spawns[0].onBindWriterAddr, 300); // First pair's writer address
       expect(result.spawns[0].globalName, GlobalName.writer('p', 1));
       expect(result.spawns[0].destAgent, 'p');
 
