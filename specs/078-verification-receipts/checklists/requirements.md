@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 ## Requirement Completeness
 
 - [x] No [NEEDS CLARIFICATION] markers remain
-- [ ] Requirements are testable and unambiguous — **FAILS at Iteration 2, see below**
+- [x] Requirements are testable and unambiguous — revoked at Iteration 2, **restored at Iteration 3**
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -30,7 +30,7 @@ SPDX-License-Identifier: MIT
 
 ## Feature Readiness
 
-- [ ] All functional requirements have clear acceptance criteria — **FAILS at Iteration 2 (FR-013)**
+- [x] All functional requirements have clear acceptance criteria — revoked at Iteration 2, **restored at Iteration 3**
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
@@ -113,10 +113,39 @@ re-validation trigger**: nothing invalidates a checklist when the spec it checks
 "absence is an error" rule as FR-020 — a checklist whose spec has changed since its last
 validation reports UNREAD, never a pass.
 
+**Iteration 3 — 2026-08-18. Both revoked items RESTORED. The five ambiguities are closed.**
+
+Iteration 2 revoked two ticks against five named ambiguities. All five are now resolved in the spec's
+`Clarifications` → *Session 2026-08-18*, each on its recommended option with the alternative it beat
+recorded alongside it:
+
+| block | was ambiguous | now |
+|---|---|---|
+| 24 | a receipt had no defined location | **FR-022** — conventional addressable location + pointer on the verdict |
+| 25 | FR-013's *expected* was undefined, so zero checks satisfied it | **FR-023** — per-run declared set; absence is an error |
+| 26 | the contract spanned two repos with no authority | **FR-024** — single owner, versioned consumption, conformance fixture |
+| 27 | "bounded" named no bound | **FR-005** — bound the enumeration, never the totals; byte backstop |
+| 28 | the override had no scope, expiry or authority | **FR-012** — briefing, ack, rationale, scope, mandatory expiry |
+| 29 | SC-003's reader and samples were undefined | **SC-003** — blind reader, cross-lane corroboration, real receipts only |
+
+FR-013 now has acceptance criteria via FR-023, which is why the second item is restorable.
+
+🔴 **Restored with one qualification, stated rather than buried.** These six are the assistant's
+recommendations adopted under a **standing engineer instruction to proceed**, not six individually
+ruled decisions. The tick means *the requirements are now testable and unambiguous*, which is true.
+It does **not** mean the engineer has ratified each choice. Overturning any one is a single edit;
+the Clarifications entry for each records what it beat and why, so the reasoning does not have to be
+reconstructed.
+
+**Still open and NOT covered by these ticks:** the re-validation trigger from Iteration 2 — nothing
+yet invalidates a checklist when the spec it checks is edited. Until that exists, this document is
+only as current as its newest iteration stamp, and a reader must check that stamp against the spec's.
+
 ## Notes
 
-- Items marked incomplete require spec updates before `/bk-clarify` or `/bk-plan`. **Two are
-  incomplete at Iteration 2** and are the substance of the open clarify stage.
+- Items marked incomplete require spec updates before `/bk-clarify` or `/bk-plan`. **None are
+  incomplete at Iteration 3.** The two revoked at Iteration 2 were restored by closing the five
+  ambiguities they were revoked for.
 - **Recommended next stage: `/bk-clarify`** rather than straight to `/bk-plan`. Not because
   anything is ambiguous, but because the three resolved-by-default decisions above are exactly the
   kind that are cheap to change now and expensive after planning.

@@ -147,6 +147,19 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 
 *Resolution rationale:* the phased ruling alone would have left FR-008 satisfiable by declaring nothing — SC-002 measures coverage *within declared areas*, so an empty declaration set met it trivially. FR-019/020/021 close that hole without weakening the phasing.
 
+### Session 2026-08-18
+
+Six ambiguities were found by reading the spec against its own invariant and were raised to the engineer as decision-register blocks 24–29 with options and recommendations. The engineer issued a **standing instruction to proceed** rather than answer them individually. They are therefore resolved here **on the recommended option, provisionally and reversibly**: each records the alternative it beat and why, so overturning any one of them is a single edit rather than an excavation.
+
+- **Q: Where does a receipt live, and how does a consumer obtain one? (block 24)** → **A sidecar file at a conventional path, with a pointer on the verdict.** Encoded as FR-022. *Beat:* inline-in-payload (forces every check onto a structured channel; several today emit only human text) and catalog rows (makes every check depend on the component with this fleet's worst measured silent-failure record — unacceptable in a mechanism built to prove things ran).
+- **Q: What defines the set of checks a run is *expected* to contain? (block 25)** → **A per-run declared manifest; an undeclared run is an error.** Encoded as FR-023. *Beat:* deriving the expected set from the last successful run, which is a ratchet that only ever loosens — a check that vanished two runs ago would become permanently "not expected". This is deliberately the same shape as FR-019/020/021, so FR-008 and FR-013 share one absence-is-an-error rule instead of diverging.
+- **Q: Which repository owns the receipt contract, given the declared areas span two? (block 26)** → **buildkit owns it; glpnet consumes it by version; a conformance fixture is shipped alongside.** Encoded as FR-024. *Beat:* defining it in glpnet and copying into buildkit — the copy-divergence this feature exists to stop. The fixture is what makes single-authority safe: each side runs it and **its output is itself a receipt**, so the contract is proven under its own invariant rather than trusted.
+- **Q: FR-005 requires bounded receipts but names no bound. (block 27)** → **Bound the enumeration, never the totals; a byte backstop catches pathological single fields.** Encoded in FR-005. *Beat:* a plain byte cap, which would discard the totals FR-010 needs for reconciliation — one requirement defeating another.
+- **Q: What is an override's scope, expiry and authority? (block 28)** → **Reuse the established informed-consent shape: briefing, explicit acknowledgement, rationale, scope and a mandatory expiry.** Encoded in FR-012. *Beat:* per-invocation-only (so painful on a long run with one legitimately unsupported platform that engineers would route around it — the failure mode the Assumptions already warn about) and a second bespoke mechanism (which would itself become a place for a silent pass to hide).
+- **Q: Who is SC-003's reader, and where do its 20 samples come from? (block 29)** → **A blind reader in a fresh context for the repeatable gate, corroborated once by a blind cross-lane human reader; samples drawn only from receipts the mechanism actually produced.** Encoded in SC-003. *Beat:* author-written samples, under which the criterion is unfalsifiable by the person it is meant to test — the feature's own defect class inside its own acceptance criteria.
+
+*Standing caveat:* these six are the assistant's recommendations adopted under a standing instruction to proceed, not individually-ruled engineer decisions. Each is marked in the requirement it produced. Any of them may be overturned without disturbing the others.
+
 ### Functional Requirements
 
 **The invariant**
@@ -158,7 +171,7 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 - **FR-002**: Every check MUST emit a receipt with its verdict, recording at minimum: the resolved target identity, the count of items examined, the count skipped with reasons, the outcome classification, and when it ran.
 - **FR-003**: The resolved target identity MUST be recorded as actually resolved at run time, not as requested — so a check that resolved to a different path, revision, host or root than intended is visibly different in the receipt.
 - **FR-004**: A receipt MUST be machine-readable so consumers can enforce FR-008 without human interpretation, and human-readable enough to be actionable where it is displayed.
-- **FR-005**: Receipts MUST be bounded in size regardless of target size.
+- **FR-005**: Receipts MUST be bounded in size regardless of target size, and the bound MUST be expressed so that FR-010 reconciliation survives it *(block 27)*: enumerations of examined or skipped items are capped at a declared maximum while the **true totals are always recorded**, so a bounded receipt still permits counts to be reconciled against the target's true size. A byte backstop additionally caps any single field, and a receipt that truncated MUST say so and by how much — a bounded receipt is still an honest one.
 
 **The three-way distinction**
 
@@ -174,7 +187,7 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 **Loud failure**
 
 - **FR-011**: A refusal MUST name what was expected, what was found, and where it looked — sufficient to act on without re-running.
-- **FR-012**: A refusal MUST NOT be suppressible by ordinary configuration. Where an engineer must proceed regardless, an explicit recorded override with a rationale is the only path, and it remains visible in the receipt.
+- **FR-012**: A refusal MUST NOT be suppressible by ordinary configuration. Where an engineer must proceed regardless, an explicit recorded override with a rationale is the only path, and it remains visible in the receipt. An override MUST carry *(block 27/28)*: a briefing of what is being overridden, an explicit acknowledgement, a rationale, a **scope** (the area, check and reason it covers) and a **mandatory expiry** — there is no indefinite override. An override MUST NOT apply beyond its recorded scope, so one recorded once can never silently authorise every future refusal of its kind. This reuses the informed-consent shape already established elsewhere in the toolchain rather than introducing a second override mechanism, because a second one would itself become a place for a silent pass to hide.
 - **FR-013**: The absence of an expected check from a run MUST itself be reported; a check that did not run must not be indistinguishable from one that passed.
 
 **Fault-injected acceptance**
@@ -190,6 +203,12 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 - **FR-019**: Adoption MUST be declared explicitly, per area, in a single checked-in adoption manifest that **enumerates every area named in FR-017**. Each entry records the area, its adoption state, and the date that state was set. The manifest is the sole authority for whether FR-008 binds; no area may be inferred adopted from its behaviour, and emitting a conforming receipt does not by itself constitute a declaration.
 - **FR-020**: The absence of an area's entry from the adoption manifest MUST be an error — never a pass, and never equivalent to declared non-adoption. A consumer encountering an unlisted area MUST refuse under FR-008 and name the missing declaration under FR-011.
 - **FR-021**: The denominator of SC-002 is fixed by FR-019's enumeration, not by the set of areas that happen to have declared. An empty or partial declaration set therefore cannot satisfy SC-002 — it fails FR-020 first.
+
+**Addressing, expectation and authority** *(all three adopted 2026-08-18 under a standing instruction; see Clarifications)*
+
+- **FR-022**: A receipt MUST be resolvable by a consumer without human interpretation *(block 24)*. It is written to a conventional, documented location derived from the area and the run, and the verdict carries a pointer to it. A consumer enforcing FR-008 therefore has a defined place to look, and "no receipt" is a determinate condition rather than a judgement. Emitting the receipt inline within a structured verdict is a permitted additive upgrade per area; it does not replace the addressable location, because not every check in the declared areas emits structured output.
+- **FR-023**: A run MUST declare, in advance, the set of checks it expects to contain, and the absence of that declaration MUST be an error *(block 25)*. FR-013's "expected" is defined by this declaration and by nothing else. A run with no declared set is not a run in which nothing was expected — it is an unverifiable run, and it MUST refuse rather than report. This is the same absence-is-an-error rule as FR-020, deliberately, so that a check which silently stops existing is as loud as an area which silently never adopts.
+- **FR-024**: The receipt contract MUST have exactly one authoritative definition, owned by the repository that already distributes to every host, with consuming repositories binding to it **by version** *(block 26)*. A conformance fixture MUST ship with the contract; every implementation runs it, and **the fixture's own output is a receipt**, so conformance is demonstrated under the invariant this feature defines rather than asserted. Copying the contract definition between repositories is prohibited — that divergence is one of the witnessed failures this feature exists to close.
 
 ### Key Entities
 
@@ -207,7 +226,7 @@ The twelve instances above are real sites in the fleet's own toolchain, spanning
 
 - **SC-001**: All thirteen witnessed instances are reproducible as deliberate faults, and **13 of 13** produce a loud, named refusal instead of a silent success.
 - **SC-002**: **100%** of checks in the declared areas emit a conforming receipt with every verdict; any that do not are named in the adoption report rather than omitted.
-- **SC-003**: A reader can determine, from the verdict alone and without re-running anything, whether a green was earned — verified by having a reader who did not run the check correctly classify **20 of 20** sample verdicts, including unearned ones.
+- **SC-003**: A reader can determine, from the verdict alone and without re-running anything, whether a green was earned — verified by having a reader who did not run the check correctly classify **20 of 20** sample verdicts, including unearned ones. The reader is **blind and independent of the author** *(block 29)*: the repeatable gate uses a reader in a fresh context with no access to the answer key, and is corroborated **once** by a blind reader from another lane. Samples MUST be drawn from receipts the mechanism actually produced — never hand-written for the test — because an author who writes the samples, classifies them and scores 20/20 has measured nothing.
 - **SC-004**: Zero outcomes in the declared areas render UNREAD or UNSEARCHABLE as success, measured by fault injection across every check in scope.
 - **SC-005**: A check pointed at an unresolvable target reports a non-success outcome in **100%** of injected cases; the historical exit-0-empty-board behaviour occurs zero times.
 - **SC-006**: Every override is accompanied by a recorded rationale — **100%**, with zero silent suppressions.
