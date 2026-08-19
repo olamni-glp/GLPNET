@@ -173,3 +173,9 @@ gleam_quic/profile_c/_build/
 # Tracked previously, which made every feature branch conflict with every other on it.
 # See roadmap feature #30 multi-host-state-discipline (untracked derived artifacts).
 .specify/feature.json
+
+# Machine-local buildkit config (the CLI documents this as gitignored; the rule was absent).
+config.local.json
+
+# buildkit-scheduler watch — regenerated every run
+/ALERT.md
