@@ -1,5 +1,126 @@
 ## [Unreleased]
 
+## [v2026.08.18.2] - 2026-08-18
+
+### Fixed
+- rename GlobalSendSpawn/Goal.readerAddr -> onBindWriterAddr (R-3 mis-named field held an onBind writer key, not a reader addr); update all refs + docs; multiagent 102/5 green (baseline parity)
+
+### Changed
+- Merge pull request #172 from olamni-glp/079-madglp-writer-reader-discipline
+- set active feature=079 for ship gate (feature.json)
+- Merge remote-tracking branch 'origin/develop' into 079-madglp-writer-reader-discipline
+- close #6/#12/#14/#28 (released->closed, open-action check passed); re-export
+- sync round 10 export - 20 epics 115 features 3741 journal lines
+- sync export 20/116/3733 (in-sync, 0 dupes, replay-verified); +consolidated-hardening-spine; import skipped (R5 fleet-crash)
+- remove #15/076 from olamnit Wave 4 — ariellas' lane, shipping via PR #169 (sibling read-only)
+- Merge pull request #171 from olamni-glp/main
+- three_agent_pipeline_boot verdict = FALSE POSITIVE retired (2/2 green, FR-005/SC-004); T016 satisfied-by-inspection (no Open/Fixed inconsistency exists); note US3 readerAddr->onBindWriterAddr rename
+- tier-3 execution rulings — 079 baseline (multiagent+SectionS), Wave2 parallel, per-feature marathon for large items, Wave0 autonomy
+- JIT refinements — 079 US3+US2 increment ship, #1 MVP-first, hardening Wave5, overlap-cluster verify pre-Wave4
+- glpnet consolidated completion plan — mrun-7f0b400450f3, 6 dependency-ordered waves, 4 parked blockers, hardening-charter + scheduler-Programme-B folded in
+- tasks(079): madGLP writer-reader audit — 20 tasks, US1 core-touch gated (R-1b STOP + SHIP-TOKEN), US2/US3 clean closes; risk-first US3->US2->US1
+- plan(079): madGLP writer-reader audit — 🔴 R-1 scope split (writerAddr+1 is bound-writer path, not dead code); R-2/R-3 clean; STOP-report guard on core heap-format
+- spec(079): madGLP writer-reader address-discipline closure — specify+clarify; audit-first N/N+1 fallback removal + 2 residuals, NOT §1.14
+
+## [v2026.08.18.1] - 2026-08-18
+
+### Added
+- capture coordination-feature-stream-durable-superset-fix (3rtask ba84) + codify note; export 20/115/3457
+
+### Fixed
+- elide all four non-deterministic sources from cross-runtime captures
+- elide wall-clock compile timings from cross-runtime captures
+- install missing bk-scheduler skill from buildkit + glpnet-local --root addendum
+- guard 064 Section T with set +e/-e so a drill failure records FAIL instead of aborting the whole suite
+
+### Changed
+- Merge pull request #169 from olamni-glp/076-typechecker-body-atom-moding
+- point feature.json at 076 for ship, reconciling with pipeline DB
+- Merge remote-tracking branch 'origin/develop' into 076-typechecker-body-atom-moding
+- parity artifacts now encode the GREEN run, replacing the failing-run capture from 555c5b93
+- roadmap: sync round 20260816T205920Z - post SC-002 signature
+- T015 quickstart verified end-to-end; repro loads, gate satisfied, dart PATH drift fixed
+- SC-002 SIGNED - 550/550 REPL green, Dart 460/5/5 same 5 pre-existing; C-to-G was host contamination
+- roadmap: sync round 20260816T201957Z
+- roadmap: sync round 20260816T195952Z
+- roadmap: sync round 20260816T193054Z - targeted import 7 files/25 lines (bulk import blocked by D13)
+- decision register completeness pass - 11 further open blocks (D17-D27)
+- open decision register - 14 open blocks with options and recommendations
+- roadmap: sync round 20260816T190258Z
+- restart brief - add bk-close target hazard, glpquick-cert integrity baseline, ship eligibility
+- Merge pull request #164 from olamni-glp/docs/079-restart-handover-olamnit
+- safe-restart brief for glpnet lane 20260816T150000Z
+- roadmap: sync round 20260816T145923Z
+- fetch 3rtask programme A frozen method and programme B curation method from channel
+- roadmap: sync round 20260816T141516Z - import 3 files/1 line, replay verified
+- roadmap: sync round 121141Z - import 8 files/2 lines, replay verified
+- roadmap: sync round 082731Z - 064 restored 3.20/1440, 20/115, replay verified
+- roadmap: sync round 150807Z - import 5 lines, 20/115/3713, replay verified
+- flow-gate audit - allocator per-day capacity gate, 2470 silent import refusals, coordination overhead
+- roadmap: sync round 140255Z - no delta, export byte-identical to 135031Z
+- roadmap: score final unscored feature; 100pct coverage of not-closed, 20/115/3708
+- safe-restart handover — madglp lane continues from /bk-plan; occurs-check §1.14-blocked; coordination-fix promoted
+- roadmap: sync round 132810Z - import 5 files/1 line, 20/115/3584, 0 dupes, replay verified
+- roadmap: score 7 unscored features, promote 2; 20/115/3583, 0 dupes, replay verified
+- refresh cross-runtime parity run artifacts - encode the failing C-to-G run, not goldens
+- roadmap: sync round 115246Z - 20/115/3459, 27 open, 0 dupes, both legs sha-identical
+- roadmap: sync round 110932Z - 20/115/3459, 0 dupes, both legs sha-identical; untrack derived import bookkeeping per 2026-08-11 manifest ruling
+- Merge pull request #162 from olamni-glp/chore/roadmap-sync-20260814a-olamnit
+- Merge develop into roadmap-sync round 4: accept the ruled deletion of the derived .import-manifest.json
+- Merge pull request #161 from olamni-glp/chore/roadmap-sync-20260813c-olamnit
+- Merge develop into roadmap-sync round 3: accept the ruled deletion of the derived .import-manifest.json
+- Merge pull request #159 from olamni-glp/chore/roadmap-sync-20260813b-olamnit
+- Merge develop into roadmap-sync round 2: accept the ruled deletion of the derived .import-manifest.json (gitignored on develop per the 077 manifest ruling)
+- Merge pull request #160 from olamni-glp/chore/coordination-hardening-feature-20260813-olamnit
+- Merge pull request #158 from olamni-glp/fix/064-section-t-set-e-guard
+- Merge pull request #153 from olamni-glp/077-roadmap-sync-mechanics
+- codify: concurrent-suite fork exhaustion; callee-end shape rejected by head rule
+- roadmap: sync round 094329Z - 20/115/3459, import 4 files, 0 dupes, both legs sha-identical
+- 076: occurrence-pair licensing accepts head-flipped writers in body atoms
+- sync round 4 — D4 verb-AND-fold refinement (row_version=3), export 20/115/3459
+- sync round 3 — D4 re-keyed CLASS-B (ariella 233000Z), feature notes updated, export 20/115/3458; ba84 curator addendum
+- codify: D1/D4 are CLASS-B wiring gaps; 3-way 3rtask merge-schema defect
+- roadmap: sync round 232034Z - 20/115/3457 converged, byte-identical re-export, both legs published
+- roadmap: sync round 215152Z - 20/115/3457, converged with olamnit, both legs sha-identical
+- 3rtask 2855: distributed allocation design (SUFFICIENT_WITH_STATED_GAPS) + 6 codify notes
+- Merge remote-tracking branch 'origin/develop' into 077-roadmap-sync-mechanics
+- coop: withdraw ROOT.md rule 3 - fallback_used is advisory provenance, not a root signal (W16)
+- 3rtask: refresh portfolio evidence + manifest v3 for allocation run
+- roadmap: sync round 182501Z - 20/114/3444, published both legs, replay-verify OK
+- coop: check in COOP/ROOT.md as the authoritative channel-root pointer
+- coop: pin channel root, correct host identity, ban one-way actions on silence readings
+- sync round 2 — import 2/4, reconcile in-sync, dedupe no-op, export 20/114/3444 published
+- roadmap: sync round 163415Z - retire pglite (premise void, 3 hosts), 19/112/3267 both legs, replay-verify OK
+- Merge pull request #157 from olamni-glp/chore/roadmap-sync-20260813-olamnit
+- sync round — import 19/506, reconcile in-sync, dedupe no-op (0 live twins), advance sc-002+077->released by id, replay-verify OK; export 20/115/3440 published
+- Merge pull request #156 from olamni-glp/main
+- roadmap: sync round 101152Z - 19/113/3266, published both legs, replay-verify OK
+- roadmap: import round 095033Z - 2 new files, 0 new lines (converged)
+- 3rtask: refreshed allocation-design corpus + subject for the 20260813 run
+- roadmap: sync round - import 1, reconcile in sync, 0 dupes over 113, export 19/113/3266 both legs, replay-verify OK; 076 baseline 547/547
+- 076: record Gabi's 1.14 approval + amend well-typed-clause spec with occurrence-pair licensing
+- roadmap: sync round - import 3 coop files (+1 line: 064 durable-listener RELEASED by gavriella), reconcile in sync, 0 live dupes, 0 needing promotion, replay-verify OK, export 19/113/3266 published 103407Z both legs
+- roadmap: sync round 090855Z - import 1 file/0 lines (converged with ariellas 075547Z), reconcile in sync, dedupe 0/113, export 19/113/3266 published both legs hash-identical, replay-verify OK
+- gitignore derived .import-provenance/ and .import-refused.json (same class as .import-manifest.json)
+- roadmap: 064 durable-listener-service-box RELEASED v2026.08.12.1 (tag 588ed177, PRs 150/151/152, in main+develop); sync round 081208Z applies 119 lines, dedupe 0/113, export 19/113/3266 published, replay-verify OK
+- merge develop (v2026.08.12.1 release) into 077
+- roadmap+3rtask: score+promote round synced (19/113/3265 both legs); 3rtask fa57 distributed-allocation design (budget_stop, 27 CONFIRM/8 REFUTE/1 ESCALATE)
+- 3rtask: allocation-design corpus slices + manifest (portfolio / hosts / protocol)
+- roadmap: score+promote sweep - 7 sweep features scored (WSJF 2.4-14.0), all 13 captured promoted, replay-verify OK, export 19/113/3265 published 071422Z both legs
+- roadmap: post-reboot sync round - import both legs (0 new lines, fleet converged), reconcile in sync, 0 live dupes over 113, replay-verify OK, export 19/113/3146 published 051516Z both legs
+- roadmap: sync round 231956Z - fleet CONVERGED 19/113/3146 with ariellas 223614Z (they adopted the F0 both-legs publish), import 0-delta, reconcile in sync, dedupe 0/113, replay-verify OK; this export DID emit a .license sidecar (3rd datapoint: 190654Z yes / 221029Z no / 231956Z yes - Defect-6 emission is non-deterministic)
+- roadmap: CONVERGENCE round - import gavriella 4 coop-inbox files (+290 lines incl 221029Z union), 0 dupes over 113, replay-verify OK, export 19/113/3146 published 223614Z BOTH legs
+- roadmap: converge with ariellas 215447Z (recovered from origin eab8ebfc - committed but never published to the channel, F0); 123 lines applied, 19/113/3146 union exported+published, dedupe 0, replay-verify OK; NOTE this export emitted NO .license sidecar (Defect-6 shape, was present on 190654Z)
+- roadmap: sync round - self-import 213351Z (0 new lines), reconcile in sync, 0 live dupes, replay-verify OK, export 19/107/2856 published 215447Z
+- roadmap: sync round - import 2 files (0 new lines, 390 untagged refused), reconcile in sync, 0 live dupes, replay-verify OK, export 19/107/2856 published 213351Z
+- roadmap: sync round 190654Z - allow-untagged import applies 190 lines (split-brain closed, 0 refused), reconcile clean, 0 dups, export 18/105/3023 published, replay-verify OK; untrack+gitignore derived .import-manifest.json per engineer ruling
+- analyze: 076 apply top remediations C1 I1 I2 (scan-token reword, FR-007 alignment, baseline.md in tree)
+- tasks: 076 dependency-ordered tasks.md (1.14 gate blocks implementation phases)
+- plan: 076 design artifacts incl. 1.14 semantics proposal (occurrence-pair licensing)
+- clarify: 076 encode Q1-Q3 answers (fix locus, depth-composed rule, 1.14 record form)
+- CLAUDE.md note - buildkit CLI python lives in mstack .bk-venv
+- spec: 076 typechecker body-atom moding (head-flipped readers, unblock =/2)
+
 ## [v2026.08.13.1] - 2026-08-13
 
 ### Added

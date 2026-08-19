@@ -1,0 +1,24 @@
+% issue4_bind_later.glp - POSITIVE (must LOAD clean).
+%
+% Feature 076 / known-issues Issue 4. A body-atom WRITER occurrence at a declared
+% reader (consume, downarrow) position is mode-consistent when its SRSW pair is a
+% head-flipped reader - an output hole at a produce (uparrow) head position.
+% Authoritative rule: docs/type system/well-typed-clause.md, "Amendment to
+% Definition 5.7 clause 2 - Occurrence-Pair Licensing". Acceptance matrix row 3:
+% specs/076-typechecker-body-atom-moding/contracts/body-atom-moding-rule.md.
+%
+% Clause 1 (bind_later/1) is the licensed form: it binds through `=`, whose
+% declaration `procedure =(_?, _).` puts arg 1 at a consume position, while the
+% head occurrence `Done?` sits at the produce position declared by `_`.
+% Clause 2 (bind_later_wa/1) is the historical workaround form - the writer goes
+% to a declared produce position - which was accepted before the amendment and
+% must remain accepted after it (no over-acceptance, no regression).
+
+procedure bind_later(_).
+bind_later(Done?) :- wait(1000) | Done = done.
+
+procedure done(_).
+done(done).
+
+procedure bind_later_wa(_).
+bind_later_wa(Done?) :- wait(1000) | done(Done).

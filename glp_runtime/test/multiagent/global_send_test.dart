@@ -18,7 +18,7 @@ void main() {
       final table = GlobalWritersTable('p');
 
       final goal = GlobalSendGoal(
-        readerAddr: 100,
+        onBindWriterAddr: 100,
         globalName: GlobalName.writer('p', 0),
         destination: 'q',
       );
@@ -51,7 +51,7 @@ void main() {
       final table = GlobalWritersTable('p');
 
       registry.register(GlobalSendGoal(
-        readerAddr: 200,
+        onBindWriterAddr: 200,
         globalName: GlobalName.writer('p', 0),
         destination: 'q',
       ));
@@ -82,7 +82,7 @@ void main() {
       final table = GlobalWritersTable('p');
 
       registry.register(GlobalSendGoal(
-        readerAddr: 300,
+        onBindWriterAddr: 300,
         globalName: GlobalName.writer('p', 0),
         destination: 'q',
       ));
@@ -100,7 +100,7 @@ void main() {
       // Corrected spec: reader → spawn global_send(Y?, _r(p,i), q)
       expect(result, isNotNull);
       expect(result!.newGoals.length, 1);
-      expect(result.newGoals[0].readerAddr, 400); // writer addr for onBind
+      expect(result.newGoals[0].onBindWriterAddr, 400); // writer addr for onBind
       expect(result.newGoals[0].globalName.isReader, isTrue);
       expect(result.newGoals[0].destination, 'q');
 
@@ -115,7 +115,7 @@ void main() {
       final table = GlobalWritersTable('p');
 
       registry.register(GlobalSendGoal(
-        readerAddr: 500,
+        onBindWriterAddr: 500,
         globalName: GlobalName.writer('p', 0),
         destination: 'q',
       ));
@@ -146,12 +146,12 @@ void main() {
       // Create spawns from globalize/localize
       final spawns = [
         GlobalSendSpawn(
-          readerAddr: 100,
+          onBindWriterAddr: 100,
           globalName: GlobalName.writer('p', 0),
           destAgent: 'q',
         ),
         GlobalSendSpawn(
-          readerAddr: 200,
+          onBindWriterAddr: 200,
           globalName: GlobalName.reader('r', 5),
           destAgent: 'r',
         ),

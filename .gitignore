@@ -162,3 +162,8 @@ glpservice/wal/
 
 # bk-flow board<->pipeline links (machine-local run ids)
 .specify/flow/links/
+
+# Regenerable quicer/MsQuic build output (untracked per 050 5928c7ad).
+# 1041 tracked .obj/.a files under deep openssl paths make worktree checkouts
+# fail outright with "Filename too long" on Windows (measured 2026-08-18).
+gleam_quic/profile_c/_build/

@@ -2,14 +2,14 @@
 ║  GLP REPL - With Type Checking         ║
 ╚════════════════════════════════════════╝
 
-Build: f2a85903 codify: stale-git-ref lesson - comparing against a local tracking branch produced a false headline finding (50-commit-stale develop); rule extended to require origin/<branch> measurement
+Build: <elided>
 Compiled: 2026-02-01 (GlpEngine refactor)
-Working directory: D:\bstdev\research\glp\glpnet
+Working directory: <elided>
 
 Input: filename.glp to load, or goal to execute
 Commands: :quit, :help, :trace, :debug, :limit, :activate, :boot
 
-Loaded root self.glp from: D:\bstdev\research\glp\glpnet\programs\self.glp
+Loaded root self.glp from: <elided>
 
 GLP> ✓ Loaded: programs/tests/link/pc.glp
 GLP> X = []

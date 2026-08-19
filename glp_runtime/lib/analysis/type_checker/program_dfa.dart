@@ -558,26 +558,54 @@ class LeafConsistencyResult {
 /// Implements the simplified algorithm using Mode Correspondence Property:
 /// - For variables: check path's structural mode matches variable's implicit mode
 /// - For constants: check type accepts this constant
+///
+/// [licensedWriters] carries occurrence-pair licensing (Definition 5.7 clause 2
+/// amendment, feature 076): the base names of variables whose paired reader
+/// occurs in the clause head at a flip-derived produce position — a head-flipped
+/// reader, i.e. an output hole. `null` means licensing does not apply at this
+/// call site (clause heads and standalone terms), and is the default, so their
+/// verdicts and diagnostics are unchanged; a body atom passes a set, which may be
+/// empty. See docs/type system/well-typed-clause.md, "Amendment to Definition 5.7
+/// clause 2 — Occurrence-Pair Licensing".
 LeafConsistencyResult checkLeafConsistency(
   LeafTerm leaf,
   DFAState state,
-  ProgramDFA dfa,
-) {
+  ProgramDFA dfa, {
+  Set<String>? licensedWriters,
+}) {
   // Case 1: Variable leaf — check path mode matches variable's implicit mode
   // By Mode Correspondence Property, we don't need to inspect state.isDual
   if (leaf.isVariable) {
-    // Reader X? must be at consume position (mode ↓)
-    // Writer X must be at produce position (mode ↑)
+    // Reader X? must be at consume position (mode ↓)   [contract row 1]
+    // Writer X must be at produce position (mode ↑)    [contract row 2]
     if (leaf.isReader && leaf.mode == Mode.consume) {
       return LeafConsistencyResult.consistent(state);
     }
     if (!leaf.isReader && leaf.mode == Mode.produce) {
       return LeafConsistencyResult.consistent(state);
     }
+    // Contract row 3 (076): a writer at ↓ is licensed iff its paired reader is a
+    // head-flipped reader. The license requires that positive evidence, so a
+    // writer at ↓ whose pair is absent, occurs in the body, or occurs in the head
+    // at a ↓ position stays a mode mismatch (row 4), as does a reader at ↑ (row 5)
+    // and an anonymous writer, which has no pair at all (row 6).
+    final isWriterAtConsume = !leaf.isReader && leaf.mode == Mode.consume;
+    if (isWriterAtConsume &&
+        licensedWriters != null &&
+        leaf.name != null &&
+        licensedWriters.contains(leaf.name)) {
+      return LeafConsistencyResult.consistent(state);
+    }
     final expected = leaf.isReader ? '↓ (consume)' : '↑ (produce)';
     final actual = leaf.mode == Mode.consume ? '↓ (consume)' : '↑ (produce)';
+    // The absent-license context belongs to row 4 only — a body-atom occurrence
+    // that could have been licensed but was not. Head and standalone-term
+    // diagnostics (licensedWriters == null) keep their original wording.
+    final licenseContext = (isWriterAtConsume && licensedWriters != null)
+        ? '; no head-flipped reader pair in head licenses this occurrence'
+        : '';
     return LeafConsistencyResult.inconsistent(
-        'Variable mode mismatch: ${leaf.isReader ? "reader" : "writer"} requires $expected, got $actual');
+        'Variable mode mismatch: ${leaf.isReader ? "reader" : "writer"} requires $expected, got $actual$licenseContext');
   }
 
   // Case 2: Constant leaf — check type accepts this constant

@@ -28,3 +28,9 @@ specs/*/contracts/conformance/*.json  text eol=lf
 # Only the two manifests are tracked (T062); receipts themselves are ignored evidence.
 .specify/receipts/adoption-manifest.json  text eol=lf
 .specify/receipts/expected-checks.json    text eol=lf
+
+# Cross-runtime parity CAPTURES are byte-compared evidence too. Without this pin
+# every suite run rewrites all 34 results/*.out with CRLF and the tree reports
+# dirty with ZERO content change (measured 2026-08-18) — noise that can mask a
+# real parity diff, the same hazard the four-source timing elision closed.
+test/parity/cross_runtime/results/*.out text eol=lf

@@ -225,17 +225,23 @@ WellTypedResult checkModedTerm(ModedTerm term, Automaton automaton, ProgramDFA d
 /// 2. Leaf consistency: variable/constant at leaf matches DFA state
 ///
 /// Fix 4.1: Switches automata at type boundaries when entering user-defined types
+///
+/// [licensedWriters] is threaded through to leaf consistency for occurrence-pair
+/// licensing (feature 076); `null` — the default — means licensing does not apply
+/// at this call site, as for clause heads and standalone terms.
 PathCheckResult checkPathAgainstAutomaton(
   ModedPath path,
   Automaton automaton,
-  ProgramDFA dfa,
-) {
+  ProgramDFA dfa, {
+  Set<String>? licensedWriters,
+}) {
   var state = automaton.startState;
   var currentAutomaton = automaton;  // Track current automaton for type switching
 
   // Handle single-step paths (just a variable or constant at root)
   if (path.length == 1) {
-    return _checkLeafConsistencyForPath(path.leaf, state, dfa);
+    return _checkLeafConsistencyForPath(path.leaf, state, dfa,
+        licensedWriters: licensedWriters);
   }
 
   // Traverse path, following automaton transitions
@@ -291,7 +297,8 @@ PathCheckResult checkPathAgainstAutomaton(
   }
 
   // Check leaf consistency
-  return _checkLeafConsistencyForPath(path.leaf, state, dfa);
+  return _checkLeafConsistencyForPath(path.leaf, state, dfa,
+      licensedWriters: licensedWriters);
 }
 
 // =============================================================================
@@ -318,12 +325,14 @@ TransitionLabel _buildTransitionLabel(PathStep currentStep, PathStep nextStep) {
 PathCheckResult _checkLeafConsistencyForPath(
   PathStep leaf,
   DFAState state,
-  ProgramDFA dfa,
-) {
+  ProgramDFA dfa, {
+  Set<String>? licensedWriters,
+}) {
   // Convert PathStep to LeafTerm for checkLeafConsistency
   final leafTerm = _pathStepToLeafTerm(leaf);
 
-  final result = checkLeafConsistency(leafTerm, state, dfa);
+  final result = checkLeafConsistency(leafTerm, state, dfa,
+      licensedWriters: licensedWriters);
 
   if (result.isConsistent) {
     if (leaf.isVariable) {
