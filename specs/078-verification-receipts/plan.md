@@ -111,7 +111,9 @@ test/receipts/
 ├── emit.sh              # bash emitter for the REPL harness (FR-022 location)
 └── assert.sh            # harness-side assertions
 test/run_all_tests.sh    # per-section receipts (see the Section I collision below)
-.specify/receipts/       # receipt output root (gitignored; evidence, not source)
+.specify/receipts/       # receipt output root - receipts are IGNORED evidence (FR-002);
+                         # adoption-manifest.json + expected-checks.json are TRACKED
+                         # declarations (FR-019/FR-023). See T062 / register block 49.
 ```
 
 **Structure decision.** The contract is a schema plus two small pure modules, deliberately *not* a

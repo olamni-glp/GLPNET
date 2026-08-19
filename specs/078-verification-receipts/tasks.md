@@ -162,7 +162,7 @@ cannot be emitted from bash, that must surface before five Python areas are buil
 - [ ] T059 [P] Measure SC-005 and SC-006 in `bk:tests/receipts/test_success_criteria.py`
 - [ ] T060 Implement the SC-003 blind-reader harness over 20 samples drawn from REAL receipts in `bk:tests/receipts/test_blind_reader.py` — cadence per register block 50 (recommended per-release)
 - [ ] T061 [P] Document emit/consume/inject in `gn:specs/078-verification-receipts/quickstart.md` — verify every command in it actually runs (a quickstart that has never been executed is an unearned green)
-- [ ] T062 Resolve register block 49 before merge — make `gn:specs/078-verification-receipts/plan.md`, `gn:.gitattributes` and `gn:.gitignore` agree on whether `.specify/receipts/` is tracked; they currently do not (plan says gitignored, the eol pin assumes tracked, and the path is in fact neither)
+- [x] T062 Resolve register block 49 before merge — make `gn:specs/078-verification-receipts/plan.md`, `gn:.gitattributes` and `gn:.gitignore` agree on whether `.specify/receipts/` is tracked; they currently do not (plan says gitignored, the eol pin assumes tracked, and the path is in fact neither)
 
 ---
 

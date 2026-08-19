@@ -25,4 +25,6 @@ test/*.sh               text eol=lf
 # nothing to do with the check it describes. Same mechanism as 059 T051 and the signed exports.
 specs/*/contracts/*.json              text eol=lf
 specs/*/contracts/conformance/*.json  text eol=lf
-.specify/receipts/**/*.json           text eol=lf
+# Only the two manifests are tracked (T062); receipts themselves are ignored evidence.
+.specify/receipts/adoption-manifest.json  text eol=lf
+.specify/receipts/expected-checks.json    text eol=lf

@@ -123,6 +123,14 @@ glp_gleam/.parity_run.glp
 # 3rtask run evidence (orchestration artifacts, not source)
 .specify/3rtask/runs/
 
+# feature 078 T062 / register block 49: receipts are EVIDENCE (FR-002) and are ignored;
+# the two manifests are DECLARATIONS (FR-019 adoption, FR-023 expected-checks) and are tracked.
+# Before this, plan.md said gitignored, .gitattributes pinned eol=lf (a no-op on ignored files),
+# and git check-ignore said neither - three artifacts disagreeing about one path.
+.specify/receipts/*
+!.specify/receipts/adoption-manifest.json
+!.specify/receipts/expected-checks.json
+
 # COOP live mailboxes (operator ruling 2026-07-28): the cross-host channel is
 # NEVER tracked - no in-branch commit/push/merge logic for live dialogue.
 # Git carries COOP state ONLY as deliberate milestone snapshots under
