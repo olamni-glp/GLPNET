@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [v2026.08.19.2] - 2026-08-19
+
+### Changed
+- Merge pull request #178 from olamni-glp/078-verification-receipts
+- sync round 22 export - 115 live features, 0 duplicate groups (id-stem + title strategies). Reproduces two known false-successes verbatim: publish reported 'coop mirror skipped (no/unreachable inbox)' while D:/coop/glpnet/roadmap-sync/inbox holds 226+ files (register block 39), and reconcile reported 'already in sync' while specs/078-verification-receipts sits at analyze-complete and its feature is still state=promoted (the slug-vs-feature-id mismatch). Both are the same shape: a matcher that finds nothing reports success
+- sync round 12 export - 20 epics 116 features 3760 journal lines
+- Merge pull request #177 from olamni-glp/main
+
 ## [v2026.08.19.1] - 2026-08-19
 
 ### Fixed
