@@ -167,3 +167,4 @@ glpservice/wal/
 # 1041 tracked .obj/.a files under deep openssl paths make worktree checkouts
 # fail outright with "Filename too long" on Windows (measured 2026-08-18).
 gleam_quic/profile_c/_build/
+.specify/3rtask/evidence/

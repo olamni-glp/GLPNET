@@ -1,0 +1,54 @@
+{
+  "subject": "Root-cause: no steady feature stream from ariellas /bk-scheduler into /bk-marathon + /bk-specify on glpnet; design a durable superset remediation deployable to every repo on this host and then all hosts",
+  "slices": [
+    {
+      "slice_id": "S1-substrate",
+      "lens": "the CRDT board substrate itself - what the ops/caps/calendar/views actually record",
+      "sources": [
+        ".specify/3rtask/evidence/ops-ariellas.jsonl",
+        ".specify/3rtask/evidence/ops-gavriella.jsonl",
+        ".specify/3rtask/evidence/ops-olamnit.jsonl",
+        "I:/coop/glpnet/sched/caps",
+        "I:/coop/glpnet/sched/calendar",
+        "I:/coop/glpnet/sched/views"
+      ],
+      "provenance_note": "S1 reads a DETERMINISTIC mechanical projection of the three raw ops streams (.specify/3rtask/evidence/ops-*.jsonl): every op record is preserved with all mechanical fields; only free-text payload.body prose is dropped. Reason: the preflight secret-scanner false-positived on a documented LAN share string inside one human outage note. The guard was NOT bypassed with --allow-secrets."
+    },
+    {
+      "slice_id": "S2-channel",
+      "lens": "the coop channel record - what the three lanes told each other about supply, allocation and silence",
+      "sources": [
+        "I:/coop/glpnet/*.md",
+        "I:/coop/glpnet/inbox"
+      ]
+    },
+    {
+      "slice_id": "S3-toolchain",
+      "lens": "the local toolchain and its own documentation - verbs, gates, skill contracts and recorded audits",
+      "sources": [
+        "D:/BSTDEV/research/glp/GLPNET/.claude/skills/bk-scheduler",
+        "D:/BSTDEV/research/glp/GLPNET/docs/research/flow-gate-audit-2026-08-14.md",
+        "D:/BSTDEV/research/glp/GLPNET/COOP/ROOT.md",
+        "D:/BSTDEV/research/glp/GLPNET/.specify/roadmap-sync/exports"
+      ]
+    }
+  ],
+  "closed_vocabulary": {
+    "tag": [
+      "supply",
+      "allocation",
+      "capacity-gate",
+      "transition",
+      "transport",
+      "doc-drift",
+      "identity",
+      "deploy"
+    ],
+    "confidence": [
+      "high",
+      "medium",
+      "low"
+    ]
+  },
+  "note": "Slices are FILE-disjoint but SUBJECT-overlapping by design: every slice can speak to the same root-cause question, so the corroboration gate can actually fire (recorded trap: domain-disjoint slices make corroboration impossible)."
+}
