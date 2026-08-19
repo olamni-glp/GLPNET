@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://olamni.dev/buildkit/schemas/adoption-manifest-1.json",
+  "title": "Adoption manifest",
+  "description": "FR-019/020/021. The SOLE authority for whether FR-008 binds. Absence of an area is an ERROR, never non-adoption.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "description": "FR-019: MUST enumerate all six FR-017 areas. Fewer is an error, not a partial adoption.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "area",
+          "state",
+          "set_on"
+        ],
+        "properties": {
+          "area": {
+            "enum": [
+              "buildkit-3rtask",
+              "buildkit-codexreview",
+              "codeconv-build-gate",
+              "coop-protocol",
+              "roadmap-sync",
+              "test-harness"
+            ]
+          },
+          "state": {
+            "enum": [
+              "adopted",
+              "not-adopted"
+            ],
+            "$comment": "There is deliberately no 'unknown'. FR-020: absence is an error."
+          },
+          "set_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

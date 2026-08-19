@@ -1,0 +1,155 @@
+{
+  "valid-pass": {
+    "expect": "accept",
+    "why": "a fully-examined target with findings reported",
+    "doc": {
+      "schema_version": "1",
+      "area": "test-harness",
+      "check_id": "section-A-typed-runtime",
+      "run_id": "20260818T153000Z-a1b2c3d4",
+      "target_requested": "programs/tests/typed",
+      "target_resolved": "programs/tests/typed",
+      "target_total": 120,
+      "examined_total": 120,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "PASS",
+      "reason": null,
+      "started_at": "2026-08-18T15:30:00Z",
+      "ended_at": "2026-08-18T15:31:02Z",
+      "truncated": null,
+      "override": null,
+      "children": []
+    }
+  },
+  "valid-empty-earned": {
+    "expect": "accept",
+    "why": "EMPTY is a real pass when full examination is demonstrated",
+    "doc": {
+      "schema_version": "1",
+      "area": "roadmap-sync",
+      "check_id": "dedupe",
+      "run_id": "20260818T153100Z-b2c3d4e5",
+      "target_requested": "catalog",
+      "target_resolved": "catalog",
+      "target_total": 0,
+      "examined_total": 0,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "EMPTY",
+      "reason": null,
+      "started_at": "2026-08-18T15:31:00Z",
+      "ended_at": "2026-08-18T15:31:01Z"
+    }
+  },
+  "reject-unread-without-reason": {
+    "expect": "reject",
+    "why": "FR-011: a non-success outcome must name why",
+    "doc": {
+      "schema_version": "1",
+      "area": "coop-protocol",
+      "check_id": "inbox-poll",
+      "run_id": "20260818T153200Z-c3d4e5f6",
+      "target_requested": "inbox",
+      "target_resolved": "inbox",
+      "target_total": 20,
+      "examined_total": 5,
+      "skipped": [],
+      "skipped_total": 15,
+      "outcome": "UNREAD",
+      "reason": null,
+      "started_at": "2026-08-18T15:32:00Z",
+      "ended_at": "2026-08-18T15:32:01Z"
+    }
+  },
+  "reject-crash-reported-as-pass": {
+    "expect": "reject",
+    "why": "a partial run must never present as a whole one",
+    "doc": {
+      "schema_version": "1",
+      "area": "test-harness",
+      "check_id": "section-T",
+      "run_id": "20260818T153300Z-d4e5f60a",
+      "target_requested": "drills",
+      "target_resolved": "drills",
+      "target_total": 14,
+      "examined_total": 3,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "PASS",
+      "reason": null,
+      "started_at": "2026-08-18T15:33:00Z",
+      "ended_at": null
+    }
+  },
+  "reject-unknown-outcome": {
+    "expect": "reject",
+    "why": "FR-006: the enumeration is closed; a near-miss is not a receipt",
+    "doc": {
+      "schema_version": "1",
+      "area": "test-harness",
+      "check_id": "section-B",
+      "run_id": "20260818T153400Z-e5f60a1b",
+      "target_requested": "x",
+      "target_resolved": "x",
+      "target_total": 1,
+      "examined_total": 1,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "SKIPPED",
+      "reason": null,
+      "started_at": "2026-08-18T15:34:00Z",
+      "ended_at": "2026-08-18T15:34:01Z"
+    }
+  },
+  "reject-override-without-expiry": {
+    "expect": "reject",
+    "why": "FR-012: there is no indefinite override",
+    "doc": {
+      "schema_version": "1",
+      "area": "buildkit-codexreview",
+      "check_id": "review",
+      "run_id": "20260818T153500Z-f60a1b2c",
+      "target_requested": "diff",
+      "target_resolved": "diff",
+      "target_total": 10,
+      "examined_total": 10,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "FAIL",
+      "reason": "2 findings",
+      "started_at": "2026-08-18T15:35:00Z",
+      "ended_at": "2026-08-18T15:35:30Z",
+      "override": {
+        "briefing": "proceeding past 2 findings",
+        "acknowledged_by": "mvw",
+        "rationale": "release window",
+        "scope": {
+          "area": "buildkit-codexreview",
+          "check_id": "review",
+          "reason": "findings"
+        }
+      }
+    }
+  },
+  "reject-unknown-area": {
+    "expect": "reject",
+    "why": "FR-017: the six areas are a closed set; a seventh is undeclarable",
+    "doc": {
+      "schema_version": "1",
+      "area": "some-new-tool",
+      "check_id": "c",
+      "run_id": "20260818T153600Z-0a1b2c3d",
+      "target_requested": "x",
+      "target_resolved": "x",
+      "target_total": 1,
+      "examined_total": 1,
+      "skipped": [],
+      "skipped_total": 0,
+      "outcome": "PASS",
+      "reason": null,
+      "started_at": "2026-08-18T15:36:00Z",
+      "ended_at": "2026-08-18T15:36:01Z"
+    }
+  }
+}

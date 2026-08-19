@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"D:/BSTDEV/research/GLP/GLPNET/gleam_quic/profile_c/_build/default/lib/quicer/c_build_win/_deps/opensslquic-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

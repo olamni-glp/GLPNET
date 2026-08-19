@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://olamni.dev/buildkit/schemas/expected-checks-1.json",
+  "title": "Expected-checks manifest",
+  "description": "FR-023. Defines what FR-013's 'expected' means. A run with no manifest is unverifiable and MUST refuse.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "expected"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$"
+    },
+    "expected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "$comment": "minItems 1: an empty expected set is indistinguishable from no declaration, which FR-023 forbids."
+    }
+  }
+}
