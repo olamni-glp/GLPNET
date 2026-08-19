@@ -168,3 +168,8 @@ glpservice/wal/
 # fail outright with "Filename too long" on Windows (measured 2026-08-18).
 gleam_quic/profile_c/_build/
 .specify/3rtask/evidence/
+
+# Machine-local pipeline state: which feature dir is active on THIS host.
+# Tracked previously, which made every feature branch conflict with every other on it.
+# See roadmap feature #30 multi-host-state-discipline (untracked derived artifacts).
+.specify/feature.json
