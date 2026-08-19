@@ -88,10 +88,27 @@ is not a stream, and no downstream gate can compensate for it.
 ### SR-6 — Load accounting distinguishes minting from assignment *(closes D5)*
 `unassigned` is a sentinel, not an engineer. It must never consume capacity as a real node.
 
-### SR-7 — Contract/CLI conformance is machine-checked *(closes D1)*
-The shipped `/bk-guards` template-contract check already exists for exactly this class
-(documented CLI steps vs live-introspected contract). Wire the scheduler skill into it so a
-contract claiming a verb does not exist while the binary exposes it fails a gate.
+### SR-7 — Contract/CLI conformance is machine-checked, in BOTH directions *(closes D1)*
+**Amended 2026-08-19 after testing the premise — the original text was wrong.**
+
+I first specified this as "wire the scheduler skill into the shipped `/bk-guards`
+template-contract check". Measured: that guard reports `status=clean, findings=0,
+coverage.checked=true` on `bk-scheduler`, and **0 findings across all 62 skills** with
+`--all`. It is not a false green — its declared scope is **one-directional**:
+
+- **covered:** documented step → CLI (the skill *uses* a subcommand/flag the CLI lacks)
+- **NOT covered:** CLI → documentation (the CLI *has* a verb the doc denies or omits)
+
+D1 is the second direction, so the shipped guard cannot catch it by design.
+
+The requirement is therefore an **extension**, not a wiring job:
+1. Add a reverse-direction check — every console-script subcommand the live binary exposes
+   must appear in the skill contract, or be explicitly declared out-of-scope.
+2. A doc making a **negative existence claim** ("there is no `allocate` verb") must be
+   machine-verified against live introspection, since that is the exact shape of D1.
+3. Fire-test the guard. A guard reporting `checked=true / clean` on 62 units while a
+   high-confidence contract defect sits in one of them is indistinguishable from an inert
+   guard — which is feature 078's own subject.
 
 ### SR-8 — Durable queued transport *(channel finding)*
 Delivery/ACK state must not depend on gavriella's SMB share being mounted. The 5-minute ACK
