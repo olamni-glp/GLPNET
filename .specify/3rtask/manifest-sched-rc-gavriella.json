@@ -1,0 +1,61 @@
+{
+  "subject": "Root-cause: no steady feature stream from ariellas /bk-scheduler into /bk-marathon + /bk-specify on glpnet; design a durable superset remediation deployable to every repo on this host and then all hosts",
+  "slices": [
+    {
+      "slice_id": "S1-substrate",
+      "lens": "the CRDT board substrate itself - what the ops/caps/calendar/views actually record",
+      "sources": [
+        ".specify/3rtask/evidence/ops-ariellas.jsonl",
+        ".specify/3rtask/evidence/ops-gavriella.jsonl",
+        ".specify/3rtask/evidence/ops-olamnit.jsonl",
+        "D:/coop/glpnet/sched/caps",
+        "D:/coop/glpnet/sched/calendar",
+        "D:/coop/glpnet/sched/views"
+      ],
+      "provenance_note": "S1 reads a DETERMINISTIC mechanical projection of the three raw ops streams (.specify/3rtask/evidence/ops-*.jsonl): every op record is preserved with all mechanical fields; only free-text payload.body prose is dropped. Reason: the preflight secret-scanner false-positived on a documented LAN share string inside one human outage note. The guard was NOT bypassed with --allow-secrets. HOST-LOCAL RESOLUTION (gavriella, 2026-08-19): the authoring host's manifest named root I:/coop/glpnet, which does not exist on this host. D:/coop/glpnet resolves and carries the same tree (ops/caps/calendar/views/cards/signals + channel .md + inbox). Measured live-root selection: D: holds 48 ops (ariellas 38 / gavriella 6 / olamnit 4) with 3 files written today; G: holds 11 and H: holds 6, both with zero writes today - G:/H: are STALE, not mirrors. The I:->D: substitution is a drive-letter resolution only; no source was added, removed or reinterpreted. The ops-*.jsonl projection was regenerated locally from D: by the same deterministic rule the authoring host declared: every mechanical field preserved, only free-text payload.body prose replaced by a length marker. The secret-scanner was NOT bypassed."
+    },
+    {
+      "slice_id": "S2-channel",
+      "lens": "the coop channel record - what the three lanes told each other about supply, allocation and silence",
+      "sources": [
+        "D:/coop/glpnet/*.md",
+        "D:/coop/glpnet/inbox"
+      ],
+      "provenance_note": "HOST-LOCAL RESOLUTION (gavriella, 2026-08-19): the authoring host's manifest named root I:/coop/glpnet, which does not exist on this host. D:/coop/glpnet resolves and carries the same tree (ops/caps/calendar/views/cards/signals + channel .md + inbox). Measured live-root selection: D: holds 48 ops (ariellas 38 / gavriella 6 / olamnit 4) with 3 files written today; G: holds 11 and H: holds 6, both with zero writes today - G:/H: are STALE, not mirrors. The I:->D: substitution is a drive-letter resolution only; no source was added, removed or reinterpreted. The ops-*.jsonl projection was regenerated locally from D: by the same deterministic rule the authoring host declared: every mechanical field preserved, only free-text payload.body prose replaced by a length marker. The secret-scanner was NOT bypassed."
+    },
+    {
+      "slice_id": "S3-toolchain",
+      "lens": "the local toolchain and its own documentation - verbs, gates, skill contracts and recorded audits",
+      "sources": [
+        "D:/BSTDEV/research/glp/GLPNET/.claude/skills/bk-scheduler",
+        "D:/BSTDEV/research/glp/GLPNET/docs/research/flow-gate-audit-2026-08-14.md",
+        "D:/BSTDEV/research/glp/GLPNET/COOP/ROOT.md",
+        "D:/BSTDEV/research/glp/GLPNET/.specify/roadmap-sync/exports"
+      ],
+      "provenance_note": "HOST-LOCAL RESOLUTION (gavriella, 2026-08-19): the authoring host's manifest named root I:/coop/glpnet, which does not exist on this host. D:/coop/glpnet resolves and carries the same tree (ops/caps/calendar/views/cards/signals + channel .md + inbox). Measured live-root selection: D: holds 48 ops (ariellas 38 / gavriella 6 / olamnit 4) with 3 files written today; G: holds 11 and H: holds 6, both with zero writes today - G:/H: are STALE, not mirrors. The I:->D: substitution is a drive-letter resolution only; no source was added, removed or reinterpreted. The ops-*.jsonl projection was regenerated locally from D: by the same deterministic rule the authoring host declared: every mechanical field preserved, only free-text payload.body prose replaced by a length marker. The secret-scanner was NOT bypassed."
+    }
+  ],
+  "closed_vocabulary": {
+    "tag": [
+      "supply",
+      "allocation",
+      "capacity-gate",
+      "transition",
+      "transport",
+      "doc-drift",
+      "identity",
+      "deploy"
+    ],
+    "confidence": [
+      "high",
+      "medium",
+      "low"
+    ]
+  },
+  "note": "Slices are FILE-disjoint but SUBJECT-overlapping by design: every slice can speak to the same root-cause question, so the corroboration gate can actually fire (recorded trap: domain-disjoint slices make corroboration impossible).",
+  "derived_from": {
+    "manifest": ".specify/3rtask/manifest-sched-rc.json",
+    "run_id": "20260819T104500Z-41b3",
+    "reason": "corpus root unresolvable on this host; frozen inputs not edited in place"
+  }
+}
