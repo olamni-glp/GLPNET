@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://olamni.dev/buildkit/schemas/receipt-1.json",
+  "title": "Verification receipt",
+  "description": "Proof that a check executed against its intended target (spec 078, FR-002/003/004/005/006/010/011/012).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "area",
+    "check_id",
+    "run_id",
+    "target_requested",
+    "target_resolved",
+    "examined_total",
+    "skipped_total",
+    "outcome",
+    "started_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "area": {
+      "enum": [
+        "buildkit-3rtask",
+        "buildkit-codexreview",
+        "codeconv-build-gate",
+        "coop-protocol",
+        "roadmap-sync",
+        "test-harness"
+      ],
+      "description": "FR-017: the six declared areas, closed set."
+    },
+    "check_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "FR-023: MUST appear in the run's expected-checks manifest."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$"
+    },
+    "target_requested": {
+      "type": "string"
+    },
+    "target_resolved": {
+      "type": "string",
+      "description": "FR-003: as ACTUALLY resolved at run time, POSIX-normalised."
+    },
+    "target_total": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "FR-010: null only when genuinely unknowable, which is itself UNSEARCHABLE."
+    },
+    "examined_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skip"
+      }
+    },
+    "skipped_total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "FR-005: the TRUE count, never capped, even when `skipped` is truncated."
+    },
+    "outcome": {
+      "enum": [
+        "PASS",
+        "EMPTY",
+        "UNREAD",
+        "UNSEARCHABLE",
+        "FAIL"
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "null means the run crashed; outcome MUST NOT then be PASS or EMPTY."
+    },
+    "truncated": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/truncation"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "override": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/override"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "FR-009: pointers to child receipts; outcomes propagate to the aggregate."
+    }
+  },
+  "$defs": {
+    "skip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item",
+        "reason"
+      ],
+      "properties": {
+        "item": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "truncation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "kept",
+        "total",
+        "by"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "kept": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by": {
+          "enum": [
+            "count",
+            "bytes"
+          ]
+        }
+      }
+    },
+    "override": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "briefing",
+        "acknowledged_by",
+        "rationale",
+        "scope",
+        "expires_on"
+      ],
+      "properties": {
+        "briefing": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acknowledged_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "area",
+            "check_id",
+            "reason"
+          ],
+          "properties": {
+            "area": {
+              "type": "string"
+            },
+            "check_id": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        },
+        "expires_on": {
+          "type": "string",
+          "format": "date",
+          "description": "FR-012: mandatory. There is no indefinite override."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "UNREAD",
+              "UNSEARCHABLE",
+              "FAIL"
+            ]
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "$comment": "FR-011: a non-success outcome must name what was expected, found and where."
+    },
+    {
+      "if": {
+        "properties": {
+          "ended_at": {
+            "const": null
+          }
+        },
+        "required": [
+          "ended_at"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "UNREAD",
+              "UNSEARCHABLE",
+              "FAIL"
+            ]
+          }
+        }
+      },
+      "$comment": "Edge case: a crashed run never presents as a whole one."
+    }
+  ]
+}

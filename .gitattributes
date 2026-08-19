@@ -9,6 +9,26 @@ test/parity/*.sh        text eol=lf
 test/parity/lib/*.sh    text eol=lf
 test/*.sh               text eol=lf
 
+# Signed roadmap exports are byte-compared evidence too (register block 38).
+# Each export carries a key_id and a detached signature over its bytes, so a CRLF
+# checkout makes a peer verify a byte-different document and the signature fails.
+# Reproduces the ospark escalation (".gitattributes lacks *.json text eol=lf while
+# tracking 26 Ed25519-signed exports") and is the same mechanism as 059 T051, where
+# a CRLF checkout of corpus.list made all 44 runtime goldens report MISSING.
+# Pin only — existing tracked exports are NOT renormalised, so no concurrent
+# checkout is dirtied mid-marathon.
+.specify/roadmap-sync/exports/*.json         text eol=lf
+.specify/roadmap-sync/exports/*.json.license text eol=lf
+
+# Receipt contracts + conformance vectors are byte-compared evidence (spec 078 research R8).
+# A receipt or schema that differs only by line ending fails verification for reasons having
+# nothing to do with the check it describes. Same mechanism as 059 T051 and the signed exports.
+specs/*/contracts/*.json              text eol=lf
+specs/*/contracts/conformance/*.json  text eol=lf
+# Only the two manifests are tracked (T062); receipts themselves are ignored evidence.
+.specify/receipts/adoption-manifest.json  text eol=lf
+.specify/receipts/expected-checks.json    text eol=lf
+
 # Cross-runtime parity CAPTURES are byte-compared evidence too. Without this pin
 # every suite run rewrites all 34 results/*.out with CRLF and the tree reports
 # dirty with ZERO content change (measured 2026-08-18) — noise that can mask a

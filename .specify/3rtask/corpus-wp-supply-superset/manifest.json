@@ -1,0 +1,46 @@
+{
+  "slices": [
+    {
+      "slice_id": "supply-writers",
+      "description": "The WRITE half of the WP supply path — where an allocate op would be minted and where e_t_s enters the board. Lock 1 (no verb writes an allocate op; requires_proposed_actor is an orphan-read precondition) and Lock 2 (e_t_s hardcoded 0.0 at the CLI writers; plan.priority_ranks excludes e_t_s<=0) live here. These two are SERIAL: fixing either alone changes nothing measurable. Determine the minimal durable writer design that satisfies both in ONE increment, and whether it belongs in the daemon engine or the CLI surface.",
+      "sources": [
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/engine/daemon/plan.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/engine/daemon/onboard.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/__main__.py"
+      ],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "supply-readers-gates",
+      "description": "The READ half and the elimination gates — how ops are folded into board state, how capability/host matching eliminates candidates, and why the allocator receives an EMPTY input set (measured: ready=0, blocked=[], 0 allocate ops ever, against ~990 fleet-wide). Includes the state-neutral claim path, the fail-closed exact (kind,name) capability match that silently eliminates a lane declaring bk-* against a buildkit-* requirement, and host folding in resolve_host. NOTE: confirm.py is ABSENT from develop - the addressing reader bc203794 exists only on the untagged branch feat/scheduler-transition-verb-20260816, so this slice must reason about a stranded fix, not a merged one.",
+      "sources": [
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/engine/daemon/board.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/engine/daemon/dispatch.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/scheduler/engine/substrate/board.py"
+      ],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "host-deployment-substrate",
+      "description": "The cross-repo / cross-host deployment substrate the superset must ride on, and its measured defects. Per-machine install registry and per-target store dirs; target-id derived as sha1 of a CASE-VARYING resolved path (deploy recorded fb9d55f94f8b, marathon resolves 85444bd44ab0 - same repo, one segment's case apart, and the deploy record names an OS user whose home does not exist here); per-version venvs under the deploy home vs a shared user-site install; and the reproduced Windows failure where a concurrent buildkit*.exe makes any pip install half-uninstall and destroy the toolchain for EVERY lane. Determine how a superset fix is installed and enabled on all repos on this host and then on other hosts WITHOUT this class of destruction.",
+      "sources": [
+        "D:/bstdev/research/buildkit/src/buildkit_cli/deploy/home.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/deploy/deploy.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/deploy/session.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/marathon/session.py"
+      ],
+      "assigned_to": "builder-3"
+    },
+    {
+      "slice_id": "consumer-identity-and-intake",
+      "description": "The CONSUMER half: what a delivered WP must bind to on arrival, and why intake fails even when supply exists. Roadmap<->pipeline reconcile joins feature_id by STRING EQUALITY, reads only status='complete', and on no match executes 'continue' - silently untouched, then reported in-sync. Measured identity breakage: the 078 roadmap slug != its spec directory (the spec records this as instance 13, and 069 has the same gap), AND specs/ carries three duplicate feature numbers (036, 050, 064) plus a 065 slug divergence. Determine the intake contract a superset must satisfy so a supplied WP reaches marathon/specify rather than vanishing at the join.",
+      "sources": [
+        "D:/bstdev/research/buildkit/src/buildkit_cli/roadmap/store.py",
+        "D:/bstdev/research/buildkit/src/buildkit_cli/roadmap/model.py",
+        "specs/078-verification-receipts/spec.md",
+        "docs/research/marathon-programme-backlog-2026-08-16.md"
+      ],
+      "assigned_to": "builder-4"
+    }
+  ]
+}
