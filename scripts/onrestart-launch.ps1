@@ -4,116 +4,402 @@
 
 <#
 .SYNOPSIS
-  Post-reboot lane relaunch for host GAVRIELLA — two Windows Terminal windows, 12 repo-lane tabs.
+  Post-reboot lane relaunch — resumes every repo lane mid-thread, and installs itself to
+  fire automatically 45 s after logon. Executable spec for the buildkit `bk-onrestart` feature.
 
 .DESCRIPTION
-  Interim, hand-rolled stand-in for the NOT-YET-EXISTING /bk-onrestart capability
-  (verified absent 2026-08-19: no skill among the 62 installed, no CLI on PATH).
-  The durable replacement is roadmap feature `bk-onrestart` — this script is the
-  executable specification for it, not the permanent answer.
+  Mechanism copied from the mstack lane's reference implementation
+  (`D:\BSTDEV\tools\MSTACK\scripts\fleet\post-reboot-restart.ps1`, ariellas/gavriella lane),
+  which is the prototype this feature generalises. What is copied, and WHY each part exists:
 
-  Window 1 (7 tabs): ospark, tefl, hatzinor, olamnit, buildkit, qhstate, yngenios
-  Window 2 (5 tabs): crucible, glpnet, lejepa, mstack, yngwin
+  1. RESUME, DO NOT SUMMARISE.  `claude --continue` picks up the most recent conversation in
+     the cwd mid-thread. `--autocompact 1000000` pushes auto-compaction — the only thing that
+     would summarise a resumed session — as far out as the CLI allows. `--fork-session` is
+     deliberately NEVER passed: it mints a new session id and continues a COPY, which is not
+     continuing.
 
-  Every repo path below was VERIFIED to exist and to be a git repo on 2026-08-19,
-  and each ambiguous name was disambiguated by last-commit recency, not by guessing:
-    ospark  -> D:\BSTDEV\db\ospark          (3 candidates; this one committed 2026-08-19 10:59)
-    yngwin  -> D:\yngenios\yngenios-windows (3 candidates; this one committed 2026-08-19 12:30)
-    yngenios-> D:\BSTDEV\research\yngenios  (3 candidates; this one committed 2026-08-19 12:17)
+  2. THE SILENT-NEW-SESSION TRAP.  `--continue` does NOT error when there is no stored session
+     for the cwd — it silently starts a BRAND NEW EMPTY one. After a reboot that is
+     indistinguishable from a successful resume until you notice the context is gone. So every
+     lane's session store is checked FIRST and a lane with no store, or an empty store, is
+     REFUSED rather than resumed into nothing.
 
-.PARAMETER StartClaude
-  Also start `claude` in each tab. Default OFF: 12 concurrent agent sessions is a
-  deliberate act, not a side effect of rebooting.
+  3. THE BARE-SEMICOLON TRAP.  wt's command separator must be passed to Start-Process as a
+     BARE ';' array element. A backtick-escaped '`;' arrives at wt literally and silently
+     produces tabs that open and run NOTHING. Measured in the reference lane: 12 tabs,
+     0 claude processes. This is why the script verifies by COUNTING PROCESSES at the end
+     rather than by trusting its own success message.
+
+  4. TWO DIFFERENT MOUNT WAITS.  Repo paths (local D:) are REQUIRED — wait, then refuse what is
+     still missing. Network shares (I:, H:) are OPTIONAL — wait briefly, then LAUNCH ANYWAY.
+     The shares live on \\192.168.0.108\GAVRI_D served by gavriella; in a fleet-wide reboot
+     gavriella is down too, so blocking on them means the restart never runs on the hosts that
+     are actually up. Sessions do not need the shares — every repo is local.
+
+  5. ABSENT SHARE MEANS "I CANNOT SEE THE BOARD" — never "the board is empty", and never a
+     finding about any host. Several buildkit tools silently fall back to a stale local root
+     when the share is missing, and that husk answers every query with plausible wrong data.
+     Three separate 2026-08 incidents came from that fallback.
+
+  MEASURED AND REFUTED — do not "fix" path case in the lane table: Claude Code mangles the cwd
+  into a store name case-preservingly, but Windows resolves the lookup case-insensitively, so
+  case cannot split a lane's history. Tested and refuted in the reference lane.
+
+.PARAMETER Install
+  Register the at-logon Scheduled Task (45 s delay) for the CURRENT user on ANY host, then exit.
+  Idempotent — re-running replaces the existing task.
+
+.PARAMETER Uninstall
+  Remove the Scheduled Task and exit.
+
+.PARAMETER Layout
+  TwoWindows (default) = window 1 gets the first group, window 2 the second.
+  Tabs = one window, all lanes.  Windows = one window per lane.
+
+.PARAMETER Fresh
+  Start NEW sessions instead of resuming. Opt-in only, and it defeats the point.
 
 .EXAMPLE
-  pwsh -File scripts\onrestart-launch.ps1
-  pwsh -File scripts\onrestart-launch.ps1 -StartClaude
+  pwsh -File scripts\onrestart-launch.ps1 -Install      # arm it once; fires 45 s after every logon
+  pwsh -File scripts\onrestart-launch.ps1 -DryRun       # validate, launch nothing
+  pwsh -File scripts\onrestart-launch.ps1 -WaitForMounts
 #>
 [CmdletBinding()]
 param(
-    [switch]$StartClaude,
-    [switch]$WhatIfOnly
+    [switch]$Install,
+    [switch]$Uninstall,
+    [switch]$Register,
+    [switch]$Unregister,
+    [switch]$ShowConfig,
+    [string]$Name,
+    [int]$Group = 0,
+    [string]$ConfigPath,
+    [switch]$DryRun,
+    [ValidateSet('TwoWindows', 'Tabs', 'Windows')][string]$Layout,
+    [string[]]$Only,
+    [ValidateSet('max', 'auto')][string]$AutoCompact = 'max',
+    [switch]$Fresh,
+    [switch]$WaitForMounts,
+    [int]$DelaySeconds = 45,
+    [int]$RepoWaitSec = 120,
+    [int]$ShareWaitSec = 60,
+    [string[]]$OptionalMount = @('I:\coop', 'H:\coop', 'G:\coop')
 )
 
 $ErrorActionPreference = 'Stop'
+$TaskName = 'BK-OnRestart'
 
-# The GAVRIELLA shell prelude. Nothing dev-related is on the persisted PATH on this
-# host, so every lane must prepend it or node/git/dart/dotnet are simply absent.
-$Prelude = @'
-$env:PATH = "$env:USERPROFILE\.dotnet;$env:USERPROFILE\.local\bin;$env:USERPROFILE\erlang-otp-29\bin;$env:USERPROFILE\dart-sdk\bin;C:\Program Files\nodejs;C:\Program Files\Git\cmd;C:\Program Files\Git\bin;$env:PATH"
-$env:DOTNET_ROOT = "$env:USERPROFILE\.dotnet"
-$env:PYTHONUTF8 = 1
-'@
+# --- Configuration ---------------------------------------------------------------
+# Host config lives OUTSIDE any repo, so a repo can be deleted or re-cloned without
+# losing the machine's lane layout. Seeded on first run, then hand-editable, and
+# extendable in place with -Register / -Unregister.
+#
+# layoutByHost maps a hostname to its window layout — the operator ruling is:
+#   GAVRIELLA / GAVRI  -> TwoWindows (group 1 in window 1, group 2 in window 2)
+#   OLAMNIT / ARIELLAS / SHIRAS -> Tabs (all lanes, one window)
+# An unlisted host falls back to defaultLayout, and says so rather than guessing silently.
+if (-not $ConfigPath) { $ConfigPath = Join-Path $env:USERPROFILE '.bk-onrestart\config.json' }
 
-$Window1 = [ordered]@{
-    'ospark'   = 'D:\BSTDEV\db\ospark'
-    'tefl'     = 'D:\BSTDEV\lang\TEFL'
-    'hatzinor' = 'D:\BSTDEV\lang\hatzinor'
-    'olamnit'  = 'D:\BSTDEV\research\olamnit'
-    'buildkit' = 'D:\BSTDEV\research\buildkit'
-    'qhstate'  = 'D:\BSTDEV\research\qhstate'
-    'yngenios' = 'D:\BSTDEV\research\yngenios'
-}
-
-$Window2 = [ordered]@{
-    'crucible' = 'D:\BSTDEV\research\crucible'
-    'glpnet'   = 'D:\BSTDEV\research\GLP\GLPNET'
-    'lejepa'   = 'D:\BSTDEV\research\LeJEPA'
-    'mstack'   = 'D:\BSTDEV\tools\MSTACK'
-    'yngwin'   = 'D:\yngenios\yngenios-windows'
-}
-
-function Test-Lanes {
-    param([System.Collections.Specialized.OrderedDictionary]$Lanes, [string]$Label)
-    $bad = @()
-    foreach ($name in $Lanes.Keys) {
-        $p = $Lanes[$name]
-        if (-not (Test-Path -LiteralPath (Join-Path $p '.git'))) { $bad += "$name -> $p" }
+$SeedConfig = [ordered]@{
+    schema_version = '1'
+    defaultLayout  = 'Tabs'
+    layoutByHost   = [ordered]@{
+        'GAVRIELLA' = 'TwoWindows'; 'GAVRI' = 'TwoWindows'
+        'OLAMNIT'   = 'Tabs'; 'ARIELLAS' = 'Tabs'; 'SHIRAS' = 'Tabs'
     }
-    if ($bad.Count) {
-        # Refuse loudly rather than open half a window of broken tabs. A launcher that
-        # silently skips a missing lane is the same silent-success defect this fleet
-        # is trying to eliminate.
-        throw "$Label : not a git repo: $($bad -join '; ')"
-    }
-    Write-Host ("  {0}: {1}/{1} lanes verified" -f $Label, $Lanes.Count) -ForegroundColor Green
+    lanes = @(
+        [ordered]@{ name='ospark';     group=1; path='D:\bstdev\db\ospark' }
+        [ordered]@{ name='tefl';       group=1; path='D:\BSTDEV\LANG\tefl' }
+        [ordered]@{ name='hatzinor';   group=1; path='D:\BSTDEV\LANG\hatzinor' }
+        [ordered]@{ name='olamnit';    group=1; path='D:\BSTDEV\research\olamnit' }
+        [ordered]@{ name='buildkit';   group=1; path='D:\BSTDEV\research\buildkit' }
+        [ordered]@{ name='qhstate';    group=1; path='D:\BSTDEV\research\qhstate' }
+        [ordered]@{ name='yngraw';     group=1; path='D:\bstdev\research\yngenios' }
+        [ordered]@{ name='crucible';   group=2; path='D:\bstdev\research\crucible' }
+        [ordered]@{ name='glpnet';     group=2; path='D:\bstdev\research\glp\glpnet' }
+        [ordered]@{ name='lejepa';     group=2; path='D:\bstdev\research\lejepa' }
+        [ordered]@{ name='mstack';     group=2; path='D:\bstdev\tools\mstack' }
+        [ordered]@{ name='yngwin';     group=2; path='D:\YNGENIOS\yngenios-windows' }
+    )
 }
 
-function Get-TabCommand {
-    param([string]$Path)
-    $body = $Prelude
-    if ($StartClaude) { $body += "`nclaude" }
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($body))
-    return @('pwsh.exe', '-NoExit', '-EncodedCommand', $encoded)
+function Save-Config($cfg) {
+    $dir = Split-Path -Parent $ConfigPath
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    ($cfg | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $ConfigPath -Encoding utf8
+}
+
+function Get-Config {
+    if (-not (Test-Path -LiteralPath $ConfigPath)) {
+        Save-Config $SeedConfig
+        Write-Host "seeded lane config -> $ConfigPath" -ForegroundColor Green
+    }
+    Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+}
+
+$Config = Get-Config
+$Repos  = @($Config.lanes | ForEach-Object {
+    [pscustomobject]@{ Name = $_.name; Group = [int]$_.group; Path = $_.path }
+})
+
+# Layout precedence: explicit -Layout > this host's entry > defaultLayout.
+if (-not $Layout) {
+    $hostKey = $env:COMPUTERNAME.ToUpperInvariant()
+    $mapped  = $Config.layoutByHost.$hostKey
+    if ($mapped) { $Layout = $mapped }
+    else {
+        $Layout = $Config.defaultLayout
+        Write-Host "host '$hostKey' is not in layoutByHost - falling back to defaultLayout '$Layout'" -ForegroundColor Yellow
+    }
+}
+
+$ProjectsRoot = Join-Path $env:USERPROFILE '.claude\projects'
+
+# Claude Code's cwd -> session-store mangle. Case-preserving by design; harmless (see .DESCRIPTION).
+function ConvertTo-SessionDirName([string]$Path) { ($Path.TrimEnd('\') -replace '[:\\]', '-') }
+
+function Get-RepoState($Repo) {
+    $dirName = ConvertTo-SessionDirName $Repo.Path
+    $store   = Join-Path $ProjectsRoot $dirName
+    $files   = @()
+    if (Test-Path -LiteralPath $store) {
+        $files = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue)
+    }
+    $latest = $files | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    [pscustomobject]@{
+        Name = $Repo.Name; Group = $Repo.Group; Path = $Repo.Path; SessionDir = $dirName
+        PathExists = (Test-Path -LiteralPath $Repo.Path)
+        StoreExists = (Test-Path -LiteralPath $store)
+        Sessions = $files.Count
+        Latest = if ($latest) { $latest.LastWriteTime } else { $null }
+    }
+}
+
+function Wait-ForPaths {
+    param([string[]]$Paths, [int]$TimeoutSec, [string]$Label)
+    if (-not $Paths) { return @() }
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $pending  = @($Paths | Where-Object { -not (Test-Path -LiteralPath $_) })
+    while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) {
+        Write-Host ("  waiting for {0} {1}: {2}" -f $pending.Count, $Label, ($pending -join ', ')) -ForegroundColor DarkGray
+        Start-Sleep -Seconds 5
+        $pending = @($pending | Where-Object { -not (Test-Path -LiteralPath $_) })
+    }
+    return , @($pending)
+}
+
+# --- Install / uninstall the at-logon trigger (portable to any host) -------------
+function Install-Trigger {
+    $self = $PSCommandPath
+    if (-not $self) { throw "cannot resolve own path; run via 'pwsh -File <script> -Install'" }
+    $pwsh = (Get-Process -Id $PID).Path        # the pwsh actually running us — portable
+    $action  = New-ScheduledTaskAction -Execute $pwsh `
+               -Argument ('-NoProfile -WindowStyle Hidden -File "{0}" -WaitForMounts' -f $self)
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $trigger.Delay = [System.Xml.XmlConvert]::ToString([TimeSpan]::FromSeconds($DelaySeconds))  # ISO-8601, e.g. PT45S
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::FromMinutes(30))
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
+        -Description "Resume all Claude Code repo lanes $DelaySeconds s after logon (buildkit bk-onrestart prototype)" `
+        -Force | Out-Null
+    Write-Host "installed scheduled task '$TaskName' on $env:COMPUTERNAME for $env:USERNAME" -ForegroundColor Green
+    Write-Host "  fires: at logon + $DelaySeconds s delay" -ForegroundColor Green
+    Write-Host "  runs : $pwsh -NoProfile -WindowStyle Hidden -File `"$self`" -WaitForMounts" -ForegroundColor DarkGray
+    Write-Host "  verify: Get-ScheduledTask -TaskName $TaskName" -ForegroundColor DarkGray
+}
+
+function Uninstall-Trigger {
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "removed scheduled task '$TaskName'" -ForegroundColor Green
+    } else { Write-Host "no scheduled task '$TaskName' to remove" -ForegroundColor Yellow }
+}
+
+# --- register / unregister a lane from the window you are standing in -------------
+# The point of -Register is that you capture a lane by BEING in it: cd into the repo,
+# run it, and the lane is added with the correct path and session store already proven.
+function Register-Lane {
+    $path = (Get-Location).Path
+    if (-not (Test-Path -LiteralPath (Join-Path $path '.git'))) {
+        Write-Error "not a git repo: $path — refusing to register a lane that is not a repo."; exit 2
+    }
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf $path }
+    $laneGroup = if ($Group -gt 0) { $Group } else { 1 }
+
+    # Prove the lane is resumable NOW rather than discovering it at 45 s after next logon.
+    $store = Join-Path $ProjectsRoot (ConvertTo-SessionDirName $path)
+    $sess  = if (Test-Path -LiteralPath $store) { @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue).Count } else { 0 }
+    if ($sess -eq 0) { Write-Host "  warning: no stored session for this directory yet — it will be REFUSED at resume until Claude has run here." -ForegroundColor Yellow }
+
+    $cfg = Get-Config
+    $lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName -and $_.path -ne $path })
+    if (@($cfg.lanes).Count -ne $lanes.Count) { Write-Host "  replacing existing entry for '$laneName'" -ForegroundColor DarkGray }
+    $lanes += [pscustomobject]@{ name = $laneName; group = $laneGroup; path = $path }
+    $cfg.lanes = $lanes
+    Save-Config $cfg
+    Write-Host "registered lane '$laneName' (group $laneGroup, $sess session(s)) -> $path" -ForegroundColor Green
+    Write-Host "  config: $ConfigPath  |  lanes now: $(@($lanes).Count)" -ForegroundColor DarkGray
+}
+
+function Unregister-Lane {
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf (Get-Location).Path }
+    $cfg = Get-Config
+    $before = @($cfg.lanes).Count
+    $cfg.lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName })
+    if (@($cfg.lanes).Count -eq $before) { Write-Host "no lane named '$laneName' in config — nothing removed." -ForegroundColor Yellow; exit 1 }
+    Save-Config $cfg
+    Write-Host "unregistered lane '$laneName'  |  lanes now: $(@($cfg.lanes).Count)" -ForegroundColor Green
+}
+
+function Show-Config {
+    Write-Host "config : $ConfigPath" -ForegroundColor Cyan
+    Write-Host "host   : $env:COMPUTERNAME  ->  layout '$Layout'" -ForegroundColor Cyan
+    Write-Host "layoutByHost:" -ForegroundColor Cyan
+    $Config.layoutByHost.PSObject.Properties | ForEach-Object { "    {0,-12} {1}" -f $_.Name, $_.Value } | Write-Host
+    Write-Host "lanes ($(@($Repos).Count)):" -ForegroundColor Cyan
+    $Repos | ForEach-Object { "    {0,-10} win {1}  {2}" -f $_.Name, $_.Group, $_.Path } | Write-Host
+}
+
+if ($Register)   { Register-Lane;     exit 0 }
+if ($Unregister) { Unregister-Lane;   exit 0 }
+if ($ShowConfig) { Show-Config;       exit 0 }
+if ($Install)    { Install-Trigger;   exit 0 }
+if ($Uninstall)  { Uninstall-Trigger; exit 0 }
+
+# --- Resolve + validate ---------------------------------------------------------
+# Under `pwsh -File`, "-Only a,b" arrives as ONE string, so a comma list silently matches
+# nothing. Split explicitly so -File and -Command behave alike.
+if ($Only) { $Only = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+$selected = if ($Only) { $Repos | Where-Object { $Only -contains $_.Name } } else { $Repos }
+if (-not $selected) { Write-Error "No lanes matched -Only. Known: $($Repos.Name -join ', ')"; exit 2 }
+
+Write-Host "bk-onrestart (prototype) — host $env:COMPUTERNAME" -ForegroundColor Cyan
+if ($env:COMPUTERNAME -ne 'Gavriella') {
+    Write-Warning "Lane paths were verified on GAVRIELLA. On $env:COMPUTERNAME they are unverified — re-resolve before trusting them."
+}
+
+$shareMissing = @()
+if ($WaitForMounts) {
+    Write-Host ''; Write-Host 'Waiting for mounts...' -ForegroundColor Cyan
+    $repoMissing = Wait-ForPaths -Paths @($selected.Path) -TimeoutSec $RepoWaitSec -Label 'repo path(s)'
+    if ($repoMissing.Count -gt 0) { Write-Host ("  {0} repo path(s) never appeared: {1}" -f $repoMissing.Count, ($repoMissing -join ', ')) -ForegroundColor Yellow }
+    else { Write-Host '  all repo paths present.' -ForegroundColor Green }
+    $shareMissing = Wait-ForPaths -Paths $OptionalMount -TimeoutSec $ShareWaitSec -Label 'network share(s)'
+    if ($shareMissing.Count -eq 0) { Write-Host '  all network shares present.' -ForegroundColor Green }
+}
+
+$state = @($selected | ForEach-Object { Get-RepoState $_ })
+
+Write-Host ''; Write-Host 'Lane resume plan' -ForegroundColor Cyan
+Write-Host ('-' * 100)
+'{0,-10} {1,-6} {2,-34} {3,-6} {4,-9} {5}' -f 'LANE','WINDOW','PATH','SESS','RESUME?','LATEST SESSION' | Write-Host
+Write-Host ('-' * 100)
+foreach ($s in $state) {
+    $verdict = if (-not $s.PathExists) { 'NO-PATH' } elseif (-not $s.StoreExists) { 'NO-STORE' }
+               elseif ($s.Sessions -eq 0) { 'EMPTY' } else { 'yes' }
+    $colour = if ($verdict -eq 'yes') { 'Green' } else { 'Red' }
+    $when = if ($s.Latest) { $s.Latest.ToString('yyyy-MM-dd HH:mm') } else { '-' }
+    '{0,-10} {1,-6} {2,-34} {3,-6} {4,-9} {5}' -f $s.Name,$s.Group,$s.Path,$s.Sessions,$verdict,$when |
+        Write-Host -ForegroundColor $colour
+}
+Write-Host ('-' * 100)
+
+$launchable = @($state | Where-Object { $_.PathExists -and $_.StoreExists -and $_.Sessions -gt 0 })
+$blocked    = @($state | Where-Object { -not ($_.PathExists -and $_.StoreExists -and $_.Sessions -gt 0) })
+
+if ($blocked.Count -gt 0) {
+    Write-Host ''; Write-Host "REFUSING to resume $($blocked.Count) lane(s):" -ForegroundColor Yellow
+    foreach ($b in $blocked) {
+        $why = if (-not $b.PathExists) { 'path does not exist' }
+               elseif (-not $b.StoreExists) { "no session store at ...\$($b.SessionDir)  <- Claude has never run in this directory" }
+               else { 'session store is empty' }
+        Write-Host "  $($b.Name): $why" -ForegroundColor Yellow
+    }
+    Write-Host '  Resuming anyway would silently start a NEW empty session, which looks like success.' -ForegroundColor Yellow
+}
+
+if ($Fresh) {
+    Write-Host ''; Write-Host '-Fresh set: starting NEW sessions. This does NOT continue anything.' -ForegroundColor Yellow
+    $launchable = @($state | Where-Object { $_.PathExists })
+}
+
+$claudeCmd = if ($Fresh) { 'claude' } else { 'claude --continue' }
+if ($AutoCompact -eq 'max') { $claudeCmd += ' --autocompact 1000000' }
+
+if ($shareMissing.Count -gt 0) {
+    Write-Host ''
+    Write-Host '################################################################' -ForegroundColor Red
+    Write-Host ' NETWORK SHARE(S) NOT PRESENT - LAUNCHING ANYWAY (this is normal)' -ForegroundColor Red
+    Write-Host '################################################################' -ForegroundColor Red
+    foreach ($m in $shareMissing) { Write-Host "  absent: $m" -ForegroundColor Red }
+    Write-Host ''
+    Write-Host '  ABSENT SHARE MEANS "I CANNOT SEE THE BOARD".' -ForegroundColor Yellow
+    Write-Host '  It does NOT mean the board is empty, and it is NOT a finding about any host.' -ForegroundColor Yellow
+    Write-Host '  DO NOT let any tool fall back to a default/local sched root - that husk' -ForegroundColor Yellow
+    Write-Host '  answers every query with plausible STALE data. Three 2026-08 incidents.' -ForegroundColor Yellow
+    Write-Host '  Remap when gavriella is back:  net use I: \\192.168.0.108\GAVRI_D /persistent:yes' -ForegroundColor Cyan
+    Write-Host ''
+}
+
+Write-Host ''
+Write-Host "Will launch : $($launchable.Count)"
+Write-Host "Layout      : $Layout"
+Write-Host "Command     : $claudeCmd"
+
+if ($DryRun) { Write-Host ''; Write-Host 'DRY RUN - nothing launched.' -ForegroundColor Cyan; exit 0 }
+if ($launchable.Count -eq 0) { Write-Host 'Nothing to launch.' -ForegroundColor Yellow; exit 1 }
+
+$wt = 'wt.exe'
+if (-not (Get-Command $wt -ErrorAction SilentlyContinue)) {
+    Write-Error "Windows Terminal (wt.exe) not found on PATH."; exit 3
 }
 
 function Start-LaneWindow {
-    param([System.Collections.Specialized.OrderedDictionary]$Lanes, [string]$WindowId)
-    $args = @('-w', $WindowId)
+    param([object[]]$Lanes, [string]$WindowId)
+    $argList = @('-w', $WindowId)
     $first = $true
-    foreach ($name in $Lanes.Keys) {
-        if (-not $first) { $args += ';' }
-        $args += @('new-tab', '--title', $name, '-d', $Lanes[$name])
-        $args += (Get-TabCommand -Path $Lanes[$name])
+    foreach ($s in $Lanes) {
+        # BARE ';' — a backtick-escaped '`;' reaches wt literally and yields tabs that run nothing.
+        if (-not $first) { $argList += ';' }
+        $argList += @('new-tab', '--title', $s.Name, '-d', $s.Path, 'pwsh', '-NoExit', '-Command', $claudeCmd)
         $first = $false
     }
-    if ($WhatIfOnly) {
-        Write-Host "wt $($args -join ' ')" -ForegroundColor DarkGray
-        return
+    Start-Process -FilePath $wt -ArgumentList $argList
+}
+
+$before = @(Get-Process claude -ErrorAction SilentlyContinue).Count
+
+switch ($Layout) {
+    'TwoWindows' {
+        $g1 = @($launchable | Where-Object { $_.Group -eq 1 })
+        $g2 = @($launchable | Where-Object { $_.Group -eq 2 })
+        if ($g1.Count) { Start-LaneWindow -Lanes $g1 -WindowId 'lanes-1'; Start-Sleep -Milliseconds 900 }
+        if ($g2.Count) { Start-LaneWindow -Lanes $g2 -WindowId 'lanes-2' }
+        Write-Host "Launched 2 windows: $($g1.Count) + $($g2.Count) tabs." -ForegroundColor Green
     }
-    & wt.exe @args
+    'Tabs' { Start-LaneWindow -Lanes $launchable -WindowId '0'; Write-Host "Launched 1 window with $($launchable.Count) tabs." -ForegroundColor Green }
+    'Windows' {
+        foreach ($s in $launchable) {
+            Start-Process -FilePath $wt -ArgumentList @('-w','-1','new-tab','--title',$s.Name,'-d',$s.Path,'pwsh','-NoExit','-Command',$claudeCmd)
+            Start-Sleep -Milliseconds 400
+        }
+        Write-Host "Launched $($launchable.Count) windows." -ForegroundColor Green
+    }
 }
 
-Write-Host "onrestart-launch — host $env:COMPUTERNAME" -ForegroundColor Cyan
-if ($env:COMPUTERNAME -ne 'Gavriella') {
-    Write-Warning "These paths were verified on GAVRIELLA. On $env:COMPUTERNAME they are unverified — stop and re-resolve before trusting them."
+# --- Verify by COUNTING PROCESSES, never by trusting the message above -----------
+# The documented failure mode is tabs that open and run nothing (12 tabs, 0 claude).
+Write-Host ''
+Write-Host 'Verifying (tabs can open and run nothing) — waiting 20 s for claude to start...' -ForegroundColor Cyan
+Start-Sleep -Seconds 20
+$started = @(Get-Process claude -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-2) }).Count
+$expected = $launchable.Count
+if ($started -ge $expected) {
+    Write-Host "VERIFIED: $started claude process(es) started, expected $expected." -ForegroundColor Green
+} else {
+    Write-Host "MISMATCH: $started claude process(es) started, expected $expected." -ForegroundColor Red
+    Write-Host "  Tabs may have opened without running anything. Re-check the wt separator." -ForegroundColor Red
+    Write-Host "  Count again yourself:" -ForegroundColor Yellow
+    Write-Host '    @(Get-Process claude | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-2) }).Count' -ForegroundColor Cyan
+    exit 4
 }
-
-Test-Lanes -Lanes $Window1 -Label 'window-1'
-Test-Lanes -Lanes $Window2 -Label 'window-2'
-
-Start-LaneWindow -Lanes $Window1 -WindowId 'lanes-1'
-Start-Sleep -Milliseconds 900   # let the first window claim its name before the second is addressed
-Start-LaneWindow -Lanes $Window2 -WindowId 'lanes-2'
-
-Write-Host "launched: 2 windows, $($Window1.Count + $Window2.Count) tabs (StartClaude=$StartClaude)" -ForegroundColor Cyan
