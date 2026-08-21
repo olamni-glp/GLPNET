@@ -17,8 +17,13 @@ reports *"no active marathon run"* — which is **not** true. The live programme
 
 ## Where things stand (2026-08-21)
 
-- **Branch**: `develop` at `24a249ab`. **RELEASED `v2026.08.21.1`** (PR #194 → main, tag pushed,
-  back-merge PR #195 → develop). develop/main are in normal GitFlow steady state.
+- **Branch**: `develop`. **RELEASED `v2026.08.21.1` then `v2026.08.21.2`** (PRs #194/#197 → main,
+  both tagged; back-merges #195/#198 → develop). develop/main in normal GitFlow steady state.
+- **Repo is TIDY**: origin heads **146 → 19**. The peer lane deleted 127 refs; audited with one
+  batch `git rev-list --no-walk <127 tips> --not origin/develop` → **zero unreachable**. All 18
+  archive tags still resolve (14 branches alive, 4 landed).
+- **15 unmerged refs remain and ZERO merge clean** — smallest `080` at 2 conflicting paths,
+  largest `059` at 89. Nothing further lands without a per-branch ruling.
 - **Green baseline**: `test/run_all_tests.sh` on merged develop = **559/559, 0 failed, all 21
   sections A–U**, summary block present, exit 0. Log:
   `D:/BSTDEV/evidence/glpnet-tidyup-20260820/suite-20260821-clean.log`.
@@ -27,7 +32,7 @@ reports *"no active marathon run"* — which is **not** true. The live programme
 - **Workplan item** `mitem-01a01f1d-c9b4-77af-b9c0-e81d0e47f57c` carries the ordered CRDT workplan
   **W01–W25, 121 points**, sizes `nano 1 / micro 3 / mini 7 / midi 11 / maxi 17 / saga 35`,
   hard cap `mini` per step, phases `analyze | implement | codexreview-ship | close`.
-- **Roadmap**: round 29 converged (2026-08-21) — 20 epics / 116 features / 3760 journal lines, 0 duplicate groups,
+- **Roadmap**: round 30 converged (2026-08-21) — 20 epics / 116 features / 3760 journal lines, 0 duplicate groups,
   both publish legs OK. **23 features not closed** (9 of them carry no epic and are therefore
   invisible to `buildkit-roadmap status` — always fold `heads` from the export instead).
 
@@ -116,6 +121,11 @@ $env:PYTHONUTF8 = 1
   unconfigured host reports an empty board at exit 0.
 - Roadmap sync is **two-legged**: import with
   `--in-dir I:/coop/glpnet/roadmap-sync/inbox` and export to both the local `exports/` and that inbox.
+- 🔴 **A killed roadmap command leaves `pgdb/.lock` behind** and every later catalog command dies with
+  *"catalog unavailable: pgdb/.lock held by PID N"*. Check the PID is actually dead
+  (`Get-Process -Id N`) and only then `rm -rf pgdb/.lock`. Hit on 2026-08-21 with dead PID 16432.
+- 🔴 **Git-Bash mangles `rev:path` arguments** — `git show origin/branch:file` becomes
+  `originranch;file`. Prefix with `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`.
 - `marathon expand --steps` is **comma-delimited with no escaping** — never put a comma in a step text.
 - `marathon checkpoint --paths` refuses out-of-repo paths; omit `--paths` for evidence held outside
   the repo, and do not suppress its output or the failure is silent. `checkpoint` has **no
