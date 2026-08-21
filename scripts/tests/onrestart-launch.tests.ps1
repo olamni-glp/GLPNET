@@ -53,7 +53,7 @@ $want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath
           'Get-ResumeEvidence','Get-RepoState','Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc',
           'Test-LaneMarker','Get-LaneVerification','Remove-StaleRunDirs','Get-RunOutcome',
           'New-LaneLauncher','Get-WtCommandLine','Read-FileRange','Split-TranscriptLines',
-          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary')
+          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary','ConvertFrom-NativeCommandLine')
 $found = @()
 foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
@@ -268,6 +268,62 @@ Check 'a look-alike directory does NOT match (H2)'   (-not (Test-IsClaudeProc (Q
 Check '--continue-helper does NOT satisfy --continue (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --continue-helper' 'C:\node.exe') $FAKE @('--continue')))
 Check 'a quoted whole-token argument still matches'  (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" "--continue"' 'C:\node.exe') $FAKE @('--continue'))
 Check 'an embedded 1000000 does not satisfy the flag (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --autocompact 10000000' 'C:\node.exe') $FAKE @('--autocompact','1000000')))
+
+Write-Host ''
+Write-Host 'G1 / G2 - attribution is about the INVOCATION, not the bytes' -ForegroundColor Cyan
+$SHIMP = 'C:\np\claude.cmd'
+function W($name, $cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'tokenizer: plain tokens'        ((ConvertFrom-NativeCommandLine 'a b c').Count -eq 3)
+Check 'tokenizer: quoted token'        (@(ConvertFrom-NativeCommandLine '"a b" c')[0] -ceq 'a b')
+Check 'tokenizer: escaped quote'       (@(ConvertFrom-NativeCommandLine 'x \"q\" y').Count -eq 3) (@(ConvertFrom-NativeCommandLine 'x \"q\" y') -join '|')
+Check 'tokenizer: cmd packed string'   (@(ConvertFrom-NativeCommandLine 'cmd /c ""p" --continue"')[2] -ceq 'p --continue')
+Check 'tokenizer: empty is empty'      ((@(ConvertFrom-NativeCommandLine '')).Count -eq 0)
+# Positive control: the command processor running the shim as its /c target.
+Check 'cmd running the shim IS attributed'  (Test-IsClaudeProc (W 'cmd.exe' ('cmd /c ""' + $SHIMP + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SHIMP @('--continue'))
+# INJECTION (G1): an unrelated program carrying the resolved path as DATA in its arguments.
+Check 'the resolved path as ARGUMENT DATA is refused (G1)' (-not (Test-IsClaudeProc (W 'notepad.exe' ('notepad "' + $SHIMP + '" --continue') 'C:\WINDOWS\notepad.exe') $SHIMP @('--continue')))
+# INJECTION (G1): cmd.exe, but the resolved path is not what it was told to run.
+Check 'cmd echoing the path is refused (G1)'  (-not (Test-IsClaudeProc (W 'cmd.exe' ('cmd /c "echo ' + $SHIMP + ' --continue"') 'C:\WINDOWS\system32\cmd.exe') $SHIMP @('--continue')))
+# INJECTION (G2): the expected flags packed inside ONE quoted argv element.
+Check 'flags packed in one argv element are refused (G2)' (-not (Test-IsClaudeProc (W 'claude.exe' ('claude "payload --continue 1000000"') $SHIMP) $SHIMP @('--continue')))
+# INJECTION (G2): flag and value both present but NOT adjacent.
+Check 'a non-adjacent flag value is refused (G2)' (-not (Test-IsClaudeProc (W 'claude.exe' 'claude --autocompact 55 --other 1000000' $SHIMP) $SHIMP @('--autocompact','1000000')))
+Check 'an adjacent flag value is accepted'       (Test-IsClaudeProc (W 'claude.exe' 'claude --autocompact 1000000' $SHIMP) $SHIMP @('--autocompact','1000000'))
+
+Write-Host ''
+Write-Host 'G3 - a same-name replacement is not a continuation' -ForegroundColor Cyan
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stG = LaneState
+Check 'the snapshot recorded a creation time' ($stG.LatestCreatedUtc -gt [datetime]::MinValue) "$($stG.LatestCreatedUtc)"
+# INJECTION: the transcript is deleted and re-created under the SAME NAME. (NTFS tunneling can
+# preserve the original creation time, so it is set explicitly to make the test deterministic.)
+Remove-Item -LiteralPath $tx -Force
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uuid":"z"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = (Get-Date).ToUniversalTime().AddMinutes(3)
+$evG = Get-ResumeEvidence $stG
+Check 'a replaced transcript is WRONG-SESSION (G3)' ($null -ne $evG -and $evG.Kind -eq 'WRONG-SESSION') ("$($evG.Kind)")
+# INJECTION: same file, but its header now names a different session.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stG2 = LaneState
+$other = '{"type":"session","sessionId":"REPLACED-1","mode":"interactive"}'
+Set-Content -LiteralPath $tx -Value ($other + "`n" + $REC + "`n" + '{"type":"assistant","uuid":"z"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stG2.LatestCreatedUtc
+$evG2 = Get-ResumeEvidence $stG2
+Check 'a rewritten header is WRONG-SESSION (G3)' ($null -ne $evG2 -and $evG2.Kind -eq 'WRONG-SESSION') ("$($evG2.Kind)")
+$gone = Join-Path $tmp 'gone.jsonl'
+Set-Content -LiteralPath $gone -Value ($SESS + "`n") -Encoding utf8 -NoNewline
+$gi = Get-Item $gone; Remove-Item -LiteralPath $gone -Force
+Check 'an unreadable snapshot yields -1, never a guessed 0 (G3)' ((Get-LastRecordBoundary $gi) -eq -1) "$(Get-LastRecordBoundary $gi)"
+
+Write-Host ''
+Write-Host 'G4 - a zero window must not spin' -ForegroundColor Cyan
+$zf = NewJsonl 'zero-win.jsonl' ($SESS + "`n" + $REC + "`n")
+$sw2 = [System.Diagnostics.Stopwatch]::StartNew()
+$b0 = Get-LastRecordBoundary $zf 0
+$t0 = Test-SessionTailIntact $zf 0 $false
+$sw2.Stop()
+Check 'TailBytes 0 terminates for the boundary search (G4)' (($b0 -eq $zf.Length) -and ($sw2.Elapsed.TotalSeconds -lt 5)) "$b0 in $([int]$sw2.Elapsed.TotalMilliseconds) ms"
+Check 'TailBytes 0 terminates for the tail check (G4)'      ($t0 -and ($sw2.Elapsed.TotalSeconds -lt 5)) "$t0"
 
 Write-Host ''
 Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan

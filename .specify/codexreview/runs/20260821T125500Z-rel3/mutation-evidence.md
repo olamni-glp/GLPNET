@@ -68,6 +68,28 @@ corruption. The injection was rewritten to use a **terminated** garbage line —
 corruption and is still refused — and the tolerated case is now asserted explicitly rather than
 left implicit.
 
+
+## Round 7 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `G1-path-anywhere` | the resolved claude path is accepted anywhere in a command line | **164 / 2 fail** | the resolved path as ARGUMENT DATA is refused (G1) · cmd echoing the path is refused (G1) |
+| `G2-expand-all-args` | every process's arguments are expanded a level deep, so a packed quoted argument reads as argv | **164 / 2 fail** | flags packed in one argv element are refused (G2) |
+| `G2b-no-adjacency` | a flag and its value need not be adjacent | **165 / 1 fail** | a non-adjacent flag value is refused (G2) |
+| `G3-guess-zero` | an unreadable snapshot returns offset 0 instead of "unknown" | **165 / 1 fail** | an unreadable snapshot yields -1, never a guessed 0 (G3) |
+| `G3b-no-identity` | the transcript file-identity check is removed | **165 / 1 fail** | a replaced transcript is WRONG-SESSION (G3) |
+| `G4-zero-window` | a zero-byte search window is allowed | **165 / 1 fail** | TailBytes 0 terminates for the boundary search (G4) |
+
+Unmutated after round 7: **166 passed / 0 failed**, exit 0. Twenty-two mutants across five rounds,
+all caught, each by the assertion written for its own finding.
+
+## A third correction the tests forced on the code
+
+The G2 injection — the expected flags packed inside ONE quoted argv element — failed against the
+first round-7 fix. Expanding every argv element one level deep, which was added for the command
+processor's packed `/c` string, re-admitted exactly the forgery it was meant to close for every
+other process. That expansion is now applied **only** to `cmd.exe`, and the injection asserts it.
+
 ## A gap mutation testing found in the tests themselves
 
 The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was

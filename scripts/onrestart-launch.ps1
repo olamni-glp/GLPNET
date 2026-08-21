@@ -321,7 +321,8 @@ function Test-JsonObjectLine([string]$Line) {
 # raw pre-launch length would split that record and silently drop it — including any foreign
 # sessionId inside it — so scanning starts from the last record boundary instead.
 function Get-LastRecordBoundary([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
-    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return 0 }
+    if ($TailBytes -lt 4096) { $TailBytes = 4096 }     # a zero window would never terminate
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return -1 }
     if ($len -le 0) { return 0 }
     # Walk BACKWARDS in windows until a newline is found or the file start is reached. Returning
     # the window start when no newline was seen would hand back a position in the MIDDLE of a
@@ -375,7 +376,8 @@ function Get-SessionFileId([System.IO.FileInfo]$File) {
 function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536, [bool]$Deep = $false) {
     try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $false }
     if ($len -le 0) { return $false }
-    $win = if ($Deep) { $len } else { [long]$TailBytes }
+    if ($TailBytes -lt 4096) { $TailBytes = 4096 }     # a zero window would never terminate
+    $win = if ($Deep) { [Math]::Max($len, 1L) } else { [long]$TailBytes }
     while ($true) {
         $start = [Math]::Max(0L, $len - $win)
         $probe = if ($start -gt 0) { $start - 1 } else { 0 }
@@ -433,6 +435,21 @@ function Get-ResumeEvidence($State) {
     if (-not $State.LatestPath -or -not (Test-Path -LiteralPath $State.LatestPath)) { return $null }
     try { $len = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
     if ($len -le $State.LatestLength) { return $null }             # no append: a touch is not evidence
+    # A transcript can be DELETED and re-created under the same name, in which case length and
+    # offsets from the old file describe a file that no longer exists. Creation time and the
+    # header session id together identify the file we actually snapshotted.
+    try {
+        $fi = Get-Item -LiteralPath $State.LatestPath
+        if ($fi.CreationTimeUtc -ne $State.LatestCreatedUtc) {
+            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
+                Detail = "the transcript $(Split-Path -Leaf $State.LatestPath) was replaced, not continued" }
+        }
+        $nowId = Get-SessionFileId $fi
+        if ($State.LatestSessionId -and $nowId -and $nowId -cne $State.LatestSessionId) {
+            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
+                Detail = "the transcript now opens with sessionId '$nowId', expected '$($State.LatestSessionId)'" }
+        }
+    } catch { return $null }
     $from = [long]$State.LatestCompleteOffset
     if ($from -lt 0) { return $null }              # boundary unknown: cannot judge, so do not
     if ($from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
@@ -498,6 +515,7 @@ function Get-RepoState($Repo) {
         # Pre-launch fingerprint of the store, used after launch to prove resumption.
         FileNames = @($files | ForEach-Object { $_.Name })
         LatestPath = if ($latest) { $latest.FullName } else { $null }
+        LatestCreatedUtc = if ($latest) { $latest.CreationTimeUtc } else { [datetime]::MinValue }
         LatestLength = if ($latest) { $latest.Length } else { 0 }
         LatestCompleteOffset = if ($latest) { Get-LastRecordBoundary $latest } else { 0 }
         LatestSessionId = if ($latest) { Get-SessionFileId $latest } else { $null }
@@ -555,42 +573,107 @@ function Get-DescendantProcs($Table, [int]$RootPid) {
     return $out
 }
 
-# A NAME proves nothing: any executable can be copied to claude.exe. This is the STRONG test —
-# the candidate's image IS the claude command this run resolved from PATH, or its command line
-# invokes that exact path (how a .cmd/.bat shim appears) — plus the arguments we asked for.
+# Windows argv tokenization (CommandLineToArgvW rules). Substring tests over a raw command line
+# are forgeable: any process can carry another program's path, or an expected flag, as DATA inside
+# one of its own arguments. Splitting into real tokens is what makes "this process was invoked as
+# X with argument Y" a statement about the invocation rather than about the bytes.
+function ConvertFrom-NativeCommandLine([string]$CommandLine) {
+    $out = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+    $sb = [System.Text.StringBuilder]::new()
+    $inQuotes = $false; $slashes = 0; $started = $false
+    $flush = {
+        if ($started) { $out.Add($sb.ToString()); [void]$sb.Clear(); $script:__dummy = $null }
+    }
+    foreach ($ch in $CommandLine.ToCharArray()) {
+        if ($ch -eq '\') { $slashes++; $started = $true; continue }
+        if ($ch -eq '"') {
+            [void]$sb.Append('\' * [int]($slashes / 2))
+            if ($slashes % 2 -eq 1) { [void]$sb.Append('"') } else { $inQuotes = -not $inQuotes }
+            $slashes = 0; $started = $true; continue
+        }
+        if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $slashes = 0 }
+        if (-not $inQuotes -and ($ch -eq ' ' -or $ch -eq "`t")) {
+            if ($started) { $out.Add($sb.ToString()); [void]$sb.Clear(); $started = $false }
+            continue
+        }
+        [void]$sb.Append($ch); $started = $true
+    }
+    if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $started = $true }
+    if ($started) { $out.Add($sb.ToString()) }
+    return $out.ToArray()
+}
+
+# A NAME proves nothing: any executable can be copied to claude.exe. Nor does an arbitrary
+# OCCURRENCE of the resolved path in a command line, which any process can carry as data.
+# A candidate counts only when the INVOCATION identifies it:
+#
+#   * its image path IS the resolved claude command; or
+#   * it is the system command processor running that exact path as its /c target — the shape a
+#     .cmd or .bat shim takes, matched on a real argv token, not on a substring; or
+#   * it is a JS runtime whose argv names the Claude Code CLI entry point FILE.
+#
+# and in every case its argv must carry the arguments we asked for, as whole tokens, with any
+# flag/value pair adjacent.
 function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) {
     if ([string]::IsNullOrWhiteSpace($ClaudePath)) { return $false }
     $target = $ClaudePath.ToLowerInvariant()
     $cl = $Proc.CommandLine
-    $imageMatches = $false
-    if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $imageMatches = $true }
-    if (-not $imageMatches -and $cl -and $cl.ToLowerInvariant().Contains($target)) { $imageMatches = $true }
-    # A JS runtime running the Claude Code ENTRY POINT. This is a content match on the CLI's own
-    # module file, not on a directory name and not on a process name: a helper that merely lives
-    # under the package directory does not satisfy it.
-    if (-not $imageMatches -and $cl -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)([\s"]|$)') { $imageMatches = $true }
-    if (-not $imageMatches) { return $false }
-    # Arguments are matched as WHOLE TOKENS. A substring test would accept --continue-helper as
-    # --continue, which is exactly how a forged command line would try to pass.
-    foreach ($a in @($ExpectedArgs)) {
-        if ([string]::IsNullOrWhiteSpace($a)) { continue }
-        if (-not $cl) { return $false }
-        $tok = '(?i)(^|[\s"])' + [regex]::Escape($a) + '($|[\s"])'
-        if ($cl -notmatch $tok) { return $false }
+    $argv = @(ConvertFrom-NativeCommandLine $cl)
+    $lower = @($argv | ForEach-Object { $_.ToLowerInvariant() })
+
+    $identified = $false
+    if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $identified = $true }
+    if (-not $identified -and $Proc.Name -and $Proc.Name.ToLowerInvariant() -in @('cmd.exe')) {
+        # cmd /c "<shim path>" ... — the shim path must appear as a token, or as the head of the
+        # single string cmd was handed. Nothing else about cmd.exe is trusted.
+        foreach ($tok in $lower) {
+            if ($tok -eq $target) { $identified = $true; break }
+            $inner = @(ConvertFrom-NativeCommandLine $tok)
+            if ($inner.Count -gt 0 -and $inner[0].ToLowerInvariant() -eq $target) { $identified = $true; break }
+        }
+    }
+    if (-not $identified) {
+        foreach ($tok in $lower) {
+            if ($tok -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true; break }
+        }
+    }
+    if (-not $identified) { return $false }
+
+    # Arguments as whole argv tokens. cmd.exe hands its target one packed string, so tokens are
+    # searched one level deep as well - still tokens, never substrings.
+    $flat = [System.Collections.Generic.List[string]]::new()
+    $isCmd = ($Proc.Name -and $Proc.Name.ToLowerInvariant() -eq 'cmd.exe')
+    foreach ($tok in $argv) {
+        $flat.Add($tok)
+        # ONLY cmd.exe hands its target one packed string. Expanding any process's arguments a
+        # level deep would let a single quoted argument such as "payload --continue 1000000"
+        # masquerade as three real argv tokens.
+        if ($isCmd) { foreach ($inner in @(ConvertFrom-NativeCommandLine $tok)) { $flat.Add($inner) } }
+    }
+    $flatLower = @($flat | ForEach-Object { $_.ToLowerInvariant() })
+    $expected = @($ExpectedArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($i = 0; $i -lt $expected.Count; $i++) {
+        $a = $expected[$i].ToLowerInvariant()
+        $idx = [array]::IndexOf($flatLower, $a)
+        if ($idx -lt 0) { return $false }
+        # A flag's value must FOLLOW it, so "--autocompact 1000000" cannot be satisfied by the
+        # two tokens appearing independently somewhere in the command line.
+        if ($i + 1 -lt $expected.Count -and -not $expected[$i + 1].StartsWith('-')) {
+            $v = $expected[$i + 1].ToLowerInvariant()
+            if ($idx + 1 -ge $flatLower.Count -or $flatLower[$idx + 1] -ne $v) { return $false }
+            $i++
+        }
     }
     return $true
 }
 
 # Attribution for one lane. There is exactly ONE tier: a live descendant that IDENTIFIES itself
-# as the claude command — by image path, by invoking the resolved path, or by running the Claude
-# Code CLI entry point. "Some descendant of the launcher is alive" is deliberately NOT accepted:
-# a descendant proves the launcher's command ran, not that what survives is claude.
-#
-# The false-negative worry that motivated a looser tier does not survive measurement. A `.cmd`
-# shim is run by a cmd.exe that STAYS ALIVE for the duration and whose command line carries the
-# shim path, so it matches; that is exercised live by the harness against a real shim. A node
-# process running the CLI is matched by the entry-point rule below. If neither is present, the
-# honest answer is NO-CLAUDE.
+# as the claude command per Test-IsClaudeProc above. "Some descendant of the launcher is alive"
+# is deliberately NOT accepted — a descendant proves the launcher's command ran, not that what
+# survives is claude. The launcher runs with -NoProfile and invokes the resolved absolute path
+# and nothing else, so a healthy lane has a descendant that identifies; if none does, the honest
+# answer is NO-CLAUDE.
 function Get-LaneClaudeEvidence {
     param($Table, [int]$LanePid, [string]$ClaudeExe, [string[]]$ClaudeArgs, [datetime]$LaunchStart)
     $fresh = @(Get-DescendantProcs $Table $LanePid | Where-Object { -not $_.Created -or $_.Created -ge $LaunchStart })
