@@ -434,101 +434,128 @@ function Test-ResumableSessionFile([System.IO.FileInfo]$File, [bool]$Deep = $fal
 }
 
 # Resume evidence must be CONTENT the launched claude appended, never a timestamp: any process
-# can touch a file. Three things are required, and each closes a specific hole:
+# can touch a file. Four things are required, and each closes a specific hole:
 #
-#  * scanning starts at the last COMPLETE RECORD BOUNDARY, not the raw pre-launch length, so a
-#    record that straddles the launch is parsed whole instead of being split into an
-#    unparseable fragment that hides whatever sessionId it carries;
-#  * EVERY complete record in that range is examined for a foreign sessionId, which wins over
-#    anything else in the range - a later foreign id cannot be masked by an earlier record;
-#  * proof of resumption is a complete record that BEGINS at or after the pre-launch length and
-#    carries the EXPECTED sessionId. A record without one proves only that the file changed, and
-#    any process with access to the file could have done that, so it is not accepted as proof.
-#    (Measured 2026-08-21 across 29 stores: 97.9% of non-header records carry sessionId and 28 of
-#    29 transcripts have at least one, so requiring it does not starve honest lanes.)
+#  * EVERY read below comes from ONE OPEN HANDLE. Opening the path separately for the fingerprint,
+#    the header and the appended bytes lets a same-name replacement land between them and combine
+#    the old file's identity with the new file's content. A handle keeps referring to the file
+#    object it opened, so a replacement simply yields no new evidence.
+#  * the opening bytes must still hash to what was snapshotted, over the SAME fixed length. A
+#    creation timestamp can be inherited through NTFS file-system tunneling; the bytes cannot.
+#  * scanning starts at the last COMPLETE RECORD BOUNDARY, so a record straddling the launch is
+#    parsed whole instead of split into a fragment that hides its sessionId; and EVERY complete
+#    record in that range is examined, a foreign sessionId winning over anything else.
+#  * proof is a complete record that BEGINS at or after the pre-launch length and carries the
+#    EXPECTED sessionId. A record naming no session proves only that the file changed, which any
+#    process could do; that is reported as UNIDENTIFIED, never as proof.
 function Get-ResumeEvidence($State) {
     if (-not $State.LatestPath -or -not (Test-Path -LiteralPath $State.LatestPath)) { return $null }
-    try { $len = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
-    if ($len -le $State.LatestLength) { return $null }             # no append: a touch is not evidence
-    # A transcript can be DELETED and re-created under the same name, in which case length and
-    # offsets from the old file describe a file that no longer exists. Creation time and the
-    # header session id together identify the file we actually snapshotted.
+    $leafName = Split-Path -Leaf $State.LatestPath
+    $wrong = { param($why) [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'; Detail = $why } }
+    $fs = $null
+    try { $fs = [System.IO.File]::Open($State.LatestPath, 'Open', 'Read', 'ReadWrite') } catch { return $null }
     try {
-        $fi = Get-Item -LiteralPath $State.LatestPath
-        $leafName = Split-Path -Leaf $State.LatestPath
-        if ($fi.CreationTimeUtc -ne $State.LatestCreatedUtc) {
-            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                Detail = "the transcript $leafName was replaced, not continued" }
-        }
-        # The opening bytes are the real identity. A replacement that inherits the creation time
-        # through file-system tunneling still has to reproduce them exactly.
-        $nowHash = Get-FileHeadHash $fi ([long]$State.LatestHeadLen)
-        if ($State.LatestHeadHash) {
-            if (-not $nowHash) {
-                # Either unreadable, or now SHORTER than when snapshotted. A transcript never
-                # shrinks while being appended to, so a short file is a replacement.
-                try { $curLen = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
-                if ($curLen -lt [long]$State.LatestHeadLen) {
-                    return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                        Detail = "$leafName is shorter than when it was snapshotted - it was replaced, not appended to" }
-                }
-                return $null
-            }
-            if ($nowHash -cne $State.LatestHeadHash) {
-                return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                    Detail = "the opening bytes of $leafName changed - it was replaced, not appended to" }
-            }
-        }
-        $nowId = Get-SessionFileId $fi
-        if ($State.LatestSessionId) {
-            if (-not $nowId) { return $null }                   # header unreadable: cannot judge
-            if ($nowId -cne $State.LatestSessionId) {
-                return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                    Detail = "the transcript now opens with sessionId '$nowId', expected '$($State.LatestSessionId)'" }
-            }
-        }
-    } catch { return $null }
-    $from = [long]$State.LatestCompleteOffset
-    if ($from -lt 0) { return $null }              # boundary unknown: cannot judge, so do not
-    if ($from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
-    $bytes = Read-FileRange $State.LatestPath $from ($len - $from)
-    if ($null -eq $bytes) { return $null }
+        $len = $fs.Length
+        if ($len -le $State.LatestLength) { return $null }      # no append: a touch is not evidence
 
-    $leaf  = Split-Path -Leaf $State.LatestPath
-    $added = $len - $State.LatestLength
-    $foreign = $null; $proof = $null; $sawRecord = $false
-    $lineStart = 0
-    for ($i = 0; $i -lt $bytes.Length; $i++) {
-        if ($bytes[$i] -ne 10) { continue }                        # only terminated records count
-        $absStart = $from + $lineStart
-        $line = [System.Text.Encoding]::UTF8.GetString($bytes, $lineStart, $i - $lineStart).TrimEnd("`r")
-        $lineStart = $i + 1
-        $rec = Test-JsonObjectLine $line
-        if ($null -eq $rec) { continue }
-        if ($absStart -ge [long]$State.LatestLength) { $sawRecord = $true }
-        $sid = $rec.sessionId
-        if ($sid -isnot [string] -or [string]::IsNullOrWhiteSpace($sid)) { continue }
-        if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid; continue }
-        if ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId -and $absStart -ge [long]$State.LatestLength) {
-            $proof = $absStart
+        # Creation time read from THIS HANDLE, so it describes the file we are about to read and
+        # not whatever the name points at now. It is a cheap first filter, not identity on its
+        # own - NTFS file-system tunneling can hand a recreated file its predecessor's timestamp,
+        # which is why the opening-byte fingerprint below is the actual check.
+        if ($State.LatestCreatedUtc -gt [datetime]::MinValue) {
+            $created = $null
+            try { $created = [System.IO.File]::GetCreationTimeUtc($fs.SafeFileHandle) }
+            catch { try { $created = [System.IO.File]::GetCreationTimeUtc($State.LatestPath) } catch { $created = $null } }
+            if ($created -and $created -ne $State.LatestCreatedUtc) {
+                return & $wrong "$leafName was replaced, not continued (created $($created.ToString('o')), snapshot $($State.LatestCreatedUtc.ToString('o')))"
+            }
         }
-    }
-    if ($foreign) {
-        return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'session-id'
-            Detail = "appended a record carrying sessionId '$foreign', expected '$($State.LatestSessionId)'" }
-    }
-    if ($null -ne $proof) {
-        return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
-            Detail = "appended $added byte(s) to $leaf including a record at offset $proof carrying sessionId '$($State.LatestSessionId)'" }
-    }
-    if ($sawRecord) {
-        # Something wrote complete records and none of them named a session. That is not proof of
-        # resumption - any process with access to the file could have written them - but it is a
-        # materially different situation from silence, so it is reported as its own thing.
-        return [pscustomobject]@{ Kind = 'UNIDENTIFIED'; Strength = 'none'
-            Detail = "appended $added byte(s) to $leaf but no record named sessionId '$($State.LatestSessionId)'" }
-    }
-    return $null
+
+        $readAt = {
+            param([long]$off, [long]$count)
+            if ($count -le 0 -or $off -lt 0 -or ($off + $count) -gt $fs.Length) { return $null }
+            $null = $fs.Seek($off, 'Begin')
+            $buf = New-Object byte[] $count
+            $got = 0
+            while ($got -lt $count) {
+                $n = $fs.Read($buf, $got, $count - $got)
+                if ($n -le 0) { break }
+                $got += $n
+            }
+            if ($got -lt $count) { return $null }
+            return $buf
+        }
+
+        # Identity: the opening bytes, over the length recorded at snapshot time.
+        if ($State.LatestHeadHash -and [long]$State.LatestHeadLen -gt 0) {
+            if ($len -lt [long]$State.LatestHeadLen) {
+                return & $wrong "$leafName is shorter than when it was snapshotted - it was replaced, not appended to"
+            }
+            $head = & $readAt 0 ([long]$State.LatestHeadLen)
+            if ($null -eq $head) { return $null }
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try { $nowHash = [System.BitConverter]::ToString($sha.ComputeHash($head)).Replace('-', '') }
+            finally { $sha.Dispose() }
+            if ($nowHash -cne $State.LatestHeadHash) {
+                return & $wrong "the opening bytes of $leafName changed - it was replaced, not appended to"
+            }
+            # The header session id, read from the SAME handle rather than re-opening the path.
+            if ($State.LatestSessionId) {
+                $hdrSplit = Split-TranscriptLines $head 0
+                $hdrId = $null
+                if ($null -ne $hdrSplit) {
+                    foreach ($hl in @($hdrSplit.Lines)) {
+                        if ([string]::IsNullOrWhiteSpace($hl)) { continue }
+                        $hr = Test-JsonObjectLine $hl
+                        if ($null -ne $hr -and $hr.sessionId -is [string] -and -not [string]::IsNullOrWhiteSpace($hr.sessionId)) { $hdrId = $hr.sessionId }
+                        break
+                    }
+                }
+                if ($hdrId -and $hdrId -cne $State.LatestSessionId) {
+                    return & $wrong "$leafName now opens with sessionId '$hdrId', expected '$($State.LatestSessionId)'"
+                }
+            }
+        }
+
+        $from = [long]$State.LatestCompleteOffset
+        if ($from -lt 0) { return $null }                       # boundary unknown: cannot judge
+        if ($from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
+        $bytes = & $readAt $from ($len - $from)
+        if ($null -eq $bytes) { return $null }
+
+        $added = $len - $State.LatestLength
+        $foreign = $null; $proof = $null; $sawRecord = $false
+        $lineStart = 0
+        for ($i = 0; $i -lt $bytes.Length; $i++) {
+            if ($bytes[$i] -ne 10) { continue }                 # only terminated records count
+            $absStart = $from + $lineStart
+            $line = [System.Text.Encoding]::UTF8.GetString($bytes, $lineStart, $i - $lineStart).TrimEnd("`r")
+            $lineStart = $i + 1
+            $rec = Test-JsonObjectLine $line
+            if ($null -eq $rec) { continue }
+            if ($absStart -ge [long]$State.LatestLength) { $sawRecord = $true }
+            $sid = $rec.sessionId
+            if ($sid -isnot [string] -or [string]::IsNullOrWhiteSpace($sid)) { continue }
+            if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid; continue }
+            if ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId -and $absStart -ge [long]$State.LatestLength) {
+                $proof = $absStart
+            }
+        }
+        if ($foreign) {
+            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'session-id'
+                Detail = "appended a record carrying sessionId '$foreign', expected '$($State.LatestSessionId)'" }
+        }
+        if ($null -ne $proof) {
+            return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
+                Detail = "appended $added byte(s) to $leafName including a record at offset $proof carrying sessionId '$($State.LatestSessionId)'" }
+        }
+        if ($sawRecord) {
+            return [pscustomobject]@{ Kind = 'UNIDENTIFIED'; Strength = 'none'
+                Detail = "appended $added byte(s) to $leafName but no record named sessionId '$($State.LatestSessionId)'" }
+        }
+        return $null
+    } catch { return $null }
+    finally { if ($fs) { $fs.Dispose() } }
 }
 
 function Get-RepoState($Repo) {
@@ -703,8 +730,14 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
         if ($Proc.ExecutablePath) { $img = (Split-Path -Leaf $Proc.ExecutablePath).ToLowerInvariant() }
         elseif ($Proc.Name) { $img = $Proc.Name.ToLowerInvariant() }
         if ($img -in @('node.exe', 'bun.exe', 'deno.exe', 'node', 'bun', 'deno')) {
-            foreach ($tok in $lower) {
-                if ($tok -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true; break }
+            # The CLI must be the SCRIPT THE RUNTIME RUNS — the first non-flag argument — not
+            # merely present somewhere in argv. "node benign.js .../cli.js --continue" runs
+            # benign.js, and must not be attributed.
+            for ($n = 1; $n -lt $lower.Count; $n++) {
+                $tk = $lower[$n]
+                if ($tk.StartsWith('-')) { continue }                     # runtime options
+                if ($tk -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true }
+                break                                                     # first non-flag decides
             }
         }
     }

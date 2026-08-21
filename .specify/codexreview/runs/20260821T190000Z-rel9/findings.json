@@ -1,0 +1,65 @@
+{
+ "prior_findings": [
+  {
+   "id": "F3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:391-438 still validates only the widened tail unless -DeepValidate is selected. The limitation is explicitly disclosed and accurately tested."
+  },
+  {
+   "id": "J4",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:449-495 still performs separate path, metadata, fingerprint, header and range reads without retaining one file handle. Concurrent disappearance, unreadability or truncation generally returns null and is retried; replacement between successful reads can still mix evidence from different file instances."
+  },
+  {
+   "id": "J5",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:1195-1207 retains RunLockHandle without an explicit disposal path. Process exit releases it, so this remains a non-blocking lifecycle refinement."
+  },
+  {
+   "id": "E1",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:685-697 locates a standalone /c or /k, rejects a missing command, and requires ClaudePath to be either the following token or argv[0] of that packed command string. The former cmd /c echo and no-/c cases no longer identify."
+  },
+  {
+   "id": "E2",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:702-708 now requires the process image filename to be node, bun or deno, closing the arbitrary-image and renamed-runtime examples. However, it still searches every argv token for cli.js/mjs/cjs rather than requiring that token to occupy the runtime's script-entry position."
+  },
+  {
+   "id": "E3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:465-480 detects changed or unreadable snapshotted opening bytes, but a content prefix is not file identity: a replacement preserving the snapshotted prefix passes. Lines 457-495 also leave a TOCTOU interval because the fingerprint, header and appended range are read through separate opens."
+  },
+  {
+   "id": "E4",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:620-668 implements the distinct argv[0] rule and ordinary subsequent-argument rules. The harness differentially compares fourteen cases with CommandLineToArgvW, including cases that distinguish argv[0] handling."
+  }
+ ],
+ "findings": [
+  {
+   "id": "D1",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 706,
+   "title": "JavaScript runtime attribution does not require the Claude CLI to be the executed script",
+   "detail": "Any node.exe, bun.exe or deno.exe process containing a later argument ending in claude-code/cli.js, cli.mjs or cli.cjs is identified. For example, node benign.js C:\\np\\node_modules\\@anthropic-ai\\claude-code\\cli.js --continue satisfies both identification and argument checks although benign.js is the executed program. This can produce successful attribution without verifying Claude.",
+   "recommendation": "Parse the runtime's supported option prefix and require the Claude CLI path at the actual script-entry position. Add a negative test with another script first and the Claude CLI path only as argument data.",
+   "release_blocking": true
+  },
+  {
+   "id": "D2",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 465,
+   "title": "Opening-byte fingerprint does not establish stable file identity",
+   "detail": "The first 4096 bytes can be reproduced by a same-name replacement, after which an expected-session record beyond LatestLength yields RESUMED. Additionally, Get-FileHeadHash, Get-SessionFileId and Read-FileRange open the path independently, so replacement between those reads can combine the old file's fingerprint with the replacement's appended evidence. The code therefore can report success without proving continuation of the snapshotted file.",
+   "recommendation": "Retain an open handle to the snapshotted transcript and obtain all evidence through that handle, or capture and recheck a stable NTFS file identifier around the complete evidence read. Test a replacement with an identical prefix and a concurrent replacement between identity and appended-range reads.",
+   "release_blocking": true
+  }
+ ],
+ "harness_verdict": "WEAK",
+ "harness_reason": "The 180 assertions, AST extraction, platform differential check and twenty-six caught mutants provide substantial regression evidence. The harness still does not test a genuine JS runtime executing another script while carrying the Claude CLI path as argument data; a replacement preserving the complete snapshotted head; a null snapshot hash caused by a capture-time race; or replacement between the separate fingerprint, header and appended-range opens. It also lacks repeated concurrent replacement/truncation, lock-creation failure and explicit disposal, multi-gigabyte record performance, real Task Scheduler execution, and a complete wt/PATH/launch/poll/output/exit run.",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The runtime-entry rule can still attribute a non-Claude JavaScript program, and the prefix fingerprint can still combine or accept evidence from a replacement transcript. Both permit exit 0 without verifying the claimed subject."
+}

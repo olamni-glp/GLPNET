@@ -115,6 +115,23 @@ rewritten to the platform's actual rule and now matches it on all fourteen cases
 caught, and the check is a genuine differential test against the platform rather than against my
 own understanding of it.
 
+
+## Round 9 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `D1-cli-anywhere` | the CLI path anywhere in a runtime's argv identifies, not just the executed script | **184 / 1 fail** | node benign.js `<cli.js>` is refused (D1) |
+| `D2a-no-fingerprint` | transcript identity drops the opening-byte fingerprint | **183 / 2 fail** | a forged creation time does not defeat identity (E3) |
+| `D2b-no-creation-check` | the creation-time filter is removed | **184 / 1 fail** | a replaced transcript is WRONG-SESSION (G3) |
+
+Unmutated after round 9: **185 passed / 0 failed**, exit 0. Twenty-nine mutants across seven
+rounds, all caught, each by the assertion written for its own finding.
+
+**One property is argued, not tested:** every read of a transcript now comes from a single open
+handle, so a same-name replacement landing mid-verification cannot combine the old file's identity
+with the new file's content. That is a structural property of the handle, and a deterministic race
+test for it is not written — it is claimed here as reasoning, not as measured coverage.
+
 ## A gap mutation testing found in the tests themselves
 
 The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was

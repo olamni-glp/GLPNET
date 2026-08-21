@@ -341,6 +341,16 @@ Check 'notepad carrying the CLI path is refused (E2)' (-not (Test-IsClaudeProc (
 Check 'a renamed runtime is judged by its image (E2)' (-not (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI + '" --continue') 'C:\evil\totally-not-node.exe') $SH @('--continue')))
 
 Write-Host ''
+Write-Host 'D1 - the CLI must be the script the runtime RUNS' -ForegroundColor Cyan
+$CLI2 = 'C:\np\node_modules\@anthropic-ai\claude-code\cli.js'
+Check 'node <cli.js> IS attributed'                  (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+Check 'node with runtime flags first IS attributed'  (Test-IsClaudeProc (V 'node.exe' ('node --enable-source-maps "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+# INJECTION (D1): benign.js is the program being run; the CLI path is merely one of its arguments.
+Check 'node benign.js <cli.js> is refused (D1)'      (-not (Test-IsClaudeProc (V 'node.exe' ('node benign.js "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
+Check 'node with no script at all is refused (D1)'   (-not (Test-IsClaudeProc (V 'node.exe' 'node --continue' 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
+Check 'bun running the CLI IS attributed'            (Test-IsClaudeProc (V 'bun.exe' ('bun "' + $CLI2 + '" --continue') 'C:\bun\bun.exe') $SH @('--continue'))
+
+Write-Host ''
 Write-Host 'E4 - the tokenizer against the platform parser' -ForegroundColor Cyan
 $cases = @(
     'a b c',
