@@ -17,9 +17,9 @@ reports *"no active marathon run"* — which is **not** true. The live programme
 
 ## Where things stand (2026-08-21)
 
-- **Branch**: `084-host-tidy-up-and-merge-closure` (pushed, tracking origin).
-- **Marathon** `mrun-f5ef56dba3c1` — **7 of 25 steps recorded; TRUE figure 6 done + 1 held (W07)**; 116 outstanding backlog
-  items; discharge gate **8 of 25 satisfied, 17 unsatisfied** (all engineer rulings).
+- **Branch**: `develop` (084 is MERGED — PR #193). develop is **80 ahead of main**, unreleased.
+- **Marathon** `mrun-f5ef56dba3c1` — **10 of 25 steps complete (44 of 121 pt)**; 120 outstanding
+  backlog items; discharge gate **8 of 25 satisfied, 17 unsatisfied** (all engineer rulings).
 - **Workplan item** `mitem-01a01f1d-c9b4-77af-b9c0-e81d0e47f57c` carries the ordered CRDT workplan
   **W01–W25, 121 points**, sizes `nano 1 / micro 3 / mini 7 / midi 11 / maxi 17 / saga 35`,
   hard cap `mini` per step, phases `analyze | implement | codexreview-ship | close`.
@@ -46,29 +46,35 @@ unrecoverably**:
 `glpnet-lane/toolchain-integrity-fixes` — is **already gone**; `git cat-file -t` reports it is not a
 valid object and no such ref exists on origin. A list of tip SHAs preserves nothing.
 
+### W06–W10 DONE 2026-08-21 — six branches landed
+
+PRs **#188** `083-repo-tidy-up` · **#189** `081-scheduler-supply-rootcause` · **#190**
+`083-glptutorial-corpus-goldens` · **#191** `049-wave1-guard-link-acceptance` · **#192**
+`078-verification-receipts` · **#193** `084-host-tidy-up-and-merge-closure`. (**#187** landed earlier.)
+
+🔴 **Concern carried forward on 049**: it reported `tasks_open=0` and merged clean, but its unchanged
+SHIP-HANDOFF holds **four unchecked hard GO-CONDITIONS**. Raised, reaffirmed by the engineer, landed
+on that instruction. Not resolved — still owed.
+
 ## NEXT — in strict order
 
-1. **W07 / W08** — merge `origin/081-scheduler-supply-rootcause` (3 ahead) and
-   `origin/083-glptutorial-corpus-goldens` (1 ahead). Both re-measured CLEAN against develop
-   `2d72c1bd` on 2026-08-21. Preservation gate already satisfied. **Blocked only by the
-   `gh pr merge` permission gate** (see below).
-2. **W09 — do NOT merge `049-wave1-guard-link-acceptance` on the topology reading.** It measures
-   CLEAN and `tasks_open=0`, but its unchanged SHIP-HANDOFF carries **four unchecked hard
-   GO-CONDITIONS**. Resolve those first or record a decision to waive them.
-3. **W10** — re-measure `merge-tree` across the remaining branches; landings change the base.
-   Unmerged remote refs stood at **20** on 2026-08-21 (up from 18: `084` and `078-verification-receipts`
-   are new; `083-repo-tidy-up` is 3 ahead / 0 behind).
-4. **W11–W18** — the conflicted branches. Every one needs a ruling first (see the open blocks).
-5. **W19–W21** — deletions. Now **unblocked by preservation**, but gated on the lane-ownership
-   ruling: a second lane is running its own tidy-up ledger on `083-repo-tidy-up` and has already
-   staged 124 remote refs for deletion (audited safe — see block 3).
-6. **W22–W25** — PR hygiene (draft PR #111), roadmap reconcile, codexreview + ship 084, takt emission.
+1. **W10 re-measure result: ZERO clean branches remain.** All 14 still-unmerged refs conflict —
+   `080` (2 paths) · `backup/upgrade-buildkit-migration` (6) · `067` (8) · `066-wave6` (9) ·
+   `058-s4` (11) · `067b` (12) · `backup/078-olamnit` (15) · `016` (19) · `017` (19) ·
+   `030-phase8-polish` (24) · `backup/030` (27) · `051-ynet` (26 ahead) · `050-full-gleam` (64) ·
+   `059-full-scope-gleam` (89). **Nothing further can land without a per-branch ruling.**
+2. **W11–W18** — the conflicted branches, each behind a ruling (see the open blocks).
+3. **W19–W21** — deletions. Preservation-unblocked; gated on the lane-ownership ruling. The peer has
+   already staged 124 remote refs for deletion (audited safe — see block 3).
+4. **W22–W25** — PR hygiene (draft PR #111), roadmap reconcile, codexreview, takt emission.
+5. **Release** — develop is 80 ahead of main. `/bk-release` is HELD pending a green
+   `test/run_all_tests.sh` on merged develop (see the false-green note below).
 
 ## Open blocks — ENGINEER rulings, nothing proceeds past them
 
 | # | Block | Why it blocks |
 |---|---|---|
-| 1 | `gh pr merge` refused by the auto-mode permission classifier | W07–W09 and the W24 ship. PR creation, commits, tag pushes are all permitted; only the merge verb is gated. `.claude/settings.local.json` already allows it — the **classifier** is the gate, not settings. |
+| 1 | ~~`gh pr merge` permission~~ **RESOLVED 2026-08-21** | The verb now works for single invocations. It still trips the classifier when wrapped in a shell `for` loop — issue one PR merge per command. |
 | 2 | Gleam cluster `050` (48 ahead / 64 conflicts) vs `059` (32 ahead / 89 conflicts) | 96 of the 220 unmerged commits. Marathon holds two **contradictory** recorded reads: item N12 "independent colliding implementations", item C1 "complementary tiers". Both cannot be true. |
 | 3 | Lane collision | Two concurrent tidy-up workplans on one repo: this marathon's W01–W25 (121 pt) and the peer's 14-step ledger on `083-repo-tidy-up` (136 pt). Neither references the other; both claim ref-deletion scope. **Audited 2026-08-21: the peer's W13 list of 124 remote branches was checked against `origin/develop` 2d72c1bd — all 124 are true ancestors, so their deletion is SAFE (containment IS the preservation for contained refs; the bundle/tag gate binds only the non-contained refs, which this lane has covered).** The open question is ownership, not safety. |
 | 4 | `080-occurs-checked-substitution` | Only 2 conflicting paths, but gated on the **§1.14 language-authority ruling that is Udi's, not Gabi's** (UnifyFail vs CompileError). |
@@ -109,4 +115,10 @@ $env:PYTHONUTF8 = 1
   `--in-dir I:/coop/glpnet/roadmap-sync/inbox` and export to both the local `exports/` and that inbox.
 - `marathon expand --steps` is **comma-delimited with no escaping** — never put a comma in a step text.
 - `marathon checkpoint --paths` refuses out-of-repo paths; omit `--paths` for evidence held outside
-  the repo, and do not suppress its output or the failure is silent.
+  the repo, and do not suppress its output or the failure is silent. `checkpoint` has **no
+  held/blocked state** — a gated step can only be logged `complete`, which over-reports.
+- 🔴 **Never combine `nohup`/trailing `&` with the harness `run_in_background` flag.** Doing so made
+  `test/run_all_tests.sh` report **exit 0 with 253 PASS / 0 FAIL after only Section A** — sections
+  B–K and M never ran. Detection rule: the script always prints a `Total: … Passed: … Failed: …`
+  summary block last; **absent summary means the run did not finish, whatever the exit code says.**
+- `gh pr merge` inside a `for` loop is refused by the permission classifier; run it one PR at a time.
