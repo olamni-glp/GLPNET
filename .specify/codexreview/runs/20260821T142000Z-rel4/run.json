@@ -1,0 +1,35 @@
+{
+ "run_id": "20260821T142000Z-rel4",
+ "at": "2026-08-21T14:20:00Z",
+ "scope": "re-review of the round-3 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "A normal shim-based Claude installation can make every legitimate lane fail attribution, while resume evidence can report success before observing a later foreign sessionId. The verification therefore neither reliably recognizes its real subject nor proves continuation of the expected session.",
+ "harness_verdict": "WEAK",
+ "prior_findings": {
+  "F1": "CLOSED",
+  "F2": "CLOSED",
+  "F3": "PARTIAL",
+  "F4": "CLOSED",
+  "N1": "CLOSED",
+  "N2": "CLOSED",
+  "N3": "CLOSED",
+  "N4": "CLOSED",
+  "N5": "CLOSED",
+  "M1": "CLOSED",
+  "M2": "PARTIAL",
+  "M3": "CLOSED",
+  "M4": "PARTIAL",
+  "M5": "CLOSED"
+ },
+ "findings_count": 4,
+ "severities": {
+  "critical": 2,
+  "medium": 2
+ }
+}

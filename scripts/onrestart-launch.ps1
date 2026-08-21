@@ -86,6 +86,11 @@
   Start NEW sessions instead of resuming. Opt-in only, and it defeats the point.
   Resume evidence is not checked under -Fresh, because a new transcript is the intended result.
 
+.PARAMETER DeepValidate
+  Validate every transcript in full instead of its last 64 KB. Slower, and only needed when you
+  suspect corruption in the middle of a large transcript; the bounded check is stated as bounded
+  rather than presented as a whole-file guarantee.
+
 .PARAMETER AllowPartial
   Accept lanes that were REFUSED before launch. They are still listed as unproven and the run
   reports ACCEPTED-WITH-EXCEPTIONS, never VERIFIED.
@@ -123,6 +128,7 @@ param(
     [int]$ShareWaitSec = 60,
     [int]$VerifyTimeoutSec = 45,
     [int]$KeepRuns = 20,
+    [switch]$DeepValidate,
     [string[]]$OptionalMount = @('I:\coop', 'H:\coop', 'G:\coop')
 )
 
@@ -263,6 +269,49 @@ function Get-LaneIdentityConflicts($Lanes) {
 # Claude Code's cwd -> session-store mangle. Case-preserving by design; harmless (see .DESCRIPTION).
 function ConvertTo-SessionDirName([string]$Path) { ($Path.TrimEnd('\') -replace '[:\\]', '-') }
 
+# FileStream.Read may return fewer bytes than asked for, and a transcript claude is actively
+# writing changes length between the size check and the read. A single short read would decode
+# a truncated record and report corruption that is not there, so the range is pinned first and
+# read to completion; anything that cannot be read whole returns $null, which callers treat as
+# "not yet known" rather than as a verdict.
+function Read-FileRange([string]$Path, [long]$Offset, [long]$Count) {
+    if ($Count -le 0) { return $null }
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+        try {
+            if ($Offset -gt 0) { $null = $fs.Seek($Offset, 'Begin') }
+            $buf = New-Object byte[] $Count
+            $got = 0
+            while ($got -lt $Count) {
+                $n = $fs.Read($buf, $got, $Count - $got)
+                if ($n -le 0) { break }
+                $got += $n
+            }
+            if ($got -lt $Count) { return $null }   # truncated under us: retryable, not a verdict
+            return $buf
+        } finally { $fs.Dispose() }
+    } catch { return $null }
+}
+
+# Split a decoded byte range into lines, reporting whether the final line is unterminated.
+function Split-TranscriptLines([byte[]]$Bytes, [int]$SkipBytes = 0) {
+    if ($null -eq $Bytes) { return $null }
+    $len = $Bytes.Length - $SkipBytes
+    if ($len -lt 0) { return $null }
+    $text = [System.Text.Encoding]::UTF8.GetString($Bytes, $SkipBytes, $len)
+    $endsWithNewline = $text.EndsWith("`n")
+    $parts = @($text -split "`n" | ForEach-Object { $_.TrimEnd("`r") })
+    if ($endsWithNewline -and $parts.Count -gt 0) { $parts = @($parts | Select-Object -SkipLast 1) }
+    return [pscustomobject]@{ Lines = @($parts); LastIsTerminated = $endsWithNewline }
+}
+
+function Test-JsonObjectLine([string]$Line) {
+    if ([string]::IsNullOrWhiteSpace($Line)) { return $null }
+    try { $o = $Line | ConvertFrom-Json -ErrorAction Stop } catch { return $null }
+    if ($o -isnot [pscustomobject]) { return $null }
+    return $o
+}
+
 # The session-id line every real Claude Code transcript opens with. Measured across 43
 # transcripts in 40 stores on 2026-08-21: all 43 first records were JSON objects carrying a
 # non-empty `sessionId`. A file without one cannot be continued, so it must not count —
@@ -275,8 +324,8 @@ function Get-SessionFileId([System.IO.FileInfo]$File) {
             while (-not $reader.EndOfStream) {
                 $line = $reader.ReadLine()
                 if ([string]::IsNullOrWhiteSpace($line)) { continue }
-                $rec = $line | ConvertFrom-Json -ErrorAction Stop
-                if ($rec -isnot [pscustomobject]) { return $null }
+                $rec = Test-JsonObjectLine $line
+                if ($null -eq $rec) { return $null }
                 $id = $rec.sessionId
                 if ($id -is [string] -and -not [string]::IsNullOrWhiteSpace($id)) { return $id }
                 return $null
@@ -286,93 +335,95 @@ function Get-SessionFileId([System.IO.FileInfo]$File) {
     return $null
 }
 
-# Corruption check, bounded: read only the tail so a 40 MB transcript costs the same as a
-# small one. EVERY complete line in the window must parse. Only the final line may be
+# Corruption check. EVERY complete line examined must parse; only the final line may be
 # malformed, and only when the file does not end in a newline — that is a crash mid-write,
-# which is normal and which Claude Code itself tolerates. A window that begins exactly on a
-# record boundary keeps its first line; one that begins inside a record drops the fragment,
-# and that decision is made from the byte before the window, never assumed.
-function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
-    $text = $null
+# which is normal and which Claude Code itself tolerates.
+#
+# STATED BOUND, so this check does not overclaim: by default only the last $TailBytes are
+# examined, so corruption between the header and that window is NOT detected. That is a
+# deliberate trade — a full scan of twelve multi-megabyte transcripts at logon costs more
+# than it is worth — and -DeepValidate scans the whole file for anyone who wants it.
+# A window that begins exactly on a record boundary keeps its first line; one that begins
+# inside a record drops the fragment, and that is decided from the byte before the window,
+# never assumed.
+function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536, [bool]$Deep = $false) {
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $false }
+    if ($len -le 0) { return $false }
+    $start = if ($Deep) { 0L } else { [Math]::Max(0L, $len - $TailBytes) }
+    $probe = if ($start -gt 0) { $start - 1 } else { 0 }
+    $bytes = Read-FileRange $File.FullName $probe ($len - $probe)
+    if ($null -eq $bytes) { return $false }
     $startsOnBoundary = $true
-    try {
-        $fs = [System.IO.File]::Open($File.FullName, 'Open', 'Read', 'ReadWrite')
-        try {
-            $start = [Math]::Max(0L, $fs.Length - $TailBytes)
-            $probe = if ($start -gt 0) { $start - 1 } else { 0 }
-            $null = $fs.Seek($probe, 'Begin')
-            $buf = New-Object byte[] ($fs.Length - $probe)
-            $read = $fs.Read($buf, 0, $buf.Length)
-            if ($start -gt 0) {
-                $startsOnBoundary = ($read -gt 0 -and $buf[0] -eq 10)   # 10 = LF
-                $text = [System.Text.Encoding]::UTF8.GetString($buf, 1, [Math]::Max(0, $read - 1))
-            } else {
-                $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
-            }
-        } finally { $fs.Dispose() }
-    } catch { return $false }
-    if ($null -eq $text) { return $false }
-    $endsWithNewline = $text.EndsWith("`n")
-    $lines = @($text -split "`n" | ForEach-Object { $_.TrimEnd("`r") })
-    if (-not $startsOnBoundary -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }
-    # A trailing newline yields a final empty element; drop it so it is not mistaken for a
-    # torn record. Without one, the last element is genuinely unterminated.
-    $tornTailAllowed = -not $endsWithNewline
-    if ($endsWithNewline -and $lines.Count -gt 0 -and [string]::IsNullOrWhiteSpace($lines[-1])) {
-        $lines = @($lines | Select-Object -SkipLast 1)
+    $skip = 0
+    if ($start -gt 0) {
+        $startsOnBoundary = ($bytes.Length -gt 0 -and $bytes[0] -eq 10)   # 10 = LF
+        $skip = 1
     }
+    $split = Split-TranscriptLines $bytes $skip
+    if ($null -eq $split) { return $false }
+    $lines = @($split.Lines)
+    if (-not $startsOnBoundary -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }
     $complete = @($lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     if ($complete.Count -eq 0) { return $false }
+    $tornTailAllowed = -not $split.LastIsTerminated
     $lastIndex = $complete.Count - 1
     $parsedAny = $false
     for ($i = 0; $i -lt $complete.Count; $i++) {
-        $ok = $false
-        try { $null = $complete[$i] | ConvertFrom-Json -ErrorAction Stop; $ok = $true } catch { $ok = $false }
-        if ($ok) { $parsedAny = $true; continue }
+        if ($null -ne (Test-JsonObjectLine $complete[$i])) { $parsedAny = $true; continue }
         if ($i -eq $lastIndex -and $tornTailAllowed) { continue }   # one unterminated record
         return $false                                              # a complete line that does not parse is corruption
     }
     return $parsedAny
 }
 
-function Test-ResumableSessionFile([System.IO.FileInfo]$File) {
+function Test-ResumableSessionFile([System.IO.FileInfo]$File, [bool]$Deep = $false) {
     if (-not $File -or $File.Length -le 0) { return $false }
     if (-not (Get-SessionFileId $File)) { return $false }
-    return (Test-SessionTailIntact $File)
+    return (Test-SessionTailIntact $File 65536 $Deep)
 }
 
-# Resume evidence must be CONTENT the launched claude appended, never a timestamp. A touch
-# by any other process moves LastWriteTime without adding a record, so mtime alone proves
-# nothing. Read only the bytes past the pre-launch length and require a complete, parseable
-# record there; a record carrying a DIFFERENT sessionId is a new conversation, not a resume.
+# Resume evidence must be CONTENT the launched claude appended, never a timestamp: any process
+# can touch a file. Read only the bytes past the pre-launch length and require a complete,
+# parseable record there. EVERY appended record is examined, not just the first — a later
+# record carrying a different sessionId is a new conversation and must win over an earlier
+# record that merely happened to carry no session id at all.
 function Get-ResumeEvidence($State) {
     if (-not $State.LatestPath -or -not (Test-Path -LiteralPath $State.LatestPath)) { return $null }
-    try { $f = Get-Item -LiteralPath $State.LatestPath } catch { return $null }
-    if ($f.Length -le $State.LatestLength) { return $null }        # no append: a touch is not evidence
-    $text = $null
-    try {
-        $fs = [System.IO.File]::Open($f.FullName, 'Open', 'Read', 'ReadWrite')
-        try {
-            $null = $fs.Seek([long]$State.LatestLength, 'Begin')
-            $buf = New-Object byte[] ($fs.Length - $State.LatestLength)
-            $read = $fs.Read($buf, 0, $buf.Length)
-            $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $read)
-        } finally { $fs.Dispose() }
-    } catch { return $null }
-    if ([string]::IsNullOrEmpty($text) -or -not $text.Contains("`n")) { return $null }  # no complete line yet
-    $added = $f.Length - $State.LatestLength
-    $leaf  = Split-Path -Leaf $f.FullName
-    foreach ($raw in @($text -split "`n")) {
-        $l = $raw.TrimEnd("`r")
-        if ([string]::IsNullOrWhiteSpace($l)) { continue }
-        $rec = $null
-        try { $rec = $l | ConvertFrom-Json -ErrorAction Stop } catch { continue }
-        if ($rec -isnot [pscustomobject]) { continue }
+    try { $len = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
+    if ($len -le $State.LatestLength) { return $null }             # no append: a touch is not evidence
+    $bytes = Read-FileRange $State.LatestPath ([long]$State.LatestLength) ($len - $State.LatestLength)
+    if ($null -eq $bytes) { return $null }
+    $split = Split-TranscriptLines $bytes 0
+    if ($null -eq $split -or $split.Lines.Count -eq 0) { return $null }
+    $added = $len - $State.LatestLength
+    $leaf  = Split-Path -Leaf $State.LatestPath
+    $foreign = $null; $matched = $false; $anyRecord = $false
+    for ($i = 0; $i -lt $split.Lines.Count; $i++) {
+        # An unterminated final line is a record still being written, not a record.
+        if ($i -eq ($split.Lines.Count - 1) -and -not $split.LastIsTerminated) { continue }
+        $rec = Test-JsonObjectLine $split.Lines[$i]
+        if ($null -eq $rec) { continue }
+        $anyRecord = $true
         $sid = $rec.sessionId
-        if ($sid -is [string] -and -not [string]::IsNullOrWhiteSpace($sid) -and $State.LatestSessionId -and $sid -cne $State.LatestSessionId) {
-            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Detail = "appended record carries sessionId '$sid', expected '$($State.LatestSessionId)'" }
+        if ($sid -is [string] -and -not [string]::IsNullOrWhiteSpace($sid)) {
+            if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid }
+            elseif ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId) { $matched = $true }
         }
-        return [pscustomobject]@{ Kind = 'RESUMED'; Detail = "appended $added byte(s) including a complete record to $leaf" }
+    }
+    if ($foreign) {
+        return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'session-id'
+            Detail = "appended a record carrying sessionId '$foreign', expected '$($State.LatestSessionId)'" }
+    }
+    if ($matched) {
+        return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
+            Detail = "appended $added byte(s) to $leaf including a record carrying sessionId '$($State.LatestSessionId)'" }
+    }
+    if ($anyRecord) {
+        # Real transcripts carry sessionId on the opening record only, so most appended records
+        # have none. Their presence still proves this transcript is being written to and no
+        # other session id appeared - reported as the weaker evidence it is.
+        return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'appended-records'
+            Detail = "appended $added byte(s) to $leaf including a complete record (no conflicting sessionId)" }
     }
     return $null
 }
@@ -384,7 +435,8 @@ function Get-RepoState($Repo) {
     if (Test-Path -LiteralPath $store) {
         $files = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue)
     }
-    $usable  = @($files | Where-Object { Test-ResumableSessionFile $_ })
+    $deep    = [bool]$DeepValidate
+    $usable  = @($files | Where-Object { Test-ResumableSessionFile $_ $deep })
     $latest  = $usable | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
     [pscustomobject]@{
         Name = $Repo.Name; Group = $Repo.Group; Path = $Repo.Path; SessionDir = $dirName
@@ -454,10 +506,9 @@ function Get-DescendantProcs($Table, [int]$RootPid) {
     return $out
 }
 
-# A NAME proves nothing: any executable can be copied to claude.exe. A candidate counts only
-# when its image IS the claude command this run resolved from PATH — or when its command line
-# invokes that exact path, which is how a .cmd/.bat shim appears — AND it carries the arguments
-# we asked for. Without a resolved path there is nothing to compare against, so nothing counts.
+# A NAME proves nothing: any executable can be copied to claude.exe. This is the STRONG test —
+# the candidate's image IS the claude command this run resolved from PATH, or its command line
+# invokes that exact path (how a .cmd/.bat shim appears) — plus the arguments we asked for.
 function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) {
     if ([string]::IsNullOrWhiteSpace($ClaudePath)) { return $false }
     $target = $ClaudePath.ToLowerInvariant()
@@ -471,6 +522,33 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
         if (-not $cl -or -not $cl.ToLowerInvariant().Contains($a.ToLowerInvariant())) { return $false }
     }
     return $true
+}
+
+# Attribution for one lane, in two tiers, because the strong test alone produces FALSE
+# NEGATIVES on a shim install — and a check that fails every healthy lane at logon is as
+# broken as one that passes a dead one:
+#
+#   image    the strong test above matched a live descendant. Preferred, and what a direct
+#            claude.exe install yields.
+#   subtree  no descendant still carries the shim path (a claude.cmd's cmd.exe is transient
+#            and the surviving node.exe names the JS entry point, not the shim), but the
+#            lane's launcher has live descendants. This is NOT a name check and NOT a global
+#            process count: the generated launcher executes exactly ONE command, the ABSOLUTE
+#            path this run resolved for claude, so every descendant of it exists because that
+#            command ran. The strength is reported so a subtree-only lane never reads as if
+#            the image had been matched.
+function Get-LaneClaudeEvidence {
+    param($Table, [int]$LanePid, [string]$ClaudeExe, [string[]]$ClaudeArgs, [datetime]$LaunchStart)
+    $fresh = @(Get-DescendantProcs $Table $LanePid | Where-Object { -not $_.Created -or $_.Created -ge $LaunchStart })
+    if ($fresh.Count -eq 0) { return $null }
+    $strong = @($fresh | Where-Object { Test-IsClaudeProc $_ $ClaudeExe $ClaudeArgs })
+    if ($strong.Count -gt 0) {
+        return [pscustomobject]@{ Proc = $strong[0]; Strength = 'image'
+            Detail = "claude pid $($strong[0].ProcId) ($($strong[0].Name)) matches the resolved command" }
+    }
+    $names = (@($fresh | ForEach-Object { $_.Name }) | Select-Object -Unique) -join ', '
+    return [pscustomobject]@{ Proc = $fresh[0]; Strength = 'subtree'
+        Detail = "pid $($fresh[0].ProcId) descends from the lane launcher, which ran only '$ClaudeExe' (live: $names)" }
 }
 
 # A marker proves a tab ran ITS OWN command. Accepting one without checking which lane,
@@ -512,35 +590,35 @@ function Get-LaneVerification {
     if (-not $laneProc -or ($laneProc.Created -and $laneProc.Created -lt $LaunchStart)) {
         return & $mk 'NOT-LAUNCHED' "handshake PID $lanePid is not a live process created by this launch" $false
     }
-    $claude = @(Get-DescendantProcs $Table $lanePid | Where-Object {
-        (Test-IsClaudeProc $_ $ClaudeExe $ClaudeArgs) -and (-not $_.Created -or $_.Created -ge $LaunchStart)
-    })
-    if ($claude.Count -eq 0) {
-        return & $mk 'NO-CLAUDE' "tab ran (handshake PID $lanePid) but no process matching '$ClaudeExe' descends from it yet" $false
+    $ev = Get-LaneClaudeEvidence -Table $Table -LanePid $lanePid -ClaudeExe $ClaudeExe -ClaudeArgs $ClaudeArgs -LaunchStart $LaunchStart
+    if ($null -eq $ev) {
+        return & $mk 'NO-CLAUDE' "tab ran (handshake PID $lanePid) but nothing it started is still running" $false
     }
-    $cpid = $claude[0].ProcId
+    $cpid = $ev.Proc.ProcId
     if ($Fresh) {
-        return & $mk 'STARTED' "new session in $($Lane.Path); claude pid $cpid attributed to handshake PID $lanePid" $true $cpid
+        return & $mk 'STARTED' "new session in $($Lane.Path); $($ev.Detail) [$($ev.Strength)]" $true $cpid
     }
 
     $now = Get-RepoState $Lane.State
     $new = @($now.FileNames | Where-Object { $Lane.State.FileNames -notcontains $_ })
     if ($new.Count -gt 0) {
-        return & $mk 'SILENT-NEW' "claude pid $cpid created a NEW transcript ($($new -join ', ')) instead of continuing" $true $cpid
+        return & $mk 'SILENT-NEW' "$($ev.Detail) but a NEW transcript appeared ($($new -join ', ')) instead of a continuation" $true $cpid
     }
-    $ev = Get-ResumeEvidence $Lane.State
-    if ($ev -and $ev.Kind -eq 'WRONG-SESSION') {
-        return & $mk 'SILENT-NEW' "claude pid $cpid $($ev.Detail)" $true $cpid
+    $rev = Get-ResumeEvidence $Lane.State
+    if ($rev -and $rev.Kind -eq 'WRONG-SESSION') {
+        return & $mk 'SILENT-NEW' "$($ev.Detail); $($rev.Detail)" $true $cpid
     }
-    if ($ev -and $ev.Kind -eq 'RESUMED') {
-        return & $mk 'RESUMED' "claude pid $cpid $($ev.Detail)" $true $cpid
+    if ($rev -and $rev.Kind -eq 'RESUMED') {
+        return & $mk 'RESUMED' "$($ev.Detail) [$($ev.Strength)]; $($rev.Detail) [$($rev.Strength)]" $true $cpid
     }
-    return & $mk 'UNCONFIRMED' "claude pid $cpid is live, but no record has been appended to the transcript — resume NOT proven" $false $cpid
+    return & $mk 'UNCONFIRMED' "$($ev.Detail) [$($ev.Strength)], but nothing has been appended to the transcript — resume NOT proven" $false $cpid
 }
 
 # Retention with an ownership check. Deleting by age alone can take the marker directory out
 # from under a concurrent invocation that is still polling, which would turn its lanes into
-# NOT-LAUNCHED. A run dir is removed only when nothing claims it.
+# NOT-LAUNCHED. Two independent guards: the owner holds active.lock OPEN for its whole life,
+# so Windows refuses the delete outright; and the recorded start time must match the live
+# process EXACTLY, so a reused PID cannot inherit another run's claim.
 function Remove-StaleRunDirs {
     param([string]$RunsRoot, [int]$KeepRuns, [string]$CurrentRunDir)
     $removed = @(); $skipped = @()
@@ -560,18 +638,17 @@ function Remove-StaleRunDirs {
                 $o = Get-Content -LiteralPath $lock -Raw | ConvertFrom-Json
                 $owner = Get-Process -Id ([int]$o.pid) -ErrorAction SilentlyContinue
                 $live = $false
-                if ($owner) {
-                    # PID reuse: the live process must be the one that took the lock.
-                    $started = $null
-                    try { $started = $owner.StartTime.ToUniversalTime() } catch { $started = $null }
-                    if (-not $started -or -not $o.startedUtc) { $live = $true }
-                    elseif ([Math]::Abs((([datetime]$o.startedUtc).ToUniversalTime() - $started).TotalSeconds) -lt 5) { $live = $true }
-                }
+                if ($owner -and $o.startedTicks) {
+                    $ticks = 0L
+                    try { $ticks = $owner.StartTime.ToUniversalTime().Ticks } catch { $ticks = -1 }
+                    # Exact identity, not a window: a reused PID has a different start instant.
+                    if ($ticks -eq -1 -or $ticks -eq [long]$o.startedTicks) { $live = $true }
+                } elseif ($owner) { $live = $true }   # pre-tick lock format: assume live
             } catch { $live = $true }
             if ($live) { $skipped += $d.FullName; continue }
         }
         try { Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction Stop; $removed += $d.FullName }
-        catch { $skipped += $d.FullName }
+        catch { $skipped += $d.FullName }   # an open handle in a live run also lands here
     }
     return [pscustomobject]@{ Removed = @($removed); Skipped = @($skipped) }
 }
@@ -616,14 +693,19 @@ function Get-RunOutcome {
         "$($refused.Count) refused and $($unconfirmed.Count) unconfirmed were accepted by switch. This run is NOT verified.")
 }
 
+# The launcher invokes the ABSOLUTE path this run resolved for claude, not the bare word, so
+# what runs in the tab is exactly what attribution was resolved against — a PATH change
+# between here and the tab cannot substitute a different program.
 function New-LaneLauncher {
-    param($Lane, [string]$RunDir, [string]$RunId, [string[]]$ClaudeArgs)
+    param($Lane, [string]$RunDir, [string]$RunId, [string]$ClaudePath, [string[]]$ClaudeArgs)
     $marker   = Join-Path $RunDir ('marker-{0}.json' -f $Lane.Key)
     $launcher = Join-Path $RunDir ('lane-{0}.ps1'    -f $Lane.Key)
-    $qPath    = "'" + ($Lane.Path -replace "'", "''") + "'"
-    $qMarker  = "'" + ($marker    -replace "'", "''") + "'"
-    $qKey     = "'" + ($Lane.Key  -replace "'", "''") + "'"
-    $qRun     = "'" + ($RunId     -replace "'", "''") + "'"
+    $q = { param([string]$s) "'" + ($s -replace "'", "''") + "'" }
+    $qPath    = & $q $Lane.Path
+    $qMarker  = & $q $marker
+    $qKey     = & $q $Lane.Key
+    $qRun     = & $q $RunId
+    $qClaude  = & $q $ClaudePath
     $body = @"
 # generated by bk-onrestart run $RunId — regenerated every launch; do not edit
 `$ErrorActionPreference = 'Stop'
@@ -634,6 +716,7 @@ try {
         runId      = $qRun
         pwshPid    = `$PID
         path       = (Get-Location).Path
+        claude     = $qClaude
         startedUtc = (Get-Date).ToUniversalTime().ToString('o')
     } | ConvertTo-Json -Compress | Set-Content -LiteralPath $qMarker -Encoding utf8
 } catch {
@@ -641,7 +724,7 @@ try {
     Write-Warning "bk-onrestart: NOT starting claude - it would resume the wrong conversation."
     exit 9
 }
-& claude $($ClaudeArgs -join ' ')
+& $qClaude $($ClaudeArgs -join ' ')
 "@
     Set-Content -LiteralPath $launcher -Value $body -Encoding utf8
     return [pscustomobject]@{
@@ -666,7 +749,6 @@ function Get-WtCommandLine {
     }
     return ($parts -join ' ')
 }
-
 # --- Install / uninstall the at-logon trigger (portable to any host) -------------
 function Install-Trigger {
     $self = $PSCommandPath
@@ -860,6 +942,7 @@ Write-Host "Refused     : $($blocked.Count)"
 Write-Host "Layout      : $Layout"
 Write-Host "Command     : $claudeCmd"
 Write-Host "claude exe  : $(if ($ClaudeExe) { $ClaudeExe } else { '<NOT ON PATH>' })"
+Write-Host "validation  : $(if ($DeepValidate) { 'deep (whole transcript)' } else { 'bounded (last 64 KB of each transcript)' })"
 
 if ($DryRun) { Write-Host ''; Write-Host 'DRY RUN - nothing launched.' -ForegroundColor Cyan; exit $EXIT_OK }
 if ($launchable.Count -eq 0) { Write-Host 'Nothing to launch.' -ForegroundColor Yellow; exit $EXIT_NOTHING }
@@ -893,16 +976,27 @@ $RunsRoot = Join-Path $env:LOCALAPPDATA 'bk-onrestart\runs'
 $RunDir = Join-Path $RunsRoot $runId
 New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
 # Claim this run dir so a concurrent invocation's retention pass cannot delete it while we poll.
+# The handle stays OPEN for this process's whole life, so Windows itself refuses to delete
+# this directory while we are still polling; the exact start ticks defeat PID reuse.
+$RunLockHandle = $null
 try {
-    [pscustomobject]@{ pid = $PID; startedUtc = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o') } |
-        ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $RunDir 'active.lock') -Encoding utf8
-} catch { Write-Host "  (could not write the run lock: $_)" -ForegroundColor DarkGray }
+    $lockPath = Join-Path $RunDir 'active.lock'
+    $me = Get-Process -Id $PID
+    $lockJson = [pscustomobject]@{
+        pid = $PID; startedTicks = $me.StartTime.ToUniversalTime().Ticks
+        startedUtc = $me.StartTime.ToUniversalTime().ToString('o'); image = $me.Path
+    } | ConvertTo-Json -Compress
+    $RunLockHandle = [System.IO.File]::Open($lockPath, 'Create', 'Write', 'Read')
+    $lockBytes = [System.Text.Encoding]::UTF8.GetBytes($lockJson)
+    $RunLockHandle.Write($lockBytes, 0, $lockBytes.Length)
+    $RunLockHandle.Flush()
+} catch { Write-Host "  (could not claim the run dir: $_)" -ForegroundColor DarkGray }
 
 $prune = Remove-StaleRunDirs -RunsRoot $RunsRoot -KeepRuns $KeepRuns -CurrentRunDir $RunDir
 if ($prune.Removed.Count -gt 0) { Write-Host "  pruned $($prune.Removed.Count) completed run dir(s) under $RunsRoot" -ForegroundColor DarkGray }
 if ($prune.Skipped.Count -gt 0) { Write-Host "  kept $($prune.Skipped.Count) run dir(s) still claimed by a live process" -ForegroundColor DarkGray }
 
-$plan = @($launchable | ForEach-Object { New-LaneLauncher -Lane $_ -RunDir $RunDir -RunId $runId -ClaudeArgs $claudeArgs })
+$plan = @($launchable | ForEach-Object { New-LaneLauncher -Lane $_ -RunDir $RunDir -RunId $runId -ClaudePath $ClaudeExe -ClaudeArgs $claudeArgs })
 
 function Start-LaneWindow {
     param([object[]]$Lanes, [string]$WindowId)

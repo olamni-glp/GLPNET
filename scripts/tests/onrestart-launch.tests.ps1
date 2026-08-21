@@ -52,7 +52,8 @@ $want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath
           'ConvertTo-SessionDirName','Get-SessionFileId','Test-SessionTailIntact','Test-ResumableSessionFile',
           'Get-ResumeEvidence','Get-RepoState','Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc',
           'Test-LaneMarker','Get-LaneVerification','Remove-StaleRunDirs','Get-RunOutcome',
-          'New-LaneLauncher','Get-WtCommandLine')
+          'New-LaneLauncher','Get-WtCommandLine','Read-FileRange','Split-TranscriptLines',
+          'Test-JsonObjectLine','Get-LaneClaudeEvidence')
 $found = @()
 foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
@@ -189,16 +190,52 @@ Check 'a timestamp touch is NOT evidence (M2)'   ($null -eq (Get-ResumeEvidence 
 # A partial append with no newline yet is not a complete record.
 Add-Content -LiteralPath $tx -Value '{"type":"assist' -NoNewline -Encoding utf8
 Check 'a partial appended line is NOT evidence'  ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
-# A complete appended record with the SAME sessionId is a resume.
-Add-Content -LiteralPath $tx -Value ('ant"}' + "`n" + '{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
+# Completing the torn line yields a record with NO sessionId: real transcripts carry one only
+# on the opening record, so this must count - but as the weaker evidence it is.
+Add-Content -LiteralPath $tx -Value ('ant"}' + "`n") -NoNewline -Encoding utf8
 $ev = Get-ResumeEvidence $st
-Check 'a complete appended record IS evidence'   ($null -ne $ev -and $ev.Kind -eq 'RESUMED') ("$($ev.Kind) $($ev.Detail)")
-# A complete appended record with a DIFFERENT sessionId is a new conversation.
+Check 'a sessionId-less appended record is weak evidence' ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'appended-records') ("$($ev.Kind)/$($ev.Strength)")
+# A record carrying the EXPECTED sessionId is the strong form, and must say so.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
+$ev = Get-ResumeEvidence $st
+Check 'the expected sessionId is recognised as strong'   ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'expected-session-id') ("$($ev.Kind)/$($ev.Strength)")
+# INJECTION (K2): a sessionId-less record FIRST, a foreign sessionId AFTER it. Returning on the
+# first parseable record - which the previous version did - reports RESUMED and never looks.
 Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
 $st2 = LaneState
-Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"OTHER-999","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","uuid":"u8"}' + "`n" + '{"type":"assistant","sessionId":"OTHER-999","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
 $ev2 = Get-ResumeEvidence $st2
-Check 'an appended foreign sessionId is WRONG-SESSION' ($null -ne $ev2 -and $ev2.Kind -eq 'WRONG-SESSION') ("$($ev2.Kind)")
+Check 'a LATER foreign sessionId still wins (K2)'  ($null -ne $ev2 -and $ev2.Kind -eq 'WRONG-SESSION') ("$($ev2.Kind)/$($ev2.Strength)")
+# A foreign sessionId alone is still WRONG-SESSION.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$st3 = LaneState
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"OTHER-1","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'an appended foreign sessionId is WRONG-SESSION' ((Get-ResumeEvidence $st3).Kind -eq 'WRONG-SESSION')
+# An appended record that is not yet terminated is not a record.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$st4 = LaneState
+Add-Content -LiteralPath $tx -Value '{"type":"assistant","sessionId":"OTHER' -NoNewline -Encoding utf8
+Check 'an unterminated appended line is not yet a record' ($null -eq (Get-ResumeEvidence $st4)) ((Get-ResumeEvidence $st4).Kind)
+
+Write-Host ''
+Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan
+$rf = NewJsonl 'range.jsonl' ($SESS + "`n" + $REC + "`n")
+Check 'a full range reads whole'            ($null -ne (Read-FileRange $rf.FullName 0 $rf.Length))
+Check 'a range past EOF returns null (K3)'  ($null -eq (Read-FileRange $rf.FullName 0 ($rf.Length + 4096)))
+Check 'a zero-length range returns null'    ($null -eq (Read-FileRange $rf.FullName 0 0))
+Check 'a missing file returns null'         ($null -eq (Read-FileRange (Join-Path $tmp 'nope.jsonl') 0 10))
+$sp = Split-TranscriptLines ([System.Text.Encoding]::UTF8.GetBytes("a`nb`n")) 0
+Check 'a terminated range reports terminated' ($sp.LastIsTerminated -and $sp.Lines.Count -eq 2) ("$($sp.Lines.Count)/$($sp.LastIsTerminated)")
+$sp = Split-TranscriptLines ([System.Text.Encoding]::UTF8.GetBytes("a`nb")) 0
+Check 'an unterminated range reports so'      ((-not $sp.LastIsTerminated) -and $sp.Lines.Count -eq 2) ("$($sp.Lines.Count)/$($sp.LastIsTerminated)")
+
+Write-Host ''
+Write-Host 'F3 - the bounded check is bounded, and says so' -ForegroundColor Cyan
+$midBad = NewJsonl 'mid-bad.jsonl' ($SESS + "`n" + 'CORRUPT-MIDDLE' + "`n" + $bulk)
+Check 'mid-file corruption is beyond the window' ($midBad.Length -gt 65536) "$($midBad.Length) bytes"
+Check 'bounded validation accepts it (stated bound)'  (Test-ResumableSessionFile $midBad $false)
+Check '-DeepValidate catches it (F3)'                 (-not (Test-ResumableSessionFile $midBad $true))
+Check '-DeepValidate still accepts a clean transcript' (Test-ResumableSessionFile $bigOk $true)
 
 Write-Host ''
 Write-Host 'M1 / N4 - claude attribution is by image, never by name' -ForegroundColor Cyan
@@ -344,16 +381,32 @@ $runsRoot = Join-Path $tmp 'runs'; New-Item -ItemType Directory -Path $runsRoot 
 $dirs = @()
 foreach ($i in 1..5) { $d = Join-Path $runsRoot ("run-$i"); New-Item -ItemType Directory -Path $d -Force | Out-Null; $dirs += $d; Start-Sleep -Milliseconds 40 }
 # run-1 is the oldest; claim it with THIS live process, and give run-2 a dead owner.
-[pscustomobject]@{ pid = $PID; startedUtc = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o') } |
-    ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $dirs[0] 'active.lock') -Encoding utf8
-[pscustomobject]@{ pid = 999999; startedUtc = (Get-Date).ToUniversalTime().ToString('o') } |
-    ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $dirs[1] 'active.lock') -Encoding utf8
+$myTicks = (Get-Process -Id $PID).StartTime.ToUniversalTime().Ticks
+function WriteLock($dir, $lockPid, $ticks) {
+    [pscustomobject]@{ pid = $lockPid; startedTicks = $ticks } | ConvertTo-Json -Compress |
+        Set-Content -LiteralPath (Join-Path $dir 'active.lock') -Encoding utf8
+}
+WriteLock $dirs[0] $PID $myTicks                       # genuinely live owner
+WriteLock $dirs[1] 999999 $myTicks                     # owner process is gone
+# INJECTION (K4): the PID is live but is NOT the process that took the lock - a reused PID.
+# The delta is ONE SECOND: deliberately INSIDE any plausible "close enough" tolerance, so a
+# comparison that is a window rather than an identity check fails this test.
+WriteLock $dirs[2] $PID ($myTicks - 10000000)
+Set-Content -LiteralPath (Join-Path $dirs[3] 'active.lock') -Value 'not json' -Encoding utf8
 $pr = Remove-StaleRunDirs -RunsRoot $runsRoot -KeepRuns 1 -CurrentRunDir $dirs[4]
-Check 'a live-locked run dir is NOT deleted (M4)'   (Test-Path -LiteralPath $dirs[0]) ($pr.Removed -join '; ')
-Check 'a dead-locked run dir IS deleted'            (-not (Test-Path -LiteralPath $dirs[1]))
-Check 'the current run dir is never deleted'        (Test-Path -LiteralPath $dirs[4])
-Check 'unlocked older run dirs are deleted'         ((-not (Test-Path -LiteralPath $dirs[2])) -and (-not (Test-Path -LiteralPath $dirs[3])))
-Check 'a missing runs root is not an error'         ((Remove-StaleRunDirs -RunsRoot (Join-Path $tmp 'no-such-root') -KeepRuns 3 -CurrentRunDir $tmp).Removed.Count -eq 0)
+Check 'a live-locked run dir is NOT deleted (M4)'    (Test-Path -LiteralPath $dirs[0]) ($pr.Removed -join '; ')
+Check 'a dead-owner run dir IS deleted'              (-not (Test-Path -LiteralPath $dirs[1]))
+Check 'a REUSED pid does not inherit the claim (K4)' (-not (Test-Path -LiteralPath $dirs[2])) 'same pid, different start ticks must not read as live'
+Check 'an unreadable lock is never deleted on a guess' (Test-Path -LiteralPath $dirs[3])
+Check 'the current run dir is never deleted'          (Test-Path -LiteralPath $dirs[4])
+Check 'a missing runs root is not an error'           ((Remove-StaleRunDirs -RunsRoot (Join-Path $tmp 'no-such-root') -KeepRuns 3 -CurrentRunDir $tmp).Removed.Count -eq 0)
+# The OS-level guard: a run dir whose lock is held OPEN cannot be deleted at all.
+$heldDir = Join-Path $runsRoot 'held'; New-Item -ItemType Directory -Path $heldDir -Force | Out-Null
+WriteLock $heldDir 999999 0
+$held = [System.IO.File]::Open((Join-Path $heldDir 'active.lock'), 'Open', 'Write', 'Read')
+$pr2 = Remove-StaleRunDirs -RunsRoot $runsRoot -KeepRuns 1 -CurrentRunDir $dirs[4]
+Check 'an open lock handle blocks deletion outright (M4)' (Test-Path -LiteralPath $heldDir) ($pr2.Removed -join '; ')
+$held.Dispose()
 
 Write-Host ''
 Write-Host 'N3 - LIVE: the real generated launcher' -ForegroundColor Cyan
@@ -367,8 +420,8 @@ $LRUN = 'TESTRUN1'
 $quoteDir = Join-Path $tmp "it's a lane"; New-Item -ItemType Directory -Path $quoteDir -Force | Out-Null
 $goodLane = [pscustomobject]@{ Name='good'; Key='00-good'; Path=$quoteDir;                   Group=1 }
 $badLane  = [pscustomobject]@{ Name='bad';  Key='01-bad';  Path=(Join-Path $tmp 'no-such'); Group=1 }
-$gp = New-LaneLauncher -Lane $goodLane -RunDir $runDir -RunId $LRUN -ClaudeArgs @('--continue')
-$bp = New-LaneLauncher -Lane $badLane  -RunDir $runDir -RunId $LRUN -ClaudeArgs @('--continue')
+$gp = New-LaneLauncher -Lane $goodLane -RunDir $runDir -RunId $LRUN -ClaudePath $stubClaude -ClaudeArgs @('--continue')
+$bp = New-LaneLauncher -Lane $badLane  -RunDir $runDir -RunId $LRUN -ClaudePath $stubClaude -ClaudeArgs @('--continue')
 $lerr = $null; $ltok = $null
 $null = [System.Management.Automation.Language.Parser]::ParseFile($gp.LauncherPath, [ref]$ltok, [ref]$lerr)
 Check 'generated launcher parses with a quoted path' ($null -eq $lerr -or $lerr.Count -eq 0) (($lerr | ForEach-Object { $_.Message }) -join '; ')
@@ -395,6 +448,44 @@ Check 'marker validates against lane, run and cwd (N3)' ($null -ne $marker -and 
 Check 'marker is rejected for a different run id (N3)'  ($null -ne $marker -and $null -ne (Test-LaneMarker $marker '00-good' 'OTHERRUN' $quoteDir))
 Check 'claude attributed to the good lane handshake (F1)' ($hit.Count -ge 1) ("pid $($marker.pwshPid) -> $($hit.ProcId -join ',')")
 try { Stop-Process -Id $gproc.Id -Force -ErrorAction Stop } catch { }
+
+Write-Host ''
+Write-Host 'K1 - a shim install must still attribute (false negatives are defects too)' -ForegroundColor Cyan
+$SHIM = 'C:\Users\g\AppData\npm\claude.cmd'
+$k1 = @{}
+foreach ($p in @(
+    (P 700 1   'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-00.ps1' 'C:\pwsh.exe'),
+    (P 701 700 'node.exe' 'node "C:\Users\g\AppData\npm\node_modules\@anthropic-ai\claude-code\cli.js" --continue' 'C:\Program Files\nodejs\node.exe'),
+    (P 800 1   'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-01.ps1' 'C:\pwsh.exe')
+)) { $k1[$p.ProcId] = $p }
+$LS2 = (Get-Date).AddMinutes(-1)
+# The transient cmd.exe that ran the shim has already exited; only node.exe survives, and it
+# names the JS entry point rather than the shim, so the strong tier cannot see it.
+Check 'the surviving shim child fails the STRONG test' (-not (Test-IsClaudeProc $k1[701] $SHIM @('--continue')))
+$ev1 = Get-LaneClaudeEvidence -Table $k1 -LanePid 700 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a shim lane is still attributed via subtree (K1)' ($null -ne $ev1 -and $ev1.Strength -eq 'subtree' -and $ev1.Proc.ProcId -eq 701) ("$($ev1.Strength)")
+$ev2 = Get-LaneClaudeEvidence -Table $k1 -LanePid 800 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a lane with no descendants is NOT attributed'    ($null -eq $ev2) ("$($ev2.Strength)")
+Check 'subtree does not leak across lanes (F1)'         ($null -eq $ev2)
+$k1[900] = (P 900 1 'pwsh.exe' 'pwsh -File lane.ps1' 'C:\pwsh.exe')
+$k1[901] = (P 901 900 'claude.exe' 'claude --continue' $CLAUDE)
+$ev3 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a direct install reports the IMAGE tier'         ($null -ne $ev3 -and $ev3.Strength -eq 'image') ("$($ev3.Strength)")
+$k1[901].Created = (Get-Date).AddHours(-3)
+$ev4 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a pre-launch descendant does not attribute'      ($null -eq $ev4) ("$($ev4.Strength)")
+
+Write-Host ''
+Write-Host 'M5 - multibyte UTF-8 across the tail-window boundary' -ForegroundColor Cyan
+$mb = '{"type":"user","uuid":"' + ('éüあ好' * 12) + '"}'
+$mbCount = [Math]::Ceiling(65536 / ([System.Text.Encoding]::UTF8.GetByteCount($mb) + 1)) + 3
+$mbFile = NewJsonl 'multibyte.jsonl' ($SESS + "`n" + ((1..$mbCount | ForEach-Object { $mb }) -join "`n"))
+Check 'the multibyte transcript exceeds the window' ($mbFile.Length -gt 65536) "$($mbFile.Length) bytes"
+$mbOk = $true; $mbFirstBad = ''
+foreach ($tb in 65530..65560) {
+    if (-not (Test-SessionTailIntact $mbFile $tb $false)) { $mbOk = $false; $mbFirstBad = "TailBytes=$tb"; break }
+}
+Check 'every window offset through multibyte characters accepts (M5)' $mbOk $mbFirstBad
 
 Write-Host ''
 Write-Host 'F2 - lane value validation' -ForegroundColor Cyan
