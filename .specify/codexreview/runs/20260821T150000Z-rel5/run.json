@@ -1,0 +1,45 @@
+{
+ "run_id": "20260821T150000Z-rel5",
+ "at": "2026-08-21T15:00:00Z",
+ "scope": "re-review of the round-4 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The subtree tier can prove an unrelated descendant as Claude, and resume verification can ignore a foreign sessionId split across the launch boundary or accept an unattributed sessionId-less write. Each permits exit 0 with a lane reported as proven without actually verifying the claimed subject, directly violating feature 078. The read-retry and lock-lifetime issues are refinements, not blockers.",
+ "harness_verdict": "WEAK",
+ "prior_findings": {
+  "F1": "PARTIAL",
+  "F2": "CLOSED",
+  "F3": "PARTIAL",
+  "F4": "CLOSED",
+  "N1": "CLOSED",
+  "N2": "CLOSED",
+  "N3": "CLOSED",
+  "N4": "CLOSED",
+  "N5": "CLOSED",
+  "M1": "CLOSED",
+  "M2": "PARTIAL",
+  "M3": "CLOSED",
+  "M4": "CLOSED",
+  "M5": "CLOSED",
+  "K1": "PARTIAL",
+  "K2": "CLOSED",
+  "K3": "CLOSED",
+  "K4": "CLOSED"
+ },
+ "findings_count": 5,
+ "severities": {
+  "critical": 1,
+  "high": 2,
+  "low": 2
+ },
+ "blocking": [
+  "J1",
+  "J2",
+  "J3"
+ ]
+}

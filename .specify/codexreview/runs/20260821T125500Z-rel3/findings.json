@@ -1,0 +1,100 @@
+{
+ "prior_findings": [
+  {
+   "id": "F1",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:810-823 requires a validated per-lane marker, a live handshake PID, and a Claude-classified descendant of that PID; unrelated processes outside the lane's descendant tree cannot satisfy attribution."
+  },
+  {
+   "id": "F2",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:775-786 initializes one result per selected lane, including REFUSED lanes, and lines 432-449 make unaccepted refusals fail with exit 6 while retaining the requested denominator."
+  },
+  {
+   "id": "F3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:260-314 now requires a nonempty string sessionId in the first JSON object and at least one parseable tail record. However, lines 303-305 ignore every malformed tail line provided any one line parses, so arbitrary corruption\u2014not merely one torn trailing record\u2014can still pass."
+  },
+  {
+   "id": "F4",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:211-246 implements Windows-native argument quoting and rejects control characters, quotes, and wt separators; lines 731-743 quote every wt argument except the intentional bare semicolon."
+  },
+  {
+   "id": "N1",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:450-459 permits VERIFIED only when the proven count equals the requested count; accepted exceptions receive the distinct ACCEPTED-WITH-EXCEPTIONS status, and lines 887-894 print that status rather than VERIFIED."
+  },
+  {
+   "id": "N2",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:251-258 and 559-564 reject duplicate selected names and comparable paths. Lines 566-568 assign a per-run positional Key, which is used for launcher and marker filenames at lines 694-695, result slots at lines 775-786, marker validation at line 810, and final lookup at line 864."
+  },
+  {
+   "id": "N3",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:703-720 places Set-Location and marker creation inside a terminating try block and exits before invoking Claude on failure. Lines 810-817 validate key, runId, path, PID liveness, and process age before accepting the marker."
+  },
+  {
+   "id": "N4",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:393-406 removes the '^claude' prefix defect, but line 394 accepts any descendant named claude.exe/cmd/bat/com without proving its executable path or arguments. The command-line fallbacks also use substring/shape matches rather than verified argv identity."
+  },
+  {
+   "id": "N5",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:685-689 bounds retained run directories using KeepRuns. The accumulation defect is closed, although the new pruning implementation has a live-run deletion defect reported below."
+  }
+ ],
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "critical",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 394,
+   "title": "A renamed or unrelated descendant executable can satisfy Claude verification",
+   "detail": "Test-IsClaudeProc returns true solely because a descendant's basename is claude.exe, claude.cmd, claude.bat, or claude.com. It does not require the resolved $ClaudeExe path, verify the executable image path, or verify --continue/expected arguments. The harness confirms the hole by copying ping.exe to claude.exe and asserting that it is attributed. Consequently a non-Claude program can produce RESUMED or STARTED and allow VERIFIED/exit 0.",
+   "recommendation": "Resolve the intended Claude command before launch to a canonical executable or shim target and expected argv. Verify each candidate's executable image path and invocation arguments exactly; do not accept an executable basename alone."
+  },
+  {
+   "id": "M2",
+   "severity": "critical",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 848,
+   "title": "A metadata touch is accepted as proof that Claude resumed the session",
+   "detail": "Resume evidence is true when LastWriteTimeUtc increases even if length and content are unchanged. Any concurrent process that touches the prelaunch latest transcript while an attributed descendant exists causes RESUMED and can produce VERIFIED, without proving that the launched Claude process opened or wrote the session.",
+   "recommendation": "Require attributable session-level evidence: validate an appended complete Claude JSONL record carrying the expected sessionId, with file length growth from the captured offset. A timestamp change alone must never prove resumption."
+  },
+  {
+   "id": "M3",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 303,
+   "title": "Tail validation accepts widespread corruption when one record parses",
+   "detail": "The function counts parseable lines and returns true when parsed is at least one. It therefore accepts a tail containing one valid JSON record plus any number of malformed records, contrary to its stated tolerance of only a single torn trailing line. Combined with the header check, a valid header and one valid tail record can conceal a corrupt middle or tail.",
+   "recommendation": "After discarding only a genuinely partial leading fragment, require every complete line to parse; permit at most the final unterminated line to be malformed. Validate the record objects and sessionId consistency as appropriate."
+  },
+  {
+   "id": "M4",
+   "severity": "medium",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 688,
+   "title": "Retention pruning can delete another invocation's live run directory",
+   "detail": "Pruning uses only directory CreationTimeUtc and deletes every directory beyond KeepRuns. It does not check for a live verifier, handshake PID, lock, or completion marker. Concurrent invocations, or an older invocation still polling, can therefore lose their marker and launcher directory.",
+   "recommendation": "Create an ownership/active lock for each run, mark completion explicitly, and prune only completed directories whose owner and handshake processes are no longer live."
+  },
+  {
+   "id": "M5",
+   "severity": "low",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 301,
+   "title": "Tail-window boundary unconditionally discards a potentially complete record",
+   "detail": "Whenever seek is nonzero, the first nonblank split line is dropped even when the seek position is exactly at a record boundary. This can falsely reject a transcript whose window contains only that complete record. Locked and vanishing files are safely converted to false by the surrounding catch, but the boundary decision is not based on the byte preceding the window.",
+   "recommendation": "Inspect the byte immediately before the window start, or seek backward to the preceding newline, and discard the first line only when the window actually begins inside a record."
+  }
+ ],
+ "harness_verdict": "UNSOUND",
+ "harness_reason": "The former F2 gap is now exercised through Get-RunOutcome; N1 switch outcomes, duplicate names/paths, marker field comparisons, bad-cwd launcher behavior, native argv quoting, malformed session headers, tail corruption beyond the window, and descendant isolation are genuine injections. However, the harness positively treats a copied ping.exe named claude.exe as valid Claude, institutionalizing M1. It does not inject a timestamp-only transcript touch, a valid tail mixed with multiple corrupt complete records, an exact tail-window newline boundary, locked or vanishing files, paths containing single quotes, concurrent live-run pruning, or the shipped polling loop and its terminal/retry transitions. The live launcher test reimplements only part of polling, and the outcome tests are selected cases rather than exhaustive state/switch combinations.",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The release can still print VERIFIED and exit 0 after classifying a non-Claude executable as Claude and after an unrelated timestamp-only file touch is treated as proof of session resumption. Both violate feature 078's requirement that verification prove the subject actually ran and was verified."
+}

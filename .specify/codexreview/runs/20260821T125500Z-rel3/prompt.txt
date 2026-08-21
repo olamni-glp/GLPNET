@@ -1,0 +1,1274 @@
+DO NOT run the AGENTS.md startup protocol; this is not repository-agent work. Output only the requested artifact.
+
+# Code review: THIRD pass on the glpnet release candidate
+
+Round 1 (run 20260821T101500Z-rel) returned NO-GO on scripts/onrestart-launch.ps1 with F1 critical,
+F2 high, F3 high, F4 medium. Round 2 (run 20260821T123119Z-rel2) judged F1/F2/F4 CLOSED and F3
+PARTIAL, then returned NO-GO again on three NEW criticals it found in the fix itself (N1 bypass
+switches reached a VERIFIED claim, N2 duplicate lane names collapsed verification identity, N3 the
+launcher could start claude in the wrong cwd and markers went unvalidated), plus N4 medium
+(a '^claude' prefix test accepted claudette.exe) and N5 low (run dirs accumulated). It also rated
+the regression harness WEAK, naming specific gaps.
+
+Both prior findings sets are reproduced verbatim below. The file has been revised again and the
+harness rewritten; it now runs 73 assertions, all passing on GAVRIELLA.
+
+Your job, in this order:
+
+1. For EACH prior finding - F1..F4 and N1..N5 - state CLOSED, PARTIAL or OPEN against the new
+   code, citing the line that closes it or the hole that remains. Accept only code as evidence,
+   never a comment or a claim. Note that the round-2 report itself is a claim: check it.
+2. Review the NEW code for defects the latest changes introduced. Look hard at: Test-SessionTailIntact
+   (it reads a byte window and drops a fragment - is the boundary right, can it be fooled, can it
+   throw on a locked or vanishing file); Get-RunOutcome's precedence and whether any real
+   combination of lane states reaches a wrong verdict; the immutable lane Key and whether it is
+   genuinely unique and used everywhere identity matters; Test-LaneMarker's comparisons; the
+   generated launcher's quoting of paths containing single quotes; the run-dir prune (can it
+   delete a live run's directory); and the polling loop's terminal-vs-retry transitions.
+3. Judge the harness again against the specific weaknesses you named last time. Say for each
+   whether it is now genuinely covered by a fault injection, and name anything still untested.
+
+This repo is shipping feature 078, whose subject is "no check may pass without actually running
+and verifying its subject". Apply that standard to the verification itself: if it can report
+VERIFIED or exit 0 without having proven what it claims, that is critical however it reads.
+
+Output ONLY a single JSON object:
+{"prior_findings":[{"id":"F1","status":"CLOSED|PARTIAL|OPEN","evidence":"..."}],
+ "findings":[{"id":"M1","severity":"critical|high|medium|low","file":"...","line":<int>,"title":"...","detail":"...","recommendation":"..."}],
+ "harness_verdict":"SOUND|WEAK|UNSOUND","harness_reason":"...",
+ "release_verdict":"GO|NO-GO","verdict_reason":"..."}
+
+--- PRIOR FINDINGS ROUND 1 (run 20260821T101500Z-rel) ---
+{
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "critical",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 395,
+   "title": "Verification can pass using unrelated Claude processes",
+   "detail": "The check counts every claude process whose StartTime is within the last two minutes. It does not use the captured $before count, correlate processes with launched lanes, verify cwd or command line, or require that the processes were created by this invocation. Existing or concurrently started Claude processes can therefore satisfy $started -ge $expected even when every requested tab ran nothing.",
+   "recommendation": "Snapshot process IDs before launch, then verify exactly one new, still-running process per lane. Correlate each process to the expected repository and invocation using command-line/parent-process evidence or a per-lane startup handshake. Do not use a time-window count as proof."
+  },
+  {
+   "id": "F2",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 306,
+   "title": "Blocked lanes are excluded from both verification and final failure status",
+   "detail": "Missing paths or session stores are reported as REFUSING, but execution continues with only $launchable lanes. $expected is later set to $launchable.Count, so the script can exit successfully while one or more selected lanes were never launched. This contradicts the stated resume-every-lane behavior and lets Scheduled Task history report success for a partial failure.",
+   "recommendation": "Unless an explicit partial-launch option was requested, exit nonzero whenever $blocked is nonempty. Verification must use the complete requested lane set, and the final result should enumerate failures per lane."
+  },
+  {
+   "id": "F3",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 157,
+   "title": "Session precheck treats any JSONL filename as a resumable session",
+   "detail": "A zero-byte, truncated, corrupt, stale, or otherwise unusable *.jsonl file makes Sessions greater than zero and permits --continue. Claude may then reject it or silently create a new session, while the later process-count check still reports VERIFIED. Thus neither the precheck nor final verification proves that a previous conversation was resumed.",
+   "recommendation": "Validate that at least one candidate session is nonempty, structurally readable, and eligible for Claude continuation. After launch, require positive evidence that the intended existing session ID was opened rather than merely observing a Claude process."
+  },
+  {
+   "id": "F4",
+   "severity": "medium",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 369,
+   "title": "Start-Process argument serialization is unsafe for configurable names and paths",
+   "detail": "Start-Process joins ArgumentList elements into a native command line without reliably preserving argument boundaries. Configurable lane titles and paths containing spaces or quotes can be misparsed by wt.exe; crafted quote or separator content can also alter the Terminal command sequence. The current seeded paths happen not to contain spaces, but registration and hand-edited configuration allow them.",
+   "recommendation": "Use robust native argument quoting for every value, reject control characters and quotes in lane names, validate paths, and test names and repository paths containing spaces. Prefer an invocation mechanism that preserves an explicit argv boundary or construct the command line with Windows-compatible escaping."
+  }
+ ],
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The central verification can report success without attributing any newly started process to this launch, and partial or non-resumed launches can also exit successfully. That directly violates feature 078's requirement that no check pass without actually running and verifying its subject."
+}
+--- PRIOR FINDINGS ROUND 2 (run 20260821T123119Z-rel2) ---
+{"prior_findings":[{"id":"F1","status":"CLOSED","evidence":"scripts/onrestart-launch.ps1:652-660 requires a live handshake PID created after $launchStart and searches only that PID's descendants for Claude. An unrelated or another lane's Claude process cannot satisfy this attribution."},{"id":"F2","status":"CLOSED","evidence":"scripts/onrestart-launch.ps1:735-737 exits $EXIT_REFUSED when any requested lane is REFUSED, unless the caller explicitly requests -AllowPartial."},{"id":"F3","status":"PARTIAL","evidence":"scripts/onrestart-launch.ps1:235-244 rejects empty files and files whose first nonblank line is invalid JSON, and lines 678-692 detect new transcripts or growth of the prior latest transcript. However, line 244 accepts immediately after parsing one arbitrary JSON value; it neither validates the remaining JSONL nor establishes that the record constitutes an eligible resumable Claude session. A valid first line followed by truncation, or a file containing only '{}', passes."},{"id":"F4","status":"CLOSED","evidence":"scripts/onrestart-launch.ps1:202-222 implements Windows argv quoting and rejects control characters; lines 222-228 additionally reject quotes and wt separators in configurable lane values; line 592 passes one pre-quoted command line to Start-Process."}],"findings":[{"id":"N1","severity":"critical","file":"scripts/onrestart-launch.ps1","line":744,"title":"Bypass switches produce a false VERIFIED result and exit zero","detail":"When -AllowPartial or -AllowUnconfirmedResume suppresses its corresponding failure at lines 735-743, execution reaches line 744 and claims every requested lane was proven even when $ok.Count is smaller than $selected.Count, including zero proven lanes. This directly permits a successful verification without verifying its subjects.","recommendation":"Never label or return this outcome as VERIFIED. Require $ok.Count -eq $selected.Count for exit zero, or give explicitly accepted partial/unconfirmed outcomes distinct non-verification statuses and nonzero exit codes."},{"id":"N2","severity":"critical","file":"scripts/onrestart-launch.ps1","line":542,"title":"Duplicate lane names collapse distinct requested lanes into one verification identity","detail":"Configuration uniqueness is not validated. Marker and launcher filenames are derived solely from Lane.Name at lines 542-543, and results are keyed solely by name at lines 626 and 632. Duplicate names therefore overwrite launch artifacts and result entries. With duplicate entries for the same path, one attributed process and one transcript write can leave no failure entry while selected.Count is larger, after which line 744 still exits successfully.","recommendation":"Reject duplicate lane names before launch and give every plan entry an immutable unique identifier used in filenames, markers, pending state, and results. Require one terminal proven result per selected entry."},{"id":"N3","severity":"critical","file":"scripts/onrestart-launch.ps1","line":549,"title":"Launcher can continue after failing to enter the lane repository","detail":"The generated launcher sets ErrorActionPreference to Continue and runs Set-Location outside the try block at lines 549-550. If the path disappears or becomes inaccessible after precheck, it writes a marker containing the wrong cwd and launches Claude there. Verification never checks marker.path, lane, or runId. Under -Fresh, lines 670-673 mark any attributed descendant STARTED and can report VERIFIED for a session started in the wrong repository.","recommendation":"Use ErrorActionPreference='Stop'; place Set-Location and marker creation in a terminating try block; do not launch Claude after failure. Validate marker lane, runId, normalized path, and timestamp before accepting its PID."},{"id":"N4","severity":"medium","file":"scripts/onrestart-launch.ps1","line":327,"title":"Claude process classification accepts arbitrary similarly named executables","detail":"The name test '^claude' accepts claude-malware.exe, claudette.exe, and any other descendant whose name merely starts with claude. The command-line fallback also proves only that a token or path component says claude, not that the expected Claude CLI executable was invoked.","recommendation":"Match an explicit executable-name allowlist and verify the expected resolved Claude command, executable path, and invocation arguments captured before launch."},{"id":"N5","severity":"low","file":"scripts/onrestart-launch.ps1","line":537,"title":"Per-run launcher and marker directories accumulate indefinitely","detail":"Every invocation creates a unique directory under LOCALAPPDATA but no retention or cleanup policy removes completed historical runs. Scheduled execution can leak files indefinitely.","recommendation":"Retain the current and a bounded number of diagnostic runs, then remove older run directories after validating that their processes are no longer live."}],"harness_verdict":"WEAK","harness_reason":"F4 is genuine fault injection: line 85 demonstrates corruption through the former unquoted serialization and compares it with a real CommandLineToArgvW round trip. F3's zero-byte, garbage, and blank files are genuine malformed-input injections, but it omits valid-prefix/truncated-suffix and structurally valid non-session JSON. F1's synthetic unrelated process and live lane-A-versus-lane-B case are genuine cross-lane injections; lane B itself merely omits Claude, and the fake 'Claude' is actually pwsh whose command line contains claude.ps1, so it does not exercise the real launcher or executable. The cycle assertion at line 119 is unconditional and cannot fail after the walk returns. F2 is not tested at all: lines 167-172 test lane-value validation, not a refused lane's denominator or final exit code. No test executes the shipped polling loop, state transitions, coexistence precedence, bypass switches, duplicate names, marker validation, or final VERIFIED decision.","release_verdict":"NO-GO","verdict_reason":"The script can still exit zero while explicitly reporting fewer proven lanes than requested, duplicate lane identities can collapse verification, and -Fresh can verify a Claude session launched from the wrong directory. These violate feature 078's requirement that successful verification prove every claimed subject."}
+
+--- FILE (NEW): scripts/onrestart-launch.ps1 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+
+<#
+.SYNOPSIS
+  Post-reboot lane relaunch — resumes every repo lane mid-thread, and installs itself to
+  fire automatically 45 s after logon. Executable spec for the buildkit `bk-onrestart` feature.
+
+.DESCRIPTION
+  Mechanism copied from the mstack lane's reference implementation
+  (`D:\BSTDEV\tools\MSTACK\scripts\fleet\post-reboot-restart.ps1`, ariellas/gavriella lane),
+  which is the prototype this feature generalises. What is copied, and WHY each part exists:
+
+  1. RESUME, DO NOT SUMMARISE.  `claude --continue` picks up the most recent conversation in
+     the cwd mid-thread. `--autocompact 1000000` pushes auto-compaction — the only thing that
+     would summarise a resumed session — as far out as the CLI allows. `--fork-session` is
+     deliberately NEVER passed: it mints a new session id and continues a COPY, which is not
+     continuing.
+
+  2. THE SILENT-NEW-SESSION TRAP.  `--continue` does NOT error when there is no stored session
+     for the cwd — it silently starts a BRAND NEW EMPTY one. After a reboot that is
+     indistinguishable from a successful resume until you notice the context is gone. So every
+     lane's session store is checked FIRST, and a transcript only counts when its first record
+     is a JSON object carrying a non-empty `sessionId` — the shape every real Claude Code
+     transcript starts with. A zero-byte, unparseable, or structurally-valid-but-not-a-session
+     file (`{}`) is NOT a resumable session and its lane is REFUSED. AFTER launch the store is
+     re-read: a transcript that did not exist before launch is a silent new session and is
+     reported as a FAILURE, never as a resume.
+
+  3. THE BARE-SEMICOLON TRAP.  wt's command separator must reach wt as a BARE ';' token. A
+     backtick-escaped '`;' arrives at wt literally and silently produces tabs that open and run
+     NOTHING. Measured in the reference lane: 12 tabs, 0 claude processes. Every other token is
+     quoted with Windows argv rules so lane names and paths containing spaces or quotes cannot
+     be misparsed into the wt command sequence; the ';' separators are the only bare tokens.
+
+  4. TWO DIFFERENT MOUNT WAITS.  Repo paths (local D:) are REQUIRED — wait, then refuse what is
+     still missing. Network shares (I:, H:) are OPTIONAL — wait briefly, then LAUNCH ANYWAY.
+     The shares live on \\192.168.0.108\GAVRI_D served by gavriella; in a fleet-wide reboot
+     gavriella is down too, so blocking on them means the restart never runs on the hosts that
+     are actually up. Sessions do not need the shares — every repo is local.
+
+  5. ABSENT SHARE MEANS "I CANNOT SEE THE BOARD" — never "the board is empty", and never a
+     finding about any host. Several buildkit tools silently fall back to a stale local root
+     when the share is missing, and that husk answers every query with plausible wrong data.
+     Three separate 2026-08 incidents came from that fallback.
+
+  6. VERIFICATION IS PER LANE AND ATTRIBUTED — never a process count over a time window.
+     A count of `claude` processes started "in the last two minutes" is satisfied by processes
+     this invocation did not create, so it can report success while every requested tab ran
+     nothing. Instead each lane is launched through a generated per-lane launcher that writes a
+     HANDSHAKE MARKER — lane key, run id, resolved cwd and its own PID — before it execs claude,
+     and verification requires, for every requested lane: a marker whose lane/run/path all match
+     what was asked for (a marker from another lane, another run, or another directory is
+     rejected); a live claude process that is a DESCENDANT of that marker's PID and was created
+     after launch; and — unless -Fresh — resume evidence read from the lane's own session store.
+     Lanes refused before launch stay in the denominator and are enumerated as failures.
+
+  7. THE WORD "VERIFIED" IS EARNED, NOT DEFAULTED.  It is printed only when every requested lane
+     is proven. -AllowPartial / -AllowUnconfirmedResume let the OPERATOR accept named exceptions,
+     and that outcome reports as ACCEPTED-WITH-EXCEPTIONS listing each unproven lane — never as
+     VERIFIED. No switch can make a run with zero proven lanes succeed.
+
+  MEASURED AND REFUTED — do not "fix" path case in the lane table: Claude Code mangles the cwd
+  into a store name case-preservingly, but Windows resolves the lookup case-insensitively, so
+  case cannot split a lane's history. Tested and refuted in the reference lane.
+
+  Regression cover: scripts\tests\onrestart-launch.tests.ps1 (fault injections, not absences).
+
+.PARAMETER Install
+  Register the at-logon Scheduled Task (45 s delay) for the CURRENT user on ANY host, then exit.
+  Idempotent — re-running replaces the existing task.
+
+.PARAMETER Uninstall
+  Remove the Scheduled Task and exit.
+
+.PARAMETER Layout
+  TwoWindows (default) = window 1 gets the first group, window 2 the second.
+  Tabs = one window, all lanes.  Windows = one window per lane.
+
+.PARAMETER Fresh
+  Start NEW sessions instead of resuming. Opt-in only, and it defeats the point.
+  Resume evidence is not checked under -Fresh, because a new transcript is the intended result.
+
+.PARAMETER AllowPartial
+  Accept lanes that were REFUSED before launch. They are still listed as unproven and the run
+  reports ACCEPTED-WITH-EXCEPTIONS, never VERIFIED.
+
+.PARAMETER AllowUnconfirmedResume
+  Accept a lane whose claude process is attributed and live but whose session store showed no
+  write within -VerifyTimeoutSec. Such a lane is always reported as UNCONFIRMED, never as
+  resumed; this switch only decides whether it fails the run.
+
+.EXAMPLE
+  pwsh -File scripts\onrestart-launch.ps1 -Install      # arm it once; fires 45 s after every logon
+  pwsh -File scripts\onrestart-launch.ps1 -DryRun       # validate, launch nothing
+  pwsh -File scripts\onrestart-launch.ps1 -WaitForMounts
+#>
+[CmdletBinding()]
+param(
+    [switch]$Install,
+    [switch]$Uninstall,
+    [switch]$Register,
+    [switch]$Unregister,
+    [switch]$ShowConfig,
+    [string]$Name,
+    [int]$Group = 0,
+    [string]$ConfigPath,
+    [switch]$DryRun,
+    [ValidateSet('TwoWindows', 'Tabs', 'Windows')][string]$Layout,
+    [string[]]$Only,
+    [ValidateSet('max', 'auto')][string]$AutoCompact = 'max',
+    [switch]$Fresh,
+    [switch]$WaitForMounts,
+    [switch]$AllowPartial,
+    [switch]$AllowUnconfirmedResume,
+    [int]$DelaySeconds = 45,
+    [int]$RepoWaitSec = 120,
+    [int]$ShareWaitSec = 60,
+    [int]$VerifyTimeoutSec = 45,
+    [int]$KeepRuns = 20,
+    [string[]]$OptionalMount = @('I:\coop', 'H:\coop', 'G:\coop')
+)
+
+$ErrorActionPreference = 'Stop'
+$TaskName = 'BK-OnRestart'
+
+# Exit codes — distinct so Scheduled Task history distinguishes the failure modes.
+$EXIT_OK           = 0
+$EXIT_NOTHING      = 1
+$EXIT_BADARGS      = 2
+$EXIT_NO_WT        = 3
+$EXIT_NOT_LAUNCHED = 4   # a lane produced no attributable claude process
+$EXIT_UNCONFIRMED  = 5   # launched and attributed, but no resume evidence
+$EXIT_REFUSED      = 6   # a selected lane was refused before launch
+$EXIT_SILENT_NEW   = 7   # a lane started a NEW session instead of continuing
+$EXIT_NO_ATTRIB    = 8   # the process table is unavailable: cannot attribute, so cannot pass
+$EXIT_NONE_PROVEN  = 9   # nothing was proven; no switch may call that success
+
+# --- Configuration ---------------------------------------------------------------
+# Host config lives OUTSIDE any repo, so a repo can be deleted or re-cloned without
+# losing the machine's lane layout. Seeded on first run, then hand-editable, and
+# extendable in place with -Register / -Unregister.
+#
+# layoutByHost maps a hostname to its window layout — the operator ruling is:
+#   GAVRIELLA / GAVRI  -> TwoWindows (group 1 in window 1, group 2 in window 2)
+#   OLAMNIT / ARIELLAS / SHIRAS -> Tabs (all lanes, one window)
+# An unlisted host falls back to defaultLayout, and says so rather than guessing silently.
+if (-not $ConfigPath) { $ConfigPath = Join-Path $env:USERPROFILE '.bk-onrestart\config.json' }
+
+$SeedConfig = [ordered]@{
+    schema_version = '1'
+    defaultLayout  = 'Tabs'
+    layoutByHost   = [ordered]@{
+        'GAVRIELLA' = 'TwoWindows'; 'GAVRI' = 'TwoWindows'
+        'OLAMNIT'   = 'Tabs'; 'ARIELLAS' = 'Tabs'; 'SHIRAS' = 'Tabs'
+    }
+    lanes = @(
+        [ordered]@{ name='ospark';     group=1; path='D:\bstdev\db\ospark' }
+        [ordered]@{ name='tefl';       group=1; path='D:\BSTDEV\LANG\tefl' }
+        [ordered]@{ name='hatzinor';   group=1; path='D:\BSTDEV\LANG\hatzinor' }
+        [ordered]@{ name='olamnit';    group=1; path='D:\BSTDEV\research\olamnit' }
+        [ordered]@{ name='buildkit';   group=1; path='D:\BSTDEV\research\buildkit' }
+        [ordered]@{ name='qhstate';    group=1; path='D:\BSTDEV\research\qhstate' }
+        [ordered]@{ name='yngraw';     group=1; path='D:\bstdev\research\yngenios' }
+        [ordered]@{ name='crucible';   group=2; path='D:\bstdev\research\crucible' }
+        [ordered]@{ name='glpnet';     group=2; path='D:\bstdev\research\glp\glpnet' }
+        [ordered]@{ name='lejepa';     group=2; path='D:\bstdev\research\lejepa' }
+        [ordered]@{ name='mstack';     group=2; path='D:\bstdev\tools\mstack' }
+        [ordered]@{ name='yngwin';     group=2; path='D:\YNGENIOS\yngenios-windows' }
+    )
+}
+
+function Save-Config($cfg) {
+    $dir = Split-Path -Parent $ConfigPath
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    ($cfg | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $ConfigPath -Encoding utf8
+}
+
+function Get-Config {
+    if (-not (Test-Path -LiteralPath $ConfigPath)) {
+        Save-Config $SeedConfig
+        Write-Host "seeded lane config -> $ConfigPath" -ForegroundColor Green
+    }
+    Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+}
+
+$Config = Get-Config
+$Repos  = @($Config.lanes | ForEach-Object {
+    [pscustomobject]@{ Name = $_.name; Group = [int]$_.group; Path = $_.path }
+})
+
+# Layout precedence: explicit -Layout > this host's entry > defaultLayout.
+if (-not $Layout) {
+    $hostKey = $env:COMPUTERNAME.ToUpperInvariant()
+    $mapped  = $Config.layoutByHost.$hostKey
+    if ($mapped) { $Layout = $mapped }
+    else {
+        $Layout = $Config.defaultLayout
+        Write-Host "host '$hostKey' is not in layoutByHost - falling back to defaultLayout '$Layout'" -ForegroundColor Yellow
+    }
+}
+
+$ProjectsRoot = Join-Path $env:USERPROFILE '.claude\projects'
+
+# --- Native-argument quoting ------------------------------------------------------
+# Start-Process joins an ArgumentList with spaces and does NOT preserve argument
+# boundaries, so a lane name or path containing a space or a quote is re-parsed by
+# wt.exe into extra tokens — and a crafted one can inject its own wt subcommands.
+# Every token is quoted here with the CommandLineToArgvW rules and the command line is
+# handed to Start-Process as ONE pre-quoted string. The ';' tab separators are the only
+# tokens deliberately left bare (see .DESCRIPTION 3).
+function ConvertTo-NativeArg([string]$Value) {
+    if ($null -eq $Value) { $Value = '' }
+    if ($Value -match '[\x00-\x1f]') { throw "control character in argument: '$Value'" }
+    if ($Value -ne '' -and $Value -notmatch '[\s"]') { return $Value }
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.Append('"')
+    $slashes = 0
+    foreach ($ch in $Value.ToCharArray()) {
+        if ($ch -eq '\') { $slashes++; continue }
+        if ($ch -eq '"') {
+            [void]$sb.Append('\' * ($slashes * 2 + 1)); [void]$sb.Append('"'); $slashes = 0; continue
+        }
+        if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $slashes = 0 }
+        [void]$sb.Append($ch)
+    }
+    if ($slashes -gt 0) { [void]$sb.Append('\' * ($slashes * 2)) }
+    [void]$sb.Append('"')
+    return $sb.ToString()
+}
+
+function Assert-SafeLaneValue([string]$Value, [string]$What, [string]$Lane) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { throw "lane '$Lane': $What is empty" }
+    if ($Value -match '[\x00-\x1f]')          { throw "lane '$Lane': $What contains a control character" }
+    if ($Value -match '"')                    { throw "lane '$Lane': $What contains a double quote" }
+    if ($Value -match ';')                    { throw "lane '$Lane': $What contains ';', which is wt's tab separator" }
+}
+
+function ConvertTo-ComparablePath([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
+    return ($Path.TrimEnd('\', '/')).ToLowerInvariant()
+}
+
+# Two lanes sharing a name or a path would share marker files, launcher files and result
+# slots, so one attributed process could stand in for both and the run would still claim
+# to have proven every lane. Identity must be unique before anything is launched.
+function Get-LaneIdentityConflicts($Lanes) {
+    $msgs = @()
+    foreach ($g in @($Lanes | Group-Object -Property Name)) {
+        if ($g.Count -gt 1) { $msgs += "duplicate lane name '$($g.Name)' ($($g.Count) entries)" }
+    }
+    foreach ($g in @($Lanes | Group-Object -Property { ConvertTo-ComparablePath $_.Path })) {
+        if ($g.Count -gt 1) { $msgs += "duplicate lane path '$($g.Name)' ($($g.Count) entries: $(($g.Group.Name) -join ', '))" }
+    }
+    return , @($msgs)
+}
+
+# Claude Code's cwd -> session-store mangle. Case-preserving by design; harmless (see .DESCRIPTION).
+function ConvertTo-SessionDirName([string]$Path) { ($Path.TrimEnd('\') -replace '[:\\]', '-') }
+
+# The session-id line every real Claude Code transcript opens with. Measured across 43
+# transcripts in 40 stores on 2026-08-21: all 43 first records were JSON objects carrying a
+# non-empty `sessionId`. A file without one cannot be continued, so it must not count —
+# a filename, a zero-byte file, and a bare `{}` are all NOT resumable sessions.
+function Get-SessionFileId([System.IO.FileInfo]$File) {
+    if (-not $File -or $File.Length -le 0) { return $null }
+    try {
+        $reader = [System.IO.StreamReader]::new($File.FullName)
+        try {
+            while (-not $reader.EndOfStream) {
+                $line = $reader.ReadLine()
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                $rec = $line | ConvertFrom-Json -ErrorAction Stop
+                if ($rec -isnot [pscustomobject]) { return $null }
+                $id = $rec.sessionId
+                if ($id -is [string] -and -not [string]::IsNullOrWhiteSpace($id)) { return $id }
+                return $null
+            }
+        } finally { $reader.Dispose() }
+    } catch { return $null }
+    return $null
+}
+
+# Truncation check, bounded: read only the tail so a 40 MB transcript costs the same as a
+# small one. A single torn trailing line over real content is tolerated — a crash mid-write
+# is normal and Claude Code itself tolerates it — but a file whose tail holds no parseable
+# record at all is not a transcript we should resume into.
+function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
+    try {
+        $fs = [System.IO.File]::Open($File.FullName, 'Open', 'Read', 'ReadWrite')
+        try {
+            $seek = [Math]::Max(0L, $fs.Length - $TailBytes)
+            $null = $fs.Seek($seek, 'Begin')
+            $bytes = New-Object byte[] ($fs.Length - $seek)
+            $read = $fs.Read($bytes, 0, $bytes.Length)
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes, 0, $read)
+        } finally { $fs.Dispose() }
+    } catch { return $false }
+    $lines = @($text -split "`n" | ForEach-Object { $_.TrimEnd("`r") } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($seek -gt 0 -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }  # first fragment is partial
+    if ($lines.Count -eq 0) { return $false }
+    $parsed = 0
+    foreach ($l in $lines) { try { $null = $l | ConvertFrom-Json -ErrorAction Stop; $parsed++ } catch { } }
+    return ($parsed -ge 1)
+}
+
+function Test-ResumableSessionFile([System.IO.FileInfo]$File) {
+    if (-not $File -or $File.Length -le 0) { return $false }
+    if (-not (Get-SessionFileId $File)) { return $false }
+    return (Test-SessionTailIntact $File)
+}
+
+function Get-RepoState($Repo) {
+    $dirName = ConvertTo-SessionDirName $Repo.Path
+    $store   = Join-Path $ProjectsRoot $dirName
+    $files   = @()
+    if (Test-Path -LiteralPath $store) {
+        $files = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue)
+    }
+    $usable  = @($files | Where-Object { Test-ResumableSessionFile $_ })
+    $latest  = $usable | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    [pscustomobject]@{
+        Name = $Repo.Name; Group = $Repo.Group; Path = $Repo.Path; SessionDir = $dirName
+        Key = $Repo.Key
+        Store = $store
+        PathExists = (Test-Path -LiteralPath $Repo.Path)
+        StoreExists = (Test-Path -LiteralPath $store)
+        Sessions = $files.Count
+        Usable = $usable.Count
+        Latest = if ($latest) { $latest.LastWriteTime } else { $null }
+        # Pre-launch fingerprint of the store, used after launch to prove resumption.
+        FileNames = @($files | ForEach-Object { $_.Name })
+        LatestPath = if ($latest) { $latest.FullName } else { $null }
+        LatestLength = if ($latest) { $latest.Length } else { 0 }
+        LatestWriteUtc = if ($latest) { $latest.LastWriteTimeUtc } else { [datetime]::MinValue }
+    }
+}
+
+function Wait-ForPaths {
+    param([string[]]$Paths, [int]$TimeoutSec, [string]$Label)
+    if (-not $Paths) { return @() }
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $pending  = @($Paths | Where-Object { -not (Test-Path -LiteralPath $_) })
+    while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) {
+        Write-Host ("  waiting for {0} {1}: {2}" -f $pending.Count, $Label, ($pending -join ', ')) -ForegroundColor DarkGray
+        Start-Sleep -Seconds 5
+        $pending = @($pending | Where-Object { -not (Test-Path -LiteralPath $_) })
+    }
+    return , @($pending)
+}
+
+# --- Process attribution ----------------------------------------------------------
+# The only honest way to say "this lane is running" is to point at a process THIS
+# invocation created for THAT lane. Win32_Process supplies the parent link needed to walk
+# from a lane's handshake PID down to its claude process. If it is unavailable we cannot
+# attribute anything, and the run fails loudly rather than falling back to a count.
+function Get-ProcTable {
+    $table = @{}
+    foreach ($p in Get-CimInstance -ClassName Win32_Process -ErrorAction Stop) {
+        $table[[int]$p.ProcessId] = [pscustomobject]@{
+            ProcId = [int]$p.ProcessId; ParentId = [int]$p.ParentProcessId
+            Name = $p.Name; CommandLine = $p.CommandLine; Created = $p.CreationDate
+        }
+    }
+    return $table
+}
+
+function Get-DescendantProcs($Table, [int]$RootPid) {
+    $byParent = @{}
+    foreach ($p in $Table.Values) {
+        if (-not $byParent.ContainsKey($p.ParentId)) { $byParent[$p.ParentId] = [System.Collections.Generic.List[object]]::new() }
+        $byParent[$p.ParentId].Add($p)
+    }
+    $out   = [System.Collections.Generic.List[object]]::new()
+    $seen  = [System.Collections.Generic.HashSet[int]]::new()
+    $queue = [System.Collections.Generic.Queue[int]]::new()
+    $queue.Enqueue($RootPid)
+    while ($queue.Count -gt 0) {
+        $cur = $queue.Dequeue()
+        if (-not $seen.Add($cur)) { continue }          # a parent cycle cannot spin the walk
+        if (-not $byParent.ContainsKey($cur)) { continue }
+        foreach ($child in $byParent[$cur]) {
+            $out.Add($child); $queue.Enqueue($child.ProcId)
+        }
+    }
+    return $out
+}
+
+# Exact executable names only. A prefix test ('^claude') would accept claudette.exe and
+# claude-malware.exe, so a lane could be "proven" by a lookalike it happened to spawn.
+function Test-IsClaudeProc($Proc, [string]$ClaudePath) {
+    $exeNames = @('claude.exe', 'claude.cmd', 'claude.bat', 'claude.com')
+    if ($Proc.Name -and ($exeNames -contains $Proc.Name.ToLowerInvariant())) { return $true }
+    $cl = $Proc.CommandLine
+    if ([string]::IsNullOrWhiteSpace($cl)) { return $false }
+    # The claude command this invocation actually resolved, matched literally.
+    if (-not [string]::IsNullOrWhiteSpace($ClaudePath)) {
+        if ($cl -match ('(?i)' + [regex]::Escape($ClaudePath))) { return $true }
+    }
+    # A JS runtime running the Claude Code entry point, or the shim invoked by full path.
+    if ($cl -match '(?i)[\\/]claude[\\/](cli|index)\.(js|mjs|cjs)([\s"]|$)') { return $true }
+    if ($cl -match '(?i)[\\/]claude\.(exe|cmd|bat|com|ps1)([\s"]|$)') { return $true }
+    return $false
+}
+
+# A marker proves a tab ran ITS OWN command. Accepting one without checking which lane,
+# which run and which directory it came from would let a stale or misdirected launcher
+# stand in for the lane that was actually requested.
+function Test-LaneMarker($Marker, [string]$ExpectedKey, [string]$ExpectedRunId, [string]$ExpectedPath) {
+    if ($null -eq $Marker) { return 'marker is empty or unparseable' }
+    if ([string]$Marker.key   -cne $ExpectedKey)   { return "marker is for lane '$($Marker.key)', expected '$ExpectedKey'" }
+    if ([string]$Marker.runId -cne $ExpectedRunId) { return "marker is from run '$($Marker.runId)', expected '$ExpectedRunId'" }
+    $got = ConvertTo-ComparablePath ([string]$Marker.path)
+    $want = ConvertTo-ComparablePath $ExpectedPath
+    if ($got -ne $want) { return "marker cwd is '$($Marker.path)', expected '$ExpectedPath'" }
+    $markerPid = 0
+    if (-not [int]::TryParse([string]$Marker.pwshPid, [ref]$markerPid) -or $markerPid -le 0) { return 'marker carries no usable PID' }
+    return $null   # $null == valid
+}
+
+# The final decision, isolated so it can be tested exhaustively. Precedence is by damage:
+# a wrong session beats a missing one, a missing one beats an unproven one, and no switch
+# can turn zero proven lanes into success.
+function Get-RunOutcome {
+    param([object[]]$Results, [int]$RequestedCount, [bool]$AllowPartial, [bool]$AllowUnconfirmed)
+    $proven      = @($Results | Where-Object { $_.Status -in @('RESUMED','STARTED') })
+    $unconfirmed = @($Results | Where-Object { $_.Status -eq 'UNCONFIRMED' })
+    $silentNew   = @($Results | Where-Object { $_.Status -eq 'SILENT-NEW' })
+    $notLaunched = @($Results | Where-Object { $_.Status -in @('NOT-LAUNCHED','NO-CLAUDE') })
+    $refused     = @($Results | Where-Object { $_.Status -eq 'REFUSED' })
+    $mk = {
+        param($status, $code, $msg)
+        [pscustomobject]@{
+            Status = $status; ExitCode = $code; Message = $msg
+            Proven = $proven.Count; Unconfirmed = $unconfirmed.Count; SilentNew = $silentNew.Count
+            NotLaunched = $notLaunched.Count; Refused = $refused.Count; Requested = $RequestedCount
+        }
+    }
+    if ($silentNew.Count -gt 0) {
+        return & $mk 'FAILED' 7 "$($silentNew.Count) lane(s) started a NEW session instead of continuing."
+    }
+    if ($notLaunched.Count -gt 0) {
+        return & $mk 'FAILED' 4 "$($notLaunched.Count) lane(s) produced no attributable claude process."
+    }
+    if ($refused.Count -gt 0 -and -not $AllowPartial) {
+        return & $mk 'FAILED' 6 "$($refused.Count) selected lane(s) were refused before launch (pass -AllowPartial to accept a partial run)."
+    }
+    if ($unconfirmed.Count -gt 0 -and -not $AllowUnconfirmed) {
+        return & $mk 'UNPROVEN' 5 "$($unconfirmed.Count) lane(s) are running but their resume is not proven."
+    }
+    if ($proven.Count -eq 0) {
+        return & $mk 'FAILED' 9 'no lane was proven; -AllowPartial / -AllowUnconfirmedResume cannot make that a success.'
+    }
+    if ($proven.Count -eq $RequestedCount) {
+        return & $mk 'VERIFIED' 0 "$($proven.Count) of $RequestedCount requested lane(s) proven, each attributed to its own launch."
+    }
+    return & $mk 'ACCEPTED-WITH-EXCEPTIONS' 0 ("$($proven.Count) of $RequestedCount lane(s) proven; " +
+        "$($refused.Count) refused and $($unconfirmed.Count) unconfirmed were accepted by switch. This run is NOT verified.")
+}
+
+# --- Install / uninstall the at-logon trigger (portable to any host) -------------
+function Install-Trigger {
+    $self = $PSCommandPath
+    if (-not $self) { throw "cannot resolve own path; run via 'pwsh -File <script> -Install'" }
+    $pwsh = (Get-Process -Id $PID).Path        # the pwsh actually running us — portable
+    $action  = New-ScheduledTaskAction -Execute $pwsh `
+               -Argument ('-NoProfile -WindowStyle Hidden -File "{0}" -WaitForMounts' -f $self)
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $trigger.Delay = [System.Xml.XmlConvert]::ToString([TimeSpan]::FromSeconds($DelaySeconds))  # ISO-8601, e.g. PT45S
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::FromMinutes(30))
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
+        -Description "Resume all Claude Code repo lanes $DelaySeconds s after logon (buildkit bk-onrestart prototype)" `
+        -Force | Out-Null
+    Write-Host "installed scheduled task '$TaskName' on $env:COMPUTERNAME for $env:USERNAME" -ForegroundColor Green
+    Write-Host "  fires: at logon + $DelaySeconds s delay" -ForegroundColor Green
+    Write-Host "  runs : $pwsh -NoProfile -WindowStyle Hidden -File `"$self`" -WaitForMounts" -ForegroundColor DarkGray
+    Write-Host "  verify: Get-ScheduledTask -TaskName $TaskName" -ForegroundColor DarkGray
+}
+
+function Uninstall-Trigger {
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "removed scheduled task '$TaskName'" -ForegroundColor Green
+    } else { Write-Host "no scheduled task '$TaskName' to remove" -ForegroundColor Yellow }
+}
+
+# --- register / unregister a lane from the window you are standing in -------------
+# The point of -Register is that you capture a lane by BEING in it: cd into the repo,
+# run it, and the lane is added with the correct path and session store already proven.
+function Register-Lane {
+    $path = (Get-Location).Path
+    if (-not (Test-Path -LiteralPath (Join-Path $path '.git'))) {
+        Write-Error "not a git repo: $path — refusing to register a lane that is not a repo."; exit $EXIT_BADARGS
+    }
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf $path }
+    $laneGroup = if ($Group -gt 0) { $Group } else { 1 }
+    # Refuse at registration what the launcher would otherwise have to refuse 45 s after logon.
+    Assert-SafeLaneValue $laneName 'lane name' $laneName
+    Assert-SafeLaneValue $path     'lane path' $laneName
+
+    # Prove the lane is resumable NOW rather than discovering it at 45 s after next logon.
+    $store = Join-Path $ProjectsRoot (ConvertTo-SessionDirName $path)
+    $sess  = 0
+    if (Test-Path -LiteralPath $store) {
+        $sess = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+                  Where-Object { Test-ResumableSessionFile $_ }).Count
+    }
+    if ($sess -eq 0) { Write-Host "  warning: no usable stored session for this directory yet — it will be REFUSED at resume until Claude has run here." -ForegroundColor Yellow }
+
+    $cfg = Get-Config
+    $lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName -and (ConvertTo-ComparablePath $_.path) -ne (ConvertTo-ComparablePath $path) })
+    if (@($cfg.lanes).Count -ne $lanes.Count) { Write-Host "  replacing existing entry for '$laneName'" -ForegroundColor DarkGray }
+    $lanes += [pscustomobject]@{ name = $laneName; group = $laneGroup; path = $path }
+    $cfg.lanes = $lanes
+    Save-Config $cfg
+    Write-Host "registered lane '$laneName' (group $laneGroup, $sess usable session(s)) -> $path" -ForegroundColor Green
+    Write-Host "  config: $ConfigPath  |  lanes now: $(@($lanes).Count)" -ForegroundColor DarkGray
+}
+
+function Unregister-Lane {
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf (Get-Location).Path }
+    $cfg = Get-Config
+    $before = @($cfg.lanes).Count
+    $cfg.lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName })
+    if (@($cfg.lanes).Count -eq $before) { Write-Host "no lane named '$laneName' in config — nothing removed." -ForegroundColor Yellow; exit $EXIT_NOTHING }
+    Save-Config $cfg
+    Write-Host "unregistered lane '$laneName'  |  lanes now: $(@($cfg.lanes).Count)" -ForegroundColor Green
+}
+
+function Show-Config {
+    Write-Host "config : $ConfigPath" -ForegroundColor Cyan
+    Write-Host "host   : $env:COMPUTERNAME  ->  layout '$Layout'" -ForegroundColor Cyan
+    Write-Host "layoutByHost:" -ForegroundColor Cyan
+    $Config.layoutByHost.PSObject.Properties | ForEach-Object { "    {0,-12} {1}" -f $_.Name, $_.Value } | Write-Host
+    Write-Host "lanes ($(@($Repos).Count)):" -ForegroundColor Cyan
+    $Repos | ForEach-Object { "    {0,-10} win {1}  {2}" -f $_.Name, $_.Group, $_.Path } | Write-Host
+}
+
+if ($Register)   { Register-Lane;     exit $EXIT_OK }
+if ($Unregister) { Unregister-Lane;   exit $EXIT_OK }
+if ($ShowConfig) { Show-Config;       exit $EXIT_OK }
+if ($Install)    { Install-Trigger;   exit $EXIT_OK }
+if ($Uninstall)  { Uninstall-Trigger; exit $EXIT_OK }
+
+# --- Resolve + validate ---------------------------------------------------------
+# Under `pwsh -File`, "-Only a,b" arrives as ONE string, so a comma list silently matches
+# nothing. Split explicitly so -File and -Command behave alike.
+if ($Only) { $Only = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+$selected = @(if ($Only) { $Repos | Where-Object { $Only -contains $_.Name } } else { $Repos })
+if (-not $selected) { Write-Error "No lanes matched -Only. Known: $($Repos.Name -join ', ')"; exit $EXIT_BADARGS }
+
+foreach ($r in $selected) {
+    try { Assert-SafeLaneValue $r.Name 'lane name' $r.Name; Assert-SafeLaneValue $r.Path 'lane path' $r.Name }
+    catch { Write-Error "$_  (fix it in $ConfigPath)"; exit $EXIT_BADARGS }
+}
+$conflicts = Get-LaneIdentityConflicts $selected
+if ($conflicts.Count -gt 0) {
+    Write-Error ("lane identities are not unique, so a launch could not be attributed per lane:`n  " +
+                 ($conflicts -join "`n  ") + "`nFix them in $ConfigPath")
+    exit $EXIT_BADARGS
+}
+# Immutable per-run key: filenames, markers and result slots are keyed by this, never by a
+# display name that configuration could repeat.
+for ($i = 0; $i -lt $selected.Count; $i++) {
+    $selected[$i] | Add-Member -NotePropertyName Key -NotePropertyValue ('{0:d2}-{1}' -f $i, $selected[$i].Name) -Force
+}
+
+Write-Host "bk-onrestart (prototype) — host $env:COMPUTERNAME" -ForegroundColor Cyan
+if ($env:COMPUTERNAME -ne 'Gavriella') {
+    Write-Warning "Lane paths were verified on GAVRIELLA. On $env:COMPUTERNAME they are unverified — re-resolve before trusting them."
+}
+
+$shareMissing = @()
+if ($WaitForMounts) {
+    Write-Host ''; Write-Host 'Waiting for mounts...' -ForegroundColor Cyan
+    $repoMissing = Wait-ForPaths -Paths @($selected.Path) -TimeoutSec $RepoWaitSec -Label 'repo path(s)'
+    if ($repoMissing.Count -gt 0) { Write-Host ("  {0} repo path(s) never appeared: {1}" -f $repoMissing.Count, ($repoMissing -join ', ')) -ForegroundColor Yellow }
+    else { Write-Host '  all repo paths present.' -ForegroundColor Green }
+    $shareMissing = Wait-ForPaths -Paths $OptionalMount -TimeoutSec $ShareWaitSec -Label 'network share(s)'
+    if ($shareMissing.Count -eq 0) { Write-Host '  all network shares present.' -ForegroundColor Green }
+}
+
+$state = @($selected | ForEach-Object { Get-RepoState $_ })
+
+Write-Host ''; Write-Host 'Lane resume plan' -ForegroundColor Cyan
+Write-Host ('-' * 104)
+'{0,-10} {1,-6} {2,-34} {3,-6} {4,-7} {5,-9} {6}' -f 'LANE','WINDOW','PATH','SESS','USABLE','RESUME?','LATEST SESSION' | Write-Host
+Write-Host ('-' * 104)
+foreach ($s in $state) {
+    $verdict = if (-not $s.PathExists) { 'NO-PATH' } elseif (-not $s.StoreExists) { 'NO-STORE' }
+               elseif ($s.Sessions -eq 0) { 'EMPTY' }
+               elseif ($s.Usable -eq 0) { 'UNUSABLE' } else { 'yes' }
+    $colour = if ($verdict -eq 'yes') { 'Green' } else { 'Red' }
+    $when = if ($s.Latest) { $s.Latest.ToString('yyyy-MM-dd HH:mm') } else { '-' }
+    '{0,-10} {1,-6} {2,-34} {3,-6} {4,-7} {5,-9} {6}' -f $s.Name,$s.Group,$s.Path,$s.Sessions,$s.Usable,$verdict,$when |
+        Write-Host -ForegroundColor $colour
+}
+Write-Host ('-' * 104)
+
+# A lane is launchable only if it has a session that can actually be continued.
+$launchable = @($state | Where-Object { $_.PathExists -and $_.StoreExists -and $_.Usable -gt 0 })
+$blocked    = @($state | Where-Object { -not ($_.PathExists -and $_.StoreExists -and $_.Usable -gt 0) })
+
+if ($blocked.Count -gt 0) {
+    Write-Host ''; Write-Host "REFUSING to resume $($blocked.Count) lane(s):" -ForegroundColor Yellow
+    foreach ($b in $blocked) {
+        $why = if (-not $b.PathExists) { 'path does not exist' }
+               elseif (-not $b.StoreExists) { "no session store at ...\$($b.SessionDir)  <- Claude has never run in this directory" }
+               elseif ($b.Sessions -eq 0) { 'session store is empty' }
+               else { "all $($b.Sessions) transcript(s) lack a session record or are unreadable — none can be continued" }
+        Write-Host "  $($b.Name): $why" -ForegroundColor Yellow
+    }
+    Write-Host '  Resuming anyway would silently start a NEW empty session, which looks like success.' -ForegroundColor Yellow
+    if (-not $AllowPartial) {
+        Write-Host '  They stay in the denominator: the run FAILS unless -AllowPartial is given.' -ForegroundColor Yellow
+    }
+}
+
+if ($Fresh) {
+    Write-Host ''; Write-Host '-Fresh set: starting NEW sessions. This does NOT continue anything.' -ForegroundColor Yellow
+    $launchable = @($state | Where-Object { $_.PathExists })
+    $blocked    = @($state | Where-Object { -not $_.PathExists })
+}
+
+$claudeArgs = @()
+if (-not $Fresh) { $claudeArgs += '--continue' }
+if ($AutoCompact -eq 'max') { $claudeArgs += @('--autocompact', '1000000') }
+$claudeCmd = (@('claude') + $claudeArgs) -join ' '
+$ClaudeExe = (Get-Command 'claude' -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+
+if ($shareMissing.Count -gt 0) {
+    Write-Host ''
+    Write-Host '################################################################' -ForegroundColor Red
+    Write-Host ' NETWORK SHARE(S) NOT PRESENT - LAUNCHING ANYWAY (this is normal)' -ForegroundColor Red
+    Write-Host '################################################################' -ForegroundColor Red
+    foreach ($m in $shareMissing) { Write-Host "  absent: $m" -ForegroundColor Red }
+    Write-Host ''
+    Write-Host '  ABSENT SHARE MEANS "I CANNOT SEE THE BOARD".' -ForegroundColor Yellow
+    Write-Host '  It does NOT mean the board is empty, and it is NOT a finding about any host.' -ForegroundColor Yellow
+    Write-Host '  DO NOT let any tool fall back to a default/local sched root - that husk' -ForegroundColor Yellow
+    Write-Host '  answers every query with plausible STALE data. Three 2026-08 incidents.' -ForegroundColor Yellow
+    Write-Host '  Remap when gavriella is back:  net use I: \\192.168.0.108\GAVRI_D /persistent:yes' -ForegroundColor Cyan
+    Write-Host ''
+}
+
+Write-Host ''
+Write-Host "Requested   : $($selected.Count)"
+Write-Host "Will launch : $($launchable.Count)"
+Write-Host "Refused     : $($blocked.Count)"
+Write-Host "Layout      : $Layout"
+Write-Host "Command     : $claudeCmd"
+Write-Host "claude exe  : $(if ($ClaudeExe) { $ClaudeExe } else { '<not on PATH - attribution falls back to executable name>' })"
+
+if ($DryRun) { Write-Host ''; Write-Host 'DRY RUN - nothing launched.' -ForegroundColor Cyan; exit $EXIT_OK }
+if ($launchable.Count -eq 0) { Write-Host 'Nothing to launch.' -ForegroundColor Yellow; exit $EXIT_NOTHING }
+
+$wt = 'wt.exe'
+if (-not (Get-Command $wt -ErrorAction SilentlyContinue)) {
+    Write-Error "Windows Terminal (wt.exe) not found on PATH."; exit $EXIT_NO_WT
+}
+
+# Attribution must be possible BEFORE anything is launched — otherwise the run could only
+# end in a count, which is exactly the check this script refuses to make.
+try { $null = Get-ProcTable }
+catch {
+    Write-Error "cannot read the process table (Win32_Process): $_`nWithout it a launch cannot be attributed to a lane, and an unattributed count is not verification. Refusing to launch."
+    exit $EXIT_NO_ATTRIB
+}
+
+# --- Per-lane launcher + handshake marker ----------------------------------------
+# Each tab runs a generated script instead of an inline command, for two reasons:
+#   * it writes a MARKER identifying lane, run and cwd before exec'ing claude, which is what
+#     makes the later verification attributable to THIS lane and THIS invocation;
+#   * an inline command would need ';' to sequence, and ';' is wt's tab separator.
+# The launcher stops on error and does NOT start claude if it could not enter the lane
+# directory: a claude started in the wrong cwd would resume the wrong conversation.
+$runId  = '{0}-{1}' -f (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'), ([guid]::NewGuid().ToString('N').Substring(0, 6))
+$RunsRoot = Join-Path $env:LOCALAPPDATA 'bk-onrestart\runs'
+$RunDir = Join-Path $RunsRoot $runId
+New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
+
+# Retention: keep the newest $KeepRuns diagnostic run dirs, drop the rest. Never fatal.
+try {
+    $old = @(Get-ChildItem -LiteralPath $RunsRoot -Directory -ErrorAction SilentlyContinue |
+             Sort-Object CreationTimeUtc -Descending | Select-Object -Skip ([Math]::Max(1, $KeepRuns)))
+    foreach ($d in $old) { Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($old.Count -gt 0) { Write-Host "  pruned $($old.Count) old run dir(s) under $RunsRoot" -ForegroundColor DarkGray }
+} catch { Write-Host "  (run-dir prune skipped: $_)" -ForegroundColor DarkGray }
+
+function New-LaneLauncher {
+    param($Lane, [string]$RunDir, [string]$RunId, [string[]]$ClaudeArgs)
+    $marker   = Join-Path $RunDir ('marker-{0}.json' -f $Lane.Key)
+    $launcher = Join-Path $RunDir ('lane-{0}.ps1'    -f $Lane.Key)
+    $qPath    = "'" + ($Lane.Path -replace "'", "''") + "'"
+    $qMarker  = "'" + ($marker    -replace "'", "''") + "'"
+    $qKey     = "'" + ($Lane.Key  -replace "'", "''") + "'"
+    $qRun     = "'" + ($RunId     -replace "'", "''") + "'"
+    $body = @"
+# generated by bk-onrestart run $RunId — regenerated every launch; do not edit
+`$ErrorActionPreference = 'Stop'
+try {
+    Set-Location -LiteralPath $qPath
+    [pscustomobject]@{
+        key        = $qKey
+        runId      = $qRun
+        pwshPid    = `$PID
+        path       = (Get-Location).Path
+        startedUtc = (Get-Date).ToUniversalTime().ToString('o')
+    } | ConvertTo-Json -Compress | Set-Content -LiteralPath $qMarker -Encoding utf8
+} catch {
+    Write-Warning "bk-onrestart: could not enter the lane directory or record the handshake: `$_"
+    Write-Warning "bk-onrestart: NOT starting claude - it would resume the wrong conversation."
+    exit 9
+}
+& claude $($ClaudeArgs -join ' ')
+"@
+    Set-Content -LiteralPath $launcher -Value $body -Encoding utf8
+    return [pscustomobject]@{
+        Name = $Lane.Name; Key = $Lane.Key; Path = $Lane.Path; Group = $Lane.Group
+        LauncherPath = $launcher; MarkerPath = $marker; State = $Lane
+    }
+}
+
+$plan = @($launchable | ForEach-Object { New-LaneLauncher -Lane $_ -RunDir $RunDir -RunId $runId -ClaudeArgs $claudeArgs })
+
+function Get-WtCommandLine {
+    param([object[]]$Lanes, [string]$WindowId)
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add((ConvertTo-NativeArg '-w')); $parts.Add((ConvertTo-NativeArg $WindowId))
+    $first = $true
+    foreach ($l in $Lanes) {
+        # BARE ';' — a quoted or backtick-escaped separator reaches wt literally and yields
+        # tabs that open and run nothing. It is the ONLY token left unquoted.
+        if (-not $first) { $parts.Add(';') }
+        foreach ($t in @('new-tab', '--title', $l.Name, '-d', $l.Path, 'pwsh', '-NoExit', '-File', $l.LauncherPath)) {
+            $parts.Add((ConvertTo-NativeArg $t))
+        }
+        $first = $false
+    }
+    return ($parts -join ' ')
+}
+
+function Start-LaneWindow {
+    param([object[]]$Lanes, [string]$WindowId)
+    Start-Process -FilePath $wt -ArgumentList (Get-WtCommandLine -Lanes $Lanes -WindowId $WindowId)
+}
+
+$launchStart = Get-Date
+
+switch ($Layout) {
+    'TwoWindows' {
+        $g1 = @($plan | Where-Object { $_.Group -eq 1 })
+        $g2 = @($plan | Where-Object { $_.Group -eq 2 })
+        if ($g1.Count) { Start-LaneWindow -Lanes $g1 -WindowId 'lanes-1'; Start-Sleep -Milliseconds 900 }
+        if ($g2.Count) { Start-LaneWindow -Lanes $g2 -WindowId 'lanes-2' }
+        Write-Host "Launched 2 windows: $($g1.Count) + $($g2.Count) tabs." -ForegroundColor Green
+    }
+    'Tabs' { Start-LaneWindow -Lanes $plan -WindowId '0'; Write-Host "Launched 1 window with $($plan.Count) tabs." -ForegroundColor Green }
+    'Windows' {
+        foreach ($l in $plan) {
+            Start-LaneWindow -Lanes @($l) -WindowId '-1'
+            Start-Sleep -Milliseconds 400
+        }
+        Write-Host "Launched $($plan.Count) windows." -ForegroundColor Green
+    }
+}
+
+# --- Verify PER LANE, by attribution — never by a count over a time window --------
+# For every REQUESTED lane (refused ones included, so they stay in the denominator):
+#   marker valid     -> the tab ran ITS OWN command, in the right run, in the right cwd
+#   claude process   -> a live descendant of the marker's PID, created after launch
+#   resume evidence  -> the store's pre-launch latest transcript grew, and NO transcript
+#                       appeared that was absent before (a new one is a silent new session)
+Write-Host ''
+Write-Host "Verifying per lane (attributed, not counted) — up to $VerifyTimeoutSec s..." -ForegroundColor Cyan
+
+$results = @{}
+foreach ($s in $selected) {
+    $results[$s.Key] = [pscustomobject]@{
+        Name = $s.Name; Key = $s.Key; Status = 'REFUSED'; Detail = 'refused before launch'; ClaudePid = $null
+    }
+}
+foreach ($l in $plan) {
+    $results[$l.Key] = [pscustomobject]@{
+        Name = $l.Name; Key = $l.Key; Status = 'NOT-LAUNCHED'
+        Detail = 'no handshake marker: the tab opened but never ran its command'; ClaudePid = $null
+    }
+}
+
+$deadline = (Get-Date).AddSeconds($VerifyTimeoutSec)
+$pendingLanes = @($plan)
+while ($pendingLanes.Count -gt 0 -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 3
+    $table = Get-ProcTable
+    $stillPending = [System.Collections.Generic.List[object]]::new()
+    foreach ($l in $pendingLanes) {
+        $r = $results[$l.Key]
+
+        if (-not (Test-Path -LiteralPath $l.MarkerPath)) { $stillPending.Add($l); continue }
+        $marker = $null
+        try { $marker = Get-Content -LiteralPath $l.MarkerPath -Raw | ConvertFrom-Json } catch { $stillPending.Add($l); continue }
+
+        $bad = Test-LaneMarker -Marker $marker -ExpectedKey $l.Key -ExpectedRunId $runId -ExpectedPath $l.Path
+        if ($bad) {
+            $r.Status = 'NOT-LAUNCHED'; $r.Detail = "handshake rejected: $bad"
+            continue   # terminal: a mismatched marker will not become correct by waiting
+        }
+        $lanePid = [int]$marker.pwshPid
+
+        # PID-reuse guard: the handshake PID must still be live AND have been created by us.
+        $laneProc = $table[$lanePid]
+        if (-not $laneProc -or ($laneProc.Created -and $laneProc.Created -lt $launchStart)) {
+            $r.Status = 'NOT-LAUNCHED'
+            $r.Detail = "handshake PID $lanePid is not a live process created by this launch"
+            $stillPending.Add($l); continue
+        }
+
+        $claude = @(Get-DescendantProcs $table $lanePid | Where-Object {
+            (Test-IsClaudeProc $_ $ClaudeExe) -and (-not $_.Created -or $_.Created -ge $launchStart)
+        })
+        if ($claude.Count -eq 0) {
+            $r.Status = 'NO-CLAUDE'
+            $r.Detail = "tab ran (handshake PID $lanePid) but no claude process descends from it yet"
+            $stillPending.Add($l); continue
+        }
+
+        $r.ClaudePid = $claude[0].ProcId
+
+        if ($Fresh) {
+            $r.Status = 'STARTED'
+            $r.Detail = "new session in $($l.Path); claude pid $($r.ClaudePid) attributed to handshake PID $lanePid"
+            continue
+        }
+
+        # Resume evidence, read from the lane's own store.
+        $now = Get-RepoState $l.State
+        $new = @($now.FileNames | Where-Object { $l.State.FileNames -notcontains $_ })
+        if ($new.Count -gt 0) {
+            $r.Status = 'SILENT-NEW'
+            $r.Detail = "claude pid $($r.ClaudePid) created a NEW transcript ($($new -join ', ')) instead of continuing"
+            continue   # terminal: the outcome is already determined, stop polling this lane
+        }
+        $grew = $false
+        if ($l.State.LatestPath -and (Test-Path -LiteralPath $l.State.LatestPath)) {
+            $f = Get-Item -LiteralPath $l.State.LatestPath
+            $grew = ($f.LastWriteTimeUtc -gt $l.State.LatestWriteUtc) -or ($f.Length -gt $l.State.LatestLength)
+        }
+        if ($grew) {
+            $r.Status = 'RESUMED'
+            $r.Detail = "claude pid $($r.ClaudePid) wrote to $(Split-Path -Leaf $l.State.LatestPath)"
+            continue
+        }
+        $r.Status = 'UNCONFIRMED'
+        $r.Detail = "claude pid $($r.ClaudePid) is live, but the store has not been written yet — resume NOT proven"
+        $stillPending.Add($l)
+    }
+    $pendingLanes = @($stillPending)
+}
+
+Write-Host ''
+Write-Host ('{0,-12} {1,-13} {2}' -f 'LANE','STATUS','EVIDENCE')
+Write-Host ('-' * 104)
+foreach ($s in $selected) {
+    $r = $results[$s.Key]
+    $colour = switch ($r.Status) {
+        'RESUMED'     { 'Green' }
+        'STARTED'     { 'Green' }
+        'UNCONFIRMED' { 'Yellow' }
+        default       { 'Red' }
+    }
+    Write-Host ('{0,-12} {1,-13} {2}' -f $r.Name, $r.Status, $r.Detail) -ForegroundColor $colour
+}
+Write-Host ('-' * 104)
+
+$outcome = Get-RunOutcome -Results @($results.Values) -RequestedCount $selected.Count `
+                          -AllowPartial ([bool]$AllowPartial) -AllowUnconfirmed ([bool]$AllowUnconfirmedResume)
+
+Write-Host ("requested {0} | proven {1} | unconfirmed {2} | silent-new {3} | not-launched {4} | refused {5}" -f `
+    $outcome.Requested, $outcome.Proven, $outcome.Unconfirmed, $outcome.SilentNew, $outcome.NotLaunched, $outcome.Refused)
+Write-Host "  run artifacts (markers + per-lane launchers): $RunDir" -ForegroundColor DarkGray
+
+if ($outcome.Status -notin @('VERIFIED', 'ACCEPTED-WITH-EXCEPTIONS')) {
+    $unproven = @($results.Values | Where-Object { $_.Status -notin @('RESUMED','STARTED') })
+    foreach ($u in $unproven) { Write-Host ("  unproven: {0} [{1}] {2}" -f $u.Name, $u.Status, $u.Detail) -ForegroundColor Red }
+    Write-Host ("{0}: {1}" -f $outcome.Status, $outcome.Message) -ForegroundColor Red
+    exit $outcome.ExitCode
+}
+if ($outcome.Status -eq 'ACCEPTED-WITH-EXCEPTIONS') {
+    foreach ($u in @($results.Values | Where-Object { $_.Status -notin @('RESUMED','STARTED') })) {
+        Write-Host ("  unproven (accepted): {0} [{1}] {2}" -f $u.Name, $u.Status, $u.Detail) -ForegroundColor Yellow
+    }
+    Write-Host ("ACCEPTED-WITH-EXCEPTIONS: {0}" -f $outcome.Message) -ForegroundColor Yellow
+    exit $outcome.ExitCode
+}
+Write-Host ("VERIFIED: {0}" -f $outcome.Message) -ForegroundColor Green
+exit $outcome.ExitCode
+
+--- FILE (NEW): scripts/tests/onrestart-launch.tests.ps1 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+
+<#
+.SYNOPSIS
+  Fault-injection harness for scripts/onrestart-launch.ps1.
+
+.DESCRIPTION
+  Regression cover for two rounds of codexreview findings:
+
+    round 1 (run 20260821T101500Z-rel)
+      F1 critical  verification could pass on claude processes this launch did not create
+      F2 high      lanes refused before launch left the denominator, so a partial run exited 0
+      F3 high      any *.jsonl filename counted as a resumable session
+      F4 medium    Start-Process argument serialization could misparse names and paths
+
+    round 2 (run 20260821T123119Z-rel2, against the round-1 fix)
+      N1 critical  -AllowPartial / -AllowUnconfirmedResume reached a "VERIFIED" claim
+      N2 critical  duplicate lane names collapsed two lanes into one verification identity
+      N3 critical  the launcher could start claude in the wrong cwd; markers went unvalidated
+      N4 medium    a '^claude' prefix test accepted claudette.exe and claude-malware.exe
+      N5 low       per-run launcher/marker directories accumulated without bound
+
+  Every negative case is a FAULT INJECTION, not an absence. F4 reproduces the pre-fix
+  corruption on the same argv it then round-trips correctly; N1 drives the real decision
+  function through every switch combination including the false-green it used to produce;
+  N3 runs the REAL generated launcher against a non-existent directory and asserts it
+  refuses to start claude; N4 launches real processes named claude.exe and claudette.exe
+  and asserts only the first is attributed.
+
+  Function bodies are extracted from the shipped file via the PowerShell AST, so the tests
+  exercise the code that ships, not a copy of it.
+
+.EXAMPLE
+  pwsh -NoProfile -File scripts\tests\onrestart-launch.tests.ps1
+#>
+$ErrorActionPreference = 'Stop'
+$src = Join-Path (Split-Path -Parent $PSScriptRoot) 'onrestart-launch.ps1'
+if (-not (Test-Path -LiteralPath $src)) { throw "cannot find the script under test at $src" }
+
+$errs = $null; $toks = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$toks, [ref]$errs)
+if ($errs) { throw "parse errors in $src" }
+$want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath','Get-LaneIdentityConflicts',
+          'ConvertTo-SessionDirName','Get-SessionFileId','Test-SessionTailIntact','Test-ResumableSessionFile',
+          'Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc','Test-LaneMarker','Get-RunOutcome',
+          'New-LaneLauncher','Get-WtCommandLine')
+$found = @()
+foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
+}
+$missing = @($want | Where-Object { $found -notcontains $_ })
+if ($missing) { throw "did not find in $src : $($missing -join ', ')" }
+
+$pass = 0; $fail = 0
+function Check([string]$Name, [bool]$Cond, [string]$Got = '') {
+    if ($Cond) { $script:pass++; Write-Host ("  PASS  {0}" -f $Name) -ForegroundColor Green }
+    else       { $script:fail++; Write-Host ("  FAIL  {0}   got: {1}" -f $Name, $Got) -ForegroundColor Red }
+}
+$tmp = Join-Path $env:TEMP ('onrestart-test-' + [guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+function Res([string]$Status) { [pscustomobject]@{ Name = $Status; Key = $Status; Status = $Status } }
+
+Write-Host ''
+Write-Host 'F4 - native argument quoting' -ForegroundColor Cyan
+Check 'plain token is not quoted'        ((ConvertTo-NativeArg 'new-tab') -ceq 'new-tab')            (ConvertTo-NativeArg 'new-tab')
+Check 'token with space is quoted'       ((ConvertTo-NativeArg 'my lane') -ceq '"my lane"')          (ConvertTo-NativeArg 'my lane')
+Check 'embedded quote is escaped'        ((ConvertTo-NativeArg 'a"b c') -ceq '"a\"b c"')             (ConvertTo-NativeArg 'a"b c')
+Check 'trailing backslash is doubled'    ((ConvertTo-NativeArg 'C:\x y\') -ceq '"C:\x y\\"')         (ConvertTo-NativeArg 'C:\x y\')
+Check 'interior backslash left alone'    ((ConvertTo-NativeArg 'C:\x y\z') -ceq '"C:\x y\z"')        (ConvertTo-NativeArg 'C:\x y\z')
+Check 'empty string is quoted'           ((ConvertTo-NativeArg '') -ceq '""')                        (ConvertTo-NativeArg '')
+$threw = $false; try { ConvertTo-NativeArg "a`tb" | Out-Null } catch { $threw = $true }
+Check 'control character refuses'        $threw
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class ArgvRT {
+  [DllImport("shell32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine, out int pNumArgs);
+  public static string[] Split(string cmdline) {
+    int n; IntPtr p = CommandLineToArgvW(cmdline, out n);
+    if (p == IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
+    try { var r = new string[n];
+      for (int i = 0; i < n; i++) r[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+      return r; }
+    finally { Marshal.FreeHGlobal(p); }
+  }
+}
+'@ -ErrorAction SilentlyContinue
+$hostile = @('new-tab', '--title', 'lane with space', '-d', 'D:\path with space\repo', 'pwsh',
+             '-NoExit', '-File', 'D:\a "b"\lane.ps1', 'C:\ends\with\')
+$line = ($hostile | ForEach-Object { ConvertTo-NativeArg $_ }) -join ' '
+$back = [ArgvRT]::Split('wt.exe ' + $line) | Select-Object -Skip 1
+$same = ($back.Count -eq $hostile.Count)
+if ($same) { for ($i = 0; $i -lt $hostile.Count; $i++) { if ($back[$i] -cne $hostile[$i]) { $same = $false } } }
+Check 'hostile argv round-trips through CommandLineToArgvW' $same ($back -join ' | ')
+$naiveBack = [ArgvRT]::Split('wt.exe ' + ($hostile -join ' ')) | Select-Object -Skip 1
+Check 'unquoted join DOES corrupt the same argv (defect reproduced)' ($naiveBack.Count -ne $hostile.Count) ("$($naiveBack.Count) tokens vs $($hostile.Count)")
+
+# The real wt command line: separators must survive as BARE tokens, everything else quoted.
+$lanes = @(
+    [pscustomobject]@{ Name='lane one'; Path='D:\a b\repo'; LauncherPath='D:\runs\lane-00.ps1' },
+    [pscustomobject]@{ Name='two';      Path='D:\c\repo';   LauncherPath='D:\runs\lane-01.ps1' }
+)
+$cl = Get-WtCommandLine -Lanes $lanes -WindowId 'lanes-1'
+Check 'wt command line keeps exactly one bare separator per extra tab' (([regex]::Matches($cl, '(^| );( |$)')).Count -eq 1) $cl
+Check 'wt command line quotes the spaced lane name'                   ($cl -match '"lane one"') $cl
+$wtBack = [ArgvRT]::Split('wt.exe ' + $cl) | Select-Object -Skip 1
+Check 'wt argv round-trips with the separator intact'  (($wtBack -contains ';') -and ($wtBack -contains 'lane one') -and ($wtBack -contains 'D:\a b\repo')) ($wtBack -join ' | ')
+
+Write-Host ''
+Write-Host 'F3 - session store precheck' -ForegroundColor Cyan
+function NewJsonl([string]$name, [string]$content) {
+    $p = Join-Path $tmp $name; Set-Content -LiteralPath $p -Value $content -Encoding utf8 -NoNewline; return (Get-Item $p)
+}
+$zero = Join-Path $tmp 'zero.jsonl'; New-Item -ItemType File -Path $zero -Force | Out-Null
+$sess = '{"type":"session","sessionId":"abc-123","mode":"interactive"}'
+Check 'zero-byte transcript refused'            (-not (Test-ResumableSessionFile (Get-Item $zero)))
+Check 'unparseable transcript refused'          (-not (Test-ResumableSessionFile (NewJsonl 'garbage.jsonl' 'not json at all')))
+Check 'blank-lines-only refused'                (-not (Test-ResumableSessionFile (NewJsonl 'blank.jsonl' "`n`n")))
+Check 'valid JSON without sessionId refused'    (-not (Test-ResumableSessionFile (NewJsonl 'nosid.jsonl' '{"type":"user"}')))
+Check 'bare {} refused'                         (-not (Test-ResumableSessionFile (NewJsonl 'empty-obj.jsonl' '{}')))
+Check 'JSON array first line refused'           (-not (Test-ResumableSessionFile (NewJsonl 'array.jsonl' '[1,2,3]')))
+Check 'empty sessionId refused'                 (-not (Test-ResumableSessionFile (NewJsonl 'blanksid.jsonl' '{"sessionId":"   "}')))
+Check 'numeric sessionId refused'               (-not (Test-ResumableSessionFile (NewJsonl 'numsid.jsonl' '{"sessionId":42}')))
+Check 'session header alone accepted'           (Test-ResumableSessionFile (NewJsonl 'header.jsonl' $sess))
+Check 'leading blank line tolerated'            (Test-ResumableSessionFile (NewJsonl 'lead.jsonl' ("`n" + $sess)))
+Check 'valid header + records accepted'         (Test-ResumableSessionFile (NewJsonl 'full.jsonl' ($sess + "`n" + '{"type":"user","uuid":"u1"}')))
+Check 'torn trailing line over real content tolerated' (Test-ResumableSessionFile (NewJsonl 'torn.jsonl' ($sess + "`n" + '{"type":"user","uuid":"u1"}' + "`n" + '{"type":"assist')))
+Check 'one torn line after the header tolerated' (Test-ResumableSessionFile (NewJsonl 'headjunk.jsonl' ($sess + "`n" + 'zzzz')))
+Check 'session id is extracted'                 ((Get-SessionFileId (NewJsonl 'sid.jsonl' $sess)) -ceq 'abc-123') (Get-SessionFileId (NewJsonl 'sid.jsonl' $sess))
+
+# Beyond the tail window the header is out of reach, so only the tail can vouch for the
+# file. A transcript whose last 64 KB holds no parseable record is corrupt, not merely torn.
+$bulk = (1..3000 | ForEach-Object { '{"type":"user","uuid":"u' + $_ + '","text":"padpadpadpadpadpadpadpad"}' }) -join "`n"
+$bigOk  = NewJsonl 'big-ok.jsonl'  ($sess + "`n" + $bulk)
+$bigBad = NewJsonl 'big-bad.jsonl' ($sess + "`n" + $bulk + "`n" + ('z' * 70000))
+Check 'large transcript is beyond the tail window'  ($bigOk.Length -gt 65536) "$($bigOk.Length) bytes"
+Check 'large transcript with an intact tail accepted' (Test-ResumableSessionFile $bigOk)
+Check 'large transcript with a corrupted tail refused' (-not (Test-ResumableSessionFile $bigBad)) "$($bigBad.Length) bytes"
+
+Write-Host ''
+Write-Host 'N2 - lane identity uniqueness' -ForegroundColor Cyan
+$dupName = @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='a';Path='D:\y'})
+$dupPath = @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='b';Path='D:\X\'})
+$uniq    = @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='b';Path='D:\y'})
+Check 'duplicate lane name detected'                     ((Get-LaneIdentityConflicts $dupName).Count -ge 1)
+Check 'duplicate path detected despite case and slash'   ((Get-LaneIdentityConflicts $dupPath).Count -ge 1) ((Get-LaneIdentityConflicts $dupPath) -join '; ')
+Check 'unique lanes produce no conflict'                 ((Get-LaneIdentityConflicts $uniq).Count -eq 0)   ((Get-LaneIdentityConflicts $uniq) -join '; ')
+
+Write-Host ''
+Write-Host 'N3 - handshake marker validation' -ForegroundColor Cyan
+$good = [pscustomobject]@{ key='00-glpnet'; runId='RUN1'; pwshPid=1234; path='D:\repo\glpnet' }
+Check 'valid marker accepted'          ($null -eq (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet'))       (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet')
+Check 'trailing slash still matches'   ($null -eq (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet\'))      (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet\')
+Check 'marker from another lane rejected'  ($null -ne (Test-LaneMarker $good '01-mstack' 'RUN1' 'D:\repo\glpnet'))
+Check 'marker from another run rejected'   ($null -ne (Test-LaneMarker $good '00-glpnet' 'RUN2' 'D:\repo\glpnet'))
+Check 'marker from another cwd rejected'   ($null -ne (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\other'))
+Check 'marker without a PID rejected'      ($null -ne (Test-LaneMarker ([pscustomobject]@{key='00-glpnet';runId='RUN1';pwshPid=0;path='D:\repo\glpnet'}) '00-glpnet' 'RUN1' 'D:\repo\glpnet'))
+Check 'null marker rejected'               ($null -ne (Test-LaneMarker $null '00-glpnet' 'RUN1' 'D:\repo\glpnet'))
+
+Write-Host ''
+Write-Host 'N1 / F2 - final outcome decision' -ForegroundColor Cyan
+$allOk = @((Res 'RESUMED'), (Res 'RESUMED'), (Res 'RESUMED'))
+$o = Get-RunOutcome -Results $allOk -RequestedCount 3 -AllowPartial $false -AllowUnconfirmed $false
+Check 'all proven -> VERIFIED, exit 0'   ($o.Status -eq 'VERIFIED' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+$withRef = @((Res 'RESUMED'), (Res 'RESUMED'), (Res 'REFUSED'))
+$o = Get-RunOutcome -Results $withRef -RequestedCount 3 -AllowPartial $false -AllowUnconfirmed $false
+Check 'refused lane fails the run (F2)'  ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 6) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results $withRef -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $false
+Check 'accepted refusal is NOT called VERIFIED (N1)' ($o.Status -eq 'ACCEPTED-WITH-EXCEPTIONS' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+Check 'accepted refusal reports the honest proven count' ($o.Proven -eq 2 -and $o.Requested -eq 3) "$($o.Proven)/$($o.Requested)"
+$withUnc = @((Res 'RESUMED'), (Res 'UNCONFIRMED'))
+$o = Get-RunOutcome -Results $withUnc -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $false
+Check 'unconfirmed lane is UNPROVEN, exit 5' ($o.Status -eq 'UNPROVEN' -and $o.ExitCode -eq 5) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results $withUnc -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $true
+Check 'accepted unconfirmed is NOT VERIFIED (N1)' ($o.Status -eq 'ACCEPTED-WITH-EXCEPTIONS' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+$noneProven = @((Res 'REFUSED'), (Res 'REFUSED'))
+$o = Get-RunOutcome -Results $noneProven -RequestedCount 2 -AllowPartial $true -AllowUnconfirmed $true
+Check 'zero proven can NEVER succeed, even with both switches (N1)' ($o.ExitCode -eq 9 -and $o.Status -eq 'FAILED') "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'SILENT-NEW'), (Res 'REFUSED')) -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $true
+Check 'silent-new outranks every switch'  ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 7) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'NO-CLAUDE'), (Res 'REFUSED')) -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $true
+Check 'not-launched outranks accepted refusals' ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 4) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'STARTED'), (Res 'STARTED')) -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $false
+Check '-Fresh STARTED counts as proven'   ($o.Status -eq 'VERIFIED' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+
+Write-Host ''
+Write-Host 'N4 / F1 - process attribution (synthetic table)' -ForegroundColor Cyan
+function P($id, $parent, $name, $cmd) { [pscustomobject]@{ ProcId=$id; ParentId=$parent; Name=$name; CommandLine=$cmd; Created=(Get-Date) } }
+$t = @{}
+foreach ($p in @(
+    (P 100 1   'pwsh.exe'      'pwsh -File lane-00.ps1'),
+    (P 101 100 'claude.exe'    'claude --continue'),
+    (P 200 1   'pwsh.exe'      'pwsh -File lane-01.ps1'),
+    (P 201 200 'claudette.exe' 'claudette --continue'),
+    (P 300 1   'claude.exe'    'claude --continue'),
+    (P 400 401 'pwsh.exe'      'loop-a'), (P 401 400 'pwsh.exe' 'loop-b')
+)) { $t[$p.ProcId] = $p }
+$da = @(Get-DescendantProcs $t 100 | Where-Object { Test-IsClaudeProc $_ $null })
+$db = @(Get-DescendantProcs $t 200 | Where-Object { Test-IsClaudeProc $_ $null })
+Check 'lane A attributes its own claude'                       ($da.Count -eq 1 -and $da[0].ProcId -eq 101) ($da.ProcId -join ',')
+Check 'lane B is NOT satisfied by the unrelated claude 300'    ($db.Count -eq 0)                            ($db.ProcId -join ',')
+Check 'lane B is NOT satisfied by its own claudette.exe (N4)'  ($db.Count -eq 0)                            ($db.ProcId -join ',')
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$cyc = @(Get-DescendantProcs $t 400); $sw.Stop()
+Check 'parent cycle terminates and yields the cycle members only' (($cyc.Count -eq 2) -and ($sw.Elapsed.TotalSeconds -lt 5)) ("$($cyc.Count) nodes in $([int]$sw.Elapsed.TotalMilliseconds) ms")
+Check 'claude.exe detected by exact name'      (Test-IsClaudeProc (P 1 0 'claude.exe' $null) $null)
+Check 'claudette.exe rejected (N4)'            (-not (Test-IsClaudeProc (P 1 0 'claudette.exe' 'claudette') $null))
+Check 'claude-malware.exe rejected (N4)'       (-not (Test-IsClaudeProc (P 1 0 'claude-malware.exe' 'C:\evil\claude-malware.exe') $null))
+Check 'node running the claude cli detected'   (Test-IsClaudeProc (P 1 0 'node.exe' 'node "C:\Users\x\AppData\claude\cli.js" --continue') $null)
+Check 'resolved claude path matched literally' (Test-IsClaudeProc (P 1 0 'node.exe' '"C:\Users\g\.local\bin\claude.exe" --continue') 'C:\Users\g\.local\bin\claude.exe')
+Check 'plain pwsh lane script NOT claude'      (-not (Test-IsClaudeProc (P 1 0 'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-00-glpnet.ps1') $null))
+Check 'notepad NOT claude'                     (-not (Test-IsClaudeProc (P 1 0 'notepad.exe' 'notepad') $null))
+
+Write-Host ''
+Write-Host 'N3 - LIVE: the real generated launcher' -ForegroundColor Cyan
+# A stub on PATH stands in for claude, so a regression that DOES reach `& claude` is
+# detected by its distinct exit code instead of opening a real interactive session.
+$stub = Join-Path $tmp 'stub'; New-Item -ItemType Directory -Path $stub -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $stub 'claude.cmd') -Encoding ascii -Value @(
+    '@echo off', 'ping -n 60 127.0.0.1 >nul', 'exit /b 3')
+$env:PATH = "$stub;$env:PATH"
+$runDir = Join-Path $tmp 'run'; New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+$RUNID = 'TESTRUN1'
+$goodLane = [pscustomobject]@{ Name='good'; Key='00-good'; Path=$tmp;                       Group=1 }
+$badLane  = [pscustomobject]@{ Name='bad';  Key='01-bad';  Path=(Join-Path $tmp 'no-such'); Group=1 }
+$gp = New-LaneLauncher -Lane $goodLane -RunDir $runDir -RunId $RUNID -ClaudeArgs @('--continue')
+$bp = New-LaneLauncher -Lane $badLane  -RunDir $runDir -RunId $RUNID -ClaudeArgs @('--continue')
+
+# Injection: the lane directory does not exist. The launcher must NOT start claude.
+$bproc = Start-Process pwsh -PassThru -Wait -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',$bp.LauncherPath)
+Check 'bad-cwd launcher exits 9 without starting claude (N3)' ($bproc.ExitCode -eq 9) "exit $($bproc.ExitCode) (3 would mean it reached claude)"
+Check 'bad-cwd launcher wrote no handshake marker (N3)'       (-not (Test-Path -LiteralPath $bp.MarkerPath))
+
+$launchStart = Get-Date
+$gproc = Start-Process pwsh -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',$gp.LauncherPath)
+$dl = (Get-Date).AddSeconds(40); $hit = @()
+while ((Get-Date) -lt $dl) {
+    Start-Sleep -Seconds 2
+    if (-not (Test-Path -LiteralPath $gp.MarkerPath)) { continue }
+    $m = $null; try { $m = Get-Content -LiteralPath $gp.MarkerPath -Raw | ConvertFrom-Json } catch { continue }
+    if (Test-LaneMarker $m '00-good' $RUNID $tmp) { continue }
+    $tbl = Get-ProcTable
+    $hit = @(Get-DescendantProcs $tbl ([int]$m.pwshPid) | Where-Object {
+        (Test-IsClaudeProc $_ (Join-Path $stub 'claude.cmd')) -and (-not $_.Created -or $_.Created -ge $launchStart) })
+    if ($hit.Count -ge 1) { break }
+}
+$marker = $null; if (Test-Path -LiteralPath $gp.MarkerPath) { $marker = Get-Content -LiteralPath $gp.MarkerPath -Raw | ConvertFrom-Json }
+Check 'good launcher wrote a marker'                       ($null -ne $marker)
+Check 'marker validates against lane, run and cwd (N3)'    ($null -ne $marker -and $null -eq (Test-LaneMarker $marker '00-good' $RUNID $tmp)) (Test-LaneMarker $marker '00-good' $RUNID $tmp)
+Check 'marker is rejected for a different run id (N3)'     ($null -ne $marker -and $null -ne (Test-LaneMarker $marker '00-good' 'OTHERRUN' $tmp))
+Check 'claude attributed to the good lane handshake (F1)'  ($hit.Count -ge 1) ("pid $($marker.pwshPid) -> $($hit.ProcId -join ',')")
+try { Stop-Process -Id $gproc.Id -Force -ErrorAction Stop } catch { }
+
+Write-Host ''
+Write-Host 'N4 - LIVE: real processes named claude.exe and claudette.exe' -ForegroundColor Cyan
+$ping = Join-Path $env:SystemRoot 'System32\ping.exe'
+$realClaude = Join-Path $tmp 'claude.exe'; Copy-Item -LiteralPath $ping -Destination $realClaude -Force
+$lookalike  = Join-Path $tmp 'claudette.exe'; Copy-Item -LiteralPath $ping -Destination $lookalike -Force
+$launchStart2 = Get-Date
+$pc = Start-Process -FilePath $realClaude -PassThru -WindowStyle Hidden -ArgumentList @('-n','30','127.0.0.1')
+$pl = Start-Process -FilePath $lookalike  -PassThru -WindowStyle Hidden -ArgumentList @('-n','30','127.0.0.1')
+Start-Sleep -Seconds 3
+$tbl2 = Get-ProcTable
+$cProc = $tbl2[$pc.Id]; $lProc = $tbl2[$pl.Id]
+Check 'a real process named claude.exe IS attributed (N4)'     ($null -ne $cProc -and (Test-IsClaudeProc $cProc $null)) ("$($cProc.Name)")
+Check 'a real process named claudette.exe is NOT (N4)'         ($null -ne $lProc -and -not (Test-IsClaudeProc $lProc $null)) ("$($lProc.Name)")
+foreach ($p in @($pc, $pl)) { try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { } }
+
+Write-Host ''
+Write-Host 'F2 - lane value validation' -ForegroundColor Cyan
+foreach ($bad in @('a;b', 'a"b', "a`tb", '')) {
+    $threw = $false; try { Assert-SafeLaneValue $bad 'lane name' 'x' } catch { $threw = $true }
+    Check ("refuses lane value '{0}'" -f ($bad -replace "`t", '<TAB>')) $threw
+}
+Check 'accepts an ordinary lane name' (& { try { Assert-SafeLaneValue 'glpnet' 'lane name' 'glpnet'; $true } catch { $false } })
+
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*$tmp*" } |
+    ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
+Start-Sleep -Seconds 1
+Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host ''
+Write-Host ("RESULT  passed {0}  failed {1}" -f $pass, $fail) -ForegroundColor $(if ($fail) { 'Red' } else { 'Green' })
+exit $(if ($fail) { 1 } else { 0 })

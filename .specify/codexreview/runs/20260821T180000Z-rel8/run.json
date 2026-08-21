@@ -1,0 +1,34 @@
+{
+ "run_id": "20260821T180000Z-rel8",
+ "at": "2026-08-21T18:00:00Z",
+ "scope": "re-review of the round-7 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The cmd.exe and unrestricted CLI-token rules still allow unrelated descendants to be reported as attributed Claude processes. In addition, NTFS tunneling plus an unchanged header sessionId can make a same-name replacement appear to be continuation of the snapshotted transcript. Each defect can produce exit 0 without verifying the claimed subject.",
+ "harness_verdict": "WEAK",
+ "prior_findings": {
+  "F3": "PARTIAL",
+  "J2": "CLOSED",
+  "J4": "OPEN",
+  "J5": "OPEN",
+  "G1": "OPEN",
+  "G2": "PARTIAL",
+  "G3": "OPEN",
+  "G4": "CLOSED"
+ },
+ "findings_count": 4,
+ "severities": {
+  "high": 3,
+  "low": 1
+ },
+ "blocking": [
+  "E1",
+  "E2",
+  "E3"
+ ]
+}

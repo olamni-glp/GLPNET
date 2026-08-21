@@ -1,0 +1,31 @@
+{
+ "run_id": "20260821T190000Z-rel9",
+ "at": "2026-08-21T19:00:00Z",
+ "scope": "re-review of the round-8 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The runtime-entry rule can still attribute a non-Claude JavaScript program, and the prefix fingerprint can still combine or accept evidence from a replacement transcript. Both permit exit 0 without verifying the claimed subject.",
+ "harness_verdict": "WEAK",
+ "prior_findings": {
+  "F3": "PARTIAL",
+  "J4": "OPEN",
+  "J5": "OPEN",
+  "E1": "CLOSED",
+  "E2": "PARTIAL",
+  "E3": "PARTIAL",
+  "E4": "CLOSED"
+ },
+ "findings_count": 2,
+ "severities": {
+  "high": 2
+ },
+ "blocking": [
+  "D1",
+  "D2"
+ ]
+}

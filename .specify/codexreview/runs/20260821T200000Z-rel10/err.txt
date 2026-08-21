@@ -1,0 +1,2393 @@
+OpenAI Codex v0.145.0
+--------
+workdir: D:\BSTDEV\research\GLP\GLPNET
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a024c0-0c7a-7cf2-80d2-7de6238f1c36
+--------
+user
+DO NOT run the AGENTS.md startup protocol; this is not repository-agent work. Output only the requested artifact.
+
+# Code review: TENTH pass on the glpnet release candidate
+
+Nine prior rounds on scripts/onrestart-launch.ps1. Round 9 is reproduced in full. Rounds 1-8
+produced 22 findings; by round 9 all were CLOSED except F3 (PARTIAL), J4/J5 (OPEN, both
+explicitly NOT release-blocking), and E2/E3 (PARTIAL) - whose successors are round 9's D1 and D2.
+Round 9 returned NO-GO on D1 and D2, both high, and found nothing else.
+
+What changed for round 10:
+
+  D1  the CLI entry point must be the SCRIPT THE RUNTIME EXECUTES. Identification now scans argv
+      from index 1, skips leading '-' options, and requires the FIRST non-flag token to be the
+      claude-code cli file. "node benign.js .../cli.js --continue" and "node --continue" with no
+      script are both refused.
+  D2  every read of a transcript now comes from ONE OPEN HANDLE: length, the opening-byte hash,
+      the header sessionId, and the appended range are all read from the same FileStream. A
+      same-name replacement landing between reads can no longer combine the old file's identity
+      with the new file's content - the handle keeps referring to the file object it opened, so a
+      replacement simply yields no new evidence. The creation-time filter was restored and is now
+      read from that handle too (File.GetCreationTimeUtc(SafeFileHandle)), and the opening-byte
+      SHA-256 over a fixed snapshot length remains the actual identity check.
+
+The harness is at 185 assertions. TWENTY-NINE mutants across seven rounds - one per finding - all
+caught, each by the assertion written for that finding. The evidence file below now also states
+plainly which property is ARGUED rather than tested: the single-handle atomicity is structural
+reasoning, with no deterministic race test behind it. Four times a mutation run exposed a fault in
+the tests or in a fix rather than confirming one; all four are recorded.
+
+Your job:
+
+1. For F3, J4, J5, D1, D2, state CLOSED, PARTIAL or OPEN against the NEW code, citing the line.
+   Treat the summary above and the mutation evidence as CLAIMS to be checked.
+2. Find defects the round-9 changes introduced.
+3. Judge the harness, naming what remains untested.
+
+Be decisive. Mark release_blocking true ONLY for a defect that lets the script report success
+without having verified its subject, or that would fail healthy lanes in normal operation.
+Everything else is a refinement: list it, but do not withhold GO for it.
+
+Scope, so severity is calibrated: this is a prototype launcher for one developer's personal fleet
+of Windows machines. It runs as that user, launches that user's own tool, and reads that user's
+own transcripts. An adversary who can already execute arbitrary processes inside the launched
+process tree, or replace files in the user's own profile between two reads, has already won by
+every other route and is OUTSIDE this script's threat model. Residual forgeries that require that
+capability are refinements, not blockers. The standard to apply is feature 078's - "no check may
+pass without actually running and verifying its subject" - against ORDINARY failure, which is what
+078 exists to catch: a tab that opened and ran nothing, a session silently replaced by an empty
+one, a partial launch reported as success.
+
+If nothing release-blocking under that standard remains, say GO. Emit VALID JSON.
+
+{"prior_findings":[{"id":"F3","status":"CLOSED|PARTIAL|OPEN","evidence":"..."}],
+ "findings":[{"id":"C1","severity":"critical|high|medium|low","file":"...","line":<int>,"title":"...","detail":"...","recommendation":"...","release_blocking":true|false}],
+ "harness_verdict":"SOUND|WEAK|UNSOUND","harness_reason":"...",
+ "release_verdict":"GO|NO-GO","verdict_reason":"..."}
+
+--- PRIOR ROUND 9 ---
+{
+  "prior_findings": [
+    {
+      "id": "F3",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:391-438 still validates only the widened tail unless -DeepValidate is selected. The limitation is explicitly disclosed and accurately tested."
+    },
+    {
+      "id": "J4",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:449-495 still performs separate path, metadata, fingerprint, header and range reads without retaining one file handle. Concurrent disappearance, unreadability or truncation generally returns null and is retried; replacement between successful reads can still mix evidence from different file instances."
+    },
+    {
+      "id": "J5",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:1195-1207 retains RunLockHandle without an explicit disposal path. Process exit releases it, so this remains a non-blocking lifecycle refinement."
+    },
+    {
+      "id": "E1",
+      "status": "CLOSED",
+      "evidence": "scripts/onrestart-launch.ps1:685-697 locates a standalone /c or /k, rejects a missing command, and requires ClaudePath to be either the following token or argv[0] of that packed command string. The former cmd /c echo and no-/c cases no longer identify."
+    },
+    {
+      "id": "E2",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:702-708 now requires the process image filename to be node, bun or deno, closing the arbitrary-image and renamed-runtime examples. However, it still searches every argv token for cli.js/mjs/cjs rather than requiring that token to occupy the runtime's script-entry position."
+    },
+    {
+      "id": "E3",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:465-480 detects changed or unreadable snapshotted opening bytes, but a content prefix is not file identity: a replacement preserving the snapshotted prefix passes. Lines 457-495 also leave a TOCTOU interval because the fingerprint, header and appended range are read through separate opens."
+    },
+    {
+      "id": "E4",
+      "status": "CLOSED",
+      "evidence": "scripts/onrestart-launch.ps1:620-668 implements the distinct argv[0] rule and ordinary subsequent-argument rules. The harness differentially compares fourteen cases with CommandLineToArgvW, including cases that distinguish argv[0] handling."
+    }
+  ],
+  "findings": [
+    {
+      "id": "D1",
+      "severity": "high",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 706,
+      "title": "JavaScript runtime attribution does not require the Claude CLI to be the executed script",
+      "detail": "Any node.exe, bun.exe or deno.exe process containing a later argument ending in claude-code/cli.js, cli.mjs or cli.cjs is identified. For example, node benign.js C:\\np\\node_modules\\@anthropic-ai\\claude-code\\cli.js --continue satisfies both identification and argument checks although benign.js is the executed program. This can produce successful attribution without verifying Claude.",
+      "recommendation": "Parse the runtime's supported option prefix and require the Claude CLI path at the actual script-entry position. Add a negative test with another script first and the Claude CLI path only as argument data.",
+      "release_blocking": true
+    },
+    {
+      "id": "D2",
+      "severity": "high",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 465,
+      "title": "Opening-byte fingerprint does not establish stable file identity",
+      "detail": "The first 4096 bytes can be reproduced by a same-name replacement, after which an expected-session record beyond LatestLength yields RESUMED. Additionally, Get-FileHeadHash, Get-SessionFileId and Read-FileRange open the path independently, so replacement between those reads can combine the old file's fingerprint with the replacement's appended evidence. The code therefore can report success without proving continuation of the snapshotted file.",
+      "recommendation": "Retain an open handle to the snapshotted transcript and obtain all evidence through that handle, or capture and recheck a stable NTFS file identifier around the complete evidence read. Test a replacement with an identical prefix and a concurrent replacement between identity and appended-range reads.",
+      "release_blocking": true
+    }
+  ],
+  "harness_verdict": "WEAK",
+  "harness_reason": "The 180 assertions, AST extraction, platform differential check and twenty-six caught mutants provide substantial regression evidence. The harness still does not test a genuine JS runtime executing another script while carrying the Claude CLI path as argument data; a replacement preserving the complete snapshotted head; a null snapshot hash caused by a capture-time race; or replacement between the separate fingerprint, header and appended-range opens. It also lacks repeated concurrent replacement/truncation, lock-creation failure and explicit disposal, multi-gigabyte record performance, real Task Scheduler execution, and a complete wt/PATH/launch/poll/output/exit run.",
+  "release_verdict": "NO-GO",
+  "verdict_reason": "The runtime-entry rule can still attribute a non-Claude JavaScript program, and the prefix fingerprint can still combine or accept evidence from a replacement transcript. Both permit exit 0 without verifying the claimed subject."
+}
+
+--- MUTATION EVIDENCE (measured, GAVRIELLA 2026-08-21) ---
+# Mutation evidence for `scripts/tests/onrestart-launch.tests.ps1`
+
+Round 3 rated the harness **UNSOUND**, and it was right about the worst part: the harness
+*asserted* that a `ping.exe` copied to `claude.exe` was attributed, which institutionalized M1.
+
+A harness that cannot fail proves nothing, so the rewritten harness is measured rather than
+claimed: each defect the reviews found is **reintroduced into a copy of the shipped script** and
+the harness re-run against the mutant. Host GAVRIELLA, 2026-08-21.
+
+## Round 1–3 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertions that caught it |
+|---|---|---|---|
+| `M1-name-prefix` | `Test-IsClaudeProc` accepts any process whose name starts with `claude` | **96 / 8 fail**, exit 1 | RENAMED executable refused (M1) · claudette.exe refused (N4) · claude-malware.exe refused (N4) · right image but WRONG args refused |
+| `N1-zero-proven-verified` | `Get-RunOutcome` drops the zero-proven guard and reaches VERIFIED | **100 / 4 fail**, exit 1 | accepted refusal is NOT VERIFIED · accepted unconfirmed is NOT VERIFIED · zero proven can never succeed · exhaustive 8×8×2×2 sweep (28 offending combinations named) |
+| `M3-lax-tail` | `Test-SessionTailIntact` passes if any one record parses | **102 / 2 fail**, exit 1 | a COMPLETE corrupt line refused · many complete corrupt lines refused |
+| `M2-mtime-evidence` | `Get-ResumeEvidence` accepts an mtime bump as proof | **98 / 6 fail**, exit 1 | a timestamp touch is NOT evidence (M2) · no change yields no evidence · a partial appended line is NOT evidence · appended foreign sessionId is WRONG-SESSION |
+
+## Round 4 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertions that caught it |
+|---|---|---|---|
+| `K1-strong-only` | attribution drops the subtree tier, so a `claude.cmd` shim install is unattributable | **126 / 1 fail**, exit 1 | a shim lane is still attributed via subtree (K1) |
+| `K2-first-record-wins` | `Get-ResumeEvidence` returns on the first parseable appended record | **123 / 4 fail**, exit 1 | a LATER foreign sessionId still wins (K2) · the expected sessionId is recognised as strong · an appended foreign sessionId is WRONG-SESSION |
+| `K3-short-read-ok` | `Read-FileRange` returns a partially-filled buffer instead of refusing to judge | **126 / 1 fail**, exit 1 | a range past EOF returns null (K3) |
+| `K4-wide-tolerance` | the run-lock owner check accepts a 5-second start-time window instead of exact identity | **126 / 1 fail**, exit 1 | a REUSED pid does not inherit the claim (K4) |
+
+Unmutated after round 4: **127 passed / 0 failed**, exit 0.
+GLP merge gate unchanged at **561 total / 559 passed / 2 failed** (the two known 064 Section T drills).
+
+
+## Round 5 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `J1-subtree-tier` | attribution accepts any live descendant of the lane launcher | **133 / 1 fail** | an unrelated live descendant is NOT attributed (J1) |
+| `J1b-no-noprofile` | the tab's pwsh loads the user profile again, so profile children become descendants | **133 / 1 fail** | the wt command line passes -NoProfile (J1) |
+| `J2-raw-length-offset` | resume scanning starts at the raw pre-launch length, splitting a straddling record | **133 / 1 fail** | a foreign sessionId inside a straddling record is caught (J2) |
+| `J3-sidless-counts` | a sessionId-less appended record counts as proof of resumption | **133 / 1 fail** | a sessionId-less append is NOT proof (J3) |
+
+Unmutated after round 5: **134 passed / 0 failed**, exit 0. Twelve mutants across three rounds,
+all caught, each by the assertion written for its own finding.
+
+
+## Round 6 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `H1-give-up-at-one-window` | the record-boundary search returns the window start when it finds no newline | **146 / 3 fail** | a foreign sessionId in an oversized straddling record is caught (H1) · a window-sized file with no newline has boundary 0 |
+| `H2-broad-package-rule` | attribution accepts any command line naming the `@anthropic-ai/claude-code` directory | **148 / 1 fail** | a helper under the package dir does NOT (H2) |
+| `H4-substring-args` | expected arguments matched as substrings again | **147 / 2 fail** | `--continue-helper` does NOT satisfy `--continue` (H4) · an embedded 1000000 does not satisfy the flag |
+| `H3-unidentified-counts` | an appended record that names no session counts as proof | **147 / 2 fail** | a sessionId-less append is NOT proof (J3) · an unidentified append stays UNCONFIRMED (H3) |
+
+Unmutated after round 6: **149 passed / 0 failed**, exit 0. Sixteen mutants across four rounds,
+all caught, each by the assertion written for its own finding.
+
+## A second correction the tests forced on the code
+
+The H1 injection — a straddling record LARGER than the search window — first failed on its own
+setup: the transcript was judged unusable, because a window landing entirely inside one record
+found no complete line and the code called that corruption. Claude Code emits records well past
+64 KB, so that was a false negative that would strand a healthy lane. `Test-SessionTailIntact`
+now widens its window until it finds a complete record or reaches the file start.
+
+That change in turn invalidated an older assertion: a 70 KB **unterminated** trailing blob is
+byte-for-byte indistinguishable from a record still being written, so it can no longer be called
+corruption. The injection was rewritten to use a **terminated** garbage line — which is genuine
+corruption and is still refused — and the tolerated case is now asserted explicitly rather than
+left implicit.
+
+
+## Round 7 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `G1-path-anywhere` | the resolved claude path is accepted anywhere in a command line | **164 / 2 fail** | the resolved path as ARGUMENT DATA is refused (G1) · cmd echoing the path is refused (G1) |
+| `G2-expand-all-args` | every process's arguments are expanded a level deep, so a packed quoted argument reads as argv | **164 / 2 fail** | flags packed in one argv element are refused (G2) |
+| `G2b-no-adjacency` | a flag and its value need not be adjacent | **165 / 1 fail** | a non-adjacent flag value is refused (G2) |
+| `G3-guess-zero` | an unreadable snapshot returns offset 0 instead of "unknown" | **165 / 1 fail** | an unreadable snapshot yields -1, never a guessed 0 (G3) |
+| `G3b-no-identity` | the transcript file-identity check is removed | **165 / 1 fail** | a replaced transcript is WRONG-SESSION (G3) |
+| `G4-zero-window` | a zero-byte search window is allowed | **165 / 1 fail** | TailBytes 0 terminates for the boundary search (G4) |
+
+Unmutated after round 7: **166 passed / 0 failed**, exit 0. Twenty-two mutants across five rounds,
+all caught, each by the assertion written for its own finding.
+
+## A third correction the tests forced on the code
+
+The G2 injection — the expected flags packed inside ONE quoted argv element — failed against the
+first round-7 fix. Expanding every argv element one level deep, which was added for the command
+processor's packed `/c` string, re-admitted exactly the forgery it was meant to close for every
+other process. That expansion is now applied **only** to `cmd.exe`, and the injection asserts it.
+
+
+## Round 8 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `E1-any-cmd-token` | any cmd.exe argv token equal to the resolved path identifies, without locating `/c` | **177 / 3 fail** | cmd /c echo `<shim>` is refused (E1) · cmd with no /c at all is refused (E1) |
+| `E2-any-image-cli` | the CLI entry-point token identifies regardless of the process image | **178 / 2 fail** | notepad carrying the CLI path is refused (E2) · a renamed runtime is judged by its image (E2) |
+| `E3-timestamp-only` | transcript identity rests on the creation timestamp alone | **178 / 2 fail** | a forged creation time does not defeat identity (E3) |
+| `E4-no-argv0-rule` | argv[0] parsed with the ordinary escape state machine | **179 / 1 fail** | tokenizer matches CommandLineToArgvW on every case (E4) |
+
+Unmutated after round 8: **180 passed / 0 failed**, exit 0. Twenty-six mutants across six rounds,
+all caught, each by the assertion written for its own finding.
+GLP merge gate unchanged throughout at **561 total / 559 passed / 2 failed**.
+
+## A fourth correction the tests forced on the code
+
+The E4 mutant initially survived: the differential cases did not include a command line where
+argv[0] parsing actually diverges. Adding four such cases exposed something better than the
+mutant — the SHIPPED tokenizer was wrong too, and so was the "fix". `CommandLineToArgvW` reads
+argv[0] as *everything up to the first whitespace, verbatim, quotes and all* when the line does
+not begin with a quote; both my implementations processed quotes there. The tokenizer was
+rewritten to the platform's actual rule and now matches it on all fourteen cases, the mutant is
+caught, and the check is a genuine differential test against the platform rather than against my
+own understanding of it.
+
+
+## Round 9 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `D1-cli-anywhere` | the CLI path anywhere in a runtime's argv identifies, not just the executed script | **184 / 1 fail** | node benign.js `<cli.js>` is refused (D1) |
+| `D2a-no-fingerprint` | transcript identity drops the opening-byte fingerprint | **183 / 2 fail** | a forged creation time does not defeat identity (E3) |
+| `D2b-no-creation-check` | the creation-time filter is removed | **184 / 1 fail** | a replaced transcript is WRONG-SESSION (G3) |
+
+Unmutated after round 9: **185 passed / 0 failed**, exit 0. Twenty-nine mutants across seven
+rounds, all caught, each by the assertion written for its own finding.
+
+**One property is argued, not tested:** every read of a transcript now comes from a single open
+handle, so a same-name replacement landing mid-verification cannot combine the old file's identity
+with the new file's content. That is a structural property of the handle, and a deterministic race
+test for it is not written — it is claimed here as reasoning, not as measured coverage.
+
+## A gap mutation testing found in the tests themselves
+
+The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was
+meant to expose uses a **5-second** tolerance, so the mutant classified the reused PID as dead
+too and the test passed against both — a vacuous assertion of exactly the kind round 3 objected
+to. Only running the mutant exposed it. The injection now uses a **1-second** delta, deliberately
+*inside* any plausible "close enough" window, so only an exact identity check passes.
+
+That is the point of the exercise: every mutant is caught by the assertions written for that
+specific finding, and the one assertion that could not fail was found by trying to make it fail —
+not by reading it.
+
+--- FILE (NEW): scripts/onrestart-launch.ps1 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+
+<#
+.SYNOPSIS
+  Post-reboot lane relaunch — resumes every repo lane mid-thread, and installs itself to
+  fire automatically 45 s after logon. Executable spec for the buildkit `bk-onrestart` feature.
+
+.DESCRIPTION
+  Mechanism copied from the mstack lane's reference implementation
+  (`D:\BSTDEV\tools\MSTACK\scripts\fleet\post-reboot-restart.ps1`, ariellas/gavriella lane),
+  which is the prototype this feature generalises. What is copied, and WHY each part exists:
+
+  1. RESUME, DO NOT SUMMARISE.  `claude --continue` picks up the most recent conversation in
+     the cwd mid-thread. `--autocompact 1000000` pushes auto-compaction — the only thing that
+     would summarise a resumed session — as far out as the CLI allows. `--fork-session` is
+     deliberately NEVER passed: it mints a new session id and continues a COPY, which is not
+     continuing.
+
+  2. THE SILENT-NEW-SESSION TRAP.  `--continue` does NOT error when there is no stored session
+     for the cwd — it silently starts a BRAND NEW EMPTY one. After a reboot that is
+     indistinguishable from a successful resume until you notice the context is gone. So every
+     lane's session store is checked FIRST, and a transcript only counts when its first record
+     is a JSON object carrying a non-empty `sessionId` — the shape every real Claude Code
+     transcript starts with. A zero-byte, unparseable, or structurally-valid-but-not-a-session
+     file (`{}`) is NOT a resumable session and its lane is REFUSED. AFTER launch the store is
+     re-read: a transcript that did not exist before launch, or an appended record carrying a
+     DIFFERENT sessionId, is a new conversation and is reported as a FAILURE, never a resume.
+
+  3. THE BARE-SEMICOLON TRAP.  wt's command separator must reach wt as a BARE ';' token. A
+     backtick-escaped '`;' arrives at wt literally and silently produces tabs that open and run
+     NOTHING. Measured in the reference lane: 12 tabs, 0 claude processes. Every other token is
+     quoted with Windows argv rules so lane names and paths containing spaces or quotes cannot
+     be misparsed into the wt command sequence; the ';' separators are the only bare tokens.
+
+  4. TWO DIFFERENT MOUNT WAITS.  Repo paths (local D:) are REQUIRED — wait, then refuse what is
+     still missing. Network shares (I:, H:) are OPTIONAL — wait briefly, then LAUNCH ANYWAY.
+     The shares live on \\192.168.0.108\GAVRI_D served by gavriella; in a fleet-wide reboot
+     gavriella is down too, so blocking on them means the restart never runs on the hosts that
+     are actually up. Sessions do not need the shares — every repo is local.
+
+  5. ABSENT SHARE MEANS "I CANNOT SEE THE BOARD" — never "the board is empty", and never a
+     finding about any host. Several buildkit tools silently fall back to a stale local root
+     when the share is missing, and that husk answers every query with plausible wrong data.
+     Three separate 2026-08 incidents came from that fallback.
+
+  6. VERIFICATION IS PER LANE AND ATTRIBUTED — never a process count over a time window, and
+     never a name. A count of `claude` processes started "in the last two minutes" is satisfied
+     by processes this invocation did not create; a process merely NAMED claude.exe is satisfied
+     by anything renamed. So each lane is launched through a generated per-lane launcher that
+     writes a HANDSHAKE MARKER — lane key, run id, resolved cwd, own PID — before it execs
+     claude, and a lane is proven only when ALL of these hold:
+       * a marker whose lane, run and cwd match what was asked for;
+       * a live process descending from that marker's PID, created after launch, whose IMAGE is
+         the claude command this run resolved from PATH (or whose command line invokes it), and
+         whose command line carries the arguments we asked for;
+       * unless -Fresh, an APPENDED, complete, parseable record past the transcript's pre-launch
+         length, carrying the expected sessionId. A timestamp change is not evidence — any
+         process can touch a file.
+     Lanes refused before launch stay in the denominator and are enumerated as failures.
+
+  7. THE WORD "VERIFIED" IS EARNED, NOT DEFAULTED.  It is printed only when every requested lane
+     is proven. -AllowPartial / -AllowUnconfirmedResume let the OPERATOR accept named exceptions,
+     and that outcome reports as ACCEPTED-WITH-EXCEPTIONS listing each unproven lane — never as
+     VERIFIED. No switch can make a run with zero proven lanes succeed.
+
+  MEASURED AND REFUTED — do not "fix" path case in the lane table: Claude Code mangles the cwd
+  into a store name case-preservingly, but Windows resolves the lookup case-insensitively, so
+  case cannot split a lane's history. Tested and refuted in the reference lane.
+
+  Regression cover: scripts\tests\onrestart-launch.tests.ps1 (fault injections, not absences).
+
+.PARAMETER Install
+  Register the at-logon Scheduled Task (45 s delay) for the CURRENT user on ANY host, then exit.
+  Idempotent — re-running replaces the existing task.
+
+.PARAMETER Uninstall
+  Remove the Scheduled Task and exit.
+
+.PARAMETER Layout
+  TwoWindows (default) = window 1 gets the first group, window 2 the second.
+  Tabs = one window, all lanes.  Windows = one window per lane.
+
+.PARAMETER Fresh
+  Start NEW sessions instead of resuming. Opt-in only, and it defeats the point.
+  Resume evidence is not checked under -Fresh, because a new transcript is the intended result.
+
+.PARAMETER DeepValidate
+  Validate every transcript in full instead of its last 64 KB. Slower, and only needed when you
+  suspect corruption in the middle of a large transcript; the bounded check is stated as bounded
+  rather than presented as a whole-file guarantee.
+
+.PARAMETER AllowPartial
+  Accept lanes that were REFUSED before launch. They are still listed as unproven and the run
+  reports ACCEPTED-WITH-EXCEPTIONS, never VERIFIED.
+
+.PARAMETER AllowUnconfirmedResume
+  Accept a lane whose claude process is attributed and live but whose transcript showed no
+  appended record within -VerifyTimeoutSec. Such a lane is always reported as UNCONFIRMED,
+  never as resumed; this switch only decides whether it fails the run.
+
+.EXAMPLE
+  pwsh -File scripts\onrestart-launch.ps1 -Install      # arm it once; fires 45 s after every logon
+  pwsh -File scripts\onrestart-launch.ps1 -DryRun       # validate, launch nothing
+  pwsh -File scripts\onrestart-launch.ps1 -WaitForMounts
+#>
+[CmdletBinding()]
+param(
+    [switch]$Install,
+    [switch]$Uninstall,
+    [switch]$Register,
+    [switch]$Unregister,
+    [switch]$ShowConfig,
+    [string]$Name,
+    [int]$Group = 0,
+    [string]$ConfigPath,
+    [switch]$DryRun,
+    [ValidateSet('TwoWindows', 'Tabs', 'Windows')][string]$Layout,
+    [string[]]$Only,
+    [ValidateSet('max', 'auto')][string]$AutoCompact = 'max',
+    [switch]$Fresh,
+    [switch]$WaitForMounts,
+    [switch]$AllowPartial,
+    [switch]$AllowUnconfirmedResume,
+    [int]$DelaySeconds = 45,
+    [int]$RepoWaitSec = 120,
+    [int]$ShareWaitSec = 60,
+    [int]$VerifyTimeoutSec = 45,
+    [int]$KeepRuns = 20,
+    [switch]$DeepValidate,
+    [string[]]$OptionalMount = @('I:\coop', 'H:\coop', 'G:\coop')
+)
+
+$ErrorActionPreference = 'Stop'
+$TaskName = 'BK-OnRestart'
+
+# Exit codes — distinct so Scheduled Task history distinguishes the failure modes.
+$EXIT_OK           = 0
+$EXIT_NOTHING      = 1
+$EXIT_BADARGS      = 2
+$EXIT_NO_WT        = 3
+$EXIT_NOT_LAUNCHED = 4   # a lane produced no attributable claude process
+$EXIT_UNCONFIRMED  = 5   # launched and attributed, but no appended-record evidence
+$EXIT_REFUSED      = 6   # a selected lane was refused before launch
+$EXIT_SILENT_NEW   = 7   # a lane started a NEW session instead of continuing
+$EXIT_NO_ATTRIB    = 8   # cannot attribute (no process table, or claude not resolvable)
+$EXIT_NONE_PROVEN  = 9   # nothing was proven; no switch may call that success
+
+# --- Configuration ---------------------------------------------------------------
+# Host config lives OUTSIDE any repo, so a repo can be deleted or re-cloned without
+# losing the machine's lane layout. Seeded on first run, then hand-editable, and
+# extendable in place with -Register / -Unregister.
+#
+# layoutByHost maps a hostname to its window layout — the operator ruling is:
+#   GAVRIELLA / GAVRI  -> TwoWindows (group 1 in window 1, group 2 in window 2)
+#   OLAMNIT / ARIELLAS / SHIRAS -> Tabs (all lanes, one window)
+# An unlisted host falls back to defaultLayout, and says so rather than guessing silently.
+if (-not $ConfigPath) { $ConfigPath = Join-Path $env:USERPROFILE '.bk-onrestart\config.json' }
+
+$SeedConfig = [ordered]@{
+    schema_version = '1'
+    defaultLayout  = 'Tabs'
+    layoutByHost   = [ordered]@{
+        'GAVRIELLA' = 'TwoWindows'; 'GAVRI' = 'TwoWindows'
+        'OLAMNIT'   = 'Tabs'; 'ARIELLAS' = 'Tabs'; 'SHIRAS' = 'Tabs'
+    }
+    lanes = @(
+        [ordered]@{ name='ospark';     group=1; path='D:\bstdev\db\ospark' }
+        [ordered]@{ name='tefl';       group=1; path='D:\BSTDEV\LANG\tefl' }
+        [ordered]@{ name='hatzinor';   group=1; path='D:\BSTDEV\LANG\hatzinor' }
+        [ordered]@{ name='olamnit';    group=1; path='D:\BSTDEV\research\olamnit' }
+        [ordered]@{ name='buildkit';   group=1; path='D:\BSTDEV\research\buildkit' }
+        [ordered]@{ name='qhstate';    group=1; path='D:\BSTDEV\research\qhstate' }
+        [ordered]@{ name='yngraw';     group=1; path='D:\bstdev\research\yngenios' }
+        [ordered]@{ name='crucible';   group=2; path='D:\bstdev\research\crucible' }
+        [ordered]@{ name='glpnet';     group=2; path='D:\bstdev\research\glp\glpnet' }
+        [ordered]@{ name='lejepa';     group=2; path='D:\bstdev\research\lejepa' }
+        [ordered]@{ name='mstack';     group=2; path='D:\bstdev\tools\mstack' }
+        [ordered]@{ name='yngwin';     group=2; path='D:\YNGENIOS\yngenios-windows' }
+    )
+}
+
+function Save-Config($cfg) {
+    $dir = Split-Path -Parent $ConfigPath
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    ($cfg | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $ConfigPath -Encoding utf8
+}
+
+function Get-Config {
+    if (-not (Test-Path -LiteralPath $ConfigPath)) {
+        Save-Config $SeedConfig
+        Write-Host "seeded lane config -> $ConfigPath" -ForegroundColor Green
+    }
+    Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+}
+
+$Config = Get-Config
+$Repos  = @($Config.lanes | ForEach-Object {
+    [pscustomobject]@{ Name = $_.name; Group = [int]$_.group; Path = $_.path }
+})
+
+# Layout precedence: explicit -Layout > this host's entry > defaultLayout.
+if (-not $Layout) {
+    $hostKey = $env:COMPUTERNAME.ToUpperInvariant()
+    $mapped  = $Config.layoutByHost.$hostKey
+    if ($mapped) { $Layout = $mapped }
+    else {
+        $Layout = $Config.defaultLayout
+        Write-Host "host '$hostKey' is not in layoutByHost - falling back to defaultLayout '$Layout'" -ForegroundColor Yellow
+    }
+}
+
+$ProjectsRoot = Join-Path $env:USERPROFILE '.claude\projects'
+
+# --- Native-argument quoting ------------------------------------------------------
+# Start-Process joins an ArgumentList with spaces and does NOT preserve argument
+# boundaries, so a lane name or path containing a space or a quote is re-parsed by
+# wt.exe into extra tokens — and a crafted one can inject its own wt subcommands.
+# Every token is quoted here with the CommandLineToArgvW rules and the command line is
+# handed to Start-Process as ONE pre-quoted string. The ';' tab separators are the only
+# tokens deliberately left bare (see .DESCRIPTION 3).
+function ConvertTo-NativeArg([string]$Value) {
+    if ($null -eq $Value) { $Value = '' }
+    if ($Value -match '[\x00-\x1f]') { throw "control character in argument: '$Value'" }
+    if ($Value -ne '' -and $Value -notmatch '[\s"]') { return $Value }
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.Append('"')
+    $slashes = 0
+    foreach ($ch in $Value.ToCharArray()) {
+        if ($ch -eq '\') { $slashes++; continue }
+        if ($ch -eq '"') {
+            [void]$sb.Append('\' * ($slashes * 2 + 1)); [void]$sb.Append('"'); $slashes = 0; continue
+        }
+        if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $slashes = 0 }
+        [void]$sb.Append($ch)
+    }
+    if ($slashes -gt 0) { [void]$sb.Append('\' * ($slashes * 2)) }
+    [void]$sb.Append('"')
+    return $sb.ToString()
+}
+
+function Assert-SafeLaneValue([string]$Value, [string]$What, [string]$Lane) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { throw "lane '$Lane': $What is empty" }
+    if ($Value -match '[\x00-\x1f]')          { throw "lane '$Lane': $What contains a control character" }
+    if ($Value -match '"')                    { throw "lane '$Lane': $What contains a double quote" }
+    if ($Value -match ';')                    { throw "lane '$Lane': $What contains ';', which is wt's tab separator" }
+}
+
+function ConvertTo-ComparablePath([string]$Path) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
+    return ($Path.TrimEnd('\', '/')).ToLowerInvariant()
+}
+
+# Two lanes sharing a name or a path would share marker files, launcher files and result
+# slots, so one attributed process could stand in for both and the run would still claim
+# to have proven every lane. Identity must be unique before anything is launched.
+function Get-LaneIdentityConflicts($Lanes) {
+    $msgs = @()
+    foreach ($g in @($Lanes | Group-Object -Property Name)) {
+        if ($g.Count -gt 1) { $msgs += "duplicate lane name '$($g.Name)' ($($g.Count) entries)" }
+    }
+    foreach ($g in @($Lanes | Group-Object -Property { ConvertTo-ComparablePath $_.Path })) {
+        if ($g.Count -gt 1) { $msgs += "duplicate lane path '$($g.Name)' ($($g.Count) entries: $(($g.Group.Name) -join ', '))" }
+    }
+    return , @($msgs)
+}
+
+# Claude Code's cwd -> session-store mangle. Case-preserving by design; harmless (see .DESCRIPTION).
+function ConvertTo-SessionDirName([string]$Path) { ($Path.TrimEnd('\') -replace '[:\\]', '-') }
+
+# FileStream.Read may return fewer bytes than asked for, and a transcript claude is actively
+# writing changes length between the size check and the read. A single short read would decode
+# a truncated record and report corruption that is not there, so the range is pinned first and
+# read to completion; anything that cannot be read whole returns $null, which callers treat as
+# "not yet known" rather than as a verdict.
+function Read-FileRange([string]$Path, [long]$Offset, [long]$Count) {
+    if ($Count -le 0) { return $null }
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+        try {
+            if ($Offset -gt 0) { $null = $fs.Seek($Offset, 'Begin') }
+            $buf = New-Object byte[] $Count
+            $got = 0
+            while ($got -lt $Count) {
+                $n = $fs.Read($buf, $got, $Count - $got)
+                if ($n -le 0) { break }
+                $got += $n
+            }
+            if ($got -lt $Count) { return $null }   # truncated under us: retryable, not a verdict
+            return $buf
+        } finally { $fs.Dispose() }
+    } catch { return $null }
+}
+
+# Split a decoded byte range into lines, reporting whether the final line is unterminated.
+function Split-TranscriptLines([byte[]]$Bytes, [int]$SkipBytes = 0) {
+    if ($null -eq $Bytes) { return $null }
+    $len = $Bytes.Length - $SkipBytes
+    if ($len -lt 0) { return $null }
+    $text = [System.Text.Encoding]::UTF8.GetString($Bytes, $SkipBytes, $len)
+    $endsWithNewline = $text.EndsWith("`n")
+    $parts = @($text -split "`n" | ForEach-Object { $_.TrimEnd("`r") })
+    if ($endsWithNewline -and $parts.Count -gt 0) { $parts = @($parts | Select-Object -SkipLast 1) }
+    return [pscustomobject]@{ Lines = @($parts); LastIsTerminated = $endsWithNewline }
+}
+
+function Test-JsonObjectLine([string]$Line) {
+    if ([string]::IsNullOrWhiteSpace($Line)) { return $null }
+    try { $o = $Line | ConvertFrom-Json -ErrorAction Stop } catch { return $null }
+    if ($o -isnot [pscustomobject]) { return $null }
+    return $o
+}
+
+# The session-id line every real Claude Code transcript opens with. Measured across 43
+# transcripts in 40 stores on 2026-08-21: all 43 first records were JSON objects carrying a
+# non-empty `sessionId`. A file without one cannot be continued, so it must not count —
+# a filename, a zero-byte file, and a bare `{}` are all NOT resumable sessions.
+# The byte just past the last complete record. A transcript can be captured mid-write, and the
+# bytes appended afterwards then COMPLETE a record that began before launch. Decoding from the
+# raw pre-launch length would split that record and silently drop it — including any foreign
+# sessionId inside it — so scanning starts from the last record boundary instead.
+function Get-LastRecordBoundary([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
+    if ($TailBytes -lt 4096) { $TailBytes = 4096 }     # a zero window would never terminate
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return -1 }
+    if ($len -le 0) { return 0 }
+    # Walk BACKWARDS in windows until a newline is found or the file start is reached. Returning
+    # the window start when no newline was seen would hand back a position in the MIDDLE of a
+    # record - and a record longer than one window (they exist: a large tool result) would then be
+    # decoded from its middle, hiding whatever sessionId it carries. Offset 0 is the only position
+    # that is a record boundary without a newline in front of it.
+    $end = $len
+    while ($end -gt 0) {
+        $start = [Math]::Max(0L, $end - $TailBytes)
+        $bytes = Read-FileRange $File.FullName $start ($end - $start)
+        if ($null -eq $bytes) { return -1 }        # unreadable: unknown, never a guess
+        for ($i = $bytes.Length - 1; $i -ge 0; $i--) {
+            if ($bytes[$i] -eq 10) { return $start + $i + 1 }
+        }
+        if ($start -eq 0) { return 0 }             # no newline anywhere: the file starts a record
+        $end = $start
+    }
+    return 0
+}
+
+# A content fingerprint of the transcript's opening bytes. Appending never changes them, so this
+# is stable for the life of a session — and unlike a creation timestamp it cannot be inherited by
+# a same-name replacement (NTFS file-system tunneling re-uses the creation time of a file deleted
+# moments earlier, so a timestamp alone is not identity).
+function Get-FileHeadHash([System.IO.FileInfo]$File, [long]$HeadBytes) {
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $null }
+    if ($len -le 0 -or $HeadBytes -le 0) { return $null }
+    if ($len -lt $HeadBytes) { return $null }   # shorter than when snapshotted: truncated/replaced
+    $bytes = Read-FileRange $File.FullName 0 $HeadBytes
+    if ($null -eq $bytes) { return $null }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
+
+function Get-SessionFileId([System.IO.FileInfo]$File) {
+    if (-not $File -or $File.Length -le 0) { return $null }
+    try {
+        $reader = [System.IO.StreamReader]::new($File.FullName)
+        try {
+            while (-not $reader.EndOfStream) {
+                $line = $reader.ReadLine()
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                $rec = Test-JsonObjectLine $line
+                if ($null -eq $rec) { return $null }
+                $id = $rec.sessionId
+                if ($id -is [string] -and -not [string]::IsNullOrWhiteSpace($id)) { return $id }
+                return $null
+            }
+        } finally { $reader.Dispose() }
+    } catch { return $null }
+    return $null
+}
+
+# Corruption check. EVERY complete line examined must parse; only the final line may be
+# malformed, and only when the file does not end in a newline — that is a crash mid-write,
+# which is normal and which Claude Code itself tolerates.
+#
+# STATED BOUND, so this check does not overclaim: by default only the last $TailBytes are
+# examined, so corruption between the header and that window is NOT detected. That is a
+# deliberate trade — a full scan of twelve multi-megabyte transcripts at logon costs more
+# than it is worth — and -DeepValidate scans the whole file for anyone who wants it.
+# A window that begins exactly on a record boundary keeps its first line; one that begins
+# inside a record drops the fragment, and that is decided from the byte before the window,
+# never assumed.
+function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536, [bool]$Deep = $false) {
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $false }
+    if ($len -le 0) { return $false }
+    if ($TailBytes -lt 4096) { $TailBytes = 4096 }     # a zero window would never terminate
+    $win = if ($Deep) { [Math]::Max($len, 1L) } else { [long]$TailBytes }
+    while ($true) {
+        $start = [Math]::Max(0L, $len - $win)
+        $probe = if ($start -gt 0) { $start - 1 } else { 0 }
+        $bytes = Read-FileRange $File.FullName $probe ($len - $probe)
+        if ($null -eq $bytes) { return $false }
+        $startsOnBoundary = $true
+        $skip = 0
+        if ($start -gt 0) {
+            $startsOnBoundary = ($bytes.Length -gt 0 -and $bytes[0] -eq 10)   # 10 = LF
+            $skip = 1
+        }
+        $split = Split-TranscriptLines $bytes $skip
+        if ($null -eq $split) { return $false }
+        $lines = @($split.Lines)
+        if (-not $startsOnBoundary -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }
+        $complete = @($lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($complete.Count -eq 0 -and $start -gt 0) {
+            # The window landed entirely inside ONE record. A record CAN be larger than the
+            # window (a big tool result), so widen rather than call a healthy transcript corrupt.
+            $win = $win * 4
+            continue
+        }
+        if ($complete.Count -eq 0) { return $false }
+        $tornTailAllowed = -not $split.LastIsTerminated
+        $lastIndex = $complete.Count - 1
+        $parsedAny = $false
+        for ($i = 0; $i -lt $complete.Count; $i++) {
+            if ($null -ne (Test-JsonObjectLine $complete[$i])) { $parsedAny = $true; continue }
+            if ($i -eq $lastIndex -and $tornTailAllowed) { continue }   # one unterminated record
+            return $false                                              # a complete line that does not parse is corruption
+        }
+        return $parsedAny
+    }
+}
+function Test-ResumableSessionFile([System.IO.FileInfo]$File, [bool]$Deep = $false) {
+    if (-not $File -or $File.Length -le 0) { return $false }
+    if (-not (Get-SessionFileId $File)) { return $false }
+    return (Test-SessionTailIntact $File 65536 $Deep)
+}
+
+# Resume evidence must be CONTENT the launched claude appended, never a timestamp: any process
+# can touch a file. Four things are required, and each closes a specific hole:
+#
+#  * EVERY read below comes from ONE OPEN HANDLE. Opening the path separately for the fingerprint,
+#    the header and the appended bytes lets a same-name replacement land between them and combine
+#    the old file's identity with the new file's content. A handle keeps referring to the file
+#    object it opened, so a replacement simply yields no new evidence.
+#  * the opening bytes must still hash to what was snapshotted, over the SAME fixed length. A
+#    creation timestamp can be inherited through NTFS file-system tunneling; the bytes cannot.
+#  * scanning starts at the last COMPLETE RECORD BOUNDARY, so a record straddling the launch is
+#    parsed whole instead of split into a fragment that hides its sessionId; and EVERY complete
+#    record in that range is examined, a foreign sessionId winning over anything else.
+#  * proof is a complete record that BEGINS at or after the pre-launch length and carries the
+#    EXPECTED sessionId. A record naming no session proves only that the file changed, which any
+#    process could do; that is reported as UNIDENTIFIED, never as proof.
+function Get-ResumeEvidence($State) {
+    if (-not $State.LatestPath -or -not (Test-Path -LiteralPath $State.LatestPath)) { return $null }
+    $leafName = Split-Path -Leaf $State.LatestPath
+    $wrong = { param($why) [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'; Detail = $why } }
+    $fs = $null
+    try { $fs = [System.IO.File]::Open($State.LatestPath, 'Open', 'Read', 'ReadWrite') } catch { return $null }
+    try {
+        $len = $fs.Length
+        if ($len -le $State.LatestLength) { return $null }      # no append: a touch is not evidence
+
+        # Creation time read from THIS HANDLE, so it describes the file we are about to read and
+        # not whatever the name points at now. It is a cheap first filter, not identity on its
+        # own - NTFS file-system tunneling can hand a recreated file its predecessor's timestamp,
+        # which is why the opening-byte fingerprint below is the actual check.
+        if ($State.LatestCreatedUtc -gt [datetime]::MinValue) {
+            $created = $null
+            try { $created = [System.IO.File]::GetCreationTimeUtc($fs.SafeFileHandle) }
+            catch { try { $created = [System.IO.File]::GetCreationTimeUtc($State.LatestPath) } catch { $created = $null } }
+            if ($created -and $created -ne $State.LatestCreatedUtc) {
+                return & $wrong "$leafName was replaced, not continued (created $($created.ToString('o')), snapshot $($State.LatestCreatedUtc.ToString('o')))"
+            }
+        }
+
+        $readAt = {
+            param([long]$off, [long]$count)
+            if ($count -le 0 -or $off -lt 0 -or ($off + $count) -gt $fs.Length) { return $null }
+            $null = $fs.Seek($off, 'Begin')
+            $buf = New-Object byte[] $count
+            $got = 0
+            while ($got -lt $count) {
+                $n = $fs.Read($buf, $got, $count - $got)
+                if ($n -le 0) { break }
+                $got += $n
+            }
+            if ($got -lt $count) { return $null }
+            return $buf
+        }
+
+        # Identity: the opening bytes, over the length recorded at snapshot time.
+        if ($State.LatestHeadHash -and [long]$State.LatestHeadLen -gt 0) {
+            if ($len -lt [long]$State.LatestHeadLen) {
+                return & $wrong "$leafName is shorter than when it was snapshotted - it was replaced, not appended to"
+            }
+            $head = & $readAt 0 ([long]$State.LatestHeadLen)
+            if ($null -eq $head) { return $null }
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try { $nowHash = [System.BitConverter]::ToString($sha.ComputeHash($head)).Replace('-', '') }
+            finally { $sha.Dispose() }
+            if ($nowHash -cne $State.LatestHeadHash) {
+                return & $wrong "the opening bytes of $leafName changed - it was replaced, not appended to"
+            }
+            # The header session id, read from the SAME handle rather than re-opening the path.
+            if ($State.LatestSessionId) {
+                $hdrSplit = Split-TranscriptLines $head 0
+                $hdrId = $null
+                if ($null -ne $hdrSplit) {
+                    foreach ($hl in @($hdrSplit.Lines)) {
+                        if ([string]::IsNullOrWhiteSpace($hl)) { continue }
+                        $hr = Test-JsonObjectLine $hl
+                        if ($null -ne $hr -and $hr.sessionId -is [string] -and -not [string]::IsNullOrWhiteSpace($hr.sessionId)) { $hdrId = $hr.sessionId }
+                        break
+                    }
+                }
+                if ($hdrId -and $hdrId -cne $State.LatestSessionId) {
+                    return & $wrong "$leafName now opens with sessionId '$hdrId', expected '$($State.LatestSessionId)'"
+                }
+            }
+        }
+
+        $from = [long]$State.LatestCompleteOffset
+        if ($from -lt 0) { return $null }                       # boundary unknown: cannot judge
+        if ($from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
+        $bytes = & $readAt $from ($len - $from)
+        if ($null -eq $bytes) { return $null }
+
+        $added = $len - $State.LatestLength
+        $foreign = $null; $proof = $null; $sawRecord = $false
+        $lineStart = 0
+        for ($i = 0; $i -lt $bytes.Length; $i++) {
+            if ($bytes[$i] -ne 10) { continue }                 # only terminated records count
+            $absStart = $from + $lineStart
+            $line = [System.Text.Encoding]::UTF8.GetString($bytes, $lineStart, $i - $lineStart).TrimEnd("`r")
+            $lineStart = $i + 1
+            $rec = Test-JsonObjectLine $line
+            if ($null -eq $rec) { continue }
+            if ($absStart -ge [long]$State.LatestLength) { $sawRecord = $true }
+            $sid = $rec.sessionId
+            if ($sid -isnot [string] -or [string]::IsNullOrWhiteSpace($sid)) { continue }
+            if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid; continue }
+            if ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId -and $absStart -ge [long]$State.LatestLength) {
+                $proof = $absStart
+            }
+        }
+        if ($foreign) {
+            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'session-id'
+                Detail = "appended a record carrying sessionId '$foreign', expected '$($State.LatestSessionId)'" }
+        }
+        if ($null -ne $proof) {
+            return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
+                Detail = "appended $added byte(s) to $leafName including a record at offset $proof carrying sessionId '$($State.LatestSessionId)'" }
+        }
+        if ($sawRecord) {
+            return [pscustomobject]@{ Kind = 'UNIDENTIFIED'; Strength = 'none'
+                Detail = "appended $added byte(s) to $leafName but no record named sessionId '$($State.LatestSessionId)'" }
+        }
+        return $null
+    } catch { return $null }
+    finally { if ($fs) { $fs.Dispose() } }
+}
+
+function Get-RepoState($Repo) {
+    $dirName = ConvertTo-SessionDirName $Repo.Path
+    $store   = Join-Path $ProjectsRoot $dirName
+    $files   = @()
+    if (Test-Path -LiteralPath $store) {
+        $files = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue)
+    }
+    $deep    = [bool]$DeepValidate
+    $usable  = @($files | Where-Object { Test-ResumableSessionFile $_ $deep })
+    $latest  = $usable | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    [pscustomobject]@{
+        Name = $Repo.Name; Group = $Repo.Group; Path = $Repo.Path; SessionDir = $dirName
+        Key = $Repo.Key
+        Store = $store
+        PathExists = (Test-Path -LiteralPath $Repo.Path)
+        StoreExists = (Test-Path -LiteralPath $store)
+        Sessions = $files.Count
+        Usable = $usable.Count
+        Latest = if ($latest) { $latest.LastWriteTime } else { $null }
+        # Pre-launch fingerprint of the store, used after launch to prove resumption.
+        FileNames = @($files | ForEach-Object { $_.Name })
+        LatestPath = if ($latest) { $latest.FullName } else { $null }
+        LatestCreatedUtc = if ($latest) { $latest.CreationTimeUtc } else { [datetime]::MinValue }
+        LatestHeadLen = if ($latest) { [Math]::Min(4096L, $latest.Length) } else { 0 }
+        LatestHeadHash = if ($latest) { Get-FileHeadHash $latest ([Math]::Min(4096L, $latest.Length)) } else { $null }
+        LatestLength = if ($latest) { $latest.Length } else { 0 }
+        LatestCompleteOffset = if ($latest) { Get-LastRecordBoundary $latest } else { 0 }
+        LatestSessionId = if ($latest) { Get-SessionFileId $latest } else { $null }
+    }
+}
+
+function Wait-ForPaths {
+    param([string[]]$Paths, [int]$TimeoutSec, [string]$Label)
+    if (-not $Paths) { return @() }
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $pending  = @($Paths | Where-Object { -not (Test-Path -LiteralPath $_) })
+    while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) {
+        Write-Host ("  waiting for {0} {1}: {2}" -f $pending.Count, $Label, ($pending -join ', ')) -ForegroundColor DarkGray
+        Start-Sleep -Seconds 5
+        $pending = @($pending | Where-Object { -not (Test-Path -LiteralPath $_) })
+    }
+    return , @($pending)
+}
+
+# --- Process attribution ----------------------------------------------------------
+# The only honest way to say "this lane is running" is to point at a process THIS
+# invocation created for THAT lane. Win32_Process supplies the parent link needed to walk
+# from a lane's handshake PID down to its claude process. If it is unavailable we cannot
+# attribute anything, and the run fails loudly rather than falling back to a count.
+function Get-ProcTable {
+    $table = @{}
+    foreach ($p in Get-CimInstance -ClassName Win32_Process -ErrorAction Stop) {
+        $table[[int]$p.ProcessId] = [pscustomobject]@{
+            ProcId = [int]$p.ProcessId; ParentId = [int]$p.ParentProcessId
+            Name = $p.Name; CommandLine = $p.CommandLine; Created = $p.CreationDate
+            ExecutablePath = $p.ExecutablePath
+        }
+    }
+    return $table
+}
+
+function Get-DescendantProcs($Table, [int]$RootPid) {
+    $byParent = @{}
+    foreach ($p in $Table.Values) {
+        if (-not $byParent.ContainsKey($p.ParentId)) { $byParent[$p.ParentId] = [System.Collections.Generic.List[object]]::new() }
+        $byParent[$p.ParentId].Add($p)
+    }
+    $out   = [System.Collections.Generic.List[object]]::new()
+    $seen  = [System.Collections.Generic.HashSet[int]]::new()
+    $queue = [System.Collections.Generic.Queue[int]]::new()
+    $queue.Enqueue($RootPid)
+    while ($queue.Count -gt 0) {
+        $cur = $queue.Dequeue()
+        if (-not $seen.Add($cur)) { continue }          # a parent cycle cannot spin the walk
+        if (-not $byParent.ContainsKey($cur)) { continue }
+        foreach ($child in $byParent[$cur]) {
+            $out.Add($child); $queue.Enqueue($child.ProcId)
+        }
+    }
+    return $out
+}
+
+# Windows argv tokenization (CommandLineToArgvW rules). Substring tests over a raw command line
+# are forgeable: any process can carry another program's path, or an expected flag, as DATA inside
+# one of its own arguments. Splitting into real tokens is what makes "this process was invoked as
+# X with argument Y" a statement about the invocation rather than about the bytes.
+function ConvertFrom-NativeCommandLine([string]$CommandLine) {
+    $out = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+
+    # argv[0] is NOT parsed by the escape state machine. CommandLineToArgvW reads it as:
+    #   starts with a quote -> everything up to the NEXT quote, quotes stripped, no escapes;
+    #   otherwise           -> everything up to the first whitespace, VERBATIM, quotes and all.
+    # Running the ordinary rules over it mis-splits paths like C:\dir\"prog.exe". Verified
+    # against the platform parser by the harness's differential test.
+    $i = 0
+    if ($CommandLine[0] -eq '"') {
+        $close = $CommandLine.IndexOf('"', 1)
+        if ($close -lt 0) { $out.Add($CommandLine.Substring(1)); return $out.ToArray() }
+        $out.Add($CommandLine.Substring(1, $close - 1))
+        $i = $close + 1
+    } else {
+        $e = 0
+        while ($e -lt $CommandLine.Length -and $CommandLine[$e] -ne ' ' -and $CommandLine[$e] -ne "`t") { $e++ }
+        $out.Add($CommandLine.Substring(0, $e))
+        $i = $e
+    }
+
+    # Everything after argv[0] uses the ordinary backslash/quote rules.
+    $sb = [System.Text.StringBuilder]::new()
+    $inQuotes = $false; $slashes = 0; $started = $false
+    for (; $i -lt $CommandLine.Length; $i++) {
+        $ch = $CommandLine[$i]
+        if ($ch -eq '\') { $slashes++; $started = $true; continue }
+        if ($ch -eq '"') {
+            [void]$sb.Append('\' * [int]($slashes / 2))
+            if ($slashes % 2 -eq 1) { [void]$sb.Append('"') } else { $inQuotes = -not $inQuotes }
+            $slashes = 0; $started = $true; continue
+        }
+        if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $slashes = 0 }
+        if (-not $inQuotes -and ($ch -eq ' ' -or $ch -eq "`t")) {
+            if ($started) { $out.Add($sb.ToString()); [void]$sb.Clear(); $started = $false }
+            continue
+        }
+        [void]$sb.Append($ch); $started = $true
+    }
+    if ($slashes -gt 0) { [void]$sb.Append('\' * $slashes); $started = $true }
+    if ($started) { $out.Add($sb.ToString()) }
+    return $out.ToArray()
+}
+
+# A NAME proves nothing: any executable can be copied to claude.exe. Nor does an arbitrary
+# OCCURRENCE of the resolved path in a command line, which any process can carry as data.
+# A candidate counts only when the INVOCATION identifies it:
+#
+#   * its image path IS the resolved claude command; or
+#   * it is the system command processor running that exact path as its /c target — the shape a
+#     .cmd or .bat shim takes, matched on a real argv token, not on a substring; or
+#   * it is a JS runtime whose argv names the Claude Code CLI entry point FILE.
+#
+# and in every case its argv must carry the arguments we asked for, as whole tokens, with any
+# flag/value pair adjacent.
+function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) {
+    if ([string]::IsNullOrWhiteSpace($ClaudePath)) { return $false }
+    $target = $ClaudePath.ToLowerInvariant()
+    $cl = $Proc.CommandLine
+    $argv = @(ConvertFrom-NativeCommandLine $cl)
+    $lower = @($argv | ForEach-Object { $_.ToLowerInvariant() })
+
+    $identified = $false
+    if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $identified = $true }
+    if (-not $identified -and $Proc.Name -and $Proc.Name.ToLowerInvariant() -eq 'cmd.exe') {
+        # The command processor. The resolved path must be what cmd was TOLD TO RUN — the head of
+        # its /c (or /k) command string — not merely a token appearing somewhere in it, which
+        # "cmd /c echo <path> --continue" would satisfy.
+        for ($n = 0; $n -lt $argv.Count; $n++) {
+            if ($lower[$n] -ne '/c' -and $lower[$n] -ne '/k') { continue }
+            if ($n + 1 -ge $argv.Count) { break }
+            $head = $lower[$n + 1]
+            if ($head -eq $target) { $identified = $true; break }
+            $inner = @(ConvertFrom-NativeCommandLine $argv[$n + 1])
+            if ($inner.Count -gt 0 -and $inner[0].ToLowerInvariant() -eq $target) { $identified = $true }
+            break
+        }
+    }
+    if (-not $identified) {
+        # A JS runtime running the Claude Code entry point FILE. The runtime is named explicitly:
+        # without it, any executable carrying that path as an argument would be attributed.
+        $img = ''
+        if ($Proc.ExecutablePath) { $img = (Split-Path -Leaf $Proc.ExecutablePath).ToLowerInvariant() }
+        elseif ($Proc.Name) { $img = $Proc.Name.ToLowerInvariant() }
+        if ($img -in @('node.exe', 'bun.exe', 'deno.exe', 'node', 'bun', 'deno')) {
+            # The CLI must be the SCRIPT THE RUNTIME RUNS — the first non-flag argument — not
+            # merely present somewhere in argv. "node benign.js .../cli.js --continue" runs
+            # benign.js, and must not be attributed.
+            for ($n = 1; $n -lt $lower.Count; $n++) {
+                $tk = $lower[$n]
+                if ($tk.StartsWith('-')) { continue }                     # runtime options
+                if ($tk -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true }
+                break                                                     # first non-flag decides
+            }
+        }
+    }
+    if (-not $identified) { return $false }
+
+    # Arguments as whole argv tokens. cmd.exe hands its target one packed string, so tokens are
+    # searched one level deep as well - still tokens, never substrings.
+    $flat = [System.Collections.Generic.List[string]]::new()
+    $isCmd = ($Proc.Name -and $Proc.Name.ToLowerInvariant() -eq 'cmd.exe')
+    foreach ($tok in $argv) {
+        $flat.Add($tok)
+        # ONLY cmd.exe hands its target one packed string. Expanding any process's arguments a
+        # level deep would let a single quoted argument such as "payload --continue 1000000"
+        # masquerade as three real argv tokens.
+        if ($isCmd) { foreach ($inner in @(ConvertFrom-NativeCommandLine $tok)) { $flat.Add($inner) } }
+    }
+    $flatLower = @($flat | ForEach-Object { $_.ToLowerInvariant() })
+    $expected = @($ExpectedArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($i = 0; $i -lt $expected.Count; $i++) {
+        $a = $expected[$i].ToLowerInvariant()
+        $idx = [array]::IndexOf($flatLower, $a)
+        if ($idx -lt 0) { return $false }
+        # A flag's value must FOLLOW it, so "--autocompact 1000000" cannot be satisfied by the
+        # two tokens appearing independently somewhere in the command line.
+        if ($i + 1 -lt $expected.Count -and -not $expected[$i + 1].StartsWith('-')) {
+            $v = $expected[$i + 1].ToLowerInvariant()
+            if ($idx + 1 -ge $flatLower.Count -or $flatLower[$idx + 1] -ne $v) { return $false }
+            $i++
+        }
+    }
+    return $true
+}
+
+# Attribution for one lane. There is exactly ONE tier: a live descendant that IDENTIFIES itself
+# as the claude command per Test-IsClaudeProc above. "Some descendant of the launcher is alive"
+# is deliberately NOT accepted — a descendant proves the launcher's command ran, not that what
+# survives is claude. The launcher runs with -NoProfile and invokes the resolved absolute path
+# and nothing else, so a healthy lane has a descendant that identifies; if none does, the honest
+# answer is NO-CLAUDE.
+function Get-LaneClaudeEvidence {
+    param($Table, [int]$LanePid, [string]$ClaudeExe, [string[]]$ClaudeArgs, [datetime]$LaunchStart)
+    $fresh = @(Get-DescendantProcs $Table $LanePid | Where-Object { -not $_.Created -or $_.Created -ge $LaunchStart })
+    if ($fresh.Count -eq 0) { return $null }
+    $strong = @($fresh | Where-Object { Test-IsClaudeProc $_ $ClaudeExe $ClaudeArgs })
+    if ($strong.Count -eq 0) { return $null }
+    return [pscustomobject]@{ Proc = $strong[0]; Strength = 'image'
+        Detail = "claude pid $($strong[0].ProcId) ($($strong[0].Name)) matches the resolved command" }
+}
+
+# A marker proves a tab ran ITS OWN command. Accepting one without checking which lane,
+# which run and which directory it came from would let a stale or misdirected launcher
+# stand in for the lane that was actually requested.
+function Test-LaneMarker($Marker, [string]$ExpectedKey, [string]$ExpectedRunId, [string]$ExpectedPath) {
+    if ($null -eq $Marker) { return 'marker is empty or unparseable' }
+    if ([string]$Marker.key   -cne $ExpectedKey)   { return "marker is for lane '$($Marker.key)', expected '$ExpectedKey'" }
+    if ([string]$Marker.runId -cne $ExpectedRunId) { return "marker is from run '$($Marker.runId)', expected '$ExpectedRunId'" }
+    $got  = ConvertTo-ComparablePath ([string]$Marker.path)
+    $want = ConvertTo-ComparablePath $ExpectedPath
+    if ($got -ne $want) { return "marker cwd is '$($Marker.path)', expected '$ExpectedPath'" }
+    $markerPid = 0
+    if (-not [int]::TryParse([string]$Marker.pwshPid, [ref]$markerPid) -or $markerPid -le 0) { return 'marker carries no usable PID' }
+    return $null   # $null == valid
+}
+
+# One lane's state transition, isolated from the polling loop so every branch is testable.
+# Terminal means the outcome cannot change by waiting; anything else is retried until the
+# deadline. Never returns a proven status without the evidence that status claims.
+function Get-LaneVerification {
+    param($Lane, $Table, [datetime]$LaunchStart, [string]$RunId, [string]$ClaudeExe,
+          [string[]]$ClaudeArgs, [bool]$Fresh)
+    $mk = { param($s, $d, $t, $p = $null)
+            [pscustomobject]@{ Status = $s; Detail = $d; Terminal = $t; ClaudePid = $p } }
+
+    if (-not (Test-Path -LiteralPath $Lane.MarkerPath)) {
+        return & $mk 'PENDING' 'no handshake marker yet' $false
+    }
+    $marker = $null
+    try { $marker = Get-Content -LiteralPath $Lane.MarkerPath -Raw | ConvertFrom-Json } catch {
+        return & $mk 'PENDING' 'handshake marker not readable yet' $false
+    }
+    $bad = Test-LaneMarker -Marker $marker -ExpectedKey $Lane.Key -ExpectedRunId $RunId -ExpectedPath $Lane.Path
+    if ($bad) { return & $mk 'NOT-LAUNCHED' "handshake rejected: $bad" $true }
+
+    $lanePid  = [int]$marker.pwshPid
+    $laneProc = $Table[$lanePid]
+    if (-not $laneProc -or ($laneProc.Created -and $laneProc.Created -lt $LaunchStart)) {
+        return & $mk 'NOT-LAUNCHED' "handshake PID $lanePid is not a live process created by this launch" $false
+    }
+    $ev = Get-LaneClaudeEvidence -Table $Table -LanePid $lanePid -ClaudeExe $ClaudeExe -ClaudeArgs $ClaudeArgs -LaunchStart $LaunchStart
+    if ($null -eq $ev) {
+        return & $mk 'NO-CLAUDE' "tab ran (handshake PID $lanePid) but nothing it started is still running" $false
+    }
+    $cpid = $ev.Proc.ProcId
+    if ($Fresh) {
+        return & $mk 'STARTED' "new session in $($Lane.Path); $($ev.Detail) [$($ev.Strength)]" $true $cpid
+    }
+
+    $now = Get-RepoState $Lane.State
+    $new = @($now.FileNames | Where-Object { $Lane.State.FileNames -notcontains $_ })
+    if ($new.Count -gt 0) {
+        return & $mk 'SILENT-NEW' "$($ev.Detail) but a NEW transcript appeared ($($new -join ', ')) instead of a continuation" $true $cpid
+    }
+    $rev = Get-ResumeEvidence $Lane.State
+    if ($rev -and $rev.Kind -eq 'WRONG-SESSION') {
+        return & $mk 'SILENT-NEW' "$($ev.Detail); $($rev.Detail)" $true $cpid
+    }
+    if ($rev -and $rev.Kind -eq 'RESUMED') {
+        return & $mk 'RESUMED' "$($ev.Detail) [$($ev.Strength)]; $($rev.Detail) [$($rev.Strength)]" $true $cpid
+    }
+    if ($rev -and $rev.Kind -eq 'UNIDENTIFIED') {
+        return & $mk 'UNCONFIRMED' "$($ev.Detail) [$($ev.Strength)]; $($rev.Detail) — resume NOT proven" $false $cpid
+    }
+    return & $mk 'UNCONFIRMED' "$($ev.Detail) [$($ev.Strength)], but nothing has been appended to the transcript — resume NOT proven" $false $cpid
+}
+
+# Retention with an ownership check. Deleting by age alone can take the marker directory out
+# from under a concurrent invocation that is still polling, which would turn its lanes into
+# NOT-LAUNCHED. Two independent guards: the owner holds active.lock OPEN for its whole life,
+# so Windows refuses the delete outright; and the recorded start time must match the live
+# process EXACTLY, so a reused PID cannot inherit another run's claim.
+function Remove-StaleRunDirs {
+    param([string]$RunsRoot, [int]$KeepRuns, [string]$CurrentRunDir)
+    $removed = @(); $skipped = @()
+    if (-not (Test-Path -LiteralPath $RunsRoot)) {
+        return [pscustomobject]@{ Removed = @(); Skipped = @() }
+    }
+    $dirs = @(Get-ChildItem -LiteralPath $RunsRoot -Directory -ErrorAction SilentlyContinue |
+              Sort-Object CreationTimeUtc -Descending)
+    foreach ($d in @($dirs | Select-Object -Skip ([Math]::Max(1, $KeepRuns)))) {
+        if ($CurrentRunDir -and (ConvertTo-ComparablePath $d.FullName) -eq (ConvertTo-ComparablePath $CurrentRunDir)) {
+            $skipped += $d.FullName; continue
+        }
+        $lock = Join-Path $d.FullName 'active.lock'
+        if (Test-Path -LiteralPath $lock) {
+            $live = $true    # an unreadable lock is treated as live: never delete on a guess
+            try {
+                $o = Get-Content -LiteralPath $lock -Raw | ConvertFrom-Json
+                $owner = Get-Process -Id ([int]$o.pid) -ErrorAction SilentlyContinue
+                $live = $false
+                if ($owner -and $o.startedTicks) {
+                    $ticks = 0L
+                    try { $ticks = $owner.StartTime.ToUniversalTime().Ticks } catch { $ticks = -1 }
+                    # Exact identity, not a window: a reused PID has a different start instant.
+                    if ($ticks -eq -1 -or $ticks -eq [long]$o.startedTicks) { $live = $true }
+                } elseif ($owner) { $live = $true }   # pre-tick lock format: assume live
+            } catch { $live = $true }
+            if ($live) { $skipped += $d.FullName; continue }
+        }
+        try { Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction Stop; $removed += $d.FullName }
+        catch { $skipped += $d.FullName }   # an open handle in a live run also lands here
+    }
+    return [pscustomobject]@{ Removed = @($removed); Skipped = @($skipped) }
+}
+
+# The final decision, isolated so it can be tested exhaustively. Precedence is by damage:
+# a wrong session beats a missing one, a missing one beats an unproven one, and no switch
+# can turn zero proven lanes into success.
+function Get-RunOutcome {
+    param([object[]]$Results, [int]$RequestedCount, [bool]$AllowPartial, [bool]$AllowUnconfirmed)
+    $proven      = @($Results | Where-Object { $_.Status -in @('RESUMED','STARTED') })
+    $unconfirmed = @($Results | Where-Object { $_.Status -eq 'UNCONFIRMED' })
+    $silentNew   = @($Results | Where-Object { $_.Status -eq 'SILENT-NEW' })
+    $notLaunched = @($Results | Where-Object { $_.Status -in @('NOT-LAUNCHED','NO-CLAUDE','PENDING') })
+    $refused     = @($Results | Where-Object { $_.Status -eq 'REFUSED' })
+    $mk = {
+        param($status, $code, $msg)
+        [pscustomobject]@{
+            Status = $status; ExitCode = $code; Message = $msg
+            Proven = $proven.Count; Unconfirmed = $unconfirmed.Count; SilentNew = $silentNew.Count
+            NotLaunched = $notLaunched.Count; Refused = $refused.Count; Requested = $RequestedCount
+        }
+    }
+    if ($silentNew.Count -gt 0) {
+        return & $mk 'FAILED' 7 "$($silentNew.Count) lane(s) started a NEW session instead of continuing."
+    }
+    if ($notLaunched.Count -gt 0) {
+        return & $mk 'FAILED' 4 "$($notLaunched.Count) lane(s) produced no attributable claude process."
+    }
+    if ($refused.Count -gt 0 -and -not $AllowPartial) {
+        return & $mk 'FAILED' 6 "$($refused.Count) selected lane(s) were refused before launch (pass -AllowPartial to accept a partial run)."
+    }
+    if ($unconfirmed.Count -gt 0 -and -not $AllowUnconfirmed) {
+        return & $mk 'UNPROVEN' 5 "$($unconfirmed.Count) lane(s) are running but their resume is not proven."
+    }
+    if ($proven.Count -eq 0) {
+        return & $mk 'FAILED' 9 'no lane was proven; -AllowPartial / -AllowUnconfirmedResume cannot make that a success.'
+    }
+    if ($proven.Count -eq $RequestedCount) {
+        return & $mk 'VERIFIED' 0 "$($proven.Count) of $RequestedCount requested lane(s) proven, each attributed to its own launch."
+    }
+    return & $mk 'ACCEPTED-WITH-EXCEPTIONS' 0 ("$($proven.Count) of $RequestedCount lane(s) proven; " +
+        "$($refused.Count) refused and $($unconfirmed.Count) unconfirmed were accepted by switch. This run is NOT verified.")
+}
+
+# The launcher invokes the ABSOLUTE path this run resolved for claude, not the bare word, so
+# what runs in the tab is exactly what attribution was resolved against — a PATH change
+# between here and the tab cannot substitute a different program.
+function New-LaneLauncher {
+    param($Lane, [string]$RunDir, [string]$RunId, [string]$ClaudePath, [string[]]$ClaudeArgs)
+    $marker   = Join-Path $RunDir ('marker-{0}.json' -f $Lane.Key)
+    $launcher = Join-Path $RunDir ('lane-{0}.ps1'    -f $Lane.Key)
+    $q = { param([string]$s) "'" + ($s -replace "'", "''") + "'" }
+    $qPath    = & $q $Lane.Path
+    $qMarker  = & $q $marker
+    $qKey     = & $q $Lane.Key
+    $qRun     = & $q $RunId
+    $qClaude  = & $q $ClaudePath
+    $body = @"
+# generated by bk-onrestart run $RunId — regenerated every launch; do not edit
+`$ErrorActionPreference = 'Stop'
+try {
+    Set-Location -LiteralPath $qPath
+    [pscustomobject]@{
+        key        = $qKey
+        runId      = $qRun
+        pwshPid    = `$PID
+        path       = (Get-Location).Path
+        claude     = $qClaude
+        startedUtc = (Get-Date).ToUniversalTime().ToString('o')
+    } | ConvertTo-Json -Compress | Set-Content -LiteralPath $qMarker -Encoding utf8
+} catch {
+    Write-Warning "bk-onrestart: could not enter the lane directory or record the handshake: `$_"
+    Write-Warning "bk-onrestart: NOT starting claude - it would resume the wrong conversation."
+    exit 9
+}
+& $qClaude $($ClaudeArgs -join ' ')
+"@
+    Set-Content -LiteralPath $launcher -Value $body -Encoding utf8
+    return [pscustomobject]@{
+        Name = $Lane.Name; Key = $Lane.Key; Path = $Lane.Path; Group = $Lane.Group
+        LauncherPath = $launcher; MarkerPath = $marker; State = $Lane
+    }
+}
+
+function Get-WtCommandLine {
+    param([object[]]$Lanes, [string]$WindowId)
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add((ConvertTo-NativeArg '-w')); $parts.Add((ConvertTo-NativeArg $WindowId))
+    $first = $true
+    foreach ($l in $Lanes) {
+        # BARE ';' — a quoted or backtick-escaped separator reaches wt literally and yields
+        # tabs that open and run nothing. It is the ONLY token left unquoted.
+        if (-not $first) { $parts.Add(';') }
+        # -NoProfile: a user profile could start long-lived children of the lane's pwsh that
+        # attribution would then have to tell apart from claude. Not loading it removes the
+        # whole class, and makes the logon path deterministic across hosts.
+        foreach ($t in @('new-tab', '--title', $l.Name, '-d', $l.Path, 'pwsh', '-NoProfile', '-NoExit', '-File', $l.LauncherPath)) {
+            $parts.Add((ConvertTo-NativeArg $t))
+        }
+        $first = $false
+    }
+    return ($parts -join ' ')
+}
+# --- Install / uninstall the at-logon trigger (portable to any host) -------------
+function Install-Trigger {
+    $self = $PSCommandPath
+    if (-not $self) { throw "cannot resolve own path; run via 'pwsh -File <script> -Install'" }
+    $pwsh = (Get-Process -Id $PID).Path        # the pwsh actually running us — portable
+    # -AllowUnconfirmedResume on the UNATTENDED path only. A lane whose claude is attributed and
+    # live, but whose transcript has not yet named the session within the verification window, is
+    # a normal outcome at logon before anyone types anything. The task accepts it — and it still
+    # reports ACCEPTED-WITH-EXCEPTIONS naming that lane, never VERIFIED. Run the script by hand
+    # without the switch to hold the strict default.
+    $action  = New-ScheduledTaskAction -Execute $pwsh `
+               -Argument ('-NoProfile -WindowStyle Hidden -File "{0}" -WaitForMounts -AllowUnconfirmedResume' -f $self)
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $trigger.Delay = [System.Xml.XmlConvert]::ToString([TimeSpan]::FromSeconds($DelaySeconds))  # ISO-8601, e.g. PT45S
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::FromMinutes(30))
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings `
+        -Description "Resume all Claude Code repo lanes $DelaySeconds s after logon (buildkit bk-onrestart prototype)" `
+        -Force | Out-Null
+    Write-Host "installed scheduled task '$TaskName' on $env:COMPUTERNAME for $env:USERNAME" -ForegroundColor Green
+    Write-Host "  fires: at logon + $DelaySeconds s delay" -ForegroundColor Green
+    Write-Host "  runs : $pwsh -NoProfile -WindowStyle Hidden -File `"$self`" -WaitForMounts -AllowUnconfirmedResume" -ForegroundColor DarkGray
+    Write-Host "  verify: Get-ScheduledTask -TaskName $TaskName" -ForegroundColor DarkGray
+}
+
+function Uninstall-Trigger {
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "removed scheduled task '$TaskName'" -ForegroundColor Green
+    } else { Write-Host "no scheduled task '$TaskName' to remove" -ForegroundColor Yellow }
+}
+
+# --- register / unregister a lane from the window you are standing in -------------
+# The point of -Register is that you capture a lane by BEING in it: cd into the repo,
+# run it, and the lane is added with the correct path and session store already proven.
+function Register-Lane {
+    $path = (Get-Location).Path
+    if (-not (Test-Path -LiteralPath (Join-Path $path '.git'))) {
+        Write-Error "not a git repo: $path — refusing to register a lane that is not a repo."; exit $EXIT_BADARGS
+    }
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf $path }
+    $laneGroup = if ($Group -gt 0) { $Group } else { 1 }
+    # Refuse at registration what the launcher would otherwise have to refuse 45 s after logon.
+    Assert-SafeLaneValue $laneName 'lane name' $laneName
+    Assert-SafeLaneValue $path     'lane path' $laneName
+
+    # Prove the lane is resumable NOW rather than discovering it at 45 s after next logon.
+    $store = Join-Path $ProjectsRoot (ConvertTo-SessionDirName $path)
+    $sess  = 0
+    if (Test-Path -LiteralPath $store) {
+        $sess = @(Get-ChildItem -LiteralPath $store -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+                  Where-Object { Test-ResumableSessionFile $_ }).Count
+    }
+    if ($sess -eq 0) { Write-Host "  warning: no usable stored session for this directory yet — it will be REFUSED at resume until Claude has run here." -ForegroundColor Yellow }
+
+    $cfg = Get-Config
+    $lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName -and (ConvertTo-ComparablePath $_.path) -ne (ConvertTo-ComparablePath $path) })
+    if (@($cfg.lanes).Count -ne $lanes.Count) { Write-Host "  replacing existing entry for '$laneName'" -ForegroundColor DarkGray }
+    $lanes += [pscustomobject]@{ name = $laneName; group = $laneGroup; path = $path }
+    $cfg.lanes = $lanes
+    Save-Config $cfg
+    Write-Host "registered lane '$laneName' (group $laneGroup, $sess usable session(s)) -> $path" -ForegroundColor Green
+    Write-Host "  config: $ConfigPath  |  lanes now: $(@($lanes).Count)" -ForegroundColor DarkGray
+}
+
+function Unregister-Lane {
+    $laneName = if ($Name) { $Name } else { Split-Path -Leaf (Get-Location).Path }
+    $cfg = Get-Config
+    $before = @($cfg.lanes).Count
+    $cfg.lanes = @($cfg.lanes | Where-Object { $_.name -ne $laneName })
+    if (@($cfg.lanes).Count -eq $before) { Write-Host "no lane named '$laneName' in config — nothing removed." -ForegroundColor Yellow; exit $EXIT_NOTHING }
+    Save-Config $cfg
+    Write-Host "unregistered lane '$laneName'  |  lanes now: $(@($cfg.lanes).Count)" -ForegroundColor Green
+}
+
+function Show-Config {
+    Write-Host "config : $ConfigPath" -ForegroundColor Cyan
+    Write-Host "host   : $env:COMPUTERNAME  ->  layout '$Layout'" -ForegroundColor Cyan
+    Write-Host "layoutByHost:" -ForegroundColor Cyan
+    $Config.layoutByHost.PSObject.Properties | ForEach-Object { "    {0,-12} {1}" -f $_.Name, $_.Value } | Write-Host
+    Write-Host "lanes ($(@($Repos).Count)):" -ForegroundColor Cyan
+    $Repos | ForEach-Object { "    {0,-10} win {1}  {2}" -f $_.Name, $_.Group, $_.Path } | Write-Host
+}
+
+if ($Register)   { Register-Lane;     exit $EXIT_OK }
+if ($Unregister) { Unregister-Lane;   exit $EXIT_OK }
+if ($ShowConfig) { Show-Config;       exit $EXIT_OK }
+if ($Install)    { Install-Trigger;   exit $EXIT_OK }
+if ($Uninstall)  { Uninstall-Trigger; exit $EXIT_OK }
+
+# --- Resolve + validate ---------------------------------------------------------
+# Under `pwsh -File`, "-Only a,b" arrives as ONE string, so a comma list silently matches
+# nothing. Split explicitly so -File and -Command behave alike.
+if ($Only) { $Only = @($Only -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+$selected = @(if ($Only) { $Repos | Where-Object { $Only -contains $_.Name } } else { $Repos })
+if (-not $selected) { Write-Error "No lanes matched -Only. Known: $($Repos.Name -join ', ')"; exit $EXIT_BADARGS }
+
+foreach ($r in $selected) {
+    try { Assert-SafeLaneValue $r.Name 'lane name' $r.Name; Assert-SafeLaneValue $r.Path 'lane path' $r.Name }
+    catch { Write-Error "$_  (fix it in $ConfigPath)"; exit $EXIT_BADARGS }
+}
+$conflicts = Get-LaneIdentityConflicts $selected
+if ($conflicts.Count -gt 0) {
+    Write-Error ("lane identities are not unique, so a launch could not be attributed per lane:`n  " +
+                 ($conflicts -join "`n  ") + "`nFix them in $ConfigPath")
+    exit $EXIT_BADARGS
+}
+# Immutable per-run key: filenames, markers and result slots are keyed by this, never by a
+# display name that configuration could repeat.
+for ($i = 0; $i -lt $selected.Count; $i++) {
+    $selected[$i] | Add-Member -NotePropertyName Key -NotePropertyValue ('{0:d2}-{1}' -f $i, $selected[$i].Name) -Force
+}
+
+Write-Host "bk-onrestart (prototype) — host $env:COMPUTERNAME" -ForegroundColor Cyan
+if ($env:COMPUTERNAME -ne 'Gavriella') {
+    Write-Warning "Lane paths were verified on GAVRIELLA. On $env:COMPUTERNAME they are unverified — re-resolve before trusting them."
+}
+
+$shareMissing = @()
+if ($WaitForMounts) {
+    Write-Host ''; Write-Host 'Waiting for mounts...' -ForegroundColor Cyan
+    $repoMissing = Wait-ForPaths -Paths @($selected.Path) -TimeoutSec $RepoWaitSec -Label 'repo path(s)'
+    if ($repoMissing.Count -gt 0) { Write-Host ("  {0} repo path(s) never appeared: {1}" -f $repoMissing.Count, ($repoMissing -join ', ')) -ForegroundColor Yellow }
+    else { Write-Host '  all repo paths present.' -ForegroundColor Green }
+    $shareMissing = Wait-ForPaths -Paths $OptionalMount -TimeoutSec $ShareWaitSec -Label 'network share(s)'
+    if ($shareMissing.Count -eq 0) { Write-Host '  all network shares present.' -ForegroundColor Green }
+}
+
+$state = @($selected | ForEach-Object { Get-RepoState $_ })
+
+Write-Host ''; Write-Host 'Lane resume plan' -ForegroundColor Cyan
+Write-Host ('-' * 104)
+'{0,-10} {1,-6} {2,-34} {3,-6} {4,-7} {5,-9} {6}' -f 'LANE','WINDOW','PATH','SESS','USABLE','RESUME?','LATEST SESSION' | Write-Host
+Write-Host ('-' * 104)
+foreach ($s in $state) {
+    $verdict = if (-not $s.PathExists) { 'NO-PATH' } elseif (-not $s.StoreExists) { 'NO-STORE' }
+               elseif ($s.Sessions -eq 0) { 'EMPTY' }
+               elseif ($s.Usable -eq 0) { 'UNUSABLE' } else { 'yes' }
+    $colour = if ($verdict -eq 'yes') { 'Green' } else { 'Red' }
+    $when = if ($s.Latest) { $s.Latest.ToString('yyyy-MM-dd HH:mm') } else { '-' }
+    '{0,-10} {1,-6} {2,-34} {3,-6} {4,-7} {5,-9} {6}' -f $s.Name,$s.Group,$s.Path,$s.Sessions,$s.Usable,$verdict,$when |
+        Write-Host -ForegroundColor $colour
+}
+Write-Host ('-' * 104)
+
+# A lane is launchable only if it has a session that can actually be continued.
+$launchable = @($state | Where-Object { $_.PathExists -and $_.StoreExists -and $_.Usable -gt 0 })
+$blocked    = @($state | Where-Object { -not ($_.PathExists -and $_.StoreExists -and $_.Usable -gt 0) })
+
+if ($blocked.Count -gt 0) {
+    Write-Host ''; Write-Host "REFUSING to resume $($blocked.Count) lane(s):" -ForegroundColor Yellow
+    foreach ($b in $blocked) {
+        $why = if (-not $b.PathExists) { 'path does not exist' }
+               elseif (-not $b.StoreExists) { "no session store at ...\$($b.SessionDir)  <- Claude has never run in this directory" }
+               elseif ($b.Sessions -eq 0) { 'session store is empty' }
+               else { "all $($b.Sessions) transcript(s) lack a session record or are corrupt — none can be continued" }
+        Write-Host "  $($b.Name): $why" -ForegroundColor Yellow
+    }
+    Write-Host '  Resuming anyway would silently start a NEW empty session, which looks like success.' -ForegroundColor Yellow
+    if (-not $AllowPartial) {
+        Write-Host '  They stay in the denominator: the run FAILS unless -AllowPartial is given.' -ForegroundColor Yellow
+    }
+}
+
+if ($Fresh) {
+    Write-Host ''; Write-Host '-Fresh set: starting NEW sessions. This does NOT continue anything.' -ForegroundColor Yellow
+    $launchable = @($state | Where-Object { $_.PathExists })
+    $blocked    = @($state | Where-Object { -not $_.PathExists })
+}
+
+$claudeArgs = @()
+if (-not $Fresh) { $claudeArgs += '--continue' }
+if ($AutoCompact -eq 'max') { $claudeArgs += @('--autocompact', '1000000') }
+$claudeCmd = (@('claude') + $claudeArgs) -join ' '
+$ClaudeExe = (Get-Command 'claude' -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+
+if ($shareMissing.Count -gt 0) {
+    Write-Host ''
+    Write-Host '################################################################' -ForegroundColor Red
+    Write-Host ' NETWORK SHARE(S) NOT PRESENT - LAUNCHING ANYWAY (this is normal)' -ForegroundColor Red
+    Write-Host '################################################################' -ForegroundColor Red
+    foreach ($m in $shareMissing) { Write-Host "  absent: $m" -ForegroundColor Red }
+    Write-Host ''
+    Write-Host '  ABSENT SHARE MEANS "I CANNOT SEE THE BOARD".' -ForegroundColor Yellow
+    Write-Host '  It does NOT mean the board is empty, and it is NOT a finding about any host.' -ForegroundColor Yellow
+    Write-Host '  DO NOT let any tool fall back to a default/local sched root - that husk' -ForegroundColor Yellow
+    Write-Host '  answers every query with plausible STALE data. Three 2026-08 incidents.' -ForegroundColor Yellow
+    Write-Host '  Remap when gavriella is back:  net use I: \\192.168.0.108\GAVRI_D /persistent:yes' -ForegroundColor Cyan
+    Write-Host ''
+}
+
+Write-Host ''
+Write-Host "Requested   : $($selected.Count)"
+Write-Host "Will launch : $($launchable.Count)"
+Write-Host "Refused     : $($blocked.Count)"
+Write-Host "Layout      : $Layout"
+Write-Host "Command     : $claudeCmd"
+Write-Host "claude exe  : $(if ($ClaudeExe) { $ClaudeExe } else { '<NOT ON PATH>' })"
+Write-Host "validation  : $(if ($DeepValidate) { 'deep (whole transcript)' } else { 'bounded (last 64 KB of each transcript)' })"
+
+if ($DryRun) { Write-Host ''; Write-Host 'DRY RUN - nothing launched.' -ForegroundColor Cyan; exit $EXIT_OK }
+if ($launchable.Count -eq 0) { Write-Host 'Nothing to launch.' -ForegroundColor Yellow; exit $EXIT_NOTHING }
+
+$wt = 'wt.exe'
+if (-not (Get-Command $wt -ErrorAction SilentlyContinue)) {
+    Write-Error "Windows Terminal (wt.exe) not found on PATH."; exit $EXIT_NO_WT
+}
+
+# Attribution must be possible BEFORE anything is launched — otherwise the run could only end
+# in a count or a name match, which are exactly the checks this script refuses to make.
+if ([string]::IsNullOrWhiteSpace($ClaudeExe)) {
+    Write-Error "'claude' does not resolve on PATH. Without the real command path a launched process cannot be told apart from anything renamed claude.exe, so no lane could be honestly proven. Refusing to launch."
+    exit $EXIT_NO_ATTRIB
+}
+try { $null = Get-ProcTable }
+catch {
+    Write-Error "cannot read the process table (Win32_Process): $_`nWithout it a launch cannot be attributed to a lane, and an unattributed count is not verification. Refusing to launch."
+    exit $EXIT_NO_ATTRIB
+}
+
+# --- Per-lane launcher + handshake marker ----------------------------------------
+# Each tab runs a generated script instead of an inline command, for two reasons:
+#   * it writes a MARKER identifying lane, run and cwd before exec'ing claude, which is what
+#     makes the later verification attributable to THIS lane and THIS invocation;
+#   * an inline command would need ';' to sequence, and ';' is wt's tab separator.
+# The launcher stops on error and does NOT start claude if it could not enter the lane
+# directory: a claude started in the wrong cwd would resume the wrong conversation.
+$runId  = '{0}-{1}' -f (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'), ([guid]::NewGuid().ToString('N').Substring(0, 6))
+$RunsRoot = Join-Path $env:LOCALAPPDATA 'bk-onrestart\runs'
+$RunDir = Join-Path $RunsRoot $runId
+New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
+# Claim this run dir so a concurrent invocation's retention pass cannot delete it while we poll.
+# The handle stays OPEN for this process's whole life, so Windows itself refuses to delete
+# this directory while we are still polling; the exact start ticks defeat PID reuse.
+$RunLockHandle = $null
+try {
+    $lockPath = Join-Path $RunDir 'active.lock'
+    $me = Get-Process -Id $PID
+    $lockJson = [pscustomobject]@{
+        pid = $PID; startedTicks = $me.StartTime.ToUniversalTime().Ticks
+        startedUtc = $me.StartTime.ToUniversalTime().ToString('o'); image = $me.Path
+    } | ConvertTo-Json -Compress
+    $RunLockHandle = [System.IO.File]::Open($lockPath, 'Create', 'Write', 'Read')
+    $lockBytes = [System.Text.Encoding]::UTF8.GetBytes($lockJson)
+    $RunLockHandle.Write($lockBytes, 0, $lockBytes.Length)
+    $RunLockHandle.Flush()
+} catch { Write-Host "  (could not claim the run dir: $_)" -ForegroundColor DarkGray }
+
+$prune = Remove-StaleRunDirs -RunsRoot $RunsRoot -KeepRuns $KeepRuns -CurrentRunDir $RunDir
+if ($prune.Removed.Count -gt 0) { Write-Host "  pruned $($prune.Removed.Count) completed run dir(s) under $RunsRoot" -ForegroundColor DarkGray }
+if ($prune.Skipped.Count -gt 0) { Write-Host "  kept $($prune.Skipped.Count) run dir(s) still claimed by a live process" -ForegroundColor DarkGray }
+
+$plan = @($launchable | ForEach-Object { New-LaneLauncher -Lane $_ -RunDir $RunDir -RunId $runId -ClaudePath $ClaudeExe -ClaudeArgs $claudeArgs })
+
+function Start-LaneWindow {
+    param([object[]]$Lanes, [string]$WindowId)
+    Start-Process -FilePath $wt -ArgumentList (Get-WtCommandLine -Lanes $Lanes -WindowId $WindowId)
+}
+
+$launchStart = Get-Date
+
+switch ($Layout) {
+    'TwoWindows' {
+        $g1 = @($plan | Where-Object { $_.Group -eq 1 })
+        $g2 = @($plan | Where-Object { $_.Group -eq 2 })
+        if ($g1.Count) { Start-LaneWindow -Lanes $g1 -WindowId 'lanes-1'; Start-Sleep -Milliseconds 900 }
+        if ($g2.Count) { Start-LaneWindow -Lanes $g2 -WindowId 'lanes-2' }
+        Write-Host "Launched 2 windows: $($g1.Count) + $($g2.Count) tabs." -ForegroundColor Green
+    }
+    'Tabs' { Start-LaneWindow -Lanes $plan -WindowId '0'; Write-Host "Launched 1 window with $($plan.Count) tabs." -ForegroundColor Green }
+    'Windows' {
+        foreach ($l in $plan) {
+            Start-LaneWindow -Lanes @($l) -WindowId '-1'
+            Start-Sleep -Milliseconds 400
+        }
+        Write-Host "Launched $($plan.Count) windows." -ForegroundColor Green
+    }
+}
+
+# --- Verify PER LANE, by attribution ---------------------------------------------
+Write-Host ''
+Write-Host "Verifying per lane (attributed, not counted) — up to $VerifyTimeoutSec s..." -ForegroundColor Cyan
+
+$results = @{}
+foreach ($s in $selected) {
+    $results[$s.Key] = [pscustomobject]@{
+        Name = $s.Name; Key = $s.Key; Status = 'REFUSED'; Detail = 'refused before launch'; ClaudePid = $null
+    }
+}
+foreach ($l in $plan) {
+    $results[$l.Key] = [pscustomobject]@{
+        Name = $l.Name; Key = $l.Key; Status = 'NOT-LAUNCHED'
+        Detail = 'no handshake marker: the tab opened but never ran its command'; ClaudePid = $null
+    }
+}
+
+$deadline = (Get-Date).AddSeconds($VerifyTimeoutSec)
+$pendingLanes = @($plan)
+while ($pendingLanes.Count -gt 0 -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 3
+    $table = Get-ProcTable
+    $stillPending = [System.Collections.Generic.List[object]]::new()
+    foreach ($l in $pendingLanes) {
+        $v = Get-LaneVerification -Lane $l -Table $table -LaunchStart $launchStart -RunId $runId `
+                                  -ClaudeExe $ClaudeExe -ClaudeArgs $claudeArgs -Fresh ([bool]$Fresh)
+        if ($v.Status -ne 'PENDING') {
+            $r = $results[$l.Key]
+            $r.Status = $v.Status; $r.Detail = $v.Detail; $r.ClaudePid = $v.ClaudePid
+        }
+        if (-not $v.Terminal) { $stillPending.Add($l) }
+    }
+    $pendingLanes = @($stillPending)
+}
+
+Write-Host ''
+Write-Host ('{0,-12} {1,-13} {2}' -f 'LANE','STATUS','EVIDENCE')
+Write-Host ('-' * 104)
+foreach ($s in $selected) {
+    $r = $results[$s.Key]
+    $colour = switch ($r.Status) {
+        'RESUMED'     { 'Green' }
+        'STARTED'     { 'Green' }
+        'UNCONFIRMED' { 'Yellow' }
+        default       { 'Red' }
+    }
+    Write-Host ('{0,-12} {1,-13} {2}' -f $r.Name, $r.Status, $r.Detail) -ForegroundColor $colour
+}
+Write-Host ('-' * 104)
+
+$outcome = Get-RunOutcome -Results @($results.Values) -RequestedCount $selected.Count `
+                          -AllowPartial ([bool]$AllowPartial) -AllowUnconfirmed ([bool]$AllowUnconfirmedResume)
+
+Write-Host ("requested {0} | proven {1} | unconfirmed {2} | silent-new {3} | not-launched {4} | refused {5}" -f `
+    $outcome.Requested, $outcome.Proven, $outcome.Unconfirmed, $outcome.SilentNew, $outcome.NotLaunched, $outcome.Refused)
+Write-Host "  run artifacts (markers + per-lane launchers): $RunDir" -ForegroundColor DarkGray
+
+$unproven = @($results.Values | Where-Object { $_.Status -notin @('RESUMED','STARTED') })
+if ($outcome.Status -notin @('VERIFIED', 'ACCEPTED-WITH-EXCEPTIONS')) {
+    foreach ($u in $unproven) { Write-Host ("  unproven: {0} [{1}] {2}" -f $u.Name, $u.Status, $u.Detail) -ForegroundColor Red }
+    Write-Host ("{0}: {1}" -f $outcome.Status, $outcome.Message) -ForegroundColor Red
+    exit $outcome.ExitCode
+}
+if ($outcome.Status -eq 'ACCEPTED-WITH-EXCEPTIONS') {
+    foreach ($u in $unproven) { Write-Host ("  unproven (accepted): {0} [{1}] {2}" -f $u.Name, $u.Status, $u.Detail) -ForegroundColor Yellow }
+    Write-Host ("ACCEPTED-WITH-EXCEPTIONS: {0}" -f $outcome.Message) -ForegroundColor Yellow
+    exit $outcome.ExitCode
+}
+Write-Host ("VERIFIED: {0}" -f $outcome.Message) -ForegroundColor Green
+exit $outcome.ExitCode
+
+--- FILE (NEW): scripts/tests/onrestart-launch.tests.ps1 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+#
+# SPDX-License-Identifier: MIT
+
+<#
+.SYNOPSIS
+  Fault-injection harness for scripts/onrestart-launch.ps1.
+
+.DESCRIPTION
+  Regression cover for three rounds of codexreview findings.
+
+    round 1 (20260821T101500Z-rel)
+      F1 critical  verification could pass on claude processes this launch did not create
+      F2 high      lanes refused before launch left the denominator, so a partial run exited 0
+      F3 high      any *.jsonl filename counted as a resumable session
+      F4 medium    Start-Process argument serialization could misparse names and paths
+
+    round 2 (20260821T123119Z-rel2)
+      N1 critical  -AllowPartial / -AllowUnconfirmedResume reached a "VERIFIED" claim
+      N2 critical  duplicate lane names collapsed two lanes into one verification identity
+      N3 critical  the launcher could start claude in the wrong cwd; markers went unvalidated
+      N4 medium    a '^claude' prefix test accepted claudette.exe and claude-malware.exe
+      N5 low       per-run launcher/marker directories accumulated without bound
+
+    round 3 (20260821T125500Z-rel3)
+      M1 critical  any executable renamed claude.exe was attributed - AND THIS HARNESS
+                   ASSERTED THAT BEHAVIOUR, institutionalizing the hole. The assertion is
+                   now inverted: a renamed ping.exe must NOT be attributed.
+      M2 critical  a metadata touch counted as proof of resumption
+      M3 high      tail validation passed if any one record parsed, however corrupt the rest
+      M4 medium    retention pruning could delete a concurrent run's live directory
+      M5 low       the tail window dropped a complete record when it began on a boundary
+
+  Every negative case is a FAULT INJECTION, not an absence: the pre-fix behaviour is
+  reproduced and asserted to fail. The shipped per-lane state machine (Get-LaneVerification)
+  is driven directly through all eleven of its transitions, including which are terminal.
+
+  Function bodies are extracted from the shipped file via the PowerShell AST, so the tests
+  exercise the code that ships, not a copy of it.
+
+.EXAMPLE
+  pwsh -NoProfile -File scripts\tests\onrestart-launch.tests.ps1
+#>
+$ErrorActionPreference = 'Stop'
+$src = Join-Path (Split-Path -Parent $PSScriptRoot) 'onrestart-launch.ps1'
+if (-not (Test-Path -LiteralPath $src)) { throw "cannot find the script under test at $src" }
+
+$errs = $null; $toks = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($src, [ref]$toks, [ref]$errs)
+if ($errs) { throw "parse errors in $src" }
+$want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath','Get-LaneIdentityConflicts',
+          'ConvertTo-SessionDirName','Get-SessionFileId','Test-SessionTailIntact','Test-ResumableSessionFile',
+          'Get-ResumeEvidence','Get-RepoState','Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc',
+          'Test-LaneMarker','Get-LaneVerification','Remove-StaleRunDirs','Get-RunOutcome',
+          'New-LaneLauncher','Get-WtCommandLine','Read-FileRange','Split-TranscriptLines',
+          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary','ConvertFrom-NativeCommandLine','Get-FileHeadHash')
+$found = @()
+foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
+}
+$missing = @($want | Where-Object { $found -notcontains $_ })
+if ($missing) { throw "did not find in $src : $($missing -join ', ')" }
+
+$pass = 0; $fail = 0
+function Check([string]$Name, [bool]$Cond, [string]$Got = '') {
+    if ($Cond) { $script:pass++; Write-Host ("  PASS  {0}" -f $Name) -ForegroundColor Green }
+    else       { $script:fail++; Write-Host ("  FAIL  {0}   got: {1}" -f $Name, $Got) -ForegroundColor Red }
+}
+$tmp = Join-Path $env:TEMP ('onrestart-test-' + [guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+function Res([string]$Status) { [pscustomobject]@{ Name = $Status; Key = $Status; Status = $Status } }
+function NewJsonl([string]$name, [string]$content) {
+    $p = Join-Path $tmp $name; Set-Content -LiteralPath $p -Value $content -Encoding utf8 -NoNewline; return (Get-Item $p)
+}
+$SESS = '{"type":"session","sessionId":"abc-123","mode":"interactive"}'
+$REC  = '{"type":"user","uuid":"u1","text":"hello"}'
+
+Write-Host ''
+Write-Host 'F4 - native argument quoting' -ForegroundColor Cyan
+Check 'plain token is not quoted'        ((ConvertTo-NativeArg 'new-tab') -ceq 'new-tab')            (ConvertTo-NativeArg 'new-tab')
+Check 'token with space is quoted'       ((ConvertTo-NativeArg 'my lane') -ceq '"my lane"')          (ConvertTo-NativeArg 'my lane')
+Check 'embedded quote is escaped'        ((ConvertTo-NativeArg 'a"b c') -ceq '"a\"b c"')             (ConvertTo-NativeArg 'a"b c')
+Check 'trailing backslash is doubled'    ((ConvertTo-NativeArg 'C:\x y\') -ceq '"C:\x y\\"')         (ConvertTo-NativeArg 'C:\x y\')
+Check 'interior backslash left alone'    ((ConvertTo-NativeArg 'C:\x y\z') -ceq '"C:\x y\z"')        (ConvertTo-NativeArg 'C:\x y\z')
+Check 'empty string is quoted'           ((ConvertTo-NativeArg '') -ceq '""')                        (ConvertTo-NativeArg '')
+$threw = $false; try { ConvertTo-NativeArg "a`tb" | Out-Null } catch { $threw = $true }
+Check 'control character refuses'        $threw
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class ArgvRT {
+  [DllImport("shell32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine, out int pNumArgs);
+  public static string[] Split(string cmdline) {
+    int n; IntPtr p = CommandLineToArgvW(cmdline, out n);
+    if (p == IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
+    try { var r = new string[n];
+      for (int i = 0; i < n; i++) r[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+      return r; }
+    finally { Marshal.FreeHGlobal(p); }
+  }
+}
+'@ -ErrorAction SilentlyContinue
+$hostile = @('new-tab', '--title', 'lane with space', '-d', 'D:\path with space\repo', 'pwsh',
+             '-NoExit', '-File', 'D:\a "b"\lane.ps1', 'C:\ends\with\')
+$line = ($hostile | ForEach-Object { ConvertTo-NativeArg $_ }) -join ' '
+$back = [ArgvRT]::Split('wt.exe ' + $line) | Select-Object -Skip 1
+$same = ($back.Count -eq $hostile.Count)
+if ($same) { for ($i = 0; $i -lt $hostile.Count; $i++) { if ($back[$i] -cne $hostile[$i]) { $same = $false } } }
+Check 'hostile argv round-trips through CommandLineToArgvW' $same ($back -join ' | ')
+$naiveBack = [ArgvRT]::Split('wt.exe ' + ($hostile -join ' ')) | Select-Object -Skip 1
+Check 'unquoted join DOES corrupt the same argv (defect reproduced)' ($naiveBack.Count -ne $hostile.Count) ("$($naiveBack.Count) tokens vs $($hostile.Count)")
+$lanes = @(
+    [pscustomobject]@{ Name='lane one'; Path='D:\a b\repo'; LauncherPath='D:\runs\lane-00.ps1' },
+    [pscustomobject]@{ Name='two';      Path='D:\c\repo';   LauncherPath='D:\runs\lane-01.ps1' }
+)
+$cl = Get-WtCommandLine -Lanes $lanes -WindowId 'lanes-1'
+Check 'wt command line keeps exactly one bare separator per extra tab' (([regex]::Matches($cl, '(^| );( |$)')).Count -eq 1) $cl
+$wtBack = [ArgvRT]::Split('wt.exe ' + $cl) | Select-Object -Skip 1
+Check 'wt argv round-trips with the separator intact'  (($wtBack -contains ';') -and ($wtBack -contains 'lane one') -and ($wtBack -contains 'D:\a b\repo')) ($wtBack -join ' | ')
+
+Write-Host ''
+Write-Host 'F3 / M3 / M5 - transcript validation' -ForegroundColor Cyan
+$zero = Join-Path $tmp 'zero.jsonl'; New-Item -ItemType File -Path $zero -Force | Out-Null
+Check 'zero-byte transcript refused'            (-not (Test-ResumableSessionFile (Get-Item $zero)))
+Check 'unparseable transcript refused'          (-not (Test-ResumableSessionFile (NewJsonl 'garbage.jsonl' 'not json at all')))
+Check 'blank-lines-only refused'                (-not (Test-ResumableSessionFile (NewJsonl 'blank.jsonl' "`n`n")))
+Check 'valid JSON without sessionId refused'    (-not (Test-ResumableSessionFile (NewJsonl 'nosid.jsonl' '{"type":"user"}')))
+Check 'bare {} refused'                         (-not (Test-ResumableSessionFile (NewJsonl 'empty-obj.jsonl' '{}')))
+Check 'JSON array first line refused'           (-not (Test-ResumableSessionFile (NewJsonl 'array.jsonl' '[1,2,3]')))
+Check 'empty sessionId refused'                 (-not (Test-ResumableSessionFile (NewJsonl 'blanksid.jsonl' '{"sessionId":"   "}')))
+Check 'numeric sessionId refused'               (-not (Test-ResumableSessionFile (NewJsonl 'numsid.jsonl' '{"sessionId":42}')))
+Check 'session header alone accepted'           (Test-ResumableSessionFile (NewJsonl 'header.jsonl' $SESS))
+Check 'leading blank line tolerated'            (Test-ResumableSessionFile (NewJsonl 'lead.jsonl' ("`n" + $SESS)))
+Check 'valid header + records accepted'         (Test-ResumableSessionFile (NewJsonl 'full.jsonl' ($SESS + "`n" + $REC)))
+Check 'one UNTERMINATED torn tail tolerated'    (Test-ResumableSessionFile (NewJsonl 'torn.jsonl' ($SESS + "`n" + $REC + "`n" + '{"type":"assist')))
+Check 'a COMPLETE corrupt line refused (M3)'    (-not (Test-ResumableSessionFile (NewJsonl 'corrupt1.jsonl' ($SESS + "`n" + 'zzzz' + "`n" + $REC))))
+Check 'many complete corrupt lines refused (M3)' (-not (Test-ResumableSessionFile (NewJsonl 'corruptN.jsonl' ($SESS + "`n" + (@('zzz') * 20 -join "`n") + "`n" + $REC))))
+Check 'session id is extracted'                 ((Get-SessionFileId (NewJsonl 'sid.jsonl' $SESS)) -ceq 'abc-123') (Get-SessionFileId (NewJsonl 'sid.jsonl' $SESS))
+
+# Beyond the tail window the header is out of reach, so only the tail can vouch for the file.
+$bulk = (1..3000 | ForEach-Object { '{"type":"user","uuid":"u' + $_ + '","text":"padpadpadpadpadpadpadpad"}' }) -join "`n"
+$bigOk  = NewJsonl 'big-ok.jsonl'  ($SESS + "`n" + $bulk)
+# Corruption is a COMPLETE line that does not parse. A terminated garbage blob is corruption...
+$bigBad = NewJsonl 'big-bad.jsonl' ($SESS + "`n" + $bulk + "`n" + ('z' * 70000) + "`n")
+# ...whereas an UNTERMINATED trailing blob is byte-for-byte indistinguishable from a record still
+# being written - Claude Code emits records far larger than the window - so refusing it would
+# strand a healthy lane. It is tolerated, deliberately, and that choice is asserted here.
+$bigTorn = NewJsonl 'big-torn.jsonl' ($SESS + "`n" + $bulk + "`n" + ('z' * 70000))
+Check 'large transcript is beyond the tail window'      ($bigOk.Length -gt 65536) "$($bigOk.Length) bytes"
+Check 'large transcript with an intact tail accepted'   (Test-ResumableSessionFile $bigOk)
+Check 'large transcript with a corrupt COMPLETE tail refused' (-not (Test-ResumableSessionFile $bigBad)) "$($bigBad.Length) bytes"
+Check 'an oversized UNTERMINATED tail is tolerated'     (Test-ResumableSessionFile $bigTorn) "$($bigTorn.Length) bytes"
+
+# M5: a window that starts exactly on a newline must keep its first record, not discard it.
+$rec80 = '{"type":"user","uuid":"padpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpa"}'
+$n = [Math]::Ceiling(65536 / ($rec80.Length + 1)) + 2
+$aligned = NewJsonl 'aligned.jsonl' ($SESS + "`n" + ((1..$n | ForEach-Object { $rec80 }) -join "`n"))
+$boundaryOk = $false
+for ($tb = 65536; $tb -lt 65536 + $rec80.Length + 2; $tb++) {
+    if (-not (Test-SessionTailIntact $aligned $tb)) { $boundaryOk = $false; break }
+    $boundaryOk = $true
+}
+Check 'every tail-window offset across a record boundary accepts (M5)' $boundaryOk "aligned=$($aligned.Length) bytes"
+
+# A file that vanishes or is exclusively locked must be false, never an exception.
+$vanish = NewJsonl 'vanish.jsonl' ($SESS + "`n" + $REC)
+$vinfo = Get-Item $vanish.FullName
+Remove-Item -LiteralPath $vanish.FullName -Force
+$noThrow = $true; $r = $true
+try { $r = Test-SessionTailIntact $vinfo } catch { $noThrow = $false }
+Check 'vanished file returns false without throwing' ($noThrow -and -not $r)
+$locked = NewJsonl 'locked.jsonl' ($SESS + "`n" + $REC)
+$lh = [System.IO.File]::Open($locked.FullName, 'Open', 'Read', 'None')
+$noThrow = $true; $r = $true
+try { $r = Test-SessionTailIntact (Get-Item $locked.FullName) } catch { $noThrow = $false }
+$lh.Dispose()
+Check 'exclusively locked file returns false without throwing' ($noThrow -and -not $r)
+
+Write-Host ''
+Write-Host 'M2 - resume evidence must be an appended record, not a touch' -ForegroundColor Cyan
+$ProjectsRoot = Join-Path $tmp 'projects'
+$LANEPATH = 'D:\fake\lane'
+$storeDir = Join-Path $ProjectsRoot (ConvertTo-SessionDirName $LANEPATH)
+New-Item -ItemType Directory -Path $storeDir -Force | Out-Null
+$tx = Join-Path $storeDir 'sess-1.jsonl'
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+function LaneState { Get-RepoState ([pscustomobject]@{ Name='fake'; Group=1; Path=$LANEPATH; Key='00-fake' }) }
+$st = LaneState
+Check 'pre-launch state captured the session id' ($st.LatestSessionId -ceq 'abc-123') $st.LatestSessionId
+Check 'no change yields no evidence'             ($null -eq (Get-ResumeEvidence $st))
+# INJECTION: a metadata touch, which the previous version accepted as proof.
+(Get-Item $tx).LastWriteTimeUtc = (Get-Date).ToUniversalTime().AddMinutes(5)
+Check 'a timestamp touch is NOT evidence (M2)'   ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
+# A partial append with no newline yet is not a complete record.
+Add-Content -LiteralPath $tx -Value '{"type":"assist' -NoNewline -Encoding utf8
+Check 'a partial appended line is NOT evidence'  ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
+# INJECTION (J3): a complete appended record with NO sessionId. Any process with access to the
+# transcript could have written it, so it is not attributable to the launched claude and must
+# NOT count as proof.
+Add-Content -LiteralPath $tx -Value ('ant"}' + "`n") -NoNewline -Encoding utf8
+$evU = Get-ResumeEvidence $st
+Check 'a sessionId-less append is NOT proof (J3)'  ($null -ne $evU -and $evU.Kind -eq 'UNIDENTIFIED') ("$($evU.Kind)")
+Check 'and it is reported, not silently discarded' ($evU.Detail -match 'no record named sessionId') ("$($evU.Detail)")
+# A record carrying the EXPECTED sessionId, beginning after the pre-launch length, IS proof.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
+$ev = Get-ResumeEvidence $st
+Check 'the expected sessionId IS proof'          ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'expected-session-id') ("$($ev.Kind)/$($ev.Strength)")
+# INJECTION (K2): a sessionId-less record FIRST, a foreign sessionId AFTER it. Returning on the
+# first parseable record - which an earlier version did - reports RESUMED and never looks.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$st2 = LaneState
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","uuid":"u8"}' + "`n" + '{"type":"assistant","sessionId":"OTHER-999","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'a LATER foreign sessionId still wins (K2)' ((Get-ResumeEvidence $st2).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $st2).Kind)
+# An appended record that is not yet terminated is not a record.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$st4 = LaneState
+Add-Content -LiteralPath $tx -Value '{"type":"assistant","sessionId":"abc-123","uuid":"u1' -NoNewline -Encoding utf8
+Check 'an unterminated appended line is not yet a record' ($null -eq (Get-ResumeEvidence $st4)) ((Get-ResumeEvidence $st4).Kind)
+
+Write-Host ''
+Write-Host 'J2 - a record straddling the launch boundary' -ForegroundColor Cyan
+# INJECTION: the transcript is captured MID-RECORD, and the bytes appended afterwards complete a
+# record carrying a FOREIGN sessionId. Decoding from the raw pre-launch length would split that
+# record into an unparseable fragment and never see the foreign id at all.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"OTHER-7","uu') -Encoding utf8 -NoNewline
+$stj = LaneState
+Check 'the boundary is the last complete record, not the length' ($stj.LatestCompleteOffset -lt $stj.LatestLength) "$($stj.LatestCompleteOffset) vs $($stj.LatestLength)"
+Add-Content -LiteralPath $tx -Value ('id":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'a foreign sessionId inside a straddling record is caught (J2)' ((Get-ResumeEvidence $stj).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stj).Kind)
+# And the converse: completing a pre-launch record is NOT itself proof this launch resumed.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uu') -Encoding utf8 -NoNewline
+$stk = LaneState
+Add-Content -LiteralPath $tx -Value ('id":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'completing a pre-launch record is NOT proof (J2)' ($null -eq (Get-ResumeEvidence $stk)) ((Get-ResumeEvidence $stk).Kind)
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u10"}' + "`n") -NoNewline -Encoding utf8
+Check 'a record beginning after the launch IS proof (J2)' ((Get-ResumeEvidence $stk).Kind -eq 'RESUMED') ((Get-ResumeEvidence $stk).Kind)
+$lrb = NewJsonl 'lrb.jsonl' ($SESS + "`n" + $REC + "`n" + 'partial')
+Check 'last-record boundary skips a trailing partial'  ((Get-LastRecordBoundary $lrb) -eq ($lrb.Length - 7)) "$(Get-LastRecordBoundary $lrb) of $($lrb.Length)"
+$lrb2 = NewJsonl 'lrb2.jsonl' 'no newline at all'
+Check 'a file with no newline has boundary 0'          ((Get-LastRecordBoundary $lrb2) -eq 0) "$(Get-LastRecordBoundary $lrb2)"
+
+Write-Host ''
+Write-Host 'H1 - a record longer than the tail window' -ForegroundColor Cyan
+# INJECTION: the straddling record is BIGGER than the search window, so a boundary search that
+# gives up after one window returns a position in the middle of it - and the foreign sessionId
+# inside that record is never decoded.
+$huge = '{"type":"assistant","sessionId":"OTHER-BIG","pad":"' + ('x' * 90000)
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + $huge) -Encoding utf8 -NoNewline
+$stH = LaneState
+Check 'the straddling record exceeds the window' (($stH.LatestLength - $stH.LatestCompleteOffset) -gt 65536) "$($stH.LatestLength - $stH.LatestCompleteOffset) bytes"
+Check 'the boundary is a real record boundary'   ($stH.LatestCompleteOffset -gt 0) "$($stH.LatestCompleteOffset)"
+Add-Content -LiteralPath $tx -Value ('"}' + "`n") -NoNewline -Encoding utf8
+Check 'a foreign sessionId in an oversized straddling record is caught (H1)' ((Get-ResumeEvidence $stH).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stH).Kind)
+$bigLine = NewJsonl 'bigline.jsonl' ($SESS + "`n" + '{"a":"' + ('y' * 90000) + '"}' + "`n" + $REC + "`n")
+Check 'a boundary further back than one window is found (H1)' ((Get-LastRecordBoundary $bigLine) -eq $bigLine.Length) "$(Get-LastRecordBoundary $bigLine) of $($bigLine.Length)"
+$noNl = NewJsonl 'nonl-big.jsonl' ('z' * 90000)
+Check 'a window-sized file with no newline has boundary 0 (H1)' ((Get-LastRecordBoundary $noNl) -eq 0) "$(Get-LastRecordBoundary $noNl)"
+
+Write-Host ''
+Write-Host 'H2 / H4 - the CLI match and argument match are not forgeable by substring' -ForegroundColor Cyan
+$FAKE = 'C:\Users\g\AppData\npm\claude.cmd'
+function Q($cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name='node.exe'; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'the real CLI entry point matches'      (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --continue' 'C:\node.exe') $FAKE @('--continue'))
+Check 'a helper under the package dir does NOT (H2)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\helper.js" --continue' 'C:\node.exe') $FAKE @('--continue')))
+Check 'a look-alike directory does NOT match (H2)'   (-not (Test-IsClaudeProc (Q 'node "C:\np\claude-codex\cli.js" --continue' 'C:\node.exe') $FAKE @('--continue')))
+Check '--continue-helper does NOT satisfy --continue (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --continue-helper' 'C:\node.exe') $FAKE @('--continue')))
+Check 'a quoted whole-token argument still matches'  (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" "--continue"' 'C:\node.exe') $FAKE @('--continue'))
+Check 'an embedded 1000000 does not satisfy the flag (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --autocompact 10000000' 'C:\node.exe') $FAKE @('--autocompact','1000000')))
+
+Write-Host ''
+Write-Host 'G1 / G2 - attribution is about the INVOCATION, not the bytes' -ForegroundColor Cyan
+$SHIMP = 'C:\np\claude.cmd'
+function W($name, $cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'tokenizer: plain tokens'        ((ConvertFrom-NativeCommandLine 'a b c').Count -eq 3)
+Check 'tokenizer: quoted token'        (@(ConvertFrom-NativeCommandLine '"a b" c')[0] -ceq 'a b')
+Check 'tokenizer: escaped quote'       (@(ConvertFrom-NativeCommandLine 'x \"q\" y').Count -eq 3) (@(ConvertFrom-NativeCommandLine 'x \"q\" y') -join '|')
+Check 'tokenizer: cmd packed string'   (@(ConvertFrom-NativeCommandLine 'cmd /c ""p" --continue"')[2] -ceq 'p --continue')
+Check 'tokenizer: empty is empty'      ((@(ConvertFrom-NativeCommandLine '')).Count -eq 0)
+# Positive control: the command processor running the shim as its /c target.
+Check 'cmd running the shim IS attributed'  (Test-IsClaudeProc (W 'cmd.exe' ('cmd /c ""' + $SHIMP + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SHIMP @('--continue'))
+# INJECTION (G1): an unrelated program carrying the resolved path as DATA in its arguments.
+Check 'the resolved path as ARGUMENT DATA is refused (G1)' (-not (Test-IsClaudeProc (W 'notepad.exe' ('notepad "' + $SHIMP + '" --continue') 'C:\WINDOWS\notepad.exe') $SHIMP @('--continue')))
+# INJECTION (G1): cmd.exe, but the resolved path is not what it was told to run.
+Check 'cmd echoing the path is refused (G1)'  (-not (Test-IsClaudeProc (W 'cmd.exe' ('cmd /c "echo ' + $SHIMP + ' --continue"') 'C:\WINDOWS\system32\cmd.exe') $SHIMP @('--continue')))
+# INJECTION (G2): the expected flags packed inside ONE quoted argv element.
+Check 'flags packed in one argv element are refused (G2)' (-not (Test-IsClaudeProc (W 'claude.exe' ('claude "payload --continue 1000000"') $SHIMP) $SHIMP @('--continue')))
+# INJECTION (G2): flag and value both present but NOT adjacent.
+Check 'a non-adjacent flag value is refused (G2)' (-not (Test-IsClaudeProc (W 'claude.exe' 'claude --autocompact 55 --other 1000000' $SHIMP) $SHIMP @('--autocompact','1000000')))
+Check 'an adjacent flag value is accepted'       (Test-IsClaudeProc (W 'claude.exe' 'claude --autocompact 1000000' $SHIMP) $SHIMP @('--autocompact','1000000'))
+
+Write-Host ''
+Write-Host 'G3 - a same-name replacement is not a continuation' -ForegroundColor Cyan
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stG = LaneState
+Check 'the snapshot recorded a creation time' ($stG.LatestCreatedUtc -gt [datetime]::MinValue) "$($stG.LatestCreatedUtc)"
+# INJECTION: the transcript is deleted and re-created under the SAME NAME. (NTFS tunneling can
+# preserve the original creation time, so it is set explicitly to make the test deterministic.)
+Remove-Item -LiteralPath $tx -Force
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uuid":"z"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = (Get-Date).ToUniversalTime().AddMinutes(3)
+$evG = Get-ResumeEvidence $stG
+Check 'a replaced transcript is WRONG-SESSION (G3)' ($null -ne $evG -and $evG.Kind -eq 'WRONG-SESSION') ("$($evG.Kind)")
+# INJECTION: same file, but its header now names a different session.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stG2 = LaneState
+$other = '{"type":"session","sessionId":"REPLACED-1","mode":"interactive"}'
+Set-Content -LiteralPath $tx -Value ($other + "`n" + $REC + "`n" + '{"type":"assistant","uuid":"z"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stG2.LatestCreatedUtc
+$evG2 = Get-ResumeEvidence $stG2
+Check 'a rewritten header is WRONG-SESSION (G3)' ($null -ne $evG2 -and $evG2.Kind -eq 'WRONG-SESSION') ("$($evG2.Kind)")
+$gone = Join-Path $tmp 'gone.jsonl'
+Set-Content -LiteralPath $gone -Value ($SESS + "`n") -Encoding utf8 -NoNewline
+$gi = Get-Item $gone; Remove-Item -LiteralPath $gone -Force
+Check 'an unreadable snapshot yields -1, never a guessed 0 (G3)' ((Get-LastRecordBoundary $gi) -eq -1) "$(Get-LastRecordBoundary $gi)"
+
+Write-Host ''
+Write-Host 'G4 - a zero window must not spin' -ForegroundColor Cyan
+$zf = NewJsonl 'zero-win.jsonl' ($SESS + "`n" + $REC + "`n")
+$sw2 = [System.Diagnostics.Stopwatch]::StartNew()
+$b0 = Get-LastRecordBoundary $zf 0
+$t0 = Test-SessionTailIntact $zf 0 $false
+$sw2.Stop()
+Check 'TailBytes 0 terminates for the boundary search (G4)' (($b0 -eq $zf.Length) -and ($sw2.Elapsed.TotalSeconds -lt 5)) "$b0 in $([int]$sw2.Elapsed.TotalMilliseconds) ms"
+Check 'TailBytes 0 terminates for the tail check (G4)'      ($t0 -and ($sw2.Elapsed.TotalSeconds -lt 5)) "$t0"
+
+Write-Host ''
+Write-Host 'E1 / E2 - identification names the command being RUN' -ForegroundColor Cyan
+$SH = 'C:\np\claude.cmd'
+$CLI = 'C:\np\node_modules\@anthropic-ai\claude-code\cli.js'
+function V($name, $cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'cmd /c "<shim>" IS attributed'                (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c ""' + $SH + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue'))
+# INJECTION (E1): the path is a REAL argv token of cmd's command string, but echo is what runs.
+Check 'cmd /c echo "<shim>" is refused (E1)'         (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c "echo "' + $SH + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+Check 'cmd /c echo <shim> unquoted is refused (E1)'  (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c echo "' + $SH + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+Check 'cmd with no /c at all is refused (E1)'        (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd "' + $SH + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+# INJECTION (E2): the CLI entry point carried by a process that is not a JS runtime.
+Check 'node running the CLI IS attributed'           (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+Check 'notepad carrying the CLI path is refused (E2)' (-not (Test-IsClaudeProc (V 'notepad.exe' ('notepad "' + $CLI + '" --continue') 'C:\WINDOWS\notepad.exe') $SH @('--continue')))
+Check 'a renamed runtime is judged by its image (E2)' (-not (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI + '" --continue') 'C:\evil\totally-not-node.exe') $SH @('--continue')))
+
+Write-Host ''
+Write-Host 'D1 - the CLI must be the script the runtime RUNS' -ForegroundColor Cyan
+$CLI2 = 'C:\np\node_modules\@anthropic-ai\claude-code\cli.js'
+Check 'node <cli.js> IS attributed'                  (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+Check 'node with runtime flags first IS attributed'  (Test-IsClaudeProc (V 'node.exe' ('node --enable-source-maps "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+# INJECTION (D1): benign.js is the program being run; the CLI path is merely one of its arguments.
+Check 'node benign.js <cli.js> is refused (D1)'      (-not (Test-IsClaudeProc (V 'node.exe' ('node benign.js "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
+Check 'node with no script at all is refused (D1)'   (-not (Test-IsClaudeProc (V 'node.exe' 'node --continue' 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
+Check 'bun running the CLI IS attributed'            (Test-IsClaudeProc (V 'bun.exe' ('bun "' + $CLI2 + '" --continue') 'C:\bun\bun.exe') $SH @('--continue'))
+
+Write-Host ''
+Write-Host 'E4 - the tokenizer against the platform parser' -ForegroundColor Cyan
+$cases = @(
+    'a b c',
+    '"a b" c',
+    'C:\path\prog.exe -x "y z"',
+    'prog "a\"b" c',
+    'prog a\\b c',
+    'prog "a\\" b',
+    '"C:\Program Files\x\y.exe" --flag "v 1"',
+    'prog   spaced   out',
+    'prog "" x',
+    'C:\np\claude.cmd --continue --autocompact 1000000',
+    # argv[0] is parsed by a DIFFERENT rule (backslashes literal, quotes merely delimit). These
+    # cases are chosen so the ordinary escape state machine gives a DIFFERENT answer, which is
+    # what makes this a differential test rather than a restatement.
+    '\\"a b" c',
+    '"a\\"b" c',
+    'a\\\\"b c',
+    'C:\dir\"prog.exe" -x'
+)
+$diffs = @()
+foreach ($c in $cases) {
+    $mine = @(ConvertFrom-NativeCommandLine $c)
+    $theirs = @([ArgvRT]::Split($c))
+    $same = ($mine.Count -eq $theirs.Count)
+    if ($same) { for ($i = 0; $i -lt $mine.Count; $i++) { if ($mine[$i] -cne $theirs[$i]) { $same = $false } } }
+    if (-not $same) { $diffs += ("[{0}] mine={1} theirs={2}" -f $c, ($mine -join '|'), ($theirs -join '|')) }
+}
+Check 'tokenizer matches CommandLineToArgvW on every case (E4)' ($diffs.Count -eq 0) ($diffs -join ' ;; ')
+
+Write-Host ''
+Write-Host 'E3 - transcript identity survives a timestamp forgery' -ForegroundColor Cyan
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE = LaneState
+Check 'the snapshot fingerprinted a fixed head length' (($stE.LatestHeadLen -gt 0) -and $stE.LatestHeadHash) "$($stE.LatestHeadLen)"
+# An ordinary append must NOT disturb the fingerprint.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"ap"}' + "`n") -NoNewline -Encoding utf8
+Check 'an append does not change the fingerprint'      ((Get-ResumeEvidence $stE).Kind -eq 'RESUMED') ((Get-ResumeEvidence $stE).Kind)
+# INJECTION (E3): a replacement that FORGES the original creation time - the NTFS file-system
+# tunneling case - but whose opening bytes differ.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE2 = LaneState
+$forged = '{"type":"session","sessionId":"abc-123","mode":"forged"}'
+Set-Content -LiteralPath $tx -Value ($forged + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uuid":"q"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stE2.LatestCreatedUtc
+$evE = Get-ResumeEvidence $stE2
+Check 'a forged creation time does not defeat identity (E3)' ($null -ne $evE -and $evE.Kind -eq 'WRONG-SESSION') ("$($evE.Kind)")
+Check 'and the reason names the opening bytes'             ($evE.Detail -match 'opening bytes') ("$($evE.Detail)")
+# INJECTION (E3): the replacement is SHORTER than the snapshot. A transcript being appended to
+# never shrinks.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE3 = LaneState
+Set-Content -LiteralPath $tx -Value '{' -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stE3.LatestCreatedUtc
+Check 'a shorter same-name file is not a continuation (E3)' ($null -eq (Get-ResumeEvidence $stE3) -or (Get-ResumeEvidence $stE3).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stE3).Kind)
+
+Write-Host ''
+Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan
+$rf = NewJsonl 'range.jsonl' ($SESS + "`n" + $REC + "`n")
+Check 'a full range reads whole'            ($null -ne (Read-FileRange $rf.FullName 0 $rf.Length))
+Check 'a range past EOF returns null (K3)'  ($null -eq (Read-FileRange $rf.FullName 0 ($rf.Length + 4096)))
+Check 'a zero-length range returns null'    ($null -eq (Read-FileRange $rf.FullName 0 0))
+Check 'a missing file returns null'         ($null -eq (Read-FileRange (Join-Path $tmp 'nope.jsonl') 0 10))
+$sp = Split-TranscriptLines ([System.Text.Encoding]::UTF8.GetBytes("a`nb`n")) 0
+Check 'a terminated range reports terminated' ($sp.LastIsTerminated -and $sp.Lines.Count -eq 2) ("$($sp.Lines.Count)/$($sp.LastIsTerminated)")
+$sp = Split-TranscriptLines ([System.Text.Encoding]::UTF8.GetBytes("a`nb")) 0
+Check 'an unterminated range reports so'      ((-not $sp.LastIsTerminated) -and $sp.Lines.Count -eq 2) ("$($sp.Lines.Count)/$($sp.LastIsTerminated)")
+
+Write-Host ''
+Write-Host 'F3 - the bounded check is bounded, and says so' -ForegroundColor Cyan
+$midBad = NewJsonl 'mid-bad.jsonl' ($SESS + "`n" + 'CORRUPT-MIDDLE' + "`n" + $bulk)
+Check 'mid-file corruption is beyond the window' ($midBad.Length -gt 65536) "$($midBad.Length) bytes"
+Check 'bounded validation accepts it (stated bound)'  (Test-ResumableSessionFile $midBad $false)
+Check '-DeepValidate catches it (F3)'                 (-not (Test-ResumableSessionFile $midBad $true))
+Check '-DeepValidate still accepts a clean transcript' (Test-ResumableSessionFile $bigOk $true)
+
+Write-Host ''
+Write-Host 'M1 / N4 - claude attribution is by image, never by name' -ForegroundColor Cyan
+$CLAUDE = 'C:\Users\g\.local\bin\claude.exe'
+function P($id, $parent, $name, $cmd, $exe) { [pscustomobject]@{ ProcId=$id; ParentId=$parent; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'resolved image path is attributed'          (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --continue' $CLAUDE) $CLAUDE @('--continue'))
+Check 'shim invoked by cmd /c is attributed'       (Test-IsClaudeProc (P 1 0 'cmd.exe' ('cmd /c ""' + $CLAUDE + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $CLAUDE @('--continue'))
+Check 'cmd WITHOUT a /c target is refused (E1)'    (-not (Test-IsClaudeProc (P 1 0 'cmd.exe' ('"' + $CLAUDE + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $CLAUDE @('--continue')))
+Check 'RENAMED executable named claude.exe is REFUSED (M1)' (-not (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --continue' 'C:\temp\claude.exe') $CLAUDE @('--continue'))) 'name-only match must not count'
+Check 'claudette.exe refused (N4)'                 (-not (Test-IsClaudeProc (P 1 0 'claudette.exe' 'claudette' 'C:\t\claudette.exe') $CLAUDE @()))
+Check 'claude-malware.exe refused (N4)'            (-not (Test-IsClaudeProc (P 1 0 'claude-malware.exe' 'C:\evil\claude-malware.exe' 'C:\evil\claude-malware.exe') $CLAUDE @()))
+Check 'right image but WRONG args refused'         (-not (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --fork-session' $CLAUDE) $CLAUDE @('--continue')))
+Check 'no resolved path means nothing attributes'  (-not (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --continue' $CLAUDE) $null @()))
+Check 'plain pwsh lane script NOT claude'          (-not (Test-IsClaudeProc (P 1 0 'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-00-glpnet.ps1' 'C:\pwsh.exe') $CLAUDE @()))
+
+$t = @{}
+foreach ($p in @(
+    (P 100 1   'pwsh.exe'   'pwsh -File lane-00.ps1' 'C:\pwsh.exe'),
+    (P 101 100 'claude.exe' 'claude --continue'      $CLAUDE),
+    (P 200 1   'pwsh.exe'   'pwsh -File lane-01.ps1' 'C:\pwsh.exe'),
+    (P 201 200 'claude.exe' 'claude --continue'      'C:\temp\claude.exe'),
+    (P 300 1   'claude.exe' 'claude --continue'      $CLAUDE),
+    (P 400 401 'pwsh.exe'   'loop-a' 'C:\pwsh.exe'), (P 401 400 'pwsh.exe' 'loop-b' 'C:\pwsh.exe')
+)) { $t[$p.ProcId] = $p }
+$da = @(Get-DescendantProcs $t 100 | Where-Object { Test-IsClaudeProc $_ $CLAUDE @('--continue') })
+$db = @(Get-DescendantProcs $t 200 | Where-Object { Test-IsClaudeProc $_ $CLAUDE @('--continue') })
+Check 'lane A attributes its own claude'                      ($da.Count -eq 1 -and $da[0].ProcId -eq 101) ($da.ProcId -join ',')
+Check 'lane B not satisfied by the unrelated claude 300 (F1)' ($db.Count -eq 0) ($db.ProcId -join ',')
+Check 'lane B not satisfied by its own impostor 201 (M1)'     ($db.Count -eq 0) ($db.ProcId -join ',')
+$sw = [System.Diagnostics.Stopwatch]::StartNew(); $cyc = @(Get-DescendantProcs $t 400); $sw.Stop()
+Check 'parent cycle terminates and yields the cycle members only' (($cyc.Count -eq 2) -and ($sw.Elapsed.TotalSeconds -lt 5)) ("$($cyc.Count) nodes in $([int]$sw.Elapsed.TotalMilliseconds) ms")
+
+Write-Host ''
+Write-Host 'M1 - LIVE: a real process renamed claude.exe' -ForegroundColor Cyan
+$ping = Join-Path $env:SystemRoot 'System32\ping.exe'
+$impostor = Join-Path $tmp 'claude.exe'; Copy-Item -LiteralPath $ping -Destination $impostor -Force
+$pl = Start-Process -FilePath $impostor -PassThru -WindowStyle Hidden -ArgumentList @('-n','30','127.0.0.1')
+Start-Sleep -Seconds 2
+$tbl = Get-ProcTable; $proc = $tbl[$pl.Id]
+Check 'the live impostor really is named claude.exe' ($null -ne $proc -and $proc.Name -ieq 'claude.exe') ("$($proc.Name)")
+Check 'a live process renamed claude.exe is REFUSED (M1)' ($null -ne $proc -and -not (Test-IsClaudeProc $proc $CLAUDE @())) ("$($proc.ExecutablePath)")
+Check 'the same process IS attributed against its own image' ($null -ne $proc -and (Test-IsClaudeProc $proc $impostor @())) ("$($proc.ExecutablePath)")
+try { Stop-Process -Id $pl.Id -Force -ErrorAction Stop } catch { }
+
+Write-Host ''
+Write-Host 'N2 - lane identity uniqueness' -ForegroundColor Cyan
+Check 'duplicate lane name detected'                   ((Get-LaneIdentityConflicts @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='a';Path='D:\y'})).Count -ge 1)
+Check 'duplicate path detected despite case and slash' ((Get-LaneIdentityConflicts @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='b';Path='D:\X\'})).Count -ge 1)
+Check 'unique lanes produce no conflict'               ((Get-LaneIdentityConflicts @([pscustomobject]@{Name='a';Path='D:\x'}, [pscustomobject]@{Name='b';Path='D:\y'})).Count -eq 0)
+
+Write-Host ''
+Write-Host 'N3 - handshake marker validation' -ForegroundColor Cyan
+$good = [pscustomobject]@{ key='00-glpnet'; runId='RUN1'; pwshPid=1234; path='D:\repo\glpnet' }
+Check 'valid marker accepted'              ($null -eq (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet'))  (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet')
+Check 'trailing slash still matches'       ($null -eq (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\glpnet\'))
+Check 'marker from another lane rejected'  ($null -ne (Test-LaneMarker $good '01-mstack' 'RUN1' 'D:\repo\glpnet'))
+Check 'marker from another run rejected'   ($null -ne (Test-LaneMarker $good '00-glpnet' 'RUN2' 'D:\repo\glpnet'))
+Check 'marker from another cwd rejected'   ($null -ne (Test-LaneMarker $good '00-glpnet' 'RUN1' 'D:\repo\other'))
+Check 'marker without a PID rejected'      ($null -ne (Test-LaneMarker ([pscustomobject]@{key='00-glpnet';runId='RUN1';pwshPid=0;path='D:\repo\glpnet'}) '00-glpnet' 'RUN1' 'D:\repo\glpnet'))
+Check 'null marker rejected'               ($null -ne (Test-LaneMarker $null '00-glpnet' 'RUN1' 'D:\repo\glpnet'))
+
+Write-Host ''
+Write-Host 'the shipped per-lane state machine' -ForegroundColor Cyan
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$RUNID = 'SMRUN'
+$mPath = Join-Path $tmp 'sm-marker.json'
+$lane = [pscustomobject]@{ Name='fake'; Key='00-fake'; Path=$LANEPATH; Group=1; MarkerPath=$mPath; State=(LaneState) }
+$LS = (Get-Date).AddMinutes(-1)
+function WriteMarker($key, $run, $p, $procId) {
+    [pscustomobject]@{ key=$key; runId=$run; path=$p; pwshPid=$procId } | ConvertTo-Json -Compress |
+        Set-Content -LiteralPath $mPath -Encoding utf8
+}
+$smTable = @{}
+foreach ($p in @((P 500 1 'pwsh.exe' 'pwsh -File lane.ps1' 'C:\pwsh.exe'))) { $smTable[$p.ProcId] = $p }
+function SM([bool]$Fresh = $false) { Get-LaneVerification -Lane $lane -Table $smTable -LaunchStart $LS -RunId $RUNID -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -Fresh $Fresh }
+
+if (Test-Path $mPath) { Remove-Item $mPath -Force }
+$v = SM; Check 'no marker -> PENDING and retried'            ($v.Status -eq 'PENDING' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+Set-Content -LiteralPath $mPath -Value 'not json' -Encoding utf8
+$v = SM; Check 'unreadable marker -> PENDING and retried'    ($v.Status -eq 'PENDING' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+WriteMarker '00-fake' 'WRONGRUN' $LANEPATH 500
+$v = SM; Check 'foreign run marker -> NOT-LAUNCHED TERMINAL' ($v.Status -eq 'NOT-LAUNCHED' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
+WriteMarker '00-fake' $RUNID 'D:\somewhere\else' 500
+$v = SM; Check 'foreign cwd marker -> NOT-LAUNCHED TERMINAL' ($v.Status -eq 'NOT-LAUNCHED' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
+WriteMarker '00-fake' $RUNID $LANEPATH 999999
+$v = SM; Check 'dead handshake PID -> NOT-LAUNCHED, retried' ($v.Status -eq 'NOT-LAUNCHED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+WriteMarker '00-fake' $RUNID $LANEPATH 500
+$smTable[500].Created = (Get-Date).AddHours(-2)
+$v = SM; Check 'pre-launch handshake PID -> NOT-LAUNCHED, retried' ($v.Status -eq 'NOT-LAUNCHED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+$smTable[500].Created = (Get-Date)
+$v = SM; Check 'live handshake, no claude -> NO-CLAUDE, retried' ($v.Status -eq 'NO-CLAUDE' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+$c = P 501 500 'claude.exe' 'claude --continue' $CLAUDE; $smTable[501] = $c
+$v = SM $true; Check '-Fresh with claude -> STARTED TERMINAL'   ($v.Status -eq 'STARTED' -and $v.Terminal -and $v.ClaudePid -eq 501) "$($v.Status)/$($v.Terminal)"
+$v = SM; Check 'claude live, nothing appended -> UNCONFIRMED, retried' ($v.Status -eq 'UNCONFIRMED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+# INJECTION (H3/J3): the transcript IS being written, but nothing names the session. That is not
+# proof, and the lane must stay UNCONFIRMED rather than being promoted to RESUMED.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","uuid":"u7"}' + "`n") -NoNewline -Encoding utf8
+$v = SM; Check 'an unidentified append stays UNCONFIRMED (H3)' ($v.Status -eq 'UNCONFIRMED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+Check 'and the reason names the missing sessionId'  ($v.Detail -match 'no record named sessionId') "$($v.Detail)"
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
+$v = SM; Check 'appended record -> RESUMED TERMINAL'            ($v.Status -eq 'RESUMED' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
+Set-Content -LiteralPath (Join-Path $storeDir 'sess-2.jsonl') -Value ($SESS + "`n") -Encoding utf8 -NoNewline
+$v = SM; Check 'a brand new transcript -> SILENT-NEW TERMINAL'  ($v.Status -eq 'SILENT-NEW' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
+Remove-Item (Join-Path $storeDir 'sess-2.jsonl') -Force
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$lane.State = LaneState
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"OTHER-1","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
+$v = SM; Check 'foreign sessionId appended -> SILENT-NEW TERMINAL' ($v.Status -eq 'SILENT-NEW' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
+
+Write-Host ''
+Write-Host 'N1 / F2 - final outcome decision' -ForegroundColor Cyan
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'RESUMED'), (Res 'RESUMED')) -RequestedCount 3 -AllowPartial $false -AllowUnconfirmed $false
+Check 'all proven -> VERIFIED, exit 0'   ($o.Status -eq 'VERIFIED' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+$withRef = @((Res 'RESUMED'), (Res 'RESUMED'), (Res 'REFUSED'))
+$o = Get-RunOutcome -Results $withRef -RequestedCount 3 -AllowPartial $false -AllowUnconfirmed $false
+Check 'refused lane fails the run (F2)'  ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 6) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results $withRef -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $false
+Check 'accepted refusal is NOT called VERIFIED (N1)' ($o.Status -eq 'ACCEPTED-WITH-EXCEPTIONS' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+Check 'accepted refusal reports the honest proven count' ($o.Proven -eq 2 -and $o.Requested -eq 3) "$($o.Proven)/$($o.Requested)"
+$withUnc = @((Res 'RESUMED'), (Res 'UNCONFIRMED'))
+$o = Get-RunOutcome -Results $withUnc -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $false
+Check 'unconfirmed lane is UNPROVEN, exit 5' ($o.Status -eq 'UNPROVEN' -and $o.ExitCode -eq 5) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results $withUnc -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $true
+Check 'accepted unconfirmed is NOT VERIFIED (N1)' ($o.Status -eq 'ACCEPTED-WITH-EXCEPTIONS' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'REFUSED'), (Res 'REFUSED')) -RequestedCount 2 -AllowPartial $true -AllowUnconfirmed $true
+Check 'zero proven can NEVER succeed, even with both switches (N1)' ($o.ExitCode -eq 9 -and $o.Status -eq 'FAILED') "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'PENDING')) -RequestedCount 2 -AllowPartial $true -AllowUnconfirmed $true
+Check 'a lane still PENDING at the deadline fails' ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 4) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'SILENT-NEW'), (Res 'REFUSED')) -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $true
+Check 'silent-new outranks every switch'  ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 7) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'RESUMED'), (Res 'NO-CLAUDE'), (Res 'REFUSED')) -RequestedCount 3 -AllowPartial $true -AllowUnconfirmed $true
+Check 'not-launched outranks accepted refusals' ($o.Status -eq 'FAILED' -and $o.ExitCode -eq 4) "$($o.Status)/$($o.ExitCode)"
+$o = Get-RunOutcome -Results @((Res 'STARTED'), (Res 'STARTED')) -RequestedCount 2 -AllowPartial $false -AllowUnconfirmed $false
+Check '-Fresh STARTED counts as proven'   ($o.Status -eq 'VERIFIED' -and $o.ExitCode -eq 0) "$($o.Status)/$($o.ExitCode)"
+# Exhaustive: no combination of statuses and switches may reach VERIFIED without full proof.
+$statuses = @('RESUMED','STARTED','UNCONFIRMED','SILENT-NEW','NOT-LAUNCHED','NO-CLAUDE','REFUSED','PENDING')
+$bad = @()
+foreach ($a in $statuses) { foreach ($b in $statuses) { foreach ($ap in @($true,$false)) { foreach ($au in @($true,$false)) {
+    $oo = Get-RunOutcome -Results @((Res $a), (Res $b)) -RequestedCount 2 -AllowPartial $ap -AllowUnconfirmed $au
+    $fullyProven = ($a -in @('RESUMED','STARTED')) -and ($b -in @('RESUMED','STARTED'))
+    if ($oo.Status -eq 'VERIFIED' -and -not $fullyProven) { $bad += "$a+$b ap=$ap au=$au" }
+    if ($oo.ExitCode -eq 0 -and $oo.Proven -eq 0)         { $bad += "exit0 with 0 proven: $a+$b ap=$ap au=$au" }
+} } } }
+Check 'exhaustive: VERIFIED only when every lane is proven (N1)' ($bad.Count -eq 0) ($bad -join '; ')
+
+Write-Host ''
+Write-Host 'M4 - retention must not delete a live run' -ForegroundColor Cyan
+$runsRoot = Join-Path $tmp 'runs'; New-Item -ItemType Directory -Path $runsRoot -Force | Out-Null
+$dirs = @()
+foreach ($i in 1..5) { $d = Join-Path $runsRoot ("run-$i"); New-Item -ItemType Directory -Path $d -Force | Out-Null; $dirs += $d; Start-Sleep -Milliseconds 40 }
+# run-1 is the oldest; claim it with THIS live process, and give run-2 a dead owner.
+$myTicks = (Get-Process -Id $PID).StartTime.ToUniversalTime().Ticks
+function WriteLock($dir, $lockPid, $ticks) {
+    [pscustomobject]@{ pid = $lockPid; startedTicks = $ticks } | ConvertTo-Json -Compress |
+        Set-Content -LiteralPath (Join-Path $dir 'active.lock') -Encoding utf8
+}
+WriteLock $dirs[0] $PID $myTicks                       # genuinely live owner
+WriteLock $dirs[1] 999999 $myTicks                     # owner process is gone
+# INJECTION (K4): the PID is live but is NOT the process that took the lock - a reused PID.
+# The delta is ONE SECOND: deliberately INSIDE any plausible "close enough" tolerance, so a
+# comparison that is a window rather than an identity check fails this test.
+WriteLock $dirs[2] $PID ($myTicks - 10000000)
+Set-Content -LiteralPath (Join-Path $dirs[3] 'active.lock') -Value 'not json' -Encoding utf8
+$pr = Remove-StaleRunDirs -RunsRoot $runsRoot -KeepRuns 1 -CurrentRunDir $dirs[4]
+Check 'a live-locked run dir is NOT deleted (M4)'    (Test-Path -LiteralPath $dirs[0]) ($pr.Removed -join '; ')
+Check 'a dead-owner run dir IS deleted'              (-not (Test-Path -LiteralPath $dirs[1]))
+Check 'a REUSED pid does not inherit the claim (K4)' (-not (Test-Path -LiteralPath $dirs[2])) 'same pid, different start ticks must not read as live'
+Check 'an unreadable lock is never deleted on a guess' (Test-Path -LiteralPath $dirs[3])
+Check 'the current run dir is never deleted'          (Test-Path -LiteralPath $dirs[4])
+Check 'a missing runs root is not an error'           ((Remove-StaleRunDirs -RunsRoot (Join-Path $tmp 'no-such-root') -KeepRuns 3 -CurrentRunDir $tmp).Removed.Count -eq 0)
+# The OS-level guard: a run dir whose lock is held OPEN cannot be deleted at all.
+$heldDir = Join-Path $runsRoot 'held'; New-Item -ItemType Directory -Path $heldDir -Force | Out-Null
+WriteLock $heldDir 999999 0
+$held = [System.IO.File]::Open((Join-Path $heldDir 'active.lock'), 'Open', 'Write', 'Read')
+$pr2 = Remove-StaleRunDirs -RunsRoot $runsRoot -KeepRuns 1 -CurrentRunDir $dirs[4]
+Check 'an open lock handle blocks deletion outright (M4)' (Test-Path -LiteralPath $heldDir) ($pr2.Removed -join '; ')
+$held.Dispose()
+
+Write-Host ''
+Write-Host 'N3 - LIVE: the real generated launcher' -ForegroundColor Cyan
+$stub = Join-Path $tmp 'stub'; New-Item -ItemType Directory -Path $stub -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $stub 'claude.cmd') -Encoding ascii -Value @('@echo off', 'ping -n 60 127.0.0.1 >nul', 'exit /b 3')
+$env:PATH = "$stub;$env:PATH"
+$stubClaude = Join-Path $stub 'claude.cmd'
+$runDir = Join-Path $tmp 'run'; New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+$LRUN = 'TESTRUN1'
+# A lane path containing a single quote: the launcher embeds it in a single-quoted literal.
+$quoteDir = Join-Path $tmp "it's a lane"; New-Item -ItemType Directory -Path $quoteDir -Force | Out-Null
+$goodLane = [pscustomobject]@{ Name='good'; Key='00-good'; Path=$quoteDir;                   Group=1 }
+$badLane  = [pscustomobject]@{ Name='bad';  Key='01-bad';  Path=(Join-Path $tmp 'no-such'); Group=1 }
+$gp = New-LaneLauncher -Lane $goodLane -RunDir $runDir -RunId $LRUN -ClaudePath $stubClaude -ClaudeArgs @('--continue')
+$bp = New-LaneLauncher -Lane $badLane  -RunDir $runDir -RunId $LRUN -ClaudePath $stubClaude -ClaudeArgs @('--continue')
+$lerr = $null; $ltok = $null
+$null = [System.Management.Automation.Language.Parser]::ParseFile($gp.LauncherPath, [ref]$ltok, [ref]$lerr)
+Check 'generated launcher parses with a quoted path' ($null -eq $lerr -or $lerr.Count -eq 0) (($lerr | ForEach-Object { $_.Message }) -join '; ')
+
+$bproc = Start-Process pwsh -PassThru -Wait -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',$bp.LauncherPath)
+Check 'bad-cwd launcher exits 9 without starting claude (N3)' ($bproc.ExitCode -eq 9) "exit $($bproc.ExitCode) (3 would mean it reached claude)"
+Check 'bad-cwd launcher wrote no handshake marker (N3)'       (-not (Test-Path -LiteralPath $bp.MarkerPath))
+
+$launchStart = Get-Date
+$gproc = Start-Process pwsh -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile','-File',$gp.LauncherPath)
+$dl = (Get-Date).AddSeconds(40); $hit = @()
+while ((Get-Date) -lt $dl) {
+    Start-Sleep -Seconds 2
+    if (-not (Test-Path -LiteralPath $gp.MarkerPath)) { continue }
+    $m = $null; try { $m = Get-Content -LiteralPath $gp.MarkerPath -Raw | ConvertFrom-Json } catch { continue }
+    if (Test-LaneMarker $m '00-good' $LRUN $quoteDir) { continue }
+    $hit = @(Get-DescendantProcs (Get-ProcTable) ([int]$m.pwshPid) | Where-Object {
+        (Test-IsClaudeProc $_ $stubClaude @('--continue')) -and (-not $_.Created -or $_.Created -ge $launchStart) })
+    if ($hit.Count -ge 1) { break }
+}
+$marker = $null; if (Test-Path -LiteralPath $gp.MarkerPath) { $marker = Get-Content -LiteralPath $gp.MarkerPath -Raw | ConvertFrom-Json }
+Check 'good launcher wrote a marker in a quoted path'   ($null -ne $marker)
+Check 'marker validates against lane, run and cwd (N3)' ($null -ne $marker -and $null -eq (Test-LaneMarker $marker '00-good' $LRUN $quoteDir)) (Test-LaneMarker $marker '00-good' $LRUN $quoteDir)
+Check 'marker is rejected for a different run id (N3)'  ($null -ne $marker -and $null -ne (Test-LaneMarker $marker '00-good' 'OTHERRUN' $quoteDir))
+Check 'claude attributed to the good lane handshake (F1)' ($hit.Count -ge 1) ("pid $($marker.pwshPid) -> $($hit.ProcId -join ',')")
+try { Stop-Process -Id $gproc.Id -Force -ErrorAction Stop } catch { }
+
+Write-Host ''
+Write-Host 'K1 / J1 - attribution identifies claude, and nothing else' -ForegroundColor Cyan
+$SHIM = 'C:\Users\g\AppData\npm\claude.cmd'
+$k1 = @{}
+foreach ($p in @(
+    (P 700 1   'pwsh.exe' 'pwsh -NoProfile -NoExit -File C:\runs\lane-00.ps1' 'C:\pwsh.exe'),
+    (P 701 700 'node.exe' 'node "C:\Users\g\AppData\npm\node_modules\@anthropic-ai\claude-code\cli.js" --continue' 'C:\Program Files\nodejs\node.exe'),
+    (P 800 1   'pwsh.exe' 'pwsh -NoProfile -NoExit -File C:\runs\lane-01.ps1' 'C:\pwsh.exe'),
+    (P 801 800 'ping.exe' 'ping -t 127.0.0.1' 'C:\WINDOWS\system32\PING.EXE')
+)) { $k1[$p.ProcId] = $p }
+$LS2 = (Get-Date).AddMinutes(-1)
+# A node process running the Claude Code entry point is matched on the CLI's own module path.
+$ev1 = Get-LaneClaudeEvidence -Table $k1 -LanePid 700 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'node running the CLI entry point IS attributed (K1)' ($null -ne $ev1 -and $ev1.Strength -eq 'image' -and $ev1.Proc.ProcId -eq 701) ("$($ev1.Strength)")
+# INJECTION (J1): the lane launcher has a live descendant that is NOT claude - the shape a
+# PowerShell profile child or a shim's helper would take. "Something is alive" is not proof.
+$ev2 = Get-LaneClaudeEvidence -Table $k1 -LanePid 800 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'an unrelated live descendant is NOT attributed (J1)' ($null -eq $ev2) ("$($ev2.Strength) pid $($ev2.Proc.ProcId)")
+Check 'the unrelated descendant really is a live descendant' ((@(Get-DescendantProcs $k1 800)).Count -eq 1) 'the injection must actually be present'
+$k1[900] = (P 900 1 'pwsh.exe' 'pwsh -NoProfile -File lane.ps1' 'C:\pwsh.exe')
+$k1[901] = (P 901 900 'claude.exe' 'claude --continue' $CLAUDE)
+$ev3 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a direct install is attributed by image'          ($null -ne $ev3 -and $ev3.Strength -eq 'image') ("$($ev3.Strength)")
+$k1[901].Created = (Get-Date).AddHours(-3)
+$ev4 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
+Check 'a pre-launch descendant does not attribute'       ($null -eq $ev4) ("$($ev4.Strength)")
+Check 'the CLI entry point matches by content, not name' (Test-IsClaudeProc $k1[701] $SHIM @('--continue'))
+Check 'a ping descendant never matches'                 (-not (Test-IsClaudeProc $k1[801] $SHIM @()))
+# The tab's pwsh must not load a user profile - that is what removes the J1 vector at source.
+$wtLine = Get-WtCommandLine -Lanes @([pscustomobject]@{ Name='x'; Path='D:\x'; LauncherPath='D:\l.ps1' }) -WindowId '0'
+Check 'the wt command line passes -NoProfile (J1)'      ($wtLine -match '(^| )-NoProfile( |$)') $wtLine
+
+Write-Host ''
+Write-Host 'M5 - multibyte UTF-8 across the tail-window boundary' -ForegroundColor Cyan
+$mb = '{"type":"user","uuid":"' + ('éüあ好' * 12) + '"}'
+$mbCount = [Math]::Ceiling(65536 / ([System.Text.Encoding]::UTF8.GetByteCount($mb) + 1)) + 3
+$mbFile = NewJsonl 'multibyte.jsonl' ($SESS + "`n" + ((1..$mbCount | ForEach-Object { $mb }) -join "`n"))
+Check 'the multibyte transcript exceeds the window' ($mbFile.Length -gt 65536) "$($mbFile.Length) bytes"
+$mbOk = $true; $mbFirstBad = ''
+foreach ($tb in 65530..65560) {
+    if (-not (Test-SessionTailIntact $mbFile $tb $false)) { $mbOk = $false; $mbFirstBad = "TailBytes=$tb"; break }
+}
+Check 'every window offset through multibyte characters accepts (M5)' $mbOk $mbFirstBad
+
+Write-Host ''
+Write-Host 'F2 - lane value validation' -ForegroundColor Cyan
+foreach ($bad in @('a;b', 'a"b', "a`tb", '')) {
+    $threw = $false; try { Assert-SafeLaneValue $bad 'lane name' 'x' } catch { $threw = $true }
+    Check ("refuses lane value '{0}'" -f ($bad -replace "`t", '<TAB>')) $threw
+}
+Check 'accepts an ordinary lane name' (& { try { Assert-SafeLaneValue 'glpnet' 'lane name' 'glpnet'; $true } catch { $false } })
+
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*$tmp*" } |
+    ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
+Start-Sleep -Seconds 1
+Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host ''
+Write-Host ("RESULT  passed {0}  failed {1}" -f $pass, $fail) -ForegroundColor $(if ($fail) { 'Red' } else { 'Green' })
+exit $(if ($fail) { 1 } else { 0 })
+
+codex
+{
+  "prior_findings": [
+    {
+      "id": "F3",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:391-438 still validates only a widened tail unless -DeepValidate is selected. The limitation is accurately disclosed and tested."
+    },
+    {
+      "id": "J4",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:465-563 now retains one FileStream for length, fingerprint, header and appended-range reads, closing the material mixed-content race. However, line 483 falls back to GetCreationTimeUtc($State.LatestPath), so the literal claim that every transcript-related read uses the handle is false."
+    },
+    {
+      "id": "J5",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:1229-1243 retains RunLockHandle until process termination without explicit disposal. Process exit releases it, so this remains a lifecycle refinement."
+    },
+    {
+      "id": "D1",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:735-742 correctly rejects the two cited examples, but it does not parse runtime options. It skips a leading option token without accounting for that option's operand, so an operand such as the Claude CLI path can be mistaken for the executed script."
+    },
+    {
+      "id": "D2",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:465-563 structurally prevents fingerprint, header and appended content from being combined across different file objects. The path-based creation-time fallback at line 483 violates the stated single-handle invariant, and the harness has no deterministic replacement-during-verification test."
+    }
+  ],
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "high",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 738,
+      "title": "Runtime option operands can be mistaken for the executed script",
+      "detail": "The scan skips every leading token beginning with '-' but does not consume operands belonging to runtime options. For example, a command shaped like node --require C:\\np\\node_modules\\@anthropic-ai\\claude-code\\cli.js -- --continue identifies the --require operand as the script entry even though no script-entry argument was supplied. Conversely, legitimate invocations using an option with a separate operand are refused. Thus D1's claimed entry-point guarantee is not established.",
+      "recommendation": "Implement runtime-specific option parsing, including options that consume the following token and subcommands such as deno run or bun run. Require the CLI path in the resulting script-entry position. Add positive and negative tests for option operands, '--', and supported runtime subcommands.",
+      "release_blocking": true
+    },
+    {
+      "id": "C2",
+      "severity": "low",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 483,
+      "title": "Creation-time fallback reopens the transcript path",
+      "detail": "If GetCreationTimeUtc(SafeFileHandle) fails, the fallback reads the pathname. A replacement at that point can make the creation-time result describe a different file from the handle used for all content. The fingerprint and evidence still come from the handle, so this does not enable false success under the stated threat model, but it contradicts the single-handle claim and can cause a false WRONG-SESSION result.",
+      "recommendation": "If handle-based creation-time retrieval fails, return unknown and retry; do not reopen the pathname.",
+      "release_blocking": false
+    }
+  ],
+  "harness_verdict": "WEAK",
+  "harness_reason": "The 185 assertions, platform tokenizer differential test, state-machine coverage and 29 caught mutants provide strong regression evidence for the cases represented. It does not test runtime options with separate operands, '--' option termination, deno/bun subcommands, or the path-based creation-time fallback. As disclosed, it has no deterministic replacement-during-verification race test. It also leaves capture-time replacement or unreadability, null snapshot fingerprints, repeated concurrent truncation/replacement, lock-creation failure and disposal, very large appended ranges, real Task Scheduler execution, and a complete wt/PATH/launch/poll/output/exit run untested.",
+  "release_verdict": "NO-GO",
+  "verdict_reason": "D2's material mixed-file content race is substantially fixed, but D1 remains open: an option operand can occupy the scanner's supposed script-entry position. That permits attribution without establishing that the runtime executed the Claude CLI as its script."
+}
+tokens used
+59,831
