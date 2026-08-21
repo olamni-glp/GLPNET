@@ -1,73 +1,124 @@
-# Restart pointer — NOT a work ledger (updated 2026-07-27)
+# Restart pointer — NOT a work ledger (updated 2026-08-21)
 
-> Intentionally thin. The **roadmap + buildkit pipeline / marathon state** are the source of truth
-> (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Do not resume from a hand-written plan.
+> Intentionally thin. The **roadmap + buildkit marathon state** are the source of truth
+> (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Never resume from a hand-written plan
+> or from a compaction summary — derive the position from durable rows.
 
-## 🔴 Environment gotchas — read first (2026-07-27, post drive-swap)
+## Resume in one line
 
-The machine rebuild left several things unset. A fresh shell needs:
+```
+buildkit-marathon resume --feature glpnet-full-completion-programme
+```
+
+🔴 **`--feature` is mandatory here.** `.specify/feature.json` points at
+`specs/083-glptutorial-corpus-goldens`, so a bare `buildkit-marathon resume` resolves to 083 and
+reports *"no active marathon run"* — which is **not** true. The live programme run is
+`mrun-f5ef56dba3c1`, feature id `glpnet-full-completion-programme`.
+
+## Where things stand (2026-08-21)
+
+- **Branch**: `develop` (084 is MERGED — PR #193). develop is **80 ahead of main**, unreleased.
+- **Marathon** `mrun-f5ef56dba3c1` — **10 of 25 steps complete (44 of 121 pt)**; 120 outstanding
+  backlog items; discharge gate **8 of 25 satisfied, 17 unsatisfied** (all engineer rulings).
+- **Workplan item** `mitem-01a01f1d-c9b4-77af-b9c0-e81d0e47f57c` carries the ordered CRDT workplan
+  **W01–W25, 121 points**, sizes `nano 1 / micro 3 / mini 7 / midi 11 / maxi 17 / saga 35`,
+  hard cap `mini` per step, phases `analyze | implement | codexreview-ship | close`.
+- **Roadmap**: round 29 converged (2026-08-21) — 20 epics / 116 features / 3760 journal lines, 0 duplicate groups,
+  both publish legs OK. **23 features not closed** (9 of them carry no epic and are therefore
+  invisible to `buildkit-roadmap status` — always fold `heads` from the export instead).
+
+### Done and verified — the preservation phase is complete
+
+W01–W05 plus W06 (23 + 3 = 26 of 121 points). **Nothing in this repo can now be deleted
+unrecoverably**:
+
+- 18 full-history `git bundle`s at `D:/BSTDEV/evidence/glpnet-tidyup-20260820/bundles` (1.7 GB),
+  every one `git bundle verify`-clean with its restored tip SHA matched against the recorded tip.
+  Hard proof: fetch-from-bundle into a fresh empty repo restored `050-full-gleam-combined` at
+  `10f02f7d` with 2566 reachable commits.
+- 18 annotated `archive/<name>-20260820` tags **pushed to origin** — objects stay reachable
+  server-side independent of any local ref.
+- The second clone's only at-risk content (2 unpushed commits on `D:/BSTDEV/glp/GLPNET`'s local
+  `main`, `57fa2066` / `fd305b5a`) bundled and verified at
+  `D:/BSTDEV/evidence/glpnet-tidyup-20260820/clone2`.
+
+**Why this mattered**: `3dca578c` — a fix `CHANGELOG.md` records as merely "stranded" on
+`glpnet-lane/toolchain-integrity-fixes` — is **already gone**; `git cat-file -t` reports it is not a
+valid object and no such ref exists on origin. A list of tip SHAs preserves nothing.
+
+### W06–W10 DONE 2026-08-21 — six branches landed
+
+PRs **#188** `083-repo-tidy-up` · **#189** `081-scheduler-supply-rootcause` · **#190**
+`083-glptutorial-corpus-goldens` · **#191** `049-wave1-guard-link-acceptance` · **#192**
+`078-verification-receipts` · **#193** `084-host-tidy-up-and-merge-closure`. (**#187** landed earlier.)
+
+🔴 **Concern carried forward on 049**: it reported `tasks_open=0` and merged clean, but its unchanged
+SHIP-HANDOFF holds **four unchecked hard GO-CONDITIONS**. Raised, reaffirmed by the engineer, landed
+on that instruction. Not resolved — still owed.
+
+## NEXT — in strict order
+
+1. **W10 re-measure result: ZERO clean branches remain.** All 14 still-unmerged refs conflict —
+   `080` (2 paths) · `backup/upgrade-buildkit-migration` (6) · `067` (8) · `066-wave6` (9) ·
+   `058-s4` (11) · `067b` (12) · `backup/078-olamnit` (15) · `016` (19) · `017` (19) ·
+   `030-phase8-polish` (24) · `backup/030` (27) · `051-ynet` (26 ahead) · `050-full-gleam` (64) ·
+   `059-full-scope-gleam` (89). **Nothing further can land without a per-branch ruling.**
+2. **W11–W18** — the conflicted branches, each behind a ruling (see the open blocks).
+3. **W19–W21** — deletions. Preservation-unblocked; gated on the lane-ownership ruling. The peer has
+   already staged 124 remote refs for deletion (audited safe — see block 3).
+4. **W22–W25** — PR hygiene (draft PR #111), roadmap reconcile, codexreview, takt emission.
+5. **Release** — develop is 80 ahead of main. `/bk-release` is HELD pending a green
+   `test/run_all_tests.sh` on merged develop (see the false-green note below).
+
+## Open blocks — ENGINEER rulings, nothing proceeds past them
+
+| # | Block | Why it blocks |
+|---|---|---|
+| 1 | ~~`gh pr merge` permission~~ **RESOLVED 2026-08-21** | The verb now works for single invocations. It still trips the classifier when wrapped in a shell `for` loop — issue one PR merge per command. |
+| 2 | Gleam cluster `050` (48 ahead / 64 conflicts) vs `059` (32 ahead / 89 conflicts) | 96 of the 220 unmerged commits. Marathon holds two **contradictory** recorded reads: item N12 "independent colliding implementations", item C1 "complementary tiers". Both cannot be true. |
+| 3 | Lane collision | Two concurrent tidy-up workplans on one repo: this marathon's W01–W25 (121 pt) and the peer's 14-step ledger on `083-repo-tidy-up` (136 pt). Neither references the other; both claim ref-deletion scope. **Audited 2026-08-21: the peer's W13 list of 124 remote branches was checked against `origin/develop` 2d72c1bd — all 124 are true ancestors, so their deletion is SAFE (containment IS the preservation for contained refs; the bundle/tag gate binds only the non-contained refs, which this lane has covered).** The open question is ownership, not safety. |
+| 4 | `080-occurs-checked-substitution` | Only 2 conflicting paths, but gated on the **§1.14 language-authority ruling that is Udi's, not Gabi's** (UnifyFail vs CompileError). |
+| 5 | `067` vs `067b` survivor | `067`: 10 open tasks / 8 conflicts. `067b`: 0 open tasks / 12 conflicts. The Critic REFUTED the `duplicate-implementation` tag on `067` — a zero-task count is not a record of supersession. |
+| 6 | `needs-rebase` vs `needs-completion` exclusivity | 10 of 16 merge conflicts are this taxonomy artefact, not disagreement. A branch can be behind develop *and* incomplete. |
+| 7 | 5 `chore/roadmap-sync-*` refs | Tagged `abandon` (closed-unmerged PRs) **and** `already-contained` (`ahead=0`). Both true at different times — confirm they are now contained and deletable. |
+
+## Provenance of the plan
+
+3rtask run `20260820T115931Z-dddd` — 3 blind builders over file-disjoint / subject-overlapping
+slices, cross-provider codex Critic, **0 independence violations**, 753 claims → 596 (subject,tag)
+pairs, **157 corroborated**, 16 conflicts; adjudication 42 CONFIRM / 12 REFUTE / 35 ESCALATE.
+Report: `docs/research/host-d-git-asset-survey-and-tidyup-workplan-2026-08-20.md`.
+
+**Tool defect found, reported not worked around**: `buildkit-3rtask merge` returned 2 corroborated of
+820 claims because `threerole/concept.py` `_category_in_key()` drops the subject from the merge key
+for `task_type` in {code, plan, strategy}. The E07 merge was computed by a deterministic set-ops
+script instead (`.specify/3rtask/e07_merge.py`).
+
+## Takt
+
+Scheme confirmed active: `nano 1 · micro 3 · mini 7 · midi 11 · maxi 17 · saga 35`.
+Targets: a phase 30 min – 3 h, a feature 1.5 – 6 h. Correction to the peer's takt doc: **`bk-flow`
+IS on PATH** (`poll · claim · open · report · version`) — that prerequisite is met; the remaining
+`/bk-flow` migration blockers are the takt projection, step-board integrity and Critic determinism.
+
+## Environment gotchas (still current)
 
 ```
 $env:PATH = "C:\Program Files\nodejs;C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;$env:PATH"
 $env:PYTHONUTF8 = 1
 ```
 
-- **`node` is NOT on PATH** — every `buildkit_cli` command that touches PGlite exits 2 with
-  "Node 20+ not found on PATH" until you prepend it. Node itself is fine (v24.18.0).
-- **`git` and `gh` are NOT on PATH** either.
-- **git `safe.directory`** was needed (files carry the old machine's SID); already added globally for
-  both `D:/BSTDEV/research/GLP/GLPNET` and the lowercase spelling.
-- **git identity** is set **repo-locally** to `vonwenm <mvw@bancstreet.com>` (matches commit history;
-  there was no global identity at all).
-- **`gh`** is authenticated as `vonwenm` (keyring). `gh pr merge` is now in
-  `.claude/settings.local.json`'s allow-list.
-- **`python -m buildkit_cli.*` works with system Python 3.14** — no venv needed for roadmap/pipeline/
-  marathon. `buildkit-roadmap` / `buildkit-size` console scripts are **not** on PATH
-  (`buildkit_cli.size` does not exist as a module — sizing steps skip silently).
-
-## How to locate yourself on any restart
-
-1. **Roadmap** → `python -m buildkit_cli.roadmap status` (56 closed / 37 open across 10 epics).
-2. **Active feature** → `.specify/feature.json` = `specs/060-wave3-full-gleam-chain`.
-3. **Pipeline** → `python -m buildkit_cli.pipeline.cli status`.
-4. **Marathon** → `python -m buildkit_cli.marathon resume --feature wave-3-consolidated-full-gleam-chain`
-   (run `mrun-e300493d5a6d`). Rehearsed 2026-07-27, exits 0 and reports the position from durable rows.
-   Note: `buildkit_cli.marathon` takes **`--feature`**, not `--run` — `--run` is the *codeconv* 030
-   harness's flag (CLAUDE.md § Multi-Stage Task Persistence), a different tool. `status` / `position` /
-   `doctor` take the same `--feature`.
-
-## Where things stand (2026-07-27)
-
-- **059** `full-scope-gleam-glp-implementation` — **merged to develop** (PR #115, merge `f08940ce`).
-  Carries a live escalation: T051 parity **44 missing corpus goldens** (evidence-reproducibility drift).
-  Wave 3 inherits it as FR-018a/FR-018b/SC-010.
-- **060** `wave3-full-gleam-chain` — branch `060-wave3-full-gleam-chain`, off develop.
-  Pipeline: specify ✅ clarify ✅ plan ✅ tasks ✅ analyze ✅ → **implement is next**.
-  Marathon `mrun-e300493d5a6d`: **5/10 steps complete**.
-
-## NEXT — `/bk-implement` on 060
-
-Artifacts are all on disk under `specs/060-wave3-full-gleam-chain/`:
-`spec.md` (34 FR, 10 SC, 5 user stories) · `plan.md` · `research.md` (decisions D1–D4, gap analysis
-G1–G10) · `data-model.md` · `quickstart.md` · `contracts/{repl-commands,link-handshake,corpus-report}.md`
-· `tasks.md` (**52 tasks, 8 phases, MVP = phases 1–3**) · `analysis-findings.md`.
-
-**Before writing any code**: Phase 1 T001–T004 capture the non-regression baseline
-(`gleam test` in `glp_gleam/`, expected **465 green**; `bash test/run_all_tests.sh`). Constitution VII
-makes this non-negotiable — a change against a red baseline cannot be attributed.
-
-**Two open findings from analyze** (see `analysis-findings.md`, not yet applied):
-- **C1 (HIGH)** — FR-007 writer-MGU has no task, though this wave changes the loader and engine seam.
-- **B1 (MEDIUM)** — the Bug-Protocol "STOP, don't regenerate a golden from the runtime under test"
-  obligation is prose under Phase 5, not inside task T029.
-
-**Advisory, unresolved**: wave 3 is roadmap-state `captured` and recorded blocked-by
-`wave-2-consolidated-repl-engine-split-spine`, which has not been built — the owner accepted jumping
-that order. The roadmap will **not** auto-link this spec (slug `wave-3-consolidated-full-gleam-chain`
-vs dir `060-wave3-full-gleam-chain`); Constitution VIII marks that clause advisory.
-
-## History (done — do not resume)
-
-- 2026-07-27: roadmap sweep (39 `released` → `closed`); 059 merged; 060 specified through analyze.
-- Earlier: `037` folded into **040** (shipped). `036` v2026.07.02.3; `038` v2026.07.02.1;
-  `039` v2026.06.30.1. Earlier still: 034/035/030.
+- `node`, `git`, `gh` are not on PATH by default; PGlite commands exit 2 without node.
+- Scheduler board: **always** pass `--root I:/coop/glpnet/sched`; there is no default and an
+  unconfigured host reports an empty board at exit 0.
+- Roadmap sync is **two-legged**: import with
+  `--in-dir I:/coop/glpnet/roadmap-sync/inbox` and export to both the local `exports/` and that inbox.
+- `marathon expand --steps` is **comma-delimited with no escaping** — never put a comma in a step text.
+- `marathon checkpoint --paths` refuses out-of-repo paths; omit `--paths` for evidence held outside
+  the repo, and do not suppress its output or the failure is silent. `checkpoint` has **no
+  held/blocked state** — a gated step can only be logged `complete`, which over-reports.
+- 🔴 **Never combine `nohup`/trailing `&` with the harness `run_in_background` flag.** Doing so made
+  `test/run_all_tests.sh` report **exit 0 with 253 PASS / 0 FAIL after only Section A** — sections
+  B–K and M never ran. Detection rule: the script always prints a `Total: … Passed: … Failed: …`
+  summary block last; **absent summary means the run did not finish, whatever the exit code says.**
+- `gh pr merge` inside a `for` loop is refused by the permission classifier; run it one PR at a time.

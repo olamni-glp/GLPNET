@@ -1,0 +1,20 @@
+# CURATOR EVIDENCE (not a builder slice): merge-tree conflict measurement vs origin/develop 201b97a0
+# git merge-tree --write-tree --name-only origin/develop <branch>; measured 20260820T115451Z
+CONFLICT|origin/016-codeconv-init-scaffold-langpair|ahead=2 1370|conflicting_paths=19
+CONFLICT|origin/017-conversion-plan-agents|ahead=2 1377|conflicting_paths=19
+CONFLICT|origin/030-phase8-polish|ahead=8 1073|conflicting_paths=24
+CLEAN|origin/049-wave1-guard-link-acceptance|ahead=3 753|conflicting_paths=0
+CONFLICT|origin/050-full-gleam-combined|ahead=48 597|conflicting_paths=64
+CONFLICT|origin/051-ynet-transport|ahead=26 671|conflicting_paths=5
+CONFLICT|origin/058-s4-policy-service|ahead=1 668|conflicting_paths=11
+CONFLICT|origin/059-full-scope-gleam-glp-implementation|ahead=32 548|conflicting_paths=89
+CONFLICT|origin/066-wave6-consolidation|ahead=23 390|conflicting_paths=9
+CONFLICT|origin/067-qr-link-provisioning|ahead=25 390|conflicting_paths=8
+CONFLICT|origin/067b-qr-link-continuation|ahead=27 390|conflicting_paths=12
+CONFLICT|origin/080-occurs-checked-substitution|ahead=2 218|conflicting_paths=2
+CLEAN|origin/081-scheduler-supply-rootcause|ahead=3 48|conflicting_paths=0
+CLEAN|origin/083-glptutorial-corpus-goldens|ahead=1 33|conflicting_paths=0
+CLEAN|origin/083-repo-tidy-up|ahead=2 1|conflicting_paths=0
+CONFLICT|origin/backup/030-phase8-polish|ahead=9 1073|conflicting_paths=27
+CONFLICT|origin/backup/078-olamnit-impl-preserve|ahead=5 163|conflicting_paths=15
+CONFLICT|origin/backup/upgrade/buildkit-migration-20260627T220138Z|ahead=1 1070|conflicting_paths=6

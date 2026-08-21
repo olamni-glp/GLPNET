@@ -49,6 +49,8 @@ copy-divergence FR-024 forbids.
 - [ ] T010 Implement schema validation of a receipt against `receipt.schema.json` in `bk:src/buildkit_cli/receipts/verify.py` (FR-004)
 - [ ] T011 Implement `AdoptionManifest` load + validate in `bk:src/buildkit_cli/receipts/manifest.py` — a manifest missing any of the six areas is INVALID, not partial (FR-019, FR-020, FR-021)
 - [ ] T012 Implement `ExpectedChecks` load + validate in `bk:src/buildkit_cli/receipts/manifest.py` — a run with no manifest refuses; it is not a run in which nothing was expected (FR-023)
+- [ ] T063 Implement `reconcile_run()` in `bk:src/buildkit_cli/receipts/verify.py` — at run end, compare the `ExpectedChecks` declaration against the receipts actually emitted for that `run_id`, **both directions**: an expected `check_id` with no receipt is reported as a did-not-run absence and MUST NOT be indistinguishable from a check that passed; a receipt whose `check_id` is absent from `expected` is reported as a surprise check, not silently accepted (FR-013; data-model §5). Depends on T010, T012
+- [ ] T064 [P] Unit tests for the FR-013 reconciliation in `bk:tests/receipts/test_reconcile.py` — assert the absence is reported **even when every emitted receipt is `PASS`** (that is the exact silent-success mode FR-013 closes), and assert a surprise check is named rather than accepted
 - [ ] T013 Implement the conformance runner in `bk:src/buildkit_cli/receipts/conformance.py` — runs `contracts/conformance/vectors.json` and **emits its own result as a receipt** (FR-024)
 - [ ] T014 [P] Unit tests for `Outcome`, bounding and run-id in `bk:tests/receipts/test_model.py` — assert `skipped_total` survives truncation of `skipped` (the FR-005/FR-010 tension)
 - [ ] T015 [P] Conformance test asserting all 7 vectors behave as declared (2 accept, 5 reject) in `bk:tests/receipts/test_conformance.py`
@@ -68,9 +70,10 @@ report clean.
 
 - [ ] T016 [P] [US1] Test: a receipt records `target_resolved` as ACTUALLY resolved, not as requested, in `bk:tests/receipts/test_us1_proof.py` (FR-003)
 - [ ] T017 [P] [US1] Test: a verdict with no receipt is refused as incomplete, not treated as a pass, in `bk:tests/receipts/test_us1_proof.py` (FR-008)
-- [ ] T018 [P] [US1] Test: an examined-count of zero is explicit and attributed, never rendered as "clean" or "0 findings", in `bk:tests/receipts/test_us1_proof.py`
+- [ ] T018 [P] [US1] Test: an examined-count of zero is explicit and attributed, never rendered as "clean" or "0 findings", in `bk:tests/receipts/test_us1_proof.py` (FR-001)
 - [ ] T019 [US1] Implement `verify()` as the FR-008 consumer gate in `bk:src/buildkit_cli/receipts/verify.py` — refuse on absent receipt, malformed receipt, or an area unlisted in the adoption manifest, each with a distinct named reason (FR-008, FR-011, FR-020)
 - [ ] T020 [US1] Implement unresolved-target detection in `bk:src/buildkit_cli/receipts/verify.py` — a check whose target cannot be resolved reports `UNSEARCHABLE` naming what it looked for and where (FR-011)
+- [ ] T065 [US1] Implement the declared-non-adoption path in `bk:src/buildkit_cli/receipts/verify.py` — a verdict from an area whose adoption-manifest entry is `not-adopted` remains **usable** but carries a visible non-adoption marker; it is neither refused as unlisted (that is FR-020's case, T019) nor silently accepted as if adopted (FR-008, FR-017). Depends on T011, T019
 - [ ] T021 [US1] Wire `emit()` into the conformance runner as the first real producer in `bk:src/buildkit_cli/receipts/conformance.py` — a real emitter, not a synthetic one
 
 **Checkpoint:** US1 independently testable and deliverable on its own.
@@ -115,8 +118,9 @@ pass under injection fails the suite.
 - [ ] T036 [P] [US3] Inject a retired root; assert `UNSEARCHABLE` rather than *0 actors, empty board, exit 0* (instance 10) in `bk:tests/receipts/test_fault_injection.py`
 - [ ] T037 [P] [US3] Inject an aggregate reporting success over an `UNREAD` child (instances 11, 13) in `bk:tests/receipts/test_fault_injection.py`
 - [ ] T038 [P] [US3] Inject a guard that passes on its own failing case (instance 12 — the sharpest one) in `bk:tests/receipts/test_fault_injection.py`
+- [ ] T066 [P] [US3] Inject a **removed expected check** — the run emits only `PASS` receipts but one declared `check_id` never ran; assert the absence is reported loudly and the run is not clean, in `bk:tests/receipts/test_fault_injection.py` (FR-013, FR-014; FR-016 names FR-013 explicitly)
 - [ ] T039 [US3] Implement the suite's self-check so its own non-execution is loud (FR-016) in `bk:tests/receipts/test_fault_injection.py` — the suite is subject to its own invariant
-- [ ] T040 [US3] Implement the `BUILDKIT_RECEIPTS_WEAKEN` hook and a test proving the suite goes RED when a guard is deliberately weakened (SC-007) in `bk:tests/receipts/test_fault_injection.py`
+- [ ] T040 [US3] Implement the `BUILDKIT_RECEIPTS_WEAKEN` hook and a test proving the suite goes RED when a guard is deliberately weakened (FR-015, SC-007) in `bk:tests/receipts/test_fault_injection.py`
 - [ ] T041 [US3] Implement the scoped, expiring override path in `bk:src/buildkit_cli/receipts/verify.py` — briefing, acknowledgement, rationale, scope and mandatory expiry; no indefinite override; visible in the receipt forever (FR-012)
 
 **Checkpoint:** the feature is now self-consistent — the mechanism has been made to fail on purpose.
@@ -141,14 +145,14 @@ cannot be emitted from bash, that must surface before five Python areas are buil
 - [ ] T045 [US4] Emit per-section receipts keyed `(letter, slugified-title)` in `gn:test/run_all_tests.sh` — **NOT** by letter alone: `Section I` is declared twice, at lines 1653 and 2219, and letter-keying would make one receipt silently overwrite the other (research R3, register block 06)
 - [ ] T046 [US4] Add the skip-guard fix in `gn:test/run_all_tests.sh` — an unsupported-platform skip is recorded as skipped with a reason, never `passed-by-skip` (instance 5)
 - [ ] T047 [US4] Add a build-staleness check to Section U in `gn:test/run_all_tests.sh` — compare exe mtime against source and report `UNSEARCHABLE` on a stale binary rather than presenting a build defect as a feature defect (the 37h-stale-binary case)
-- [ ] T048 [P] [US4] Author the adoption manifest enumerating all six areas with state and date in `gn:.specify/receipts/adoption-manifest.json` (FR-019)
+- [ ] T048 [P] [US4] Author the adoption manifest enumerating all six areas with state and date in `gn:.specify/receipts/adoption-manifest.json` (FR-017, FR-019)
 - [ ] T049 [P] [US4] Author the expected-checks manifest for the suite run in `gn:.specify/receipts/expected-checks.json` (FR-023)
 - [ ] T050 [US4] Retrofit `roadmap-sync` reconcile + import to emit receipts in `bk:src/buildkit_cli/roadmap/` (instances 4, 13)
 - [ ] T051 [P] [US4] Retrofit `buildkit-3rtask` `brief`/`record-output` to emit receipts in `bk:src/buildkit_cli/threerole/` (instance 3)
 - [ ] T052 [P] [US4] Retrofit `buildkit-codexreview` to emit a receipt carrying its findings count in `bk:src/buildkit_cli/codexreview/` (instances 1, 2)
 - [ ] T053 [P] [US4] Retrofit the COOP poll/cursor path to emit receipts distinguishing an unread mailbox from an empty one in `bk:src/buildkit_cli/colab/` (instance 8)
 - [ ] T054 [P] [US4] Retrofit the codeconv build gate to report `UNREAD` when it is compile-only (instance 6) in `gn:codeconv/src/codeconv/`
-- [ ] T055 [US4] Implement the adoption report in `bk:src/buildkit_cli/receipts/manifest.py` — per-area coverage stated explicitly; an area absent from the manifest is an ERROR, printed as such, never omitted (FR-018, FR-020)
+- [ ] T055 [US4] Implement the adoption report in `bk:src/buildkit_cli/receipts/manifest.py` — per-area coverage stated explicitly, **including every `not-adopted` area, reported as such and never omitted from the report**; an area absent from the manifest is an ERROR, printed as such (FR-017, FR-018, FR-020)
 
 **Checkpoint:** all 13 witnessed instances have both a fault injector and a retrofitted site.
 
@@ -185,10 +189,10 @@ incrementally, site by site.
 
 ## Parallel execution
 
-- **Phase 2:** T007, T008 in parallel; T014, T015 in parallel once T005–T013 land.
+- **Phase 2:** T007, T008 in parallel; T014, T015, T064 in parallel once T005–T013 and T063 land.
 - **Phase 3:** T016, T017, T018 in parallel (same file, distinct tests — serialise if editing conflicts).
 - **Phase 4:** T022–T025 in parallel.
-- **Phase 5:** T031–T038 in parallel — eight independent injectors.
+- **Phase 5:** T031–T038 and T066 in parallel — nine independent injectors.
 - **Phase 6:** T048, T049 in parallel; T051–T054 in parallel (four different packages). T042→T045 are
   strictly ordered: the bash emitter must exist before the harness can emit.
 - **Phase 7:** T056–T059 and T061 in parallel.
@@ -211,10 +215,31 @@ releases, not by one invocation.
 | phase | tasks | story |
 |---|---|---|
 | 1 Setup | 4 | — |
-| 2 Foundational | 11 | — |
-| 3 US1 | 6 | P1 (MVP) |
+| 2 Foundational | 13 | — |
+| 3 US1 | 7 | P1 (MVP) |
 | 4 US2 | 8 | P1 |
-| 5 US3 | 12 | P2 |
+| 5 US3 | 13 | P2 |
 | 6 US4 | 14 | P3 |
 | 7 Polish | 7 | — |
-| **total** | **62** | |
+| **total** | **66** | |
+
+## Post-analyze additions (T063–T066)
+
+`/bk-analyze` raised a CRITICAL: **FR-013 had no enforcing task**, and re-measuring the FR tags in this
+file against `spec.md` found FR-001 and FR-017 untagged as well. Closed as follows.
+
+| FR | finding | closure |
+|---|---|---|
+| FR-013 | T012 *loads* the expected-checks manifest and T049 *authors* it, but nothing compared the declaration against the receipts actually emitted. That comparison **is** FR-013. | **T063** (enforcement, Phase 2), **T064** (unit test), **T066** (fault injector, Phase 5) |
+| FR-017 | "non-adoption" appeared only in Phase 6's goal prose, never in a task. FR-008's *"a declared-non-adopted area's verdicts remain usable and MUST carry a visible non-adoption marker"* had no implementing task. | **T065** (consumer path, Phase 3), plus FR-017 tags and explicit non-adoption reporting on T048/T055 |
+| FR-001 | Umbrella invariant, genuinely covered in substance by T016/T017/T018 — T018 restates it verbatim — but untagged. | tag added to T018; no new task |
+| FR-015 | A **fourth** untagged FR, found only when the tag count was restricted to task lines (it appears in this file's header prose, which masked it in a whole-file count). Covered in substance by T040 — the `BUILDKIT_RECEIPTS_WEAKEN` hook proving the suite goes RED under a weakened guard is exactly "the suite MUST fail if an injected fault produces a clean pass". | tag added to T040; no new task |
+
+**Phase placement.** T063 is Phase 2 (foundational) on three grounds: it is contract-level logic in
+`verify.py`/`manifest.py` with no story dependency; the W1 gate releases a buildkit version at the end
+of Phase 2 and the `gn:` tasks pin that release, so FR-013 enforcement absent from it is unreachable
+from Phase 4 onward; and FR-016 makes the Phase 5 suite subject to FR-013, so it must already exist.
+
+**Numbering.** T063–T066 are appended IDs placed *physically* in their correct phases rather than
+renumbering T013–T062. T062 is already done, committed and cited externally (register block 49);
+renumbering would break those references for cosmetic gain. Read the file in order, not by ID.

@@ -167,3 +167,15 @@ glpservice/wal/
 # 1041 tracked .obj/.a files under deep openssl paths make worktree checkouts
 # fail outright with "Filename too long" on Windows (measured 2026-08-18).
 gleam_quic/profile_c/_build/
+.specify/3rtask/evidence/
+
+# Machine-local pipeline state: which feature dir is active on THIS host.
+# Tracked previously, which made every feature branch conflict with every other on it.
+# See roadmap feature #30 multi-host-state-discipline (untracked derived artifacts).
+.specify/feature.json
+
+# buildkit-scheduler watch — regenerated every run
+/ALERT.md
+
+# Machine-local buildkit config (the CLI documents this as gitignored; the rule was absent).
+config.local.json
