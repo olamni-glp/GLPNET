@@ -25,8 +25,21 @@ the harness re-run against the mutant. Host GAVRIELLA, 2026-08-21.
 | `K3-short-read-ok` | `Read-FileRange` returns a partially-filled buffer instead of refusing to judge | **126 / 1 fail**, exit 1 | a range past EOF returns null (K3) |
 | `K4-wide-tolerance` | the run-lock owner check accepts a 5-second start-time window instead of exact identity | **126 / 1 fail**, exit 1 | a REUSED pid does not inherit the claim (K4) |
 
-Unmutated: **127 passed / 0 failed**, exit 0.
+Unmutated after round 4: **127 passed / 0 failed**, exit 0.
 GLP merge gate unchanged at **561 total / 559 passed / 2 failed** (the two known 064 Section T drills).
+
+
+## Round 5 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `J1-subtree-tier` | attribution accepts any live descendant of the lane launcher | **133 / 1 fail** | an unrelated live descendant is NOT attributed (J1) |
+| `J1b-no-noprofile` | the tab's pwsh loads the user profile again, so profile children become descendants | **133 / 1 fail** | the wt command line passes -NoProfile (J1) |
+| `J2-raw-length-offset` | resume scanning starts at the raw pre-launch length, splitting a straddling record | **133 / 1 fail** | a foreign sessionId inside a straddling record is caught (J2) |
+| `J3-sidless-counts` | a sessionId-less appended record counts as proof of resumption | **133 / 1 fail** | a sessionId-less append is NOT proof (J3) |
+
+Unmutated after round 5: **134 passed / 0 failed**, exit 0. Twelve mutants across three rounds,
+all caught, each by the assertion written for its own finding.
 
 ## A gap mutation testing found in the tests themselves
 

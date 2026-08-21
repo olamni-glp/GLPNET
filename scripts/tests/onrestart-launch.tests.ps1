@@ -53,7 +53,7 @@ $want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath
           'Get-ResumeEvidence','Get-RepoState','Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc',
           'Test-LaneMarker','Get-LaneVerification','Remove-StaleRunDirs','Get-RunOutcome',
           'New-LaneLauncher','Get-WtCommandLine','Read-FileRange','Split-TranscriptLines',
-          'Test-JsonObjectLine','Get-LaneClaudeEvidence')
+          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary')
 $found = @()
 foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
@@ -190,32 +190,48 @@ Check 'a timestamp touch is NOT evidence (M2)'   ($null -eq (Get-ResumeEvidence 
 # A partial append with no newline yet is not a complete record.
 Add-Content -LiteralPath $tx -Value '{"type":"assist' -NoNewline -Encoding utf8
 Check 'a partial appended line is NOT evidence'  ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
-# Completing the torn line yields a record with NO sessionId: real transcripts carry one only
-# on the opening record, so this must count - but as the weaker evidence it is.
+# INJECTION (J3): a complete appended record with NO sessionId. Any process with access to the
+# transcript could have written it, so it is not attributable to the launched claude and must
+# NOT count as proof.
 Add-Content -LiteralPath $tx -Value ('ant"}' + "`n") -NoNewline -Encoding utf8
-$ev = Get-ResumeEvidence $st
-Check 'a sessionId-less appended record is weak evidence' ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'appended-records') ("$($ev.Kind)/$($ev.Strength)")
-# A record carrying the EXPECTED sessionId is the strong form, and must say so.
+Check 'a sessionId-less append is NOT proof (J3)' ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
+# A record carrying the EXPECTED sessionId, beginning after the pre-launch length, IS proof.
 Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
 $ev = Get-ResumeEvidence $st
-Check 'the expected sessionId is recognised as strong'   ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'expected-session-id') ("$($ev.Kind)/$($ev.Strength)")
+Check 'the expected sessionId IS proof'          ($null -ne $ev -and $ev.Kind -eq 'RESUMED' -and $ev.Strength -eq 'expected-session-id') ("$($ev.Kind)/$($ev.Strength)")
 # INJECTION (K2): a sessionId-less record FIRST, a foreign sessionId AFTER it. Returning on the
-# first parseable record - which the previous version did - reports RESUMED and never looks.
+# first parseable record - which an earlier version did - reports RESUMED and never looks.
 Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
 $st2 = LaneState
 Add-Content -LiteralPath $tx -Value ('{"type":"assistant","uuid":"u8"}' + "`n" + '{"type":"assistant","sessionId":"OTHER-999","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
-$ev2 = Get-ResumeEvidence $st2
-Check 'a LATER foreign sessionId still wins (K2)'  ($null -ne $ev2 -and $ev2.Kind -eq 'WRONG-SESSION') ("$($ev2.Kind)/$($ev2.Strength)")
-# A foreign sessionId alone is still WRONG-SESSION.
-Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
-$st3 = LaneState
-Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"OTHER-1","uuid":"u9"}' + "`n") -NoNewline -Encoding utf8
-Check 'an appended foreign sessionId is WRONG-SESSION' ((Get-ResumeEvidence $st3).Kind -eq 'WRONG-SESSION')
+Check 'a LATER foreign sessionId still wins (K2)' ((Get-ResumeEvidence $st2).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $st2).Kind)
 # An appended record that is not yet terminated is not a record.
 Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
 $st4 = LaneState
-Add-Content -LiteralPath $tx -Value '{"type":"assistant","sessionId":"OTHER' -NoNewline -Encoding utf8
+Add-Content -LiteralPath $tx -Value '{"type":"assistant","sessionId":"abc-123","uuid":"u1' -NoNewline -Encoding utf8
 Check 'an unterminated appended line is not yet a record' ($null -eq (Get-ResumeEvidence $st4)) ((Get-ResumeEvidence $st4).Kind)
+
+Write-Host ''
+Write-Host 'J2 - a record straddling the launch boundary' -ForegroundColor Cyan
+# INJECTION: the transcript is captured MID-RECORD, and the bytes appended afterwards complete a
+# record carrying a FOREIGN sessionId. Decoding from the raw pre-launch length would split that
+# record into an unparseable fragment and never see the foreign id at all.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"OTHER-7","uu') -Encoding utf8 -NoNewline
+$stj = LaneState
+Check 'the boundary is the last complete record, not the length' ($stj.LatestCompleteOffset -lt $stj.LatestLength) "$($stj.LatestCompleteOffset) vs $($stj.LatestLength)"
+Add-Content -LiteralPath $tx -Value ('id":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'a foreign sessionId inside a straddling record is caught (J2)' ((Get-ResumeEvidence $stj).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stj).Kind)
+# And the converse: completing a pre-launch record is NOT itself proof this launch resumed.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uu') -Encoding utf8 -NoNewline
+$stk = LaneState
+Add-Content -LiteralPath $tx -Value ('id":"u9"}' + "`n") -NoNewline -Encoding utf8
+Check 'completing a pre-launch record is NOT proof (J2)' ($null -eq (Get-ResumeEvidence $stk)) ((Get-ResumeEvidence $stk).Kind)
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u10"}' + "`n") -NoNewline -Encoding utf8
+Check 'a record beginning after the launch IS proof (J2)' ((Get-ResumeEvidence $stk).Kind -eq 'RESUMED') ((Get-ResumeEvidence $stk).Kind)
+$lrb = NewJsonl 'lrb.jsonl' ($SESS + "`n" + $REC + "`n" + 'partial')
+Check 'last-record boundary skips a trailing partial'  ((Get-LastRecordBoundary $lrb) -eq ($lrb.Length - 7)) "$(Get-LastRecordBoundary $lrb) of $($lrb.Length)"
+$lrb2 = NewJsonl 'lrb2.jsonl' 'no newline at all'
+Check 'a file with no newline has boundary 0'          ((Get-LastRecordBoundary $lrb2) -eq 0) "$(Get-LastRecordBoundary $lrb2)"
 
 Write-Host ''
 Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan
@@ -450,30 +466,36 @@ Check 'claude attributed to the good lane handshake (F1)' ($hit.Count -ge 1) ("p
 try { Stop-Process -Id $gproc.Id -Force -ErrorAction Stop } catch { }
 
 Write-Host ''
-Write-Host 'K1 - a shim install must still attribute (false negatives are defects too)' -ForegroundColor Cyan
+Write-Host 'K1 / J1 - attribution identifies claude, and nothing else' -ForegroundColor Cyan
 $SHIM = 'C:\Users\g\AppData\npm\claude.cmd'
 $k1 = @{}
 foreach ($p in @(
-    (P 700 1   'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-00.ps1' 'C:\pwsh.exe'),
+    (P 700 1   'pwsh.exe' 'pwsh -NoProfile -NoExit -File C:\runs\lane-00.ps1' 'C:\pwsh.exe'),
     (P 701 700 'node.exe' 'node "C:\Users\g\AppData\npm\node_modules\@anthropic-ai\claude-code\cli.js" --continue' 'C:\Program Files\nodejs\node.exe'),
-    (P 800 1   'pwsh.exe' 'pwsh -NoExit -File C:\runs\lane-01.ps1' 'C:\pwsh.exe')
+    (P 800 1   'pwsh.exe' 'pwsh -NoProfile -NoExit -File C:\runs\lane-01.ps1' 'C:\pwsh.exe'),
+    (P 801 800 'ping.exe' 'ping -t 127.0.0.1' 'C:\WINDOWS\system32\PING.EXE')
 )) { $k1[$p.ProcId] = $p }
 $LS2 = (Get-Date).AddMinutes(-1)
-# The transient cmd.exe that ran the shim has already exited; only node.exe survives, and it
-# names the JS entry point rather than the shim, so the strong tier cannot see it.
-Check 'the surviving shim child fails the STRONG test' (-not (Test-IsClaudeProc $k1[701] $SHIM @('--continue')))
+# A node process running the Claude Code entry point is matched on the CLI's own module path.
 $ev1 = Get-LaneClaudeEvidence -Table $k1 -LanePid 700 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
-Check 'a shim lane is still attributed via subtree (K1)' ($null -ne $ev1 -and $ev1.Strength -eq 'subtree' -and $ev1.Proc.ProcId -eq 701) ("$($ev1.Strength)")
+Check 'node running the CLI entry point IS attributed (K1)' ($null -ne $ev1 -and $ev1.Strength -eq 'image' -and $ev1.Proc.ProcId -eq 701) ("$($ev1.Strength)")
+# INJECTION (J1): the lane launcher has a live descendant that is NOT claude - the shape a
+# PowerShell profile child or a shim's helper would take. "Something is alive" is not proof.
 $ev2 = Get-LaneClaudeEvidence -Table $k1 -LanePid 800 -ClaudeExe $SHIM -ClaudeArgs @('--continue') -LaunchStart $LS2
-Check 'a lane with no descendants is NOT attributed'    ($null -eq $ev2) ("$($ev2.Strength)")
-Check 'subtree does not leak across lanes (F1)'         ($null -eq $ev2)
-$k1[900] = (P 900 1 'pwsh.exe' 'pwsh -File lane.ps1' 'C:\pwsh.exe')
+Check 'an unrelated live descendant is NOT attributed (J1)' ($null -eq $ev2) ("$($ev2.Strength) pid $($ev2.Proc.ProcId)")
+Check 'the unrelated descendant really is a live descendant' ((@(Get-DescendantProcs $k1 800)).Count -eq 1) 'the injection must actually be present'
+$k1[900] = (P 900 1 'pwsh.exe' 'pwsh -NoProfile -File lane.ps1' 'C:\pwsh.exe')
 $k1[901] = (P 901 900 'claude.exe' 'claude --continue' $CLAUDE)
 $ev3 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
-Check 'a direct install reports the IMAGE tier'         ($null -ne $ev3 -and $ev3.Strength -eq 'image') ("$($ev3.Strength)")
+Check 'a direct install is attributed by image'          ($null -ne $ev3 -and $ev3.Strength -eq 'image') ("$($ev3.Strength)")
 $k1[901].Created = (Get-Date).AddHours(-3)
 $ev4 = Get-LaneClaudeEvidence -Table $k1 -LanePid 900 -ClaudeExe $CLAUDE -ClaudeArgs @('--continue') -LaunchStart $LS2
-Check 'a pre-launch descendant does not attribute'      ($null -eq $ev4) ("$($ev4.Strength)")
+Check 'a pre-launch descendant does not attribute'       ($null -eq $ev4) ("$($ev4.Strength)")
+Check 'the CLI entry point matches by content, not name' (Test-IsClaudeProc $k1[701] $SHIM @('--continue'))
+Check 'a ping descendant never matches'                 (-not (Test-IsClaudeProc $k1[801] $SHIM @()))
+# The tab's pwsh must not load a user profile - that is what removes the J1 vector at source.
+$wtLine = Get-WtCommandLine -Lanes @([pscustomobject]@{ Name='x'; Path='D:\x'; LauncherPath='D:\l.ps1' }) -WindowId '0'
+Check 'the wt command line passes -NoProfile (J1)'      ($wtLine -match '(^| )-NoProfile( |$)') $wtLine
 
 Write-Host ''
 Write-Host 'M5 - multibyte UTF-8 across the tail-window boundary' -ForegroundColor Cyan

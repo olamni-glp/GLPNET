@@ -316,6 +316,22 @@ function Test-JsonObjectLine([string]$Line) {
 # transcripts in 40 stores on 2026-08-21: all 43 first records were JSON objects carrying a
 # non-empty `sessionId`. A file without one cannot be continued, so it must not count —
 # a filename, a zero-byte file, and a bare `{}` are all NOT resumable sessions.
+# The byte just past the last complete record. A transcript can be captured mid-write, and the
+# bytes appended afterwards then COMPLETE a record that began before launch. Decoding from the
+# raw pre-launch length would split that record and silently drop it — including any foreign
+# sessionId inside it — so scanning starts from the last record boundary instead.
+function Get-LastRecordBoundary([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return 0 }
+    if ($len -le 0) { return 0 }
+    $start = [Math]::Max(0L, $len - $TailBytes)
+    $bytes = Read-FileRange $File.FullName $start ($len - $start)
+    if ($null -eq $bytes) { return $len }
+    for ($i = $bytes.Length - 1; $i -ge 0; $i--) {
+        if ($bytes[$i] -eq 10) { return $start + $i + 1 }
+    }
+    return $start
+}
+
 function Get-SessionFileId([System.IO.FileInfo]$File) {
     if (-not $File -or $File.Length -le 0) { return $null }
     try {
@@ -383,47 +399,52 @@ function Test-ResumableSessionFile([System.IO.FileInfo]$File, [bool]$Deep = $fal
 }
 
 # Resume evidence must be CONTENT the launched claude appended, never a timestamp: any process
-# can touch a file. Read only the bytes past the pre-launch length and require a complete,
-# parseable record there. EVERY appended record is examined, not just the first — a later
-# record carrying a different sessionId is a new conversation and must win over an earlier
-# record that merely happened to carry no session id at all.
+# can touch a file. Three things are required, and each closes a specific hole:
+#
+#  * scanning starts at the last COMPLETE RECORD BOUNDARY, not the raw pre-launch length, so a
+#    record that straddles the launch is parsed whole instead of being split into an
+#    unparseable fragment that hides whatever sessionId it carries;
+#  * EVERY complete record in that range is examined for a foreign sessionId, which wins over
+#    anything else in the range - a later foreign id cannot be masked by an earlier record;
+#  * proof of resumption is a complete record that BEGINS at or after the pre-launch length and
+#    carries the EXPECTED sessionId. A record without one proves only that the file changed, and
+#    any process with access to the file could have done that, so it is not accepted as proof.
+#    (Measured 2026-08-21 across 29 stores: 97.9% of non-header records carry sessionId and 28 of
+#    29 transcripts have at least one, so requiring it does not starve honest lanes.)
 function Get-ResumeEvidence($State) {
     if (-not $State.LatestPath -or -not (Test-Path -LiteralPath $State.LatestPath)) { return $null }
     try { $len = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
     if ($len -le $State.LatestLength) { return $null }             # no append: a touch is not evidence
-    $bytes = Read-FileRange $State.LatestPath ([long]$State.LatestLength) ($len - $State.LatestLength)
+    $from = [long]$State.LatestCompleteOffset
+    if ($from -lt 0 -or $from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
+    $bytes = Read-FileRange $State.LatestPath $from ($len - $from)
     if ($null -eq $bytes) { return $null }
-    $split = Split-TranscriptLines $bytes 0
-    if ($null -eq $split -or $split.Lines.Count -eq 0) { return $null }
-    $added = $len - $State.LatestLength
+
     $leaf  = Split-Path -Leaf $State.LatestPath
-    $foreign = $null; $matched = $false; $anyRecord = $false
-    for ($i = 0; $i -lt $split.Lines.Count; $i++) {
-        # An unterminated final line is a record still being written, not a record.
-        if ($i -eq ($split.Lines.Count - 1) -and -not $split.LastIsTerminated) { continue }
-        $rec = Test-JsonObjectLine $split.Lines[$i]
+    $added = $len - $State.LatestLength
+    $foreign = $null; $proof = $null
+    $lineStart = 0
+    for ($i = 0; $i -lt $bytes.Length; $i++) {
+        if ($bytes[$i] -ne 10) { continue }                        # only terminated records count
+        $absStart = $from + $lineStart
+        $line = [System.Text.Encoding]::UTF8.GetString($bytes, $lineStart, $i - $lineStart).TrimEnd("`r")
+        $lineStart = $i + 1
+        $rec = Test-JsonObjectLine $line
         if ($null -eq $rec) { continue }
-        $anyRecord = $true
         $sid = $rec.sessionId
-        if ($sid -is [string] -and -not [string]::IsNullOrWhiteSpace($sid)) {
-            if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid }
-            elseif ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId) { $matched = $true }
+        if ($sid -isnot [string] -or [string]::IsNullOrWhiteSpace($sid)) { continue }
+        if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid; continue }
+        if ($State.LatestSessionId -and $sid -ceq $State.LatestSessionId -and $absStart -ge [long]$State.LatestLength) {
+            $proof = $absStart
         }
     }
     if ($foreign) {
         return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'session-id'
             Detail = "appended a record carrying sessionId '$foreign', expected '$($State.LatestSessionId)'" }
     }
-    if ($matched) {
+    if ($null -ne $proof) {
         return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
-            Detail = "appended $added byte(s) to $leaf including a record carrying sessionId '$($State.LatestSessionId)'" }
-    }
-    if ($anyRecord) {
-        # Real transcripts carry sessionId on the opening record only, so most appended records
-        # have none. Their presence still proves this transcript is being written to and no
-        # other session id appeared - reported as the weaker evidence it is.
-        return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'appended-records'
-            Detail = "appended $added byte(s) to $leaf including a complete record (no conflicting sessionId)" }
+            Detail = "appended $added byte(s) to $leaf including a record at offset $proof carrying sessionId '$($State.LatestSessionId)'" }
     }
     return $null
 }
@@ -451,6 +472,7 @@ function Get-RepoState($Repo) {
         FileNames = @($files | ForEach-Object { $_.Name })
         LatestPath = if ($latest) { $latest.FullName } else { $null }
         LatestLength = if ($latest) { $latest.Length } else { 0 }
+        LatestCompleteOffset = if ($latest) { Get-LastRecordBoundary $latest } else { 0 }
         LatestSessionId = if ($latest) { Get-SessionFileId $latest } else { $null }
     }
 }
@@ -516,6 +538,10 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
     $imageMatches = $false
     if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $imageMatches = $true }
     if (-not $imageMatches -and $cl -and $cl.ToLowerInvariant().Contains($target)) { $imageMatches = $true }
+    # A JS runtime running the Claude Code entry point. This is a CONTENT match on the CLI's own
+    # module path, not a name: no profile-spawned helper or renamed binary can satisfy it.
+    if (-not $imageMatches -and $cl -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)([\s"]|$)') { $imageMatches = $true }
+    if (-not $imageMatches -and $cl -match '(?i)[\\/]@anthropic-ai[\\/]claude-code[\\/]') { $imageMatches = $true }
     if (-not $imageMatches) { return $false }
     foreach ($a in @($ExpectedArgs)) {
         if ([string]::IsNullOrWhiteSpace($a)) { continue }
@@ -524,31 +550,24 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
     return $true
 }
 
-# Attribution for one lane, in two tiers, because the strong test alone produces FALSE
-# NEGATIVES on a shim install — and a check that fails every healthy lane at logon is as
-# broken as one that passes a dead one:
+# Attribution for one lane. There is exactly ONE tier: a live descendant that IDENTIFIES itself
+# as the claude command — by image path, by invoking the resolved path, or by running the Claude
+# Code CLI entry point. "Some descendant of the launcher is alive" is deliberately NOT accepted:
+# a descendant proves the launcher's command ran, not that what survives is claude.
 #
-#   image    the strong test above matched a live descendant. Preferred, and what a direct
-#            claude.exe install yields.
-#   subtree  no descendant still carries the shim path (a claude.cmd's cmd.exe is transient
-#            and the surviving node.exe names the JS entry point, not the shim), but the
-#            lane's launcher has live descendants. This is NOT a name check and NOT a global
-#            process count: the generated launcher executes exactly ONE command, the ABSOLUTE
-#            path this run resolved for claude, so every descendant of it exists because that
-#            command ran. The strength is reported so a subtree-only lane never reads as if
-#            the image had been matched.
+# The false-negative worry that motivated a looser tier does not survive measurement. A `.cmd`
+# shim is run by a cmd.exe that STAYS ALIVE for the duration and whose command line carries the
+# shim path, so it matches; that is exercised live by the harness against a real shim. A node
+# process running the CLI is matched by the entry-point rule below. If neither is present, the
+# honest answer is NO-CLAUDE.
 function Get-LaneClaudeEvidence {
     param($Table, [int]$LanePid, [string]$ClaudeExe, [string[]]$ClaudeArgs, [datetime]$LaunchStart)
     $fresh = @(Get-DescendantProcs $Table $LanePid | Where-Object { -not $_.Created -or $_.Created -ge $LaunchStart })
     if ($fresh.Count -eq 0) { return $null }
     $strong = @($fresh | Where-Object { Test-IsClaudeProc $_ $ClaudeExe $ClaudeArgs })
-    if ($strong.Count -gt 0) {
-        return [pscustomobject]@{ Proc = $strong[0]; Strength = 'image'
-            Detail = "claude pid $($strong[0].ProcId) ($($strong[0].Name)) matches the resolved command" }
-    }
-    $names = (@($fresh | ForEach-Object { $_.Name }) | Select-Object -Unique) -join ', '
-    return [pscustomobject]@{ Proc = $fresh[0]; Strength = 'subtree'
-        Detail = "pid $($fresh[0].ProcId) descends from the lane launcher, which ran only '$ClaudeExe' (live: $names)" }
+    if ($strong.Count -eq 0) { return $null }
+    return [pscustomobject]@{ Proc = $strong[0]; Strength = 'image'
+        Detail = "claude pid $($strong[0].ProcId) ($($strong[0].Name)) matches the resolved command" }
 }
 
 # A marker proves a tab ran ITS OWN command. Accepting one without checking which lane,
@@ -742,7 +761,10 @@ function Get-WtCommandLine {
         # BARE ';' — a quoted or backtick-escaped separator reaches wt literally and yields
         # tabs that open and run nothing. It is the ONLY token left unquoted.
         if (-not $first) { $parts.Add(';') }
-        foreach ($t in @('new-tab', '--title', $l.Name, '-d', $l.Path, 'pwsh', '-NoExit', '-File', $l.LauncherPath)) {
+        # -NoProfile: a user profile could start long-lived children of the lane's pwsh that
+        # attribution would then have to tell apart from claude. Not loading it removes the
+        # whole class, and makes the logon path deterministic across hosts.
+        foreach ($t in @('new-tab', '--title', $l.Name, '-d', $l.Path, 'pwsh', '-NoProfile', '-NoExit', '-File', $l.LauncherPath)) {
             $parts.Add((ConvertTo-NativeArg $t))
         }
         $first = $false
