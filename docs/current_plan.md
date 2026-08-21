@@ -17,7 +17,11 @@ reports *"no active marathon run"* — which is **not** true. The live programme
 
 ## Where things stand (2026-08-21)
 
-- **Branch**: `develop` (084 is MERGED — PR #193). develop is **80 ahead of main**, unreleased.
+- **Branch**: `develop` at `24a249ab`. **RELEASED `v2026.08.21.1`** (PR #194 → main, tag pushed,
+  back-merge PR #195 → develop). develop/main are in normal GitFlow steady state.
+- **Green baseline**: `test/run_all_tests.sh` on merged develop = **559/559, 0 failed, all 21
+  sections A–U**, summary block present, exit 0. Log:
+  `D:/BSTDEV/evidence/glpnet-tidyup-20260820/suite-20260821-clean.log`.
 - **Marathon** `mrun-f5ef56dba3c1` — **10 of 25 steps complete (44 of 121 pt)**; 120 outstanding
   backlog items; discharge gate **8 of 25 satisfied, 17 unsatisfied** (all engineer rulings).
 - **Workplan item** `mitem-01a01f1d-c9b4-77af-b9c0-e81d0e47f57c` carries the ordered CRDT workplan
@@ -67,15 +71,14 @@ on that instruction. Not resolved — still owed.
 3. **W19–W21** — deletions. Preservation-unblocked; gated on the lane-ownership ruling. The peer has
    already staged 124 remote refs for deletion (audited safe — see block 3).
 4. **W22–W25** — PR hygiene (draft PR #111), roadmap reconcile, codexreview, takt emission.
-5. **Release** — develop is 80 ahead of main. `/bk-release` is HELD pending a green
-   `test/run_all_tests.sh` on merged develop (see the false-green note below).
+5. ~~Release~~ **DONE** — `v2026.08.21.1` cut on the verified-green baseline.
 
 ## Open blocks — ENGINEER rulings, nothing proceeds past them
 
 | # | Block | Why it blocks |
 |---|---|---|
 | 1 | ~~`gh pr merge` permission~~ **RESOLVED 2026-08-21** | The verb now works for single invocations. It still trips the classifier when wrapped in a shell `for` loop — issue one PR merge per command. |
-| 2 | Gleam cluster `050` (48 ahead / 64 conflicts) vs `059` (32 ahead / 89 conflicts) | 96 of the 220 unmerged commits. Marathon holds two **contradictory** recorded reads: item N12 "independent colliding implementations", item C1 "complementary tiers". Both cannot be true. |
+| 2 | Gleam cluster `050` vs `059` — **MEASURED 2026-08-21, N12's premise is false** | File-overlap: 050 changes **1152** files, 059 changes **248**, shared = **25** (2% / 10%), and 10 of those 25 are noise (.gitignore, COOP handoffs, roadmap exports). Real collision surface = **15 Gleam files**: `engine.gleam`, `engine/{kernels,runner,scheduler}.gleam`, `analysis/prelude.gleam`, and 10 `link/primitives/*.gleam`. This supports **C1 (complementary tiers)**, not N12 (rival implementations). **Recommendation: land 050 first, rebase 059 onto it, resolve only the 15-file seam. Discard nothing.** Engineer ruling still required to proceed. |
 | 3 | Lane collision | Two concurrent tidy-up workplans on one repo: this marathon's W01–W25 (121 pt) and the peer's 14-step ledger on `083-repo-tidy-up` (136 pt). Neither references the other; both claim ref-deletion scope. **Audited 2026-08-21: the peer's W13 list of 124 remote branches was checked against `origin/develop` 2d72c1bd — all 124 are true ancestors, so their deletion is SAFE (containment IS the preservation for contained refs; the bundle/tag gate binds only the non-contained refs, which this lane has covered).** The open question is ownership, not safety. |
 | 4 | `080-occurs-checked-substitution` | Only 2 conflicting paths, but gated on the **§1.14 language-authority ruling that is Udi's, not Gabi's** (UnifyFail vs CompileError). |
 | 5 | `067` vs `067b` survivor | `067`: 10 open tasks / 8 conflicts. `067b`: 0 open tasks / 12 conflicts. The Critic REFUTED the `duplicate-implementation` tag on `067` — a zero-task count is not a record of supersession. |
@@ -117,8 +120,16 @@ $env:PYTHONUTF8 = 1
 - `marathon checkpoint --paths` refuses out-of-repo paths; omit `--paths` for evidence held outside
   the repo, and do not suppress its output or the failure is silent. `checkpoint` has **no
   held/blocked state** — a gated step can only be logged `complete`, which over-reports.
-- 🔴 **Never combine `nohup`/trailing `&` with the harness `run_in_background` flag.** Doing so made
-  `test/run_all_tests.sh` report **exit 0 with 253 PASS / 0 FAIL after only Section A** — sections
-  B–K and M never ran. Detection rule: the script always prints a `Total: … Passed: … Failed: …`
-  summary block last; **absent summary means the run did not finish, whatever the exit code says.**
+- 🔴 **Running the suite — three false greens were hit on 2026-08-21, all with the same tell.**
+  (1) `nohup … &` combined with the harness `run_in_background` flag → the *launcher* exited 0 after
+  only Section A. (2) Two orphaned suite trees running concurrently → a phantom
+  `FAIL: bidirectional [C→G]` in **Section I**, which passes cleanly once the orphans are reaped
+  (`link_both_ways` PASS=4 FAIL=0). (3) A detached wrapper with a stripped PATH → `SUITE_EXIT=127`
+  and 215 phantom Section-A failures. **Detection rule: the script always prints a
+  `Total: … Passed: … Failed: …` summary block last — an absent summary means the run did not
+  finish, whatever the exit code says.**
+  **Correct way to run it:** write a wrapper that exports the FULL inherited PATH (dart *and*
+  dotnet *and* node), launch it with PowerShell `Start-Process` so it sits outside the tool process
+  tree (the 10-minute Bash cap otherwise orphan-kills it), and watch the log with `Monitor`. Reap
+  stragglers first — `history_drill.sh` respawns, so killing needs a repeat loop.
 - `gh pr merge` inside a `for` loop is refused by the permission classifier; run it one PR at a time.
