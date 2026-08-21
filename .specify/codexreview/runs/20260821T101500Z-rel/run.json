@@ -1,0 +1,18 @@
+{
+ "run_id": "20260821T101500Z-rel",
+ "at": "2026-08-21T10:15:00Z",
+ "scope": "release candidate: 2 feat commits since v2026.08.19.2",
+ "files": [
+  "scripts/onrestart-launch.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The central verification can report success without attributing any newly started process to this launch, and partial or non-resumed launches can also exit successfully. That directly violates feature 078's requirement that no check pass without actually running and verifying its subject.",
+ "findings_count": 4,
+ "severities": {
+  "critical": 1,
+  "high": 2,
+  "medium": 1
+ }
+}
