@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [v2026.08.21.2] - 2026-08-21
+
+### Changed
+- sync round 30 - import 0 files/0 lines (converged) + reconcile in sync + 0 dupes in 115 live + replay-verify 3760 lines + export 20/116/3760 both publish legs OK; cleared a stale pgdb/.lock held by dead PID 16432
+- Merge pull request #196 from olamni-glp/083-repo-tidy-up
+- restart pointer post-release v2026.08.21.1 - green 559/559 baseline recorded, Gleam file-overlap measured (N12 premise false, C1 supported), suite-running procedure documented
+- Merge pull request #195 from olamni-glp/main
+- first persisted release-gate review run - NO-GO, 1 critical 2 high 1 medium on onrestart-launch.ps1
+
 ## [v2026.08.21.1] - 2026-08-21
 
 ### Added
