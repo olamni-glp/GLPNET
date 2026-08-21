@@ -1,0 +1,102 @@
+{
+  "elements": [
+    {
+      "id": "E01",
+      "kind": "partition",
+      "text": "Slice assignment is fixed and blind: builder-1 reads ONLY S1-git-topology (.specify/3rtask/evidence/20260820-tidyup/git/01..06), builder-2 reads ONLY S2-spec-state (.specify/3rtask/evidence/20260820-tidyup/specs/01-spec-plan-tasks-per-branch.txt plus the in-tree specs/ dir), builder-3 reads ONLY S3-github-and-narrative (.specify/3rtask/evidence/20260820-tidyup/github/01..02, CHANGELOG.md, docs/handover/, docs/research/). No builder opens another builder's files, runs git, or queries gh. The slices are FILE-disjoint but SUBJECT-overlapping by design: every builder is expected to speak about the same assets from its own evidence."
+    },
+    {
+      "id": "E02",
+      "kind": "rule",
+      "text": "SUBJECT TOKEN GRAMMAR (closed, exact-string, case-sensitive). Every claim's subject field is exactly one of: BRANCH:<ref> | CLONE:<abs path> | WORKTREE:<abs path> | PR:<number>. Ref spelling is normative: remote branches are `BRANCH:origin/<name>` (e.g. BRANCH:origin/051-ynet-transport, BRANCH:origin/backup/030-phase8-polish); a local branch in the active clone is `BRANCH:clone1/<name>`; a local branch in the second clone is `BRANCH:clone2/<name>`. Paths use forward slashes, drive letter uppercase, no trailing slash: CLONE:D:/BSTDEV/research/glp/GLPNET, CLONE:D:/BSTDEV/glp/GLPNET, WORKTREE:D:/BSTDEV/glp/GLPNET.worktrees/051-ynet-transport. PR numbers are bare digits with no '#' (PR:111). Any other spelling — 'the 051 branch', 'origin/051-ynet-transport (draft PR #111)', a trailing slash, refs/heads/ prefixes — is a MALFORMED claim and is dropped by the Critic. A prior run of this mechanic returned 0 corroborated claims purely from free-text subject keys; that is a schema failure, not disagreement, so subject spelling is the single highest-priority rule of this method."
+    },
+    {
+      "id": "E03",
+      "kind": "rule",
+      "text": "TAG VOCABULARY (closed, 15 tokens, no synonyms, no new tokens, no compound tags). Every claim's `tag` is exactly one of: already-contained | merge-ready | needs-rebase | needs-completion | do-not-merge | duplicate-implementation | abandon | release-artifact | backup-ref | host-local-residue | stranded-work | pr-hygiene | remote-ref-cleanup | local-ref-cleanup | clone-or-worktree-cleanup. A builder may emit MORE THAN ONE claim for the same subject when several tags genuinely apply (e.g. BRANCH:origin/backup/030-phase8-polish is both backup-ref and remote-ref-cleanup), but each claim carries exactly one tag."
+    },
+    {
+      "id": "E04",
+      "kind": "rule",
+      "text": "CLAIM RECORD SHAPE. Each claim is an object: {subject, tag, confidence: high|medium|low, evidence: [\"<relative file path>:<line-or-section> — <verbatim quote or exact field value>\"], rationale: \"<=2 sentences\", next_action: \"<one imperative step>\"}. `evidence` must cite the builder's OWN slice files only and must contain at least one entry. A claim with no evidence citation is dropped by the Critic. Rationale may not cite facts the builder cannot see in its slice."
+    },
+    {
+      "id": "E05",
+      "kind": "rule",
+      "text": "COVERAGE (mandatory, silence is not agreement) — THE PER-ASSET CLAIM IS THE ONLY CLAIM FORM. Each builder must FIRST enumerate the complete asset universe its slice can see — every BRANCH/CLONE/WORKTREE/PR token that appears anywhere in its files — emit that enumeration as a `universe` array with its count, and then emit at least one disposition claim for EVERY token in that universe. Not only the interesting ones. There is NO group, namespace, wildcard or bulk claim subject: every claim subject satisfies the E02 grammar and names exactly one asset, without exception. Namespace-level or bulk observations are expressed only as rollup annotations on a workplan step (E13), never as a claim. The Critic checks universe-count against claim-subject-count and flags any gap; an unclaimed visible asset is a coverage defect, never tacit consent."
+    },
+    {
+      "id": "E06",
+      "kind": "rule",
+      "text": "ABSTENTION over speculation. If a builder can see an asset but its slice cannot ground any disposition, it emits the claim with tag set to null and abstain:true plus a one-line reason. Abstentions satisfy the coverage rule of E05, are excluded from corroboration and from conflict detection, and are reported separately. A builder must never guess a tag to fill the coverage quota, and must never infer from another slice's likely content."
+    },
+    {
+      "id": "E07",
+      "kind": "rubric",
+      "text": "CRITIC MERGE IS MECHANICAL SET-OPS, NEVER JUDGMENT. Corroborated = an identical (subject, tag) pair emitted by >=2 builders. Singleton = emitted by exactly one. Conflict = the same subject carries two or more DIFFERENT tags from the mutually-exclusive family {merge-ready, needs-rebase, needs-completion, do-not-merge, abandon, already-contained}, REGARDLESS OF SOURCE: cross-builder disagreement and self-contradiction inside a single builder's own output are the same defect and are detected and escalated identically. The Critic runs the exclusivity check per subject over the union of all claims first, then again per builder over that builder's claims alone, and labels each hit CONFLICT-CROSS or CONFLICT-SELF. Both ESCALATE to the Curator with all attributed claims verbatim; the Critic never picks a winner and never silently de-duplicates a builder's contradictory pair. Compatible co-tags (e.g. backup-ref + remote-ref-cleanup, host-local-residue + clone-or-worktree-cleanup) are NOT conflicts."
+    },
+    {
+      "id": "E08",
+      "kind": "question",
+      "text": "Every builder must answer ALL questions in the `questions` array, and each answer must be expressed as claims keyed to E02 subject tokens plus, at most, a 3-sentence narrative. An answer that names no subject token does not count as answered. A builder whose slice cannot address a question says so explicitly ('S<n> cannot see this') rather than omitting it."
+    },
+    {
+      "id": "E09",
+      "kind": "rule",
+      "text": "ORDERED WORKPLAN. The Curator's deliverable is a single ORDERED sequence of numbered steps (W01, W02, ...), not a bucket list. Every step declares `prerequisites: [<step ids>]` (empty array allowed), the subject tokens it touches, and its disposition tag(s). Ordering must respect stacked ancestry and shared-file coupling between branches; where two merges touch the same spec dir or the same source file, the plan must state which lands first and why. No step may appear before a step it lists as a prerequisite."
+    },
+    {
+      "id": "E10",
+      "kind": "rule",
+      "text": "PRESERVE-BEFORE-DESTROY (hard gate, object-durability form). A text file of tip SHAs preserves NOTHING: once the last ref to a commit is deleted the objects become unreachable and `git gc` may collect them. Therefore every destructive step — deleting a remote or local ref, deleting a branch, removing a worktree, deleting CLONE:D:/BSTDEV/glp/GLPNET — must list as a prerequisite a preservation step whose artifact either KEEPS THE OBJECTS REACHABLE or BYTE-PRESERVES THEM, and it must be exactly one of: (a) `git bundle create <path> <ref>` capturing the ref's FULL history (not a shallow or range bundle), validated with `git bundle verify <path>`, stored OUTSIDE the repo working tree at a named absolute path; or (b) re-pointing the tip under a retained ref namespace — an annotated archive tag (e.g. `archive/<name>-<date>`) — that is itself PUSHED to origin so the objects stay reachable server-side. For untracked or dirty working-tree content the equivalent is an archive of the files themselves at a named out-of-repo path. The preservation step must be VERIFIED TO RESTORE before the destructive step runs — `git bundle verify` plus a clone/fetch-from-bundle or a fetch of the pushed archive tag into a scratch location, with the restored tip SHA compared against the recorded tip — not merely created. A SHA list, an evidence .txt, or a note in the workplan may ACCOMPANY the artifact as an index but NEVER substitutes for it. A destructive step whose only preservation prerequisite is a SHA list or evidence file, or whose artifact was created but not restore-verified, is a plan defect and must be flagged by the Critic under the risk lens."
+    },
+    {
+      "id": "E11",
+      "kind": "budget",
+      "text": "SIZING SCHEME (closed). Every workplan step carries `size` from exactly: nano=1 | micro=3 | mini=7 | midi=11 | maxi=17 | saga=35 points. A single step may be AT MOST `mini` (7 pts). Anything a builder or the Curator would size midi/maxi/saga MUST be split into <=mini steps with explicit prerequisites between them. The plan reports the total point sum and the per-phase sum."
+    },
+    {
+      "id": "E12",
+      "kind": "rule",
+      "text": "PHASE LABEL (closed). Every workplan step carries `phase` from exactly: analyze | implement | codexreview-ship | close | other. Preservation and evidence-capture steps are `analyze`; merges/rebases/re-derivations are `implement`; PR/review/ship actions are `codexreview-ship`; ref, clone and worktree deletions and roadmap/backlog reconciliation are `close`; anything else is `other` with a one-line justification."
+    },
+    {
+      "id": "E13",
+      "kind": "budget",
+      "text": "OUTPUT BUDGET AND ROLLUP ANNOTATIONS. Each builder emits one claim per visible asset (E05) with no group-claim escape hatch; the per-asset claim count is therefore whatever the universe requires — for the ~129 fully-merged remote refs that is ~129 already-contained claims, and that is expected, not a budget breach. To keep the prose bounded, a repetitive per-asset claim may carry a one-line rationale and a shared evidence citation, and the builder caps FREE PROSE (universe notes plus narrative answers to the questions) at 2500 words. Namespace-level or bulk observations — 'all 46 release/* refs are release artifacts', 'the backup/ namespace holds 3 refs' — are expressed ONLY as a `rollup` annotation attached to a workplan step in the Curator's plan, listing the member subject tokens it covers; a rollup is never a claim, never a claim subject, and never a substitute for the per-asset claims. The Curator's workplan is at most 60 ordered steps, and one step may carry a rollup covering many assets. Exceeding a cap is reported, not silently truncated."
+    },
+    {
+      "id": "E14",
+      "kind": "rubric",
+      "text": "RUBRIC plan-review, three lenses. FEASIBILITY: can each step actually be executed by one engineer on host ARIELLAS with the tools present, and is the size honest given how far behind develop the branch is? COMPLETENESS: does the plan account for every subject in the union of the three universe enumerations — 147 origin refs, 42+6 local branches, both clones, the worktree, and every open/closed-unmerged PR — with no asset silently dropped? RISK: is every destructive step preservation-gated (E10), is every conflict escalated rather than resolved, and is any single step irreversible without a stated rollback?"
+    },
+    {
+      "id": "E15",
+      "kind": "rule",
+      "text": "ADVISORY ONLY. This run is read-only with respect to the repository: no builder, Critic or Curator pushes, merges, rebases, deletes a ref, mutates pipeline/DBOS state, invokes a /bk-* pipeline command, or touches CLONE:D:/BSTDEV/glp/GLPNET in place. The only writes are the run's own artifacts under .specify/3rtask/runs/20260820T113925Z-ec3b/. The workplan is a recommendation the engineer executes; it must be written as copy-runnable one-liner commands so execution is a separate, human-initiated act."
+    },
+    {
+      "id": "E16",
+      "kind": "rule",
+      "text": "PROVENANCE OF TERMINAL DISPOSITIONS. The three terminal tags — do-not-merge, abandon, duplicate-implementation — are valid ONLY when the claim's evidence cites an explicit RECORDED DECISION, i.e. exactly one of: (i) a closed-unmerged PR for that branch; (ii) a CHANGELOG, handover or research-doc line that STATES the decision (superseded by X, dropped, will not merge, replaced by Y); or (iii) a spec/tasks state that records the scope as delivered elsewhere or the work as discontinued. A builder's own opinion about the work's value is never sufficient. EXPLICITLY: placement under the `backup/` namespace records PRESERVATION INTENT, not a decision — on its own it grounds at most `backup-ref` and NEVER do-not-merge, abandon or duplicate-implementation. Likewise mere staleness (large behind-count, old last-commit date) is not a decision. Absent a qualifying record the builder must abstain (E06) or use a non-terminal tag such as needs-rebase or needs-completion."
+    }
+  ],
+  "source_partition": {
+    "S1-git-topology": "builder-1",
+    "S2-spec-state": "builder-2",
+    "S3-github-and-narrative": "builder-3"
+  },
+  "questions": [
+    "Q1. Which unmerged branches can merge into current develop AS-IS with no rework? Answer as BRANCH: tokens tagged merge-ready, each with the evidence that supports it (ahead/behind counts, task completion state, PR/CI record).",
+    "Q2. For each unmerged branch that is NOT merge-ready, is it needs-rebase (the change is still valid, the base merely moved) or needs-completion / re-derivation (the surrounding code or spec has been rewritten so the diff can no longer be replayed)? State which, per BRANCH: token, and name the evidence that discriminates the two.",
+    "Q3. Which branches are duplicate implementations of the same scope — same feature id, same spec directory, overlapping tasks.md, or a b-suffix continuation of an earlier branch? Group them, name the survivor per group, and tag the non-survivors duplicate-implementation.",
+    "Q4. Which assets carry a RECORDED do-not-merge, superseded, abandoned or preserve-only decision, and exactly where is that decision recorded (PR state, CHANGELOG line, handover doc, backup/ namespace placement, spec state)? Cite the record verbatim.",
+    "Q5. What must happen to CLONE:D:/BSTDEV/glp/GLPNET and WORKTREE:D:/BSTDEV/glp/GLPNET.worktrees/051-ynet-transport? Identify every piece of content there that does NOT exist on origin (local-only commits, divergent local main, dirty or untracked files, its stale origin/develop view) and state precisely how each is preserved before any removal.",
+    "Q6. Which refs are safe to DELETE — remote and local, across the flat, release/, chore/, backup/, fix/ and docs/ namespaces — and what named evidence artifact (bundle, archive tag, evidence file) must be produced and stored BEFORE each deletion? Distinguish remote-ref-cleanup from local-ref-cleanup.",
+    "Q7. What work is genuinely LOST or STRANDED — unreachable commits, refs named in the history or CHANGELOG but absent from origin and from every local clone — and for each, is it recoverable from any surviving clone, worktree, reflog or PR diff, or must it be declared written off?",
+    "Q8. What ORDERING CONSTRAINTS exist between the merges? Name every pair where one branch must land before another because of stacked ancestry, a shared spec directory, or a shared source file, and state the required order and the reason.",
+    "Q9. What PR HYGIENE actions are required? Cover the open draft PR, every closed-unmerged PR whose content is still wanted, and any PR whose branch is now already-contained in develop — one action per PR: token.",
+    "Q10. For EVERY asset your slice can see (the full E05 universe, not just the interesting ones), what is its single primary disposition tag and its one-step next action? Abstain explicitly where your slice cannot ground a disposition."
+  ],
+  "rubric_id": "plan-review"
+}

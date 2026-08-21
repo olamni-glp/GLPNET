@@ -1,0 +1,64 @@
+{
+  "subject": "Host-ARIELLAS D:-drive GLPNET git-asset survey and disposition: 2 clones (D:/BSTDEV/research/glp/GLPNET active, D:/BSTDEV/glp/GLPNET second) + 1 linked worktree (GLPNET.worktrees/051-ynet-transport), 42+6 local branches, 147 origin refs of which 18 carry unmerged work (220 commits) - produce a per-asset disposition and an ordered merge-then-cleanup workplan. Evidence manifest: .specify/3rtask/evidence/20260820-tidyup/",
+  "slices": [
+    {
+      "slice_id": "S1-git-topology",
+      "lens": "ref topology and commit reality - what each branch/worktree/clone ACTUALLY contains relative to origin/develop, measured by git",
+      "sources": [
+        ".specify/3rtask/evidence/20260820-tidyup/git/01-remote-branch-topology.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/git/02-local-branches-clone1.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/git/03-unmerged-remote-set.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/git/04-unmerged-branch-detail.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/git/05-host-clone-worktree-inventory.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/git/06-stranded-and-namespaces.txt"
+      ],
+      "provenance_note": "Mechanically generated on 2026-08-20 AFTER fast-forwarding local develop to origin/develop 201b97a0 (PR #186). All ahead/behind counts are git for-each-ref %(ahead-behind:origin/develop) against that tip."
+    },
+    {
+      "slice_id": "S2-spec-state",
+      "lens": "declared work state - what each branch's own spec/plan/tasks artifacts say remains to be done before it could be merged",
+      "sources": [
+        ".specify/3rtask/evidence/20260820-tidyup/specs/01-spec-plan-tasks-per-branch.txt",
+        "specs/"
+      ],
+      "provenance_note": "Per-branch tasks.md checkbox counts read from each branch's tree without checkout, restricted to spec files that branch CHANGES vs develop. specs/ is the develop-tip working tree for baseline comparison."
+    },
+    {
+      "slice_id": "S3-github-and-narrative",
+      "lens": "the published record - PRs, releases, tags, CI and the repo's own written history of what was merged, abandoned, stranded or already tidied",
+      "sources": [
+        ".specify/3rtask/evidence/20260820-tidyup/github/01-pr-ledger.txt",
+        ".specify/3rtask/evidence/20260820-tidyup/github/02-releases-ci-issues.txt",
+        "CHANGELOG.md",
+        "docs/handover/",
+        "docs/research/"
+      ],
+      "provenance_note": "gh CLI as vonwenm against olamni-glp/GLPNET on 2026-08-20. Repo has issues DISABLED, so the PR ledger plus CHANGELOG is the only published narrative."
+    }
+  ],
+  "closed_vocabulary": {
+    "tag": [
+      "already-contained",
+      "merge-ready",
+      "needs-rebase",
+      "needs-completion",
+      "do-not-merge",
+      "duplicate-implementation",
+      "abandon",
+      "release-artifact",
+      "backup-ref",
+      "host-local-residue",
+      "stranded-work",
+      "pr-hygiene",
+      "remote-ref-cleanup",
+      "local-ref-cleanup",
+      "clone-or-worktree-cleanup"
+    ],
+    "confidence": [
+      "high",
+      "medium",
+      "low"
+    ]
+  },
+  "note": "CORROBORATION CONTRACT (learned defect, do not repeat): the three slices are FILE-DISJOINT but SUBJECT-OVERLAPPING - every slice can speak about every branch/clone/worktree in the subject, each through its own lens. Builders MUST key every claim to a closed asset token so set-intersection can fire: use exactly 'BRANCH:<full ref name as it appears in the evidence>', 'CLONE:<absolute path>', 'WORKTREE:<absolute path>', or 'PR:<number>'. One claim per asset per disposition, with the disposition drawn ONLY from closed_vocabulary.tag. A claim whose subject token is free prose, or whose tag is outside the vocabulary, cannot corroborate and will be treated as a schema failure rather than a disagreement."
+}
