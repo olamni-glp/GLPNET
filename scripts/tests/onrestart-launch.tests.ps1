@@ -142,10 +142,16 @@ Check 'session id is extracted'                 ((Get-SessionFileId (NewJsonl 's
 # Beyond the tail window the header is out of reach, so only the tail can vouch for the file.
 $bulk = (1..3000 | ForEach-Object { '{"type":"user","uuid":"u' + $_ + '","text":"padpadpadpadpadpadpadpad"}' }) -join "`n"
 $bigOk  = NewJsonl 'big-ok.jsonl'  ($SESS + "`n" + $bulk)
-$bigBad = NewJsonl 'big-bad.jsonl' ($SESS + "`n" + $bulk + "`n" + ('z' * 70000))
-Check 'large transcript is beyond the tail window'     ($bigOk.Length -gt 65536) "$($bigOk.Length) bytes"
-Check 'large transcript with an intact tail accepted'  (Test-ResumableSessionFile $bigOk)
-Check 'large transcript with a corrupted tail refused' (-not (Test-ResumableSessionFile $bigBad)) "$($bigBad.Length) bytes"
+# Corruption is a COMPLETE line that does not parse. A terminated garbage blob is corruption...
+$bigBad = NewJsonl 'big-bad.jsonl' ($SESS + "`n" + $bulk + "`n" + ('z' * 70000) + "`n")
+# ...whereas an UNTERMINATED trailing blob is byte-for-byte indistinguishable from a record still
+# being written - Claude Code emits records far larger than the window - so refusing it would
+# strand a healthy lane. It is tolerated, deliberately, and that choice is asserted here.
+$bigTorn = NewJsonl 'big-torn.jsonl' ($SESS + "`n" + $bulk + "`n" + ('z' * 70000))
+Check 'large transcript is beyond the tail window'      ($bigOk.Length -gt 65536) "$($bigOk.Length) bytes"
+Check 'large transcript with an intact tail accepted'   (Test-ResumableSessionFile $bigOk)
+Check 'large transcript with a corrupt COMPLETE tail refused' (-not (Test-ResumableSessionFile $bigBad)) "$($bigBad.Length) bytes"
+Check 'an oversized UNTERMINATED tail is tolerated'     (Test-ResumableSessionFile $bigTorn) "$($bigTorn.Length) bytes"
 
 # M5: a window that starts exactly on a newline must keep its first record, not discard it.
 $rec80 = '{"type":"user","uuid":"padpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpadpa"}'
@@ -194,7 +200,9 @@ Check 'a partial appended line is NOT evidence'  ($null -eq (Get-ResumeEvidence 
 # transcript could have written it, so it is not attributable to the launched claude and must
 # NOT count as proof.
 Add-Content -LiteralPath $tx -Value ('ant"}' + "`n") -NoNewline -Encoding utf8
-Check 'a sessionId-less append is NOT proof (J3)' ($null -eq (Get-ResumeEvidence $st)) ((Get-ResumeEvidence $st).Kind)
+$evU = Get-ResumeEvidence $st
+Check 'a sessionId-less append is NOT proof (J3)'  ($null -ne $evU -and $evU.Kind -eq 'UNIDENTIFIED') ("$($evU.Kind)")
+Check 'and it is reported, not silently discarded' ($evU.Detail -match 'no record named sessionId') ("$($evU.Detail)")
 # A record carrying the EXPECTED sessionId, beginning after the pre-launch length, IS proof.
 Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
 $ev = Get-ResumeEvidence $st
@@ -232,6 +240,34 @@ $lrb = NewJsonl 'lrb.jsonl' ($SESS + "`n" + $REC + "`n" + 'partial')
 Check 'last-record boundary skips a trailing partial'  ((Get-LastRecordBoundary $lrb) -eq ($lrb.Length - 7)) "$(Get-LastRecordBoundary $lrb) of $($lrb.Length)"
 $lrb2 = NewJsonl 'lrb2.jsonl' 'no newline at all'
 Check 'a file with no newline has boundary 0'          ((Get-LastRecordBoundary $lrb2) -eq 0) "$(Get-LastRecordBoundary $lrb2)"
+
+Write-Host ''
+Write-Host 'H1 - a record longer than the tail window' -ForegroundColor Cyan
+# INJECTION: the straddling record is BIGGER than the search window, so a boundary search that
+# gives up after one window returns a position in the middle of it - and the foreign sessionId
+# inside that record is never decoded.
+$huge = '{"type":"assistant","sessionId":"OTHER-BIG","pad":"' + ('x' * 90000)
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + $huge) -Encoding utf8 -NoNewline
+$stH = LaneState
+Check 'the straddling record exceeds the window' (($stH.LatestLength - $stH.LatestCompleteOffset) -gt 65536) "$($stH.LatestLength - $stH.LatestCompleteOffset) bytes"
+Check 'the boundary is a real record boundary'   ($stH.LatestCompleteOffset -gt 0) "$($stH.LatestCompleteOffset)"
+Add-Content -LiteralPath $tx -Value ('"}' + "`n") -NoNewline -Encoding utf8
+Check 'a foreign sessionId in an oversized straddling record is caught (H1)' ((Get-ResumeEvidence $stH).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stH).Kind)
+$bigLine = NewJsonl 'bigline.jsonl' ($SESS + "`n" + '{"a":"' + ('y' * 90000) + '"}' + "`n" + $REC + "`n")
+Check 'a boundary further back than one window is found (H1)' ((Get-LastRecordBoundary $bigLine) -eq $bigLine.Length) "$(Get-LastRecordBoundary $bigLine) of $($bigLine.Length)"
+$noNl = NewJsonl 'nonl-big.jsonl' ('z' * 90000)
+Check 'a window-sized file with no newline has boundary 0 (H1)' ((Get-LastRecordBoundary $noNl) -eq 0) "$(Get-LastRecordBoundary $noNl)"
+
+Write-Host ''
+Write-Host 'H2 / H4 - the CLI match and argument match are not forgeable by substring' -ForegroundColor Cyan
+$FAKE = 'C:\Users\g\AppData\npm\claude.cmd'
+function Q($cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name='node.exe'; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'the real CLI entry point matches'      (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --continue' 'C:\node.exe') $FAKE @('--continue'))
+Check 'a helper under the package dir does NOT (H2)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\helper.js" --continue' 'C:\node.exe') $FAKE @('--continue')))
+Check 'a look-alike directory does NOT match (H2)'   (-not (Test-IsClaudeProc (Q 'node "C:\np\claude-codex\cli.js" --continue' 'C:\node.exe') $FAKE @('--continue')))
+Check '--continue-helper does NOT satisfy --continue (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --continue-helper' 'C:\node.exe') $FAKE @('--continue')))
+Check 'a quoted whole-token argument still matches'  (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" "--continue"' 'C:\node.exe') $FAKE @('--continue'))
+Check 'an embedded 1000000 does not satisfy the flag (H4)' (-not (Test-IsClaudeProc (Q 'node "C:\np\node_modules\@anthropic-ai\claude-code\cli.js" --autocompact 10000000' 'C:\node.exe') $FAKE @('--autocompact','1000000')))
 
 Write-Host ''
 Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan
@@ -345,6 +381,11 @@ $v = SM; Check 'live handshake, no claude -> NO-CLAUDE, retried' ($v.Status -eq 
 $c = P 501 500 'claude.exe' 'claude --continue' $CLAUDE; $smTable[501] = $c
 $v = SM $true; Check '-Fresh with claude -> STARTED TERMINAL'   ($v.Status -eq 'STARTED' -and $v.Terminal -and $v.ClaudePid -eq 501) "$($v.Status)/$($v.Terminal)"
 $v = SM; Check 'claude live, nothing appended -> UNCONFIRMED, retried' ($v.Status -eq 'UNCONFIRMED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+# INJECTION (H3/J3): the transcript IS being written, but nothing names the session. That is not
+# proof, and the lane must stay UNCONFIRMED rather than being promoted to RESUMED.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","uuid":"u7"}' + "`n") -NoNewline -Encoding utf8
+$v = SM; Check 'an unidentified append stays UNCONFIRMED (H3)' ($v.Status -eq 'UNCONFIRMED' -and -not $v.Terminal) "$($v.Status)/$($v.Terminal)"
+Check 'and the reason names the missing sessionId'  ($v.Detail -match 'no record named sessionId') "$($v.Detail)"
 Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"u2"}' + "`n") -NoNewline -Encoding utf8
 $v = SM; Check 'appended record -> RESUMED TERMINAL'            ($v.Status -eq 'RESUMED' -and $v.Terminal) "$($v.Status)/$($v.Terminal)"
 Set-Content -LiteralPath (Join-Path $storeDir 'sess-2.jsonl') -Value ($SESS + "`n") -Encoding utf8 -NoNewline

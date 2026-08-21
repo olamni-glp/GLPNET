@@ -41,6 +41,33 @@ GLP merge gate unchanged at **561 total / 559 passed / 2 failed** (the two known
 Unmutated after round 5: **134 passed / 0 failed**, exit 0. Twelve mutants across three rounds,
 all caught, each by the assertion written for its own finding.
 
+
+## Round 6 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `H1-give-up-at-one-window` | the record-boundary search returns the window start when it finds no newline | **146 / 3 fail** | a foreign sessionId in an oversized straddling record is caught (H1) · a window-sized file with no newline has boundary 0 |
+| `H2-broad-package-rule` | attribution accepts any command line naming the `@anthropic-ai/claude-code` directory | **148 / 1 fail** | a helper under the package dir does NOT (H2) |
+| `H4-substring-args` | expected arguments matched as substrings again | **147 / 2 fail** | `--continue-helper` does NOT satisfy `--continue` (H4) · an embedded 1000000 does not satisfy the flag |
+| `H3-unidentified-counts` | an appended record that names no session counts as proof | **147 / 2 fail** | a sessionId-less append is NOT proof (J3) · an unidentified append stays UNCONFIRMED (H3) |
+
+Unmutated after round 6: **149 passed / 0 failed**, exit 0. Sixteen mutants across four rounds,
+all caught, each by the assertion written for its own finding.
+
+## A second correction the tests forced on the code
+
+The H1 injection — a straddling record LARGER than the search window — first failed on its own
+setup: the transcript was judged unusable, because a window landing entirely inside one record
+found no complete line and the code called that corruption. Claude Code emits records well past
+64 KB, so that was a false negative that would strand a healthy lane. `Test-SessionTailIntact`
+now widens its window until it finds a complete record or reaches the file start.
+
+That change in turn invalidated an older assertion: a 70 KB **unterminated** trailing blob is
+byte-for-byte indistinguishable from a record still being written, so it can no longer be called
+corruption. The injection was rewritten to use a **terminated** garbage line — which is genuine
+corruption and is still refused — and the tolerated case is now asserted explicitly rather than
+left implicit.
+
 ## A gap mutation testing found in the tests themselves
 
 The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was

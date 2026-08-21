@@ -1,0 +1,37 @@
+{
+ "run_id": "20260821T160000Z-rel6",
+ "at": "2026-08-21T16:00:00Z",
+ "scope": "re-review of the round-5 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The bounded record-boundary algorithm can hide a foreign sessionId and permit a later false RESUMED result, while the broad CLI content rule can attribute a forged non-Claude descendant. Separately, the new sessionId requirement is not shown to succeed during normal unattended startup and demonstrably cannot prove at least one measured transcript class, creating a normal-operation false-negative risk.",
+ "harness_verdict": "WEAK",
+ "prior_findings": {
+  "F1": "CLOSED",
+  "F3": "PARTIAL",
+  "M2": "CLOSED",
+  "K1": "CLOSED",
+  "J1": "CLOSED",
+  "J2": "PARTIAL",
+  "J3": "CLOSED",
+  "J4": "OPEN",
+  "J5": "OPEN"
+ },
+ "findings_count": 4,
+ "severities": {
+  "critical": 1,
+  "high": 2,
+  "low": 1
+ },
+ "blocking": [
+  "H1",
+  "H2",
+  "H3"
+ ],
+ "note": "raw.txt from the provider was malformed JSON (one missing comma before release_verdict); raw.repaired.json holds the parsed form. Both are kept."
+}

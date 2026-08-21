@@ -323,13 +323,23 @@ function Test-JsonObjectLine([string]$Line) {
 function Get-LastRecordBoundary([System.IO.FileInfo]$File, [int]$TailBytes = 65536) {
     try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return 0 }
     if ($len -le 0) { return 0 }
-    $start = [Math]::Max(0L, $len - $TailBytes)
-    $bytes = Read-FileRange $File.FullName $start ($len - $start)
-    if ($null -eq $bytes) { return $len }
-    for ($i = $bytes.Length - 1; $i -ge 0; $i--) {
-        if ($bytes[$i] -eq 10) { return $start + $i + 1 }
+    # Walk BACKWARDS in windows until a newline is found or the file start is reached. Returning
+    # the window start when no newline was seen would hand back a position in the MIDDLE of a
+    # record - and a record longer than one window (they exist: a large tool result) would then be
+    # decoded from its middle, hiding whatever sessionId it carries. Offset 0 is the only position
+    # that is a record boundary without a newline in front of it.
+    $end = $len
+    while ($end -gt 0) {
+        $start = [Math]::Max(0L, $end - $TailBytes)
+        $bytes = Read-FileRange $File.FullName $start ($end - $start)
+        if ($null -eq $bytes) { return -1 }        # unreadable: unknown, never a guess
+        for ($i = $bytes.Length - 1; $i -ge 0; $i--) {
+            if ($bytes[$i] -eq 10) { return $start + $i + 1 }
+        }
+        if ($start -eq 0) { return 0 }             # no newline anywhere: the file starts a record
+        $end = $start
     }
-    return $start
+    return 0
 }
 
 function Get-SessionFileId([System.IO.FileInfo]$File) {
@@ -365,33 +375,41 @@ function Get-SessionFileId([System.IO.FileInfo]$File) {
 function Test-SessionTailIntact([System.IO.FileInfo]$File, [int]$TailBytes = 65536, [bool]$Deep = $false) {
     try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $false }
     if ($len -le 0) { return $false }
-    $start = if ($Deep) { 0L } else { [Math]::Max(0L, $len - $TailBytes) }
-    $probe = if ($start -gt 0) { $start - 1 } else { 0 }
-    $bytes = Read-FileRange $File.FullName $probe ($len - $probe)
-    if ($null -eq $bytes) { return $false }
-    $startsOnBoundary = $true
-    $skip = 0
-    if ($start -gt 0) {
-        $startsOnBoundary = ($bytes.Length -gt 0 -and $bytes[0] -eq 10)   # 10 = LF
-        $skip = 1
+    $win = if ($Deep) { $len } else { [long]$TailBytes }
+    while ($true) {
+        $start = [Math]::Max(0L, $len - $win)
+        $probe = if ($start -gt 0) { $start - 1 } else { 0 }
+        $bytes = Read-FileRange $File.FullName $probe ($len - $probe)
+        if ($null -eq $bytes) { return $false }
+        $startsOnBoundary = $true
+        $skip = 0
+        if ($start -gt 0) {
+            $startsOnBoundary = ($bytes.Length -gt 0 -and $bytes[0] -eq 10)   # 10 = LF
+            $skip = 1
+        }
+        $split = Split-TranscriptLines $bytes $skip
+        if ($null -eq $split) { return $false }
+        $lines = @($split.Lines)
+        if (-not $startsOnBoundary -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }
+        $complete = @($lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($complete.Count -eq 0 -and $start -gt 0) {
+            # The window landed entirely inside ONE record. A record CAN be larger than the
+            # window (a big tool result), so widen rather than call a healthy transcript corrupt.
+            $win = $win * 4
+            continue
+        }
+        if ($complete.Count -eq 0) { return $false }
+        $tornTailAllowed = -not $split.LastIsTerminated
+        $lastIndex = $complete.Count - 1
+        $parsedAny = $false
+        for ($i = 0; $i -lt $complete.Count; $i++) {
+            if ($null -ne (Test-JsonObjectLine $complete[$i])) { $parsedAny = $true; continue }
+            if ($i -eq $lastIndex -and $tornTailAllowed) { continue }   # one unterminated record
+            return $false                                              # a complete line that does not parse is corruption
+        }
+        return $parsedAny
     }
-    $split = Split-TranscriptLines $bytes $skip
-    if ($null -eq $split) { return $false }
-    $lines = @($split.Lines)
-    if (-not $startsOnBoundary -and $lines.Count -gt 0) { $lines = @($lines | Select-Object -Skip 1) }
-    $complete = @($lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ($complete.Count -eq 0) { return $false }
-    $tornTailAllowed = -not $split.LastIsTerminated
-    $lastIndex = $complete.Count - 1
-    $parsedAny = $false
-    for ($i = 0; $i -lt $complete.Count; $i++) {
-        if ($null -ne (Test-JsonObjectLine $complete[$i])) { $parsedAny = $true; continue }
-        if ($i -eq $lastIndex -and $tornTailAllowed) { continue }   # one unterminated record
-        return $false                                              # a complete line that does not parse is corruption
-    }
-    return $parsedAny
 }
-
 function Test-ResumableSessionFile([System.IO.FileInfo]$File, [bool]$Deep = $false) {
     if (-not $File -or $File.Length -le 0) { return $false }
     if (-not (Get-SessionFileId $File)) { return $false }
@@ -416,13 +434,14 @@ function Get-ResumeEvidence($State) {
     try { $len = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
     if ($len -le $State.LatestLength) { return $null }             # no append: a touch is not evidence
     $from = [long]$State.LatestCompleteOffset
-    if ($from -lt 0 -or $from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
+    if ($from -lt 0) { return $null }              # boundary unknown: cannot judge, so do not
+    if ($from -gt [long]$State.LatestLength) { $from = [long]$State.LatestLength }
     $bytes = Read-FileRange $State.LatestPath $from ($len - $from)
     if ($null -eq $bytes) { return $null }
 
     $leaf  = Split-Path -Leaf $State.LatestPath
     $added = $len - $State.LatestLength
-    $foreign = $null; $proof = $null
+    $foreign = $null; $proof = $null; $sawRecord = $false
     $lineStart = 0
     for ($i = 0; $i -lt $bytes.Length; $i++) {
         if ($bytes[$i] -ne 10) { continue }                        # only terminated records count
@@ -431,6 +450,7 @@ function Get-ResumeEvidence($State) {
         $lineStart = $i + 1
         $rec = Test-JsonObjectLine $line
         if ($null -eq $rec) { continue }
+        if ($absStart -ge [long]$State.LatestLength) { $sawRecord = $true }
         $sid = $rec.sessionId
         if ($sid -isnot [string] -or [string]::IsNullOrWhiteSpace($sid)) { continue }
         if ($State.LatestSessionId -and $sid -cne $State.LatestSessionId) { $foreign = $sid; continue }
@@ -445,6 +465,13 @@ function Get-ResumeEvidence($State) {
     if ($null -ne $proof) {
         return [pscustomobject]@{ Kind = 'RESUMED'; Strength = 'expected-session-id'
             Detail = "appended $added byte(s) to $leaf including a record at offset $proof carrying sessionId '$($State.LatestSessionId)'" }
+    }
+    if ($sawRecord) {
+        # Something wrote complete records and none of them named a session. That is not proof of
+        # resumption - any process with access to the file could have written them - but it is a
+        # materially different situation from silence, so it is reported as its own thing.
+        return [pscustomobject]@{ Kind = 'UNIDENTIFIED'; Strength = 'none'
+            Detail = "appended $added byte(s) to $leaf but no record named sessionId '$($State.LatestSessionId)'" }
     }
     return $null
 }
@@ -538,14 +565,18 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
     $imageMatches = $false
     if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $imageMatches = $true }
     if (-not $imageMatches -and $cl -and $cl.ToLowerInvariant().Contains($target)) { $imageMatches = $true }
-    # A JS runtime running the Claude Code entry point. This is a CONTENT match on the CLI's own
-    # module path, not a name: no profile-spawned helper or renamed binary can satisfy it.
+    # A JS runtime running the Claude Code ENTRY POINT. This is a content match on the CLI's own
+    # module file, not on a directory name and not on a process name: a helper that merely lives
+    # under the package directory does not satisfy it.
     if (-not $imageMatches -and $cl -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)([\s"]|$)') { $imageMatches = $true }
-    if (-not $imageMatches -and $cl -match '(?i)[\\/]@anthropic-ai[\\/]claude-code[\\/]') { $imageMatches = $true }
     if (-not $imageMatches) { return $false }
+    # Arguments are matched as WHOLE TOKENS. A substring test would accept --continue-helper as
+    # --continue, which is exactly how a forged command line would try to pass.
     foreach ($a in @($ExpectedArgs)) {
         if ([string]::IsNullOrWhiteSpace($a)) { continue }
-        if (-not $cl -or -not $cl.ToLowerInvariant().Contains($a.ToLowerInvariant())) { return $false }
+        if (-not $cl) { return $false }
+        $tok = '(?i)(^|[\s"])' + [regex]::Escape($a) + '($|[\s"])'
+        if ($cl -notmatch $tok) { return $false }
     }
     return $true
 }
@@ -629,6 +660,9 @@ function Get-LaneVerification {
     }
     if ($rev -and $rev.Kind -eq 'RESUMED') {
         return & $mk 'RESUMED' "$($ev.Detail) [$($ev.Strength)]; $($rev.Detail) [$($rev.Strength)]" $true $cpid
+    }
+    if ($rev -and $rev.Kind -eq 'UNIDENTIFIED') {
+        return & $mk 'UNCONFIRMED' "$($ev.Detail) [$($ev.Strength)]; $($rev.Detail) — resume NOT proven" $false $cpid
     }
     return & $mk 'UNCONFIRMED' "$($ev.Detail) [$($ev.Strength)], but nothing has been appended to the transcript — resume NOT proven" $false $cpid
 }
@@ -776,8 +810,13 @@ function Install-Trigger {
     $self = $PSCommandPath
     if (-not $self) { throw "cannot resolve own path; run via 'pwsh -File <script> -Install'" }
     $pwsh = (Get-Process -Id $PID).Path        # the pwsh actually running us — portable
+    # -AllowUnconfirmedResume on the UNATTENDED path only. A lane whose claude is attributed and
+    # live, but whose transcript has not yet named the session within the verification window, is
+    # a normal outcome at logon before anyone types anything. The task accepts it — and it still
+    # reports ACCEPTED-WITH-EXCEPTIONS naming that lane, never VERIFIED. Run the script by hand
+    # without the switch to hold the strict default.
     $action  = New-ScheduledTaskAction -Execute $pwsh `
-               -Argument ('-NoProfile -WindowStyle Hidden -File "{0}" -WaitForMounts' -f $self)
+               -Argument ('-NoProfile -WindowStyle Hidden -File "{0}" -WaitForMounts -AllowUnconfirmedResume' -f $self)
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $trigger.Delay = [System.Xml.XmlConvert]::ToString([TimeSpan]::FromSeconds($DelaySeconds))  # ISO-8601, e.g. PT45S
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
@@ -787,7 +826,7 @@ function Install-Trigger {
         -Force | Out-Null
     Write-Host "installed scheduled task '$TaskName' on $env:COMPUTERNAME for $env:USERNAME" -ForegroundColor Green
     Write-Host "  fires: at logon + $DelaySeconds s delay" -ForegroundColor Green
-    Write-Host "  runs : $pwsh -NoProfile -WindowStyle Hidden -File `"$self`" -WaitForMounts" -ForegroundColor DarkGray
+    Write-Host "  runs : $pwsh -NoProfile -WindowStyle Hidden -File `"$self`" -WaitForMounts -AllowUnconfirmedResume" -ForegroundColor DarkGray
     Write-Host "  verify: Get-ScheduledTask -TaskName $TaskName" -ForegroundColor DarkGray
 }
 
