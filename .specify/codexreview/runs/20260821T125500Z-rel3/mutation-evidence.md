@@ -132,6 +132,16 @@ handle, so a same-name replacement landing mid-verification cannot combine the o
 with the new file's content. That is a structural property of the handle, and a deterministic race
 test for it is not written — it is claimed here as reasoning, not as measured coverage.
 
+
+## Round 10 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `C1-skip-flags` | the runtime entry point is "the first token not starting with -", which is the OPERAND of a runtime option | **185 / 2 fail** | node --require `<cli.js>` is refused (C1) · node --loader `<cli.js>` is refused (C1) |
+
+Unmutated after round 10: **187 passed / 0 failed**, exit 0. Thirty mutants across eight rounds,
+all caught, each by the assertion written for its own finding.
+
 ## A gap mutation testing found in the tests themselves
 
 The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was

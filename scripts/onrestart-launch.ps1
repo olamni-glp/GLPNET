@@ -463,9 +463,11 @@ function Get-ResumeEvidence($State) {
         # own - NTFS file-system tunneling can hand a recreated file its predecessor's timestamp,
         # which is why the opening-byte fingerprint below is the actual check.
         if ($State.LatestCreatedUtc -gt [datetime]::MinValue) {
+            # From the HANDLE only. A path-based fallback could describe a different file from
+            # the one every other read comes from, which is the contradiction this check exists
+            # to avoid; if the handle cannot answer, the fingerprint below is the real check.
             $created = $null
-            try { $created = [System.IO.File]::GetCreationTimeUtc($fs.SafeFileHandle) }
-            catch { try { $created = [System.IO.File]::GetCreationTimeUtc($State.LatestPath) } catch { $created = $null } }
+            try { $created = [System.IO.File]::GetCreationTimeUtc($fs.SafeFileHandle) } catch { $created = $null }
             if ($created -and $created -ne $State.LatestCreatedUtc) {
                 return & $wrong "$leafName was replaced, not continued (created $($created.ToString('o')), snapshot $($State.LatestCreatedUtc.ToString('o')))"
             }
@@ -730,14 +732,19 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
         if ($Proc.ExecutablePath) { $img = (Split-Path -Leaf $Proc.ExecutablePath).ToLowerInvariant() }
         elseif ($Proc.Name) { $img = $Proc.Name.ToLowerInvariant() }
         if ($img -in @('node.exe', 'bun.exe', 'deno.exe', 'node', 'bun', 'deno')) {
-            # The CLI must be the SCRIPT THE RUNTIME RUNS — the first non-flag argument — not
-            # merely present somewhere in argv. "node benign.js .../cli.js --continue" runs
-            # benign.js, and must not be attributed.
-            for ($n = 1; $n -lt $lower.Count; $n++) {
-                $tk = $lower[$n]
-                if ($tk.StartsWith('-')) { continue }                     # runtime options
-                if ($tk -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true }
-                break                                                     # first non-flag decides
+            # The CLI must be the SCRIPT THE RUNTIME RUNS, and the only invocation this rule
+            # needs to recognise is the one a package shim generates:
+            #     node  "<...>\claude-code\cli.js"  <claude args>
+            # so the entry point must be argv[1] exactly (or argv[2] after a bare '--').
+            # "Skip anything starting with -" was wrong in BOTH directions: it accepted the
+            # OPERAND of a runtime option ("node --require <cli.js> -- --continue" runs no
+            # script at all) and it would have accepted an entry point buried further along.
+            # An unusual hand-rolled invocation is therefore not recognised here — that is an
+            # honest NO-CLAUDE, never a false pass.
+            $entry = -1
+            if ($lower.Count -gt 1 -and $lower[1] -eq '--') { $entry = 2 } elseif ($lower.Count -gt 1) { $entry = 1 }
+            if ($entry -ge 0 -and $entry -lt $lower.Count) {
+                if ($lower[$entry] -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true }
             }
         }
     }

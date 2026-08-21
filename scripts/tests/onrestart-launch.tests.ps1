@@ -344,7 +344,10 @@ Write-Host ''
 Write-Host 'D1 - the CLI must be the script the runtime RUNS' -ForegroundColor Cyan
 $CLI2 = 'C:\np\node_modules\@anthropic-ai\claude-code\cli.js'
 Check 'node <cli.js> IS attributed'                  (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
-Check 'node with runtime flags first IS attributed'  (Test-IsClaudeProc (V 'node.exe' ('node --enable-source-maps "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+Check 'node -- <cli.js> IS attributed'               (Test-IsClaudeProc (V 'node.exe' ('node -- "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+# INJECTION (C1): the CLI path is the OPERAND of a runtime option, so no script is run at all.
+Check 'node --require <cli.js> is refused (C1)'      (-not (Test-IsClaudeProc (V 'node.exe' ('node --require "' + $CLI2 + '" -- --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
+Check 'node --loader <cli.js> is refused (C1)'       (-not (Test-IsClaudeProc (V 'node.exe' ('node --loader "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
 # INJECTION (D1): benign.js is the program being run; the CLI path is merely one of its arguments.
 Check 'node benign.js <cli.js> is refused (D1)'      (-not (Test-IsClaudeProc (V 'node.exe' ('node benign.js "' + $CLI2 + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
 Check 'node with no script at all is refused (D1)'   (-not (Test-IsClaudeProc (V 'node.exe' 'node --continue' 'C:\Program Files\nodejs\node.exe') $SH @('--continue')))
