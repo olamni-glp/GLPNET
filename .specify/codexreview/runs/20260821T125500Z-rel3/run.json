@@ -1,0 +1,32 @@
+{
+ "run_id": "20260821T125500Z-rel3",
+ "at": "20260821T125500Z",
+ "scope": "re-review of the round-2 fix",
+ "files": [
+  "scripts/onrestart-launch.ps1",
+  "scripts/tests/onrestart-launch.tests.ps1"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The release can still print VERIFIED and exit 0 after classifying a non-Claude executable as Claude and after an unrelated timestamp-only file touch is treated as proof of session resumption. Both violate feature 078's requirement that verification prove the subject actually ran and was verified.",
+ "harness_verdict": "UNSOUND",
+ "prior_findings": {
+  "F1": "CLOSED",
+  "F2": "CLOSED",
+  "F3": "PARTIAL",
+  "F4": "CLOSED",
+  "N1": "CLOSED",
+  "N2": "CLOSED",
+  "N3": "CLOSED",
+  "N4": "PARTIAL",
+  "N5": "CLOSED"
+ },
+ "findings_count": 5,
+ "severities": {
+  "critical": 2,
+  "high": 1,
+  "medium": 1,
+  "low": 1
+ }
+}

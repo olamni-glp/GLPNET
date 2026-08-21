@@ -1,0 +1,39 @@
+{
+ "prior_findings": [
+  {
+   "id": "F3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:391-438 still performs bounded tail validation by default; full-file validation remains opt-in through -DeepValidate. The limitation is explicitly disclosed."
+  },
+  {
+   "id": "J4",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:451-563 opens one FileStream and uses it for creation time, fingerprint, header and appended-range reads. Line 470 now queries creation time exclusively through $fs.SafeFileHandle."
+  },
+  {
+   "id": "J5",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:1235-1250 stores the open run-lock handle without explicitly disposing it before the exits at lines 1341-1349. Process termination releases it, so this remains a non-blocking lifecycle refinement."
+  },
+  {
+   "id": "D2",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:451-563 performs every verification read through one retained handle, including the creation-time query at line 470. A pathname replacement can no longer mix identity from one file object with appended content from another."
+  },
+  {
+   "id": "C1",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:744-747 accepts the runtime entry point only at argv[1], or argv[2] after a bare '--'. The option-operand cases are refused by assertions at scripts/tests/onrestart-launch.tests.ps1:349-350."
+  },
+  {
+   "id": "C2",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:470 converts handle-based creation-time failure to unknown and contains no pathname fallback. Verification then relies on the opening-byte fingerprint."
+  }
+ ],
+ "findings": [],
+ "harness_verdict": "WEAK",
+ "harness_reason": "The 187 assertions and 30 finding-specific caught mutants provide strong regression evidence for the implemented functions, including the new argv-position rule. Remaining untested areas are deterministic pathname replacement during an active verification handle, handle-based creation-time API failure, snapshot-time replacement or unreadability, null snapshot fingerprints, repeated concurrent truncation or replacement, run-lock creation failure and explicit disposal, very large appended ranges, real Task Scheduler execution, and a complete real wt/PATH/npm-shim/launch/poll/transcript/output/exit run. Most top-level orchestration is not executed by the AST-extraction harness.",
+ "release_verdict": "GO",
+ "verdict_reason": "The sole round-10 release blocker is closed: runtime option operands cannot occupy the accepted entry-point position. The creation-time pathname race is also removed. No remaining defect can report success without verifying its subject or is shown to fail an ordinary direct-install or npm-shim lane."
+}

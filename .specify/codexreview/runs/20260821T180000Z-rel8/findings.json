@@ -1,0 +1,90 @@
+{
+ "prior_findings": [
+  {
+   "id": "F3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:376-424 still validates only a widened tail by default; whole-file corruption is detected only with -DeepValidate. This limitation is accurately disclosed."
+  },
+  {
+   "id": "J2",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:323-347 walks backward to a genuine record boundary and returns -1 on every unreadable range or metadata failure; scripts/onrestart-launch.ps1:459-491 reconstructs and evaluates straddling records."
+  },
+  {
+   "id": "J4",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:434-457 and 462-463 still treat concurrent disappearance, truncation, or unreadability as retryable null evidence. This remains conservative and non-blocking."
+  },
+  {
+   "id": "J5",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:1125-1140 opens RunLockHandle without an explicit disposal path. Process termination releases it, so this remains a non-blocking lifecycle refinement."
+  },
+  {
+   "id": "G1",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:628-635 accepts the resolved path as any standalone cmd.exe argv token, without requiring it to be the /c target. Lines 637-640 also accept a cli.js|mjs|cjs token for any process image, not specifically a JavaScript runtime."
+  },
+  {
+   "id": "G2",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:647-675 now compares whole tokens and enforces flag/value adjacency. However, cmd.exe tokens are flattened without first isolating the actual /c command, so tokens belonging to an unrelated command can satisfy the argument check. The tokenizer at lines 580-609 also applies ordinary argument quoting rules to argv[0]."
+  },
+  {
+   "id": "G3",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:440-453 compares creation time and header sessionId, but NTFS tunneling can preserve CreationTimeUtc across delete/recreate. A replacement retaining or copying the original header sessionId passes both checks; a null/unreadable current header is also not rejected because comparison requires both IDs to be non-null."
+  },
+  {
+   "id": "G4",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:324 and 379 clamp TailBytes to at least 4096, preventing the zero-window loops. Whole-record peak allocation remains an accepted personal-fleet performance tradeoff."
+  }
+ ],
+ "findings": [
+  {
+   "id": "E1",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 630,
+   "title": "cmd.exe attribution does not identify the /c target",
+   "detail": "Every cmd.exe argv token is searched for the resolved Claude path. For example, cmd /c echo \"C:\\np\\claude.cmd\" --continue contains the path as a real token, so it is identified even though echo is the command being run. The function neither locates /c nor requires the path to be the first token of its command string. The subsequent flattening accepts --continue as well, permitting STARTED or RESUMED verification of an unrelated process.",
+   "recommendation": "Parse cmd options, require /c or /k as explicitly supported, isolate exactly the command string governed by that switch, tokenize that string once, and require its executable token to equal ClaudePath. Do not search every cmd argv token.",
+   "release_blocking": true
+  },
+  {
+   "id": "E2",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 637,
+   "title": "Claude CLI entry-point token is accepted for arbitrary process images",
+   "detail": "The code comment promises a JS runtime, but the implementation accepts any process carrying a token ending in claude-code/cli.js, cli.mjs, or cli.cjs. An unrelated executable such as notepad.exe with that path and the expected flags as arguments is therefore attributed as Claude.",
+   "recommendation": "Require the candidate image to be an approved or resolved JavaScript runtime and require the CLI entry-point token to occupy the runtime's script position, rather than merely occurring somewhere in argv.",
+   "release_blocking": true
+  },
+  {
+   "id": "E3",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 443,
+   "title": "Creation time plus header sessionId is not a reliable file identity",
+   "detail": "NTFS file-system tunneling can preserve creation time for a quickly recreated same-name file. If the replacement retains or copies the original header sessionId, both identity checks pass and a later expected-session record beyond the old length can produce RESUMED. The header check also permits a null current header because it rejects only when both IDs are non-null and unequal.",
+   "recommendation": "Capture and compare a stable filesystem identity such as the NTFS file ID, or retain an open handle to the snapshotted file through verification. Treat a missing or unreadable current header as unknown, never as an identity match.",
+   "release_blocking": true
+  },
+  {
+   "id": "E4",
+   "severity": "low",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 580,
+   "title": "Hand-written tokenizer does not model argv[0] separately",
+   "detail": "ConvertFrom-NativeCommandLine applies the ordinary backslash-and-quote state machine uniformly to every argument. Windows CRT parsing gives argv[0] distinct executable-name quoting treatment. The harness compares only a few curated strings and does not differentially test this tokenizer against the platform parser over argv[0], adjacent quotes, leading whitespace, empty arguments, and backslash runs.",
+   "recommendation": "Prefer a direct platform tokenizer where its semantics match the process source, or implement and separately test argv[0]. Add differential tests generated across quote/backslash/whitespace combinations.",
+   "release_blocking": false
+  }
+ ],
+ "harness_verdict": "WEAK",
+ "harness_reason": "The 166 passing assertions and twenty-two independently caught mutants are meaningful regression evidence. The harness nevertheless misses both remaining attribution forgeries: cmd /c with ClaudePath as a standalone argument to another command, and a non-JavaScript executable carrying a Claude CLI entry-point token. Its replacement test forcibly changes CreationTimeUtc and its header test changes sessionId, so it does not exercise NTFS-tunneled creation time combined with the same header sessionId or a null current header. Tokenizer coverage is not differential against the Windows parser and omits argv[0] semantics, leading whitespace, adjacent quotes, empty interior arguments, and systematic backslash-before-quote cases. It also still lacks repeated concurrent replacement/truncation, lock-creation failure and explicit disposal, multi-gigabyte record performance, real Task Scheduler execution, and a complete wt/PATH/launch/poll/output/exit run.",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The cmd.exe and unrestricted CLI-token rules still allow unrelated descendants to be reported as attributed Claude processes. In addition, NTFS tunneling plus an unchanged header sessionId can make a same-name replacement appear to be continuation of the snapshotted transcript. Each defect can produce exit 0 without verifying the claimed subject."
+}

@@ -1,0 +1,90 @@
+{
+ "prior_findings": [
+  {
+   "id": "F3",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:351-408 still performs bounded tail validation by default and whole-file validation only with -DeepValidate; corruption between the header and inspected tail remains intentionally undetectable."
+  },
+  {
+   "id": "J2",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:303-326 now walks backward to a genuine record boundary and scripts/onrestart-launch.ps1:424-467 reconstructs oversized straddling records correctly. However, the metadata-read catch at line 304 returns 0 rather than -1, reintroducing an unverified fallback when the original file disappears or becomes unreadable during snapshotting."
+  },
+  {
+   "id": "J4",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:270-292 and scripts/onrestart-launch.ps1:431-433 still convert repeated truncation, replacement, or short reads into null evidence and ultimately UNCONFIRMED. This is conservative and non-blocking."
+  },
+  {
+   "id": "J5",
+   "status": "OPEN",
+   "evidence": "scripts/onrestart-launch.ps1:1010-1026 still leaves RunLockHandle undisposed explicitly; process termination releases it, so this remains a lifecycle refinement rather than a verification defect."
+  },
+  {
+   "id": "H1",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:310-326 correctly terminates for the production TailBytes value and scans each byte at most once, so oversized records no longer defeat boundary discovery. Line 304 nevertheless returns boundary 0 on Get-Item failure instead of the documented -1 unknown result."
+  },
+  {
+   "id": "H2",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:526-530 removes the broad package-directory rule and restricts the fallback to claude-code/cli.js|mjs|cjs. But lines 522-523 still accept the resolved Claude path appearing anywhere in a descendant command line, including as an unrelated argument rather than the invoked command."
+  },
+  {
+   "id": "H3",
+   "status": "CLOSED",
+   "evidence": "scripts/onrestart-launch.ps1:462-466 returns UNIDENTIFIED for complete post-snapshot records lacking the expected sessionId, and scripts/onrestart-launch.ps1:612-616 keeps that lane UNCONFIRMED. The installed task passes -AllowUnconfirmedResume at lines 751-753, but final output at lines 1115-1118 explicitly names every accepted unproven lane, prints ACCEPTED-WITH-EXCEPTIONS rather than VERIFIED, and exits 0 only when at least one lane is actually proven."
+  },
+  {
+   "id": "H4",
+   "status": "PARTIAL",
+   "evidence": "scripts/onrestart-launch.ps1:533-539 rejects simple substring lookalikes such as --continue-helper, but the delimiter regex does not parse Windows argv. Text such as \"x --continue y\" inside one quoted argument satisfies the whitespace boundaries, and required flag/value tokens are checked independently rather than with argv identity and adjacency."
+  }
+ ],
+ "findings": [
+  {
+   "id": "G1",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 522,
+   "title": "Resolved Claude path is still accepted as arbitrary command-line content",
+   "detail": "Test-IsClaudeProc sets imageMatches when CommandLine merely contains the resolved Claude path. A fresh descendant running an unrelated executable can therefore qualify by carrying that path plus the expected argument text as data. Under -Fresh this reaches STARTED and VERIFIED; in resume mode it can combine with transcript evidence and reach RESUMED. Deleting the broad package-directory rule did not close this older content-forgery route.",
+   "recommendation": "Parse the command line with CommandLineToArgvW-compatible semantics and require the resolved path to occupy the executable or command-script position appropriate to the host process. Do not accept occurrence as an arbitrary argument.",
+   "release_blocking": true
+  },
+  {
+   "id": "G2",
+   "severity": "high",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 536,
+   "title": "Delimiter regex does not establish whole argv tokens",
+   "detail": "The regex treats whitespace inside a quoted argument as a token boundary. A command line containing one argument such as \"payload --continue 1000000\" can satisfy all expected-argument checks even though neither expected token exists in argv. The separate checks also do not establish that 1000000 is the value of --autocompact. Combined with G1, an unrelated descendant can be falsely attributed and reported proven.",
+   "recommendation": "Tokenize the complete Windows command line and compare argv elements exactly; require --autocompact and 1000000 in the specified adjacent positions.",
+   "release_blocking": true
+  },
+  {
+   "id": "G3",
+   "severity": "medium",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 304,
+   "title": "Boundary metadata failure returns a guessed boundary",
+   "detail": "Get-LastRecordBoundary documents -1 for unreadable state, but its initial Get-Item catch returns 0. If the selected transcript vanishes or is replaced during Get-RepoState, state can retain the old path, length, and sessionId while recording offset 0 as trustworthy. A same-name replacement can then be scanned as though it were the original transcript; the filename-only new-transcript check does not detect replacement.",
+   "recommendation": "Return -1 from every read or metadata failure and optionally fingerprint the file identity so same-name replacement cannot be mistaken for append-only continuation.",
+   "release_blocking": true
+  },
+  {
+   "id": "G4",
+   "severity": "low",
+   "file": "scripts/onrestart-launch.ps1",
+   "line": 368,
+   "title": "Tail widening can allocate the entire remaining file",
+   "detail": "The widening loop terminates for the fixed positive TailBytes value: start strictly decreases and eventually reaches zero. Get-LastRecordBoundary is linear in bytes scanned. Test-SessionTailIntact, however, rereads progressively larger suffixes and can temporarily allocate and decode an entire very large single record; growth by four keeps aggregate work linear but increases peak memory and latency. TailBytes equal to zero would also make both widening algorithms non-terminating, although production never supplies zero.",
+   "recommendation": "Validate TailBytes as positive and consider a streaming backward newline search or bounded incremental parser to avoid whole-record peak allocation.",
+   "release_blocking": false
+  }
+ ],
+ "harness_verdict": "WEAK",
+ "harness_reason": "The 149 assertions and sixteen defect-specific mutants are credible regression evidence, including the corrected non-vacuous K4 mutation and oversized-record H1 mutation. The harness still does not test the remaining attribution forgeries: the resolved Claude path supplied as an unrelated argument, expected text embedded inside one quoted argv element, or flag/value adjacency. It also does not inject Get-Item failure or same-name transcript replacement during snapshotting, TailBytes zero, multi-gigabyte single-record performance, repeated concurrent truncate/replace, lock-creation failure, explicit lock disposal, the installed scheduled-task action through real Task Scheduler, or a complete wt/PATH/launch/poll/output/exit run. Its outcome tests do correctly show that scheduled acceptance prints ACCEPTED-WITH-EXCEPTIONS, names unproven lanes, requires at least one proven lane, and never prints VERIFIED for an unconfirmed lane.",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "The widening logic fixes the ordinary oversized-record defect and the scheduled task's explicit exception policy does not falsely print VERIFIED. Release remains blocked because process attribution is still forgeable through arbitrary command-line occurrence of the resolved path and regex pseudo-tokens, and because an unreadable snapshot can be assigned boundary zero and later confuse same-name replacement with continuation. Each route can produce exit 0 while the claimed subject was not actually verified."
+}

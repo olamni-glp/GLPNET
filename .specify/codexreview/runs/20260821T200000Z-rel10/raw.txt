@@ -1,0 +1,55 @@
+{
+  "prior_findings": [
+    {
+      "id": "F3",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:391-438 still validates only a widened tail unless -DeepValidate is selected. The limitation is accurately disclosed and tested."
+    },
+    {
+      "id": "J4",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:465-563 now retains one FileStream for length, fingerprint, header and appended-range reads, closing the material mixed-content race. However, line 483 falls back to GetCreationTimeUtc($State.LatestPath), so the literal claim that every transcript-related read uses the handle is false."
+    },
+    {
+      "id": "J5",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:1229-1243 retains RunLockHandle until process termination without explicit disposal. Process exit releases it, so this remains a lifecycle refinement."
+    },
+    {
+      "id": "D1",
+      "status": "OPEN",
+      "evidence": "scripts/onrestart-launch.ps1:735-742 correctly rejects the two cited examples, but it does not parse runtime options. It skips a leading option token without accounting for that option's operand, so an operand such as the Claude CLI path can be mistaken for the executed script."
+    },
+    {
+      "id": "D2",
+      "status": "PARTIAL",
+      "evidence": "scripts/onrestart-launch.ps1:465-563 structurally prevents fingerprint, header and appended content from being combined across different file objects. The path-based creation-time fallback at line 483 violates the stated single-handle invariant, and the harness has no deterministic replacement-during-verification test."
+    }
+  ],
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "high",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 738,
+      "title": "Runtime option operands can be mistaken for the executed script",
+      "detail": "The scan skips every leading token beginning with '-' but does not consume operands belonging to runtime options. For example, a command shaped like node --require C:\\np\\node_modules\\@anthropic-ai\\claude-code\\cli.js -- --continue identifies the --require operand as the script entry even though no script-entry argument was supplied. Conversely, legitimate invocations using an option with a separate operand are refused. Thus D1's claimed entry-point guarantee is not established.",
+      "recommendation": "Implement runtime-specific option parsing, including options that consume the following token and subcommands such as deno run or bun run. Require the CLI path in the resulting script-entry position. Add positive and negative tests for option operands, '--', and supported runtime subcommands.",
+      "release_blocking": true
+    },
+    {
+      "id": "C2",
+      "severity": "low",
+      "file": "scripts/onrestart-launch.ps1",
+      "line": 483,
+      "title": "Creation-time fallback reopens the transcript path",
+      "detail": "If GetCreationTimeUtc(SafeFileHandle) fails, the fallback reads the pathname. A replacement at that point can make the creation-time result describe a different file from the handle used for all content. The fingerprint and evidence still come from the handle, so this does not enable false success under the stated threat model, but it contradicts the single-handle claim and can cause a false WRONG-SESSION result.",
+      "recommendation": "If handle-based creation-time retrieval fails, return unknown and retry; do not reopen the pathname.",
+      "release_blocking": false
+    }
+  ],
+  "harness_verdict": "WEAK",
+  "harness_reason": "The 185 assertions, platform tokenizer differential test, state-machine coverage and 29 caught mutants provide strong regression evidence for the cases represented. It does not test runtime options with separate operands, '--' option termination, deno/bun subcommands, or the path-based creation-time fallback. As disclosed, it has no deterministic replacement-during-verification race test. It also leaves capture-time replacement or unreadability, null snapshot fingerprints, repeated concurrent truncation/replacement, lock-creation failure and disposal, very large appended ranges, real Task Scheduler execution, and a complete wt/PATH/launch/poll/output/exit run untested.",
+  "release_verdict": "NO-GO",
+  "verdict_reason": "D2's material mixed-file content race is substantially fixed, but D1 remains open: an option operand can occupy the scanner's supposed script-entry position. That permits attribution without establishing that the runtime executed the Claude CLI as its script."
+}

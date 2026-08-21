@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+## [v2026.08.21.3] - 2026-08-21
+
+### Fixed
+- close round-10 review - CLI entry point pinned to argv[1], creation time read only from the handle
+- close round-9 review - CLI must be the executed script, all transcript reads from one handle
+- close round-8 review - cmd /c target identification, JS-runtime-gated CLI match, content fingerprint identity, platform-exact argv0
+- close round-7 review - argv tokenizer for attribution, cmd-only packed-string expansion, transcript identity check
+- close round-6 review - unbounded boundary search, exact CLI entry point, whole-token args, unidentified appends are not proof
+- close round-5 review - single attribution tier plus -NoProfile, record-boundary resume scan, sessionId-proven resume
+- close round-4 review - two-tier attribution for shim installs, scan every appended record, exact-identity run lock, bounded reads
+- close round-3 review - attribute by image not name, require an appended record, strict tail, ownership-checked prune
+- close round-2 review - never claim VERIFIED under a bypass switch, unique lane identity, validated markers, exact claude match
+- attribute launch verification per lane - closes codexreview NO-GO (1 critical, 2 high, 1 medium)
+
+### Changed
+- Merge pull request #199 from olamni-glp/083-repo-tidy-up
+- Merge origin/develop into 083-repo-tidy-up before shipping the onrestart remediation
+- release gate CLEARED - round 11 verdict GO, 0 findings after 11 rounds
+- restart pointer post v2026.08.21.2 - repo tidy (origin heads 146->19, 127 deletions audited recoverable), zero clean branches remain, pgdb lock and path-mangling traps recorded
+- Merge pull request #198 from olamni-glp/main
+
 ## [v2026.08.21.2] - 2026-08-21
 
 ### Changed
