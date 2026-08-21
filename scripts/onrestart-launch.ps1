@@ -343,6 +343,21 @@ function Get-LastRecordBoundary([System.IO.FileInfo]$File, [int]$TailBytes = 655
     return 0
 }
 
+# A content fingerprint of the transcript's opening bytes. Appending never changes them, so this
+# is stable for the life of a session — and unlike a creation timestamp it cannot be inherited by
+# a same-name replacement (NTFS file-system tunneling re-uses the creation time of a file deleted
+# moments earlier, so a timestamp alone is not identity).
+function Get-FileHeadHash([System.IO.FileInfo]$File, [long]$HeadBytes) {
+    try { $len = (Get-Item -LiteralPath $File.FullName).Length } catch { return $null }
+    if ($len -le 0 -or $HeadBytes -le 0) { return $null }
+    if ($len -lt $HeadBytes) { return $null }   # shorter than when snapshotted: truncated/replaced
+    $bytes = Read-FileRange $File.FullName 0 $HeadBytes
+    if ($null -eq $bytes) { return $null }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
+
 function Get-SessionFileId([System.IO.FileInfo]$File) {
     if (-not $File -or $File.Length -le 0) { return $null }
     try {
@@ -440,14 +455,37 @@ function Get-ResumeEvidence($State) {
     # header session id together identify the file we actually snapshotted.
     try {
         $fi = Get-Item -LiteralPath $State.LatestPath
+        $leafName = Split-Path -Leaf $State.LatestPath
         if ($fi.CreationTimeUtc -ne $State.LatestCreatedUtc) {
             return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                Detail = "the transcript $(Split-Path -Leaf $State.LatestPath) was replaced, not continued" }
+                Detail = "the transcript $leafName was replaced, not continued" }
+        }
+        # The opening bytes are the real identity. A replacement that inherits the creation time
+        # through file-system tunneling still has to reproduce them exactly.
+        $nowHash = Get-FileHeadHash $fi ([long]$State.LatestHeadLen)
+        if ($State.LatestHeadHash) {
+            if (-not $nowHash) {
+                # Either unreadable, or now SHORTER than when snapshotted. A transcript never
+                # shrinks while being appended to, so a short file is a replacement.
+                try { $curLen = (Get-Item -LiteralPath $State.LatestPath).Length } catch { return $null }
+                if ($curLen -lt [long]$State.LatestHeadLen) {
+                    return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
+                        Detail = "$leafName is shorter than when it was snapshotted - it was replaced, not appended to" }
+                }
+                return $null
+            }
+            if ($nowHash -cne $State.LatestHeadHash) {
+                return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
+                    Detail = "the opening bytes of $leafName changed - it was replaced, not appended to" }
+            }
         }
         $nowId = Get-SessionFileId $fi
-        if ($State.LatestSessionId -and $nowId -and $nowId -cne $State.LatestSessionId) {
-            return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
-                Detail = "the transcript now opens with sessionId '$nowId', expected '$($State.LatestSessionId)'" }
+        if ($State.LatestSessionId) {
+            if (-not $nowId) { return $null }                   # header unreadable: cannot judge
+            if ($nowId -cne $State.LatestSessionId) {
+                return [pscustomobject]@{ Kind = 'WRONG-SESSION'; Strength = 'file-identity'
+                    Detail = "the transcript now opens with sessionId '$nowId', expected '$($State.LatestSessionId)'" }
+            }
         }
     } catch { return $null }
     $from = [long]$State.LatestCompleteOffset
@@ -516,6 +554,8 @@ function Get-RepoState($Repo) {
         FileNames = @($files | ForEach-Object { $_.Name })
         LatestPath = if ($latest) { $latest.FullName } else { $null }
         LatestCreatedUtc = if ($latest) { $latest.CreationTimeUtc } else { [datetime]::MinValue }
+        LatestHeadLen = if ($latest) { [Math]::Min(4096L, $latest.Length) } else { 0 }
+        LatestHeadHash = if ($latest) { Get-FileHeadHash $latest ([Math]::Min(4096L, $latest.Length)) } else { $null }
         LatestLength = if ($latest) { $latest.Length } else { 0 }
         LatestCompleteOffset = if ($latest) { Get-LastRecordBoundary $latest } else { 0 }
         LatestSessionId = if ($latest) { Get-SessionFileId $latest } else { $null }
@@ -580,12 +620,30 @@ function Get-DescendantProcs($Table, [int]$RootPid) {
 function ConvertFrom-NativeCommandLine([string]$CommandLine) {
     $out = [System.Collections.Generic.List[string]]::new()
     if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+
+    # argv[0] is NOT parsed by the escape state machine. CommandLineToArgvW reads it as:
+    #   starts with a quote -> everything up to the NEXT quote, quotes stripped, no escapes;
+    #   otherwise           -> everything up to the first whitespace, VERBATIM, quotes and all.
+    # Running the ordinary rules over it mis-splits paths like C:\dir\"prog.exe". Verified
+    # against the platform parser by the harness's differential test.
+    $i = 0
+    if ($CommandLine[0] -eq '"') {
+        $close = $CommandLine.IndexOf('"', 1)
+        if ($close -lt 0) { $out.Add($CommandLine.Substring(1)); return $out.ToArray() }
+        $out.Add($CommandLine.Substring(1, $close - 1))
+        $i = $close + 1
+    } else {
+        $e = 0
+        while ($e -lt $CommandLine.Length -and $CommandLine[$e] -ne ' ' -and $CommandLine[$e] -ne "`t") { $e++ }
+        $out.Add($CommandLine.Substring(0, $e))
+        $i = $e
+    }
+
+    # Everything after argv[0] uses the ordinary backslash/quote rules.
     $sb = [System.Text.StringBuilder]::new()
     $inQuotes = $false; $slashes = 0; $started = $false
-    $flush = {
-        if ($started) { $out.Add($sb.ToString()); [void]$sb.Clear(); $script:__dummy = $null }
-    }
-    foreach ($ch in $CommandLine.ToCharArray()) {
+    for (; $i -lt $CommandLine.Length; $i++) {
+        $ch = $CommandLine[$i]
         if ($ch -eq '\') { $slashes++; $started = $true; continue }
         if ($ch -eq '"') {
             [void]$sb.Append('\' * [int]($slashes / 2))
@@ -624,18 +682,30 @@ function Test-IsClaudeProc($Proc, [string]$ClaudePath, [string[]]$ExpectedArgs) 
 
     $identified = $false
     if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLowerInvariant() -eq $target) { $identified = $true }
-    if (-not $identified -and $Proc.Name -and $Proc.Name.ToLowerInvariant() -in @('cmd.exe')) {
-        # cmd /c "<shim path>" ... — the shim path must appear as a token, or as the head of the
-        # single string cmd was handed. Nothing else about cmd.exe is trusted.
-        foreach ($tok in $lower) {
-            if ($tok -eq $target) { $identified = $true; break }
-            $inner = @(ConvertFrom-NativeCommandLine $tok)
-            if ($inner.Count -gt 0 -and $inner[0].ToLowerInvariant() -eq $target) { $identified = $true; break }
+    if (-not $identified -and $Proc.Name -and $Proc.Name.ToLowerInvariant() -eq 'cmd.exe') {
+        # The command processor. The resolved path must be what cmd was TOLD TO RUN — the head of
+        # its /c (or /k) command string — not merely a token appearing somewhere in it, which
+        # "cmd /c echo <path> --continue" would satisfy.
+        for ($n = 0; $n -lt $argv.Count; $n++) {
+            if ($lower[$n] -ne '/c' -and $lower[$n] -ne '/k') { continue }
+            if ($n + 1 -ge $argv.Count) { break }
+            $head = $lower[$n + 1]
+            if ($head -eq $target) { $identified = $true; break }
+            $inner = @(ConvertFrom-NativeCommandLine $argv[$n + 1])
+            if ($inner.Count -gt 0 -and $inner[0].ToLowerInvariant() -eq $target) { $identified = $true }
+            break
         }
     }
     if (-not $identified) {
-        foreach ($tok in $lower) {
-            if ($tok -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true; break }
+        # A JS runtime running the Claude Code entry point FILE. The runtime is named explicitly:
+        # without it, any executable carrying that path as an argument would be attributed.
+        $img = ''
+        if ($Proc.ExecutablePath) { $img = (Split-Path -Leaf $Proc.ExecutablePath).ToLowerInvariant() }
+        elseif ($Proc.Name) { $img = $Proc.Name.ToLowerInvariant() }
+        if ($img -in @('node.exe', 'bun.exe', 'deno.exe', 'node', 'bun', 'deno')) {
+            foreach ($tok in $lower) {
+                if ($tok -match '(?i)[\\/]claude-code[\\/]cli\.(js|mjs|cjs)$') { $identified = $true; break }
+            }
         }
     }
     if (-not $identified) { return $false }

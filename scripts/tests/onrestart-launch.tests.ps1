@@ -53,7 +53,7 @@ $want = @('ConvertTo-NativeArg','Assert-SafeLaneValue','ConvertTo-ComparablePath
           'Get-ResumeEvidence','Get-RepoState','Get-ProcTable','Get-DescendantProcs','Test-IsClaudeProc',
           'Test-LaneMarker','Get-LaneVerification','Remove-StaleRunDirs','Get-RunOutcome',
           'New-LaneLauncher','Get-WtCommandLine','Read-FileRange','Split-TranscriptLines',
-          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary','ConvertFrom-NativeCommandLine')
+          'Test-JsonObjectLine','Get-LaneClaudeEvidence','Get-LastRecordBoundary','ConvertFrom-NativeCommandLine','Get-FileHeadHash')
 $found = @()
 foreach ($f in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     if ($want -contains $f.Name) { Invoke-Expression $f.Extent.Text; $found += $f.Name }
@@ -326,6 +326,78 @@ Check 'TailBytes 0 terminates for the boundary search (G4)' (($b0 -eq $zf.Length
 Check 'TailBytes 0 terminates for the tail check (G4)'      ($t0 -and ($sw2.Elapsed.TotalSeconds -lt 5)) "$t0"
 
 Write-Host ''
+Write-Host 'E1 / E2 - identification names the command being RUN' -ForegroundColor Cyan
+$SH = 'C:\np\claude.cmd'
+$CLI = 'C:\np\node_modules\@anthropic-ai\claude-code\cli.js'
+function V($name, $cmd, $exe) { [pscustomobject]@{ ProcId=1; ParentId=0; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
+Check 'cmd /c "<shim>" IS attributed'                (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c ""' + $SH + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue'))
+# INJECTION (E1): the path is a REAL argv token of cmd's command string, but echo is what runs.
+Check 'cmd /c echo "<shim>" is refused (E1)'         (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c "echo "' + $SH + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+Check 'cmd /c echo <shim> unquoted is refused (E1)'  (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd /c echo "' + $SH + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+Check 'cmd with no /c at all is refused (E1)'        (-not (Test-IsClaudeProc (V 'cmd.exe' ('cmd "' + $SH + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $SH @('--continue')))
+# INJECTION (E2): the CLI entry point carried by a process that is not a JS runtime.
+Check 'node running the CLI IS attributed'           (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI + '" --continue') 'C:\Program Files\nodejs\node.exe') $SH @('--continue'))
+Check 'notepad carrying the CLI path is refused (E2)' (-not (Test-IsClaudeProc (V 'notepad.exe' ('notepad "' + $CLI + '" --continue') 'C:\WINDOWS\notepad.exe') $SH @('--continue')))
+Check 'a renamed runtime is judged by its image (E2)' (-not (Test-IsClaudeProc (V 'node.exe' ('node "' + $CLI + '" --continue') 'C:\evil\totally-not-node.exe') $SH @('--continue')))
+
+Write-Host ''
+Write-Host 'E4 - the tokenizer against the platform parser' -ForegroundColor Cyan
+$cases = @(
+    'a b c',
+    '"a b" c',
+    'C:\path\prog.exe -x "y z"',
+    'prog "a\"b" c',
+    'prog a\\b c',
+    'prog "a\\" b',
+    '"C:\Program Files\x\y.exe" --flag "v 1"',
+    'prog   spaced   out',
+    'prog "" x',
+    'C:\np\claude.cmd --continue --autocompact 1000000',
+    # argv[0] is parsed by a DIFFERENT rule (backslashes literal, quotes merely delimit). These
+    # cases are chosen so the ordinary escape state machine gives a DIFFERENT answer, which is
+    # what makes this a differential test rather than a restatement.
+    '\\"a b" c',
+    '"a\\"b" c',
+    'a\\\\"b c',
+    'C:\dir\"prog.exe" -x'
+)
+$diffs = @()
+foreach ($c in $cases) {
+    $mine = @(ConvertFrom-NativeCommandLine $c)
+    $theirs = @([ArgvRT]::Split($c))
+    $same = ($mine.Count -eq $theirs.Count)
+    if ($same) { for ($i = 0; $i -lt $mine.Count; $i++) { if ($mine[$i] -cne $theirs[$i]) { $same = $false } } }
+    if (-not $same) { $diffs += ("[{0}] mine={1} theirs={2}" -f $c, ($mine -join '|'), ($theirs -join '|')) }
+}
+Check 'tokenizer matches CommandLineToArgvW on every case (E4)' ($diffs.Count -eq 0) ($diffs -join ' ;; ')
+
+Write-Host ''
+Write-Host 'E3 - transcript identity survives a timestamp forgery' -ForegroundColor Cyan
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE = LaneState
+Check 'the snapshot fingerprinted a fixed head length' (($stE.LatestHeadLen -gt 0) -and $stE.LatestHeadHash) "$($stE.LatestHeadLen)"
+# An ordinary append must NOT disturb the fingerprint.
+Add-Content -LiteralPath $tx -Value ('{"type":"assistant","sessionId":"abc-123","uuid":"ap"}' + "`n") -NoNewline -Encoding utf8
+Check 'an append does not change the fingerprint'      ((Get-ResumeEvidence $stE).Kind -eq 'RESUMED') ((Get-ResumeEvidence $stE).Kind)
+# INJECTION (E3): a replacement that FORGES the original creation time - the NTFS file-system
+# tunneling case - but whose opening bytes differ.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE2 = LaneState
+$forged = '{"type":"session","sessionId":"abc-123","mode":"forged"}'
+Set-Content -LiteralPath $tx -Value ($forged + "`n" + $REC + "`n" + '{"type":"assistant","sessionId":"abc-123","uuid":"q"}' + "`n") -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stE2.LatestCreatedUtc
+$evE = Get-ResumeEvidence $stE2
+Check 'a forged creation time does not defeat identity (E3)' ($null -ne $evE -and $evE.Kind -eq 'WRONG-SESSION') ("$($evE.Kind)")
+Check 'and the reason names the opening bytes'             ($evE.Detail -match 'opening bytes') ("$($evE.Detail)")
+# INJECTION (E3): the replacement is SHORTER than the snapshot. A transcript being appended to
+# never shrinks.
+Set-Content -LiteralPath $tx -Value ($SESS + "`n" + $REC + "`n" + $REC + "`n") -Encoding utf8 -NoNewline
+$stE3 = LaneState
+Set-Content -LiteralPath $tx -Value '{' -Encoding utf8 -NoNewline
+(Get-Item $tx).CreationTimeUtc = $stE3.LatestCreatedUtc
+Check 'a shorter same-name file is not a continuation (E3)' ($null -eq (Get-ResumeEvidence $stE3) -or (Get-ResumeEvidence $stE3).Kind -eq 'WRONG-SESSION') ((Get-ResumeEvidence $stE3).Kind)
+
+Write-Host ''
 Write-Host 'K3 - bounded reads never guess' -ForegroundColor Cyan
 $rf = NewJsonl 'range.jsonl' ($SESS + "`n" + $REC + "`n")
 Check 'a full range reads whole'            ($null -ne (Read-FileRange $rf.FullName 0 $rf.Length))
@@ -350,7 +422,8 @@ Write-Host 'M1 / N4 - claude attribution is by image, never by name' -Foreground
 $CLAUDE = 'C:\Users\g\.local\bin\claude.exe'
 function P($id, $parent, $name, $cmd, $exe) { [pscustomobject]@{ ProcId=$id; ParentId=$parent; Name=$name; CommandLine=$cmd; ExecutablePath=$exe; Created=(Get-Date) } }
 Check 'resolved image path is attributed'          (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --continue' $CLAUDE) $CLAUDE @('--continue'))
-Check 'shim invoked by full path is attributed'    (Test-IsClaudeProc (P 1 0 'cmd.exe' ('"' + $CLAUDE + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $CLAUDE @('--continue'))
+Check 'shim invoked by cmd /c is attributed'       (Test-IsClaudeProc (P 1 0 'cmd.exe' ('cmd /c ""' + $CLAUDE + '" --continue"') 'C:\WINDOWS\system32\cmd.exe') $CLAUDE @('--continue'))
+Check 'cmd WITHOUT a /c target is refused (E1)'    (-not (Test-IsClaudeProc (P 1 0 'cmd.exe' ('"' + $CLAUDE + '" --continue') 'C:\WINDOWS\system32\cmd.exe') $CLAUDE @('--continue')))
 Check 'RENAMED executable named claude.exe is REFUSED (M1)' (-not (Test-IsClaudeProc (P 1 0 'claude.exe' 'claude --continue' 'C:\temp\claude.exe') $CLAUDE @('--continue'))) 'name-only match must not count'
 Check 'claudette.exe refused (N4)'                 (-not (Test-IsClaudeProc (P 1 0 'claudette.exe' 'claudette' 'C:\t\claudette.exe') $CLAUDE @()))
 Check 'claude-malware.exe refused (N4)'            (-not (Test-IsClaudeProc (P 1 0 'claude-malware.exe' 'C:\evil\claude-malware.exe' 'C:\evil\claude-malware.exe') $CLAUDE @()))

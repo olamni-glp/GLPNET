@@ -90,6 +90,31 @@ first round-7 fix. Expanding every argv element one level deep, which was added 
 processor's packed `/c` string, re-admitted exactly the forgery it was meant to close for every
 other process. That expansion is now applied **only** to `cmd.exe`, and the injection asserts it.
 
+
+## Round 8 findings
+
+| Mutant | Defect reintroduced | Harness result | Assertion that caught it |
+|---|---|---|---|
+| `E1-any-cmd-token` | any cmd.exe argv token equal to the resolved path identifies, without locating `/c` | **177 / 3 fail** | cmd /c echo `<shim>` is refused (E1) · cmd with no /c at all is refused (E1) |
+| `E2-any-image-cli` | the CLI entry-point token identifies regardless of the process image | **178 / 2 fail** | notepad carrying the CLI path is refused (E2) · a renamed runtime is judged by its image (E2) |
+| `E3-timestamp-only` | transcript identity rests on the creation timestamp alone | **178 / 2 fail** | a forged creation time does not defeat identity (E3) |
+| `E4-no-argv0-rule` | argv[0] parsed with the ordinary escape state machine | **179 / 1 fail** | tokenizer matches CommandLineToArgvW on every case (E4) |
+
+Unmutated after round 8: **180 passed / 0 failed**, exit 0. Twenty-six mutants across six rounds,
+all caught, each by the assertion written for its own finding.
+GLP merge gate unchanged throughout at **561 total / 559 passed / 2 failed**.
+
+## A fourth correction the tests forced on the code
+
+The E4 mutant initially survived: the differential cases did not include a command line where
+argv[0] parsing actually diverges. Adding four such cases exposed something better than the
+mutant — the SHIPPED tokenizer was wrong too, and so was the "fix". `CommandLineToArgvW` reads
+argv[0] as *everything up to the first whitespace, verbatim, quotes and all* when the line does
+not begin with a quote; both my implementations processed quotes there. The tokenizer was
+rewritten to the platform's actual rule and now matches it on all fourteen cases, the mutant is
+caught, and the check is a genuine differential test against the platform rather than against my
+own understanding of it.
+
 ## A gap mutation testing found in the tests themselves
 
 The K4 injection was first written with a **12.3-second** start-time delta. The mutant it was
