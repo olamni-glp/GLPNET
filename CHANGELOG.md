@@ -1,5 +1,92 @@
 ## [Unreleased]
 
+## [v2026.08.21.1] - 2026-08-21
+
+### Added
+- resume lanes mid-thread via claude --continue, per-host layout config, register/unregister, at-logon 45s auto-install
+- add two-window twelve-tab post-reboot lane launcher - executable spec for buildkit feature bk-onrestart (verified absent: no skill, no CLI)
+
+### Changed
+- restart pointer after the six-branch landing - 10/25 steps, zero clean branches remain, release held pending a green suite, false-green detection rule recorded
+- Merge pull request #193 from olamni-glp/084-host-tidy-up-and-merge-closure
+- Merge pull request #192 from olamni-glp/078-verification-receipts
+- Merge pull request #191 from olamni-glp/049-wave1-guard-link-acceptance
+- Merge pull request #190 from olamni-glp/083-glptutorial-corpus-goldens
+- Merge pull request #189 from olamni-glp/081-scheduler-supply-rootcause
+- Merge pull request #188 from olamni-glp/083-repo-tidy-up
+- refresh restart pointer for round 29 - true step figure 6 done + 1 held, peer W13 deletion audited safe (124 of 124 contained), unmerged refs now 20
+- sync round 29 - import 1 file/0 lines (converged) + reconcile in sync + 0 dupes in 115 live + replay-verify 3760 lines + export 20/116/3760 both publish legs OK
+- record 124 provably-contained REMOTE branch tip SHAs before deletion (W13 preservation evidence)
+- rewrite the restart pointer - was 25 days stale pointing at feature 060; now points at marathon mrun-f5ef56dba3c1 with the resume one-liner, the 7 open engineer blocks and the preservation-phase evidence
+- sync round 28 - import 2 files/0 lines (converged) + reconcile in sync + 0 dupes in 115 live + replay-verify 3760 lines + export 20/116/3760 both publish legs OK
+- Merge branch '078-verification-receipts' of https://github.com/olamni-glp/GLPNET into 078-verification-receipts
+- sync round 27 - import no-op (177 applied), reconcile in-sync, dedupe 0 groups (115 live), export 20/116/3761, replay-verify OK
+- sync round 29 + reconcile + dedupe + export - both publish legs OK
+- sync round 28 + reconcile + dedupe + export - both publish legs OK
+- Merge pull request #187 from olamni-glp/083-repo-tidy-up
+- host D: git-asset survey + tidy-up workplan from 3rtask dddd - 3 blind builders 753 claims 157 corroborated 16 conflicts; merge-tree shows only 4 of 18 branches merge clean; preservation gate requires a restore-verified bundle not a SHA list
+- revised 3rtask method draft - 5 critic REFUTEs resolved by revision (preservation gate now requires a verified bundle or pushed archive tag not a SHA list)
+- canonical durable CRDT workplan ledger - 14 steps sized on nano/micro/mini/midi/maxi/saga, 39pt delivered 97pt remaining
+- 3rtask evidence manifest for the host D: tidy-up survey (3 file-disjoint subject-overlapping slices, closed asset vocabulary)
+- takt metrics contract + bk-flow migration readiness - measured actuals, two-axis takt, 4 of 7 prereqs unmet
+- record 70 provably-contained branch tip SHAs before deletion (W10 preservation evidence)
+- Merge pull request #186 from olamni-glp/083-repo-tidy-up
+- Merge remote-tracking branch 'origin/chore/roadmap-sync-20260816c-olamnit' into 083-repo-tidy-up
+- Merge remote-tracking branch 'origin/chore/roadmap-sync-20260816b-olamnit' into 083-repo-tidy-up
+- Merge remote-tracking branch 'origin/chore/roadmap-sync-20260816a-olamnit' into 083-repo-tidy-up
+- Merge remote-tracking branch 'origin/chore/roadmap-sync-20260814c-olamnit' into 083-repo-tidy-up
+- Merge remote-tracking branch 'origin/chore/roadmap-sync-20260814b-olamnit' into 083-repo-tidy-up
+- sync round 27 + reconcile + dedupe + export - both publish legs OK (tidy-up branch)
+- merge(065): ynet-consolidation spec into tidy-up - feature.json stays untracked per develop 953ec898
+- sync round 17 + reconcile + dedupe + export - both publish legs OK
+- Merge pull request #185 from olamni-glp/078-verification-receipts
+- sync round 26 + reconcile + dedupe + export - both publish legs OK (coop mirror explicit)
+- Merge pull request #184 from olamni-glp/078-verification-receipts
+- sync round 25 + reconcile + dedupe + export - both publish legs OK
+- spec(083): glptutorial corpus-golden reconciliation - 4 measured defects, 1 open clarification
+- Merge remote-tracking branch 'origin/develop' into 078-verification-receipts
+- Merge pull request #183 from olamni-glp/082-feature-stream-superset
+- Merge remote-tracking branch 'origin/develop' into 082-feature-stream-superset
+- sync round 16 export - 20 epics 116 features
+- sync round 15 export - 20 epics 116 features
+- Merge remote-tracking branch 'origin/develop' into 078-verification-receipts
+- Merge pull request #182 from olamni-glp/078-verification-receipts
+- sync round 24 + export - 20 epics, 116 features, 3760 journal lines; both publish legs OK; also ignore config.local.json (rule absent on this branch) and ALERT.md (scheduler watch, auto-added)
+- sync round 14 export - 20 epics 116 features
+- spec(082): coordination feature-stream durable superset fix - 7 user stories, FR-001..FR-021, SC-001..SC-008 with measured baselines; 5 escalations explicitly out of scope
+- bind sched_root via config.local.json and gitignore it - repo had NO board bound (root configured=false) and the CLI documents this file as gitignored while the rule was absent
+- design(scheduler): amend SR-7 - shipped bk-guards template-contract is one-directional and cannot catch D1 (measured: clean on 62/62 skills); requirement is an extension, not a wiring job
+- Merge pull request #181 from olamni-glp/078-verification-receipts
+- design(scheduler): durable superset fix SR-1..SR-8 for the feature stream - every requirement anchored to an adjudicated claim from 3rtask 20260819T162016Z-6e73, with escalated items marked not-actionable and non-coverage stated
+- untrack .specify/feature.json - machine-local pipeline state that made every feature branch conflict with every other
+- 3rtask trace reports ok:true with routed:false on catalog lock - dropped leg reported as success
+- git <rev>:<path> false-negative on dot-prefixed paths - nearly inverted the PROG-B unshipped inventory
+- 2 notes - duplicate-prevention win (2 roadmap features + 1 3rtask run already existed); 3rtask cross-host portability defect (gitignored evidence + absolute drive-letter roots)
+- host-resolvable scheduler root-cause manifest for gavriella (I:->D: drive-letter resolution; live root measured 48 ops vs 11/6 on stale G:/H:)
+- Merge remote-tracking branch 'origin/develop' into 078-verification-receipts
+- add scheduler root-cause manifest; ignore derived evidence projection
+- sync round 13 export - 20 epics 116 features 23 not-closed
+- sync round 23 export - 115 live features, 0 duplicate groups; coop mirror OK (prior rounds falsely reported skipped - fixed by explicit --coop-inbox)
+- tasks(078): close analyze CRITICAL G1 - add T063-T066 for FR-013 enforcement and FR-017 non-adoption; tag FR-001/FR-015; 62 to 66 tasks
+- Merge pull request #180 from olamni-glp/main
+- cn-...082050 Programme B win — verify-claims-against-develop, plain-code conflict-graph
+- Programme B decision brief — B1/B2/proposed_actor MERGED to develop (behaviour list stale); real rootcause = deploy-lag + unmerged B3 gate; 1 __main__.py conflict; release+deploy path
+- export 20/115/3720 (17T070703Z; replay-verified, 0 dupes, in-sync); publish to coop
+- export 20/115/3720 (import path hangs — ariella import-crash defect; catalog converged, replay OK)
+- close #19 batch-roadmap-advance (shipped->closed); export published
+- sync-state snapshot before reboot (feature.json 079 pointer, import manifest/provenance)
+- export 20/115/3719 (feature #13 v6 epic-set + behaviour list); publish
+- coordination remediation Programme B authoritative behaviour list (B1-B6) + run plan — safe-restart input
+- sync round 9 + codify A+B remediation (feature #13 carries combined method); export 20/115/3716
+- sync round 8 — converged export 20/115/3715
+- sync round 7 — converged export 20/115/3713 (occurs-check renumbered 078->080)
+- sync round 6 — import peer +124 lines, export 20/115/3713
+- sync round 5 — import ariella promote+rescores (occurs-check promoted), export 20/115/3584
+- spec(065): YNET--consolidation specification from 3rtask run 20260803T134739Z-fa8a (6-item gap set, evidence-derived P1-P6 order, escalate gate FR-008)
+- close-out retrospective - 2 systematic findings (US5 delivered with zero tasks + ship-gate letter says FOUR not FIVE; marathon expand --steps comma delimiter undocumented and resolve leaves orphan steps) with 2 tracked fix_failing actions; 0 stale actions, nothing to reconcile
+- export snapshot after wave-1 close - glp-policy-guard + http3-quic-ws-link-full-acceptance + wave-1-consolidated advanced promoted->shipped->released (19 epics/92 features/2128 journal lines); wave-2 is now head of the wave chain
+- close T032 - roadmap advance done (glp-policy-guard + http3-quic-ws-link-full-acceptance + wave-1 consolidated all promoted->shipped->released); ship half was already complete (PR #100 merged 2026-07-09, tags v2026.07.09.1/.2, 049 fully contained in origin/develop and origin/main) so buildkit ship was a no-op and not re-run; marathon run mrun-b0fabf3f8f44
+
 ## [v2026.08.19.2] - 2026-08-19
 
 ### Changed
