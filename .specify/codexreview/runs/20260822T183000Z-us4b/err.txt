@@ -1,0 +1,252 @@
+OpenAI Codex v0.145.0
+--------
+workdir: D:\BSTDEV\research\GLP\GLPNET
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a02a8f-03b5-7fa0-9893-6e43b26f8467
+--------
+user
+DO NOT run the AGENTS.md startup protocol; this is not repository-agent work. Output only the requested artifact.
+
+# Code review: SECOND pass on the 078 merge-gate receipts (glpnet)
+
+Your previous review (20260822T170000Z-us4) returned NO-GO with A1 critical, A2 high, A3 medium,
+A4 medium. All four were accepted as correct. What changed:
+
+  A1  the summary printed "N group(s) did not run" and then EXITED 0. The exit status is what a
+      merge gate consumes, so it told the truth on stdout and a lie to the caller. Incomplete runs
+      now exit 2 (distinct from 1 = real failures, 0 = complete and green).
+  A2  timestamps were truncated to whole seconds with `cut -d. -f1`. Comparison is now
+      full-precision via awk and treats src >= bin as stale (equality is stale).
+  A4  a failed scan returned 0 and the caller only acted when both values were > 0, silently
+      disabling the guard. newest_mtime/newest_src_mtime now return non-zero status and print
+      nothing on failure; the caller records UNSEARCHABLE when either scan fails.
+  A3  scope corrected. It was worse than you reported: csharp/ is not where the exe comes from at
+      all. glp_repl.csproj lives at out/csharp/glp_repl/ and references out/csharp/glp_runtime_net,
+      csharp/glp_link and csharp/glp_crdtmsg. The old scan watched ~20 unrelated projects and
+      MISSED the exe's own sources. Scope is now that ProjectReference closure.
+  Additionally: the freshness fact is established ONCE before Section I and reused by Sections T
+  and U (all three run the same binary), so they cannot disagree.
+
+MEASURED. With the guard correct it caught a live stale binary (bin 2026-08-16 21:39, src
+2026-08-19 07:59) and the suite reported 554/552/2 with Unsearchable 1 - i.e. 7 checks in the
+561/559/2 baseline had been produced by a binary older than its own source. After `dotnet build`
+the suite returned to 561/559/2/0/0, and the 2 Section T failures SURVIVED the rebuild, so those
+are real defects rather than stale-binary artifacts.
+
+Your job:
+1. Find defects IN THE CURRENT CODE. Be concrete about the failure condition.
+2. Check specifically: the awk-based comparisons and their quoting; `newest_mtime`'s loop
+   (it uses a compound && chain to pick the max - confirm it is correct and that a failure inside
+   the loop is not swallowed); whether `set -e`/`set +e` around these sections can change the
+   meaning of a non-zero return from these helpers; whether GLPREPL_STALE can be read before it is
+   set; the `${_b%%.*}` truncation used only for display; and any remaining path where a check does
+   not run yet the gate exits 0.
+3. State whether the three tasks now deliver "a not-run check never reads as a pass".
+
+Mark release_blocking true ONLY for a defect that makes the gate report success when it should not,
+or that breaks an ordinary run. Emit VALID JSON.
+
+{"findings":[{"id":"B1","severity":"critical|high|medium|low","file":"...","line":<int>,"title":"...","detail":"...","recommendation":"...","release_blocking":true|false}],
+ "delivers_thesis":true|false,"thesis_reason":"...",
+ "release_verdict":"GO|NO-GO","verdict_reason":"..."}
+
+--- CURRENT test/run_all_tests.sh (relevant regions) ---
+----- helpers + counters -----
+PASS=0
+FAIL=0
+SKIP=0
+UNSEARCHABLE=0
+SKIP_LOG=""
+SECTION_KEYS=""
+
+# --- 078 verification receipts: a check that did not run must never read as one that passed ---
+# T046: `check` only ever had PASS and FAIL, so a section that could not run contributed
+# NOTHING to the totals and the suite still printed "ALL TESTS PASSED". A skip is now counted,
+# carries a reason, and is re-listed in the summary.
+skip() {
+    local name="$1" reason="$2"
+    echo "  SKIP: $name — $reason"
+    SKIP=$((SKIP + 1))
+    SKIP_LOG="${SKIP_LOG}
+  SKIP        $name — $reason"
+}
+
+# T047: a check whose subject is STALE has not examined the thing it claims to examine.
+# Measured 2026-08-13: Section U was run against a binary built 37h BEFORE the source it was
+# supposed to be testing, and the stale result was read as a real defect in feature 077.
+# UNSEARCHABLE says "I could not look", which is not the same as "I looked and found nothing".
+unsearchable() {
+    local name="$1" reason="$2"
+    echo "  UNSEARCHABLE: $name — $reason"
+    UNSEARCHABLE=$((UNSEARCHABLE + 1))
+    SKIP_LOG="${SKIP_LOG}
+  UNSEARCHABLE $name — $reason"
+}
+
+# T045: receipts are keyed by (letter, slugified-title), NEVER by letter alone — `Section I` is
+# declared twice in this file (self.glp procedures, and the cross-runtime Gleam x C# suite), so a
+# letter-keyed receipt would silently merge two unrelated sections. Registering the composite key
+# here makes a genuine duplicate fail loudly instead of collapsing.
+section() {
+    local letter="$1" title="$2"
+    local slug
+    slug=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+    local key="${letter}:${slug}"
+    case "$SECTION_KEYS" in
+        *"|$key|"*)
+            echo "  FAIL: section receipt key '$key' is declared twice — receipts would merge two sections"
+            FAIL=$((FAIL + 1))
+            ;;
+    esac
+    SECTION_KEYS="${SECTION_KEYS}|$key|"
+    echo "=== Section $letter: $title ==="
+}
+
+# Newest mtime under a set of paths, at FULL precision (find's %T@ is seconds.nanoseconds).
+# Prints nothing and returns 1 when the scan finds no eligible file or fails — callers MUST treat
+# that as "could not measure", never as timestamp 0. Mapping a failed measurement to a number is
+# how a guard silently stops guarding (codexreview A4).
+newest_mtime() {
+    local newest="" f t
+    for f in "$@"; do
+        [ -e "$f" ] || continue
+        t=$(find "$f" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
+        [ -n "$t" ] && { [ -z "$newest" ] || awk -v a="$t" -v b="$newest" 'BEGIN{exit !(a>b)}'; } && newest="$t"
+    done
+    [ -n "$newest" ] || return 1
+    echo "$newest"
+}
+
+# Newest mtime of actual SOURCE for the C# REPL, ignoring build output.
+# Two corrections, both found by measuring rather than assuming:
+#   1. A naive newest-file scan returned glp_crdtmsg.deps.json — a BUILD ARTIFACT. Artifacts are
+#      rewritten by every build, so the "source" time tracked the binary's and the guard could
+#      almost never fire. (glp_crdtmsg is in fact a real dependency; the defect was measuring its
+#      build output, not its relatedness.)
+#   2. The scan pointed at csharp/, which is NOT where this exe comes from. glp_repl.csproj lives
+#      at out/csharp/glp_repl/ and references out/csharp/glp_runtime_net.csproj,
+#      csharp/glp_link and csharp/glp_crdtmsg. Scanning csharp/ wholesale watched ~20 unrelated
+#      projects and MISSED the exe's own sources entirely — so it would not have caught the
+#      2026-08-13 stale-binary incident it was written for.
+# The roots below are glp_repl.exe's actual dependency closure, taken from its ProjectReferences.
+newest_src_mtime() {
+    local t roots=""
+    local r
+    for r in "$@"; do [ -d "$r" ] && roots="$roots $r"; done
+    [ -n "$roots" ] || return 1
+    # shellcheck disable=SC2086
+    t=$(find $roots -type f \
+            \( -name '*.cs' -o -name '*.csproj' -o -name '*.props' -o -name '*.targets' -o -name '*.sln' \) \
+            -not -path '*/bin/*' -not -path '*/obj/*' \
+            -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
+    [ -n "$t" ] || return 1
+    echo "$t"
+}
+
+# a >= b on decimal seconds. The old integer compare truncated to whole seconds, so a source edited
+# in the SAME second as the build read as "not newer" and the stale binary ran (codexreview A2).
+mtime_ge() { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a>=b)}'; }
+
+check() {
+    local name="$1" pattern="$2" source="$3"
+    if echo "$source" | grep -q "$pattern"; then
+        echo "  PASS: $name"
+        PASS=$((PASS + 1))
+    else
+----- freshness preamble + Section I gate -----
+# --- 078 T047: establish build freshness ONCE, before ANY section that uses glp_repl.exe ---
+# Sections I (cross-runtime), T (064 service-box drills) and U (077 cyclic diagnostics) all run
+# this same binary. Gating only Section U would let the other two keep presenting the output of a
+# stale build as authoritative — which is precisely the 2026-08-13 failure mode.
+GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+GLPREPL_STALE=0
+GLPREPL_STALE_WHY=""
+if [ -f "$GLPREPL_EXE" ]; then
+    _b=$(newest_mtime "$GLPREPL_EXE") || _b=""
+    _s=$(newest_src_mtime "$SCRIPT_DIR/../out/csharp" "$SCRIPT_DIR/../csharp/glp_link" "$SCRIPT_DIR/../csharp/glp_crdtmsg") || _s=""
+    if [ -z "$_b" ] || [ -z "$_s" ]; then
+        GLPREPL_STALE=1
+        GLPREPL_STALE_WHY="could not establish build freshness (bin='${_b:-unreadable}' src='${_s:-unreadable}')"
+    elif mtime_ge "$_s" "$_b"; then
+        GLPREPL_STALE=1
+        GLPREPL_STALE_WHY="glp_repl.exe is NOT NEWER than its source (bin $(date -d @"${_b%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_b") src $(date -d @"${_s%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_s")) — rebuild with 'dotnet build' before trusting it"
+    fi
+fi
+
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
+    unsearchable "Section I (cross-runtime Gleam x C# link suite)" "$GLPREPL_STALE_WHY"
+elif command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
+    if bash "$SCRIPT_DIR/parity/cross_runtime/run_all.sh"; then
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "ok"
+    else
+        check "US5 cross-runtime suite (Gleam × C#)" "ok" "FAILED (scenario detail above)"
+    fi
+else
+    echo "  SKIP: cross-runtime suite — needs gleam on PATH + built C# REPL ($CSREPL_BIN)"
+fi
+
+echo ""
+
+# =============================================================================
+# SECTION S: MS_MESSAGE DURABLE MESH MESSAGING (063 US2 — SC-004 DRILL GATE)
+# =============================================================================
+# The SC-004 disconnect drill (N=1000: recipient offline, originator restart,
+# exactly-once in-order delivery, zero re-observations on recipient restart)
+# is the acceptance gate for the durable first-hop mesh-messaging tool
+# (specs/063-wave-5-consolidated-captured-triad, T024). Standalone gate:
+----- Section U gate -----
+# Section U reuses the ONE freshness fact established before Section I — measuring it twice
+# invites the two answers to disagree.
+CSREPL_STALE=$GLPREPL_STALE
+if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 1 ]; then
+    unsearchable "Section U (077 cyclic diagnostics)" "$GLPREPL_STALE_WHY"
+fi
+if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
+    # U-1/U-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
+    # compile to a catchable Cyclic-term diagnostic with NO StackOverflow (SC-001/
+    # SC-002, T024). Glob POSIX-side; pass the Windows path to the native REPL.
+    for prog in "$SCRIPT_DIR"/../programs/tests/cyclic/cyclic_*.glp; do
+        [ -f "$prog" ] || continue
+        name=$(basename "$prog")
+----- summary -----
+# =============================================================================
+TOTAL=$((PASS + FAIL))
+NOTRUN=$((SKIP + UNSEARCHABLE))
+
+echo "======================================"
+echo "Total: $TOTAL | Passed: $PASS | Failed: $FAIL | Skipped: $SKIP | Unsearchable: $UNSEARCHABLE"
+echo "======================================"
+
+# 078 FR: never let a not-run check be read as a passing one. The counts above are of checks that
+# ACTUALLY RAN; anything that could not run is enumerated here rather than silently absent.
+if [ $NOTRUN -gt 0 ]; then
+    echo ""
+    echo "$NOTRUN check group(s) DID NOT RUN — these are NOT passes:$SKIP_LOG"
+    echo ""
+fi
+
+# The exit STATUS is what a merge gate actually consumes. Printing "these groups did not run" and
+# then returning 0 tells the truth on stdout and a lie to the caller (codexreview A1), which is the
+# very defect 078 exists to eliminate. Incomplete runs get their own non-zero code so they stay
+# distinguishable from real failures.
+if [ $FAIL -eq 0 ] && [ $NOTRUN -eq 0 ]; then
+    echo "ALL TESTS PASSED!"
+    exit 0
+elif [ $FAIL -eq 0 ]; then
+    echo "INCOMPLETE — all $TOTAL executed checks passed but $NOTRUN group(s) did not run (exit 2)"
+    exit 2
+else
+    echo "SOME TESTS FAILED"
+    exit 1
+fi
+
+codex
+{"findings":[{"id":"B1","severity":"critical","file":"test/run_all_tests.sh","line":1,"title":"Section I's unavailable-dependency branch still records no not-run receipt","detail":"When Gleam is absent or the C# REPL does not exist, the final Section I branch only executes `echo \"  SKIP: ...\"`; it does not call `skip`. Consequently SKIP and NOTRUN remain unchanged, and the suite can exit 0 although the cross-runtime check never ran.","recommendation":"Replace the raw `echo` with `skip \"Section I (cross-runtime Gleam x C# link suite)\" \"needs gleam on PATH + built C# REPL ($CSREPL_BIN)\"`.","release_blocking":true},{"id":"B2","severity":"critical","file":"test/run_all_tests.sh","line":1,"title":"Section U silently disappears when the C# REPL is missing","detail":"Both Section U branches require `[ -f \"$CSREPL_BIN\" ]`. If the executable is absent, neither branch runs, no skip or unsearchable receipt is recorded, and the merge gate can exit 0 despite Section U not running. The same construction must also be checked in Section T, whose gate was not included here.","recommendation":"Add an explicit missing-binary branch that calls `skip` or `unsearchable`, and ensure Section T has the same exhaustive stale/fresh/missing handling.","release_blocking":true},{"id":"B3","severity":"high","file":"test/run_all_tests.sh","line":1,"title":"Find failures inside timestamp pipelines are still swallowed","detail":"Both helpers use `find ... | sort -rn | head -1` without enabling `pipefail` or separately capturing `find`'s status. The pipeline status is normally that of `head`, so `find` may fail after emitting some timestamps while the assignment returns 0. The helper then reports a partial maximum as authoritative; an inaccessible newer source can therefore be omitted and a stale binary treated as fresh. The surrounding `|| _b=\"\"`/`|| _s=\"\"` safely prevents `set -e` from aborting, but cannot detect this swallowed pipeline failure.","recommendation":"Capture `find` output/status independently or run the pipeline in a context with `pipefail` and propagate any component failure before accepting the timestamp.","release_blocking":true},{"id":"B4","severity":"medium","file":"test/run_all_tests.sh","line":1,"title":"The source scan still uses the entire out/csharp subtree rather than the stated ProjectReference closure","detail":"The call passes `$SCRIPT_DIR/../out/csharp`, so `newest_src_mtime` recursively includes every source project beneath that directory, not just `out/csharp/glp_repl` and `out/csharp/glp_runtime_net`. Editing an unrelated sibling project can mark an otherwise current REPL stale and make an ordinary complete run exit 2.","recommendation":"Pass the two exact roots `out/csharp/glp_repl` and `out/csharp/glp_runtime_net`, plus `csharp/glp_link` and `csharp/glp_crdtmsg`.","release_blocking":true}],"delivers_thesis":false,"thesis_reason":"The awk arguments are quoted correctly, `a>=b` implements equality-as-stale, `${_b%%.*}` is confined to display, the max-selection compound chain is logically correct, the helper calls are protected from `set -e`, and GLPREPL_STALE is initialized before the shown reads. However, missing prerequisites still bypass the counters, and timestamp pipeline failures can still be mistaken for successful scans. Therefore a not-run check can still read as a passing gate.","release_verdict":"NO-GO","verdict_reason":"Sections I and U can fail to run without incrementing NOTRUN, allowing exit 0, and scan failures can still produce a false freshness result."}
+tokens used
+18,928
