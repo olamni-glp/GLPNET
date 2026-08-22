@@ -9,7 +9,7 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 
 **Feature Branch**: `083-glptutorial-corpus-goldens`
 **Created**: 2026-08-20
-**Status**: Draft
+**Status**: Clarified (1 open engineer ruling: FR-002)
 **Input**: User description: "glptutorial corpus-golden reconciliation (stale goldens + drift-guard vendoring)"
 
 **Roadmap**: `glptutorial-corpus-golden-reconciliation-stale-goldens-drift-guard-vendoring` (WSJF 6.50, RICE 1700, rank 3, effort small, risk low)
@@ -36,6 +36,46 @@ Defect 1 is the sharpest: **a golden that asserts a spec-invalid program loads s
 Anyone trusting the corpus would conclude the runtime accepts something the manual forbids.
 This is the same defect class this repo keeps hitting — a check that reports success without
 having actually verified anything.
+
+## Clarifications
+
+### Session 2026-08-22 (ariellas lane, marathon `mrun-f5ef56dba3c1`)
+
+Corpus re-measured before clarifying: `codeconv tutorials propose` still reports **exactly the
+same four proposals**, so the Problem table above is current, not stale.
+
+**C1 — Which `cssg_modules` sibling does ch07 actually run? → `programs/cssg_modules/`.**
+Resolved by measurement, not by ruling. Three independent references in the corpus agree:
+`ch07-sources.md:43` (*"exact match for §7.7 example"*), `ch07-sources.md:25` (the §7.7 project
+tree), and `ch07_tutorial.md:5`. `programs/cssg_modules_v2/` is **not** referenced by ch07.
+The Edge Case *"vendoring the wrong one would produce a guard that passes while guarding
+nothing"* is therefore closed: vendor `programs/cssg_modules/`.
+
+**C2 — Are vendoring (FR-004) and the run-manifest (FR-005) alternatives? → No. Both.**
+`codeconv tutorials propose` phrases the `drift_gap` remedy as *"Vendor cssg_modules/ **or**
+record a run-manifest"*. That "or" is wrong and the spec's two separate MUSTs are right: they
+address different defects. Vendoring answers *"has the substrate changed?"*; the manifest answers
+*"which program, play and step limit does exercise MM resolve to?"*. Neither substitutes for the
+other, and the corpus already specifies the drift mechanism —
+`ch07-specification-input-prompt.md:26` requires the tutorial-side copy to be **byte-exact
+equivalent** to the canonical source, *"surfacing any drift as a test failure with a diagnostic
+naming the offending file."* FR-004 adopts that mechanism verbatim.
+
+**C3 — FR-009 is conditional on FR-002, and the spec did not say so.**
+"The corpus MUST be able to represent an exercise whose correct outcome is rejection" is
+**required** if FR-002 resolves to *record the rejection*, and is **unnecessary scope** if FR-002
+resolves to *repair the exercise*. FR-009 is hereby coupled to FR-002 and MUST NOT be planned or
+tasked until FR-002 is ruled.
+
+**C4 — FR-008's discriminator between "stale golden" and "runtime regression".**
+A change to a golden may be recorded as a **re-capture** only when its rationale cites the
+specific runtime change that altered the behaviour (commit, PR or spec amendment). Absent such a
+citation it MUST be recorded as a **repair**, not a re-capture. This makes FR-008 mechanically
+checkable rather than a matter of the author's intent. ch04/08 satisfies it: the cited cause is
+the C# `is_list` guard fix.
+
+**C5 — FR-002 remains OPEN. It is an engineer ruling and is not the agent's to make.**
+See the expanded statement at FR-002 below.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -112,10 +152,37 @@ carries a record of why each golden changed.
 - **FR-001**: The system MUST report every corpus artefact whose recorded outcome disagrees
   with the live runtime, and MUST NOT report a clean corpus while any such artefact exists.
 - **FR-002**: The ch04/07 spec-violation MUST be resolved such that the recorded outcome and
-  the live runtime agree. [NEEDS CLARIFICATION: repair the exercise to a single-unit-clause
-  guard, or keep the exercise and record its rejection as the golden? The exercise is a
-  `.glp` file in the tutorial corpus; per CLAUDE.md, `.glp` files authored by the engineer
-  must not be modified without express approval.]
+  the live runtime agree. **[OPEN — ENGINEER RULING, see C5. Diagnosis completed 2026-08-22;
+  the choice is not the agent's.]**
+
+  *What is actually wrong* — the exercise's §4.3.1 clause is
+  `lesseq(0, X) :- natural_number(X?) | true.`, and `natural_number/1` is defined by **two**
+  clauses, the second with a body (`natural_number(s(X)) :- natural_number(X?).`). Per
+  typed-GLP manual §8 a **defined guard must be a single-unit-clause procedure**, so a
+  two-clause recursive procedure is not callable in guard position. **The runtime's rejection
+  is correct**; the golden's `✓Loaded` is the falsehood.
+
+  *Why this is not a routine repair* — the file states *"All clauses byte-exact from the PDF"*
+  and this clause is book §4.3.1, p 37. Repairing it diverges the corpus from the book, which
+  is the corpus's entire purpose. There is also **no single-unit-clause formulation of
+  "is a natural number"** over Peano terms — naturalness is inherently recursive — so option
+  (a) below means either deleting the guard (changing the program's meaning versus the book)
+  or introducing new guard semantics, which is §1.14 language-authority territory and Udi's,
+  not Gabi's.
+
+  *Options* —
+  **(a) Repair the exercise.** Diverges from the book, needs express approval to touch a
+  `.glp` file, has no faithful single-unit-clause form, and may require a §1.14 decision.
+  Makes FR-009 unnecessary.
+  **(b) Keep the exercise byte-exact and record the rejection as the golden.** Preserves book
+  fidelity, requires FR-009, and converts the defect into a teaching point: the book's
+  transcribed §4.3.1 `lesseq` guard is not valid typed GLP.
+
+  *Recommendation* — **(b)**. It is the only option that keeps the corpus faithful to the book
+  while making the oracle truthful, and it needs no language change. It also surfaces a finding
+  that is worth raising with Udi in its own right: **a byte-exact transcription of book §4.3.1
+  is rejected by the typed-GLP guard rules.** That is a book/language observation, and per the
+  Bug Protocol it is reported, not silently fixed.
 - **FR-003**: The ch04/08 `flatten` golden MUST record the live oracle's result
   (`F=[5,4,3,2,1]`, no `[WARN]`) for both the Dart and C# backends.
 - **FR-004**: The ch07 substrate MUST be covered by the drift guard, such that a modification
@@ -130,7 +197,9 @@ carries a record of why each golden changed.
   "the golden was stale" from "the runtime changed behaviour", so that re-capture can never
   silently bless a regression.
 - **FR-009**: The corpus MUST be able to represent an exercise whose correct outcome is
-  rejection, not only successful loading.
+  rejection, not only successful loading. **CONDITIONAL on FR-002 (see C3)** — required if
+  FR-002 resolves to (b) *record the rejection*; out of scope if it resolves to (a) *repair the
+  exercise*. MUST NOT be planned or tasked before FR-002 is ruled.
 - **FR-010**: The Issue-10 headline documentation, which conflates approved scope with pending
   repairs, MUST be corrected to match the delivered scope.
 
