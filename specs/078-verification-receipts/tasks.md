@@ -142,9 +142,9 @@ cannot be emitted from bash, that must surface before five Python areas are buil
 - [ ] T042 [US4] Implement the bash emitter (`receipt_start` / `receipt_examined` / `receipt_skip` / `receipt_emit`) in `gn:test/receipts/emit.sh` — writes the same document as the Python emitter, LF endings (block 46, FR-022)
 - [ ] T043 [US4] Implement harness-side assertions in `gn:test/receipts/assert.sh`
 - [ ] T044 [US4] Run the conformance vectors from bash and assert 7/7 parity with the Python emitter in `gn:test/receipts/assert.sh` (FR-024) — this is what keeps two emitters honest
-- [ ] T045 [US4] Emit per-section receipts keyed `(letter, slugified-title)` in `gn:test/run_all_tests.sh` — **NOT** by letter alone: `Section I` is declared twice, at lines 1653 and 2219, and letter-keying would make one receipt silently overwrite the other (research R3, register block 06)
-- [ ] T046 [US4] Add the skip-guard fix in `gn:test/run_all_tests.sh` — an unsupported-platform skip is recorded as skipped with a reason, never `passed-by-skip` (instance 5)
-- [ ] T047 [US4] Add a build-staleness check to Section U in `gn:test/run_all_tests.sh` — compare exe mtime against source and report `UNSEARCHABLE` on a stale binary rather than presenting a build defect as a feature defect (the 37h-stale-binary case)
+- [x] T045 [US4] Emit per-section receipts keyed `(letter, slugified-title)` in `gn:test/run_all_tests.sh` — **NOT** by letter alone: `Section I` is declared twice, at lines 1653 and 2219, and letter-keying would make one receipt silently overwrite the other (research R3, register block 06)
+- [x] T046 [US4] Add the skip-guard fix in `gn:test/run_all_tests.sh` — an unsupported-platform skip is recorded as skipped with a reason, never `passed-by-skip` (instance 5)
+- [x] T047 [US4] Add a build-staleness check to Section U in `gn:test/run_all_tests.sh` — compare exe mtime against source and report `UNSEARCHABLE` on a stale binary rather than presenting a build defect as a feature defect (the 37h-stale-binary case)
 - [ ] T048 [P] [US4] Author the adoption manifest enumerating all six areas with state and date in `gn:.specify/receipts/adoption-manifest.json` (FR-017, FR-019)
 - [ ] T049 [P] [US4] Author the expected-checks manifest for the suite run in `gn:.specify/receipts/expected-checks.json` (FR-023)
 - [ ] T050 [US4] Retrofit `roadmap-sync` reconcile + import to emit receipts in `bk:src/buildkit_cli/roadmap/` (instances 4, 13)
