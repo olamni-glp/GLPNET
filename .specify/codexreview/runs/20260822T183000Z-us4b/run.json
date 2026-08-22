@@ -1,0 +1,26 @@
+{
+ "run_id": "20260822T183000Z-us4b",
+ "at": "2026-08-22T18:30:00Z",
+ "scope": "second pass on the 078 merge-gate receipts",
+ "files": [
+  "test/run_all_tests.sh"
+ ],
+ "provider": "codex",
+ "mode": "review_only",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "Sections I and U can fail to run without incrementing NOTRUN, allowing exit 0, and scan failures can still produce a false freshness result.",
+ "delivers_thesis": false,
+ "findings_count": 4,
+ "severities": {
+  "critical": 2,
+  "high": 1,
+  "medium": 1
+ },
+ "blocking": [
+  "B1",
+  "B2",
+  "B3",
+  "B4"
+ ],
+ "resolution": "all four fixed in the same session; B2 was a regression introduced by rewiring Section U to the shared freshness fact"
+}

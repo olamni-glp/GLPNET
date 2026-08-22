@@ -130,7 +130,10 @@ newest_mtime() {
     local newest="" f t
     for f in "$@"; do
         [ -e "$f" ] || continue
-        t=$(find "$f" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
+        # B3: without pipefail the pipeline reports head's status, so a find that dies partway
+        # yields a PARTIAL maximum that reads as authoritative — an unreadable newer source would
+        # be omitted and a stale binary called fresh. Scope the option to this subshell.
+        t=$(set -o pipefail; find "$f" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
         [ -n "$t" ] && { [ -z "$newest" ] || awk -v a="$t" -v b="$newest" 'BEGIN{exit !(a>b)}'; } && newest="$t"
     done
     [ -n "$newest" ] || return 1
@@ -155,7 +158,7 @@ newest_src_mtime() {
     for r in "$@"; do [ -d "$r" ] && roots="$roots $r"; done
     [ -n "$roots" ] || return 1
     # shellcheck disable=SC2086
-    t=$(find $roots -type f \
+    t=$(set -o pipefail; find $roots -type f \
             \( -name '*.cs' -o -name '*.csproj' -o -name '*.props' -o -name '*.targets' -o -name '*.sln' \) \
             -not -path '*/bin/*' -not -path '*/obj/*' \
             -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
@@ -2335,7 +2338,11 @@ GLPREPL_STALE=0
 GLPREPL_STALE_WHY=""
 if [ -f "$GLPREPL_EXE" ]; then
     _b=$(newest_mtime "$GLPREPL_EXE") || _b=""
-    _s=$(newest_src_mtime "$SCRIPT_DIR/../out/csharp" "$SCRIPT_DIR/../csharp/glp_link" "$SCRIPT_DIR/../csharp/glp_crdtmsg") || _s=""
+    _s=$(newest_src_mtime \
+            "$SCRIPT_DIR/../out/csharp/glp_repl" \
+            "$SCRIPT_DIR/../out/csharp/lib" \
+            "$SCRIPT_DIR/../csharp/glp_link" \
+            "$SCRIPT_DIR/../csharp/glp_crdtmsg") || _s=""
     if [ -z "$_b" ] || [ -z "$_s" ]; then
         GLPREPL_STALE=1
         GLPREPL_STALE_WHY="could not establish build freshness (bin='${_b:-unreadable}' src='${_s:-unreadable}')"
@@ -2355,7 +2362,7 @@ elif command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
         check "US5 cross-runtime suite (Gleam × C#)" "ok" "FAILED (scenario detail above)"
     fi
 else
-    echo "  SKIP: cross-runtime suite — needs gleam on PATH + built C# REPL ($CSREPL_BIN)"
+    skip "Section I (cross-runtime Gleam x C# link suite)" "needs gleam on PATH + built C# REPL ($CSREPL_BIN)"
 fi
 
 echo ""
@@ -2404,13 +2411,15 @@ section "T" "064 service-box drills (resume + history)"
 # never exits, so guarding here turns a host-specific drill failure into a normal FAIL line.
 set +e
 SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
-if [ -f "$SBREPL_BIN" ]; then
+if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$SBREPL_BIN" ]; then
+    unsearchable "Section T (064 service-box drills)" "$GLPREPL_STALE_WHY"
+elif [ -f "$SBREPL_BIN" ]; then
     output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
     check "T-1: US1 resume drill (auto-arm, diagnostics, SC-005 transcript)" "resume drill: PASS=7 FAIL=0" "$output"
     output=$(bash "$SCRIPT_DIR/service_box/history_drill.sh" 2>&1)
     check "T-2: US2 history drill (order, exactly-once, idempotent restart)" "history drill: PASS=4 FAIL=0" "$output"
 else
-    echo "SKIP Section T: C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
+    skip "Section T (064 service-box drills)" "C# REPL not built ($SBREPL_BIN) — standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
 fi
 set -e
 
@@ -2439,7 +2448,11 @@ CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
 # Section U reuses the ONE freshness fact established before Section I — measuring it twice
 # invites the two answers to disagree.
 CSREPL_STALE=$GLPREPL_STALE
-if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 1 ]; then
+if [ ! -f "$CSREPL_BIN" ]; then
+    # B2: previously BOTH branches required the file to exist, so an absent binary made the whole
+    # section disappear from the accounting entirely — the exact "not-run reads as a pass" hole.
+    skip "Section U (077 cyclic diagnostics)" "built C# REPL not found ($CSREPL_BIN)"
+elif [ "$CSREPL_STALE" -eq 1 ]; then
     unsearchable "Section U (077 cyclic diagnostics)" "$GLPREPL_STALE_WHY"
 fi
 if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
@@ -2490,10 +2503,6 @@ if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
     else
         check "U-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
     fi
-elif [ "$CSREPL_STALE" -eq 1 ]; then
-    : # already reported UNSEARCHABLE above — do not also report it as skipped
-else
-    skip "Section U (077 cyclic diagnostics)" "built C# REPL not found ($CSREPL_BIN)"
 fi
 set -e
 

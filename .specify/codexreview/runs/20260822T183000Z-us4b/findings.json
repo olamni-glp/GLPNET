@@ -1,0 +1,48 @@
+{
+ "findings": [
+  {
+   "id": "B1",
+   "severity": "critical",
+   "file": "test/run_all_tests.sh",
+   "line": 1,
+   "title": "Section I's unavailable-dependency branch still records no not-run receipt",
+   "detail": "When Gleam is absent or the C# REPL does not exist, the final Section I branch only executes `echo \"  SKIP: ...\"`; it does not call `skip`. Consequently SKIP and NOTRUN remain unchanged, and the suite can exit 0 although the cross-runtime check never ran.",
+   "recommendation": "Replace the raw `echo` with `skip \"Section I (cross-runtime Gleam x C# link suite)\" \"needs gleam on PATH + built C# REPL ($CSREPL_BIN)\"`.",
+   "release_blocking": true
+  },
+  {
+   "id": "B2",
+   "severity": "critical",
+   "file": "test/run_all_tests.sh",
+   "line": 1,
+   "title": "Section U silently disappears when the C# REPL is missing",
+   "detail": "Both Section U branches require `[ -f \"$CSREPL_BIN\" ]`. If the executable is absent, neither branch runs, no skip or unsearchable receipt is recorded, and the merge gate can exit 0 despite Section U not running. The same construction must also be checked in Section T, whose gate was not included here.",
+   "recommendation": "Add an explicit missing-binary branch that calls `skip` or `unsearchable`, and ensure Section T has the same exhaustive stale/fresh/missing handling.",
+   "release_blocking": true
+  },
+  {
+   "id": "B3",
+   "severity": "high",
+   "file": "test/run_all_tests.sh",
+   "line": 1,
+   "title": "Find failures inside timestamp pipelines are still swallowed",
+   "detail": "Both helpers use `find ... | sort -rn | head -1` without enabling `pipefail` or separately capturing `find`'s status. The pipeline status is normally that of `head`, so `find` may fail after emitting some timestamps while the assignment returns 0. The helper then reports a partial maximum as authoritative; an inaccessible newer source can therefore be omitted and a stale binary treated as fresh. The surrounding `|| _b=\"\"`/`|| _s=\"\"` safely prevents `set -e` from aborting, but cannot detect this swallowed pipeline failure.",
+   "recommendation": "Capture `find` output/status independently or run the pipeline in a context with `pipefail` and propagate any component failure before accepting the timestamp.",
+   "release_blocking": true
+  },
+  {
+   "id": "B4",
+   "severity": "medium",
+   "file": "test/run_all_tests.sh",
+   "line": 1,
+   "title": "The source scan still uses the entire out/csharp subtree rather than the stated ProjectReference closure",
+   "detail": "The call passes `$SCRIPT_DIR/../out/csharp`, so `newest_src_mtime` recursively includes every source project beneath that directory, not just `out/csharp/glp_repl` and `out/csharp/glp_runtime_net`. Editing an unrelated sibling project can mark an otherwise current REPL stale and make an ordinary complete run exit 2.",
+   "recommendation": "Pass the two exact roots `out/csharp/glp_repl` and `out/csharp/glp_runtime_net`, plus `csharp/glp_link` and `csharp/glp_crdtmsg`.",
+   "release_blocking": true
+  }
+ ],
+ "delivers_thesis": false,
+ "thesis_reason": "The awk arguments are quoted correctly, `a>=b` implements equality-as-stale, `${_b%%.*}` is confined to display, the max-selection compound chain is logically correct, the helper calls are protected from `set -e`, and GLPREPL_STALE is initialized before the shown reads. However, missing prerequisites still bypass the counters, and timestamp pipeline failures can still be mistaken for successful scans. Therefore a not-run check can still read as a passing gate.",
+ "release_verdict": "NO-GO",
+ "verdict_reason": "Sections I and U can fail to run without incrementing NOTRUN, allowing exit 0, and scan failures can still produce a false freshness result."
+}
