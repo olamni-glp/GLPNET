@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+## [v2026.08.22.1] - 2026-08-22
+
+### Added
+- T045-T047 harness receipts - skip/unsearchable accounting, composite section keys, build-staleness gate
+
+### Fixed
+- close codexreview B1-B4 - every skip path accounted in Sections I/T/U, pipefail on mtime scans, compile-closure scope
+- close codexreview A1-A4 - incomplete runs exit 2, full-precision mtime, failed scan is UNSEARCHABLE, freshness scoped to the real dependency closure
+
+### Changed
+- Merge pull request #205 from olamni-glp/078-receipts-gate-b1b4
+- Merge pull request #204 from olamni-glp/078-receipts-gate-hardening
+- restart pointer 2026-08-22 - A-series ledger supersedes W-series for this lane, marathon next-pointer is stale (defect), 5 measured defects raised, takt targets set
+- ariellas-lane CRDT workplan A01-A21 - closes a preservation gap the 08-20 sweep missed (064 d0187c9f was unreachable from every remote ref and tag) and corrects the zero-worktrees claim (clone 2 has one)
+- round 31 - reconcile in sync, import 1 file/0 lines (converged), 0 dup groups in 115 live, export 20/116/3760 both legs
+- Merge pull request #203 from olamni-glp/078-receipts-us4-harness
+- CRDT workplan 2026-08-22 supersedes 08-20 - 20pt delivered 112 remaining; 067 keys are PUBLIC on main across 23 tags
+- sync round 30 + reconcile + dedupe (115 scanned, 0 dup groups) + export 20/116/3761 - both publish legs OK
+- Merge pull request #202 from olamni-glp/084-onrestart-remediation-followup
+- R2 triage review of 050/058/059 + record 058 tip before deletion
+- R3 part 3 - 59 version tags lack a GitHub Release, blocked on gh release create permission
+- Merge pull request #201 from olamni-glp/main
+
 ## [v2026.08.21.3] - 2026-08-21
 
 ### Fixed
