@@ -1,0 +1,33 @@
+W07b branch deletions under engineer ruling R2 — tip SHAs recorded BEFORE deletion
+Recorded 2026-08-22 on GAVRIELLA. Baseline: origin/develop at d6e5d609.
+
+Evidence standard: these branches are NOT contained in develop, so ancestry cannot be the
+preservation proof. The proof is an ANNOTATED ARCHIVE TAG, pushed to origin, whose commit was
+verified byte-identical to the branch tip immediately before the delete. That is a stronger
+standard than ancestry: the tag holds the content itself.
+
+No deletion here claims a reflog recovery window (54 of 77 per-branch reflogs were measured
+zero-byte on 2026-08-20; retention config is unobservable).
+
+branch                              tip SHA                                   archive tag (on origin)                       tip==tag
+058-s4-policy-service               d45c40fa5fb295761774391aa0ffa683ad03fdd9  archive/058-s4-policy-service-20260820        YES
+
+Content of 058 at deletion: one commit ahead of develop,
+  d45c40fa "chore: protective pre-reboot snapshot of working tree" — 10 files, +450/-83,
+  predominantly CLAUDE.md and COOP/olamnit/handoff.md. A snapshot, not a feature.
+
+NOT deleted, and why:
+  049-wave1-guard-link-acceptance   already absent from origin; archive/049-...-20260820 pushed;
+                                    tip recorded in tidyup-deleted-branch-tips-20260820.txt.
+  050-full-gleam-combined           HELD. R2 authorises the drop, but R2 also reserves the
+                                    050-vs-059 survivor call to the engineer, and dropping 050
+                                    would pre-empt half of it. Measurement shows 050 and 059 are
+                                    COMPLEMENTARY, not redundant — 050 uniquely holds the QUIC
+                                    transport and link-lifecycle layer that no other branch has.
+                                    See w07b-050-059-triage-review-20260822.md. The archive tag
+                                    makes holding the ref cost-free.
+  059-full-scope-gleam-glp-...      REVIEWED, not dropped — R2 asked for a review, not a deletion.
+
+To restore any branch above:
+  git fetch origin 'refs/tags/archive/*:refs/tags/archive/*'
+  git branch <name> <archive-tag>^{commit}
