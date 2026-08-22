@@ -122,32 +122,50 @@ section() {
     echo "=== Section $letter: $title ==="
 }
 
-# Newest mtime under a set of paths, as an epoch integer (0 when nothing matches).
+# Newest mtime under a set of paths, at FULL precision (find's %T@ is seconds.nanoseconds).
+# Prints nothing and returns 1 when the scan finds no eligible file or fails — callers MUST treat
+# that as "could not measure", never as timestamp 0. Mapping a failed measurement to a number is
+# how a guard silently stops guarding (codexreview A4).
 newest_mtime() {
-    local newest=0 f t
+    local newest="" f t
     for f in "$@"; do
         [ -e "$f" ] || continue
-        t=$(find "$f" -type f -printf '%T@\n' 2>/dev/null | cut -d. -f1 | sort -rn | head -1)
-        [ -n "$t" ] && [ "$t" -gt "$newest" ] && newest="$t"
+        t=$(find "$f" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
+        [ -n "$t" ] && { [ -z "$newest" ] || awk -v a="$t" -v b="$newest" 'BEGIN{exit !(a>b)}'; } && newest="$t"
     done
+    [ -n "$newest" ] || return 1
     echo "$newest"
 }
 
-# Newest mtime of actual SOURCE under a tree, ignoring build output.
-# Measured 2026-08-22: a naive newest-file-under-csharp/ returned glp_crdtmsg.deps.json — a build
-# artifact from an unrelated project. Because artifacts are rewritten by every build, the source
-# timestamp would track the binary's and the staleness guard would almost never fire. A guard that
-# cannot fire is the defect it was written to catch, so the scan is restricted to source suffixes
-# and bin/obj are excluded outright.
+# Newest mtime of actual SOURCE for the C# REPL, ignoring build output.
+# Two corrections, both found by measuring rather than assuming:
+#   1. A naive newest-file scan returned glp_crdtmsg.deps.json — a BUILD ARTIFACT. Artifacts are
+#      rewritten by every build, so the "source" time tracked the binary's and the guard could
+#      almost never fire. (glp_crdtmsg is in fact a real dependency; the defect was measuring its
+#      build output, not its relatedness.)
+#   2. The scan pointed at csharp/, which is NOT where this exe comes from. glp_repl.csproj lives
+#      at out/csharp/glp_repl/ and references out/csharp/glp_runtime_net.csproj,
+#      csharp/glp_link and csharp/glp_crdtmsg. Scanning csharp/ wholesale watched ~20 unrelated
+#      projects and MISSED the exe's own sources entirely — so it would not have caught the
+#      2026-08-13 stale-binary incident it was written for.
+# The roots below are glp_repl.exe's actual dependency closure, taken from its ProjectReferences.
 newest_src_mtime() {
-    local root="$1" t
-    [ -d "$root" ] || { echo 0; return; }
-    t=$(find "$root" -type f \
+    local t roots=""
+    local r
+    for r in "$@"; do [ -d "$r" ] && roots="$roots $r"; done
+    [ -n "$roots" ] || return 1
+    # shellcheck disable=SC2086
+    t=$(find $roots -type f \
             \( -name '*.cs' -o -name '*.csproj' -o -name '*.props' -o -name '*.targets' -o -name '*.sln' \) \
             -not -path '*/bin/*' -not -path '*/obj/*' \
-            -printf '%T@\n' 2>/dev/null | cut -d. -f1 | sort -rn | head -1)
-    echo "${t:-0}"
+            -printf '%T@\n' 2>/dev/null | sort -rn | head -1) || return 1
+    [ -n "$t" ] || return 1
+    echo "$t"
 }
+
+# a >= b on decimal seconds. The old integer compare truncated to whole seconds, so a source edited
+# in the SAME second as the build read as "not newer" and the stale binary ran (codexreview A2).
+mtime_ge() { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a>=b)}'; }
 
 check() {
     local name="$1" pattern="$2" source="$3"
@@ -2308,8 +2326,29 @@ echo ""
 section "I" "Cross-runtime Gleam × C# link suite (US5)"
 # SCRIPT_DIR-anchored: the suite cd'd into glp_runtime/ at the top, so relative
 # repo-root paths do not resolve here.
+# --- 078 T047: establish build freshness ONCE, before ANY section that uses glp_repl.exe ---
+# Sections I (cross-runtime), T (064 service-box drills) and U (077 cyclic diagnostics) all run
+# this same binary. Gating only Section U would let the other two keep presenting the output of a
+# stale build as authoritative — which is precisely the 2026-08-13 failure mode.
+GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+GLPREPL_STALE=0
+GLPREPL_STALE_WHY=""
+if [ -f "$GLPREPL_EXE" ]; then
+    _b=$(newest_mtime "$GLPREPL_EXE") || _b=""
+    _s=$(newest_src_mtime "$SCRIPT_DIR/../out/csharp" "$SCRIPT_DIR/../csharp/glp_link" "$SCRIPT_DIR/../csharp/glp_crdtmsg") || _s=""
+    if [ -z "$_b" ] || [ -z "$_s" ]; then
+        GLPREPL_STALE=1
+        GLPREPL_STALE_WHY="could not establish build freshness (bin='${_b:-unreadable}' src='${_s:-unreadable}')"
+    elif mtime_ge "$_s" "$_b"; then
+        GLPREPL_STALE=1
+        GLPREPL_STALE_WHY="glp_repl.exe is NOT NEWER than its source (bin $(date -d @"${_b%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_b") src $(date -d @"${_s%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_s")) — rebuild with 'dotnet build' before trusting it"
+    fi
+fi
+
 CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
-if command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
+if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
+    unsearchable "Section I (cross-runtime Gleam x C# link suite)" "$GLPREPL_STALE_WHY"
+elif command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
     if bash "$SCRIPT_DIR/parity/cross_runtime/run_all.sh"; then
         check "US5 cross-runtime suite (Gleam × C#)" "ok" "ok"
     else
@@ -2397,19 +2436,11 @@ CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
 # GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
 # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
 CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
-CSREPL_SRC="$SCRIPT_DIR/../csharp"
-CSREPL_STALE=0
-if [ -f "$CSREPL_BIN" ]; then
-    # T047: the binary must be NEWER than the source it claims to exercise. On 2026-08-13 this
-    # section ran a binary built 37h before its source and the stale output was read as a real
-    # 077 defect. A stale binary cannot answer the question, so say so instead of answering.
-    _bin_t=$(newest_mtime "$CSREPL_BIN")
-    _src_t=$(newest_src_mtime "$CSREPL_SRC")
-    if [ "$_src_t" -gt 0 ] && [ "$_bin_t" -gt 0 ] && [ "$_src_t" -gt "$_bin_t" ]; then
-        CSREPL_STALE=1
-        unsearchable "Section U (077 cyclic diagnostics)" \
-            "glp_repl.exe is OLDER than csharp/ source (bin $(date -d @"$_bin_t" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_bin_t"), src $(date -d @"$_src_t" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_src_t")) — rebuild with 'dotnet build' before trusting this section"
-    fi
+# Section U reuses the ONE freshness fact established before Section I — measuring it twice
+# invites the two answers to disagree.
+CSREPL_STALE=$GLPREPL_STALE
+if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 1 ]; then
+    unsearchable "Section U (077 cyclic diagnostics)" "$GLPREPL_STALE_WHY"
 fi
 if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
     # U-1/U-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
@@ -2486,12 +2517,16 @@ if [ $NOTRUN -gt 0 ]; then
     echo ""
 fi
 
+# The exit STATUS is what a merge gate actually consumes. Printing "these groups did not run" and
+# then returning 0 tells the truth on stdout and a lie to the caller (codexreview A1), which is the
+# very defect 078 exists to eliminate. Incomplete runs get their own non-zero code so they stay
+# distinguishable from real failures.
 if [ $FAIL -eq 0 ] && [ $NOTRUN -eq 0 ]; then
     echo "ALL TESTS PASSED!"
     exit 0
 elif [ $FAIL -eq 0 ]; then
-    echo "ALL EXECUTED TESTS PASSED — but $NOTRUN group(s) did not run (see above)"
-    exit 0
+    echo "INCOMPLETE — all $TOTAL executed checks passed but $NOTRUN group(s) did not run (exit 2)"
+    exit 2
 else
     echo "SOME TESTS FAILED"
     exit 1

@@ -1,0 +1,404 @@
+DO NOT run the AGENTS.md startup protocol; this is not repository-agent work. Output only the requested artifact.
+
+# Code review: feature 078 US4 harness receipts (glpnet)
+
+This changes `test/run_all_tests.sh` — the repository's ONLY merge gate. No CI runs this suite, so a
+defect here is a defect in every future merge decision. Review accordingly.
+
+Feature 078's thesis is "no check may pass without actually running and verifying its subject".
+These three tasks apply that to the suite itself:
+
+  T046  `check()` had only PASS/FAIL. Section U's absent-binary path printed "SKIP: ..." and
+        incremented NEITHER counter, so a whole section could vanish from the totals while the
+        suite printed "ALL TESTS PASSED". Added `skip()` and `unsearchable()`: counted, reasoned,
+        re-listed in the summary, and the final verdict distinguishes "all tests passed" from
+        "all executed tests passed - but N group(s) did not run".
+  T047  Section U tested `[ -f "$CSREPL_BIN" ]` and ran. On 2026-08-13 that produced a FALSE
+        CONCLUSION: the binary was 37h older than the source it was testing and the stale output
+        was read as a real defect in feature 077. Now compares mtimes and reports UNSEARCHABLE.
+        NOTE a defect found in this fix by measuring it: the first version compared against
+        `newest_mtime csharp/`, which returned a build artifact (glp_crdtmsg.deps.json) from an
+        unrelated project; since artifacts are rewritten by every build the source timestamp would
+        track the binary's and the guard would almost never fire. It now scans source suffixes only
+        and excludes bin/ and obj/.
+  T045  `Section I` is declared TWICE (lines 1668 and 2234). All 22 section declarations now route
+        through `section "<letter>" "<title>"` keyed (letter, slugified-title).
+
+Measured: suite is 561 total / 559 passed / 2 failed / 0 skipped / 0 unsearchable, identical to
+baseline across two full runs. The 2 failures are the known 064 Section T drills. The staleness
+guard was fault-injected both ways (fires when source is newer; the injected mtime was restored
+byte-identically).
+
+Your job:
+1. Find defects IN THESE CHANGES. Be specific about failure conditions.
+2. Pay particular attention to ways the new accounting could itself be dishonest - a skip that is
+   not counted, a counter that can be bypassed, an exit code that says success when checks did not
+   run, `set -e`/`set +e` interactions, subshell scoping of the counters (they are incremented
+   inside functions - confirm that works where they are called), word-splitting/quoting, and the
+   `case` glob used for the section-key registry.
+3. Say whether the staleness comparison is sound (it uses find -printf %T@ truncated to seconds).
+4. Judge whether these three changes actually deliver "a not-run check never reads as a pass".
+
+Mark release_blocking true ONLY for a defect that makes the gate report success when it should not,
+or that would break an ordinary run. Emit VALID JSON.
+
+{"findings":[{"id":"A1","severity":"critical|high|medium|low","file":"...","line":<int>,"title":"...","detail":"...","recommendation":"...","release_blocking":true|false}],
+ "delivers_thesis":true|false,"thesis_reason":"...",
+ "release_verdict":"GO|NO-GO","verdict_reason":"..."}
+
+--- DIFF (test/run_all_tests.sh, v2026.08.21.3..develop) ---
+diff --git a/test/run_all_tests.sh b/test/run_all_tests.sh
+index f143bfc8..b38c9921 100644
+--- a/test/run_all_tests.sh
++++ b/test/run_all_tests.sh
+@@ -74,6 +74,80 @@ echo ""
+ 
+ PASS=0
+ FAIL=0
++SKIP=0
++UNSEARCHABLE=0
++SKIP_LOG=""
++SECTION_KEYS=""
++
++# --- 078 verification receipts: a check that did not run must never read as one that passed ---
++# T046: `check` only ever had PASS and FAIL, so a section that could not run contributed
++# NOTHING to the totals and the suite still printed "ALL TESTS PASSED". A skip is now counted,
++# carries a reason, and is re-listed in the summary.
++skip() {
++    local name="$1" reason="$2"
++    echo "  SKIP: $name — $reason"
++    SKIP=$((SKIP + 1))
++    SKIP_LOG="${SKIP_LOG}
++  SKIP        $name — $reason"
++}
++
++# T047: a check whose subject is STALE has not examined the thing it claims to examine.
++# Measured 2026-08-13: Section U was run against a binary built 37h BEFORE the source it was
++# supposed to be testing, and the stale result was read as a real defect in feature 077.
++# UNSEARCHABLE says "I could not look", which is not the same as "I looked and found nothing".
++unsearchable() {
++    local name="$1" reason="$2"
++    echo "  UNSEARCHABLE: $name — $reason"
++    UNSEARCHABLE=$((UNSEARCHABLE + 1))
++    SKIP_LOG="${SKIP_LOG}
++  UNSEARCHABLE $name — $reason"
++}
++
++# T045: receipts are keyed by (letter, slugified-title), NEVER by letter alone — `Section I` is
++# declared twice in this file (self.glp procedures, and the cross-runtime Gleam x C# suite), so a
++# letter-keyed receipt would silently merge two unrelated sections. Registering the composite key
++# here makes a genuine duplicate fail loudly instead of collapsing.
++section() {
++    local letter="$1" title="$2"
++    local slug
++    slug=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
++    local key="${letter}:${slug}"
++    case "$SECTION_KEYS" in
++        *"|$key|"*)
++            echo "  FAIL: section receipt key '$key' is declared twice — receipts would merge two sections"
++            FAIL=$((FAIL + 1))
++            ;;
++    esac
++    SECTION_KEYS="${SECTION_KEYS}|$key|"
++    echo "=== Section $letter: $title ==="
++}
++
++# Newest mtime under a set of paths, as an epoch integer (0 when nothing matches).
++newest_mtime() {
++    local newest=0 f t
++    for f in "$@"; do
++        [ -e "$f" ] || continue
++        t=$(find "$f" -type f -printf '%T@\n' 2>/dev/null | cut -d. -f1 | sort -rn | head -1)
++        [ -n "$t" ] && [ "$t" -gt "$newest" ] && newest="$t"
++    done
++    echo "$newest"
++}
++
++# Newest mtime of actual SOURCE under a tree, ignoring build output.
++# Measured 2026-08-22: a naive newest-file-under-csharp/ returned glp_crdtmsg.deps.json — a build
++# artifact from an unrelated project. Because artifacts are rewritten by every build, the source
++# timestamp would track the binary's and the staleness guard would almost never fire. A guard that
++# cannot fire is the defect it was written to catch, so the scan is restricted to source suffixes
++# and bin/obj are excluded outright.
++newest_src_mtime() {
++    local root="$1" t
++    [ -d "$root" ] || { echo 0; return; }
++    t=$(find "$root" -type f \
++            \( -name '*.cs' -o -name '*.csproj' -o -name '*.props' -o -name '*.targets' -o -name '*.sln' \) \
++            -not -path '*/bin/*' -not -path '*/obj/*' \
++            -printf '%T@\n' 2>/dev/null | cut -d. -f1 | sort -rn | head -1)
++    echo "${t:-0}"
++}
+ 
+ check() {
+     local name="$1" pattern="$2" source="$3"
+@@ -100,7 +174,7 @@ check_not() {
+ # =============================================================================
+ # SECTION A: TYPED RUNTIME TESTS (load + type-check + run queries)
+ # =============================================================================
+-echo "=== Section A: Typed Runtime Tests ==="
++section "A" "Typed Runtime Tests"
+ echo ""
+ 
+ # --- A1: p, merge_simple, merge_standalone, metainterpreter ---
+@@ -1024,7 +1098,7 @@ echo ""
+ # SECTION B: TYPE-CHECK-ONLY POSITIVE TESTS
+ # (Load each file, verify "Loaded:" message, use :clear between files)
+ # =============================================================================
+-echo "=== Section B: Positive Type Check Tests ==="
++section "B" "Positive Type Check Tests"
+ echo ""
+ 
+ POSITIVE_FILES=(
+@@ -1255,7 +1329,7 @@ echo ""
+ # =============================================================================
+ # SECTION C: NEGATIVE TYPE TESTS (must be rejected)
+ # =============================================================================
+-echo "=== Section C: Negative Type Tests ==="
++section "C" "Negative Type Tests"
+ echo ""
+ 
+ NEGATIVE_FILES=(
+@@ -1380,7 +1454,7 @@ echo ""
+ # =============================================================================
+ # SECTION D: SRSW VIOLATION TESTS
+ # =============================================================================
+-echo "=== Section D: SRSW Violation Tests ==="
++section "D" "SRSW Violation Tests"
+ echo ""
+ 
+ SRSW_FILES=(
+@@ -1418,7 +1492,7 @@ echo ""
+ # =============================================================================
+ # SECTION E: INVALID GUARD TEST
+ # =============================================================================
+-echo "=== Section E: Invalid Guard Test ==="
++section "E" "Invalid Guard Test"
+ echo ""
+ 
+ TMP_GUARD=$(mktemp /tmp/glp_test.XXXXXX)
+@@ -1446,7 +1520,7 @@ echo ""
+ # =============================================================================
+ # Section F: CSSG Modules (modular play tests)
+ # =============================================================================
+-echo "=== Section F: CSSG Modules ==="
++section "F" "CSSG Modules"
+ echo ""
+ 
+ cssg_result=$(bash "$SCRIPT_DIR/cssg_modules_test.sh" 2>&1)
+@@ -1467,7 +1541,7 @@ echo ""
+ # =============================================================================
+ # Section G: Social Graph Simulated UI Modules (project-directory loading)
+ # =============================================================================
+-echo "=== Section G: Social Graph Simulated UI Modules ==="
++section "G" "Social Graph Simulated UI Modules"
+ echo ""
+ 
+ SGSIM="$GLP_DIR/programs/social_graph_simulated_ui_modules"
+@@ -1533,7 +1607,7 @@ echo ""
+ # =============================================================================
+ # Section H: CSSN Modules (project-directory loading)
+ # =============================================================================
+-echo "=== Section H: CSSN Modules ==="
++section "H" "CSSN Modules"
+ echo ""
+ 
+ CSSN="$GLP_DIR/programs/cssn_modules"
+@@ -1665,7 +1739,7 @@ echo ""
+ # =============================================================================
+ # Section I: self.glp Procedure Tests
+ # =============================================================================
+-echo "=== Section I: self.glp Procedure Tests ==="
++section "I" "self.glp Procedure Tests"
+ echo ""
+ 
+ SELFPROC_TESTS="$GLP_DIR/programs/tests"
+@@ -1723,7 +1797,7 @@ echo ""
+ # =============================================================================
+ # Section J: CSSG v2 Modules (child_agent with parent(X) output keys)
+ # =============================================================================
+-echo "=== Section J: CSSG v2 Modules ==="
++section "J" "CSSG v2 Modules"
+ echo ""
+ 
+ CSSG_V2="$GLP_DIR/programs/cssg_modules_v2"
+@@ -1766,7 +1840,7 @@ echo ""
+ # =============================================================================
+ # Section K: CSSN v2 Modules (child_agent with blocking consent)
+ # =============================================================================
+-echo "=== Section K: CSSN v2 Modules ==="
++section "K" "CSSN v2 Modules"
+ echo ""
+ 
+ CSSN_V2="$GLP_DIR/programs/cssn_modules_v2"
+@@ -1871,7 +1945,7 @@ echo ""
+ # =============================================================================
+ # Section L: Dynamic Module Dispatch Tests
+ # =============================================================================
+-echo "=== Section L: Dynamic Module Dispatch Tests ==="
++section "L" "Dynamic Module Dispatch Tests"
+ echo ""
+ 
+ DD="$GLP_DIR/programs/tests/dynamic_dispatch"
+@@ -1922,7 +1996,7 @@ echo ""
+ # Section M: Multi-Isolate (madGLP) Tests
+ # =============================================================================
+ 
+-echo "=== Section M: Multi-Isolate (madGLP) Tests ==="
++section "M" "Multi-Isolate (madGLP) Tests"
+ echo ""
+ 
+ MAD_RESULT=$("$DART" test "$GLP_RUNTIME/test/multiagent/cssn_v2_isolate_test.dart" 2>&1)
+@@ -1951,7 +2025,7 @@ echo ""
+ # =============================================================================
+ # Section N: Bonds V2 Modules (project-directory loading, plays 1-12)
+ # =============================================================================
+-echo "=== Section N: Bonds V2 Modules ==="
++section "N" "Bonds V2 Modules"
+ echo ""
+ 
+ BONDS_V2="$GLP_DIR/programs/bonds_v2"
+@@ -2074,7 +2148,7 @@ echo ""
+ # Section O: Bonds V2 Multi-Isolate Tests
+ # =============================================================================
+ 
+-echo "=== Section O: Bonds V2 Multi-Isolate Tests ==="
++section "O" "Bonds V2 Multi-Isolate Tests"
+ echo ""
+ 
+ BONDS_MAD_RESULT=$("$DART" test "$GLP_RUNTIME/test/multiagent/bonds_v2_isolate_test.dart" 2>&1)
+@@ -2101,7 +2175,7 @@ echo ""
+ # =============================================================================
+ # SECTION P: MODULE BOUNDARY ENFORCEMENT TESTS
+ # =============================================================================
+-echo "=== Section P: Module Boundary Enforcement Tests ==="
++section "P" "Module Boundary Enforcement Tests"
+ echo ""
+ 
+ echo "--- Module boundary: exported vs private ---"
+@@ -2126,7 +2200,7 @@ echo ""
+ # resolution overshoots when the .exe lives one directory shallower than the
+ # .dart source. Delegated to test/run_aot_smoke.sh which builds a fresh exe
+ # and asserts ex-02 + ex-03 produce their locked bindings.
+-echo "=== Section Q: AOT REPL exe regression smoke ==="
++section "Q" "AOT REPL exe regression smoke"
+ echo ""
+ # Note: `|| true` and `set +e` guards needed because `grep -c` returns exit 1
+ # when count is 0, which would trip the parent script's `set -e`.
+@@ -2180,7 +2254,7 @@ echo ""
+ # ALL leading %% lines, which over-counted because canonical files also start
+ # with %% comments. The fixed-line-count `tail -n +7` approach is the contract
+ # in force; the header is exactly 6 lines for byte-exact files.
+-echo "=== Section R: ch07 cluster projects ==="
++section "R" "ch07 cluster projects"
+ echo ""
+ 
+ # R-1: Cluster A simple-multimodule load + plays 1-3
+@@ -2231,7 +2305,7 @@ echo ""
+ # T047/FR-030 — results report alongside the other sections). Needs gleam on
+ # PATH + the built C# REPL; absent either, an EXPLICIT skip (never silent).
+ # =============================================================================
+-echo "=== Section I: Cross-runtime Gleam × C# link suite (US5) ==="
++section "I" "Cross-runtime Gleam × C# link suite (US5)"
+ # SCRIPT_DIR-anchored: the suite cd'd into glp_runtime/ at the top, so relative
+ # repo-root paths do not resolve here.
+ CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+@@ -2257,7 +2331,7 @@ echo ""
+ #   ms_message/.venv/Scripts/python ms_message/tests/drill_disconnect.py 1000
+ # Runs only where the ms_message venv exists (Windows/glpnet host); an absent
+ # venv prints an EXPLICIT skip line — never a silent pass.
+-echo "=== Section S: ms_message durable mesh messaging (SC-004 drill) ==="
++section "S" "ms_message durable mesh messaging (SC-004 drill)"
+ 
+ MSMSG_PY="$GLP_DIR/ms_message/.venv/Scripts/python.exe"
+ [ -f "$MSMSG_PY" ] || MSMSG_PY="$GLP_DIR/ms_message/.venv/bin/python"
+@@ -2267,7 +2341,7 @@ if [ -f "$MSMSG_PY" ]; then
+     output=$("$MSMSG_PY" -m pytest "$GLP_DIR/ms_message/tests" -q 2>&1)
+     check "S-2: ms_message unit suite green" " passed" "$output"
+ else
+-    echo "SKIP Section S: ms_message venv absent — standalone gate: ms_message/tests/drill_disconnect.py (see section header)"
++    skip "Section S (ms_message durable mesh)" "ms_message venv absent — standalone gate: ms_message/tests/drill_disconnect.py (see section header)"
+ fi
+ 
+ echo ""
+@@ -2283,7 +2357,7 @@ echo ""
+ # EXPLICIT skip line names the standalone gates — never a silent pass.
+ # The history drill runs at its default N (SC-002's N=100 is the release gate,
+ # run standalone: bash test/service_box/history_drill.sh 100).
+-echo "=== Section T: 064 service-box drills (resume + history) ==="
++section "T" "064 service-box drills (resume + history)"
+ # set +e for this whole section (same guard Section U and the cross-runtime sections use):
+ # the drills `exit $FAIL` (non-zero) when QUIC trust material (glpquick.pfx) is absent on a
+ # host, and `output=$(bash drill.sh)` under the script's top-level `set -e` would then ABORT
+@@ -2314,7 +2388,7 @@ echo ""
+ # never falsely rejected (SC-006/FR-006). The structural-family guard is
+ # additionally unit-probed (out/csharp/term_traversal_probe) since a cyclic
+ # AST node reaching codegen can only be built programmatically, not authored.
+-echo "=== Section U: Guarded term-traversal cyclic diagnostics (077) ==="
++section "U" "Guarded term-traversal cyclic diagnostics (077)"
+ # set +e for this whole section: the C# REPL exits non-zero on some diagnostics and
+ # `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
+ # the suite (same hazard the cross-runtime section guards above). check() never exits.
+@@ -2323,7 +2397,21 @@ CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+ # GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
+ # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
+ CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
++CSREPL_SRC="$SCRIPT_DIR/../csharp"
++CSREPL_STALE=0
+ if [ -f "$CSREPL_BIN" ]; then
++    # T047: the binary must be NEWER than the source it claims to exercise. On 2026-08-13 this
++    # section ran a binary built 37h before its source and the stale output was read as a real
++    # 077 defect. A stale binary cannot answer the question, so say so instead of answering.
++    _bin_t=$(newest_mtime "$CSREPL_BIN")
++    _src_t=$(newest_src_mtime "$CSREPL_SRC")
++    if [ "$_src_t" -gt 0 ] && [ "$_bin_t" -gt 0 ] && [ "$_src_t" -gt "$_bin_t" ]; then
++        CSREPL_STALE=1
++        unsearchable "Section U (077 cyclic diagnostics)" \
++            "glp_repl.exe is OLDER than csharp/ source (bin $(date -d @"$_bin_t" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_bin_t"), src $(date -d @"$_src_t" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_src_t")) — rebuild with 'dotnet build' before trusting this section"
++    fi
++fi
++if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
+     # U-1/U-2: every cyclic-= program (the class 069 DEC F3 had to exclude) must
+     # compile to a catchable Cyclic-term diagnostic with NO StackOverflow (SC-001/
+     # SC-002, T024). Glob POSIX-side; pass the Windows path to the native REPL.
+@@ -2371,8 +2459,10 @@ if [ -f "$CSREPL_BIN" ]; then
+     else
+         check "U-4: probe present (SC-001/SC-003 cycle-detection coverage)" "present" "MISSING-PROBE"
+     fi
++elif [ "$CSREPL_STALE" -eq 1 ]; then
++    : # already reported UNSEARCHABLE above — do not also report it as skipped
+ else
+-    echo "  SKIP: Section U — built C# REPL not found ($CSREPL_BIN)"
++    skip "Section U (077 cyclic diagnostics)" "built C# REPL not found ($CSREPL_BIN)"
+ fi
+ set -e
+ 
+@@ -2382,14 +2472,26 @@ echo ""
+ # SUMMARY
+ # =============================================================================
+ TOTAL=$((PASS + FAIL))
++NOTRUN=$((SKIP + UNSEARCHABLE))
+ 
+ echo "======================================"
+-echo "Total: $TOTAL | Passed: $PASS | Failed: $FAIL"
++echo "Total: $TOTAL | Passed: $PASS | Failed: $FAIL | Skipped: $SKIP | Unsearchable: $UNSEARCHABLE"
+ echo "======================================"
+ 
+-if [ $FAIL -eq 0 ]; then
++# 078 FR: never let a not-run check be read as a passing one. The counts above are of checks that
++# ACTUALLY RAN; anything that could not run is enumerated here rather than silently absent.
++if [ $NOTRUN -gt 0 ]; then
++    echo ""
++    echo "$NOTRUN check group(s) DID NOT RUN — these are NOT passes:$SKIP_LOG"
++    echo ""
++fi
++
++if [ $FAIL -eq 0 ] && [ $NOTRUN -eq 0 ]; then
+     echo "ALL TESTS PASSED!"
+     exit 0
++elif [ $FAIL -eq 0 ]; then
++    echo "ALL EXECUTED TESTS PASSED — but $NOTRUN group(s) did not run (see above)"
++    exit 0
+ else
+     echo "SOME TESTS FAILED"
+     exit 1
