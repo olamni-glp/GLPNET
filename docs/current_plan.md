@@ -1,4 +1,9 @@
-# Restart pointer — NOT a work ledger (updated 2026-08-22 late, ariellas lane)
+# Restart pointer — NOT a work ledger (updated 2026-08-23 early, ariellas lane)
+
+> 🔴 **This revision lives on branch `085-onrestart-fleet-resume`, not `develop`.** Merge is
+> blocked in-session (block 2, now confirmed on **both** `gh pr merge` and `git merge`), so it
+> reaches `develop` only via **PR #210**. If you are reading the `develop` copy and it is dated
+> 2026-08-22, this newer revision exists on that branch — read it there.
 
 > Intentionally thin. The **roadmap + buildkit marathon state** are the source of truth
 > (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Never resume from a hand-written
@@ -91,14 +96,30 @@ Both supersede the 2026-08-20 `W01–W25` plan. Declared in `I:\coop\20260822T16
    410k tokens across 6 stages is **invisible to takt**. No stage requires `/bk-size`.
 3. **An open §1.14 question** — see `docs/open-1.14-language-authority-items.md` L2.
 
+## Done in session 3 (2026-08-23 early)
+
+- **C13 COMPLETE** — `/bk-specify` on the `bk-onrestart` feature. Spec dir
+  `specs/085-onrestart-fleet-resume/`, branch of the same name, commit `a8d00807`, **PR #210**.
+  5 prioritised stories · 29 FRs · 10 SCs · sized **midi 11** · 6 config items · 1 deliberate
+  `[NEEDS CLARIFICATION]` (FR-029, fleet-distribution scope). Marathon step
+  `mstep-01a02b2f-5fdc-…` checkpointed `complete`; **33/70**, seq 257.
+- **Roadmap round 34** — import (coop inbox) 1 file / 0 lines · reconcile in sync · **0 dup
+  groups in 117 live** · export **20 / 118 / 3793** both legs. Commit `929c29de`.
+- **ariellas capacity DECLARED BY THE ENGINEER** — 35-day horizon `2026-08-22..2026-09-26`,
+  three 8h shifts/day at 00/08/16 UTC. **Verified by content: 109 shift rows / 37 dates.**
+  Critical path 9 WPs / 720.0h now **fits**; P50 finish `2026-08-26T10:00Z`.
+  **This satisfies discharge item J3**, which was open precisely because no lane may invent
+  human capacity.
+- **ACK owed to gavriella posted** (`ariellas:000050`) — answers her `gavriella:000009` ASK 1.
+
 ## NEXT — in strict order
 
 1. **B02** — `/bk-plan` on `083`. **HELD**: FR-009's scope depends on the FR-002 ruling (block 4).
    The ch04/08 re-capture half (US1) is unblocked and can proceed independently.
 2. **C11** — `/bk-specify` the scheduler feature-stream healing feature. **Gated** on the
    readiness-authority ruling (block 5).
-3. **C13** — `/bk-specify` the `bk-onrestart` feature. **Unblocked** — highest WSJF of the three
-   new ones (4.20) and no ruling needed.
+3. **085 `/bk-clarify`** — **unblocked and cheapest next step.** Exactly one question to put:
+   FR-029, whether distributing a host profile *to* peers is in scope.
 4. **A20** — trust-material controlled reproduction (WP `ready`).
 5. **A21 / C12** — takt emission, then deploy the standing readiness procedure host-wide.
 6. **A11** — delete the 39 contained clone-1 local heads (block 3).
@@ -108,7 +129,8 @@ Both supersede the 2026-08-20 `W01–W25` plan. Declared in `I:\coop\20260822T16
 | # | Block | Why it blocks |
 |---|---|---|
 | 1 | **`067` private key material is PUBLIC on `main`** (peer X07) | `glpquick.key/.pem/.pfx` entered at `94fbe87d` (the `v2026.07.09.1` release commit), reachable from **23 of 65 version tags** and from `origin/main`, in a **public** repo. `.gitignore` prevents recurrence; history is unchanged. `067` held at `escalated`. Peer's lane; gates any 067 work here. |
-| 2 | **`gh pr merge` is refused by the auto-mode permission classifier** | **PR #208 (083 clarify) is open and cannot be merged from this session.** The verb worked on 2026-08-21 and is refused today in both PowerShell and Bash. Not routed around. |
+| 2 | **BOTH merge verbs refused by the auto-mode permission classifier** | Re-confirmed 2026-08-23 on **`gh pr merge 208`** *and* **`git merge origin/085-…`**. **4 PRs open (#208 #209 #210 #111); `develop` 11 ahead of `main`.** An API-level merge would bypass the denial's intent, so it was **not** attempted. Fix: engineer runs the merges with a `!` prefix, or adds a standing Bash permission rule (a deliberate authority decision, not a task step). |
+| 2a | **Roadmap↔spec linkage unrepairable for slug-mismatched features** *(NEW, created + measured 2026-08-23)* | Roadmap id `bk-onrestart-per-host-configurable-auto-installable-fleet-resume` vs spec dir `085-onrestart-fleet-resume`. `link --auto` → *"no new spec directories matched a promoted feature"*; `reconcile` → *"already in sync"*; `advance --to specified` → refused (*"set by reconcile"*); **`link` has no manual mode.** The roadmap will report this feature `promoted` **permanently**. Fix: add `roadmap link --feature <id> --spec-dir <dir>`. |
 | 3 | **A11 lane ownership** | 39 contained clone-1 local heads are provably safe to delete. Two lanes both claim ref-deletion scope. Ownership, not safety. |
 | 4 | **`083` FR-002** — repair the exercise, or record the rejection? | The ch04/07 exercise transcribes book §4.3.1 byte-exact; its `lesseq` guard calls a **two-clause** `natural_number/1`, which manual §8 forbids as a defined guard. **The runtime's rejection is correct.** There is no single-unit-clause formulation of "is a natural number", so repairing means diverging from the book or extending guard semantics (§1.14, Udi's). **Recommendation: record the rejection.** See `docs/open-1.14-language-authority-items.md` L1. |
 | 5 | **Readiness authority** — who may move `backlog → ready`, and on what evidence? | BREAK 1 above. The engine deliberately has no readiness writer; the fleet assumed it self-feeds. Any fix must not become the vacuous mass-promote BREAK 2 warns about. **This is the decision that unblocks the whole feature stream.** |
@@ -135,6 +157,24 @@ Both supersede the 2026-08-20 `W01–W25` plan. Declared in `I:\coop\20260822T16
   *"Critic determinism"*.
 - **D10 (peer's) NOT REPRODUCED here**: `onboard --shifts 35 --avail-hours 840` re-anchored the
   horizon to today + 35 d. Scoped, not universal.
+- **scheduler `onboard` prints a persistence step that is WRONG for a share-hosted board** (new
+  2026-08-23): it emits `git add <root>/{caps,calendar,ops}/<actor> && git commit && git push`,
+  but `I:\coop\glpnet\sched` is **not a git repo** — the op-log on the share **is** the system of
+  record. A lane following the hint gets `fatal: not a git repository` and may wrongly conclude
+  its declaration did not persist.
+- **scheduler `onboard` reports NEW ROWS, not the resulting horizon** (new 2026-08-23): it printed
+  `4 calendar` after a 35-day declaration. I mis-read my own calendar as 1 day and only caught it
+  by counting the op-log by hand. Both surfaces should state the resulting horizon.
+- **buildkit lock diagnosis is FALSE-POSITIVE on long operations** (new 2026-08-23): the registry
+  wait declares *"that is a STUCK lock, not contention"* purely because the holding PID does not
+  change across N attempts. Measured twice this session — PID 5564 (`pytest tests/threerole/`) and
+  PID 16112 (`buildkit-deploy deploy --version 9489e678`) — **both alive and doing real work.**
+  Acting on the advice would abort a peer lane's live deploy. **Always verify the PID before
+  treating the lock as stuck.**
+- **A second lane on this host writes the SHARED machine deploy-home.** Observed 2026-08-23:
+  `buildkit-deploy deploy --version 9489e678 --source-path D:/BSTDEV/research/buildkit`
+  (note *"H1/R-AF pin: unblocks takt (H2/H3/H5) and scheduler --shifts onboarding"*). Two lanes
+  now contend for one machine registry, and that deploy changes **this** repo's toolchain.
 
 ## Environment gotchas (still current)
 
