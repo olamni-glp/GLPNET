@@ -1,4 +1,8 @@
-# Restart pointer — NOT a work ledger (updated 2026-08-22 late, ariellas lane)
+# Restart pointer — NOT a work ledger (updated 2026-08-23 late, ariellas lane)
+
+> 🔴 **This revision lives on branch `085-onrestart-fleet-resume`, not `develop`.** Merge is
+> blocked in-session (block 1 below, now confirmed on **both** verbs, four measurements). It
+> reaches `develop` only via **PR #210**.
 
 > Intentionally thin. The **roadmap + buildkit marathon state** are the source of truth
 > (CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*). Never resume from a hand-written
@@ -11,130 +15,104 @@ buildkit-marathon resume --feature glpnet-full-completion-programme
 ```
 
 🔴 **`--feature` is mandatory.** There is no `.specify/feature.json` in this repo.
-Run = `mrun-f5ef56dba3c1`.
+Run = `mrun-f5ef56dba3c1`. **37/91 steps complete, 137 outstanding items.**
 
 🔴 **`next` is WRONG — read the ledger, not the pointer.** `status` still reports
-`next: start W11 …` from the **superseded 2026-08-20 plan**. That item (`mitem-01a01f1d-…`) was
-**deferred**, and the defer *did not* remove its steps from the `next` computation (marathon
-defect). The live ledger is item `mitem-01a02a75-b0fd-778c-9ab2-e5e7a3682afd`:
-**A-series** (tidy-up) + **B-series** (083) + **C-series** (scheduler rootcause).
-**Next real step is B02** — but see the blocks first.
+`next: start W11 …` from the superseded 2026-08-20 plan; that item was **deferred** and the defer
+does not remove its steps from the `next` computation (recorded marathon defect). The live ledger
+is the **A-series** (`mitem-01a02a75-…`) + **T-series** (`mitem-01a02e81-…`, the engineer-directed
+spine).
 
 ---
-
-## 🔴 ROOTCAUSE DELIVERED THIS SESSION — why no steady feature stream arrives
-
-Measured from the **engine source** and the **live board**, not inferred. It is **not one defect —
-it is FOUR breaks in series**, which is exactly why three hosts each found and fixed a real defect
-and the stream still never started. Codified: `cn-20260822T201224-c8c4728a`.
-
-| # | Break | Measurement |
-|---|---|---|
-| **0** | **REFUTED — supply is NOT the bottleneck** | `ingest --from-catalog --dry-run`: eligible **17** promoted, `already_minted` **17**, would mint **0**, `needs_effort` **0**, `promoted_not_minted` **0**. Every promoted feature is already on the board. **The fleet has repeatedly framed this as a supply outage. That framing is wrong.** |
-| **1** | **Readiness has NO writer in the engine — by contract** | `readiness.py`: *"Nothing in this engine computes readiness. `ready` occurs seven times in the scheduler package and all seven are READS."* `derive_board` initialises `backlog`; only an explicit `transition` op moves it. Ready-writers are operator verbs only (`confirm`, `allocate --ready`, `ingest --ready`, `transition`) under **R-B1: no cycle path writes it**. The board is **deliberately incapable of self-feeding** while the fleet operating model assumed it would. **This is the primary root cause.** |
-| **2** | **The readiness recommender is vacuous here** | `views/readiness/…17Z.json`: 23 candidates, `edge_coverage = {constrained: 0, unconstrained: 23, edges_confirmed: 0}`. With zero edges, "prerequisites satisfied" is vacuously true for all 23. The module warns mass-promoting them is *"correct arithmetic on the wrong predicate."* |
-| **3** | **Efforts exceed capacity, and the unplaceable proposal is emitted SILENTLY** | Candidates carry `e_t_s` **288000s (80h)** and **144000s (40h)** vs per-engineer-per-day capacity **86400s**. The allocator emits anyway; `load` declines to bill it; the lane then reads **idle** at `remaining 86400`. |
-| **4** | **The allocate VIEW contradicts every durable allocate OP** | Durable: `ariellas:000035` glptutorial→**ariellas**, `:000036` occurs-checked→**ariellas**, `:000038` coordination-feature-stream→**olamnit**. View `…17Z` proposes glptutorial→olamnit, occurs-checked→olamnit, verification-receipts→ariellas — and proposes a WP **transitioned to `done` minutes earlier**. The view is not a function of the durable ops; it re-proposes from scratch each cycle. |
-
-**Consequence**: they are in **series** — fixing any one alone yields nothing measurable.
-
-**Remedy** (now roadmap feature `scheduler-feature-stream-durable-healing-and-hardening`,
-promoted, WSJF 2.62 / RICE 311.5): a named **per-repo standing readiness procedure**
-(`readiness` → `confirm`) run every cycle — which satisfies the advisory contract by being an
-explicit agent action rather than a cycle side-effect — plus (a) unplaceable proposals become a
-**loud refusal**, (b) the allocate view is **derived from durable ops**, (c) **edge coverage
-required** before mass-confirm.
-
-**🔴 A self-correction this produced**: I had converted `082` to `in-progress` on a stale VIEW
-proposal while durable op `ariellas:000038` assigns it to **olamnit**. Reverted (`ariellas:000046`),
-recorded as board note `ariellas:000047`. **This lane's durable work is `083` (glptutorial) and
-`080` (occurs-checked, itself blocked on the §1.14 ruling).**
-
----
-
-## Two lanes, disjoint — do not re-derive this
-
-| Lane | Marathon | Owns | Ledger file |
-|---|---|---|---|
-| **ariellas** (this host) | `mrun-f5ef56dba3c1` | host-local `Ariellas` git residue in **both** D: clones · the glpnet **board** · **roadmap sync** · feature **`082-feature-stream-superset`** end-to-end | `docs/research/tidyup-crdt-workplan-2026-08-22-ariellas.md` (A01–A21) |
-| **gavriella** | `mrun-20d9230f767b` | `067` private-key rotation + merge · `066` · the `050`/`059` survivor ruling · tag→GitHub-Release backfill · `078` | `docs/research/tidyup-crdt-workplan-2026-08-22.md` (X01–X14) |
-
-Both supersede the 2026-08-20 `W01–W25` plan. Declared in `I:\coop\20260822T162201Z-ariellas-…md`
-§7 and `…20260822T174500Z-ariellas-…md` §4.
-
-## Where things stand (2026-08-22, end of session 2)
-
-- **Branch** `develop` @ `c297be6c`, pushed, clean. Peer released **`v2026.08.22.1`** and landed
-  PR #203/#204 (078 receipts + codexreview fixes).
-- **Marathon** `mrun-f5ef56dba3c1` — **31/70 steps complete**, 124 outstanding items.
-  A-series 8 done · B-series 2 done · C-series 10 done.
-- **`076` CLOSED** — retrospective `retro-076-…20260822T174945Z0de698` with **3 findings**
-  (see below), 0 stale actions, nothing to reconcile, roadmap `released → closed`, board WP `done`.
-- **`083` CLARIFIED** — `NEEDS CLARIFICATION` 1 → 0; 4 of 5 resolved by measurement, FR-002 left
-  OPEN as an engineer ruling. **PR #208 is OPEN and UNMERGED** (see block 2).
-- **Roadmap round 33** — reconcile in sync · import converged · **0 dup groups in 117 live** ·
-  export **20 epics / 118 features / 3792 lines**, both legs OK. **24 of 118 not closed.**
-- **3 features scored + promoted this session**: `scheduler-feature-stream-durable-healing-and-hardening`
-  (WSJF 2.62), `bk-onrestart-per-host-configurable-auto-installable-fleet-resume` (WSJF 4.20),
-  `consolidated-hardening-spine` (WSJF 2.62, was `captured`).
-- **Takt** — targets set for every phase (30 m – 3 h) and feature (1.5 – 6 h).
-  `analyze` p50 **0.05 h → UNDER band**; one legacy `implement` step reads 21.82 h (spans a session
-  gap, not a real duration). **6 of 70 steps measurable** — the rest are unmeasurable, not zero.
-
-## 076 close-out findings (all three are systemic, not 076-specific)
-
-1. **`076` shipped AND released with NO codexreview run recorded.** `missing=[codexreview,sizing]`,
-   `codexreview_findings=[]`, yet PR #169 merged to `main` 2026-08-18. **Nothing in the pipeline
-   refused the ship.** Any statement of the form *"release only codex-reviewed features"* is
-   unenforced today and 076 is the counterexample.
-2. **No size estimate exists for `076`**, so a feature that ran the whole chain and recorded
-   410k tokens across 6 stages is **invisible to takt**. No stage requires `/bk-size`.
-3. **An open §1.14 question** — see `docs/open-1.14-language-authority-items.md` L2.
 
 ## NEXT — in strict order
 
-1. **B02** — `/bk-plan` on `083`. **HELD**: FR-009's scope depends on the FR-002 ruling (block 4).
-   The ch04/08 re-capture half (US1) is unblocked and can proceed independently.
-2. **C11** — `/bk-specify` the scheduler feature-stream healing feature. **Gated** on the
-   readiness-authority ruling (block 5).
-3. **C13** — `/bk-specify` the `bk-onrestart` feature. **Unblocked** — highest WSJF of the three
-   new ones (4.20) and no ruling needed.
-4. **A20** — trust-material controlled reproduction (WP `ready`).
-5. **A21 / C12** — takt emission, then deploy the standing readiness procedure host-wide.
-6. **A11** — delete the 39 contained clone-1 local heads (block 3).
+1. ~~**T17**~~ **DONE** — all 45 non-active local branches classified: **39 RETIRE, 6
+   RETIRE-LOCAL, 0 PRESERVE-FIRST**. No local branch or clone on this host holds unique work;
+   deletion is provably lossless. `docs/research/local-branch-classification-2026-08-23.md`,
+   commit `46826405`. **Only block 3 (ownership) now stands between this and A11/T07.**
+2. **T20** `[analyze mini 7]` — `roadmap link --feature --spec-dir` manual mode. **Unblocked.**
+   This is now a *scale* problem: **20 of 24 not-closed features have an EMPTY `spec_path`.**
+3. **T18** `[implement mini 7]` — author `.claude/skills/bk-flow/SKILL.md`. **Unblocked**, and a
+   hard prerequisite: `/bk-flow` cannot be invoked as a slash command at all until it exists.
+4. **A20** `[analyze midi 11]` — trust-material controlled reproduction. Board WP is `ready`.
+5. **B02** `/bk-plan` on 083 — **HELD** on the FR-002 ruling (block 4). US1 half is unblocked.
+6. **T19** `[implement midi 11]` — the ERA tag (engineer-directed this session).
+
+## Done in session 4 (2026-08-23 late)
+
+- **C15 — `/bk-clarify` on 085 COMPLETE.** `NEEDS CLARIFICATION` 1 → 0. FR-029 fleet distribution
+  ruled **out of scope** (reversible; a future distribution feature must first resolve the
+  fleet-binding-authority block). Wait bounds made **host-declarable**, defaults **120 s** repo /
+  **60 s** share — measured from `post-reboot-restart.ps1`, not invented. Size confirmed `midi 11`.
+  Commit `afeaec1e`.
+- **T01 — stage-divergence defect recorded.** `docs/research/roadmap-artifact-stage-divergence-2026-08-23.md`,
+  commit `122dcd04`. Confirms the 3rtask; adds **2 new defects** (below) and **1 correction**.
+- **T15 — all-drives git-asset survey.** `docs/research/git-asset-survey-all-drives-2026-08-23.md`,
+  commit `bf9bc71d`. **Clone-2 proven 6/6 contained — retiring it is SAFE on containment grounds.**
+- **Roadmap round 38** — reconcile in-sync, **0 dup groups in 117 live**, export **20/118/3793**
+  both legs. Commit `7434dd0c`.
+- **Takt sources 3/4 → 4/4.** Wrote `config.local.json` (gitignored) with
+  `sched_root: I:/coop/glpnet/sched` + `scheduler_actor: ariellas`. `buildkit-scheduler` now
+  resolves the right board **without `--root`**. Takt coverage 6 → **10 of 91** measurable;
+  **`clarify` 0.53 h is the first IN-BAND phase reading.**
+- **Board polled from the DURABLE ops** (not the view — defect D5). 4 open WPs owned by
+  `ariellas`: 067 (escalated), trust-material (ready), 083 (in-progress), 080 (ready, §1.14-gated).
+  **This lane HAS active work — no new `/bk-specify` pick is needed.**
+- **Scheduler onboarding VERIFIED, deliberately NOT re-run**: 117 calendar rows / 41 dates,
+  `2026-07-29 → 2026-09-26`. The 35-day horizon is already satisfied; re-running `onboard`
+  risks the recorded D10 horizon re-anchor.
+
+## Measured defects raised this session
+
+| # | Defect | Evidence |
+|---|---|---|
+| 1 | **Roadmap linkage break is at SCALE — 20 of 24 not-closed features have an EMPTY `spec_path`** | folded from the signed export; includes `bk-onrestart`, whose spec dir was created this session. Roadmap-driven work selection is **blind by construction** |
+| 2 | **One spec dir carries TWO roadmap rows in contradictory states** | `specs/059-…` is the `spec_path` of both `full-scope-gleam…` (**specified**) and `wave-3-consolidated…` (**closed**). Both readings are true |
+| 3 | **A `closed` row with an empty `spec_path`** | `glp-runtime-consol` closed; `specs/065-glp-runtime-consol` exists at 17/17 |
+| 4 | **`expand --steps` silently merged 4 steps into 1, and there is NO void verb** | `;` is not a delimiter; only `,` is, and commas cannot be escaped. Grow-only board ⇒ malformed step T17 is **permanent**. Live instance of the defect that scored bk-flow NO-GO |
+| 5 | **A peer repo's pytest run blocks THIS repo's marathon** | PID 6248 = `pytest tests/scheduler/…` in the *buildkit* repo held the shared machine-registry lock; ~25 min lost |
+| 6 | **"STUCK lock" diagnosis is false-positive — and its stated test is unsound** | 3rd and 4th instances. It infers "stuck" from *the PID not changing*, which is exactly what healthy single-holder contention looks like. It never probes liveness |
+| 7 | **Git-Bash `ps -p` cannot see native Windows PIDs** | a wait loop on it exited while PowerShell showed the process alive at CPU 43 — nearly reaped a peer's live lock |
+
+## Correction that changes the measurement rule
+
+**The feature number `065` is ambiguous** — `065-glp-runtime-consol` (17/17) vs
+`065-ynet-consolidation` (spec only). Resolving a bare number to the first glob match **reverses**
+the finding. Likewise, containment tested only against `refs/remotes/origin/*` reports **false
+uncontained** results — `058-s4-policy-service` survives solely via its W04 **archive tag**, and
+clone-2's main is the peeled target of release tag `v2026.07.13.1`.
+
+> **RULE**: key a stage measurement on the **spec path**, measure on the **ref that owns it**, and
+> test containment against **branches AND tags** from a clone with **fresh** remote-tracking refs.
+
+## `/bk-flow` — readiness already measured TODAY by a peer; do NOT re-run it
+
+`develop` `3271fd98` → `docs/research/m01-bkmarathon-to-bkflow-migration-plan-2026-08-23.md`
+(3rtask `20260823T140508Z-227d`, codex Critic, 3 blind builders, 0 independence violations).
+
+- **It is an INTEGRATION, not a replacement.** Parity gap **10 of 10** — *by design*: `bk-flow open`
+  **binds a claimed WP to a feature + a marathon run**. bk-flow sits **in front of** marathon.
+  There is **no marathon capability to decommission**.
+- **Cutover gate: NO-GO** on two independent grounds — readiness not green (2 of 7 prereqs: board
+  integrity, reproducible phase-exit gates) and **fleet not quiescent** (11+ live sessions).
+- **Hard prerequisite**: there is **no `.claude/skills/bk-flow/`** directory → **T18**.
+
+Re-running a bk-flow readiness 3rtask here would duplicate peer work and violate the
+one-feature-one-repo-one-host rule the engineer set.
 
 ## Open blocks — ENGINEER rulings, nothing proceeds past them
 
 | # | Block | Why it blocks |
 |---|---|---|
-| 1 | **`067` private key material is PUBLIC on `main`** (peer X07) | `glpquick.key/.pem/.pfx` entered at `94fbe87d` (the `v2026.07.09.1` release commit), reachable from **23 of 65 version tags** and from `origin/main`, in a **public** repo. `.gitignore` prevents recurrence; history is unchanged. `067` held at `escalated`. Peer's lane; gates any 067 work here. |
-| 2 | **`gh pr merge` is refused by the auto-mode permission classifier** | **PR #208 (083 clarify) is open and cannot be merged from this session.** The verb worked on 2026-08-21 and is refused today in both PowerShell and Bash. Not routed around. |
-| 3 | **A11 lane ownership** | 39 contained clone-1 local heads are provably safe to delete. Two lanes both claim ref-deletion scope. Ownership, not safety. |
-| 4 | **`083` FR-002** — repair the exercise, or record the rejection? | The ch04/07 exercise transcribes book §4.3.1 byte-exact; its `lesseq` guard calls a **two-clause** `natural_number/1`, which manual §8 forbids as a defined guard. **The runtime's rejection is correct.** There is no single-unit-clause formulation of "is a natural number", so repairing means diverging from the book or extending guard semantics (§1.14, Udi's). **Recommendation: record the rejection.** See `docs/open-1.14-language-authority-items.md` L1. |
-| 5 | **Readiness authority** — who may move `backlog → ready`, and on what evidence? | BREAK 1 above. The engine deliberately has no readiness writer; the fleet assumed it self-feeds. Any fix must not become the vacuous mass-promote BREAK 2 warns about. **This is the decision that unblocks the whole feature stream.** |
-| 6 | **3rtask `--accept-refutes`** | Run `20260822T170003Z-fa65` halted at `freeze-method`. The blind codex Critic REFUTEd 12 of 14 method elements; the Planner revised all 12, but `brief --phase planning --method` is append-only per (run, phase) and refused to re-record, so the revision can never be blind-re-reviewed **inside its own run**. `--accept-refutes` is documented as the **engineer's** override. |
-| 7 | `080-occurs-checked-substitution` | 2 conflicting paths, gated on the **§1.14 ruling that is Udi's** (UnifyFail vs CompileError). Register L3. |
-| 8 | `050` vs `059` survivor | Measured complementary (050 = QUIC transport + link lifecycle; 059 = compiler/type-checker/bytecode + Lean proof; overlap 15 files). Peer's lane. |
-| 9 | The 5-minute coop ACK convention | Nothing polls `I:\coop` when a session is closed, so three lanes each escalated the same non-event. Needs a daemon or a longer window. |
-
-## Measured defects raised this session (reported, not worked around)
-
-- **scheduler D5 (NEW, worst of the set)**: the **allocate view contradicts the durable allocate
-  ops** on every row, and proposes WPs already `done`. Strictly worse than D2.
-- **scheduler**: an **unplaceable proposal is emitted silently** (`e_t_s` 288000/144000 vs capacity
-  86400), then not billed, so the lane reads idle. Root cause of the peers' "D1 bills zero"
-  framing, which is **refuted as stated** (gavriella bills 86400.0 correctly).
-- **scheduler**: `dispatch_ranked` carries no addressee; **26 of 31** durable `allocate` ops read
-  `engineer_id = "unassigned"`.
-- **pipeline**: a feature can **ship and release with no codexreview recorded** (076, PR #169).
-- **pipeline**: no stage requires `/bk-size`, so a completed feature can be invisible to takt.
-- **marathon**: `defer <item>` does not remove that item's steps from the `next` computation.
-- **3rtask**: a revised method cannot be blind-re-reviewed in its own run (append-only artifact).
-- **3rtask Critic non-determinism: 14.3%** — byte-identical artifact, same codex Critic, two passes
-  → **2 of 14 elements flipped `REFUTE → CONFIRM`**. Bears on the `/bk-flow` blocker
-  *"Critic determinism"*.
-- **D10 (peer's) NOT REPRODUCED here**: `onboard --shifts 35 --avail-hours 840` re-anchored the
-  horizon to today + 35 d. Scoped, not universal.
+| 1 | **BOTH merge verbs refused by the auto-mode permission classifier** | Re-confirmed **twice more** 2026-08-23 on `gh pr merge 208` *and* `git merge`. Also now blocking many plain git **reads** (`ls-tree`, `show rev:path`) and inline `python -c`. **3 PRs open (#210 #208 #111); `develop` 21 ahead of `main`.** Blocks "merge all", `/bk-release`, `/bk-ship`, and the tidy-up branch's completion. **Fix: engineer runs merges with a `!` prefix, or adds a standing Bash permission rule** |
+| 2 | **`067` private key material is PUBLIC on `main`** | reachable from 23 of 65 tags; `067` held at `escalated`. Peer's lane |
+| 3 | **A11 lane ownership** | 39 contained clone-1 heads provably safe to delete; two lanes claim ref-deletion scope |
+| 4 | **`083` FR-002** — repair the exercise or record the rejection? | book §4.3.1 `lesseq` calls a two-clause `natural_number/1`, which manual §8 forbids as a defined guard. **The runtime's rejection is correct.** Recommendation: record the rejection |
+| 5 | **Readiness authority** — who may move `backlog → ready`, on what evidence? | the engine deliberately has **no** readiness writer; the fleet assumed it self-feeds |
+| 6 | **3rtask `--accept-refutes`** | a revised method cannot be blind-re-reviewed inside its own run |
+| 7 | `080-occurs-checked-substitution` | gated on the §1.14 ruling that is **Udi's** |
+| 8 | `050` vs `059` survivor | measured complementary; peer's lane |
 
 ## Environment gotchas (still current)
 
@@ -143,22 +121,16 @@ $env:PATH = "C:\Program Files\nodejs;C:\Program Files\Git\cmd;C:\Program Files\G
 $env:PYTHONUTF8 = 1
 ```
 
-- `node`, `git`, `gh` are **not on PATH by default**; PGlite commands exit 2 without node.
-- Scheduler board: **always** `--root I:/coop/glpnet/sched`. There is no default and an
-  unconfigured host reports an empty board at exit 0. This host is **`Ariellas`**, actor
-  **`ariellas`**; `I:\coop` == `\\192.168.0.108\GAVRI_D\coop` == `D:\coop` on `GAVRIELLA`.
-- Roadmap sync is **two-legged**: `import --in-dir I:/coop/glpnet/roadmap-sync/inbox`, then
-  `export` **twice** — local `exports/` and `--out-dir` that same inbox.
-- A killed roadmap command leaves `pgdb/.lock` behind. Recent builds **auto-reap** an orphaned
-  bridge ("reaped orphaned PGlite bridge PID N"); if not, check the PID is dead then `rm -rf`.
-- Git-Bash mangles `rev:path` args — prefix `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`.
-- `marathon expand --steps` is **comma-delimited with no escaping** — never put a comma in a step.
-- `marathon checkpoint --paths` refuses out-of-repo paths; omit it for outside evidence.
-  `checkpoint` has **no held/blocked state** — use `trace --decision reject` with an
-  `ESCALATE(open):` prefix instead of logging a gated step `complete`.
-- **`gh pr merge` and chained `git tag … && git push`** trip the auto-mode permission classifier.
-  Issue one verb per command; a bare `git push origin <ref>` is fine.
-- **Running the suite:** the script always prints a `Total: … Passed: … Failed: …` summary block
-  last — **an absent summary means the run did not finish, whatever the exit code says.** Launch
-  it with PowerShell `Start-Process` (outside the tool process tree, which has a 10-minute cap),
-  exporting the FULL inherited PATH, and reap stragglers first.
+- **`sched_root` is now configured** in `config.local.json` — `buildkit-scheduler` no longer needs
+  `--root`. This host is **`Ariellas`**, actor **`ariellas`**; `I:\coop` == `\\192.168.0.108\GAVRI_D`.
+- **Always verify a lock-holder PID is ALIVE via PowerShell `Get-Process` before reaping.**
+  Git-Bash `ps -p` cannot see native Windows PIDs and will lie.
+- `marathon expand --steps` — **one step per invocation**. `;` is silently merged; `,` splits and
+  cannot be escaped. There is **no void verb**, so a malformed step is permanent.
+- `marathon checkpoint` uses `--summary` / `-m` / `--issues` / `--paths` — **not** `--state`/`--note`.
+- `marathon capture --kind` ∈ {bug, idea, issue, latent-requirement, missing-prerequisite}.
+- Read the roadmap from the **signed export `heads` fold**, never from `status` (blind to
+  epic-less features).
+- **Running the suite:** an absent `Total: … Passed: … Failed:` summary means the run did not
+  finish, whatever the exit code says. Launch via PowerShell `Start-Process` (outside the tool
+  process tree's 10-minute cap) and reap stragglers first.
