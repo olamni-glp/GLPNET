@@ -113,6 +113,39 @@ The 3 are `threerole/__main__.py`, `threerole/merge.py`, `threerole/model.py` �
 commit.** A third version surface disagrees again: pip's dist-info says `buildkit_cli-2026.8.19.1`
 while the module self-reports `2026.8.23.1`.
 
+> ### 🔴 RE-MEASURED 2026-08-23T14:40Z — the figures immediately above are SUPERSEDED
+>
+> The buildkit repo **changed under this session**: it was on branch
+> `087-import-untrusted-key-warning` with 7 modified files at ~14:00Z; at 14:40Z it is on
+> `flow-adoption-3rtask` with a **clean tree**. Both readings were true when taken. Re-measured
+> against the same pinned `2026.08.23.1`:
+>
+> | | ~14:00Z | **14:40Z** |
+> |---|---:|---:|
+> | line-ending-only | 48 | 48 |
+> | **real content differences** | 3 | **24** |
+> | **files absent from the pinned version entirely** | 0 | **5** |
+> | uncommitted files in the executing tree | 7 | **0** |
+>
+> **WITHDRAWN:** "exactly 3 real" and "runs code that exists in no commit". Both were accurate at
+> 14:00Z and are wrong now. The corrected statement is **stronger**: the executing tree is *ahead
+> of* the pinned version by 24 changed files plus 5 that do not exist in it at all — including
+> `scheduler/engine/daemon/{allocate_writer,ingest,cycle,plan,board,substrate_io}.py`, i.e. **the
+> exact scheduler code this feature's root cause is about**, and new `pipeline/takt.py` +
+> `pipeline/takt_store.py`. The divergence is *shipped work the pin cannot see*, not dirt.
+>
+> **Two items discharge as a result, both by another lane while this session ran:**
+> - The 3rtask false-corroboration fix **merged as PR #622** (`f50e1e87`,
+>   *"refuse empty claim text instead of merging it as corroborated"*). TOOL-R8's
+>   uncommitted-work half is closed; **TOOL-R9 still stands** — the corroboration counts this
+>   feature's evidence rests on have still not been re-checked.
+> - `7a7e1285` / PR #618 — *"expand splits on COMMA and never said so"* — **fixes the
+>   `expand --steps` delimiter defect this marathon has carried since 2026-08-20**, the one that
+>   permanently mangled seven steps on this very run.
+>
+> This paragraph is itself the rule in action: *a measured claim is stamped, and a claim older
+> than the measurement is a hypothesis until re-run.*
+
 *Not overclaimed:* two tombstoned dists (`~uildkit_cli-2026.7.21.1`, `~uildkit_cli-2026.8.15.1`)
 and an orphan `site-packages/buildkit_cli/core_pack` with no `__init__.py` are present, but the
 orphan was **verified not to shadow** — a regular package later on `sys.path` beats a namespace
@@ -178,5 +211,58 @@ scoping is an engineer call; this file records it as open rather than picking a 
 
 ---
 
-*Authoritative content for the `codify-consolidated-hardening-feature` step of marathon
-`mrun-20d9230f767b`. Update this file, then reflect state in the marathon; never the reverse.*
+---
+
+## Appendix — unshipped inventory, measured 2026-08-23T14:40Z
+
+Step `inventory-unshipped-features-patches-chores` (`mstep-01a0199b-c0b1`). Every figure below
+names its ref, per binding rule 5.
+
+**glpnet working tree:** clean (`git status --porcelain -uall` = 0). **Linked worktrees: 0** —
+re-verified again today; every `wt-*` path on `D:` belongs to another repo.
+
+**glpnet local heads: 5** — `066-wave6-consolidation`, `067-qr-link-provisioning`,
+`078-verification-receipts`, `develop`, `main`. Unpushed: `067-qr-link-provisioning` **+1** and
+`develop` **+1** (this session's codify commit). All others level with their upstream.
+
+**glpnet origin heads: 21** (an earlier count of 22 included the `refs/remotes/origin` listing
+artifact, which is not a branch). `origin/develop` is **13 ahead / 0 behind** `origin/main` — one
+uncut release. **17 of 21 are UNMERGED into `origin/develop`:**
+
+| branch | ahead of develop | last commit |
+|---|---:|---|
+| `050-full-gleam-combined` | 48 | 2026-07-29 |
+| `059-full-scope-gleam-glp-implementation` | 32 | 2026-07-29 |
+| `067b-qr-link-continuation` | 27 | 2026-08-11 |
+| `051-ynet-transport` | 26 | 2026-07-16 |
+| `067-qr-link-provisioning` | 25 | 2026-08-11 |
+| `066-wave6-consolidation` | 23 | 2026-08-11 |
+| `backup/030-phase8-polish` | 9 | 2026-06-15 |
+| `030-phase8-polish` | 8 | 2026-06-13 |
+| `085-onrestart-fleet-resume` | 7 | **2026-08-23 — live, another lane** |
+| `backup/078-olamnit-impl-preserve` | 5 | 2026-08-19 |
+| `chore/tidy-up-branches-worktrees-20260822-olamnit` | 4 | 2026-08-23 |
+| `083-glptutorial-corpus-goldens` | 2 | 2026-08-22 |
+| `080-occurs-checked-substitution` | 2 | 2026-08-16 |
+| `017-conversion-plan-agents` | 2 | 2026-07-19 |
+| `016-codeconv-init-scaffold-langpair` | 2 | 2026-07-19 |
+| `backup/upgrade/buildkit-migration-20260627T220138Z` | 1 | 2026-06-27 |
+| `078-verification-receipts` | 1 | 2026-08-20 |
+
+Contained (safe to consider for cleanup under the C2 rules): `082-feature-stream-superset`,
+`065-ynet-consolidation`, plus `main` and `develop`.
+
+`051-ynet-transport` (26 ahead, untouched since 2026-07-16) does **not** appear in the 08-22
+ledger's X01–X17 and is **newly surfaced here**. `050` and `059` remain complementary — the X10
+ruling is still owed and picking one still discards a subsystem.
+
+**Connected repos — patches/chores:** `D:/BSTDEV/research/buildkit` is on `flow-adoption-3rtask`,
+**clean, 0 unpushed**, and carries **32 linked worktrees** (the volatile-`TEMP` population already
+logged as `mitem-01a02e87`). Nothing unshipped there as of this measurement — a state that
+changed twice during this session, so it is stamped, not assumed.
+
+---
+
+*Authoritative content for the `codify-consolidated-hardening-feature` and
+`inventory-unshipped-features-patches-chores` steps of marathon `mrun-20d9230f767b`. Update this
+file, then reflect state in the marathon; never the reverse.*
