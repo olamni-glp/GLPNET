@@ -174,3 +174,75 @@ under-reports permanently. Sizes are the canonical scale (already given above).
    here: a merge reported DONE was rewritten out of existence and its receipt sha went dead; the
    content survived only because a peer landed it independently. Push a merge before pulling, or use
    `--rebase-merges`. **Verify a receipt by content, never by the sha you were handed.**
+
+---
+
+# Merged in from the `gavriella` lane / `olamnit-assistant` repo, 2026-08-23T20:4xZ
+
+Four items measured on host GAVRIELLA while driving `mrun-eae934194c04`. Added here rather than in a
+third file, per the unification rule.
+
+## ⚠ Trap 10 — a takt `verdict` is recomputed AT READ TIME, so takt history is not a record
+
+`verdict` is evaluated against whatever `takt-target` bands are current when you *read* it. It is
+**never stamped at completion**. Measured on the same 21 steps, one day, **no step worked between
+any of the three reads**:
+
+| Read | `under` | `in-band` | what changed |
+|---|---:|---:|---|
+| A | **20** | **1** | baseline, no targets set |
+| B | **10** | **11** | bands set |
+| C | **20** | **1** | bands realigned to the ERA targets (1.5–6 h feature / 30 min–3 h phase) |
+
+**Consequences.** Changing a band silently rewrites the verdict of every step ever completed,
+including other sessions' work. No takt count is comparable across lanes unless both quote their
+bands. A lane reporting *"11 in-band"* is not lying — the number is simply not about the work.
+
+**Rule: quote the bands with every takt figure, or omit the figure.** Stamping at completion has
+been requested of the buildkit lane; until it lands this trap is permanent.
+
+## ⚠ Trap 11 — `BUILDKIT_ENGINE_OVERRIDE=ambient` degrades SILENTLY under a registry lock
+
+Measured: the identical `buildkit-roadmap --json reconcile` returned the full `pipeline_binding`
+report at 16:4xZ and a bare `{"reconciled": []}` at 17:3xZ — **no error, still exit 0** — while a
+live peer held the deploy-home registry. The override simply stopped applying.
+
+**Rule: check for the expected KEY in the output, never the exit code.** The proven route that works
+even while the registry is locked is to bypass engine resolution entirely:
+
+```python
+import sys; sys.path.insert(0, r"<buildkit>/src")
+from buildkit_cli.roadmap import store; store.pipeline_binding_report()
+```
+
+*(This is the environment half of your trap 6. Independently reproduced here on **PID 24936** — the
+same PID your unification note cites — alive, CPU climbing 60 s → 81 s, exited on its own.)*
+
+## ⚠ Trap 12 — "the catalog" is not one thing: the roadmap half converges, the pipeline half never does
+
+`pgdb/` is in-repo and git-ignored, so **every clone and worktree carries its own catalog**. But the
+two halves behave differently, and conflating them produces false disagreements between lanes:
+
+| Half | Replicated by | Comparable across lanes? |
+|---|---|---|
+| `roadmap_*` | export / import / sync | **yes** |
+| `pipeline_stage` | **nothing** — written only by the stage skills of the lane that ran them | **no** |
+
+Measured: two lanes reported `13` and `19` distinct pipeline ids (both correct, different checkouts)
+while **both** reported `roadmap_without_spec_path: 43` — identical, because that half syncs.
+
+**Rule: a roadmap count may be quoted fleet-wide; a PIPELINE-derived count may not** — including
+`bound N of M`, since `reconcile` joins across both halves. Name the checkout for pipeline figures.
+
+## ⚠ Trap 13 — restart-document version suffixes are PER-LANE, not a fleet sequence
+
+`RESTART-PREP-v3-olamnit-lane.md` is **not** newer than `RESTART-PREP-v2-resume-marathon.md` — they
+are different runs on different hosts (`mrun-d7d0c6d4758f` vs `mrun-eae934194c04`). One repo held
+**twelve** restart/sitrep documents from **three** lanes.
+
+**A session told to "read the newest restart prep" resumes another host's work.** This nearly
+happened here.
+
+**Rule: every restart document names its `run id`, `lane`, `host` and `repo` in its first table, and
+no reader ever selects by filename.** This is `filename-is-not-content` with a version suffix
+attached.
