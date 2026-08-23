@@ -96,6 +96,52 @@ Both supersede the 2026-08-20 `W01–W25` plan. Declared in `I:\coop\20260822T16
    410k tokens across 6 stages is **invisible to takt**. No stage requires `/bk-size`.
 3. **An open §1.14 question** — see `docs/open-1.14-language-authority-items.md` L2.
 
+## 🔴 SESSION 3 HEADLINE — the "stuck at specified" premise is FALSE
+
+3rtask run `20260823T112021Z-6855` (method frozen after **4 blind codex review rounds**,
+12→8→6→1 refutes; 3 blind builders; 236 claims; independence audit clean) measured the four
+features **from their artifacts**, not from the roadmap:
+
+| Feature | clarify | plan | tasks | analyze | implement | codexreview | ship | close |
+|---|---|---|---|---|---|---|---|---|
+| **067** | OK | OK | OK | OK | OK | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **066** | OK | OK | OK | OK | OK | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| **059** | OK | OK | OK | OK | OK | **BLOCKED** | **BLOCKED** | OK¹ |
+| **065** | OK | absent | absent | OK | **BLOCKED** | **BLOCKED** | **BLOCKED** | **BLOCKED** |
+| *076 control* | — | — | — | — | — | **BLOCKED** | SHIPPED | CLOSED |
+
+¹ 059's close is recorded under feature **064**, not its own id.
+
+**The roadmap says `specified`. The artifacts say `implement`. The roadmap is wrong by up to five
+stages** — every plan aimed at "specified → done" was aimed at the wrong stage.
+
+**ROOT CAUSE — `MISSING_REVIEW_GATE` at `codexreview`, corroborated by 3 of 3 blind builders on
+4 of 4 features.** The control proves the mechanism: **076 reached close by BYPASSING codexreview,
+not by passing it.** The gate has two failure modes and no success mode — features either stall
+there forever (059/066/067) or skip it and ship (076). **Fixing codexreview ownership +
+enforcement unblocks 4 of 4. Every other remedy is downstream of it.**
+
+Positive control — 5 cited practices 076 did that the stalled ones did not: owned its **own ship
+event**; **measured per-stage effort** (6 token rows, 410k); kept out-of-scope questions **OUT**;
+closed under its **own id with a terminal status**; **classified and routed** every finding.
+*A feature completes when it owns its ship, its id and its effort record, and routes everything
+else out; it stalls when it absorbs other features' work and defers its own.*
+
+Full report: `.specify/3rtask/runs/20260823T112021Z-6855/` (curator report + escalations).
+
+## CRDT workplan is IN the marathon (T01–T14)
+
+Item `mitem-01a02e81-b2e9-7041-a611-89fc5aeaaf3f`, expanded into **14 durable steps**; marathon
+grew 70 → **84 steps**. Survey measured on this host: **1 worktree** (clean), **46 local
+branches**, **34 unmerged remote branches**, **1 unpushed commit** `d0187c9f` on
+`064-durable-walfix` (**another lane's — do not push**). Sizes: nano 1 · micro 3 · mini 7 ·
+midi 11 · maxi 17 · saga 35.
+
+`/bk-flow` migration is **T12–T14**, deliberately ordered: **build the 4 missing rollout controls
+FIRST** (staged rollout, version negotiation, rollback, kill switch — item N10 measured bk-flow at
+0 of 4), then migrate, then record a safety verdict with a rollback rehearsal receipt. Directive
+captured as `mitem-01a02e60-b7a4-762a-96f9-dcba3757f1fd`.
+
 ## Done in session 3 (2026-08-23 early)
 
 - **C13 COMPLETE** — `/bk-specify` on the `bk-onrestart` feature. Spec dir
