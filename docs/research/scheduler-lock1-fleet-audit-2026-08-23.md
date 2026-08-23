@@ -7,52 +7,66 @@ before the fix is called fleet-wide: *"the same three links should be checked on
 before the fix is called fleet-wide — that verification is **not** done here and must not be
 assumed."* It is done here.
 
+> **Revision 2 (same day) — the first figures published in this file were WRONG and are
+> withdrawn.** They counted every historical `allocate` op instead of folding to the current
+> addressee per WP, and they classified the pool from a hard-coded token list. A codex review
+> (`20260823T022313Z`) caught both. Every number below is the corrected measurement; the
+> differences are large and they change the conclusion for three boards.
+
 ## What changed in the reading
 
-Lock 1 was `missing_proposed_actor > 0` — a presence test. FR-011 classifies the addressee
-instead: blank / **pool** (`unassigned` and kin) / **unknown here** / real. Pool-addressed work
-now opens Lock 1, because it is legitimately minted but not *dispatchable*.
+Lock 1 was `missing_proposed_actor > 0` — a presence test. FR-011 classifies the *current*
+addressee instead: blank / **pool** / **unknown here** / real, where
+
+- **current** means the last `allocate` per `wp_id` in R2 order — the same "last proposal wins"
+  rule `confirm._addressing` admits on. Counting history instead made Lock 1 *uncloseable*: a WP
+  minted to the pool and later reallocated kept its pool row for ever.
+- **pool** is derived from the board's own ops, not guessed: `ingest` stamps
+  `payload.roadmap_slot` on what it mints, so the addressee of such an op *is* that board's pool
+  actor. `--pool-actor` is configurable, and a hard-coded vocabulary silently misses a renamed
+  pool.
 
 ## Measurement
 
-| board | allocs | blank | pool | unknown | Lock 1 before | Lock 1 after |
-|---|---:|---:|---:|---:|---|---|
-| buildkit | 146 | 73 | 0 | 0 | open | open |
-| crucible | 128 | 66 | 45 | 0 | open | open |
-| **glpnet** | 33 | 0 | **26** | 0 | **CLOSED — false all-clear** | **open** |
-| hatzinor | 36 | 17 | 18 | 0 | open | open |
-| lejepa | 42 | 5 | 0 | **2** | open | open |
-| mstack | 86 | 44 | 5 | 0 | open | open |
-| olamnit-assistant | 109 | 100 | 0 | 0 | open | open |
-| olamnit | 11 | 11 | 0 | 0 | open | open |
-| ospark | 22 | 0 | 0 | 0 | closed | closed |
-| qhstate | 81 | 39 | 36 | 0 | open | open |
-| tefl | 37 | 19 | 14 | 0 | open | open |
-| yngenios-research | 102 | 94 | 0 | 0 | open | open |
-| **yngenios-windows** | 30 | 0 | **28** | 0 | **CLOSED — false all-clear** | **open** |
-| yngenios | 0 | 0 | 0 | 0 | UNMEASURED | UNMEASURED |
+| board | ops | WPs | blank | pool | unknown | Lock 1 | Lock 2 | derived pool actor |
+|---|---:|---:|---:|---:|---:|---|---|---|
+| buildkit | 146 | 73 | 0 | 0 | 0 | **closed** | closed | |
+| crucible | 128 | 104 | 49 | 40 | 0 | open | closed | |
+| glpnet | 33 | 28 | 0 | **22** | 0 | open | closed | |
+| hatzinor | 36 | 35 | 16 | 18 | 0 | open | closed | |
+| lejepa | 42 | 35 | 0 | **30** | 2 | open | closed | **`ariellas-lejepa`** |
+| mstack | 86 | 49 | 14 | 5 | 0 | open | closed | |
+| olamnit-assistant | 109 | 37 | 31 | 0 | 0 | open | closed | |
+| olamnit | 11 | 11 | 11 | 0 | 0 | open | closed | |
+| ospark | 22 | 10 | 0 | 0 | 0 | **closed** | closed | |
+| qhstate | 81 | 80 | 39 | 36 | 0 | open | closed | |
+| tefl | 37 | 33 | 19 | 10 | 0 | open | closed | |
+| yngenios-research | 102 | 46 | 6 | 0 | **3** | open | **open** | |
+| yngenios-windows | 30 | 28 | 0 | **27** | 0 | open | closed | |
+| yngenios | 0 | 0 | 0 | 0 | 0 | UNMEASURED | UNMEASURED | |
 
 ## What it says
 
-- **Two boards were reading a false all-clear**, not one: `glpnet` (26 of 33) and
-  **`yngenios-windows` (28 of 30)** — both had zero blanks, so the presence test found nothing
-  to report while nearly all their work sat in the pool with no owner. `yngenios-windows` was
-  not previously known to be affected.
-- **Pool-addressed work is widespread but not universal:** 8 of 14 boards carry it, 172
-  allocations in total. On the other 6 boards Lock 1 was already open on blanks, so FR-011 adds
-  precision there rather than a flip — the fix is worth propagating, but it is not the whole
-  remedy anywhere except those two boards.
-- **`ospark` is the only genuinely healthy board** — 22 allocations, every one addressed to a
-  real actor, both locks closed.
-- **`lejepa` carries 2 addressees unknown to its own board.** Reported, deliberately not gated
-  (it is what a first address to a newly-onboarded host looks like). Worth a human glance.
+- **Three boards were reading a false all-clear on Lock 1** — `glpnet` (22 of 28),
+  `yngenios-windows` (27 of 28) and **`lejepa` (30 of 35)**. All three have zero blanks, so the
+  old presence test found nothing to report while nearly all their work sat unowned.
+- **`lejepa` is the live proof that a hard-coded pool vocabulary is not enough.** Its pool actor
+  is `ariellas-lejepa`, which no built-in list would contain; before the fix its 30 unowned WPs
+  fell through to *unknown*, which is reported but deliberately **not** gated — the false green
+  in a new costume.
+- **`buildkit` is healthy, and the earlier revision said otherwise.** Its 73 blank allocations
+  are all superseded by later addressed ones; folding to the current addressee leaves 0 blank
+  and 0 pool across 73 WPs. Judging on history alone libels a board that has done the work.
+- **`ospark` is likewise clean** — 10 WPs, all addressed to real actors.
+- **Pool-addressed work is widespread but not universal:** 8 of 14 boards carry it, 188 WPs.
+- **`yngenios-research` is the only board with Lock 2 open** (`e_t_s <= 0`), and it carries 3
+  addressees unknown to its own board. `lejepa` carries 2. Reported, not gated — that is what a
+  first address to a newly-onboarded host looks like — but worth a human glance.
 - **`yngenios` is empty and stays UNMEASURED** — an empty board has been shown empty, not
   healthy.
-- **`yngenios-research` is the only board with Lock 2 open** (`e_t_s <= 0`).
 
 ## Bearing on `enable-and-deploy-other-hosts`
 
-This measures 14 boards **as visible from this host**, on the shared substrate. It does **not**
-establish anything about engines installed on the peer hosts, and no fix has been propagated:
-the change is branch-local (`086-sched-r3-placeholder-addressee`, unpushed) and the two-repo
-ship ruling is still owed.
+This measures 14 boards **as visible from this host**, on the shared substrate. It establishes
+nothing about the engines installed on peer hosts. The fix is branch-local
+(`086-sched-r3-placeholder-addressee`, pushed, not merged) and the two-repo ship ruling is owed.
