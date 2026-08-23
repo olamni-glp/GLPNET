@@ -127,6 +127,15 @@ any of era / epoch / span / wave / trail. Five candidates exist and **not one sp
 | **step** | narrower; phase vocabulary lives outside the slice |
 | pipeline **stage** | one stage, not a multi-stage interval |
 
+> ### 🔴 RULED 2026-08-23 — an ERA is a SYNONYM for a FEATURE
+> The engineer has ruled the definition: an era is the work needed for a feature across
+> `/bk-specify → /bk-clarify → /bk-plan → /bk-tasks → /bk-analyze → /bk-implement →
+> /bk-codexreview → /bk-ship → /bk-close`. It opens at specify and **closes at `/bk-close`**.
+> It is not a narrower span and must not be decomposed into summarised atoms that lose the
+> feature's functional identity. **The close point is therefore FIXED**, and the `bk-close` posture
+> question below must be **resolved, not routed around**. Full text:
+> `docs/research/ENGINEER-RULING-era-is-a-feature-2026-08-23.md`.
+
 **The decisive structural risk: no candidate can close at `/bk-close`,** because `bk-close` is
 explicitly declared **not a canonical pipeline stage** and is forbidden from mutating pipeline/DBOS
 state. Its only durable writes are additive retrospective/action rows plus a disk mirror.
