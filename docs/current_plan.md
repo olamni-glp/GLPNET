@@ -15,7 +15,7 @@ buildkit-marathon resume --feature glpnet-full-completion-programme
 ```
 
 🔴 **`--feature` is mandatory.** There is no `.specify/feature.json` in this repo.
-Run = `mrun-f5ef56dba3c1`. **36/91 steps complete, 135 outstanding items, seq ~275.**
+Run = `mrun-f5ef56dba3c1`. **37/91 steps complete, 137 outstanding items.**
 
 🔴 **`next` is WRONG — read the ledger, not the pointer.** `status` still reports
 `next: start W11 …` from the superseded 2026-08-20 plan; that item was **deferred** and the defer
@@ -27,10 +27,10 @@ spine).
 
 ## NEXT — in strict order
 
-1. **T17** `[analyze micro 3]` — classify every non-active local branch MERGE / RE-DERIVE / RETIRE.
-   **Unblocked.** Use the corrected method below (branches **and** tags, fresh remote refs).
-   ⚠️ Read T17 as the branch-classification step ONLY — its trailing text is a delimiter defect
-   (see block 7); T18/T19/T20 are the authoritative split.
+1. ~~**T17**~~ **DONE** — all 45 non-active local branches classified: **39 RETIRE, 6
+   RETIRE-LOCAL, 0 PRESERVE-FIRST**. No local branch or clone on this host holds unique work;
+   deletion is provably lossless. `docs/research/local-branch-classification-2026-08-23.md`,
+   commit `46826405`. **Only block 3 (ownership) now stands between this and A11/T07.**
 2. **T20** `[analyze mini 7]` — `roadmap link --feature --spec-dir` manual mode. **Unblocked.**
    This is now a *scale* problem: **20 of 24 not-closed features have an EMPTY `spec_path`.**
 3. **T18** `[implement mini 7]` — author `.claude/skills/bk-flow/SKILL.md`. **Unblocked**, and a
