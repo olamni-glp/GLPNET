@@ -11,6 +11,17 @@ SPDX-License-Identifier: MIT
 **Status**: Draft
 **Input**: User description: "bk-onrestart per-host configurable auto-installable fleet resume"
 
+## Clarifications
+
+### Session 2026-08-23
+
+- Q: Is distributing a host resume profile *to* peer hosts in scope for this feature, or does
+  each host stay solely responsible for its own? → A: Out of scope. Each host authors and owns
+  its own profile; distribution is deferred to a separate feature.
+- Q: Is the bounded wait for repo paths and for shared locations a fixed constant, or declared
+  per host? → A: Declared per host in the profile, with defaults of 120 s for repo paths and
+  60 s for shared locations (the measured reference-launcher values).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The host describes itself; nobody edits a script (Priority: P1)
@@ -216,7 +227,9 @@ again and confirm it reports no change; turn it off and confirm it is gone.
   that lane exists and is non-empty, and MUST refuse the lane by name with the reason when it
   does not.
 - **FR-009**: The system MUST require each lane's repo path to be present, waiting a bounded
-  time for it, and MUST refuse that lane by name when it does not appear.
+  time for it, and MUST refuse that lane by name when it does not appear. The bound MUST be
+  declarable in the host's description, defaulting to 120 seconds when the host does not
+  declare one.
 
 **Started-versus-requested receipt**
 
@@ -235,7 +248,8 @@ again and confirm it reports no change; turn it off and confirm it is gone.
   or optional.
 - **FR-015**: The system MUST wait a bounded time for shared locations and MUST NOT block a
   resume indefinitely on one, so that a host which is up still resumes when a host serving a
-  share is down.
+  share is down. The bound MUST be declarable in the host's description, defaulting to 60
+  seconds when the host does not declare one.
 - **FR-016**: When a shared location is unavailable at the end of the wait, the system MUST
   state that the location cannot be seen, MUST state the remedy, and MUST NOT describe any
   data behind it as empty, absent, or unchanged.
@@ -275,15 +289,17 @@ again and confirm it reports no change; turn it off and confirm it is gone.
   launching lanes, reading and writing the host's own description and receipts, and
   registering or removing the automatic trigger.
 - **FR-029**: The system MUST operate on a single host, and MUST NOT write to another host's
-  description or trigger a resume on another host.
-  [NEEDS CLARIFICATION: is distributing a host description *to* peer hosts in scope for this
-  feature, or does each host stay solely responsible for its own — noting the recorded open
-  block on authority for fleet-binding one-way actions?]
+  description or trigger a resume on another host. Distributing a profile to peer hosts is
+  explicitly **out of scope** for this feature: each host authors and owns its own description.
+  A future feature may add distribution, and MUST first resolve the recorded open block on
+  authority for fleet-binding one-way actions.
 
 ### Key Entities
 
 - **Host resume profile**: the description of one host — which lanes it resumes, how its
-  windows are arranged, which shared locations it requires. Machine-scoped, one per host.
+  windows are arranged, which shared locations it requires, and how long it waits for repo
+  paths and for shared locations. Machine-scoped, one per host, authored and owned solely by
+  that host.
 - **Lane entry**: one repo within a profile — its name, its path on this host, and the grouping
   it belongs to.
 - **Arrangement**: how a host wants its lanes presented — one group, or several named groups
