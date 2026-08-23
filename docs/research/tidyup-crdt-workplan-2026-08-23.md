@@ -50,8 +50,8 @@ Unsearchable 0`** — the 2 are the known-real 064 Section T drills. **Zero regr
 | **Y09** | `050` vs `059` survivor ruling | 21 and 30 conflicts | midi | 11 | **ENGINEER (X10)** |
 | **Y10** | `030-phase8-polish` + `backup/030-phase8-polish` | 8 and 9 conflicts · distinct SHAs | mini | 7 | agent |
 | **Y11** | `backup/078-olamnit-impl-preserve` | 5 conflicts · preserve-only | micro | 3 | agent |
-| **Y12** | `backup/upgrade/buildkit-migration-20260627T220138Z` | rename/rename · 2431 files | micro | 3 | agent |
-| **Y13** | `016-codeconv-init-scaffold-langpair` + `017-conversion-plan-agents` | 3786 and 4007 file conflicts | mini | 7 | agent |
+| **Y12** | `backup/upgrade/buildkit-migration-20260627T220138Z` | **1 conflict** · 1 ahead | micro | 3 | agent |
+| **Y13** | `016-codeconv-init-scaffold-langpair` + `017-conversion-plan-agents` | **6 and 6 conflicts** · 2 ahead each | mini | 7 | agent |
 | **Y14** | Class-C2 remote cleanup of whatever ends CONTAINED | — | mini | 7 | agent |
 | **Y15** | Author `.claude/skills/bk-flow/SKILL.md` | — | mini | 7 | agent |
 | **Y16** | `era` metric in marathon — opens at `/bk-specify`, closes at `/bk-close` after ship | — | midi | 11 | agent |
@@ -98,8 +98,32 @@ sequenced and durable for the next session. That is what the Y-series is ordered
 - **The 078 branch commit is `315e3be5`** — *"add tidy-up survey evidence manifest — 4 pairwise-
   disjoint slices"*. It is evidence, not implementation; merging it does not advance or disturb the
   078 pipeline stage.
-- **`016` and `017` conflict on 3786 / 4007 files.** That is not a merge, it is an archaeology
-  project. Treat as archive-and-drop candidates unless a ruling says otherwise.
+- 🔴 **CORRECTION 2026-08-23T17:4xZ — I misread my own probe.** The first ledger said `016` and
+  `017` "conflict on 3786 / 4007 files" and called them "an archaeology project … archive-and-drop
+  candidates". **That conflated `filesdiff` with conflicts.** `filesdiff` counts every path differing
+  in *either* direction, so it mostly measures how far `develop` has moved since the branch, not how
+  hard the merge is. **Re-measured by counting `^CONFLICT` lines: `016` has 6 conflicts and `017` has
+  6, each only 2 commits ahead.** They are ordinary merges, not archaeology — and **the
+  archive-and-drop recommendation is WITHDRAWN**. `backup/upgrade/…` is likewise **1 conflict**, not
+  the "rename/rename · 2431 files" the first ledger implied. **Y12 and Y13 are far cheaper than
+  stated and should move up the order.** Lesson: quote the conflict count, never the files-differing
+  count — the second one flatters or damns a branch for its age.
+
+- 🔴 **CORRECTION TO THE CORRECTION, same session — and this one reverses the action.** Having
+  re-measured `016`/`017` as ordinary 6-conflict merges, I opened them. **Both branches carry the
+  IDENTICAL two commits, and neither is feature work:** `chore: upgrade buildkit skills to
+  2026.07.09.1` and `chore(buildkit): upgrade buildkit integration artifacts to 2026.07.14.1`. Every
+  conflict is on buildkit-integration state — `.gitignore`, `buildkit.manifest.json`,
+  `claude.manifest.json`, `.origin-host-id`, `workflow.yml`, `CLAUDE.md` — that `develop` has since
+  carried to **`2026.08.23.1`**. **Merging them would regress the toolchain by six weeks.** So the
+  first ledger's *archive-and-drop* conclusion was RIGHT, for the wrong reason; my correction was
+  right about the measurement and WRONG about the action. **Y13 is a C2 drop, not a merge.**
+  The same holds for **Y12**: its single commit is `chore(buildkit): upgrade installed artifacts to
+  v2026.06.27.2 … drop retired buildkit-roadmap skill`, and its one conflict is a rename/rename where
+  HEAD has `.claude/skills/bk-roadmap/SKILL.md` and the branch has the pre-rename path — **merging it
+  would undo the very drop its own commit message performed.** I began that merge and **aborted it**.
+  **Standing rule this produced: before merging any branch, read its commit subjects. A low conflict
+  count says the merge is easy, never that it is desirable.**
 
 ## Binding safety rules — carried forward from 08-20/08-22, still in force
 
