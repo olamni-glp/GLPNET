@@ -1,5 +1,67 @@
 ## [Unreleased]
 
+## [v2026.08.23.1] - 2026-08-23
+
+### Added
+- add + promote bk-onrestart per-host reboot lane relaunch; sync round 34 both legs OK
+
+### Changed
+- Merge pull request #212 from olamni-glp/087-trust-gate-reproduction
+- A20 trust-gate controlled reproduction - peer's 65 refusals are exactly this host's own exports; gate is correct; real defect is 4 repos sharing one inbox
+- Merge pull request #211 from olamni-glp/086-ariellas-tidyup-and-takt
+- correct Y02b - pull --rebase silently dropped my merge commit; content survived via the peer's own path
+- Y-series ledger - 4 DONE with receipts, Y02b added, and why the step board cannot show them
+- sync round 39 + Y-series conflict-count corrections + fleet standard report formats
+- sync 2026-08-23 - import 1 new, reconcile, dedupe 0 groups (115 live), export 20/116/3762; olamnit scheduler onboard 35d 3x8h + directive items D01-D05 captured
+- restart pointer - 086 branch active, PR 210 merged, classifier measured INTERMITTENT
+- standardised cross-host SITREP + roadmap table format with measurement traps
+- sync round 39 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- Merge pull request #210 from olamni-glp/085-onrestart-fleet-resume
+- restart pointer - T17 done, 45 branches classified, 0 need preservation
+- T17 classification of all 45 non-active local branches - 39 RETIRE, 6 RETIRE-LOCAL, 0 need preservation; no local branch holds unique work
+- bk-flow readiness gap run f49a - unique allocation, takt-only durations, era; 3 negative answers + a merge-algebra defect
+- restart pointer session 4 - C15/T01/T15 done, roadmap round 38, takt 4of4 sources, 7 measured defects, bk-flow NO-GO is peer-measured
+- sync round 38 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- Merge 080-occurs-checked-substitution into develop (TIDY-Y04; feature.json conflict resolved as DELETED per 953ec898 untrack rationale)
+- Merge 078-verification-receipts evidence manifest into develop (TIDY-Y03; merge-tree probed CLEAN)
+- Merge 083-glptutorial-corpus-goldens into develop (TIDY-Y01; merge-tree probed CLEAN)
+- Y-series CRDT workplan 2026-08-23 - 16 unmerged heads probed by merge-tree, 18 steps into the marathon
+- sync round 37 - reconcile in-sync, 119 live features, 0 duplicate groups, export both legs
+- Merge pull request #209 from olamni-glp/chore/tidy-up-branches-worktrees-20260822-olamnit
+- bk-marathon->bk-flow migration plan + promotion-ready bk-flow SKILL.md draft (3rtask run 20260823T140508Z-227d; integration-not-replacement, cutover NO-GO, parity gap 10/10)
+- T15 all-drives git-asset survey - clone-2 fully contained (6/6), 2 corrections to the W05 index, msquic vendored checkout recorded
+- T01 measured defect - roadmap understates stage for 067/066/059, plus 2 new recording defects and the 065 number-collision correction
+- unshipped inventory + withdraw the superseded toolchain divergence figure
+- codify consolidated hardening 2026-08-23 into the scheduler feature-stream hardening feature
+- clarify - FR-029 fleet distribution ruled out of scope, wait bounds host-declared (120s repo / 60s share)
+- sync round 37 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- C-drive git-asset survey - 2 glpnet scratchpad clones found, both verified safe; survey-one-drive-only lesson recorded; marathon 86 steps
+- sync round 36 - reconcile in-sync, 118 live features, 0 duplicate groups, export both legs
+- restart pointer - 3rtask ROOT CAUSE (codexreview gate, 3of3 builders, 4of4 features), specified-premise refuted, CRDT workplan T01-T14 in marathon (84 steps)
+- specified-features completion CRDT plan - rootcause 082/083/085 stall (run 20260823T093108Z-30dd); durable marathon items M01/X00/C082-C085/G082-G085
+- sync round 35 - reconcile in-sync, 116 live features, 0 duplicate groups, export published both legs
+- restart pointer - C13 done (085 specified, PR 210), roadmap round 34, engineer-declared 35d 3x8h capacity satisfies J3, 4 new measured defects
+- SCHED-R5 rev2 - WITHDRAW rev1 figures; folding + derived pool changes 3 boards; lejepa custom pool 'ariellas-lejepa' hid 30 unowned WPs; buildkit is actually healthy
+- sync round 34 - import 1 file/0 lines, reconcile in sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- SCHED-R5 - Lock 1 measured on all 14 boards; yngenios-windows was a SECOND false all-clear (28 of 30)
+- add bk-onrestart skill (post-reboot session relauncher, spec)
+- spec(085): bk-onrestart per-host configurable auto-installable fleet resume
+- restart pointer - scheduler feature-stream ROOTCAUSE (four breaks in series), 076 closed with 3 systemic findings, 083 clarified, 9 open blocks, 3 features promoted
+- roadmap: round 33 - 2 new features scored+promoted (scheduler feature-stream durable healing WSJF 2.62, bk-onrestart per-host auto-install WSJF 4.20); rootcause codified; export 20/118/3792 both legs
+- sync round 33 + reconcile + dedupe + export - both publish legs OK
+- ROOT CAUSE of the missing feature stream - 3 links with no writer, proven both ways on the live board
+- sync 2026-08-22 - import 23 new/0 applied (173 untagged refused - known 078 defect), reconcile in-sync, dedupe 0 groups (115 live), export 20/116/3761
+- workplan to 37pt delivered / 95 remaining after v2026.08.22.1
+- open 1.14 language-authority register for Udi - L1 book 4.3.1 lesseq guard is rejected (083 FR-002), L2 binding at a consume position may be self.glp-only (076), L3 occurs-check UnifyFail vs CompileError (080)
+- sync round 32 + reconcile + dedupe + export - both publish legs OK
+- land Olamnit branch/worktree tidy-up workplan + preserve 08-20 handover (marathon mrun-76da6e46bd44)
+- clarify(083): 4 of 5 ambiguities resolved by measurement (cssg_modules sibling, vendor AND manifest, FR-009 coupled to FR-002, FR-008 discriminator); FR-002 diagnosed and left OPEN as an engineer ruling with a recommendation
+- close(076): retrospective + close-out - 3 findings (shipped with NO codexreview recorded, no size estimate so takt cannot see it, open 1.14 question on binding at a consume position); 0 stale actions; roadmap released->closed
+- Merge pull request #207 from olamni-glp/main
+- add tidy-up survey evidence manifest - 4 pairwise-disjoint slices
+- renumber occurs-check spec 078->080 (engineer OK, both peers concur; yields 078 to gavriella verification-receipts)
+- spec(078): occurs-checked substitution pipeline — propose-first spec + clarify; §1.14 semantics (UnifyFail vs CompileError) OPEN for Udi, implement gated
+
 ## [v2026.08.22.1] - 2026-08-22
 
 ### Added
