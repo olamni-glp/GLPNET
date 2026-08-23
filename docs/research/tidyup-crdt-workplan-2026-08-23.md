@@ -39,10 +39,11 @@ Unsearchable 0`** — the 2 are the known-real 064 Section T drills. **Zero regr
 
 | ID | Item | Merge probe | Size | Pts | Owner |
 |---|---|---|---|---:|---|
-| **Y01** | Merge `083-glptutorial-corpus-goldens` | **CLEAN** · 2 commits · 39 files | micro | 3 | agent |
-| **Y02** | Merge `085-onrestart-fleet-resume` | **CLEAN** · 9 commits · 23 files | micro | 3 | **PEER — live** |
-| **Y03** | Merge `078-verification-receipts` | **CLEAN** · 1 commit · 192 files | micro | 3 | agent |
-| **Y04** | Merge `080-occurs-checked-substitution` | 1 conflict (`.specify/feature.json` modify/delete) | mini | 7 | agent |
+| **Y01** | Merge `083-glptutorial-corpus-goldens` | **CLEAN** · 2 commits · 39 files | micro | 3 | ✅ **DONE** `8a83bfc2` — origin branch auto-deleted on merge |
+| **Y02** | Merge `085-onrestart-fleet-resume` | **CLEAN** · 13 commits | micro | 3 | 🤝 **PEER — LIVE, do not touch** (last commit 17:32 today) |
+| **Y02b** | Merge olamnit's roadmap-sync export leg | **CLEAN** · 1 commit `e7ee7160` | micro | 3 | ✅ **DONE** `6e8c3172` |
+| **Y03** | Merge `078-verification-receipts` | **CLEAN** · 1 commit `315e3be5` | micro | 3 | ✅ **DONE** `42aeccae` |
+| **Y04** | Merge `080-occurs-checked-substitution` | 1 conflict (`.specify/feature.json` modify/delete) | mini | 7 | ✅ **DONE** `78c056a4` — resolved as DELETED per `953ec898` |
 | **Y05** | Merge `066-wave6-consolidation` | 4 conflicts · 23 ahead | maxi | 17 | agent (review) |
 | **Y06** | `067-qr-link-provisioning` | 3 conflicts · 26 ahead | midi | 11 | **ENGINEER-ruled → graduate** |
 | **Y07** | `067b-qr-link-continuation` | 4 conflicts · 27 ahead | midi | 11 | follows Y06 |
@@ -58,8 +59,17 @@ Unsearchable 0`** — the 2 are the known-real 064 Section T drills. **Zero regr
 | **Y17** | Unique allocation: one feature → one repo → one host, across all boards | — | maxi | 17 | agent |
 | **Y18** | Takt-only duration rule — generic range or measured size-adjusted; refuse invented numbers | — | midi | 11 | agent |
 
-**Total 150 pts.** Engineer-gated: **Y06 · Y08 · Y09 = 33 pts.** Peer-owned: **Y02 = 3 pts.**
-Agent-executable: **114 pts.**
+**Total 153 pts** (Y02b added). **Delivered: 16 pts — Y01 · Y02b · Y03 · Y04.**
+Engineer-gated: **Y06 · Y08 · Y09 = 33 pts.** Peer-owned: **Y02 = 3 pts.**
+Remaining agent-executable: **101 pts.**
+
+> 🔴 **The four DONE rows above cannot be checkpointed on the marathon step board.** `checkpoint`
+> needs a `mstep-` id; **no verb lists steps**, `store`/`run` expose no `step` reader, the `expand`
+> call returned no ids (it was not run with `--json` — *always pass `--json` to `expand`, there is no
+> second chance to obtain them*), and the Markdown mirror is **~17 hours stale with zero `TIDY-Y`
+> lines**. So the board will keep reporting `22/97` and omitting this work. **This file is the record
+> of completion.** It is also why the fleet standard mandates **points, never steps-done/total** —
+> and why a later session must read *this table* before re-merging anything.
 
 ### 🔴 150 points does not fit in one session — stated, not hidden
 
