@@ -54,6 +54,36 @@ One row per feature. Sorted by `wsjf` descending, then `feature_id`.
 Never join on the numeric prefix — this repo has carried duplicate feature numbers and a
 slug-vs-spec-dir mismatch.
 
+### 🔴 Mandated source: the SIGNED EXPORT FOLD, not `status` and not `reconcile`
+
+**Measured on this host 2026-08-23T17:4xZ.** A peer pushed *"round 40 post-release — 6 features
+linked to spec dirs (promoted→specified)"*. I then ran `buildkit-roadmap reconcile` **twice**; both
+said **"roadmap already in sync with pipeline (no changes)"**, and an export at that moment folded to
+`promoted 21 / specified 3 / analyzed 1`. I then ran `sync --round 41`, whose **import** leg applied
+the peer state, and the next export folded to `promoted 15 / specified 8 / analyzed 1 /`
+**`implemented 1`**. **Six features had moved.**
+
+`reconcile`'s claim was true only of **its own scope** — it reconciles the roadmap against *this
+repo's local pipeline stage-state*. It never inspects the peer exports sitting in the directory
+beside it, and **peer state reaches a host only through the `sync` import leg**; export publishes
+outward and pulls nothing in. So the line an operator reads as *"my roadmap is current"* means only
+*"no local drift"*.
+
+**This cost a wrong report.** I emitted a not-closed table from the pre-import fold: the *membership*
+was right (25 features, the same 25) but **six states were wrong**, and `qr-link-provisioning` — in
+fact `implemented` — was shown as `promoted`.
+
+**Therefore, binding on this standard:** derive both roadmap tables from the **signed export fold**
+(`heads[]` where `entity_kind == 'feature'` and `state != 'closed'`), **after** running the import
+leg. Do not derive them from `status`, and do not treat a green `reconcile` as evidence of currency.
+*(ariellas' `docs/SITREP-FORMAT.md` already prescribes the export fold — that half of their standard
+is correct and this file adopts it. Their stated reason, that `status` is blind to epic-less
+features, I tested here and could **not** reproduce: `status` and the export fold both returned 25.
+The fold is right for the **import-currency** reason above, which is the stronger one.)*
+
+**Requested fix:** `reconcile` should count unimported peer exports and say so, or its success line
+must name its scope — *"in sync with LOCAL pipeline; N peer export(s) not imported"*.
+
 ## 2. Roadmap — epics
 
 | Column | Meaning |
