@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [v2026.08.23.2] - 2026-08-23
+
+### Changed
+- sync round 44 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- Merge pull request #218 from olamni-glp/090-ack-sweep-and-sync
+- sync round 41 - import 2 files, 2 more spec links, export 20/118/3806 both legs
+- sync round 43 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- traps 10-13 from the olamnit-assistant lane - amended here, not in a third file (#217)
+- sync round 42 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- unify the two cross-host report standards into docs/SITREP-FORMAT.md; ariellas' file is canonical, gavriella's becomes a pointer
+- mandate the signed export fold - reconcile reported in-sync while 6 peer feature-states were unimported
+- sync round 41 - imported peer round-40 state (6 features advanced), export 20/119/3807 both legs
+- Merge pull request #216 from olamni-glp/089-pointer-update
+- restart pointer - v2026.08.23.1 released, develop 1 ahead of main, block 2a refuted, 6 features linked
+- post-release reconcile + dedupe 0 groups (118 live) + export 20/119/3807
+- Merge pull request #215 from olamni-glp/088-post-release-sync
+- round 40 post-release - 6 features linked to spec dirs (promoted->specified), unlinked 75->69, export 20/118/3806 both legs
+- ERA is a synonym for a FEATURE - specify through close - and withdraw the B20 discharge-close proposal
+- Merge pull request #214 from olamni-glp/main
+
 ## [v2026.08.23.1] - 2026-08-23
 
 ### Added
