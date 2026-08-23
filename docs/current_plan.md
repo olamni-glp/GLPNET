@@ -137,6 +137,17 @@ branches**, **34 unmerged remote branches**, **1 unpushed commit** `d0187c9f` on
 `064-durable-walfix` (**another lane's — do not push**). Sizes: nano 1 · micro 3 · mini 7 ·
 midi 11 · maxi 17 · saga 35.
 
+**C: drive survey (engineer-prompted — the D:-only survey MISSED these).** Two glpnet git assets
+under `C:\Users\ariel\AppData\Local\Temp\claude\D--bstdev-research-glp-glpnet\`:
+`…3a631f2e\scratchpad\restore\050` — a bundle-restore clone, one ref
+`bundle/050-full-gleam-combined` @ `10f02f7d`, **VERIFIED = the `origin/050-full-gleam-combined`
+tip**, nothing at risk; and `…94a409ef\scratchpad\jkmv-sandbox\clone` — a **gutted shell** (0 git
+objects, empty refs, `glpquick-cert/` **empty** → **no trust material leaked to C:**). Both safe to
+delete (steps T15/T16). `C:\pglite` confirmed **ABSENT** — the CLAUDE.md prohibition holds.
+🔴 **LESSON: a git-asset survey scoped to one drive is incomplete — scratchpad clones live under the
+OS temp path on C: and `git worktree list` does NOT show them, because they are separate clones,
+not worktrees.**
+
 `/bk-flow` migration is **T12–T14**, deliberately ordered: **build the 4 missing rollout controls
 FIRST** (staged rollout, version negotiation, rollback, kill switch — item N10 measured bk-flow at
 0 of 4), then migrate, then record a safety verdict with a rollback rehearsal receipt. Directive
