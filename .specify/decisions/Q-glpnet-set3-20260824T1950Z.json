@@ -1,0 +1,113 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS3-20260824T1950Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-24T19:50:00+00:00",
+  "context": "Set 3 of 3 — the upstream fix, the reconcile blind spot, and a new block raised by shiras' query about a retired actor slug. Marathon run mrun-20d9230f767b. Evidence tables at claude.ai/code/artifact/77dcfcf1.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS3-01",
+      "kind": "ruling",
+      "header": "Retired ID",
+      "question": "shiras asked whether 'gavriellas' is mine and should be retired. Measured: it holds ZERO op-logs on all 14 sched roots, its newest export anywhere is 2026-07-19 (36 days stale), and 30 historical export files still sit in glpnet and are re-imported by every lane as a distinct actor. The real hazard is that a retired slug stays importable, so any all-actors convergence barrier can be satisfied by an actor that will never speak again. How should retirement be recorded?",
+      "blocks": ["shiras' pending query", "any all-actors convergence barrier", "cross-lane actor identity"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Add a retired-at marker",
+          "recommended": true,
+          "means": "Introduce an explicit retired_at on an actor, honoured by import and by every all-actors barrier; mark gavriellas retired; leave its 30 export files in place as provenance.",
+          "cost": "A new field the whole fleet must honour, and until every consumer reads it the barrier stays falsely satisfiable."
+        },
+        {
+          "label": "Leave as read-only history",
+          "means": "Change nothing mechanically; publish the rule that gavriellas is read-only history and no lane may ever wait on it.",
+          "cost": "Relies on every lane remembering an unenforced convention — the same class of human step this fleet keeps finding skipped."
+        },
+        {
+          "label": "Purge the stale export files",
+          "means": "Delete the 30 gavriellas export files so nothing re-imports the actor.",
+          "cost": "Orphans the provenance of roadmap rows imported months ago, and deletion is irreversible where the marker is not."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS3-02",
+      "kind": "ruling",
+      "header": "Reconcile",
+      "question": "roadmap reconcile reports 'already in sync' and in the same breath that 15 of 21 pipeline ids bind, 6 do not, and 70 of 119 features carry no spec_path and can never bind by basename. 'In sync' there means nothing contradicts, not everything is linked — yet lanes have quoted the headline alone while 59% of features were simply not in the comparison. How should reconcile report partial coverage?",
+      "blocks": ["trust in every reconcile result", "the 6 unbound pipeline ids"],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Link the six, accept the rest",
+          "recommended": true,
+          "means": "Link the 6 unbound ids with link-spec next session, and accept that 70 pre-specify features legitimately have no spec yet. Note 050-full-gleam-combined appears here and in the survivor question, so that ruling may retire one of the six.",
+          "cost": "Fixes this repo's instance only; the misleading headline stays for every other lane."
+        },
+        {
+          "label": "Change the headline upstream",
+          "means": "Make reconcile refuse to report 'in sync' while coverage is partial — state coverage first, verdict second.",
+          "cost": "A buildkit change, so it inherits the two-repo question and cannot start until that is ruled."
+        },
+        {
+          "label": "Keep it, read the detail",
+          "means": "Change nothing; treat the detail lines as the real output and the headline as shorthand.",
+          "cost": "Relies on every future reader ignoring the headline, and at least two lanes have already quoted it alone."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS3-03",
+      "kind": "risk-acceptance",
+      "header": "Pathspec",
+      "question": "codexreview's empty_scope refusal is a git 2.55 pathspec quirk, not a buildkit defect: two of the eight excludes each empty a nested pathspec they cannot match. A verified workaround exists — use a single-component repo-root --scope — and the review ran on it today. The upstream fix is small but sits behind the two-repo question. Do you accept running on the workaround while the fix waits, and for how long?",
+      "expires_after_days": 21,
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept for three weeks",
+          "recommended": true,
+          "means": "Carry the root-scope workaround as documented practice, file the fix for the buildkit lane, and re-raise automatically when this acceptance expires.",
+          "cost": "Every lane that hits empty_scope without reading the note will conclude the tool is broken, as this lane did for two days."
+        },
+        {
+          "label": "Fix upstream before more reviews",
+          "means": "Block further codexreview runs until the pathspec handling is corrected and regression-tested.",
+          "cost": "Halts the only working review path on a dependency that is itself blocked on the two-repo ruling — and 078's release needs a re-review."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS3-04",
+      "kind": "risk-acceptance",
+      "header": "Lock gap",
+      "question": "Seven marathon capture rows did not land this session. The buildkit registry lock is held for the full duration of any concurrent session's test run, and across 50 minutes and 69 refusals not one capture succeeded — so marathon capture is unavailable on this host whenever a sibling session is testing. All seven findings are durable in tracked files instead. Do you accept tracked files as the primary record with the marathon row best-effort?",
+      "expires_after_days": 30,
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept, files are primary",
+          "recommended": true,
+          "means": "Write findings to tracked files first and treat the marathon row as best-effort, re-landing rows opportunistically when the lock is free.",
+          "cost": "The marathon board keeps under-reporting what a session actually found, so its item counts stay unusable as a progress measure."
+        },
+        {
+          "label": "Serialise sessions on this host",
+          "means": "Only one buildkit session runs at a time on this host, so the lock is always available.",
+          "cost": "Halves throughput on a host deliberately running several lanes, to fix a bookkeeping gap rather than a correctness one."
+        },
+        {
+          "label": "Fix the lock granularity",
+          "means": "Make capture take a narrower lock, or queue durably, so a concurrent test run cannot block it.",
+          "cost": "A buildkit change behind the two-repo ruling, and touching lock granularity risks the corruption the coarse lock prevents."
+        }
+      ]
+    }
+  ]
+}
