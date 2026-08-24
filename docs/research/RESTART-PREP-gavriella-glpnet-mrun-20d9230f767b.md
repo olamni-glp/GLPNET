@@ -32,6 +32,34 @@ ariellas pointer, not this lane's. Marathon state is per-machine and out-of-repo
 
 🔴 **Run buildkit commands SERIALLY.** See the STUCK-lock entry below — it fired twice more today.
 
+## 🔴 SESSION-5 GAP: SEVEN marathon captures did NOT land, and the reason is contention, not content
+
+**Everything session 5 found is durable in tracked files (this doc + the codexreview write-up +
+the COOP sitrep). What is missing is the marathon's own `capture` rows — seven of them.**
+
+Two causes, both worth knowing:
+
+1. **My error, now fixed in the script:** I invented `--kind finding` / `--kind decision`.
+   The allowed set is **`bug, idea, issue, latent-requirement, missing-prerequisite`**. Lock
+   contention hid this for the whole session — the first call that actually reached the CLI
+   rejected it in under a second.
+2. **The real blocker — the registry lock is effectively never free on this host.** Across two
+   runs and **~50 minutes of retrying (69 lock refusals), ZERO captures landed.** A concurrent
+   buildkit session runs `pytest tests/roadmap -q` and `pytest tests/scheduler tests/refine -q`
+   more or less continuously, and **any** such run holds
+   `deploy-home/registry/pgdb/.lock` for its whole duration.
+
+> **So `buildkit-marathon capture` is unavailable on this host whenever another session is running
+> its test suite.** That is an architectural contention problem, not a transient. Do not plan a
+> session around landing marathon rows while a sibling session is testing — **write findings to
+> tracked files first and treat the marathon row as best-effort.**
+
+**To re-land the seven rows next session** (a ready-made retry driver, kinds already corrected):
+`…/scratchpad/captures.py` from session 5 — or simply re-derive them from this doc, which carries
+every one of them. Their subjects: the codexreview unblock + NO-GO · SCHED-R1/R4 already shipped ·
+SCHED-R4 discharged with the 252-unresolvable caveat · the dropped-`implemented` table defect ·
+the STUCK-lock defect · the onboard + escalation · the two merges + the standards fork.
+
 ---
 
 ## 🔴 THE HEADLINE: the release gate is no longer a tool block. It is a NO-GO.
