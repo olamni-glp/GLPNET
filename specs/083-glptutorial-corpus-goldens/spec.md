@@ -9,7 +9,8 @@ buildkit-file-id: 86d431e3-8849-4b6f-a473-8c268e68529f
 
 **Feature Branch**: `083-glptutorial-corpus-goldens`
 **Created**: 2026-08-20
-**Status**: Clarified (1 open engineer ruling: FR-002)
+**Status**: Clarified — **ALL RULINGS CLOSED**. FR-002 ruled (b) *record the rejection* by the
+engineer 2026-08-24; FR-009 is consequently **IN SCOPE**. Ready for `/bk-plan`.
 **Input**: User description: "glptutorial corpus-golden reconciliation (stale goldens + drift-guard vendoring)"
 
 **Roadmap**: `glptutorial-corpus-golden-reconciliation-stale-goldens-drift-guard-vendoring` (WSJF 6.50, RICE 1700, rank 3, effort small, risk low)
@@ -74,8 +75,29 @@ citation it MUST be recorded as a **repair**, not a re-capture. This makes FR-00
 checkable rather than a matter of the author's intent. ch04/08 satisfies it: the cited cause is
 the C# `is_list` guard fix.
 
-**C5 — FR-002 remains OPEN. It is an engineer ruling and is not the agent's to make.**
-See the expanded statement at FR-002 below.
+**C5 — FR-002 is now RULED (was OPEN).**
+
+### 🔴 ENGINEER RULING — FR-002, 2026-08-24 (ariellas lane, marathon `mrun-f5ef56dba3c1`)
+
+> **Resolution (b): RECORD THE REJECTION.**
+
+The ch04/07 exercise text is **kept byte-exact from book §4.3.1 p 37**. The *golden* is changed to
+record what the live runtime actually does — **reject** the program — instead of the false
+`✓Loaded`. The corpus therefore remains a faithful transcription of the book **and** stops
+asserting a falsehood; these were only in tension because the golden, not the source, was wrong.
+
+**Consequences, binding on plan/tasks:**
+
+1. **FR-009 is IN SCOPE** and its conditionality (C3) is discharged. The corpus MUST be able to
+   represent an exercise whose correct outcome is rejection.
+2. The exercise source is **NOT** modified. Option (a) is rejected: there is no single-unit-clause
+   formulation of "is a natural number" over Peano terms, so (a) would have required either
+   changing the program's meaning versus the book or new guard semantics — §1.14
+   language-authority territory, and Udi's call, not one to take by default.
+3. **B10 is confirmed as a real deliverable**: report to Udi that a byte-exact transcription of
+   book §4.3.1 `lesseq` is rejected by the typed-GLP guard rules, because `natural_number/1` is a
+   two-clause procedure while manual §8 requires a defined guard to be a single-unit-clause
+   procedure. This is a genuine book-versus-manual finding surfaced by the corpus, not a corpus bug.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -152,8 +174,10 @@ carries a record of why each golden changed.
 - **FR-001**: The system MUST report every corpus artefact whose recorded outcome disagrees
   with the live runtime, and MUST NOT report a clean corpus while any such artefact exists.
 - **FR-002**: The ch04/07 spec-violation MUST be resolved such that the recorded outcome and
-  the live runtime agree. **[OPEN — ENGINEER RULING, see C5. Diagnosis completed 2026-08-22;
-  the choice is not the agent's.]**
+  the live runtime agree. ✅ **RULED 2026-08-24 — resolution (b): RECORD THE REJECTION.**
+  The exercise source stays **byte-exact from book §4.3.1 p 37**; the *golden* is re-recorded as
+  the runtime's **rejection**. See the ruling block at C5 for the binding consequences
+  (FR-009 in scope; source not modified; B10 confirmed).
 
   *What is actually wrong* — the exercise's §4.3.1 clause is
   `lesseq(0, X) :- natural_number(X?) | true.`, and `natural_number/1` is defined by **two**
@@ -197,9 +221,9 @@ carries a record of why each golden changed.
   "the golden was stale" from "the runtime changed behaviour", so that re-capture can never
   silently bless a regression.
 - **FR-009**: The corpus MUST be able to represent an exercise whose correct outcome is
-  rejection, not only successful loading. **CONDITIONAL on FR-002 (see C3)** — required if
-  FR-002 resolves to (b) *record the rejection*; out of scope if it resolves to (a) *repair the
-  exercise*. MUST NOT be planned or tasked before FR-002 is ruled.
+  rejection, not only successful loading. ✅ **IN SCOPE — condition discharged.** FR-002 was ruled
+  (b) *record the rejection* on 2026-08-24, which is exactly the branch that requires FR-009.
+  It MAY now be planned and tasked.
 - **FR-010**: The Issue-10 headline documentation, which conflates approved scope with pending
   repairs, MUST be corrected to match the delivered scope.
 
