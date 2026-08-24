@@ -164,6 +164,42 @@ exist**, and a lane could conclude takt recording is unsupported.
 `cycles[0].token_records` is **`[]`**. So a codexreview run contributes **nothing** to takt or to
 per-phase token accounting. Fix owed upstream with the pathspec fix.
 
+
+## 🔴 SESSION-5 REVISION 3 — Z01 IS UNDER WAY. YOU ARE ON A FEATURE BRANCH.
+
+**`/bk-plan 083` IS COMPLETE AND PUSHED** — branch **`083-glptutorial-corpus-goldens`** @ `65fe67e9`
+(created off `develop`; the original was auto-deleted at merge, so it was recreated).
+Artifacts: `plan.md`, `research.md`, `data-model.md`, `contracts/tutorials-cli.md`, `quickstart.md`.
+**`CLAUDE.md`'s BUILDKIT pointer now points at `specs/083-glptutorial-corpus-goldens/plan.md`.**
+
+**NEXT: `/bk-tasks 083`**, then analyze → implement → codexreview → ship → close.
+
+### Two findings from planning 083 that bind its tasks
+
+1. 🔴 **THE DRIFT GUARD IS SATURATED.** `codeconv tutorials sync --check` exits **1** with
+   **67 drift lines across ALL 13 chapters** on an **unmodified** tree (ch04: 5, ch07: 5, ch06: 7).
+   FR-004 says "a modification MUST cause it to fail" — **it already fails**, so the signal is
+   *unconditioned* and SC-003's "unmodified reports OK" is **0% true**. Vendoring into a guard in
+   this state satisfies FR-004's letter and none of its intent. Per-chapter scoping (contract
+   C-2.3) is the minimum fix. **57 of the 67 lines are OUT OF SCOPE (ch04+ch07 only) — report
+   them, do not repair them.**
+2. 🔴 **SC-007's baseline is STALE.** Spec says `546 pass / 0 fail / 1 skip`; measured today
+   **561 total / 559 pass / 2 fail / 0 skip**. Taken literally SC-007 can never be met. Re-base to
+   *"introduces no new failure against 561/559/2/0"*.
+
+**Both are recorded as engineer amendments A-1 and A-2 in `plan.md` → Complexity Tracking.**
+**Tasks may be generated, but no slice may CLAIM SC-003 or SC-007 until they are ruled.**
+
+### The baseline was re-measured, not inherited
+`codeconv tutorials propose` → **exactly the same 4 proposals** on 2026-08-24 (spec's were 08-20).
+ch07 substrate **confirmed** `programs/cssg_modules/` (5 files), **not** `_v2` (6 files).
+
+### 🔴 The sidecar records NOTHING for this stage
+`python -m buildkit_cli.pipeline.sidecar start|complete plan` both print
+**`sidecar: no active feature; skipping stage record`** because `.specify/feature.json` is absent
+by design. **So the plan stage produced artifacts but did NOT advance the pipeline row** — which is
+exactly the record-vs-work divergence the Z-series exists to fix. **This IS step Z00.**
+
 ## State at hand-off
 
 | field | value |
