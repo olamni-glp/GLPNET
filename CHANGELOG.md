@@ -1,5 +1,116 @@
 ## [Unreleased]
 
+## [v2026.08.24.1] - 2026-08-24
+
+### Added
+- install the two SHIPPED fleet report generators; withdraw my forked one
+- emit the fleet STANDARD REPORTS R-1 roadmap, R-2 sitrep, R-3 tact in the exact ruled shapes
+- record FR-002 ruling (b) record-the-rejection, FR-009 in scope; install bk-flow and bk-proof skills from buildkit templates
+- adopt the fleet standardised not-closed roadmap table in glpnet
+- MVP verification-receipts mechanism (US1+US2+US3) - codeconv.receipts package (outcome/receipt/consumer/manifest/override/bind/paths), reference check + conformance fixture, 13 fault-injection test files (29 tests green); adoption manifest checked in (reference adopted, 4 glpnet areas non-adopted)
+- T031a: extend olamnit DSDV into the NAT-piercing internet overlay
+- P6 US4: real relay forward - circuit-relay-v2 + Tor-cell, ciphertext-only (T028-T033)
+- US2 NAT hole-punch + S-Kademlia DHT foundation (T017-T022, P3)
+- first-class capability exposure + resolver seam (T015; T014/T016 complete)
+- real MsQuic wire (QuicWireChannel) + authenticated handshake (T011)
+- real US1 link session — handshake + ECDH-sealed send/receive (T014/T016)
+- Ed25519-primary node identity + P-256 fallback (DEC-CRYPTO-1)
+- implement — real+tested native crypto/policy core (29/29 green)
+
+### Fixed
+- T031a: bind route ingest to the authenticated peer (route spoofing)
+- T031a: codex review cycle 2 - separate link KIND from link STATE
+- T031a: three codex-review findings in the DSDV internet extension
+- codexreview — fix 6 real bugs from adversarial review (34/34 green)
+
+### Changed
+- session-5 rev2 - 12 engineer rulings recorded and citable; Z-series landed (14 steps, mitem-01a03540); engine version skew requires --engine-override ambient for takt verbs; codexreview run records 0s duration and no tokens
+- round 49 - import 0 new lines from 2 files, reconcile in-sync, dedupe 0 groups over 118 live, export 20/119/3823, both publish legs OK
+- record 12 engineer rulings via bkquestion-v0 - 8 rulings, 2 tie-breaks, 2 risk-acceptances with expiries
+- specified-features completion CRDT plan - ALL SIX already have code on develop, so the stall is in the record not the work; 083 is unblocked and ready for /bk-plan; 4 gates owed (Udi 1.14 on 080, homing on 085/082, G2 on 065)
+- record the session-5 capture gap - 7 marathon rows did not land; registry lock held ~50min by concurrent pytest runs; kinds corrected and retry driver checked in
+- STUCK-lock verdict now false 6 times across two independent live holders - it means busy and nothing more; Get-CimInstance names the holder in one step
+- record the verified merge gate - 561/559/2/0 identical to baseline, zero regression across both merges
+- session-5 close - codexreview UNBLOCKED and root-caused, review ran NO-GO with 8 HIGH on 078 itself; SCHED-R4 discharged; 2 branches merged; 10 engineer blocks published
+- codexreview UNBLOCKED - root-caused to a git pathspec quirk, not a buildkit defect; the review then ran and returned NO-GO with 8 HIGH findings on the receipts module itself
+- round 48 - import 0 new lines from 8 files, reconcile in-sync, dedupe 0 groups over 118 live, export 20/119/3823, both publish legs OK
+- merge(olamnit): ERA definition + BK-STD-1 sitrep/takt/snapshot-guard generators + 3 exports; both add/add conflicts resolved to develop (owners.json theirs was empty; open-table theirs is a second renderer - fork flagged, not silently picked)
+- merge(091): bkstd1 round42 - ariellas lane roadmap round 47, bk-flow + bk-proof skills, restart prep (clean probe)
+- publish the 20260824T145416Z export - the dependency source for SCHED-R4 edge stocking
+- publish exports from the standard-reports read path
+- session-4 close - Y05/Y08/Y10/Y11/Y12/Y13 done, origin at 14 heads, 0 open PRs; adds the lake double-count rule
+- sync round 50 - import applied, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #225 from olamni-glp/tidy-y08-merge-051
+- merge(TIDY-Y08): 051-ynet-transport onto develop - engineer-ruled Q3 triage outcome
+- session-3 close - the release gate is a codexreview tool defect, not missing work
+- Merge pull request #224 from olamni-glp/078-codexreview
+- two defects that together block every release on this host
+- session-2 close - 078 MVP recovered and green on develop, codexreview is now the single gate to release
+- sync round 49 - import applied, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #223 from olamni-glp/q1-merge-078-archived-mvp
+- safe-restart prep for mrun-f5ef56dba3c1, ariellas lane, GLPNET
+- merge(078): recover the archived 078 MVP implementation onto develop - engineer-ruled Q1
+- record the takt DuckLake fleet-root defect that hid this host from every fleet takt query
+- round 47 sync + adopt ruled open-table renderer (drops implemented state - defect filed)
+- safe-restart prep for mrun-20d9230f767b, gavriella lane, GLPNET
+- sync rounds 47 and 48 - import applied both legs, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #221 from olamni-glp/091-bkstd1-round42
+- Merge pull request #222 from olamni-glp/tidy-y05-merge-066
+- export 20/116/3762 (23:25 refresh) - reconcile in-sync, import 0-new-lines, dedupe 0 groups/115 live
+- SCHED-R6 and SCHED-R7 measured on the glpnet board root
+- merge(TIDY-Y05): 066-wave6-consolidation spec dir onto develop - 4 conflicts resolved (3 keep-deleted: feature.json/import-manifest/abandon.cs; CLAUDE.md BUILDKIT block keeps active 078), net +13 spec files 1213 insertions 0 deletions
+- sync round 46 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- sync round 42 - reconcile in-sync, 0 dup groups, export 20/118/3806 both legs
+- sync round 45 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- Merge pull request #220 from olamni-glp/main
+- adopt fleet-standard BK-STD-1 tooling (roadmap_open_table + marathon_sitrep + takt_report + snapshot_guard) from qhstate d1f64b4; re-pin glpnet engine 2026.8.23.1
+- export 20/116/3762 (17:01 refresh) - full-identity not-closed feature render
+- adopt VERBATIM authoritative engineer ruling (ERA=FEATURE, nine-stage span, no lossy compression, era-verb is buildkit-lane surface) - supersedes paraphrase; fleet-aligned crucible 697ba70+773396c
+- canonical ERA==FEATURE definition (engineer ruling 2026-08-23) - full /bk-specify->/bk-close arc; lossy feature compression forbidden; fleet-aligned w/ crucible 697ba70
+- export 20/116/3762 (2026-08-23T16:52 refresh for not-closed table)
+- sync 2026-08-23 - import 1 new, reconcile, dedupe 0 groups (115 live), export 20/116/3762; olamnit scheduler onboard 35d 3x8h + directive items D01-D05 captured
+- safe-restart handover + pre-existing-failures filing - MVP implemented+green (29/29), next=codexreview; 18 pre-existing codeconv failures filed separately (engineer-ruled)
+- tasks(078): 42 tasks by user story - MVP=Phases 1-5 (setup+foundational+US1+US2+US3 on reference check)=first SHIP-TOKEN increment; US4 retrofit of 6 areas + SC-corpus post-MVP incremental
+- plan(078): verification-receipts plan+research+data-model+contracts+quickstart - MVP mechanism first (US1-3 on reference check), sidecar JSON receipts, buildkit-owned contract bound by version, 5-value outcome non-collapse, per-repo manifest + per-run expected-set; all gates PASS
+- clarify(078): ratify 6 provisional decisions (blocks 24-29) - engineer individually ruled all six on adopted option, none overturned; provisional caveat superseded
+- impl(066): US2 LANDED - ITEM-01/ITEM-02 disposed, both PRs merged by engineer and feature commits verified in develop; advanced to shipped (not closed - no buildkit release yet, and closed is the one-way door)
+- impl(066): ITEM-03 work chain COMPLETE - olamnit shipped Dart/codeconv half as v2026.08.05.1 (verified); .3 moot by day-roll; live confirmation of the import-manifest friction
+- impl(066): ITEM-03 dispute WITHDRAWN (olamnit shipped 065 as v2026.08.04.2, verified); ship-round table - both peers shipped, ours alone uncut on the systemic engineer gate; next free CalVer .3
+- impl(066): ITEM-06 RESOLVED (1.14 approval 20260804 Gabi+Udi postdates G5 rider - supersession stale, revived under olamnit/065); fleet finding: closed is a one-way door in the roadmap CLI; CalVer .2 ACKed uncontested
+- impl(066): EXT.ariellas SATISFIED - 064 shipped v2026.08.04.1 + closed, tag/back-merge independently verified; ITEM-04 disposed by owner; T023 gate arithmetic recorded (still G1+R6-R12 gated, brief was one gate short)
+- impl(066): peer-round record 2026-08-04 - ITEM-03 DISPUTED + ITEM-06 CONTRADICTED (antlr4 1.14 approval postdates rider), EXT.olamnit satisfied, EXT.ariellas reclassified engineer-blocked, ITEM-02 corrected to 2 baseline failures
+- roadmap: sync round - import/reconcile clean, 0 dups, export published, replay-verify OK
+- impl(066): record ariellas 003500Z peer escalations (bridge auth asymmetry a-d) in evidence inventory; their v2026.08.04.1 claim ACKed, our 064 takes next free
+- impl(066): US2 both items implemented on pushed buildkit branches (634d4a0a, 554836f6), dispositions gated on engineer landing; T006/T008 ticked, T007/T009 landing-gated
+- impl(066): ITEM-05 qr-link-provisioning graduation proposal - mandatory security posture + cross-repo consumer => own feature pipeline; T013 superseded, T014 engineer-gated
+- roadmap: sync round post runtime-consol close - export published, replay-verify OK
+- impl(066): US3 glp-runtime-consol closed - abandon.cs dead stub tombstoned (error-level Obsolete, 062 US5 rationale, 0 live call sites), antlr4 sub-scope superseded per rider; inventory w/ 1.14 screen; T010-T012 ticked
+- roadmap: sync round - import/reconcile clean, 0 dups, export published, replay-verify OK
+- impl(066): US2 parked w/ evidence (R5 ruling gate + buildkit-repo foreign WIP), T024 triage proposal packaged (defer-on-this-host, ariellas-led), OPS gate row added
+- roadmap: sync round - import 214119Z (0-delta), reconcile clean, 0 duplicates, export published, replay-verify OK
+- roadmap: import ariellas 214119Z export, reconcile
+- roadmap: US1-close sync round export published (FR-007 per-close discipline)
+- impl(066): US1 gate ledger complete - 18-row mapping w/ invariants verified, rulings R1-R12 inventory, drift record (ariellas Option-B rider: 6 gleam rows closed + antlr4 superseded, implement receipts 459be1b2), T001-T005 ticked
+- analyze(066): 0-critical, 6 findings, top-5 remediations applied - T010 language-authority screen (IV-a), FR-007 per-close sync discipline, FR-010 marathon checkpoint line, T013 loopback acceptance, group-label normalize
+- tasks(066): 30 tasks across US1-US6 + polish - ledger MVP, parallel lanes for quick-wins/singletons/spike, gate-parked Gleam chain (spike-go + ariellas receipts + G1), triage packaging, wave-close sweep
+- roadmap: import ariellas 205616Z export, reconcile
+- plan(066): wave-6 orchestration plan - constitution PASS, D1-D7 research decisions, gate-ledger + disposition-protocol contracts, ledger-driven data model, resume quickstart
+- spec(066): wave-6 roadmap consolidation - 18-item not-closed snapshot 150440Z, gates G1-064-ship/G2-065/G3-rulings + ariellas gap-closure carve-out, stories P1-P6 (ledger, quick wins, singletons, ANTLR4 spike, Full-Gleam chain consuming peer receipts, captured triage)
+- register host Olamnit as trusted roadmap-export signer (engineer ruling 2026-07-16, co sol#103)
+- correct the codexreview trap - wrong root cause, now fixed
+- refresh the P6 restart handoff after T031a
+- T031a: record the adversarial review outcome (converged@4)
+- P6 restart handoff — US5 sealed routes (T034-T039)
+- P4 US3: real DHT store/lookup over S-Kademlia + naming + tamper-reject (T023-T027)
+- roadmap — T011 real MsQuic wire done; T015 resume point
+- roadmap — P2 T014/T016 done, T011/T015 resume point
+- record BouncyCastle.Cryptography dep (DEC-CRYPTO-1)
+- analyze — close 2 coverage gaps (FR-021, FR-022)
+- tasks — 59 tasks organized by user story (MVP = US1+US2)
+- plan — architecture, research, data-model, contracts, quickstart
+- clarify — resolve 4 cycle-2 §5 mechanism choices
+- specify YNET ynet-transport (GLPNET transport/overlay tier)
+
 ## [v2026.08.23.2] - 2026-08-23
 
 ### Changed
