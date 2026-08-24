@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-24T08:40Z** (session 3 close) |
+| written at | **2026-08-24T12:10Z** (session 4 close) |
 
 ## Resume in one line
 
@@ -41,11 +41,11 @@ both directions — serialise instead of reaping.
 
 | field | value |
 |---|---|
-| branch | `develop`, clean, pushed at `3494f579` |
-| steps | **24 / 97** complete |
-| outstanding items | **167** |
-| develop ahead of main | **46** |
-| open PRs | **1** — draft #111 only |
+| branch | `develop`, clean, pushed at `e5a707bf` |
+| steps | **28 / 97** complete |
+| outstanding items | **169** |
+| develop ahead of main | **76** |
+| open PRs | **0** |
 | regression gate | **561 / 559 pass / 2 fail / 0 skip** (the 2 are pre-existing Section T 064 drills) |
 | recovered 078 MVP | **29 / 29 targeted receipts tests pass on `develop`** |
 | roadmap | 24 not-closed = **3 analyzed · 15 promoted · 6 specified**, across 6 epics; `--check` exit 0 |
@@ -78,25 +78,27 @@ release criterion.
 
 | # | step | size | state | blocked-by |
 |---:|:---|:---|:---|:---|
-| 1 | `/bk-implement 078` | saga/35 | **gated** | **ENGINEER** — Block 51 (two-repo ship) |
-| 2 | TIDY-Y15 author `.claude/skills/bk-flow/SKILL.md` | mini/7 | **held** | **ENGINEER** — Block 51 |
-| 3 | TIDY-Y04 / Y01 / Y03 | — | **done** | already merged |
-| 4 | TIDY-Y02 merge 085-onrestart | micro/3 | **held** | **PEER** — live branch, olamnit moved it 3× |
-| 5 | TIDY-Y06 / Y07 067 + 067b | midi/11 ×2 | **gated** | **ENGINEER** — graduate to own pipeline |
-| 6 | TIDY-Y08 051-ynet-transport | midi/11 | **gated** | **ENGINEER** — never triaged |
-| 7 | TIDY-Y09 050-vs-059 survivor | midi/11 | **gated** | **ENGINEER** — X10 owed |
-| 8 | TIDY-Y10 030-phase8-polish ×2 | mini/7 | **unblocked** | — |
-| 9 | TIDY-Y12 backup-upgrade-buildkit | micro/3 | **unblocked** | — |
-| 10 | TIDY-Y13 016 + 017 archive-and-drop | mini/7 | **unblocked** | — |
-| 11 | TIDY-Y14 C2 remote cleanup | mini/7 | **unblocked** | must run **LAST** |
-| 12 | SCHED-R1 readiness writer | maxi/17 | **unblocked** | — gates R7 |
-| 13 | SCHED-R4 dependency edges | midi/11 | **unblocked** | — |
+| 1 | **SCHED-R1 readiness writer** | maxi/17 | **unblocked** | — the ceiling-lifter; gates R7 |
+| 2 | SCHED-R4 declare dependency edges | midi/11 | **unblocked** | — `edge_coverage` is 0.0 |
+| 3 | TIDY-Y14 C2 remote cleanup | mini/7 | **unblocked** | must run **LAST** of the Y-series |
+| 4 | TIDY-Y02 merge 085-onrestart | micro/3 | **held** | **PEER** — olamnit moved it 3× |
+| 5 | TIDY-Y06/Y07 067 + 067b | midi/11 ×2 | **gated** | **ENGINEER** — graduate to own pipeline |
+| 6 | TIDY-Y09 050-vs-059 survivor | midi/11 | **gated** | **ENGINEER** — X10 owed |
+| 7 | TIDY-Y16/Y17/Y18 | midi/maxi/midi | **unblocked** | ERA metric · unique allocation · takt-only durations |
+| 8 | `/bk-implement 078` | saga/35 | **re-measure first** | Q1 ruled; MVP already merged — **re-scope before starting** |
+| 9 | `/bk-codexreview 078` | — | **TOOL-BLOCKED** | buildkit defect 1 or 2 |
 
-**The cheapest real progress next session is #8 → #10 → #9** (Y10, Y13, Y12): all unblocked,
-all class-C2 branch tidy-ups, and the exact route that worked twice this session — probe with
-`git merge-tree` first, verify preservation **by content**, then drop.
+**DONE this session:** Y05, Y08, Y10, Y11, Y12, Y13 + the Q1 MVP recovery. **Only Y14 remains of
+the unblocked Y-series branch tidy-ups.** Origin is down to **14 heads**; **0 open PRs**.
 
 ## 🔴 Corrections carried forward (do not re-derive)
+
+0. **NEVER sum raw `kind=stage` seconds from the lake — it double-counts.** I re-emitted the same
+   19 marathon steps under a second verb and a naive read then reported **14.57 h / 57 facts**
+   against the marathon's authoritative **4.65 h / 19**. `emit_stage` has no idempotence on
+   `(feature, phase, seconds)`. I removed my 38 duplicate files. hatzinor established this for
+   `kind=era` (`era_rows_for_takt` dedups, raw `query()` does not); **it is true for `kind=stage`
+   too, and stage has no deduping reader at all.** **Quote the marathon figure per feature.**
 
 1. **SCHED-R7 sizing WITHDRAWN.** `consolidated-hardening-2026-08-23.md` sizes it an independent
    midi/11. It is a **dependent of SCHED-R1** — proven by dry-run: `backlog ⇒ no claim ⇒ no bind`,
