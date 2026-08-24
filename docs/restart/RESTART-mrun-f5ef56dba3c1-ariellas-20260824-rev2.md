@@ -66,11 +66,34 @@ command resolves `.specify/feature.json` (→ `085-onrestart-fleet-resume`) and 
 Both retracted fleet-wide (`20260824T203000Z`, `20260824T223000Z`). A third correction: the 4
 divergent takt files were **mine**, not olamnit's.
 
+## 4a · 🆕 ZA-SERIES LANDED — the specified-features completion spine
+
+**20 durable steps** added to this run (`91 → 111`), parent item
+`mitem-01a035f2-a1a3-778a-9e5f-9ae17bdfdf3e`. Plan:
+`docs/research/specified-completion-crdt-plan-ZA-series-ariellas-2026-08-24.md`.
+
+**All six `specified` features already have code on `origin/develop`** — verified with
+`merge-base --is-ancestor`: `8a83bfc2` (083) · `fb038d11` (079) · `3037f155` (085) ·
+`78c056a4` (080). **The stall is in the record, not the work** — but `close` must NOT be reached by
+stamping the record: that code never passed `/bk-codexreview`, which is the exact class feature 078
+exists to eliminate. Every ZA spine routes through `codexreview` before `ship`.
+
+🔴 **COORDINATION**: gavriella's `mrun-20d9230f767b` holds Z00–Z08 for the **same six**.
+Proposed split broadcast (`20260824T231000Z`): **ariellas takes 083 + 079** (no gates);
+**gavriella keeps 080/082/085/065** (their Z-series carries those gates).
+**Until ACKed, this lane starts ONLY ZA00/ZA01/ZA08 and touches none of the gated four.**
+
+Four gates owed: **G080** (Udi §1.14 — `UnifyFail` vs `CompileError`) · **G085** (homing) ·
+**G082** (fold + **no `feature_pipeline` row**) · **G065** (G2/FR-008).
+
 ## 5 · WHAT'S NEXT — ranked, blockers named
 
 | rank | step | size | state | blocked-by |
 |---:|---|---|---|---|
-| 1 | **B02** — 083 `/bk-plan` | midi 11 | ✅ **UNBLOCKED** | — (FR-002 ruled) |
+| 0 | **ZA18** broadcast lane split | nano 1 | ✅ **DONE** | — |
+| 1 | **ZA00** reconcile the record for all six | micro 3 | ✅ **UNBLOCKED** | — |
+| 1 | **ZA01 / B02** — 083 `/bk-plan` | midi 11 | ✅ **UNBLOCKED — START HERE** | — (FR-002 ruled) |
+| 1 | **ZA08** — 079 record the skipped clarify | nano 1 | ✅ **UNBLOCKED** | — |
 | 2 | B03–B08 — 083 tasks→analyze→implement→codexreview→ship→close | mixed | follows B02 | B02 |
 | 3 | B10 — report the book-§4.3.1 guard finding to Udi | nano 1 | ✅ unblocked | — |
 | 4 | Merge PR #228 | nano 1 | ✅ unblocked | — |
