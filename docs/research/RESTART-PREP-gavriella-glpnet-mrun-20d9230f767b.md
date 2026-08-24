@@ -88,7 +88,7 @@ fixes.** Instruments before readings.
 | unmerged origin heads | **5** (was 7) — all engineer-gated or archive |
 | board | `D:/coop/glpnet/sched` — 32 WPs: backlog 23 · ready 3 · in-progress 4 · done 1 · escalated 1 |
 | roadmap | round 48 done; **25 not-closed** (see the count defect below), 6 epics with open work |
-| regression gate | re-run this session over both merges — **read `gate.txt` result before quoting a number** |
+| regression gate | ✅ **561 / 559 passed / 2 failed / 0 skipped** — re-run this session over BOTH merges, **identical to baseline, zero regression**. The 2 are the known pre-existing `Section T` 064 service-box drills (T-1 US1 resume, T-2 US2 history) |
 
 ## Delivered this session (session 5)
 
