@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-24T07:30Z** (session 2 close) |
+| written at | **2026-08-24T08:40Z** (session 3 close) |
 
 ## Resume in one line
 
@@ -41,23 +41,38 @@ both directions — serialise instead of reaping.
 
 | field | value |
 |---|---|
-| branch | `develop`, clean, pushed at `e378c051` |
+| branch | `develop`, clean, pushed at `3494f579` |
 | steps | **24 / 97** complete |
 | outstanding items | **167** |
-| develop ahead of main | **43** |
+| develop ahead of main | **46** |
 | open PRs | **1** — draft #111 only |
 | regression gate | **561 / 559 pass / 2 fail / 0 skip** (the 2 are pre-existing Section T 064 drills) |
 | recovered 078 MVP | **29 / 29 targeted receipts tests pass on `develop`** |
 | roadmap | 24 not-closed = **3 analyzed · 15 promoted · 6 specified**, across 6 epics; `--check` exit 0 |
 
-## 🔴 THE SINGLE HIGHEST-VALUE NEXT ACTION
+## 🔴 THE RELEASE GATE IS A TOOL DEFECT, NOT MISSING WORK
 
-**`/bk-codexreview 078`** — and it is **UNBLOCKED**.
+**`/bk-codexreview` CANNOT be discharged on this host.** Attempted 3× this session; both
+documented routes fail:
 
-078's MVP is now implemented **on `develop`** (recovered from the archive tag, PR #223, engineer
-ruling Q1) and its 29 targeted tests pass. The roadmap has moved it `specified → analyzed`.
-The *only* thing standing between 078 and a release is that **no codexreview run exists for it** —
-`.specify/codexreview/runs/` holds only 08-21/08-22 runs for other work. That is now the gate.
+1. **`--scope diff` inlines the diff body** despite documenting the opposite ("size-invariant
+   BRIEF … NEVER the diff body"). A 35-file / 66,236-insertion diff → **2.6 MB stderr** ending in
+   `ERROR: Codex ran out of room in the model's context window.`
+2. **`--scope <path>` refuses a subtree with 8 tracked files** (`refused: empty_scope`),
+   reproduced twice. That is the escape hatch from (1), and it is closed.
+
+**Ruled out by measurement — do NOT re-investigate:** the codex CLI (verified working,
+`CODEX_OK`), the `review` subcommand, the stdin-prompt form, the Windows `.cmd` launcher capture,
+and output discarding. Full evidence:
+`docs/research/codexreview-two-blocking-defects-2026-08-24.md` (on `develop`).
+
+**Consequence:** 078's MVP is implemented and green (29/29 targeted tests) but **no release can be
+cut under the "codex reviewed" criterion** until buildkit fixes defect 1 or 2. Broadcast to 5
+channels; PR #224 merged. **The gate is the review tool, not the code.**
+
+**Next session: do not retry codexreview on a large diff.** Either wait for a buildkit fix, or ask
+the engineer whether a Claude-reviewer-only run (`--reviewers N` without codex) satisfies the
+release criterion.
 
 ## What's next, in order
 
