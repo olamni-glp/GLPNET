@@ -137,6 +137,14 @@ Get-CimInstance Win32_Process -Filter 'ProcessId=38152' | Select-Object CommandL
 A **live pytest run from another buildkit session**, 80 s CPU. **Use that one command** — it names
 the holder outright, where `Get-Process` only proves existence. **Never reap on the STUCK verdict.**
 
+🔴 **Then it happened again with a DIFFERENT holder — a 6th false verdict.** When 38152 finally
+exited (confirmed via `Get-Process`), the very next attempt reported *"PID **416** held it on ALL 61
+attempts and never changed — that is a STUCK lock"*. `Get-CimInstance` named it immediately:
+`python.exe -W ignore -m pytest tests/scheduler tests/refine -q`, started 18:12. **Two independent
+holders, both live, both reported as STUCK.** The verdict has now been wrong 6 times and right 0.
+Treat it as meaning **"busy"** and nothing more. A low PID (416) is *not* evidence of a recycled or
+stale PID — check, don't infer.
+
 *Fix owed upstream:* the lock message should carry the holder's command line, and "STUCK" should be
 reserved for a PID `Get-Process` cannot find.
 
