@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-23T23:45Z** |
+| written at | **2026-08-24T07:30Z** (session 2 close) |
 
 ## Resume in one line
 
@@ -41,13 +41,23 @@ both directions — serialise instead of reaping.
 
 | field | value |
 |---|---|
-| branch | `develop`, clean, pushed at `8d1707a2` |
+| branch | `develop`, clean, pushed at `e378c051` |
 | steps | **24 / 97** complete |
-| outstanding items | **166** |
-| develop ahead of main | **32** |
+| outstanding items | **167** |
+| develop ahead of main | **43** |
 | open PRs | **1** — draft #111 only |
 | regression gate | **561 / 559 pass / 2 fail / 0 skip** (the 2 are pre-existing Section T 064 drills) |
-| roadmap | 24 not-closed = 1 analyzed · 15 promoted · 8 specified, across 6 epics; `--check` exit 0 |
+| recovered 078 MVP | **29 / 29 targeted receipts tests pass on `develop`** |
+| roadmap | 24 not-closed = **3 analyzed · 15 promoted · 6 specified**, across 6 epics; `--check` exit 0 |
+
+## 🔴 THE SINGLE HIGHEST-VALUE NEXT ACTION
+
+**`/bk-codexreview 078`** — and it is **UNBLOCKED**.
+
+078's MVP is now implemented **on `develop`** (recovered from the archive tag, PR #223, engineer
+ruling Q1) and its 29 targeted tests pass. The roadmap has moved it `specified → analyzed`.
+The *only* thing standing between 078 and a release is that **no codexreview run exists for it** —
+`.specify/codexreview/runs/` holds only 08-21/08-22 runs for other work. That is now the gate.
 
 ## What's next, in order
 
