@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-24T18:3xZ (session 5 close)** |
+| written at | **2026-08-24T20:0xZ (session 5 close, revision 2)** |
 
 ## Resume in one line
 
@@ -104,6 +104,65 @@ run this repo produces is uninterpretable — including the runs that would cert
 fixes.** Instruments before readings.
 
 ---
+
+
+## 🔴 SESSION-5 REVISION 2 — 12 ENGINEER RULINGS RECEIVED. Read these BEFORE planning anything.
+
+Recorded via the real `bkquestion-v0` template and citable by id:
+**`.specify/decisions/engineer-decisions.jsonl`** (`python D:/coop/bkquestion/bkquestion.py decisions`).
+
+| id | kind | ruling |
+|---|---|---|
+| `Q-GLPNETS1-01` | ruling | **Direct ariellas, with a deadline** — allocator declares a calendar + issues addressed allocations |
+| `Q-GLPNETS1-02` | ruling | **Fix the two TEST findings FIRST**, then the six product HIGHs, then re-review and release |
+| `Q-GLPNETS1-03` | ruling | **Branch and PR in buildkit** — this lane MAY execute `bk:` tasks cross-repo, under `glpnet/<feature>-<topic>` |
+| `Q-GLPNETS1-04` | tie-break | **059 survives, archive 050** |
+| `Q-GLPNETS2-01` | ruling | **067/067b: merge both, THEN specify** — and move the roadmap row off `implemented` |
+| `Q-GLPNETS2-02` | tie-break | **olamnit's qhstate-derived `roadmap_open_table.py` is CANONICAL** — develop replaces its copy; ariellas-tefl's is withdrawn |
+| `Q-GLPNETS2-03` | ruling | **`implemented` IS not-closed — render it.** True count is **25**, not 24 |
+| `Q-GLPNETS2-04` | ruling | **Fold 082** into `scheduler-feature-stream-durable-healing-and-hardening`; retire the blocked step |
+| `Q-GLPNETS3-01` | ruling | **Add a `retired_at` marker**; mark `gavriellas` retired; keep its 30 exports as provenance |
+| `Q-GLPNETS3-02` | ruling | **Link the 6 unbound ids**; accept the 70 pre-specify features have no spec |
+| `Q-GLPNETS3-03` | risk-acceptance | codexreview root-scope workaround accepted — **EXPIRES 2026-09-14** |
+| `Q-GLPNETS3-04` | risk-acceptance | tracked files primary, marathon row best-effort — **EXPIRES 2026-09-23** |
+
+**Three rulings unblock work that was blocked all session:** S1-03 unblocks `/bk-implement 078` and
+the upstream pathspec fix; S1-04 unblocks TIDY-Y09; S2-01 unblocks TIDY-Y06/Y07.
+
+## 🔴 THE Z-SERIES IS LANDED AND DURABLE
+
+Parent item **`mitem-01a03540-b872-7176-82b2-db315879406b`**, **14 steps**, ids captured (`--json`
+was passed — there is no second chance). Content file, which **WINS over step names**:
+**`docs/research/specified-completion-crdt-plan-Z-series-2026-08-24.md`**.
+
+**HEADLINE: all six features at `specified` ALREADY HAVE THEIR CODE ON `develop`.** The stall is in
+the **record**, not the work. **Start at Z01 — `083` is the one feature with ZERO blockers**; its own
+spec header reads *"Ready for `/bk-plan`"*. 166 pts; 62 ready; 68 behind four gates
+(**G080 Udi §1.14** · G085 · G082 · G065).
+
+## 🔴 ENGINE VERSION SKEW — the scheduler's takt verbs vanish without it
+
+`buildkit_cli` dist-info says **2026.8.24.3**; `scheduler version` says **2026.08.23.7**, and the
+pinned engine **lacks `takt-tokens` / `takt-sync` / `bulk-ready` / `replicas` / `replicate`** — the
+top-level `--help` advertises them, then dispatch refuses them as an invalid choice.
+
+**Every takt command needs `--engine-override ambient`:**
+
+```
+buildkit-scheduler takt-tokens --engine-override ambient --root D:/coop/glpnet/sched --actor gavriella ...
+buildkit-scheduler takt-sync   --engine-override ambient --root D:/coop/glpnet/sched --actor gavriella
+```
+
+The tool declares the displacement **loudly** (`engine pin DISPLACED … The pin was NOT honoured`),
+which is correct behaviour — but the silent half is that **without the flag the verb simply does not
+exist**, and a lane could conclude takt recording is unsupported.
+
+## 🔴 THE CODEXREVIEW RUN RECORDS NO TAKT AND NO TOKENS
+
+`reviews/develop/20260824T165651Z/run.json` has `started_at == ended_at == 20260824T165651Z`, so its
+**measured duration is 0 s** — false: its own streamed heartbeats reached **511 s**. And
+`cycles[0].token_records` is **`[]`**. So a codexreview run contributes **nothing** to takt or to
+per-phase token accounting. Fix owed upstream with the pathspec fix.
 
 ## State at hand-off
 
