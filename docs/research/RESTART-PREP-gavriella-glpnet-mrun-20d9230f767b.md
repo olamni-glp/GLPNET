@@ -84,6 +84,36 @@ all class-C2 branch tidy-ups, and the exact route that worked twice this session
    `develop`**. It lives only at tag `archive/backup__078-olamnit-impl-preserve-20260820`.
    **Read that tag before planning any 078 implementation** — it materially changes Block 51.
 
+## TAKT DuckLake — required config on this host
+
+`config.local.json` (gitignored, machine-local) MUST carry:
+
+```json
+{ "sched_root": "D:/coop/glpnet/sched",
+  "takt_lake_root": "D:/_takt-lake",
+  "takt_lake_fleet_root": "D:/coop/_takt-lake" }
+```
+
+🔴 **Without `takt_lake_fleet_root` the tool defaults to `I:\coop\_takt-lake`, which is NOT
+mounted on this host, and every fleet write fails SILENTLY.** That hid 47 records and made
+`host=gavriella` absent from the fleet lake entirely. Full write-up:
+`docs/research/takt-ducklake-fleet-root-defect-2026-08-24.md`.
+
+**Report takt FROM the lake**, not only from the CLI:
+
+```python
+import duckdb; L="D:/coop/_takt-lake/takt"
+duckdb.connect().execute(f"SELECT phase,count(*),median(seconds)/3600 FROM read_parquet('{L}/kind=stage/**/*.parquet',hive_partitioning=1,union_by_name=1) WHERE host='gavriella' AND seconds IS NOT NULL GROUP BY 1").fetchall()
+```
+
+Lake and marathon agree at **4.65 h / 19 measured facts** — quote the agreement, not one source.
+
+## Engineer questions are asked in BK-STD-2 shape
+
+`BK-STD-2` (ariellas' proposal, **adopted here unchanged**) is the fleet question format. There is
+**no precoded template file anywhere** — that absence is established, broadcast, and not worth
+re-searching. Do not author a variant; contribute amendments to ariellas' hardening.
+
 ## Evidence caveats
 
 - **Takt bands must be quoted with any takt figure** (trap 10): feature total **4.65 h over 19
