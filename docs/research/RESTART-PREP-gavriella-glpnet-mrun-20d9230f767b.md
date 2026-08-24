@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-24T12:10Z** (session 4 close) |
+| written at | **2026-08-24T18:3xZ (session 5 close)** |
 
 ## Resume in one line
 
@@ -26,94 +26,123 @@ buildkit-marathon resume --feature 078-verification-receipts
 
 🔴 **`--feature` is mandatory** — there is no `.specify/feature.json` in this repo, by design.
 
-🔴 **Do NOT use `glpnet-full-completion-programme`.** That feature name resolves to
-`mrun-f5ef56dba3c1`, which is the **ariellas lane's** run and **does not exist in this machine's
-store** (checked: 600 targets, absent). `docs/current_plan.md` is the ariellas pointer, not this
-lane's. Marathon state is per-machine and out-of-repo — it does not travel with the repo.
+🔴 **Do NOT use `glpnet-full-completion-programme`.** That name resolves to `mrun-f5ef56dba3c1`,
+the **ariellas lane's** run, absent from this machine's store. `docs/current_plan.md` is the
+ariellas pointer, not this lane's. Marathon state is per-machine and out-of-repo.
 
-🔴 **Run buildkit commands SERIALLY.** Two concurrent invocations contend for the deploy-home
-registry lock and the second reports a "STUCK lock" naming a **dead PID**. Measured this session:
-PID 11260 was reported stuck and was genuinely not running, while `.lock` was simultaneously held
-by a live handle and `.lock.meta` had already moved to PID 12472. The message is unreliable in
-both directions — serialise instead of reaping.
+🔴 **Run buildkit commands SERIALLY.** See the STUCK-lock entry below — it fired twice more today.
+
+---
+
+## 🔴 THE HEADLINE: the release gate is no longer a tool block. It is a NO-GO.
+
+Session 4 recorded, in bold, that `/bk-codexreview` **cannot be discharged on this host** and that
+**no release can be cut** until buildkit fixed one of two defects. **Both halves of that are now
+superseded.**
+
+1. **Defect 2 is root-caused — and it is in git, not buildkit.** `scope.resolve_path` runs
+   `git ls-files -- <path> <8 × :(exclude)…>`. On **git 2.55.0.windows.3** two of those excludes —
+   `:(exclude)**/*.map` and `:(exclude)reviews/**` — each **independently empty a nested pathspec
+   they cannot possibly match**. buildkit's `empty_scope` refusal is honest; its input is wrong.
+2. **The working route:** use a **single-component (repo-root) directory** as `--scope`. Measured:
+   `codeconv` → **332 files** with all 8 excludes; `codeconv/src` → 0; `docs/research` → 245.
+3. **The review then RAN** — run `20260824T165651Z`, exit 0, not timed out — and returned
+   **10 findings, 8 HIGH**, all on the 078 receipts module itself.
+
+**So: do not retry the "is codexreview broken" investigation. It works. The blocker is now the
+review's own verdict**, which is a much better problem to have. Full write-up, tracked on
+`develop`: **`docs/research/codexreview-unblocked-and-078-no-go-2026-08-24.md`**.
+
+> ⚠️ **Count caveat, do not drop it:** `run.json` says `findings_count_status: "unconfirmed"`,
+> `prose_fallback_findings: 10`. codex returned **prose, not structured JSON**, so 10 is a parse
+> fallback. The individual findings are the evidence; the total is approximate.
+
+### The 8 HIGH findings ARE the next implementation slice for 078
+
+| file:line | defect |
+|---|---|
+| `receipts/consumer.py:73-74` | accepts a PASS receipt from **another check / area / prior run** — no run ID in either model |
+| `receipts/receipt.py:162-170` | validation has **no PASS branch**; PASS with an unresolved target validates |
+| `receipts/receipt.py:157-161` | enforces only `examined ≤ total`; **FR-010 requires examined + skipped ≤ total** |
+| `receipts/manifest.py:72-80` | `expected.json` that is `{}` / empty / **run_id-mismatched** is accepted as an empty expected set |
+| `receipts/manifest.py:88-90` | run reconciliation trusts a **filename**, never loads the sidecar |
+| `receipts/override.py:66-73` | `applies()` ignores the recorded **reason** — one override authorises every other refusal |
+| `tests/faultinj/conformance.py:61-68` | fixture reaches `passed == len(_CASES)` **without exercising the declared BOUNDED case** |
+| `tests/faultinj/test_guard_weakening.py:22-27` | the mutation test **stays GREEN under a no-op validator** — the inverse of SC-007 |
+
+🔴 **Fix the two TEST findings first.** While a conformance fixture reports full coverage without
+running a declared case, and a mutation test stays green when its guard is removed, **every green
+run this repo produces is uninterpretable — including the runs that would certify the other six
+fixes.** Instruments before readings.
+
+---
 
 ## State at hand-off
 
 | field | value |
 |---|---|
-| branch | `develop`, clean, pushed at `e5a707bf` |
-| steps | **28 / 97** complete |
-| outstanding items | **169** |
-| develop ahead of main | **76** |
-| open PRs | **0** |
-| regression gate | **561 / 559 pass / 2 fail / 0 skip** (the 2 are pre-existing Section T 064 drills) |
-| recovered 078 MVP | **29 / 29 targeted receipts tests pass on `develop`** |
-| roadmap | 24 not-closed = **3 analyzed · 15 promoted · 6 specified**, across 6 epics; `--check` exit 0 |
+| branch | `develop`, clean, pushed at **`4f7c68b9`** |
+| marathon | run open, seq 338+, feature `078-verification-receipts` |
+| develop ahead of main | **93** |
+| open PRs | 0 |
+| unmerged origin heads | **5** (was 7) — all engineer-gated or archive |
+| board | `D:/coop/glpnet/sched` — 32 WPs: backlog 23 · ready 3 · in-progress 4 · done 1 · escalated 1 |
+| roadmap | round 48 done; **25 not-closed** (see the count defect below), 6 epics with open work |
+| regression gate | re-run this session over both merges — **read `gate.txt` result before quoting a number** |
 
-## 🔴 THE RELEASE GATE IS A TOOL DEFECT, NOT MISSING WORK
+## Delivered this session (session 5)
 
-**`/bk-codexreview` CANNOT be discharged on this host.** Attempted 3× this session; both
-documented routes fail:
-
-1. **`--scope diff` inlines the diff body** despite documenting the opposite ("size-invariant
-   BRIEF … NEVER the diff body"). A 35-file / 66,236-insertion diff → **2.6 MB stderr** ending in
-   `ERROR: Codex ran out of room in the model's context window.`
-2. **`--scope <path>` refuses a subtree with 8 tracked files** (`refused: empty_scope`),
-   reproduced twice. That is the escape hatch from (1), and it is closed.
-
-**Ruled out by measurement — do NOT re-investigate:** the codex CLI (verified working,
-`CODEX_OK`), the `review` subcommand, the stdin-prompt form, the Windows `.cmd` launcher capture,
-and output discarding. Full evidence:
-`docs/research/codexreview-two-blocking-defects-2026-08-24.md` (on `develop`).
-
-**Consequence:** 078's MVP is implemented and green (29/29 targeted tests) but **no release can be
-cut under the "codex reviewed" criterion** until buildkit fixes defect 1 or 2. Broadcast to 5
-channels; PR #224 merged. **The gate is the review tool, not the code.**
-
-**Next session: do not retry codexreview on a large diff.** Either wait for a buildkit fix, or ask
-the engineer whether a Claude-reviewer-only run (`--reviewers N` without codex) satisfies the
-release criterion.
-
-## What's next, in order
-
-| # | step | size | state | blocked-by |
-|---:|:---|:---|:---|:---|
-| 1 | **SCHED-R1 readiness writer** | maxi/17 | **unblocked** | — the ceiling-lifter; gates R7 |
-| 2 | SCHED-R4 declare dependency edges | midi/11 | **unblocked** | — `edge_coverage` is 0.0 |
-| 3 | TIDY-Y14 C2 remote cleanup | mini/7 | **unblocked** | must run **LAST** of the Y-series |
-| 4 | TIDY-Y02 merge 085-onrestart | micro/3 | **held** | **PEER** — olamnit moved it 3× |
-| 5 | TIDY-Y06/Y07 067 + 067b | midi/11 ×2 | **gated** | **ENGINEER** — graduate to own pipeline |
-| 6 | TIDY-Y09 050-vs-059 survivor | midi/11 | **gated** | **ENGINEER** — X10 owed |
-| 7 | TIDY-Y16/Y17/Y18 | midi/maxi/midi | **unblocked** | ERA metric · unique allocation · takt-only durations |
-| 8 | `/bk-implement 078` | saga/35 | **re-measure first** | Q1 ruled; MVP already merged — **re-scope before starting** |
-| 9 | `/bk-codexreview 078` | — | **TOOL-BLOCKED** | buildkit defect 1 or 2 |
-
-**DONE this session:** Y05, Y08, Y10, Y11, Y12, Y13 + the Q1 MVP recovery. **Only Y14 remains of
-the unblocked Y-series branch tidy-ups.** Origin is down to **14 heads**; **0 open PRs**.
+| item | result |
+|---|---|
+| **SCHED-R4** | ✅ **DISCHARGED** — `stock-edges` projected **27 of 279** deps (6 confirmed / 21 heuristic / 0 cycles). `edge_coverage` off 0.0 |
+| **SCHED-R1** | ⭐ **premise corrected — already shipped upstream**, not a maxi/17 build |
+| **onboard** | ✅ 35-day 3×8h calendar, verified by content: 38 full days, 00:00/08:00/16:00, to 2026-09-27 |
+| **codexreview** | ⭐ **unblocked + root-caused + run** → NO-GO |
+| merge `091-bkstd1-round42` | ✅ `2b0f9122` clean — brings **bk-flow + bk-proof skills** and roadmap round 47 |
+| merge olamnit tidy-up | ✅ `6a261b1d` — 2 add/add conflicts resolved to develop |
+| **TIDY-Y15** | ✅ **discharged by ariellas** — `.claude/skills/bk-flow/SKILL.md` arrived on the 091 merge. **Do not author a competing one** |
+| roadmap round 48 | ✅ import 0 new / reconcile in-sync / dedupe 0 groups over 118 live / export 20/119/3823, both legs |
+| engineer brief | ✅ **10 blocks** published — `claude.ai/code/artifact/77dcfcf1` |
 
 ## 🔴 Corrections carried forward (do not re-derive)
 
-0. **NEVER sum raw `kind=stage` seconds from the lake — it double-counts.** I re-emitted the same
-   19 marathon steps under a second verb and a naive read then reported **14.57 h / 57 facts**
-   against the marathon's authoritative **4.65 h / 19**. `emit_stage` has no idempotence on
-   `(feature, phase, seconds)`. I removed my 38 duplicate files. hatzinor established this for
-   `kind=era` (`era_rows_for_takt` dedups, raw `query()` does not); **it is true for `kind=stage`
-   too, and stage has no deduping reader at all.** **Quote the marathon figure per feature.**
+0. **NEVER sum raw `kind=stage` seconds from the takt lake — it double-counts.** `emit_stage` has
+   no idempotence on `(feature, phase, seconds)`. Quote the **marathon** figure per feature:
+   **4.65 h over 19 measured steps**, band 1.5–6.0 h, in-band — with **78 of 97 steps unmeasurable
+   and NOT folded in as zero**.
+1. **The BK-STD-1 open table DROPS `state=implemented`.** Export fold = **25 not-closed**
+   (94 closed · 15 promoted · 6 specified · 3 analyzed · **1 implemented**); the renderer prints
+   **24**. The hidden row is **`qr-link-provisioning` (067)** — the feature under an open
+   graduation ruling. ariellas filed this on branch 091; **I corroborated it by measurement.**
+2. **Epic heads carry NO `state` field** — all 20 are `None`. **No lane may state an epic state
+   count**; the export cannot support one.
+3. **SCHED-R2's `complete` mark on this run is FALSE and cannot be undone.** Report **points**,
+   never steps-done/total.
+4. **My "3+ path components are emptied" rule is WITHDRAWN** — measured with one exclude, false
+   under all eight (`docs/research` is 2 components and survives; `codeconv/src` is 2 and does not).
+5. **The dropped Y11 branch carried a complete 078 MVP** — tag
+   `archive/backup__078-olamnit-impl-preserve-20260820`. Already merged; the codexreview above is
+   *of that code*.
 
-1. **SCHED-R7 sizing WITHDRAWN.** `consolidated-hardening-2026-08-23.md` sizes it an independent
-   midi/11. It is a **dependent of SCHED-R1** — proven by dry-run: `backlog ⇒ no claim ⇒ no bind`,
-   with 25 of 32 packets in backlog giving a hard **≈15%** ceiling.
-2. **SCHED-R2's `complete` mark on this run is FALSE and cannot be undone** (recorded in the
-   ledger by a prior session). **Do not trust step-completion counts on this run** — report
-   points, not ratios.
-3. **The dropped Y11 branch was not merely a backup.** It carried a complete **078 MVP
-   implementation** (`codeconv/src/codeconv/receipts/`, 8 modules, 29 tests green) that is **not on
-   `develop`**. It lives only at tag `archive/backup__078-olamnit-impl-preserve-20260820`.
-   **Read that tag before planning any 078 implementation** — it materially changes Block 51.
+## 🔴 The STUCK-lock verdict was FALSE a 4th and 5th time — and this time I identified the holder
+
+`buildkit-marathon` refused repeatedly with *"PID 38152 held it on ALL 61 attempts and never
+changed — that is a STUCK lock, not contention."* It was **alive the whole time**:
+
+```
+Get-CimInstance Win32_Process -Filter 'ProcessId=38152' | Select-Object CommandLine
+→ python.exe -m pytest tests/roadmap/test_link_refusals.py … -q
+```
+
+A **live pytest run from another buildkit session**, 80 s CPU. **Use that one command** — it names
+the holder outright, where `Get-Process` only proves existence. **Never reap on the STUCK verdict.**
+
+*Fix owed upstream:* the lock message should carry the holder's command line, and "STUCK" should be
+reserved for a PID `Get-Process` cannot find.
 
 ## TAKT DuckLake — required config on this host
 
-`config.local.json` (gitignored, machine-local) MUST carry:
+`config.local.json` (gitignored) MUST carry — **verified present today**:
 
 ```json
 { "sched_root": "D:/coop/glpnet/sched",
@@ -121,32 +150,37 @@ the unblocked Y-series branch tidy-ups.** Origin is down to **14 heads**; **0 op
   "takt_lake_fleet_root": "D:/coop/_takt-lake" }
 ```
 
-🔴 **Without `takt_lake_fleet_root` the tool defaults to `I:\coop\_takt-lake`, which is NOT
-mounted on this host, and every fleet write fails SILENTLY.** That hid 47 records and made
-`host=gavriella` absent from the fleet lake entirely. Full write-up:
-`docs/research/takt-ducklake-fleet-root-defect-2026-08-24.md`.
+🔴 Without `takt_lake_fleet_root` the tool defaults to `I:\coop\_takt-lake`, **not mounted here**,
+and every fleet write fails **silently**.
 
-**Report takt FROM the lake**, not only from the CLI:
+---
 
-```python
-import duckdb; L="D:/coop/_takt-lake/takt"
-duckdb.connect().execute(f"SELECT phase,count(*),median(seconds)/3600 FROM read_parquet('{L}/kind=stage/**/*.parquet',hive_partitioning=1,union_by_name=1) WHERE host='gavriella' AND seconds IS NOT NULL GROUP BY 1").fetchall()
-```
+## What's next — in order
 
-Lake and marathon agree at **4.65 h / 19 measured facts** — quote the agreement, not one source.
+| # | step | size | state | blocked-by |
+|---:|:---|:---|:---|:---|
+| 1 | **078: fix the 2 TEST findings** (`conformance.py`, `test_guard_weakening.py`) | mini/7 | **unblocked** | — do this first; they make every green run uninterpretable |
+| 2 | **078: fix the 6 product HIGHs** | midi/11 | **unblocked** | run ID identity · PASS branch · FR-010 skipped · expected.json · manifest sidecar · override reason |
+| 3 | re-run `/bk-codexreview --scope codeconv` and, on GO, `/bk-release` | — | **unblocked** | the route is proven; 93 commits are waiting |
+| 4 | **TIDY-Y14** C2 remote cleanup | mini/7 | **unblocked** | must run LAST of the Y-series; 5 heads remain, all gated |
+| 5 | **SCHED-R7** bind WPs to features | midi/11 | **unblocked** | 1 of 32 WPs resolves to a feature; **dependent of R1, which is now shipped** |
+| 6 | Y16 / Y17 / Y18 | midi/maxi/midi | **unblocked** | era metric · unique allocation · takt-only durations |
+| 7 | **B1–B10 engineer rulings** | — | **GATED** | `claude.ai/code/artifact/77dcfcf1` — B1 and B8 gate the most |
+
+**Do NOT start:** `/bk-clarify 082` (no `feature_pipeline` row; would evict 078 from the single
+active slot — see block B7), Y06/Y07/Y09 (engineer rulings owed), Y02 (peer-owned).
 
 ## Engineer questions are asked in BK-STD-2 shape
 
-`BK-STD-2` (ariellas' proposal, **adopted here unchanged**) is the fleet question format. There is
-**no precoded template file anywhere** — that absence is established, broadcast, and not worth
-re-searching. Do not author a variant; contribute amendments to ariellas' hardening.
+`BK-STD-2` (ariellas', adopted unchanged) is the fleet question format. There is **no precoded
+template file anywhere** — that absence is established and not worth re-searching.
 
 ## Evidence caveats
 
-- **Takt bands must be quoted with any takt figure** (trap 10): feature total **4.65 h over 19
-  measured steps**, band **1.5–6.0 h**, verdict in-band — but **78 of 97 steps are unmeasurable**
-  and are *not* folded in as zero. The verdict is recomputed at read time and is not a record.
+- **Quote takt bands with any takt figure** (trap 10).
 - **Owner coverage in `.specify/roadmap-owners.json` is 2 of 24 rows**, each backed by a durable
   op. The other 22 are deliberately undeclared — a guessed owner is how the 077 duplicate
-  allocation happened.
-- Pipeline-derived counts are **not** comparable across lanes (trap 12); only roadmap counts are.
+  allocation happened. 🔴 **olamnit's branch carried an EMPTY `{}` for this file**; the merge
+  resolved to develop's. If it ever reads `{}` again, that is a regression, not a reset.
+- **Pipeline-derived counts are not comparable across lanes** (trap 12); only roadmap counts are.
+- **Name the root/ref with every board number, branch count or ahead-count** (binding rule 5).
