@@ -1,0 +1,91 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETSHIRAS3-20260825T1220Z",
+  "lane": "shiras",
+  "repo": "glpnet",
+  "raised_at": "2026-08-25T12:20:00+00:00",
+  "context": "Round 3. Raised because I disproved a premise you ruled on earlier today: codex is live on shiras and /bk-codexreview discharges end-to-end once based on develop instead of main. Two of your standing rulings rest on the old premise.",
+  "questions": [
+    {
+      "id": "Q-GLPNETSHIRAS3-01",
+      "kind": "ruling",
+      "header": "Review gate",
+      "question": "Your ruling Q-GLPNETSHIRAS-02 accepted Claude-reviewers-only as discharging the review gate, on my report that codex was unusable here. That premise is now disproved: codex-cli 0.149.1 runs, and a real cross-provider codexreview completed in 420 seconds with six findings, one of which caught a self-contradiction inside my own patch that I had missed. Does the Claude-only allowance stand, or does the gate revert to requiring the codex leg now that it works?",
+      "blocks": ["every glpnet release", "the 095 branch merge", "what other lanes infer from my broadcast"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Revert to codex required",
+          "recommended": true,
+          "means": "Withdraw the Claude-only allowance now the premise is gone; every release gate needs the codex leg, always invoked with an explicit integration-branch base.",
+          "cost": "Any lane whose codex is genuinely down is blocked again, and the 420-second pass cost is real on large branches."
+        },
+        {
+          "label": "Keep Claude-only allowed",
+          "means": "Treat the allowance as standing policy regardless of codex availability, with the reduced-independence warning recorded each time.",
+          "cost": "Keeps a policy created for an outage that has ended, and forgoes the cross-provider check that just caught a defect my own reviewer missed."
+        },
+        {
+          "label": "Codex required, Claude fallback",
+          "means": "Require the codex leg whenever codex is usable, and permit the Claude-only path only on a recorded probe showing codex genuinely unavailable.",
+          "cost": "Needs a probe-and-record step in every review, and a lane can still degrade itself by not probing honestly."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS3-02",
+      "kind": "ruling",
+      "header": "Release",
+      "question": "You ruled at Q-GLPNETSHIRAS-01 to hold the release and answer ariellas' quiescence ask rather than cut from shiras. I answered it and declared QUIESCED; gavriella still has not answered after roughly 29 hours, and develop is 94 commits ahead of main. The review gate that partly justified holding is now demonstrably dischargeable. Does the hold still stand?",
+      "blocks": ["v2026.08.24.1", "every downstream lane's release"],
+      "escalate_after_hours": 6,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Hold stands, peer decides",
+          "recommended": true,
+          "means": "The release remains ariellas' to cut; shiras stays off it and simply re-broadcasts that the review gate is no longer a blocker.",
+          "cost": "main stays 94 behind while an unanswered ask blocks it, and nothing forces gavriella to reply."
+        },
+        {
+          "label": "Cut now, gate is clear",
+          "means": "Run a codexreview over develop against the last tag, then cut v2026.08.24.1 from shiras on the strength of a discharged gate.",
+          "cost": "Still overrides another lane's explicit hold and tags two lanes' in-flight work, which is what you ruled against once already today."
+        },
+        {
+          "label": "Set a deadline then cut",
+          "means": "Broadcast a hard quiescence deadline to gavriella and ariellas, and cut whatever is green if no objection lands by it.",
+          "cost": "The five-minute ACK SLA is already recorded twice as structurally unsatisfiable on this transport, so a deadline-expiry cut is still a cut over silence."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS3-03",
+      "kind": "ruling",
+      "header": "bkquestion",
+      "question": "Codex found five defects in the shipped bkquestion tool that I adopted byte-identical this morning, including one where an empty answer appends an immutable ledger row reported as a recorded engineer decision, and one where the schema's date-time format is never enforced despite the README claiming every keyword in use is checked. Every lane that adopted the tool has these. Who fixes them?",
+      "blocks": ["the integrity of the decision ledger this question is recorded in"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Author lane fixes it",
+          "recommended": true,
+          "means": "Report all five to olamnit-ospark as the v0 author and let them patch the canonical copy, which every lane then re-adopts byte-identical.",
+          "cost": "The empty-answer defect keeps corrupting decision ledgers on every host until that lane picks it up, and it has no stated ETA."
+        },
+        {
+          "label": "I patch and publish",
+          "means": "Fix all five here, publish the patched tool to the coop drop, and ask the author lane to adopt or refute.",
+          "cost": "Forking a shipped fleet tool is exactly the failure three lanes have already paid for this week, even when the patch is correct."
+        },
+        {
+          "label": "Patch only the ledger bug",
+          "means": "Fix just the empty-answer row locally since it corrupts the decision record, report the other four upstream, and flag the local divergence loudly.",
+          "cost": "Creates a knowingly divergent copy, so the byte-identical adoption check that caught this stops working for this lane."
+        }
+      ]
+    }
+  ]
+}

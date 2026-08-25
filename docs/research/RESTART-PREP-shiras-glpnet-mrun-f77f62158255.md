@@ -205,6 +205,47 @@ heartbeat references, so the allocator never reads it either way.
 That is D1 (catalog OOM) surfacing as a clean pass. **Render from the signed export instead**
 (ruling `Q-GLPNETSHIRAS2-03`): `25 not-closed = 1 implemented · 3 analyzed · 6 specified · 15 promoted, 8 epics`.
 
+
+## 🔴 CROSS-REPO WORK IN FLIGHT — buildkit `feat/host-interconnectivity-hardening`
+
+The engineer ruled the **HOST-INTERCONNECTIVITY-HARDENING** feature must live in **buildkit**.
+**It already exists there**: roadmap state **promoted**, WSJF 2.00, RICE 2795.29 — do **not** mint it
+again. Two multi-contributor CRDT docs are live at
+`.specify/crdt/host-interconnectivity-hardening/{ROOTCAUSES,REQUIREMENTS}.crdt.md`
+(six shiras lanes contributing: glpnet, tefl, crucible, qhstate, yngraw, hatzinor, buildkit).
+
+**glpnet's contribution:** `RC-glpnet-01` (unmeasured-gate null), `RC-glpnet-02` (codexreview
+mis-based on GitFlow), `RC-glpnet-03` (replication-as-compensation), each with a matching
+`FR-glpnet-0n` carrying a MEASURED acceptance test.
+
+🔴 **UNFINISHED — FIRST ACTION IN THAT REPO NEXT SESSION.** Commit `a0b1d14c` (restoring my three
+RC blocks after a full-file overwrite dropped them) is **committed locally and NOT PUSHED**. The
+remote moved twice and a peer holds an **unstaged** edit to `REQUIREMENTS.crdt.md`; I refused to
+rebase or stash over another lane's in-flight work.
+
+```bash
+cd /mnt/biwin/D_DRIVE/BSTDEV/research/buildkit
+git status                      # wait for the peer's unstaged edit to be committed
+git pull --rebase && git push -u origin feat/host-interconnectivity-hardening
+grep -c '^## RC-glpnet' .specify/crdt/host-interconnectivity-hardening/ROOTCAUSES.crdt.md   # expect 3
+```
+
+## 🔴 bk-onrestart — ALREADY ON THE BUILDKIT ROADMAP, DO NOT MINT A NEW ONE
+
+The engineer asked to codify the 1-or-2-window multi-tab resume launch. **Buildkit's roadmap already
+carries it, promoted and scored:**
+
+| feature | state | WSJF | RICE |
+|---|---|---:|---:|
+| `bk-onrestart-per-host-window-layout-config-1-or-2-window-configurable-lanes-register-unregister-capture` | promoted | **6.67** | 560 |
+| `onrestart-window-group-layout-policy` | promoted | 6.00 | 1440 |
+| `onrestart-host-agnostic-auto-install` | promoted | — | — |
+| `bk-onrestart-per-host-configurable-fleet-resume` | promoted | — | — |
+
+The first row **is** the engineer's request, already scored above every other onrestart row.
+`scripts/bk_onrestart_config.py` and `scripts/bk-onrestart.sh` exist on the branch. **A fifth row
+would be the duplicate allocation this fleet keeps paying for.**
+
 ## What's next, in order
 
 | # | step | size | state | blocked-by |
