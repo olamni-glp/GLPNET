@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 # RESTART PREP — resume with `resume marathon`
 
-🔴 **Trap 13: never select a restart document by filename.** This table identifies the run. If
-these four fields do not match your session, this is not your document.
+🔴 **Trap 13: never select a restart document by filename.** This table identifies the run. If these
+four fields do not match your session, this is not your document.
 
 | field | value |
 |---|---|
@@ -16,7 +16,7 @@ these four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-24T20:0xZ (session 5 close, revision 2)** |
+| written at | **2026-08-25T13:00Z — SESSION 6 CLOSE** |
 
 ## Resume in one line
 
@@ -24,258 +24,195 @@ these four fields do not match your session, this is not your document.
 buildkit-marathon resume --feature 078-verification-receipts
 ```
 
-🔴 **`--feature` is mandatory** — there is no `.specify/feature.json` in this repo, by design.
-
-🔴 **Do NOT use `glpnet-full-completion-programme`.** That name resolves to `mrun-f5ef56dba3c1`,
-the **ariellas lane's** run, absent from this machine's store. `docs/current_plan.md` is the
-ariellas pointer, not this lane's. Marathon state is per-machine and out-of-repo.
-
-🔴 **Run buildkit commands SERIALLY.** See the STUCK-lock entry below — it fired twice more today.
-
-## 🔴 SESSION-5 GAP: SEVEN marathon captures did NOT land, and the reason is contention, not content
-
-**Everything session 5 found is durable in tracked files (this doc + the codexreview write-up +
-the COOP sitrep). What is missing is the marathon's own `capture` rows — seven of them.**
-
-Two causes, both worth knowing:
-
-1. **My error, now fixed in the script:** I invented `--kind finding` / `--kind decision`.
-   The allowed set is **`bug, idea, issue, latent-requirement, missing-prerequisite`**. Lock
-   contention hid this for the whole session — the first call that actually reached the CLI
-   rejected it in under a second.
-2. **The real blocker — the registry lock is effectively never free on this host.** Across two
-   runs and **~50 minutes of retrying (69 lock refusals), ZERO captures landed.** A concurrent
-   buildkit session runs `pytest tests/roadmap -q` and `pytest tests/scheduler tests/refine -q`
-   more or less continuously, and **any** such run holds
-   `deploy-home/registry/pgdb/.lock` for its whole duration.
-
-> **So `buildkit-marathon capture` is unavailable on this host whenever another session is running
-> its test suite.** That is an architectural contention problem, not a transient. Do not plan a
-> session around landing marathon rows while a sibling session is testing — **write findings to
-> tracked files first and treat the marathon row as best-effort.**
-
-**To re-land the seven rows next session** (a ready-made retry driver, kinds already corrected):
-`…/scratchpad/captures.py` from session 5 — or simply re-derive them from this doc, which carries
-every one of them. Their subjects: the codexreview unblock + NO-GO · SCHED-R1/R4 already shipped ·
-SCHED-R4 discharged with the 252-unresolvable caveat · the dropped-`implemented` table defect ·
-the STUCK-lock defect · the onboard + escalation · the two merges + the standards fork.
+🔴 `--feature` is mandatory — there is no `.specify/feature.json` in this repo, by design.
+🔴 Do **NOT** use `glpnet-full-completion-programme` — that is the *ariellas* lane's run.
+🔴 Run buildkit commands **SERIALLY**.
 
 ---
 
-## 🔴 THE HEADLINE: the release gate is no longer a tool block. It is a NO-GO.
+## ⭐ THE HEADLINE — **THE FEATURE SUPPLY OPENED. It was never a defect in this lane.**
 
-Session 4 recorded, in bold, that `/bk-codexreview` **cannot be discharged on this host** and that
-**no release can be cut** until buildkit fixed one of two defects. **Both halves of that are now
-superseded.**
+**2026-08-25T09:32:36Z, ariellas issued a BINDING ALLOCATION.** This lane has **22 WPs / 63 pts** on
+`D:/coop/yngenios-windows/sched`, 9 claimable immediately.
 
-1. **Defect 2 is root-caused — and it is in git, not buildkit.** `scope.resolve_path` runs
-   `git ls-files -- <path> <8 × :(exclude)…>`. On **git 2.55.0.windows.3** two of those excludes —
-   `:(exclude)**/*.map` and `:(exclude)reviews/**` — each **independently empty a nested pathspec
-   they cannot possibly match**. buildkit's `empty_scope` refusal is honest; its input is wrong.
-2. **The working route:** use a **single-component (repo-root) directory** as `--scope`. Measured:
-   `codeconv` → **332 files** with all 8 excludes; `codeconv/src` → 0; `docs/research` → 245.
-3. **The review then RAN** — run `20260824T165651Z`, exit 0, not timed out — and returned
-   **10 findings, 8 HIGH**, all on the 078 receipts module itself.
+> **Three of the engineer's standing asks are ALREADY packets in this bundle. Do NOT author features
+> for them — that would mint duplicates of work already bound to this lane (the 077 failure).**
 
-**So: do not retry the "is codexreview broken" investigation. It works. The blocker is now the
-review's own verdict**, which is a much better problem to have. Full write-up, tracked on
-`develop`: **`docs/research/codexreview-unblocked-and-078-no-go-2026-08-24.md`**.
-
-> ⚠️ **Count caveat, do not drop it:** `run.json` says `findings_count_status: "unconfirmed"`,
-> `prose_fallback_findings: 10`. codex returned **prose, not structured JSON**, so 10 is a parse
-> fallback. The individual findings are the evidence; the total is approximate.
-
-### The 8 HIGH findings ARE the next implementation slice for 078
-
-| file:line | defect |
+| engineer's ask | already allocated as |
 |---|---|
-| `receipts/consumer.py:73-74` | accepts a PASS receipt from **another check / area / prior run** — no run ID in either model |
-| `receipts/receipt.py:162-170` | validation has **no PASS branch**; PASS with an unresolved target validates |
-| `receipts/receipt.py:157-161` | enforces only `examined ≤ total`; **FR-010 requires examined + skipped ≤ total** |
-| `receipts/manifest.py:72-80` | `expected.json` that is `{}` / empty / **run_id-mismatched** is accepted as an empty expected set |
-| `receipts/manifest.py:88-90` | run reconciliation trusts a **filename**, never loads the sidecar |
-| `receipts/override.py:66-73` | `applies()` ignores the recorded **reason** — one override authorises every other refusal |
-| `tests/faultinj/conformance.py:61-68` | fixture reaches `passed == len(_CASES)` **without exercising the declared BOUNDED case** |
-| `tests/faultinj/test_guard_weakening.py:22-27` | the mutation test **stays GREEN under a no-op validator** — the inverse of SC-007 |
+| root-cause + superset for the feature-supply break | `wp-feature-supply-chain-end-to-end-superset` (L·8) |
+| the consumption seam starving this lane | `wp-wp-stream-consumption-seam-superset` (L·8) |
+| `/bk-onrestart` mechanism + auto-installable logon trigger | `wp-onrestart-ship-the-mechanism-and-make-the-logon-trigger-inst` (M·3) |
+| the repo tidy-up programme | `wp-tidyup-delete-merged-local-branches` (M·3), `wp-tidyup-merge-contrib-l1l2-seam` (M·3), `wp-tidyup-fix-false-archive-028` (S·1) |
+| bk-flow migration blind spot | `wp-bk-flow-next-command-cross-branch-blind-spot` (S·1) |
 
-🔴 **Fix the two TEST findings first.** While a conformance fixture reports full coverage without
-running a declared case, and a mutation test stays green when its guard is removed, **every green
-run this repo produces is uninterpretable — including the runs that would certify the other six
-fixes.** Instruments before readings.
+**The 9 claimable now** (24 pts) — claim with `bk-flow claim <wp> --root D:/coop/yngenios-windows/sched --actor gavriella`:
+
+```
+wp-append-only-migration-writes-in-bk-upgrade
+wp-bk-flow-next-command-cross-branch-blind-spot
+wp-clone-safe-scheduler-op-identity-frontier-unique-id-minting-
+wp-dispatch-addressing-verb-separation-and-fleet-self-healing-s
+wp-enforce-error-signal-fidelity
+wp-exactly-once-catalog-writes-across-bridge-restart
+wp-no-durable-write-before-read-grammar-validation
+wp-onrestart-ship-the-mechanism-and-make-the-logon-trigger-inst
+wp-per-record-quarantine-at-calendar-ingest
+```
+
+The other 13 need `buildkit-scheduler transition --wp <id> --to ready` first (they derive to
+`backlog` and `claim` refuses them with `not_ready:backlog`). **`allocate` cannot address any of
+them** — all 93 refuse with *"already allocated to 'unassigned'"*. **Claim, never allocate.**
 
 ---
 
+## 🔴 THE SIX ENGINEER RULINGS MADE THIS SESSION — read before planning
 
-## 🔴 SESSION-5 REVISION 2 — 12 ENGINEER RULINGS RECEIVED. Read these BEFORE planning anything.
+Recorded via the real `bkquestion` template, citable by id, in `.specify/decisions/engineer-decisions.jsonl`
+(**now 25 rows**: 12 gavriella + 7 shiras + 6 new).
 
-Recorded via the real `bkquestion-v0` template and citable by id:
-**`.specify/decisions/engineer-decisions.jsonl`** (`python D:/coop/bkquestion/bkquestion.py decisions`).
-
-| id | kind | ruling |
+| id | ruling | what it means for next session |
 |---|---|---|
-| `Q-GLPNETS1-01` | ruling | **Direct ariellas, with a deadline** — allocator declares a calendar + issues addressed allocations |
-| `Q-GLPNETS1-02` | ruling | **Fix the two TEST findings FIRST**, then the six product HIGHs, then re-review and release |
-| `Q-GLPNETS1-03` | ruling | **Branch and PR in buildkit** — this lane MAY execute `bk:` tasks cross-repo, under `glpnet/<feature>-<topic>` |
-| `Q-GLPNETS1-04` | tie-break | **059 survives, archive 050** |
-| `Q-GLPNETS2-01` | ruling | **067/067b: merge both, THEN specify** — and move the roadmap row off `implemented` |
-| `Q-GLPNETS2-02` | tie-break | **olamnit's qhstate-derived `roadmap_open_table.py` is CANONICAL** — develop replaces its copy; ariellas-tefl's is withdrawn |
-| `Q-GLPNETS2-03` | ruling | **`implemented` IS not-closed — render it.** True count is **25**, not 24 |
-| `Q-GLPNETS2-04` | ruling | **Fold 082** into `scheduler-feature-stream-durable-healing-and-hardening`; retire the blocked step |
-| `Q-GLPNETS3-01` | ruling | **Add a `retired_at` marker**; mark `gavriellas` retired; keep its 30 exports as provenance |
-| `Q-GLPNETS3-02` | ruling | **Link the 6 unbound ids**; accept the 70 pre-specify features have no spec |
-| `Q-GLPNETS3-03` | risk-acceptance | codexreview root-scope workaround accepted — **EXPIRES 2026-09-14** |
-| `Q-GLPNETS3-04` | risk-acceptance | tracked files primary, marathon row best-effort — **EXPIRES 2026-09-23** |
+| `Q-GLPNETS6-01` | **Hold, fix 078 tests** | **NO RELEASE.** 52 commits stay on develop until 078's two TEST findings are fixed and codexreview re-run. |
+| `Q-GLPNETS6-02` | **Remediation IS the era** | The 078 NO-GO remediation is the closing work of the current era. **Claim the 9 packets AFTER the two TEST fixes land — not after full /bk-close.** |
+| `Q-GLPNETS6-03` | **Different artefacts, keep both** | BK-REPORT-v1's six sections = SITREP standard; buildkit#660's eight = a different report; `roadmap_open_table.py` = the roadmap TABLE standard. No migration owed. |
+| `Q-GLPNETS6-04` | **Split the 083 mechanism out** | A-3 + A-4 (derived proposals, real apply+record) become their OWN feature. 083 keeps the two golden repairs + ch07 vendoring. Re-score both. A-5 needs a cross-repo-write ruling. |
+| `Q-GLPNETS7-01` | **Fix renderer here, report hash** | 🔴 **CANNOT BE EXECUTED AS WRITTEN — see the self-correction below.** |
+| `Q-GLPNETS7-02` | **Fix buildkit link verb first** | Under `Q-GLPNETS1-03`, branch+PR in buildkit to fix the silent-no-op `link` AND the reconcile hint naming a non-existent `link-spec`. Then link the 6. |
 
-**Three rulings unblock work that was blocked all session:** S1-03 unblocks `/bk-implement 078` and
-the upstream pathspec fix; S1-04 unblocks TIDY-Y09; S2-01 unblocks TIDY-Y06/Y07.
+## 🔴 SELF-CORRECTION — the dropped-`implemented` row is **NOT** a renderer defect
 
-## 🔴 THE Z-SERIES IS LANDED AND DURABLE
+Two lanes had this wrong, including me. **Measured 2026-08-25:**
 
-Parent item **`mitem-01a03540-b872-7176-82b2-db315879406b`**, **14 steps**, ids captured (`--json`
-was passed — there is no second chance). Content file, which **WINS over step names**:
-**`docs/research/specified-completion-crdt-plan-Z-series-2026-08-24.md`**.
+- `roadmap_open_table.py` line 91 already filters `state == "closed"` only. **It is innocent.**
+- `buildkit-roadmap status` emits `closed 94 · promoted 15 · specified 6 · analyzed 3 · captured 1`
+  and **no `implemented` row at all**; `qr-link-provisioning` never appears as a row.
+- The signed export carries it → fold **26**, renderer prints **25**.
 
-**HEADLINE: all six features at `specified` ALREADY HAVE THEIR CODE ON `develop`.** The stall is in
-the **record**, not the work. **Start at Z01 — `083` is the one feature with ZERO blockers**; its own
-spec header reads *"Ready for `/bk-plan`"*. 166 pts; 62 ready; 68 behind four gates
-(**G080 Udi §1.14** · G085 · G082 · G065).
+**So the row never reaches the renderer, and patching the renderer is a NO-OP.** ariellas filed this
+against the renderer's "state whitelist"; I corroborated it yesterday **by matching the number
+without checking the mechanism.** That is the precise error the BK-REPORT-v1 freeze ruling names:
+*plausibility is not provenance.* **The fix belongs in `buildkit-roadmap status`.**
+`Q-GLPNETS7-01` needs re-issuing against the right target. Recorded: `mitem-01a038bf-cbd5`.
 
-## 🔴 ENGINE VERSION SKEW — the scheduler's takt verbs vanish without it
+🔴 **And the defect is now CAMOUFLAGED:** the catalog grew by one overnight, so the buggy path prints
+exactly the `25` that `Q-GLPNETS2-03` published as ground truth. **Cross-check the signed-export
+fold, never the ruling text.**
 
-`buildkit_cli` dist-info says **2026.8.24.3**; `scheduler version` says **2026.08.23.7**, and the
-pinned engine **lacks `takt-tokens` / `takt-sync` / `bulk-ready` / `replicas` / `replicate`** — the
-top-level `--help` advertises them, then dispatch refuses them as an invalid choice.
+---
 
-**Every takt command needs `--engine-override ambient`:**
+## 🔴 SHIRAS IS ONBOARDED — the blocking broadcast is STALE by 1h47m
+
+ariellas' NORMATIVE claim-instructions froze shiras' 22 WPs as `PROVISIONAL-PENDING-ONBOARDING` on
+*"no `caps/shiras`, no `calendar/shiras`, no `ops/shiras`"*.
 
 ```
-buildkit-scheduler takt-tokens --engine-override ambient --root D:/coop/glpnet/sched --actor gavriella ...
-buildkit-scheduler takt-sync   --engine-override ambient --root D:/coop/glpnet/sched --actor gavriella
+broadcast issued : 2026-08-25T09:32:36Z   ← true when measured
+shiras onboarded : 2026-08-25T11:19:27Z   ← 105 windows, 10 verified caps, host shiras-linux
+                   ────────────────────
+                   1h 46m 51s later. NOTHING re-evaluates the gate.
 ```
 
-The tool declares the displacement **loudly** (`engine pin DISPLACED … The pin was NOT honoured`),
-which is correct behaviour — but the silent half is that **without the flag the verb simply does not
-exist**, and a lane could conclude takt recording is unsupported.
+**Structural defect, not negligence:** a normative freeze reads a live CRDT **once**, at broadcast
+time, and bakes the result into prose. The capability check belongs at **claim** time.
+Broadcast + full evidence + explicit refutation invitations:
+`D:/coop/20260825T1240Z-gavriella-glpnet-BROADCAST-SHIRAS-IS-ONBOARDED-...md` (delivered to 13 channels).
 
-## 🔴 THE CODEXREVIEW RUN RECORDS NO TAKT AND NO TOKENS
+## 🔴 OLAMNIT CANNOT SEE ITS OWN BUNDLE — 26 WPs unreachable
 
-`reviews/develop/20260824T165651Z/run.json` has `started_at == ended_at == 20260824T165651Z`, so its
-**measured duration is 0 s** — false: its own streamed heartbeats reached **511 s**. And
-`cycles[0].token_records` is **`[]`**. So a codexreview run contributes **nothing** to takt or to
-per-phase token accounting. Fix owed upstream with the pathspec fix.
+| root | fold |
+|---|---|
+| `D:/coop/yngenios-windows/sched` (here) | **101 WPs** · backlog 70 · ready 30 · done 1 ✅ matches broadcast |
+| `G:/coop/yngenios-windows/sched` (**olamnit's disk**) | **(empty)** 🔴 |
+| `D:/coop/sched` vs `G:/coop/sched` | **81 vs 90** — no two roots agree |
+
+This is a **real** replication failure (unlike the shiras one). Awaiting olamnit's ACK.
+
+---
 
 ## State at hand-off
 
 | field | value |
 |---|---|
-| branch | `develop`, clean, pushed at **`4f7c68b9`** |
-| marathon | run open, seq 338+, feature `078-verification-receipts` |
-| develop ahead of main | **93** |
-| open PRs | 0 |
-| unmerged origin heads | **5** (was 7) — all engineer-gated or archive |
-| board | `D:/coop/glpnet/sched` — 32 WPs: backlog 23 · ready 3 · in-progress 4 · done 1 · escalated 1 |
-| roadmap | round 48 done; **25 not-closed** (see the count defect below), 6 epics with open work |
-| regression gate | ✅ **561 / 559 passed / 2 failed / 0 skipped** — re-run this session over BOTH merges, **identical to baseline, zero regression**. The 2 are the known pre-existing `Section T` 064 service-box drills (T-1 US1 resume, T-2 US2 history) |
+| branch | `develop`, clean, **pushed at `d1e07fb8`** |
+| develop ahead of main | **52** |
+| open PRs | **0** (#228 auto-closed; #229/#230 closed after verifying containment) |
+| branches merged this session | **5** — 095-shiras, 091-bkstd1, chore/tidy-up-olamnit, 067b, 067 |
+| unmerged origin heads | 050 (ruled ARCHIVE), 059 (W18 gated), 083 (in flight), backup/* (archive) |
+| roadmap | **round 50** — import 4 files/13 lines, reconcile in-sync, dedupe 0 over 119 live, export 120, both legs OK, barrier 4/4 |
+| roadmap not-closed | **26** (signed-export fold) / renderer prints 25 — see the self-correction |
+| board (this lane) | `D:/coop/glpnet/sched` — **32 WPs**: backlog 23 · claimed 1 · done 1 · escalated 1 · in-progress 4 · ready 2 |
+| calendar | **130 windows** verified by content, 3×8h/day, to 2026-09-28 |
+| marathon | run open, **seq 340+**, 7 captures landed this session (session 5 landed zero) |
 
-## Delivered this session (session 5)
+## 🔴 THE GATE — read the exit code, not the pass count
+
+```
+FIRST RUN  (stale binary): Total 551 | Passed 551 | Failed 0 | Unsearchable 3 → exit 2
+```
+
+**The 2 known Section-T failures "disappearing" was NOT an improvement — Section T did not run.**
+The staleness guard fired: `out/csharp/glp_repl/bin/**Debug**/net10.0/glp_repl.exe` was older than
+its source after the 067 C# merge.
+
+🔴 **The guard checks the DEBUG build, not Release.** `dotnet build -c Release` does not clear it:
+
+```
+dotnet build out/csharp/glp_repl/glp_repl.csproj -c Debug -v q --nologo
+```
+
+After the rebuild, **Section I ran and passed** (US5 cross-runtime, 0 failures).
+
+## Delivered this session
 
 | item | result |
 |---|---|
-| **SCHED-R4** | ✅ **DISCHARGED** — `stock-edges` projected **27 of 279** deps (6 confirmed / 21 heuristic / 0 cycles). `edge_coverage` off 0.0 |
-| **SCHED-R1** | ⭐ **premise corrected — already shipped upstream**, not a maxi/17 build |
-| **onboard** | ✅ 35-day 3×8h calendar, verified by content: 38 full days, 00:00/08:00/16:00, to 2026-09-27 |
-| **codexreview** | ⭐ **unblocked + root-caused + run** → NO-GO |
-| merge `091-bkstd1-round42` | ✅ `2b0f9122` clean — brings **bk-flow + bk-proof skills** and roadmap round 47 |
-| merge olamnit tidy-up | ✅ `6a261b1d` — 2 add/add conflicts resolved to develop |
-| **TIDY-Y15** | ✅ **discharged by ariellas** — `.claude/skills/bk-flow/SKILL.md` arrived on the 091 merge. **Do not author a competing one** |
-| roadmap round 48 | ✅ import 0 new / reconcile in-sync / dedupe 0 groups over 118 live / export 20/119/3823, both legs |
-| engineer brief | ✅ **10 blocks** published — `claude.ai/code/artifact/77dcfcf1` |
+| 5 branch merges | ✅ incl. a hand-resolved **semantic** C# conflict (develop's `ClientCapacity` refactor vs 067b's `redemptions.Release`) — C# build 0 errors |
+| decisions ledger | ✅ union-merged 12 + 7 with a content-divergence guard; +6 new = **25 rows** |
+| roadmap round 50 | ✅ both publish legs, barrier 4/4 |
+| COOP | ✅ ACK-SWEEP + ACK-RECEIPT + BROADCAST, **freeze hash `cac1dea5` reported** (6 copies, CRLF-only ⇒ **not a fork** per Amendment 1) |
+| ACK-LEDGER | ✅ the missing `gavriella \| glpnet` row filed |
+| `/bk-tasks 083` | ✅ **57 tasks**, 6 phases, 3 NEW gates (A-3/A-4/A-5) |
+| scheduler onboard | ✅ 130 windows **verified by content** |
+| marathon captures | ✅ **7 landed** |
 
-## 🔴 Corrections carried forward (do not re-derive)
+## 🔴 Corrections carried forward — do not re-derive
 
-0. **NEVER sum raw `kind=stage` seconds from the takt lake — it double-counts.** `emit_stage` has
-   no idempotence on `(feature, phase, seconds)`. Quote the **marathon** figure per feature:
-   **4.65 h over 19 measured steps**, band 1.5–6.0 h, in-band — with **78 of 97 steps unmeasurable
-   and NOT folded in as zero**.
-1. **The BK-STD-1 open table DROPS `state=implemented`.** Export fold = **25 not-closed**
-   (94 closed · 15 promoted · 6 specified · 3 analyzed · **1 implemented**); the renderer prints
-   **24**. The hidden row is **`qr-link-provisioning` (067)** — the feature under an open
-   graduation ruling. ariellas filed this on branch 091; **I corroborated it by measurement.**
-2. **Epic heads carry NO `state` field** — all 20 are `None`. **No lane may state an epic state
-   count**; the export cannot support one.
-3. **SCHED-R2's `complete` mark on this run is FALSE and cannot be undone.** Report **points**,
-   never steps-done/total.
-4. **My "3+ path components are emptied" rule is WITHDRAWN** — measured with one exclude, false
-   under all eight (`docs/research` is 2 components and survives; `codeconv/src` is 2 and does not).
-5. **The dropped Y11 branch carried a complete 078 MVP** — tag
-   `archive/backup__078-olamnit-impl-preserve-20260820`. Already merged; the codexreview above is
-   *of that code*.
-
-## 🔴 The STUCK-lock verdict was FALSE a 4th and 5th time — and this time I identified the holder
-
-`buildkit-marathon` refused repeatedly with *"PID 38152 held it on ALL 61 attempts and never
-changed — that is a STUCK lock, not contention."* It was **alive the whole time**:
-
-```
-Get-CimInstance Win32_Process -Filter 'ProcessId=38152' | Select-Object CommandLine
-→ python.exe -m pytest tests/roadmap/test_link_refusals.py … -q
-```
-
-A **live pytest run from another buildkit session**, 80 s CPU. **Use that one command** — it names
-the holder outright, where `Get-Process` only proves existence. **Never reap on the STUCK verdict.**
-
-🔴 **Then it happened again with a DIFFERENT holder — a 6th false verdict.** When 38152 finally
-exited (confirmed via `Get-Process`), the very next attempt reported *"PID **416** held it on ALL 61
-attempts and never changed — that is a STUCK lock"*. `Get-CimInstance` named it immediately:
-`python.exe -W ignore -m pytest tests/scheduler tests/refine -q`, started 18:12. **Two independent
-holders, both live, both reported as STUCK.** The verdict has now been wrong 6 times and right 0.
-Treat it as meaning **"busy"** and nothing more. A low PID (416) is *not* evidence of a recycled or
-stale PID — check, don't infer.
-
-*Fix owed upstream:* the lock message should carry the holder's command line, and "STUCK" should be
-reserved for a PID `Get-Process` cannot find.
-
-## TAKT DuckLake — required config on this host
-
-`config.local.json` (gitignored) MUST carry — **verified present today**:
-
-```json
-{ "sched_root": "D:/coop/glpnet/sched",
-  "takt_lake_root": "D:/_takt-lake",
-  "takt_lake_fleet_root": "D:/coop/_takt-lake" }
-```
-
-🔴 Without `takt_lake_fleet_root` the tool defaults to `I:\coop\_takt-lake`, **not mounted here**,
-and every fleet write fails **silently**.
-
----
+1. **`onboard` reports a DELTA, not a total.** It printed `3 calendar`; the stream holds **130**.
+   Count the stream.
+2. **The staleness guard checks the Debug exe.** A Release build leaves it red.
+3. **The dropped-`implemented` row is a `buildkit-roadmap status` defect**, not a renderer defect.
+4. **"Established absence" decays.** I recorded in bold that no bkquestion template existed anywhere;
+   it had shipped on shiras' branch under 24h earlier. **Give every absence claim a re-check date.**
+5. **qhstate's `v2026.08.24.1` ≠ glpnet's.** Same CalVer, different repos. glpnet's was tagged
+   2026-08-24 23:19Z at `e70f3061`.
+6. **The registry lock was FREE this session** — 7 captures landed. Session 5's contention was not
+   permanent.
 
 ## What's next — in order
 
-| # | step | size | state | blocked-by |
-|---:|:---|:---|:---|:---|
-| 1 | **078: fix the 2 TEST findings** (`conformance.py`, `test_guard_weakening.py`) | mini/7 | **unblocked** | — do this first; they make every green run uninterpretable |
-| 2 | **078: fix the 6 product HIGHs** | midi/11 | **unblocked** | run ID identity · PASS branch · FR-010 skipped · expected.json · manifest sidecar · override reason |
-| 3 | re-run `/bk-codexreview --scope codeconv` and, on GO, `/bk-release` | — | **unblocked** | the route is proven; 93 commits are waiting |
-| 4 | **TIDY-Y14** C2 remote cleanup | mini/7 | **unblocked** | must run LAST of the Y-series; 5 heads remain, all gated |
-| 5 | **SCHED-R7** bind WPs to features | midi/11 | **unblocked** | 1 of 32 WPs resolves to a feature; **dependent of R1, which is now shipped** |
-| 6 | Y16 / Y17 / Y18 | midi/maxi/midi | **unblocked** | era metric · unique allocation · takt-only durations |
-| 7 | **B1–B10 engineer rulings** | — | **GATED** | `claude.ai/code/artifact/77dcfcf1` — B1 and B8 gate the most |
+| # | step | size | state |
+|---:|:---|:---|:---|
+| 1 | **078: fix the 2 TEST findings** (`tests/faultinj/conformance.py`, `test_guard_weakening.py`) | mini/7 | **unblocked — DO THIS FIRST.** Ruled: this discharges the era gate AND unlocks the 9 claims |
+| 2 | **Claim the 9 allocated packets** + ACK-COMPLIANCE to ariellas | micro/3 | unblocked once #1 lands (`Q-GLPNETS6-02`) |
+| 3 | 078: the 6 product HIGHs | midi/11 | follows #1 |
+| 4 | re-run `/bk-codexreview --scope codeconv`, then `/bk-release` | midi/11 | gated on #1+#3 (`Q-GLPNETS6-01`) |
+| 5 | Split 083's mechanism into its own feature; re-score both | mini/7 | unblocked (`Q-GLPNETS6-04`) |
+| 6 | buildkit PR: fix `link` no-op + the `link-spec` hint | mini/7 | unblocked (`Q-GLPNETS7-02`) |
+| 7 | Re-issue `Q-GLPNETS7-01` against `buildkit-roadmap status` | nano/1 | needs engineer |
 
-**Do NOT start:** `/bk-clarify 082` (no `feature_pipeline` row; would evict 078 from the single
-active slot — see block B7), Y06/Y07/Y09 (engineer rulings owed), Y02 (peer-owned).
+**Do NOT start:** any feature for the supply-chain superset, onrestart, or tidy-up — **all are
+already allocated packets** (see the headline).
 
-## Engineer questions are asked in BK-STD-2 shape
+## Restart readiness
 
-`BK-STD-2` (ariellas', adopted unchanged) is the fleet question format. There is **no precoded
-template file anywhere** — that absence is established and not worth re-searching.
+- [x] Tree clean, all work committed **and pushed** (`d1e07fb8`)
+- [x] Zero open PRs
+- [x] 7 findings durable in marathon items, not scrollback
+- [x] 6 engineer rulings recorded and citable
+- [x] COOP ACKs + broadcast delivered; ACK-LEDGER row filed
+- [x] Next action identified and unblocked (**078's two TEST findings**)
 
-## Evidence caveats
+**READY FOR RESTART.**
 
-- **Quote takt bands with any takt figure** (trap 10).
-- **Owner coverage in `.specify/roadmap-owners.json` is 2 of 24 rows**, each backed by a durable
-  op. The other 22 are deliberately undeclared — a guessed owner is how the 077 duplicate
-  allocation happened. 🔴 **olamnit's branch carried an EMPTY `{}` for this file**; the merge
-  resolved to develop's. If it ever reads `{}` again, that is a regression, not a reset.
-- **Pipeline-derived counts are not comparable across lanes** (trap 12); only roadmap counts are.
-- **Name the root/ref with every board number, branch count or ahead-count** (binding rule 5).
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-25T13:00Z
