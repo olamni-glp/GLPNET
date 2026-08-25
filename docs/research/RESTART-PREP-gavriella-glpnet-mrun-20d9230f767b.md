@@ -161,7 +161,19 @@ its source after the 067 C# merge.
 dotnet build out/csharp/glp_repl/glp_repl.csproj -c Debug -v q --nologo
 ```
 
-After the rebuild, **Section I ran and passed** (US5 cross-runtime, 0 failures).
+**CONFIRMED after the Debug rebuild — the gate lands exactly on baseline:**
+
+```
+SECOND RUN (fresh binary): Total 561 | Passed 559 | Failed 2 | Skipped 0 | Unsearchable 0 → exit 1
+```
+
+**Zero regression across all five merges.** `Unsearchable: 0` — Sections I, T and U all ran.
+Section I (US5 cross-runtime Gleam × C#) **passes, 0 failures**; Section U (077 cyclic diagnostics)
+**passes**. The 2 failures are `T-1` (US1 resume drill) and `T-2` (US2 history drill) — the known
+pre-existing 064 service-box drills, out of scope, and exactly the 2 in the re-based baseline.
+
+🔴 **Exit 1 ≠ exit 2.** Exit 1 is "the 2 known failures" (the expected steady state). Exit 2 is
+"a group did not run" and is *worse*, because the pass count goes UP while coverage goes DOWN.
 
 ## Delivered this session
 
