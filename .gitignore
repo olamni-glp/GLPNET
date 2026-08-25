@@ -115,6 +115,22 @@ reviews/
 # .fingerprint) were untracked by feature 069 (v2026.08.10.1) and the pin rotated to 3rd-gen
 # material. The gen-1 key remains in git history on the public origin — ruled NO-PURGE
 # (irreversibly disclosed; dead pin); treat it as public knowledge and never re-trust it.
+#
+# STATUS (2026-08-11, olamnit F7 / issue C1): this rule is now EFFECTIVE. The four files
+# (glpquick.key/.pem/.pfx/.fingerprint) are no longer tracked at HEAD, so gitignore applies again
+# and freshly generated material stays out of the index. Verified with `git check-ignore -v`.
+#
+# The 2026-08-04 WARNING that this rule was INERT was correct at the time and is now superseded.
+#
+# What remains true: the ORIGINAL material is still in public history. Commit 94fbe87d
+# ("release: v2026.07.09.1") added all four files and is reachable from origin/main, origin/develop
+# and 10+ origin branches. That key is COMPROMISED and has been ROTATED — the revoked SPKI pin is
+# 0LOmLNM0HYv79Rkoasuu6L4MKGRyg7axgJufbZBcyTo= and must never be trusted again by any peer.
+#
+# History rewrite (F7b) is still outstanding and is deliberately NOT done from a single host —
+# a one-host rewrite forks the other two. It is scheduled as a coordinated window. Note that a
+# rewrite alone would not have remediated this: GitHub keeps orphaned commits reachable by SHA
+# until Support garbage-collects them. Rotation is what invalidated the exposure.
 glpquick-cert/
 
 # 067 derived per-device provisioning material (short-lived certs minted per provisioning
