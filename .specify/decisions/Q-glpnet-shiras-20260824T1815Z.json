@@ -1,0 +1,123 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETSHIRAS-20260824T1815Z",
+  "lane": "shiras",
+  "repo": "glpnet",
+  "raised_at": "2026-08-24T18:15:00+00:00",
+  "context": "First glpnet-lane session on host shiras (Linux). Raised after: pull (develop 94 ahead of main, 0 open PRs, tree clean), a green buildkit-release --dry-run for v2026.08.24.1, and a full read of the live coop board at /mnt/gavri/d/coop/glpnet. Every question below is a block this session hit and cannot resolve on its own authority.",
+  "questions": [
+    {
+      "id": "Q-GLPNETSHIRAS-01",
+      "kind": "ruling",
+      "header": "Release",
+      "question": "You asked me to release completed work, but ariellas placed a formal RELEASE HELD on this repo at 2026-08-24T06:55Z pending gavriella's quiescence, and that ask has never been answered while gavriella has kept committing. develop is now 94 commits ahead of main across at least three lanes' in-flight work, and cutting v2026.08.24.1 from shiras would tag all of it. Who cuts this release, and when?",
+      "blocks": ["v2026.08.24.1", "094 tidy-up close", "every downstream lane's release"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Hold, answer the ask",
+          "recommended": true,
+          "means": "shiras posts QUIESCED for its own lane, does not cut, and hands the release to ariellas who declared the hold and owns the decision. I re-check after the peers answer.",
+          "cost": "main stays 94 behind until at least two other lanes reply; if they stay silent the hold persists indefinitely with no owner chasing it."
+        },
+        {
+          "label": "Cut it now from shiras",
+          "means": "Run buildkit-release from develop, tag v2026.08.24.1, back-merge to develop. Dry-run is already green and there are no open PRs to conflict.",
+          "cost": "Overrides another lane's explicit hold and stamps two other lanes' mid-flight commits into a release, which is the exact action ariellas refused on an engineer ruling."
+        },
+        {
+          "label": "Cut after a quiescence sweep",
+          "means": "Broadcast a quiescence poll to gavriella and ariellas with a deadline, then cut whatever is green once both answer or the deadline passes.",
+          "cost": "Adds a round-trip of hours on an asynchronous board where peers have gone quiet for a day at a time, and a deadline-expiry cut is still a cut over silence."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS-02",
+      "kind": "ruling",
+      "header": "Codex gate",
+      "question": "Your instruction was to release only what is 'codex reviewed', but the codex CLI is not installed on shiras at all, and gavriella measured /bk-codexreview as unable to discharge on this repo anyway (--scope diff blows the context window on a 66k-insertion diff, --scope <path> refuses a tracked subtree). No release can ever satisfy a literal reading of that criterion on this host. What discharges the review gate?",
+      "blocks": ["Q-GLPNETSHIRAS-01", "v2026.08.24.1", "any future glpnet release from shiras"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Claude reviewers satisfy it",
+          "recommended": true,
+          "means": "Accept a /bk-codexreview run with Claude reviewers only (no codex leg) as discharging the gate, with the reduced-independence warning recorded on the run as the skill already mandates.",
+          "cost": "Loses the cross-provider independence that is the entire point of the codex leg; a Claude reviewer checking Claude's work shares its blind spots."
+        },
+        {
+          "label": "Install codex on shiras",
+          "means": "Install and authenticate the codex CLI here, then run the review properly before any release.",
+          "cost": "Does not help — gavriella already proved the tool fails on a diff this size on a host where codex works; installing it buys a second reproduction of a known defect."
+        },
+        {
+          "label": "Waive for this release",
+          "means": "Treat the 94 commits as already-reviewed via the merged PRs and the 561-test regression suite, and cut without a codexreview run, recording the waiver.",
+          "cost": "The last recorded codexreview verdict on this repo was NO-GO with four release-blocking findings; waiving removes the only check that has ever actually caught them."
+        },
+        {
+          "label": "Fix the tool first",
+          "means": "Block all glpnet releases until buildkit fixes the brief-not-size-invariant defect or the empty_scope refusal.",
+          "cost": "Hands the release schedule of every lane to a defect in another repo with no owner and no ETA, and 94 commits keep accumulating behind it."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS-03",
+      "kind": "ruling",
+      "header": "4th writer",
+      "question": "You asked me to run a full roadmap sync round here, but shiras has no glpnet catalog and would have to seed one from 254 historical exports, making it a fourth concurrent writer on a repo where two lanes already collided on round 47 because round numbers are an unarbitrated single-writer resource. Should shiras hold and publish a glpnet roadmap catalog at all?",
+      "blocks": ["roadmap sync round on shiras", "the fleet ACK ledger row for shiras/glpnet"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Local read-only, no publish",
+          "recommended": true,
+          "means": "Seed the catalog here so shiras can render the not-closed table and answer the ACK ledger, but never run export's publish leg to the peers. Reads are shiras's, writes stay with the three established lanes.",
+          "cost": "shiras can observe roadmap drift but cannot correct it, and a local catalog that is never exported will silently diverge from the fleet over time."
+        },
+        {
+          "label": "Full sync participant",
+          "means": "Seed, reconcile, dedupe and publish exports to the peers like the other three lanes, taking lane-scoped round numbers to avoid the collision.",
+          "cost": "Adds a fourth writer to a resource that has already demonstrated it cannot arbitrate three, before the round-number protocol gap ariellas raised has been ruled on."
+        },
+        {
+          "label": "No catalog on shiras",
+          "means": "Declare 'n/a - no roadmap catalog' in both ACK ledger columns as the standard explicitly allows, and leave glpnet roadmap ownership entirely with the three Windows lanes.",
+          "cost": "shiras cannot answer any roadmap question about this repo, so any work it does here is planned blind to the roadmap."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS-04",
+      "kind": "tie-break",
+      "header": "Report std",
+      "question": "You asked for status, sitrep and roadmap output in the format standardized across all hosts and repos, but two fleet standards both claim that report and disagree: BK-REPORT-v1 has six sections and is shipped to 26 locations, while STANDARD-SITREP-AND-ROADMAP-TABLE v1 (buildkit#660) has eight sections and its own text declares it supersedes BK-REPORT-v1. gavriella deliberately refused to pick a winner to avoid creating a fourth dialect. Which one is the standard?",
+      "blocks": ["the sitrep and what's-next output of this session", "every lane's next status report"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "buildkit#660 eight-section",
+          "recommended": true,
+          "means": "Treat the newer eight-section standard as canonical since it explicitly claims supersession, and retire BK-REPORT-v1 across the 26 locations.",
+          "cost": "Invalidates 26 already-deployed copies of the six-section generator, and the engineer has been pointing lanes at the six-section one as recently as today."
+        },
+        {
+          "label": "BK-REPORT-v1 six-section",
+          "means": "Keep the shipped, fetchable, hash-checkable six-section generator as canonical and treat #660 as a proposal that never landed.",
+          "cost": "Ignores an explicit supersession claim from another lane's standard, which is how two dialects become permanent rather than resolved."
+        },
+        {
+          "label": "660 shape, v1 generator",
+          "means": "Adopt the eight-section structure but extend the shipped generator to emit it, so there is one fetchable artefact and one shape.",
+          "cost": "Requires real work on a shared tool by a lane that owns neither standard, and a half-done merge is exactly the fourth dialect gavriella refused to create."
+        }
+      ]
+    }
+  ]
+}

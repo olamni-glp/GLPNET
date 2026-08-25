@@ -1,0 +1,91 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETSHIRAS2-20260825T0800Z",
+  "lane": "shiras",
+  "repo": "glpnet",
+  "raised_at": "2026-08-25T08:00:00+00:00",
+  "context": "Round 2, raised mid-marathon mrun-f77f62158255 as the just-in-time feed the engineer mandated. Each is a live block hit after the round-1 rulings: olamnit's lane-host-affinity mandate offering a glpnet-board WP for adoption, a hard GitHub rate-limit wall, and the roadmap projection OOM that blocks the stuck-at-specified enumeration.",
+  "questions": [
+    {
+      "id": "Q-GLPNETSHIRAS2-01",
+      "kind": "ruling",
+      "header": "Adopt WP",
+      "question": "olamnit's lane-host-affinity mandate lists wp-coordination-feature-stream-durable-superset-fix as held-but-ownership-unclear, and it sits on glpnet's own board. It is the exact feature-supply problem this session just root-caused, and its roadmap row is already specified with WSJF 4.25. The mandate's clause 7 says a lane with no features of its own may adopt work only with recorded engineer permission, and shiras currently holds none. Do you grant shiras that permission?",
+      "blocks": ["shiras having any allocated glpnet work at all", "the three-transition writer remedy"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Grant, shiras adopts it",
+          "recommended": true,
+          "means": "shiras claims the WP on the glpnet board, broadcasts the claim, and drives it through specify-to-close using the three-stage-leak evidence it already gathered.",
+          "cost": "shiras is the newest lane and the least proven on this repo; a saga-sized coordination fix is a demanding first adoption, and olamnit has more context on the supply problem."
+        },
+        {
+          "label": "Leave it with olamnit",
+          "means": "olamnit keeps it since it has been root-causing feature supply for weeks and has the deepest board context.",
+          "cost": "olamnit measured itself as holding ten other lanes' packets while its own board offered zero; adding to that load is the exact overcommitment the mandate was issued to stop."
+        },
+        {
+          "label": "Free it, let the board allocate",
+          "means": "Relinquish it to the ready pool and let capability-fit allocation choose, now that shiras finally has caps declared.",
+          "cost": "The board has 6 WPs that have sat claimed-but-never-ready for up to 19.8 days; freeing it into a pool whose writer is the very thing that is broken is likely to lose it."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS2-02",
+      "kind": "risk-acceptance",
+      "header": "API limit",
+      "question": "The PR for this session's branch could not be opened: the GitHub core API returned 0 of 5000 requests remaining for the shared account, and the failure surfaced as a misleading 'No commits between develop and <branch>' GraphQL error rather than a rate-limit message. Every host in the fleet authenticates as the same user, so heavy multi-host automation exhausts one shared budget. The branch is pushed and safe. How do you want this handled?",
+      "expires_after_days": 7,
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept, open PR next session",
+          "recommended": true,
+          "means": "Leave the branch pushed, note the blocked PR in the restart prep, and open it when the limit resets in roughly one hour. Broadcast the misleading-error finding so no other lane misreads it as a merge conflict.",
+          "cost": "The branch sits unmerged across a session boundary, and any lane that touches the same files meanwhile will have to resolve a conflict that did not need to exist."
+        },
+        {
+          "label": "Separate token per host",
+          "means": "Give each host its own GitHub App or PAT so the 5000/hr budget is per-host rather than fleet-wide.",
+          "cost": "Real setup work across four hosts and a credential-distribution problem, for a limit that only binds during bursts."
+        },
+        {
+          "label": "Throttle fleet git automation",
+          "means": "Add rate-limit awareness to the buildkit git surfaces so they back off and report honestly instead of emitting a misleading GraphQL error.",
+          "cost": "Work on a shared tool nobody has claimed, and it slows every lane's git operations to protect against a burst condition."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETSHIRAS2-03",
+      "kind": "ruling",
+      "header": "Roadmap OOM",
+      "question": "buildkit-roadmap on shiras applied 3806 journal lines then died materialising HEAD with an out-of-memory error, and a follow-up replay reported 'replayed 0 journal lines'. buildkit-roadmap status now reports 'Roadmap is empty', which is false-empty and indistinguishable from a healthy new catalog. This blocks the stuck-at-specified enumeration you marked imperative, since the specified set cannot be read here. How should shiras proceed?",
+      "blocks": ["enumerating features stuck at specified", "any roadmap read on shiras", "the ACK ledger ACK-IMPLEMENTED column"],
+      "escalate_after_hours": 6,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Work from signed exports",
+          "recommended": true,
+          "means": "Treat the peers' signed export as the read source on this host, as this session already did to render the 25-row not-closed table, and file the OOM as a buildkit defect for the owning lane.",
+          "cost": "Read-only and always one export behind; shiras cannot see roadmap changes made since the last peer export, and cannot write state back."
+        },
+        {
+          "label": "Fix the OOM here first",
+          "means": "Treat the projection OOM as shiras's own work: tune the PGlite memory settings or batch the replay, then rebuild the catalog locally.",
+          "cost": "Diverts the session into buildkit internals on a host that owns neither the tool nor the catalog, ahead of the work you actually asked for."
+        },
+        {
+          "label": "Declare n/a, no catalog",
+          "means": "Accept ruling Q-GLPNETSHIRAS-03's read-only posture to its logical end: shiras keeps no glpnet catalog and answers roadmap questions only from exports.",
+          "cost": "Makes the false-empty defect permanent policy on this host rather than a filed bug, and the next lane to hit it re-derives it from scratch."
+        }
+      ]
+    }
+  ]
+}
