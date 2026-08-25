@@ -69,6 +69,7 @@ class Receipt:
     contract_version: str
     check_id: str
     area: str
+    run_id: str                      # data-model R2: unique per (area, run_id)
     resolved_target: Target
     outcome: Outcome
     examined_count: int
@@ -87,6 +88,7 @@ class Receipt:
             "contract_version": self.contract_version,
             "check_id": self.check_id,
             "area": self.area,
+            "run_id": self.run_id,
             "resolved_target": self.resolved_target.to_json(),
             "outcome": self.outcome.value,
             "examined_count": self.examined_count,
@@ -159,6 +161,24 @@ def validate(receipt: Receipt) -> None:
             f"examined_count {r.examined_count} exceeds total_count {r.total_count} "
             f"for check {r.check_id!r} — impossible count (FR-010)"
         )
+    # FR-010 reconciliation is over BOTH counts (data-model §2: examined_total +
+    # skipped_total <= target_total). Checking examined alone accepts 5 examined /
+    # 5 total / 1 skipped, which claims six outcomes from a five-item target.
+    if r.total_count is not None and r.examined_count + r.skipped_total > r.total_count:
+        raise ReceiptInvalid(
+            f"examined_count {r.examined_count} + skipped_total {r.skipped_total} exceeds "
+            f"total_count {r.total_count} for check {r.check_id!r} — self-inconsistent (FR-010)"
+        )
+    # PASS is earned, not assumed: without this branch a PASS with an unresolved
+    # target or an unknown total validates and is then reported successful (FR-007).
+    if r.outcome is Outcome.PASS and not (
+        r.resolved_target.resolved and r.total_count is not None
+        and r.examined_count == r.total_count and r.examined_count > 0
+    ):
+        raise ReceiptInvalid(
+            f"PASS requires a resolved target fully examined with a known non-zero total "
+            f"for {r.check_id!r} (FR-006/007); an unearned PASS is the failure this feature closes"
+        )
     if r.outcome is Outcome.EMPTY and not (
         r.resolved_target.resolved and r.total_count is not None and r.examined_count == r.total_count
     ):
@@ -212,6 +232,7 @@ def emit(
         contract_version=contract_version,
         check_id=check_id,
         area=area,
+        run_id=run_id,
         resolved_target=target,
         outcome=outcome,
         examined_count=examined_count,
@@ -242,6 +263,7 @@ def load(path: str | Path) -> Receipt:
         contract_version=data["contract_version"],
         check_id=data["check_id"],
         area=data["area"],
+        run_id=data["run_id"],  # absent ⇒ KeyError ⇒ the consumer refuses it as malformed
         resolved_target=Target(
             kind=tgt["kind"], identity=tgt["identity"], resolved=tgt["resolved"],
             requested=tgt.get("requested"), unresolved_reason=tgt.get("unresolved_reason"),
