@@ -225,6 +225,70 @@ already allocated packets** (see the headline).
 - [x] COOP ACKs + broadcast delivered; ACK-LEDGER row filed
 - [x] Next action identified and unblocked (**078's two TEST findings**)
 
+
+---
+
+## 🔴 SESSION-6 ADDENDUM — THE ALLOCATION LANDED, AND HOST-INTERCONNECTIVITY-HARDENING IS **IN BUILDKIT**
+
+**`HOST-INTERCONNECTIVITY-HARDENING` lives in the BUILDKIT roadmap** — id `host-interconnectivity-hardening`,
+state **promoted**, WSJF **4.75**, epic `epic-host-interconnectivity-hardening`, created by
+`gavriella-qhstate`. 🔴 **Do NOT create it in glpnet.** This lane's glpnet copy was created before the
+buildkit row existed and has been **rejected/tombstoned** with a rationale pointing at the buildkit row.
+
+**The two CRDT docs are NOT files anyone edits.** They are merge-on-read over grow-only per-actor logs:
+
+```
+<coop-root>/host-interconnectivity-hardening/
+  requirements/<lane>.jsonl     rootcauses/<lane>.jsonl
+  PROTOCOL.md   render.py   REQUIREMENTS.md   ROOTCAUSES.md   (rendered, do not hand-edit)
+python render.py --root .     # re-renders both merged docs
+```
+
+**This lane contributed** `gavriella-glpnet.jsonl` to both: **8 requirements + 8 root causes**.
+Merged state after contribution: requirements **17 records → 17 ids, 0 dropped**;
+rootcauses **19 records → 16 ids, 0 dropped, 1 corroborated · 14 singleton · 0 contested**.
+
+🔴 **A codex adversarial review of the MERGED doc caught a false corroboration in MY OWN record.**
+I had claimed qhstate's `RC-06` id to signal agreement; codex found *"the two lanes do not corroborate
+one root cause: one reports stale/unreplicated roots returning empty; the other reports unmanaged
+drive mappings. Same symptom, different mechanisms."* Correct. **Withdrawn as `RC-06 rev 2`; the
+evidence moved intact to `RC-GLPNET-06`.** Rule established: **corroborate only when the MECHANISM
+matches, never when only the symptom does** — claiming another lane's id is how false corroboration
+is manufactured.
+
+### The binding allocation — 22 WPs / 63 pts to this lane
+
+Board `D:/coop/yngenios-windows/sched` (folds **101 WPs, ready 30** from `D:` — matches the broadcast).
+**9 claimable now**; 13 need `buildkit-scheduler transition --to ready` first. **`allocate` cannot
+address any of them** (all 93 refuse "already allocated to 'unassigned'") — **claim, never allocate**.
+
+🔴 **Three of the engineer's standing asks are ALREADY packets in this bundle** —
+`wp-feature-supply-chain-end-to-end-superset`, `wp-onrestart-ship-the-mechanism-and-make-the-logon-trigger-inst`,
+and the three `wp-tidyup-*`. **Do not author features for them.**
+
+**Start condition (engineer-ruled `Q-GLPNETS6-02`)**: the 078 remediation IS the closing work of the
+current era — **claim the 9 packets AFTER the two 078 TEST findings are fixed**, not after full close.
+
+### Fleet findings published this session
+
+- **shiras is ONBOARDED** (8 of 14 boards; caps+calendar+ops). ariellas' freeze is **stale by 1h46m51s**.
+- **olamnit's copy of the allocation board folds EMPTY** — 26 WPs unreachable from its own disk.
+- **Four retractions across two lanes in one hour**, all one defect: *a claim stated with a scope wider
+  than the evidence actually globbed.* Adopted rule: **state the scope you actually globbed, in the
+  sentence that reports the number.** "Count the files" would not have caught any of them.
+
+### 🔴 New tooling defects recorded
+
+1. **`BK-REPORT-v1` SITREP section returns `UNAVAILABLE — exit 1 with no diagnostic`** while
+   `buildkit-marathon status` reads fine (seq 347, 28/111, 178 outstanding). Intermittent — the `all`
+   subcommand rendered it earlier the same session. **Cannot patch: BK-REPORT-v1 is FROZEN** (hash
+   `cac1dea5`). `mitem-01a03922`.
+2. **`buildkit-roadmap` RICE is unbounded** — `confidence` is a raw multiplier, not a percentage;
+   `reach=2000, impact=3, confidence=90, effort=8` yields **RICE 67500**, off-scale against every other
+   row. Cross-row RICE is unsound unless every row uses the same reach unit.
+3. **`buildkit-3rtask preflight` refuses on `develop`** (`protected_branch`) — a read-only research run
+   needs `--confirm-protected`, which reads as far more dangerous than it is.
+
 **READY FOR RESTART.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-25T13:00Z
