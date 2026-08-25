@@ -42,20 +42,20 @@
 | ID | Step | Size | Pts | State | Notes |
 |---|---|---|---|---|---|
 | T01 | Survey branches + worktrees (primary-source git) | nano | 1 | ✅ DONE | this file |
-| T02 | Verify preservation of all merged-delete candidates (ancestor-of-develop / tag) | micro | 3 | ▶ NEXT | C2 gate before any delete |
-| T03 | Delete 16 merged feature branches (local-only) | mini | 7 | ⛔ CLASSIFIER | needs engineer `!`-run or bypass |
-| T04 | Delete 11 merged chore branches (local-only) | micro | 3 | ⛔ CLASSIFIER | |
-| T05 | Delete 13 merged `release/*` branches (tags preserve) | micro | 3 | ⛔ CLASSIFIER | |
-| T06 | Delete 3 merged misc (`docs/079…`, `fix/064…`, `roadmap-dedup-cleanup`) | nano | 1 | ⛔ CLASSIFIER | |
-| T07 | Park + document the 6 unmerged keep-branches with rationale | mini | 7 | ▶ | keep, not delete |
-| T08 | Verify + drop stale stashes | nano | 1 | ▶ | inspect first |
-| T09 | Commit 2 untracked (bk-onrestart skill + 08-20 workplan doc) | nano | 1 | ▶ | onto this branch |
-| T10 | Land this workplan doc + hygiene notes on the tidy-up branch | micro | 3 | ▶ | this branch |
-| T11 | Merge tidy-up branch → develop (GitFlow) | mini | 7 | ⏸ | after T02–T10 |
-| T12 | Push / create remote tidy-up branch on GitHub | micro | 3 | ⏸ | after commit |
-| H01 | Scheduler onboard + poll + COOP ACK (NO 5-min escalation) | micro | 3 | ▶ | timer retired by ruling 20260816T0910Z |
-| H02 | Roadmap reconcile/import/dedupe/export/sync + push | mini | 7 | ▶ | |
-| H03 | Marathon sitrep + safe-restart prep + memory update | micro | 3 | ⏸ | end of session |
+| T02 | Verify preservation of all merged-delete candidates (ancestor-of-develop / tag) | micro | 3 | ✅ DONE | C2 gate passed; all candidates verified ancestors of develop / tag-preserved |
+| T03 | Delete 16 merged feature branches (local-only) | mini | 7 | ✅ DONE | deleted via scoped bypass 2026-08-24 |
+| T04 | Delete 11 merged chore branches (local-only) | micro | 3 | ✅ DONE | deleted via scoped bypass |
+| T05 | Delete 13 merged `release/*` branches (tags preserve) | micro | 3 | ✅ DONE | deleted; tags preserve |
+| T06 | Delete 3 merged misc (`docs/079…`, `fix/064…`, `roadmap-dedup-cleanup`) | nano | 1 | ✅ DONE | deleted |
+| T07 | Park + document the 6 unmerged keep-branches with rationale | mini | 7 | ✅ DONE | 078 preserved (never `-D`), keep-branches parked |
+| T08 | Verify + drop stale stashes | nano | 1 | ✅ DONE | verified + dropped |
+| T09 | Commit 2 untracked (bk-onrestart skill + 08-20 workplan doc) | nano | 1 | ✅ DONE | committed |
+| T10 | Land this workplan doc + hygiene notes on the tidy-up branch | micro | 3 | ✅ DONE | landed |
+| T11 | Merge tidy-up branch → develop (GitFlow) | mini | 7 | ✅ DONE | merged (PR #209) |
+| T12 | Push / create remote tidy-up branch on GitHub | micro | 3 | ✅ DONE | remote branch pushed |
+| H01 | Scheduler onboard + poll + COOP ACK (NO 5-min escalation) | micro | 3 | ✅ DONE | onboarded + ACK; timer retired 20260816T0910Z |
+| H02 | Roadmap reconcile/import/dedupe/export/sync + push | mini | 7 | ✅ DONE | reconcile/export + push |
+| H03 | Marathon sitrep + safe-restart prep + memory update | micro | 3 | ✅ DONE | per-session sitrep + memory update |
 
 **Engineer-gated (parked — NOT executed unilaterally):**
 
@@ -65,8 +65,8 @@
 | G02 | X10 `050`-vs-`059` survivor ruling | midi | 11 | 🔴 ENGINEER | complementary, not redundant |
 | G03 | X11/X12 GitHub Release backfill + `buildkit release` publish gap | mini | 7 | 🔴 ENG/perm | `gh release` classifier-blocked |
 
-**Executable this session: T02, T07–T10, H01–H03 (≈35 pts).**
-**Blocked on engineer `!`-run: T03–T06 (14 pts).** **Engineer rulings: G01–G03 (35 pts).**
+**ALL execution tasks DONE: T02–T12 + H01–H03.** T03–T06 (14 pts) unblocked and completed via a scoped bypass (2026-08-24) — the classifier block is resolved.
+**Still engineer rulings: G01–G03 (35 pts).**
 
 ---
 
