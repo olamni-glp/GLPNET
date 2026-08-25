@@ -155,6 +155,56 @@ another lane's live work.
 
 Board record: `ACK-20260825T090133Z-shiras-FLEET-DEFECT-the-deploy-home-registry-is-HOST-WIDE-…`.
 
+
+## 🟢 `/bk-codexreview` WORKS HERE — and the fleet blocker is a BASE defect
+
+**codex IS installed and working on shiras** (`codex-cli 0.149.1`, `CODEX_OK`). My earlier
+"codex absent" reading was true at ~07:56Z and is now STALE — **re-probe before quoting it.**
+
+🔴 **@gavriella's "codexreview is undischargeable" is retired.** The cause is the base default:
+
+```
+preflight --help:  --base BASE   base ref for diff scope (default origin/HEAD->main)
+
+git diff --shortstat main...HEAD           ->  161 files, 1,176,483 insertions  <-- the DEFAULT
+git diff --shortstat origin/develop...HEAD ->   15 files,     2,169 insertions  <-- the real work
+```
+
+**This is GitFlow**: features cut from `develop`, which is 94 ahead of `main`. The default base makes
+every branch inherit the whole unreleased delta. **ALWAYS pass the base:**
+
+```bash
+buildkit-codexreview preflight  --base origin/develop
+buildkit-codexreview codex-pass --cycle 1 --base origin/develop --review-only
+```
+
+Proven run `20260825T115835Z`: brief **1921 prompt bytes**, exit 0, **6 findings**, 420s, no overflow.
+
+🔴 **Engineer ruling `Q-GLPNETSHIRAS-02` (Claude-reviewers-only discharges the gate) rests on a
+premise I have since DISPROVED.** Re-raise it — a real cross-provider review is available now.
+
+## 🔴 FIVE DEFECTS IN THE SHIPPED `bkquestion` (found by codex, in the FLEET tool)
+
+`bkquestion.py:151` AttributeError instead of INVALID on `"questions":[null]` · `:79` `bool` passes
+the `number` check (renders `True h`) · `:198` six-word labels accepted vs 1-5 · **`:413` `--answer
+Q-ID=` appends an empty decision row reported as recorded** · `schema:21` `format: date-time` never
+enforced, contradicting the README's central safety claim. **Not patched — they are @olamnit-ospark's.**
+
+## 🔴 HEARTBEAT — carry the NARROWED claim ONLY
+
+An earlier peer claim that `write_heartbeat()` fires on read-only paths was **RETRACTED IN FULL**
+after a natural experiment refuted it. **The tested claim:** `onboard` (a WRITE) emits a heartbeat
+even when it lands 0 caps and 0 ops; `loop` beats per cycle; **read-only `board`/`status`/`replicas`
+do NOT.** So `ops/<actor>/` holding only `heartbeat.json` means **a prior onboard that landed
+nothing** — not manufactured-by-looking. Also: `dispatch.py`/`board.py`/`plan.py` carry **zero**
+heartbeat references, so the allocator never reads it either way.
+
+## 🔴 The standard renderer reports FALSE-EMPTY here, at exit 0
+
+`python scripts/roadmap_open_table.py` → **`0 not-closed, across 0 epics`**, `--check exit=0`.
+That is D1 (catalog OOM) surfacing as a clean pass. **Render from the signed export instead**
+(ruling `Q-GLPNETSHIRAS2-03`): `25 not-closed = 1 implemented · 3 analyzed · 6 specified · 15 promoted, 8 epics`.
+
 ## What's next, in order
 
 | # | step | size | state | blocked-by |
