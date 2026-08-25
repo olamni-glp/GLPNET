@@ -203,15 +203,19 @@ pre-existing 064 service-box drills, out of scope, and exactly the 2 in the re-b
 
 ## What's next — in order
 
+🔴 **SESSION 7 (2026-08-25 afternoon) CLOSED STEPS 1, 2 AND 3.** See the SESSION-7 ADDENDUM at the
+foot of this document for what changed. The live ordering is now:
+
 | # | step | size | state |
 |---:|:---|:---|:---|
-| 1 | **078: fix the 2 TEST findings** (`tests/faultinj/conformance.py`, `test_guard_weakening.py`) | mini/7 | **unblocked — DO THIS FIRST.** Ruled: this discharges the era gate AND unlocks the 9 claims |
-| 2 | **Claim the 9 allocated packets** + ACK-COMPLIANCE to ariellas | micro/3 | unblocked once #1 lands (`Q-GLPNETS6-02`) |
-| 3 | 078: the 6 product HIGHs | midi/11 | follows #1 |
-| 4 | re-run `/bk-codexreview --scope codeconv`, then `/bk-release` | midi/11 | gated on #1+#3 (`Q-GLPNETS6-01`) |
+| ~~1~~ | ~~078: the 2 TEST findings~~ | mini/7 | ✅ **DONE** `bddfdc08` — mutation-verified |
+| ~~2~~ | ~~Claim the 9 allocated packets + ACK-COMPLIANCE~~ | micro/3 | ✅ **DONE** — 9/9 held, ACK filed `20260825T1621Z` |
+| ~~3~~ | ~~078: the 6 product HIGHs~~ (+ both MEDs) | midi/11 | ✅ **DONE** `1e8986e3` — **9/9 mutants killed** |
+| **4** | **re-run `/bk-codexreview --scope codeconv`, then the release decision** | midi/11 | **NOW UNBLOCKED — the `Q-GLPNETS6-01` gate is met.** Single-component repo-root scope (git-2.55 workaround) |
 | 5 | Split 083's mechanism into its own feature; re-score both | mini/7 | unblocked (`Q-GLPNETS6-04`) |
 | 6 | buildkit PR: fix `link` no-op + the `link-spec` hint | mini/7 | unblocked (`Q-GLPNETS7-02`) |
 | 7 | Re-issue `Q-GLPNETS7-01` against `buildkit-roadmap status` | nano/1 | needs engineer |
+| 8 | `bk-flow open` the 9 claimed packets against features | mini/7 | unblocked; **do NOT author features for them — they ARE the engineer's asks** |
 
 **Do NOT start:** any feature for the supply-chain superset, onrestart, or tidy-up — **all are
 already allocated packets** (see the headline).
@@ -292,3 +296,97 @@ current era — **claim the 9 packets AFTER the two 078 TEST findings are fixed*
 **READY FOR RESTART.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-25T13:00Z
+
+---
+
+## 🔴 SESSION-7 ADDENDUM (2026-08-25 afternoon) — **THE 078 NO-GO IS FULLY REMEDIATED**
+
+All **10** findings from codexreview run `20260824T165651Z` are closed, in two commits on `develop`:
+`bddfdc08` (the 2 TEST findings) and `1e8986e3` (the 6 product HIGHs + both MEDs). Every fix quotes
+the spec text it satisfies; none invents a requirement.
+
+### The two TEST findings — fixed FIRST, because nothing else was interpretable until they were
+
+| finding | mechanism of the fix |
+|---|---|
+| the fixture reached full coverage without exercising declared `BOUNDED` | coverage is now **case-keyed**: a `_RUNNERS` table maps each declared case to its own runner, and a case is counted **only by running and registering itself**. An anonymous tally can no longer outrun the cases. `BOUNDED` (FR-005 cap, totals survive) and `OVERRIDDEN` (FR-012 visibility) now actually run. A declared case with no runner ⇒ **UNREAD** (FR-016) |
+| the mutation test stayed **GREEN** under a no-op validator | it now runs the suite's **own acceptance assertion** under the weakened guard and asserts **that assertion FAILS** — plus a second demonstration through the conformance fixture |
+
+🔴 **The case set was also realigned to contract F1.** The code declared `FALSIFIED_REJECTED` as the
+7th case; F1's seventh is **`OVERRIDDEN`**, and the falsified case is **F3's separate assertion**, not
+a member of the case set. Encoding the old set would have baked in a second divergence.
+
+### The six product HIGHs + two MEDs
+
+`run_id` is now a **`Receipt` field**. 🔴 **This is not a spec extension** — `data-model.md` §2 has
+always declared `run_id` (R2, *"unique per `(area, run_id)`"*); the implementation simply omitted it,
+which is *why* one check could reuse another's PASS. Likewise FR-010's real rule was already written
+down: `data-model.md` line 72 says **`examined_total + skipped_total ≤ target_total`**, so
+5-examined/5-total/1-skipped was accepted by a validator checking only `examined ≤ total`.
+
+Also closed: `validate()` had **no PASS branch** (a PASS with an unresolved target or unknown total
+validated, then reported successful); `load_expected` accepted `{}`, an empty list **or a foreign
+`run_id`** as an empty expected-set, making `missing_checks()` vacuously clean; run reconciliation
+trusted a **filename** and never loaded the sidecar; `override.applies()` ignored the recorded
+**reason**, so one override authorised every other refusal from that check until expiry; a
+non-adopted area's verdict was **discarded** rather than kept behind the marker (every real glpnet
+area starts non-adopted, so the manifest disabled verdicts instead of phasing adoption); and
+malformed shapes **crashed** out of `load()` instead of returning C1.2's named UNREAD refusal.
+
+### 🔴 EVERY FIX IS MUTATION-VERIFIED — 9/9 MUTANTS KILLED
+
+The whole point of this feature is that a green run must be interpretable, so no fix was accepted on
+its own say-so. A harness reverts **each new guard one at a time** and re-runs:
+
+```
+baseline exit=0 (GREEN)
+  OK FR-010 examined+skipped guard   OK PASS branch in validate
+  OK consumer check_id/area binding  OK consumer run_id binding
+  OK consumer broad malformed catch  OK expected-set run_id match
+  OK expected-set non-empty          OK reconciliation loads the sidecar
+  OK override reason scope
+9/9 mutants killed        post-restore exit=0 (GREEN)
+```
+
+**No survivors, no residue** (`grep 'if False'` clean, `git diff` shows only intended changes). The
+earlier SC-007 fix was proven the same way, by neutering `validate()` **in `receipt.py` source**:
+suite went **RED, 3 failed / 18 passed / exit 1**, then restored byte-identical.
+
+Suite: faultinj **18 → 32**; **43 green** across all four receipt test files. Blast radius verified
+contained — nothing outside `receipts/` and those four files imports the module.
+
+### Board — 9 of 9 claimed, and two findings about the claim instructions themselves
+
+`bk-flow poll` now folds **`ok=9`** for gavriella (was 3). Six claims issued serially,
+`gavriella:000167`–`000172`. **No id was retyped**: `wp-onboard-claim-accepts-arbitrary-text-as-a-work-packet-id`
+is an open packet on this very board, so a typo mints an irreversible phantom claim on a grow-only
+log. Every id was the **set intersection** of the broadcast's GAVRIELLA section and the live board's
+`not_claimed` set.
+
+1. 🔴 **The broadcast's "claimable NOW" list was never differenced against existing claims.**
+   **3 of my 9 were ALREADY MINE since 2026-08-23** (`gavriella:000018`, `:000019`, `:000165`) — two
+   days before the broadcast — yet all three appear as commands to run. A lane pasting its nine lines
+   verbatim issues three redundant claims. **"9 claimable now" ≠ "9 to claim"; only the first was
+   published.** The true new-claim count here was **6**.
+2. 🔴 **The capability gate is INERT on this board** — *no* work packet declares a
+   `required_capability`, so `missing_capability=0` on any lane's poll is **UNMEASURED, not clear** —
+   while the broadcast's own *"why this host"* column routes packets **by capability**
+   (`requires python-pytest`, `requires windows`, `requires ci-runner`). The requirement that
+   justified the routing **is not carried on the packet the board folds**: computed once in the
+   allocator, written into prose. Same shape as the stale shiras freeze. Fix: put
+   `required_capability` on the packet so the gate can run **at claim time**.
+
+Both published in `20260825T1621Z-gavriella-glpnet-ACK-COMPLIANCE-…md` (the ACK the previous session
+honestly deferred) and durable as `mitem-01a039bb-329d` / `mitem-01a039bb-8059`.
+
+### Carried forward
+
+- **Release is still NO-GO until step 4 re-runs the review.** The *reason* has changed again: not
+  "we cannot review" (session 5), not "we reviewed and it failed" (session 6), but **"it failed, we
+  fixed all ten, and the re-run has not happened yet."** Do not read the fixes as a GO.
+- ⚠ The original review's `findings_count_status` was `unconfirmed` (`prose_fallback_findings: 10`).
+  All ten *individually named* findings are closed; if the re-run surfaces more, that is consistent
+  with the count having been a parse fallback, **not** a regression.
+- `develop` is now **61 ahead of `main`**, tree clean, pushed at `1e8986e3`.
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-25T17:0xZ
