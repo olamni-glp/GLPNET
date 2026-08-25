@@ -120,3 +120,65 @@ options:
 - An **era is a feature**, nine stages, never split.
 - A fix may only compose verbs that EXIST in the contracts above; inventing a verb is out of scope and must be
   reported as a required upstream change instead.
+
+---
+
+# ADDENDUM C2 — CONSTRAINTS DISCOVERED SINCE THE FIRST CORPUS BUILD. A FIX MUST SURVIVE ALL OF THESE.
+
+## C2.1 PROVENANCE IS UNRECOVERABLE FROM THE SUBSTRATE — lane testimony is all that remains
+```
+git -C \192.168.0.108\GAVRI_D\coop\glpnet\sched rev-parse --is-inside-work-tree
+  -> fatal: not a git repository (or any of the parent directories)
+```
+The CRDT substrate is plain JSONL on a share with NO VCS. There is no committer to recover on any
+board. With uid dead (forceuid), pid%4 dead, and line endings dead, THE ONLY SURVIVING PROVENANCE
+INSTRUMENT IS LANE TESTIMONY. A fix that needs to know who wrote a record CANNOT get it today.
+
+## C2.2 NO ROOT CARRIES AN IDENTITY, AND STAMPING ONE IS FORBIDDEN FOR NOW
+```
+buildkit-scheduler root  ->  root_id (none - records mint root-scoped ids)
+                             "this repo accepts whatever root resolves"
+```
+That is the mechanism by which three boards came to share one name. BUT shiras published the
+binding constraint and it is ENGINEER-LEVEL:
+  "You cannot verify convergence safety without the identity, and you cannot safely stamp the
+   identity without verifying convergence. DO NOT STAMP IDENTITY UNTIL IT IS BROKEN."
+NOBODY may run --ensure-identity yet. A fix proposing it is OUT OF SCOPE until that is ruled.
+
+## C2.3 THE CAPABILITY CONTRACT HAS NO POLARITY AND NO RETRACTION
+caps are grow-only, LWW by name; onboard only ADDS. Measured instance: ariellas declares
+tool=dart AND skill=dart; dart is NOT INSTALLED; glpnet is a Dart project (pubspec sdk ^3.9.4).
+The false declaration CANNOT BE WITHDRAWN - only an explicit negative published beside it
+(absent.dart-sdk-NOT-INSTALLED). Every stale declaration on every board is PERMANENT and
+unfalsifiable by its own author. crucible holds ruling Q-041-01 for a typed platform capability;
+a fix should CONSUME that contract, not build a rival, and it must carry POLARITY.
+
+## C2.4 IDENTITY-FORGING IS A HARD REFUSAL (three lanes independently held this line)
+Writing caps/ops onto a grow-only board UNDER ANOTHER HOST IDENTITY is identity forging. It was
+refused independently by olamnit-assistant, qhstate and ariellas even where each knew the exact
+command that would work. A FIX MUST BE EXECUTABLE BY THE TARGET HOST ITSELF, or by explicit
+engineer instruction. A fix requiring one host to write another host identity is INVALID.
+
+## C2.5 VERSION SKEW IS UNEXAMINED AND IS A SERIALISATION RISK
+shiras runs 2026.8.24.5; fleet pin 2026.8.23.8; this lane ambient 2026.8.18.2.
+MEASURED CONSEQUENCE: on 2026.8.18.2 a UNC --root passed through Git-Bash was rewritten to
+D:\192.168.0.108\... and onboard CREATED A STRAY EMPTY BOARD ROOT on the local disk (it warned).
+On 2026.08.23.8 the same input REFUSES. So a lane on an older engine can SILENTLY FORK A BOARD.
+Separately, the engine changed its on-disk line-ending output in a datable window. NOBODY HAS
+CHECKED WHAT A NEWER ENGINE WRITES INTO A SHARED BOARD.
+
+## C2.6 THE PLAN PAYLOAD DIFFERS ACROSS BOARDS/ENGINES
+ariellas glpnet (engine 2026.8.18.2): default_calendar_assignees PRESENT = [unassigned]
+  -> the key is emitted EVEN WHEN it derives to zero real actors, so ABSENT != EMPTY.
+hatzinor: [ariellas,gavriella,unassigned] | lejepa: [ariellas-lejepa,unassigned] (79% of declared
+capacity invisible) | buildkit: KEY ABSENT ENTIRELY.
+Six boards, six values, one behaviour: THE DERIVATION DROPS QUALIFYING ACTORS. Mechanism is
+board-local; the defect class is fleet-wide. A fix must repair the DERIVATION, not a constant.
+
+## C2.7 DELIVERY IS NOT PUBLICATION
+A fan-out written as  for d in <leg>/*/  reaches only channels that ALREADY EXIST. It cannot fail
+and cannot warn, and reports 0 failures whether the recipient has 25 channels or 3. The shiras leg
+had 5 channels against 24/25 on peers. TWO lanes hit this independently. There are FOUR legs, not
+three: D:\coop on ARIELLAS itself was missed by this lane all day.
+A fix must ENUMERATE intended recipients, mkdir -p the missing, and emit a RECEIPT naming every
+path written per leg. A copy count is not delivery evidence; only a read-back from the recipient is.
