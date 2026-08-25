@@ -35,7 +35,7 @@ buildkit-marathon resume --feature glpnet-shiras-tidyup-and-scheduler-rootcause
 | field | value |
 |---|---|
 | branch | `095-shiras-glpnet-onboard-and-scheduler-rootcause`, pushed at `12dea5e7` |
-| **PR** | 🔴 **NOT OPENED — GitHub API rate limit, not a conflict.** See "First action" below. |
+| **PR** | ✅ **#230 OPEN** — https://github.com/olamni-glp/GLPNET/pull/230 |
 | marathon | `seq=10`, **0/0 steps**, **10 outstanding items**, all `parked` |
 | develop vs main | **94 ahead**, 0 open PRs |
 | release | **HELD by engineer ruling** — dry-run green (`v2026.08.24.1`), deliberately not cut |
@@ -45,25 +45,26 @@ buildkit-marathon resume --feature glpnet-shiras-tidyup-and-scheduler-rootcause
 | roadmap (from export) | **25 not-closed = 1 implemented · 3 analyzed · 6 specified · 15 promoted, across 8 epics** |
 | engineer rulings | **7 recorded** in `.specify/decisions/engineer-decisions.jsonl` |
 
-## 🔴 First action next session — open the blocked PR
+## 🔴 If a `gh` command misbehaves — check the default repo FIRST
 
-The branch is pushed and safe. The PR failed **only** because the shared GitHub account was at
-`core: remaining 0 / 5000`. **Check the budget before believing any `gh` error:**
+This checkout has **two remotes** (`origin` → `GLPNET`, `upstream` → `GLP`), and `gh` had defaulted
+to the **sibling** `olamni-glp/GLP`. Every `gh pr create` went to the wrong repo and failed with
+`"No commits between develop and <branch>"` — a message that was **literally true, about a repo I
+was not in**. Fixed this session via `gh repo set-default olamni-glp/GLPNET`.
 
 ```bash
-gh api rate_limit --jq '.resources.core'
-gh pr create --base develop --head 095-shiras-glpnet-onboard-and-scheduler-rootcause
+gh repo set-default --view     # FIRST check, always
+gh api rate_limit --jq '.resources.core'   # only a second check
 ```
-
-🔴 **`gh pr create` reported `"No commits between develop and <branch>"` — that message was FALSE.**
-It is what an exhausted core budget looks like through the GraphQL PR path. Do not delete the branch
-on the strength of it.
 
 ## 🔴 Corrections carried forward (do not re-derive)
 
-1. **The "classifier blocks commit on 2nd host" hypothesis is WITHDRAWN** — mine, from
-   `ACK-20260824T112831Z`. It was the shared GitHub rate limit all along. Retry "fixed" it only
-   because the hourly budget reset.
+1. **The "classifier blocks commit on 2nd host" hypothesis is RE-OPENED, not withdrawn.** I
+   withdrew it mid-session blaming the GitHub rate limit, then **retracted that withdrawal** when
+   the identical failure reproduced on a fully restored budget. The real cause of *this* session's
+   PR failure was `gh`'s default repo (see above). The classifier report from
+   `ACK-20260824T112831Z` stands **unexplained** — and may be the same wrong-default-repo defect.
+   Board record: `RETRACTION-20260825T084334Z-shiras-glpnet-...`.
 2. **`buildkit-roadmap status` reporting "Roadmap is empty" on this host is FALSE-EMPTY.** The
    import OOMed materialising HEAD and `replay` then found 0 lines. Never quote that as a roadmap
    reading. Use `.specify/roadmap-sync/exports/` (newest: `gavriella__glpnet__20260824T170210Z.json`).
