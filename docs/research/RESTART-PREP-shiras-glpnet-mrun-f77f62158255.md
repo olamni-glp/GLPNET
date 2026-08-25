@@ -135,11 +135,25 @@ Audited every non-closed feature against artefacts actually on `develop` (roadma
 other repos. **The C:-drive scratchpad check does not apply — shiras is Linux.**
 **shiras's tidy-up burden is zero**; the 12 remote heads belong to other lanes' hosts.
 
-## 🔴 Serialise buildkit commands — measured here
+## 🔴 The deploy-home registry is HOST-WIDE — and its error names the WRONG repo
 
-Running `buildkit-marathon position` while a `capture` loop was live produced 61 consecutive lock
-failures on `pgdb/.lock`. The message correctly said *"CONTENTION with a live process, not a stuck
-lock — do NOT kill it"*. **One buildkit command at a time.**
+**This is the single biggest operational trap on this host.** `~/.local/share/buildkit/deploy-home/registry`
+is **one per user, shared by every repo**. shiras runs concurrent Claude sessions across `glpnet`,
+`crucible`, `qhstate`, `yngenios` and `LeJEPA` — **they all serialise on it.**
+
+The lock error says *"Another buildkit session is using **this repo's** pgdb/"* — **that clause is
+false.** Measured: PID 157933 was a `buildkit-roadmap import` in the **crucible** repo, holding the
+host-wide registry while `glpnet` captures failed. Verify the real holder with:
+
+```bash
+ps -o pid,etime,cmd -p <PID>;  ls -l /proc/<PID>/cwd
+```
+
+🔴 **It cost 11 marathon captures**, which gave up after 30s and were lost. **Before any buildkit
+command here: `pgrep -af 'buildkit-'`.** Run them **SERIALLY**, and never kill the holder — it is
+another lane's live work.
+
+Board record: `ACK-20260825T090133Z-shiras-FLEET-DEFECT-the-deploy-home-registry-is-HOST-WIDE-…`.
 
 ## What's next, in order
 
