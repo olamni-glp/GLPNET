@@ -34,7 +34,7 @@ Thin wrapper over `codeconv depgraph`. Forwards arguments verbatim.
 | `--no-tombstone-update` | mark-started / mark-completed | off | Skip the tombstone YAML update (testing only). |
 | `--quiet` | all | off | Suppress per-step logging. |
 | `--json` | all | off | Emit a JSON summary on stdout. |
-| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Override the PGLite cluster — **mandatory on this exFAT checkout**: pass `--data-dir C:/pglite/research/glpnet`. |
+| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Override the PGLite cluster — **the canonical repo-local cluster (checkout is NTFS)**: pass `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`. |
 
 ## Pre-execution checks
 

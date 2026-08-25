@@ -1,0 +1,113 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-tidyup-20260825T0806Z",
+  "lane": "olamnit",
+  "repo": "glpnet",
+  "raised_at": "2026-08-25T08:06:28+00:00",
+  "context": "Open engineer blocks after delivering M01 Phase A (skills), C:/pglite verify, and the completion-spines assessment for this host in run mrun-76da6e46bd44. Each question is a real gate; none was advanced past its gate (method R3/R5). Recommendations are stated; the decision is the engineer's. Also open (pre-existing deferred gates, not squeezed into this 4-max set): X00 pointer drift 078/079; qr-link trunk-key security-hardening gate; G01 key-rotation+history-rewrite; G02 050-vs-059 survivor; G03 GitHub-Release backfill.",
+  "questions": [
+    {
+      "id": "Q-tidyup-01",
+      "kind": "ruling",
+      "header": "M01 close",
+      "question": "M01 Phase A: bk-flow+bk-proof skills are installed and §5.1 (step-board integrity) is verified already-fixed upstream. Two items remain: §5.2 reproducible phase-exit gates (Critic non-determinism) and the parity-gap waiver. §5.2 is a buildkit-engine design change in a separate repo with an open ESCALATE; the waiver is engineer-only. How do you want M01 Phase A closed?",
+      "blocks": ["M01 Phase A discharge", "M01 Phase B cutover readiness"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Defer §5.2, record waiver",
+          "recommended": true,
+          "means": "Record the parity waiver now (rationale: 'bk-flow complements marathon; the 10-cap gap is by design, not a regression'); re-park §5.2 as a buildkit-lane engineer gate (it gates Phase B anyway). Phase A closes as delivered.",
+          "cost": "§5.2 stays open; Phase B cutover remains NO-GO until it and fleet-quiesce are resolved."
+        },
+        {
+          "label": "I fix §5.2 in buildkit now",
+          "means": "Enter the buildkit repo and implement pinned Critic determinism or a non-Critic phase-exit gate, following buildkit's own spec-first process.",
+          "cost": "Cross-repo engine work with an unresolved design ESCALATE; hard problem; large scope; not a glpnet-lane change."
+        },
+        {
+          "label": "Hold both",
+          "means": "Leave §5.2 and the waiver both open; M01 Phase A reported as partially delivered (skills only).",
+          "cost": "The already-safe waiver stays unrecorded, blocking any later Phase-B readiness accounting."
+        }
+      ]
+    },
+    {
+      "id": "Q-tidyup-02",
+      "kind": "ruling",
+      "header": "C:/pglite",
+      "question": "The prohibited cluster dir C:/pglite/research/glpnet EXISTS but is EMPTY (0 bytes, no lock/process) — safe to remove with zero data loss. The recurrence root cause is that 8 codeconv-* SKILL.md still mandate that path as the canonical cluster. You reserved final OK on removal. How to proceed?",
+      "blocks": ["G-PGLITE gate", "CLAUDE.md ABSOLUTE-rule compliance"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Remove dir + fix 8 docs",
+          "recommended": true,
+          "means": "Remove the empty dir AND repoint the 8 codeconv-* SKILL.md to repo-local .pgdb per CLAUDE.md, so the violation cannot recur.",
+          "cost": "Edits 8 skill docs (broad but corrective); removal is a destructive filesystem op you must authorize."
+        },
+        {
+          "label": "Remove dir only",
+          "means": "Delete the empty dir now; leave the docs.",
+          "cost": "Next codeconv invocation following the stale docs recreates the prohibited dir — treats the symptom, not the cause."
+        },
+        {
+          "label": "Hold",
+          "means": "Leave the empty dir in place; take no action.",
+          "cost": "A standing CLAUDE.md ABSOLUTE-rule violation remains on disk."
+        }
+      ]
+    },
+    {
+      "id": "Q-tidyup-03",
+      "kind": "ruling",
+      "header": "PR #229",
+      "question": "PR #229 (chore: bk-flow/bk-proof skills + X03 workplan reconcile -> develop) is created but its merge is blocked by the Claude Code auto-mode classifier. 'merge all' cannot complete without you. How do you want it merged?",
+      "blocks": ["merge-all step", "develop currency with M01 Phase A"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "You !-run the merge",
+          "recommended": true,
+          "means": "You run `gh pr merge 229 --merge` (or approve the classifier) so the 2 chore/doc commits land on develop.",
+          "cost": "Needs a manual engineer action; nothing else is blocked behind it."
+        },
+        {
+          "label": "Leave for next session",
+          "means": "Keep PR #229 open; the commits stay on the pushed branch until merged later.",
+          "cost": "develop lags the branch by the 2 chore commits until then."
+        }
+      ]
+    },
+    {
+      "id": "Q-tidyup-04",
+      "kind": "ruling",
+      "header": "Spine homing",
+      "question": "The three completion spines are blocked on homing and per 'for this host' two are other-lane-owned: 082 (feature-stream-superset) = glpnet feature or engine-side #13 vehicle (+ capability-name normalisation)? 083 (glptutorial-corpus-goldens) = ariellas-allocated + FR-002 §1.14 (Udi). 085 (onrestart-fleet-resume) = mstack/buildkit-canonical (P02), no 085 spec dir here. How do you want them homed?",
+      "blocks": ["C082", "C083", "C085", "completion-spines programme discharge"],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept all 3 recommendations",
+          "recommended": true,
+          "means": "082 = engine-side #13 vehicle (resolve capability-name first); 083 stays ariellas (FR-002 to Udi); 085 = mstack/buildkit lane, parked off the glpnet roadmap. olamnit drives none of the three.",
+          "cost": "082 needs the capability-name ruling before pipeline entry; 085 needs a roadmap edit + fleet note to avoid double-tracking."
+        },
+        {
+          "label": "olamnit drives all three",
+          "means": "Override the homing and have olamnit drive 082/083/085 to close on glpnet.",
+          "cost": "Contradicts ariellas/mstack ownership and the §1.14/capability gates; high coordination risk."
+        },
+        {
+          "label": "Rule per-spine (I'll relay)",
+          "means": "You give a separate homing call per spine; I record each and relay 083/085 to their lanes.",
+          "cost": "Three separate decisions rather than one; slower."
+        }
+      ]
+    }
+  ]
+}
