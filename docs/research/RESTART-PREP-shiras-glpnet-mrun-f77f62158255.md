@@ -99,21 +99,64 @@ stage downstream — and the later two card classes are the evidence that it alr
 **Second, independent cause:** a lane with **zero `caps/` records is structurally unallocatable**.
 shiras had 0 until 2026-08-25. Every lane should verify `caps/<actor>/` is non-empty.
 
+
+## 🔴 SPECIFIED-FEATURE AUDIT — done this session, do not redo
+
+Audited every non-closed feature against artefacts actually on `develop` (roadmap state from the
+**signed export**, per ruling `Q-GLPNETSHIRAS2-03`).
+
+| feature | roadmap state | on develop | tasks | true next phase |
+|---|---|---|--:|---|
+| **078** verification-receipts | analyzed | full set | 4✓ / **62 open** | `/bk-implement` |
+| **059** full-scope-gleam | analyzed | full set | 75✓ / **23 open** | `/bk-implement` |
+| **066** wave6-consolidation | analyzed | full set | 12✓ / **18 open** | `/bk-implement` |
+| **067** qr-link-provisioning | **implemented** | 🔴 **no spec dir** | — | **contradiction** |
+| **083** glptutorial-goldens | specified | spec only | 0 | `/bk-plan` |
+| **080** occurs-checked-subst | specified | spec only | 0 | `/bk-plan` |
+| **079** madglp-writer-reader | **specified** | 🔴 **full set** | **20 open** | **stale state** |
+| **082** feature-stream-superset | specified | spec only | 0 | `/bk-plan` ← **claimed by shiras** |
+| **085** onrestart-fleet-resume | specified | spec only | 0 | `/bk-plan` |
+| **065** ynet-consolidation | specified | spec only | 0 | `/bk-plan` |
+
+**Two contradictions, both other lanes' rows — do not touch, they are broadcast and ACK-requested:**
+
+1. **067 is `implemented` with NO spec dir on develop.** Spec/plan/27 tasks exist only on
+   `origin/067-qr-link-provisioning` and `origin/067b-qr-link-continuation`. And `implemented` is a
+   state the renderer whitelist **drops** — so the row is *invisible in the table AND stranded off
+   trunk*. The reporting defect and the merge defect conceal each other.
+2. **079 is `specified` but fully tasked** (plan + tasks + 20 open). Any lane picking by state will
+   send `/bk-plan` at a feature that already has one. Remedy: `buildkit-roadmap reconcile` on the
+   owning host.
+
+## ✅ WORKTREE SURVEY — shiras is CLEAN, do not redo
+
+`git worktree list` → **1** (primary only) · `.git/worktrees/` → **does not exist** · local branches
+→ **3** · other GLPNET checkouts → **none**. Other `GLPNET`-named paths are vendored subdirs inside
+other repos. **The C:-drive scratchpad check does not apply — shiras is Linux.**
+**shiras's tidy-up burden is zero**; the 12 remote heads belong to other lanes' hosts.
+
+## 🔴 Serialise buildkit commands — measured here
+
+Running `buildkit-marathon position` while a `capture` loop was live produced 61 consecutive lock
+failures on `pgdb/.lock`. The message correctly said *"CONTENTION with a live process, not a stuck
+lock — do NOT kill it"*. **One buildkit command at a time.**
+
 ## What's next, in order
 
 | # | step | size | state | blocked-by |
 |--:|:---|:---|:---|:---|
 | 1 | Open the blocked PR (above) | nano | **unblocked** | rate limit reset only |
 | 2 | S3 — design the three transition writers via `/bk-3rtask` | saga | **gated** | **PEER** — board is ariellas-owned |
-| 3 | Drive the claimed `wp-coordination-feature-stream-durable-superset-fix` specify→close | saga | **unblocked** | engineer permission recorded `Q-GLPNETSHIRAS2-01` |
+| 3 | **`/bk-plan 082`** — the claimed feature-stream superset (spec exists, plan+tasks do not). **This is the durable remedy for the three-transition leak.** | saga | **unblocked** | permission recorded `Q-GLPNETSHIRAS2-01` |
 | 4 | S4 — file the roadmap OOM as a buildkit defect | mini | **unblocked** | — |
-| 5 | S9 — enumerate features stuck at `specified` **from the signed export** | maxi | **unblocked** | ruling `Q-GLPNETSHIRAS2-03` reopened this |
+| 5 | ~~S9 — enumerate features stuck at `specified`~~ | maxi | ✅ **DONE this session** — see audit above |
 | 6 | S8 — marathon → `/bk-flow` migration readiness | saga | **unblocked** | engineer marked critical |
 | 7 | S5 — tidy-up: 12 remote heads | midi | **gated** | **ENGINEER/PEER** per lane affinity |
 | 8 | S6 — release | nano | **HELD** | **PEER** — gavriella has not answered ariellas' 06:55Z ask |
 
-**Cheapest real progress next session: #1 → #4 → #5.** All unblocked, all cheap, and #5 is the work
-the engineer marked imperative that this session could not reach.
+**Engineer directive: the FIRST task of the next session is the `/bk-marathon` → `/bk-flow` migration**
+(automatic upgrade + verification that every `/bk-*` tool still builds and works; plan and execute via
+`/bk-3rtask`, evaluate safety and idempotency before any cutover). **Then `/bk-plan 082`.**
 
 ## Evidence caveats
 
