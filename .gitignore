@@ -111,7 +111,16 @@ reviews/
 .specify/deploy-ledger.jsonl
 
 # 036/049 shared-cert material (SPKI-pinned; .pfx must never be committed)
+# RESOLVED (067 T002 / 069, 2026-08-10): the four tracked files (glpquick.key/.pem/.pfx/
+# .fingerprint) were untracked by feature 069 (v2026.08.10.1) and the pin rotated to 3rd-gen
+# material. The gen-1 key remains in git history on the public origin — ruled NO-PURGE
+# (irreversibly disclosed; dead pin); treat it as public knowledge and never re-trust it.
 glpquick-cert/
+
+# 067 derived per-device provisioning material (short-lived certs minted per provisioning
+# session) + the append-only provisioning stores. Never tracked; not yet in the tree.
+glpquick-derived/
+glpquick-cert/provision/
 
 # 049 T028 erlang regression scratch output
 gleam_quic/test/_build_test/

@@ -139,10 +139,14 @@ class StackAdapter(ABC):
         *,
         repl_path: Optional[str] = None,
         self_id: Optional[str] = None,
+        derived_dir: Optional[Path] = None,
     ) -> Handle:
         """Launch + supervise the client-role runtime: real QUIC handshake (SPKI-pinned to the
         shared cert), bring up the WebSocket link (FR-001/FR-002/FR-003). ``repl_path`` /
-        ``self_id`` as in :meth:`start_server` (063 US1 live bridge)."""
+        ``self_id`` as in :meth:`start_server` (063 US1 live bridge). ``derived_dir`` (067):
+        present the derived per-device credential from that dir (``device.pem``/``device.key``,
+        peer still validated against ``trunk.pin``) instead of the shared pfx; ``cert`` is
+        ignored when given. Stacks without derived support MUST refuse loudly, never ignore."""
 
     @abstractmethod
     def health(self, handle: Handle) -> Status:

@@ -32,6 +32,11 @@ app = typer.Typer(
 cert_app = typer.Typer(no_args_is_help=True, help="Shared self-signed certificate operations (FR-003).")
 app.add_typer(cert_app, name="cert")
 
+# feature 067 — QR-code link + cert provisioning (derived credentials; trunk key never rendered)
+from glp_quick.provision.cli_commands import provision_app  # noqa: E402
+
+app.add_typer(provision_app, name="provision")
+
 _SKELETON = "[glp-quick:skeleton]"
 
 
@@ -170,6 +175,12 @@ def main(
     repl: str = typer.Option("csharp", "--repl", help="GLP REPL to bridge: csharp | dart | a path to a GLP REPL exe/dll (live bridge, 063 US1)."),
     retry: bool = typer.Option(False, "--retry", help="Client: retry while server-not-ready."),
     tui: bool = typer.Option(False, "--tui", help="Virtual IBM-3270-style full-screen chat UX (block-mode, pages, PF keys)."),
+    derived_dir: Optional[Path] = typer.Option(
+        None, "--derived-dir",
+        help="Client: derived-credential dir written by `glp-quick provision join` "
+        "(device.pem/device.key + trunk.pin + endpoint) — replaces --cert; --addr/--port default "
+        "from its endpoint file (067).",
+    ),
 ) -> None:
     """Dispatch the role flags when no subcommand (``cert`` / ``demo``) is given."""
     if ctx.invoked_subcommand is not None:
@@ -183,9 +194,35 @@ def main(
     stack_ = _validate_stack(stack)
     profile_ = _validate_profile(stack_, profile) or "a"
     repl_, repl_path = _validate_repl(repl)
-    if addr is None or port is None or cert is None:
-        raise typer.BadParameter("--addr, --port and --cert are required for --server/--client")
-    _require_cert_dir(cert)
+    if derived_dir is not None:
+        # 067: the joining host presents the derived credential; the trunk pin travels in the dir.
+        if not client:
+            raise typer.BadParameter("--derived-dir applies to --client only (the hub holds the trunk)")
+        if tui:
+            raise typer.BadParameter("--derived-dir runs on the plain console this wave, not --tui")
+        derived_dir = Path(derived_dir)
+        missing = [n for n in ("device.pem", "device.key", "trunk.pin") if not (derived_dir / n).exists()]
+        if missing:
+            raise typer.BadParameter(
+                f"--derived-dir {derived_dir} lacks {', '.join(missing)}; run `glp-quick provision join` first"
+            )
+        if addr is None or port is None:
+            ep_file = derived_dir / "endpoint"
+            if not ep_file.exists():
+                raise typer.BadParameter(
+                    f"--derived-dir {derived_dir} has no endpoint file; pass --addr and --port explicitly"
+                )
+            ep = ep_file.read_text(encoding="ascii").strip()
+            ep_host, _, ep_port = ep.rpartition(":")
+            if not ep_host or not ep_port.isdigit():
+                raise typer.BadParameter(f"malformed endpoint file in {derived_dir}: {ep!r}")
+            addr = addr or ep_host
+            port = port or int(ep_port)
+        cert = cert or derived_dir  # placeholder; the adapter uses --derived-dir, never this path
+    else:
+        if addr is None or port is None or cert is None:
+            raise typer.BadParameter("--addr, --port and --cert are required for --server/--client")
+        _require_cert_dir(cert)
 
     role = "server" if server else "client"
     from glp_quick.stacks.csharp import LinkError
@@ -205,7 +242,7 @@ def main(
         else:
             from glp_quick.link_console import run as run_link
             code = run_link(role, stack_, profile_, addr, port, cert, repl_, max_clients=max_clients,
-                            repl_path=repl_path)
+                            repl_path=repl_path, derived_dir=derived_dir)
         raise typer.Exit(code=code)
     except LinkError as e:
         typer.echo(f"{role} failed: {e}", err=True)
