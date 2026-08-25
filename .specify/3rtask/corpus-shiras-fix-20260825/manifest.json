@@ -1,0 +1,22 @@
+{
+  "slices": [
+    {
+      "slice_id": "measured-host-and-transport",
+      "description": "First-party SSH measurement of SHIRAS: identity, OS, mounts, board visibility, its own board writes, toolchain, repos, and the authoritative SSH-MESH-README. What IS true about the host and the transports between it and the fleet.",
+      "sources": [".specify/3rtask/corpus-shiras-fix-20260825/slice-a-measured-host-and-transport.md"],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "failure-record-and-retraction",
+      "description": "The record of how the fleet got SHIRAS wrong: the published false findings, the retraction with per-item measured truth, the asymmetric-visibility analysis, the live double-claim collision, and the reasoning defect (disjoint slices corroborating an artefact when the collection method is uniformly wrong).",
+      "sources": [".specify/3rtask/corpus-shiras-fix-20260825/slice-b-failure-record.md"],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "building-blocks-and-constraints",
+      "description": "The live CLI contracts a fix may compose (buildkit-scheduler, bk-flow, their verbs and flags), plus the enumerated defect class the fix must eliminate and the hard constraints it must respect (grow-only single-writer streams, canonical UNC, era integrity, no invented verbs).",
+      "sources": [".specify/3rtask/corpus-shiras-fix-20260825/slice-c-building-blocks.md"],
+      "assigned_to": "builder-3"
+    }
+  ]
+}
