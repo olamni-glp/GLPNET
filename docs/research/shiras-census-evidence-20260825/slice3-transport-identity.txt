@@ -1,0 +1,49 @@
+# SLICE 3 — transport and identity between shiras and its three peers
+## shiras self-identity
+hostname: shiras
+ip: 192.168.0.170
+
+## shiras samba export ([Shiras_Share] stanza, verbatim)
+[Shiras_Share]
+   comment = Shiras_Share - BIWIN SSD (ext4) D_DRIVE
+   path = /mnt/biwin/D_DRIVE
+   browseable = yes
+   read only = no
+   valid users = smbuser
+   create mask = 0664
+   directory mask = 0775
+   force user = smbuser
+   force group = smbuser
+
+## relevant [global] auth directives
+   interfaces = lo wlp3s0
+   bind interfaces only = yes
+   hosts allow = 127.0.0.1 192.168.0.0/24
+   hosts deny = 0.0.0.0/0
+# The specific set of interfaces / networks to bind to
+;   interfaces = 127.0.0.0/8 eth0
+# Only bind to the named interfaces and/or networks; you must use the
+# 'interfaces' option above to use this.
+# option cannot handle dynamic or non-broadcast interfaces correctly.
+;   bind interfaces only = yes
+   server role = standalone server
+   map to guest = bad user
+# The following settings only takes effect if 'server role = classic
+# primary domain controller', 'server role = classic backup domain controller'
+   usershare allow guests = yes
+
+## smbd/nmbd state: active / active
+## SMB listeners:
+192.168.0.170:139 192.168.0.170:445 127.0.0.1:139 127.0.0.1:445 [::1]:445 [::1]:139 
+## what shiras MOUNTS from peers (outbound, working):
+/mnt/ariellas/d //ariellas/ariellas_D cifs
+/mnt/gavri/d //gavri/GAVRI_D cifs
+/mnt/olamnit/d //olamnit/Olamnit_D cifs
+
+## PEER-SIDE probes (collected over ssh from shiras, 2026-08-25)
+peer | tcp22_to_shiras | ssh_config_shiras_lines | known_hosts_shiras | J:_mapping | dir \\192.168.0.170\Shiras_Share
+gavriella | True | 9 | 3 | (none) | Access is denied.
+olamnit   | True | 18 | 3 | J: \\192.168.0.170\Shiras_Share = Unavailable | Access is denied.
+ariellas  | True | 18 | 3 | J: \\192.168.0.170\Shiras_Share = Unavailable | Access is denied.
+
+## PROTOCOL-DRIVES v1 drive-letter law (from COOP/PROTOCOL-DRIVES.md): Olamnit=G:, Ariellas=H:, Gavriella=I:. Three hosts named. No letter is assigned to shiras by the protocol.
