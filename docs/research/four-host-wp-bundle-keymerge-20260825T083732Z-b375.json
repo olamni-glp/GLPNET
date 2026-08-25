@@ -1,0 +1,468 @@
+{
+ "corroborated": 34,
+ "singleton": 189,
+ "conflict": 1,
+ "conflicts": [
+  {
+   "key": [
+    "ACTOR:ariellas",
+    "H-MAPPING",
+    "NOHOST"
+   ],
+   "values": {
+    "MAPS-TO-ARIELLAS": [
+     "builder-1"
+    ],
+    "MAPPING-UNSTATED": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  }
+ ],
+ "corroborated_rows": [
+  {
+   "key": [
+    "WP:wp-crdtmsg-post-mvp-completion-cose-sign1-wrapper-1-14-gated-gl",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-distributed-unification-quiescence-protocol-two-runtime-spec",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-front-end-goal-term-acceptance-completeness-parser-repl-goal",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-full-scope-gleam-glp-implementation",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-glptutorial-corpus-golden-reconciliation-stale-goldens-drift",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-madglp-writer-reader-address-discipline-closure-n-n-1-audit-",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-occurs-checked-substitution-pipeline-compiler-bind-time-occu",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-product-defect-burn-down-with-regression-proof-no-defect-clo",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-seam-specification-normative-contracts-at-every-trust-lifecy",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-single-source-of-truth-one-authority-per-subject-provenance-",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-verification-receipts-and-loud-failure-no-check-may-pass-wit",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-ynet-human-memorable-decentralized-naming-resolver",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-ynet-mobile-background-battery-budget-scheduling-policy",
+    "A-LOCALITY",
+    "NOHOST"
+   ],
+   "values": {
+    "UNPINNED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-041-cross-runtime-and-two-host-acceptance-completion-t055-pa",
+    "X-CONFLICT",
+    "NOHOST"
+   ],
+   "values": {
+    "CONFLICT-MULTI-HOST-SPAN": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-coordination-feature-stream-durable-superset-fix",
+    "X-CONFLICT",
+    "NOHOST"
+   ],
+   "values": {
+    "CONFLICT-MULTI-HOST-SPAN": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-multi-host-state-discipline-reversible-states-untracked-deri",
+    "X-CONFLICT",
+    "NOHOST"
+   ],
+   "values": {
+    "CONFLICT-MULTI-HOST-SPAN": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-wave6-consolidation",
+    "X-CONFLICT",
+    "NOHOST"
+   ],
+   "values": {
+    "CONFLICT-MULTI-HOST-SPAN": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-full-scope-gleam-glp-implementation",
+    "B-PLATFORM",
+    "NOHOST"
+   ],
+   "values": {
+    "REQ-DECLARED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "WP:wp-verification-receipts-and-loud-failure-no-check-may-pass-wit",
+    "B-PLATFORM",
+    "NOHOST"
+   ],
+   "values": {
+    "REQ-DECLARED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:gavriella",
+    "H-MAPPING",
+    "NOHOST"
+   ],
+   "values": {
+    "MAPPING-UNSTATED": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:olamnit",
+    "H-MAPPING",
+    "NOHOST"
+   ],
+   "values": {
+    "MAPPING-UNSTATED": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:ariellas",
+    "C-CAPABILITY",
+    "NOHOST"
+   ],
+   "values": {
+    "CAP-DECLARED-SELF-REPORTED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:ariellas",
+    "H-LIVENESS",
+    "NOHOST"
+   ],
+   "values": {
+    "LIVE-PRESENT": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:gavriella",
+    "H-LIVENESS",
+    "NOHOST"
+   ],
+   "values": {
+    "LIVE-PRESENT": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:olamnit",
+    "H-LIVENESS",
+    "NOHOST"
+   ],
+   "values": {
+    "LIVE-PRESENT": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:BINDING-GAP",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:CAPGATE",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:READINESS",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:RUNNABILITY-VS-COVERAGE",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:ERA",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "BOARD:PROTOCOL",
+    "G-PROTOCOL",
+    "NOHOST"
+   ],
+   "values": {
+    "SCOPE-REPORT-PREREQ": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:gavri",
+    "C-CAPABILITY",
+    "NOHOST"
+   ],
+   "values": {
+    "CAP-STREAM-ABSENT": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:gavri",
+    "H-LIVENESS",
+    "NOHOST"
+   ],
+   "values": {
+    "LIVE-ABSENT": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "ACTOR:gavri",
+    "H-MAPPING",
+    "NOHOST"
+   ],
+   "values": {
+    "MAPPING-UNSTATED": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  }
+ ]
+}
