@@ -6,7 +6,7 @@
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
     BRANCH   095-shiras-glpnet-onboard-and-scheduler-rootcause
-    UPDATED  2026-08-26T12:55Z   ·  restart-safe: YES (--check exits 0)
+    UPDATED  2026-08-26T21:35Z   ·  restart-safe: YES (--check exits 0)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
 
@@ -52,6 +52,8 @@ With them: `reachable`, `local 991 / fleet-this-host 138`, and `scheduler_ops` m
 | roadmap import | **ALWAYS** `--in-dir /mnt/gavri/d/coop/glpnet/roadmap-sync/inbox` (BK-STD-1 §4 wrong-dir trap) |
 | big import | batch ~10 files via repeatable `--file`, one process per batch (OOM ceiling is per-process) |
 | pgdb contention | retry loop with ~20s backoff; **never kill the holding PID** — it may be a peer's test run |
+| 🔴 phantom `D:` | **CHECK `git status` FOR AN UNTRACKED `D:/` EVERY SESSION.** It REGENERATES (S13). It holds REAL, never-lake'd parquet — recover into `/mnt/gavri/d/_takt-lake` preserving `kind/host/date`, verify by basename, THEN delete. 18 unique records were recovered this way on 2026-08-26 alone |
+| cross-board poll | **UNSCOPED** (`bk-flow poll --root <r> --actor shiras`). Passing `--repo` while polling ANOTHER repo's board refuses foreign envelopes by design and yields a false `bound=0` |
 
 ## 4 · WHAT THIS SESSION DELIVERED
 
@@ -78,8 +80,14 @@ With them: `reachable`, `local 991 / fleet-this-host 138`, and `scheduler_ops` m
    **RULED (`Q-07`, 2026-08-26): BY DESIGN → S3 owns the envelope writer.** An id-match fallback is
    **REJECTED**; 11-of-32 is evidence of scale, not a licence to bind by id. Accepted consequence:
    the board stays 0/32 bound until S3 ships.
-2. **S1/S3** — transition writers for claim→ready→dispatch→in-progress. S14 is the third instance of
-   the same "detector exists, writer does not" shape; fold it in rather than treating it separately.
+2. **S3 — RE-SCOPE REQUIRED (S15).** Fleet measurement across 7 boards: **`bound` ≡ `envelopes`
+   EXACTLY** (424 packets, 63 envelopes, 63 bindings = 14.9%). Confirms `Q-07`. **But mstack is 71%
+   bound and still dispatches 0** — binding is **NECESSARY BUT NOT SUFFICIENT**. Only **5 of 424**
+   packets are dispatchable fleet-wide. **S3 as scoped ("ship the envelope writer") would ship,
+   measure green, and change nothing.** It must also cover the post-binding gate. *The second gate is
+   NOT yet identified — do not propose a remedy for it before measuring it.*
+   glpnet-specific: our 1 envelope names a **foreign repo** (`bound` 1→0 under `--repo`), so glpnet
+   has **zero valid envelopes of its own**.
 3. **S5** — repo tidy-up: 12 remote heads, 0 open PRs, develop ahead of main. Engineer/peer-gated.
 4. **S9** — features stuck at `specified`. **Now unblocked** (S4 was its blocker); the not-closed
    table enumerates 23 (9 specified / 14 promoted, 6 epics).
