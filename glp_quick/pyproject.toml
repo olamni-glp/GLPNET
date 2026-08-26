@@ -11,6 +11,9 @@ dependencies = [
   "typer",
   "cryptography",
   "prompt_toolkit",
+  # feature 067 (QR provisioning): both pure-Python, no native deps.
+  "segno",   # QR encode + terminal render; never writes an image file for secret payloads
+  "fpdf2",   # non-secret printable hand-off page only (FR-006)
 ]
 
 [project.optional-dependencies]

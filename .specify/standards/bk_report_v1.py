@@ -25,6 +25,10 @@ Design rules, each answering a defect this fleet has measured:
 * **Counts reconcile in-band**, so arithmetic is checked rather than trusted.
 * **An era is a FEATURE** (specify -> close, nine stages). The nine are stages WITHIN one
   era, never eras of their own, and nothing here may summarise or fragment a feature.
+* **Takt reads the TAKT DUCKLAKE.** Per-phase token use is recorded in the lake and
+  RETRIEVED from it (engineer standing order, 2026-08-24), never recomputed in-process
+  — two hosts recomputing disagree with no way to see why. Coverage travels with every
+  figure: a row whose tokens were never supplied is NOT MEASURED, never zero-cost.
 
 Usage::
 
@@ -32,6 +36,27 @@ Usage::
     python .specify/standards/bk_report_v1.py roadmap|progress|status|sitrep|takt|next
 """
 
+# ---------------------------------------------------------------------------
+# PROVENANCE — added 2026-08-24T20:55Z by gavriella@GAVRIELLA (olamnit-assistant lane).
+#
+# The bytes below this header were propagated to D:/coop, D:/coop/_takt-lake, G:/coop and
+# H:/coop within 29 seconds at 2026-08-24T20:42Z by an agent NEITHER the buildkit lane nor
+# this lane can identify. Both of us checked: buildkit-69 performed read-only ops only, and
+# this lane's converge script REFUSED to write because its precondition (the unpatched
+# line 67) was already gone. 13 lanes are instructed to execute this file, so it is stamped
+# rather than left anonymous. If you wrote the 20:42Z propagation, claim it on the channel.
+#
+# ENGINE OVERRIDE — the removal of `env.setdefault("BUILDKIT_ENGINE_OVERRIDE","ambient")`
+# is KEPT, by engineer ruling 2026-08-24, but understand what it costs:
+#   * the pinned bundle 2026.08.23.7 ships marathon/takt.py + takt_stage.py and NO takt_lake.py
+#   * so on a pinned-clean lane, lake-sourced takt is UNAVAILABLE, and must print `unmeasured`
+#   * a lane that still sees takt numbers is reading a SHADOWING install on sys.path, not the
+#     pin — verify with `python -c "import buildkit_cli.marathon.takt_lake as m; print(m.__file__)"`
+#     (measured on GAVRIELLA: it resolved under site-packages, NOT under deploy-home/versions)
+# The ROOT-CAUSE fix is PACKAGING — ship takt_lake.py + duckdb in the released bundle — and it
+# is owned by the buildkit lane. Re-adding the ambient override here is NOT the fix and was
+# ruled against; it merely hides which tree the numbers came from.
+# ---------------------------------------------------------------------------
 from __future__ import annotations
 
 import argparse
@@ -60,7 +85,13 @@ SECTION_ORDER = ("roadmap", "progress", "status", "sitrep", "takt", "next")
 def _run(args, timeout: float = 300.0):
     """Run a buildkit CLI; return (ok, stdout, detail). Never raises."""
     env = dict(os.environ)
-    env.setdefault("BUILDKIT_ENGINE_OVERRIDE", "ambient")
+    # DELIBERATELY NOT setting BUILDKIT_ENGINE_OVERRIDE. This used to
+    # `setdefault(..., "ambient")`, which FORCED the override on every child even when
+    # the caller had a converged pin — and the override's own "engine pin DISPLACED"
+    # banner then became the last stderr line, which this function reported as the
+    # cause. The generator was manufacturing the very symptom it blamed. Inherit the
+    # caller's environment instead: if the pin is converged there is no banner, and if
+    # it is genuinely displaced that is a real finding the operator should see.
     env["PYTHONUTF8"] = "1"
     try:
         p = subprocess.run([sys.executable, "-m", *args], capture_output=True, text=True,
@@ -68,9 +99,44 @@ def _run(args, timeout: float = 300.0):
     except BaseException as exc:                              # noqa: BLE001
         return False, "", f"{type(exc).__name__}: {exc}"
     if p.returncode != 0:
-        tail = (p.stderr or "").strip().splitlines()
-        return False, p.stdout or "", (tail[-1] if tail else f"exit {p.returncode}")
+        return False, p.stdout or "", _diagnostic_line(p.stderr, p.returncode)
     return True, p.stdout, ""
+
+
+# Advisory chatter this toolchain writes to stderr on almost every invocation. None of
+# it is ever the CAUSE of a non-zero exit, but all of it can be the LAST line — which is
+# why "the last stderr line" was a coin flip dressed up as a diagnosis.
+_STDERR_NOISE = (
+    "co: capture spilled",
+    "co: capture observed",
+    "buildkit: reaped orphaned",
+    "engine pin DISPLACED",
+    "engine identity:",
+    "docs in sync:",
+    "RuntimeWarning",
+    "found in sys.modules",
+)
+
+
+def _diagnostic_line(stderr: str, returncode: int) -> str:
+    """Pick the stderr line that actually explains a failure, not merely the last one.
+
+    Prefers a line that names a real failure mode; falls back to the last non-noise
+    line; and only then to the bare exit code. Says so explicitly when every line was
+    advisory, because "exit N and nothing but chatter" is itself the finding — it means
+    the child failed without explaining itself.
+    """
+    lines = [ln.strip() for ln in (stderr or "").splitlines() if ln.strip()]
+    signal = [ln for ln in lines if not any(n in ln for n in _STDERR_NOISE)]
+    for pat in ("unavailable", "refus", "error", "Error", "held by", "is busy",
+                "not found", "Traceback", "denied", "failed"):
+        for ln in reversed(signal):
+            if pat in ln:
+                return ln
+    if signal:
+        return signal[-1]
+    return (f"exit {returncode} with no diagnostic on stderr "
+            f"({len(lines)} advisory line(s) suppressed)")
 
 
 def _json_from(stdout: str):
@@ -253,10 +319,82 @@ def sec_takt(feature):
     else:
         body = _clean(out)
         lines += ["  " + ln for ln in body] if body else ["  (takt returned no rows)"]
+    lines += [""] + _takt_lake_tokens()
     lines += ["", "  ERA STAGE LADDER — all nine are stages WITHIN one era, never eras of their own:",
               "  " + " -> ".join(ERA_STAGES),
               "  A feature is NEVER split, summarised or compressed to fit a takt band."]
     return lines
+
+
+def _takt_lake_tokens():
+    """PER-PHASE TOKEN USE, read back FROM THE TAKT DUCKLAKE.
+
+    Engineer standing order: all standardised takt data AND per-phase token use are
+    RECORDED IN the takt ducklake and RETRIEVED FROM IT for any and all takt
+    reporting. Duration alone answers "how long"; it never answers "what did this
+    phase COST", and cost is the other half of a schedule.
+
+    READ, never recomputed. A report that recalculates in-process is reporting its
+    own arithmetic, and two hosts doing that disagree with no way to see why. The
+    lake is the shared surface, so the lake is what this reads.
+
+    COVERAGE TRAVELS WITH THE FIGURE. A row whose tokens were never supplied reads
+    as NOT MEASURED, never as a zero-cost phase — the same rule the whole takt
+    discipline rests on, and the same one this file already applies to duration.
+    """
+    out = ["  PER-PHASE TOKEN USE — read from the TAKT DUCKLAKE"]
+    try:
+        from buildkit_cli.marathon import takt_lake as tl
+    except BaseException as exc:
+        return out + ["    " + UNAVAILABLE + " — takt_lake unimportable: "
+                      f"{type(exc).__name__}: {exc}",
+                      "    (read failure, NOT a zero-cost era)"]
+    roll = None
+    try:
+        roll = tl.phase_token_rollup()
+    except AttributeError:
+        return out + ["    " + UNAVAILABLE + " — this buildkit has the takt lake but no "
+                      "phase_token_rollup(); the RETRIEVAL half is not installed here",
+                      "    (read failure, NOT a zero-cost era)"]
+    except BaseException as exc:
+        return out + ["    " + UNAVAILABLE + f" — {type(exc).__name__}: {exc}",
+                      "    (read failure, NOT a zero-cost era)"]
+
+    if not roll.get("available"):
+        return out + ["    " + UNAVAILABLE + " — " + str(roll.get("reason") or "no reason given"),
+                      "    (read failure, NOT a zero-cost era)"]
+    phases = roll.get("phases") or {}
+    if not phases:
+        return out + ["    lake reachable, ZERO stage rows — nothing recorded yet.",
+                      "    That is an EMPTY LAKE, not a zero cost."]
+
+    hdr = ("| PHASE         | ROWS | MEASURED | TOKENS_IN  | TOKENS_OUT | TOTAL      | MODEL |")
+    sep = ("|---------------|------|----------|------------|------------|------------|-------|")
+    out += ["    " + hdr, "    " + sep]
+    for name in sorted(phases):
+        b = phases[name]
+        meas = b["rows_with_tokens"]
+        tot = f"{b['tokens_total']:,}" if meas else "unmeasured"
+        tin = f"{b['tokens_in']:,}" if meas else "-"
+        tou = f"{b['tokens_out']:,}" if meas else "-"
+        mdl = ",".join(b["models"]) or "-"
+        out += ["    | %-13s | %4d | %8s | %10s | %10s | %10s | %s |"
+                % (name[:13], b["rows"], f"{meas}/{b['rows']}", tin, tou, tot, mdl)]
+
+    t = roll["totals"]
+    cov = roll.get("coverage")
+    covs = f"{cov * 100:.0f}%" if cov is not None else "n/a"
+    out += ["",
+            f"    TOTALS: {t['tokens_total']:,} tokens over "
+            f"{t['rows_with_tokens']}/{t['rows']} rows carrying a measurement "
+            f"(coverage {covs})"]
+    if not cov:
+        out += ["    COVERAGE 0% — rows exist but NONE carries tokens. UNMEASURED,",
+                "    never a zero-cost phase."]
+    elif cov < 1.0:
+        out += [f"    {t['rows'] - t['rows_with_tokens']} row(s) carry NO token measurement.",
+                "    NOT counted as zero; the denominator is shown above."]
+    return out
 
 
 # ------------------------------------------------------------- 6. WHAT'S NEXT

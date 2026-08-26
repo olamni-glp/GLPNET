@@ -63,13 +63,23 @@ def record(*, area: str, check: str, reason: str, briefing: str, rationale: str,
     )
 
 
-def applies(override: Override, area: str, check: str, now: datetime | None = None) -> bool:
-    """True iff the override covers this area+check and has not expired (FR-012).
+def applies(override: Override, area: str, check: str, reason: str,
+            now: datetime | None = None) -> bool:
+    """True iff the override covers this area+check+REASON and has not expired (FR-012).
 
     Outside its recorded scope or past its expiry the override is inert and the
     underlying refusal stands.
+
+    ``reason`` is part of the recorded scope, not decoration: FR-012 defines scope as
+    "the area, check and reason it covers" and forbids an override applying beyond it.
+    Matching on area+check alone lets one override — recorded for one specific
+    refusal — silently authorise **every other refusal that check can raise** until
+    its expiry, which is precisely the "recorded once, authorises everything after"
+    failure FR-012 exists to prevent.
     """
     if override.scope.area != area or override.scope.check != check:
+        return False
+    if override.scope.reason != reason:
         return False
     now = now or datetime.now(timezone.utc)
     try:

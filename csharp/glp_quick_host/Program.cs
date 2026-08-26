@@ -19,9 +19,18 @@ namespace GlpQuick.Host;
 /// </summary>
 internal static class Program
 {
-    // FR-019 failure tokens → distinct non-zero exit codes.
+    // FR-019 failure tokens → distinct non-zero exit codes (067 adds the derived-credential trio).
     private const int ExitOk = 0, ExitUsage = 2, ExitCertMismatch = 3, ExitServerNotReady = 4,
-        ExitUdpBlocked = 5, ExitQuicUnsupported = 6, ExitBindFailed = 7;
+        ExitUdpBlocked = 5, ExitQuicUnsupported = 6, ExitBindFailed = 7,
+        ExitCertExpired = 8, ExitCertRevoked = 9, ExitSessionReplayed = 10;
+
+    private static int ExitForToken(string token) => token switch
+    {
+        "cert_expired" => ExitCertExpired,
+        "cert_revoked" => ExitCertRevoked,
+        "session_replayed" => ExitSessionReplayed,
+        _ => ExitCertMismatch,
+    };
 
     private static async Task<int> Main(string[] args)
     {
@@ -41,25 +50,54 @@ internal static class Program
 
         X509Certificate2 cert;
         string pin;
+        DerivedCredentialValidator? validator = null;
         try
         {
-            cert = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(Path.Combine(opts.CertDir, "glpquick.pfx")), null,
-                X509KeyStorageFlags.Exportable);
-            pin = File.ReadAllText(Path.Combine(opts.CertDir, "glpquick.fingerprint")).Trim();
+            if (opts.DerivedDir is not null)
+            {
+                // 067 client role: present the trunk-signed DERIVED credential (device.pem/device.key,
+                // written by `glp-quick provision join`); the peer is still validated against the
+                // pinned TRUNK value (trunk.pin) — FR-012, the 036 trust model unchanged.
+                using var pemCert = X509Certificate2.CreateFromPemFile(
+                    Path.Combine(opts.DerivedDir, "device.pem"), Path.Combine(opts.DerivedDir, "device.key"));
+                // Round-trip through PFX so the private key is in a form msquic/SChannel accepts.
+                cert = X509CertificateLoader.LoadPkcs12(pemCert.Export(X509ContentType.Pfx), null,
+                    X509KeyStorageFlags.Exportable);
+                pin = File.ReadAllText(Path.Combine(opts.DerivedDir, "trunk.pin")).Trim();
+                // No trunk certificate here — derived-peer acceptance stays trunk-holder-side; this
+                // end accepts exactly the pinned trunk (validator stays null).
+            }
+            else
+            {
+                cert = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(Path.Combine(opts.CertDir!, "glpquick.pfx")), null,
+                    X509KeyStorageFlags.Exportable);
+                pin = File.ReadAllText(Path.Combine(opts.CertDir!, "glpquick.fingerprint")).Trim();
+                // 067: a trunk holder also accepts trunk-signed derived credentials (validity window
+                // + revocation set) — join-seam-contract.md. Trunk-pin acceptance is unchanged.
+                validator = new DerivedCredentialValidator(
+                    cert, Path.Combine(opts.CertDir!, "provision", "revoked.jsonl"));
+            }
         }
         catch (Exception ex) { Console.Error.WriteLine($"ERR cert_load {ex.Message}"); return ExitBindFailed; }
 
-        var transport = new QuicTransport(cert, pin);
+        var transport = new QuicTransport(cert, pin, validator);
         var addr = LinkAddress.Endpoint(opts.Addr, opts.Port);
         using var life = new CancellationTokenSource();
 
         try
         {
             return opts.Role == "server"
-                ? await RunMeshServerAsync(transport, addr, opts, stdout, life)
+                ? await RunMeshServerAsync(transport, addr, opts, stdout, life, validator, pin)
                 : await RunClientAsync(transport, addr, opts, stdout, life);
         }
-        catch (AuthenticationException ex) { Console.Error.WriteLine($"ERR cert_mismatch {ex.Message}"); return ExitCertMismatch; }
+        catch (AuthenticationException ex)
+        {
+            // 067: surface the SPECIFIC refusal (cert_expired / cert_revoked) when this end's
+            // validation callback recorded one; otherwise the existing cert_mismatch semantics.
+            var token = transport.LastRefusalToken ?? "cert_mismatch";
+            Console.Error.WriteLine($"ERR {token} {transport.LastRefusalDetail ?? ex.Message}");
+            return ExitForToken(token);
+        }
         catch (QuicException ex) when (ex.QuicError is QuicError.ConnectionTimeout or QuicError.ConnectionAborted)
         { Console.Error.WriteLine($"ERR server_not_ready {ex.QuicError}: {ex.Message}"); return ExitServerNotReady; }
         catch (QuicException ex) { Console.Error.WriteLine($"ERR udp_blocked {ex.QuicError}: {ex.Message}"); return ExitUdpBlocked; }
@@ -188,10 +226,33 @@ internal static class Program
     }
 
     // ---------------------------------------------------------------- server role: mesh router (US2)
-    private static async Task<int> RunMeshServerAsync(QuicTransport transport, LinkAddress addr, Opts opts, TextWriter stdout, CancellationTokenSource life)
+    private static async Task<int> RunMeshServerAsync(QuicTransport transport, LinkAddress addr, Opts opts, TextWriter stdout, CancellationTokenSource life,
+        DerivedCredentialValidator? validator = null, string? trunkPin = null)
     {
         await using var listener = await transport.CreateListenerAsync(addr, LinkOptions.Default, life.Token).ConfigureAwait(false);
         Console.Error.WriteLine($"READY server {addr}"); // listener bound — clients may connect
+
+        // 067 T019: keep the revocation set fresh even between accepts — the per-accept mtime check
+        // is the enforcement point; this ≥-every-10-s re-check is the contract's listening-time bound.
+        if (validator is not null)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!life.IsCancellationRequested)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(10), life.Token).ConfigureAwait(false);
+                        validator.RefreshRevocations();
+                    }
+                }
+                catch (OperationCanceledException) { /* shutdown */ }
+            });
+
+        // 067 T020 (join-seam-contract §Single-redemption): live derived fingerprints → their link.
+        // A join presenting a fingerprint that already has a LIVE connection from a different remote
+        // endpoint is refused (`session_replayed`); the first join of a fingerprint is reported as
+        // `PROVISION_REDEEMED <fingerprint>` so the Python session marks itself redeemed.
+        var redemptions = new RedemptionTracker(trunkPin);
 
         // 063 US1 T011 (contract C1): with --repl, envelopes directed to SelfId also feed the live
         // REPL child; each rendered block routes back to the goal's sender through the mesh.
@@ -245,15 +306,43 @@ internal static class Program
             try { link = await listener.AcceptAsync(life.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) { break; }
             catch (QuicException ex) { Console.Error.WriteLine($"ACCEPT_FAULT {ex.QuicError}: {ex.Message}"); continue; }
+            catch (AuthenticationException ex)
+            {
+                // 067 T013: one refused handshake must not kill the mesh — emit the recorded token
+                // (cert_expired / cert_revoked / cert_mismatch) and keep listening for siblings.
+                var token = transport.LastRefusalToken ?? "cert_mismatch";
+                Console.Error.WriteLine($"ERR {token} {transport.LastRefusalDetail ?? ex.Message}");
+                continue;
+            }
+
+            // 067 T020: single-redemption replay refusal for DERIVED identities (trunk links exempt).
+            string? fp = (link as IPeerCertEndpoint)?.RemoteSpkiPin;
+            var admit = redemptions.Admit(fp, link);
+            if (admit == AdmitOutcome.Replayed)
+            {
+                Console.Error.WriteLine($"ERR session_replayed {fp} already live; refusing {link.Id}");
+                await link.DisposeAsync().ConfigureAwait(false);
+                continue;
+            }
+            if (admit == AdmitOutcome.FirstJoin)
+                Console.Error.WriteLine($"PROVISION_REDEEMED {fp}"); // first-join observation (Python session → redeemed)
 
             if (!capacity.TryAdmit())
             {
+                // ClientCapacity.TryAdmit leaves the count untouched on refusal, so no decrement
+                // here — but the redemption MUST be released or this fingerprint stays marked live
+                // and the peer can never rejoin (067 T020).
+                redemptions.Release(fp, link);
                 Console.Error.WriteLine($"REJECT over_capacity {link.Id}"); // T026: clear over-capacity reject
                 _ = RejectOverCapacityAsync(link);
                 continue;
             }
             Console.Error.WriteLine($"CLIENT_UP {link.Id} ({capacity.Active}/{capacity.Max})");
-            _ = ClientPumpAsync(mesh, link, capacity.Release, life.Token);
+            _ = ClientPumpAsync(mesh, link, () =>
+            {
+                capacity.Release();
+                redemptions.Release(fp, link);
+            }, life.Token);
         }
         await selfPump.ConfigureAwait(false);
         await bridge.ConfigureAwait(false);
@@ -307,12 +396,12 @@ internal static class Program
         await link.DisposeAsync().ConfigureAwait(false);
     }
 
-    private sealed record Opts(string Role, string Addr, int Port, string CertDir, int MaxClients, bool Retry, string SelfId, string? ReplPath,
-        int? BridgePort, string BridgeAddr)
+    private sealed record Opts(string Role, string Addr, int Port, string? CertDir, int MaxClients, bool Retry, string SelfId, string? ReplPath,
+        int? BridgePort, string BridgeAddr, string? DerivedDir)
     {
         public static Opts Parse(string[] args)
         {
-            string? role = null, addr = null, cert = null, selfId = "server", replPath = null;
+            string? role = null, addr = null, cert = null, selfId = "server", replPath = null, derivedDir = null;
             int port = 0, maxClients = 3;
             int? bridgePort = null;
             string bridgeAddr = "127.0.0.1"; // Gleam peers dial loopback by default (bridge on the mesh host)
@@ -325,6 +414,7 @@ internal static class Program
                     case "--addr": addr = Req(args, ++i); break;
                     case "--port": port = int.Parse(Req(args, ++i)); break;
                     case "--cert": cert = Req(args, ++i); break;
+                    case "--derived-dir": derivedDir = Req(args, ++i); break; // 067: derived credential dir
                     case "--max-clients": maxClients = int.Parse(Req(args, ++i)); break;
                     case "--id": selfId = Req(args, ++i); break;
                     case "--repl": replPath = Req(args, ++i); break;
@@ -337,10 +427,13 @@ internal static class Program
             if (role is not ("server" or "client")) throw new ArgumentException("--role must be server|client");
             if (string.IsNullOrWhiteSpace(addr)) throw new ArgumentException("--addr required");
             if (port is < 1 or > 65535) throw new ArgumentException("--port in [1,65535] required");
-            if (string.IsNullOrWhiteSpace(cert)) throw new ArgumentException("--cert <dir> required");
+            if (derivedDir is not null && role != "client")
+                throw new ArgumentException("--derived-dir applies to --role client only (the hub holds the trunk)");
+            if (string.IsNullOrWhiteSpace(cert) && derivedDir is null)
+                throw new ArgumentException("--cert <dir> (or, client role, --derived-dir <dir>) required");
             if (bridgePort is < 1 or > 65535) throw new ArgumentException("--bridge-port in [1,65535] required");
             if (bridgePort is not null && role != "server") throw new ArgumentException("--bridge-port requires --role server (the bridge is a mesh-server leg)");
-            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, replPath, bridgePort, bridgeAddr);
+            return new Opts(role, addr, port, cert, maxClients, retry, selfId!, replPath, bridgePort, bridgeAddr, derivedDir);
         }
 
         private static string Req(string[] args, int i) =>
@@ -466,6 +559,55 @@ internal sealed class Mesh
         try { await link.SendBytesAsync(frame, ct).ConfigureAwait(false); }
         catch (Exception ex) when (ex is QuicException or IOException or ObjectDisposedException)
         { Console.Error.WriteLine($"DROP send-failed {link.Id}: {ex.Message}"); }
+    }
+}
+
+/// <summary>How the redemption tracker classified an accepted link's peer identity (067 T020).</summary>
+internal enum AdmitOutcome
+{
+    /// <summary>Trunk identity (or no reported identity) — the tracker does not apply.</summary>
+    NotDerived,
+
+    /// <summary>First join ever seen for this derived fingerprint — emit <c>PROVISION_REDEEMED</c>.</summary>
+    FirstJoin,
+
+    /// <summary>A later, non-conflicting join of a known fingerprint (e.g. reconnect after drop).</summary>
+    Rejoin,
+
+    /// <summary>The fingerprint already has a LIVE connection on a different link — refuse
+    /// <c>session_replayed</c> (join-seam-contract §Single-redemption, FR-010).</summary>
+    Replayed,
+}
+
+/// <summary>
+/// Single-redemption tracking for derived credentials at the mesh accept seam (067 T020): one live
+/// connection per derived fingerprint; the first join is the redemption observation. Trunk-pinned
+/// links are exempt — the shared identity is presented by every legacy endpoint by design.
+/// </summary>
+internal sealed class RedemptionTracker
+{
+    private readonly string? _trunkPin;
+    private readonly ConcurrentDictionary<string, object> _live = new();
+    private readonly ConcurrentDictionary<string, byte> _seen = new();
+
+    public RedemptionTracker(string? trunkPin) => _trunkPin = trunkPin;
+
+    /// <summary>Classify (and, for a derived identity, register) one accepted link.</summary>
+    public AdmitOutcome Admit(string? remoteSpkiPin, object link)
+    {
+        if (remoteSpkiPin is null || _trunkPin is null || string.Equals(remoteSpkiPin, _trunkPin, StringComparison.Ordinal))
+            return AdmitOutcome.NotDerived;
+        var holder = _live.GetOrAdd(remoteSpkiPin, link);
+        if (!ReferenceEquals(holder, link))
+            return AdmitOutcome.Replayed; // a different link is live under this credential
+        return _seen.TryAdd(remoteSpkiPin, 1) ? AdmitOutcome.FirstJoin : AdmitOutcome.Rejoin;
+    }
+
+    /// <summary>Release a link's registration on drop/reject (a later rejoin is then admissible).</summary>
+    public void Release(string? remoteSpkiPin, object link)
+    {
+        if (remoteSpkiPin is not null)
+            _live.TryRemove(new KeyValuePair<string, object>(remoteSpkiPin, link));
     }
 }
 
