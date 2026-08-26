@@ -7,6 +7,7 @@ the fix — they are the ways 078's own module could pass without proving it ran
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -210,3 +211,45 @@ def test_a_non_string_run_id_is_refused_not_coerced(tmp_path):
     with pytest.raises(VerdictRefused, match="must declare its run_id"):
         read(Verdict(check_id="c", area="reference", run_id=0,
                      receipt_pointer=r.verdict_pointer))
+
+
+# --- paths.py: the _confine containment backstop (session-9 follow-up) --------
+#
+# `_safe_component` blocks every escape reachable from this module's own public
+# callers, so `_confine`'s containment check cannot be exercised through
+# `receipt_path` / `expected_set_path` — which is exactly why it survived
+# mutation testing on 2026-08-26 and was published as NOT-VERIFIED. A backstop
+# whose contract is never asserted is indistinguishable from a no-op, and this
+# feature exists to stop unverified claims. So it is tested at its OWN boundary.
+
+def test_confine_refuses_a_component_that_escapes_the_root(tmp_path):
+    """The backstop's contract: parts that climb out of the root are refused."""
+    from codeconv.receipts.paths import UnsafeReceiptPath, _confine
+    for parts in ((os.pardir,), (os.pardir, os.pardir, "evil"), ("a", os.pardir, os.pardir)):
+        with pytest.raises(UnsafeReceiptPath, match="escapes the receipts root"):
+            _confine(tmp_path, *parts)
+
+
+def test_confine_admits_paths_beneath_the_root(tmp_path):
+    """Positive control: containment must not reject legitimate descendants."""
+    from codeconv.receipts.paths import _confine
+    kept = _confine(tmp_path, "area", "run", "check.receipt.json")
+    assert tmp_path.resolve() in kept.resolve().parents
+
+
+def test_confine_admits_the_root_itself(tmp_path):
+    """The root is contained BY the root — it is not in its own `.parents`."""
+    from codeconv.receipts.paths import _confine
+    assert _confine(tmp_path).resolve() == tmp_path.resolve()
+
+
+def test_confine_refuses_a_path_it_cannot_resolve(tmp_path, monkeypatch):
+    """Unresolvable ⇒ containment is unproven, and unproven must not pass."""
+    from codeconv.receipts import paths as paths_mod
+
+    def boom(self, *a, **kw):
+        raise OSError("resolution refused")
+
+    monkeypatch.setattr(Path, "resolve", boom)
+    with pytest.raises(paths_mod.UnsafeReceiptPath, match="could not be resolved"):
+        paths_mod._confine(tmp_path, "area")

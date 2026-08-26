@@ -62,13 +62,20 @@ def _safe_component(value: str, *, field: str) -> str:
 def _confine(root: str | Path, *parts: str) -> Path:
     """Join ``parts`` under ``root`` and PROVE the result stays beneath it.
 
-    🔴 DEFENCE IN DEPTH, NOT TEST-COVERED. ``_safe_component`` rejects every
-    escape vector reachable from this module's own callers, so the containment
-    check below survives mutation testing (2026-08-26: neutering it leaves the
-    suite green). It is kept deliberately — it is the backstop if a component
-    guard is ever loosened, or if ``root`` itself resolves through a symlink —
-    but do NOT read it as verified behaviour. The load-bearing guard is
-    ``_safe_component``; that one is mutation-killed.
+    DEFENCE IN DEPTH, AND VERIFIED AT ITS OWN BOUNDARY. ``_safe_component``
+    rejects every escape vector reachable from this module's public callers, so
+    this containment check cannot be exercised through ``receipt_path`` /
+    ``expected_set_path`` — which is why it survived mutation testing on
+    2026-08-26 and was published then as NOT-VERIFIED. A backstop whose contract
+    is never asserted is indistinguishable from a no-op, so it is now tested
+    directly: ``tests/faultinj/test_receipt_reuse.py::test_confine_*`` covers the
+    escape, the descendant, the root-is-its-own-root edge and the unresolvable
+    path. 2026-08-26 (session 9): both mutants — neutering the containment raise,
+    and letting the ``OSError`` branch return silently — are killed.
+
+    It remains the backstop if a component guard is ever loosened, or if ``root``
+    itself resolves through a symlink; ``_safe_component`` is still the
+    load-bearing guard on the public path.
     """
     base = Path(root)
     candidate = base.joinpath(*parts)
