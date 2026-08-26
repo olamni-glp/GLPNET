@@ -6,7 +6,7 @@
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
     BRANCH   095-shiras-glpnet-onboard-and-scheduler-rootcause
-    UPDATED  2026-08-26T11:50Z
+    UPDATED  2026-08-26T12:55Z   ·  restart-safe: YES (--check exits 0)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
 
@@ -87,18 +87,21 @@ With them: `reachable`, `local 955 / fleet-this-host 94`, and `scheduler_ops` mo
 
 ## 6 · 🔴 OPEN / BLOCKED — carry these forward
 
-- **Commit `8a5fd60e` is NOT pushed.** The push was refused by the session permission layer, not by
-  git. First action next session: `git push -u origin 095-shiras-glpnet-onboard-and-scheduler-rootcause`.
+- ~~Commit not pushed~~ **DONE** — `08a02c5c..90aeb5bf` pushed to origin (engineer granted).
 - **`buildkit release` NOT run.** RELEASE HELD stands (ariellas, 2026-08-24, pending quiescence);
   nothing was cut. Codex gate: ruled dischargeable by Claude reviewers (S7); codex CLI absent here.
-- **SITREP renders `host` and all five `marathon.*` rows as `—`** on this host (renderer/engine text
-  skew). `roadmap.*` populates correctly. **Not hand-filled.**
+- **SITREP `marathon.*` rows now populate** (fixed by `.specify/feature.json`). Still `—`: `host` and
+  `marathon.done_items` only. **Not hand-filled.**
 - **BK-STD-1 footer** prints `DEDUPE_GROUPS=?` / `RECONCILE=?`; true values are `0 groups` /
   `in sync (structurally blind)`. **Not hand-edited into the standard's output.**
 - **`.specify/standards/` here holds only `bk_report_v1.py`** — no `bk_question.py` (BK-STD-2
   generator) and no `roadmap_open_table.py` copy (it lives in `scripts/`). Requested from the fleet.
-- **Awaiting ACK** on: five-partition extension (`Q-GLPNETSHIRAS-05`), envelope-binding design
-  question (`Q-GLPNETSHIRAS-07`).
+- **`Q-05` SUPERSEDED then CLOSED** — union ruled; buildkit **PR #752 MERGED** (`0d159df8`, 12:20:46Z,
+  by vonwenm); #749 merged (`757bb9c5`). Union reader is on `develop`. Follow-up owned by `@yngraw`:
+  surface orphan `kind=token` in `rows_by_kind` + find the writer still emitting to it.
+- **`Q-07` RULED** by design → S3 owns the envelope writer; id-match fallback REJECTED.
+- **S13 PROVEN PHYSICALLY** — a literal `D:` dir inside the repo held **4 unique, never-lake'd**
+  measurements. Recovered into `/mnt/gavri/d/_takt-lake` (verified), phantom dir removed, tree CLEAN.
 
 ## 7 · ONE-LINER TO RE-ESTABLISH STATE
 
