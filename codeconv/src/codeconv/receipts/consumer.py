@@ -112,7 +112,7 @@ def _read_receipt(verdict: Verdict) -> Reading:
     # below was skipped and a prior run's PASS for the same check+area was
     # accepted as this run's evidence. A receipt-backed verdict must SAY which
     # run it belongs to; declining to say is refused, not waived.
-    if verdict.run_id is None:
+    if not isinstance(verdict.run_id, str) or not verdict.run_id.strip():
         raise VerdictRefused(
             f"check {verdict.check_id!r} in area {verdict.area!r}: a receipt-backed verdict must "
             f"declare its run_id so the receipt can be bound to THIS run (FR-002); none was given — "

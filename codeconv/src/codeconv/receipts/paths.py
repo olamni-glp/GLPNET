@@ -39,8 +39,18 @@ def _safe_component(value: str, *, field: str) -> str:
     anywhere on disk and let a consumer be pointed at a file the run never
     wrote. A receipt whose location is attacker-chosen is not evidence.
     """
-    text = str(value)
-    if not text or text in (".", ".."):
+    # COERCION IS THE HOLE, not a convenience. str(0) == "0" would write the
+    # receipt under a "0" directory while the receipt itself kept the int 0 —
+    # and Verdict(run_id=0) is not None, so it passes the run binding and then
+    # matches any other run that also used 0. Reusing it recreates exactly the
+    # prior-run PASS reuse this module exists to stop. Demand a real string.
+    if not isinstance(value, str):
+        raise UnsafeReceiptPath(
+            f"{field} must be a string, got {type(value).__name__} {value!r} — "
+            f"coercing it would let a non-string identity be reused across runs (FR-002/022)"
+        )
+    text = value
+    if not text.strip() or text in (".", ".."):
         raise UnsafeReceiptPath(f"{field} {value!r} is not a usable path component")
     if "/" in text or chr(92) in text or chr(0) in text:
         raise UnsafeReceiptPath(f"{field} {value!r} contains a path separator — refused (FR-022)")

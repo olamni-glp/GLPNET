@@ -196,3 +196,17 @@ def test_receipt_paths_cannot_escape_the_root(tmp_path):
         receipt_path(tmp_path, "reference", "run", "../../../evil")
     ok = receipt_path(tmp_path, "reference", "run", "check")
     assert tmp_path.resolve() in ok.resolve().parents
+
+
+def test_a_non_string_run_id_is_refused_not_coerced(tmp_path):
+    """Re-review 20260826T102453Z HIGH — str(0)=='0' would reopen prior-run reuse."""
+    from codeconv.receipts.paths import UnsafeReceiptPath
+    with pytest.raises(UnsafeReceiptPath, match="must be a string"):
+        emit(check_id="c", area="reference", target=Target("path", "t"),
+             examined_count=1, total_count=1, run_id=0, root=tmp_path / "receipts")
+    r = emit(check_id="c", area="reference", target=Target("path", "t"),
+             examined_count=1, total_count=1, run_id="run-1", root=tmp_path / "receipts")
+    # A non-string on the CONSUMER side must not satisfy the run binding either.
+    with pytest.raises(VerdictRefused, match="must declare its run_id"):
+        read(Verdict(check_id="c", area="reference", run_id=0,
+                     receipt_pointer=r.verdict_pointer))
