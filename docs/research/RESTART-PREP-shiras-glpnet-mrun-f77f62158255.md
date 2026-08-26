@@ -33,7 +33,7 @@ export PYTHONIOENCODING=utf-8
 ```
 
 Without them `takt` reports `verdict: unreachable`, `local_records: 0` — **not an error, just zeros.**
-With them: `reachable`, `local 955 / fleet-this-host 94`, and `scheduler_ops` moves
+With them: `reachable`, `local 991 / fleet-this-host 138`, and `scheduler_ops` moves
 `unmeasurable → measured` (4/4 sources). Tracked as marathon item **S13**.
 
 `sched_root` is already persisted in `config.local.json` (gitignored, machine-local):
@@ -65,7 +65,8 @@ With them: `reachable`, `local 955 / fleet-this-host 94`, and `scheduler_ops` mo
 - Coop: `ACK-20260826T1130Z` (P0 corroborated + **extended to five partitions**), and
   `CORRECTION-20260826T1145Z` (retracting my own §5).
 - Marathon: S4 + S4-CORRECTED + S12 resolved; **S13** and **S14** captured.
-- Commit `8a5fd60e` — **LOCAL ONLY, NOT PUSHED** (see §6).
+- Commits `8a5fd60e` + `90aeb5bf` + `2a8e0fab` — **PUSHED** to origin.
+- **S13 PROVEN PHYSICALLY**: 4 unique measurements recovered from a literal `D:` dir; phantom removed.
 
 ## 5 · 🔴 WHAT'S NEXT — start here
 
@@ -74,16 +75,19 @@ With them: `reachable`, `local 955 / fleet-this-host 94`, and `scheduler_ops` mo
 1. **S14 — binding is envelope-only.** Board: 32 packets, **1 envelope**, `by_source
    {envelope: 0, link: 0}`, so **0 of 32** bind — *even with a full roadmap*. **11 of 32 are
    id-resolvable** (3 exact + 8 after `wp-` strip) but the binder never tries an id match.
-   **Blocked on engineer ruling `Q-GLPNETSHIRAS-07`**: is envelope/link-only binding by design
-   (→ S3 owns the writer) or a regression? Do **not** self-serve a fallback resolver.
+   **RULED (`Q-07`, 2026-08-26): BY DESIGN → S3 owns the envelope writer.** An id-match fallback is
+   **REJECTED**; 11-of-32 is evidence of scale, not a licence to bind by id. Accepted consequence:
+   the board stays 0/32 bound until S3 ships.
 2. **S1/S3** — transition writers for claim→ready→dispatch→in-progress. S14 is the third instance of
    the same "detector exists, writer does not" shape; fold it in rather than treating it separately.
 3. **S5** — repo tidy-up: 12 remote heads, 0 open PRs, develop ahead of main. Engineer/peer-gated.
 4. **S9** — features stuck at `specified`. **Now unblocked** (S4 was its blocker); the not-closed
    table enumerates 23 (9 specified / 14 promoted, 6 epics).
-5. **S8/S11 — RE-SIZE, do not execute as written.** There is **no marathon→bk-flow cutover**;
-   bk-flow *layers on* marathon and `open` seeds a marathon run. Saga sizing was scoped for a
-   migration that does not exist.
+5. **S8/S11 — RULED (`Q-09`) re-sized saga→mini to bk-flow ADOPTION**; cutover scope DROPPED. There
+   is **no marathon→bk-flow cutover**: bk-flow *layers on* marathon and `open` seeds a marathon run.
+   Not closed — adoption is partial until S14/S3 lands.
+
+**Sequenced this session** (order keys): S1 `@1.0` → S3 `@2.0` → S14 `@5.0` → S9 `@6.0`.
 
 ## 6 · 🔴 OPEN / BLOCKED — carry these forward
 
