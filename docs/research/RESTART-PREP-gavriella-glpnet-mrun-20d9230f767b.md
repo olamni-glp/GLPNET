@@ -16,7 +16,7 @@ four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-25T13:00Z — SESSION 6 CLOSE** |
+| written at | **2026-08-26T11:15Z — SESSION 8 CLOSE** (the SESSION-8 ADDENDUM at the foot supersedes the session-6/7 tables) |
 
 ## Resume in one line
 
@@ -390,3 +390,145 @@ honestly deferred) and durable as `mitem-01a039bb-329d` / `mitem-01a039bb-8059`.
 - `develop` is now **61 ahead of `main`**, tree clean, pushed at `1e8986e3`.
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-25T17:0xZ
+
+---
+
+# 🔴 SESSION-8 ADDENDUM — 2026-08-26 · **THREE REVIEW ROUNDS, 19 FINDINGS CLOSED, RELEASE STILL NO-GO**
+
+**RESUME WITH `resume marathon`.** This addendum supersedes the session-6 and session-7 tables above.
+
+## THE ONE THING TO READ FIRST
+
+🔴 **The release gate condition set by the engineer's own ruling was NOT met, and I did not release.**
+Ruling `Q-GLPNETS8-01` (2026-08-26T10:35Z): *"Fix the 4 HIGHs, re-review once. **If that round raises
+only MEDIUM/LOW, ship.**"* Round 3 raised **a HIGH**. So the precondition failed, I fixed the HIGH,
+and I stopped. **63 commits remain unreleased on `develop`. The engineer decides whether a one-line
+fix in one-hour-old code warrants a fourth round or a waiver.**
+
+## THE ARC — three rounds, and every round found a defect INSIDE the previous round's fix
+
+| round | run | result | commit |
+|---|---|---|---|
+| 1 (08-24) | `20260824T165651Z` | **10 findings / 8 HIGH** | — |
+| 2 (08-26) | `20260826T084941Z` | original 10 **ALL CLOSED**; **8 NEW / 4 HIGH** | `bddfdc08` + `1e8986e3` |
+| 3 (08-26) | `20260826T102453Z` | the 4 HIGHs closed; **1 NEW HIGH** | `ec7cf497` |
+| — | *(fix, not re-reviewed)* | the round-3 HIGH closed | `0cf1a2aa` |
+
+🔴 **THE PATTERN IS THE FINDING.** Each round's new HIGH lived inside the previous round's fix:
+
+- R2 → I made `run_id` *checkable* but left its default `None`, so a caller omitting it still accepted
+  a prior run's PASS.
+- R3 → I made `run_id` *mandatory* but `_safe_component` still did `str(value)`, so a numeric
+  `run_id=0` writes under a `"0"` directory while the receipt keeps the **int** `0`, and
+  `Verdict(run_id=0)` **is not None** so it passes the new binding. Reusing `0` reopens the exact
+  prior-run PASS reuse the fix existed to close.
+- Same shape on the other axis: I added a PASS branch, then R2 found EMPTY's **loaded** path
+  unguarded — a stored `EMPTY` with `5/5` validated and was reported successful.
+
+**This is the wave-19 R3 shape recurring (eleven rounds there).** The lesson to carry: *when you close
+a finding by adding a guard, the next defect is usually in the guard's own edges — its default, its
+coercion, its other entry path.* **Fix the mechanism, not the reported instance.**
+
+## What is DONE and verified
+
+- **19 findings closed** across the three rounds (10 + 8 + 1).
+- **14 of 15 mutants killed.** Each guard is reverted one at a time and the suite must go red.
+  🔴 **The 1 survivor is published, not rounded up:** the `_confine` containment backstop in
+  `paths.py` is **NOT test-covered** — its `_safe_component` guard is, and that one *is* killed. It is
+  marked NOT-VERIFIED in the source so no later reader mistakes it for tested behaviour.
+- Receipt suite **18 → 48 tests**, all green.
+- Full `codeconv` suite **8 failed / 764 passed / 5 skipped** — all 8 pre-existing, none touching
+  `receipts` (2 are `DOTNET_ROOT` unset, the known env item).
+- **9 of 9 allocated board packets claimed** (`ok=3` → `ok=9`), ACK-COMPLIANCE filed.
+- **Roadmap round 52**: reconcile in-sync, dedupe 0 groups over 119 live, export 20 epics / 120
+  features / 3854 journal lines. Open **26**, closed **94**, reconciles.
+
+## 🔴 FOUR ENGINEER RULINGS — recorded, citable, and two need FLEET action
+
+Set `Q-GLPNETS8-20260826T1030Z`, ledger now **29 rows**. All four ruled on the recommended option.
+
+| id | ruling | state |
+|---|---|---|
+| `Q-GLPNETS8-01` | **HIGH holds the release gate; MEDIUM/LOW becomes a recorded follow-up. Re-review ONCE, not to convergence.** | **Fleet-wide rule.** Applied this session; condition not met, so no release |
+| `Q-GLPNETS8-02` | **The JSONL store is authoritative** for HOST-INTERCONNECTIVITY-HARDENING | ⏳ **@shiras must publish `shiras.jsonl`** — until then their restored blocks keep being removed by every render |
+| `Q-GLPNETS8-03` | **Publish coverage beside every takt figure; promote the ducklake feature** | ✅ `takt-and-token-persistence-to-ducklake` promoted `captured → promoted` |
+| `Q-GLPNETS8-04` | **The STUCK-lock diagnostic must NAME THE HOLDER before advising anything; then scope the lock** | ⏳ buildkit change owed |
+
+## 🔴 TAKT — READ FROM THE FLEET LAKE, AND THE HEADLINE NUMBER WAS ALMOST MIS-STATED
+
+The fleet TAKT lake is **`D:\coop\_takt-lake` (1815 parquet)** — *separate from the co-lake*. Verified
+the reader resolves there: `DEFAULT_FLEET_ROOT_CANDIDATES = (I:/coop/_takt-lake, D:/coop/_takt-lake)`;
+`I:` does not exist on this host, so it falls through to `D:`. There is **also** a local
+`D:\_takt-lake` (876 parquet) — do not confuse them.
+
+**078's own coverage is 13/13 = 100%, NOT 6%.** The 6% is the *fleet-wide* figure across all features.
+Reporting the fleet number as if it were this era's would have understated a fully-measured era.
+
+| PHASE | ROWS | MEASURED | TOKENS |
+|---|---:|---:|---:|
+| 3rtask | 1 | 1/1 | 5,757,087 |
+| codexreview | 1 | 1/1 | 1,827,211 |
+| roadmap | 1 | 1/1 | 1,168,000 |
+| specify | 1 | 1/1 | 860,000 |
+| implement | 1 | 1/1 | 670,000 |
+| plan | 1 | 1/1 | 425,000 |
+| analyze | 1 | 1/1 | 285,000 |
+| tasks | 1 | 1/1 | 153,000 |
+| clarify | 1 | 1/1 | 77,000 |
+| commit · release · retrospective · ship | 4 | 4/4 | 0 |
+| **TOTAL** | **13** | **13/13 (100%)** | **11,222,298** |
+
+Fleet-wide for contrast: **88,514,525 tokens over 75/1281 rows = 5.85% coverage**; 1206 rows carry
+**no** measurement. **Never quote a fleet takt figure without its coverage fraction.**
+
+## 🔴 THE REGISTRY LOCK BLOCKED THE MARATHON SECTIONS — and the diagnostic lied a 7th time
+
+Sections **2 (PROGRESS)**, **3 (STATUS)**, **4 (SITREP)** and the marathon half of **6 (NEXT)** render
+`UNAVAILABLE` in BK-REPORT-v1. **That is correct, standardized behaviour** — a read failure, never a
+zero. The cause is sustained cross-lane contention on the single machine-wide registry lock.
+
+```
+PID 12088 -> buildkit-codexreview codex-pass --cycle 3 --feature 012-fix-mc-timeout   (LIVE)
+PID 31432 -> (exited between the report and the check)
+PID 14540 -> buildkit-codexreview codex-pass --cycle 7 --scope .specify               (LIVE)
+```
+
+🔴 **The PID CHANGES between attempts** — so buildkit's *"held it on ALL 61 attempts and never
+changed, that is a STUCK lock"* is measuring one 30-second window and calling sustained contention a
+stuck lock. **Seventh false verdict in this lane. NEVER REAP ON IT.** Verify with
+`Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>' | Select CommandLine`.
+
+**CONSEQUENCE FOR THE NEXT SESSION:** the round-3 marathon captures **could not be recorded** (10
+retries, all contended). **Their content is preserved in this git-tracked document instead** — that is
+why this addendum is long. Re-attempt the captures when the lock frees.
+
+## WHAT'S NEXT — in order
+
+| # | step | state |
+|---:|:---|:---|
+| **1** | 🔴 **ENGINEER DECISION: a 4th review round, or waive and release?** Round 3's HIGH is fixed (`0cf1a2aa`) but that fix is **not itself re-reviewed**. Under `Q-GLPNETS8-01`'s letter a HIGH holds the gate | **BLOCKING — 63 commits held** |
+| 2 | If waived, run `/bk-release`. Everything else is staged and green | ready |
+| 3 | Re-attempt the 3 blocked marathon captures (content is in this doc) | needs the lock free |
+| 4 | The 4 remaining MEDIUMs from round 2 — reason field on non-success receipts; byte cap on skipped items; contract-family validation in `bind.py`; contract compatibility in run reconciliation. Recorded follow-ups per the ruling, **not** gate blockers | unblocked |
+| 5 | Cover or remove the `_confine` backstop so 15/15 is honest | unblocked |
+| 6 | Split 083's mechanism into its own feature; re-score both (`Q-GLPNETS6-04`) | unblocked |
+| 7 | buildkit PR: `link` no-op + the `link-spec` hint (`Q-GLPNETS7-02`); re-issue `Q-GLPNETS7-01` against `buildkit-roadmap status` | unblocked |
+| 8 | `bk-flow open` the 9 claimed packets against features | unblocked |
+
+**Do NOT author features for** the supply-chain superset, onrestart, or tidy-up — **all are already
+allocated packets** on `D:/coop/yngenios-windows/sched`.
+
+## State at hand-off
+
+| field | value |
+|---|---|
+| branch | `develop`, clean, pushed at **`0cf1a2aa`** |
+| develop ahead of main | **63** |
+| receipt tests | **48 green** |
+| mutants | **14/15 killed**, 1 published survivor |
+| roadmap | round **52** · open **26** · closed **94** · reconciles |
+| board | **9/9 claimable packets claimed** |
+| decisions ledger | **29 rows** |
+| COOP | ACK-SWEEP `20260826T1010Z` + BROADCAST `20260826T1105Z` (4 rulings) delivered |
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-26T11:15Z
