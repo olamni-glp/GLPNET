@@ -156,6 +156,13 @@ def validate(receipt: Receipt) -> None:
     A falsified or impossible receipt is detectable (FR-010) rather than trusted.
     """
     r = receipt
+    # A negative count is not a smaller number — it is an impossible one, and it
+    # makes every downstream sum (examined+skipped, worst-wins) silently wrong.
+    if r.examined_count < 0 or r.skipped_total < 0 or (r.total_count is not None and r.total_count < 0):
+        raise ReceiptInvalid(
+            f"negative count(s) for check {r.check_id!r}: examined={r.examined_count} "
+            f"skipped_total={r.skipped_total} total={r.total_count} — impossible (FR-010)"
+        )
     if r.total_count is not None and r.examined_count > r.total_count:
         raise ReceiptInvalid(
             f"examined_count {r.examined_count} exceeds total_count {r.total_count} "
@@ -179,10 +186,17 @@ def validate(receipt: Receipt) -> None:
             f"PASS requires a resolved target fully examined with a known non-zero total "
             f"for {r.check_id!r} (FR-006/007); an unearned PASS is the failure this feature closes"
         )
+    # EMPTY means the resolved target CONTAINED NOTHING. classify() only ever
+    # produces it for 0/0, but a LOADED receipt claiming EMPTY with 5/5 passed
+    # validation and was then reported successful — an unearned pass by another
+    # route than the PASS branch below.
     if r.outcome is Outcome.EMPTY and not (
-        r.resolved_target.resolved and r.total_count is not None and r.examined_count == r.total_count
+        r.resolved_target.resolved and r.total_count == 0 and r.examined_count == 0
     ):
-        raise ReceiptInvalid(f"EMPTY requires a fully-examined resolved target for {r.check_id!r}")
+        raise ReceiptInvalid(
+            f"EMPTY requires a resolved target with examined==total==0 for {r.check_id!r}; "
+            f"got examined={r.examined_count} total={r.total_count} (FR-006)"
+        )
     if r.outcome is Outcome.UNSEARCHABLE and (r.resolved_target.resolved or not r.resolved_target.unresolved_reason):
         raise ReceiptInvalid(f"UNSEARCHABLE requires an unresolved target with a reason for {r.check_id!r}")
     if r.outcome is Outcome.UNREAD and r.resolved_target.resolved and r.total_count is not None:

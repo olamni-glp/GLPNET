@@ -26,7 +26,7 @@ def test_another_checks_pass_receipt_is_refused(tmp_path):
                  examined_count=3, total_count=3, run_id="r", root=root)
     assert other.outcome is Outcome.PASS
     with pytest.raises(VerdictRefused, match="exactly one verdict"):
-        read(Verdict(check_id="mine.check", area="reference",
+        read(Verdict(check_id="mine.check", area="reference", run_id="r",
                      receipt_pointer=other.verdict_pointer))
 
 
@@ -35,7 +35,7 @@ def test_another_areas_pass_receipt_is_refused(tmp_path):
     other = emit(check_id="same.check", area="reference", target=Target("path", "t"),
                  examined_count=3, total_count=3, run_id="r", root=root)
     with pytest.raises(VerdictRefused, match="exactly one verdict"):
-        read(Verdict(check_id="same.check", area="build-gate",
+        read(Verdict(check_id="same.check", area="build-gate", run_id="r",
                      receipt_pointer=other.verdict_pointer))
 
 
@@ -62,7 +62,7 @@ def test_a_malformed_shape_is_a_named_refusal_not_a_crash(tmp_path):
     p.write_text(json.dumps(data), encoding="utf-8")
     # Must be the named UNREAD refusal (C1.2), never a TypeError escaping load().
     with pytest.raises(VerdictRefused, match="malformed/invalid receipt"):
-        read(Verdict(check_id="c", area="reference", receipt_pointer=str(p)))
+        read(Verdict(check_id="c", area="reference", run_id="r", receipt_pointer=str(p)))
 
 
 def test_non_adopted_area_keeps_its_verdict_behind_the_marker(tmp_path):
@@ -72,7 +72,7 @@ def test_non_adopted_area_keeps_its_verdict_behind_the_marker(tmp_path):
              examined_count=2, total_count=2, run_id="r", root=root)
     adoption = {"build-gate": "adopted", "coop": "adopted", "roadmap-sync": "adopted",
                 "test-harness": "adopted", "reference": "non-adopted"}
-    reading = read(Verdict(check_id="c", area="reference",
+    reading = read(Verdict(check_id="c", area="reference", run_id="r",
                            receipt_pointer=r.verdict_pointer), adoption=adoption)
     assert reading.non_adoption is True
     assert reading.successful is False          # never counts as a pass
@@ -152,3 +152,47 @@ def test_another_runs_receipt_in_this_runs_dir_is_not_proof(tmp_path):
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(Path(real.verdict_pointer).read_text(encoding="utf-8"), encoding="utf-8")
     assert missing_checks(root, "r") == ["c"]
+
+
+# --- the four HIGH findings from re-review 20260826T084941Z --------------------
+
+def test_a_receipt_backed_verdict_must_declare_its_run(tmp_path):
+    """HIGH-1 — an OPTIONAL run binding is not a binding."""
+    r = emit(check_id="c", area="reference", target=Target("path", "t"),
+             examined_count=1, total_count=1, run_id="run-1", root=tmp_path / "receipts")
+    with pytest.raises(VerdictRefused, match="must declare its run_id"):
+        read(Verdict(check_id="c", area="reference", receipt_pointer=r.verdict_pointer))
+
+
+def test_loaded_empty_with_nonzero_counts_is_rejected(tmp_path):
+    """HIGH-2 — EMPTY means the target contained NOTHING; 5/5 is not empty."""
+    from codeconv.receipts.receipt import Receipt, Truncation, validate
+    forged = Receipt(
+        schema_version="buildkit-draft-0", contract_version="buildkit-draft-0",
+        check_id="c", area="reference", run_id="r",
+        resolved_target=Target("path", "t", resolved=True),
+        outcome=Outcome.EMPTY, examined_count=5, total_count=5,
+        skipped=[], skipped_total=0, examined=[], truncated=Truncation(),
+        ran_at="2026-08-26T00:00:00+00:00", verdict_pointer="p",
+    )
+    with pytest.raises(ReceiptInvalid, match="examined==total==0"):
+        validate(forged)
+
+
+def test_negative_counts_are_rejected(tmp_path):
+    """HIGH-3 — a negative count is impossible, not merely small."""
+    with pytest.raises(ReceiptInvalid, match="negative count"):
+        emit(check_id="c", area="reference", target=Target("path", "t"),
+             examined_count=-1, total_count=5, run_id="r", root=tmp_path, write=False)
+
+
+def test_receipt_paths_cannot_escape_the_root(tmp_path):
+    """HIGH-4 — an attacker-chosen receipt location is not evidence."""
+    from codeconv.receipts.paths import UnsafeReceiptPath, receipt_path
+    for bad in ("../../etc", "..", "a/b"):
+        with pytest.raises(UnsafeReceiptPath):
+            receipt_path(tmp_path, bad, "run", "check")
+    with pytest.raises(UnsafeReceiptPath):
+        receipt_path(tmp_path, "reference", "run", "../../../evil")
+    ok = receipt_path(tmp_path, "reference", "run", "check")
+    assert tmp_path.resolve() in ok.resolve().parents

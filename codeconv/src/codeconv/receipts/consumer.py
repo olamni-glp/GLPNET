@@ -31,7 +31,7 @@ class Verdict:
     check_id: str
     area: str
     receipt_pointer: str | None  # None ⇒ the check produced no receipt
-    run_id: str | None = None    # the run this verdict belongs to; bound when declared
+    run_id: str | None = None    # the run this verdict belongs to — REQUIRED to accept a receipt
 
 
 @dataclass
@@ -108,7 +108,17 @@ def _read_receipt(verdict: Verdict) -> Reading:
             f"check {r.check_id!r} in area {r.area!r} — a receipt binds to exactly one verdict "
             f"(FR-002); treated as UNREAD, not a pass"
         )
-    if verdict.run_id is not None and r.run_id != verdict.run_id:
+    # An OPTIONAL run binding is not a binding: with run_id left None the check
+    # below was skipped and a prior run's PASS for the same check+area was
+    # accepted as this run's evidence. A receipt-backed verdict must SAY which
+    # run it belongs to; declining to say is refused, not waived.
+    if verdict.run_id is None:
+        raise VerdictRefused(
+            f"check {verdict.check_id!r} in area {verdict.area!r}: a receipt-backed verdict must "
+            f"declare its run_id so the receipt can be bound to THIS run (FR-002); none was given — "
+            f"treated as UNREAD, not a pass"
+        )
+    if r.run_id != verdict.run_id:
         raise VerdictRefused(
             f"check {verdict.check_id!r}: receipt at {path} was produced by run {r.run_id!r}, "
             f"not run {verdict.run_id!r} — a prior run's PASS is not this run's evidence (FR-002); "

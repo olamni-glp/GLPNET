@@ -1,0 +1,166 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS8-20260826T1030Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-26T10:30:00+00:00",
+  "context": "Session 7, run mrun-20d9230f767b. The 078 remediation landed and the re-review RAN CLEAN: all 10 original findings closed, 8 NEW ones raised. Four blocks now need a ruling - one of them (Q-GLPNETS8-01) is a stopping-rule question this fleet has hit before (R3 took ELEVEN codexreview rounds, each finding a defect in the previous fix) and it gates the release of 63 commits.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS8-01",
+      "kind": "ruling",
+      "header": "Review loop",
+      "question": "078's re-review closed all 10 original findings and raised 8 new ones (4 HIGH). Two of the new HIGHs are direct descendants of my own fixes: I made run_id checkable but left its default None (so a caller that omits it still accepts a prior run's PASS), and I added a PASS branch but left the same hole on EMPTY's loaded path. That is not noise - it is the same defect class 078 exists to close, found inside 078 again. But R3 in wave-19 took ELEVEN rounds on exactly this pattern, each round finding a defect in the previous round's fix, and the defective build shipped via another lane anyway. 63 commits are held behind this gate. What is the stopping rule?",
+      "blocks": [
+        "the release of 63 commits",
+        "078 close",
+        "every lane waiting on a released receipts contract",
+        "the era gate Q-GLPNETS6-02"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix the 4 HIGHs, re-review once, then ship on MEDIUMs",
+          "recommended": true,
+          "means": "Close the 4 HIGH findings (run_id mandatory, EMPTY loaded-path, negative counts, path confinement), re-run codexreview ONCE. If that round raises only MEDIUM/LOW, ship and carry them as recorded follow-ups on the roadmap. HIGH findings alone hold the gate.",
+          "cost": "Ships with known MEDIUMs outstanding (missing reason field, byte cap on skipped, contract-family validation). Each is real and each is a way a receipt can be less informative than the spec requires - but none of them lets an unearned green through, which is the invariant."
+        },
+        {
+          "label": "Loop to zero findings",
+          "means": "Keep the fix/re-review cycle running until a round returns nothing at any severity.",
+          "cost": "R3 proves this can run 11 rounds. Each round costs a full codex pass (~10 min) plus fix time, and every round has so far found something because the reviewer re-reads the whole surface with fresh eyes. There is no evidence this converges on THIS module, and the 63 commits stay held the whole time."
+        },
+        {
+          "label": "Ship now, remediate in a follow-up feature",
+          "means": "Accept that the original 10 are closed, release the 63 commits, and open the 8 new findings as their own roadmap feature.",
+          "cost": "Ships 4 HIGH findings including a path-traversal one (paths.py) and two that let an unearned success through - inside the feature whose entire purpose is to stop unearned success. I recommend against this: it repeats session 6's error in the opposite direction."
+        }
+      ],
+      "ruling": {
+        "decided_option": "Fix the 4 HIGHs, re-review once, then ship on MEDIUMs",
+        "decided_at": "2026-08-26T10:35:00+00:00",
+        "decided_by": "engineer",
+        "method": "interactive-template",
+        "overturned_recommendation": false
+      }
+    },
+    {
+      "id": "Q-GLPNETS8-02",
+      "kind": "ruling",
+      "header": "CRDT store",
+      "question": "There are TWO live CRDT stores for HOST-INTERCONNECTIVITY-HARDENING with DISJOINT participants, and neither side knew about the other. Three lanes (gavriella-glpnet, gavriella-qhstate, olamnit-yngenios-research) append per-actor JSONL to a merge-on-read store under D:/coop/host-interconnectivity-hardening/, rendered into ROOTCAUSES.md by render.py. Separately, shiras appends prose blocks to ROOTCAUSES.crdt.md inside the buildkit git repo. shiras reported three root-cause blocks DROPPED by a full-file overwrite and restored them append-only - but any re-render from the JSONL store will remove them again, because they were never in that store. shiras' restoration is correct and will keep being undone. Which store is authoritative?",
+      "blocks": [
+        "shiras' 3 root causes and 3 dangling FR references",
+        "the grow-only contract itself",
+        "every future render",
+        "the buildkit feature's traceability"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "JSONL store wins",
+          "recommended": true,
+          "means": "shiras publishes shiras.jsonl into rootcauses/ and requirements/; the .crdt.md pair is retired to a rendered artifact. Every contributor is then in one mechanical union keyed by actor filename.",
+          "cost": "shiras must re-author three blocks as JSONL records. Small, one-off, and it makes their contribution render-durable instead of repeatedly restored."
+        },
+        {
+          "label": ".crdt.md wins",
+          "means": "The three JSONL lanes re-author their records as prose blocks; render.py is deleted.",
+          "cost": "Loses the mechanical add-wins union and the per-actor attribution that made the JSONL store auditable. Three lanes re-author instead of one."
+        },
+        {
+          "label": "Both stay, with a merge leg",
+          "means": "Keep both and build a converter so each render folds in the .crdt.md blocks.",
+          "cost": "A second mechanism to maintain and a new class of silent divergence between them. This is closest to today's state, which is what produced the drop."
+        }
+      ],
+      "ruling": {
+        "decided_option": "JSONL store wins",
+        "decided_at": "2026-08-26T10:35:00+00:00",
+        "decided_by": "engineer",
+        "method": "interactive-template",
+        "overturned_recommendation": false
+      }
+    },
+    {
+      "id": "Q-GLPNETS8-03",
+      "kind": "ruling",
+      "header": "Takt coverage",
+      "question": "Your standing order is that takt and per-phase token use are RECORDED INTO and RETRIEVED FROM the TAKT ducklake, never recomputed. I complied and read it. The lake answers, and the answer is that coverage is 6%: 72 of 1260 rows carry a token measurement, 1188 do not, and the largest phase (implement, 206 rows) has 6 measured. The honest total is 19,879,085 tokens over 6% of rows. So every per-phase figure this fleet publishes is a 6% sample presented against a 100% denominator. The lake is working as designed - nothing is writing the measurements. Who owns closing that, and what do lanes publish meanwhile?",
+      "blocks": [
+        "every takt figure published by any lane",
+        "the takt-and-token-persistence-to-ducklake roadmap feature (state=captured)",
+        "era band calibration",
+        "cross-lane takt comparison"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Publish coverage beside every figure; promote the ducklake feature",
+          "recommended": true,
+          "means": "No takt number is ever published without its coverage fraction attached (the generator already does this). Promote takt-and-token-persistence-to-ducklake off captured and give it an owner so the writers get built.",
+          "cost": "Accepts that takt is not yet calibration-grade and says so in public, which weakens every band argument until it is fixed. That is the true state."
+        },
+        {
+          "label": "Suspend takt reporting until coverage crosses a threshold",
+          "means": "Set a floor (say 50%) below which lanes report takt as NOT MEASURED and publish no numbers at all.",
+          "cost": "Loses the partial signal that exists, and the threshold is arbitrary. But it removes any chance of a 6% sample being quoted as a fleet fact."
+        },
+        {
+          "label": "Backfill from the marathon trails",
+          "means": "Reconstruct historical token rows from marathon step records where they exist, then report.",
+          "cost": "The rows that lack tokens lack them because nothing recorded them; reconstruction would be estimation, and LLM estimates are explicitly never permitted for takt."
+        }
+      ],
+      "ruling": {
+        "decided_option": "Publish coverage beside every figure; promote the ducklake feature",
+        "decided_at": "2026-08-26T10:35:00+00:00",
+        "decided_by": "engineer",
+        "method": "interactive-template",
+        "overturned_recommendation": false
+      }
+    },
+    {
+      "id": "Q-GLPNETS8-04",
+      "kind": "ruling",
+      "header": "Registry lock",
+      "question": "A single machine-wide registry lock serialises every buildkit command across all lanes on this host. Right now a peer's codexreview codex-pass (PID 12088, cycle 3, feature 012, live and verified) has held it long enough that FOUR of BK-REPORT-v1's six sections rendered UNAVAILABLE - progress, status, sitrep and takt. The report degraded honestly rather than printing zeros, which is correct. But the tool ALSO declared it a STUCK lock and advised checking whether the process is running - and it was running. That verdict has now been false SIX times in this lane's history, and its advice points straight at reaping a live peer. Two problems: reporting is blocked by unrelated work, and the diagnostic actively misleads.",
+      "blocks": [
+        "any lane's ability to report while a peer runs a long command",
+        "BK-REPORT-v1 sections 2/3/4/6",
+        "the standing risk of a lane reaping a live peer process"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix the diagnostic first, then scope the lock",
+          "recommended": true,
+          "means": "Immediately: the STUCK verdict must name the holder (Get-CimInstance gives the command line) and must never advise reaping without that evidence - it is a one-line change from an unverified claim to a measured one. Then separately scope the lock so read-only reporting does not contend with writes.",
+          "cost": "Two changes in buildkit rather than one, and the lock scoping is the larger piece. But the diagnostic is what creates the risk of destroying a peer's work, so it goes first."
+        },
+        {
+          "label": "Scope the lock only",
+          "means": "Make read-only commands (takt, status, sitrep, report) take a shared lock so they never block on a writer.",
+          "cost": "Fixes the reporting blockage but leaves the misleading STUCK verdict in place for genuine write contention, where the reaping risk is highest."
+        },
+        {
+          "label": "Accept and document",
+          "means": "Lanes retry, and report UNAVAILABLE when a peer holds the lock.",
+          "cost": "Cheapest, and the honest degradation already works. But it leaves a diagnostic in the field that has been wrong six times and recommends a destructive action."
+        }
+      ],
+      "ruling": {
+        "decided_option": "Fix the diagnostic first, then scope the lock",
+        "decided_at": "2026-08-26T10:35:00+00:00",
+        "decided_by": "engineer",
+        "method": "interactive-template",
+        "overturned_recommendation": false
+      }
+    }
+  ],
+  "status": "ruled"
+}
