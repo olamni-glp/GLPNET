@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [v2026.08.27.3] - 2026-08-27
+
+### Changed
+- Merge pull request #235 from olamni-glp/096-host-interconnectivity-hardening-evidence
+- rounds 51-52 - 21 epics/121 features/3871 lines; round 52 fixes the coop mirror to the shared volume
+- session-9 cycle-2 close - v2026.08.27.2 released, Q-GLPNETS8-04 and WinError 4551 confirmed fixed live, counter-measurement filed (import-refused rewrite is lossless here so the false-green is conditional not unconditional)
+- round 55 - sync/reconcile/dedupe/export after v2026.08.27.2
+- Merge pull request #234 from olamni-glp/main
+- rev3 corrected - 091 branch was merged and deleted; 9 commits moved to 096 branch, unpushed (HTTP 408 + classifier)
+- rev3 reboot prep - SHIRAS rootcause, HIH feature promoted in buildkit, 7 self-retractions, push and checkpoint BLOCKED by classifier
+- host-interconnectivity CRDT dossier + 3 codify notes; feature promoted in buildkit, glpnet copy rejected as duplicate
+- shiras durable-fix synthesis - NO component is durable, all are optional; only the lane-registry sweep is buildable from existing verbs
+- corpus addenda - platform declaration, six dead detectors, divergent roots, provenance/identity/version constraints
+- shiras root-cause + fix corpus - 3 disjoint slices from first-party SSH measurement
+- per-host WP bundle claim sheets - SHIRAS 6 gaps, OLAMNIT 1, GAVRI 1; C1 discharged for ARIELLAS by first-party measurement
+- four-host bundle claim instructions - prerequisite bundles per host, lane mapping resolved, ACK required
+- four-host WP bundle partition - ZERO packets verify runnable on any host; blockers are unmeasured hosts, inert capability gate, 31-of-32 binding gap
+- host-bundle allocation corpus - 6 rotated disjoint slices + manifest for the four-host WP partition
+
 ## [v2026.08.27.2] - 2026-08-27
 
 ### Changed
