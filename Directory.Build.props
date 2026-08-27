@@ -1,0 +1,10 @@
+<Project>
+  <!-- ENGINEER MANDATE 2026-08-27: C# 15 opt-in, fleet-wide.
+       'preview' is the ONLY door to C# 15 in .NET 11 preview.7:
+         - <LangVersion>15.0</LangVersion>  -> CS1617, invalid option (no CSharp15 enum member yet)
+         - <LangVersion>latest</LangVersion> -> maps to C# 14 (latest RELEASED), NOT C# 15
+       Pinned SDK lives in global.json; this file owns the language version only. -->
+  <PropertyGroup>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+</Project>
