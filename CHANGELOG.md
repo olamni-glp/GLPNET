@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [v2026.08.27.4] - 2026-08-27
+
+### Changed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- session-9 cycle-3 close - v2026.08.27.3 released; I REFUTED my own import-emptiness discriminator (non-empty import still lossless); engine version is the unifying axis behind 3 pin-dependent defects; BK-STD-1 fix robust across catalog growth and a new state value
+- Merge pull request #238 from olamni-glp/096-host-interconnectivity-hardening-evidence
+- round 56 - import 35 new lines from 6 files (non-empty), reconcile, dedupe 0 groups over 120 live, export 21 epics/121 features/3890 journal lines; import-refused ledger measured LOSSLESS on a NON-EMPTY import, refuting my own discriminator hypothesis
+- rev4 - P0 coop dead-drop rootcause + fix persisted, PR 235 merged, 4 engineer rulings, next=ZA01 bk-plan on 083
+- Merge pull request #237 from olamni-glp/main
+
 ## [v2026.08.27.3] - 2026-08-27
 
 ### Changed
