@@ -106,6 +106,68 @@ def parse(text):
     return rows
 
 
+def backfill_from_export(rows, root):
+    """Add not-closed features that `roadmap status` omits (BK-STD-1 defect, 2026-08-27).
+
+    MEASURED on host Gavriella, glpnet, roadmap round 53: `buildkit-roadmap status`
+    emits NO row for a feature in state `implemented`, so this table reported 25
+    not-closed while BK-REPORT-v1 section 1 reported open=26 on the same data. The
+    dropped row was `qr-link-provisioning` (067) -- the feature FURTHEST along the
+    pipeline. `implemented` is a legal not-closed state, so a table that hides it
+    under-reports open work and hides it precisely where it matters most.
+
+    The parse filter above is NOT the bug; it drops only `closed`. The loss is
+    upstream in the `status` command, which this script should not have been the
+    sole consumer of -- standing fleet guidance is "never parse `roadmap status`
+    for counts; use the signed-export heads fold". This backfills from that signed
+    export (heads joined to scores by guid) so the table matches the report without
+    waiting on a fix in another lane's code.
+
+    Additive and conservative: a feature already present from `status` is never
+    replaced, so WSJF/RICE/flags for existing rows are untouched.
+    """
+    # BIND TO THIS LANE'S OWN EXPORT. The exports dir holds every peer's published
+    # export too (measured 2026-08-27: gavriella 115, ariellas 83, olamnit 50, and
+    # 15 under a misspelled `gavriellas` host). A bare `*__*.json` + sorted()[-1]
+    # selects `olamnit__glpnet__20260823...` -- ANOTHER HOST'S FOUR-DAY-STALE DATA --
+    # and reports it as this repo's state. That is the exact failure this feature
+    # exists to stop, so the host prefix is matched exactly, not by sort order.
+    host = socket.gethostname().lower()
+    exdir = root / ".specify" / "roadmap-sync" / "exports"
+    exports = sorted(exdir.glob("%s__%s__*.json" % (host, root.name.lower())))
+    if not exports:
+        return rows  # no export from THIS lane => report status as-is, never a peer's
+    try:
+        with open(exports[-1], encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return rows  # unreadable export => report what status gave, never invent
+    scores = {s.get("guid"): s for s in doc.get("scores", []) if isinstance(s, dict)}
+    have = {r["feature"] for r in rows}
+    for h in doc.get("heads", []):
+        if not isinstance(h, dict) or h.get("entity_kind") != "feature":
+            continue
+        state = h.get("state")
+        if state == "closed" or not state:
+            continue
+        fid = h.get("resolved_slot") or h.get("name")
+        if not fid or fid in have:
+            continue
+        sc = scores.get(h.get("guid"), {})
+        rows.append({
+            "epic": h.get("epic_id") or "(standalone)",
+            "feature": fid,
+            "state": state,
+            "wsjf": sc.get("wsjf", NONE),
+            "rice": sc.get("rice", NONE),
+            "spec": "Y" if h.get("spec_path") else NONE,
+            "dlv": NONE,
+            "blk": 0,
+        })
+        have.add(fid)
+    return rows
+
+
 def _num(x):
     try:
         return float(x)
@@ -223,7 +285,7 @@ def main(argv=None):
     cmd = [a.roadmap_cmd] if a.roadmap_cmd else [sys.executable, "-m", "buildkit_cli.roadmap"]
     lane = a.lane or ("%s-%s" % (socket.gethostname().lower(), root.name))
 
-    rows = sort_rows(parse(run_roadmap(cmd, root, ["status"])),
+    rows = sort_rows(backfill_from_export(parse(run_roadmap(cmd, root, ["status"])), root),
                      load_owners(root, a.owner, a.owners_file))
     print(render(rows, a.format, header(root, lane, a.round, a.run),
                  footer(rows, a.dedupe_groups, a.dedupe_run, a.reconcile_note)))
