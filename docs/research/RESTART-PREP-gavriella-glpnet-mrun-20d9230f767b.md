@@ -16,7 +16,7 @@ four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-26T11:15Z — SESSION 8 CLOSE** (the SESSION-8 ADDENDUM at the foot supersedes the session-6/7 tables) |
+| written at | **2026-08-27T02:20Z — SESSION 9 CLOSE** (the SESSION-9 ADDENDUM at the foot supersedes every table above it) |
 
 ## Resume in one line
 
@@ -532,3 +532,148 @@ allocated packets** on `D:/coop/yngenios-windows/sched`.
 | COOP | ACK-SWEEP `20260826T1010Z` + BROADCAST `20260826T1105Z` (4 rulings) delivered |
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-26T11:15Z
+
+---
+
+# 🔴 SESSION-9 ADDENDUM — 2026-08-27 · **RESUME WITH `resume marathon`**
+
+This addendum supersedes the session-6/7/8 tables above.
+
+## THE ONE THING TO READ FIRST
+
+🔴 **The release is STILL held on the same engineer decision, and session 9 did not resolve it.**
+Ruling `Q-GLPNETS8-01`: *"Fix the 4 HIGHs, re-review once. If that round raises only MEDIUM/LOW,
+ship."* Round 3 raised a **HIGH**. That HIGH is fixed (`0cf1a2aa`) but **the fix was never itself
+re-reviewed**. **68 commits are unreleased on `develop`.** A generic "release anything ready"
+instruction is *not* a waiver of a specific recorded ruling — do not self-authorize it. It is
+question **Q-GLPNETS9-01**, presented interactively at session-9 close.
+
+## WHAT SESSION 9 DELIVERED
+
+| # | item | state |
+|---|---|---|
+| 1 | **078 mutation survivor CLOSED** — `_confine` covered at its own boundary; both mutants killed | ✅ `c7891aa4` |
+| 2 | Full suite from **repo root**: **8 failed / 773 passed / 5 skipped** — baseline held | ✅ |
+| 3 | **Roadmap round 53** — sync/import/reconcile/dedupe/export, both publish legs | ✅ `e67edb51` |
+| 4 | **COOP ACK sweep x5**, incl. the ACK-MANDATORY discharge with measured evidence | ✅ `20260827T015419Z` |
+| 5 | Ruling **`Q-GLPNETS8-02` discharged** — shiras' JSONL files ARE published | ✅ |
+| 6 | 4 session-8 captures recovered from prose into durable marathon items | ✅ |
+| 7 | Takt read **FROM the lake**; 3 phase rows written back into the ducklake | ✅ partial — see HAZARD 2 |
+
+## 🔴 THE 078 MUTATION SURVIVOR IS CLOSED — 15/15 IS NOW HONEST
+
+`_confine`'s containment check is **unreachable through `receipt_path`/`expected_set_path`** because
+`_safe_component` blocks every escape on the public path. *That is why it survived mutation on
+08-26* — not because it was weak. Covered at its own boundary instead (4 tests: escape, descendant,
+root-is-its-own-root, unresolvable). **Mutation-verified both ways, one guard at a time:**
+
+| mutant | result |
+|---|---|
+| A — containment `raise` made unreachable (`if False`) | **killed** — escape test failed |
+| B — `OSError` branch returns `candidate` silently | **killed** — unresolvable test failed |
+
+`paths.py` diff is **docstring-only**; its `NOT TEST-COVERED` claim was itself false and was
+rewritten. A module built to stop unverified claims must not carry one about its own verification.
+
+## 🔴 FOUR TRAPS MEASURED THIS SESSION — each cost real time
+
+1. **Running the pytest suite from `codeconv/` fabricates 12 phantom failures.** 20 failed / 761
+   passed from `codeconv/`; **31/31 pass from the repo root**, same tree. All 12 are exit 5
+   `_EXIT_CORPUS_UNREACHABLE` — the repo root resolves to `codeconv/`, where `tutorials/olamni`
+   does not exist. **ALWAYS run `pytest codeconv/tests/` FROM THE REPO ROOT.** Proved not-mine by
+   `git stash`. I reported an invalid 20-failure result before catching this.
+2. **The background-task output file keeps only its LAST ~17 lines.** 6 of 20 `FAILED` lines were
+   truncated off the top and I drew a conclusion from the remnant. **Redirect to a real file.**
+3. **`STUCK lock` FALSE a 10th and 11th time** — holders named live: `buildkit-release`,
+   `buildkit_cli.deploy 2026.08.26.1`, `codexreview --max-seconds 1800` (from `D:/BSTDEV/lang/tefl`).
+   ⭐ **SHARPENED:** in the *same* report run, section 3 printed *"the lock is changing hands, so the
+   registry is genuinely busy"* (6 PIDs) while section 5 printed the STUCK verdict. **buildkit
+   already handles multi-holder contention correctly — only the single-long-holder path is wrong.**
+   That is a one-branch fix. Feed this into `Q-GLPNETS8-04`.
+4. **A live cross-repo `buildkit-deploy` makes every `buildkit-*.exe` vanish mid-command**
+   (`ModuleNotFoundError: No module named 'buildkit_cli.<sub>'` / `command not found`). Transient,
+   self-heals. **Do not reinstall over another lane's deploy — wait and retry.**
+
+## 🔴 HAZARD 1 — the BK-STD-1 table STILL drops the `implemented` row (recurrence)
+
+`scripts/roadmap_open_table.py` gives **25 not-closed**. `BK-REPORT-v1` section 1 on the same data
+gives **open=26**, `BY STATE: analyzed=3 closed=94 implemented=1 promoted=16 specified=6`.
+**The two standardized surfaces disagree by one, and the hidden row is `qr-link-provisioning` (067)
+— the feature furthest along the pipeline.** `implemented` is a legal not-closed state. **The fix
+belongs in `roadmap_open_table.py`'s state filter; the report generator is correct.** Second round
+running. Always quote **26**, and say the table shows 25.
+
+## 🔴 HAZARD 2 — Application Control BLOCKS the pinned engine; takt recording cannot run by default
+
+`buildkit-scheduler takt-tokens` dies with
+**`OSError: [WinError 4551] An Application Control policy has blocked this file`** from
+`_winapi.CreateProcess`. The CLI is fine — what is blocked is the **re-exec into this target's
+pinned engine `2026.08.23.7`**. **Workaround: `--engine-override ambient`** (runs `2026.8.26.2`,
+durably recorded as *"engine pin DISPLACED ... The pin was NOT honoured"*).
+
+**Strong candidate root cause for the fleet takt coverage gap** — measured from the lake this
+session: **189,042,301 tokens over 372/2235 rows = 17%**; **1863 rows carry NO measurement**.
+
+**Vocabulary split found:** the takt **writer** accepts only the 9 pipeline phases + `other`
+(rejects `roadmap`/`coop`/`report`), while the **reader** renders rows named `roadmap`, `coop`,
+`report`, `resume`, `restart-prep`, `session-total`. Some rows were written by a path that does not
+enforce the vocabulary. Rows written this session: `implement`, `codexreview`, `other` — all
+`method=unavailable`, which means **ASKED AND COULD NOT TELL**, stored as 0 *with provenance*, and
+**must never be read as "used no tokens"**. This lane cannot meter its own tokens.
+
+## TAKT — READ FROM THE LAKE, NEVER RECOMPUTED
+
+```
+19/111 steps measurable (1 declared phase, 110 derived)
+plan       n=2   p50 0.19h   band 0.5-3.0h    under
+implement  n=1   p50 0.57h   band 0.5-24.0h   IN-BAND
+close      n=1   p50 0.00h   band 0.5-3.0h    under
+other      n=15  p50 0.00h   max 3.14h        under
+feature total: 4.65h over 19 measured steps (target 1.5-48.0h) -> IN-BAND
+unmeasurable steps: 92 — NOT counted as zero
+! plan: sources disagree (marathon_step 0.20h vs stage_transition 0.12h); spread 0.08h
+```
+
+## WHAT'S NEXT — ranked, blockers named
+
+| # | step | state |
+|---:|:---|:---|
+| **1** | 🔴 **ENGINEER: `Q-GLPNETS9-01` — 4th codexreview round on `0cf1a2aa`, or waive and release?** | **BLOCKING — 68 commits held** |
+| 2 | `Q-GLPNETS9-02` — 083 is at `tasks`, unimplemented + unreviewed, 3 commits unmerged. Merge artifacts to `develop`, or leave on branch? | needs ruling |
+| 3 | `Q-GLPNETS9-03` — Application Control vs the engine pin: override permanently, re-pin, or fix policy? | needs ruling |
+| 4 | `Q-GLPNETS9-04` — fix `roadmap_open_table.py` here, or file to the buildkit lane? | needs ruling |
+| 5 | 4 remaining round-2 MEDIUMs (reason field; skipped-item byte cap; contract-family validation in `bind.py`; contract compatibility in run reconciliation) | unblocked |
+| 6 | `link-spec` the 6 unbound pipeline ids; **71/120 features carry no `spec_path`** and can never bind by basename | unblocked |
+| 7 | Sharpened STUCK-lock one-branch fix to the buildkit lane (`Q-GLPNETS8-04`) | unblocked |
+| 8 | `bk-flow open` the 9 claimed packets against features | unblocked |
+
+**Do NOT author features for** the supply-chain superset, onrestart, or tidy-up — all are already
+allocated packets on `D:/coop/yngenios-windows/sched`.
+
+## STANDING HAZARDS (carried forward, still true)
+
+1. **Three+ lanes live on this host.** 18 buildkit processes across 4 deploy versions were measured
+   concurrently. Check `origin/develop` and the coop root before any shared-resource write.
+2. **NEVER reap on the STUCK-lock verdict.** Name the holder with
+   `Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'` first.
+3. **The live COOP board is `D:\coop\glpnet`** (this host owns `192.168.0.108` = `GAVRI_D`).
+   The repo's `COOP/` dir and `G:\...\COOP\` are **retired husks**. Resolve via `COOP/ROOT.md`.
+4. **`hostname` before any COOP write** — this is **Gavriella**, and this lane is **glpnet**.
+   Sibling lanes (`qhstate`, `lejepa`, `tefl`, `yngenios-research`) share the board; **answer only
+   for glpnet** and route the rest.
+5. **Never parse `buildkit-roadmap status`** for counts — use the signed-export `heads` fold.
+6. **Pipes mask failures**: `cmd | grep | tail` reports the *filter's* exit status.
+
+## RESTART READINESS
+
+- [x] Working tree clean; `develop` == `origin/develop`; **68 ahead of main**
+- [x] All session work committed and pushed (`c7891aa4`, `e67edb51`)
+- [x] Findings durable as marathon items, not scrollback (seq **364**, 192 outstanding)
+- [x] COOP ACK sweep delivered on the live board with license sidecar
+- [x] Roadmap round 53 reconciles: open 26 + closed 94 = 120
+- [x] Takt read from the lake; phase rows written back
+- [x] Next action identified; every blocker has a numbered engineer question
+
+**READY FOR RESTART — resume with `resume marathon`.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T02:20:00Z
