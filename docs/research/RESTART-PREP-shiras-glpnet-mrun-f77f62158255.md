@@ -6,11 +6,43 @@
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
     BRANCH   095-shiras-glpnet-onboard-and-scheduler-rootcause
-    UPDATED  2026-08-26T21:35Z   ·  restart-safe: YES (--check exits 0)
+    UPDATED  2026-08-27T22:30Z   ·  restart-safe: YES   ·  REBOOT-SAFE: YES (bk-onrestart preflight exit 0)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
 
 ---
+
+## 0 · 🔴 REBOOT — WHAT HAPPENS AND HOW TO VERIFY IT
+
+**Just reboot.** `bk-onrestart` fires automatically at logon and restores the whole fleet.
+
+    layout        1 WINDOW  (shiras uses ONE window for ALL lane tabs; ariellas uses TWO)
+    tabs          15        window1=15, window2=0, skipped=0
+    command       claude --continue --autocompact 1000000   (resumes MID-THREAD, never summarises)
+    triggers      systemd user unit (enabled, WantedBy=default.target) + XDG autostart (--delay 45)
+    terminal      xfce4-terminal
+    preflight     exit 0  ->  SAFE TO REBOOT
+
+**All 12 named fleet lanes have a tab**, plus 3 more:
+`ospark · ulpnit(hatzinor) · tefl · buildkit · olamnit · qhstate · yngraw · yngwin · crucible ·
+glpnet · lejepa · mstack` + `yngorg · yngapp · ynglin`.
+
+**By hand, only if the trigger does not fire:**
+
+```bash
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh launch --wait-for-mounts
+```
+
+**VERIFY BY COUNTING PROCESSES, never by trusting the launch message** — 12 tabs opening and
+running nothing is a measured failure mode on this fleet:
+
+```bash
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh verify    # expect 15
+```
+
+**Before rebooting again:** `bk-onrestart.sh preflight` — it is an executable gate (exit 0 = safe),
+not a sentence typed optimistically. If `/mnt/gavri/d` is absent afterwards that means
+**"I cannot see the board"**, NEVER "the board is empty".
 
 ## 1 · WHY BARE `resume marathon` NOW WORKS
 
