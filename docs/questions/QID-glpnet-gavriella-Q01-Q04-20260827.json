@@ -1,0 +1,130 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS9-20260827T0220Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-27T02:20:00+00:00",
+  "context": "Session 9, run mrun-20d9230f767b, feature 078-verification-receipts, host Gavriella. develop is 68 ahead of main, clean, pushed at c01fa8cb. Four blocks need an engineer ruling: the release gate held by ruling Q-GLPNETS8-01, an unmerged mid-pipeline feature branch, a Windows Application Control policy that blocks the pinned engine and therefore blocks mandated takt recording, and a recurring one-row disagreement between the two standardized roadmap surfaces.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS9-01",
+      "kind": "ruling",
+      "header": "Release gate",
+      "question": "Your ruling Q-GLPNETS8-01 said: fix the 4 HIGHs, re-review ONCE, and if that round raises only MEDIUM/LOW, ship. Round 3 raised a HIGH. I fixed it (0cf1a2aa: reject non-string path components instead of coercing, 14/15 mutants killed) and stopped, because the ruling's ship condition was not met and the fix has never itself been reviewed. Three rounds have now each found a defect inside the previous round's fix, so 'the fix is one line and obviously safe' is exactly the reasoning that failed the last three times. 68 commits are held. Do you want a 4th round, or a waiver?",
+      "blocks": [
+        "078 ship",
+        "078 close",
+        "68 commits on develop",
+        "every downstream feature that wants a released base"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Waive and release now",
+          "recommended": true,
+          "means": "Treat the round-3 HIGH as closed on the strength of its mutation evidence and release the 68 commits. The fix is 12 lines, is covered by 2 dedicated tests, and 14/15 mutants are killed; session 9 independently closed the 15th, so the receipt module is now at 15/15 with no published survivor.",
+          "cost": "Breaks the letter of your own ruling, and the last three rounds each found a defect inside the previous fix. If round 4 would have found one, it ships instead."
+        },
+        {
+          "label": "Run a 4th codexreview round",
+          "means": "Scope the review to 0cf1a2aa plus the session-9 test commit c7891aa4 only, not the whole feature. Ship if it raises only MEDIUM/LOW.",
+          "cost": "Roughly one more review cycle of wall-clock and tokens, and the observed pattern says it has a real chance of finding a 4th HIGH and extending the hold again."
+        },
+        {
+          "label": "Amend to a bounded loop",
+          "means": "Replace 'review once' with 'review until a round raises no HIGH, hard cap 2 further rounds, then ship regardless and record any residual HIGH as an accepted risk with an expiry.",
+          "cost": "Converts an open-ended hold into a bounded one but commits up to two more cycles before anything ships."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS9-02",
+      "kind": "ruling",
+      "header": "083 branch",
+      "question": "Branch 083-glptutorial-corpus-goldens holds 3 commits that are not on develop: /bk-plan and /bk-tasks artifacts (57 tasks over 6 phases) plus a restart note. The feature is NOT implemented and NOT codexreviewed, so it does not meet your 'fully implemented and codex reviewed' bar for release. It is fully pushed to origin, so nothing is at risk either way. Its plan also records three measured gates that bind its tasks: the drift guard is SATURATED (67 drifts across all 13 chapters on an unmodified tree, so FR-004's signal is unconditioned), the SC-007 baseline is stale (546/0/1 recorded vs 561/559/2/0 measured), and the goldens live in a separate dirty sibling repo. Do you want the spec artifacts merged into develop now?",
+      "blocks": [
+        "083 implement",
+        "083 ship",
+        "whether develop reflects planned-but-unbuilt work"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Leave on the branch",
+          "recommended": true,
+          "means": "083 stays where it is until it is implemented and reviewed, then lands through the normal feature PR. develop keeps meaning 'work that has been built'.",
+          "cost": "The 3 commits stay invisible to anyone reading only develop, and a second lane could re-plan 083 without noticing this work exists."
+        },
+        {
+          "label": "Merge the spec artifacts now",
+          "means": "PR the 3 commits into develop so the plan and tasks are visible fleet-wide, with the feature still unimplemented.",
+          "cost": "Puts planned-but-unbuilt artifacts on the integration branch, which weakens 'on develop' as a signal and may read as progress that has not happened."
+        },
+        {
+          "label": "Merge, gates as blockers",
+          "means": "Merge the artifacts AND record the saturated drift guard, the stale SC-007 baseline and the dirty sibling repo as explicit blockers on 083 so nobody starts implementing against an unconditioned signal.",
+          "cost": "Most work now, and the gates may turn out to belong to the corpus feature rather than to 083 once someone looks."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS9-03",
+      "kind": "risk-acceptance",
+      "header": "Engine pin",
+      "question": "buildkit-scheduler takt-tokens fails on this host with OSError WinError 4551, 'An Application Control policy has blocked this file', raised from _winapi.CreateProcess. The CLI itself is fine; what Windows Application Control blocks is the re-exec into this target's PINNED engine 2026.08.23.7. So the token recording your standing order mandates cannot run here by default. --engine-override ambient works and is durably recorded as 'engine pin DISPLACED, the pin was NOT honoured'. I used it to write this session's rows. This is a strong candidate root cause for the fleet takt coverage gap: measured from the lake today, 189,042,301 tokens over 372/2235 rows, 17 percent, with 1863 rows carrying no measurement at all. How should this lane proceed?",
+      "expires_after_days": 14,
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Re-pin this target to 2026.8.26.2",
+          "recommended": true,
+          "means": "Point the pin at the ambient engine that Application Control already permits, so commands stop re-execing into a blocked interpreter and takt recording works without an override flag.",
+          "cost": "Changes the engine version mid-marathon, which is exactly the pin change the restart doc has been avoiding; needs a deliberate re-deploy and could shift behaviour under an open run."
+        },
+        {
+          "label": "Keep pin, always override",
+          "means": "Leave the pin alone and carry the override on every takt call. Each use is durably recorded, so the displacement is auditable rather than silent.",
+          "cost": "Every takt row this host writes is written by a non-pinned engine, and a human step in front of every call is a step that will eventually be skipped."
+        },
+        {
+          "label": "Fix the Application Control policy",
+          "means": "Allow-list the deploy-home venv interpreters so pinned engines launch normally and no override is needed anywhere on this host.",
+          "cost": "Requires a machine policy change outside this repo's control, probably admin rights, and blocks takt recording fleet-wide on this host until it lands."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS9-04",
+      "kind": "ruling",
+      "header": "Table defect",
+      "question": "The two standardized roadmap surfaces disagree by exactly one row, and they have now disagreed for a second round. scripts/roadmap_open_table.py reports 25 not-closed; BK-REPORT-v1 section 1 on the same data reports open=26 with BY STATE analyzed=3, closed=94, implemented=1, promoted=16, specified=6. The dropped row is the single state=implemented feature, qr-link-provisioning (067), which is the feature furthest along the pipeline and is itself under an open ruling. 'implemented' is a legal not-closed state, so the report generator is right and the table's state filter is wrong. Both scripts are checked into this repo but are fleet standards used by every host. Where should the fix be made?",
+      "blocks": [
+        "every BK-STD-1 table this fleet publishes",
+        "any count taken from the table rather than the report"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix here, broadcast the diff",
+          "recommended": true,
+          "means": "Add 'implemented' to the state filter in scripts/roadmap_open_table.py in glpnet, verify the table then reports 26 and reconciles against the report, and broadcast the one-line diff to all hosts so every lane can apply the identical change.",
+          "cost": "Briefly forks a fleet standard across hosts until the other lanes apply it, which is the exact failure mode the standards exist to prevent."
+        },
+        {
+          "label": "File to buildkit lane",
+          "means": "Raise it as a defect against the owning lane and keep quoting 26 from the report with a note that the table shows 25 until the fix lands everywhere at once.",
+          "cost": "The wrong number keeps being published fleet-wide for as long as the queue takes, and this is already its second round unfixed."
+        },
+        {
+          "label": "Fix and re-freeze",
+          "means": "Fix it, re-freeze the standard under a new published hash, and require every host to verify against that hash before publishing a table.",
+          "cost": "Heaviest option; the existing freeze hash cac1dea5 already does not reproduce here under either line-ending convention, so the freeze mechanism itself needs fixing before it can carry a new hash."
+        }
+      ]
+    }
+  ]
+}

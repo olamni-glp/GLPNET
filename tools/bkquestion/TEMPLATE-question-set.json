@@ -1,0 +1,59 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-EXAMPLE-20260824T0810Z",
+  "lane": "olamnit",
+  "repo": "ospark",
+  "raised_at": "2026-08-24T08:10:00+00:00",
+  "context": "COPY THIS FILE, DO NOT EDIT IT IN PLACE. Replace set_id with Q-<feature>-<UTC>, replace lane/repo/raised_at, then replace both questions below with your own. Run `python tools/bkquestion/bkquestion.py validate <your-file>` until it passes — the validator enforces the rules, not just the shape. The two questions here are REAL ones from 2026-08-24, kept as worked examples because a template with invented examples teaches the wrong reflexes.",
+  "questions": [
+    {
+      "id": "Q-EXAMPLE-01",
+      "kind": "ruling",
+      "header": "Duplicate",
+      "question": "Feature 020 was implemented TWICE, concurrently, in this repo. Two open PRs from another session cover the same spec and touch almost the same files as my branch. My branch has the same scope PLUS a 5-cycle adversarial review (71 findings, all fixed); their PR has none of those fixes but does have a runtime fix for the dual-import collision that mine only bridged in tests. How do you want this resolved?",
+      "blocks": ["020 ship", "020 close", "the run's first era-close event"],
+      "escalate_after_hours": 2,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Ship mine, take their import fix",
+          "recommended": true,
+          "means": "Cherry-pick their runtime fix onto my branch, re-run the suite, ship; close their PRs as superseded with the reason recorded on each.",
+          "cost": "Their PR history is closed rather than merged, and the cherry-pick needs a real merge check rather than an assumption."
+        },
+        {
+          "label": "Merge theirs, mine on top",
+          "means": "Land their implementation first, then rebase my review fixes onto it as a second PR, preserving both authors' work visibly.",
+          "cost": "My fixes target MY implementation; against their differing code this is a substantial re-derivation, not a rebase."
+        },
+        {
+          "label": "Ship theirs, discard mine",
+          "means": "Merge their PR and close my branch. Simplest and fastest.",
+          "cost": "Discards 5 review cycles and 71 confirmed findings, including defects with real operational consequence."
+        }
+      ]
+    },
+    {
+      "id": "Q-EXAMPLE-02",
+      "kind": "risk-acceptance",
+      "header": "Stale claim",
+      "question": "The board claim that should prevent two lanes working one feature is global and is never consulted by any pipeline command, and the fix is handed off to another lane with no ETA. Until it lands, the only thing standing between us and a third duplicate implementation is remembering to run `gh pr list` by hand. Do you accept that risk for now, and for how long?",
+      "expires_after_days": 14,
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept for two weeks",
+          "recommended": true,
+          "means": "Carry the manual check as a documented pre-flight step in the restart signal, and re-raise automatically when this acceptance expires.",
+          "cost": "A human step in front of every session is a step that will eventually be skipped; the expiry is what stops the acceptance becoming silent policy."
+        },
+        {
+          "label": "Block work until the gate lands",
+          "means": "No feature work in a shared repo until the claim actually gates pipeline commands.",
+          "cost": "Halts every lane on this host for a dependency owned by a different lane, with no ETA."
+        }
+      ]
+    }
+  ]
+}

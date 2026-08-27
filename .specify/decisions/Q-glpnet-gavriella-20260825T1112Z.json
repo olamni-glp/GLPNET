@@ -1,0 +1,64 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS7-20260825T1112Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-25T11:12:00+00:00",
+  "context": "Session 6, run mrun-20d9230f767b. Set 2 of 2 - two measurement-vs-ruling contradictions that do not block today's work but will silently corrupt published numbers if left. Companion to Q-GLPNETS6-20260825T1110Z.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS7-01",
+      "kind": "ruling",
+      "header": "Hidden row",
+      "question": "Your ruling Q-GLPNETS2-03 said 'implemented IS not-closed - render it. True count is 25, not 24.' Measured today at round 50, the canonical renderer prints 25 and the signed-export fold gives 26. The gap is unchanged - still exactly the one state=implemented row, still 067 qr-link-provisioning. What changed is that the catalog grew by one feature overnight, so the buggy renderer now prints exactly the number your ruling published as ground truth, and any lane cross-checking the renderer against your ruling will conclude the defect is fixed. The fix is a one-line whitelist change, but roadmap_open_table.py sits in the frozen shared-artefact class. How do you want it handled?",
+      "blocks": ["every published not-closed count", "cross-lane roadmap comparison", "the ACK-LEDGER row filed today", "067's graduation"],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix here, report hash",
+          "recommended": true,
+          "means": "Change the state whitelist to state != 'closed' in this repo's copy, re-render, and broadcast the new hash with the diff so the fleet converges deliberately rather than by mystery propagation.",
+          "cost": "It writes to an artefact class the freeze ruling covers. The freeze was about unidentified authorship rather than about never changing the file, but that distinction is mine to argue, not to assume."
+        },
+        {
+          "label": "Quote the export fold",
+          "means": "Never quote the renderer's total again; every lane reads the signed-export fold for counts and uses the renderer only for row layout.",
+          "cost": "Leaves a known-wrong number printed by the tool 13 lanes are told to run, with only a convention between it and the next wrong published count."
+        },
+        {
+          "label": "Move 067 off implemented",
+          "means": "Advance or reset 067's roadmap state so nothing sits in the dropped bucket, making the renderer accidentally correct.",
+          "cost": "Treats the symptom by moving data to suit a broken reader, and 067's true state IS implemented-but-unspecified. Falsifying state to satisfy a renderer is the worst of the three."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS7-02",
+      "kind": "ruling",
+      "header": "Link verb",
+      "question": "Two rulings point opposite ways on the 6 unbound pipeline ids. Q-GLPNETS3-02 (yours, 08-24) says link the 6 and accept that the 70 pre-specify features have no spec. ariellas' standing ruling says the roadmap link defect is FILE-do-not-patch, and that no lane should attempt the links through the CLI or write spec_path directly. On top of that, reconcile's own remediation hint names a verb that does not exist - it says to use 'buildkit-roadmap link-spec' while the CLI offers only 'link'. Instruction, counter-instruction and the tool's own advice are three different things. I have attempted no links. Which holds?",
+      "blocks": ["6 unbound pipeline ids", "trust in every reconcile result", "T20"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Leave unlinked, file defect",
+          "recommended": true,
+          "means": "Honour ariellas' do-not-patch ruling, keep the 6 unbound, and file one defect against buildkit for the reconcile hint naming a non-existent verb. A wrong remediation hint is worse than none, because it sends every lane to a command that cannot exist.",
+          "cost": "The 6 ids stay unable to move a roadmap state, so reconcile keeps reporting 15/21 bound indefinitely and no lane can distinguish real drift from the known gap."
+        },
+        {
+          "label": "Link them via CLI",
+          "means": "Run the links with buildkit-roadmap link and verify each landed by re-reading the catalog rather than trusting exit 0.",
+          "cost": "Directly contradicts a standing ruling from another lane that exists BECAUSE the verb silently no-ops. If it no-ops again I will have produced 6 false linked claims, which is worse than 6 honest unbound ones."
+        },
+        {
+          "label": "Fix buildkit first",
+          "means": "Under Q-GLPNETS1-03, which lets this lane branch and PR in buildkit, fix both the silent no-op and the wrong hint upstream, then link.",
+          "cost": "Adds a cross-repo buildkit feature to a lane whose own era is already blocked on a NO-GO codexreview, and buildkit's develop currently fails 9 CI shards, so the PR may be unmergeable for reasons unrelated to the fix."
+        }
+      ]
+    }
+  ]
+}
