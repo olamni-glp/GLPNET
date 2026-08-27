@@ -819,3 +819,82 @@ loss — it means the defect is **conditional**. **Candidate discriminator: all 
 **READY FOR RESTART — resume with `resume marathon`.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T17:20:00Z
+
+---
+
+# ✅ SESSION-9 CYCLE-3 CLOSE — 2026-08-27T18:12Z · **THIRD RELEASE · I REFUTED MY OWN HYPOTHESIS**
+
+| item | result |
+|---|---|
+| release | **`v2026.08.27.3`** (PR #236) — 15 commits incl. ariellas' PRs #234/#235 |
+| releases today | `v2026.08.27.1` (71 commits) · `.2` (BK-STD-1 fix) · `.3` (peer merge) |
+| repo | **0 open PRs**, tree clean, `develop` 1 ahead of `main` (back-merge only) |
+| roadmap | round **56** · **open 27 · closed 94 · reconciles 121** · 21 epics · dedupe 0 over 120 live |
+| BK-STD-1 table | **27 = 3 analyzed · 1 captured · 1 implemented · 16 promoted · 6 specified**, 8 epics — **agrees with BK-REPORT §1** |
+| marathon | seq **366** · steps 28/111 · outstanding **193** |
+| takt (lake) | ELAPSED **100.82h → OVER**; era takt 4 measured / 64 unmeasurable; lake 2315 rows |
+| COOP | `20260827T181053Z` SELF-REFUTATION broadcast + sidecar |
+
+## 🔴 I REFUTED MY OWN DISCRIMINATOR — do not resurrect it
+
+At `20260827T171850Z` I told the fleet the `roadmap sync` false-green might need a **non-empty
+import**, narrowing the hunt to the apply path. **Round 56 gave me that exact test and killed it:**
+
+| round | import | before | after | dropped |
+|---|---|---|---|---|
+| 53 | 0 lines / 2 files | 7011 / 561 | *untouched* | — |
+| 54–55 | 0 lines / 2 files | 7011 / 561 | 7011 / 561 | **0** |
+| **56** | **35 lines / 6 files** | **7011 / 561** | **7011 / 561** | **0** |
+
+**Import emptiness is NOT the trigger.** Retracted publicly before anyone could act on it.
+
+## ⭐ THE UNIFYING AXIS: ENGINE VERSION. CHECK YOUR PIN BEFORE QUOTING ANY NUMBER.
+
+Three separate defects on this host were all **pin-dependent**:
+
+| symptom | `2026.08.23.7` | `2026.08.26.1` |
+|---|---|---|
+| STUCK-lock verdict | **FALSE 11×** | **correct** ("is STILL RUNNING… Do NOT kill it") |
+| `takt-tokens` | **WinError 4551** blocked | runs, no override |
+| takt era verdict | `4.65h -> in-band` | `ELAPSED 100.82h -> **OVER**` |
+
+🔴 The third is the trap: the old engine printed **effort** where the new prints **ELAPSED**, so an
+old pin reports a 100-hour era as *in-band*. **Any takt verdict from a pin older than
+`2026.08.26.1` must be re-read.** New leading hypothesis for shiras' 450-guid loss is also engine
+version — testable in one command (`buildkit-deploy list`, then `latest`, then re-measure).
+
+## ✅ THE BK-STD-1 FIX IS ROBUST
+
+Round 56 grew the catalog to **21 epics / 121 features** and introduced a **state value the fix had
+never seen (`captured`)**. The export-backfill carried both: table and BK-REPORT §1 now agree at
+**27** with no hand-reconciliation. A peer independently captured the same defect as feature
+`renderers-read-export-fold-not-status` — corroboration, not duplication.
+
+## ❓ `/yx-bootmig` — CANNOT BE RUN, AND HERE IS WHY
+
+Asked twice; searched exhaustively. It exists **only as a spec**:
+`D:\BSTDEV\research\yngenios\specs\008-yx-bootmig-base\` (just `BRIEF.md` + `DESIGN.md` — no plan,
+no tasks, no code). Its own brief says it **"Delivers: the `/yx-bootmig` skill + the Python tool
+under it"** — the skill is the *output* of an unbuilt feature — and records
+**"Epic: `bootstrap-migration` — does not exist yet, must be created."** No installed `*bootmig*`
+skill exists under any `skills/` dir on `C:` or `D:`; the only `yx-*` skills are `yx-distill`,
+`yx-appbuilder`, `yx-linbuilder` in the `D:\yngenios\*` repos. **It also belongs to a different
+repo and lane** (`D:\BSTDEV\research\yngenios`), so building it is a full pipeline run there — not
+a command in glpnet.
+
+## WHAT'S NEXT — no engineer block open in this lane
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **078 → `codexreview` → `ship` → `close`** — code released, FEATURE not closed | unblocked |
+| 2 | 4 round-2 MEDIUMs (reason field; skipped byte cap; contract-family validation in `bind.py`; contract compatibility in run reconciliation) | unblocked |
+| 3 | `link-spec` the unbound pipeline ids; **72/121 features carry no `spec_path`** | unblocked |
+| 4 | Takt **phase-vocabulary split** (writer takes 9 phases + `other`; reader renders `roadmap`/`coop`/`report`) | unblocked |
+| 5 | Investigate the `plan` **100.62h** / `other` **90.54h** gaps | unblocked |
+| 6 | `bk-flow open` the 9 claimed packets | unblocked |
+| 7 | 083 implement → codexreview → ship (stays on branch per `Q-GLPNETS9-02`) | unblocked |
+| 8 | `/yx-bootmig`: engineer to decide whether the yngenios lane builds feature 008 | **needs input (other repo)** |
+
+**READY FOR RESTART — resume with `resume marathon`.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T18:12:00Z
