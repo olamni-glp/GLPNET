@@ -752,3 +752,70 @@ allocated packets on `D:/coop/yngenios-windows/sched`.
 **READY FOR RESTART — resume with `resume marathon`.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T14:10:00Z
+
+---
+
+# ✅ SESSION-9 CYCLE-2 CLOSE — 2026-08-27T17:20Z · **SECOND RELEASE CUT · TWO DEFECTS CONFIRMED FIXED**
+
+| item | result |
+|---|---|
+| release | **`v2026.08.27.2`** (PR #233) — BK-STD-1 fix + roadmap rounds 54/55 + session-9 record |
+| repo | **0 open PRs**, tree clean, `develop` 1 ahead of `main` (back-merge only) |
+| roadmap | round **55** · open **26** · closed **94** · reconciles 120 · dedupe 0 groups over 119 live |
+| BK-STD-1 table | **26 not-closed = 3 analyzed · 1 implemented · 16 promoted · 6 specified**, 7 epics |
+| marathon | seq **365+** · steps 28/111 · outstanding **193** |
+| takt (lake) | **ELAPSED 100.82h → OVER**; effort 4.65h/19 steps; 92 unmeasurable, NOT zero; lake 2279 rows `host=gavriella` |
+| fleet tokens | **193,229,936 over 421/2895 rows = 15%**; 2474 rows carry no measurement |
+| COOP | `20260827T171850Z` ACK-FULFILMENT + counter-measurement, license sidecar |
+
+## ⭐ TWO DEFECTS CONFIRMED FIXED UPSTREAM (both verified live here)
+
+1. **`Q-GLPNETS8-04` — the STUCK-lock verdict.** Now prints *"…is STILL RUNNING — this is
+   CONTENTION with a live process, not a stuck lock. Do NOT kill it."* **False 11 times; now
+   correct.** 🔴 Retire the manual liveness check **only** on a pin of `2026.08.26.1` or newer.
+2. **WinError 4551.** `takt-tokens` runs with **no `--engine-override`** and **no "pin DISPLACED"**
+   line. The re-pin remedy holds end-to-end.
+
+## 🔴 COUNTER-MEASUREMENT FILED AGAINST MY OWN EARLIER ACK
+
+I corroborated shiras' `roadmap sync` false-green family, then measured it here and **it does not
+reproduce**:
+
+| round | ledger before | after | dropped | added |
+|---|---|---|---|---|
+| 53 | 7011 / 561 | *untouched* | — | — |
+| 54–55 | **7011 / 561** | **7011 / 561** | **0** | **0** |
+
+The file **is** rewritten (git sees it modified) but is **byte-different, content-identical**. So
+`rc=0` / "nothing refused" is **truthful here**. This does **not** refute shiras' real 450-guid
+loss — it means the defect is **conditional**. **Candidate discriminator: all my rounds imported
+0 new lines from 2 new files.** If the loss needs a non-empty import, the hunt narrows to the
+**apply path**, not the rewrite path. Untestable here — no peer has published new lines to this repo.
+
+## 🔴 CARRY-FORWARD CORRECTIONS (do not re-derive these wrongly)
+
+- **Takt verdicts from engines older than `2026.08.26.1` are wrong** — they print
+  `feature total 4.65h -> in-band`, reading **effort** as **ELAPSED**. Honest verdict: **OVER**
+  (100.82h vs 1.5–48.0h). The `gap` column (phase open, no step running) is the real signal:
+  `plan` 100.62h, `other` 90.54h.
+- **BK-STD-1's cause is upstream** — `buildkit-roadmap status` omits `implemented` rows. The
+  table's filter was never the bug. And **bind the export glob to this host** — a bare
+  `exports/*__*.json` + `sorted()[-1]` reads a **peer's stale export** and yields a confident
+  wrong number.
+
+## WHAT'S NEXT — no engineer block open
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **078 → `codexreview` → `ship` → `close`** — code is released, the FEATURE is not closed | unblocked |
+| 2 | 4 round-2 MEDIUMs: reason field on non-success receipts; skipped-item byte cap; contract-family validation in `bind.py`; contract compatibility in run reconciliation | unblocked |
+| 3 | `link-spec` the 6 unbound pipeline ids; **71/120 features carry no `spec_path`** | unblocked |
+| 4 | Takt **phase-vocabulary split**: writer takes 9 phases + `other`, rejects `roadmap`/`coop`/`report`; reader renders them anyway | unblocked |
+| 5 | Investigate the **100.62h `plan` gap** / 90.54h `other` gap | unblocked |
+| 6 | `bk-flow open` the 9 claimed packets against features | unblocked |
+| 7 | 083: implement → codexreview → ship (stays on branch per `Q-GLPNETS9-02`) | unblocked |
+| 8 | ❓ **`/yx-bootmig` does not exist on this host** — searched glpnet, user-level skills, and the `yngenios-windows` lane; only `yx-distill` exists there. Needs the engineer to name it | **needs input** |
+
+**READY FOR RESTART — resume with `resume marathon`.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T17:20:00Z
