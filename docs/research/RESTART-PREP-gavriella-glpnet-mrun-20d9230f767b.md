@@ -677,3 +677,78 @@ allocated packets on `D:/coop/yngenios-windows/sched`.
 **READY FOR RESTART — resume with `resume marathon`.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T02:20:00Z
+
+---
+
+# ✅ SESSION-9 CLOSE — 2026-08-27T14:10Z · **ALL FOUR RULINGS EXECUTED · RELEASE SHIPPED**
+
+**The section above was written BEFORE the engineer answered. It is superseded here.**
+All four questions in `Q-GLPNETS9-20260827T0220Z` were ruled and **executed**; ledger
+`.specify/decisions/engineer-decisions.jsonl`, commit `3012fc5c`.
+
+| id | ruling | executed |
+|---|---|---|
+| `Q-GLPNETS9-01` | **Waive and release now** | ✅ **`v2026.08.27.1`** — PR #231, back-merge #232, **71 commits released** |
+| `Q-GLPNETS9-02` | **Leave 083 on the branch** | ✅ no action; 3 commits stay on `083-glptutorial-corpus-goldens`, pushed |
+| `Q-GLPNETS9-03` | **Re-pin to 2026.8.26.2** | ✅ re-pinned to **`2026.08.26.1`** — see correction below |
+| `Q-GLPNETS9-04` | **Fix BK-STD-1 here, broadcast the diff** | ✅ `6e458414`; broadcast `20260827T134611Z` |
+
+## 🔴 THREE CORRECTIONS I OWE THE RECORD — each was wrong in the section above
+
+1. **The BK-STD-1 cause was NOT the table's state filter.** I raised it that way. The filter
+   (`roadmap_open_table.py:91`) drops only `closed` and is correct. **The loss is upstream:
+   `buildkit-roadmap status` emits NO ROW for an `implemented` feature** (`status | grep -c qr-link`
+   → **0**). The table was also the sole consumer of a command fleet guidance already says never to
+   parse for counts. Fixed by backfilling from the signed export (`heads` ⋈ `scores` by `guid`).
+   **Table now prints 26 and reconciles exactly with BK-REPORT §1.**
+2. **`2026.8.26.2` was never installed in deploy-home** — it is the ambient pip package. The newest
+   deploy-home version is **`2026.08.26.1`**, which is what the target is now pinned to. The block
+   was specific to `2026.08.23.7`; other lanes ran `.24.4/.24.5/.26.1` interpreters fine throughout.
+3. **The takt verdict was EFFORT read as ELAPSED.** Old engine: *"feature total 4.65h → in-band"*.
+   New engine: **`feature ELAPSED: 100.82h (target 1.5-48.0h) -> OVER`**, with
+   *"feature effort: 4.65h … NOT comparable to the per-feature target"*. Per-phase flips too:
+   `plan` ELAPSED 100.82h gap 100.62h → **over**; `other` ELAPSED 94.42h gap 90.54h → **over**.
+   🔴 **Any takt verdict quoted from an engine older than `2026.08.26.1` must be re-read.**
+
+## ⭐ TWO DEFECTS FIXED UPSTREAM AND CONFIRMED LIVE HERE
+
+- **`Q-GLPNETS8-04` DISCHARGED — the STUCK-lock diagnostic is FIXED.** It now prints
+  *"PID 28636 … is STILL RUNNING — this is CONTENTION with a live process, not a stuck lock.
+  Do NOT kill it; it may be a peer's long test run."* That is precisely the single-long-holder
+  liveness probe recommended in the broadcast. **False 11 times in this lane; now correct.**
+- **WinError 4551 remedied.** After the re-pin, `takt-tokens` runs with **no `--engine-override`
+  and no Application Control block**. Lake confirmed reachable: `D:\coop\_takt-lake`,
+  **1897 records for `host=gavriella`**.
+
+## STATE AT SESSION-9 CLOSE
+
+| field | value |
+|---|---|
+| release | **`v2026.08.27.1`** shipped; **0 open PRs**; `develop` 1 ahead of `main` (back-merge only) |
+| engine pin | **`2026.08.26.1`** (was `2026.08.23.7`, blocked by Application Control) |
+| roadmap | round **54** · **open 26 · closed 94 · reconciles 120** · dedupe 0 groups over 119 live |
+| BK-STD-1 table | **26 not-closed = 3 analyzed · 1 implemented · 16 promoted · 6 specified**, 7 epics |
+| marathon | `mrun-20d9230f767b` `[open]` seq **365** · steps 28/111 · outstanding **193** |
+| takt (from lake) | **ELAPSED 100.82h → OVER** band; effort 4.65h over 19 measured steps; 92 unmeasurable, NOT zero |
+| receipts | **52 tests green**; mutation **15/15**, no published survivor |
+| suite | **8 failed / 773 passed / 5 skipped** (repo root) — the 8 are known live-build/DOTNET + migration-head |
+| COOP | ACK sweep `20260827T015419Z` + BROADCAST `20260827T134611Z`, both with license sidecars |
+
+## WHAT'S NEXT — no engineer block remains open
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **078 → `codexreview` → `ship` → `close`** — the era's remaining stages; the release is out, the feature is not closed | unblocked |
+| 2 | 4 round-2 MEDIUMs: reason field on non-success receipts; skipped-item byte cap; contract-family validation in `bind.py`; contract compatibility in run reconciliation | unblocked |
+| 3 | `link-spec` the 6 unbound pipeline ids; **71/120 features carry no `spec_path`** and can never bind by basename | unblocked |
+| 4 | Takt **phase-vocabulary split**: writer accepts 9 phases + `other` and rejects `roadmap`/`coop`/`report`; reader renders those names anyway | unblocked |
+| 5 | Investigate the **100.62h `plan` gap** and 90.54h `other` gap — phases open with no step running | unblocked |
+| 6 | `bk-flow open` the 9 claimed packets against features | unblocked |
+| 7 | 083: implement → codexreview → ship (stays on its branch per `Q-GLPNETS9-02`); its 3 measured gates bind its tasks | unblocked |
+
+**Do NOT author features for** the supply-chain superset, onrestart, or tidy-up — all are already
+allocated packets on `D:/coop/yngenios-windows/sched`.
+
+**READY FOR RESTART — resume with `resume marathon`.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T14:10:00Z
