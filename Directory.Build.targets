@@ -1,0 +1,42 @@
+<Project>
+
+  <!--
+    Repo-wide .NET 11 / C# 15 pin.  Engineer-mandated 2026-08-27:
+    ".NET 11 and C# 15 latest preview ... c#15 opt in approved and mandated".
+
+    🔴 WHY THIS IS A .targets FILE AND NOT Directory.Build.props — MEASURED, NOT ASSUMED.
+
+    The first attempt put <LangVersion>preview</LangVersion> in Directory.Build.props.
+    MSBuild imports .props BEFORE the project body, so the fourteen projects in this repo
+    that set <LangVersion>latest</LangVersion> themselves simply overwrote it.  Verified:
+
+        dotnet msbuild csharp/glp_il_codec/GlpIlCodec.csproj -getProperty:LangVersion
+        -> latest          (the mandate silently did NOT apply)
+
+    Directory.Build.targets is imported AFTER the project body, so this wins.  A mandate
+    that loses to a per-project setting is not a mandate.
+
+    🔴 AND WHY 'preview' AND NOT '15' — ALSO MEASURED on SDK 11.0.100-preview.7.26381.103:
+
+        csc /langversion:?  ->  ... 13.0, 14.0 (default), latestmajor, preview, latest
+
+      * There is NO '15' or '15.0' token.  Both <LangVersion>15</LangVersion> and
+        <LangVersion>15.0</LangVersion> FAIL with 'error CS1617: Invalid option'.
+      * 'latest' is NOT C# 15.  The compiler's own #error version probe reports:
+            LangVersion=latest   ->  "Language version: latest (14.0)"
+            LangVersion=preview  ->  "Language version: preview"
+        So every project left on 'latest' was getting C# 14 despite the mandate.
+      * C# 15 is reachable ONLY through 'preview' on this SDK.
+
+    WHEN TO CHANGE: once csc lists a numbered '15.0', switch to 15.0 so the pin stops
+    floating with whatever 'preview' happens to mean in a later SDK.
+
+    Per-project opt-OUT is still possible by setting LangVersion after this import, but
+    nothing in this repo should do so without an engineer ruling.
+  -->
+
+  <PropertyGroup>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+</Project>
