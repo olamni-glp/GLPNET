@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [v2026.08.27.5] - 2026-08-27
+
+### Changed
+- correct 5 stale TargetFramework comments that still claimed net10.0 repo convention after the net11.0 retarget, and record the deliberate mixed edge (generated out/csharp/glp_runtime_net stays net10.0 - retargeting it means changing the codeconv generator, not this tree)
+- retarget all 23 csharp projects net10.0 -> net11.0 under the mandated .NET 11 / C# 15 pin - baseline 23/23 built clean before, 23/23 build clean after, and all 10 test projects pass on net11.0 (1111 tests, 0 failed, 0 skipped)
+- pin .NET 11 SDK and MANDATE C# 15 repo-wide - global.json pins 11.0.100-preview.7, Directory.Build.targets forces LangVersion=preview because .props LOSES to the 14 projects that set LangVersion=latest, and 'latest' is C# 14.0 not 15
+- Merge pull request #240 from olamni-glp/main
+
 ## [v2026.08.27.4] - 2026-08-27
 
 ### Changed
