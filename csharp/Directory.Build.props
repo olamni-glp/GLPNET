@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Fleet mandate 2026-08-27 (engineer): C# 15 opt-in APPROVED and MANDATED.
+    .NET 11 SDK pinned via csharp/global.json (11.0.100-preview.7).
+    LangVersion=preview enables C# 15 language features across all csharp/ projects.
+    TargetFramework flip net10.0 -> net11.0 is staged as a separately-tested migration
+    (marathon item), not applied here, to keep the working runtime green.
+  -->
+  <PropertyGroup>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+</Project>
