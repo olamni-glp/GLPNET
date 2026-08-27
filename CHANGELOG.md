@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [v2026.08.27.2] - 2026-08-27
+
+### Changed
+- import-refused ledger rewrite after round 54 - measured LOSSLESS, 7011 entries / 561 guids unchanged, 0 guids dropped (refutes the false-green rewrite concern for this lane)
+- session-9 CLOSE - all 4 rulings executed, v2026.08.27.1 released (71 commits); 3 corrections (BK-STD-1 cause is upstream status not the filter, 2026.8.26.2 not installed so pinned 2026.08.26.1, takt verdict was effort read as ELAPSED and is OVER not in-band); Q-GLPNETS8-04 discharged - STUCK-lock now probes liveness
+- round 54 post-release - sync/reconcile/dedupe/export after v2026.08.27.1
+- Merge pull request #232 from olamni-glp/main
+
 ## [v2026.08.27.1] - 2026-08-27
 
 ### Added
