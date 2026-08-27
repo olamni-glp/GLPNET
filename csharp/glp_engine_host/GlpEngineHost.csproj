@@ -13,7 +13,8 @@
     - glp_result_codec           : 038 ResultEnvelope/ResultEnvelopeCodec (D2).
     - glp_split_protocol         : shared request/response payload types (T001).
 
-  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+  TargetFramework: net11.0 — engineer-mandated .NET 11 / C# 15 pin (2026-08-27);
+  see GlpSplitProtocol.csproj note and the repo-root global.json + Directory.Build.targets.
 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
