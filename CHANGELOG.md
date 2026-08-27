@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [v2026.08.27.6] - 2026-08-27
+
+### Changed
+- roadmap(onrestart): codify + capture + score + promote 'bk-onrestart two-window multi-tab fleet resume, auto-installable on any host' (WSJF 4.2 / RICE 1200); round 57 - 21 epics/122 features; 15 lanes registered with win1/win2 allocation, 15/15 launchable exit 0
+- Merge pull request #242 from olamni-glp/main
+
 ## [v2026.08.27.5] - 2026-08-27
 
 ### Changed
