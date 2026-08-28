@@ -2339,7 +2339,7 @@ section "I" "Cross-runtime Gleam × C# link suite (US5)"
 csproj_tfm() {
     local _f="$1"
     [ -f "$_f" ] || return 1
-    sed -n 's:.*<TargetFramework>\([^<]*\)</TargetFramework>.*::p' "$_f" | head -1
+    sed -n 's:.*<TargetFramework>\([^<]*\)</TargetFramework>.*:\1:p' "$_f" | head -1
 }
 GLPREPL_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/glp_repl/glp_repl.csproj") || GLPREPL_TFM=""
 PROBE_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/term_traversal_probe/term_traversal_probe.csproj") || PROBE_TFM=""
