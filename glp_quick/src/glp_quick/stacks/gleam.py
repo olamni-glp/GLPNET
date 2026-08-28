@@ -117,9 +117,12 @@ class GleamStackAdapter(StackAdapter):
         return self._spawn(host_args, await_token="READY", peer_ids=[f"server@{bind}:{port}"])
 
     def start_client(self, server_addr: str, port: int, cert: Path, repl: ReplKind,
-                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None) -> Handle:
+                     *, repl_path: Optional[str] = None, self_id: Optional[str] = None,
+                     derived_dir: Optional[Path] = None) -> Handle:
         if repl_path is not None:
             raise NotImplementedError("--repl <path> live bridge is csharp-stack-only this wave (063 US1)")
+        if derived_dir is not None:  # loud refusal, never a silent drop (067 is csharp-stack scoped)
+            raise NotImplementedError("--derived-dir derived credentials are csharp-stack-only this wave (067 US1)")
         host_args = ["--role", "client", "--addr", server_addr, "--port", str(port), "--cert", str(cert)]
         return self._spawn(host_args, await_token="LINK_UP", peer_ids=[f"server@{server_addr}:{port}"])
 

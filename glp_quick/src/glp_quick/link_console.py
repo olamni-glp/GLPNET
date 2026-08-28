@@ -40,6 +40,7 @@ def run(
     max_clients: int = 3,
     self_id: Optional[str] = None,
     repl_path: Optional[str] = None,
+    derived_dir: Optional[Path] = None,
 ) -> int:
     """Run a link console in the given role until the link closes / Ctrl-C. Returns an exit code."""
     adapter = _adapter(stack, profile)
@@ -54,7 +55,7 @@ def run(
         default_to = BROADCAST
     else:
         handle = adapter.start_client(addr, port, cert, repl,  # type: ignore[arg-type]
-                                      repl_path=repl_path, self_id=sid)
+                                      repl_path=repl_path, self_id=sid, derived_dir=derived_dir)
         default_to = "server"
 
     print(f"[glp-quick] {role} '{sid}' linked on {addr}:{port} (stack={stack}). "

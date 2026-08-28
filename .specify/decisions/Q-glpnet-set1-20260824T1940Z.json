@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS1-20260824T1940Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-24T19:40:00+00:00",
+  "context": "Set 1 of 3 — the four blocks that gate the most work in the glpnet lane. Marathon run mrun-20d9230f767b, feature 078-verification-receipts. Every figure quoted was measured this session; the full brief with evidence tables is at claude.ai/code/artifact/77dcfcf1.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS1-01",
+      "kind": "ruling",
+      "header": "Allocator",
+      "question": "Work reaches a host only when someone writes an addressed `allocate --to <actor>`. Measured on D:/coop/glpnet/sched: 22 of 32 packets are engineer_id='unassigned', ZERO are ready-and-unallocated, and the allocator's own host has 59 ops and ZERO availability windows since 2026-08-13. Three lanes now report 'compliant and idle'. The fleet spent today raising WORKER availability while the supply half stayed shut. How do you want the supply half opened?",
+      "blocks": ["every lane's dispatch", "SCHED-R7", "any use of the 35-day calendars just declared"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Direct ariellas, with a deadline",
+          "recommended": true,
+          "means": "ariellas declares a calendar on the allocator host and issues addressed allocations, against a named date. Two commands on one host; no code.",
+          "cost": "Does not explain why the gap persisted 11 days, and leaves the fleet on a single allocator who has been unreachable all day."
+        },
+        {
+          "label": "Move allocation authority",
+          "means": "Transfer allocation authority to any lane that is present and can write it, ending the single-allocator dependency.",
+          "cost": "Reverses a deliberate centralisation. Two allocators can address the same packet, and allocation uniqueness is not enforced anywhere."
+        },
+        {
+          "label": "Lanes self-allocate under policy",
+          "means": "Each lane draws from the reserved pool under a declared, recorded policy.",
+          "cost": "Highest duplicate risk: cross-root duplicate allocation is ALREADY observed at 8.4%, and the host dimension is not recorded at all. This would raise it."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS1-02",
+      "kind": "ruling",
+      "header": "078 NO-GO",
+      "question": "codexreview is now unblocked and it RAN on 078: exit 0, 10 findings, 8 HIGH — every one a way the receipts module can pass without proving it ran, which is the exact defect 078 exists to eliminate. Two are test defects: a conformance fixture that reports full coverage without exercising its declared BOUNDED case, and a mutation test that stays GREEN under a no-op validator. 99 commits sit unreleased behind this. How do you want it sequenced?",
+      "blocks": ["/bk-release", "078 ship", "078 close", "the 99-commit release"],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix tests first, then product",
+          "recommended": true,
+          "means": "Fix the two test findings as a first slice, then the six product HIGHs, then re-review and release. Instruments before readings.",
+          "cost": "The 99-commit release waits for two slices rather than one. Roughly mini plus midi of work before any ship."
+        },
+        {
+          "label": "Fix all ten, then release",
+          "means": "One implementation slice covering all 10 findings; single re-review; single release.",
+          "cost": "The six product fixes would be certified by a suite whose own guards are still unproven, so their green run means less than it appears to."
+        },
+        {
+          "label": "Release now, fix 078 after",
+          "means": "Cut the release excluding codeconv/receipts, then remediate 078 on a follow-up.",
+          "cost": "078's code is already on develop, so excluding it is a revert, not an omission. Reverting to ship around a defect is how the defective onrestart script shipped on 08-21."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS1-03",
+      "kind": "ruling",
+      "header": "Two-repo",
+      "question": "078's tasks.md holds 66 tasks and 54 of them are prefixed `bk:` — they name work in the buildkit repo, not glpnet. /bk-implement 078 has been blocked on this since 2026-08-20, and it now also gates the buildkit-side fix for the git-pathspec defect I root-caused today. 078 is WSJF rank 1 and gates five other features. How may this lane execute buildkit-repo tasks?",
+      "blocks": ["/bk-implement 078", "TOOL-R8", "TOOL-R9", "the codexreview pathspec fix"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Branch and PR in buildkit",
+          "recommended": true,
+          "means": "This lane may branch and open PRs in the buildkit repo for tasks its own feature owns, under a naming convention like glpnet/<feature>-<topic> so cross-repo branches stay attributable.",
+          "cost": "Two lanes then commit into buildkit concurrently; the buildkit repo already sits on another session's branch with uncommitted work, so collisions are real."
+        },
+        {
+          "label": "Hand tasks to buildkit lane",
+          "means": "The 54 bk: tasks become a dependency owned by the buildkit lane; 078 waits for them.",
+          "cost": "078 has already waited four days on this question and would then wait indefinitely on another lane's queue, while holding the single active slot."
+        },
+        {
+          "label": "Re-scope 078 to glpnet only",
+          "means": "078 keeps its 12 glpnet tasks; the 54 become a separate buildkit feature with its own roadmap row.",
+          "cost": "Splits a coherent feature across two roadmaps and two WSJF scores, and splits the verification thesis whose whole point is being end-to-end."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS1-04",
+      "kind": "tie-break",
+      "header": "050 vs 059",
+      "question": "Two branches implement overlapping full-Gleam work and cannot both survive: origin/050-full-gleam-combined is 48 commits ahead with 21 conflicts, origin/059-full-scope-gleam-glp-implementation is 32 ahead with 30 conflicts across 248 files. Your 2026-08-21 ruling triaged the other post-PR lines but left this one as the engineer's call, and it has been open three days. Which line survives?",
+      "blocks": ["TIDY-Y09", "2 of the 5 remaining unmerged origin heads", "any full-Gleam roadmap progress"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "059 survives, archive 050",
+          "recommended": true,
+          "means": "Archive-tag 050 and drop it; merge 059. Chosen on the one differentiator anyone has measured — an earlier sweep found 059 the only line with real substance.",
+          "cost": "That evidence is thin: a single prior finding, not a content comparison. I have NOT diffed the two implementations against each other."
+        },
+        {
+          "label": "050 survives, archive 059",
+          "means": "Archive-tag 059 and drop it; merge 050 — the larger commit count and the lighter conflict load.",
+          "cost": "Discards the line previously found to carry measured substance, on the basis of conflict count rather than content."
+        },
+        {
+          "label": "Measure both before ruling",
+          "means": "I diff the two implementations against each other and bring you a content comparison, replacing a judgement call with a measurement.",
+          "cost": "Delays the ruling by a bounded piece of work, and keeps two unmerged heads alive meanwhile."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,772 @@
+{
+ "corroborated": 55,
+ "singleton": 106,
+ "conflict": 10,
+ "rows": [
+  {
+   "key": [
+    "DEF-PARTIAL-PROJECTION",
+    "ELIMINABLE",
+    "ALL"
+   ],
+   "values": {
+    "ELIMINABLE-EXISTING-VERBS|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "DEF-MESH-UNUSED",
+    "ELIMINABLE",
+    "ALL"
+   ],
+   "values": {
+    "ELIMINABLE-EXISTING-VERBS|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "DEF-FALSE-FINDING-PROPAGATION",
+    "ELIMINABLE",
+    "ALL"
+   ],
+   "values": {
+    "ELIMINABLE-WITH-UPSTREAM|": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TRANSPORT-PROVENANCE-STAMP",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "APPLICABLE",
+    "ALL"
+   ],
+   "values": {
+    "SUPPORTED|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "TARGETS-DEFECT",
+    "DEF-PARTIAL-PROJECTION"
+   ],
+   "values": {
+    "HOLDS|ELIMINATES": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "TARGETS-DEFECT",
+    "DEF-MESH-UNUSED"
+   ],
+   "values": {
+    "HOLDS|ELIMINATES": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "COMPOSES-VERB",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|ssh#direct": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ],
+    "HOLDS|ssh#proxyjump": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|DEFAULT-ON-NO-FLAG": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|SILENT-FALSE-NEGATIVE": [
+     "builder-1",
+     "builder-2"
+    ],
+    "HOLDS|UNAVAILABLE-TRANSPORT": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEGATIVE-CONTROL-PROBE": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-SSH-FIRST-PROBE",
+    "CONSTRAINT-VIOLATION",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NONE-OBSERVED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TRANSPORT-PROVENANCE-STAMP",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|DERIVED-NOT-DECLARED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TRANSPORT-PROVENANCE-STAMP",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|SILENT-FALSE-NEGATIVE": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TRANSPORT-PROVENANCE-STAMP",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|TWO-TRANSPORT-CROSSCHECK": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TRANSPORT-PROVENANCE-STAMP",
+    "REQUIRED-UPSTREAM-CHANGE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEW-SCHEMA-FIELD-NEEDED": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "TARGETS-DEFECT",
+    "DEF-SWEEP-EXISTING-DIRS"
+   ],
+   "values": {
+    "HOLDS|ELIMINATES": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "DURABILITY",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|DERIVED-NOT-DECLARED": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ],
+    "HOLDS|IDEMPOTENT-REPLAY": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "DURABILITY-VERDICT",
+    "ALL"
+   ],
+   "values": {
+    "DURABLE|": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|PARTIAL-COVERAGE": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|ROSTER-COVERAGE-DIFF": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ],
+    "HOLDS|NEGATIVE-CONTROL-PROBE": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-DECLARED-ROSTER-SWEEP",
+    "CONSTRAINT-VIOLATION",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NONE-OBSERVED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "TARGETS-DEFECT",
+    "DEF-UNC-REWRITE"
+   ],
+   "values": {
+    "HOLDS|ELIMINATES": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|REFUSES-ON-VIOLATION": [
+     "builder-1",
+     "builder-3"
+    ],
+    "HOLDS|DEFAULT-ON-NO-FLAG": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "DURABILITY-VERDICT",
+    "ALL"
+   ],
+   "values": {
+    "DURABLE|": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|REFUSAL-EXIT-CODE-ASSERT": [
+     "builder-1",
+     "builder-3"
+    ],
+    "HOLDS|NEGATIVE-CONTROL-PROBE": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-UNC-ROOT-REFUSAL",
+    "CONSTRAINT-VIOLATION",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NONE-OBSERVED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "COMPOSES-VERB",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|ssh#direct": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "DURABILITY",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|DEFAULT-ON-NO-FLAG": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "DURABILITY-VERDICT",
+    "ALL"
+   ],
+   "values": {
+    "DURABLE|": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|SILENT-FALSE-NEGATIVE": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-LOGIN-PROFILE-PROBE",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEGATIVE-CONTROL-PROBE": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "DURABILITY",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|DERIVED-NOT-DECLARED": [
+     "builder-1",
+     "builder-2"
+    ],
+    "HOLDS|RECORDED-IN-DURABLE-STREAM": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "DURABILITY-VERDICT",
+    "ALL"
+   ],
+   "values": {
+    "DURABLE|": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|SILENT-FALSE-NEGATIVE": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "CONSTRAINT-VIOLATION",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NONE-OBSERVED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-OS-CAPABILITY-BINDING",
+    "REQUIRED-UPSTREAM-CHANGE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEW-SCHEMA-FIELD-NEEDED": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "TARGETS-DEFECT",
+    "DEF-PARTIAL-PROJECTION"
+   ],
+   "values": {
+    "HOLDS|ELIMINATES": [
+     "builder-1",
+     "builder-2"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "COMPOSES-VERB",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|ssh#direct": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "DURABILITY-MECHANISM",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|REFUSES-ON-VIOLATION": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "FAILURE-MODE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|UNAVAILABLE-TRANSPORT": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "VERIFICATION-TEST",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|TWO-TRANSPORT-CROSSCHECK": [
+     "builder-1",
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-TWO-TRANSPORT-CROSSCHECK",
+    "CONSTRAINT-VIOLATION",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NONE-OBSERVED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "DEF-UNC-REWRITE",
+    "RECURRENCE-TRIGGER",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|TOOL-DEFAULT-ROOT-FALLBACK": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "DEF-MESH-UNUSED",
+    "RECURRENCE-TRIGGER",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|TRANSPORT-SUBSTITUTED": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "DEF-SWEEP-EXISTING-DIRS",
+    "RECURRENCE-TRIGGER",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEW-HOST-JOINS": [
+     "builder-1",
+     "builder-3"
+    ]
+   }
+  },
+  {
+   "key": [
+    "CMP-RETRACTION-OP",
+    "REQUIRED-UPSTREAM-CHANGE",
+    "ALL"
+   ],
+   "values": {
+    "HOLDS|NEW-VERB-NEEDED": [
+     "builder-2",
+     "builder-3"
+    ]
+   }
+  }
+ ]
+}

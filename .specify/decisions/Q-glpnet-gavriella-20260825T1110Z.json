@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS6-20260825T1110Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-25T11:10:00+00:00",
+  "context": "Session 6, run mrun-20d9230f767b. Raised after merging 5 branches to develop (49 ahead), roadmap round 50, the 09:32Z binding allocation landing, and generating tasks.md for 083. Set 1 of 2 - the four that block work today. Every question is a block I actually hit and could not resolve from the record, because two rulings conflict or a measurement contradicts a spec.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS6-01",
+      "kind": "ruling",
+      "header": "Release",
+      "question": "You asked me to /bk-release any completed, fully-implemented, codex-reviewed feature. Nothing in glpnet meets that bar: 078 is implemented but its codexreview returned NO-GO with 8 HIGH findings, none fixed; 067/067b I merged today under your ruling Q-GLPNETS2-01 which says 'merge both, THEN specify', so they are unspecified and unreviewed; 083 is only at tasks stage. What IS on develop is 50 commits of merged infrastructure - bkquestion tooling, bk-flow/bk-proof skills, BK-REPORT-v1, roadmap round 50, the 067 C# acceptance seam - which builds clean and passes the regression gate. Two live rulings block a cut: Q-GLPNETS1-02 names /bk-release in its blocks, and Q-GLPNETSHIRAS-01 says hold. Do you want a release, or does the hold stand?",
+      "blocks": ["v2026.08.25.1", "50 unreleased commits on develop", "078 ship", "the 083 delivery slices"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Hold, fix 078 tests",
+          "recommended": true,
+          "means": "No cut. Next session fixes tests/faultinj/conformance.py and test_guard_weakening.py, re-runs /bk-codexreview --scope codeconv, and only then cuts a release carrying 078 plus the infrastructure.",
+          "cost": "50 commits stay unreleased another session, and lanes waiting on glpnet's develop wait too. Against that: while a conformance fixture reports full coverage without running a declared case, and a mutation test stays green under a no-op validator, every green run this repo produces is uninterpretable - including the run that would certify the release itself."
+        },
+        {
+          "label": "Cut infrastructure now",
+          "means": "Cut v2026.08.25.1 from develop as-is. It carries no unreviewed product logic beyond the 067 merge you already ruled in; the regression gate is green and the C# build is clean.",
+          "cost": "It tags the 067 acceptance seam, which is merged-but-unspecified by your own ruling, on a repo whose test instruments are known-unreliable. It also breaks Q-GLPNETSHIRAS-01's hold, recorded 3.5 hours ago by another lane in this same repo."
+        },
+        {
+          "label": "Cut without 067",
+          "means": "Revert the two 067 merge commits on a release branch, cut the infrastructure only, then re-merge 067 to develop once it is specified.",
+          "cost": "A revert-and-remerge of a 26-commit and 27-commit pair that already cost a hand-resolved C# semantic conflict in the client-accept path. High chance of losing that resolution and redoing it wrong."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS6-02",
+      "kind": "ruling",
+      "header": "Start gate",
+      "question": "ariellas' binding allocation landed at 09:32Z and gave this lane 22 WPs / 63 pts, 9 claimable immediately. Its start condition reads: 'begin work when YOUR lane's marathon completes its current WIP era - not before. An era ends at /bk-close.' This lane's current era is 078, which cannot close: its codexreview is NO-GO and Q-GLPNETS1-02 orders tests, then product, then re-review, then release. Read literally, this lane claims nothing for several sessions - including the packet that fixes the very supply starvation you have been chasing. I have claimed nothing. Which reading governs?",
+      "blocks": ["all 9 claimable WPs", "wp-feature-supply-chain-end-to-end-superset", "ACK-COMPLIANCE to ariellas", "next session's work selection"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Remediation is the era",
+          "recommended": true,
+          "means": "Treat the 078 NO-GO remediation as the closing work of the current era: fix the two TEST findings, then claim the 9 packets and run them as the next era. Claims land this session or next, not in four.",
+          "cost": "A liberal reading of 'completes its era'. If ariellas meant the strict thing, this lane holds 9 packets while its era is formally open, and the board shows in-progress work the start condition did not sanction."
+        },
+        {
+          "label": "Strict, wait for close",
+          "means": "Exactly what the words say. 078 goes tests, product HIGHs, re-review, ship, close. Only then does this lane touch its bundle.",
+          "cost": "9 claimable packets (24 pts) sit idle for an unknown number of sessions, including wp-feature-supply-chain-end-to-end-superset. The remedy for the starvation waits on the starvation's victim."
+        },
+        {
+          "label": "Claim now, work later",
+          "means": "Claim the 9 packets immediately to establish this lane's ownership on the board, but do no work until 078 closes.",
+          "cost": "Makes the board lie. A claimed packet nobody is working is exactly the stale-claim condition that produced the 077 duplicate allocation, and it removes them from every other lane's reach while idle."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS6-03",
+      "kind": "tie-break",
+      "header": "Report std",
+      "question": "You have twice ordered a standardized sitrep order and roadmap table across all hosts and repos, but two live rulings in this repo's ledger name two different standards one day apart: Q-GLPNETS2-02 (mine, 08-24) makes olamnit's roadmap_open_table.py canonical, and Q-GLPNETSHIRAS-04 (shiras, 08-25) makes buildkit#660's EIGHT-section format the report standard, while the frozen BK-REPORT-v1 declares a SIX-section order. Six is not eight, so until this is settled every lane's 'standardized' report is standardized to a different standard. Which governs?",
+      "blocks": ["every lane's next sitrep", "this session's report format", "cross-lane comparability", "the ACK-LEDGER totals column"],
+      "escalate_after_hours": 6,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Different artefacts, keep both",
+          "recommended": true,
+          "means": "BK-REPORT-v1's six sections are the SITREP standard; buildkit#660's eight are a different, richer report; roadmap_open_table.py is the roadmap TABLE standard and a component of both. No lane has to choose.",
+          "cost": "Only correct if #660 really is a superset rather than a replacement. I have not read #660 - it is a buildkit-repo issue and this lane has no standing there. If it IS a replacement, this entrenches the split for another week."
+        },
+        {
+          "label": "Eight-section supersedes",
+          "means": "Newest ruling wins. BK-REPORT-v1 grows to eight sections and every lane regenerates against it.",
+          "cost": "BK-REPORT-v1 is FROZEN fleet-wide pending authorship resolution, and 13 lanes are instructed to run it. This requires breaking the freeze, or lifting it first."
+        },
+        {
+          "label": "Six-section stands",
+          "means": "The fleet standard is the frozen generator; Q-GLPNETSHIRAS-04 binds shiras' lane only.",
+          "cost": "Overrides a later ruling with an earlier one, and does it across lanes rather than within one. That has to be your call, not mine."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS6-04",
+      "kind": "ruling",
+      "header": "083 scope",
+      "question": "Generating tasks.md for 083 surfaced three defects the spec and plan did not anticipate, on top of the two already recorded. A-4: all four proposals in propose.generate_proposals() are unconditional literals and cmd_propose always exits 0, so repairing a golden would not remove its proposal and SC-001 can never be observed. A-3: apply_proposal() enforces the approval gate then mutates nothing, and --apply applies proposals[0] regardless of what --approve names, so the spec's assumption that the existing flow is the delivery mechanism is false. A-5: the goldens live in a separate git repo on a non-default branch with 45 dirty files. 083 is scored 'effort small, risk low'. How should it be scoped?",
+      "blocks": ["083 implement", "SC-001", "SC-003", "SC-007", "083's size and risk score"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Split the mechanism out",
+          "recommended": true,
+          "means": "Carve A-3 and A-4 - make the report derived, make apply actually apply and record - into their own feature; they are the real work and they are not small. 083 keeps the two golden repairs and the ch07 vendoring. Re-score both. A-5 gets its own ruling on cross-repo write authority.",
+          "cost": "Two features instead of one, and a re-score of a feature already ranked 3rd by WSJF. Against that: 083 as scored is a small data repair, but what is actually required is rebuilding the propose/apply mechanism, and shipping that under a 'small, low risk' label is how a slice comes to claim an SC-001 it cannot meet."
+        },
+        {
+          "label": "Keep whole, re-size",
+          "means": "Leave scope as one feature, amend the plan with A-3, A-4 and A-5, re-size it midi or maxi rather than small, and run it as one era.",
+          "cost": "A single era spanning a mechanism rebuild plus cross-repo data repair will blow the 1.5-6h era band badly, and takt calibration is already thin at 19 of 111 steps measurable."
+        },
+        {
+          "label": "Narrow to golden repairs",
+          "means": "Drop US2 and US3 entirely. Repair the two ch04 goldens by hand with a recorded rationale and close it small.",
+          "cost": "Abandons FR-004, FR-005, FR-006, FR-007 and four success criteria, and leaves the corpus repaired but the guard still saturated - so the next drift is as invisible as this one was."
+        }
+      ]
+    }
+  ]
+}

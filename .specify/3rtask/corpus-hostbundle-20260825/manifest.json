@@ -1,0 +1,31 @@
+{
+  "slices": [
+    {
+      "slice_id": "board-substrate-and-execution-contract",
+      "description": "WHAT + HOW. The glpnet scheduler board folded from the durable per-actor CRDT op logs (every work packet, its state, owner, claim and allocate history) PLUS the execution contract that governs when a host may start allocated work (the live marathon run on this lane, the marathon and bk-flow CLI contracts, the ariellas restart record naming the current WIP era). Speaks to: which packets exist and are allocatable, and what finishing the current era means.",
+      "sources": [
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-w1-board-ops-fold.md",
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-p2-execution-contract.md"
+      ],
+      "assigned_to": "builder-1"
+    },
+    {
+      "slice_id": "declared-capabilities-and-roadmap-record",
+      "description": "WHO + WHAT. Every capability declaration on the board (roles, tools, skills, verified flags, evidence audit, and which board actors have no caps stream at all) PLUS the signed roadmap export record of what each candidate work item actually is (state, spec_path, effort, risk, touched_areas, problem, dependency edges, and the slug-to-wp_id derivation). Speaks to: what each host claims it can do, and what each packet actually requires.",
+      "sources": [
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-h1-declared-capabilities.md",
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-w2-roadmap-record.md"
+      ],
+      "assigned_to": "builder-2"
+    },
+    {
+      "slice_id": "standing-rulings-and-host-locality",
+      "description": "HOW + WHO. The standing rulings and allocation protocol binding on every glpnet lane (the ERA-IS-A-FEATURE engineer ruling, the fleet broadcasts, the outstanding lane-split proposal, the scheduler's own allocate/transition/reject/confirm CLI contract, and the engineer's 2026-08-25 two-dimension runnability ruling) PLUS measured host liveness, physical fleet topology, platform/WSL facts and host-locality evidence. Speaks to: what an allocation is allowed to be, and which host each packet is physically pinned to.",
+      "sources": [
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-p1-standing-rulings.md",
+        ".specify/3rtask/corpus-hostbundle-20260825/slice-h2-operational-liveness.md"
+      ],
+      "assigned_to": "builder-3"
+    }
+  ]
+}

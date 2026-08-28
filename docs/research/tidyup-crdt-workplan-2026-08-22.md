@@ -33,11 +33,28 @@ is measured today, not carried forward.
 | X11 | Backfill 59 tag GitHub Releases | mini | 7 | ⛔ BLOCKED | `gh release create` refused by the auto-mode classifier |
 | X12 | Make `buildkit release` publish the Release | midi | 11 | 🔴 ENGINEER | root cause of X11; the gap re-opens on every cut |
 | X13 | 4 claimed-but-never-ready WPs | micro | 3 | 🤝 PEER | ariellas ×3, olamnit ×1 — not mine to transition |
-| X14 | `/bk-implement` 078 through to close | saga | 35 | ▶ NEXT | WSJF rank #1 fleet-wide (7.80); WP ready + allocated + bound |
+| X14 | `/bk-implement` 078 through to close | saga | 35 | ◐ PART-DONE | 3 of 66 tasks shipped; **54 of 66 target `bk:` (buildkit)** — blocked on the two-repo ruling |
+| X15 | 078 US4 harness slice (T045/T046/T047) | midi | 11 | ✅ DONE | shipped in **v2026.08.22.1**; 2 codexreview rounds, 8 findings, all closed |
+| X16 | Release `v2026.08.22.1` | micro | 3 | ✅ DONE | tag on `origin/main`, verified by content |
+| X17 | Roadmap rounds 31 + 32 | micro | 3 | ✅ DONE | both publish legs OK each round |
 
-**Delivered: 20 pts** (X01–X06) — **Remaining: 112 pts**, of which **56 are engineer rulings**
-(X07 · X10 · X12), **7 permission-blocked** (X11), **3 peer-owned** (X13), and **46 agent-executable**
-(X09 · X14, with X08 gated on X07).
+**Delivered: 37 pts** (X01–X06 · X15 · X16 · X17) — **Remaining: 95 pts**, of which **56 are
+engineer rulings** (X07 · X10 · X12), **7 permission-blocked** (X11), **3 peer-owned** (X13), and
+**29 agent-executable** (X09, plus X14's `gn:` remainder; X08 gated on X07 and X14's bulk on the
+two-repo ruling).
+
+### What shipped in v2026.08.22.1
+
+078's three glpnet-local US4 tasks — applying 078's own thesis to the merge gate. The staleness
+guard **immediately caught a live stale binary** (built 08-16, source 08-19) and the suite honestly
+reported `554/552/2 Unsearchable 1`: **seven checks in the 561/559/2 baseline were coming from a
+binary older than its own source.** After `dotnet build` the suite returned to `561/559/2/0/0` and
+**the two Section T failures survived the rebuild — they are real defects, not stale-binary
+artifacts**, unlike the wave-13 077 case.
+
+Two review rounds raised 8 findings, all correct, all closed. The sharpest: the summary printed
+*"N group(s) did not run"* and then **exited 0** — the truth on stdout, a lie to the caller. And
+**B2 was a regression I introduced** while rewiring Section U, caught by review rather than by me.
 
 ---
 

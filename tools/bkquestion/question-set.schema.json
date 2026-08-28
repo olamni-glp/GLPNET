@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://olamni-research.github.io/schemas/bk-question-set-1.json",
+  "title": "bk interactive question set",
+  "description": "A pre-coded, modifiable question set for putting engineer-input blocks interactively. Modelled on the harness's built-in interactive prompt so a validated set renders straight into it, with the five things the built-in shape does not carry: a stable id, a declared kind, a validated cost per option, a recorded decision, and an escalation path. Copy TEMPLATE-question-set.json, edit it, run `bkquestion validate`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "set_id", "lane", "repo", "raised_at", "questions"],
+  "properties": {
+    "schema_version": {
+      "const": "1",
+      "description": "Bumped only on a breaking change. A reader that does not recognise the value must refuse rather than parse optimistically."
+    },
+    "set_id": {
+      "type": "string",
+      "pattern": "^Q-[A-Za-z0-9]+-[0-9]{8}T[0-9]{4}Z$",
+      "description": "Stable identity for the whole set, e.g. Q-020-20260824T0810Z. Cite this in a commit, a spec, or a coop letter. Without it an answer is recoverable only from a transcript, which is where today's rulings live and why this field exists."
+    },
+    "lane": { "type": "string", "minLength": 1 },
+    "repo": { "type": "string", "minLength": 1 },
+    "raised_at": { "type": "string", "format": "date-time" },
+    "context": {
+      "type": "string",
+      "description": "Optional one-paragraph situation shared by every question in the set. Per-question background still belongs IN the question."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "description": "At most four. The built-in prompt takes four; a fifth question means the set should be split, not squeezed.",
+      "items": { "$ref": "#/$defs/question" }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "header", "question", "options"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^Q-[A-Za-z0-9]+-[0-9]{2}$",
+          "description": "Stable per-question id, e.g. Q-020-03. This is what a later document cites."
+        },
+        "kind": {
+          "enum": ["ruling", "prioritisation", "tie-break", "risk-acceptance", "clarification"],
+          "description": "Why the kind is declared: a risk-acceptance SHOULD expire and a ruling should NOT. Collapsing them is how a temporary acceptance becomes permanent policy without anyone deciding that it should."
+        },
+        "expires_after_days": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Required for kind 'risk-acceptance', forbidden for kind 'ruling'. Enforced by the validator, not by convention."
+        },
+        "header": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12,
+          "description": "The chip label. 12 characters is the built-in prompt's limit, checked here so the failure is at authoring time rather than at ask time."
+        },
+        "question": {
+          "type": "string",
+          "minLength": 40,
+          "description": "The complete question, carrying its own BACKGROUND: what was found, where, and why it needs a human. A question needing three paragraphs of preamble to be answerable is not yet a question. Ends with '?'."
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What is blocked until this is answered. An unanswered question with nothing named here is not blocking, and should not be asked interactively."
+        },
+        "escalate_after_hours": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "How long this may sit unanswered before it is escalated. Null means never escalate — legitimate for a non-blocking clarification, and a smell on anything else."
+        },
+        "multi_select": { "type": "boolean", "default": false },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "description": "Two to four. The built-in prompt adds a free-text 'Other' automatically, so do not author one.",
+          "items": { "$ref": "#/$defs/option" }
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "means", "cost"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "1-5 words. Do NOT append '(Recommended)' by hand — set `recommended: true` and the renderer adds it, so exactly one option can carry it."
+        },
+        "recommended": {
+          "type": "boolean",
+          "default": false,
+          "description": "At most one per question. The renderer moves it first, because an engineer accepting a recommendation should need one keystroke."
+        },
+        "means": {
+          "type": "string",
+          "minLength": 20,
+          "description": "What choosing this actually does."
+        },
+        "cost": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What choosing this GIVES UP. Mandatory and validated, not conventional: an option with no stated downside is advocacy wearing the costume of a choice, and a set of those is a decision already made."
+        }
+      }
+    }
+  }
+}

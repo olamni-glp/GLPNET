@@ -1,5 +1,329 @@
 ## [Unreleased]
 
+## [v2026.08.27.6] - 2026-08-27
+
+### Changed
+- roadmap(onrestart): codify + capture + score + promote 'bk-onrestart two-window multi-tab fleet resume, auto-installable on any host' (WSJF 4.2 / RICE 1200); round 57 - 21 epics/122 features; 15 lanes registered with win1/win2 allocation, 15/15 launchable exit 0
+- Merge pull request #242 from olamni-glp/main
+
+## [v2026.08.27.5] - 2026-08-27
+
+### Changed
+- correct 5 stale TargetFramework comments that still claimed net10.0 repo convention after the net11.0 retarget, and record the deliberate mixed edge (generated out/csharp/glp_runtime_net stays net10.0 - retargeting it means changing the codeconv generator, not this tree)
+- retarget all 23 csharp projects net10.0 -> net11.0 under the mandated .NET 11 / C# 15 pin - baseline 23/23 built clean before, 23/23 build clean after, and all 10 test projects pass on net11.0 (1111 tests, 0 failed, 0 skipped)
+- pin .NET 11 SDK and MANDATE C# 15 repo-wide - global.json pins 11.0.100-preview.7, Directory.Build.targets forces LangVersion=preview because .props LOSES to the 14 projects that set LangVersion=latest, and 'latest' is C# 14.0 not 15
+- Merge pull request #240 from olamni-glp/main
+
+## [v2026.08.27.4] - 2026-08-27
+
+### Changed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- session-9 cycle-3 close - v2026.08.27.3 released; I REFUTED my own import-emptiness discriminator (non-empty import still lossless); engine version is the unifying axis behind 3 pin-dependent defects; BK-STD-1 fix robust across catalog growth and a new state value
+- Merge pull request #238 from olamni-glp/096-host-interconnectivity-hardening-evidence
+- round 56 - import 35 new lines from 6 files (non-empty), reconcile, dedupe 0 groups over 120 live, export 21 epics/121 features/3890 journal lines; import-refused ledger measured LOSSLESS on a NON-EMPTY import, refuting my own discriminator hypothesis
+- rev4 - P0 coop dead-drop rootcause + fix persisted, PR 235 merged, 4 engineer rulings, next=ZA01 bk-plan on 083
+- Merge pull request #237 from olamni-glp/main
+
+## [v2026.08.27.3] - 2026-08-27
+
+### Changed
+- Merge pull request #235 from olamni-glp/096-host-interconnectivity-hardening-evidence
+- rounds 51-52 - 21 epics/121 features/3871 lines; round 52 fixes the coop mirror to the shared volume
+- session-9 cycle-2 close - v2026.08.27.2 released, Q-GLPNETS8-04 and WinError 4551 confirmed fixed live, counter-measurement filed (import-refused rewrite is lossless here so the false-green is conditional not unconditional)
+- round 55 - sync/reconcile/dedupe/export after v2026.08.27.2
+- Merge pull request #234 from olamni-glp/main
+- rev3 corrected - 091 branch was merged and deleted; 9 commits moved to 096 branch, unpushed (HTTP 408 + classifier)
+- rev3 reboot prep - SHIRAS rootcause, HIH feature promoted in buildkit, 7 self-retractions, push and checkpoint BLOCKED by classifier
+- host-interconnectivity CRDT dossier + 3 codify notes; feature promoted in buildkit, glpnet copy rejected as duplicate
+- shiras durable-fix synthesis - NO component is durable, all are optional; only the lane-registry sweep is buildable from existing verbs
+- corpus addenda - platform declaration, six dead detectors, divergent roots, provenance/identity/version constraints
+- shiras root-cause + fix corpus - 3 disjoint slices from first-party SSH measurement
+- per-host WP bundle claim sheets - SHIRAS 6 gaps, OLAMNIT 1, GAVRI 1; C1 discharged for ARIELLAS by first-party measurement
+- four-host bundle claim instructions - prerequisite bundles per host, lane mapping resolved, ACK required
+- four-host WP bundle partition - ZERO packets verify runnable on any host; blockers are unmeasured hosts, inert capability gate, 31-of-32 binding gap
+- host-bundle allocation corpus - 6 rotated disjoint slices + manifest for the four-host WP partition
+
+## [v2026.08.27.2] - 2026-08-27
+
+### Changed
+- import-refused ledger rewrite after round 54 - measured LOSSLESS, 7011 entries / 561 guids unchanged, 0 guids dropped (refutes the false-green rewrite concern for this lane)
+- session-9 CLOSE - all 4 rulings executed, v2026.08.27.1 released (71 commits); 3 corrections (BK-STD-1 cause is upstream status not the filter, 2026.8.26.2 not installed so pinned 2026.08.26.1, takt verdict was effort read as ELAPSED and is OVER not in-band); Q-GLPNETS8-04 discharged - STUCK-lock now probes liveness
+- round 54 post-release - sync/reconcile/dedupe/export after v2026.08.27.1
+- Merge pull request #232 from olamni-glp/main
+
+## [v2026.08.27.1] - 2026-08-27
+
+### Added
+- promote the feature (WSJF 3.0 / RICE 1755) + two multi-contributor CRDT docs - 6 root causes and 9 FRs with 6 SCs, add-wins union by owner-namespaced id, disagree-by-supersession, every FR traces to an RC
+- shiras/glpnet onboard - adopt bkquestion byte-identical, record 4 engineer rulings, scheduler three-stage leak root-cause
+- surface provisioning event lines in supervisor, fold T026 loopback friction into quickstart+cli-contract
+- --derived-dir client plumbing, ERR token exit map, session PROVISION_REDEEMED consumer (T014/T020)
+- C# acceptance seam - DerivedCredentialValidator, extended pin callback, replay refusal, PROVISION_REDEEMED (T012/T013/T019/T020)
+
+### Fixed
+- backfill not-closed features that roadmap status omits - table now reports 26 and reconciles with BK-REPORT-v1 section 1; the dropped row was the implemented feature 067, and the backfill binds to THIS lane's export (a bare glob picked olamnit's 4-day-stale one)
+- reject non-string path components and run_ids instead of coercing - str(0) would write under a '0' dir while keeping int 0 in the receipt, bypassing the run binding and reopening prior-run PASS reuse; 14/15 mutants killed
+- close the 4 HIGHs from re-review 20260826T084941Z - run_id mandatory on receipt-backed verdicts, EMPTY requires zero counts on the loaded path, negative counts rejected, receipt paths confined to the root; 13/14 mutants killed (path-confinement backstop marked NOT test-covered)
+- close the 6 product HIGHs + 2 MEDs - receipt run_id identity binding, FR-010 examined+skipped reconciliation, an earned PASS branch, expected-set refusal, sidecar-loading run reconciliation, reason-scoped overrides; 9/9 mutants killed
+- the two TEST findings - conformance coverage is case-keyed (BOUNDED + OVERRIDDEN now actually run) and the SC-007 mutation test now goes RED under a no-op validator
+
+### Changed
+- decisions(glpnet): record 4 engineer rulings Q-GLPNETS9-01..04 - waive and release, leave 083 on branch, re-pin to 2026.8.26.2, fix BK-STD-1 here and broadcast
+- questions(glpnet): Q-GLPNETS9 set - release gate after round-3 HIGH, 083 unmerged spec artifacts, WinError 4551 vs the engine pin, BK-STD-1 table dropping the implemented row; validated against bkquestion schema+rules
+- session-9 addendum - 078 mutation survivor CLOSED 15/15 honest, roadmap round 53, COOP ACK sweep x5 with measured mandatory discharge, Q-GLPNETS8-02 discharged; 4 traps measured incl wrong-cwd 12 phantom failures and WinError 4551 blocking the pinned engine; release STILL held
+- round 53 - sync import 0 new lines over 2 files, reconcile 15/21 pipeline ids bound (6 unbound), dedupe 0 groups over 119 live, export 20 epics/120 features/3855 journal lines, both publish legs OK
+- cover the _confine containment backstop at its own boundary - closes the published 1/15 mutation survivor; both mutants killed, 15/15 honest
+- session-8 addendum - 3 review rounds, 19 findings closed, RELEASE STILL NO-GO because the ruling's ship condition (only MEDIUM/LOW) was not met; every round found a defect INSIDE the previous round's fix; 078 takt coverage is 100pct not the fleet's 6pct; STUCK-lock diagnostic false a 7th time
+- round 52 - reconcile in-sync, dedupe 0 groups over 119 live, export 20 epics/120 features/3854 journal lines
+- session-7 addendum - all 10 codexreview findings closed with 9/9 mutants killed; run_id and the examined+skipped rule were ALREADY in data-model.md, not extensions; 9/9 packets claimed; two findings on the claim instructions themselves
+- session-6 addendum - HOST-INTERCONNECTIVITY-HARDENING is in BUILDKIT not glpnet; CRDT store is merge-on-read (8 FRs + 8 RCs contributed); codex caught a false corroboration in my own record, withdrawn as rev2; allocation landed 22 WPs/63pts; 3 new tooling defects
+- round 51 - reconcile in-sync, dedupe 0 groups over 119 live, export published, barrier 4/4; glpnet duplicate of host-interconnectivity-hardening withdrawn
+- withdraw the glpnet host-interconnectivity-hardening duplicate - the feature belongs in buildkit (engineer ruling); this lane's 8 RCs + 8 FRs contributed to the fleet CRDT store instead, and the standalone .crdt.md pair is superseded by the merge-on-read store
+- decisions(glpnet): record 6 engineer rulings from session 6 - release hold, remediation-is-the-era, six-vs-eight report standards, 083 mechanism split, renderer fix, buildkit link verb
+- gate CONFIRMED on baseline after Debug rebuild - 561/559/2/0 unsearchable 0, zero regression over 5 merges; exit 1 (2 known 064 drills) vs exit 2 (a group did not run) are different verdicts
+- session-6 close - THE FEATURE SUPPLY OPENED (22 WPs/63pts allocated 09:32Z, 3 engineer asks are already packets); 6 rulings recorded; SELF-CORRECTION dropped-implemented is a roadmap-status defect not a renderer defect; shiras onboarded 1h47m after the freeze that blocks it; olamnit's board copy folds empty
+- decisions(glpnet): raise 6 engineer questions in 2 validated bkquestion sets - release gate, allocation start condition, six-vs-eight section report standard, 083 scope after 3 new gates, hidden implemented row, roadmap link verb
+- round 50 - import 4 files/13 lines, reconcile in-sync (6 pipeline ids unbound), dedupe 0 groups over 119 live, export 120 features, both publish legs OK, barrier 4/4
+- merge(067): qr-link-provisioning - the 5 commits unique to 067 not carried by 067b (engineer ruling Q-GLPNETS2-01)
+- merge(067b): qr-link-provisioning continuation - C# acceptance seam, DerivedCredentialValidator, replay refusal, PROVISION_REDEEMED, --derived-dir plumbing, T012-T027 implement stage complete (engineer ruling Q-GLPNETS2-01 merge both then specify)
+- merge(tidyup-olamnit): X03 workplan ledger reconcile, bk-flow + bk-proof SKILL.md, BK-REPORT-v1 at .specify/standards/bk_report_v1.py
+- merge(091): ariellas round 48 sync, ZA-series 20-step CRDT plan, BK-REPORT-v1 generator, BK-STD-2 engineer questions Q01-Q04, restart rev2
+- merge(095): shiras/glpnet onboard - bkquestion tooling (TEMPLATE-question-set.json + schema + CLI), 7 engineer rulings, scheduler three-stage leak root-cause, host-wide deploy-home registry contention finding
+- host-wide deploy-home registry contention - the lock error names the wrong repo, cost 11 captures
+- specified-feature audit (2 state contradictions, 067 stranded off trunk), clean worktree survey, bk-flow migration is next session's first task
+- correct the PR blocker - gh default repo was the sibling GLP repo, not the rate limit; PR #230 open
+- session-1 close for mrun-f77f62158255 - shiras/glpnet onboard, three-stage scheduler leak root-caused, 7 rulings recorded
+- X03 reconcile workplan ledger — T02-T12/H01-H03 all DONE (T03-T06 unblocked via scoped bypass)
+- install bk-flow + bk-proof SKILL.md (M01 Phase A; bk-flow hand-installed from buildkit git template due to packaging gap in 2026.8.23.1)
+- rev2 updated - ZA-series 20 steps landed, lane-split proposed, ZA00/ZA01/ZA08 are the unblocked start
+- specified-features completion CRDT plan - 20 durable steps in mrun-f5ef56dba3c1; Z-series independently confirmed cell-by-cell; all 4 merge commits verified on develop; lane-split proposed
+- adopt fleet BK-REPORT-v1 generator (canonical 6-section sitrep order + takt-ducklake retrieval) at .specify/standards/bk_report_v1.py
+- rev2 safe-restart prep - release v2026.08.24.1 cut, 4 rulings recorded, 3 self-corrections logged
+- Merge pull request #227 from olamni-glp/main
+- round 48 sync + adopt BK-REPORT-v1 generator + BK-STD-2 engineer questions Q01-Q04
+- supersede the INERT gitignore warning — glpquick material rotated
+- roadmap: sync round 153835Z - import 0-delta (190 untagged refused), reconcile clean, 0 dups, 105 live/17 open, export published, replay-verify OK
+- roadmap: RCA clustering landed - 6 features from ~300 deduplicated fleet defects (3rtask run 20260811T113723Z-1f7c), 5 ordering edges, 6 backlog issues legitimated into F4; 105 live / 17 open
+- roadmap: import-manifest + refused-log after ariellas 111Z export (0-delta, untagged refusals unchanged)
+- mark T026/T027 done with recorded suite counts - implement stage complete
+- DerivedCredentialTests matrix + RedemptionTracker + python lifecycle tests (T015/T021)
+- T002 verify half complete - cert dirs untracked post-069, .gitignore warning resolved
+- roadmap: US2 dispositions advanced - atomic-toolchain-installs + batch-advance-calver -> shipped (buildkit PRs #299/#300 MERGED by engineer, commits verified in develop); sync round, export published, replay-verify OK
+- untrack glpquick-cert/ on this branch (matches develop/main since v2026.08.10.1) - the .gitignore rule was inert while the files were tracked; 3rd-gen material must never be committable
+- roadmap: sync round - import 0-delta (190 untagged refused, 5th consecutive no-op round), reconcile clean, 0 dups, 99 live/11 open, export published, replay-verify OK
+- roadmap: sync round 163006Z - import 0-delta (190 untagged still refused), reconcile clean, 0 dups, 99 live/11 open, export published, replay-verify OK
+- roadmap: sync round 000109Z - import 0-delta (190 more untagged refused), reconcile clean, 0 dups, 99 live/11 open, export published, replay-verify OK
+- roadmap: sync round 235430Z - import 5 files/0-delta (954 untagged entities REFUSED by policy - peers on newer project-scope tagging), reconcile clean, 0 dups, 99 live/11 open, export published, replay-verify OK
+- impl(067): US3 decode vectors published (T022/T023) - 6 GQP1 vectors + 10 conformance tests; retracts the wrong deferral (payload contract is producer-consumer, independent of the C# seam)
+- roadmap: import-manifest after ariellas 075700Z import (0-delta, converged)
+- roadmap: sync after both peer ships - 99 live / 11 open (ariellas gap-closure closed by their v2026.08.04.1), export published, replay-verify OK
+- impl(067): Python producer complete - derived-cert minting, GQP1 payload codec, encrypted envelope, session lifecycle, display-only QR, non-secret PDF, append-only audit/revocation, join intake, provision CLI; 39 tests green
+- roadmap: sync round 164321Z - import 0-delta (50 files), reconcile clean, 0 dups (99 live/12 open), export 18/99/2740 published, replay-verify OK
+- roadmap: import ariellas 163034Z (3 lines) + re-export/publish, replay-verify OK
+- roadmap: sync round 162541Z - import 0-delta (45 files), reconcile clean, 0 dups (99 live), export 18/99/2737 published, replay-verify OK
+- roadmap: sync round 2 - imported ariellas 153531Z + olamnit (79 lines), 99 live / 12 not-closed, 0 dups, export published, replay-verify OK
+- roadmap: sync round 153055Z - import 0-delta, reconcile clean, 0 dups (99 live), export 18/99/2658 published, replay-verify OK
+- analyze(067): 0 critical - remediate R-003 keypair-mint wording, plan token hygiene, SC-001 timing fold into T026
+- tasks(067): 27 tasks across setup/foundational/US1-US4/polish - US1 MVP one-scan onboarding
+- plan(067): qr-link-provisioning design - Python glp_quick producer + C# join-seam derived-cert acceptance, GQP1 payload contract, append-only lifecycle stores
+- roadmap: sync round import-manifest update
+- roadmap: sync round - import 0-delta, reconcile clean, 0 dups (99 live, 067 specified), export 18/99/2658 published, replay-verify OK
+- spec(067): clarify session - 5 delegated defaults (trunk-signed per-device certs, join-seam revocation, device fingerprint binding, TTL/session/enforcement defaults, PDF P4 in scope)
+- spec(067): qr-link-provisioning specification - one-scan provisioning with mandatory security posture (derived credentials, encrypted QR, audit+revocation)
+
+## [v2026.08.24.1] - 2026-08-24
+
+### Added
+- install the two SHIPPED fleet report generators; withdraw my forked one
+- emit the fleet STANDARD REPORTS R-1 roadmap, R-2 sitrep, R-3 tact in the exact ruled shapes
+- record FR-002 ruling (b) record-the-rejection, FR-009 in scope; install bk-flow and bk-proof skills from buildkit templates
+- adopt the fleet standardised not-closed roadmap table in glpnet
+- MVP verification-receipts mechanism (US1+US2+US3) - codeconv.receipts package (outcome/receipt/consumer/manifest/override/bind/paths), reference check + conformance fixture, 13 fault-injection test files (29 tests green); adoption manifest checked in (reference adopted, 4 glpnet areas non-adopted)
+- T031a: extend olamnit DSDV into the NAT-piercing internet overlay
+- P6 US4: real relay forward - circuit-relay-v2 + Tor-cell, ciphertext-only (T028-T033)
+- US2 NAT hole-punch + S-Kademlia DHT foundation (T017-T022, P3)
+- first-class capability exposure + resolver seam (T015; T014/T016 complete)
+- real MsQuic wire (QuicWireChannel) + authenticated handshake (T011)
+- real US1 link session — handshake + ECDH-sealed send/receive (T014/T016)
+- Ed25519-primary node identity + P-256 fallback (DEC-CRYPTO-1)
+- implement — real+tested native crypto/policy core (29/29 green)
+
+### Fixed
+- T031a: bind route ingest to the authenticated peer (route spoofing)
+- T031a: codex review cycle 2 - separate link KIND from link STATE
+- T031a: three codex-review findings in the DSDV internet extension
+- codexreview — fix 6 real bugs from adversarial review (34/34 green)
+
+### Changed
+- session-5 rev2 - 12 engineer rulings recorded and citable; Z-series landed (14 steps, mitem-01a03540); engine version skew requires --engine-override ambient for takt verbs; codexreview run records 0s duration and no tokens
+- round 49 - import 0 new lines from 2 files, reconcile in-sync, dedupe 0 groups over 118 live, export 20/119/3823, both publish legs OK
+- record 12 engineer rulings via bkquestion-v0 - 8 rulings, 2 tie-breaks, 2 risk-acceptances with expiries
+- specified-features completion CRDT plan - ALL SIX already have code on develop, so the stall is in the record not the work; 083 is unblocked and ready for /bk-plan; 4 gates owed (Udi 1.14 on 080, homing on 085/082, G2 on 065)
+- record the session-5 capture gap - 7 marathon rows did not land; registry lock held ~50min by concurrent pytest runs; kinds corrected and retry driver checked in
+- STUCK-lock verdict now false 6 times across two independent live holders - it means busy and nothing more; Get-CimInstance names the holder in one step
+- record the verified merge gate - 561/559/2/0 identical to baseline, zero regression across both merges
+- session-5 close - codexreview UNBLOCKED and root-caused, review ran NO-GO with 8 HIGH on 078 itself; SCHED-R4 discharged; 2 branches merged; 10 engineer blocks published
+- codexreview UNBLOCKED - root-caused to a git pathspec quirk, not a buildkit defect; the review then ran and returned NO-GO with 8 HIGH findings on the receipts module itself
+- round 48 - import 0 new lines from 8 files, reconcile in-sync, dedupe 0 groups over 118 live, export 20/119/3823, both publish legs OK
+- merge(olamnit): ERA definition + BK-STD-1 sitrep/takt/snapshot-guard generators + 3 exports; both add/add conflicts resolved to develop (owners.json theirs was empty; open-table theirs is a second renderer - fork flagged, not silently picked)
+- merge(091): bkstd1 round42 - ariellas lane roadmap round 47, bk-flow + bk-proof skills, restart prep (clean probe)
+- publish the 20260824T145416Z export - the dependency source for SCHED-R4 edge stocking
+- publish exports from the standard-reports read path
+- session-4 close - Y05/Y08/Y10/Y11/Y12/Y13 done, origin at 14 heads, 0 open PRs; adds the lake double-count rule
+- sync round 50 - import applied, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #225 from olamni-glp/tidy-y08-merge-051
+- merge(TIDY-Y08): 051-ynet-transport onto develop - engineer-ruled Q3 triage outcome
+- session-3 close - the release gate is a codexreview tool defect, not missing work
+- Merge pull request #224 from olamni-glp/078-codexreview
+- two defects that together block every release on this host
+- session-2 close - 078 MVP recovered and green on develop, codexreview is now the single gate to release
+- sync round 49 - import applied, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #223 from olamni-glp/q1-merge-078-archived-mvp
+- safe-restart prep for mrun-f5ef56dba3c1, ariellas lane, GLPNET
+- merge(078): recover the archived 078 MVP implementation onto develop - engineer-ruled Q1
+- record the takt DuckLake fleet-root defect that hid this host from every fleet takt query
+- round 47 sync + adopt ruled open-table renderer (drops implemented state - defect filed)
+- safe-restart prep for mrun-20d9230f767b, gavriella lane, GLPNET
+- sync rounds 47 and 48 - import applied both legs, reconcile in-sync, dedupe 0 groups across 118 live
+- Merge pull request #221 from olamni-glp/091-bkstd1-round42
+- Merge pull request #222 from olamni-glp/tidy-y05-merge-066
+- export 20/116/3762 (23:25 refresh) - reconcile in-sync, import 0-new-lines, dedupe 0 groups/115 live
+- SCHED-R6 and SCHED-R7 measured on the glpnet board root
+- merge(TIDY-Y05): 066-wave6-consolidation spec dir onto develop - 4 conflicts resolved (3 keep-deleted: feature.json/import-manifest/abandon.cs; CLAUDE.md BUILDKIT block keeps active 078), net +13 spec files 1213 insertions 0 deletions
+- sync round 46 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- sync round 42 - reconcile in-sync, 0 dup groups, export 20/118/3806 both legs
+- sync round 45 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- Merge pull request #220 from olamni-glp/main
+- adopt fleet-standard BK-STD-1 tooling (roadmap_open_table + marathon_sitrep + takt_report + snapshot_guard) from qhstate d1f64b4; re-pin glpnet engine 2026.8.23.1
+- export 20/116/3762 (17:01 refresh) - full-identity not-closed feature render
+- adopt VERBATIM authoritative engineer ruling (ERA=FEATURE, nine-stage span, no lossy compression, era-verb is buildkit-lane surface) - supersedes paraphrase; fleet-aligned crucible 697ba70+773396c
+- canonical ERA==FEATURE definition (engineer ruling 2026-08-23) - full /bk-specify->/bk-close arc; lossy feature compression forbidden; fleet-aligned w/ crucible 697ba70
+- export 20/116/3762 (2026-08-23T16:52 refresh for not-closed table)
+- sync 2026-08-23 - import 1 new, reconcile, dedupe 0 groups (115 live), export 20/116/3762; olamnit scheduler onboard 35d 3x8h + directive items D01-D05 captured
+- safe-restart handover + pre-existing-failures filing - MVP implemented+green (29/29), next=codexreview; 18 pre-existing codeconv failures filed separately (engineer-ruled)
+- tasks(078): 42 tasks by user story - MVP=Phases 1-5 (setup+foundational+US1+US2+US3 on reference check)=first SHIP-TOKEN increment; US4 retrofit of 6 areas + SC-corpus post-MVP incremental
+- plan(078): verification-receipts plan+research+data-model+contracts+quickstart - MVP mechanism first (US1-3 on reference check), sidecar JSON receipts, buildkit-owned contract bound by version, 5-value outcome non-collapse, per-repo manifest + per-run expected-set; all gates PASS
+- clarify(078): ratify 6 provisional decisions (blocks 24-29) - engineer individually ruled all six on adopted option, none overturned; provisional caveat superseded
+- impl(066): US2 LANDED - ITEM-01/ITEM-02 disposed, both PRs merged by engineer and feature commits verified in develop; advanced to shipped (not closed - no buildkit release yet, and closed is the one-way door)
+- impl(066): ITEM-03 work chain COMPLETE - olamnit shipped Dart/codeconv half as v2026.08.05.1 (verified); .3 moot by day-roll; live confirmation of the import-manifest friction
+- impl(066): ITEM-03 dispute WITHDRAWN (olamnit shipped 065 as v2026.08.04.2, verified); ship-round table - both peers shipped, ours alone uncut on the systemic engineer gate; next free CalVer .3
+- impl(066): ITEM-06 RESOLVED (1.14 approval 20260804 Gabi+Udi postdates G5 rider - supersession stale, revived under olamnit/065); fleet finding: closed is a one-way door in the roadmap CLI; CalVer .2 ACKed uncontested
+- impl(066): EXT.ariellas SATISFIED - 064 shipped v2026.08.04.1 + closed, tag/back-merge independently verified; ITEM-04 disposed by owner; T023 gate arithmetic recorded (still G1+R6-R12 gated, brief was one gate short)
+- impl(066): peer-round record 2026-08-04 - ITEM-03 DISPUTED + ITEM-06 CONTRADICTED (antlr4 1.14 approval postdates rider), EXT.olamnit satisfied, EXT.ariellas reclassified engineer-blocked, ITEM-02 corrected to 2 baseline failures
+- roadmap: sync round - import/reconcile clean, 0 dups, export published, replay-verify OK
+- impl(066): record ariellas 003500Z peer escalations (bridge auth asymmetry a-d) in evidence inventory; their v2026.08.04.1 claim ACKed, our 064 takes next free
+- impl(066): US2 both items implemented on pushed buildkit branches (634d4a0a, 554836f6), dispositions gated on engineer landing; T006/T008 ticked, T007/T009 landing-gated
+- impl(066): ITEM-05 qr-link-provisioning graduation proposal - mandatory security posture + cross-repo consumer => own feature pipeline; T013 superseded, T014 engineer-gated
+- roadmap: sync round post runtime-consol close - export published, replay-verify OK
+- impl(066): US3 glp-runtime-consol closed - abandon.cs dead stub tombstoned (error-level Obsolete, 062 US5 rationale, 0 live call sites), antlr4 sub-scope superseded per rider; inventory w/ 1.14 screen; T010-T012 ticked
+- roadmap: sync round - import/reconcile clean, 0 dups, export published, replay-verify OK
+- impl(066): US2 parked w/ evidence (R5 ruling gate + buildkit-repo foreign WIP), T024 triage proposal packaged (defer-on-this-host, ariellas-led), OPS gate row added
+- roadmap: sync round - import 214119Z (0-delta), reconcile clean, 0 duplicates, export published, replay-verify OK
+- roadmap: import ariellas 214119Z export, reconcile
+- roadmap: US1-close sync round export published (FR-007 per-close discipline)
+- impl(066): US1 gate ledger complete - 18-row mapping w/ invariants verified, rulings R1-R12 inventory, drift record (ariellas Option-B rider: 6 gleam rows closed + antlr4 superseded, implement receipts 459be1b2), T001-T005 ticked
+- analyze(066): 0-critical, 6 findings, top-5 remediations applied - T010 language-authority screen (IV-a), FR-007 per-close sync discipline, FR-010 marathon checkpoint line, T013 loopback acceptance, group-label normalize
+- tasks(066): 30 tasks across US1-US6 + polish - ledger MVP, parallel lanes for quick-wins/singletons/spike, gate-parked Gleam chain (spike-go + ariellas receipts + G1), triage packaging, wave-close sweep
+- roadmap: import ariellas 205616Z export, reconcile
+- plan(066): wave-6 orchestration plan - constitution PASS, D1-D7 research decisions, gate-ledger + disposition-protocol contracts, ledger-driven data model, resume quickstart
+- spec(066): wave-6 roadmap consolidation - 18-item not-closed snapshot 150440Z, gates G1-064-ship/G2-065/G3-rulings + ariellas gap-closure carve-out, stories P1-P6 (ledger, quick wins, singletons, ANTLR4 spike, Full-Gleam chain consuming peer receipts, captured triage)
+- register host Olamnit as trusted roadmap-export signer (engineer ruling 2026-07-16, co sol#103)
+- correct the codexreview trap - wrong root cause, now fixed
+- refresh the P6 restart handoff after T031a
+- T031a: record the adversarial review outcome (converged@4)
+- P6 restart handoff — US5 sealed routes (T034-T039)
+- P4 US3: real DHT store/lookup over S-Kademlia + naming + tamper-reject (T023-T027)
+- roadmap — T011 real MsQuic wire done; T015 resume point
+- roadmap — P2 T014/T016 done, T011/T015 resume point
+- record BouncyCastle.Cryptography dep (DEC-CRYPTO-1)
+- analyze — close 2 coverage gaps (FR-021, FR-022)
+- tasks — 59 tasks organized by user story (MVP = US1+US2)
+- plan — architecture, research, data-model, contracts, quickstart
+- clarify — resolve 4 cycle-2 §5 mechanism choices
+- specify YNET ynet-transport (GLPNET transport/overlay tier)
+
+## [v2026.08.23.2] - 2026-08-23
+
+### Changed
+- sync round 44 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- Merge pull request #218 from olamni-glp/090-ack-sweep-and-sync
+- sync round 41 - import 2 files, 2 more spec links, export 20/118/3806 both legs
+- sync round 43 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- traps 10-13 from the olamnit-assistant lane - amended here, not in a third file (#217)
+- sync round 42 - reconcile in-sync, dedupe 0 groups (118 live), export 20/119/3821 both legs
+- unify the two cross-host report standards into docs/SITREP-FORMAT.md; ariellas' file is canonical, gavriella's becomes a pointer
+- mandate the signed export fold - reconcile reported in-sync while 6 peer feature-states were unimported
+- sync round 41 - imported peer round-40 state (6 features advanced), export 20/119/3807 both legs
+- Merge pull request #216 from olamni-glp/089-pointer-update
+- restart pointer - v2026.08.23.1 released, develop 1 ahead of main, block 2a refuted, 6 features linked
+- post-release reconcile + dedupe 0 groups (118 live) + export 20/119/3807
+- Merge pull request #215 from olamni-glp/088-post-release-sync
+- round 40 post-release - 6 features linked to spec dirs (promoted->specified), unlinked 75->69, export 20/118/3806 both legs
+- ERA is a synonym for a FEATURE - specify through close - and withdraw the B20 discharge-close proposal
+- Merge pull request #214 from olamni-glp/main
+
+## [v2026.08.23.1] - 2026-08-23
+
+### Added
+- add + promote bk-onrestart per-host reboot lane relaunch; sync round 34 both legs OK
+
+### Changed
+- Merge pull request #212 from olamni-glp/087-trust-gate-reproduction
+- A20 trust-gate controlled reproduction - peer's 65 refusals are exactly this host's own exports; gate is correct; real defect is 4 repos sharing one inbox
+- Merge pull request #211 from olamni-glp/086-ariellas-tidyup-and-takt
+- correct Y02b - pull --rebase silently dropped my merge commit; content survived via the peer's own path
+- Y-series ledger - 4 DONE with receipts, Y02b added, and why the step board cannot show them
+- sync round 39 + Y-series conflict-count corrections + fleet standard report formats
+- sync 2026-08-23 - import 1 new, reconcile, dedupe 0 groups (115 live), export 20/116/3762; olamnit scheduler onboard 35d 3x8h + directive items D01-D05 captured
+- restart pointer - 086 branch active, PR 210 merged, classifier measured INTERMITTENT
+- standardised cross-host SITREP + roadmap table format with measurement traps
+- sync round 39 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- Merge pull request #210 from olamni-glp/085-onrestart-fleet-resume
+- restart pointer - T17 done, 45 branches classified, 0 need preservation
+- T17 classification of all 45 non-active local branches - 39 RETIRE, 6 RETIRE-LOCAL, 0 need preservation; no local branch holds unique work
+- bk-flow readiness gap run f49a - unique allocation, takt-only durations, era; 3 negative answers + a merge-algebra defect
+- restart pointer session 4 - C15/T01/T15 done, roadmap round 38, takt 4of4 sources, 7 measured defects, bk-flow NO-GO is peer-measured
+- sync round 38 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- Merge 080-occurs-checked-substitution into develop (TIDY-Y04; feature.json conflict resolved as DELETED per 953ec898 untrack rationale)
+- Merge 078-verification-receipts evidence manifest into develop (TIDY-Y03; merge-tree probed CLEAN)
+- Merge 083-glptutorial-corpus-goldens into develop (TIDY-Y01; merge-tree probed CLEAN)
+- Y-series CRDT workplan 2026-08-23 - 16 unmerged heads probed by merge-tree, 18 steps into the marathon
+- sync round 37 - reconcile in-sync, 119 live features, 0 duplicate groups, export both legs
+- Merge pull request #209 from olamni-glp/chore/tidy-up-branches-worktrees-20260822-olamnit
+- bk-marathon->bk-flow migration plan + promotion-ready bk-flow SKILL.md draft (3rtask run 20260823T140508Z-227d; integration-not-replacement, cutover NO-GO, parity gap 10/10)
+- T15 all-drives git-asset survey - clone-2 fully contained (6/6), 2 corrections to the W05 index, msquic vendored checkout recorded
+- T01 measured defect - roadmap understates stage for 067/066/059, plus 2 new recording defects and the 065 number-collision correction
+- unshipped inventory + withdraw the superseded toolchain divergence figure
+- codify consolidated hardening 2026-08-23 into the scheduler feature-stream hardening feature
+- clarify - FR-029 fleet distribution ruled out of scope, wait bounds host-declared (120s repo / 60s share)
+- sync round 37 - import 1 file/0 lines, reconcile in-sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- C-drive git-asset survey - 2 glpnet scratchpad clones found, both verified safe; survey-one-drive-only lesson recorded; marathon 86 steps
+- sync round 36 - reconcile in-sync, 118 live features, 0 duplicate groups, export both legs
+- restart pointer - 3rtask ROOT CAUSE (codexreview gate, 3of3 builders, 4of4 features), specified-premise refuted, CRDT workplan T01-T14 in marathon (84 steps)
+- specified-features completion CRDT plan - rootcause 082/083/085 stall (run 20260823T093108Z-30dd); durable marathon items M01/X00/C082-C085/G082-G085
+- sync round 35 - reconcile in-sync, 116 live features, 0 duplicate groups, export published both legs
+- restart pointer - C13 done (085 specified, PR 210), roadmap round 34, engineer-declared 35d 3x8h capacity satisfies J3, 4 new measured defects
+- SCHED-R5 rev2 - WITHDRAW rev1 figures; folding + derived pool changes 3 boards; lejepa custom pool 'ariellas-lejepa' hid 30 unowned WPs; buildkit is actually healthy
+- sync round 34 - import 1 file/0 lines, reconcile in sync, 0 dup groups in 117 live, export 20/118/3793 both legs
+- SCHED-R5 - Lock 1 measured on all 14 boards; yngenios-windows was a SECOND false all-clear (28 of 30)
+- add bk-onrestart skill (post-reboot session relauncher, spec)
+- spec(085): bk-onrestart per-host configurable auto-installable fleet resume
+- restart pointer - scheduler feature-stream ROOTCAUSE (four breaks in series), 076 closed with 3 systemic findings, 083 clarified, 9 open blocks, 3 features promoted
+- roadmap: round 33 - 2 new features scored+promoted (scheduler feature-stream durable healing WSJF 2.62, bk-onrestart per-host auto-install WSJF 4.20); rootcause codified; export 20/118/3792 both legs
+- sync round 33 + reconcile + dedupe + export - both publish legs OK
+- ROOT CAUSE of the missing feature stream - 3 links with no writer, proven both ways on the live board
+- sync 2026-08-22 - import 23 new/0 applied (173 untagged refused - known 078 defect), reconcile in-sync, dedupe 0 groups (115 live), export 20/116/3761
+- workplan to 37pt delivered / 95 remaining after v2026.08.22.1
+- open 1.14 language-authority register for Udi - L1 book 4.3.1 lesseq guard is rejected (083 FR-002), L2 binding at a consume position may be self.glp-only (076), L3 occurs-check UnifyFail vs CompileError (080)
+- sync round 32 + reconcile + dedupe + export - both publish legs OK
+- land Olamnit branch/worktree tidy-up workplan + preserve 08-20 handover (marathon mrun-76da6e46bd44)
+- clarify(083): 4 of 5 ambiguities resolved by measurement (cssg_modules sibling, vendor AND manifest, FR-009 coupled to FR-002, FR-008 discriminator); FR-002 diagnosed and left OPEN as an engineer ruling with a recommendation
+- close(076): retrospective + close-out - 3 findings (shipped with NO codexreview recorded, no size estimate so takt cannot see it, open 1.14 question on binding at a consume position); 0 stale actions; roadmap released->closed
+- Merge pull request #207 from olamni-glp/main
+- add tidy-up survey evidence manifest - 4 pairwise-disjoint slices
+- renumber occurs-check spec 078->080 (engineer OK, both peers concur; yields 078 to gavriella verification-receipts)
+- spec(078): occurs-checked substitution pipeline — propose-first spec + clarify; §1.14 semantics (UnifyFail vs CompileError) OPEN for Udi, implement gated
+
 ## [v2026.08.22.1] - 2026-08-22
 
 ### Added

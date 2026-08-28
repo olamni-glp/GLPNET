@@ -186,6 +186,136 @@ def generate_shared_cert(
     )
 
 
+@dataclass(frozen=True)
+class DerivedCert:
+    """A short-lived, per-device certificate signed by the trunk key (feature 067, FR-003).
+
+    The private key is returned **in memory only**. It is never written to hub disk: it leaves
+    this process solely inside the passphrase-encrypted QR payload (067 security posture §1/§4).
+    """
+
+    cert_pem: str
+    key_pem: str
+    spki_pin: str  # SPKI SHA-256 of the derived cert — its identity for audit + revocation
+    not_before: datetime
+    not_after: datetime
+    device_label: str
+
+
+def derive_device_cert(
+    cert_dir: Path,
+    device_label: str,
+    ttl_days: int = 30,
+    key_type: KeyType = "ec",
+) -> DerivedCert:
+    """Mint a per-device certificate **signed by the trunk key** (067 research R-002/R-003).
+
+    Existing endpoints verify it against the already-pinned trunk SPKI, so the 036 manual-pin
+    trust model is unchanged for them (FR-012) — no new distribution channel, no CA, no
+    name/hostname semantics.
+
+    The trunk private key is read from the PFX to sign, and is **never** copied into the result.
+    """
+    if ttl_days <= 0:
+        raise ValueError(f"ttl_days must be positive; got {ttl_days}")
+    if not device_label.strip():
+        raise ValueError("device_label must be non-empty — it is an audit field")
+
+    pfx_bytes = (Path(cert_dir) / PFX_NAME).read_bytes()
+    trunk_key, trunk_cert, _ = pkcs12.load_key_and_certificates(pfx_bytes, password=None)
+    if trunk_key is None or trunk_cert is None:
+        raise ValueError(f"{PFX_NAME} did not yield both a key and a certificate")
+
+    if key_type == "ec":
+        device_key = ec.generate_private_key(ec.SECP256R1())
+    elif key_type == "rsa":
+        device_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    else:  # pragma: no cover - guarded by the Literal type
+        raise ValueError(f"unsupported key_type {key_type!r}")
+
+    now = datetime.now(timezone.utc)
+    not_before = now - timedelta(minutes=1)  # small skew tolerance, as for the trunk cert
+    not_after = now + timedelta(days=ttl_days)
+
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f"glp-quick device {device_label}")])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(trunk_cert.subject)  # issued BY the trunk, not self-signed
+        .public_key(device_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                key_encipherment=True,
+                content_commitment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                key_cert_sign=False,
+                crl_sign=False,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage(
+                [ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]
+            ),
+            critical=False,
+        )
+        .sign(private_key=trunk_key, algorithm=hashes.SHA256())
+    )
+
+    return DerivedCert(
+        cert_pem=cert.public_bytes(serialization.Encoding.PEM).decode("ascii"),
+        key_pem=device_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode("ascii"),
+        spki_pin=spki_sha256_pin(cert),
+        not_before=not_before,
+        not_after=not_after,
+        device_label=device_label,
+    )
+
+
+def verify_derived_against_trunk(cert_pem: str, cert_dir: Path) -> bool:
+    """True iff ``cert_pem`` carries a valid signature from the trunk certificate's key.
+
+    This is the signature check only — the acceptance seam additionally enforces the validity
+    window and the revocation set (contracts/join-seam-contract.md).
+    """
+    from cryptography.exceptions import InvalidSignature
+
+    derived = x509.load_pem_x509_certificate(cert_pem.encode("ascii"))
+    trunk = x509.load_pem_x509_certificate(load_cert_pem(cert_dir))
+    trunk_pub = trunk.public_key()
+    try:
+        if isinstance(trunk_pub, ec.EllipticCurvePublicKey):
+            trunk_pub.verify(
+                derived.signature,
+                derived.tbs_certificate_bytes,
+                ec.ECDSA(derived.signature_hash_algorithm),
+            )
+        else:
+            from cryptography.hazmat.primitives.asymmetric import padding
+
+            trunk_pub.verify(
+                derived.signature,
+                derived.tbs_certificate_bytes,
+                padding.PKCS1v15(),
+                derived.signature_hash_algorithm,
+            )
+    except InvalidSignature:
+        return False
+    return True
+
+
 def load_pin(cert_dir: Path) -> str:
     """Read the pinned SPKI SHA-256 value written by :func:`generate_shared_cert`."""
     return (Path(cert_dir) / FINGERPRINT_NAME).read_text(encoding="ascii").strip()

@@ -1,0 +1,36 @@
+<!--
+  ynet_transport — YNET consolidated transport/overlay tier (feature 051).
+
+  TIER BOUNDARY (FR-024): this library owns the transport/overlay MECHANISM. It NEVER
+  implements the qhstate 056 service-embed, macaroon minting, admission DECISION, or the
+  durable mailbox — those are consumed/enforced-on-behalf-of only.
+
+  Crypto surface: BCL (AesGcm, ECDsa, SHA256) + BouncyCastle.Cryptography (pure-managed, no native
+  binary) for Ed25519. Per engineer decision DEC-CRYPTO-1 (BUILD-ROADMAP-051 §2, FR-002): node
+  identity is Ed25519-primary with an ECDsa/P-256 (BCL-native) fallback in exceptional cases, both
+  behind the pluggable INodeSigner seam (see NodeIdentity.cs). BouncyCastle is the first third-party
+  crypto dep in this lib (DEP-registry entry required). Network-I/O leaves (MsQuic wire, ICE/DCUtR,
+  Tor cells, WebRTC) are compiling seams pending the harvest of csharp/glp_link (FR-001/FR-019).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ynet.Transport</RootNamespace>
+    <AssemblyName>ynet_transport</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ynet_transport.tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DEC-CRYPTO-1: Ed25519 node identity (pure-managed, no native binary). -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+  </ItemGroup>
+
+</Project>

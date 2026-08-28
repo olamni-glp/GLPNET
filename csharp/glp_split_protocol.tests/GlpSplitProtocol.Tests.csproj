@@ -9,12 +9,13 @@
   csproj shape mirrors glp_engine_host.tests (the repo's per-project
   `dotnet test csharp/<project>` suite convention — no solution file).
 
-  TargetFramework: net10.0 — repo convention; see GlpSplitProtocol.csproj note.
+  TargetFramework: net11.0 — engineer-mandated .NET 11 / C# 15 pin (2026-08-27);
+  see GlpSplitProtocol.csproj note and the repo-root global.json + Directory.Build.targets.
 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

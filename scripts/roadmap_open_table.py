@@ -2,62 +2,42 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
 #
 # SPDX-License-Identifier: MIT
-"""FLEET STANDARD — the NOT-CLOSED roadmap table.
+"""BK-STD-1 §2 — the ROADMAP NOT-CLOSED table. Reference implementation.
 
-Canonical, portable renderer for "every epic and feature not closed", in the one
-tabular format every host and every repo uses. Engineer ruling 2026-08-23.
+Conforms to **BK-STD-1** (proposed by ariellas-tefl, ruled 2026-08-23, broadcast to all coop
+channels). This is NOT a competing standard: an earlier version of this file carried a different
+column set and a different sort, and it was simply WRONG. **BK-STD-1 governs.**
 
-    python scripts/roadmap_open_table.py                # markdown (default)
-    python scripts/roadmap_open_table.py --format tsv   # paste into a sheet
-    python scripts/roadmap_open_table.py --format json  # machine-readable
-    python scripts/roadmap_open_table.py --check        # exit 2 on a duplicate owner
+    python scripts/roadmap_open_table.py                 # §1 header + §2 table + mandatory footer
+    python scripts/roadmap_open_table.py --format tsv
+    python scripts/roadmap_open_table.py --format json
+    python scripts/roadmap_open_table.py --check         # exit 2 on a duplicate allocation
 
-WHY A SCRIPT AND NOT A CONVENTION
----------------------------------
-A format described in prose drifts the moment two lanes render it by hand — and a
-drifted ownership column is not cosmetic here: the allocation gate FAILS OPEN, so
-two lanes can both believe they own a feature. This renderer is the single
-implementation; ``--check`` turns the standard into an executable gate.
+BK-STD-1 §2, enforced here and NOT negotiable:
 
-STANDARD (all of it is enforced below, none of it is optional)
---------------------------------------------------------------
-Columns, in order:
+* sort = **WSJF descending, then feature_id ascending** (NOT grouped by state);
+* **every not-closed feature, NO TRUNCATION OF THE ROW SET.** A summarised table is a falsified
+  table — truncating it is the same compression the ERA ruling forbids;
+* columns fixed, in this order:
+  ``| # | EPIC | FEATURE | STATE | WSJF | RICE | SPEC | DLV | BLK |``
+  ``FEATURE`` is the **feature_id, never the title** — ids are the join key across lanes;
+* mandatory footer — the honesty counters:
+  ``SPEC=NONE: n/total   DEDUPE_GROUPS=n (kth consecutive)   RECONCILE=<result>``
+  They exist because ``reconcile`` and ``dedupe`` both report clean while being structurally
+  blind, so a report that omits them looks healthier than the data is.
 
-    | # | State | Slot | Feature (slug) | WSJF | RICE | Owner | Epic |
+MEASURED TRAPS THIS HANDLES (BK-STD-1 §4) — do not "simplify" them away:
 
-* rows are every feature whose state is NOT ``closed``;
-* sort: state (specified -> promoted -> captured -> anything else), then WSJF
-  DESCENDING, then slug ascending — deterministic, so two hosts rendering the
-  same catalog produce byte-identical tables;
-* ``Owner`` is the host holding the feature, or ``—`` when unallocated;
-* unscored features render ``—``, NEVER ``0`` (a real 0.00 and "never scored" are
-  different facts and must not collapse);
-* a totals line is ALWAYS printed;
-* two rows with the same slug and different owners = a DUPLICATE-ALLOCATION
-  INCIDENT. ``--check`` exits 2 on it.
-
-TRAPS THIS SCRIPT ALREADY HANDLES (measured on the fleet, do not "simplify" them)
---------------------------------------------------------------------------------
-* ``--json`` is a GLOBAL flag on the roadmap CLI and must precede the subcommand;
-  the text output is parsed here instead because it is the stable surface.
-* buildkit CLIs print PGlite banners and ``co:`` lines on STDOUT, interleaved with
-  real output — they are filtered per-line, never by piping through ``grep`` (a
-  pipe would report the FILTER's exit status, not the command's).
-* ``BUILDKIT_ENGINE_OVERRIDE`` is cleared: an ambient engine older than the pin is
-  refused for writes and can differ in verbs.
-* ``PYTHONIOENCODING=utf-8`` is forced: cp1252 mojibake has silently zeroed a
-  parser on this fleet before.
-* The ambient ``buildkit_cli`` has been replaced mid-session by a copy missing
-  sub-packages, so ``--roadmap-cmd`` lets a caller point at the pinned exe.
-
-OWNERSHIP INPUT
----------------
-Ownership lives outside the roadmap catalog today (the allocation record carries
-no feature/repo/host field — that is roadmap item ``namespace-feature-numbers-
-per-lane``). Until it does, ownership is supplied here and SHOULD be kept in
-``.specify/roadmap-owners.json`` so every lane reads the same file:
-
-    {"roadmap-cli-spec063-fleet-upgrade-rollout": "gavriella"}
+* **``reconcile`` compares only the LOCAL pipeline.** It answered "already in sync" while this
+  catalog was 90 journal lines behind a peer. A green reconcile is NOT evidence of currency.
+* **``roadmap import`` with no ``--in-dir`` scans the LOCAL ``exports/``, not the coop inbox** —
+  it imports nothing from peers and still reports success. Always pass
+  ``--in-dir <coop>/<repo>/roadmap-sync/inbox``.
+* buildkit CLIs print PGlite/``co:`` banners on STDOUT; filtered per line, never through a pipe
+  (a pipe reports the FILTER's exit status, not the command's).
+* ``BUILDKIT_ENGINE_OVERRIDE`` cleared; ``PYTHONIOENCODING=utf-8`` forced.
+* ``--roadmap-cmd`` exists because ambient ``buildkit_cli`` has been replaced mid-session by a
+  copy missing whole sub-packages.
 """
 from __future__ import annotations
 
@@ -65,100 +45,152 @@ import argparse
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
-# state -> sort rank. Anything unknown sorts last but is still SHOWN, never dropped.
-# Ordering is part of the standard: two hosts must render the same catalog identically.
-# `released` was surfaced by ariellas' catalog after this shipped — it sorted last only by
-# accident (unknown states fall through to rank 9). Naming it makes that deliberate.
-STATE_RANK = {"specified": 0, "promoted": 1, "captured": 2, "released": 3}
-UNSCORED = "—"
+NONE = "-"
 OWNERS_FILE = ".specify/roadmap-owners.json"
 
-# `[state] #slot slug WSJF=x RICE=y — title [flags]`
 ROW_RE = re.compile(
-    r"^\s+\[(?P<state>\w+)\s*\]\s+#(?P<slot>\S+)\s+(?P<slug>\S+)\s+"
+    r"^\s+\[(?P<state>\w+)\s*\]\s+#(?P<slot>\S+)\s+(?P<fid>\S+)\s+"
     r"WSJF=(?P<wsjf>\S+)\s+RICE=(?P<rice>\S+)\s+[—-]\s*(?P<rest>.*)$"
 )
-EPIC_RE = re.compile(r"^Epic:\s+(?P<name>.*?)\s*\((?P<id>.*?)\)\s*$")
-NOISE = ("PGlite", "co:")
+EPIC_RE = re.compile(r"^Epic:\s+(?P<name>.*?)\s*\((?P<eid>[^()]*)\)\s*$")
 
 
-def _clean(line: str) -> bool:
-    """True when the line is real output rather than a CLI banner."""
+def _clean(line):
     s = line.lstrip()
-    return not (s.startswith(NOISE[1]) or NOISE[0] in line)
+    return not (s.startswith("co:") or "PGlite" in line)
 
 
-def roadmap_status(cmd: list[str], cwd: Path) -> str:
+def run_roadmap(cmd, cwd, argv):
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
-    env.pop("BUILDKIT_ENGINE_OVERRIDE", None)  # never let ambient beat the pin
-    proc = subprocess.run(
-        cmd + ["status"], cwd=str(cwd), env=env,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-    )
-    if proc.returncode != 0 and not proc.stdout.strip():
-        sys.stderr.write(proc.stderr or "roadmap status failed\n")
+    env.pop("BUILDKIT_ENGINE_OVERRIDE", None)
+    p = subprocess.run(cmd + argv, cwd=str(cwd), env=env, capture_output=True,
+                       text=True, encoding="utf-8", errors="replace")
+    if p.returncode != 0 and not p.stdout.strip():
+        sys.stderr.write(p.stderr or "roadmap failed\n")
         raise SystemExit(1)
-    return proc.stdout
+    return p.stdout
 
 
-def parse(text: str) -> list[dict]:
-    epic, rows = None, []
+def parse(text):
+    epic, rows = "(none)", []
     for line in text.splitlines():
         if not _clean(line):
             continue
         m = EPIC_RE.match(line.strip())
         if m:
-            epic = m.group("name")
+            epic = m.group("eid") or m.group("name")
             continue
         m = ROW_RE.match(line.rstrip())
-        if not m:
+        if not m or m.group("state") == "closed":
             continue
-        if m.group("state") == "closed":
-            continue
+        rest = m.group("rest")
+        flags = rest[rest.rfind("[") + 1: rest.rfind("]")] if rest.rstrip().endswith("]") else ""
+        b = re.search(r"blocked-by:\s*([^;\]]*)", flags)
         rows.append({
-            "epic": epic or "(no epic)",
+            "epic": epic,
+            "feature": m.group("fid"),
             "state": m.group("state"),
-            "slot": m.group("slot"),
-            "slug": m.group("slug"),
             "wsjf": m.group("wsjf"),
             "rice": m.group("rice"),
+            "spec": "Y" if re.search(r"\bspec:\s*\S", flags) else NONE,
+            "dlv": "Y" if "delivered" in flags else NONE,
+            "blk": len([x for x in b.group(1).split(",") if x.strip()]) if b else 0,
         })
     return rows
 
 
-def _num(x: str) -> float:
+def backfill_from_export(rows, root):
+    """Add not-closed features that `roadmap status` omits (BK-STD-1 defect, 2026-08-27).
+
+    MEASURED on host Gavriella, glpnet, roadmap round 53: `buildkit-roadmap status`
+    emits NO row for a feature in state `implemented`, so this table reported 25
+    not-closed while BK-REPORT-v1 section 1 reported open=26 on the same data. The
+    dropped row was `qr-link-provisioning` (067) -- the feature FURTHEST along the
+    pipeline. `implemented` is a legal not-closed state, so a table that hides it
+    under-reports open work and hides it precisely where it matters most.
+
+    The parse filter above is NOT the bug; it drops only `closed`. The loss is
+    upstream in the `status` command, which this script should not have been the
+    sole consumer of -- standing fleet guidance is "never parse `roadmap status`
+    for counts; use the signed-export heads fold". This backfills from that signed
+    export (heads joined to scores by guid) so the table matches the report without
+    waiting on a fix in another lane's code.
+
+    Additive and conservative: a feature already present from `status` is never
+    replaced, so WSJF/RICE/flags for existing rows are untouched.
+    """
+    # BIND TO THIS LANE'S OWN EXPORT. The exports dir holds every peer's published
+    # export too (measured 2026-08-27: gavriella 115, ariellas 83, olamnit 50, and
+    # 15 under a misspelled `gavriellas` host). A bare `*__*.json` + sorted()[-1]
+    # selects `olamnit__glpnet__20260823...` -- ANOTHER HOST'S FOUR-DAY-STALE DATA --
+    # and reports it as this repo's state. That is the exact failure this feature
+    # exists to stop, so the host prefix is matched exactly, not by sort order.
+    host = socket.gethostname().lower()
+    exdir = root / ".specify" / "roadmap-sync" / "exports"
+    exports = sorted(exdir.glob("%s__%s__*.json" % (host, root.name.lower())))
+    if not exports:
+        return rows  # no export from THIS lane => report status as-is, never a peer's
+    try:
+        with open(exports[-1], encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return rows  # unreadable export => report what status gave, never invent
+    scores = {s.get("guid"): s for s in doc.get("scores", []) if isinstance(s, dict)}
+    have = {r["feature"] for r in rows}
+    for h in doc.get("heads", []):
+        if not isinstance(h, dict) or h.get("entity_kind") != "feature":
+            continue
+        state = h.get("state")
+        if state == "closed" or not state:
+            continue
+        fid = h.get("resolved_slot") or h.get("name")
+        if not fid or fid in have:
+            continue
+        sc = scores.get(h.get("guid"), {})
+        rows.append({
+            "epic": h.get("epic_id") or "(standalone)",
+            "feature": fid,
+            "state": state,
+            "wsjf": sc.get("wsjf", NONE),
+            "rice": sc.get("rice", NONE),
+            "spec": "Y" if h.get("spec_path") else NONE,
+            "dlv": NONE,
+            "blk": 0,
+        })
+        have.add(fid)
+    return rows
+
+
+def _num(x):
     try:
         return float(x)
     except (TypeError, ValueError):
-        return -1.0          # unscored sorts last WITHIN its state, never dropped
+        return -1.0
 
 
-def _cell(x: str) -> str:
-    return UNSCORED if _num(x) < 0 else x
+def _wsjf(x):
+    return NONE if _num(x) < 0 else "%.2f" % _num(x)
 
 
-def load_owners(root: Path, extra: str | None, files: list) -> dict:
-    """slug -> {host, ...}.
+def _rice(x):
+    return NONE if _num(x) < 0 else "%d" % round(_num(x))
 
-    A SET, not a string, and that is load-bearing. The incident this standard
-    exists to catch is ONE FEATURE CLAIMED BY TWO HOSTS — but a slug appears
-    exactly once per catalog, so comparing rows inside a single host's table can
-    NEVER detect it. The claims have to be merged across hosts first. Point
-    ``--owners-file`` at each lane's file (they belong in the coop channel) and a
-    contested slug arrives with two hosts in its set.
-    """
-    owners: dict = {}
 
-    def _absorb(mapping):
-        for slug, host in mapping.items():
-            hosts = host if isinstance(host, (list, tuple, set)) else [host]
-            for h in hosts:
-                owners.setdefault(slug, set()).add(str(h))
+def load_owners(root, extra, files):
+    """feature_id -> {host}. A SET: one feature claimed by TWO hosts is the incident."""
+    owners = {}
+
+    def absorb(mapping):
+        for fid, host in mapping.items():
+            for h in (host if isinstance(host, (list, tuple, set)) else [host]):
+                owners.setdefault(fid, set()).add(str(h))
 
     default = root / OWNERS_FILE
     for cand in [default] + [Path(f) for f in files]:
@@ -167,96 +199,103 @@ def load_owners(root: Path, extra: str | None, files: list) -> dict:
                 sys.stderr.write("warning: owners file not found: %s\n" % cand)
             continue
         try:
-            _absorb(json.loads(cand.read_text(encoding="utf-8")))
-        except (OSError, ValueError) as exc:      # a broken file must not hide the table
+            absorb(json.loads(cand.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as exc:
             sys.stderr.write("warning: could not read %s (%s)\n" % (cand, exc))
     if extra:
         for pair in extra.split(","):
             if "=" in pair:
-                slug, host = pair.split("=", 1)
-                owners.setdefault(slug.strip(), set()).add(host.strip())
+                fid, host = pair.split("=", 1)
+                owners.setdefault(fid.strip(), set()).add(host.strip())
     return owners
 
 
 def sort_rows(rows, owners):
+    """BK-STD-1 §2: WSJF DESC, then feature_id ASC. Deterministic across hosts."""
     for r in rows:
-        hosts = sorted(owners.get(r["slug"], ()))
-        r["owners"] = hosts
-        # A contested feature renders BOTH hosts, flagged. It is never silently
-        # collapsed to one — the entire point is that the reader sees the clash.
-        r["owner"] = UNSCORED if not hosts else (
-            hosts[0] if len(hosts) == 1 else "** " + " / ".join(hosts) + " **")
-    rows.sort(key=lambda r: (STATE_RANK.get(r["state"], 9), -_num(r["wsjf"]), r["slug"]))
+        r["owners"] = sorted(owners.get(r["feature"], ()))
+    rows.sort(key=lambda r: (-_num(r["wsjf"]), r["feature"]))
     return rows
 
 
-def duplicates(rows) -> list:
-    """One feature claimed by two or more hosts — the incident --check gates on."""
-    return [(r["slug"], r["owners"]) for r in rows if len(r.get("owners") or ()) > 1]
+def duplicates(rows):
+    return [(r["feature"], r["owners"]) for r in rows if len(r.get("owners") or ()) > 1]
 
 
-def totals(rows) -> str:
+def header(root, lane, rnd, run):
+    return "HOST=%s  REPO=%s  LANE=%s  ROUND=%s  RUN=%s  UTC=%s" % (
+        socket.gethostname(), root.name, lane, rnd, run,
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+
+def footer(rows, groups, run_n, reconcile):
+    nospec = sum(1 for r in rows if r["spec"] == NONE)
+    return "SPEC=NONE: %d/%d   DEDUPE_GROUPS=%s (%s consecutive)   RECONCILE=%s" % (
+        nospec, len(rows), groups, run_n, reconcile)
+
+
+def totals(rows):
     c = {}
     for r in rows:
         c[r["state"]] = c.get(r["state"], 0) + 1
-    parts = " · ".join("%d %s" % (c[s], s) for s in sorted(c, key=lambda s: STATE_RANK.get(s, 9)))
     return "%d not-closed = %s, across %d epics" % (
-        len(rows), parts, len({r["epic"] for r in rows}))
+        len(rows), " · ".join("%d %s" % (c[k], k) for k in sorted(c)),
+        len({r["epic"] for r in rows}))
 
 
-def render(rows, fmt: str, width: int) -> str:
+def render(rows, fmt, hdr, ftr):
     if fmt == "json":
-        return json.dumps({"rows": rows, "totals": totals(rows)}, indent=2)
-    cut = (lambda s: s if len(s) <= width else s[: width - 1] + "…") if width else (lambda s: s)
+        return json.dumps({"header": hdr, "rows": rows, "footer": ftr,
+                           "totals": totals(rows)}, indent=2)
     if fmt == "tsv":
-        out = ["#\tState\tSlot\tFeature\tWSJF\tRICE\tOwner\tEpic"]
-        out += ["%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s" % (
-            i, r["state"], r["slot"], r["slug"], _cell(r["wsjf"]), _cell(r["rice"]),
-            r["owner"], r["epic"]) for i, r in enumerate(rows, 1)]
-        out.append("")
-        out.append(totals(rows))
-        return "\n".join(out)
-    out = ["| # | State | Slot | Feature (slug) | WSJF | RICE | Owner | Epic |",
-           "|---:|:---|---:|:---|---:|---:|:---|:---|"]
-    out += ["| %d | %s | %s | `%s` | %s | %s | %s | %s |" % (
-        i, r["state"], r["slot"], cut(r["slug"]), _cell(r["wsjf"]), _cell(r["rice"]),
-        r["owner"], cut(r["epic"])) for i, r in enumerate(rows, 1)]
-    out.append("")
-    out.append("**%s**" % totals(rows))
-    return "\n".join(out)
+        out = [hdr, "#\tEPIC\tFEATURE\tSTATE\tWSJF\tRICE\tSPEC\tDLV\tBLK"]
+        out += ["%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d" % (
+            i, r["epic"], r["feature"], r["state"], _wsjf(r["wsjf"]), _rice(r["rice"]),
+            r["spec"], r["dlv"], r["blk"]) for i, r in enumerate(rows, 1)]
+        return "\n".join(out + ["", ftr, totals(rows)])
+    out = ["```", hdr, "```", "",
+           "| # | EPIC | FEATURE | STATE | WSJF | RICE | SPEC | DLV | BLK |",
+           "|---:|:---|:---|:---|---:|---:|:--:|:--:|---:|"]
+    for i, r in enumerate(rows, 1):
+        own = (" **[%s]**" % "/".join(r["owners"])) if len(r["owners"]) > 1 else ""
+        out.append("| %d | %s | `%s`%s | %s | %s | %s | %s | %s | %d |" % (
+            i, r["epic"], r["feature"], own, r["state"], _wsjf(r["wsjf"]),
+            _rice(r["rice"]), r["spec"], r["dlv"], r["blk"]))
+    return "\n".join(out + ["", "```", ftr, "```", "", "**%s**" % totals(rows)])
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Fleet-standard NOT-CLOSED roadmap table.")
-    ap.add_argument("--repo", default=".", help="repo root (default: cwd)")
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="BK-STD-1 2 roadmap NOT-CLOSED table.")
+    ap.add_argument("--repo", default=".")
     ap.add_argument("--format", choices=("md", "tsv", "json"), default="md")
-    ap.add_argument("--width", type=int, default=54,
-                    help="truncate slug/epic to N chars (0 = never truncate)")
-    ap.add_argument("--owner", default=None,
-                    help="inline owners, 'slug=host,slug=host' (merged over %s)" % OWNERS_FILE)
-    ap.add_argument("--owners-file", action="append", default=[],
-                    help="extra owners JSON, repeatable — point at EACH lane's file so a "
-                         "feature claimed by two hosts is actually detectable")
-    ap.add_argument("--check", action="store_true",
-                    help="exit 2 if any feature is claimed by two different hosts")
-    ap.add_argument("--roadmap-cmd", default=None,
-                    help="override the roadmap CLI, e.g. a pinned buildkit-roadmap.exe")
-    args = ap.parse_args(argv)
+    ap.add_argument("--owner", default=None)
+    ap.add_argument("--owners-file", action="append", default=[])
+    ap.add_argument("--check", action="store_true", help="exit 2 on a duplicate allocation")
+    ap.add_argument("--roadmap-cmd", default=None)
+    ap.add_argument("--lane", default=None, help="BK-STD-1 LANE = <actor>-<repo>")
+    ap.add_argument("--round", default="-")
+    ap.add_argument("--run", default="-")
+    ap.add_argument("--dedupe-groups", default="?")
+    ap.add_argument("--dedupe-run", default="?th")
+    ap.add_argument("--reconcile-note", default="?",
+                    help="reconcile result; it compares only the LOCAL pipeline")
+    a = ap.parse_args(argv)
 
-    root = Path(args.repo).resolve()
-    cmd = ([args.roadmap_cmd] if args.roadmap_cmd
-           else [sys.executable, "-m", "buildkit_cli.roadmap"])
+    root = Path(a.repo).resolve()
+    cmd = [a.roadmap_cmd] if a.roadmap_cmd else [sys.executable, "-m", "buildkit_cli.roadmap"]
+    lane = a.lane or ("%s-%s" % (socket.gethostname().lower(), root.name))
 
-    rows = sort_rows(parse(roadmap_status(cmd, root)),
-                     load_owners(root, args.owner, args.owners_file))
-    print(render(rows, args.format, args.width))
+    rows = sort_rows(backfill_from_export(parse(run_roadmap(cmd, root, ["status"])), root),
+                     load_owners(root, a.owner, a.owners_file))
+    print(render(rows, a.format, header(root, lane, a.round, a.run),
+                 footer(rows, a.dedupe_groups, a.dedupe_run, a.reconcile_note)))
 
-    dupes = duplicates(rows)
-    if dupes:
-        sys.stderr.write("\nDUPLICATE ALLOCATION — one feature, two hosts:\n")
-        for slug, hosts in dupes:
-            sys.stderr.write("  %s -> %s\n" % (slug, ", ".join(hosts)))
-        if args.check:
+    d = duplicates(rows)
+    if d:
+        sys.stderr.write("\nDUPLICATE ALLOCATION - one feature, two hosts:\n")
+        for fid, hosts in d:
+            sys.stderr.write("  %s -> %s\n" % (fid, ", ".join(hosts)))
+        if a.check:
             return 2
     return 0
 

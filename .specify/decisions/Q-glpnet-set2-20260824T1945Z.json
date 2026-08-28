@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS2-20260824T1945Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-24T19:45:00+00:00",
+  "context": "Set 2 of 3 — branch disposition, the standards fork, and the two reporting defects that make fleet counts wrong. Marathon run mrun-20d9230f767b. Evidence tables at claude.ai/code/artifact/77dcfcf1.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS2-01",
+      "kind": "ruling",
+      "header": "067 branch",
+      "question": "You ruled on 2026-08-23 that 067-qr-link-provisioning graduates to its own /bk-specify pipeline. That settles what the feature does next but not what happens to the existing branches: origin/067 is 26 commits ahead with 3 conflicts and origin/067b is 27 ahead with 4. Meanwhile the roadmap still carries the feature at state 'implemented'. A feature that is 'implemented' and also 'go specify it from scratch' is a contradiction. What happens to the 53 commits?",
+      "blocks": ["TIDY-Y06", "TIDY-Y07", "2 of the 5 remaining unmerged origin heads"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Merge both, then specify",
+          "recommended": true,
+          "means": "Resolve the 7 conflicts, merge both branches to develop, then write the new spec against a real codebase. Also move the roadmap row off 'implemented' so table and pipeline agree.",
+          "cost": "Seven conflicts across two branches is a bounded but real afternoon, and the new spec inherits code it did not author."
+        },
+        {
+          "label": "Archive both, re-implement",
+          "means": "Archive-tag and drop both branches; the new pipeline re-implements from the spec.",
+          "cost": "Discards 53 commits the roadmap itself calls implemented, and this line's private-key history makes any later re-merge harder, not easier."
+        },
+        {
+          "label": "Defer to the new plan",
+          "means": "Leave both branches open until the new feature's /bk-plan decides what to salvage.",
+          "cost": "Keeps 2 of 5 unmerged heads alive indefinitely — exactly the state the Y-series exists to exit."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS2-02",
+      "kind": "tie-break",
+      "header": "Table fork",
+      "question": "Merging olamnit's branch produced an add/add conflict on scripts/roadmap_open_table.py, and BOTH files cite your 2026-08-23 ruling: develop carries 9798 B ('BK-STD-1 section 2, proposed by ariellas-tefl'), itself the product of an earlier withdrawal, and olamnit carries 11295 B ('FLEET STANDARD', adopted from qhstate d1f64b4). I kept develop's, deleted nothing and picked no winner, because unilateral picking is how the last fork started. Which is canonical?",
+      "blocks": ["fleet report comparability", "the fix for the dropped-state defect below"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "olamnit's qhstate-derived file",
+          "recommended": true,
+          "means": "Adopt olamnit's as canonical fleet-wide; develop replaces its copy; ariellas-tefl's is withdrawn explicitly.",
+          "cost": "Against my own repo's file, and it carries 1497 B of behaviour I have not diffed. A larger file is not automatically the better one."
+        },
+        {
+          "label": "develop's BK-STD-1 file",
+          "means": "develop's stays canonical; olamnit withdraws theirs.",
+          "cost": "Keeps the standard living in one repo's scripts/ with no external lineage — which is the condition under which it forked twice already."
+        },
+        {
+          "label": "Diff and merge the superset",
+          "means": "Compare both, publish one file carrying both lineages and any behaviour unique to either.",
+          "cost": "Loses nothing but costs a real comparison plus another round of fleet agreement before anyone can quote a number."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS2-03",
+      "kind": "ruling",
+      "header": "Hidden row",
+      "question": "The fleet-standard open table drops state='implemented'. Measured on today's export: 119 features = 94 closed + 15 promoted + 6 specified + 3 analyzed + 1 implemented, so 25 are not-closed — but the renderer prints 24. The hidden row is qr-link-provisioning (067), the feature carrying an open engineer ruling. Separately, epic heads carry NO state field at all, so no lane can support an epic state count. How should not-closed be defined and rendered?",
+      "blocks": ["every lane's published not-closed count", "any cross-lane roadmap comparison"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Render implemented as not-closed",
+          "recommended": true,
+          "means": "Treat implemented as not-closed and render it, in whichever file the fork question makes canonical. Correct by the plain meaning of not-closed.",
+          "cost": "Every lane's published count changes by its implemented rows — a visible correction that must be announced, not slipped in."
+        },
+        {
+          "label": "Exclude it, footnote it",
+          "means": "Keep implemented excluded by design, but print the exclusion in the mandatory footer so no reader can miss it.",
+          "cost": "A table headed 'not closed' that omits a not-closed state stays misleading at a glance, however well footnoted."
+        },
+        {
+          "label": "Add epic state, render both",
+          "means": "Extend the export so epics carry state, and render epics and features in one table — the only option that makes 'all epics and features not closed' literally answerable.",
+          "cost": "Requires an export schema change and fleet-wide re-export before any lane's table is comparable again."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS2-04",
+      "kind": "ruling",
+      "header": "082 fold",
+      "question": "The marathon's own next pointer names a step that cannot run: 082-feature-stream-superset has no feature_pipeline row (21 rows, 082 absent) so /bk-clarify is default-denied, and starting it would take the single active slot from 078, which has held it 11.9 days at WSJF rank 1. 082's code merged to develop on 2026-08-20 while its roadmap row stayed 'promoted', and whether it folds or is scoped as the engine half has been undecided since 08-23. Which is it?",
+      "blocks": ["the marathon resume pointer", "078's hold on the active slot"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fold 082 into the hardening feature",
+          "recommended": true,
+          "means": "Fold 082 into scheduler-feature-stream-durable-healing-and-hardening, close its roadmap row as folded, and retire the blocked step.",
+          "cost": "Ends 082 as a separately trackable feature, so its specific scope survives only inside the parent's spec."
+        },
+        {
+          "label": "Scope it as the engine half",
+          "means": "Give 082 its own pipeline row and clarify it after 078 closes.",
+          "cost": "Waits on 078 regardless, and keeps a roadmap row and pipeline slot open for code that already landed four days ago."
+        },
+        {
+          "label": "Leave it, re-point the step",
+          "means": "Change nothing on 082; just re-point the marathon's next step at 078's own work.",
+          "cost": "The resume pointer keeps naming an impossible step, which is the same false-green class that 078 exists to eliminate."
+        }
+      ]
+    }
+  ]
+}

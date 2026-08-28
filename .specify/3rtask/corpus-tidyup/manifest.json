@@ -1,0 +1,62 @@
+{
+  "slices": [
+    {
+      "slice_id": "S1-worktrees-filesystem",
+      "description": "Filesystem evidence ONLY: registered git worktrees and any stray/orphaned/de-registered glpnet working copy anywhere on the D: drive. Directory listings, .git file/dir contents, working-tree status, untracked-file hoards. Do NOT consult refs/heads, refs/remotes, the GitHub API, or specs/.",
+      "sources": [
+        "D:/BSTDEV/research/GLP/GLPNET/.git/worktrees",
+        "D:/BSTDEV/research/GLP/GLPNET/.git/config",
+        "D:/BSTDEV/research/GLP",
+        "D:/BSTDEV/research/bk-wt",
+        "D:/BSTDEV/research/_wt-baseline",
+        "D:/BSTDEV/research/_wt-buildkit-rel3",
+        "D:/BSTDEV/research/_wt-ruff-gate",
+        "D:/BSTDEV/research/wt-rm12",
+        "D:/BSTDEV/research/wt-rm13",
+        "D:/BSTDEV/research/wt-crucible-017-econ-survivability",
+        "D:/wt-018p",
+        "D:/wt-018t",
+        "D:/BSTDEV/research/_004_WIP_BACKUP_20260517T102311Z",
+        "D:/tmp",
+        "D:/Temp"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "S2-local-refs",
+      "description": "Local git ref evidence ONLY: every local branch that is not the active feature branch. Ahead/behind vs develop and main, merge-base, commit sets, changed-file sets, code-vs-chore classification, reflog. Do NOT consult the filesystem outside .git, refs/remotes, the GitHub API, or specs/.",
+      "sources": [
+        "D:/BSTDEV/research/GLP/GLPNET/.git/refs/heads",
+        "D:/BSTDEV/research/GLP/GLPNET/.git/packed-refs",
+        "D:/BSTDEV/research/GLP/GLPNET/.git/logs/refs/heads",
+        "D:/BSTDEV/research/GLP/GLPNET/.git/logs/HEAD"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "S3-remote-github",
+      "description": "Remote and GitHub evidence ONLY: origin remote heads, tags, pull requests in every state, releases, workflow runs, branch protection. Do NOT consult local refs/heads, the local filesystem outside .git/refs/remotes, or specs/.",
+      "sources": [
+        "D:/BSTDEV/research/GLP/GLPNET/.git/refs/remotes/origin",
+        "D:/BSTDEV/research/GLP/GLPNET/.git/refs/tags",
+        "gh:olamni-glp/GLPNET/pulls",
+        "gh:olamni-glp/GLPNET/branches",
+        "gh:olamni-glp/GLPNET/releases",
+        "gh:olamni-glp/GLPNET/actions"
+      ],
+      "assigned_to": null
+    },
+    {
+      "slice_id": "S4-pipeline-artifacts",
+      "description": "Pipeline artifact evidence ONLY: per-feature spec.md / plan.md / tasks.md / research.md completeness and stage state, plus .specify pipeline and roadmap state. Do NOT consult git refs (local or remote), the GitHub API, or the filesystem outside these trees.",
+      "sources": [
+        "D:/BSTDEV/research/GLP/GLPNET/specs",
+        "D:/BSTDEV/research/GLP/GLPNET/.specify/feature.json",
+        "D:/BSTDEV/research/GLP/GLPNET/.specify/roadmap-sync/exports",
+        "D:/BSTDEV/research/GLP/GLPNET/.specify/registry",
+        "D:/BSTDEV/research/GLP/GLPNET/.specify/memory"
+      ],
+      "assigned_to": null
+    }
+  ]
+}
