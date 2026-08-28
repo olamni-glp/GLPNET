@@ -6,22 +6,61 @@
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
     BRANCH   095-shiras-glpnet-onboard-and-scheduler-rootcause
-    UPDATED  2026-08-27T22:30Z   ·  restart-safe: YES   ·  REBOOT-SAFE: YES (bk-onrestart preflight exit 0)
+    UPDATED  2026-08-28T02:00Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (preflight exits 1 - see §0)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
 
 ---
 
-## 0 · 🔴 REBOOT — WHAT HAPPENS AND HOW TO VERIFY IT
+## 0 · 🔴 REBOOT — **THIS SECTION'S OLD CLAIM WAS FALSE. CORRECTED 2026-08-28T02:00Z.**
 
-**Just reboot.** `bk-onrestart` fires automatically at logon and restores the whole fleet.
+> **The previous version of this file said "REBOOT-SAFE: YES (bk-onrestart preflight exit 0)".
+> Re-measured bare on 2026-08-28T02:00Z: the gate exits `1`.** Do not reboot until §0.1 is fixed.
+
+```
+$ ~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh preflight ; echo $?
+  FAIL systemd trigger is WantedBy=, which is '' - it will NOT fire
+  FAIL triggers disagree: '/mnt/biwin/D_DRIVE/YNGENIOS/yngenios/scripts/fleet/post-reboot-restart.sh'
+                     vs 'bash' - two canonical roots
+  NOT SAFE TO REBOOT - 1 blocking check(s) above
+  1                                       <-- REAL exit code
+```
+
+### 0.1 · What must be fixed before a reboot
+
+1. **`WantedBy=` on the systemd user unit is EMPTY** — "enabled" but it will never fire.
+   Set `WantedBy=default.target`.
+2. **Two canonical roots** — the XDG autostart fallback and the systemd unit invoke
+   *different* launchers. Collapse to one. (This is @ariellas' `20260828T0005Z`
+   "two launchers" finding, reproduced here — 2-of-2 hosts, not host-specific.)
+3. Re-run `preflight` **bare** and read `$?`.
+
+### 0.2 · 🔴 NEVER PIPE THE GATE
+
+`preflight 2>&1 | tail` prints every FAIL and still returns **0** — that is `tail`'s status,
+not the gate's. **Piping turns a refusal into a pass.** Run it bare.
+
+### 0.3 · The lane count is 18, not 15 — and 2 have no session
+
+`bk-onrestart list` → **18 lanes**, and preflight says "0 will be skipped" — but `claudesat`
+and `game_dev_demo` show `SESSION = NO`. They will start a *fresh* `claude` that looks alive
+and has lost its thread. **"0 skipped" ≠ "18 will resume with their thread."**
+**Verify against `list`, never against a number written in a document — including this one.**
+
+---
+
+## 0b · REBOOT MECHANICS — **superseded by §0; the numbers below are the 2026-08-27 snapshot**
+
+> 🔴 **DO NOT read "Just reboot" as current.** §0 supersedes it: the gate now exits 1.
+
+**When §0.1 is fixed**, `bk-onrestart` fires at logon and restores the fleet.
 
     layout        1 WINDOW  (shiras uses ONE window for ALL lane tabs; ariellas uses TWO)
-    tabs          15        window1=15, window2=0, skipped=0
+    tabs          18        window1=18, window2=0  (was 15 on 2026-08-27; VERIFY WITH `list`)
     command       claude --continue --autocompact 1000000   (resumes MID-THREAD, never summarises)
-    triggers      systemd user unit (enabled, WantedBy=default.target) + XDG autostart (--delay 45)
+    triggers      🔴 BROKEN - systemd unit WantedBy= is EMPTY; autostart names a DIFFERENT script (§0.1)
     terminal      xfce4-terminal
-    preflight     exit 0  ->  SAFE TO REBOOT
+    preflight     🔴 exit 1  ->  NOT SAFE TO REBOOT  (re-measured 2026-08-28T02:00Z)
 
 **All 12 named fleet lanes have a tab**, plus 3 more:
 `ospark · ulpnit(hatzinor) · tefl · buildkit · olamnit · qhstate · yngraw · yngwin · crucible ·
@@ -37,11 +76,11 @@ glpnet · lejepa · mstack` + `yngorg · yngapp · ynglin`.
 running nothing is a measured failure mode on this fleet:
 
 ```bash
-~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh verify    # expect 15
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh verify    # compare to `list`, NOT to a number here
 ```
 
-**Before rebooting again:** `bk-onrestart.sh preflight` — it is an executable gate (exit 0 = safe),
-not a sentence typed optimistically. If `/mnt/gavri/d` is absent afterwards that means
+**Before rebooting again:** `bk-onrestart.sh preflight` — an executable gate (exit 0 = safe), not a
+sentence typed optimistically. 🔴 **Run it BARE — a pipe returns `tail`'s 0 and hides every FAIL (§0.2).** If `/mnt/gavri/d` is absent afterwards that means
 **"I cannot see the board"**, NEVER "the board is empty".
 
 ## 1 · WHY BARE `resume marathon` NOW WORKS
@@ -128,6 +167,45 @@ With them: `reachable`, `local 991 / fleet-this-host 138`, and `scheduler_ops` m
    Not closed — adoption is partial until S14/S3 lands.
 
 **Sequenced this session** (order keys): S1 `@1.0` → S3 `@2.0` → S14 `@5.0` → S9 `@6.0`.
+
+## 5b · WHAT THE 2026-08-28T01-02Z SESSION DELIVERED (supersedes §4/§5 where they disagree)
+
+- **Trust store 6 -> 21 keys.** `buildkit-roadmap trust import --from /mnt/gavri/d/coop/trust-exchange`
+  (15 keys) + own key **published** as `shiras__4bc1a1a78cf43b17.pub`. **19 documents STILL REFUSED**
+  on three ariellas keys never published: `66c9f04e045be536` (buildkit, 7), `810f0bcaa9133135`
+  (yngenios-windows, 7), `8422afd5f6778bbd` (olamnit-assistant, 5). **Publisher-side remedy only.**
+- **Roadmap cycle:** import (correct `--in-dir`) -> 2 new files, **139 `crucible-xyz` entities correctly
+  refused as foreign**, 76 inbox files missing a `.license` sidecar; reconcile x2 = **in sync**;
+  dedupe x2 = **0 groups (2nd consecutive)**; export **20 epics / 118 features / 3806 lines** ->
+  `shiras__glpnet__20260828T014423Z.json`, published to the coop inbox.
+- **BK-REPORT-v1 ran end to end** under `/home/shira/.local/share/bkvenv/bin/python` with the §2 env.
+  **Takt read FROM the DuckLake: 105,045,962 tokens over 74 phases, coverage 232/2789 rows (8%).**
+- **Commits `8351b635` + `dece1ac4` PUSHED**; branch 0 ahead / 0 behind origin; **no phantom `D:`** this session.
+- **Marathon items captured: S17, S18, S19** (below).
+- **Engineer question set** `.specify/decisions/Q-glpnetshiras-20260828T0200Z.json` — 4 questions,
+  validated by `tools/bkquestion/bkquestion.py`.
+- **Coop:** `ACK-SWEEP-20260828T0200Z-shiras-glpnet-...` published to BOTH channels.
+
+### New marathon items
+
+- **S17 — `codex-cli 0.149.1` IS INSTALLED HERE.** `/home/shira/.local/bin/codex`, and a peer lane ran
+  `buildkit-codexreview codex-pass --cycle 5` on this host during the session. **S7's premise
+  ("codex CLI absent here") is STALE — the gate is runnable and must not be discharged by absence.**
+- **S18 — this branch FORKS develop's deliberate `.targets` decision:** a redundant root
+  `Directory.Build.props` whose comment is provably false, plus `LangVersion` edits inside
+  **codeconv-GENERATED** `out/csharp/*.csproj`. **Not reverted** — engineer question `Q-glpnetshiras-02`.
+- **S19 — trust/refusal state** as recorded above.
+
+### 🔴 The release directive could not be satisfied as worded
+
+`/bk-release any completed fully implemented and codex reviewed features or patches`: **nothing in
+this repo meets that bar.** develop is 2 ahead of main and both are docs/merge commits; this branch is
+docs + roadmap-sync artifacts; the only roadmap feature at state `implemented`
+(`qr-link-provisioning`) **has no spec dir on develop** (recorded as F067); no codexreview has run
+against this branch; **PR #246 from another lane is open against develop**; and S6 records a standing
+peer RELEASE HELD. **Nothing was cut.** Engineer question `Q-glpnetshiras-01`.
+
+---
 
 ## 6 · 🔴 OPEN / BLOCKED — carry these forward
 

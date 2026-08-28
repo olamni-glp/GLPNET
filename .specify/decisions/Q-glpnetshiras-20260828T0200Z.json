@@ -1,0 +1,129 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-glpnetshiras-20260828T0200Z",
+  "lane": "shiras-glpnet",
+  "repo": "GLPNET",
+  "raised_at": "2026-08-28T02:00:00+00:00",
+  "context": "Raised at the end of the 'resume marathon' session on run mrun-f77f62158255. Every figure below was read from a live CLI or from disk in this session; none is typed from memory. Four open blocks require engineer input: (1) the release directive cannot be satisfied as worded because nothing meets its own bar; (2) this branch forks a deliberate develop decision and reverting an instructed change needs permission; (3) the host is NOT reboot-safe and my own handoff doc says it is; (4) three authorities name three different 'next'.",
+  "questions": [
+    {
+      "id": "Q-glpnetshiras-01",
+      "kind": "ruling",
+      "header": "Release",
+      "question": "You directed '/bk-release any completed fully implemented and codex reviewed features or patches'. Measured in GLPNET right now, NOTHING meets that bar: develop is 2 commits ahead of main and both are docs/merge commits (7e9e7e5c restart-prep, 7bddb787 a merge PR); my branch's 20 commits over develop are docs, roadmap-sync JSON and trust keys plus a contested toolchain fork; the ONLY roadmap feature at state 'implemented' (qr-link-provisioning, WSJF 4.00) has NO spec dir on develop, a contradiction already recorded as marathon F067; no codexreview has ever been run against this branch; and PR #246 from another lane is open against develop right now. A standing peer ruling (marathon S6, ariellas 2026-08-24) also records RELEASE HELD pending quiescence. How do you want the release directive applied here?",
+      "blocks": [
+        "buildkit release",
+        "S6 discharge",
+        "any main-trunk advance from glpnet"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Hold; report the bar is unmet",
+          "recommended": true,
+          "means": "Cut no release. Record that the directive's own qualifier ('completed fully implemented and codex reviewed') excludes everything currently in flight, leave S6 parked, and let PR #246 land first so develop is quiescent.",
+          "cost": "main stays 2 commits behind develop and no CalVer tag is cut today; if you intended a routine docs/chore patch release, this defers it by a session."
+        },
+        {
+          "label": "Cut chore patch release now",
+          "means": "Run buildkit release from develop, cutting release/v2026.08.28.x over the 2 docs commits, tagging and back-merging.",
+          "cost": "Races PR #246, which is open against the same branch; overrides the S6 HELD ruling without the peer lane in the loop; and ships a version whose only content is documentation."
+        },
+        {
+          "label": "Codexreview this branch first, then ship+release",
+          "means": "Run /bk-codexreview against the 095 branch (codex-cli 0.149.1 IS present on this host - marathon S17), fix findings, PR into develop, then release.",
+          "cost": "The branch diff is overwhelmingly generated JSON (a 2.4MB roadmap export, 358k lines of refusal records); an adversarial code review over that is expensive and reviews almost no code."
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnetshiras-02",
+      "kind": "ruling",
+      "header": "C#15 fork",
+      "question": "This branch carries two changes that contradict develop's deliberate decision and a peer's measurement. (a) A root Directory.Build.props whose own comment claims it 'owns the language version' - false: .props is imported BEFORE the project body and loses to the 15 projects that set LangVersion=latest, which is exactly why develop moved the pin to Directory.Build.targets (that file's comment documents the measurement). (b) LangVersion latest->preview edits inside out/csharp/*.csproj, which are codeconv-GENERATED artifacts that develop's 2ae46a40 deliberately leaves alone. gavriella-glpnet measured at 2026-08-28T02:00Z that the root .targets already forces preview on every 'latest' project (dotnet msbuild -getProperty:LangVersion -> preview) and recommends the fleet DROP the per-project conversion. These were instructed changes from an earlier session of this lane, so I have not reverted them. What should happen?",
+      "blocks": [
+        "a clean 095 -> develop PR",
+        "fleet convergence on gavriella's section 4"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Revert both",
+          "recommended": true,
+          "means": "Delete the redundant root Directory.Build.props and restore the three out/csharp/*.csproj files to develop's generated content. The repo keeps exactly one pin, in Directory.Build.targets, verified by -getProperty:LangVersion.",
+          "cost": "Reverts a change this lane was instructed to make in an earlier session; if you want a belt-and-braces .props for NEW projects that set nothing, that safety net goes away."
+        },
+        {
+          "label": "Keep props, revert generated",
+          "means": "Keep Directory.Build.props as a default for projects that set no LangVersion, rewrite its comment to say .targets is authoritative, and restore only the generated out/csharp csproj files.",
+          "cost": "Two files claim the same pin; a future reader must know the import order to predict which wins, which is the exact confusion that produced this fork."
+        },
+        {
+          "label": "Keep as-is",
+          "means": "Leave both. The .targets still wins, so the build is correct either way.",
+          "cost": "Ships a file whose documentation is provably false, and edits generated artifacts - the next codeconv regeneration silently reverts them, so the 'fix' is not durable."
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnetshiras-03",
+      "kind": "risk-acceptance",
+      "header": "Reboot",
+      "question": "My own handoff document (RESTART-PREP-shiras-glpnet-mrun-f77f62158255.md) tells the next session 'REBOOT-SAFE: YES (bk-onrestart preflight exit 0)'. I re-ran the gate bare instead of trusting it: it exits 1. Two blocking findings - the systemd user unit's WantedBy= is EMPTY so it will never fire, and the XDG autostart fallback points at a DIFFERENT launcher (.../YNGENIOS/yngenios/scripts/fleet/post-reboot-restart.sh) than the unit, which is ariellas' 'two launchers' finding reproduced on a third host. Separately, 18 lanes are registered (not the 15 my doc claims) and 2 of them (claudesat, game_dev_demo) have NO session store yet are reported as '0 will be skipped'. A reboot right now does not reliably bring the fleet back. How do you want this handled?",
+      "expires_after_days": 3,
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Do not reboot; fix trigger",
+          "recommended": true,
+          "means": "Treat exit 1 as binding. Fix WantedBy=default.target on the systemd user unit, collapse the two autostart roots to one, re-run preflight bare until it exits 0, and only then declare reboot-safe. I correct my handoff doc immediately either way.",
+          "cost": "Delays any reboot by the time the fix takes; the fix touches a launcher that at least three lanes have independently forked, so a local fix may diverge again."
+        },
+        {
+          "label": "Accept risk; recover by hand",
+          "means": "Reboot when needed and relaunch missing lanes manually with bk-onrestart.sh launch --wait-for-mounts, verifying by process count.",
+          "cost": "Every lane that fails to come back sits idle until someone notices; the two session-less lanes will start a fresh thread that looks alive but has lost its context."
+        },
+        {
+          "label": "Escalate to buildkit; hold",
+          "means": "Do not patch locally. Escalate to buildkit as the single owner of one deployed bk-onrestart capability (the feature is already specified on the glpnet roadmap at WSJF 4.20) and do not reboot until it ships.",
+          "cost": "No ETA; the host stays un-rebootable for an unbounded period, and three forked copies keep drifting in the meantime."
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnetshiras-04",
+      "kind": "ruling",
+      "header": "Next work",
+      "question": "Three authorities name three different 'next' and I will not pick between them silently. (a) MARATHON says S1 - scheduler dispatch leaks at all three transitions (midi, sequenced first at order key 1.0). (b) ROADMAP says front-end-goal-term-acceptance-completeness (WSJF 3.60, RICE 3000, promoted, needs /bk-specify) - real user-facing GLP footguns: =.. rejected in clause bodies, structs-in-lists in REPL goals, C# REPL UnderscoreTerm. (c) HIGHEST WSJF SPECIFIED is verification-receipts at 7.80 with 62 open tasks already planned. Complicating (a): marathon S15 measured across 7 fleet boards that binding is NECESSARY BUT NOT SUFFICIENT (mstack is 71% bound and still dispatches 0; only 5 of 424 packets are dispatchable fleet-wide), and S16 measured glpnet is backlog-starved 23/32 with capability-fit never executing - so the scheduler work as currently scoped would ship, measure green, and change nothing until the second gate is identified. Which do we do?",
+      "blocks": [
+        "the next marathon step",
+        "S1/S3 sequencing",
+        "any /bk-specify handoff"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Front-end goal-term acceptance (roadmap next)",
+          "recommended": true,
+          "means": "Run /bk-specify on front-end-goal-term-acceptance-completeness. It is the highest-RICE item (3000), it is REAL product work on the GLP front-end rather than more tooling, its three defects are already located, and it is the one cross-slice merge two independent builders flagged.",
+          "cost": "Leaves the scheduler board at 0/32 bound for another cycle, and defers verification-receipts' 62 planned tasks despite its higher WSJF."
+        },
+        {
+          "label": "Scheduler: measure gate first",
+          "means": "Stay on the marathon sequence, but before writing any remedy, measure and name the post-binding gate that S15/S16 proved exists. No implementation until the gate is identified.",
+          "cost": "More measurement before any shipped change; the last three scheduler cycles all ended in a measurement rather than a fix, and this makes a fourth likely."
+        },
+        {
+          "label": "Verification-receipts (highest WSJF, already planned)",
+          "means": "Resume feature 078 at IMPLEMENT - it is analyzed with 62 open tasks and carries the top WSJF of 7.80.",
+          "cost": "A saga-sized feature; marathon takt measures maxi eras at a 22.7h mean against a 1.5-6h band, so a saga will run well over and will occupy this lane for multiple sessions."
+        }
+      ]
+    }
+  ]
+}
