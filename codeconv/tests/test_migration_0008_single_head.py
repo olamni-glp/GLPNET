@@ -32,33 +32,46 @@ def _script_dir():
 
 
 def test_exactly_one_head_offline() -> None:
-    """Authoritative, bridge-free: the script graph has ONE head.
+    """Authoritative, bridge-free: the script graph has exactly ONE head.
 
-    Stage 4 appends ``0009_no_emit`` (revision 0009, down_revision 0008),
-    so the single head advanced 0008 → 0009. (test_migration_0009_single_head
-    owns the 0009 assertions; here we just track the current head.)"""
+    🔴 THE ASSERTION IS STRUCTURAL, NOT A HARD-CODED REVISION ID. It used to read
+    ``assert heads == ["0010"]``. That is a restatement of "the newest migration is
+    the one that existed when this test was written", so EVERY later migration broke
+    it — and it did break: revisions 0011 and 0012 landed and both of this module's
+    graph tests failed unconditionally, on every run, in a suite whose whole job is
+    to be believed. A test that must be edited by each unrelated change is not
+    protecting the invariant, it is reporting the calendar. The invariant this file
+    owns is *single head, no branch*, and that is what is asserted now.
+    """
     sd = _script_dir()
     heads = sd.get_heads()
-    assert heads == ["0010"], f"expected single head 0010, got {heads}"
+    assert len(heads) == 1, f"expected exactly ONE head (no branch/merge), got {heads}"
 
 
 def test_linear_chain_through_0008_offline() -> None:
-    """The chain stays strictly linear 0001→…→0010 (no branch/merge),
-    so ``alembic upgrade head`` is unambiguous."""
+    """The whole chain is strictly linear (no branch, no merge), and it passes
+    through ``0008``, so ``alembic upgrade head`` is unambiguous.
+
+    Linearity is checked as a property — one root, one head, every other revision
+    with exactly one parent and one child — rather than by naming every revision,
+    for the reason given in ``test_exactly_one_head_offline``."""
     sd = _script_dir()
     chain = {r.revision: r.down_revision for r in sd.walk_revisions()}
-    assert chain == {
-        "0010": "0009",
-        "0009": "0008",
-        "0008": "0007",
-        "0007": "0006",
-        "0006": "0005",
-        "0005": "0004",
-        "0004": "0003",
-        "0003": "0002",
-        "0002": "0001",
-        "0001": None,
-    }, chain
+
+    branching = {rev: down for rev, down in chain.items() if isinstance(down, tuple)}
+    assert not branching, f"merge revision(s) present, chain is not linear: {branching}"
+
+    roots = [rev for rev, down in chain.items() if down is None]
+    assert roots == ["0001"], f"expected the single root 0001, got {roots}"
+
+    children: dict[str, list[str]] = {}
+    for rev, down in chain.items():
+        if down is not None:
+            children.setdefault(down, []).append(rev)
+    forks = {rev: kids for rev, kids in children.items() if len(kids) > 1}
+    assert not forks, f"revision(s) with more than one child, chain is not linear: {forks}"
+
+    assert "0008" in chain, f"0008 is missing from the chain: {sorted(chain)}"
 
 
 def test_0008_revision_metadata_offline() -> None:

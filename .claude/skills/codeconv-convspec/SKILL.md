@@ -25,7 +25,7 @@ enters a DBOS step except as a re-read of the checked-in artifact**
 ## Resolve + invoke
 
 1. venv: `codeconv/.venv/Scripts/python.exe` (Windows) / `.../bin/python`.
-2. Run from repo root; pass `--data-dir C:/pglite/research/glpnet`
+2. Run from repo root; pass `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
    (CLAUDE.md — shared-bridge reuse convention; D: is NTFS so the guard
    no longer triggers).
 3. Explicit subcommand → `codeconv ... convspec <args verbatim>`.

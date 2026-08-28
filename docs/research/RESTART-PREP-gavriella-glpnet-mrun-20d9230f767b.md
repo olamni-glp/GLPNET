@@ -898,3 +898,96 @@ a command in glpnet.
 **READY FOR RESTART — resume with `resume marathon`.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-27T18:12:00Z
+
+---
+
+# 🟢 REBOOT-PREP — 2026-08-28T00:15Z · **SAFE TO REBOOT NOW**
+
+## HOW THE REBOOT RESUMES — nothing to type
+
+**Just reboot.** `BK-OnRestart` fires **at logon + 45 s** and relaunches **all 15 lanes** as
+Windows Terminal tabs via `claude --continue --autocompact 1000000` — resuming each thread
+**mid-conversation**, not summarising.
+
+**GAVRIELLA uses TWO windows** (`layout TwoWindows`, per-host via `layoutByHost`). Order and
+window allocation are contractual:
+
+| win | lanes (in order) |
+|---|---|
+| **1** | `ospark` · `tefl` · `hatzinor` · `olamnit` · `buildkit` · `qhstate` · `yngraw` |
+| **2** | `crucible` · `glpnet` · `lejepa` · `mstack` · `yngwin` · `yngapp` · `ynlin` · `yngorg` |
+
+Verified **2026-08-28**: `Requested 15 · Will launch 15 · Refused 0 · Layout TwoWindows · exit 0`.
+
+**If it does not fire, or you want it by hand:**
+
+```
+pwsh -File D:\BSTDEV\research\GLP\GLPNET\scripts\onrestart-launch.ps1 -WaitForMounts -AllowUnconfirmedResume
+```
+
+🔴 **VERIFY BY COUNTING PROCESSES, NEVER BY TRUSTING THE MESSAGE.** The known failure mode is
+tabs that open and run **nothing** (measured in the reference lane: 12 tabs, 0 claude processes):
+
+```powershell
+@(Get-Process claude | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-3) }).Count   # expect 15
+```
+
+🔴 **If `I:` is absent afterwards that means "I CANNOT SEE THE BOARD" — never "the board is
+empty".** Do not let any tool fall back to a local sched root; that husk answers every query with
+plausible STALE data (three 2026-08 incidents). Remap when gavriella is back:
+`net use I: \\192.168.0.108\GAVRI_D /persistent:yes`
+
+## ONE HONEST CAVEAT
+
+`Get-ScheduledTaskInfo BK-OnRestart` still reports **`LastTaskResult = 64` from 2026-08-25**. 64 is
+**not** one of the script's own exit codes (it defines 0–9), so it came from PowerShell/the task
+host, not the script's logic. **It does not reproduce**: the exact task command line dry-runs to
+**exit 0** today, and the task has been re-installed against the current script. Recorded as a
+declared risk on the new roadmap feature rather than papered over. **After this reboot, check the
+process count — that is the real proof.**
+
+## WHAT WAS DONE THIS SESSION FOR THE REBOOT
+
+| item | result |
+|---|---|
+| lanes registered | **13 → 15** — added `ynlin` (`D:\yngenios\yngenios-linux`) and `yngorg` (`D:\yngenios\yngenios`), both **win 2**, both real git repos with live sessions |
+| how they were found | enumerated **every** Claude session store under `~/.claude/projects`; both had transcripts but no config entry |
+| order/window | window 1 untouched; additions appended to window 2 |
+| trigger | re-installed — at logon **+45 s**, enabled, pointing at the current script |
+| dry run | **15/15 launchable, 0 refused, exit 0** |
+| codify | `cn-20260827T230754-78eb2a01` (win, subject `bk-onrestart`) |
+| roadmap | feature **`bk-onrestart-two-window-multi-tab-fleet-resume-auto-installable`** captured → scored **WSJF 4.2 / RICE 1200** → **promoted**, epic `fleet-interconnectivity-observability-hardening` |
+| release | **`v2026.08.27.6`** (PR #244) |
+
+**Auto-installable on ANY host** (already implemented, verified): `-Install` resolves its own path
+and the running `pwsh` portably, registers the at-logon+45 s task for the current user, idempotent
+via `-Force`. Per-host layout: `TwoWindows` on GAVRIELLA/GAVRI, `Tabs` on OLAMNIT/ARIELLAS/SHIRAS.
+
+## THE FOUR TRAPS THE MECHANISM ENCODES — do not "simplify" any of them away
+
+1. **Silent-new-session.** `claude --continue` does **not** error with no stored session — it
+   silently starts a **brand new empty one**, indistinguishable from a resume until the context is
+   gone. Stores are validated **before** launch and re-read **after**; a different `sessionId` is
+   reported **FAILURE**, never resume.
+2. **Bare semicolon.** `wt`'s separator must reach it as a bare `;`. Backtick-escaped, it arrives
+   literally and yields tabs that run nothing.
+3. **Two different mount waits.** Local repo paths **required** (refuse if missing); network shares
+   **optional** (launch anyway) — in a fleet-wide reboot the share host is down too, so blocking
+   means the restart never runs.
+4. **Never `--fork-session`.** It mints a new session id and continues a **copy**, which is not
+   continuing.
+
+## AFTER REBOOT — CONTINUE HERE
+
+**In the `glpnet` tab, type exactly: `resume marathon`.**
+
+Marathon `mrun-20d9230f767b` `[open]`, feature `078-verification-receipts`. **No engineer block is
+open.** Next: **078 → `codexreview` → `ship` → `close`** (the code is released; the FEATURE is not
+closed), then the 4 round-2 MEDIUMs, the unbound `spec_path` links, the takt phase-vocabulary split,
+the `plan` 100.62h / `other` 90.54h gaps, `bk-flow open` on the 9 claimed packets, and 083
+implement→ship. Beyond glpnet: the newly promoted `bk-onrestart` feature is ready for
+`/bk-specify` in the **buildkit** lane.
+
+**READY FOR REBOOT.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-28T00:15:00Z

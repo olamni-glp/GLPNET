@@ -1,0 +1,132 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS10-20260828T0200Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-28T02:00:00+00:00",
+  "context": "Session 10, post-reboot. Four blocks that need an engineer decision, every one of them measured on GAVRIELLA this session and every one of them fleet-wide rather than local to glpnet. Q-01 and Q-03 arise from tensions between three lanes' .NET 11 broadcasts that cannot all be right at once; Q-02 is a fork nobody declared; Q-04 is an integrity hole in the ruling ledger itself.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS10-01",
+      "kind": "ruling",
+      "header": "SDK pin",
+      "question": "The fleet has TWO different global.json rollForward values in circulation for the same mandated .NET 11 preview SDK, and they are already colliding. GLPNET's HEAD pins rollForward=latestPatch (commit 33ec94a2, the file's only commit). @olamnit's 20260827T183026Z install recipe specifies latestFeature, and @shiras adopted latestFeature locally, producing an unresolved AA merge on global.json in their second GLPNET checkout. Measured consequence there: MSB4242 SDK Resolver Failure, 246 x MSB4014 and 60 x MSB4242 across the Olamnit.Coin family, because any repo that references a GLPNET project through GlpnetRoot builds against that working tree. @shiras recommended resolving to latestFeature 'matching your own HEAD' - my HEAD is latestPatch, so that recommendation would diverge from the canonical repo rather than converge with it. The semantic difference is not cosmetic on a PREVIEW pin: latestFeature will roll a pinned 11.0.100-preview.7 forward onto a later preview FEATURE band unattended, which is the opposite of what pinning a preview is for. Which value is canonical fleet-wide?",
+      "blocks": [
+        "every cross-repo build that references GLPNET through GlpnetRoot",
+        "@shiras' unresolved AA merge",
+        "the .NET 11 install recipe every host is following"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "latestPatch fleet-wide",
+          "recommended": true,
+          "means": "GLPNET's HEAD stands as canonical. I broadcast the correction so every lane's global.json and every copy of the install recipe uses latestPatch; @shiras resolves their AA to latestPatch and the cross-repo builds recover.",
+          "cost": "It contradicts an already-broadcast recipe that at least two hosts have followed, so it costs a correction round and every lane must re-check a file it believes it already got right. It also means a genuinely superseding preview needs a deliberate re-pin commit rather than arriving on its own."
+        },
+        {
+          "label": "latestFeature fleet-wide",
+          "means": "The already-broadcast recipe stands; I change GLPNET's global.json to latestFeature, which also makes @shiras' unresolved merge resolve cleanly to the value they already have.",
+          "cost": "A preview pin that rolls forward across feature bands is not a pin - the fleet would silently move to preview.8 or later with no commit and no ACK, and the very reproducibility the pin was mandated for is lost. The next SDK preview then breaks builds on a schedule nobody chose."
+        },
+        {
+          "label": "Per-repo choice, must be declared",
+          "means": "Each repo picks its own rollForward and states it in its ACK; the fleet standard becomes 'declare it', not 'match it'.",
+          "cost": "Does not solve the actual failure: the AA conflict happens precisely because two repos SHARE one GLPNET checkout. A per-repo choice is undefined when one tree serves several repos, so this leaves the measured MSB4242 break unresolved."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS10-02",
+      "kind": "ruling",
+      "header": "Restart fork",
+      "question": "bk-onrestart is FORKED and no lane declared it. @olamnit's 20260827T222833Z URGENT names two defects (lanes absent from config; a leaf-name collision that makes yngorg unlaunchable) and gives a 3-step remedy against %LOCALAPPDATA%\\bk-onrestart\\bk-onrestart.ps1 with config at %LOCALAPPDATA%\\bk-onrestart\\config.json. That path does not exist on GAVRIELLA. This host runs a different implementation - GLPNET/scripts/onrestart-launch.ps1 with config at %USERPROFILE%\\.bk-onrestart\\config.json, a lanes[].group + layoutByHost model rather than windows[].repos, and ten distinct exit codes. A lane on this host that follows their remedy verbatim gets file-not-found and may conclude it has no launcher. Both implementations work on their own host: GAVRIELLA rebooted at 01:19:55 today and I counted 15 claude.exe processes for 15 configured lanes, with LastTaskResult=6 correctly reporting that a bogus 16th lane was refused - so their headline that 'the failure is SILENT' is true of their build and false of mine. I have the capability captured and promoted (bk-onrestart-two-window-multi-tab-fleet-resume-auto-installable, WSJF 4.2 / RICE 1200, epic fleet-interconnectivity-observability-hardening), ready for /bk-specify. Who owns convergence?",
+      "blocks": [
+        "every host's next reboot",
+        "@olamnit's remedy being actionable on GAVRIELLA",
+        "the promoted bk-onrestart roadmap feature entering the pipeline"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Converge in the buildkit lane",
+          "recommended": true,
+          "means": "The promoted feature is specified and built ONCE in the buildkit lane as a deployed capability with a single config schema, migrating both existing configs, and both host-local scripts are retired when it ships. Until it ships each host keeps its own working copy and no lane broadcasts a remedy without naming which implementation it applies to.",
+          "cost": "Convergence is a full pipeline run in a lane that is not mine, so it is not immediate; in the interim the fleet still has two mechanisms and every restart broadcast must carry an implementation qualifier or it will mislead someone."
+        },
+        {
+          "label": "Adopt olamnit's script fleet-wide now",
+          "means": "Every host installs %LOCALAPPDATA%\\bk-onrestart\\bk-onrestart.ps1, and GAVRIELLA retires its own script and migrates its 15-lane two-window config to the windows[].repos model.",
+          "cost": "It replaces a mechanism VERIFIED by a real 15/15 reboot on this host today with one whose own author has just reported two live defects in it, and it discards the ten-exit-code refusal signalling that is the only reason this host learned anything from LastTaskResult=6."
+        },
+        {
+          "label": "Keep both, document per-host",
+          "means": "Declare the fork intentional. Each host records which implementation it runs; broadcasts must name the implementation they apply to.",
+          "cost": "Two codebases for one function means every future defect is found and fixed twice, and the fleet keeps paying the cost we just paid - a lane spending an hour on a remedy that could never have applied to it."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS10-03",
+      "kind": "ruling",
+      "header": "LangVersion",
+      "question": "The fleet C#15 mandate currently instructs every host to run `grep -rl \"<LangVersion>latest</LangVersion>\" --include=\"*.csproj\" .` in every repo and convert each hit, and @shiras' 20260827T2230Z broadcast credits the glpnet lane with having converted 18 projects. We did not convert them and no lane needs to. Measured in GLPNET this session: 18 .csproj files still contain LangVersion=latest, 0 contain preview, and `dotnet msbuild csharp\\glp_il_codec\\GlpIlCodec.csproj -getProperty:LangVersion` returns preview - because one repo-root Directory.Build.targets is imported AFTER the project body and overrides all 18. The grep is therefore a false-alarm detector in both directions: it reports 18 violations in a fully compliant repo, and it reports zero in a repo that converted every project but has no central file - which then regresses silently the first time somebody adds a project. This is the same class of error as @shiras' own good catch that `dotnet --version` is not a build probe. Should the per-project conversion stay in the mandate?",
+      "blocks": [
+        "conversion work queued in every repo on four hosts",
+        "the compliance criterion the fleet ACKs against"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Root .targets is the standard",
+          "recommended": true,
+          "means": "The mandate becomes: one repo-root Directory.Build.targets setting LangVersion=preview, and compliance is proven ONLY by `dotnet msbuild <a project that sets its own LangVersion> -getProperty:LangVersion` returning preview. The grep-and-convert step is dropped, and the grep is demoted to an informational hygiene note.",
+          "cost": "Repos that already did the conversion did work they did not need; and a single root file is a single point of failure - if someone deletes or shadows it, all projects fall back at once rather than one at a time."
+        },
+        {
+          "label": "Both - central file AND convert",
+          "means": "Keep the root .targets as the enforcement mechanism and still convert every project, so the intent is visible in each project file and survives a lost root file.",
+          "cost": "Real work in every repo on four hosts for defence against a file that is checked in and reviewed, and it does not fix the actual regression path either, since a NEW project added later is still uncovered unless the root file exists anyway."
+        },
+        {
+          "label": "Keep per-project conversion",
+          "means": "The mandate stands as broadcast; each project declares preview explicitly and the grep remains the compliance probe.",
+          "cost": "Keeps a compliance probe that is measurably wrong in both directions, and would have this lane make 18 edits that change no build output - while leaving the newly-added-project hole open forever."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS10-04",
+      "kind": "ruling",
+      "header": "Ledger gap",
+      "question": "The engineer-decision ledger has an integrity hole in the four rows that matter most. .specify/decisions/engineer-decisions.jsonl holds 33 rows; rows Q-GLPNETS8-01 through Q-GLPNETS8-04 (Review loop, CRDT store, Takt coverage, Registry lock) carry an EMPTY question body and answer=null. At least one of them was in fact answered: Q-GLPNETS9-01 quotes it directly - 'Your ruling Q-GLPNETS8-01 said: fix the 4 HIGHs, re-review ONCE, and if that round raises only MEDIUM/LOW, ship' - and this lane then acted on it across three review rounds. So a ruling that governed real work exists in the ledger as a blank row, and its content survives only inside a chat transcript and a later question's prose. The whole point of the git-tracked JSONL is that a ruling should not live in exactly one unreplicated place. Three further rows are in the same state and I do not know whether they were answered at all. How should the blanks be handled?",
+      "blocks": [
+        "citing any S8 ruling as authority",
+        "knowing whether three blocks are open or closed"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Reconstruct and re-record, tagged",
+          "recommended": true,
+          "means": "I reconstruct the four question bodies and any answers from the session artifacts, append CORRECTED rows carrying an explicit provenance tag (reconstructed_from + reconstructed_at) so they are never mistaken for a primary record, and leave the blank rows in place since the ledger is append-only. Where no answer can be evidenced, the row is re-raised as an open question rather than guessed.",
+          "cost": "A reconstructed ruling is weaker evidence than a recorded one, and it puts my reconstruction of your words into a ledger that is meant to hold your words - the provenance tag mitigates that but does not remove it."
+        },
+        {
+          "label": "Void them, re-ask",
+          "means": "Treat all four as never-recorded. Mark them void and re-raise each as a fresh question in the next set.",
+          "cost": "Q-GLPNETS8-01 demonstrably WAS answered and three review rounds were run under it; voiding it retroactively puts completed work under a ruling that officially does not exist, and costs you four repeat decisions."
+        },
+        {
+          "label": "Accept as-is",
+          "means": "Leave the blanks. Treat the ledger as best-effort and rely on the restart documents for ruling content.",
+          "cost": "Restart documents are prose and get rewritten; this is exactly the drift the ledger was created to stop. It also leaves three blocks in an unknown open/closed state indefinitely."
+        }
+      ]
+    }
+  ]
+}

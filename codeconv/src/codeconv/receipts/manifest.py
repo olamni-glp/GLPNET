@@ -20,6 +20,10 @@ from . import paths, receipt as receipt_mod
 # buildkit's own manifest — research D3). ``reference`` is the MVP proof target.
 GLPNET_AREAS = ("build-gate", "coop", "roadmap-sync", "test-harness", "reference")
 
+#: The ONLY legal adoption states. An unrecognised value is not a third state to
+#: be interpreted — it is a broken declaration (see ``UndeclaredState``).
+ADOPTION_STATES = ("adopted", "non-adopted")
+
 
 class MissingDeclaration(Exception):
     """An area is absent from the adoption manifest — an error, never a pass (FR-020)."""
@@ -27,6 +31,21 @@ class MissingDeclaration(Exception):
 
 class UndeclaredRun(Exception):
     """A run declared no expected-check set — an unverifiable run refuses (FR-023)."""
+
+
+class UndeclaredState(Exception):
+    """An area declared a state that is not one of ``ADOPTION_STATES``.
+
+    WHY THIS IS ITS OWN ERROR AND NOT A TOLERATED VALUE. The consumer's gate is
+    ``if state == "non-adopted"`` — a single equality against ONE of the two
+    states. Every other string therefore falls through to *adopted* semantics,
+    so a typo (``"non-adopred"``, ``"nonadopted"``, ``"pending"``) does not
+    disable the gate loudly, it turns a receipt GREEN. That is the exact
+    unearned pass FR-008 exists to refuse, arriving through the manifest that is
+    supposed to authorise the refusal. Absence is already an error (FR-020); a
+    *malformed* declaration must be an error for the same reason, or the
+    enumeration requirement can be satisfied by nonsense.
+    """
 
 
 # ---- adoption manifest (FR-019/020/021) -----------------------------------
@@ -42,7 +61,32 @@ def load_adoption(path: str | Path = paths.ADOPTION_MANIFEST) -> dict[str, str]:
     if not p.exists():
         raise MissingDeclaration(f"adoption manifest not found at {p} — FR-019 requires it checked in")
     data = json.loads(p.read_text(encoding="utf-8"))
-    entries = {e["area"]: e["state"] for e in data.get("areas", [])}
+    raw = data.get("areas", [])
+
+    # A dict comprehension over ``raw`` would let a repeated area silently win by
+    # being last — two contradictory declarations, one of which is invisible.
+    entries: dict[str, str] = {}
+    duplicates: list[str] = []
+    for e in raw:
+        area = e["area"]
+        if area in entries:
+            duplicates.append(area)
+        entries[area] = e["state"]
+    if duplicates:
+        raise UndeclaredState(
+            f"adoption manifest at {p} declares area(s) {sorted(set(duplicates))} more than once — "
+            f"a repeated area means two states are declared and only one is read (FR-019); "
+            f"declare each area exactly once"
+        )
+
+    illegal = {a: s for a, s in entries.items() if s not in ADOPTION_STATES}
+    if illegal:
+        raise UndeclaredState(
+            f"adoption manifest at {p} declares state(s) {illegal} that are not one of "
+            f"{list(ADOPTION_STATES)} — the consumer gates on equality with 'non-adopted', so any "
+            f"other value silently takes ADOPTED semantics and turns a receipt green (FR-019/020)"
+        )
+
     missing = [a for a in GLPNET_AREAS if a not in entries]
     if missing:
         raise MissingDeclaration(

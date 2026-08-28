@@ -56,6 +56,17 @@ def read(verdict: Verdict, adoption: dict[str, str] | None = None) -> Reading:
                 f"area {verdict.area!r} is not declared in the adoption manifest — "
                 f"absence is an error, not a pass (FR-020); declare it before its verdicts are read"
             )
+        if state not in ("adopted", "non-adopted"):
+            # THE GATE ITSELF, not just the loader. ``manifest.load_adoption``
+            # now rejects an illegal state, but ``adoption`` is a plain dict any
+            # caller may build, so the single equality below would hand every
+            # unrecognised value ADOPTED semantics — an unearned green produced
+            # by the very manifest that authorises the refusal. Refuse here too.
+            raise VerdictRefused(
+                f"area {verdict.area!r} declares adoption state {state!r}, which is neither "
+                f"'adopted' nor 'non-adopted' — an unrecognised state is a broken declaration, "
+                f"not a pass (FR-019/020)"
+            )
         if state == "non-adopted":
             # C1: the verdict "remains usable but MUST carry a visible non-adoption
             # marker". Discarding its receipt would disable verdicts instead of
