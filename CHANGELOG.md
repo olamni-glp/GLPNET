@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+## [v2026.08.28.1] - 2026-08-28
+
+### Added
+- install /yx-bootmig in glpnet byte-identical to olamnit's copy, with a PROVENANCE sidecar - glpnet does not own it (yngenios spec does), so local findings live outside SKILL.md and drift is detectable by sha256; records the 2 refuted claims, the 444x proxy undercount, and the gate state
+
+### Fixed
+- assert the migration graph invariant structurally instead of naming the current head - both files asserted head==0010 while 0011/0012 had landed, so 4 tests failed unconditionally; now single-head/single-root/no-fork, 8/8 green
+- reject unknown and duplicate adoption states at BOTH the loader and the gate - the consumer gated on one equality with 'non-adopted' so every typo took ADOPTED semantics and turned an unearned verdict green; +11 regression assertions, faultinj 51/51
+- repair the TFM sed capture group - a control char had replaced the backreference so GLPREPL_TFM resolved empty and Sections I/T/U skipped on a bin/Debug//glp_repl.exe path
+- retarget the 3 out/csharp projects to net11.0 and derive the TFM from the csproj in the suite - e9cb6f7f's 'all 23 csharp projects' excluded out/csharp, so glp_repl could not build at all (NU1201) and Sections I/T/U went UNSEARCHABLE on a stale exe
+- repoint 8 codeconv skill docs to repo-local .pgdb (CLAUDE.md canonical); prohibited C:/pglite/research/glpnet removed; record engineer decisions
+
+### Changed
+- merge: land PR #246 tidy-up branch into develop; sole conflict engineer-decisions.jsonl resolved by UNION per Q-tidyup-20260827T214708Z (37 develop + 38 tidyup -> 42 distinct, 0 dropped either side, every line valid JSON)
+- P2 analysed - the skill misdiagnoses its own binding constraint; cross-repo refs are dropped at INGEST (resolve_references, in-repo index) not lost to a node key, and the edge-lookup miss is silent with no denominator; stem-union fix would mint false edges across 3 divergent kernels (FR-8); M1 answered REUSE with the refuter stated
+- 3 of 4 hard preconditions measured FALSE - P0 satisfied by LATTICE Amendment 1.1 since 2026-08-03, epic bootstrap-migration exists, all 4 targets present; binding constraint moves to P2; +reader defect where epics vanish for any reader keying on 'kind'; withdraws my own repetition of 2 stale blockers
+- codexreview 20260828T004446Z write-up (12 findings, 2 fixed 10 carried) and engineer question set Q-GLPNETS10 with four recorded rulings
+- Merge remote-tracking branch 'origin/develop' into chore/tidy-up-branches-worktrees-20260822-olamnit
+- REBOOT-PREP - safe to reboot; 15 lanes registered across 2 windows (added ynlin+yngorg to win2), trigger reinstalled at logon+45s, 15/15 launchable exit 0; verify by process count not by message; LastTaskResult=64 recorded as a declared non-reproducing risk
+- Merge pull request #245 from olamni-glp/main
+- export 20/116/3777, record 2 engineer Q-decisions (merge-into-tidyup, net11 TFM flip), stage pending artifacts
+- back out redundant csharp-scoped .NET11 pin; defer to authoritative root Directory.Build.targets on develop (33ec94a2) - props loses to LangVersion=latest, verified
+- pin .NET 11 preview SDK + opt in to C# 15 (LangVersion=preview) per fleet mandate 2026-08-27
+- stage shiras-absence rootcause manifest (3 disjoint slices) for dedicated continuation session
+- export 20/116/3762 (reconcile in-sync, dedupe 0 groups/115 live) 2026-08-25
+
 ## [v2026.08.27.6] - 2026-08-27
 
 ### Changed
