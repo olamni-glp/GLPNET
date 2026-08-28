@@ -178,6 +178,13 @@ $SeedConfig = [ordered]@{
         [ordered]@{ name='lejepa';     group=2; path='D:\bstdev\research\lejepa' }
         [ordered]@{ name='mstack';     group=2; path='D:\bstdev\tools\mstack' }
         [ordered]@{ name='yngwin';     group=2; path='D:\YNGENIOS\yngenios-windows' }
+        # The yngenios PRODUCT estate joins yngwin in window 2 (added 2026-08-27).
+        # All three carry real Claude session stores and were silently absent from
+        # every host's seed, so a fresh host relaunched 12 of 15 lanes and reported
+        # success -- the lanes it never opened were not named anywhere.
+        [ordered]@{ name='yngapp';     group=2; path='D:\YNGENIOS\yngenios-app' }
+        [ordered]@{ name='yngorg';     group=2; path='D:\YNGENIOS\yngenios' }
+        [ordered]@{ name='ynlin';      group=2; path='D:\YNGENIOS\yngenios-linux' }
     )
 }
 
