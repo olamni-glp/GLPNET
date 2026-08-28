@@ -2329,11 +2329,26 @@ echo ""
 section "I" "Cross-runtime Gleam × C# link suite (US5)"
 # SCRIPT_DIR-anchored: the suite cd'd into glp_runtime/ at the top, so relative
 # repo-root paths do not resolve here.
+# --- TFM resolution: read the target framework FROM THE CSPROJ, never hard-code it ---
+# 2026-08-28: these paths were pinned to `net10.0`. Commit e9cb6f7f retargeted "all 23 csharp
+# projects" to net11.0 — a denominator that EXCLUDED the three projects under out/csharp/, one of
+# which is this very REPL. glp_repl then could not build at all (NU1201: glp_link supports net11.0),
+# so the binary went stale and Sections I, T and U all reported UNSEARCHABLE. A hard-coded TFM here
+# is the same "restate the calendar" defect: it must be re-edited by every unrelated retarget, and
+# when it is missed the suite goes quiet instead of red. Derive it.
+csproj_tfm() {
+    local _f="$1"
+    [ -f "$_f" ] || return 1
+    sed -n 's:.*<TargetFramework>\([^<]*\)</TargetFramework>.*::p' "$_f" | head -1
+}
+GLPREPL_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/glp_repl/glp_repl.csproj") || GLPREPL_TFM=""
+PROBE_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/term_traversal_probe/term_traversal_probe.csproj") || PROBE_TFM=""
+
 # --- 078 T047: establish build freshness ONCE, before ANY section that uses glp_repl.exe ---
 # Sections I (cross-runtime), T (064 service-box drills) and U (077 cyclic diagnostics) all run
 # this same binary. Gating only Section U would let the other two keep presenting the output of a
 # stale build as authoritative — which is precisely the 2026-08-13 failure mode.
-GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 GLPREPL_STALE=0
 GLPREPL_STALE_WHY=""
 if [ -f "$GLPREPL_EXE" ]; then
@@ -2352,7 +2367,7 @@ if [ -f "$GLPREPL_EXE" ]; then
     fi
 fi
 
-CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
     unsearchable "Section I (cross-runtime Gleam x C# link suite)" "$GLPREPL_STALE_WHY"
 elif command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
@@ -2410,7 +2425,7 @@ section "T" "064 service-box drills (resume + history)"
 # the entire suite — killing every later section instead of recording a section FAIL. check()
 # never exits, so guarding here turns a host-specific drill failure into a normal FAIL line.
 set +e
-SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$SBREPL_BIN" ]; then
     unsearchable "Section T (064 service-box drills)" "$GLPREPL_STALE_WHY"
 elif [ -f "$SBREPL_BIN" ]; then
@@ -2441,7 +2456,7 @@ section "U" "Guarded term-traversal cyclic diagnostics (077)"
 # `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
 # the suite (same hazard the cross-runtime section guards above). check() never exits.
 set +e
-CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 # GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
 # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
 CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
@@ -2496,7 +2511,7 @@ if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
     # C# REPL is built (we are inside its guard); the probe ships in the SAME solution, so a
     # MISSING probe FAILS LOUD — it does NOT silently skip, which would leave the
     # cycle-detection guarantee ungated (codexreview 077).
-    PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/net10.0/term_traversal_probe.exe"
+    PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/${PROBE_TFM}/term_traversal_probe.exe"
     if [ -f "$PROBE" ]; then
         out=$("$PROBE" 2>&1)
         check "U-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
