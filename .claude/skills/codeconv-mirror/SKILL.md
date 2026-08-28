@@ -45,7 +45,7 @@ something to walk.
 | `--refresh` | off | re-run against an existing output: rewrite `.src`/non-source from current source, stub newly-found source files, **preserve every pre-existing companion file and the tracker byte-identical** (spec-001 FR-011) — requires the Step-4 confirmation |
 | `--quiet` / `--json` | off | per top-level convention |
 
-On this exFAT checkout the operator passes `--data-dir C:/pglite/research/glpnet-016`
+The canonical repo-local cluster (checkout is NTFS) is passed as `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 as a top-level flag. The skill forwards all top-level flags verbatim.
 `mirror` takes **no** `--source-lang`/`--target-lang` — the pair is
 resolved solely from the workspace (set by `/codeconv-init`).

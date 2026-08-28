@@ -1,0 +1,30 @@
+{
+  "subject": "Rootcause shiras's partial absence from scheduler boards + scheduling + COOP allocation, and design a durable fix",
+  "task_type": "research",
+  "slices": [
+    {
+      "id": "slice-shiras-egress",
+      "lens": "How shiras presents itself to the fleet: its own COOP posts, onboard receipts, caps/availability declarations, and the boards it DID join.",
+      "sources": [
+        "I:/coop/**/*shiras*.md (shiras-authored)",
+        "I:/coop/*/sched/caps/shiras* (where present: crucible, glpnet, hatzinor, olamnit-assistant, ospark, qhstate, yngenios-research, yngenios-windows)"
+      ]
+    },
+    {
+      "id": "slice-fleet-ingress",
+      "lens": "How each OTHER host interacts with (or omits) shiras: non-shiras COOP files that name shiras; and the caps dirs of the 6 boards where shiras is ABSENT.",
+      "sources": [
+        "I:/coop/**/*.md that name shiras but are NOT authored by shiras",
+        "I:/coop/{buildkit,lejepa,mstack,olamnit,tefl,yngenios}/sched/caps/ (absence evidence)"
+      ]
+    },
+    {
+      "id": "slice-scheduler-mechanics",
+      "lens": "The scheduler substrate mechanics that determine whether onboarding yields allocation: onboard/allocate/binding code + the SCHED-R7 binding-gap docs.",
+      "sources": [
+        "D:/BSTDEV/research/buildkit/src/buildkit_cli/scheduler/*.py",
+        "SCHED-R7 binding-gap references in COOP + roadmap coordination-feature-stream-durable-superset-fix (rank 13)"
+      ]
+    }
+  ]
+}

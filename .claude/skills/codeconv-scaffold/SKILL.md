@@ -35,7 +35,7 @@ This skill MUST stay in sync with that contract; change the contract first.
 | `--no-tombstone-update` | off | skip writing `target_path` into tombstones (testing only) |
 | `--quiet` / `--json` | off | per top-level convention |
 
-On this exFAT checkout the operator passes `--data-dir C:/pglite/research/glpnet`
+The canonical repo-local cluster (checkout is NTFS) is passed as `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 as a top-level flag. The skill forwards all top-level flags verbatim.
 
 ## Step 4 — Destructive-operation gate (FR-017 / FR-021)
