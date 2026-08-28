@@ -72,6 +72,55 @@ finding:** the magnitudes differ (4-vs-7, not 0-vs-8), so this is *a* field-keyi
 same class, not proven to be *that* one. **Refuter:** point both renderers at this export and show
 they agree on the epic count — that kills it.
 
+## 🔴🔴 P2 ANALYSED 2026-08-28T02:55Z — **THE SKILL MISDIAGNOSES ITS OWN BINDING CONSTRAINT**
+
+P2 as written says: *"extend the callgraph node key beyond `{repo}:{rel}` so edges cross repos."*
+**Read the code: the node key is not the defect, and extending it would change nothing.**
+
+```python
+# yx/src/yx_distill/tools/callgraph/workflow.py
+by_key[f"{repo}:{rel}"] = aid                    # ← ALREADY repo-qualified. Correct as-is.
+...
+to_aid = by_key.get(f"{repo}:{ref}")             # ← THE DEFECT: `repo` is the CITING artifact's
+if to_aid is not None and to_aid != aid:         #    own repo, so an edge can only ever land
+    pairs.append((aid, to_aid))                  #    inside it. A miss is dropped — no counter.
+```
+
+**The blindness is TWO layers deep, and the upper one is fatal:**
+
+| layer | site | what happens |
+|---|---|---|
+| **1 — ingest** | `survey/parse.py:97 resolve_references` + `survey/workflow.py:177` | `index`/`stem_index` are built **"in-repo … over INCLUDED files"**, inside a per-`repo_id` loop. A token naming another repo matches nothing and is **dropped at parse time**. Its own docstring: *"Unresolved (external) tokens are dropped — `referenced` holds **in-repo edges only**"* |
+| **2 — edge resolution** | `callgraph/workflow.py:43` | even a surviving cross-repo ref cannot resolve, and the miss is discarded by `if to_aid is not None` with **no counter, no warning, exit 0** |
+
+🔴 **So the substrate DESTROYS the cross-repo evidence at ingest — one layer before any graph
+computation runs.** `yx callgraph compute` cannot distinguish *"no cross-repo edges exist"* from
+*"every cross-repo edge was discarded"*: same exit code, same silence, **no denominator**. That is
+this programme's declared house defect class — *a check that cannot fail is worse than none* —
+sitting inside the programme's **own primary instrument**.
+
+⚠️ **AND THE OBVIOUS FIX IS UNSAFE.** The module-ish fallback resolves tokens by **lowercased path
+stem**. Union `stem_index` across repos and `mailbox` in `qhstate`, `olamnit` and `yngenios` all
+collide — and the `bootstrap-migration` epic's own description records **three divergent, NOT
+byte-equivalent C# implementations of the kernel**. Naive cross-repo stem matching would therefore
+**mint false edges between different implementations of the same-named thing**, which is exactly
+**FR-8** (*same identity + different semantics ⇒ ESCALATE with both provenances*). **Ambiguity must
+escalate, never silently resolve.**
+
+### M1 REUSE-vs-REBUILD — answered with evidence: **REUSE**
+
+`survey → artifacts → edges` is sound and already carries `repo_id` end-to-end. What needs
+re-specifying is **one function and one lookup**: `resolve_references` must **retain** unresolved
+tokens with provenance instead of dropping them, and resolution must search across repos **with an
+explicit ambiguity outcome**. That is a spec change, not a second tool — and duplicating `yx` is the
+defect M1 warns about.
+
+**Refuter for this whole block:** run `yx survey` over two repos and show a `referenced` entry
+holding a path that belongs to the *other* repo. If one exists, my ingest-drop claim is wrong.
+
+**This lane did not build it.** `yx` lives in the yngenios repo; this skill is advisory and never
+writes across repos. Delivered as a design finding for the owner.
+
 ## 🔴 KNOWN DEFECTS IN THE INSTALLED TEXT — measured from this lane 2026-08-28, filed for the owner
 
 These are **not** applied to `SKILL.md` above. They are published in the coop channel at
@@ -132,7 +181,7 @@ constant — **re-measure before quoting it.**
 |---|---|
 | P0 define L3/L4 | ✅ **SATISFIED, not blocked** — `LATTICE.md` Amendment 1.1 maps the legacy L0–L4 vocabulary totally onto the five rings; L3 is a ring, L4 is explicitly not one and has a named disposition (`DEC-PUBLISH-1`) |
 | P1 resolve + verify roots | ✅ ran 02:15Z — **no unreadable roots on this disk**; 4/4 targets and 5/5 sources verified by content |
-| P2 cross-repo relation | ❌ **NOT STARTED — and it is now the binding constraint.** P3 needs a content-based scope predicate; the callgraph node key is `{repo}:{rel}` and does not cross repos |
+| P2 cross-repo relation | ⚠️ **ANALYSED 02:55Z — and the skill misdiagnoses it.** The node key is already repo-qualified and correct; the blindness is (1) unresolved tokens **dropped at ingest** and (2) edge lookup bound to the citing repo, missing silently. See the P2 block above. **Not built — the tool is in another repo.** |
 | P3 scope delineation | **GATED (correctly)** — `R-A3.1`/`R-A3.2`; an undelineated source is REFUSED (FR-2). **Cannot be derived without P2**, and must not be faked from the path proxy (444× undercount, above) |
 | P4 migrate | **BLOCKED ON P3 ONLY** — *not* on absent targets; all four are present and readable here |
 | P5 verify + report | n/a |
