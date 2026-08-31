@@ -398,16 +398,36 @@ def read_ledger(ledger_path, *, include_superseded=False):
             if line:
                 rows.append(_normalise_row(json.loads(line)))
 
+    def _ident(row, index):
+        # Key on (set_id, question_id): validation only requires ids to be unique
+        # WITHIN a set, so a global question_id key would let a later set's Q-...-01
+        # silently hide an unrelated earlier decision -- and make
+        # `decisions --set-id <earlier-set>` return nothing at all.
+        # A row with no question_id cannot supersede or be superseded: it gets a key
+        # unique to itself rather than merging every such row into one.
+        if row.get("question_id"):
+            return (row.get("set_id"), row["question_id"])
+        return ("\x00no-id", index)
+
+    def _answered(row):
+        # A blank answer is not a decision. Recorded, it carries a current
+        # decided_at, so an unconditional newest-wins rule would let it hide the
+        # real answer and present an empty ruling as live. The write path now
+        # refuses these; this covers rows already on disk.
+        return bool(str(row.get("answer") or "").strip())
+
     newest = {}
     for index, row in enumerate(rows):
-        # A row with no question_id cannot be superseded by, or supersede, anything:
-        # give it a key unique to itself rather than merging every such row into one.
-        qid = row.get("question_id") or f"\x00no-id:{index}"
-        # decided_at is an ISO-8601 UTC stamp, so string order is time order;
+        ident = _ident(row, index)
         # index breaks ties so two same-instant rows still resolve deterministically.
         key = (_decided_at(row), index)
-        if qid not in newest or key > newest[qid][0]:
-            newest[qid] = (key, index)
+        prev = newest.get(ident)
+        if prev is None:
+            newest[ident] = (key, index)
+        elif _answered(row) and not _answered(rows[prev[1]]):
+            newest[ident] = (key, index)          # a real answer always beats a blank
+        elif _answered(row) == _answered(rows[prev[1]]) and key > prev[0]:
+            newest[ident] = (key, index)
     live = {index for _, index in newest.values()}
 
     out = []
@@ -415,8 +435,7 @@ def read_ledger(ledger_path, *, include_superseded=False):
         row = dict(row)
         row["superseded"] = index not in live
         if row["superseded"]:
-            qid = row.get("question_id") or f"\x00no-id:{index}"
-            winner = rows[newest[qid][1]]
+            winner = rows[newest[_ident(row, index)][1]]
             row["superseded_by"] = winner.get("decided_at")
         if include_superseded or not row["superseded"]:
             out.append(row)
@@ -516,7 +535,14 @@ def main(argv=None):
                 print(f"--answer needs ID=TEXT, got {pair!r}", file=sys.stderr)
                 return 1
             qid, text = pair.split("=", 1)
-            answers[qid.strip()] = text.strip()
+            text = text.strip()
+            if not text:
+                print(f"--answer {qid.strip()} has an EMPTY answer; a blank is not a "
+                      f"decision, and recording one would supersede the real answer "
+                      f"already on file. Give the chosen option text, or omit it.",
+                      file=sys.stderr)
+                return 2
+            answers[qid.strip()] = text
         if not answers:
             print("nothing to record: pass at least one --answer", file=sys.stderr)
             return 1
