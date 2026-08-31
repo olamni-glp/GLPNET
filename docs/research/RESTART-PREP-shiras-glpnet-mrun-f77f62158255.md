@@ -5,8 +5,8 @@
 
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
-    BRANCH   095-shiras-glpnet-onboard-and-scheduler-rootcause
-    UPDATED  2026-08-28T02:00Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (preflight exits 1 - see §0)
+    UPDATED  2026-08-31T12:05Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (gate still exits 1 - see §0)
+    BRANCH   097-shiras-restart-prep-frontend-handoff   (095 is MERGED via PR #249)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
 
@@ -182,6 +182,104 @@ before the ruling.
    Not closed — adoption is partial until S14/S3 lands.
 
 **Sequenced this session** (order keys): S1 `@1.0` → S3 `@2.0` → S14 `@5.0` → S9 `@6.0`.
+
+## 5-NOW · 🔴 STATE AT 2026-08-31T12:05Z — **THE SINGLE OPEN ACTION**
+
+```
+run    mrun-f77f62158255 [open]  seq=92   outstanding items: 30
+branch 097-shiras-restart-prep-frontend-handoff   clean, 0 ahead / 0 behind   head 3ca26118
+open   PR #250 (this branch -> develop) CLEAN + MERGEABLE ;  PR #249 MERGED
+```
+
+### The ONE thing left, and it is NOT a gate failure
+
+**`buildkit release` is BLOCKED BY THE CLAUDE CODE PERMISSION CLASSIFIER.** Every precondition in
+ruling `Q-glpnetshiras-01` is discharged: the codex gate CONVERGED (7 cycles / 12 findings / cycle 7
+clean) and PR #249 merged with CodeQL 5/5. `develop` is **39 ahead of `main`**; last tag `v2026.08.28.1`.
+
+**On restart, ask the engineer to approve it, or have them run it themselves:**
+
+```bash
+git checkout develop && git pull && buildkit release
+```
+
+### Roadmap round 60 (this session, all published + pushed)
+
+`import` 1 new file / 158 already-applied / **19 documents still REFUSED** · `reconcile` ×2 **in sync**
+· `dedupe` ×2 **0 groups (4th consecutive)** · `export` **20 epics / 118 features / 3806 journal lines**
+→ `shiras__glpnet__20260831T120414Z.json`, published to the coop inbox.
+**24 not-closed = 1 implemented · 14 promoted · 9 specified, 6 epics.** `SPEC=NONE 14/24`.
+
+### Takt, RETRIEVED from the DuckLake (never recomputed)
+
+**112,145,523 tokens over 287/2947 rows — coverage 10%.** Largest: `implement` 40.3M · `report` 31.6M
+· `3rtask` 8.2M · `codexreview` 5.8M. **2,660 rows carry NO measurement — unmeasured, never zero.**
+Era remains **UNMEASURABLE** (all nine steps missing from this run). See **S21** for the retrieval gap.
+
+### 🔴 THE ORDER OF WORK ON RESTART
+
+1. **`buildkit release`** — blocked on permission only (above).
+2. **Ruling `Q-glpnetshiras-04`** — the next feature. Run, verbatim:
+   `/bk-specify "Front-end goal-term acceptance completeness (parser + REPL goal builders, cross-runtime)"`
+   WSJF 3.60 / RICE 3000. Three located defects: `=..` rejected in clause bodies; structs-in-lists in
+   REPL goals (**location is STALE — re-verify in `GlpEngine` first, it may already be fixed**);
+   C# REPL `_SetupArgument` throwing on `UnderscoreTerm`.
+3. **S21** takt retrieval gap — not root-caused.
+4. **@ariellas owes 3 published keys** — 19 documents stay unreadable here until then.
+
+🔴 **Marathon `next:` still prints S1 (scheduler). That is SUPERSEDED by ruling `Q-…-04`.**
+The CLI has no ruling-awareness; do not follow it over the ruling.
+
+---
+
+## 5a · 🔴 SESSION 2026-08-31 — READ THIS FIRST. **THE CODEX GATE IS DISCHARGED; ONLY THE RELEASE IS LEFT.**
+
+### The one thing blocking completion
+
+**`buildkit release` was NOT run — it was BLOCKED BY THE PERMISSION CLASSIFIER, not by a gate.**
+Everything the engineer's ruling `Q-glpnetshiras-01` required *before* it is DONE. On restart, the
+release needs the engineer to approve the command, then:
+
+```bash
+git checkout develop && git pull && buildkit release
+```
+
+`develop` is **39 commits ahead of `main`**; last tag `v2026.08.28.1`.
+
+### What was delivered (all PUSHED; PR #249 MERGED into develop)
+
+| | |
+|---|---|
+| **codex gate** | **CONVERGED — 7 cycles, 12 findings, ALL FIXED, cycle 7 CLEAN.** Runs `20260831T094700Z..112539Z` under `reviews/095-.../`. |
+| **PR #249** | MERGED into `develop`; **CodeQL 5/5 pass**. Conflict on `engineer-decisions.jsonl` resolved by **UNION** per ruling `Q-tidyup-20260827T214708Z` (42+50 → 59, 0 dropped). |
+| **rulings** | 4 recorded: `Q-glpnetshiras-01..04`. `bkquestion record`/`decisions` now enforce supersession. |
+| **roadmap** | trust 6→21 keys, own key published; import/reconcile×2/dedupe×2 (**0 groups**)/export **20/118/3806**, published to the coop inbox. |
+| **coop** | ACK sweep + a **CORRECTION withdrawing my own "two canonical roots" claim** (it was a gate artefact). |
+
+### 🔴 THE FOUR ENGINEER RULINGS — three DONE, one OPEN
+
+1. `Q-…-01` **Codexreview first, then ship** → gate CONVERGED, PR merged. **RELEASE still owed (blocked above).**
+2. `Q-…-02` **Revert the C#15 fork** → DONE. `Directory.Build.props` deleted, 3 generated `out/csharp` csproj restored.
+   **Proven after the merge:** `dotnet msbuild -getProperty:LangVersion` → `preview` on both trees,
+   and develop's `net11.0` TFM fix survives alongside it.
+3. `Q-…-03` **Do not reboot; fix trigger** → unit fixed (`enabled`, `WantedBy=default.target`, 0 parse errors).
+   **The gate still exits 1 on a FALSE POSITIVE** (§0.2) — do not read that as a new host defect.
+4. `Q-…-04` **NEXT WORK = front-end goal-term acceptance** → see §5, not started.
+
+### New marathon items this session
+
+- **S17** codex CLI IS present (`codex-cli 0.149.1`) — S7's dischargeable-by-absence is RETIRED.
+- **S18** the C#15 fork — **RESOLVED** by ruling 2.
+- **S19** trust store 6→21; **19 docs still REFUSED** on 3 unpublished `ariellas` keys (publisher-side only).
+- **S20** codex gate converged (detail above).
+- **S21** 🔴 **TAKT RETRIEVAL GAP, NOT ROOT-CAUSED.** `emit_tokens` wrote `phase='resume-marathon'`
+  to both lake roots and duckdb reads the row back directly (`total_tokens=276158`) — but
+  `phase_token_rollup()` does **not** surface that key, while siblings like `resume-marathon-ops` are
+  present. So a lane can write the mandated per-phase token data, verify it on disk, and still have it
+  invisible to the mandated retrieval path. **This is NOT the `kind=token`/`kind=tokens` split — I write
+  the plural.** Reported, not resolved.
+
+---
 
 ## 5b · WHAT THE 2026-08-28T01-02Z SESSION DELIVERED (supersedes §4/§5 where they disagree)
 
