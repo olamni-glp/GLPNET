@@ -334,6 +334,29 @@ def record(document, answers, ledger_path, decided_by):
 # ledger to satisfy a reader is exactly the symptom fix DISCIPLINE.md 1.3 forbids.
 # Without it those rows render as "(no id)"/"(no answer)" and, worse, get a synthetic
 # supersession key, so a later canonical row under the SAME id could never supersede them.
+def _decided_at(row):
+    """``decided_at`` as a comparable aware datetime.
+
+    Supersession MUST NOT compare these as strings: several spellings of the same
+    instant are valid ISO-8601, and their textual order is not their chronological
+    order. ``2026-08-31T10:00:00Z`` sorts AFTER ``2026-08-31T10:00:00.500000+00:00``
+    lexically while being half a second EARLIER — which would keep a stale decision
+    live and mark its correction superseded, the exact failure supersession exists
+    to prevent. A row with no/unparseable stamp sorts oldest so it can never win
+    over a real one, and is never dropped.
+    """
+    raw = row.get("decided_at")
+    if not raw:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if parsed.tzinfo is None:                 # naive stamps are UTC by contract
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 _LEGACY_ALIASES = {"question_id": ("id",), "answer": ("ruling",)}
 
 
@@ -382,7 +405,7 @@ def read_ledger(ledger_path, *, include_superseded=False):
         qid = row.get("question_id") or f"\x00no-id:{index}"
         # decided_at is an ISO-8601 UTC stamp, so string order is time order;
         # index breaks ties so two same-instant rows still resolve deterministically.
-        key = (row.get("decided_at") or "", index)
+        key = (_decided_at(row), index)
         if qid not in newest or key > newest[qid][0]:
             newest[qid] = (key, index)
     live = {index for _, index in newest.values()}
@@ -507,7 +530,6 @@ def main(argv=None):
         return 0
 
     rows = read_ledger(args.ledger, include_superseded=args.superseded)
-    collisions = id_collisions(rows)
     if args.set_id:
         rows = [r for r in rows if r["set_id"] == args.set_id]
     if args.kind:
@@ -518,6 +540,9 @@ def main(argv=None):
         rows = [r for r in rows
                 if r.get("expires_at") and r["expires_at"] < now
                 and not r.get("superseded")]
+    # Collisions are computed AFTER filtering: a scoped query must not warn about
+    # ids that are not in the scope it printed.
+    collisions = id_collisions(rows)
     if args.json:
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
