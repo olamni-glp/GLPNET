@@ -1175,3 +1175,180 @@ spec_path; **`050` is under archive ruling `Q-GLPNETS1-04`** and must **not** be
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-28T03:40:00Z
+
+---
+
+# 🟢 SESSION 12 CLOSE — 2026-08-31T11:00Z · **NOTHING TO RELEASE (MEASURED) · 078 DISCHARGE BRIEFED, NOT OVERRIDDEN · PIPE-DEFECT NARROWED**
+
+🔴 **THIS SECTION SUPERSEDES EVERY SECTION ABOVE IT.** Same run: `mrun-20d9230f767b` · lane
+`gavriella` · host `GAVRIELLA` · repo `GLPNET` · feature `078-verification-receipts`.
+
+## Resume in one line
+
+```
+resume marathon
+```
+
+which is `buildkit-marathon resume --feature 078-verification-receipts`.
+🔴 `--feature` is mandatory (no `.specify/feature.json`, by design) · 🔴 run buildkit commands
+**SERIALLY** — the catalog lock is machine-wide and peers hold it.
+
+## State at close — every row measured this session, none carried from the prior doc
+
+| item | result |
+|---|---|
+| **working tree** | **clean** · `develop` **0 ahead / 0 behind** `origin/develop` · **zero open PRs** |
+| **release** | 🔴 **NOTHING QUALIFIES — HELD.** 3 commits since `v2026.08.28.1`, all `docs:`/`chore(roadmap):`/merge. **No `feat`, no `fix`.** See below. |
+| **078 discharge** | **BRIEFED, NOT OVERRIDDEN.** Gate still refuses on 6 checklist + ~190 parked. 2 of 6 satisfied, 1 satisfied-at-repo-level-only, 3 NOT satisfied. |
+| **gate (test suite)** | not re-run this session — last measured **561 / 559 / 2 / 0** (the 2 = known pre-existing 064 Section T drills) |
+| **faultinj** | **51/51 green**, re-run this session, 122s |
+| **roadmap** | round **59** — reconcile: **6 pipeline ids bind nothing**; dedupe **0 groups over 121 live**; export 21 epics / 122 features / 3 921 journal lines |
+| **BK-STD-1** | **28 not-closed** = 3 analyzed · 1 captured · 1 implemented · 17 promoted · 6 specified, over 21 epics / 122 features (94 closed) |
+| **marathon** | seq **378** · steps **28/111** · outstanding **204** |
+| **COOP** | 1 outstanding inbound ACKed (shiras `20260830T2230Z`); my ACK filed `20260831T1050Z` |
+
+## ⭐ THE RELEASE DIRECTIVE WAS EXECUTED AND THE ANSWER IS "NOTHING" — that is a result, not a skip
+
+Directive: commit / push / merge / `bk-release` any **completed, fully implemented, codex-reviewed**
+feature. Executed as a **measurement**, and every leg came back empty:
+
+* tree clean, nothing to commit; `0 ahead / 0 behind`, nothing to push; **zero open PRs**, nothing to merge.
+* 3 unreleased commits, **none of them `feat` or `fix`**.
+* The only in-flight feature, **078**, is `tasks.md` **4 of 66** — and **55 of the 66 are `bk:`-prefixed**
+  (they belong to the **buildkit** repo, not this one). Roadmap state `analyzed`, not `implemented`.
+
+🔴 **A release cut from this state would be a version number attached to documentation.** Held by
+measurement, not omission. Do not "catch up" a release next session on the assumption one was missed.
+
+## ⭐ THE 078 DISCHARGE BRIEF — measured item by item; 3 of 6 genuinely fail
+
+I did **not** run the override. The gate's refusal is correct. Per item:
+
+| # | checklist item | verdict | evidence |
+|---|---|---|---|
+| 1 | `/bk-implement 078` | ❌ **NOT satisfied** | tasks 4/66; **55/66 are `bk:`** (other repo) |
+| 2 | `/bk-codexreview 078` | ✅ **satisfied** | run `20260828T004446Z` **on disk**: `reviews/develop/20260828T004446Z/{codex.json,codex.md,run.json,verdict.md}`, exit 0, 752s. 078's arc **10→4→1→1** = converging |
+| 3 | `/bk-ship 078` | ⚠️ **repo-level only** | `v2026.08.28.1` tags merge `c9d32d90` (PR #247), #248 back-merged, main↔develop reconciled — but the release shipped **the repo** while 078 stood at 4/66 |
+| 4 | `/bk-close 078` post-ship | ❌ **NOT satisfied** | `.specify/retrospective/` holds **21** feature dirs; **no 078** |
+| 5 | F1 — 13 instances fault-injected, refusing loudly (SC-001) | ❌ **NOT demonstrable** | faultinj **51/51 green**, but SC-001 demands **13 of 13 named**; harness has 11 modules and names only instances **2 and 9**. Coverage is an **ANONYMOUS TALLY** |
+| 6 | F1 — adoption honest per area (FR-017/018) | ⚠️ **satisfied under an undischarged narrowing** | `.specify/receipts/adoption.json` is honest (reference adopted; 4 explicitly non-adopted, dated). But **FR-017 names SIX areas** and `manifest.py:19-21` narrows to **five** — 3rtask + codexreview declared buildkit-side |
+
+🔴 **ITEM 5 IS THE ONE NOT TO WAIVE.** It is *the same defect* the 2026-08-24 review found **inside**
+the conformance fixture — anonymous tally vs. case-keyed coverage. It was fixed **there** (`_CASES`
+self-registers) and **never fixed one level up at the instance layer**. Under 078's own **FR-016** an
+unexercised declared case must read **UNREAD, never green**. Waiving it makes 078's green
+uninterpretable *by 078's own argument*.
+
+⭐ **THE TENSION THE RULING LEFT OPEN IS NOW NAMED:** the checklist lists `/bk-ship 078` and a ship
+*did* happen. Both are true because **the checklist tracks the feature's TASK SET, not release state.**
+Item 3 is true as "a release happened", false as "078 shipped". That is a **naming defect in the
+checklist**, not a satisfied gate. → `mitem-01a0576e-eeb0`
+
+**Items 1 and 6 both reduce to B8** (the two-repo `bk:` ruling). They are an open engineer block; an
+override must not silently absorb them.
+
+## ⭐ I MEASURED THE FLEET'S NEWEST INVOCATION RULE AND NARROWED IT
+
+shiras `20260830T2230Z` §2: *"`preflight 2>&1 | tail` returns tail's 0 while printing every FAIL …
+this is how every one of us has been invoking it."* I ran the controls instead of relaying:
+
+```
+bash failgate.sh                          -> rc=1
+bash failgate.sh 2>&1 | tail -1           -> rc=0     CONFIRMED, the defect is real
+set -o pipefail; ... | tail -1            -> rc=1     RECOVERED
+PS> cmd /c "exit 1"            $LASTEXITCODE=1
+PS> cmd /c "exit 1" | Select   $LASTEXITCODE=1        POWERSHELL IS IMMUNE
+```
+
+1. ✅ **Confirmed in bash.** 2. ⭐ **`set -o pipefail` is a one-line remedy shiras did not name** —
+and it matters, because "never pipe" is a rule lanes will break the moment output is large (this repo
+holds a **2 446 380-byte** `codex_stderr.txt` from one review). 3. 🔴 **PowerShell lanes are IMMUNE**
+— `$LASTEXITCODE` survives the pipe. **On this host I invoke through BOTH shells**, so the rule binds
+about half my invocations. → `mitem-01a0576e-beb2`
+
+**Rule earned:** *an invocation-hygiene rule is a property of the SHELL, not the tool. State the shell
+it was measured in, or half the fleet over-corrects and the other half ignores it.*
+
+## 🔴 THE UNSAFE AUTO-REAP FIRED AGAIN, UNPROMPTED
+
+While capturing, buildkit printed:
+
+```
+buildkit: reaped orphaned PGlite bridge PID 46168 ... (no live consumer owned it)
+```
+
+This is the **same dead-PID heuristic** ariellas' `SAFETY-20260817T211500Z` warns is unsafe and that
+this run already carries as a parked item — **a live lock looks stale; trace parents, not PID**. It
+now has a **fresh 2026-08-31 datapoint on GAVRIELLA**. Directly adjacent to
+[[buildkit-stuck-lock-verdict-is-unverified]] and [[no-git-bash-ps-for-windows-pids]].
+
+## 🔴 ROADMAP: 6 IDS STILL BIND NOTHING AND I DID NOT FABRICATE BINDINGS
+
+`031-gleam-port-spike`, `036-glp-gleam-baseline-program`, `039-m2-0-verify-erlang-monitor-atomvm`,
+`049-wave1-guard-link-acceptance`, `050-full-gleam-combined`, `060-wave3-full-gleam-chain`.
+**73 of 122 features carry no `spec_path`** and can never bind by basename. Five are gleam-related
+with no matching roadmap slug; **`050` is under archive ruling `Q-GLPNETS1-04` and must NOT be
+linked.** Engineer-owed (`Q-GLPNETS11-02`, half-blocked). **Do not clear this number by inventing
+links.**
+
+---
+
+# 🔴 WHAT'S NEXT — START HERE, IN THIS ORDER
+
+## 1 · The 078 discharge decision is WITH THE ENGINEER — do not re-brief, act on the answer
+
+Six structured questions were put to the engineer at session end (waive / hold, per item). **Read the
+answer first.** Recommendation on the table was: **waive 2 and 3 by citation · RUN `/bk-close 078` for
+4 (cheap and genuinely owed) · HOLD 1, 5, 6** pending the B8 two-repo ruling plus a case-keyed
+instance registry. → `mitem-01a048f2`
+
+## 2 · Build the case-keyed 13-instance registry (item 5) — this is the highest-value code task here
+
+Mirror what `faultinj/conformance.py` already does right: `_CASES` + per-case self-registration, so a
+declared instance that never runs reads **UNREAD**, never green. Today the instance layer has **11
+modules naming 2 instances** against an SC-001 denominator of **13**. This is 078 failing its own
+thesis one level up, and it is **in scope for 078, not a route-around**.
+
+## 3 · Then, in order
+
+| # | step | state |
+|---:|:---|:---|
+| 3 | `/bk-close 078` — produce the missing retrospective (21 exist, none for 078) | unblocked, cheap |
+| 4 | The 10 carried `codeconv` findings — lead with `discover/workflow.py:888` path traversal, `builder/__init__.py:520` silent `retry --file` no-op, `equiv/relation.py:267` false 1-var/2-var `UNIFY` equality | unblocked |
+| 5 | 4 round-2 MEDIUMs on 078 (reason field · skipped byte cap · contract-family validation in `bind.py` · contract compatibility in run reconciliation) | unblocked |
+| 6 | `plan` **100.62h** / `other` **90.54h** ELAPSED gaps | unblocked |
+| 7 | Takt phase-vocabulary split (writer 9 phases + `other`; reader renders `roadmap`/`coop`/`report`) | unblocked |
+| 8 | `bk-flow open` the 9 claimed packets | unblocked |
+| 9 | 083 implement → codexreview → ship (stays on branch per `Q-GLPNETS9-02`) | unblocked |
+
+**Do NOT start:** `/bk-clarify 082` (evicts 078 from the single active slot) · Y02 (peer-owned) ·
+Y06/Y07/Y09 (rulings owed).
+
+---
+
+# STANDING CONSTRAINTS — carry these into the new session
+
+- 🔴 **`I:` IS NOT MOUNTED.** Drives `C D G H`. That means **"I cannot see that board"**, *never*
+  "the board is empty". Remap: `net use I: \\192.168.0.108\GAVRI_D /persistent:yes`
+- 🔴 **The live COOP channel is `D:/coop/glpnet`** — *not* `G:/BSTDEV/research/glp/glpnet/COOP`
+  (near-empty, last write Aug 2) and *not* the in-repo `COOP/` (stale copy, seq 3). Measured this session.
+- 🔴 **`deploy latest` COLLAPSES THE PIN TO AMBIENT.** **Do not run it.** Pin `2026.08.26.1`;
+  CLI surface `2026.8.26.2`.
+- 🔴 **Never test a Windows PID with Git-Bash `ps`** — use `Get-Process`; name a holder with
+  `Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'`. **Contention is not a stuck lock. Never reap.**
+- 🔴 **Bash pipes mask gate exit codes; PowerShell does not.** Use `set -o pipefail`, or invoke bare
+  and read `$?`. Measured 2026-08-31.
+- ⚠️ **Takt coverage 19%** (650/3435; largest bucket `(unphased)` 1889 rows / 0 measured).
+  `Q-GLPNETS11-04` accepted this **until 2026-09-11** under a hard rule: **never quote a takt figure
+  without its coverage denominator.**
+- **Env:** prepend the PATH block, set `DOTNET_ROOT=~/.dotnet` ([[glpnet-env-setup]]). Windows python
+  is **`pythoncore-3.14-64`** (`py -V:3.14`); the 3.11 on PATH **cannot see `buildkit_cli`**.
+- **Reporting:** BK-REPORT-v1, six sections, fixed order, generator only
+  ([[standardized-reporting-is-mandatory]]). Roadmap always TABULAR.
+- 🔴 **A claim you did not measure yourself is a HYPOTHESIS** — even from a spec, a skill, a gate, or
+  a peer's broadcast. Three withdrawn claims on 08-28 and one narrowed peer claim on 08-31 all had
+  this shape.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T11:00:00Z
