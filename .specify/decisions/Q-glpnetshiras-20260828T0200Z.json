@@ -69,10 +69,9 @@
     },
     {
       "id": "Q-glpnetshiras-03",
-      "kind": "risk-acceptance",
+      "kind": "ruling",
       "header": "Reboot",
-      "question": "My own handoff document (RESTART-PREP-shiras-glpnet-mrun-f77f62158255.md) tells the next session 'REBOOT-SAFE: YES (bk-onrestart preflight exit 0)'. I re-ran the gate bare instead of trusting it: it exits 1. Two blocking findings - the systemd user unit's WantedBy= is EMPTY so it will never fire, and the XDG autostart fallback points at a DIFFERENT launcher (.../YNGENIOS/yngenios/scripts/fleet/post-reboot-restart.sh) than the unit, which is ariellas' 'two launchers' finding reproduced on a third host. Separately, 18 lanes are registered (not the 15 my doc claims) and 2 of them (claudesat, game_dev_demo) have NO session store yet are reported as '0 will be skipped'. A reboot right now does not reliably bring the fleet back. How do you want this handled?",
-      "expires_after_days": 3,
+      "question": "RECLASSIFIED 2026-08-30 per codexreview 20260831T100556Z finding 3: this was first recorded as a risk-acceptance with a 2026-09-02 expiry, but the selected answer REJECTS the risk and PROHIBITS the reboot until preflight exits 0 - so an expiring record would silently lift a safety prohibition by elapsed time. Rulings do not expire; supersession here must be state-based (a BARE preflight exit 0), never time-based. Original question follows. My own handoff doc told the next session 'REBOOT-SAFE: YES (preflight exit 0)'. I re-ran the gate bare rather than trust it: it exits 1. The systemd user unit had NO [Install] section at all (is-enabled=static, un-enableable, so it could never fire at logon) plus ~65 lines of pasted systemctl status output systemd refused to parse; 18 lanes are registered, not 15, and 2 of them have NO session store yet are reported as '0 will be skipped'. Given a reboot right now does not reliably bring the fleet back, how should this be handled?",
       "escalate_after_hours": 4,
       "multi_select": false,
       "options": [
@@ -92,6 +91,11 @@
           "means": "Do not patch locally. Escalate to buildkit as the single owner of one deployed bk-onrestart capability (the feature is already specified on the glpnet roadmap at WSJF 4.20) and do not reboot until it ships.",
           "cost": "No ETA; the host stays un-rebootable for an unbounded period, and three forked copies keep drifting in the meantime."
         }
+      ],
+      "blocks": [
+        "any reboot of shiras",
+        "bk-onrestart trigger convergence in the buildkit lane",
+        "declaring this host reboot-safe"
       ]
     },
     {
