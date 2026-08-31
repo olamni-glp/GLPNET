@@ -23,8 +23,15 @@ work"* failure CLAUDE.md warns about. **If the run below does not match
 
 `BK-OnRestart` (scheduled task, **Ready**, fires **45 s after logon**) runs
 `scripts/onrestart-launch.ps1` and relaunches **all 15 lanes**, each resumed mid-thread with
-`claude --continue --autocompact 1000000` — never summarised. DryRun verified 2026-08-31T23:34Z:
-**15 requested / 15 will launch / 0 refused**, layout `TwoWindows`.
+`claude --continue --autocompact 1000000` — never summarised. Verified 2026-08-31T23:40Z with the
+**task's own argument set**: **15 requested / 15 will launch / 0 refused**, `EXITCODE=0`,
+layout `TwoWindows`.
+
+🔴 **The 2026-08-28 reboot relaunched ZERO lanes** — `LastTaskResult=6`. `Test-Path` throws on
+access-denied (`I:\coop` exists here but denies access) and the throw aborted the whole launcher.
+Fixed in `bd13a254`. **Verify this fix ONLY with `-DryRun -WaitForMounts -AllowUnconfirmedResume`** —
+a plain `-DryRun` omits `-WaitForMounts` and therefore never exercises the failing path, so it
+proves nothing. **The argument set is part of the failing condition.**
 
 | window | tabs |
 |---|---|
