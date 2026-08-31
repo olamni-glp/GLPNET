@@ -1572,3 +1572,111 @@ Y06/Y07/Y09 (rulings owed).
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T18:15:00Z
+
+---
+
+# 🔴 SESSION 13 ADDENDUM — 2026-08-31T21:30Z · **SCHEDULER ONBOARDED (120d) · ARIELLAS ALLOCATES NOTHING HERE · TIDY-UP CRDT PLAN IN THE MARATHON · 11 RULINGS TOTAL**
+
+🔴 **THIS ADDENDUM SUPERSEDES THE SESSION 13 CLOSE SECTION ABOVE IT.** Same run
+`mrun-20d9230f767b`, lane `gavriella`, host `GAVRIELLA`, repo `GLPNET`.
+
+## ⭐ SCHEDULER — onboarded, then measured, and the measurement is the headline
+
+`buildkit-scheduler onboard --root D:\coop\glpnet\sched --actor gavriella --shifts 120`
+
+| | |
+|---|---|
+| availability windows | **403** (was 130 at session start) |
+| horizon | **120 days forward**, last `2026-12-28` |
+| slots | **3 × 8h/day** — `00:00–08:00`, `08:00–16:00`, `16:00–24:00` |
+| engine | pin held **`2026.8.26.1`**, not collapsed |
+
+Executed 35 first as directed, then **extended to 120 on ruling `Q-GLPNETS13C-01`** to match the
+standing fleet ruling. Grow-only, so the 35 is not contradicted — only superseded.
+
+## 🔴 THE POLL RESULT — READ THIS BEFORE BLAMING CAPACITY
+
+**33 `allocate` ops exist on the glpnet board.** That **REFUTES** the standing fleet belief that
+*"allocate has 7 readers / 0 writers, the verb never existed"* — **the writer plainly works.**
+
+| allocator | `engineer_id` (the addressed actor) | n | reaches a host? |
+|---|---|---:|---|
+| ariellas | 🔴 **`unassigned`** | **26** | **NO — addressed to nobody** |
+| ariellas | `ariellas` | 2 | yes (self) |
+| ariellas | `olamnit` | 1 | yes |
+| gavriella | `gavriella` | 4 | yes — **self-allocated** |
+
+🔴 **Not one work packet has ever been addressed to `gavriella`.** This lane's 3 in-progress WPs are
+all self-allocated. **The constraint is ADDRESSING, not capacity** — 120 days of declared
+availability against an empty inbound queue. Escalation filed
+`ESCALATION-20260831T2100Z-…-ACK-MANDATORY.md`; ACK owed by @ariellas.
+**Ruling `Q-GLPNETS13C-02`: self-allocate from the local roadmap meanwhile — do not idle, do not
+claim a WP allocated elsewhere.**
+
+## ⭐ TIDY-UP CRDT WORKPLAN — IN THE MARATHON, DURABLY (8 items, 31pt)
+
+Root `mitem-01a0599d-1aa1` + `T1..T7`. **Survey measured by content, and it shrank the problem:**
+
+- **ZERO GLPNET worktrees to clean.** `git worktree list` shows exactly one (the main checkout).
+  Every stray worktree on `D:` belongs to another repo — `_wt-ruff-gate`, `wtbk`, `buildkit-beacon`
+  → buildkit; `wt005` → yngenios; `_wt-buildkit-rel3`, `wt-018p`, `wt-018t` standalone.
+  **This refutes the survey brief's premise.**
+- **11 of 12 local branches are 0-ahead of `origin/develop` = deletable.** Only
+  `083-glptutorial-corpus-goldens` (3 commits) carries work. `main` and `develop` are KEPT.
+- **7 of 19 remote branches unmerged — down from 17** at the 2026-08-23 survey. Real progress.
+
+| item | size | pts | disposition |
+|---|---|---:|---|
+| T1 delete 11 merged local branches | micro | 3 | verify 0-ahead immediately before each delete |
+| T2 `096-host-interconnectivity` | nano | 1 | **SUPERSEDED** by ariellas' re-derivation — delete on owner ACK |
+| T3 `083-glptutorial-corpus-goldens` | mini | 7 | complete → codexreview → ship → close; **stays on branch** (`Q-GLPNETS9-02`) |
+| T4 `059-full-scope-gleam` (32 commits) | maxi | 17 | 🔴 **COMPLETE AS A FULL ERA** (`Q-GLPNETS13C-03`) — not a bulk merge |
+| T5 `050-full-gleam-combined` (48 commits) | nano | 1 | **ARCHIVED** (`Q-GLPNETS1-04`) — record disposition, do NOT merge or link |
+| T6 `backup/upgrade/buildkit-migration` | nano | 1 | open and read the single commit before deleting a ref named "backup" |
+| T7 `098-shiras` / `099-session14` | nano | 1 | **PEER-OWNED — no standing.** Naming them is the completed action |
+
+## ⚖️ FOUR MORE RULINGS (11 this session in total)
+
+| id | ruling |
+|---|---|
+| `Q-GLPNETS13C-01` | **Extend to 120 days** — done and verified |
+| `Q-GLPNETS13C-02` | **Self-allocate from the local roadmap** while allocation is broken |
+| `Q-GLPNETS13C-03` | **Complete 059 as a full era** — declared cost: a 32-commit maxi era will not fit the 1.5–6h band |
+| `Q-GLPNETS13C-04` | **Full `/bk-3rtask` on `/bk-flow` readiness FIRST next session**, before the registry |
+
+## 🔴 TWO MORE DEFECTS MEASURED
+
+5. **`bk_report_v1` SITREP/TAKT report `UNAVAILABLE` under lock contention — and that is CORRECT
+   behaviour, not a bug.** Both rendered on retry with the lock free. The generator names its
+   rotating lock holders and refuses to print zeros. **Do not "fix" this by defaulting to 0.**
+   Retry the section; do not reap the holder.
+6. **Per-phase token use is recorded `unavailable`, deliberately.** I cannot measure my own token
+   consumption, and the standard says an unmeasured phase reads **unmeasured, never zero**. Six
+   phase rows (ids 192–197) carry `--method unavailable` rather than an invented total.
+   **A fabricated token number would be the "performance theater" the standard exists to stop.**
+
+## 🔴 WHAT'S NEXT — REVISED ORDER (supersedes the list above)
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **`/bk-3rtask` — `/bk-flow` adoption readiness** (CPM/PERT, duplicate-free cross-host allocation, era-tag into marathon). Ruled FIRST (`Q-GLPNETS13C-04`) | **ruled, unblocked** |
+| 2 | **Case-keyed 13-instance registry** (078 item 5) — ruled BUILD NOW (`Q-GLPNETS13B-01`) | unblocked |
+| 3 | **`/bk-specify 007-era002-res-olamnit`** in `D:/yngenios/yngenios` — take the slot (`Q-GLPNETS13-04`); P3 already ruled **R3** | unblocked |
+| 4 | **Tidy-up T1–T7** (31pt) — start T2/T5/T6/T7 (4pt, all nano) for a fast honest reduction | unblocked |
+| 5 | **T4 `059` as a full era** (`Q-GLPNETS13C-03`) — the largest single item | unblocked |
+| 6 | Roadmap: create the five gleam features, keep `050` archived (`Q-GLPNETS12-03`) — fixes the 6 unbound ids | unblocked |
+| 7 | Re-run the **test gate** — 561/559/2/0 is a HYPOTHESIS, not a measurement | unblocked |
+| 8 | Chase @ariellas ACK on the allocation escalation | waiting on peer |
+
+## STANDING CONSTRAINTS — ADDITIONS THIS ROUND
+
+- 🔴 **The scheduler's constraint here is ADDRESSING, not capacity.** Never report this lane as
+  capacity-starved: it has 120 days declared and an empty inbound queue.
+- 🔴 **`bk_report_v1` sections fail individually under lock contention.** Run sections separately
+  and retry; `UNAVAILABLE` is honest output, not a defect to route around.
+- 🔴 **Never invent a token total to fill a takt row.** `--method unavailable` exists for this.
+- ⚠️ **Story sizes:** nano 1 · micro 3 · mini 7 · midi 11 · maxi 17 · saga 35.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T21:30:00Z
