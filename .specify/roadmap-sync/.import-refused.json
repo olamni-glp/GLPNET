@@ -267017,21 +267017,6036 @@
           }
         ]
       }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF3P73MQDM4JRV26CE47XA0",
+      "local_project": "glpnet",
+      "name_or_slug": "017-econ-viability-evaluation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3P73MQDM4JRV26CE47XA0",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "evaluation"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF3P9DQKW60TNG23WH7PX3H",
+      "local_project": "glpnet",
+      "name_or_slug": "023-energy-projfin-valuation-survivability",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF40W43S19PTD8DDE0FGKVK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_projfin_val"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "survivability"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3P9DQKW60TNG23WH7PX3H",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF3Z19C0RSZ6SMVVFEJBFQQ",
+      "local_project": "glpnet",
+      "name_or_slug": "021-ecb-dd2-reference-docs",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB26VZ9KKF3KZNX5P51S",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "docs"
+            ],
+            "prerequisite_guid": "01KWF3Z19C0RSZ6SMVVFEJBFQQ"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF3Z3MK93W7XQP3J07TY7JQ",
+      "local_project": "glpnet",
+      "name_or_slug": "022-pmc-baseline-ulp-tolerance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "tests"
+            ],
+            "prerequisite_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF40W43S19PTD8DDE0FGKVK",
+      "local_project": "glpnet",
+      "name_or_slug": "020-energy-utilities-projfin-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF40W43S19PTD8DDE0FGKVK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF40W43S19PTD8DDE0FGKVK"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "energy",
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF40W43S19PTD8DDE0FGKVK"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF40W43S19PTD8DDE0FGKVK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW",
+      "local_project": "glpnet",
+      "name_or_slug": "001-reproducible-run-core",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43HEFHZXN1QX4QFAZRCG4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43P6Z1GTBCYHJBQA66HTM",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+      "local_project": "glpnet",
+      "name_or_slug": "002-pharma-mc-valuation-model",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF40W43S19PTD8DDE0FGKVK"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43HEFHZXN1QX4QFAZRCG4",
+      "local_project": "glpnet",
+      "name_or_slug": "003-crucible-run-lifecycle",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43HEFHZXN1QX4QFAZRCG4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43P6Z1GTBCYHJBQA66HTM",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+      "local_project": "glpnet",
+      "name_or_slug": "004-data-provenance-confidentiality",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "datasets",
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43P6Z1GTBCYHJBQA66HTM",
+      "local_project": "glpnet",
+      "name_or_slug": "005-monte-carlo-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43P6Z1GTBCYHJBQA66HTM",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43P6Z1GTBCYHJBQA66HTM",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43RJKRVQKVT84XMDNZ56T",
+      "local_project": "glpnet",
+      "name_or_slug": "006-observability-analytics-surface",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43RJKRVQKVT84XMDNZ56T",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "ducklake"
+            ],
+            "prerequisite_guid": "01KWJSJ7HZ3A26PKYRTJ8XABPA"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+      "local_project": "glpnet",
+      "name_or_slug": "007-trusted-model-gate",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+      "local_project": "glpnet",
+      "name_or_slug": "008-pinn-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+      "local_project": "glpnet",
+      "name_or_slug": "009-neural-operator-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43HEFHZXN1QX4QFAZRCG4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43P6Z1GTBCYHJBQA66HTM"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43TYZXZ31Y9JC1AFVP2M9"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "run-core"
+            ],
+            "prerequisite_guid": "01KWF43XBZ2K0AFC1Z5SSMKHCX"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "neural-operator"
+            ],
+            "prerequisite_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF4422T5YZ1ZG7MP9HT5G85",
+      "local_project": "glpnet",
+      "name_or_slug": "010-gepa-dspy-refinement-harness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWF4422T5YZ1ZG7MP9HT5G85"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4422T5YZ1ZG7MP9HT5G85",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF444BNRA18NAXD630NZW2A",
+      "local_project": "glpnet",
+      "name_or_slug": "011-biopharm-corpus-calibration",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWF4422T5YZ1ZG7MP9HT5G85"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF444BNRA18NAXD630NZW2A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "corpus"
+            ],
+            "prerequisite_guid": "01KWF444BNRA18NAXD630NZW2A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF446P5S2TBSJAGNGADMFRJ",
+      "local_project": "glpnet",
+      "name_or_slug": "012-work-marathon-stage-harness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF4491D4ZCJTF42N3D3DV65",
+      "local_project": "glpnet",
+      "name_or_slug": "013-bespoke-mechanistic-rnpv-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "pharma-mc"
+            ],
+            "prerequisite_guid": "01KWF444BNRA18NAXD630NZW2A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWF4491D4ZCJTF42N3D3DV65"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF44BDZ6W52G4DTXBJVZNZ5",
+      "local_project": "glpnet",
+      "name_or_slug": "014-mechanistic-input-gap-sourcing",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+      "local_project": "glpnet",
+      "name_or_slug": "015-corpus-rnpv-eval-db",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "corpus"
+            ],
+            "prerequisite_guid": "01KWF444BNRA18NAXD630NZW2A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWF4491D4ZCJTF42N3D3DV65"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44G841S3YY5PAS698XF6A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "eval-db"
+            ],
+            "prerequisite_guid": "01KWF44DVZ1K7QHDJK9TBG7P62"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF44G841S3YY5PAS698XF6A",
+      "local_project": "glpnet",
+      "name_or_slug": "016-comparative-eval-paper-bespoke-rnpv-over-corpus",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44G841S3YY5PAS698XF6A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "eval-db"
+            ],
+            "prerequisite_guid": "01KWF44DVZ1K7QHDJK9TBG7P62"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF44MWP0567517VT73ZA9Z4",
+      "local_project": "glpnet",
+      "name_or_slug": "018-energy-devfinance-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "energy",
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF40W43S19PTD8DDE0FGKVK"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWF43F02VS68JBM5KNZS7AAQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWF44Q75AQ9M9HSY4TJB3541",
+      "local_project": "glpnet",
+      "name_or_slug": "019-crucible-buildkit-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQASDS38KQ0AK7JC1KEN0",
+      "local_project": "glpnet",
+      "name_or_slug": "energy-and-project-finance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQATXJYFPP4CBFHTKKZCH",
+      "local_project": "glpnet",
+      "name_or_slug": "reproducible-run-core",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQATXJYFPP4CBFHTKKZCH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+      "local_project": "glpnet",
+      "name_or_slug": "energy-utilities-projfin-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_projfin_val"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_provenance",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_projfin_val"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQB26VZ9KKF3KZNX5P51S",
+      "local_project": "glpnet",
+      "name_or_slug": "ecb-dd2-reference-docs",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB26VZ9KKF3KZNX5P51S",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "docs"
+            ],
+            "prerequisite_guid": "01KWF3Z19C0RSZ6SMVVFEJBFQQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4T367059SRJ6TK0A92MWK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "docs"
+            ],
+            "prerequisite_guid": "01KWHEQB26VZ9KKF3KZNX5P51S"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQB4DQQDB1NP7DVD6MJYX",
+      "local_project": "glpnet",
+      "name_or_slug": "pmc-baseline-ulp-tolerance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "tests"
+            ],
+            "prerequisite_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4T0QC2AEBD48A2NBWKWRW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "tests"
+            ],
+            "prerequisite_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_pharma_mc"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+      "local_project": "glpnet",
+      "name_or_slug": "econ-viability-evaluation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQB68G39BGWKNFX5MJC1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQB68G39BGWKNFX5MJC1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQB8EVV9FD5XV2SR91W6W",
+      "local_project": "glpnet",
+      "name_or_slug": "crucible-buildkit-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ",
+      "local_project": "glpnet",
+      "name_or_slug": "energy-devfinance-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+      "local_project": "glpnet",
+      "name_or_slug": "energy-projfin-valuation-survivability",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_provenance",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_mc",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQB68G39BGWKNFX5MJC1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+      "local_project": "glpnet",
+      "name_or_slug": "apply-bespoke-mechanistic-rnpv-valuation-to-each-corpus-and-build-detailed-eval-db",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-12T10:46:03.076000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-12T10:45:47.404000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7TMK33QPT0JY3ED7X8Z"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-19T01:47:21.442000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "rice": 2625.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 8,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 3.0,
+            "wsjf_inputs": {
+              "job_size": 13,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+      "local_project": "glpnet",
+      "name_or_slug": "comparative-eval-paper-bespoke-rnpv-over-corpus",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-12T10:46:03.076000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-19T01:47:34.812000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "rice": 2000.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 6,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 2.875,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 5,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHEXQ0J4CZE8NYA2Y7RKPS6",
+      "local_project": "glpnet",
+      "name_or_slug": "trusted-os-network-ecosystem",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+      "local_project": "glpnet",
+      "name_or_slug": "shield-fx-consistent-mc-composition",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "survivability"
+            ],
+            "prerequisite_guid": "01KWF3P9DQKW60TNG23WH7PX3H"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val",
+              "mc_collect",
+              "waterfall_shield"
+            ],
+            "prerequisite_guid": "01KWHSZQH89DX44ZC5KN3M6QA5"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-11T12:09:02.792000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KZR4SVFZCTDN8DQ18DBW79QF"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH78RG5RJ74Z7AKJ66H0A",
+      "local_project": "glpnet",
+      "name_or_slug": "Platform Core & Reproducibility",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH79CZQ30P8FNQVZF3NCH",
+      "local_project": "glpnet",
+      "name_or_slug": "Domain Valuation Models",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH79HWBH00M5Q24GT7764",
+      "local_project": "glpnet",
+      "name_or_slug": "ML / Surrogate Model Plugins",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH79MG1X2KNC7BG6RH9C9",
+      "local_project": "glpnet",
+      "name_or_slug": "Refinement, Calibration & Evaluation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH79PFHXBSQAVZ0DWX6ZH",
+      "local_project": "glpnet",
+      "name_or_slug": "Observability & Analytics",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJBH79SHAC0E3552TG1QXPW",
+      "local_project": "glpnet",
+      "name_or_slug": "Tooling & Integration",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ79G4JMQ1KSN8TZEHNM4",
+      "local_project": "glpnet",
+      "name_or_slug": "Simulation Core",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7A3X5Z971JFXEK5WDTN",
+      "local_project": "glpnet",
+      "name_or_slug": "Pharma & Biotech Valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7AC1R0A51RB2F262YWX",
+      "local_project": "glpnet",
+      "name_or_slug": "biopharm-corpus-learn",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7AKREECV2JP2K07NC6M",
+      "local_project": "glpnet",
+      "name_or_slug": "pricing-risk-and-performance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7AVKM3BK2HW451J70VS",
+      "local_project": "glpnet",
+      "name_or_slug": "eval-of-simval-approaches-over-corpus",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+      "local_project": "glpnet",
+      "name_or_slug": "trusted-model-gate",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:30.708000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "uncertainty"
+            ],
+            "prerequisite_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-01T19:20:34.332000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-01T19:20:42.175000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:32.169000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+            "rice": 9000.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 8,
+              "impact": 3,
+              "reach": 400
+            },
+            "wsjf": 3.0,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 8,
+              "time_criticality": 3,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7CQX381RHDSFXHAEF4S",
+      "local_project": "glpnet",
+      "name_or_slug": "monte-carlo-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-01T19:20:34.332000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:12.203000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7E0PC9CDGCCVSBRNT40",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:08.024000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:26.304000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo",
+              "seeds"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:19.799000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7CQX381RHDSFXHAEF4S",
+            "rice": 25500.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 4,
+              "impact": 2,
+              "reach": 600
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7E0PC9CDGCCVSBRNT40",
+      "local_project": "glpnet",
+      "name_or_slug": "pinn-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:12.203000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7E0PC9CDGCCVSBRNT40",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:16.384000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7E0PC9CDGCCVSBRNT40"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:44.701000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7E0PC9CDGCCVSBRNT40",
+            "rice": 3000.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 8,
+              "impact": 2,
+              "reach": 200
+            },
+            "wsjf": 1.625,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+      "local_project": "glpnet",
+      "name_or_slug": "neural-operator-plugin",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:08.024000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:16.384000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "runcore-interface"
+            ],
+            "prerequisite_guid": "01KWJSJ7E0PC9CDGCCVSBRNT40"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43ZQGJKXZXVXQNSG7MHXH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "neural-operator"
+            ],
+            "prerequisite_guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:50.579000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7F5PTSPP7JDXVAA2AXD",
+            "rice": 2062.5,
+            "rice_inputs": {
+              "confidence": 55,
+              "effort": 8,
+              "impact": 2,
+              "reach": 150
+            },
+            "wsjf": 1.25,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 3,
+              "time_criticality": 2,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7G93YSF139CJPAKF3PT",
+      "local_project": "glpnet",
+      "name_or_slug": "data-provenance-confidentiality",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "datasets",
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-01T19:20:42.175000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:20.963000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:17:55.098000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7G93YSF139CJPAKF3PT",
+            "rice": 60000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 4,
+              "impact": 3,
+              "reach": 1000
+            },
+            "wsjf": 5.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7HZ3A26PKYRTJ8XABPA",
+      "local_project": "glpnet",
+      "name_or_slug": "observability-analytics-surface",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43RJKRVQKVT84XMDNZ56T",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "ducklake"
+            ],
+            "prerequisite_guid": "01KWJSJ7HZ3A26PKYRTJ8XABPA"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:25.836000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7HZ3A26PKYRTJ8XABPA",
+            "rice": 20000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 4,
+              "impact": 2,
+              "reach": 500
+            },
+            "wsjf": 3.0,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 5,
+              "time_criticality": 5,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1",
+      "local_project": "glpnet",
+      "name_or_slug": "gepa-dspy-refinement-harness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3P73MQDM4JRV26CE47XA0",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "evaluation"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4422T5YZ1ZG7MP9HT5G85",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF444BNRA18NAXD630NZW2A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "gepa"
+            ],
+            "prerequisite_guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:18:38.394000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7KFNYZ8RRRHBC5VQPS1",
+            "rice": 3375.0,
+            "rice_inputs": {
+              "confidence": 45,
+              "effort": 8,
+              "impact": 2,
+              "reach": 300
+            },
+            "wsjf": 1.875,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 2,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+      "local_project": "glpnet",
+      "name_or_slug": "pharma-mc-valuation-model",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:30.708000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "uncertainty"
+            ],
+            "prerequisite_guid": "01KWJSJ7B54XJ2E6K1NMD7E9T8"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:26.304000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo",
+              "seeds"
+            ],
+            "prerequisite_guid": "01KWJSJ7CQX381RHDSFXHAEF4S"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-03T11:52:20.963000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7G93YSF139CJPAKF3PT"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3P9DQKW60TNG23WH7PX3H",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF3Z3MK93W7XQP3J07TY7JQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "monte-carlo"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF40W43S19PTD8DDE0FGKVK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43CPGZS8B0W5ZK5BJ7QVW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43F02VS68JBM5KNZS7AAQ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF43KW6W107PS1F62Y4BPQ4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "provenance"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF4491D4ZCJTF42N3D3DV65",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44DVZ1K7QHDJK9TBG7P62",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "rnpv"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWF44MWP0567517VT73ZA9Z4",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "valuation"
+            ],
+            "prerequisite_guid": "01KWJSJ7MQN3H1SP21JY3RAA1A"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-01T19:53:26.982000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7MQN3H1SP21JY3RAA1A",
+            "rice": 3461.53846153846,
+            "rice_inputs": {
+              "confidence": 50,
+              "effort": 13,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 2.23076923076923,
+            "wsjf_inputs": {
+              "job_size": 13,
+              "risk_opportunity": 8,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4",
+      "local_project": "glpnet",
+      "name_or_slug": "crucible-run-lifecycle",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQATXJYFPP4CBFHTKKZCH",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_pharma_mc"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQB68G39BGWKNFX5MJC1A",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7QDNTCWT480H6JM27Y5",
+      "local_project": "glpnet",
+      "name_or_slug": "corpus-calibrated-mc-valuation-accuracy-harness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3",
+      "local_project": "glpnet",
+      "name_or_slug": "work-marathon-stage-harness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWJSJ7S17CBH9CXR4P4KPZST",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7S17CBH9CXR4P4KPZST",
+      "local_project": "glpnet",
+      "name_or_slug": "bonus-chapter-building-block-biopharm",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWJSJ7S17CBH9CXR4P4KPZST",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7RAQAQGN4C8RKNXHNJ3"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KWHEQBH8JRGJQXCCE4C5CXFT",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_corpus_cal"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-06-19T01:47:45.980000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7S17CBH9CXR4P4KPZST",
+            "rice": 1833.33333333333,
+            "rice_inputs": {
+              "confidence": 55,
+              "effort": 6,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 2.0,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7SQRMTEGZ6MN7HXVCTC",
+      "local_project": "glpnet",
+      "name_or_slug": "bespoke-mechanistic-rnpv-valuation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-06-11T13:59:17.507000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KWJSJ7SQRMTEGZ6MN7HXVCTC",
+            "rice": 30000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 8,
+              "impact": 3,
+              "reach": 1000
+            },
+            "wsjf": 4.5,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 10,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWJSJ7TMK33QPT0JY3ED7X8Z",
+      "local_project": "glpnet",
+      "name_or_slug": "identify-and-source-mechanistic-input-gap-data",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-06-12T10:45:47.404000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "dependent_guid": "01KWHEQBF7AHK4GARQP7VVMZYJ",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWJSJ7TMK33QPT0JY3ED7X8Z"
+          }
+        ],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWQ0PM2M9D3Y3XKP7NMWC6DN",
+      "local_project": "glpnet",
+      "name_or_slug": "Research Authoring & Publishing",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+      "local_project": "glpnet",
+      "name_or_slug": "biopharm-chapter-full-didactic-rewrite-story-builder-driven-inline-interactive-figures",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-07-04T16:58:57.082000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWQ0QFVAST0S0ATSK1JDXY9Q"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-07-04T16:58:59.515000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWQ0RD724WC7ADY6VZ94MSS7"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-07-04T16:54:29.748000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+            "rice": 1750.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 8,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 2.375,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 6,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWQ0QFVAST0S0ATSK1JDXY9Q",
+      "local_project": "glpnet",
+      "name_or_slug": "interactive-research-chapter-rendering-real-d3-jupyterlite-pandoc-xelatex",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-07-04T16:58:57.082000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWQ0QFVAST0S0ATSK1JDXY9Q"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-07-04T16:54:27.205000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KWQ0QFVAST0S0ATSK1JDXY9Q",
+            "rice": 6800.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 5,
+              "impact": 2,
+              "reach": 200
+            },
+            "wsjf": 4.6,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 7,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWQ0RD724WC7ADY6VZ94MSS7",
+      "local_project": "glpnet",
+      "name_or_slug": "productize-the-mstack-story-builder-as-a-first-class-crucible-capability",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-07-04T16:58:59.515000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWQ0QDHNAW42BPMGGP70EH1J",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KWQ0RD724WC7ADY6VZ94MSS7"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-07-04T16:54:32.096000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KWQ0RD724WC7ADY6VZ94MSS7",
+            "rice": 960.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 5,
+              "impact": 1,
+              "reach": 80
+            },
+            "wsjf": 3.0,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 6,
+              "time_criticality": 4,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KWQ0RFK441YRAQ2G90HG08EQ",
+      "local_project": "glpnet",
+      "name_or_slug": "adapt-ulpanit-course-block-unit-design-logic-to-author-textbooks-training-packages",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-07-04T16:54:34.642000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KWQ0RFK441YRAQ2G90HG08EQ",
+            "rice": 600.0,
+            "rice_inputs": {
+              "confidence": 40,
+              "effort": 8,
+              "impact": 2,
+              "reach": 60
+            },
+            "wsjf": 1.875,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 7
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+      "local_project": "glpnet",
+      "name_or_slug": "unify-projfin-infra-mc-composition-seam",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_projfin_val"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBAN2GM2TTA6NDSCJJJQ"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_infra_val",
+              "mc_collect",
+              "waterfall_shield"
+            ],
+            "prerequisite_guid": "01KWHSZQH89DX44ZC5KN3M6QA5"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-11T12:09:02.792000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KWHSZQH89DX44ZC5KN3M6QA5",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01KZR4SVFZCTDN8DQ18DBW79QF"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T12:06:04.685000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZR4SVFZCTDN8DQ18DBW79QF",
+            "rice": 1050.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 8,
+              "impact": 2,
+              "reach": 60
+            },
+            "wsjf": 2.75,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 8,
+              "time_criticality": 6,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+      "local_project": "glpnet",
+      "name_or_slug": "adopt-shared-abstractions-dedup",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQATXJYFPP4CBFHTKKZCH"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQAYBBP2CDVDPTP9XR9NF"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQB68G39BGWKNFX5MJC1A"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine",
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWHEQBCKYQ7VDSEXNA41M0FB"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_runcore"
+            ],
+            "prerequisite_guid": "01KWJSJ7P3D3NX6P2CZVZ6V0V4"
+          },
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "crucible_refine"
+            ],
+            "prerequisite_guid": "01KWJSJ7S17CBH9CXR4P4KPZST"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T12:06:48.796000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZR4SY9A9BQTV615TB5SP6SN",
+            "rice": 1200.0,
+            "rice_inputs": {
+              "confidence": 75,
+              "effort": 5,
+              "impact": 2,
+              "reach": 40
+            },
+            "wsjf": 3.4,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 7,
+              "time_criticality": 4,
+              "user_business_value": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZR4T0QC2AEBD48A2NBWKWRW",
+      "local_project": "glpnet",
+      "name_or_slug": "test-suite-architecture-hardening",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4T0QC2AEBD48A2NBWKWRW",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "tests"
+            ],
+            "prerequisite_guid": "01KWHEQB4DQQDB1NP7DVD6MJYX"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T12:06:51.330000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZR4T0QC2AEBD48A2NBWKWRW",
+            "rice": 1280.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 5,
+              "impact": 1,
+              "reach": 80
+            },
+            "wsjf": 3.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 6,
+              "time_criticality": 5,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZR4T367059SRJ6TK0A92MWK",
+      "local_project": "glpnet",
+      "name_or_slug": "backup-persistence-tooling-consolidation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZR4T367059SRJ6TK0A92MWK",
+            "kind": "heuristic",
+            "overlap_areas": [
+              "docs"
+            ],
+            "prerequisite_guid": "01KWHEQB26VZ9KKF3KZNX5P51S"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T12:06:54.029000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZR4T367059SRJ6TK0A92MWK",
+            "rice": 840.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 5,
+              "impact": 2,
+              "reach": 30
+            },
+            "wsjf": 3.4,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 6,
+              "time_criticality": 5,
+              "user_business_value": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCE8A8245R3H68TGYWHBHS",
+      "local_project": "glpnet",
+      "name_or_slug": "Toolchain Integrity Hardening",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEB8KGM4GMY6V54HW6XEQ",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-safeguard-liveness",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:10.065000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEB8KGM4GMY6V54HW6XEQ",
+            "rice": 16200.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 5,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 5.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEE6MZDCYVQ3BT3Q1ZA8D",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-failure-evidence-preservation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:13.574000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEE6MZDCYVQ3BT3Q1ZA8D",
+            "rice": 4500.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 2,
+              "reach": 50
+            },
+            "wsjf": 6.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEH808NKR98P5N8M1GDZ1",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-shiptime-roadmap-advance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:17.111000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEH808NKR98P5N8M1GDZ1",
+            "rice": 6800.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 5,
+              "impact": 2,
+              "reach": 200
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEM8M0JX2S8E5JCE9BG9M",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-release-self-dirt-tolerance",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:20.562000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEM8M0JX2S8E5JCE9BG9M",
+            "rice": 1800.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 1,
+              "reach": 40
+            },
+            "wsjf": 4.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 3,
+              "time_criticality": 3,
+              "user_business_value": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEQRFQD8PKXYACMF63FNM",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-review-stop-rule",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:23.652000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEQRFQD8PKXYACMF63FNM",
+            "rice": 3200.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 3,
+              "impact": 2,
+              "reach": 60
+            },
+            "wsjf": 3.66666666666667,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 3,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCETZJ59JXT7S972FYVEQX",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-dedupe-key-declaration",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:27.157000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCETZJ59JXT7S972FYVEQX",
+            "rice": 4250.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 2,
+              "impact": 1,
+              "reach": 100
+            },
+            "wsjf": 5.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 5,
+              "time_criticality": 2,
+              "user_business_value": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCEY0WDA6ZGW0VZGQGG54M",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-fleet-gate-uniformity",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:30.439000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCEY0WDA6ZGW0VZGQGG54M",
+            "rice": 4500.0,
+            "rice_inputs": {
+              "confidence": 75,
+              "effort": 5,
+              "impact": 2,
+              "reach": 150
+            },
+            "wsjf": 3.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCF13NF1S5FRPG7FFQDFWT",
+      "local_project": "glpnet",
+      "name_or_slug": "coop-mirror-verify-tool",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:55:09.174000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCF13NF1S5FRPG7FFQDFWT",
+            "rice": 19000.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 1,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 9.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCF4B18NNYANA67SK17QYX",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-marathon-portable-state",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:36.962000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCF4B18NNYANA67SK17QYX",
+            "rice": 600.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 8,
+              "impact": 2,
+              "reach": 30
+            },
+            "wsjf": 1.625,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZRCF7DEYR2A0K2Q11V3RX6P",
+      "local_project": "glpnet",
+      "name_or_slug": "generated-artifact-source-edits",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-11T13:53:40.804000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01KZRCF7DEYR2A0K2Q11V3RX6P",
+            "rice": 2550.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 2,
+              "impact": 1,
+              "reach": 60
+            },
+            "wsjf": 4.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 3,
+              "time_criticality": 2,
+              "user_business_value": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC2QGPR3A9X8VBG9V27DPT",
+      "local_project": "glpnet",
+      "name_or_slug": "shield-on-composition-contract-every-derived-field-re-derived-at-the-converged-schedule",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:46.263000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC2QGPR3A9X8VBG9V27DPT",
+            "rice": 9600.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 5,
+              "impact": 3,
+              "reach": 200
+            },
+            "wsjf": 5.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC3BJHPTY2YF8T0T7STPP4",
+      "local_project": "glpnet",
+      "name_or_slug": "dispatch-and-refusal-completeness-derived-from-the-scenario-schema-not-hand-widened",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:57.901000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC3BJHPTY2YF8T0T7STPP4",
+            "rice": 3500.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 8,
+              "impact": 2,
+              "reach": 200
+            },
+            "wsjf": 3.25,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 13,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC3V304AMY07DN115TGWW4",
+      "local_project": "glpnet",
+      "name_or_slug": "provenance-asserts-the-executed-run-validated-against-the-declaration-at-every-construction-site",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:49.882000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC3V304AMY07DN115TGWW4",
+            "rice": 2000.0,
+            "rice_inputs": {
+              "confidence": 50,
+              "effort": 5,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC5F4NCVZCJA6H7295C9C2",
+      "local_project": "glpnet",
+      "name_or_slug": "declared-inputs-must-reach-an-output-reachability-gate-and-seeding-regime-equivalence",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:42.417000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC5F4NCVZCJA6H7295C9C2",
+            "rice": 8000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 3,
+              "impact": 2,
+              "reach": 150
+            },
+            "wsjf": 7.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC6205ZG91ZTT12FPF4GPE",
+      "local_project": "glpnet",
+      "name_or_slug": "externally-anchored-acceptance-oracles-baselines-non-tautological-references-measured-gates",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZSC6JZG88X1EZGRZMM4RYNX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              ".specify/templates/tasks-template.md"
+            ],
+            "prerequisite_guid": "01KZSC6205ZG91ZTT12FPF4GPE"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:38.937000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC6205ZG91ZTT12FPF4GPE",
+            "rice": 15000.0,
+            "rice_inputs": {
+              "confidence": 75,
+              "effort": 6,
+              "impact": 3,
+              "reach": 400
+            },
+            "wsjf": 6.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZSC6JZG88X1EZGRZMM4RYNX",
+      "local_project": "glpnet",
+      "name_or_slug": "refusal-removal-is-a-tracked-operation-enumerate-readers-register-the-refusal-prove-the-composition",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": false,
+            "confirmed_at": null,
+            "confirmed_by": null,
+            "dependent_guid": "01KZSC6JZG88X1EZGRZMM4RYNX",
+            "kind": "heuristic",
+            "overlap_areas": [
+              ".specify/templates/tasks-template.md"
+            ],
+            "prerequisite_guid": "01KZSC6205ZG91ZTT12FPF4GPE"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:35.435000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZSC6JZG88X1EZGRZMM4RYNX",
+            "rice": 14000.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 6,
+              "impact": 3,
+              "reach": 400
+            },
+            "wsjf": 7.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZTACE3SJH0ABA9MY1Z30P1W",
+      "local_project": "glpnet",
+      "name_or_slug": "sched-wp-admission-cpm-pert-inputs",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-12T06:45:53.910000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZTACE3SJH0ABA9MY1Z30P1W",
+            "rice": 4250.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 4,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 5,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01KZY9D8A5Z3HF4K7AS80V7VVE",
+      "local_project": "glpnet",
+      "name_or_slug": "fleet-allocation-pipeline-flow-hardening",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-17T18:02:09.780000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KZY9D8A5Z3HF4K7AS80V7VVE",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M07DS9746DKV3Q8B6MJP54GT"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-14T12:41:10.991000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01KZY9D8A5Z3HF4K7AS80V7VVE",
+            "rice": 4500.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 8,
+              "impact": 3,
+              "reach": 150
+            },
+            "wsjf": 4.25,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M00AB84B3JRJXPK2QTYWV84M",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-allocator-gates-multi-day-effort-against-single-day-capacity",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-14T14:23:23.633000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M00AB84B3JRJXPK2QTYWV84M",
+            "rice": 10800.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 5,
+              "impact": 3,
+              "reach": 200
+            },
+            "wsjf": 6.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M00ACK690HYMSBBJG8ZSQ7EC",
+      "local_project": "glpnet",
+      "name_or_slug": "acceptance-gates-must-be-able-to-fail-instrumentation-must-name-a-reader",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-14T14:23:37.159000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M00ACK690HYMSBBJG8ZSQ7EC",
+            "rice": 4200.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 5,
+              "impact": 2,
+              "reach": 150
+            },
+            "wsjf": 5.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M00AD10J2JXHY1K7C4WKKCE7",
+      "local_project": "glpnet",
+      "name_or_slug": "carried-debt-must-be-minted-as-a-scored-roadmap-item-at-the-moment-it-is-carried",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-14T14:23:47.302000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M00AD10J2JXHY1K7C4WKKCE7",
+            "rice": 5333.33333333333,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 3,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 7.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M056H7S8BF2RZPYG010V46GJ",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-addressed-offer-supply-superset",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T11:51:34.896000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M056H7S8BF2RZPYG010V46GJ",
+            "rice": 22500.0,
+            "rice_inputs": {
+              "confidence": 75,
+              "effort": 8,
+              "impact": 3,
+              "reach": 800
+            },
+            "wsjf": 6.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M05SNXPEFD46NJZET4H9EZ36",
+      "local_project": "glpnet",
+      "name_or_slug": "coop-board-durability-second-site",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T17:25:15.410000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M05SNXPEFD46NJZET4H9EZ36",
+            "rice": 54000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 5,
+              "impact": 3,
+              "reach": 1000
+            },
+            "wsjf": 7.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M05ZF5CA1SE4MWYZQ1008VAS",
+      "local_project": "glpnet",
+      "name_or_slug": "sched-allocator-reads-declared-ownership",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:10:13.220000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M05ZF5CA1SE4MWYZQ1008VAS",
+            "rice": 27000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 1,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 7.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M05ZFCMH3VTC7VDXJF54S2RK",
+      "local_project": "glpnet",
+      "name_or_slug": "sched-op-types-ack-wip-declined-cancelled",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:10:18.860000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M05ZFCMH3VTC7VDXJF54S2RK",
+            "rice": 7000.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 3,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 4.25,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M05ZFNMFPP3SB5N4Y5DV4X6G",
+      "local_project": "glpnet",
+      "name_or_slug": "deploy-engine-pin-resolver-false-negative",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:10:23.898000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M05ZFNMFPP3SB5N4Y5DV4X6G",
+            "rice": 17000.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 1,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 8.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 8,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M05ZFY796Z8AHCKC420AKH2R",
+      "local_project": "glpnet",
+      "name_or_slug": "ship-preflight-environment-preconditions",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:10:29.257000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M05ZFY796Z8AHCKC420AKH2R",
+            "rice": 13500.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 1,
+              "impact": 3,
+              "reach": 50
+            },
+            "wsjf": 14.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M06046CPA5VH35VVWQ6VRBPW",
+      "local_project": "glpnet",
+      "name_or_slug": "roadmap-scores-derived-and-comparable",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:17:48.903000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M06046CPA5VH35VVWQ6VRBPW",
+            "rice": 8500.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 1,
+              "impact": 2,
+              "reach": 50
+            },
+            "wsjf": 10.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0604BDV6ZK7V1N25BAQXA1P",
+      "local_project": "glpnet",
+      "name_or_slug": "feature-pointer-derived-from-branch",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:17:54.262000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0604BDV6ZK7V1N25BAQXA1P",
+            "rice": 8000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 1,
+              "impact": 2,
+              "reach": 50
+            },
+            "wsjf": 9.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M060F9KE248H9KHTQKYYZH53",
+      "local_project": "glpnet",
+      "name_or_slug": "roadmap-import-status-vs-schema-and-trust-opacity",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T19:23:54.069000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M060F9KE248H9KHTQKYYZH53",
+            "rice": 28500.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 1,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 17.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M06322G8TFM2S26PP5VM09S5",
+      "local_project": "glpnet",
+      "name_or_slug": "fleet-signing-key-trust-establishment",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T20:09:01.249000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M06322G8TFM2S26PP5VM09S5",
+            "rice": 12000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 2,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 11.3333333333333,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M065HEDC7CYD8W62H6B867BY",
+      "local_project": "glpnet",
+      "name_or_slug": "roadmap-import-trust-status-check-violation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-16T20:52:36.502000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M065HEDC7CYD8W62H6B867BY",
+            "rice": 85500.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 2,
+              "impact": 3,
+              "reach": 600
+            },
+            "wsjf": 17.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M07DS9746DKV3Q8B6MJP54GT",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-dispatch-consumer-addressed-delivery-hardening",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-17T18:02:09.780000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01KZY9D8A5Z3HF4K7AS80V7VVE",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M07DS9746DKV3Q8B6MJP54GT"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T22:50:10.983000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M07DS9746DKV3Q8B6MJP54GT",
+            "rice": 2800.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 5,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 2.625,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M08KZ8YW5QFF1B9YNBT932KA",
+      "local_project": "glpnet",
+      "name_or_slug": "consolidated-remediation-and-unshipped-work-programme",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-17T19:44:09.268000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M08KZ8YW5QFF1B9YNBT932KA",
+            "rice": 12923.0769230769,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 13,
+              "impact": 3,
+              "reach": 800
+            },
+            "wsjf": 2.61538461538462,
+            "wsjf_inputs": {
+              "job_size": 13,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M08PSESRG6314GQY61DMX50F",
+      "local_project": "glpnet",
+      "name_or_slug": "engine-pin-resolver-durable-healing",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T12:54:38.077000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M08PSESRG6314GQY61DMX50F"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T14:53:25.992000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0ANRT747GP2XN62GZ4SR9BW",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M08PSESRG6314GQY61DMX50F"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-17T21:24:28.998000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M08PSESRG6314GQY61DMX50F",
+            "rice": 8550.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 3,
+              "impact": 3,
+              "reach": 90
+            },
+            "wsjf": 11.3333333333333,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M08W6KJ7C3GR1Y1VGRRMJ2N6",
+      "local_project": "glpnet",
+      "name_or_slug": "threerole-freeze-method-adjudication-coverage",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T16:21:13.481000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M08W6KJ7C3GR1Y1VGRRMJ2N6",
+            "rice": 13500.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 14.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M08XC40QD8D8TSQH4VHP4V60",
+      "local_project": "glpnet",
+      "name_or_slug": "threerole-adjudication-instruction-in-hashed-record",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T16:21:56.726000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M08XC40QD8D8TSQH4VHP4V60",
+            "rice": 8500.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 2,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 9.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0A04M9T06MHZQ5KSK3W1B3W",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-transition-writers-and-pipeline-seam",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T12:54:49.696000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0A04M9T06MHZQ5KSK3W1B3W"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T20:53:05.332000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0A04M9T06MHZQ5KSK3W1B3W",
+            "rice": 28500.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 3,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 10.3333333333333,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 10,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+      "local_project": "glpnet",
+      "name_or_slug": "pipeline-durable-healing-and-hardening-superset",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T12:54:38.077000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M08PSESRG6314GQY61DMX50F"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T12:54:49.696000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0A04M9T06MHZQ5KSK3W1B3W"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T13:50:39.602000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0AJ656R4VBBY35JNHDPMD49"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T14:53:14.607000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0ANRT747GP2XN62GZ4SR9BW"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T16:22:40.872000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "rice": 923.076923076923,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 13,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 1.61538461538462,
+            "wsjf_inputs": {
+              "job_size": 13,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0AJ656R4VBBY35JNHDPMD49",
+      "local_project": "glpnet",
+      "name_or_slug": "pipeline-sidecar-marathon-discharge-seam",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T13:50:39.602000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0AJ656R4VBBY35JNHDPMD49"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T20:53:38.409000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0AJ656R4VBBY35JNHDPMD49",
+            "rice": 4500.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 2,
+              "reach": 50
+            },
+            "wsjf": 6.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0ANRT747GP2XN62GZ4SR9BW",
+      "local_project": "glpnet",
+      "name_or_slug": "deploy-runnable-entry-point-contract-upstream",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T14:53:25.992000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0ANRT747GP2XN62GZ4SR9BW",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M08PSESRG6314GQY61DMX50F"
+          },
+          {
+            "confirmed": true,
+            "confirmed_at": "2026-08-18T14:53:14.607000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "dependent_guid": "01M0AEZ4A78AGQ60CECCR61BHS",
+            "kind": "explicit",
+            "overlap_areas": null,
+            "prerequisite_guid": "01M0ANRT747GP2XN62GZ4SR9BW"
+          }
+        ],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T20:53:28.254000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0ANRT747GP2XN62GZ4SR9BW",
+            "rice": 9562.5,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 8,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 3.375,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 9,
+              "time_criticality": 8,
+              "user_business_value": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0BACMGEZHD5MPTVYPN2N4QM",
+      "local_project": "glpnet",
+      "name_or_slug": "threerole-method-revision-generation",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T20:53:51.474000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0BACMGEZHD5MPTVYPN2N4QM",
+            "rice": 4275.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 2,
+              "impact": 3,
+              "reach": 30
+            },
+            "wsjf": 8.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 6,
+              "time_criticality": 5,
+              "user_business_value": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0D59ZZP77EKFZV5W015JV9E",
+      "local_project": "glpnet",
+      "name_or_slug": "bk-onrestart-fleet-session-recovery",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T14:39:29.850000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0D59ZZP77EKFZV5W015JV9E",
+            "rice": 6800.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 5,
+              "impact": 2,
+              "reach": 200
+            },
+            "wsjf": 4.0,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 7,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0DXR92R3W10HJZYVFF5367C",
+      "local_project": "glpnet",
+      "name_or_slug": "codexreview-spec-link-ambiguity-and-base-ancestry",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T21:10:25.564000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0DXR92R3W10HJZYVFF5367C",
+            "rice": 7600.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 2,
+              "impact": 2,
+              "reach": 80
+            },
+            "wsjf": 11.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 6,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0E1PRYPMS553KW5M0MAH8N0",
+      "local_project": "glpnet",
+      "name_or_slug": "ingest-unparseable-effort-silently-drops-supply",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T22:19:59.193000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0E1PRYPMS553KW5M0MAH8N0",
+            "rice": 45000.0,
+            "rice_inputs": {
+              "confidence": 100,
+              "effort": 2,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 14.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 9,
+              "time_criticality": 9,
+              "user_business_value": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0E1QQDFMJTQ94Y2H29YY2X9",
+      "local_project": "glpnet",
+      "name_or_slug": "op-normalisation-must-preserve-the-original-payload",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-19T22:20:03.034000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0E1QQDFMJTQ94Y2H29YY2X9",
+            "rice": 22500.0,
+            "rice_inputs": {
+              "confidence": 100,
+              "effort": 4,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 6.5,
+            "wsjf_inputs": {
+              "job_size": 4,
+              "risk_opportunity": 10,
+              "time_criticality": 7,
+              "user_business_value": 9
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0ETB7A1CYXMD9CFJY0M3M7E",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-heartbeat-lease-drops-writes-silently",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T05:30:13.433000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0ETB7A1CYXMD9CFJY0M3M7E",
+            "rice": 45000.0,
+            "rice_inputs": {
+              "confidence": 100,
+              "effort": 2,
+              "impact": 3,
+              "reach": 300
+            },
+            "wsjf": 18.0,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 13,
+              "time_criticality": 10,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0EZJG3X07YMVTBAWH141CJD",
+      "local_project": "glpnet",
+      "name_or_slug": "pin-verify-tier2-execution-bounds-and-candidate-choice",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T07:01:31.149000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0EZJG3X07YMVTBAWH141CJD",
+            "rice": 2850.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 4,
+              "impact": 2,
+              "reach": 60
+            },
+            "wsjf": 3.25,
+            "wsjf_inputs": {
+              "job_size": 4,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0F9WKE3VM5YGF6T0S3PSRDG",
+      "local_project": "glpnet",
+      "name_or_slug": "017-shipped-with-21-open-foundational-tasks-behind-a-merged-pr",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T10:03:23.209000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M0F9WKE3VM5YGF6T0S3PSRDG",
+            "rice": 3600.0,
+            "rice_inputs": {
+              "confidence": 60,
+              "effort": 5,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 5.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0F9WX2E3DV91VKP123CRDBN",
+      "local_project": "glpnet",
+      "name_or_slug": "an-archive-tag-must-be-provable-containment-not-a-claim",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T10:03:26.690000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M0F9WX2E3DV91VKP123CRDBN",
+            "rice": 9000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 3,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 9.66666666666667,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0F9X5W2NYWFFYTHSAFH617M",
+      "local_project": "glpnet",
+      "name_or_slug": "3rtask-redactor-corrupts-literal-at-sign-text-in-composed-role-inputs",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T10:03:29.886000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M0F9X5W2NYWFFYTHSAFH617M",
+            "rice": 9000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 10.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0F9XE6QBVBRDVVADAH7RFNQ",
+      "local_project": "glpnet",
+      "name_or_slug": "pgdb-residue-is-the-largest-disk-consumer-on-this-host",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T10:03:33.174000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M0F9XE6QBVBRDVVADAH7RFNQ",
+            "rice": 2000.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 2,
+              "impact": 1,
+              "reach": 50
+            },
+            "wsjf": 4.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 3,
+              "time_criticality": 3,
+              "user_business_value": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0F9XPDDADCXXBN0Z82QJHW7",
+      "local_project": "glpnet",
+      "name_or_slug": "takt-is-a-tail-control-alarm-not-a-median-tracker",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-20T10:03:36.858000+00:00",
+            "confirmed_by": "mvw@bancstreet.com",
+            "guid": "01M0F9XPDDADCXXBN0Z82QJHW7",
+            "rice": 2800.0,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 5,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 5,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0N9H4N3G6PG0ESHRM8H9FKS",
+      "local_project": "glpnet",
+      "name_or_slug": "canonical-feature-identity-across-marathon-pipeline-board",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T17:51:05.241000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0N9H4N3G6PG0ESHRM8H9FKS",
+            "rice": 5100.0,
+            "rice_inputs": {
+              "confidence": 85,
+              "effort": 5,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 5.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 8,
+              "time_criticality": 13,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0NHR55MQH8XVJECVKA0P5XJ",
+      "local_project": "glpnet",
+      "name_or_slug": "scheduler-to-marathon-work-delivery-seam-superset",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T20:14:48.291000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0NHR55MQH8XVJECVKA0P5XJ",
+            "rice": 3375.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 8,
+              "impact": 3,
+              "reach": 100
+            },
+            "wsjf": 4.875,
+            "wsjf_inputs": {
+              "job_size": 8,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0NHTZBZE9Y3HJQDMT9W8J52",
+      "local_project": "glpnet",
+      "name_or_slug": "onrestart-per-host-window-layout-and-repo-registry",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-22T20:16:24.809000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0NHTZBZE9Y3HJQDMT9W8J52",
+            "rice": 3200.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 5,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 4.2,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 5,
+              "time_criticality": 8,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0P965S0EX3AG4GE1G85ZPM7",
+      "local_project": "glpnet",
+      "name_or_slug": "template-file-id-inherited-by-every-generated-artifact",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T03:13:37.737000+00:00",
+            "confirmed_by": "mvonwen@gmail.com",
+            "guid": "01M0P965S0EX3AG4GE1G85ZPM7",
+            "rice": 5700.0,
+            "rice_inputs": {
+              "confidence": 95,
+              "effort": 1,
+              "impact": 2,
+              "reach": 30
+            },
+            "wsjf": 8.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 4,
+              "time_criticality": 7,
+              "user_business_value": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0PWGR417C004462NMXF0MNH",
+      "local_project": "glpnet",
+      "name_or_slug": "board-liveness-must-reflect-real-work-not-a-heartbeat-an-actor-committing-code-while-writing-no-ops-reads-as-live",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T16:47:44.950000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0PWGR417C004462NMXF0MNH",
+            "rice": 4666.66666666667,
+            "rice_inputs": {
+              "confidence": 70,
+              "effort": 3,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 7.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 8,
+              "time_criticality": 5,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0QF9FYNR31385VXBP68D203",
+      "local_project": "glpnet",
+      "name_or_slug": "cli-help-must-render-on-non-utf8-console",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T16:48:21.746000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0QF9FYNR31385VXBP68D203",
+            "rice": 4500.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 1,
+              "reach": 100
+            },
+            "wsjf": 6.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 5,
+              "time_criticality": 3,
+              "user_business_value": 5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0QJHK2MGKJS4QSGVW3KFNQE",
+      "local_project": "glpnet",
+      "name_or_slug": "feature-binding-repo-identity-has-no-canonical-form",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T15:10:30.301000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0QJHK2MGKJS4QSGVW3KFNQE",
+            "rice": 45000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 3,
+              "impact": 3,
+              "reach": 500
+            },
+            "wsjf": 13.0,
+            "wsjf_inputs": {
+              "job_size": 3,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0QJK6VCACF9ANDDZ7CDWXV5",
+      "local_project": "glpnet",
+      "name_or_slug": "gap-report-cannot-apply-the-repo-scope-open-enforces",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T15:11:25.099000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0QJK6VCACF9ANDDZ7CDWXV5",
+            "rice": 9000.0,
+            "rice_inputs": {
+              "confidence": 90,
+              "effort": 2,
+              "impact": 2,
+              "reach": 100
+            },
+            "wsjf": 9.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 8,
+              "time_criticality": 3,
+              "user_business_value": 8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0QNMW3YRDTJRJKWMBPTWBZR",
+      "local_project": "glpnet",
+      "name_or_slug": "gitsafety-branch-enumeration-is-local-only-green-verdict-on-an-unmade-check",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T16:02:17.352000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0QNMW3YRDTJRJKWMBPTWBZR",
+            "rice": 30000.0,
+            "rice_inputs": {
+              "confidence": 100,
+              "effort": 2,
+              "impact": 3,
+              "reach": 200
+            },
+            "wsjf": 19.5,
+            "wsjf_inputs": {
+              "job_size": 2,
+              "risk_opportunity": 13,
+              "time_criticality": 13,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0QTDWZP483QV7G6JA0FS6XK",
+      "local_project": "glpnet",
+      "name_or_slug": "era-metric-one-era-is-one-feature-specify-to-close",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": [
+          {
+            "computed_at": "2026-08-23T17:25:54.512000+00:00",
+            "confirmed_by": "ariellas",
+            "guid": "01M0QTDWZP483QV7G6JA0FS6XK",
+            "rice": 19200.0,
+            "rice_inputs": {
+              "confidence": 80,
+              "effort": 5,
+              "impact": 3,
+              "reach": 400
+            },
+            "wsjf": 6.8,
+            "wsjf_inputs": {
+              "job_size": 5,
+              "risk_opportunity": 13,
+              "time_criticality": 8,
+              "user_business_value": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "epic",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0R7DGA17DKDWCXRYFM7JFEC",
+      "local_project": "glpnet",
+      "name_or_slug": "Silent-pass elimination: a check that did not run must never report green",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0R7DKFD3PT753WKA4Q57M32",
+      "local_project": "glpnet",
+      "name_or_slug": "unmeasured-never-green-contract",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0RGYD2D6Q9WT6JZRWEHF7Y6",
+      "local_project": "glpnet",
+      "name_or_slug": "takt-must-record-measurement-provenance-a-retrospectively-stamped-step-is-not-a-measured-one",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0SBFM858P5TFV8HRG049N8J",
+      "local_project": "glpnet",
+      "name_or_slug": "advisory-lock-message-must-check-pid-liveness-before-declaring-a-lock-stuck",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
+    },
+    {
+      "declared_project": "crucible-xyz",
+      "entity_kind": "feature",
+      "file_name": "shiras__crucible-xyz__20260825T090624Z.json",
+      "guid": "01M0SZMV6J5R56Y1SJ878H8KG3",
+      "local_project": "glpnet",
+      "name_or_slug": "roadmap-must-record-which-repo-owns-a-feature-and-next-must-not-recommend-one-this-lane-cannot-execute",
+      "parent_guid": null,
+      "reason": "foreign",
+      "refused_at": "2026-08-31T18:07:42.191000+00:00",
+      "side_records": {
+        "dependencies": [],
+        "scores": []
+      }
     }
   ],
   "schema_version": "1",
   "summary": {
-    "distinct_entities": 561,
+    "distinct_entities": 700,
     "distinct_entities_by_kind": {
-      "epic": 70,
-      "feature": 491
+      "epic": 86,
+      "feature": 614
     },
     "note": "total_rows counts one row per (export file x entity); distinct_entities is how many entities are actually set aside. A refused entity may still be present in this catalog by another route -- a refusal records that an import declined it, not that the entity is missing.",
     "rows_by_reason": {
-      "foreign": 2205,
+      "foreign": 2344,
       "untagged": 4799
     },
-    "source_files": 33,
-    "total_rows": 7004
+    "source_files": 34,
+    "total_rows": 7143
   }
 }
