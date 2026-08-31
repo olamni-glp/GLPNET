@@ -19,6 +19,25 @@ work"* failure CLAUDE.md warns about. **If the run below does not match
 
 ---
 
+## 🔁 AFTER A REBOOT — NOTHING TO TYPE, THEN ONE LINE
+
+`BK-OnRestart` (scheduled task, **Ready**, fires **45 s after logon**) runs
+`scripts/onrestart-launch.ps1` and relaunches **all 15 lanes**, each resumed mid-thread with
+`claude --continue --autocompact 1000000` — never summarised. DryRun verified 2026-08-31T23:34Z:
+**15 requested / 15 will launch / 0 refused**, layout `TwoWindows`.
+
+| window | tabs |
+|---|---|
+| **1** | ospark · tefl · hatzinor · olamnit · buildkit · qhstate · crucible |
+| **2** | glpnet · lejepa · mstack · yngraw · yngwin · ynglin · yngapp · yngcor |
+
+⚠️ **Leaf `yngenios` collides twice** (`yngraw`=`D:\bstdev\research\yngenios`,
+`yngcor`=`D:\yngenios\yngenios`). It is neutralised **only** because both carry explicit distinct
+names. **Never register a yngenios lane without `-Name`** — the leaf default would collide and
+silently drop a lane (olamnit `20260827T2245Z`).
+
+Then, in the **glpnet** tab:
+
 ## Resume in one line
 
 ```
