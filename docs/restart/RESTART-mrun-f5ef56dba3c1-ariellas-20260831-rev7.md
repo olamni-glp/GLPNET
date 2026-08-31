@@ -131,6 +131,32 @@ promoted the finding. It was **two lanes making the same scoping mistake.**
 | ~~Coop ACK sweep~~ | ✅ **DONE** at `2115Z` — 34 docs. Refuted "allocation is zero for every actor" as universal (2 dispatchable here) while **corroborating** the narrower causal claim: **onboard is not the supply door**. Found a `gavri` calendar-without-caps actor split on this board |
 | **ZA01 `/bk-plan` on 083** | Not started. 083 has `spec.md`, **no `plan.md`**; slot is HELD by 085 for 8.7d |
 
+## 7B · ⭐ TAKT MEASURED — THE ERA OVERRUN IS GAP, NOT EFFORT (read this before any CPM/PERT work)
+
+Read from the fleet lake `I:\coop\_takt-lake` (753 records, host=ariellas); 13/135 steps
+measurable, 122 unmeasurable and **not counted as zero**.
+
+```
+phase        n   effort   ELAPSED    GAP     band       verdict
+specify      3    0.38h    15.82h   15.43h   0.5-3.0h   over
+clarify      1    0.53h     0.53h    0.00h   0.5-3.0h   IN-BAND
+analyze      7    0.37h    76.48h   76.11h   0.5-3.0h   over
+implement    2   21.83h    90.11h   68.28h   0.5-3.0h   over
+feature ELAPSED 90.23h (target 1.5-6.0h)   effort 23.11h / 13 steps
+```
+
+🔴 **On EFFORT, three of four phases are ALREADY INSIDE OR BELOW the band.** Only `implement`
+genuinely exceeds it. **What blows the era target is GAP — the time a phase sits open with no step
+running.** The takt problem is **phase closure latency, not execution speed and not step sizing.**
+**A plan that makes steps smaller or faster will move almost nothing.**
+
+⚠ **Blocks CPM/PERT directly:** the tool states ELAPSED is the ONLY column a CPM/PERT duration may
+be built from, and p50/p80/max are PER-STEP, not phase durations. Building from *effort*
+understates phases by 40-200x; building from current *ELAPSED* bakes the idle gap in as work.
+**Neither is usable until gap is separated out — settle this BEFORE bk-flow planning consumes
+these numbers.** Caveat: 9.6% sample, per-phase n=1-7 — the direction is unambiguous, the
+magnitudes are not yet estimates, and **LLM estimates remain never permitted.**
+
 ## 8 · WHAT'S NEXT — IN STRICT ORDER
 
 1. **ENGINEER: push `78d53877`** with `!` (§2). Nothing else can land until this does.
