@@ -1352,3 +1352,79 @@ Y06/Y07/Y09 (rulings owed).
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T11:00:00Z
+
+---
+
+# 🔴 SESSION 12 ADDENDUM — 2026-08-31T11:20Z · **4 ENGINEER RULINGS TAKEN. THIS ADDENDUM IS THE FIRST THING TO READ.**
+
+Question set `Q-GLPNETS12-20260831T1100Z` (authored in `tools/bkquestion/`, **validator caught 6 real
+drafting defects before it was asked** — an over-long header and five over-long option labels).
+All four answered; **every recommendation was accepted.** Recorded append-only in
+`.specify/decisions/engineer-decisions.jsonl`.
+
+| id | kind | ruling |
+|---|---|---|
+| `Q-GLPNETS12-01` | ruling | **"Waive 2+3, close, hold 1+5+6"** |
+| `Q-GLPNETS12-02` | ruling | **"Split 11 / 55"** |
+| `Q-GLPNETS12-03` | ruling | **"Create five, archive 050"** |
+| `Q-GLPNETS12-04` | risk-acceptance | **"Escalate, keep holding"** — ⏳ **EXPIRES 2026-09-07, auto-re-raises** |
+
+## 🔴 THE NEXT SESSION'S WORK IS NOW FULLY RULED — no re-briefing, execute
+
+### 1 · `/bk-close 078` — FIRST ACTION, ruled, cheap, genuinely owed
+`Q-GLPNETS12-01` waives checklist items **2 and 3 by citation** (codexreview run
+`20260828T004446Z` on disk; release `v2026.08.28.1` tagged on `c9d32d90`) and directs that item **4
+be satisfied for real** — `.specify/retrospective/` holds **21** feature dirs and **none for 078**.
+**Run it, do not waive it.**
+
+### 2 · Items 1, 5, 6 STAY HELD — and 1 + 6 are now unblocked by ruling 02
+`Q-GLPNETS12-02` = **"Split 11 / 55"**: re-scope 078 in glpnet to its **11 glpnet-side tasks and five
+areas**; record the **55 `bk:` tasks as a buildkit-owned successor feature with 078 as its spec of
+record**. 🔴 **This makes `manifest.py:19-21`'s five-area narrowing CORRECT rather than an
+undischarged deviation** — item 6 resolves by ruling, not by code. Declared cost, carried knowingly:
+**FR-017's six-area guarantee is then satisfied by no single repo**, so any fleet adoption claim must
+read both repos together.
+
+### 3 · Item 5 is the one real remaining code task — build the case-keyed 13-instance registry
+Still held, still not waived, **and it is now the highest-value code task in this lane**. Mirror what
+`faultinj/conformance.py` already does right (`_CASES` + per-case self-registration) so a declared
+instance that never runs reads **UNREAD, never green**. Today: **11 modules naming 2 instances against
+an SC-001 denominator of 13.** faultinj is 51/51 green and that green does **not** demonstrate SC-001.
+
+### 4 · Roadmap: create five features, archive 050
+`Q-GLPNETS12-03`. Author five roadmap features matching the five live gleam spec dirs
+(`031-gleam-port-spike`, `036-glp-gleam-baseline-program`, `039-m2-0-verify-erlang-monitor-atomvm`,
+`049-wave1-guard-link-acceptance`, `060-wave3-full-gleam-chain`) so `link` can bind them.
+🔴 **`050-full-gleam-combined` stays ARCHIVED under `Q-GLPNETS1-04` — do NOT link it.**
+Declared cost: roadmap grows by five features nobody is scheduled to do.
+
+### 5 · Held branches — escalation SENT, clock running
+`Q-GLPNETS12-04`. Escalation filed at `D:/coop/glpnet/ESCALATION-20260831T1115Z-…`, naming exactly
+two required changes: `rollForward: latestFeature` → **`latestPatch`** (`Q-GLPNETS10-01`), and
+`Directory.Build.props` → **root `.targets`** (`Q-GLPNETS10-03`). **Merge on the owner's ACK, no
+further review.** 🔴 **If neither branch has moved by 2026-09-07 the acceptance EXPIRES and must go
+back to the engineer as a fresh block — do not let it lapse into permanent policy.**
+
+## ⚠️ TWO THINGS THE NEXT SESSION MUST NOT INHERIT AS FALSE
+
+1. 🔴 **`git push origin develop` WAS BLOCKED by the Claude Code permission classifier — twice.**
+   The session-12 commit **`7f628e8e` exists LOCALLY and is NOT on `origin`.** `develop` is
+   **1 ahead**. This is **not** a merge conflict, a lock, or a credential problem — it is a harness
+   permission denial, and I did not work around it. **First git action next session: push, or ask
+   the engineer to allow the rule.** The restart record itself is in that unpushed commit.
+2. ⚠️ **`py -V:3.14` intermittently returned "No suitable Python runtime found"** mid-session while
+   having worked minutes earlier. The reliable invocation is the explicit path
+   **`$env:LOCALAPPDATA/Python/pythoncore-3.14-64/python.exe`**. Use it for `bkquestion` and any
+   stdlib tool; do not assume the launcher.
+
+## COOP — outbound this session
+
+* **ACK** `20260831T1050Z` → @shiras `20260830T2230Z`, all four sections. **Narrows §2 by
+  measurement:** the pipe-masks-refusal defect is **bash-only**, `set -o pipefail` is a one-line
+  remedy shiras did not name, and **PowerShell `$LASTEXITCODE` is immune**. ACK requested back from
+  @shiras and @buildkit because the narrowing changes *which lanes must act*.
+* **ESCALATION** `20260831T1115Z` → held-branch owners, per ruling 04.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T11:20:00Z
