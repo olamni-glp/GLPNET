@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETA13-20260831T1250Z",
+  "lane": "ariellas-glpnet",
+  "repo": "GLPNET",
+  "raised_at": "2026-08-31T12:50:00+00:00",
+  "context": "Round 1 of 2. Marathon mrun-f5ef56dba3c1 resumed at seq 333, 40/129 steps, 149 outstanding items, 17 of 25 discharge items unsatisfied. These four are the blocks that gate the NEXT action rather than a later one. Ruling R3 (finish 083 first) is already on record and is NOT re-asked here.",
+  "questions": [
+    {
+      "id": "Q-GLPNETA13-01",
+      "kind": "ruling",
+      "header": "Release bar",
+      "question": "Three lanes are now applying two different bars for cutting a CalVer release and each is following a defensible reading of your directive, so which bar governs the fleet?",
+      "blocks": ["/bk-release on every lane", "the ariellas ship/close half of ZA02-ZA07", "any honest cross-lane release receipt"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Feature-level bar",
+          "recommended": true,
+          "means": "A release is cut only when develop carries at least one completed, implemented AND codexreviewed feature. Docs, roadmap exports and chores accumulate until a feature lands. This is gavriella's bar and the one I applied today when I declined to cut over two docs commits.",
+          "cost": "Roadmap exports and restart docs can sit unreleased for days, so `main` lags what peers actually pull, and a lane that only produces docs never appears in the release history at all."
+        },
+        {
+          "label": "Any-content bar",
+          "means": "Any non-empty develop-ahead-of-main gets cut. This is what olamnit did today at 12:16Z on your explicit directive, over 43 accumulated commits.",
+          "cost": "Produces release-shaped no-ops: a CalVer tag whose whole content is a restart doc. It also makes the tag stream useless as a signal of what actually shipped."
+        },
+        {
+          "label": "Time-boxed bar",
+          "means": "Cut whenever develop is ahead AND the newest unreleased commit is older than N hours (say 24), whichever bar the content meets. Mechanical, no judgement, no lane-to-lane variance.",
+          "cost": "Nobody has implemented it; it is a new rule to build and enforce, and it still tags docs-only content, just on a timer instead of on a whim."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA13-02",
+      "kind": "ruling",
+      "header": "Gleam pick",
+      "question": "45 of the 47 genuinely open implementation tasks in this repo sit on two Gleam branches that share ZERO commits and are 470 and 421 commits behind develop, so which one becomes canonical?",
+      "blocks": ["N12", "the F-cluster burn-down", "any claim that this repo is near completion"],
+      "escalate_after_hours": 72,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "059 canonical, re-derive 050",
+          "recommended": true,
+          "means": "Take 059-full-scope-gleam (the ENGINE/LANGUAGE tier, 75/98 tasks done, 421 behind) as the survivor and re-derive 050's LINK/TRANSPORT delta onto develop as a fresh increment. Also rescues commit 5def2750, the toolchain fix stranded on 050 that three separate sessions have independently rediscovered.",
+          "cost": "Re-deriving a 48-commit transport tier is real work, not a merge, and my own lane recorded a WITHDRAWN earlier recommendation here — 050 and 059 were once wrongly read as rivals, so a pick that discards either tier is a measured mistake I have already made once."
+        },
+        {
+          "label": "Rebase both onto develop",
+          "means": "Keep both branches, rebase each onto current develop, land them in dependency order (059 engine, then 050 transport).",
+          "cost": "Both are 400+ commits behind after a net10 to net11 retarget and a C#15 pin; the rebase conflict surface is unbounded and untestable until it is finished."
+        },
+        {
+          "label": "Re-derive both from specs",
+          "means": "Treat both branches as evidence only, and re-implement the whole Gleam scope fresh from specs 050 and 059 on top of current develop.",
+          "cost": "Discards two working implementations to avoid a merge, which is the most expensive option by far and the hardest to justify if either branch turns out to be nearly landable."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA13-03",
+      "kind": "ruling",
+      "header": "Guardian",
+      "question": "bk-guardian is STOPPED on this host with modules=0 and exactly one backup, so the PGlite catalog that holds all marathon and roadmap state is currently unprotected — do I start it and take a backup before any further catalog-heavy work?",
+      "blocks": ["Q17", "every subsequent roadmap sync round", "every marathon write this session"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Start guardian, take backup",
+          "recommended": true,
+          "means": "Start the guardian daemon and take one logical catalog backup before the roadmap and marathon work later in this same session. The catalog is the irreplaceable system of record; the file mirrors have already been measured as false-green in BOTH directions on two hosts (item N5).",
+          "cost": "Guardian runs protective modules on a schedule and will start filing findings, one of which is an always-on gate that can refuse the next pipeline stage until resolved or overridden. That is the point, but it can block work you wanted to flow today."
+        },
+        {
+          "label": "Backup only, no daemon",
+          "means": "Take the backup, leave the daemon stopped. Gets the durable safety net without introducing the refusal gate mid-session.",
+          "cost": "One-shot protection: the moment this session ends, the catalog is unprotected again and the next session inherits the same block."
+        },
+        {
+          "label": "Neither, proceed as-is",
+          "means": "Accept the current exposure and continue; the catalog has not been lost yet.",
+          "cost": "N5 already recorded the mirror reporting ready-to-discharge against a catalog at seq 117 with 65 open items, and gavriella lost her catalog entirely while the mirror survived. This option accepts a failure mode that has already fired on this fleet."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA13-04",
+      "kind": "ruling",
+      "header": "1.14 route",
+      "question": "J2 needs a GLP language-authority decision that is Udi's and not yours, it has blocked 080 and W11 since 2026-08-14, and the marathon `next:` pointer keeps steering every restart into it — how should this lane route it?",
+      "blocks": ["080-occurs-checked-substitution", "W11", "the F-cluster burn-down", "an honest `next:` pointer"],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Send the spec as-is to Udi",
+          "recommended": true,
+          "means": "The artifact is already written: specs/080/spec.md states the question verbatim and presents BOTH options — (a) UnifyFail, classic unify_with_occurs_check, sound and rejects nothing that never cycles; (b) CompileError, static rejection consistent with 077 FR-004 — and selects neither. Durable item mitem-01a016a5c761 records NO DRAFTING IS NEEDED. The action is simply to send it.",
+          "cost": "Depends on a person outside this fleet's channels answering, with no ETA, and the block stays open for however long that takes. It also needs you to name the delivery route, because this lane has no path to Udi."
+        },
+        {
+          "label": "You rule provisionally",
+          "means": "You pick (a) or (b) as a provisional, reversible ruling so 080 can proceed, explicitly marked as subject to Udi's override.",
+          "cost": "Directly contradicts CLAUDE.md Language Authority and DISCIPLINE 1.14, which reserve the GLP language definition to Udi's express approval. A provisional ruling that ships code is not reversible in practice."
+        },
+        {
+          "label": "Defer 080, unpin `next:`",
+          "means": "Formally defer 080 out of the active ladder and file the `next:` mis-pointing as the marathon defect it is, so restarts stop being steered into a gated step.",
+          "cost": "Leaves a known-unsound occurs-check in the runtime indefinitely, and 'defer' has already been recorded once for this item without removing its steps from the `next:` computation — so this may not even fix the pointer."
+        }
+      ]
+    }
+  ]
+}
