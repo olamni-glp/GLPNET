@@ -141,9 +141,24 @@ With them: `reachable`, `local 991 / fleet-this-host 138`, and `scheduler_ops` m
 - Commits `8a5fd60e` + `90aeb5bf` + `2a8e0fab` — **PUSHED** to origin.
 - **S13 PROVEN PHYSICALLY**: 4 unique measurements recovered from a literal `D:` dir; phantom removed.
 
-## 5 · 🔴 WHAT'S NEXT — start here
+## 5 · 🔴 WHAT'S NEXT — **ENGINEER-RULED. Start with the FRONT-END feature, not the scheduler.**
 
-**S14 is the live root cause and the highest-value next move.**
+> 🔴 **RULING `Q-glpnetshiras-04` (2026-08-30) SUPERSEDES THE SCHEDULER SEQUENCE BELOW.**
+> **NEXT WORK = `front-end-goal-term-acceptance-completeness-parser-repl-goal-builders-cross-runtime`**
+> (roadmap, WSJF 3.60 / RICE 3000, state `promoted`). Hand off with:
+>
+> ```
+> /bk-specify "Front-end goal-term acceptance completeness (parser + REPL goal builders, cross-runtime)"
+> ```
+>
+> It covers three located product defects: `=..` rejected in clause bodies; structs-in-lists in REPL
+> goals (**recorded location is STALE — re-verify in `GlpEngine` first, it may already be fixed**);
+> and the C# REPL `_SetupArgument` throwing on `UnderscoreTerm`.
+> Ledger: `.specify/decisions/engineer-decisions.jsonl`. **Do NOT resume at S14/S1 below** — that
+> sequence is retained for context and is NOT the instruction.
+
+**Retained for context only (superseded): the scheduler analysis.** S14 was the live root cause
+before the ruling.
 
 1. **S14 — binding is envelope-only.** Board: 32 packets, **1 envelope**, `by_source
    {envelope: 0, link: 0}`, so **0 of 32** bind — *even with a full roadmap*. **11 of 32 are
@@ -211,7 +226,16 @@ peer RELEASE HELD. **Nothing was cut.** Engineer question `Q-glpnetshiras-01`.
 
 - ~~Commit not pushed~~ **DONE** — `08a02c5c..90aeb5bf` pushed to origin (engineer granted).
 - **`buildkit release` NOT run.** RELEASE HELD stands (ariellas, 2026-08-24, pending quiescence);
-  nothing was cut. Codex gate: ruled dischargeable by Claude reviewers (S7); codex CLI absent here.
+  nothing was cut.
+- 🔴 **CODEX GATE IS LIVE — S7 IS SUPERSEDED. DO NOT DISCHARGE IT BY ABSENCE.**
+  S7 said *"ruled dischargeable by Claude reviewers; codex CLI absent here"*. **That premise is
+  dead: `codex-cli 0.149.1` IS installed at `/home/shira/.local/bin/codex` (S17).** Ruling
+  `Q-glpnetshiras-01` requires **codexreview FIRST, then ship**. A release without a real codex
+  pass is a gate bypass.
+  🔴 **AND `0 findings` FROM A TIMED-OUT PASS IS NOT A CLEAN REVIEW** — the first attempt
+  printed `review (base): 0 finding(s)` after `codex produced no stdout` + `TIMED_OUT after 200s`.
+  **Check `codex.md` for `TIMED_OUT` and `run.json` for `converged` before believing a green.**
+  A real pass needs `--max-seconds 1200`; it then returned **3 P1 findings** (run `20260831T095127Z`).
 - **SITREP `marathon.*` rows now populate** (fixed by `.specify/feature.json`). Still `—`: `host` and
   `marathon.done_items` only. **Not hand-filled.**
 - **BK-STD-1 footer** prints `DEDUPE_GROUPS=?` / `RECONCILE=?`; true values are `0 groups` /
