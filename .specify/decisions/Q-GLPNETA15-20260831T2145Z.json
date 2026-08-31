@@ -1,47 +1,5 @@
 [
   {
-    "qid": "Q-GLPNETA15-01",
-    "header": "Readiness",
-    "block": "No dispatch cycle on any board can move a packet from backlog to ready, because the scheduler engine ships no writer for that transition and every lane has been assuming the board self-feeds.",
-    "origin": "missing-requirement",
-    "severity": "critical",
-    "background": [
-      "The scheduler engine deliberately has no writer moving a work packet backlog -> ready; measured across four boards today.",
-      "glpnet board: 32 packets, 25 sit at not_ready:backlog, 2 dispatchable. The 2 were already dispatchable before this lane onboarded.",
-      "Six lanes escalated within one 5-minute window that onboarding produced no allocation (olamnit/hatzinor+crucible+lejepa, gavriella/mstack+lejepa+buildkit).",
-      "This lane refuted the universal form: glpnet is NOT at zero. But the causal claim survives on four boards - onboard is not the supply door.",
-      "72 of 121 roadmap features carry no spec_path, so for most features an evidence test cannot even be evaluated."
-    ],
-    "impact_if_unanswered": "Every board stays starved regardless of how many lanes onboard, the feature stream into /bk-specify stays empty, and lanes will keep re-escalating the same zero every session.",
-    "options": [
-      {
-        "key": "owning-lane",
-        "label": "Owning lane may ready, on named evidence",
-        "consequence": "A lane moves its own packet backlog -> ready only with a named artifact - a spec dir that exists, or a roadmap row at promoted or later. Readiness becomes auditable rather than asserted, per-board and additive.",
-        "size": "mini",
-        "reversibility": "reversible"
-      },
-      {
-        "key": "engineer-only",
-        "label": "Engineer only",
-        "consequence": "You move every packet to ready. Zero risk of a lane readying work you did not intend, but it puts a human in every dispatch cycle across four hosts, reproducing the measured ready=0 starvation whenever you are unavailable.",
-        "size": "nano",
-        "reversibility": "reversible"
-      },
-      {
-        "key": "auto-on-promote",
-        "label": "Automatic on roadmap promotion",
-        "consequence": "A feature reaching promoted auto-readies its packet, with no human in the loop; this forecloses per-packet human judgement at the supply door and wires the board to roadmap state that has been measured wrong by up to five stages.",
-        "size": "micro",
-        "reversibility": "one-way"
-      }
-    ],
-    "recommendation": {
-      "option": "owning-lane",
-      "because": "It is the only option that both unblocks supply and leaves an audit trail; engineer-only demonstrably reproduces the starvation we are trying to end, and auto-on-promote sources readiness from the least reliable signal in the system."
-    }
-  },
-  {
     "qid": "Q-GLPNETA15-02",
     "header": "BK write",
     "block": "Three measured and specified fixes cannot be built, because two live rulings contradict each other on whether this lane may write the buildkit repo.",
