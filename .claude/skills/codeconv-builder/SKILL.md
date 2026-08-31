@@ -31,12 +31,12 @@ research R1/R2. The skill contains **no deterministic-state logic**.
    Gabi to create it (`python -m venv codeconv/.venv && …pip install -e
    codeconv[dev]`).
 2. Run from the repo root. Per `CLAUDE.md`, pass
-   `--data-dir C:/pglite/research/glpnet` for **consistency + shared-
+   `--data-dir D:/bstdev/research/glp/glpnet/.pgdb` for **consistency + shared-
    bridge reuse** (a healthy bridge already runs there). D: is NTFS, so
    this is a convention, not a filesystem necessity; the CLI guard
    (exit 64) no longer triggers on D:.
 3. For an explicit subcommand: run `codeconv --data-dir
-   C:/pglite/research/glpnet builder <args verbatim>` and show
+   D:/bstdev/research/glp/glpnet/.pgdb builder <args verbatim>` and show
    stdout/stderr.
 4. For the **orchestration** flow (bare `/codeconv-builder` or
    `/codeconv-builder run`): run the loop in § "Orchestration loop".
@@ -60,7 +60,7 @@ research R1/R2. The skill contains **no deterministic-state logic**.
 | `--restart-run` | run | off (R13) | Explicit, non-default: mint a NEW run epoch instead of resuming the most-recent non-terminal run. |
 | `--respec` | run | off | Opt-in re-convspec on tombstone↔DB drift. |
 | `--json` / `--quiet` | all | off | JSON summary / suppress logging. |
-| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Pass `C:/pglite/research/glpnet` for shared-bridge reuse (convention). |
+| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Pass `D:/bstdev/research/glp/glpnet/.pgdb` for shared-bridge reuse (convention). |
 
 ## Pre-execution checks
 
@@ -81,7 +81,7 @@ re-drive; **all** state/decisions are the deterministic CLI's.
 ```
 resolve venv + repo-root (as the /codeconv-depgraph skill does)
 loop:
-  r = codeconv --data-dir C:/pglite/research/glpnet builder run --json
+  r = codeconv --data-dir D:/bstdev/research/glp/glpnet/.pgdb builder run --json
   if r.outcome == "nothing_to_convert":  report; break          # FR-020, exit 0
   if r.exit_code == 4:  surface "stale tombstone↔DB"; STOP (ask Gabi) # FR-019
   if r.exit_code == 5 or r.escalations:                          # FR-013/014

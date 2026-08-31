@@ -30,7 +30,7 @@ The skill contains **no deterministic-state logic**.
    codeconv/.venv/Scripts/python.exe -m pip install -e codeconv[dev]`
    first.
 2. Run from the repo root. On this exFAT checkout **every** invocation
-   MUST pass `--data-dir C:/pglite/research/glpnet` (CLI guard exits 64
+   MUST pass `--data-dir D:/bstdev/research/glp/glpnet/.pgdb` (CLI guard exits 64
    on a non-NTFS data-dir; `docs/known-issues.md` Issue 8).
 3. For a bare `/codeconv-planagents` (or an explicit subcommand): run
    `codeconv planagents <args verbatim>` and show stdout/stderr.
@@ -64,7 +64,7 @@ The skill contains **no deterministic-state logic**.
 | `--no-tombstone-update` | plan-started / plan-completed | off | Skip the tombstone YAML write (testing only). |
 | `--quiet` | all | off | Suppress per-step logging. |
 | `--json` | all | off | Emit a JSON summary on stdout. |
-| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Override the PGLite cluster — **mandatory on this exFAT checkout**: `--data-dir C:/pglite/research/glpnet`. |
+| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Override the PGLite cluster — **the canonical repo-local cluster (checkout is NTFS)**: `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`. |
 
 ## Pre-execution checks
 
@@ -87,11 +87,11 @@ user wants the frontier planned) resolves the venv/repo-root exactly as
 
 ```
 loop:
-  r := codeconv planagents next --limit 7 --json --data-dir C:/pglite/research/glpnet
+  r := codeconv planagents next --limit 7 --json --data-dir D:/bstdev/research/glp/glpnet/.pgdb
   if r is exit 2 (depgraph empty): surface the error verbatim; STOP
   if r.batch is empty: report r.message ("nothing to plan"); break loop
   for each tombstone t in r.batch, keeping AT MOST 7 planning Agent calls in flight:
-      codeconv planagents plan-started t.path --data-dir C:/pglite/research/glpnet
+      codeconv planagents plan-started t.path --data-dir D:/bstdev/research/glp/glpnet/.pgdb
       spawn ONE planning sub-agent for t   (Agent tool; prompt = § "Planning
         sub-agent prompt contract" below; pass t.path, t.tombstone, t.artefact,
         t.cycle_group_id, t.scc_siblings)
@@ -105,14 +105,14 @@ loop:
                `Status: open` `### E` entries in t.artefact (or pass
                --escalations <n> after counting them)
           codeconv planagents plan-completed t.path \
-            --plan-path t.artefact --escalations <n> --data-dir C:/pglite/research/glpnet
+            --plan-path t.artefact --escalations <n> --data-dir D:/bstdev/research/glp/glpnet/.pgdb
   # SCC batch: all members of one cycle_group_id arrive in the SAME r.batch;
   # spawn one planning agent per member (each within the 7-cap), pass each its
   # scc_siblings. Do NOT call `next` expecting downstream files until EVERY
   # member is plan-completed (readiness.py enforces the gate; the loop must
   # keep the batch coherent — partial-batch resume re-selects only un-started
   # members on a re-invocation).
-codeconv planagents aggregate-escalations --data-dir C:/pglite/research/glpnet
+codeconv planagents aggregate-escalations --data-dir D:/bstdev/research/glp/glpnet/.pgdb
 ```
 
 Concurrency-cap (SC-001 / R3) is **dual**: (1) Python `next --limit 7`
@@ -252,23 +252,23 @@ re-planned only under explicit `--replan` (FR-015).
 
 ## Examples
 
-- `/codeconv-planagents status --data-dir C:/pglite/research/glpnet` →
+- `/codeconv-planagents status --data-dir D:/bstdev/research/glp/glpnet/.pgdb` →
   show the readiness view.
-- `/codeconv-planagents --data-dir C:/pglite/research/glpnet` → run the
+- `/codeconv-planagents --data-dir D:/bstdev/research/glp/glpnet/.pgdb` → run the
   orchestration loop: plan every plan-ready tombstone (≤7 agents
   concurrent), then aggregate escalations.
 - `/codeconv-planagents next --limit 7 --json --data-dir
-  C:/pglite/research/glpnet` → emit the next batch (no agents, no
+  D:/bstdev/research/glp/glpnet/.pgdb` → emit the next batch (no agents, no
   writes).
 - `/codeconv-planagents aggregate-escalations --data-dir
-  C:/pglite/research/glpnet` → regenerate the engineer escalations
+  D:/bstdev/research/glp/glpnet/.pgdb` → regenerate the engineer escalations
   report.
 - `/codeconv-planagents --replan stale --data-dir
-  C:/pglite/research/glpnet` → re-plan files whose source drifted.
+  D:/bstdev/research/glp/glpnet/.pgdb` → re-plan files whose source drifted.
 - `/codeconv-planagents stamp-tombstones --data-dir
-  C:/pglite/research/glpnet` → embed plan state into every tombstone.
+  D:/bstdev/research/glp/glpnet/.pgdb` → embed plan state into every tombstone.
 - `/codeconv-planagents rebuild-plans-from-tombstones --data-dir
-  C:/pglite/research/glpnet` → restore `dart_plans` from tombstones
+  D:/bstdev/research/glp/glpnet/.pgdb` → restore `dart_plans` from tombstones
   after a DB wipe.
 
 ## What this skill does NOT do

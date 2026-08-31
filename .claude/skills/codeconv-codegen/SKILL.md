@@ -29,7 +29,7 @@ deterministic-state logic** — every state mutation goes through
    Gabi to run `python -m venv codeconv/.venv &&
    codeconv/.venv/Scripts/python.exe -m pip install -e codeconv[dev]`.
 2. Run from the repo root. Every invocation SHOULD pass
-   `--data-dir C:/pglite/research/glpnet` for consistency and to reuse
+   `--data-dir D:/bstdev/research/glp/glpnet/.pgdb` for consistency and to reuse
    the already-running shared bridge (CLAUDE.md 🔴 convention; D: is
    NTFS so this is no longer a filesystem necessity).
 3. For a bare `/codeconv-codegen` (or an explicit subcommand): run
@@ -60,7 +60,7 @@ deterministic-state logic** — every state mutation goes through
 | `--dry-run` | next / aggregate | off | Compute everything; write NOTHING and spawn NO agents. |
 | `--no-tombstone-update` | ingest / retry | off | Skip the tombstone YAML write (testing only). |
 | `--quiet` / `--json` | all | off | Suppress logging / emit a JSON summary. |
-| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Use the canonical shared cluster: `--data-dir C:/pglite/research/glpnet`. |
+| `--data-dir <path>` | all (top-level) | `<repo>/.pgdb` | Use the canonical shared cluster: `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`. |
 
 ## Pre-execution checks
 
@@ -85,14 +85,14 @@ then runs:
 
 ```
 loop:
-  b := codeconv codegen next --limit 7 --json --data-dir C:/pglite/research/glpnet
+  b := codeconv codegen next --limit 7 --json --data-dir D:/bstdev/research/glp/glpnet/.pgdb
   if b is exit 2 (depgraph empty): surface the error verbatim; STOP
   if b.batch is empty: report b.message ("nothing to generate"); break
   for each file f in b.batch, keeping AT MOST 7 codegen Agent calls in flight
       (an SCC — same cycle_group_id — is one coordinated batch: spawn one
        agent per member, pass each its f.scc_siblings; do NOT promote any
        member until ALL members build):
-      codeconv codegen ingest f.path --batch-id <batch> --data-dir C:/pglite/research/glpnet
+      codeconv codegen ingest f.path --batch-id <batch> --data-dir D:/bstdev/research/glp/glpnet/.pgdb
         # --batch-id tags EVERY file of this `next` batch (built or not) so
         # the promotion gate later sees all members, not just the reviewed
         # sample. Use one stable id per `next` batch.
@@ -103,7 +103,7 @@ loop:
            f.spec, f.plan, the public C# surfaces of f's already-generated
            deps from out/csharp/, the relevant conversion idioms, and
            f.scc_siblings)
-         codeconv codegen ingest f.path --data-dir C:/pglite/research/glpnet
+         codeconv codegen ingest f.path --data-dir D:/bstdev/research/glp/glpnet/.pgdb
            # re-drive: the .cs now exists → real-C# validate → build gate
          if STILL needs_agent_work with build_status=fail:
             return the parsed build_errors to the SAME sub-agent for ONE
@@ -119,12 +119,12 @@ loop:
      request human review on each sampled file: a 1–5 score + free-text;
        record via: codeconv codegen record-review <batch_id> --file <p>
          --score <1-5> --note "<verbatim free-text>"
-     codeconv codegen promote-batch <batch_id> --data-dir C:/pglite/research/glpnet
+     codeconv codegen promote-batch <batch_id> --data-dir D:/bstdev/research/glp/glpnet/.pgdb
        # gate: 100% build AND human median ≥ 4/5 ⇒ promoted; else blockers
        # on fail: retry/escalate the blocking files; the free-text notes are
        # carried to the OFFLINE optimizer's dataset (never silently rewrite
        # production code with them)
-codeconv codegen aggregate-escalations --data-dir C:/pglite/research/glpnet
+codeconv codegen aggregate-escalations --data-dir D:/bstdev/research/glp/glpnet/.pgdb
 ```
 
 Concurrency-cap is **dual**: (1) `next --limit 7` never returns an

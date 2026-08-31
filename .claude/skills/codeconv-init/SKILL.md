@@ -51,7 +51,7 @@ This skill MUST stay in sync with that contract; change the contract first.
 | `--confirm-rebuild` | off | confirmation token for `--rebuild` (this skill supplies it after Step 4) |
 | `--quiet` / `--json` | off | per top-level convention |
 
-On this exFAT checkout the operator passes `--data-dir C:/pglite/research/glpnet`
+The canonical repo-local cluster (checkout is NTFS) is passed as `--data-dir D:/bstdev/research/glp/glpnet/.pgdb`
 as a top-level flag (the guard hard-fails otherwise). The skill forwards
 all top-level flags verbatim.
 
