@@ -5,7 +5,7 @@
 
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
-    UPDATED  2026-08-31T11:50Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (gate still exits 1 - see §0)
+    UPDATED  2026-08-31T12:05Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (gate still exits 1 - see §0)
     BRANCH   097-shiras-restart-prep-frontend-handoff   (095 is MERGED via PR #249)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
@@ -182,6 +182,55 @@ before the ruling.
    Not closed — adoption is partial until S14/S3 lands.
 
 **Sequenced this session** (order keys): S1 `@1.0` → S3 `@2.0` → S14 `@5.0` → S9 `@6.0`.
+
+## 5-NOW · 🔴 STATE AT 2026-08-31T12:05Z — **THE SINGLE OPEN ACTION**
+
+```
+run    mrun-f77f62158255 [open]  seq=92   outstanding items: 30
+branch 097-shiras-restart-prep-frontend-handoff   clean, 0 ahead / 0 behind   head 3ca26118
+open   PR #250 (this branch -> develop) CLEAN + MERGEABLE ;  PR #249 MERGED
+```
+
+### The ONE thing left, and it is NOT a gate failure
+
+**`buildkit release` is BLOCKED BY THE CLAUDE CODE PERMISSION CLASSIFIER.** Every precondition in
+ruling `Q-glpnetshiras-01` is discharged: the codex gate CONVERGED (7 cycles / 12 findings / cycle 7
+clean) and PR #249 merged with CodeQL 5/5. `develop` is **39 ahead of `main`**; last tag `v2026.08.28.1`.
+
+**On restart, ask the engineer to approve it, or have them run it themselves:**
+
+```bash
+git checkout develop && git pull && buildkit release
+```
+
+### Roadmap round 60 (this session, all published + pushed)
+
+`import` 1 new file / 158 already-applied / **19 documents still REFUSED** · `reconcile` ×2 **in sync**
+· `dedupe` ×2 **0 groups (4th consecutive)** · `export` **20 epics / 118 features / 3806 journal lines**
+→ `shiras__glpnet__20260831T120414Z.json`, published to the coop inbox.
+**24 not-closed = 1 implemented · 14 promoted · 9 specified, 6 epics.** `SPEC=NONE 14/24`.
+
+### Takt, RETRIEVED from the DuckLake (never recomputed)
+
+**112,145,523 tokens over 287/2947 rows — coverage 10%.** Largest: `implement` 40.3M · `report` 31.6M
+· `3rtask` 8.2M · `codexreview` 5.8M. **2,660 rows carry NO measurement — unmeasured, never zero.**
+Era remains **UNMEASURABLE** (all nine steps missing from this run). See **S21** for the retrieval gap.
+
+### 🔴 THE ORDER OF WORK ON RESTART
+
+1. **`buildkit release`** — blocked on permission only (above).
+2. **Ruling `Q-glpnetshiras-04`** — the next feature. Run, verbatim:
+   `/bk-specify "Front-end goal-term acceptance completeness (parser + REPL goal builders, cross-runtime)"`
+   WSJF 3.60 / RICE 3000. Three located defects: `=..` rejected in clause bodies; structs-in-lists in
+   REPL goals (**location is STALE — re-verify in `GlpEngine` first, it may already be fixed**);
+   C# REPL `_SetupArgument` throwing on `UnderscoreTerm`.
+3. **S21** takt retrieval gap — not root-caused.
+4. **@ariellas owes 3 published keys** — 19 documents stay unreadable here until then.
+
+🔴 **Marathon `next:` still prints S1 (scheduler). That is SUPERSEDED by ruling `Q-…-04`.**
+The CLI has no ruling-awareness; do not follow it over the ruling.
+
+---
 
 ## 5a · 🔴 SESSION 2026-08-31 — READ THIS FIRST. **THE CODEX GATE IS DISCHARGED; ONLY THE RELEASE IS LEFT.**
 
