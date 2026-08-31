@@ -326,7 +326,69 @@ def record(document, answers, ledger_path, decided_by):
     return written
 
 
-def read_ledger(ledger_path):
+# Field names this ledger has used over time. The file is append-only, so rows
+# written by an older writer stay on disk forever and MUST still be readable:
+# four rows from the gavriella lane (set Q-GLPNETS8-20260826T1030Z) carry `id` and
+# `ruling` where the current writer emits `question_id` and `answer`. Read-time
+# normalisation is the fix rather than rewriting history — rewriting an append-only
+# ledger to satisfy a reader is exactly the symptom fix DISCIPLINE.md 1.3 forbids.
+# Without it those rows render as "(no id)"/"(no answer)" and, worse, get a synthetic
+# supersession key, so a later canonical row under the SAME id could never supersede them.
+def _decided_at(row):
+    """``decided_at`` as a comparable aware datetime.
+
+    Supersession MUST NOT compare these as strings: several spellings of the same
+    instant are valid ISO-8601, and their textual order is not their chronological
+    order. ``2026-08-31T10:00:00Z`` sorts AFTER ``2026-08-31T10:00:00.500000+00:00``
+    lexically while being half a second EARLIER — which would keep a stale decision
+    live and mark its correction superseded, the exact failure supersession exists
+    to prevent. A row with no/unparseable stamp sorts oldest so it can never win
+    over a real one, and is never dropped.
+    """
+    raw = row.get("decided_at")
+    if not raw:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if parsed.tzinfo is None:                 # naive stamps are UTC by contract
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+_LEGACY_ALIASES = {"question_id": ("id",), "answer": ("ruling",)}
+
+
+def _normalise_row(row):
+    row = dict(row)
+    for canonical, older in _LEGACY_ALIASES.items():
+        if row.get(canonical) is None:
+            for name in older:
+                if row.get(name) is not None:
+                    row[canonical] = row[name]
+                    row.setdefault("_legacy_fields", []).append(name)
+                    break
+    return row
+
+
+def read_ledger(ledger_path, *, include_superseded=False):
+    """Return decisions from the append-only ledger, newest-per-question_id LIVE.
+
+    The ledger is append-only by design, so re-recording a question (for example
+    reclassifying an expiring ``risk-acceptance`` as a non-expiring ``ruling``)
+    leaves BOTH rows on disk. Without supersession a consumer sees two
+    contradictory authoritative decisions under one id — and, worse, ``--expired``
+    keeps reporting the stale expiring row after its date passes while the same id
+    also denotes a live non-expiring prohibition. That is not hypothetical: it
+    happened to ``Q-glpnetshiras-03``, a reboot prohibition first filed as a
+    risk-acceptance expiring 2026-09-02.
+
+    So: the FILE is never rewritten (history is preserved and auditable), but the
+    READER collapses to the newest row per ``question_id`` by ``decided_at``.
+    Superseded rows are returned only with ``include_superseded=True`` and are
+    always tagged, never silently dropped.
+    """
     if not os.path.exists(ledger_path):
         return []
     rows = []
@@ -334,8 +396,66 @@ def read_ledger(ledger_path):
         for line in handle:
             line = line.strip()
             if line:
-                rows.append(json.loads(line))
-    return rows
+                rows.append(_normalise_row(json.loads(line)))
+
+    def _ident(row, index):
+        # Key on (set_id, question_id): validation only requires ids to be unique
+        # WITHIN a set, so a global question_id key would let a later set's Q-...-01
+        # silently hide an unrelated earlier decision -- and make
+        # `decisions --set-id <earlier-set>` return nothing at all.
+        # A row with no question_id cannot supersede or be superseded: it gets a key
+        # unique to itself rather than merging every such row into one.
+        if row.get("question_id"):
+            return (row.get("set_id"), row["question_id"])
+        return ("\x00no-id", index)
+
+    def _answered(row):
+        # A blank answer is not a decision. Recorded, it carries a current
+        # decided_at, so an unconditional newest-wins rule would let it hide the
+        # real answer and present an empty ruling as live. The write path now
+        # refuses these; this covers rows already on disk.
+        return bool(str(row.get("answer") or "").strip())
+
+    newest = {}
+    for index, row in enumerate(rows):
+        ident = _ident(row, index)
+        # index breaks ties so two same-instant rows still resolve deterministically.
+        key = (_decided_at(row), index)
+        prev = newest.get(ident)
+        if prev is None:
+            newest[ident] = (key, index)
+        elif _answered(row) and not _answered(rows[prev[1]]):
+            newest[ident] = (key, index)          # a real answer always beats a blank
+        elif _answered(row) == _answered(rows[prev[1]]) and key > prev[0]:
+            newest[ident] = (key, index)
+    live = {index for _, index in newest.values()}
+
+    out = []
+    for index, row in enumerate(rows):
+        row = dict(row)
+        row["superseded"] = index not in live
+        if row["superseded"]:
+            winner = rows[newest[_ident(row, index)][1]]
+            row["superseded_by"] = winner.get("decided_at")
+        if include_superseded or not row["superseded"]:
+            out.append(row)
+    return out
+
+
+def id_collisions(rows):
+    """Question ids that differ ONLY by case — the schema's charset permits both.
+
+    Case is not folded into the supersession key: ``Q-GLPNETSHIRAS-03`` and
+    ``Q-glpnetshiras-03`` really were two different decisions taken in two
+    different sessions, and merging them would destroy one. But a human reading a
+    citation cannot tell them apart, so they are surfaced rather than left silent.
+    """
+    seen = {}
+    for row in rows:
+        qid = row.get("question_id") or ""
+        if qid:
+            seen.setdefault(qid.lower(), set()).add(qid)
+    return {k: sorted(v) for k, v in seen.items() if len(v) > 1}
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -372,6 +492,10 @@ def main(argv=None):
     node.add_argument("--ledger", default=DEFAULT_LEDGER)
     node.add_argument("--set-id")
     node.add_argument("--kind")
+    node.add_argument("--superseded", action="store_true",
+                      help="also show rows superseded by a later decision on the "
+                           "same question_id (hidden by default; the ledger file "
+                           "itself is append-only and never rewritten)")
     node.add_argument("--expired", action="store_true",
                       help="only rows whose expiry has passed — a risk "
                            "acceptance that has quietly become policy")
@@ -411,7 +535,14 @@ def main(argv=None):
                 print(f"--answer needs ID=TEXT, got {pair!r}", file=sys.stderr)
                 return 1
             qid, text = pair.split("=", 1)
-            answers[qid.strip()] = text.strip()
+            text = text.strip()
+            if not text:
+                print(f"--answer {qid.strip()} has an EMPTY answer; a blank is not a "
+                      f"decision, and recording one would supersede the real answer "
+                      f"already on file. Give the chosen option text, or omit it.",
+                      file=sys.stderr)
+                return 2
+            answers[qid.strip()] = text
         if not answers:
             print("nothing to record: pass at least one --answer", file=sys.stderr)
             return 1
@@ -424,14 +555,20 @@ def main(argv=None):
         print(f"ledger: {args.ledger}")
         return 0
 
-    rows = read_ledger(args.ledger)
+    rows = read_ledger(args.ledger, include_superseded=args.superseded)
     if args.set_id:
         rows = [r for r in rows if r["set_id"] == args.set_id]
     if args.kind:
         rows = [r for r in rows if r["kind"] == args.kind]
     if args.expired:
         now = datetime.now(timezone.utc).isoformat()
-        rows = [r for r in rows if r.get("expires_at") and r["expires_at"] < now]
+        # A superseded row cannot expire into force: only LIVE acceptances count.
+        rows = [r for r in rows
+                if r.get("expires_at") and r["expires_at"] < now
+                and not r.get("superseded")]
+    # Collisions are computed AFTER filtering: a scoped query must not warn about
+    # ids that are not in the scope it printed.
+    collisions = id_collisions(rows)
     if args.json:
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
@@ -441,9 +578,22 @@ def main(argv=None):
     print(f"| {'ID':<12} | {'KIND':<16} | {'DECIDED':<10} | ANSWER")
     print(f"|{'-' * 14}|{'-' * 18}|{'-' * 12}|{'-' * 40}")
     for row in rows:
-        print(f"| {row['question_id']:<12} | {row['kind']:<16} | "
-              f"{row['decided_at'][:10]:<10} | {row['answer']}")
-    print(f"\n{len(rows)} decision(s) — ledger {args.ledger}")
+        mark = " (superseded)" if row.get("superseded") else ""
+        # A malformed row must be VISIBLE, not a traceback that hides every row after it.
+        qid = row.get("question_id") or "(no id)"
+        kind = row.get("kind") or "(no kind)"
+        when = (row.get("decided_at") or "")[:10] or "(no date)"
+        print(f"| {qid:<12} | {kind:<16} | {when:<10} | "
+              f"{row.get('answer', '(no answer)')}{mark}")
+    live = sum(1 for r in rows if not r.get("superseded"))
+    print(f"\n{live} live decision(s)"
+          + (f", {len(rows) - live} superseded shown" if len(rows) != live else "")
+          + f" — ledger {args.ledger}")
+    if not args.superseded:
+        print("  (superseded rows are hidden by default; --superseded shows the history)")
+    for folded, variants in sorted(collisions.items()):
+        print(f"  WARNING id collision differing only by case: {' vs '.join(variants)}"
+              " — these are NOT merged; cite them exactly")
     return 0
 
 
