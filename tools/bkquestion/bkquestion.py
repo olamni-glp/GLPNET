@@ -326,7 +326,23 @@ def record(document, answers, ledger_path, decided_by):
     return written
 
 
-def read_ledger(ledger_path):
+def read_ledger(ledger_path, *, include_superseded=False):
+    """Return decisions from the append-only ledger, newest-per-question_id LIVE.
+
+    The ledger is append-only by design, so re-recording a question (for example
+    reclassifying an expiring ``risk-acceptance`` as a non-expiring ``ruling``)
+    leaves BOTH rows on disk. Without supersession a consumer sees two
+    contradictory authoritative decisions under one id — and, worse, ``--expired``
+    keeps reporting the stale expiring row after its date passes while the same id
+    also denotes a live non-expiring prohibition. That is not hypothetical: it
+    happened to ``Q-glpnetshiras-03``, a reboot prohibition first filed as a
+    risk-acceptance expiring 2026-09-02.
+
+    So: the FILE is never rewritten (history is preserved and auditable), but the
+    READER collapses to the newest row per ``question_id`` by ``decided_at``.
+    Superseded rows are returned only with ``include_superseded=True`` and are
+    always tagged, never silently dropped.
+    """
     if not os.path.exists(ledger_path):
         return []
     rows = []
@@ -335,7 +351,46 @@ def read_ledger(ledger_path):
             line = line.strip()
             if line:
                 rows.append(json.loads(line))
-    return rows
+
+    newest = {}
+    for index, row in enumerate(rows):
+        # A row with no question_id cannot be superseded by, or supersede, anything:
+        # give it a key unique to itself rather than merging every such row into one.
+        qid = row.get("question_id") or f"\x00no-id:{index}"
+        # decided_at is an ISO-8601 UTC stamp, so string order is time order;
+        # index breaks ties so two same-instant rows still resolve deterministically.
+        key = (row.get("decided_at") or "", index)
+        if qid not in newest or key > newest[qid][0]:
+            newest[qid] = (key, index)
+    live = {index for _, index in newest.values()}
+
+    out = []
+    for index, row in enumerate(rows):
+        row = dict(row)
+        row["superseded"] = index not in live
+        if row["superseded"]:
+            qid = row.get("question_id") or f"\x00no-id:{index}"
+            winner = rows[newest[qid][1]]
+            row["superseded_by"] = winner.get("decided_at")
+        if include_superseded or not row["superseded"]:
+            out.append(row)
+    return out
+
+
+def id_collisions(rows):
+    """Question ids that differ ONLY by case — the schema's charset permits both.
+
+    Case is not folded into the supersession key: ``Q-GLPNETSHIRAS-03`` and
+    ``Q-glpnetshiras-03`` really were two different decisions taken in two
+    different sessions, and merging them would destroy one. But a human reading a
+    citation cannot tell them apart, so they are surfaced rather than left silent.
+    """
+    seen = {}
+    for row in rows:
+        qid = row.get("question_id") or ""
+        if qid:
+            seen.setdefault(qid.lower(), set()).add(qid)
+    return {k: sorted(v) for k, v in seen.items() if len(v) > 1}
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -372,6 +427,10 @@ def main(argv=None):
     node.add_argument("--ledger", default=DEFAULT_LEDGER)
     node.add_argument("--set-id")
     node.add_argument("--kind")
+    node.add_argument("--superseded", action="store_true",
+                      help="also show rows superseded by a later decision on the "
+                           "same question_id (hidden by default; the ledger file "
+                           "itself is append-only and never rewritten)")
     node.add_argument("--expired", action="store_true",
                       help="only rows whose expiry has passed — a risk "
                            "acceptance that has quietly become policy")
@@ -424,14 +483,18 @@ def main(argv=None):
         print(f"ledger: {args.ledger}")
         return 0
 
-    rows = read_ledger(args.ledger)
+    rows = read_ledger(args.ledger, include_superseded=args.superseded)
+    collisions = id_collisions(rows)
     if args.set_id:
         rows = [r for r in rows if r["set_id"] == args.set_id]
     if args.kind:
         rows = [r for r in rows if r["kind"] == args.kind]
     if args.expired:
         now = datetime.now(timezone.utc).isoformat()
-        rows = [r for r in rows if r.get("expires_at") and r["expires_at"] < now]
+        # A superseded row cannot expire into force: only LIVE acceptances count.
+        rows = [r for r in rows
+                if r.get("expires_at") and r["expires_at"] < now
+                and not r.get("superseded")]
     if args.json:
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
@@ -441,9 +504,22 @@ def main(argv=None):
     print(f"| {'ID':<12} | {'KIND':<16} | {'DECIDED':<10} | ANSWER")
     print(f"|{'-' * 14}|{'-' * 18}|{'-' * 12}|{'-' * 40}")
     for row in rows:
-        print(f"| {row['question_id']:<12} | {row['kind']:<16} | "
-              f"{row['decided_at'][:10]:<10} | {row['answer']}")
-    print(f"\n{len(rows)} decision(s) — ledger {args.ledger}")
+        mark = " (superseded)" if row.get("superseded") else ""
+        # A malformed row must be VISIBLE, not a traceback that hides every row after it.
+        qid = row.get("question_id") or "(no id)"
+        kind = row.get("kind") or "(no kind)"
+        when = (row.get("decided_at") or "")[:10] or "(no date)"
+        print(f"| {qid:<12} | {kind:<16} | {when:<10} | "
+              f"{row.get('answer', '(no answer)')}{mark}")
+    live = sum(1 for r in rows if not r.get("superseded"))
+    print(f"\n{live} live decision(s)"
+          + (f", {len(rows) - live} superseded shown" if len(rows) != live else "")
+          + f" — ledger {args.ledger}")
+    if not args.superseded:
+        print("  (superseded rows are hidden by default; --superseded shows the history)")
+    for folded, variants in sorted(collisions.items()):
+        print(f"  WARNING id collision differing only by case: {' vs '.join(variants)}"
+              " — these are NOT merged; cite them exactly")
     return 0
 
 
