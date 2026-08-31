@@ -326,6 +326,29 @@ def record(document, answers, ledger_path, decided_by):
     return written
 
 
+# Field names this ledger has used over time. The file is append-only, so rows
+# written by an older writer stay on disk forever and MUST still be readable:
+# four rows from the gavriella lane (set Q-GLPNETS8-20260826T1030Z) carry `id` and
+# `ruling` where the current writer emits `question_id` and `answer`. Read-time
+# normalisation is the fix rather than rewriting history — rewriting an append-only
+# ledger to satisfy a reader is exactly the symptom fix DISCIPLINE.md 1.3 forbids.
+# Without it those rows render as "(no id)"/"(no answer)" and, worse, get a synthetic
+# supersession key, so a later canonical row under the SAME id could never supersede them.
+_LEGACY_ALIASES = {"question_id": ("id",), "answer": ("ruling",)}
+
+
+def _normalise_row(row):
+    row = dict(row)
+    for canonical, older in _LEGACY_ALIASES.items():
+        if row.get(canonical) is None:
+            for name in older:
+                if row.get(name) is not None:
+                    row[canonical] = row[name]
+                    row.setdefault("_legacy_fields", []).append(name)
+                    break
+    return row
+
+
 def read_ledger(ledger_path, *, include_superseded=False):
     """Return decisions from the append-only ledger, newest-per-question_id LIVE.
 
@@ -350,7 +373,7 @@ def read_ledger(ledger_path, *, include_superseded=False):
         for line in handle:
             line = line.strip()
             if line:
-                rows.append(json.loads(line))
+                rows.append(_normalise_row(json.loads(line)))
 
     newest = {}
     for index, row in enumerate(rows):
