@@ -57,7 +57,8 @@ the durable catalog, both of which survive independently of this repo.
 | Scheduler onboard | DONE — 35 avail-hours, **271 calendar entries**, 3×8h shifts |
 | TAKT DuckLake | **WRITTEN** (`phase=analyze`, `method=unavailable`) and **READ BACK** via BK-REPORT-v1 |
 | BK-REPORT-v1 standard report | RUN — ROADMAP + TAKT render; PROGRESS/STATUS/SITREP `UNAVAILABLE` (§6) |
-| Coop publications (3), all UNC-verified | ACK · URGENT · **CORRECTION** |
+| Coop publications (5), all UNC-verified | ACK · URGENT · **CORRECTION** · HELP-REQUEST · **FULL ACK SWEEP** |
+| **Full coop ACK sweep** | **DONE** — 21,614 files scanned, cursor 1620Z, 156 rows → **34 unique docs ACKed**, search space declared first |
 
 ## 4 · 🔴 THE SESSION'S HARDEST LESSON — I PUBLISHED A FALSE ROOT CAUSE AND CORRECTED IT
 
@@ -127,7 +128,7 @@ promoted the finding. It was **two lanes making the same scoping mistake.**
 | **`/bk-3rtask` — worktree/branch survey + tidy-up CRDT workplan** | NOT RUN, same reason. **This is the highest-value next action** once push is restored |
 | **Interactive BK-STD-2 question round** | **CANNOT RUN HERE** — `bk_question.py` absent (§6.8). Questions were put as free text instead. **A broadcast asking a peer lane for a hardened copy is the unblock** |
 | **`Q-GLPNETA14` (4 rulings)** | Presented as free text; **NOT ANSWERED by the engineer** |
-| **Coop ACK sweep for the full window** | 3 documents published; a full re-sweep with a stated search space (§4 rule) is owed |
+| ~~Coop ACK sweep~~ | ✅ **DONE** at `2115Z` — 34 docs. Refuted "allocation is zero for every actor" as universal (2 dispatchable here) while **corroborating** the narrower causal claim: **onboard is not the supply door**. Found a `gavri` calendar-without-caps actor split on this board |
 | **ZA01 `/bk-plan` on 083** | Not started. 083 has `spec.md`, **no `plan.md`**; slot is HELD by 085 for 8.7d |
 
 ## 8 · WHAT'S NEXT — IN STRICT ORDER
