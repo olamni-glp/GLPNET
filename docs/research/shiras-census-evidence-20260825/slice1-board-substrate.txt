@@ -1,0 +1,34 @@
+# SLICE 1 — shiras presence in the scheduler substrate, all boards under /mnt/gavri/d/coop/*/sched
+# collected 2026-08-25 on host shiras (hostname verified)
+
+BOARD                    caps  calendar   ops heartbeat_ts            
+buildkit                    0         0     0 -                       
+crucible                   10       134     0 2026-08-25T11:22:55Z    
+glpnet                     38       360     2 2026-08-25T11:22:31Z    
+hatzinor                    0       105     0 2026-08-25T07:56:43Z    
+lejepa                      0         0     0 -                       
+mstack                      0         0     0 -                       
+olamnit-assistant          21       362     0 2026-08-25T11:20:29Z    
+olamnit                     0         0     0 -                       
+ospark                     11       106     1 2026-08-25T07:56:28Z    
+qhstate                     0       105     0 2026-08-25T07:47:31Z    
+tefl                        0         0     0 -                       
+yngenios-research           0         0     0 -                       
+yngenios                    0         0     0 -                       
+yngenios-windows           10       105     5 2026-08-25T11:19:27Z    
+
+# actor dirs present per board (ops/):
+buildkit: ariellas ariellas.hatzinor ariellas.mstack ariellas.yngenios-windows gavriella gavriella-buildkit gavriella.tefl olamnit olamnit-buildkit 
+crucible: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella gavriella-olamnit olamnit olamnit-crucible shiras 
+glpnet: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella olamnit shiras 
+hatzinor: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella olamnit shiras 
+lejepa: ariellas ariellas-lejepa ariellas.hatzinor ariellas.yngenios-windows gavriella gavriella-lejepa olamnit 
+mstack: ariellas ariellas.hatzinor ariellas.mstack ariellas.yngenios-windows gavri gavriella olamnit 
+olamnit-assistant: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella olamnit olamnit-assistant shiras 
+olamnit: ariellas ariellas.hatzinor ariellas.mstack ariellas.yngenios-windows gavriella olamnit 
+ospark: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella-bstdev-roadmap-sync olamnit shiras 
+qhstate: GAVRIELLA-yngenios-windows ariellas ariellas.hatzinor ariellas.mstack ariellas.yngenios-windows gavriella gavriella-lejepa gavriella-qhstate gavriella.yngenios-windows gavriella_yngenios_windows olamnit olamnit-assistant olamnit-dispatch shiras 
+tefl: ariellas ariellas-tefl ariellas.hatzinor ariellas.yngenios-windows gavriella gavriella.yngenios-windows olamnit 
+yngenios-research: ariellas ariellas-lejepa ariellas.hatzinor ariellas.yngenios-windows gavriella olamnit olamnit.yngenios-research shiras.yngenios-research shiras.yngenios-windows 
+yngenios: ariellas ariellas.hatzinor ariellas.mstack ariellas.yngenios-windows gavriella 
+yngenios-windows: ariellas ariellas.hatzinor ariellas.yngenios-windows gavriella olamnit shiras 

@@ -1,0 +1,134 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS11-20260828T0330Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-08-28T03:30:00+00:00",
+  "context": "Session 11, post-release. v2026.08.28.1 is cut and verified, PR #246 landed by union merge, zero open PRs, gate 561/559/2/0, roadmap round 58 synced. Four blocks remain and none can be resolved from the code or the record: Q-01 is a direct collision between two peer branches and rulings taken 90 minutes ago; Q-02 and Q-04 are measurement-integrity blocks where the instrument cannot see most of its own subject; Q-03 is the 078 era, which is arithmetically unclosable as recorded.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS11-01",
+      "kind": "ruling",
+      "header": "Peer merge",
+      "question": "Two peer branches are unmerged and BOTH would reverse rulings you took 90 minutes ago. 096-host-interconnectivity (ariellas, 4 commits) carries a global.json with rollForward=latestFeature - Q-GLPNETS10-01 ruled latestPatch fleet-wide - and adds Directory.Build.props plus converts 15 csproj to preview, which Q-GLPNETS10-03 ruled unnecessary in favour of the root .targets. 095-shiras (21 commits) also adds Directory.Build.props and touches the same three out/csharp csproj I retargeted to net11.0 in e2448051. I did not merge either, because merging would silently reverse two fresh rulings and reintroduce a props file that provably LOSES to project-level LangVersion. But holding them also strands 25 commits of peer work including shiras' new question set and roadmap exports. Neither branch is wrong about intent - both were written before your rulings existed. How do you want the two peer branches handled?",
+      "blocks": [
+        "25 commits of peer work on 2 branches",
+        "fleet toolchain consistency",
+        "whether Q-GLPNETS10-01 and -03 survive contact with peer branches"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Hold; peers rebase onto the rulings",
+          "recommended": true,
+          "means": "I broadcast the two rulings with the measurement behind them and ask shiras and ariellas to drop their global.json and Directory.Build.props changes and rebase the rest. Their docs, exports, question sets and census evidence land as soon as they do; the toolchain files never land.",
+          "cost": "25 commits of real peer work stay unmerged until two other lanes act, and those lanes may be asleep or mid-era; if they do not rebase promptly this becomes an indefinite stall that I cannot clear from here."
+        },
+        {
+          "label": "Merge, then re-assert the ruled files",
+          "means": "I merge both branches for their docs/exports/evidence, then immediately commit the ruled position back over global.json and Directory.Build.props so the tree ends where the rulings say.",
+          "cost": "The branches' toolchain commits enter history as merged-then-reverted, which reads to a later archaeologist as a contested flip-flop rather than a ruling; and any peer who later merges develop back into their branch may resurrect their version, restarting the collision."
+        },
+        {
+          "label": "Merge as-is; revisit the rulings",
+          "means": "Accept the peer position, merge both, and treat Q-GLPNETS10-01/-03 as provisional pending a fleet round.",
+          "cost": "Reverses two rulings within two hours of taking them, reintroduces a rollForward that floats a PREVIEW pin across feature bands unattended, and re-adds a props file measured to lose to the 18 projects it is supposed to govern - restoring the exact defect the rulings removed."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS11-02",
+      "kind": "ruling",
+      "header": "Spec paths",
+      "question": "The roadmap cannot reconcile most of itself, and the gap is now measured on both sides. buildkit-roadmap reconcile reports 15 of 21 pipeline feature ids bound, 6 UNBOUND (031-gleam-port-spike, 036-glp-gleam-baseline-program, 039-m2-0-verify-erlang-monitor-atomvm, 049-wave1-guard-link-acceptance, 050-full-gleam-combined, 060-wave3-full-gleam-chain) - those pipeline records can never move a roadmap state. And 73 of 122 roadmap features carry no spec_path at all, so they can never bind by basename either. Consequence: roadmap state is advanced by hand or not at all for 60 percent of the catalog, and every 'reconcile in-sync' line is in-sync only over the 49 features that can bind. This is the same shape as the yx-bootmig finding that 87 of 94 features carry no requirements document. How should the unbindable majority be treated?",
+      "blocks": [
+        "automatic state movement for 73 of 122 features",
+        "the meaning of every reconcile in-sync report",
+        "6 pipeline records that are inert"
+      ],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Link the 6, accept the 73",
+          "recommended": true,
+          "means": "Run buildkit-roadmap link for the six named pipeline ids so they bind and can move state, and formally accept that the 73 spec_path-less features are hand-advanced, with reconcile output required to state its own denominator (in-sync over N of 122) so the number stops implying full coverage.",
+          "cost": "It legitimises a two-tier roadmap where most features are outside automation, and the denominator discipline depends on the renderer being changed to print it - which is a buildkit-lane change this lane does not own."
+        },
+        {
+          "label": "Backfill all 73 spec_paths",
+          "means": "Create or point a spec_path for every feature so the whole catalog binds and reconcile becomes total.",
+          "cost": "73 spec documents is a very large body of work for features that are mostly promoted-but-unstarted, and a spec written to satisfy a pointer rather than to design something is exactly the vacuous-artifact problem 078 exists to refuse."
+        },
+        {
+          "label": "Retire the unbindable",
+          "means": "Treat a feature with no spec_path and no pipeline binding as not-real: tombstone or reject them, shrinking the catalog to what actually reconciles.",
+          "cost": "Destroys captured intent wholesale, including genuinely valuable promoted features that simply have not been specified yet, and the roadmap's whole purpose is to hold work before it is specified."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS11-03",
+      "kind": "ruling",
+      "header": "078 era",
+      "question": "The 078 era is arithmetically unclosable as recorded, and I want a ruling before I spend another session on it. Recorded state: 28 of 111 run steps complete, 200 outstanding backlog items of 223 (10.3 percent terminal), and the takt reader reports the era UNMEASURABLE because the analyze stage is MISSING from the run entirely and eight of nine stages are 'not finished'. Feature ELAPSED reads 100.82h against a 1.5-48h band, driven by a 100.62h gap in the plan phase where the phase was open with no step running. Meanwhile the actual code is released: v2026.08.28.1 shipped today with the adoption-state fix and the migration-head test repair. So the FEATURE is shipped but the ERA cannot close, and Q-GLPNETS6-02 ruled that the remediation IS the era. The 200 outstanding items are overwhelmingly captured findings from other areas, not 078 work. How should the 078 era be resolved?",
+      "blocks": [
+        "078 close",
+        "the current era closing at all",
+        "whether era takt ever becomes measurable for this run"
+      ],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Close the era on shipped code",
+          "recommended": true,
+          "means": "Add the missing analyze step to satisfy the ladder, mark the 078-specific steps finished against the released code, and close the era - explicitly recording that the 200 outstanding items are captured findings belonging to OTHER features and are not 078 scope. They stay in the backlog and get allocated normally.",
+          "cost": "The era's recorded elapsed (100.82h) is then closed as an outlier that will skew every future takt estimate built from actuals, and it concedes that the run's backlog was used as a general capture bucket rather than a feature scope - which is a process defect this closes over rather than fixes."
+        },
+        {
+          "label": "Split the backlog, then close",
+          "means": "First re-attribute all 200 items to their real features, leaving only genuine 078 items on the run, then close the era on an honest denominator.",
+          "cost": "Re-attributing 200 items is itself a multi-session task with no automation, and most items name no feature - so the attribution would be my judgement, which is precisely the unsourced-claim problem the fleet keeps correcting."
+        },
+        {
+          "label": "Keep the era open",
+          "means": "Accept that the era stays open until the outstanding items are genuinely worked, treating the 100.82h as real elapsed.",
+          "cost": "The era never closes, no era takt is ever produced for it, and the single active feature slot stays occupied - blocking 082 clarify and every downstream feature that wants a closed base, indefinitely."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS11-04",
+      "kind": "risk-acceptance",
+      "header": "Takt gap",
+      "question": "The fleet standard mandates that takt and per-phase token use be READ FROM the TAKT ducklake and never recomputed, and I comply - but the lake cannot see most of its own subject. Measured this session from D:/coop/_takt-lake: 240,841,135 tokens over 650 of 3435 rows carrying any measurement - coverage 19 percent, with 2785 rows carrying NO token measurement at all. The reader correctly reports those as unmeasured rather than zero, so no number is falsified. But it means every takt verdict this fleet publishes is a lower bound over a fifth of its rows, and the largest single phase bucket is '(unphased)' at 1889 rows with 0 measured. Additionally the plan phase has two sources disagreeing (marathon_step 0.20h vs stage_transition 0.12h, spread 0.08h) which the reader flags but does not resolve. I can keep reporting honestly-caveated lower bounds, or we can treat 19 percent as a defect to fix before takt is used for any planning decision. Do you accept 19 percent takt coverage, and for how long?",
+      "blocks": [
+        "the credibility of every takt-derived estimate",
+        "CPM/PERT durations built on ELAPSED"
+      ],
+      "expires_after_days": 14,
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Accept, always state coverage",
+          "recommended": true,
+          "means": "Continue reading from the lake and accept 19 percent coverage for now, with the hard rule that no takt figure is ever quoted without its coverage denominator attached, and no CPM/PERT duration is built from a phase whose coverage is below a threshold you set.",
+          "cost": "Planning continues on a fifth of the evidence, and a coverage denominator travelling beside every number depends on every lane remembering to carry it - which is exactly the discipline that has failed repeatedly across this fleet."
+        },
+        {
+          "label": "Fix the writers first",
+          "means": "Treat 19 percent as a P0 defect: find why 2785 rows write no tokens (the 1889 unphased rows are the biggest single bucket) and fix the writers before takt informs any decision.",
+          "cost": "Halts takt-informed planning for as long as the fix takes, in a fleet where several lanes are already blocked; and the writer is buildkit-lane code, so this lane can diagnose but cannot land the fix."
+        },
+        {
+          "label": "Stop publishing takt",
+          "means": "Suspend the takt section from the standard report until coverage is credible, rather than publishing a number most of whose subject is invisible.",
+          "cost": "Removes a mandated section of BK-REPORT-v1 unilaterally, loses the visibility that surfaced this gap in the first place, and an absent number is less honest than a correctly-caveated lower bound."
+        }
+      ]
+    }
+  ]
+}
