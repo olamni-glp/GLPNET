@@ -1,0 +1,123 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS13-20260831T1310Z",
+  "lane": "gavriella-glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-08-31T13:10:00+00:00",
+  "context": "Session 13. Four blocking questions. Q1 is the /yx-bootmig P3 hard gate for the newly opened era 007 (era 002 corpus 5/5 res-olamnit, run mrun-37f283191d19) - the skill REFUSES to migrate an undelineated source, so nothing proceeds without this ruling. Q2 surfaces a repo-identity collision measured today that would silently send a migration into the wrong target. Q3 is a cross-lane tension olamnit raised and I partly concede: two lanes released the same channel on two unwritten bars. Q4 asks whether to take the single active-feature slot now that era 006 has closed 9/9. All figures measured this session on GAVRIELLA, not carried from a prior doc.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS13-01",
+      "kind": "ruling",
+      "header": "Delineation",
+      "question": "Era 007 (era 002 corpus 5/5, res-olamnit) is open and parked at the /yx-bootmig P3 gate, which refuses to migrate an undelineated source. olamnit is the LARGEST corpus and the only one scanned but never decided: 1834 escape classifications and 524 findings over 262 blocks with ZERO unclassified, but 0 groups and 0 exemptions where glpnet has 67/15 and buildkit 55/41. The corpus slice is 1287 files, 41.6% of the repo's 3093 tracked, 99.6% C#. Which rule delineates olamnit's yngenios scope?",
+      "blocks": ["era 007 P4 migration", "era 007 close", "era 002 publication gate Q-YNG-20260827T2100Z-02"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "R3 except Coin and tests",
+          "recommended": true,
+          "means": "Admit everything except the Coin* product line and *.Tests: IN 748 files (58.1%), OUT 539 (41.9%). Excludes 130 Coin files as a separate product and 458 test files, while keeping kernel, core, contracts, consensus, infra, the app shell and the yngenios hosts.",
+          "cost": "Drops 458 test files that may be the only executable specification of the admitted code, and the Coin/consensus boundary is asserted from subtree names rather than from a call-graph, so Olamnit.Coin.Rewards could carry yngenios-scope consensus logic that this rule silently rejects."
+        },
+        {
+          "label": "R1 kernel and infra only",
+          "means": "Admit only kernel, core, contracts, consensus, infra and the yngenios hosts, excluding Coin*, *.Tests and the 428-file app shell: IN 316 files (24.6%), OUT 971 (75.4%). The tightest defensible boundary.",
+          "cost": "Rejects three quarters of the slice, including the entire app shell; if any admitted kernel code depends on shell types the migration lands broken, and a second era would be needed to recover what this one rejected."
+        },
+        {
+          "label": "R2 add the app shell",
+          "means": "R1 plus the 428-file app shell Olamnit/Olamnit: IN 744 (57.8%), OUT 543 (42.2%). Nearly identical in size to R3 but reached by inclusion rather than exclusion, so every admitted subtree is named explicitly.",
+          "cost": "Almost the same file count as R3 for materially more specification effort, and it still excludes tests, so it buys explicitness rather than a different outcome."
+        },
+        {
+          "label": "Defer, demand a callgraph",
+          "means": "Refuse all three rules as insufficiently grounded and hold era 007 until the P2 cross-repo relation can decide scope by dependency edges rather than by subtree.",
+          "cost": "The skill's own P2 notes the substrate destroys cross-repo evidence at ingest (resolve_references drops unresolved tokens at parse time), so this may block indefinitely on a fix owned by another lane, and era 002 cannot publish until corpus 5/5 closes."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13-02",
+      "kind": "ruling",
+      "header": "Two repos",
+      "question": "There are TWO distinct git repos named yngenios on this host and the /yx-bootmig skill's root table names neither: D:/BSTDEV/research/yngenios (1726 tracked, NO remote, and it holds the owning spec 008-yx-bootmig-base) and D:/yngenios/yngenios (1382 tracked, remote github.com/yngenios/yngenios.git, and it is where every era 002 corpus has actually been run and released). The skill also declares three migration targets absent that are in fact present under D:/yngenios/. Which root is the target of record for the migration?",
+      "blocks": ["era 007 P4 target resolution", "any fleet citation of 'the yngenios repo'", "the /yx-bootmig root table correction"],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "D:/yngenios/yngenios is authoritative",
+          "recommended": true,
+          "means": "Treat the github-backed tree as the target of record because it carries the remote, the four era branches and every released tag, and demote D:/BSTDEV/research/yngenios to a spec-only source. Patch the skill's root table to name both explicitly.",
+          "cost": "The owning spec 008-yx-bootmig-base then lives in a repo that is NOT the target, so the spec and its implementation are permanently split across two roots and every future reader must be told which is which."
+        },
+        {
+          "label": "Research root is authoritative",
+          "means": "Treat D:/BSTDEV/research/yngenios as canonical because it holds the owning spec, and treat D:/yngenios/yngenios as a working clone.",
+          "cost": "Contradicts the measured evidence: the research root has no remote and none of the era branches or release tags, so declaring it canonical would orphan four completed and released eras."
+        },
+        {
+          "label": "Escalate to the owning lane",
+          "means": "Refuse to rule locally and put the identity question to whichever lane owns the yngenios programme, since this repo is source-only in the role table.",
+          "cost": "Blocks era 007 on a cross-lane round-trip; the same inference error already cost two lanes a round-trip on my held-branch escalation today."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13-03",
+      "kind": "ruling",
+      "header": "Release bar",
+      "question": "Two lanes released the same channel today on two unwritten bars. My bar: a release needs at least one feat: or fix: since the last tag, so I HELD and reported 'nothing qualifies'. olamnit's bar: an engineer directive plus a converged codex gate over an accumulated 43-commit develop qualifies, so they cut v2026.08.31.1. Both are defensible and neither is written down. Re-measured after pulling and merging, feat/fix since the last tag is 0 in BOTH glpnet and yngenios, so the bars agree today and only diverged on the backlog case. Which bar governs /bk-release across all lanes?",
+      "blocks": ["every future /bk-release decision in this channel", "the release section of the standardised sitrep"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Content bar, directive overrides",
+          "recommended": true,
+          "means": "Default to requiring at least one feat: or fix: since the last tag, with an explicit engineer directive able to override it for a backlog or gate-convergence cut. Write it into the release standard so neither lane has to infer it, and require the overriding directive to be cited in the cut.",
+          "cost": "Keeps two paths rather than one, so a lane can still cut a docs-only release by claiming a directive; the citation requirement is the only thing preventing that, and citations are checkable only after the fact."
+        },
+        {
+          "label": "Content bar only",
+          "means": "No feat: or fix: since the last tag means no release, with no override. Maximally mechanical and checkable by a script.",
+          "cost": "Forbids exactly the cut olamnit already made under a direct engineer order, which would retroactively make a shipped and merged release non-compliant."
+        },
+        {
+          "label": "Directive and gate only",
+          "means": "A release is justified by an engineer directive plus a converged codex gate, regardless of commit types.",
+          "cost": "Permits a version number attached to documentation, which is the precise outcome this lane held against twice today and reported as a measured result."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13-04",
+      "kind": "ruling",
+      "header": "Active slot",
+      "question": "The yngenios repo has a SINGLE active-feature slot (.specify/feature.json) and it still points at 006-era002-res-glpnet, which has now closed 9/9 and released. I deliberately did NOT take that slot when opening era 007's marathon run, because a peer session was mid-codexreview at the time and eviction would have disrupted a live review. Era 007 now has an open run but no pipeline pointer, so its nine stages cannot start. Should I take the active slot for 007?",
+      "blocks": ["era 007 /bk-specify and all nine stages", "era 002 corpus 5/5 progress"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Take the slot now",
+          "recommended": true,
+          "means": "Repoint .specify/feature.json at specs/007-era002-res-olamnit and run /bk-specify to start the era properly, since 006 is closed 9/9 and released and nothing is in flight against it.",
+          "cost": "If the peer session is still using its checkout for post-close work the pointer changes under it mid-session; the risk is now low but it is not zero, and the peer has not been notified that I intend to take it."
+        },
+        {
+          "label": "Announce first, then take",
+          "means": "Post a COOP notice claiming the slot, wait for the peer's ACK or a short timeout, then repoint and start the era.",
+          "cost": "The channel is asynchronous and a peer host may not be mounted, so this can stall era 007 for an unbounded period on an ACK that never arrives."
+        },
+        {
+          "label": "Work 007 out of band",
+          "means": "Keep the pointer on 006 and continue era 007 only through its marathon run and captured items, without the pipeline stages.",
+          "cost": "An era is a feature through all nine stages; running it out of band produces exactly the atomised, unclosable era the fleet ruling against splitting eras exists to prevent."
+        }
+      ]
+    }
+  ]
+}
