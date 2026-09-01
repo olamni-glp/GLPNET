@@ -65,7 +65,14 @@
           "means": "Leave both. The .targets still wins, so the build is correct either way.",
           "cost": "Ships a file whose documentation is provably false, and edits generated artifacts - the next codeconv regeneration silently reverts them, so the 'fix' is not durable."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Revert both",
+        "decided_by": "engineer",
+        "date": "2026-08-30",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Revert both').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-glpnetshiras-03",
@@ -96,7 +103,14 @@
         "any reboot of shiras",
         "bk-onrestart trigger convergence in the buildkit lane",
         "declaring this host reboot-safe"
-      ]
+      ],
+      "decision": {
+        "label": "Do not reboot; fix trigger",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Do not reboot; fix trigger').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-glpnetshiras-04",
@@ -127,7 +141,14 @@
           "means": "Resume feature 078 at IMPLEMENT - it is analyzed with 62 open tasks and carries the top WSJF of 7.80.",
           "cost": "A saga-sized feature; marathon takt measures maxi eras at a 22.7h mean against a 1.5-6h band, so a saga will run well over and will occupy this lane for multiple sessions."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Front-end goal-term acceptance (roadmap next)",
+        "decided_by": "engineer",
+        "date": "2026-08-30",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Front-end goal-term acceptance').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }
