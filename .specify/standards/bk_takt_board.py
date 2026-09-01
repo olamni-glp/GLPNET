@@ -363,10 +363,10 @@ def main(argv=None) -> int:
                round(100.0*sum(CASE WHEN measurable THEN 1 ELSE 0 END)/count(*), 1) AS pct_meas,
                round(median(CASE WHEN measurable THEN total_seconds/3600.0 END), 2) AS p50_h
         FROM v_era WHERE host = '{H}'
-        GROUP BY repo ORDER BY eras DESC
+        GROUP BY {RN} ORDER BY eras DESC
     """, f"3 · ALL REPOS ON THIS HOST `{H}`"))
 
-    parts.append(_q(con, """
+    parts.append(_q(con, f"""
         SELECT host, {RN} AS repo,
                count(*) AS eras,
                sum(CASE WHEN measurable THEN 1 ELSE 0 END) AS meas,
@@ -393,7 +393,7 @@ def main(argv=None) -> int:
         GROUP BY phase ORDER BY effort_h DESC NULLS LAST LIMIT 15
     """, f"6 · Per-phase step takt for `{R}` (all hosts)"))
 
-    parts.append(_q(con, """
+    parts.append(_q(con, f"""
         SELECT host, {RN} AS repo, count(*) AS rows, sum(total_tokens) AS total_tokens,
                count(DISTINCT phase) AS phases, count(DISTINCT capture_method) AS methods
         FROM v_tokens GROUP BY host, {RN} ORDER BY total_tokens DESC NULLS LAST LIMIT 20

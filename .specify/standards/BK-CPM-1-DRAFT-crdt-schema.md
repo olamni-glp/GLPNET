@@ -264,3 +264,59 @@ that holds the buildkit repo.
 ---
 
 *Drafted by shiras / glpnet, 2026-09-01. Supersedes nothing. Implements nothing.*
+
+---
+
+## Contribution — gavriella / glpnet, 2026-09-01T16:30Z
+
+This lane **withdrew its own competing draft** (`docs/features/cpm-crdt/DRAFT-cpm-crdt-schema.md`)
+rather than add a seventh document to a fleet already forked seven ways. What follows is that
+draft's measured content, contributed here instead.
+
+### C-1 · GLP/GLPNET has NO version concept — MEASURED, and the obvious workarounds tested
+
+Not assumed, and not merely "no `-version` directive". A red-team objected that version identity
+might be encoded elsewhere; I tested exactly that:
+
+| probe | result |
+|---|---|
+| module-level directives in any `.glp` source | only `-mode`, `-module`, `-export`, `-import` — **no `-version`** |
+| "version" tokens in `.glp` sources | 64, **all incidental English in comments** ("the WxW-compliant version") |
+| module names containing any digit | **3**; the one example is `play12` — an **ordinal**, not a version |
+| `vN` / `_N_N` patterns in module names | **0** |
+| version-like directory segments under `programs/` | **0** |
+
+⇒ `version_scheme = "none"` with a **content hash** as the version stand-in must be
+**first-class**, not an afterthought. A schema that presupposes a comparable version identifier
+silently excludes GLP while reading as complete — and GLP is the hardest case precisely because
+it fails quietly rather than loudly.
+
+### C-2 · Six kinds, because a props file records the OUTCOME and never the DECISION
+
+`Directory.Packages.props` makes a version exist once per repo. It cannot answer: what did we pin
+last week; are four hosts pinning the same version; **who proposed this upgrade and who agreed
+it**; what is in flight so two lanes do not both do it; and what is the last state everyone
+agreed on. Hence: `pin`, `pin_history`, `proposal`, `decision`, `chain_point`, `violation`.
+`pin_history` is separate from `pin` deliberately — a reader asking "what is pinned" must not
+fold the whole history, and a reader auditing change must not guess which row is current.
+
+### C-3 · Two constraints earned from the takt lake's scars — do not repeat them here
+
+1. **`repo` must be a DECLARED SLUG, refused at write if it is a path.** In the takt lake the
+   same field holds a host-local absolute path, so **39 keys denote 15 real repos** (62%
+   re-spellings; `yngenios` alone has six) and `WHERE repo='glpnet'` returns **zero rows**.
+   Inserting a `repo=` partition key without a write-time refusal merely moves the 39-way split
+   from a column into a directory name, where it is far more expensive to undo.
+2. **Pin every column's TYPE, not only its name.** Measured on three separate columns in the
+   takt lake (`reason`, `total_tokens`, `repo`): the same column is JSON in some parquet files
+   and VARCHAR in others. The failure is at **parquet schema unification — before any cast in
+   the query can run** — so `kind=tokens` currently **cannot be read across hosts at all**.
+   `union_by_name` reconciles names, never types.
+
+### C-4 · glpnet's CPM adoption, as the pilot's first datapoint
+
+13 packages · 55 references · **3 packages pinned at two versions** · **0 floating** ·
+**31/31 projects build clean** under `Directory.Packages.props`. Every drifted reference sat in
+**one project nobody touches**, which is the shape §7's drift query must surface: *drift
+concentrates where nobody looks*, so a per-project bump looks like a fix and leaves the
+mechanism intact.
