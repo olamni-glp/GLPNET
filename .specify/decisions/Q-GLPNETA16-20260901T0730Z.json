@@ -1,0 +1,300 @@
+[
+  {
+    "qid": "Q-GLPNETA16-01",
+    "header": "Board free",
+    "block": "Your instruction to release every board task that is not already started touches exactly ONE packet as measured, because the release verb is assignee-only and this lane holds only one unstarted packet out of thirty-two",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Measured on I:/coop/glpnet/sched at 2026-09-01T07:15Z: 32 work packets — backlog 23, claimed 1, in-progress 4, ready 2, escalated 1, done 1.",
+      "Held by THIS lane and NOT started: exactly one — trust-material-controlled-reproduction:ariellas-only-clean-control-host, state=ready, idle 830,372s (9.6 days).",
+      "Held by OTHER lanes and startable-or-started: wp-coordination-feature-stream-durable-superset-fix (olamnit, claimed), wave-4-consolidated-parallel-safe-fillers (olamnit, backlog), wave-5-consolidated-captured-triad (gavriella, in-progress), wp-verification-receipts (gavriella, in-progress).",
+      "bk-flow release is reject-to-free for a packet YOU hold (rule S2b); it refuses on another lane's packet, so this lane physically cannot free olamnit's or gavriella's four.",
+      "The 23 backlog packets are unheld — there is nothing to release on them; their problem is the readiness door in question 02, not an allocation.",
+      "One packet is in-progress with NO holder at all — wp-glptutorial-corpus-golden-reconciliation — which is a board inconsistency no verb in the toolchain repairs."
+    ],
+    "impact_if_unanswered": "The reallocation you asked for moves one packet of thirty-two, the four peer-held packets stay where they are, and the CPM/PERT rebalance across GAVRIS, ARIELLAS, SHIRAS and OLAMNIT is computed over a board that is 97 percent unchanged.",
+    "options": [
+      {
+        "key": "mine-plus-broadcast",
+        "label": "Release mine now, broadcast the ask for the other four",
+        "consequence": "This lane frees its one unstarted packet immediately and publishes an ACK-mandatory request to olamnit and gavriella to free theirs, so the rebalance runs on whatever has been freed by the time the scheduler cycles; the four peer packets move only when those lanes act, which is asynchronous and unenforceable from here.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "mine-only",
+        "label": "Release only what this lane holds",
+        "consequence": "This lane frees its one packet and says nothing to the peers, keeping the action strictly inside its own single-writer stream and adding no cross-lane obligation; the four peer-held packets are then simply excluded from the rebalance and the board stays lopsided.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "operator-override",
+        "label": "Operator-override every unstarted packet regardless of holder",
+        "consequence": "You authorise this lane to write release ops against packets held by olamnit and gavriella, which forecloses the single-writer guarantee that makes the add-wins fold deterministic and forecloses each lane's ability to trust that its own claims survive a peer cycle; two of the four are already in-progress so the override would also discard live work.",
+        "size": "midi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "mine-plus-broadcast",
+      "because": "It performs the whole of the part this lane can legitimately perform today and converts the rest into an explicit, ACKable ask on the shared volume rather than silently dropping it, whereas operator-override buys a faster rebalance by destroying the single-writer property that every other lane's claims depend on."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-02",
+    "header": "Ready policy",
+    "block": "Twenty-three of thirty-two board packets can never reach CPM/PERT allocation, because this board has never declared a readiness policy and the bulk-ready verb refuses by design rather than inferring one",
+    "origin": "missing-requirement",
+    "severity": "critical",
+    "background": [
+      "Measured 2026-09-01T07:20Z: buildkit-scheduler bulk-ready --from backlog --to ready refuses with R-B1, reporting value=False source='builtin'.",
+      "The refusal text is explicit that readiness deliberately has NO automated writer and that inferring one would recreate the silent default the feature exists to remove.",
+      "The fix is one declared key in config.local.json resolved from this repo root: ingest_ready_default set to true.",
+      "The scheduler report shows idle_while_eligible of 2,011,472s (23.3 days) against a burndown of 1 done and 31 remaining, so the famine is a supply-door problem and not a capacity problem.",
+      "This corroborates olamnit's 2026-08-26 rootcause broadcast that the feature stream stops at addressing rather than at capacity, measured independently here by a different verb."
+    ],
+    "impact_if_unanswered": "The rebalance you asked for can only ever draw on the 2 ready packets, the 23 backlog packets stay invisible to dispatch indefinitely, and every future takt and burndown reading on this board keeps reporting a famine whose cause is one undeclared boolean.",
+    "options": [
+      {
+        "key": "declare-true",
+        "label": "Declare ingest_ready_default true on this board",
+        "consequence": "Newly ingested packets land ready and bulk-ready becomes usable, so the 23 backlog packets can be moved into the dispatch pool in one operator-invoked command and the CPM/PERT rebalance finally has real supply; it also means future ingests skip a human readiness check, so a badly-minted packet reaches the ready column without review.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "promote-reviewed",
+        "label": "Leave the default off and promote packets one at a time",
+        "consequence": "Each backlog packet is moved with bk-flow promote only after this lane has read it, which keeps a human gate on every packet entering dispatch; at 23 packets this is slow, it is the mechanism that has already left them sitting for 23 days, and it does not scale to the next ingest round.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "leave-backlog",
+        "label": "Accept the backlog column as a holding area",
+        "consequence": "The board is treated as a published inventory rather than a dispatch queue and work is selected from the marathon ladder instead; this forecloses the whole point of running CPM/PERT over the board and forecloses any honest cross-host allocation, since 72 percent of the packets would be permanently out of scope.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "declare-true",
+      "because": "The measured cost of the missing declaration is 23 days of total dispatch famine on 23 packets, whereas the cost it buys — a badly-minted packet reaching the ready column — is caught by the claim step that already sits in front of any actual work, and the key is reversible in one edit if it proves wrong."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-03",
+    "header": "Lane decl",
+    "block": "Similar-size non-overlapping work packages per host cannot be computed, because no packet on this board declares a required capability and no lane on this host is declared, so the capability-fit ranking never executes at all",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "bk-flow poll warns capability_gate_inert: 0 of 32 work packets declare a required_capability, and the 89 capabilities this actor publishes were never compared against anything.",
+      "The tool states plainly that missing_capability=0 in this state means UNMEASURED, not clear — so a fit-based allocation today would be an unverified guess wearing a measured number.",
+      "bk-flow lanes reports declared lanes: NONE, with 3 actors sharing this host's fold — ariellas.hatzinor, ariellas.yngenios, ariellas.yngenios-windows — deliberately neither flagged as siblings nor excluded.",
+      "That undeclared-lane ambiguity is the same ambiguity that blocks Q-GLPNETA15-02, where a 2026-08-17 ruling says 'this lane' on a host carrying five or more ariellas lanes.",
+      "The four hosts you named for the rebalance are GAVRIS, ARIELLAS, SHIRAS and OLAMNIT; the board's own actor list is ariellas, gavri, gavriella, gavriella-dispatch, olamnit, shiras plus the 3 undeclared ariellas lanes, so the name mapping is not one-to-one either."
+    ],
+    "impact_if_unanswered": "Any per-host split produced now is balanced on story points alone with no capability check and no lane identity, so it will strand work on hosts that cannot do it and will be indistinguishable from a correct allocation in every report the fleet reads.",
+    "options": [
+      {
+        "key": "declare-then-allocate",
+        "label": "Declare lanes and packet capabilities first, then allocate",
+        "consequence": "This lane writes declared_lanes into config.local.json and stamps a required_capability on each of the 32 packets, so the fit ranking actually runs and the per-host split is defensible; it costs a pass over every packet and the capability vocabulary has to be agreed before the split can be published.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "size-only-declared",
+        "label": "Allocate on size only, and say so on the artefact",
+        "consequence": "The rebalance goes out now as equal-point bundles per host with an explicit printed caveat that capability fit was never evaluated, so nobody mistakes it for a fit-checked allocation; hosts may still receive work they cannot run and the correction cost lands on the receiving lane.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-rebalance",
+        "label": "Defer the rebalance until the gate is live",
+        "consequence": "No allocation is published until capabilities and lanes are declared, so no lane acts on an unverified split; this forecloses the rebalance you asked for in this session and leaves the 23-day famine running while the declaration work is scheduled.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "declare-then-allocate",
+      "because": "An allocation is a fleet-binding artefact that other lanes act on without re-deriving it, so publishing one whose central ranking provably never ran is the failure mode this session already had to correct once, and the declaration work is bounded at 32 packets and four host names rather than open-ended."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-04",
+    "header": "Release bar",
+    "block": "A CalVer release is simultaneously qualified and disqualified, because two of your live rulings apply different bars and the delta on develop passes one and fails the other",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Ruling Q-GLPNETA13-01 at 2026-08-31T13:44Z answered 'Feature-level bar' — a release needs a completed, fully-implemented, codex-reviewed FEATURE.",
+      "Ruling Q-GLPNETS13-03 at 2026-08-31T17:56Z answered 'Content bar, directive overrides' — a release needs at least one feat or fix commit since the last tag, and an engineer directive overrides.",
+      "Measured 2026-09-01: develop is 22 commits ahead of tag v2026-08-31-1 and carries exactly one fix commit, bd13a254 fix(onrestart) an INACCESSIBLE mount must count as missing, never throw; the other 21 are docs, chore and merge.",
+      "A cross-provider codexreview ran here at 07:12Z over that delta and returned ZERO findings against scripts/onrestart-launch.ps1 — the code half is clean.",
+      "No roadmap feature reached shipped this session: the fold reads 94 closed, 17 promoted, 6 specified, 3 analyzed, 1 implemented, so the feature-level bar is NOT met.",
+      "Your instruction this session was to release any completed, fully-implemented and codex-reviewed feature or PATCH — the word patch is what the onrestart fix is."
+    ],
+    "impact_if_unanswered": "Either this lane cuts a tag that another lane will correctly call unqualified under the ruling it follows, or it holds a clean reviewed fix out of the release channel indefinitely, and the fleet keeps producing release receipts that cannot be compared because they are measured on different bars.",
+    "options": [
+      {
+        "key": "cut-now",
+        "label": "Cut the release under the later content-bar ruling",
+        "consequence": "The onrestart fix ships as a CalVer patch today under Q-GLPNETS13-03, which is both the later ruling and the one your directive in this session explicitly triggers; it accepts that a release can carry no completed feature, which is exactly what Q-GLPNETA13-01 was written to prevent.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "retire-a13",
+        "label": "Cut now and formally retire the feature-level bar",
+        "consequence": "The same tag is cut and Q-GLPNETA13-01 is recorded as superseded so no lane can cite it again, ending the collision permanently across all four hosts; this forecloses the feature-level bar as a future option and removes the only rule that currently stops a docs-only develop from being tagged.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "hold-for-feature",
+        "label": "Hold until a feature actually ships",
+        "consequence": "No tag is cut until one of the 27 open features reaches shipped under Q-GLPNETA13-01, keeping every release receipt feature-backed; the reviewed onrestart fix then sits unreleased behind whichever feature lands first, which on current measurement is not imminent.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "retire-a13",
+      "because": "Cutting under the later ruling is right on the merits and is what your directive asks for, but leaving the earlier ruling live guarantees this exact question returns next session on another lane, and the collision has already cost three lanes a measured session each."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-05",
+    "header": "BK-STD-2",
+    "block": "The fleet standard that carries every engineer ruling can permanently hide an unanswered question, because its validator accepts any object as a decision without checking that the chosen option exists",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "A cross-provider codexreview at 2026-09-01T07:12Z returned 3 P2 findings against .specify/standards/bk_question.py, the peer-supplied BK-STD-2 executable half installed here on 2026-08-31.",
+      "The load-bearing one is at lines 141-143: any dictionary passes as a decision, so a record such as option 'typo' validates, and interactive_payload then skips the question because the option is merely truthy — the question is silently never asked again.",
+      "The second, at line 66, crashes validate with an AttributeError and exit 1 on a non-object array entry such as [null], where the documented behaviour is exit 2 naming the (qid, field).",
+      "The third, at lines 77-78, enforces the one-sentence rule by counting periods, which passes two exclamation-separated sentences and rejects a single sentence containing a filename or a version number.",
+      "Verified here: the five open Q-GLPNETA15 questions all still render, so nothing is hidden on this host today — the exposure is prospective, not realised.",
+      "This directory is writable by this lane, unlike .claude/skills which the harness classifier refuses, so unlike Q-GLPNETA15-05 this defect is physically repairable here."
+    ],
+    "impact_if_unanswered": "Every lane on every host keeps a question surface in which one malformed decision record erases a question from the interactive picker with no error and no trace, which is precisely the re-asking-and-losing failure BK-STD-2 was written to eliminate.",
+    "options": [
+      {
+        "key": "patch-and-broadcast",
+        "label": "Patch here, then broadcast the corrected file",
+        "consequence": "This lane fixes all three findings, adds regression cases, and publishes the corrected single file to the shared volume for every lane to copy, closing the window today; it means a fleet standard is amended by a consuming lane rather than its author, so two versions exist until peers adopt.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "patch-decision-only",
+        "label": "Patch only the hiding defect, file the other two",
+        "consequence": "Only the decision-validation hole is closed here since it is the one that loses engineer input, and the crash and the period-counting checks are filed upstream unchanged; this keeps the local diff to a few lines and minimises divergence, at the cost of leaving a validator that still crashes on malformed input.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "file-upstream",
+        "label": "File all three upstream and change nothing here",
+        "consequence": "The authoring lane keeps sole ownership and the fleet converges on one version with no fork; this forecloses closing the window in this session and forecloses it for every other host too, leaving the hiding defect live for as long as the upstream queue takes.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "patch-and-broadcast",
+      "because": "The defect destroys engineer input rather than merely reporting it wrongly, which makes it the one class of bug that cannot be left waiting on another lane's queue, and a single stdlib-only file explicitly designed to be adopted by copying is the cheapest artefact in the fleet to re-converge."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-06",
+    "header": "Scoring",
+    "block": "Three roadmap features now carry WSJF and RICE scores recorded as engineer-confirmed that no engineer has seen, because the score proposer emits flat defaults and the CLI has no other path to a scored state",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "You directed promote and score all; measured before starting, 3 of the 27 open features were unscored and 2 of those were also unpromoted.",
+      "buildkit-roadmap review propose-scores returned identical flat defaults for all three — WSJF 5/5/5/5 and RICE 100/1/50/5 — carrying no signal from the feature profile.",
+      "The only verb that reaches a scored state is set-score, whose own help calls its inputs engineer-confirmed, so any non-default value this lane supplies is recorded under your name and not its own.",
+      "Values set at 07:05Z: renderers-read-export-fold-not-status WSJF 7.0 RICE 8000, takt-and-token-persistence-to-ducklake WSJF 4.8 RICE 2800, bk-onrestart-per-host-reboot-lane-relaunch WSJF 3.67 RICE 900.",
+      "The first two are the features that encode your own reporting-compliance complaint, which is why they were scored high on value and criticality; the third is measurably near-complete already and was scored low on job size.",
+      "bk-onrestart-per-host-reboot-lane-relaunch also appears to duplicate the specified feature bk-onrestart-per-host-configurable-auto-installable-fleet-resume at specs/085, which the dedupe pass later in this sweep would collapse."
+    ],
+    "impact_if_unanswered": "The roadmap's build-order ranking is driven by three numbers attributed to you that you never chose, and the two features carrying your compliance complaint sit at the top of that ranking on this lane's judgement rather than yours.",
+    "options": [
+      {
+        "key": "ratify",
+        "label": "Ratify the three as recorded",
+        "consequence": "The scores stand and the ranking is usable immediately, with the rationale for each value written into the decision record so the attribution is honest even though the arithmetic was this lane's; if a value is wrong the mis-ranking propagates into the next build-order recommendation.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "you-rescore",
+        "label": "Revert to unscored and score them with you",
+        "consequence": "The three scores are withdrawn and re-set only from values you state, so nothing in the ranking is attributed to you falsely; it costs a round trip per feature and leaves the roadmap with 3 unscored open features until you answer.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "dedupe-first",
+        "label": "Ratify the two, drop the third pending dedupe",
+        "consequence": "The two complaint-derived features keep their scores and the onrestart duplicate is left unscored until the dedupe pass decides whether it survives at all, avoiding effort spent ranking a row that is about to be superseded; it leaves one open feature unscored, which reopens the gap this task was meant to close.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "ratify",
+      "because": "The two consequential scores are derived directly from complaints you stated yourself rather than invented here, and the ranking they produce is checkable against the roadmap in one read, so the cost of being wrong is a visible mis-order that any later review corrects rather than a hidden commitment."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-07",
+    "header": "Udi gate",
+    "block": "The marathon has reported the same next step across four sessions, because that step is blocked on a language-authority ruling only Udi can give and nothing in this lane can route it to him",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "buildkit-marathon resume at 2026-09-01T06:45Z reports next: start W11 implement mini 7 — resolve origin/080-occurs-checked-substitution — BLOCKED on the Udi section 1.14 language-authority ruling recorded as discharge item J2.",
+      "CLAUDE md section 1.14 reserves every change to the GLP language definition to Udi's express approval, and an occurs-check at bind time is such a change, so no ruling from you or from this lane can unblock it.",
+      "A marathon backlog item records that J2 needs no drafting: specs/080-occurs-checked-substitution/spec.md already frames the question completely and its own Status line names the section 1.14 block.",
+      "The run stands at 42 of 135 steps with 157 outstanding items, and W11 sits at the head of the ordered list, so every resume since 2026-08-24 has surfaced the same blocked step first.",
+      "The corresponding board packet wp-occurs-checked-substitution has been ready and unclaimed for 1,181,100s (13.7 days)."
+    ],
+    "impact_if_unanswered": "The marathon keeps presenting a step it can never start as the single next action, which makes every resume and every sitrep in this lane open on a false frontier, and the 080 branch stays unmergeable indefinitely.",
+    "options": [
+      {
+        "key": "route-to-udi",
+        "label": "Route the written question to Udi now",
+        "consequence": "You forward the already-drafted section of specs/080-occurs-checked-substitution/spec.md to Udi and W11 unblocks the moment he rules either way, which is the only path that actually finishes 080; it depends entirely on his response time and the step stays at the head of the list until then.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "resequence-past",
+        "label": "Resequence W11 behind the unblocked work",
+        "consequence": "W11 is parked and the marathon's next step becomes the first genuinely startable item, so resume and sitrep stop opening on a false frontier and this lane can make measurable progress; 080 then has no owner watching it and may be forgotten until the next inventory.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "both",
+        "label": "Route to Udi and resequence in the same pass",
+        "consequence": "The question goes to Udi while W11 is moved out of the head position, so the block is being worked and the frontier is honest at the same time; it costs two writes instead of one and briefly shows 080 as parked while a ruling on it is in flight.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "both",
+      "because": "Routing alone leaves the lane reporting a frontier it cannot act on for however long Udi takes, and resequencing alone quietly drops a specified feature onto nobody's desk, whereas doing both costs one extra write and removes the failure in each direction."
+    }
+  }
+]
