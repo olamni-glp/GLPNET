@@ -41,7 +41,7 @@
     <InternalsVisibleTo Include="glp_link.tests" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NetMQ" Version="4.0.4.3" />
+    <PackageReference Include="NetMQ" />
   </ItemGroup>
 
 </Project>

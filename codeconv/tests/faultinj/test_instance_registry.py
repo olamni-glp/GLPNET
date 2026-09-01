@@ -132,27 +132,14 @@ def test_unread_are_attributed_to_a_named_owner():
 def test_absorb_registers_only_from_a_successful_receipt(tmp_path):
     """KILLS: counting a UNREAD/FAIL receipt as proof — instance 5 by another route."""
     root = tmp_path / "receipts"
-    # A successful (EMPTY) receipt from the bash emitter claiming instance 5.
+    # A genuinely successful receipt that EXAMINED the item it claims.
     emit(check_id="bash.skip-guard", area="test-harness",
          target=Target(kind="path", identity="test/run_all_tests.sh", resolved=True),
-         examined_count=0, total_count=0, examined=[], run_id="rb", root=root)
-    # Patch the enumeration in place — emit() caps/validates, the claim rides in
-    # `examined`, which is what a real bash emitter writes.
-    from codeconv.receipts import paths
-    p = paths.receipt_path(root, "test-harness", "rb", "bash.skip-guard")
-    data = json.loads(p.read_text(encoding="utf-8"))
-    data["examined"] = ["instance:5"]
-    p.write_text(json.dumps(data), encoding="utf-8")
-
+         examined_count=1, total_count=1, examined=["instance:5"], run_id="rb", root=root)
     # An UNREAD receipt claiming instance 7 must register NOTHING.
     emit(check_id="bash.corpus-scope", area="test-harness",
          target=Target(kind="path", identity="test/run_all_tests.sh", resolved=True),
-         examined_count=1, total_count=4, examined=[], run_id="rb", root=root)
-    p2 = paths.receipt_path(root, "test-harness", "rb", "bash.corpus-scope")
-    d2 = json.loads(p2.read_text(encoding="utf-8"))
-    assert d2["outcome"] == "UNREAD"
-    d2["examined"] = ["instance:7"]
-    p2.write_text(json.dumps(d2), encoding="utf-8")
+         examined_count=1, total_count=4, examined=["instance:7"], run_id="rb", root=root)
 
     reg = Registry()
     added = absorb_receipts(root, "rb", registry=reg)
@@ -160,17 +147,70 @@ def test_absorb_registers_only_from_a_successful_receipt(tmp_path):
     assert 7 not in reg.registered
 
 
+def test_a_tampered_empty_receipt_cannot_claim_every_instance(tmp_path):
+    """KILLS the 2026-09-01 adversarial finding, and it is the sharpest one.
+
+    A hand-written EMPTY receipt is 'successful' (EMPTY.is_successful is True) and
+    examined NOTHING. Under the first implementation it could list all thirteen
+    `instance:` entries and register every one of them — turning SC-001 green from
+    a file anybody could write. A receipt that examined nothing cannot have
+    demonstrated an injection, so `examined_count >= len(claims)` refuses it.
+    """
+    root = tmp_path / "receipts"
+    emit(check_id="tampered", area="test-harness",
+         target=Target(kind="path", identity="x", resolved=True),
+         examined_count=0, total_count=0, run_id="rt", root=root)
+    from codeconv.receipts import paths
+    p = paths.receipt_path(root, "test-harness", "rt", "tampered")
+    data = json.loads(p.read_text(encoding="utf-8"))
+    assert data["outcome"] == "EMPTY"          # precondition: it IS 'successful'
+    data["examined"] = [f"instance:{n}" for n in range(1, 14)]
+    p.write_text(json.dumps(data), encoding="utf-8")
+
+    reg = Registry()
+    assert absorb_receipts(root, "rt", registry=reg) == []
+    assert reg.examined == []
+    r = sc001_receipt(run_id="rt2", root=tmp_path, registry=reg, write=False)
+    assert r.outcome is Outcome.UNREAD, "a tampered receipt must not reach PASS"
+
+
+def test_absorb_refuses_another_runs_receipt_and_a_filename_mismatch(tmp_path):
+    """KILLS: trusting a file's LOCATION or NAME instead of its content."""
+    root = tmp_path / "receipts"
+    from codeconv.receipts import paths
+    # (a) a receipt whose own run_id is a DIFFERENT run, sitting in this run's dir
+    emit(check_id="other-run", area="test-harness",
+         target=Target(kind="path", identity="x", resolved=True),
+         examined_count=1, total_count=1, examined=["instance:2"],
+         run_id="elsewhere", root=root)
+    src = paths.receipt_path(root, "test-harness", "elsewhere", "other-run")
+    dst = paths.receipt_path(root, "test-harness", "here", "other-run")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # (b) a valid receipt for THIS run, renamed so the filename lies about it
+    emit(check_id="real-name", area="test-harness",
+         target=Target(kind="path", identity="x", resolved=True),
+         examined_count=1, total_count=1, examined=["instance:6"],
+         run_id="here", root=root)
+    real = paths.receipt_path(root, "test-harness", "here", "real-name")
+    liar = paths.receipt_path(root, "test-harness", "here", "different-name")
+    liar.write_text(real.read_text(encoding="utf-8"), encoding="utf-8")
+    real.unlink()
+
+    reg = Registry()
+    assert absorb_receipts(root, "here", registry=reg) == []
+    assert reg.examined == []
+
+
 def test_absorb_ignores_an_undeclared_or_malformed_claim(tmp_path):
     """KILLS: a receipt inflating coverage with instance:99 or a non-numeric claim."""
     root = tmp_path / "receipts"
     emit(check_id="bash.bogus", area="test-harness",
          target=Target(kind="path", identity="x", resolved=True),
-         examined_count=0, total_count=0, run_id="rc", root=root)
-    from codeconv.receipts import paths
-    p = paths.receipt_path(root, "test-harness", "rc", "bash.bogus")
-    data = json.loads(p.read_text(encoding="utf-8"))
-    data["examined"] = ["instance:99", "instance:abc", "not-an-instance", "instance:6"]
-    p.write_text(json.dumps(data), encoding="utf-8")
+         examined_count=4, total_count=4,
+         examined=["instance:99", "instance:abc", "not-an-instance", "instance:6"],
+         run_id="rc", root=root)
 
     reg = Registry()
     assert absorb_receipts(root, "rc", registry=reg) == [6]

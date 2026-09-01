@@ -1,0 +1,44 @@
+<!--
+  SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+  SPDX-License-Identifier: MIT
+
+  CENTRAL PACKAGE MANAGEMENT — engineer ruling 2026-09-01, fleet-wide on all
+  hosts and all repos.
+
+  WHY, MEASURED IN THIS REPO BEFORE ADOPTION: three packages were pinned at TWO
+  versions simultaneously across 55 PackageReferences —
+
+      Microsoft.NET.Test.Sdk      17.11.1 and 17.14.1
+      xunit                        2.9.2  and  2.9.3
+      xunit.runner.visualstudio    2.8.2  and  3.1.4
+
+  A per-project bump would have fixed those references and left the MECHANISM
+  that produced them intact. Here a version exists ONCE, per repo.
+
+  🔴 FLOATING VERSIONS ARE BANNED. A spec like `10.*` silently follows the 10
+  line and will NEVER move to 11 on its own, so it would quietly defeat the
+  .NET 11 mandate of the same date. glpnet had ZERO floating versions at
+  adoption; keep it that way — pin an exact version or do not add the package.
+-->
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="NSec.Cryptography" Version="24.4.0" />
+    <PackageVersion Include="NetMQ" Version="4.0.4.3" />
+    <PackageVersion Include="Npgsql" Version="8.0.4" />
+    <PackageVersion Include="System.Formats.Cbor" Version="9.0.0" />
+    <PackageVersion Include="YamlDotNet" Version="16.2.1" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+</Project>

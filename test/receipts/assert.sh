@@ -210,7 +210,14 @@ if [ -n "${CODECONV_RECEIPTS_ROOT:-}" ] && [ -n "${CODECONV_RECEIPTS_RUN_ID:-}" 
     receipt_examined "instance:5"
     receipt_examined "instance:7"
   fi
-  receipt_emit "$CODECONV_RECEIPTS_RUN_ID" "$CODECONV_RECEIPTS_ROOT" >/dev/null || true
+  # NOT `|| true`. This receipt is the ONLY evidence that lets the SC-001 registry
+  # count instances 5 and 7; discarding its failure would let the harness exit 0
+  # having produced no evidence at all (adversarial review 2026-09-01,
+  # `do-not-suppress-harness-receipt-emission-failures`).
+  if ! receipt_emit "$CODECONV_RECEIPTS_RUN_ID" "$CODECONV_RECEIPTS_ROOT" >/dev/null; then
+    echo "  FAIL harness receipt could not be emitted — instances 5 and 7 cannot register" >&2
+    FAILED=$((FAILED+1))
+  fi
 fi
 
 if [ "$FAILED" -ne 0 ] || [ "$PARITY_CASES" -ne 7 ]; then

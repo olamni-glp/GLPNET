@@ -9,6 +9,6 @@
     <AssemblyName>Sc003NpgsqlLoop</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="8.0.4" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 </Project>
