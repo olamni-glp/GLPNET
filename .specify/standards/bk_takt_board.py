@@ -211,6 +211,24 @@ def _build_cache(con, root: str) -> list:
     return skipped
 
 
+#: MEASURED LAKE DEFECT #2 (2026-09-01). `repo` is written as an ABSOLUTE,
+#: HOST-SPECIFIC PATH, so the SAME repo has a different identity on every host and
+#: cross-host comparison of one repo is impossible. GLPNET alone appears as:
+#:
+#:     shiras     /mnt/biwin/D_DRIVE/BSTDEV/research/crucible/glp/GLPNET
+#:     gavriella  D:\BSTDEV\research\GLP\GLPNET
+#:     ariellas   D:\BSTDEV\research\glp\GLPNET
+#:
+#: and a few writers emit a bare name ("yngenios", "olamnit-assistant") instead —
+#: so the column is not even consistently one shape. That is why the lake reports
+#: 39 distinct "repos" for a fleet of about a dozen.
+#:
+#: The view contract normalises on READ: last path segment, lowercased. This is a
+#: read-side repair; the durable fix is for writers to emit a repo NAME, which is
+#: part of the same ruling (Q-glpnetshiras-16) and is forward-only.
+REPO_NORM = ("lower(regexp_extract(replace(repo, '\\', '/'), '([^/]+)$', 1))")
+
+
 def _table(rows, headers) -> str:
     if not rows:
         return "  (no rows)"
@@ -283,6 +301,7 @@ def main(argv=None) -> int:
         skipped = []
 
     R, H = args.repo, args.host
+    RN = REPO_NORM
     parts = [
         f"# ERA TAKT BOARD — `{R}` @ `{H}`",
         "",
@@ -319,7 +338,7 @@ def main(argv=None) -> int:
         SELECT feature_id, size,
                round(total_seconds/3600.0, 2) AS elapsed_h,
                measurable, unmeasurable_steps AS unmeas, reason, date
-        FROM v_era WHERE repo = '{R}' AND host = '{H}'
+        FROM v_era WHERE {RN} = '{R}' AND host = '{H}'
         ORDER BY date DESC, feature_id LIMIT 25
     """, f"1 · This repo, this host — eras on `{R}` @ `{H}`"))
 
@@ -331,13 +350,13 @@ def main(argv=None) -> int:
                round(100.0*sum(CASE WHEN measurable THEN 1 ELSE 0 END)/count(*), 1) AS pct_meas,
                round(median(CASE WHEN measurable THEN total_seconds/3600.0 END), 2) AS p50_h,
                round(max(CASE WHEN measurable THEN total_seconds/3600.0 END), 2) AS max_h
-        FROM v_era WHERE repo = '{R}'
+        FROM v_era WHERE {RN} = '{R}'
         GROUP BY host ORDER BY eras DESC
     """, f"2 · SAME REPO `{R}`, ACROSS HOSTS",
         "The comparison asked for: how this repo's era takt differs by host."))
 
     parts.append(_q(con, f"""
-        SELECT repo,
+        SELECT {RN} AS repo,
                count(*) AS eras,
                sum(CASE WHEN measurable THEN 1 ELSE 0 END) AS measurable,
                sum(CASE WHEN measurable THEN 0 ELSE 1 END) AS unmeasurable,
@@ -348,12 +367,12 @@ def main(argv=None) -> int:
     """, f"3 · ALL REPOS ON THIS HOST `{H}`"))
 
     parts.append(_q(con, """
-        SELECT host, repo,
+        SELECT host, {RN} AS repo,
                count(*) AS eras,
                sum(CASE WHEN measurable THEN 1 ELSE 0 END) AS meas,
                round(100.0*sum(CASE WHEN measurable THEN 1 ELSE 0 END)/count(*), 1) AS pct_meas,
                round(median(CASE WHEN measurable THEN total_seconds/3600.0 END), 2) AS p50_h
-        FROM v_era GROUP BY host, repo
+        FROM v_era GROUP BY host, {RN}
         HAVING count(*) > 0 ORDER BY eras DESC LIMIT 40
     """, "4 · ALL REPOS ON ALL HOSTS — the fleet grid"))
 
@@ -370,14 +389,14 @@ def main(argv=None) -> int:
                count(*) AS steps,
                round(median(seconds/3600.0), 3) AS p50_h,
                round(sum(seconds)/3600.0, 2) AS effort_h
-        FROM v_era_step WHERE repo = '{R}'
+        FROM v_era_step WHERE {RN} = '{R}'
         GROUP BY phase ORDER BY effort_h DESC NULLS LAST LIMIT 15
     """, f"6 · Per-phase step takt for `{R}` (all hosts)"))
 
     parts.append(_q(con, """
-        SELECT host, repo, count(*) AS rows, sum(total_tokens) AS total_tokens,
+        SELECT host, {RN} AS repo, count(*) AS rows, sum(total_tokens) AS total_tokens,
                count(DISTINCT phase) AS phases, count(DISTINCT capture_method) AS methods
-        FROM v_tokens GROUP BY host, repo ORDER BY total_tokens DESC NULLS LAST LIMIT 20
+        FROM v_tokens GROUP BY host, {RN} ORDER BY total_tokens DESC NULLS LAST LIMIT 20
     """, "7 · Per-phase TOKEN USE — token+tokens unioned as ONE kind (S21)",
         "Reading only `kind=tokens` under-reports; reading both without record_id dedup double-counts."))
 
