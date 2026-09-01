@@ -38,6 +38,11 @@
     "recommendation": {
       "option": "read-only",
       "because": "The collision risk on three shared scheduler files with five live branches is concrete and has never been ruled, whereas the cost of waiting is delay rather than damage; scoped-write becomes the right answer the moment you tell us which ariellas lane owns buildkit."
+    },
+    "decision": {
+      "option": "read-only",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: this lane stays READ-ONLY on buildkit and files defects with reproductions upstream. Resolves the x8 vs R-C2 contradiction in favour of R-C2."
     }
   },
   {
@@ -79,6 +84,11 @@
     "recommendation": {
       "option": "link-open-declare-rest",
       "because": "It bounds the problem honestly now rather than waiting on a queue we do not control, and the provenance it surrenders is for features already closed and shipped, where the cost is historical curiosity rather than future selection."
+    },
+    "decision": {
+      "option": "link-open-declare-rest",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: link the not-yet-closed features the verb can repair and record a standing declaration that closed rows with empty spec_path are historical and will not be back-filled."
     }
   },
   {
@@ -120,6 +130,11 @@
     "recommendation": {
       "option": "pilot-ariellas",
       "because": "The marginal risk of using an already-deployed tool on one host is far smaller than the exposure of having it deployed everywhere unused, and a bounded pilot produces the evidence the other two options are waiting for without spending buildkit write authority we do not yet have."
+    },
+    "decision": {
+      "option": "pilot-ariellas",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: pilot bk-flow on ARIELLAS only, one packet, 14-day expiry. Safety refusals were measured working here today (claimed_by_other=4, release refused on unheld packets)."
     }
   },
   {
@@ -162,6 +177,11 @@
     "recommendation": {
       "option": "engineer-applies",
       "because": "It closes a live code-damaging instruction today without widening agent write access to harness configuration, and the distribution fix is the right long-term answer but leaves the window open for as long as it takes buildkit to ship."
+    },
+    "decision": {
+      "option": "engineer-applies",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: the engineer applies the .claude/skills patch personally; agent write access to harness configuration is NOT widened. Re-confirmed same session: the classifier also blocked gh pr merge 267 twice."
     }
   },
   {
@@ -204,6 +224,11 @@
     "recommendation": {
       "option": "close-phases-then-measure",
       "because": "The measurement says the work is already fast enough and only the phase lifecycle is broken, so fixing closure makes the target reachable on current effort without any speed improvement, whereas both other options plan around the defect instead of removing it."
+    },
+    "decision": {
+      "option": "close-phases-then-measure",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: gap is the defect. Close phases when their work finishes and rebuild the takt base from corrected records before any CPM/PERT work consumes them."
     }
   }
 ]
