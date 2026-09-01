@@ -2,8 +2,11 @@ glp_runtime/glp_repl_new
 glp_runtime/build/
 .DS_Store
 
-# bk-guardian local backup artifacts (never committed)
+# bk-guardian local host state (never committed): backups, the host-local
+# absolute backup path, and the local catalog schema baseline.
 .specify/guardian/backups/
+.specify/guardian/backup.path
+.specify/guardian/schema-baseline.json
 
 # Build artefacts (bin/obj — generic; tools/d2net/ removed feature 016)
 **/bin/
