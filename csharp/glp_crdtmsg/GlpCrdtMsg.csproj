@@ -34,12 +34,12 @@
 
   <!-- Surface + crypto deps (T002). System.Text.Json is in-box for net10 (no package). -->
   <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="16.2.1" />
-    <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
-    <PackageReference Include="NSec.Cryptography" Version="24.4.0" />
+    <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="System.Formats.Cbor" />
+    <PackageReference Include="NSec.Cryptography" />
     <!-- 048 T012: PGlite-backed op-WAL (store/NpgsqlColabOpDb.cs). Same version as the buildkit
          sibling C# tiers (beacon/host/Beacon.Host.csproj, YngeniOS.Persistence) — lock-step schema. -->
-    <PackageReference Include="Npgsql" Version="8.0.4" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
   <ItemGroup>

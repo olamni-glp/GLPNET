@@ -1,0 +1,73 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+
+CENTRAL PACKAGE MANAGEMENT (CPM) — engineer ruling Q-shiras-36, 2026-09-01.
+"Adopt CPM fleet-wide, after the open PRs land." Now REQUIRED for all hosts and
+all repos on all hosts.
+
+  A version exists ONCE per repo. A .csproj names a package; it never names a version.
+
+WHY (measured in GLPNET on 2026-09-01, before this file existed) — three packages
+were pinned at TWO different versions simultaneously across the 31 projects:
+
+    xunit                       2.9.2   AND 2.9.3
+    Microsoft.NET.Test.Sdk      17.11.1 AND 17.14.1
+    xunit.runner.visualstudio   2.8.2   AND 3.1.4
+
+Each drift is resolved below to the HIGHER version. A per-project bump would have
+fixed those three refs and left the mechanism that produced them intact — which is
+precisely the reasoning recorded in the ruling.
+
+🔴 FLOATING VERSIONS ARE BANNED (ruling Q-shiras-36).
+Never write `10.*`, `*`, or a `[range]`. A floating `10.*` silently follows the .NET 10
+line and WILL NEVER MOVE TO 11 ON ITS OWN — it would quietly defeat the .NET 11
+mandate while every scan reported compliance. GLPNET was measured clean of floating
+versions at adoption; this comment is the guard that keeps it that way.
+
+  Preconditions verified before adopting, per the ruling's sequencing requirement:
+    - open PRs against GLPNET at adoption time: ZERO (`gh pr list`, state=open)
+    - floating versions present at adoption time: NONE
+
+HOW TO ADD A PACKAGE
+  1. Add a <PackageVersion Include="X" Version="N" /> line here.
+  2. In the .csproj write <PackageReference Include="X" /> with NO Version attribute.
+-->
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- A .csproj that still carries a Version= attribute is an ERROR, not a warning:
+         a silent override is exactly the drift this file exists to remove. -->
+    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Test stack">
+    <!-- DRIFT RESOLVED 2026-09-01: was 17.11.1 and 17.14.1 -> 17.14.1 -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <!-- DRIFT RESOLVED 2026-09-01: was 2.9.2 and 2.9.3 -> 2.9.3 -->
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <!-- DRIFT RESOLVED 2026-09-01: was 2.8.2 and 3.1.4 -> 3.1.4 -->
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+  <ItemGroup Label="Runtime and hosting">
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Parsing, transport, data">
+    <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageVersion Include="NetMQ" Version="4.0.4.3" />
+    <PackageVersion Include="Npgsql" Version="8.0.4" />
+    <PackageVersion Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Cryptography and encoding">
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageVersion Include="NSec.Cryptography" Version="24.4.0" />
+    <PackageVersion Include="System.Formats.Cbor" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
