@@ -177,6 +177,11 @@
     "recommendation": {
       "option": "engineer-applies",
       "because": "It closes a live code-damaging instruction today without widening agent write access to harness configuration, and the distribution fix is the right long-term answer but leaves the window open for as long as it takes buildkit to ship."
+    },
+    "decision": {
+      "option": "engineer-applies",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: the engineer applies the .claude/skills patch personally; agent write access to harness configuration is NOT widened. Re-confirmed same session: the classifier also blocked gh pr merge 267 twice."
     }
   },
   {

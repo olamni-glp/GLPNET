@@ -134,6 +134,11 @@
     "recommendation": {
       "option": "declare-then-allocate",
       "because": "An allocation is a fleet-binding artefact that other lanes act on without re-deriving it, so publishing one whose central ranking provably never ran is the failure mode this session already had to correct once, and the declaration work is bounded at 32 packets and four host names rather than open-ended."
+    },
+    "decision": {
+      "option": "declare-then-allocate",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: declare declared_lanes and stamp a required_capability on all 32 packets so the capability-fit ranking actually executes, then re-allocate. The 08:40Z allocation is superseded by the fit-checked one rather than caveated."
     }
   },
   {
@@ -177,6 +182,11 @@
     "recommendation": {
       "option": "write-both",
       "because": "Both rulings were defensible because they answer different questions — one is about what a tag may contain and the other about when a tag is worth cutting — so collapsing to either single bar throws away a real distinction that this session demonstrated in one day, whereas writing the tier down ends the collision without discarding either answer."
+    },
+    "decision": {
+      "option": "write-both",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: two-tier release rule. PATCH release = content bar (>=1 feat/fix since last tag). MINOR release = feature bar (a completed, implemented, codexreviewed feature). Supersedes both Q-GLPNETA13-01 and Q-GLPNETS13-03; the tier must appear on every release receipt."
     }
   },
   {
@@ -268,6 +278,11 @@
     "recommendation": {
       "option": "ratify",
       "because": "The two consequential scores are derived directly from complaints you stated yourself rather than invented here, and the ranking they produce is checkable against the roadmap in one read, so the cost of being wrong is a visible mis-order that any later review corrects rather than a hidden commitment."
+    },
+    "decision": {
+      "option": "ratify",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: the three WSJF/RICE scores set at 07:05Z are ratified as recorded, with this lane's derivation kept on the decision record so the attribution is honest."
     }
   },
   {
@@ -410,6 +425,49 @@
       "option": "keep-24h",
       "date": "2026-09-01",
       "rationale": "Engineer ruling 2026-09-01: ARIELLAS glpnet is DECLARED a continuously-attended automation host, so 24h/day is an honest declaration here and no re-onboard happens. Discharges Q-CAPACITY-01 for this board by explicit declaration rather than re-measurement. Accepts the stated foreclosure: this board's P50/P80/P95 are not commitments against human availability and are not directly comparable with peer hosts that declare a working day."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-10",
+    "header": "Takt schema",
+    "block": "The cross-repo cross-host takt board you asked for cannot be built yet, because no schema exists for it and the three candidate stores disagree on partitioning, writers and freshness",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "You directed a takt board comparing this repo across hosts, all repos on this host, and all repos on all hosts, built from DuckLake queries, over a NEW cross-repo cross-host CRDT-designed schema agreed before piloting and then consolidated via bk-codify into one buildkit roadmap feature.",
+      "Three stores exist today and none spans that scope: the fleet takt lake at I:/coop/_takt-lake (753 records for this host, 13 of 135 steps measurable), each repo's local co-lake (this repo holds 1202 parquet files, 1200 observations, ZERO rows matching takt), and the per-repo marathon mirror.",
+      "Two partitioning defects are already on the fleet record: gavriella published that the takt lake write and read halves used DIFFERENT partitions so every emit-tokens row was invisible, and separately corrected a false zero to four writers after first reporting two.",
+      "This host has just declared a 24h working day under Q-GLPNETA16-09 while peers are re-declaring real working days under Q-CAPACITY-01, so a naive cross-host comparison would read ariellas as three times faster than a peer doing identical work.",
+      "The roadmap already carries takt-and-token-persistence-to-ducklake, promoted and scored this session at WSJF 4.8 RICE 2800, whose whole subject is making takt lake-sourced — so a second artefact risks duplicating a feature that exists.",
+      "The engineer's own standing rule is that the schema is AGREED cross-repo cross-host BEFORE piloting, which means at least one peer lane must accept it before any writer emits a row."
+    ],
+    "impact_if_unanswered": "Either a fourth incompatible takt schema is minted on top of three that already disagree, or the comparative board is built from the existing partitions and silently compares a 24-hour host against 8-hour hosts as though the numbers meant the same thing.",
+    "options": [
+      {
+        "key": "design-then-agree",
+        "label": "Author the schema here, circulate for peer agreement, pilot only after an ACK",
+        "consequence": "This lane writes the CRDT schema and layout plan as a design document, publishes it for cross-host agreement with the capacity-declaration field made mandatory so a 24h host can never be silently compared against an 8h one, and emits no row until at least one peer ACKs; the comparative board you asked for does not exist until that ACK arrives, which is asynchronous.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fold-into-existing",
+        "label": "Fold it into the existing promoted takt feature rather than minting a new one",
+        "consequence": "The cross-repo cross-host scope is added to takt-and-token-persistence-to-ducklake, which is already promoted and scored, so the fleet gets one feature instead of two and the duplicate-detection problem never arises; it widens an already-midi feature and delays the part of it that is purely local persistence.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "pilot-first",
+        "label": "Pilot a board from the existing lake now, agree the schema after",
+        "consequence": "A comparative board is produced this session from the 753 existing records so you can see something concrete immediately; this forecloses the agree-before-pilot rule you set in the same instruction and forecloses an honest comparison, because the existing partitions carry no capacity declaration and this host's 24h day would be compared directly against peer working days.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "design-then-agree",
+      "because": "You explicitly required agreement before piloting, and the one measured hazard that would make the board actively misleading — this board's just-declared 24h day against peers' real working days — is only fixed by a mandatory schema field, which is exactly what a design pass produces and what piloting from the existing lake would skip."
     }
   }
 ]
