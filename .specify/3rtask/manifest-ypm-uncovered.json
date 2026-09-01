@@ -1,0 +1,63 @@
+{
+ "subject": "Requirements for /yx-ypm in the three dimensions no prior corpus covered: operator experience and diagnostics, governance and policy enforcement, performance and scale",
+ "task_type": "research",
+ "rationale": "Ruling Q-GLPNETO19-01: narrow the run to the THREE requirement dimensions that neither gavriella's /bk-3rtask 20260901T114835Z-889f (25 sources over polyglot-PM design, version resolution, supply chain/SBOM/PURL, diamond/lockfile/formal models) nor my own drafted corpus would surface. Disjointness here is by DIMENSION and by source kind, and is additionally disjoint from the prior run's 25 sources by construction: none of the three slices below reads package-manager reference documentation, resolver algorithm papers, or SBOM/provenance standards - those are already covered and are explicitly out of scope for every slice.",
+ "prior_run_excluded": "20260901T114835Z-889f (gavriella) - all 25 of its sources are out of scope for every slice below",
+ "slices": [
+  {
+   "lens": "What makes a package manager usable or unusable in practice, and what must a refusal say? Extract requirements for CLI design, error-message quality, and the diagnostic surface.",
+   "sources": [
+    "PubGrub error-reporting design write-ups and the 'why did this fail' explanation problem",
+    "Cargo/npm/pip error-message redesign discussions and issue threads",
+    "CLI design guidelines (Command Line Interface Guidelines, GNU/POSIX conventions) as applied to package tooling",
+    "Developer-experience research on build-tool adoption and abandonment",
+    "Post-mortems where an unexplained dependency refusal led to --force / --legacy-peer-deps escape hatches",
+    "Diagnostic and error-taxonomy design (actionable vs descriptive errors)"
+   ],
+   "excluded": [
+    "ALL 25 sources of prior run 20260901T114835Z-889f",
+    "package-manager reference documentation (covered by that run's slice A)",
+    "resolver algorithm papers (its slice B/D)",
+    "SBOM/provenance/supply-chain standards (its slice C)",
+    "anything belonging to slices U2 or U3"
+   ],
+   "slice_id": "U1-operator-experience-and-diagnostics"
+  },
+  {
+   "lens": "How is a dependency convention actually enforced across many teams, and what makes it hold or rot? Extract requirements for policy expression, enforcement points, exceptions and organisational adoption.",
+   "sources": [
+    "Policy-as-code engines applied to dependencies (OPA/Rego, Conftest) and admission-control patterns",
+    "Monorepo dependency governance at scale (Google/Meta/Microsoft engineering practice write-ups)",
+    "Allowlist/denylist, licence-policy and approval-workflow practice for third-party components",
+    "Exception and waiver management: time-boxed exemptions, expiry, re-review",
+    "Inner-source and platform-team adoption literature: why conventions fail when only some teams hold them",
+    "Change-management and deprecation-policy practice for shared internal libraries"
+   ],
+   "excluded": [
+    "ALL 25 sources of prior run 20260901T114835Z-889f",
+    "SBOM/provenance/attestation standards (its slice C)",
+    "package-manager reference documentation and resolver papers",
+    "anything belonging to slices U1 or U3"
+   ],
+   "slice_id": "U2-governance-policy-and-adoption"
+  },
+  {
+   "lens": "What breaks when the dependency graph gets big, and what must the tool guarantee about time and space? Extract requirements for graph scale, caching, incrementality and query performance.",
+   "sources": [
+    "Build-cache and remote-execution design (content-addressed caches, cache-hit-rate engineering)",
+    "Incremental and query-based build architecture (Buck2/Bazel query engines, Salsa-style demand-driven computation)",
+    "Reported scale limits: resolution time, lockfile size, graph node counts in large monorepos",
+    "Registry and mirror performance, cold-start and offline-install behaviour",
+    "Storage/dedup strategies for package caches (pnpm content-addressable store, Nix store)",
+    "Observability of build and resolve performance"
+   ],
+   "excluded": [
+    "ALL 25 sources of prior run 20260901T114835Z-889f",
+    "resolver correctness/algorithm papers (its slice B/D) - only PERFORMANCE reports are in scope here",
+    "package-manager reference documentation",
+    "anything belonging to slices U1 or U2"
+   ],
+   "slice_id": "U3-performance-and-scale"
+  }
+ ]
+}
