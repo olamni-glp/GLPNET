@@ -11,7 +11,11 @@
       "kind": "ruling",
       "header": "Registry",
       "question": "Ruling Q-GLPNETS12-01 held 078 discharge items 1, 5 and 6, and Q-GLPNETS12-02 (split 11/55) has since resolved items 1 and 6 by re-scoping 078 to its 11 glpnet-side tasks. Item 5 is the last one standing: SC-001 demands 13 NAMED fault-injected instances refusing loudly, but the harness has 11 modules naming only instances 2 and 9, so faultinj's 51/51 green is an ANONYMOUS TALLY that cannot say which of the 13 ran. Under 078's own FR-016 an unexercised declared case must read UNREAD, never green. Is the case-keyed 13-instance registry now the active code task?",
-      "blocks": ["078 discharge item 5", "any interpretable SC-001 green", "078 final close"],
+      "blocks": [
+        "078 discharge item 5",
+        "any interpretable SC-001 green",
+        "078 final close"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -31,14 +35,24 @@
           "means": "Record the registry as work for the buildkit-owned successor that ruling 02 created to carry the 55 bk: tasks, and close 078 here.",
           "cost": "The instance layer is glpnet-side under the 11/55 split, so this hands a glpnet obligation to a repo that did not accept it, and FR-017's six-area guarantee is already satisfied by no single repo."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Build it now",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Build it now').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETS13B-02",
       "kind": "ruling",
       "header": "Retro mirror",
       "question": "While verifying my own /bk-close 078 by content rather than by exit code, I found that every retrospective Markdown mirror on disk reads 'status: draft' while the catalog reads 'complete' - reproduced 4 of 4 on features 078, 077, 060 and 065. The mirror is rendered from the pre-transition snapshot and the status advances afterwards, so the durable artefact can never state its own final status, and any lane auditing close-out coverage from disk would conclude all 22 retrospectives are unfinished. The defect is in the shipped buildkit-retrospective tool, not in this repo. Who fixes it?",
-      "blocks": ["trustworthy close-out coverage audits in every repo", "the disk mirror as a system of record after re-clone"],
+      "blocks": [
+        "trustworthy close-out coverage audits in every repo",
+        "the disk mirror as a system of record after re-clone"
+      ],
       "escalate_after_hours": 48,
       "multi_select": false,
       "options": [
@@ -58,14 +72,24 @@
           "means": "Capture it as a finding and a tracked action on the 078 retrospective, which is already done, and take no further action.",
           "cost": "Leaves a known false surface in place while the fleet keeps reading it; this is the same rendered-surface-versus-record class that produced five false conclusions in this feature's own cycle."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Broadcast and let buildkit own",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Broadcast, buildkit owns', an abbreviation of this label — sole match).",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETS13B-03",
       "kind": "ruling",
       "header": "Escalation",
       "question": "You granted risk-acceptance Q-GLPNETS12-04 with a hard expiry of 2026-09-07 and an instruction that it must not lapse into permanent policy: two peer branches were held past the 8h window carrying rollForward: latestFeature and a Directory.Build.props that both violate standing rulings. ariellas has since identified 096 as their branch and DISCHARGED it by re-derivation rather than rebase, dropping both violating commits as dead because develop already carries the correct form; I verified both independently on my own checkout (props absent, LangVersion preview, rollForward latestPatch) and PR #254 is merged. I have asserted in the COOP channel that this closes by fulfilment. Do you confirm?",
-      "blocks": ["the 2026-09-07 auto-re-raise", "the held-branch item in the restart signal"],
+      "blocks": [
+        "the 2026-09-07 auto-re-raise",
+        "the held-branch item in the restart signal"
+      ],
       "escalate_after_hours": 48,
       "multi_select": false,
       "options": [
@@ -85,7 +109,14 @@
           "means": "Close it here, but ask each lane to confirm neither violation is present on any branch they own before the original expiry date.",
           "cost": "Converts a closed item into a fleet-wide poll, and the last such poll on this channel needed an operator override at 13 of 14 lanes to complete."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Confirm closure by fulfilment",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Confirm closure by fulfilment').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }

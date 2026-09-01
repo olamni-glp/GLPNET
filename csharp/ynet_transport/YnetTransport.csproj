@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <!-- DEC-CRYPTO-1: Ed25519 node identity (pure-managed, no native binary). -->
-    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="BouncyCastle.Cryptography" />
   </ItemGroup>
 
 </Project>

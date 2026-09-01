@@ -1,5 +1,60 @@
 ## [Unreleased]
 
+## [v2026.09.01.4] - 2026-09-01
+
+### Added
+- draft cross-ecosystem CPM CRDT schema and share it to 28 COOP channels - six kinds (pin, pin_history, proposal, decision, chain_point, violation) over nine ecosystems; GLP is the hardest case with NO version concept so version_scheme=none plus a content hash is first-class; C1-C7 inherited verbatim from BK-STD-3 plus two constraints earned from the takt lake (repo must be a declared slug refused at write if it is a path; every column TYPE pinned, not just its name)
+
+### Fixed
+- all 7 codexreview findings from run 20260901T110734Z - HIGH: absorb_receipts now loads+validates and refuses a tampered EMPTY receipt claiming 13 instances; a failing build gate can no longer emit PASS when tests fail but the compiler was silent; bash emitter gains the byte cap, refuses . and .. components, and propagates write failures. Plus Central Package Management adopted (engineer ruling): 3 packages were at 2 versions, 0 floating, 31/31 build clean
+
+### Changed
+- SESSION 14 CLOSE - 13 rulings, SC-001 case-keyed registry (6 of 6 glpnet instances, 7 buildkit UNREAD, PASS unreachable here by design), all 7 codexreview findings fixed incl. a tampered EMPTY receipt that could claim all 13, .NET 11 and CPM mandated fleet-wide, gate 561/559/2/0 measured not hypothesised
+- Merge remote-tracking branch 'origin/develop' into develop
+- rounds 63-64 - export 21 epics / 121 features; two new promoted features (cross-repo cross-host era takt CRDT, CPM-CRDT) both scored; dedupe 0 groups
+- glpnet contribution to the shared cross-repo cross-host design - 39 repo keys normalise to 15 REAL repos (62 pct are re-spellings, yngenios has 6), the lake is 98.1 pct unmeasurable (843 era rows, 16 measurable), glpnet's own 38 rows are 0 measurable, and the reason column TYPE drifts VARCHAR vs JSON so GROUP BY fails on file sort order
+- Merge pull request #263 from olamni-glp/main
+- Merge remote-tracking branch 'origin/develop' into develop
+- debrand speckit -> buildkit across 19 olamni tutorial files - cherry-picked from backup/upgrade/buildkit-migration (tidy-up T6, Q-GLPNETS14-13); the branch's .specify template refresh was DROPPED because develop's templates are 3 weeks newer and it would have regressed them
+
+## [v2026.09.01.3] - 2026-09-01
+
+### Added
+- ENGINEER MANDATE - migrate the last 5 downlevel projects to net11.0; repo is now 31/31 net11.0 and 31/31 build green. 4 of the 5 were ALREADY BROKEN (NU1201) before the edit because net10.0 cannot reference the net11.0 first-party libs - a target-set scan called them healthy, a build did not. No wrapper exceptions needed. Also records the 8 BK-STD-2 engineer rulings Q-glpnetshiras-09..16
+
+### Changed
+- Merge PR #259 from olamni-glp/098-shiras-round61-restart-prep: round 61 + reboot prep - 4 rulings, 050 archived with proven containment, tidy-up plan T0-T9, scheduler onboarded
+- Merge pull request #261 from olamni-glp/main
+- Merge remote-tracking branch 'origin/develop' into 098-shiras-round61-restart-prep
+- RE-MEASURED - the reboot gate now exits 0, SAFE TO REBOOT. This lane's [Install] repair cleared check 1 and another lane converged both triggers onto one script, clearing check 2; 15 of 15 lanes will resume with 0 skipped and no session-store gaps. The first-token false-positive analysis is kept as historical because the probe is still worth hardening
+- REBOOT PREP - all 15 named lanes verified registered with DISTINCT names (bk-onrestart list prints yngenios twice and hatzinor for ulpanit, but that is a DISPLAY defect labelling by directory leaf; the config keys on name+path and drops nothing). Records the systemd unit fix (had NO [Install] at all, is-enabled=static, plus 65 lines of pasted status output), why the gate still exits 1 on a first-token false positive, and the 4 new rulings Q-05..08 with the first post-reboot command
+
+## [v2026.09.01.2] - 2026-09-01
+
+### Added
+- bash emitter at 7/7 parity (T042-T044), gate receipts kill instance 6 (T054), manifests (T048/T049), and a quickstart whose every command was actually executed (T061) - the old quickstart imported a module that does not exist and passed outcome= by hand
+- case-keyed 13-instance registry for SC-001 - coverage was an ANONYMOUS TALLY naming only instances 2 and 9 while 51/51 green; now 13 declared, 4 examined, 9 UNREAD with named owners, and no PASS is reachable below 13/13 (Q-GLPNETS14-01 A, Q-GLPNETS13B-01)
+- BK-STD-3 ruling precedence + resolve the three-way release-bar collision (Q-GLPNETO16-01..04)
+
+### Fixed
+- 10 BK-STD-2 rulings Q-GLPNETS14-01..10 + fold guard - the ledger had FOUR row shapes and a last-wins fold reported a release-gating ruling as unanswered; guard resolves id/answer aliases and proves 85 of 85 decided, 0 open
+- write 30 recorded rulings back onto their question records - a decided question must be citable, never re-askable (BK-STD-2 intent); 1 left open (Q-glpnetshiras-01, empty ledger answer clobbered a real one)
+
+### Changed
+- Merge remote-tracking branch 'origin/develop' into develop
+- capture the takt-lake cross-repo identity defect (cn-20260901T105519-ba64d362) - consolidated into buildkit roadmap feature cross-repo-cross-host-era-takt-lake (WSJF 3.0, RICE 3000, promoted)
+- publish the glpnet ERA TAKT BOARD from the DuckLake + propose the cross-repo cross-host CRDT schema and layout plan
+- Merge remote-tracking branch 'origin/develop' into develop
+- migrate the last 5 repo-owned C# projects to net11.0 - csharp/ was already 26/26 net11.0, these were net8.0 (Sc003NpgsqlLoop) and net10.0 (4 antlr4 spike projects); all 5 build clean and it fixes the net8-runtime dependency that failed test_sc003_two_stack_concurrent. 12 msquic/clog projects under gleam_quic _build are UNTRACKED vendored build output and are excluded
+- round 62 export 21/120/3989, dedupe 0 groups after superseding 4 features I created on a false premise; 078 glpnet-side tasks 11/11; record Q-GLPNETS14-11/12 and the two standing directives
+- round 62 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/122 features/3931 journal lines, 0 dedupe groups, replay --verify OK, 18 missing .license sidecars backfilled
+- record 7 engineer rulings via BK-STD-2 (Q-GLPNETO17-01..04, Q-GLPNETO18-01..03)
+- merge(098): shiras round-61 restart prep - 4 engineer rulings Q-glpnetshiras-05..08 + the Bash(buildkit release) permission rule, taken by UNION per Q-GLPNETS14-05
+- era-discharge handoff receipt - 10 items to buildkit, 2 to gavriella, 5 resolved with evidence, 12 migrated to the 083 successor era (Q-GLPNETO16-02/04)
+- Merge pull request #258 from olamni-glp/main
+- record 4 engineer rulings Q-glpnetshiras-05..08 (board wins over the ruling - take occurs-checked; archive 050 only; add a release permission rule; escalate the era-stage defect, do not patch a fleet artefact here) and add the Bash(buildkit release) allow rule per Q-07
+- round 61 - import from the coop inbox (1 new file, 159 already-applied, 19 docs still REFUSED on 3 unpublished ariellas keys), reconcile x2 in sync, dedupe x2 0 groups over 117 live, export 20 epics / 118 features / 3806 journal lines, published to the coop inbox. NOTE: the first reconcile of the round died with psycopg OperationalError 'the connection is lost' under multi-lane registry contention; an immediate re-run reported 'already in sync' - the figures above are from the CLEAN re-run
+
 ## [v2026.09.01.1] - 2026-09-01
 
 ### Added

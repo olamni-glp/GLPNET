@@ -11,7 +11,10 @@
       "kind": "ruling",
       "header": "M01 close",
       "question": "M01 Phase A: bk-flow+bk-proof skills are installed and §5.1 (step-board integrity) is verified already-fixed upstream. Two items remain: §5.2 reproducible phase-exit gates (Critic non-determinism) and the parity-gap waiver. §5.2 is a buildkit-engine design change in a separate repo with an open ESCALATE; the waiver is engineer-only. How do you want M01 Phase A closed?",
-      "blocks": ["M01 Phase A discharge", "M01 Phase B cutover readiness"],
+      "blocks": [
+        "M01 Phase A discharge",
+        "M01 Phase B cutover readiness"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -31,14 +34,24 @@
           "means": "Leave §5.2 and the waiver both open; M01 Phase A reported as partially delivered (skills only).",
           "cost": "The already-safe waiver stays unrecorded, blocking any later Phase-B readiness accounting."
         }
-      ]
+      ],
+      "decision": {
+        "label": "I fix §5.2 in buildkit now",
+        "decided_by": "engineer",
+        "date": "2026-08-25",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='I fix 5.2 in buildkit now').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-tidyup-02",
       "kind": "ruling",
       "header": "C:/pglite",
       "question": "The prohibited cluster dir C:/pglite/research/glpnet EXISTS but is EMPTY (0 bytes, no lock/process) — safe to remove with zero data loss. The recurrence root cause is that 8 codeconv-* SKILL.md still mandate that path as the canonical cluster. You reserved final OK on removal. How to proceed?",
-      "blocks": ["G-PGLITE gate", "CLAUDE.md ABSOLUTE-rule compliance"],
+      "blocks": [
+        "G-PGLITE gate",
+        "CLAUDE.md ABSOLUTE-rule compliance"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -58,14 +71,24 @@
           "means": "Leave the empty dir in place; take no action.",
           "cost": "A standing CLAUDE.md ABSOLUTE-rule violation remains on disk."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Remove dir + fix 8 docs",
+        "decided_by": "engineer",
+        "date": "2026-08-25",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Remove dir + fix 8 docs').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-tidyup-03",
       "kind": "ruling",
       "header": "PR #229",
       "question": "PR #229 (chore: bk-flow/bk-proof skills + X03 workplan reconcile -> develop) is created but its merge is blocked by the Claude Code auto-mode classifier. 'merge all' cannot complete without you. How do you want it merged?",
-      "blocks": ["merge-all step", "develop currency with M01 Phase A"],
+      "blocks": [
+        "merge-all step",
+        "develop currency with M01 Phase A"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -80,14 +103,26 @@
           "means": "Keep PR #229 open; the commits stay on the pushed branch until merged later.",
           "cost": "develop lags the branch by the 2 chore commits until then."
         }
-      ]
+      ],
+      "decision": {
+        "label": "You !-run the merge",
+        "decided_by": "engineer",
+        "date": "2026-08-25",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='You !-run the merge').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-tidyup-04",
       "kind": "ruling",
       "header": "Spine homing",
       "question": "The three completion spines are blocked on homing and per 'for this host' two are other-lane-owned: 082 (feature-stream-superset) = glpnet feature or engine-side #13 vehicle (+ capability-name normalisation)? 083 (glptutorial-corpus-goldens) = ariellas-allocated + FR-002 §1.14 (Udi). 085 (onrestart-fleet-resume) = mstack/buildkit-canonical (P02), no 085 spec dir here. How do you want them homed?",
-      "blocks": ["C082", "C083", "C085", "completion-spines programme discharge"],
+      "blocks": [
+        "C082",
+        "C083",
+        "C085",
+        "completion-spines programme discharge"
+      ],
       "escalate_after_hours": 48,
       "multi_select": false,
       "options": [
@@ -107,7 +142,14 @@
           "means": "You give a separate homing call per spine; I record each and relay 083/085 to their lanes.",
           "cost": "Three separate decisions rather than one; slower."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Accept all 3 recommendations",
+        "decided_by": "engineer",
+        "date": "2026-08-25",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Accept all 3 recommendations').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }

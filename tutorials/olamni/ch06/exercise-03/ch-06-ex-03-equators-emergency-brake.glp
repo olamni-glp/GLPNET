@@ -4,7 +4,7 @@
 %% Synthesised from ch04 §4.4.4 because the ch06 PDF chapter (book p 53) is a
 %%   stub — only the title, a one-line intro, and the five §6.x section
 %%   headings exist; no body text and no native Programs.
-%% Per /speckit-clarify Q1: "Equators: Emergency Brake" is approximated by
+%% Per /buildkit-clarify Q1: "Equators: Emergency Brake" is approximated by
 %%   the control-MI's `abort` message — the input prompt's analogue is
 %%   retained.  The control stream `[suspend, abort]` is the emergency-brake
 %%   demonstration: a running goal is suspended, then aborted, and the

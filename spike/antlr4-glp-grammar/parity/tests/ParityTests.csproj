@@ -8,7 +8,8 @@ the DEC F3 non-cyclic-`=` generation invariant (F-069-1 regression guard). Pure/
 -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- net11.0: engineer directive 2026-09-01, 'migrate all code to .net 11'; extends fleet ruling C-19 (.NET 11 / C# 15, 2026-08-27) beyond csharp/. LangVersion comes from the repo-root Directory.Build.targets. -->
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -17,9 +18,9 @@ the DEC F3 non-cyclic-`=` generation invariant (F-069-1 regression guard). Pure/
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>

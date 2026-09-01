@@ -1,0 +1,135 @@
+[
+  {
+    "qid": "Q-GLPNETO18-01",
+    "header": "083 taken",
+    "block": "The era you just assigned this lane must be re-selected, because the board shows 083 is already in-progress under another host and my earlier no-collision claim was wrong.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "CORRECTION: I told you 083 glptutorial-corpus-goldens was unclaimed. That was true of RULINGS but I had not read the board. wp-glptutorial-corpus-golden-reconciliation... is in-progress, op-actor ariellas.",
+      "The board also shows 078 in-progress (gavriella), 082 claimed (shiras), wave-2 and wave-5 in-progress (gavriella), and 080 ready but allocated to ariellas. Every high-WSJF candidate is taken.",
+      "Genuinely free (board state ready, allocation 'unassigned', no other lane's ruling): wp-front-end-goal-term-acceptance (promoted, WSJF 3.60, RICE 3000 - the last roadmap round's rank-1 build recommendation) and wp-madglp-writer-reader 079 (specified, WSJF 5.33).",
+      "079 has the higher WSJF but its US1 (the heap_fcp.dart removal) is SHIP-TOKEN and audit gated, so 079 cannot reach close in this lane without a further grant.",
+      "Era run mrun-6765f20c723a is already open against 083 at 0 of 9 stages, so re-pointing it now costs nothing but is a one-time correction."
+    ],
+    "impact_if_unanswered": "This lane duplicates ariellas on 083, breaking one-feature-one-host on the very board you are trying to get reallocating.",
+    "options": [
+      {
+        "key": "front-end-goal",
+        "label": "Re-point the era at front-end goal-term acceptance",
+        "consequence": "The open run is re-pointed at wp-front-end-goal-term-acceptance, which is ready, unassigned, ungated and was the roadmap's own rank-1 build recommendation. All nine stages can run to close in this lane. It is only 'promoted', so specify runs from scratch - which is what a nine-stage era wants anyway.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "079-madglp",
+        "label": "Re-point at 079 madglp writer-reader discipline",
+        "consequence": "Higher WSJF (5.33) and already specified with a spec dir, so specify and plan are cheap. But US1 is SHIP-TOKEN and audit gated, so the era would predictably stall before close unless you also grant that token now.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "keep-083-coordinate",
+        "label": "Keep 083 here and have ariellas stand down",
+        "consequence": "This lane keeps the era already opened and ariellas releases their in-progress claim. Avoids re-work here, but forecloses ariellas' in-flight progress on a WP they have already started, and I cannot release another host's claim - only they can.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "front-end-goal",
+      "because": "It is the only candidate that is simultaneously free on the board, free of another lane's ruling and free of a gate, so it is the only one where all nine stages can actually reach close in this lane; 079 scores higher but would stall at a gate you have not granted."
+    },
+    "decision": {
+      "option": "front-end-goal",
+      "date": "2026-09-01",
+      "rationale": "Only candidate free on the board, free of another lane's ruling and free of a gate; all nine stages can reach close here. Corrects my unverified no-collision claim on 083."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO18-02",
+    "header": "Unassigned",
+    "block": "The board cannot dispatch work to any host, because 22 of its 25 ready packets are allocated to the literal engineer 'unassigned', which addresses no actor.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Measured on the UNC leg: 33 allocate ops exist, and their engineer_id tally is unassigned 22, gavriella 3, ariellas 2, olamnit 1.",
+      "The board fold therefore reports backlog 23 / ready 2, while the raw ops declare 25 ready - the gap is exactly the packets whose allocate addresses nobody, which the fold refuses to make ready.",
+      "Consequence: allocated_E_t is 0.0 for ALL FOUR hosts, every actor is stale 4.5 to 8.6 days, and total throughput is 1 done.",
+      "This is the SCHED-R7 defect the consolidated 3rtask already grounded: onboarding is not allocation, and the dispatcher reports perfect health while starving.",
+      "The allocate verb accepts --engineer and --ready together, so re-addressing a packet and making it available is a single op per packet."
+    ],
+    "impact_if_unanswered": "The reallocation you asked for cannot happen at all: there is nothing addressable for CPM/PERT to dispatch, and the board stays starved as it has been for over a week.",
+    "options": [
+      {
+        "key": "cpm-round-robin",
+        "label": "Re-address all 22 across the four hosts by CPM/PERT dispatch rank",
+        "consequence": "I write one allocate --engineer <host> --ready per packet, walking the existing dispatch_ranked order and dealing across gavriella, ariellas, shiras and olamnit so each host gets a similar-size, non-overlapping bundle. Board becomes dispatchable today; any host may reject a packet back to the pool.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "olamnit-only",
+        "label": "Re-address only the packets this lane will actually take",
+        "consequence": "I allocate to olamnit alone and leave the other 21 unassigned for their own hosts to claim. Minimal footprint and no assumptions about other hosts' capacity, but forecloses the fleet-wide reallocation you asked for and leaves 21 packets still addressing nobody.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "broadcast-first",
+        "label": "Broadcast the measurement and let each host self-allocate",
+        "consequence": "Each host re-addresses its own packets after an ACK-requested broadcast, so no lane allocates on another's behalf. Most respectful of single-writer ownership, but every previous such broadcast has produced zero allocations, and the board has been starved for over a week.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "cpm-round-robin",
+      "because": "It is the only option that actually delivers the per-host non-overlapping bundles you asked for, and every allocate is a proposal the receiving host can reject back to the pool, so the blast radius is one reversible op per packet; broadcasting has been tried repeatedly and has never moved the number off zero."
+    },
+    "decision": {
+      "option": "cpm-round-robin",
+      "date": "2026-09-01",
+      "rationale": "Delivers the per-host non-overlapping bundles asked for; each allocate is a rejectable proposal; broadcasting has never moved allocation off zero."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO18-03",
+    "header": "Readiness",
+    "block": "Bulk release is refused on this board, because no readiness policy has ever been declared and the tool deliberately refuses to infer one.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "bulk-ready refuses with R-B1: 'this board has NOT declared a readiness policy'; current resolution is value=False, source='builtin'.",
+      "The tool states readiness deliberately has no automated writer, and that inferring a default would recreate the silent default the feature exists to remove.",
+      "Declaring {\"ingest_ready_default\": true} in config.local.json makes bulk moves legal AND makes every FUTURE ingest land ready - a standing policy, not a one-off.",
+      "The alternative is per-packet allocate --ready ops, which need no policy and are individually auditable."
+    ],
+    "impact_if_unanswered": "Every future release on this board needs a per-packet op, and the ingest supply path keeps landing packets in backlog where nothing dispatches them.",
+    "options": [
+      {
+        "key": "per-packet-only",
+        "label": "No standing policy; release per packet with allocate --ready",
+        "consequence": "Each release is an explicit, attributable op and no silent default is introduced anywhere. Slightly more ops per round, and future ingests still land in backlog until someone addresses them.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "declare-true",
+        "label": "Declare ingest_ready_default true for this board",
+        "consequence": "bulk-ready becomes legal and newly ingested packets arrive ready, so supply stops silently pooling in backlog. But it reintroduces exactly the automatic readiness the tool's authors removed on purpose, and it applies to every future ingest, not just today's.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "per-packet-only",
+      "because": "The per-packet path achieves today's release with full attribution and without re-adding a default the tool removed deliberately, and the 22 packets needing release is a one-time backlog rather than a recurring volume that would justify a standing policy."
+    },
+    "decision": {
+      "option": "per-packet-only",
+      "date": "2026-09-01",
+      "rationale": "Full attribution without re-adding a default the tool removed deliberately; 22 packets is a one-time backlog."
+    }
+  }
+]

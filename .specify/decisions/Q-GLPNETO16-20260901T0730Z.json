@@ -1,0 +1,195 @@
+[
+  {
+    "qid": "Q-GLPNETO16-01",
+    "header": "Release bar",
+    "block": "Three mutually inconsistent fleet-wide release-bar rulings were all taken on 2026-08-31 and no precedence rule exists, so no lane can say whether a given release was legitimate.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "Q-hardening-03 (olamnit, decided 2026-08-31T13:08Z) = 'Patch-level qualifies' - any codex-reviewed patch on a develop that is ahead of main.",
+      "Q-GLPNETA13-01 (ariellas, decided 2026-08-31T13:44Z) = 'Feature-level bar' - a release requires a completed feature.",
+      "Q-GLPNETS13-03 (gavriella, decided 2026-08-31T17:56Z) = 'Content bar, directive overrides' - at least one feat:/fix: since the last tag, and an engineer directive overrides.",
+      "All three name fleet-wide scope in their own blocks list; none cites either of the others; nothing anywhere states that the latest ruling wins.",
+      "DISCLOSURE: acting on the latest-timestamp reading, I cut v2026.09.01.1 this session on 3 feat/fix commits plus your directive. Under the feature-level bar it would have been HELD - no feature completed."
+    ],
+    "impact_if_unanswered": "Every lane keeps applying a different bar, release receipts stay uncomparable across hosts, and today's v2026.09.01.1 remains of contested legitimacy.",
+    "options": [
+      {
+        "key": "content-directive",
+        "label": "Content bar, directive overrides - supersedes the other two",
+        "consequence": "The gavriella ruling governs the fleet; the other two are marked superseded and cited, not re-asked. v2026.09.01.1 is retrospectively legitimate. A written precedence rule (latest same-subject ruling supersedes, and must cite what it supersedes) is added to the decisions standard.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "feature-level",
+        "label": "Feature-level bar governs; today's release was premature",
+        "consequence": "Releases require a completed feature; docs/roadmap/tooling accumulation never qualifies. v2026.09.01.1 stands as a tag but is recorded as cut below bar, and I hold all further releases this session until a feature closes.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "two-tier",
+        "label": "Two-tier: feature bar for .1, content bar for later same-day patches",
+        "consequence": "A feature close cuts the day's first release; content-only accumulation may cut a later patch release the same day. Reconciles all three rulings instead of discarding two, but adds a rule none of the three lanes has implemented.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "content-directive",
+      "because": "It is the latest ruling, it is the only one of the three that explicitly handles your directive overriding the measured bar, and it is the bar the fleet has actually been executing today; the runner-up would retroactively invalidate a tag already on main for no operational gain."
+    },
+    "decision": {
+      "option": "content-directive",
+      "date": "2026-09-01",
+      "rationale": "Latest same-subject ruling; only one that handles directive-over-measured-bar; the bar the fleet actually executed today. v2026.09.01.1 retrospectively legitimate."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO16-02",
+    "header": "Era form",
+    "block": "The current era cannot be driven to completion as an era, because its namesake feature already shipped, released and closed while the run itself carries no stages and a 23-item general backlog.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Run mrun-76da6e46bd44, feature tidy-up-branches-worktrees-olamnit, reads seq=104, steps 0/0 complete, outstanding items 23.",
+      "The tidy-up work itself is done: 45 branches deleted, PR #246 merged, and the feature was released - 12 local branches and 1 worktree remain, all accounted for.",
+      "The standing model is ERA equals FEATURE driven through the nine canonical stages (specify through close), per the BINDING broadcast of 20260824T0740Z and ruling Q-YXBOOTMIG-01.",
+      "Of the 23 outstanding items, only a minority are tidy-up work; the rest accreted onto this run as a general backlog holder over six sessions."
+    ],
+    "impact_if_unanswered": "The run can never be discharged, 'complete the current era' has no achievable meaning, and every future session re-inherits a 23-item list with no exit condition.",
+    "options": [
+      {
+        "key": "discharge-migrate",
+        "label": "Discharge this run; migrate live items to a properly-formed next era",
+        "consequence": "The tidy-up era closes honestly at its real scope, cross-lane and not-ours items are transferred out, and the survivors are captured onto a new run opened against a real feature with the nine stages. Gives this lane a run that can actually reach done.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "retrofit-stages",
+        "label": "Retro-fit the nine canonical stages onto this run",
+        "consequence": "The existing run is given specify-through-close steps and the 23 items are re-scoped underneath them. Keeps all history in one place, but declares a shipped-and-closed feature to be mid-pipeline, which forecloses any honest takt or era-duration measurement for this run.",
+        "size": "mini",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "backlog-holder",
+        "label": "Keep it explicitly as a standing backlog holder, not an era",
+        "consequence": "The run is relabelled as this lane's durable backlog and exempted from era semantics and discharge; work proceeds on separate per-feature era runs. Cheapest, but leaves a permanently open run that every sitrep must explain.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "discharge-migrate",
+      "because": "It is the only option that makes 'complete the current era to full completion' actually achievable, and it preserves every live item by migration rather than by keeping a closed feature artificially open; the runner-up would corrupt the takt data you are trying to build CPM/PERT on."
+    },
+    "decision": {
+      "option": "discharge-migrate",
+      "date": "2026-09-01",
+      "rationale": "Only option under which 'complete the current era' is achievable; preserves live items by migration; protects takt data."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO16-03",
+    "header": "Next era",
+    "block": "This lane cannot open its next era, because the two highest-ranked candidates were both already ruled on inside other lanes and this repo has no active-feature pointer at all.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "There is no .specify/feature.json in glpnet, so no feature holds the active slot and no pipeline stage can start here.",
+      "Roadmap rank 1 is 078 verification-receipts (analyzed, WSJF 7.80) - but gavriella already ran /bk-close on 078, and its last open item, the case-keyed 13-instance registry, was ruled 'Build it now' in THEIR lane (Q-GLPNETS13B-01).",
+      "059 full-scope-gleam (analyzed, WSJF 2.00, 32 unmerged commits on a live local branch) was ruled 'Complete as a full era' - again in the gavriella lane (Q-GLPNETS13C-03).",
+      "Unclaimed, specified, and carrying no other lane's ruling: 083 glptutorial-corpus-goldens (WSJF 6.50) and 080 occurs-checked-substitution (WSJF 6.00, but §1.14 Udi-blocked).",
+      "Q-GLPNETS13C-02 directs lanes to self-allocate from the local roadmap, and the board has never addressed a work packet to this lane."
+    ],
+    "impact_if_unanswered": "This lane self-allocates into work another lane has already been told to do, or stalls with no active feature; either way the one-feature-one-lane rule breaks.",
+    "options": [
+      {
+        "key": "083-goldens",
+        "label": "083 glptutorial-corpus-goldens - highest unclaimed, unblocked",
+        "consequence": "This lane takes the highest-WSJF feature that carries no other lane's ruling and no language-authority gate, drives specify-through-close, and leaves 078 and 059 with the lanes already holding rulings on them. No cross-lane collision.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "059-gleam",
+        "label": "059 full-scope-gleam as this lane's full era",
+        "consequence": "This lane completes the 32 unmerged commits into a full era as Q-GLPNETS13C-03 directs; the branch and its Gleam history live on this host. Risks duplicating gavriella, who holds that ruling and may already have started.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "front-end-goal",
+        "label": "Front-end goal-term acceptance - last round's rank-1 build recommendation",
+        "consequence": "Takes the feature the most recent roadmap round actually recommended building (promoted, WSJF 3.60, RICE 3000), which is core GLP product work rather than tooling. Lower WSJF than 083 and still only promoted, so it needs specify from scratch.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "ask-board",
+        "label": "Take nothing; escalate for a board allocation first",
+        "consequence": "This lane stays idle on features and does only fleet housekeeping until a work packet is addressed to it. Honours one-feature-one-lane perfectly but forecloses all feature progress on this host for as long as the board stays unaddressed, which has been every session so far.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "083-goldens",
+      "because": "It is the highest-WSJF candidate with no competing lane ruling and no language-authority gate, so it is the only one this lane can start today without either colliding with gavriella or waiting on Udi; 059 is the stronger piece of work but is exactly the collision risk you have twice told lanes to avoid."
+    },
+    "decision": {
+      "option": "083-goldens",
+      "date": "2026-09-01",
+      "rationale": "Highest-WSJF candidate with no competing lane ruling and no 1.14 gate; avoids the gavriella collision on 078 and 059."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO16-04",
+    "header": "Cross-lane",
+    "block": "Six of this run's outstanding items are work you have already ruled belongs to other lanes, so they can never be completed here yet they still block discharge.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Q-hardening-01 ruled the BUILDKIT lane owns HOST-INTERCONNECTIVITY-HARDENING, with glpnet lanes as evidence contributors only; that evidence was contributed and merged as PR #251.",
+      "Items in this glpnet run that are buildkit-lane work: the P01 build half, HOST-INTERCONNECTIVITY-HARDENING, the M01 section 5.2 phase-exit-gate fix, and the bk-onrestart configurable-window feature.",
+      "The takt-ducklake item is not lane work at all - it is blocked on this host's engine pin being 2026.08.20.2 against a 2026.08.24.x requirement.",
+      "A marathon run's discharge gate is hard, so an item this lane has no authority to do keeps the run open indefinitely."
+    ],
+    "impact_if_unanswered": "The glpnet run stays permanently un-dischargeable on work this lane is forbidden to do, and the owning lanes never receive a clean handoff record.",
+    "options": [
+      {
+        "key": "transfer-out",
+        "label": "Transfer out: resolve here with a handoff receipt to the owning lane",
+        "consequence": "Each item is resolved in the glpnet run with an explicit transferred-to record, and a COOP handoff is posted to the owning lane so nothing is silently dropped. The glpnet run becomes dischargeable and ownership is recorded in one place.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "mirror-track",
+        "label": "Keep them as read-only mirrors that never gate discharge",
+        "consequence": "The items stay visible in this run for situational awareness but are marked non-gating, so discharge ignores them. Preserves the cross-lane view, but relies on a non-gating flag the marathon discharge gate does not currently implement.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "build-here",
+        "label": "Overrule the owner ruling and build them on this lane",
+        "consequence": "This lane writes the buildkit repo directly for these fixes. Fastest to close, but forecloses the single-source-of-truth position of Q-hardening-01 and adds a concurrent writer to buildkit files that already carry five live branches.",
+        "size": "maxi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "transfer-out",
+      "because": "It is the only option that both honours the ownership you already ruled and lets this run reach a legitimate discharge, and the handoff receipt is exactly the artefact missing today; mirror-track depends on a non-gating capability the tool does not have."
+    },
+    "decision": {
+      "option": "transfer-out",
+      "date": "2026-09-01",
+      "rationale": "Honours Q-hardening-01 ownership and lets the run reach legitimate discharge; handoff receipt is the missing artefact."
+    }
+  }
+]

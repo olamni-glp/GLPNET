@@ -27,7 +27,7 @@ The three exercises form a progressive curriculum through book §3.2's three gua
 
 - `ch03-sources.md` — chapter 3 PDF code-block index (committed in `592d89e3`).
 - `ch04-sources.md` (in `../ch04/`) — chapter 4 index; consulted by ex-01 for the `producer/2` + `consumer/3` cross-chapter import.
-- `ch03-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (pre-existing input to `/speckit-specify`).
+- `ch03-specification-input-prompt.md` — plain-prose description of what this tutorial delivers (pre-existing input to `/buildkit-specify`).
 - `spec-rev-eng-input/ch03-DEPRECATED-spec.md` — quarantined reverse-engineering input only; superseded by `specs/004-tutorial-ch03/spec.md` and the artefacts in this directory.
 
 ## Exercise status
