@@ -47,18 +47,34 @@ all** (`is-enabled` → `static`, un-enableable, so it could never fire at logon
 pasted `systemctl status` output systemd refused to parse. Now: **`enabled`,
 `WantedBy=default.target`, 0 parse errors**, unit body 93 → 15 lines.
 
-**EXPECT THE GATE TO STILL EXIT 1, on a FALSE POSITIVE.** It reports *"triggers disagree … two
-canonical roots"* by comparing the FIRST TOKEN of each Exec line:
+### 🟢 RE-MEASURED 2026-08-31T22:35Z — **THE GATE NOW EXITS 0. SAFE TO REBOOT.**
+
+```
+OK   systemd trigger enabled, WantedBy=default.target (active)
+OK   XDG autostart fallback present
+OK   both triggers run the same script: /mnt/.../lang/hatzinor/.specify/onrestart/bk-onrestart.sh
+OK   terminal driver: xfce4-terminal      OK   claude on PATH
+15 lane(s) will resume, 0 will be skipped        OK  no buildkit catalog lock is held
+SAFE TO REBOOT (with warnings noted above)        <- REAL exit code 0
+```
+
+**Two things changed since the 22:00Z reading, and both are real fixes, not luck:** this lane's
+`[Install]` repair cleared check 1, and **another lane converged BOTH triggers onto one script**, so
+check 2 now passes on its own terms. **The "0 will be skipped" gap I reported earlier (2 lanes with
+no session store) is also gone — 15 of 15 have one.**
+
+> **Historical, kept because the analysis still applies if it returns:** the gate previously reported
+> *"triggers disagree … two canonical roots"* by comparing the FIRST TOKEN of each Exec line:
 
 ```
 systemd  ExecStart=/mnt/.../yngenios/scripts/fleet/post-reboot-restart.sh --layout tabs ...
 XDG      Exec=bash -lc "sleep 45; exec /mnt/.../post-reboot-restart.sh --layout tabs ..."
 ```
 
-**They are the SAME script**, and the two triggers are DELIBERATE — the launcher carries a 600s
-single-flight guard (`$XDG_RUNTIME_DIR/bk-onrestart.guard`) so the second stands down. Verified in
-the launcher source, not assumed. Reported to @buildkit; **not patched here, because it is another
-lane's shipped artefact.**
+> They were the SAME script, and the two triggers are DELIBERATE — the launcher carries a 600s
+> single-flight guard (`$XDG_RUNTIME_DIR/bk-onrestart.guard`) so the second stands down. Verified in
+> the launcher source, not assumed. **A first-token compare would still misreport a `bash -lc`
+> wrapper, so the probe is worth hardening even though it currently passes.**
 
 ### If the trigger does not fire
 
