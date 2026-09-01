@@ -363,5 +363,53 @@
       "date": "2026-09-01",
       "rationale": "Engineer ruling 2026-09-01: split the 22 oversized packets to at-or-under the 24h daily slot cap. Raising the cap would make the calendar lie; accepting deferral forecloses same-day dispatch permanently."
     }
+  },
+  {
+    "qid": "Q-GLPNETA16-09",
+    "header": "Working day",
+    "block": "Every CPM/PERT number this board has ever produced is sized against a 24-hour working day, and only you can declare what this host's real working day is",
+    "origin": "assumption-weakness",
+    "severity": "critical",
+    "background": [
+      "Peer broadcast from gavriella/yngraw at 2026-09-01T09:00Z root-caused it by a different method on a different board: buildkit-scheduler onboard --shifts declares a CONTINUOUS 3x8h shift calendar, which tiles the day completely at 00:00, 08:00 and 16:00 and therefore means 24h per day by design.",
+      "Corroborated here independently: this board reports ariellas capacity=86400s and capacity_horizon=432000s over 5 days — exactly 24h per day — and identical values across six independently onboarded actors, which is the signature of a constant rather than a measurement.",
+      "That broadcast records engineer ruling Q-CAPACITY-01: allocations stay computed-but-unconfirmed until each host re-declares real capacity and the cycle is re-run.",
+      "It also warns explicitly that the fix must NOT substitute a different hardcoded constant, because capacity is a declared input and baking in 8h reproduces the fallback-used-is-a-literal-true defect one layer up.",
+      "Verified in the buildkit source: onboard --window is action=append so a whole horizon can be declared in ONE call, and all windows in one call share a report_id whose derivation supersedes the earlier shift report rather than adding to it.",
+      "Consequence for the allocation this lane published at 08:40Z: it was computed against a 24h budget, so every day-full deferral in it is measured against a budget that may be three times too large."
+    ],
+    "impact_if_unanswered": "This host keeps a 24h working day, the allocation published at 08:40Z stays unconfirmable under Q-CAPACITY-01, and every packet-splitting target derived from the daily cap in Q-GLPNETA16-08 is derived from a number nobody declared.",
+    "options": [
+      {
+        "key": "eight-hour",
+        "label": "Declare one 8h working window per day",
+        "consequence": "One 08:00-16:00Z window per day is declared for the 120-day horizon in a single onboard call that supersedes the shift calendar, giving a conventional working day and roughly a third of the current budget; it is a declaration this lane makes on your behalf, so if your intended day is longer the board under-allocates instead of over-allocating.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "twelve-hour",
+        "label": "Declare one 12h working window per day",
+        "consequence": "One 08:00-20:00Z window per day is declared, halving the current budget rather than cutting it to a third and matching a long-session lane that runs well beyond office hours; it still over-states any day on which the lane is not actually attended for twelve hours.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "keep-24h",
+        "label": "Keep the 24h calendar as a deliberate declaration",
+        "consequence": "The board is declared to be a continuously-attended automation host where a 24h day is honest, and no re-onboarding happens; this forecloses comparability with every peer host that re-declares a real working day under Q-CAPACITY-01, and forecloses using this board's P50/P80/P95 dates as commitments against human availability.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "eight-hour",
+      "because": "It is the value the peer broadcast measured as the real day behind the 3x8h tiling and the one every other host is being asked to adopt, so it makes this board's numbers comparable fleet-wide today; it is one command to change if your intended day is longer, whereas keeping 24h leaves this lane the only host whose dates mean something different from everyone else's."
+    },
+    "decision": {
+      "option": "keep-24h",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: ARIELLAS glpnet is DECLARED a continuously-attended automation host, so 24h/day is an honest declaration here and no re-onboard happens. Discharges Q-CAPACITY-01 for this board by explicit declaration rather than re-measurement. Accepts the stated foreclosure: this board's P50/P80/P95 are not commitments against human availability and are not directly comparable with peer hosts that declare a working day."
+    }
   }
 ]
