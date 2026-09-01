@@ -149,7 +149,8 @@
       "MEASURED 2026-09-01: origin/096-host-interconnectivity-hardening-evidence is 4 commits ahead of develop - fb76fb62 pins C# 15 preview in Directory.Build.props plus 15 csproj files, e74ce02e applies the .NET 11 preview 7 SDK pin via global.json with a green build, 43359587 is a stale roadmap round-53 export, 42d6be1c is a restart-doc revision.",
       "The tidy-up workplan item T2 records it as SUPERSEDED by ariellas' re-derivation, to be deleted on owner ACK.",
       "The fleet broadcast 20260827T154350Z RULING C-19 mandates C# 15 and the .NET 11 preview 7 SDK on all hosts, and 20260827T2015Z records all four hosts measured compliant - so the pins are policy, not an experiment.",
-      "Two of the four commits are build configuration and two are documentation, so the branch is not uniformly superseded."
+      "Two of the four commits are build configuration and two are documentation, so the branch is not uniformly superseded.",
+      "SELF-CORRECTION 2026-09-01, measured by attempting the cherry-pick: the premise of this question was FALSE. develop ALREADY carries the pins in a strictly better form - global.json at SDK 11.0.100-preview.7 with rollForward=latestPatch, the C#15 pin in Directory.Build.TARGETS (not .props, because .props loses to per-project LangVersion - measured), and all 23 csproj on net11.0. 096 has net10.0 and the pin in .props, so cherry-pick fb76fb62 conflicted on 15 csproj precisely because HEAD is AHEAD. Option A would have REGRESSED the repo. Re-put to the engineer as a corrected question and re-decided as C."
     ],
     "impact_if_unanswered": "Either a ruled deletion is left undone and the tidy-up cannot close, or the branch is deleted and this repo loses the only commits that encode a mandatory fleet toolchain pin.",
     "options": [
@@ -180,9 +181,9 @@
       "because": "It executes the supersession ruling while keeping the two commits that carry a standing fleet mandate, which is the only reading under which 'superseded' is true of the evidence and false of the build pins; B costs a reconcile round to undo stale roadmap noise and C destroys policy-bearing commits on an unverified assumption."
     },
     "decision": {
-      "option": "A",
+      "option": "C",
       "date": "2026-09-01",
-      "rationale": "Cherry-pick the C#15 and .NET11 build pins onto develop, then delete 096"
+      "rationale": "SUPERSEDES the earlier A on this qid. A was chosen on my incorrect background claim that 096 uniquely held the mandated pins; measurement refuted it, the corrected question was re-put, and the engineer ruled delete. origin/096 deleted 2026-09-01. Note also that BOTH changes named in escalation Q-GLPNETS12-04 (rollForward latestPatch, and .props -> root .targets) are already on develop."
     }
   },
   {
@@ -465,6 +466,54 @@
       "option": "A",
       "date": "2026-09-01",
       "rationale": "New era = the six unsatisfied 078 discharge items plus tidy-up T1-T7; 059 and 083 remain their own eras"
+    }
+  },
+  {
+    "qid": "Q-GLPNETS14-11",
+    "header": "WP sizes",
+    "origin": "measurement",
+    "severity": "high",
+    "block": "Executing the ruled board partition turned up three facts that were not in Q-GLPNETS14-06's evidence, and the first of them makes \"similar size\" uncomputable as things stand",
+    "background": [
+      "MEASURED 2026-09-01 from the authoritative wp-conditions fold (NOT a hand fold - my own hand fold disagreed with the tool earlier this session and the tool is the authority): the board is 32 WPs at ready=25, in-progress=4, claimed=1, done=1, escalated=1, and backlog=ZERO. Q-GLPNETS14-06 said 23 backlog; the free set is still 23 packets, but they are READY, not backlog.",
+      "🔴 ALL 23 free packets carry NO DECLARED STORY SIZE. Balancing them today means assuming mini/7 for every one, which produces a partition that LOOKS balanced (35/35/35/28/28 pts) and is really 23 unknowns divided by 5. The scheduler has a verb for the real fix - `effort-assign`, 'declare a story size for one roadmap slot whose effort text names none'.",
+      "The roadmap DOES carry effort text for most of them, in four different vocabularies: S/M/L/XL (17 M, 11 L, 4 S, 1 XL), small/medium/large (11 large, 10 medium), M-L and S-M (6), the standard scale itself (2 midi) - and 35 of 120 features carry no effort text at all.",
+      "🔴 `gavri` has a declared CALENDAR but NO caps report, so capability fit cannot be evaluated for that actor at all. The other four (ariellas, gavriella, olamnit, shiras) have both. Allocating to an actor whose capabilities are undeclared is how work gets stranded, which the dispatcher is specifically built never to do.",
+      "🔴 The cycle now reports dominant_gate=CAPACITY (gate_counts capacity 111, claim-binding 4) with 23 of 25 ready packets deferred. That CONTRADICTS this lane's standing constraint 'the constraint here is ADDRESSING, not capacity - never report this lane as capacity-starved'. starved=false and fraction=0.0, so it is a gate reason, not a famine, but the standing constraint can no longer be quoted unqualified.",
+      "An allocate op is a grow-only write to a board five hosts share; it is effectively irreversible, and this lane has previously minted a phantom actor by acting on a repeated instruction without resolving exactly this kind of ambiguity."
+    ],
+    "impact_if_unanswered": "I either write 23 irreversible cross-host allocations whose sizes I invented, or I leave your partition instruction unexecuted; and a fifth of the fleet's actors would receive work whose capability fit nobody can evaluate.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Derive sizes from roadmap effort first, then partition over 4",
+        "consequence": "Map the four effort vocabularies onto the standard scale (S/small->micro, S-M/M/medium->mini, M-L->midi, L/large->maxi, XL->saga), record each with `effort-assign` so the size is DECLARED on the board rather than assumed, flag any packet whose roadmap effort is genuinely blank, then partition over the four actors that have BOTH a calendar and caps. gavri is named in the COOP request as needing a caps report before it can receive work.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Partition now over 5 on assumed mini sizes",
+        "consequence": "Executes your instruction immediately across all five calendared actors, including gavri. Fast, but every bundle is balanced on a number I invented, and gavri receives packets whose capability fit is unevaluable. Allocate ops are grow-only on a board five hosts share, so writing 23 of them forecloses this lane's ability to withdraw or re-balance them: only each named assignee can reject its own packets afterwards, and it forecloses ever knowing what the real sizes were, because the assumed mini becomes the board's record.",
+        "size": "mini",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "C",
+        "label": "Publish the proposal, write no allocate at all",
+        "consequence": "The derived sizes and the proposed partition go to COOP for peer confirmation and nothing is written to the board. Nothing can be got wrong, and nothing moves either - peers have not answered this lane on the last two asks, and the 23 packets stay undispatched.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the only option that makes 'similar size' a measured property rather than a decoration: `effort-assign` turns each size into a declared, auditable board fact, and the roadmap already holds the evidence for all but a handful. Restricting to the four fully-onboarded actors costs one actor's share and removes the one way this write could strand work; B commits 23 irreversible cross-host writes on invented numbers, and C leaves your instruction unexecuted while the board stays exactly as stuck as it is."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Derive story sizes from roadmap effort text, declare each with effort-assign so the size is a board fact not an assumption, then partition over the four actors with both a calendar and a caps report; gavri is named in the COOP request as needing a caps report first"
     }
   }
 ]

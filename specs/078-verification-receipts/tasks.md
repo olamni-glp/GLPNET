@@ -139,19 +139,19 @@ surfaces loudly.
 and is the only runtime that cannot import the Python emitter, so it adopts FIRST — if the contract
 cannot be emitted from bash, that must surface before five Python areas are built against it.
 
-- [ ] T042 [US4] Implement the bash emitter (`receipt_start` / `receipt_examined` / `receipt_skip` / `receipt_emit`) in `gn:test/receipts/emit.sh` — writes the same document as the Python emitter, LF endings (block 46, FR-022)
-- [ ] T043 [US4] Implement harness-side assertions in `gn:test/receipts/assert.sh`
-- [ ] T044 [US4] Run the conformance vectors from bash and assert 7/7 parity with the Python emitter in `gn:test/receipts/assert.sh` (FR-024) — this is what keeps two emitters honest
+- [x] T042 [US4] Implement the bash emitter (`receipt_start` / `receipt_examined` / `receipt_skip` / `receipt_emit`) in `gn:test/receipts/emit.sh` — writes the same document as the Python emitter, LF endings (block 46, FR-022)
+- [x] T043 [US4] Implement harness-side assertions in `gn:test/receipts/assert.sh`
+- [x] T044 [US4] Run the conformance vectors from bash and assert 7/7 parity with the Python emitter in `gn:test/receipts/assert.sh` (FR-024) — this is what keeps two emitters honest
 - [x] T045 [US4] Emit per-section receipts keyed `(letter, slugified-title)` in `gn:test/run_all_tests.sh` — **NOT** by letter alone: `Section I` is declared twice, at lines 1653 and 2219, and letter-keying would make one receipt silently overwrite the other (research R3, register block 06)
 - [x] T046 [US4] Add the skip-guard fix in `gn:test/run_all_tests.sh` — an unsupported-platform skip is recorded as skipped with a reason, never `passed-by-skip` (instance 5)
 - [x] T047 [US4] Add a build-staleness check to Section U in `gn:test/run_all_tests.sh` — compare exe mtime against source and report `UNSEARCHABLE` on a stale binary rather than presenting a build defect as a feature defect (the 37h-stale-binary case)
-- [ ] T048 [P] [US4] Author the adoption manifest enumerating all six areas with state and date in `gn:.specify/receipts/adoption-manifest.json` (FR-017, FR-019)
-- [ ] T049 [P] [US4] Author the expected-checks manifest for the suite run in `gn:.specify/receipts/expected-checks.json` (FR-023)
+- [x] T048 [P] [US4] Author the adoption manifest enumerating all six areas with state and date in `gn:.specify/receipts/adoption-manifest.json` (FR-017, FR-019)
+- [x] T049 [P] [US4] Author the expected-checks manifest for the suite run in `gn:.specify/receipts/expected-checks.json` (FR-023)
 - [ ] T050 [US4] Retrofit `roadmap-sync` reconcile + import to emit receipts in `bk:src/buildkit_cli/roadmap/` (instances 4, 13)
 - [ ] T051 [P] [US4] Retrofit `buildkit-3rtask` `brief`/`record-output` to emit receipts in `bk:src/buildkit_cli/threerole/` (instance 3)
 - [ ] T052 [P] [US4] Retrofit `buildkit-codexreview` to emit a receipt carrying its findings count in `bk:src/buildkit_cli/codexreview/` (instances 1, 2)
 - [ ] T053 [P] [US4] Retrofit the COOP poll/cursor path to emit receipts distinguishing an unread mailbox from an empty one in `bk:src/buildkit_cli/colab/` (instance 8)
-- [ ] T054 [P] [US4] Retrofit the codeconv build gate to report `UNREAD` when it is compile-only (instance 6) in `gn:codeconv/src/codeconv/`
+- [x] T054 [P] [US4] Retrofit the codeconv build gate to report `UNREAD` when it is compile-only (instance 6) in `gn:codeconv/src/codeconv/`
 - [ ] T055 [US4] Implement the adoption report in `bk:src/buildkit_cli/receipts/manifest.py` — per-area coverage stated explicitly, **including every `not-adopted` area, reported as such and never omitted from the report**; an area absent from the manifest is an ERROR, printed as such (FR-017, FR-018, FR-020)
 
 **Checkpoint:** all 13 witnessed instances have both a fault injector and a retrofitted site.
@@ -165,7 +165,7 @@ cannot be emitted from bash, that must surface before five Python areas are buil
 - [ ] T058 [P] Measure SC-004: zero outcomes render `UNREAD`/`UNSEARCHABLE` as success, by fault injection across every check in scope, in `bk:tests/receipts/test_success_criteria.py`
 - [ ] T059 [P] Measure SC-005 and SC-006 in `bk:tests/receipts/test_success_criteria.py`
 - [ ] T060 Implement the SC-003 blind-reader harness over 20 samples drawn from REAL receipts in `bk:tests/receipts/test_blind_reader.py` — cadence per register block 50 (recommended per-release)
-- [ ] T061 [P] Document emit/consume/inject in `gn:specs/078-verification-receipts/quickstart.md` — verify every command in it actually runs (a quickstart that has never been executed is an unearned green)
+- [x] T061 [P] Document emit/consume/inject in `gn:specs/078-verification-receipts/quickstart.md` — verify every command in it actually runs (a quickstart that has never been executed is an unearned green)
 - [x] T062 Resolve register block 49 before merge — make `gn:specs/078-verification-receipts/plan.md`, `gn:.gitattributes` and `gn:.gitignore` agree on whether `.specify/receipts/` is tracked; they currently do not (plan says gitignored, the eol pin assumes tracked, and the path is in fact neither)
 
 ---
