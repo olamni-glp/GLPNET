@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [v2026.09.01.4] - 2026-09-01
+
+### Added
+- draft cross-ecosystem CPM CRDT schema and share it to 28 COOP channels - six kinds (pin, pin_history, proposal, decision, chain_point, violation) over nine ecosystems; GLP is the hardest case with NO version concept so version_scheme=none plus a content hash is first-class; C1-C7 inherited verbatim from BK-STD-3 plus two constraints earned from the takt lake (repo must be a declared slug refused at write if it is a path; every column TYPE pinned, not just its name)
+
+### Fixed
+- all 7 codexreview findings from run 20260901T110734Z - HIGH: absorb_receipts now loads+validates and refuses a tampered EMPTY receipt claiming 13 instances; a failing build gate can no longer emit PASS when tests fail but the compiler was silent; bash emitter gains the byte cap, refuses . and .. components, and propagates write failures. Plus Central Package Management adopted (engineer ruling): 3 packages were at 2 versions, 0 floating, 31/31 build clean
+
+### Changed
+- SESSION 14 CLOSE - 13 rulings, SC-001 case-keyed registry (6 of 6 glpnet instances, 7 buildkit UNREAD, PASS unreachable here by design), all 7 codexreview findings fixed incl. a tampered EMPTY receipt that could claim all 13, .NET 11 and CPM mandated fleet-wide, gate 561/559/2/0 measured not hypothesised
+- Merge remote-tracking branch 'origin/develop' into develop
+- rounds 63-64 - export 21 epics / 121 features; two new promoted features (cross-repo cross-host era takt CRDT, CPM-CRDT) both scored; dedupe 0 groups
+- glpnet contribution to the shared cross-repo cross-host design - 39 repo keys normalise to 15 REAL repos (62 pct are re-spellings, yngenios has 6), the lake is 98.1 pct unmeasurable (843 era rows, 16 measurable), glpnet's own 38 rows are 0 measurable, and the reason column TYPE drifts VARCHAR vs JSON so GROUP BY fails on file sort order
+- Merge pull request #263 from olamni-glp/main
+- Merge remote-tracking branch 'origin/develop' into develop
+- debrand speckit -> buildkit across 19 olamni tutorial files - cherry-picked from backup/upgrade/buildkit-migration (tidy-up T6, Q-GLPNETS14-13); the branch's .specify template refresh was DROPPED because develop's templates are 3 weeks newer and it would have regressed them
+
 ## [v2026.09.01.3] - 2026-09-01
 
 ### Added
