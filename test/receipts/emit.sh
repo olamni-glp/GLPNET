@@ -52,12 +52,28 @@ _RCPT_SKIPPED_N=0
 _RCPT_PROBLEMS=0
 _RCPT_TRUNC_ENUM=false
 _RCPT_TRUNC_DROPPED=0
+_RCPT_BYTE_CAPPED=""
 _RCPT_OVERRIDE=""
 
 # Contract constants. These MUST track codeconv/src/codeconv/receipts/bind.py;
 # the parity vectors in assert.sh fail loudly if they drift.
 RECEIPT_CONTRACT_VERSION="buildkit-draft-0"
 RECEIPT_MAX_ENUM=100
+RECEIPT_MAX_FIELD_BYTES=4096
+
+# Byte-backstop ONE field, recording that it was capped -- parity with the Python
+# emitter's `_cap_field`. Without this the bash emitter stored an over-long value
+# whole and recorded no truncation, so two emitters disagreed on the one contract
+# boundary no parity vector exercised (adversarial review 2026-09-01,
+# `enforce-the-field-size-cap-in-the-bash-emitter`).
+_rcpt_cap_field() {
+  _capped_value="$1"
+  _n=$(printf '%s' "$1" | wc -c)
+  if [ "$_n" -gt "$RECEIPT_MAX_FIELD_BYTES" ]; then
+    _capped_value=$(printf '%s' "$1" | cut -c1-"$RECEIPT_MAX_FIELD_BYTES")
+    _RCPT_BYTE_CAPPED="${_RCPT_BYTE_CAPPED}${_RCPT_BYTE_CAPPED:+$'\n'}$(printf '%.24s' "$1")…"
+  fi
+}
 
 receipt_start() {
   _RCPT_CHECK_ID="$1"
@@ -75,6 +91,7 @@ receipt_start() {
   _RCPT_PROBLEMS=0
   _RCPT_TRUNC_ENUM=false
   _RCPT_TRUNC_DROPPED=0
+  _RCPT_BYTE_CAPPED=""
   _RCPT_OVERRIDE=""
 }
 
@@ -89,7 +106,8 @@ _rcpt_json_escape() {
 receipt_examined() {
   _RCPT_EXAMINED_N=$(( _RCPT_EXAMINED_N + 1 ))
   if [ "$_RCPT_EXAMINED_N" -le "$RECEIPT_MAX_ENUM" ]; then
-    _RCPT_EXAMINED="${_RCPT_EXAMINED}${_RCPT_EXAMINED:+$'\n'}$1"
+    _rcpt_cap_field "$1"
+    _RCPT_EXAMINED="${_RCPT_EXAMINED}${_RCPT_EXAMINED:+$'\n'}$_capped_value"
   else
     _RCPT_TRUNC_ENUM=true
     _RCPT_TRUNC_DROPPED=$(( _RCPT_TRUNC_DROPPED + 1 ))
@@ -188,6 +206,16 @@ receipt_emit() {
   if [ -z "$_RCPT_AREA" ] || [ -z "$run_id" ] || [ -z "$_RCPT_CHECK_ID" ]; then
     echo "receipt: empty area/run/check id — refused (FR-022)" >&2; return 64
   fi
+  # '.' and '..' carry no separator but still escape the root: area='..' writes
+  # the receipt one level ABOVE the receipts root. The Python `_safe_component`
+  # refuses them explicitly; this did not, so the two emitters disagreed on
+  # containment (adversarial review 2026-09-01,
+  # `reject-dot-path-components-in-the-bash-emitter`).
+  for _comp in "$_RCPT_AREA" "$run_id" "$_RCPT_CHECK_ID"; do
+    case "$_comp" in
+      .|..) echo "receipt: '$_comp' is not a usable path component — refused (FR-022)" >&2; return 64 ;;
+    esac
+  done
 
   outcome="$(receipt_classify)"
   if ! receipt_validate "$outcome"; then return 65; fi
@@ -228,6 +256,16 @@ EOF
   fi
   target_json="$target_json}"
 
+  byte_capped_json=""
+  if [ -n "$_RCPT_BYTE_CAPPED" ]; then
+    while IFS= read -r _bc; do
+      [ -z "$_bc" ] && continue
+      byte_capped_json="${byte_capped_json}${byte_capped_json:+,}\"$(_rcpt_json_escape "$_bc")\""
+    done <<EOFBC
+$_RCPT_BYTE_CAPPED
+EOFBC
+  fi
+
   override_tail=""
   if [ -n "$_RCPT_OVERRIDE" ]; then override_tail=",
   \"override\": $_RCPT_OVERRIDE"; fi
@@ -246,11 +284,20 @@ EOF
   "skipped": [$skipped_json],
   "skipped_total": $_RCPT_SKIPPED_N,
   "examined": [$examined_json],
-  "truncated": {"enumerations": $_RCPT_TRUNC_ENUM, "dropped": $_RCPT_TRUNC_DROPPED, "byte_capped": []},
+  "truncated": {"enumerations": $_RCPT_TRUNC_ENUM, "dropped": $_RCPT_TRUNC_DROPPED, "byte_capped": [$byte_capped_json]},
   "ran_at": "$ran_at",
   "verdict_pointer": "$(_rcpt_json_escape "$out")"$override_tail
 }
 EOF
+EOF_STATUS=$?
+  # The heredoc redirection above can fail (read-only dir, full disk). Returning
+  # 0 regardless made the emitter report a receipt path for a receipt that was
+  # never written -- a check claiming evidence it does not have (adversarial
+  # review 2026-09-01, `propagate-bash-receipt-write-failures`).
+  if [ "$EOF_STATUS" -ne 0 ] || [ ! -s "$out" ]; then
+    echo "receipt $_RCPT_CHECK_ID: FAILED to write $out (status $EOF_STATUS)" >&2
+    return 67
+  fi
   printf '%s\n' "$out"
   return 0
 }

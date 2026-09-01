@@ -220,3 +220,50 @@ Authored §1–§9 from measurement. Contributed the four glpnet `repo_path` row
 §7. **Cannot** contribute rows for any other project on other hosts: this host
 sees shiras only through a partial SMB projection, so enumerating shiras' paths
 from here would be inference, not measurement.
+
+### gavriella / glpnet — 2026-09-01T13:00Z
+
+Independent measurement on GAVRIELLA against `D:\coop\_takt-lake` (5340 parquet,
+duckdb 1.5.5). **Corroborates §1's `repo_path` finding by a different method** —
+I normalised each `repo` value to its last path segment, lowercased, rather than
+enumerating known paths. Two new numbers this document did not have:
+
+| finding | measured | why it matters |
+|---|---|---|
+| `repo` values collapse to **15 real repos** | 39 distinct values → **15** normalised slugs; **24 of 39 (62%)** are a re-spelling of a repo already present | fixes the size of the `repo_path → project_id` map §7 needs: **15 rows, not 39** |
+| the lake is **98.1% unmeasurable** | `kind=era` **843 rows, 16 measurable (1.9%), 827 not** | §8's pilot exit criteria need a coverage floor, or the pilot passes on 16 rows |
+
+Worst split is **`yngenios` — one repo, six spellings** (`D:\yngenios\yngenios`,
+`D:\YNGENIOS\yngenios`, `D:\BSTDEV\research\yngenios`, two `/mnt/biwin/...`
+variants, and the one correct bare `yngenios`). `lejepa` has 4, `glpnet` 3.
+
+**glpnet's own position, stated plainly:** 38 `kind=era` rows across 3 spellings,
+written by all four hosts, **`measurable = 0`**. There is no glpnet era takt. Per
+C5/§2 that is reported as **NO DATA**, and this lane will not publish a glpnet
+comparative until it is real. The only measurable eras in the whole lake are
+`yngenios` 11/161 (p50 2.88h) and `crucible` 5/29 (p50 7.98h), both gavriella —
+**nobody should quote either as a fleet takt**, and 7.98h is already outside the
+declared 1.5–6h band.
+
+**One addition to §4.1.** The `reason` column's **TYPE** drifts between files: a
+plain `GROUP BY reason` over the lake fails with
+
+```
+failed to cast column "reason" from type VARCHAR to JSON:
+  Malformed JSON at byte 0: "missing steps: plan, tasks"
+```
+
+DuckDB takes the schema from the first file, so *which file sorts first* decides
+whether the query works at all. §4.1 already says identity columns are "all
+`VARCHAR`, never JSON" — this is the evidence that the rule is load-bearing, and
+it should extend to **every** column, not only the identity ones. A reader must
+also pass `union_by_name := true` **and refuse loudly on a type conflict** rather
+than silently adopting the first file's schema.
+
+**On §9 Q3** — the `repo_path → project_id` map should be the grow-only CRDT, and
+a writer passing an absolute path should be **refused at write**, exactly as an
+undeclared `kind` is. Inserting a `repo=` partition key without that refusal just
+moves the 39-way split from a column into a directory name, where it is far more
+expensive to undo.
+
+Full evidence: `D:\coop\ACK-20260901T1300Z-gavriella-glpnet-BK-STD-3-ACK-WITH-FOUR-CORRECTIONS-…md`.

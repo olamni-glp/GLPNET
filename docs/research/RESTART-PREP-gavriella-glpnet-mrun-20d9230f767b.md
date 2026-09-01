@@ -1680,3 +1680,152 @@ Root `mitem-01a0599d-1aa1` + `T1..T7`. **Survey measured by content, and it shra
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T21:30:00Z
+
+---
+
+# 🟢 SESSION 14 CLOSE — 2026-09-01T13:50Z · **13 RULINGS · SC-001 REGISTRY BUILT · 7/7 CODEXREVIEW FINDINGS FIXED · .NET 11 + CPM MANDATED FLEET-WIDE · GATE 561/559/2/0**
+
+🔴 **THIS SECTION SUPERSEDES EVERY SECTION ABOVE IT.** Same run `mrun-20d9230f767b`,
+lane `gavriella`, host `GAVRIELLA`, repo `GLPNET`, feature `078-verification-receipts`.
+
+## Resume in one line
+
+```
+resume marathon
+```
+= `buildkit-marathon resume --feature 078-verification-receipts`.
+🔴 `--feature` is mandatory (no `.specify/feature.json` here, by design).
+
+## State at close — every row measured this session
+
+| item | result |
+|---|---|
+| **engine pin** | ⭐ **2026.08.31.1, honoured, no override.** The old pin `2026.08.26.1` is **UNRUNNABLE on this host** — Windows Application Control blocks its entry point (`WinError 4551`). Ruled `Q-GLPNETS14-02`. |
+| **REPL gate** | 🟢 **561 total / 559 passed / 2 failed / 0 unsearchable** — the 2 are the known pre-existing Section T 064 drills. **No longer a hypothesis: measured today.** |
+| **codeconv suite** | 807 passed / 2 failed → both diagnosed; 1 was the `DOTNET_ROOT` trap (now passes), 1 is a **stale golden = open feature 083** |
+| **roadmap** | 21 epics · **121 features** · **26 not-closed**, renderer count == fold count (the wave-22 dropped-row defect is **fixed**) |
+| **078 tasks** | ⭐ **glpnet-side 11 of 11 complete.** The other 55 are `bk:` → buildkit successor (`Q-GLPNETS12-02`) |
+| **discharge gate** | **9 of 11 satisfied** (was 5). The 2 open are deliberate — see below |
+| **branches** | local 12 → **3** (083, develop, main); remote unmerged **5 → 2** (059, 083). **Worktrees: exactly 1**, the main checkout |
+| **.NET** | ⭐ **31/31 tracked projects on `net11.0`, 0 non-compliant** |
+| **CPM** | ⭐ **adopted** — `Directory.Packages.props`, 13 packages / 55 refs, **31/31 build clean** |
+
+## ⭐ THE HEADLINE — SC-001 WAS AN ANONYMOUS TALLY, AND NOW IT CANNOT BE
+
+`codeconv/tests/faultinj` was **51/51 green while naming only 2 of 13 instances**. Built
+`instances.py`: all 13 declared, case-keyed, each registering only by running. **6 of 6
+glpnet-owned instances now examined** (2, 5, 6, 7, 9, 12 — 5 and 7 via the new bash emitter's
+receipt); **7 buildkit-owned read UNREAD with a named surface each**.
+
+🔴 **`sc001_receipt()` CANNOT RETURN PASS FROM THIS REPO. That is the design, not a defect**
+(`Q-GLPNETS14-01`). 79 tests, each naming the mutation it kills.
+
+## 🔴 THE ADVERSARIAL REVIEW FOUND MY OWN FIX GUILTY OF 078's OWN DEFECT
+
+Run `20260901T110734Z`, **7 findings, 3 HIGH — all fixed**. The sharpest:
+
+> **A hand-written `EMPTY` receipt could claim all 13 instances and make SC-001 PASS.**
+> `EMPTY.is_successful` is `True`, and the first `absorb_receipts` trusted any JSON under the
+> run dir. A file *anybody could write* turned the coverage mechanism green.
+
+Now: load + validate, `run_id` match, filename↔`check_id` match, successful outcome, **and
+`examined_count >= len(claims)`** — a receipt that examined nothing cannot have demonstrated an
+injection. Also fixed: a **failing** build gate emitted **PASS** when tests failed but the
+compiler was silent (`errors` holds compiler diagnostics only); the bash emitter lacked the byte
+cap, accepted `.`/`..` (path escape), and swallowed write failures.
+
+⭐ **Two of my own tests then failed — because they encoded the WEAK behaviour.** Rewrote them
+and added the tampered-receipt regression. **A test that fails when you harden the code was
+testing the hole.**
+
+## ⚖️ THE 13 RULINGS (all recommendations accepted; ledger 110 rows)
+
+`Q-GLPNETS14-01..11` plus four mid-session directives `Q-GLPNETS14D-01..04`.
+
+| id | ruling |
+|---|---|
+| 01 | SC-001 keeps 13; buildkit-owned read UNREAD, never green |
+| 02 | Keep pin 2026.08.31.1; the old pin is unrunnable here |
+| 03 | Defer the release cut to session end — **now eligible: 2 feat/fix since `v2026.09.01.3`** |
+| 04 | **SELF-CORRECTED**: 096's pins were already on develop in a *better* form; deleted, not cherry-picked |
+| 05 | Merged 098 (4 peer rulings) by **UNION, 0 dropped from either side** |
+| 06 / 11 | Board: sizes **derived** from roadmap effort, partition over the 4 fully-onboarded actors |
+| 07 | **BK-STD-2 wins** the question-tool fork; the local tool is reduced to a ledger shim |
+| 08 | 085 survives; 2 duplicate onrestart rows superseded |
+| 09 | Ledger erasure: correcting row **and** fold guard |
+| 10 | Era = 078's gate + tidy-up T1–T7 |
+| 13 | T6: cherry-pick the tutorial debranding, drop the stale templates, delete the branch |
+| D-01 | ⭐ **ALL FUTURE ERAS ARE SINGLE-FEATURE**, closing with ship + close + tidy-up |
+| D-02 | Publish cross-repo cross-host era takt via DuckLake; converge a CRDT schema first |
+| D-03/04 | ⭐ **.NET 11 mandatory fleet-wide**; **CPM mandatory fleet-wide**; draft a CPM-CRDT |
+
+## 🔴 FIVE THINGS I GOT WRONG AND CORRECTED BY MEASUREMENT
+
+1. **Ran `buildkit-deploy latest`** which the doc forbids — *before* reading the constraint. The
+   old pin turned out unrunnable, so it was the right repair for the wrong reason. Disclosed.
+2. **Q-14-04's premise was false.** develop already had the .NET 11 / C# 15 pins in a **better**
+   form (`.targets` not `.props`, `rollForward: latestPatch`). The cherry-pick conflicted on 15
+   csproj **because HEAD was AHEAD**. Re-put the question corrected.
+3. **Created 4 duplicate gleam features** on `Q-GLPNETS12-03`'s premise — matching features
+   already existed for all five spec dirs. Superseded all 4.
+4. **Hand-folded the scheduler board and got a different answer than the tool.** The tool is the
+   authority. Discarded mine. *Never hand-fold a CRDT board.*
+5. **A naive regex derived `maxi` for a `saga`** by matching a stray `l` in the prose
+   "marathon (multi-session…)". Caught **before** any board write.
+
+## ⭐ THE ROADMAP'S 6 "UNBOUND IDS" ARE FINISHED WORK — Q-GLPNETS11-02 CLOSES
+
+Carried for weeks as an engineer-owed block. **All six resolve to CLOSED features** (050 has no
+catalog row at all — archived under `Q-GLPNETS1-04`). `link` **refuses a closed feature by
+design**, so they can never bind and never need to. The number is a reporting artifact over
+completed work, not a backlog.
+
+## 🔴 THE TAKT LAKE CANNOT ANSWER THE ENGINEER'S QUESTION, AND HERE IS EXACTLY WHY
+
+`repo` **is** a column (BK-STD-3 §0.1 is too strong) — but it holds a **host-local absolute
+path**. `WHERE repo='glpnet'` returns **zero rows**. **39 distinct keys denote 15 real repos**;
+62% are re-spellings; `yngenios` alone has **six**. The lake is **98.1% unmeasurable**
+(843 era rows, 16 measurable) and **glpnet's own 38 rows are 0 measurable — there is no glpnet
+era takt at all.** Reported as NO DATA, never 0.0h. Also: the `reason` column's **TYPE** drifts
+VARCHAR/JSON so `GROUP BY reason` fails on file sort order.
+
+## 🔴 THE BOARD: `allocate` CANNOT DELIVER A PARTITION HERE
+
+All 22 free packets refuse with *"already allocated to 'unassigned'"* — R-AW reads the pool as a
+real allocation. **This lane's own 20260827T0225Z P0, reproduced on a second board.** The route
+that works is **per-host `bk-flow claim`**, so the partition was published as a claim plan
+(256 pts, 4 actors, **spread 4 pts**, sizes derived not assumed). Also measured:
+`capability_gate_inert` — **no packet declares a `required_capability`, so `missing_capability=0`
+is UNMEASURED, not clear**; and **1 of 32 packets resolves to a feature**.
+
+## 🔴 WHAT'S NEXT — IN THIS ORDER
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **Cut the release.** 2 feat/fix since `v2026.09.01.3`, codexreview run, gate 561/559/2/0 | **eligible now** |
+| 2 | **First SINGLE-FEATURE era** (`Q-GLPNETS14D-01`). Claim ONE packet from gavriella's bundle | ruled, unblocked |
+| 3 | Gather ACKs on **CPM-CRDT** (28 channels) and converge to the unanimous superset | waiting on peers |
+| 4 | 083 → codexreview → ship (it owns the one remaining codeconv failure: a stale golden) | unblocked |
+| 5 | 059 as its own era (`Q-GLPNETS13C-03`) | unblocked |
+| 6 | The 10 carried codeconv findings plus 4 round-2 078 MEDIUMs | unblocked |
+
+**Do NOT start:** `/bk-clarify 082` (evicts 078 from the active slot).
+
+## STANDING CONSTRAINTS — ADDITIONS THIS ROUND
+
+- 🔴 **The pin is now 2026.08.31.1.** The old "pin 2026.08.26.1 / never run `deploy latest`"
+  constraint is **struck as measured-false on this host** — that pin cannot execute at all.
+- 🔴 **`allocate` is unusable for pool-addressed packets. Claim, never allocate.**
+- 🔴 **Never hand-fold the scheduler board.** Use `wp-conditions.json` or `bk-flow poll`.
+- 🔴 **`DOTNET_ROOT` must be set in every shell that runs tests** — without it a subprocess
+  fails with *"To install missing framework"* naming whatever version the project targets. That
+  is an ENVIRONMENT fault; migrating the target only changes which version the message names.
+- 🔴 **A ruling's PREMISE can be stale even when the ruling is right.** Three times this session
+  a ruling assumed something measurement refuted. **Re-measure before executing a ruling written
+  in an earlier session.**
+- ⚠️ `bk_report_v1` STATUS/TAKT return **UNAVAILABLE under lock contention — that is correct
+  output**. Retry the section; never reap the holder.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-09-01T13:50:00Z
