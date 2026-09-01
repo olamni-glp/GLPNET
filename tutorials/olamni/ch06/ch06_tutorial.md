@@ -10,7 +10,7 @@ sentence ("This chapter presents advanced GLP programming techniques that
 build on the moded type system introduced in Chapter 5."), and the five §6.x
 section headings.  No body text and no native Programs.
 
-Per `/speckit-clarify` Q1 (recorded in `specs/007-tutorial-ch06/spec.md`),
+Per `/buildkit-clarify` Q1 (recorded in `specs/007-tutorial-ch06/spec.md`),
 the chapter's tutorial content is **synthesised from chapters 1–5**: each
 §6.x section is matched to the closest related Program already established
 in earlier chapters of the book and re-presented under the §6.x banner with
@@ -90,7 +90,7 @@ gate is a meaningful independent decision.
 - `ch06-sources.md` — chapter 6 PDF code-block index (currently empty
   because the chapter is a stub; documents the stub state).
 - `ch06-specification-input-prompt.md` — plain-prose description of the
-  synthesis approach (rev-eng input to `/speckit-specify`).
+  synthesis approach (rev-eng input to `/buildkit-specify`).
 - `spec-rev-eng-input/ch06-DEPRECATED-spec.md` — quarantined reverse-
   engineering input only; superseded by `specs/007-tutorial-ch06/spec.md`
   + the artefacts in this directory.

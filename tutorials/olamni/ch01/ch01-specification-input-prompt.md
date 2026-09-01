@@ -1,6 +1,6 @@
 # Chapter 1 — specification input prompt
 
-This file is the plain-prose description of what the chapter-1 tutorial must deliver. It is the input you would feed to `/speckit-specify` (or paraphrase to a human implementer) to drive the production of `specs/002-tutorial-ch01/spec.md`. **It deliberately contains no speckit ceremony**: no Feature Branch, no Status, no Constitution headers, no FR-NNN forms, no User Story / Given-When-Then forms. Those are the speckit tool's job to produce; this file's job is to describe what the chapter needs in language a human or an LLM can act on.
+This file is the plain-prose description of what the chapter-1 tutorial must deliver. It is the input you would feed to `/buildkit-specify` (or paraphrase to a human implementer) to drive the production of `specs/002-tutorial-ch01/spec.md`. **It deliberately contains no buildkit ceremony**: no Feature Branch, no Status, no Constitution headers, no FR-NNN forms, no User Story / Given-When-Then forms. Those are the buildkit tool's job to produce; this file's job is to describe what the chapter needs in language a human or an LLM can act on.
 
 ## What the chapter delivers
 
@@ -57,4 +57,4 @@ End-of-chapter exercises from the book (chapter 1 has none). The Formal 1.1 box 
 
 ## What is NOT this file
 
-This file is **not** the speckit feature spec. The feature spec lives at `specs/002-tutorial-ch01/spec.md` and is produced by `/speckit-specify` from this prompt. The two are separate artifacts on purpose: this prompt strips speckit ceremony so it can be written and read in plain language; the spec is the formalised, FR-numbered, user-story-shaped artifact that the rest of the speckit pipeline (`/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`) consumes.
+This file is **not** the buildkit feature spec. The feature spec lives at `specs/002-tutorial-ch01/spec.md` and is produced by `/buildkit-specify` from this prompt. The two are separate artifacts on purpose: this prompt strips buildkit ceremony so it can be written and read in plain language; the spec is the formalised, FR-numbered, user-story-shaped artifact that the rest of the buildkit pipeline (`/buildkit-clarify`, `/buildkit-plan`, `/buildkit-tasks`, `/buildkit-implement`) consumes.

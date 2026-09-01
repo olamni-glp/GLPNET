@@ -1,6 +1,6 @@
 # Chapter 4 — specification input prompt
 
-This file is the plain-prose description of what the chapter-4 tutorial must deliver. It is the input you would feed to `/speckit-specify` (or paraphrase to a human implementer) to drive the production of `specs/005-tutorial-ch04/spec.md`. **It deliberately contains no speckit ceremony**: no Feature Branch, no Status, no Input header, no Constitution header, no Tutorial Mode header, no Clarifications block, no User Story / Priority / Independent Test / Acceptance Scenarios forms, no FR-NNN forms, no Given-When-Then phrasing. Those are the speckit pipeline's job to produce; this file's job is to describe what the chapter needs in language a human or an LLM can act on.
+This file is the plain-prose description of what the chapter-4 tutorial must deliver. It is the input you would feed to `/buildkit-specify` (or paraphrase to a human implementer) to drive the production of `specs/005-tutorial-ch04/spec.md`. **It deliberately contains no buildkit ceremony**: no Feature Branch, no Status, no Input header, no Constitution header, no Tutorial Mode header, no Clarifications block, no User Story / Priority / Independent Test / Acceptance Scenarios forms, no FR-NNN forms, no Given-When-Then phrasing. Those are the buildkit pipeline's job to produce; this file's job is to describe what the chapter needs in language a human or an LLM can act on.
 
 ## What the chapter delivers
 
@@ -17,7 +17,7 @@ The chapter is **REPL-only** per charter §1 (chapters 1–6 are REPL-only). No 
 
 The chapter's volume — approximately 38 substantial code blocks — cannot be presented as one-Program-per-exercise (which would produce 30+ exercises far above the project-owner-mandated maximum of 12). The implementing session MUST aggregate multiple Programs per exercise, grouping by **pedagogical sub-section family**, into a count of **no less than 6 and no more than 12 exercises** (project-owner directive).
 
-The recommended target is **10 exercises** (Option A in the candidate set below). The implementing session is free to propose 8 or 12 if a strong pedagogical reason supports the alternative; the project owner approves the final count during /speckit-clarify.
+The recommended target is **10 exercises** (Option A in the candidate set below). The implementing session is free to propose 8 or 12 if a strong pedagogical reason supports the alternative; the project owner approves the final count during /buildkit-clarify.
 
 ### Grouping selection criteria
 
@@ -29,9 +29,9 @@ Every candidate grouping MUST satisfy:
 4. **Approval gates at sub-section boundaries** — see "Approval gates" section below. The grouping MUST allow gates to land cleanly at §4.1→§4.2, §4.2→§4.3, §4.3→§4.4 transitions; no exercise straddles a sub-section boundary.
 5. **Per-exercise file count ≤ 2** — by default ONE `.glp` per exercise; up to TWO when a deliberate contrast or compose-pair (analogous to ch02 ex-01's classical-LP/GLP pair or ch03 ex-01's Program 3.1 + producer/consumer) genuinely needs the second file.
 
-### Candidate set (Q3=B per project owner; /speckit-clarify locks one)
+### Candidate set (Q3=B per project owner; /buildkit-clarify locks one)
 
-The implementing session proposes one of the following groupings during /speckit-plan; the project owner approves the final selection during /speckit-clarify with the locked exercise list recorded in `spec.md` Clarifications.
+The implementing session proposes one of the following groupings during /buildkit-plan; the project owner approves the final selection during /buildkit-clarify with the locked exercise list recorded in `spec.md` Clarifications.
 
 **Option A — 10 exercises (recommended)**:
 
@@ -65,7 +65,7 @@ Same as A but compress:
 
 Option C is for the project owner who wants the §4.1 + §4.2 sections to dominate the chapter's pedagogical weight. Recommended only if §4.3 + §4.4 are judged secondary (which they shouldn't be for a chapter titled "Basic Concurrent Programming," but the option is documented for completeness).
 
-The implementing session's recommendation during /speckit-plan: **Option A (10 exercises)**. /speckit-clarify locks the chosen option as Q1.
+The implementing session's recommendation during /buildkit-plan: **Option A (10 exercises)**. /buildkit-clarify locks the chosen option as Q1.
 
 ## Approval gates (group-boundary, per project owner Q2=B)
 
@@ -75,11 +75,11 @@ Per the project owner's Q2=B directive, ch04 uses **group-boundary approval gate
 2. **§4.2 → §4.3 gate** — ALL §4.2 exercises (ex-03 through ex-06 in Option A; ex-03 through ex-07 in Option B; ex-03 through ex-06 in Option C) MUST be approved before ANY §4.3 exercise begins.
 3. **§4.3 → §4.4 gate** — ALL §4.3 exercises (ex-07 + ex-08 in Option A; ex-08 + ex-09 in Option B; ex-07 in Option C) MUST be approved before ANY §4.4 exercise begins.
 
-Within a group, exercises are implemented in order but DO NOT require pairwise approval gates between them — the implementer may write all §4.1 exercises (ex-01 + ex-02) before pausing for the project owner's group review. The plan-then-act discipline of FR-013 still applies within a group: each exercise's `.glp` shape, primary goal, and inspection-goal selection are presented to the project owner at /speckit-implement T006/T007-equivalent before the corresponding files are written. What changes from ch01–ch03 is only the formal status-block-flip-then-continue cycle — a status flip per exercise is replaced by a status flip for the entire group at the gate boundary.
+Within a group, exercises are implemented in order but DO NOT require pairwise approval gates between them — the implementer may write all §4.1 exercises (ex-01 + ex-02) before pausing for the project owner's group review. The plan-then-act discipline of FR-013 still applies within a group: each exercise's `.glp` shape, primary goal, and inspection-goal selection are presented to the project owner at /buildkit-implement T006/T007-equivalent before the corresponding files are written. What changes from ch01–ch03 is only the formal status-block-flip-then-continue cycle — a status flip per exercise is replaced by a status flip for the entire group at the gate boundary.
 
-The status block in `ch04_tutorial.md` therefore EITHER carries one line per exercise (10–12 lines) WITH explicit notes that within-group exercises don't gate each other, OR carries one line per group (4 group lines). The implementing session decides during /speckit-plan; the project owner approves the chosen format.
+The status block in `ch04_tutorial.md` therefore EITHER carries one line per exercise (10–12 lines) WITH explicit notes that within-group exercises don't gate each other, OR carries one line per group (4 group lines). The implementing session decides during /buildkit-plan; the project owner approves the chosen format.
 
-This grouped-gate pattern is **new for ch04**; ch01–ch03's pairwise gates are NOT inherited unchanged. The /speckit-clarify session may amend this if the project owner prefers strict pairwise gates after seeing the implementation cost; the current spec inherits Q2=B.
+This grouped-gate pattern is **new for ch04**; ch01–ch03's pairwise gates are NOT inherited unchanged. The /buildkit-clarify session may amend this if the project owner prefers strict pairwise gates after seeing the implementation cost; the current spec inherits Q2=B.
 
 ## Files to produce
 
@@ -99,7 +99,7 @@ Plus, the top-level `olamni/tutorial/tutorial.md` is updated incrementally: chap
 
 ## Source provenance — what comes from where
 
-The implementing session MUST re-read every PDF code block byte-exactly during /speckit-implement (per the ch01 / ch02 / ch03 lesson — `chXX-sources.md` files have been observed to drift by single characters from the PDF; the byte-exact re-read catches that drift before it propagates into the `.glp` files). For ch04 specifically, the byte-exact re-reads are extensive given the volume; the implementing session should plan time for this.
+The implementing session MUST re-read every PDF code block byte-exactly during /buildkit-implement (per the ch01 / ch02 / ch03 lesson — `chXX-sources.md` files have been observed to drift by single characters from the PDF; the byte-exact re-read catches that drift before it propagates into the `.glp` files). For ch04 specifically, the byte-exact re-reads are extensive given the volume; the implementing session should plan time for this.
 
 | Source | PDF page range | Book page range | Section | Code blocks |
 |---|---|---|---|---|
@@ -110,7 +110,7 @@ The implementing session MUST re-read every PDF code block byte-exactly during /
 | Formal 4.1 | p 41 | p 29 | §4.1 | Produces and Consumes Parameters table — referenced in ex-02 header comments + tutorial; not encoded as code |
 | Formal 4.2 | p 43 | p 31 | §4.2 | SRSW in Continuation Calls — already cited in ch03 R-007 + Q4; referenced in ex-03 header to remind learners; not encoded as code |
 | Formal 4.3 | p 47–48 | p 35–36 | §4.2 | Which Guards Enable Multiple Reader Occurrences — referenced in ex-05 / ex-06 trace annotations where multi-reader guards appear; not encoded as code |
-| `ch04-sources.md` | — | — | (existing) | The PDF code-block index — committed in `592d89e3`; should be sanity-checked against PDF byte-exact during /speckit-implement (not authoritative). |
+| `ch04-sources.md` | — | — | (existing) | The PDF code-block index — committed in `592d89e3`; should be sanity-checked against PDF byte-exact during /buildkit-implement (not authoritative). |
 
 ## Cross-chapter inversion — producer/consumer
 
@@ -124,16 +124,16 @@ The chapter signpost `ch04_tutorial.md` MUST document this inversion in plain pr
 
 Each exercise has:
 
-- **One primary demo goal** — a top-level GLP goal that exercises the exercise's main Program(s). Empirically verified during /speckit-implement; mismatch is halt-and-report per ch03 FR-013 (no silent spec rewrite).
-- **Three inspection goals** — exercises different clauses or different sub-Programs within the exercise, chosen during /speckit-plan T006-equivalent with project-owner approval. The four-goal session (primary + three inspection) MUST collectively exercise every clause of every Program in the exercise's `.glp`.
-- **Locked binding** for the primary goal AND each inspection goal — proposed during /speckit-clarify or /speckit-plan; verified empirically during /speckit-implement.
+- **One primary demo goal** — a top-level GLP goal that exercises the exercise's main Program(s). Empirically verified during /buildkit-implement; mismatch is halt-and-report per ch03 FR-013 (no silent spec rewrite).
+- **Three inspection goals** — exercises different clauses or different sub-Programs within the exercise, chosen during /buildkit-plan T006-equivalent with project-owner approval. The four-goal session (primary + three inspection) MUST collectively exercise every clause of every Program in the exercise's `.glp`.
+- **Locked binding** for the primary goal AND each inspection goal — proposed during /buildkit-clarify or /buildkit-plan; verified empirically during /buildkit-implement.
 - **Strict trace byte-equality contract** modulo REPL banner / build wallclock lines (per ch03 FR-014). No per-run-variation relaxation in ch04 — chapter 4 introduces no new wallclock-derived output (`now/1` and `'_output'/1` are ch02 territory and explicitly NOT exercised in ch04 tutorial code; the Programs that COULD use them in book §4.2 / §4.3 / §4.4 don't, because the book's examples don't need timing or I/O).
 
 ## Literal-source mandate
 
 Per the project owner's directive, ch04's source code MUST be transcribed **literally and unsummarised** from the PDF. This means:
 
-1. **Byte-exact code corpus** — every clause of every Program in every exercise's `.glp` file MUST be byte-identical to the corresponding PDF source block. The /speckit-implement verification subtask compares the file's clause text (after stripping the header comment block and the per-clause `%%` paraphrase comments per `contracts/glp-file-format.md` rule 7) against the byte-exact PDF transcription.
+1. **Byte-exact code corpus** — every clause of every Program in every exercise's `.glp` file MUST be byte-identical to the corresponding PDF source block. The /buildkit-implement verification subtask compares the file's clause text (after stripping the header comment block and the per-clause `%%` paraphrase comments per `contracts/glp-file-format.md` rule 7) against the byte-exact PDF transcription.
 2. **No code summarisation, simplification, or "cleaning up"** — even if a Program's PDF form has unusual whitespace, variable naming, or clause ordering, the `.glp` file matches it exactly. If a PDF transcription appears to have a typo or SRSW issue, the implementing session HALTS per FR-013 and proposes a Clarifications amendment per the ch02 Q3a / ch03 Q4 precedents — never silently corrects.
 3. **`%%` paraphrase comments are IN ADDITION to literal code, not REPLACING it** — charter §1.5 mandates one `%%` paraphrase comment per clause. This is the chapter-tutorial standard; the literal-source mandate adds no new constraint here.
 4. **Header comment block** — each `.glp` file MUST have a header comment block summarising what the file does, citing the PDF source, and noting any relevant Formal box. Multi-Program exercises (which is most of ch04) carry one header block at the top of the file plus per-Program sub-headers as needed.
@@ -150,11 +150,11 @@ The `--define=GLP_BUILD_COMMIT=...` flag is required after the build-provenance 
 
 Per CLAUDE.md "Known REPL Limitations" section:
 
-1. **Structs in lists in REPL goals** — the REPL parser cannot parse compound terms (structs) inside lists in goal arguments. Example: `distribute_indexed([send(1,a), send(2,b)], Y, Z).` fails with "Unsupported list head type: StructTerm." This affects ex-05 (Option A) which contains §4.2.9 `distribute_indexed/3`. The implementing session has three options at /speckit-plan T006-equivalent: (a) choose primary + inspection goals that AVOID structs-in-lists (e.g., `distribute_indexed([], Y, Z).` for the empty-list base case + simulate the recursive case via construction goals); (b) document the parser limitation in the trace as a known caveat and use simpler goal shapes; (c) propose a Clarifications amendment to defer §4.2.9 to a later branch when the parser is fixed. Option (a) or (b) preferred; (c) only if (a) and (b) cannot produce a meaningful 4-goal session.
-2. **`=..` in clause bodies** — the parser does not yet recognise `=..` (univ operator) as a valid goal in clause BODIES; it only works in clause HEADS. This affects ex-08 (Option A) which contains §4.3.11 `distribute_ng/3` + `copy/3` + `copy_list/3` (which use `=..`). The implementing session checks this empirically during /speckit-implement; if `=..` is body-rejected, halt and propose either (a) goal shape that exercises only the HEAD-position usage; (b) document the limitation and skip the affected sub-Program; (c) Clarifications amendment to defer.
-3. **Other limitations** — the implementing session checks CLAUDE.md "Known REPL Limitations" section freshly at /speckit-implement T001-equivalent and updates the chapter spec if any new limitations are found that affect ch04's planned goals.
+1. **Structs in lists in REPL goals** — the REPL parser cannot parse compound terms (structs) inside lists in goal arguments. Example: `distribute_indexed([send(1,a), send(2,b)], Y, Z).` fails with "Unsupported list head type: StructTerm." This affects ex-05 (Option A) which contains §4.2.9 `distribute_indexed/3`. The implementing session has three options at /buildkit-plan T006-equivalent: (a) choose primary + inspection goals that AVOID structs-in-lists (e.g., `distribute_indexed([], Y, Z).` for the empty-list base case + simulate the recursive case via construction goals); (b) document the parser limitation in the trace as a known caveat and use simpler goal shapes; (c) propose a Clarifications amendment to defer §4.2.9 to a later branch when the parser is fixed. Option (a) or (b) preferred; (c) only if (a) and (b) cannot produce a meaningful 4-goal session.
+2. **`=..` in clause bodies** — the parser does not yet recognise `=..` (univ operator) as a valid goal in clause BODIES; it only works in clause HEADS. This affects ex-08 (Option A) which contains §4.3.11 `distribute_ng/3` + `copy/3` + `copy_list/3` (which use `=..`). The implementing session checks this empirically during /buildkit-implement; if `=..` is body-rejected, halt and propose either (a) goal shape that exercises only the HEAD-position usage; (b) document the limitation and skip the affected sub-Program; (c) Clarifications amendment to defer.
+3. **Other limitations** — the implementing session checks CLAUDE.md "Known REPL Limitations" section freshly at /buildkit-implement T001-equivalent and updates the chapter spec if any new limitations are found that affect ch04's planned goals.
 
-These limitations were not anticipated for ch01 (one Program, none affected), ch02 (append-only, none affected), or ch03 (small §3.2 idioms, none affected). ch04 is the first chapter where they materially matter. The /speckit-clarify session may probe this as Q-N if the project owner wants a specific resolution locked before /speckit-plan.
+These limitations were not anticipated for ch01 (one Program, none affected), ch02 (append-only, none affected), or ch03 (small §3.2 idioms, none affected). ch04 is the first chapter where they materially matter. The /buildkit-clarify session may probe this as Q-N if the project owner wants a specific resolution locked before /buildkit-plan.
 
 ## Charter alignment
 
@@ -173,24 +173,24 @@ No cross-chapter imports are required for ch04 (it has its own native content). 
 - Cross-chapter imports beyond the natural inversion (ch04 reclaims `producer/2` + `consumer/3` as native; it does NOT import from chapters 5+ or from elsewhere).
 - Body kernels NOT used by the byte-exact PDF Programs in scope — `now/1` and `'_output'/1` (ch02 territory) are NOT used by any §4.1 / §4.2 / §4.3 / §4.4 Program in the PDF, so they remain entirely out of scope for ch04. The `:=` arithmetic operator (also ch02 territory) IS used extensively in §4.2's `producer/2` recursive clause + `consumer/3` recursive clause + §4.3's arithmetic Programs; per ch03 FR-015 amendment precedent, `:=` is permitted in ch04 in any byte-exact PDF clause that uses it.
 - Parser-limited goal forms (per "Known runtime limitations" above) — handled via the per-exercise resolution pattern; not entirely excluded but may be partially demonstrated.
-- The polluted speckit-output `ch04-DEPRECATED-spec.md` — used as reverse-engineering INPUT only; its content is superseded by this prompt and by whatever `/speckit-specify` produces from it.
+- The polluted buildkit-output `ch04-DEPRECATED-spec.md` — used as reverse-engineering INPUT only; its content is superseded by this prompt and by whatever `/buildkit-specify` produces from it.
 - Any chapter beyond 4. Chapter 5+ uses types and modes which are NOT introduced in ch04.
 
 ## What is NOT this file
 
-This file is **not** the speckit feature spec. The feature spec lives at `specs/005-tutorial-ch04/spec.md` and is produced by `/speckit-specify` from this prompt. The two are separate artifacts on purpose: this prompt strips speckit ceremony so it can be written and read in plain language; the spec is the formalised, FR-numbered, user-story-shaped artifact that the rest of the speckit pipeline (`/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`) consumes.
+This file is **not** the buildkit feature spec. The feature spec lives at `specs/005-tutorial-ch04/spec.md` and is produced by `/buildkit-specify` from this prompt. The two are separate artifacts on purpose: this prompt strips buildkit ceremony so it can be written and read in plain language; the spec is the formalised, FR-numbered, user-story-shaped artifact that the rest of the buildkit pipeline (`/buildkit-clarify`, `/buildkit-plan`, `/buildkit-tasks`, `/buildkit-implement`) consumes.
 
 ## Revisions of `ch04-DEPRECATED-spec.md` baked into this prompt
 
 The deprecated spec at `olamni/tutorial/ch04/spec-rev-eng-input/ch04-DEPRECATED-spec.md` is the rev-eng input. Material differences this prompt makes:
 
-- **DEPRECATED**: speckit-output ceremony (Feature Branch / Created / Status / Input / Constitution / Tutorial Mode headers; Clarifications block; User Story 1..8 with Priority + Independent Test + Acceptance Scenarios; FR-001..FR-007). **THIS PROMPT**: plain prose, no ceremony. Reason: this file is the input to `/speckit-specify`, not its output. The speckit-output spec is downstream.
+- **DEPRECATED**: buildkit-output ceremony (Feature Branch / Created / Status / Input / Constitution / Tutorial Mode headers; Clarifications block; User Story 1..8 with Priority + Independent Test + Acceptance Scenarios; FR-001..FR-007). **THIS PROMPT**: plain prose, no ceremony. Reason: this file is the input to `/buildkit-specify`, not its output. The buildkit-output spec is downstream.
 - **DEPRECATED**: "one `.glp` file per substantial Program" (FR-001) implying ~37 files (≤6 §4.1 + ≤15 §4.2 + ≤12 §4.3 + ≤4 §4.4). **THIS PROMPT**: 10–12 exercises with multi-Program-per-exercise grouping by sub-section family per project owner directive. Reason: ~37 files exceeds the 6–12 mandate; multi-Program grouping with sub-section coherence respects both the volume constraint and the chapter's pedagogical structure.
 - **DEPRECATED**: shared `useful-techniques.glp` helpers file collecting `producer`, `consumer`, `merge`, `copy` (FR-002). **THIS PROMPT**: per-exercise self-containment per ch02 Q2 + ch03 R-009 precedent. Each exercise duplicates whatever helpers it needs inline; no shared cross-exercise file. Reason: maintains the SRSW-analyser-sees-one-program-at-a-time discipline; each exercise's REPL session is reproducible standalone; consistent with ch01 / ch02 / ch03 patterns; the duplication is small per exercise (typically 2–4 clauses) and pedagogically zero-cost (each exercise's `%%` paraphrase comments contextualise the duplicated procedures in that exercise's theme).
-- **DEPRECATED**: pairwise approval gate per User Story (8 stories ⇒ 7 pairwise gates implied by the speckit-output approval-state convention). **THIS PROMPT**: group-boundary gates per project owner Q2=B directive. 3 gates total (§4.1→§4.2, §4.2→§4.3, §4.3→§4.4). Reason: ch04's pedagogy is breadth-first within a sub-section, not progressive amplification across exercises (which is the ch01–ch03 axis that justified pairwise gates); group-boundary gates accelerate the implement phase without sacrificing the project-owner-approval contract at meaningful boundaries.
-- **DEPRECATED**: priorities P1/P2/P3 across User Stories. **THIS PROMPT**: priorities are a `/speckit-specify` derived value; not pre-encoded here. /speckit-specify assigns priorities based on group structure (§4.1 + §4.2 likely P1 as the chapter's foundational content; §4.3 + §4.4 likely P2 as amplifications).
-- **DEPRECATED**: tutorial-mode `cohesive-synthesis` header. **THIS PROMPT**: tutorial mode is a `/speckit-specify` derived value, not pre-encoded here.
+- **DEPRECATED**: pairwise approval gate per User Story (8 stories ⇒ 7 pairwise gates implied by the buildkit-output approval-state convention). **THIS PROMPT**: group-boundary gates per project owner Q2=B directive. 3 gates total (§4.1→§4.2, §4.2→§4.3, §4.3→§4.4). Reason: ch04's pedagogy is breadth-first within a sub-section, not progressive amplification across exercises (which is the ch01–ch03 axis that justified pairwise gates); group-boundary gates accelerate the implement phase without sacrificing the project-owner-approval contract at meaningful boundaries.
+- **DEPRECATED**: priorities P1/P2/P3 across User Stories. **THIS PROMPT**: priorities are a `/buildkit-specify` derived value; not pre-encoded here. /buildkit-specify assigns priorities based on group structure (§4.1 + §4.2 likely P1 as the chapter's foundational content; §4.3 + §4.4 likely P2 as amplifications).
+- **DEPRECATED**: tutorial-mode `cohesive-synthesis` header. **THIS PROMPT**: tutorial mode is a `/buildkit-specify` derived value, not pre-encoded here.
 - **DEPRECATED**: User Story 3 mentions REPL parser limitation as a "REPL-test caveat" but doesn't propose a resolution. **THIS PROMPT**: the parser limitation is documented in "Known runtime limitations" with explicit per-exercise resolution patterns (avoid-the-form / document-and-skip / Clarifications-amend-defer). Reason: ch04 surfaces these limitations materially for the first time; they need spec-level handling, not per-test ad-hoc workarounds.
 - **DEPRECATED**: §4.4 metaprogramming included as User Story 8 P3 (low priority, possibly omitted). **THIS PROMPT**: §4.4 is fully in scope per project owner Q1=A directive. ex-09 + ex-10 (Option A) cover §4.4 in two exercises with full byte-exact PDF transcription. Reason: §4.4 has no natural later-chapter home; deferring it would mean never tutorial-ising it; the project owner judged completeness more valuable than scope reduction.
-- **DEPRECATED**: explicit User Story acceptance test "load `ch04/ch-04-ex-01-logic-gates.glp`" naming a specific filename. **THIS PROMPT**: filenames follow the ch01–ch03 convention `ch-04-ex-NN-<short-name>.glp` with `<short-name>` chosen during /speckit-clarify or /speckit-plan based on the locked grouping; not pre-encoded here.
+- **DEPRECATED**: explicit User Story acceptance test "load `ch04/ch-04-ex-01-logic-gates.glp`" naming a specific filename. **THIS PROMPT**: filenames follow the ch01–ch03 convention `ch-04-ex-NN-<short-name>.glp` with `<short-name>` chosen during /buildkit-clarify or /buildkit-plan based on the locked grouping; not pre-encoded here.
 - **DEPRECATED**: cross-chapter inversion of `producer/2` + `consumer/3` (already imported into ch03) is not mentioned. **THIS PROMPT**: explicitly documents the inversion in its own section. Reason: the implementing session needs to know that these procedures were already used in ch03 ex-01 to correctly write the ch04 ex-03 header comment and the chapter signpost's plain-prose explanation; the byte-exact code is identical between ch03's import and ch04's native presentation but the surrounding paraphrase context is different.

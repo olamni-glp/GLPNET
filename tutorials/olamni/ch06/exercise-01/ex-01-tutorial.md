@@ -8,7 +8,7 @@ no native Programs).
 
 ## Why a synthesis?
 
-Per `/speckit-clarify` Q1 (option B), the §6.1 "Difference Lists" exercise is
+Per `/buildkit-clarify` Q1 (option B), the §6.1 "Difference Lists" exercise is
 synthesised from **ch04 §4.3.7** (`flatten/2` + `flatten_acc/3`, book pp 38–
 39).  The flatten-with-accumulator pattern threads a partial-result list
 through the recursion in the exact shape of a difference-list `List \ List?`

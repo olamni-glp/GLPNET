@@ -8,7 +8,7 @@ REPL banner / build-commit / wallclock lines are exempt from byte-equality per t
 
 ## Phase A — Pre-flight
 
-Verify Flutter SDK + cluster A pairing source + cluster A project state. The cluster A pairing was build-verified at T032 of /speckit-implement (60.9s build on 2026-05-02; produces `glp_multiagent.exe` at the locked path).
+Verify Flutter SDK + cluster A pairing source + cluster A project state. The cluster A pairing was build-verified at T032 of /buildkit-implement (60.9s build on 2026-05-02; produces `glp_multiagent.exe` at the locked path).
 
 ```bash
 ls D:/bstdev/research/GLP/GLP/glp_multiagent/build/windows/x64/runner/Release/glp_multiagent.exe
@@ -17,7 +17,7 @@ ls D:/bstdev/research/GLP/GLP/glp_multiagent/build/windows/x64/runner/Release/gl
 
 Annotation: 89,600-byte launcher exe; per the canonical Flutter Windows build pattern, this exe loads the Flutter engine + main_olamni_ch07_simple_multimodule.dart's compiled main(). The accompanying flutter_windows.dll + dart-vm + project assets sit in the same Release directory.
 
-## Phase B — Build (already verified at T032 of /speckit-implement)
+## Phase B — Build (already verified at T032 of /buildkit-implement)
 
 ```bash
 cd D:/bstdev/research/GLP/GLP/glp_multiagent
