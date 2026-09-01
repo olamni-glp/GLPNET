@@ -129,44 +129,44 @@
   {
     "qid": "Q-GLPNETA16-04",
     "header": "Release bar",
-    "block": "A CalVer release is simultaneously qualified and disqualified, because two of your live rulings apply different bars and the delta on develop passes one and fails the other",
+    "block": "The two live release-bar rulings still contradict each other and will collide again next cut, even though today's instance was settled by fact when a peer cut v2026-09-01-1 mid-session",
     "origin": "contradiction",
     "severity": "high",
     "background": [
       "Ruling Q-GLPNETA13-01 at 2026-08-31T13:44Z answered 'Feature-level bar' — a release needs a completed, fully-implemented, codex-reviewed FEATURE.",
       "Ruling Q-GLPNETS13-03 at 2026-08-31T17:56Z answered 'Content bar, directive overrides' — a release needs at least one feat or fix commit since the last tag, and an engineer directive overrides.",
-      "Measured 2026-09-01: develop is 22 commits ahead of tag v2026-08-31-1 and carries exactly one fix commit, bd13a254 fix(onrestart) an INACCESSIBLE mount must count as missing, never throw; the other 21 are docs, chore and merge.",
-      "A cross-provider codexreview ran here at 07:12Z over that delta and returned ZERO findings against scripts/onrestart-launch.ps1 — the code half is clean.",
-      "No roadmap feature reached shipped this session: the fold reads 94 closed, 17 promoted, 6 specified, 3 analyzed, 1 implemented, so the feature-level bar is NOT met.",
-      "Your instruction this session was to release any completed, fully-implemented and codex-reviewed feature or PATCH — the word patch is what the onrestart fix is."
+      "CORRECTION issued 2026-09-01T08:40Z: this question originally asked whether to cut a release; while it was being drafted, PR #256 was merged and tag v2026-09-01-1 was cut from develop, so the cut has already happened and that half of the premise is refuted.",
+      "Verified after the fact: v2026-09-01-1 contains bd13a254 the onrestart fix and 19646202 this lane's roadmap promote-and-score commit, and origin/develop is now 1 commit ahead of main and that commit is the back-merge, so nothing releasable remains today.",
+      "The cut therefore happened on the content bar with zero features shipped, which is precisely what the still-live Q-GLPNETA13-01 forbids, so the two rulings disagree about a tag that already exists.",
+      "Measured now: the roadmap fold reads 94 closed, 17 promoted, 6 specified, 3 analyzed, 1 implemented and 0 shipped this session, so the feature-level bar was not met by any reading."
     ],
-    "impact_if_unanswered": "Either this lane cuts a tag that another lane will correctly call unqualified under the ruling it follows, or it holds a clean reviewed fix out of the release channel indefinitely, and the fleet keeps producing release receipts that cannot be compared because they are measured on different bars.",
+    "impact_if_unanswered": "Both rulings stay citable, so the next cut on any of the four hosts reproduces this collision, and v2026-09-01-1 remains a tag that one live ruling says should never have been cut.",
     "options": [
       {
-        "key": "cut-now",
-        "label": "Cut the release under the later content-bar ruling",
-        "consequence": "The onrestart fix ships as a CalVer patch today under Q-GLPNETS13-03, which is both the later ruling and the one your directive in this session explicitly triggers; it accepts that a release can carry no completed feature, which is exactly what Q-GLPNETA13-01 was written to prevent.",
-        "size": "micro",
-        "reversibility": "reversible"
+        "key": "retire-a13",
+        "label": "Retire the feature-level bar, content bar governs",
+        "consequence": "Q-GLPNETA13-01 is recorded as superseded by Q-GLPNETS13-03 so no lane can cite it again, which retroactively legitimises v2026-09-01-1 and settles every future cut on one written rule; this forecloses the feature-level bar as a future option and forecloses the only rule that currently prevents a docs-only develop from being tagged.",
+        "size": "nano",
+        "reversibility": "one-way"
       },
       {
-        "key": "retire-a13",
-        "label": "Cut now and formally retire the feature-level bar",
-        "consequence": "The same tag is cut and Q-GLPNETA13-01 is recorded as superseded so no lane can cite it again, ending the collision permanently across all four hosts; this forecloses the feature-level bar as a future option and removes the only rule that currently stops a docs-only develop from being tagged.",
+        "key": "retire-s13",
+        "label": "Retire the content bar, feature bar governs",
+        "consequence": "Q-GLPNETS13-03 is superseded instead, which makes today's tag an acknowledged exception and stops any further cut until a feature actually ships; this forecloses tagging reviewed patches at all and forecloses the directive-override escape you used in this session's own instruction.",
         "size": "micro",
         "reversibility": "one-way"
       },
       {
-        "key": "hold-for-feature",
-        "label": "Hold until a feature actually ships",
-        "consequence": "No tag is cut until one of the 27 open features reaches shipped under Q-GLPNETA13-01, keeping every release receipt feature-backed; the reviewed onrestart fix then sits unreleased behind whichever feature lands first, which on current measurement is not imminent.",
-        "size": "nano",
+        "key": "write-both",
+        "label": "Keep both as a two-tier rule and write it down",
+        "consequence": "A patch release needs the content bar and a minor release needs the feature bar, recorded as one rule that supersedes both prior answers, so neither existing ruling is thrown away and the tier is explicit on every receipt; it costs one more artefact to author and every lane has to adopt the tier vocabulary before its receipts become comparable.",
+        "size": "mini",
         "reversibility": "reversible"
       }
     ],
     "recommendation": {
-      "option": "retire-a13",
-      "because": "Cutting under the later ruling is right on the merits and is what your directive asks for, but leaving the earlier ruling live guarantees this exact question returns next session on another lane, and the collision has already cost three lanes a measured session each."
+      "option": "write-both",
+      "because": "Both rulings were defensible because they answer different questions — one is about what a tag may contain and the other about when a tag is worth cutting — so collapsing to either single bar throws away a real distinction that this session demonstrated in one day, whereas writing the tier down ends the collision without discarding either answer."
     }
   },
   {
