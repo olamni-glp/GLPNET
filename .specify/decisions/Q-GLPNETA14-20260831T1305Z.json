@@ -1,0 +1,136 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETA14-20260831T1305Z",
+  "lane": "ariellas-glpnet",
+  "repo": "GLPNET",
+  "raised_at": "2026-08-31T13:05:00+00:00",
+  "context": "Round 2 of 3. These four are structural blocks that do not gate today's next action but do gate every future one, and each has now been carried across three or more sessions without a decision. Round 1 (Q-GLPNETA13) is answered and recorded.",
+  "questions": [
+    {
+      "id": "Q-GLPNETA14-01",
+      "kind": "ruling",
+      "header": "Readiness",
+      "question": "The scheduler engine deliberately has no writer that moves a work packet from backlog to ready, and the fleet has been assuming the board self-feeds, so who may declare a packet ready and on what evidence?",
+      "blocks": [
+        "every dispatch cycle on every board",
+        "the feature stream into /bk-specify",
+        "N6"
+      ],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Owning lane, on spec-dir evidence",
+          "recommended": true,
+          "means": "The lane that owns the packet may move it backlog to ready, but only with a named evidence artifact — a spec dir that exists, or a roadmap row at promoted or later. Reversible, additive, per-board, and it makes readiness auditable rather than asserted.",
+          "cost": "A lane can still ready its own work on thin evidence, and it does not fix the deeper problem that 72 of 121 roadmap features carry no spec_path at all, so for most features the evidence test cannot even be evaluated."
+        },
+        {
+          "label": "Engineer only",
+          "means": "Only you move packets to ready. Maximum control; zero risk of a lane readying work you did not intend.",
+          "cost": "Puts a human in the loop of every dispatch cycle across four hosts and multiple boards. Measured history says the board sat at ready=0 for weeks; this option reproduces exactly that starvation unless you are available continuously."
+        },
+        {
+          "label": "Automatic on promotion",
+          "means": "A roadmap feature reaching promoted automatically readies its board packet. No writer to authorise because no human decision is involved.",
+          "cost": "Roadmap state has been measured WRONG BY UP TO FIVE STAGES against the actual pipeline, so this wires the board directly to the least reliable signal in the system."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA14-02",
+      "kind": "ruling",
+      "header": "BK write",
+      "question": "Three separate fixes this lane has measured and specified live in the buildkit repo rather than here, and a recorded ruling says this lane is READ-ONLY on buildkit while another says this lane builds and deploys the fix, so may this lane write buildkit?",
+      "blocks": [
+        "N11",
+        "Q50",
+        "the takt R2 rollup fix",
+        "the roadmap link no-op defect",
+        "the scheduler capacity-horizon fix"
+      ],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Stay read-only, file upstream",
+          "recommended": true,
+          "means": "This lane keeps filing defects to the buildkit lane with reproductions and stays out of the repo. It is what ruling R2 and the 2026-08-24 filing decision already did, and it avoids a fourth re-assignment of the same work — the same fix has now been pointed at three different lanes.",
+          "cost": "Three measured, reproduced, single-line-ish fixes stay unfixed at the mercy of another lane's queue, and T20 stays blocked indefinitely. This lane has been waiting on one of them since 2026-08-18."
+        },
+        {
+          "label": "Scoped write grant",
+          "means": "This lane may write buildkit on a named branch for these three specific fixes only, PR into buildkit's develop, no deploy to peer hosts.",
+          "cost": "The buildkit repo has 20+ worktrees and five concurrent scheduler branches; a fourth writer landing on shared files (__main__.py, board.py, cycle.py) is exactly the collision Q2 was raised about and has never been ruled on."
+        },
+        {
+          "label": "Full build-and-deploy grant",
+          "means": "This lane builds the fixes AND deploys them to peer hosts, which is what the 2026-08-17 x8 ruling literally said.",
+          "cost": "Deploying to peer hosts is a fleet-binding one-way action against hosts whose state this lane cannot verify (gavriella SSH is auth-blocked, shiras' share is a partial projection). Q6 has been open on exactly this since 2026-08-17."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA14-03",
+      "kind": "ruling",
+      "header": "Spec paths",
+      "question": "72 of 121 roadmap features carry no spec_path, the repair verb silently no-ops on any feature past specified while still exiting 0, and 55 of the 69 empty rows are closed and therefore unlinkable — how should roadmap-driven work selection proceed meanwhile?",
+      "blocks": [
+        "T20",
+        "roadmap-driven feature selection",
+        "every reconcile round's advance proposals"
+      ],
+      "escalate_after_hours": 72,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Link open, declare rest",
+          "recommended": true,
+          "means": "Link only the not-yet-closed features the verb can actually repair, and record a standing declaration that closed rows with empty spec_path are historical and will not be back-filled. Bounds the problem honestly instead of leaving a 72-row gap that reads as a data error.",
+          "cost": "Permanently gives up provenance on 55 closed features, so any future question of the form 'which spec did feature X ship from' is unanswerable for nearly half the roadmap."
+        },
+        {
+          "label": "Wait for the upstream fix",
+          "means": "Leave all 72 unlinked until the buildkit lane fixes the link no-op, then repair in one pass.",
+          "cost": "Depends on Q-GLPNETA14-02 and on another lane's queue; the defect was filed 2026-08-24 and has not moved. Selection stays blind in the meantime."
+        },
+        {
+          "label": "Stop selecting from the roadmap",
+          "means": "Acknowledge that the roadmap cannot drive selection while it is this incomplete, and select from the marathon ladder and the board fold only, treating the roadmap purely as a published record.",
+          "cost": "Abandons the tool built precisely to answer 'what next', and the board fold has its own measured defect where the view contradicts the durable ops on 3 of 4 packets."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA14-04",
+      "kind": "risk-acceptance",
+      "header": "bk-flow",
+      "question": "bk-flow is the missing board-to-pipeline consumer this fleet has wanted for weeks and it is already installed on every target, but it scores 0 of 4 on your own mandatory rollout controls — no staged rollout, no version negotiation, no rollback, no kill switch — do you accept that exposure to pilot it here?",
+      "expires_after_days": 14,
+      "blocks": [
+        "P11",
+        "the marathon-to-bk-flow migration you directed as a session's first CRDT task"
+      ],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Pilot on ARIELLAS only",
+          "recommended": true,
+          "means": "Accept the exposure on this host alone, use bk-flow for one packet end to end, and report. It is already installed everywhere, so the marginal risk of USING it on one host is far smaller than the risk already carried by having it deployed unconditionally on all of them.",
+          "cost": "With no kill switch, an unexpected write to the op log cannot be turned off, only worked around. The blast radius is this host's board streams, and the acceptance expires in 14 days rather than being resolved."
+        },
+        {
+          "label": "Hold until 4 controls exist",
+          "means": "No pilot until staged rollout, version negotiation, rollback and a kill switch are built. This is the literal reading of your standing rollout requirement.",
+          "cost": "The controls are buildkit code, so this is blocked behind Q-GLPNETA14-02, and meanwhile the tool stays installed everywhere and unused, which is the worst of both worlds."
+        },
+        {
+          "label": "Kill switch first, then pilot",
+          "means": "Require only the kill switch (the cheapest of the four and the one that bounds every other risk), then pilot here.",
+          "cost": "Still buildkit code, so still gated on 02; and one control out of four is a judgement call that quietly rewrites your rollout requirement rather than meeting it."
+        }
+      ]
+    }
+  ]
+}
