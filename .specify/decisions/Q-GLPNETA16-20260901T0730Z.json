@@ -40,6 +40,11 @@
     "recommendation": {
       "option": "mine-plus-broadcast",
       "because": "It performs the whole of the part this lane can legitimately perform today and converts the rest into an explicit, ACKable ask on the shared volume rather than silently dropping it, whereas operator-override buys a faster rebalance by destroying the single-writer property that every other lane's claims depend on."
+    },
+    "decision": {
+      "option": "mine-plus-broadcast",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: release this lane's one unstarted packet now and broadcast an ACK-mandatory ask to olamnit and gavriella for the four they hold. No operator-override of peer single-writer streams."
     }
   },
   {
@@ -82,6 +87,11 @@
     "recommendation": {
       "option": "declare-true",
       "because": "The measured cost of the missing declaration is 23 days of total dispatch famine on 23 packets, whereas the cost it buys — a badly-minted packet reaching the ready column — is caught by the claim step that already sits in front of any actual work, and the key is reversible in one edit if it proves wrong."
+    },
+    "decision": {
+      "option": "declare-true",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: declare ingest_ready_default true on the glpnet board. 23 days of total dispatch famine on 23 packets outweighs the risk of a badly-minted packet reaching ready, which the claim step already gates; reversible in one edit."
     }
   },
   {
