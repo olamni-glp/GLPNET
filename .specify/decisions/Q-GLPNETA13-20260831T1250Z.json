@@ -11,7 +11,11 @@
       "kind": "ruling",
       "header": "Release bar",
       "question": "Three lanes are now applying two different bars for cutting a CalVer release and each is following a defensible reading of your directive, so which bar governs the fleet?",
-      "blocks": ["/bk-release on every lane", "the ariellas ship/close half of ZA02-ZA07", "any honest cross-lane release receipt"],
+      "blocks": [
+        "/bk-release on every lane",
+        "the ariellas ship/close half of ZA02-ZA07",
+        "any honest cross-lane release receipt"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -31,14 +35,25 @@
           "means": "Cut whenever develop is ahead AND the newest unreleased commit is older than N hours (say 24), whichever bar the content meets. Mechanical, no judgement, no lane-to-lane variance.",
           "cost": "Nobody has implemented it; it is a new rule to build and enforce, and it still tags docs-only content, just on a timer instead of on a whim."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Feature-level bar",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Feature-level bar').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETA13-02",
       "kind": "ruling",
       "header": "Gleam pick",
       "question": "45 of the 47 genuinely open implementation tasks in this repo sit on two Gleam branches that share ZERO commits and are 470 and 421 commits behind develop, so which one becomes canonical?",
-      "blocks": ["N12", "the F-cluster burn-down", "any claim that this repo is near completion"],
+      "blocks": [
+        "N12",
+        "the F-cluster burn-down",
+        "any claim that this repo is near completion"
+      ],
       "escalate_after_hours": 72,
       "multi_select": false,
       "options": [
@@ -58,14 +73,25 @@
           "means": "Treat both branches as evidence only, and re-implement the whole Gleam scope fresh from specs 050 and 059 on top of current develop.",
           "cost": "Discards two working implementations to avoid a merge, which is the most expensive option by far and the hardest to justify if either branch turns out to be nearly landable."
         }
-      ]
+      ],
+      "decision": {
+        "label": "059 canonical, re-derive 050",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='059 canonical, re-derive 050').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETA13-03",
       "kind": "ruling",
       "header": "Guardian",
       "question": "bk-guardian is STOPPED on this host with modules=0 and exactly one backup, so the PGlite catalog that holds all marathon and roadmap state is currently unprotected — do I start it and take a backup before any further catalog-heavy work?",
-      "blocks": ["Q17", "every subsequent roadmap sync round", "every marathon write this session"],
+      "blocks": [
+        "Q17",
+        "every subsequent roadmap sync round",
+        "every marathon write this session"
+      ],
       "escalate_after_hours": 4,
       "multi_select": false,
       "options": [
@@ -85,14 +111,26 @@
           "means": "Accept the current exposure and continue; the catalog has not been lost yet.",
           "cost": "N5 already recorded the mirror reporting ready-to-discharge against a catalog at seq 117 with 65 open items, and gavriella lost her catalog entirely while the mirror survived. This option accepts a failure mode that has already fired on this fleet."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Start guardian, take backup",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Start guardian, take backup').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETA13-04",
       "kind": "ruling",
       "header": "1.14 route",
       "question": "J2 needs a GLP language-authority decision that is Udi's and not yours, it has blocked 080 and W11 since 2026-08-14, and the marathon `next:` pointer keeps steering every restart into it — how should this lane route it?",
-      "blocks": ["080-occurs-checked-substitution", "W11", "the F-cluster burn-down", "an honest `next:` pointer"],
+      "blocks": [
+        "080-occurs-checked-substitution",
+        "W11",
+        "the F-cluster burn-down",
+        "an honest `next:` pointer"
+      ],
       "escalate_after_hours": 48,
       "multi_select": false,
       "options": [
@@ -112,7 +150,14 @@
           "means": "Formally defer 080 out of the active ladder and file the `next:` mis-pointing as the marathon defect it is, so restarts stop being steered into a gated step.",
           "cost": "Leaves a known-unsound occurs-check in the runtime indefinitely, and 'defer' has already been recorded once for this item without removing its steps from the `next:` computation — so this may not even fix the pointer."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Send the spec as-is to Udi",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Send the spec as-is to Udi').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }
