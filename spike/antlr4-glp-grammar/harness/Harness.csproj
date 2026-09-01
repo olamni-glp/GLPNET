@@ -10,7 +10,7 @@ harness only adds the ANTLR runtime it uses directly for the legacy coverage tab
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>glp_grammar_spike_harness</AssemblyName>

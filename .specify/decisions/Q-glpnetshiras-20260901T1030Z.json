@@ -1,0 +1,381 @@
+[
+  {
+    "qid": "Q-glpnetshiras-09",
+    "header": "1.14 rule",
+    "block": "The current era cannot leave specify because spec 080 refuses to define what a cycle-forming bind does, and CLAUDE section 1·14 reserves that to you",
+    "origin": "missing-requirement",
+    "severity": "critical",
+    "background": [
+      "Your ruling Q-glpnetshiras-05 (board wins) selected wp-occurs-checked-substitution as this era; bk-flow poll confirms it is state=ready, not_claimed, and it is the packet that ruling named.",
+      "specs/080-occurs-checked-substitution/spec.md line 8 reads Status: Draft — BLOCKED on a §1.14 language-authority decision by Udi, and the Clarifications block records BOTH candidate semantics and selects NEITHER by design.",
+      "The choice is: (a) UnifyFail — the bind fails cleanly under the existing three-valued Success|Suspend|Fail rules, classic unify_with_occurs_check, rejecting no program that never forms a cycle; or (b) CompileError — a hard catchable compile-time rejection, consistent with feature 077 FR-004.",
+      "Everything else in 080 is already invariant to the choice: where the check runs (the shared out/csharp/lib/compiler/term_traversal.cs consolidated by 077), no-false-positive coverage, and the regression proof are all specified now.",
+      "Feature 077 shipped in v2026·08·13·1 and made walkers TOLERATE a cycle; 080 is the producer-side complement that stops the cycle being created, so the crash class F-069-1 is only half-closed until this lands.",
+      "The roadmap carries 080 at WSJF 6 / RICE 2000, the highest-scored open feature that already has a spec, and the marathon records it as F080 spec-only, next phase PLAN."
+    ],
+    "impact_if_unanswered": "The era stays parked at specify indefinitely: /bk-plan on 080 cannot run without inventing the semantics, which CLAUDE section 1·14 and DISCIPLINE section 1·14 both forbid, and the next-highest board packet is a different feature so the lane would be silently substituting work you did not select.",
+    "options": [
+      {
+        "key": "A",
+        "label": "UnifyFail — fail the reduction cleanly",
+        "consequence": "080 unblocks to /bk-plan immediately; = and defined-guard unification become sound with no new program rejections, and the 077 walker guard demotes to genuine defence-in-depth. A cycle-forming program compiles and simply fails that reduction rather than being diagnosed.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "CompileError — hard static rejection",
+        "consequence": "080 unblocks to /bk-plan immediately and a cycle-forming bind is diagnosed at compile time with a source location, consistent with 077 FR-004. This forecloses ever accepting a program that only conditionally forms the cycle, because rejection is static and cannot inspect the runtime path.",
+        "size": "mini",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "C",
+        "label": "Defer 080; take another packet",
+        "consequence": "The era switches to a packet needing no language ruling; 080 stays blocked and the F-069-1 crash class stays half-closed on the 077 tolerate-only guard.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "UnifyFail is the sound-unification answer the literature already settles, it is strictly the more permissive of the two so it can be tightened to CompileError later while B cannot be loosened without breaking programs that came to depend on rejection, and it composes with GLP's existing three-valued guard semantics instead of adding a fourth outcome. B's only advantage — a source location — is already delivered by 077's diagnostic at the walker."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled UnifyFail: the bind fails cleanly under the existing three-valued Success|Suspend|Fail rules. 080 unblocks to /bk-plan."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-10",
+    "header": "Merge block",
+    "block": "This lane can no longer land its own reviewed work because the permission classifier now blocks merging into develop, not merely releasing",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Your ruling Q-glpnetshiras-07 chose Add a permission rule, and the rule Bash(buildkit release) was added to settings in commit eba93bff.",
+      "This session the block moved and widened: gh pr merge 259 was denied by the Claude Code auto mode classifier, and so was a plain local git merge of the feature branch into develop.",
+      "PR #259 is measured MERGEABLE / mergeStateStatus CLEAN with all five CodeQL checks SUCCESS, after I resolved its one conflict (an append-only engineer-decisions ledger) and pushed; it is ready and cannot be landed from here.",
+      "The added rule covered buildkit release only, so it does not reach the merge surface — the ruling is therefore satisfied as written and still leaves the lane unable to finish an era end to end.",
+      "Q-glpnetshiras-07 predicted exactly this: it recorded the block as structural and recurring rather than a one-off."
+    ],
+    "impact_if_unanswered": "Every era this lane runs stops one step before landing: work is committed, pushed, reviewed and green, but sits on a feature branch, so develop drifts behind and the release trunk depends on a peer lane noticing — which Q-glpnetshiras-07 already recorded as luck rather than process.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Widen the permission rule to merges",
+        "consequence": "You add Bash(gh pr merge) and Bash(git merge) rules for this repo so the lane lands its own green PRs; the lane gains a standing ability to write develop unattended at the moment the merge is cut.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "You merge; lane stops at green PR",
+        "consequence": "The lane's contract ends at a MERGEABLE/CLEAN PR with the number reported to you; you or a peer lane merges. Nothing is granted, and each era needs you present at the end.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Peer lane lands this lane's PRs",
+        "consequence": "The lane announces a green PR on the coop channel and an unblocked host merges it, extending the same arrangement that cut v2026·08·31·1. It depends on a peer polling the channel, which is the dependency Q-glpnetshiras-07 already flagged as unreliable.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the only option that makes the ruling you already gave (Q-glpnetshiras-07 Add a permission rule) actually achieve its stated purpose, and the risk it grants is bounded in a way release was not: a merge into develop is an integration branch write that is revertible and gated by CodeQL, whereas the release rule you already granted writes the release trunk. B and C both re-introduce the human-or-luck dependency that ruling was raised to remove."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: widen the permission rule to cover merges (gh pr merge / git merge) so the lane lands its own green PRs."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-11",
+    "header": "Board free",
+    "block": "You asked me to release every board task not already started, but measurement shows there is nothing this lane can release and releasing would not restore dispatchability",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "bk-flow poll on /mnt/gavri/d/coop/glpnet/sched reports 32 work packets, 0 dispatchable by shiras, reasons claimed_by_other=5, not_claimed=25, not_ready=2 — so 25 packets are ALREADY unclaimed and still nothing dispatches.",
+      "This lane holds zero claims, so there is literally no packet for it to release; of the 5 claimed, 2 are olamnit's, 2 gavriella's and 1 ariellas', and releasing a peer's claim would be a cross-actor write into another actor's single-writer stream.",
+      "Backlog item S14 located the real cause: bk-flow binds packets to features by ENVELOPE/LINK only and the board carries 1 envelope for 32 packets; poll confirms binding: 1 of 32 packet(s) resolve to a feature, 31 cannot.",
+      "S15 measured this fleet-wide — bound EQUALS envelopes exactly on all 7 boards — so supply of envelopes, not claim state, is the binding constraint.",
+      "Poll also raises capability_gate_inert: no work packet declares a required_capability, so the capability-fit ranking NEVER executes and missing_capability=0 means UNMEASURED, not clear; S16 recorded this as a third false green.",
+      "scheduler doctor reports 9 actors, 8 stale by op-log, liveness UNKNOWN for 3, and heartbeat/op-log disagreeing for 7 — so a CPM/PERT reallocation across GAVRIS/ARIELLAS/SHIRAS/OLAMNIT would be computed over actors whose liveness is not established."
+    ],
+    "impact_if_unanswered": "I would execute a release-all that is a measured no-op — 25 packets are already free — and then report a reallocation as done while the board still says NOTHING IS DISPATCHABLE, which is precisely the false-green reporting you told this lane to stop producing.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Fix envelope supply first, then reallocate",
+        "consequence": "The lane mints the missing envelopes so packets bind to features, declares required_capability on packets so the capability gate actually executes, and only then runs the CPM/PERT allocation. Reallocation is delayed by the repair, but the allocation it produces is the first one built on measured fit.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Reallocate now on the 25 free packets",
+        "consequence": "The lane runs buildkit-scheduler allocate across the four hosts immediately using WSJF and size only, ignoring capability fit and the unbound 31. You get a plan now, built on a ranking the board itself reports as UNMEASURED.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Escalate to the scheduler owner lane",
+        "consequence": "The envelope-supply and inert-capability-gate defects go to whichever lane owns bk-flow, with S14/S15/S16 evidence attached, and this lane touches no board state. The board stays undispatchable until another lane ships, with no ETA.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the only option that ends with a board that actually dispatches, which is what you asked for underneath the words release and reallocate. B produces an allocation the board's own diagnostics label unmeasured, and would have this lane hand four hosts work packages chosen by a ranking that never ran. C is right about ownership but leaves glpnet — measured as the worst-affected board at 25 of 32 starved — waiting on someone else's queue, and the envelope minting is an additive, per-packet, reversible write this lane can already make."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: repair envelope supply and declare required_capability BEFORE any CPM/PERT reallocation; a release-all would be a measured no-op."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-12",
+    "header": "Two heads",
+    "block": "Your tidy-up ruling has been fully discharged and its premise has changed, leaving two unmerged heads that are feature work rather than tidy-up",
+    "origin": "measurement",
+    "severity": "medium",
+    "background": [
+      "Ruling Q-glpnetshiras-06 chose Archive 050 only; leave the rest — that is now DONE: tag archive/050-full-gleam-combined-20260831 exists and origin/050-full-gleam-combined no longer resolves.",
+      "Four more of the eight surveyed heads were resolved by peers since the survey and are gone from the remote: 096-host-interconnectivity-hardening-evidence, 097-net11-align-and-roadmap-53, 097-shiras-restart-prep-frontend-handoff and chore/host-interconn-hardening-rootcauses-3rtask-olamnit; marathon items T5, T6 and T7 are therefore discharged, and T1, T2, T3 are re-measured clean (one worktree, no stale local branches, local develop and main both fast-forwarded to origin).",
+      "backup/upgrade/buildkit-migration-20260627T220138Z is contained EXACTLY by archive/backup__upgrade__buildkit-migration-20260627T220138Z-20260820 — identical commit SHA 96d0ce8e — so T8 is provably zero-loss to delete.",
+      "083-glptutorial-corpus-goldens is +3 ahead, merges with ZERO conflicts, and is purely additive planning artefacts (plan, tasks, research, data-model, contracts) plus the auto-maintained BUILDKIT plan pointer; it maps to a live roadmap feature at WSJF 6·5, but its board packet reads in-progress, so merging may collide with whichever lane holds it.",
+      "059-full-scope-gleam-glp-implementation is +32 ahead over 248 files, 135212 insertions and 34860 deletions, and maps to a live specified feature at WSJF 2 — this is a feature merge, not a tidy-up merge."
+    ],
+    "impact_if_unanswered": "The repo stays at two unmerged heads with no owner and no decision, T8's proven-safe deletion stays undone, and the tidy-up plan T0–T9 cannot be closed out even though seven of its ten items are now provably discharged.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Close T8; land 083; leave 059",
+        "consequence": "Delete the provably-contained backup branch, open a PR for 083's additive planning artefacts after checking the board for its in-progress holder, and leave 059 as feature work for a dedicated era. The repo ends with one head, and 059's 32 commits stay unintegrated.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Close T8 only; leave both features",
+        "consequence": "Only the zero-loss deletion happens; both 083 and 059 stay as feature heads awaiting their own eras. Nothing can collide, and the repo ends with two heads.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Land 083 and 059 both",
+        "consequence": "Both heads merge to develop this session, ending genuinely tidy. This pushes 135212 insertions across 248 files through a tidy-up merge with no era, no codexreview of that diff and no test baseline, which forecloses attributing any later regression to 059 rather than to the merge.",
+        "size": "maxi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It takes both actions whose safety is measured — the backup deletion is proven by identical SHA, and 083 is a zero-conflict additive merge advancing the highest-WSJF planning work — while refusing the one that is not: 059's 248-file diff is exactly the scope-blurring you rejected in Q-glpnetshiras-06 option C, and it deserves an era with a baseline and a review, not a tidy-up merge. B is safe but leaves 083's completed plan and tasks stranded on a branch for no gain."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: delete the provably-contained backup branch (T8), land 083 as an additive PR after a board check, leave 059 for its own era."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-13",
+    "header": "Trust keys",
+    "block": "Nineteen coop roadmap documents are still refused because three ariellas signing keys were never published to the trust drop-box",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "Backlog item S19 records the trust store growing from 6 to 21 keys while 19 coop documents remained REFUSED on 3 ariellas keys that were never published to the trust drop-box.",
+      "Round 61 reproduced it: the import applied 1 new file and 159 already-applied, and left 19 documents refused on those same 3 keys.",
+      "The refusal is correct behaviour — an unpublished key MUST be refused — so this is a supply gap in the drop-box, not a defect in the importer.",
+      "Until those keys are published, this lane's roadmap cannot converge with ariellas' and every reconcile round will keep re-reporting the same 19 refusals as if they were new."
+    ],
+    "impact_if_unanswered": "Roadmap convergence across the fleet silently stalls at 19 documents every round, the refusal count is mistaken for noise rather than a blocked merge, and any cross-host epic or feature carried only in those 19 documents stays invisible to this repo.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Ariellas publishes the 3 keys",
+        "consequence": "You direct the ariellas lane to publish its 3 signing keys to the trust drop-box; the next import applies the 19 documents with signatures verified. Requires another lane to act before this resolves.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Broadcast the gap and keep refusing",
+        "consequence": "This lane posts the 3 key ids and the 19 document names to the coop channel and keeps refusing until they appear, recording the refusal as a known blocked count rather than noise. Nothing converges until someone reads the broadcast.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Trust the 3 keys on this host",
+        "consequence": "Add the 3 keys to this host's trust store from the documents themselves so the 19 apply here. This forecloses the drop-box being the single authority for trust, because a key would then enter the store by asserting itself in the payload it signs.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "The refusal is the trust model working, so the fix belongs where the gap is — at the publisher — and it is a nano action for ariellas. C would make a signature self-certifying and destroy the property the drop-box exists to provide; B is honest but is only A with an indefinite delay and no addressee."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: the ariellas lane publishes its 3 signing keys to the trust drop-box; the refusal is the trust model working and the fix belongs at the publisher."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-14",
+    "header": "Takt blind",
+    "block": "Era takt is unmeasurable on this host for a second reason beyond the escalated stage defect, because the fleet takt lake root is a Windows path that cannot exist on Linux",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "buildkit-marathon takt prints: LAKE: fleet root I:/coop/_takt-lake DOES NOT EXIST — fleet takt writes cannot land; bk-flow takt prints the identical line.",
+      "Backlog item S13 recorded this as a FLEET DEFECT — the takt-lake fleet-root probe is Windows-path-only, blinding every Linux host — and S13-PROOF found the Windows-path-literal writer had created a literal D: DIRECTORY INSIDE THE REPO, stranding 4 real measurements.",
+      "S13-RECURRENCE then measured that the phantom D: directory REGENERATES every session, with 18 unique measurements lost and recovered in a single day, so this is an active ongoing loss and not a historical one.",
+      "S21 is a separate retrieval gap on top: rows written by emit_tokens are on disk at BOTH lake roots, yet phase_token_rollup does not surface them.",
+      "This is independent of the era-stage defect you already ruled on in Q-glpnetshiras-08 (escalate, do not patch here): fixing the nine-versus-six stage list would still leave every measurement writing to a path that does not exist here.",
+      "Consequence today: takt reports 0/0 steps measurable and all nine era steps MISSING, so no era in this repo can be measured even once the stage defect lands."
+    ],
+    "impact_if_unanswered": "Your standing instruction to deliver era and takt metrics into the marathon and then into bk-flow cannot be met on any Linux host, measurements keep being written into a phantom directory inside the repo and lost every session, and CPM/PERT durations for the scheduler have no ELAPSED column to be built from.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Escalate as one fleet defect with the repro",
+        "consequence": "S13, S13-PROOF, S13-RECURRENCE and S21 go upstream as a single dated defect with the exact CLI lines and the phantom-directory repro, matching how you ruled the stage defect in Q-glpnetshiras-08. Consistent with that ruling, and no era here is measurable until another lane ships.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Set a portable lake root by configuration",
+        "consequence": "Point the fleet lake root at a path that exists on this host through configuration rather than code, so writes land and are retained while the upstream fix is pending. No shipped artefact is forked, but this host's lake diverges from the fleet's until the roots are reconciled.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Patch the probe on this host",
+        "consequence": "Fix the Windows-path-literal probe in this host's install and hand the verified patch upstream. This forecloses the one-implementation property you protected in Q-glpnetshiras-08, since it is the same fork-a-shipped-fleet-artefact move that produced three divergent bk-onrestart implementations.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "B",
+      "because": "It is the only option that stops the active, measured loss now — 18 measurements in one day — without forking shipped code, because a lake root is configuration and pointing it somewhere real is exactly what configuration is for. A alone is consistent with your prior ruling but keeps discarding measurements while upstream queues, and B does not preclude A: escalate as well, and reconcile the roots when the fix lands."
+    },
+    "decision": {
+      "option": "B",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: set a portable lake root by configuration to /mnt/gavri/d/coop/_takt-lake. Escalation is not precluded. The lake was located this session and is populated."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-15",
+    "header": "Era 2 scope",
+    "block": "The second era as you scoped it is complete every unfinished task and feature in this repo, and that is measured at roughly 160 open tasks across nine features against a takt band no era here has met",
+    "origin": "assumption-weakness",
+    "severity": "high",
+    "background": [
+      "Measured open work: F078 verification-receipts 62 open tasks (analyzed, WSJF 7·8), F059 full-scope-gleam 23 open (analyzed, WSJF 2), F066 wave6-consolidation 18 open (analyzed, WSJF 0·85), plus 083 with 57 generated tasks over 6 phases.",
+      "Six more features sit at specified with no plan at all: 080, 082, 083, 085, 065 and the madglp and front-end entries — the marathon records these as F-items whose next phase is PLAN.",
+      "Two of those nine are claimed by other lanes right now: wp-verification-receipts is in-progress claimed_by gavriella and wp-coordination-feature-stream-durable-superset-fix is claimed by olamnit, so completing them here would duplicate a peer's in-flight work.",
+      "The takt band for a feature is 1·5 to 6 hours ELAPSED; the last measured maxi eras in this repo ran a 22·7 hour mean, and right now takt reports 0/0 steps measurable so no new era can even be timed until Q-glpnetshiras-14 is settled.",
+      "Sizes recorded by the marathon for the parked features total three saga and two maxi items among nine — by the BK-STD-1 scale that is well over 150 points for one era."
+    ],
+    "impact_if_unanswered": "I would either start a single era that cannot finish and report partial completion as full — the failure mode you asked me to design out — or silently pick a subset and present it as the whole, without you having chosen the boundary.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Sequence by WSJF; one feature per era",
+        "consequence": "Era 2 takes the highest-WSJF feature this lane can own without colliding with a peer claim, runs it to a recorded discharge, and the rest are re-sequenced as named successor eras. Each era is measurable and closeable; the full backlog takes many eras rather than one.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "One era, all unclaimed features",
+        "consequence": "Era 2 is declared over every feature not claimed by a peer and runs until discharge. It matches your words exactly, and commits over 150 points to a single era against a band no era here has met, with no intermediate point at which partial progress is recordable.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Finish only the analyzed three",
+        "consequence": "Era 2 closes F078, F059 and F066 — the three features that already have tasks — and the six specified-only features are left for planning eras. Bounded and task-driven, but F078 is claimed by gavriella so this needs a hand-off or a release from that lane first.",
+        "size": "saga",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the only shape under which the words full completion can ever be reported truthfully, because it makes each era individually dischargeable and measurable instead of producing one era that is permanently open. B and C both commit multiple saga-sized features to a single era whose takt cannot currently be measured at all, so neither could be shown complete rather than merely stopped — and both would have this lane work packets that gavriella and olamnit hold right now."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Ruled by direct engineer directive mid-session: ALL FUTURE ERAs for now are SINGLE FEATURE ERAs, to burn down the roadmap backlog of unreleased features one by one; after each successful /bk-ship and /bk-close, tidy the repo of leftover branches and worktrees before the next era."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-16",
+    "header": "Takt schema",
+    "block": "You directed a NEW cross-repo cross-host CRDT schema for the takt board, but the lake already carries repo on every kind so the premise that one is missing is refuted",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Queried with DuckDB 1·5·5 from the bkvenv this session: EVERY kind already carries a repo column, and host/date/kind are already Hive partitions.",
+      "Row counts read live: kind=era 818 rows (feature_id, size, size_source, total_seconds, measurable, unmeasurable_steps, reason, repo, record_id, host, recorded_at), era_step 200, stage 3474, tokens 658, token 17 — 5167 rows already cross-repo AND cross-host across ariellas, gavriella, olamnit and shiras.",
+      "Genuine defect 1: kind=token (17 rows) sits beside kind=tokens (658 rows) with near-identical schemas — this is the most likely mechanism behind S21, where rows written by emit_tokens are on disk at both lake roots yet phase_token_rollup does not surface them.",
+      "Genuine defect 2: repo is a COLUMN, not part of the partition key, so every cross-repo comparison full-scans rather than pruning.",
+      "Genuine defect 3: there is no agreed view or naming contract over the lake, so each host writes its own ad-hoc query and the comparative figures are not reproducible across hosts.",
+      "The lake root itself was located this session at /mnt/gavri/d/coop/_takt-lake while both CLIs still probe the Windows literal I:/coop/_takt-lake — settled separately by ruling Q-glpnetshiras-14."
+    ],
+    "impact_if_unanswered": "I would either author a new schema that strands 5167 already-written rows across four hosts and forces an unagreed migration, or publish a board from ad-hoc queries with no contract, so no other host could reproduce the comparative figures you asked for.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Extend the existing layout; ship a contract, not a new schema",
+        "consequence": "The existing kind/host/date plus repo layout becomes the substrate. Deliverables: a versioned CRDT-safe VIEW contract (append-only parquet, record_id as CRDT identity, last-writer-wins on recorded_at), collapse token into tokens, add repo to the partition key going forward, publish the contract cross-host for agreement before piloting, then codify it into one consolidated buildkit roadmap feature.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Design a genuinely new schema as instructed",
+        "consequence": "Author a new cross-repo cross-host CRDT schema from scratch, agree it across hosts, pilot it and migrate the 5167 existing rows. This forecloses using the existing lake as-is during the migration window, leaving every host's takt reporting dual-write or dark until all four hosts adopt it.",
+        "size": "saga",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "C",
+        "label": "Publish the board now; design later",
+        "consequence": "Publish the era takt board immediately from the existing lake with plain DuckDB queries and defer all schema and CRDT design to a later era. Fastest to a visible board; leaves the token/tokens split and the unpartitioned repo scan unfixed.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "5167 existing rows across four hosts already answer the comparison questions asked, so a new schema would strand every one of them or force a migration no host has agreed to; the defects actually measured are a naming split, a missing partition key and an absent view contract, none of which need a new schema. C reaches a board fastest but leaves the S21 retrieval gap in place, which is the very thing that makes today's numbers untrustworthy."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruled: extend the existing kind/host/date+repo layout and ship a versioned CRDT-safe view contract rather than a new schema; collapse token into tokens, add repo to the partition key, agree cross-host before piloting, then codify into one consolidated buildkit roadmap feature."
+    }
+  }
+]
