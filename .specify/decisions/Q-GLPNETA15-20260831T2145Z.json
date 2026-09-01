@@ -1,0 +1,209 @@
+[
+  {
+    "qid": "Q-GLPNETA15-02",
+    "header": "BK write",
+    "block": "Three measured and specified fixes cannot be built, because two live rulings contradict each other on whether this lane may write the buildkit repo.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Ruling x8 (2026-08-17) says this lane BUILDS AND DEPLOYS the feature-stream fix; ruling R-C2 separately records the BUILDKIT lane as the ARIELLAS writer with this lane READ-ONLY.",
+      "There are 5+ ariellas lanes on this host, so 'this lane' in the 2026-08-17 ruling is ambiguous.",
+      "The three fixes are the takt R2 rollup, the roadmap link no-op, and the scheduler capacity-horizon fix; one has been waiting since 2026-08-18.",
+      "buildkit has 20+ worktrees and five concurrent scheduler branches touching __main__.py, board.py and cycle.py."
+    ],
+    "impact_if_unanswered": "The three fixes stay unbuilt indefinitely, T20 stays blocked, and questions 03 and 04 below cannot be actioned either because both depend on buildkit code.",
+    "options": [
+      {
+        "key": "read-only",
+        "label": "Stay read-only, keep filing upstream",
+        "consequence": "This lane files defects with reproductions and stays out of the repo, avoiding a fourth re-assignment of the same work; the three fixes remain at the mercy of another lane's queue.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "scoped-write",
+        "label": "Scoped write grant for these three fixes",
+        "consequence": "This lane writes buildkit on a named branch for these three fixes only and PRs into buildkit develop, with no deploy to peer hosts; adds a fourth concurrent writer to the shared scheduler files.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "build-and-deploy",
+        "label": "Full build-and-deploy grant",
+        "consequence": "This lane builds the fixes and deploys them to peer hosts as the 2026-08-17 ruling literally reads; this forecloses per-host verification because gavriella SSH is auth-blocked and shiras' share is a partial projection, making the deploy a one-way fleet-binding action against unverifiable state.",
+        "size": "maxi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "read-only",
+      "because": "The collision risk on three shared scheduler files with five live branches is concrete and has never been ruled, whereas the cost of waiting is delay rather than damage; scoped-write becomes the right answer the moment you tell us which ariellas lane owns buildkit."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA15-03",
+    "header": "Spec paths",
+    "block": "Roadmap-driven work selection cannot be trusted, because 72 of 121 features carry no spec_path and the repair verb silently no-ops while still exiting 0.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Measured: 72 of 121 roadmap features carry no spec_path; 55 of the 69 empty rows are closed and therefore unlinkable by the repair verb.",
+      "reconcile this session reported 9 of 17 pipeline feature ids bind nothing, and prescribed link as the fix.",
+      "The link verb exits 0 on features past specified while changing nothing - a silent no-op, filed to buildkit 2026-08-24 and not yet moved.",
+      "Two ids collide by number (050-full-gleam-combined and 050-glp-native-quic-link) and one by hyphenation (076-typechecker vs 076-type-checker)."
+    ],
+    "impact_if_unanswered": "Selection stays blind for most of the roadmap, every reconcile round proposes advances it cannot bind, and the 72-row gap keeps reading as a data error rather than a known boundary.",
+    "options": [
+      {
+        "key": "link-open-declare-rest",
+        "label": "Link the open ones, declare the closed ones historical",
+        "consequence": "Link only the not-yet-closed features the verb can actually repair, and record a standing declaration that closed rows with empty spec_path will not be back-filled; this forecloses ever answering 'which spec did feature X ship from' for 55 closed features.",
+        "size": "mini",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "wait-upstream",
+        "label": "Wait for the upstream link fix",
+        "consequence": "Leave all 72 unlinked until buildkit fixes the no-op, then repair in one pass; depends on question 02 and on another lane's queue, and selection stays blind meanwhile.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "stop-roadmap-selection",
+        "label": "Stop selecting from the roadmap",
+        "consequence": "Treat the roadmap as a published record only and select from the marathon ladder and board fold; abandons the tool built to answer 'what next', and the board fold has its own measured view-versus-ops defect.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "link-open-declare-rest",
+      "because": "It bounds the problem honestly now rather than waiting on a queue we do not control, and the provenance it surrenders is for features already closed and shipped, where the cost is historical curiosity rather than future selection."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA15-04",
+    "header": "bk-flow",
+    "block": "The marathon-to-bk-flow migration cannot start, because bk-flow scores zero of four on your own mandatory rollout controls while already being installed on every target.",
+    "origin": "assumption-weakness",
+    "severity": "high",
+    "background": [
+      "bk-flow has no staged rollout, no version negotiation, no rollback and no kill switch - 0 of 4 against your standing requirement.",
+      "It is nonetheless installed unconditionally on every target host already, so the exposure of HAVING it is carried whether or not any lane uses it.",
+      "olamnit published a self-refutation that shipped bk-flow release is broken on every board, and that bk-flow stamps false provenance (2026-08-14-1 while running 2026-8-26-2).",
+      "Measured here: bk-flow correctly refuses a packet claimed by another lane, so its safety refusals do work."
+    ],
+    "impact_if_unanswered": "P11 stays blocked, the tool stays installed everywhere and unused which is the worst of both worlds, and the marathon-to-flow migration you directed cannot begin.",
+    "options": [
+      {
+        "key": "pilot-ariellas",
+        "label": "Pilot on ARIELLAS only, one packet, 14-day expiry",
+        "consequence": "Accept the exposure on this host alone and run one packet end to end; with no kill switch an unwanted op-log write can only be worked around, and the blast radius is this host's board streams.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "hold-for-controls",
+        "label": "Hold until all four controls exist",
+        "consequence": "No pilot until staged rollout, version negotiation, rollback and kill switch are built; this is the literal reading of your requirement, but the controls are buildkit code so it is blocked behind question 02.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "killswitch-first",
+        "label": "Kill switch first, then pilot",
+        "consequence": "Build only the cheapest control that bounds every other risk, then pilot here; still buildkit code so still gated on question 02, and accepting one control of four quietly rewrites your rollout requirement rather than meeting it.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "pilot-ariellas",
+      "because": "The marginal risk of using an already-deployed tool on one host is far smaller than the exposure of having it deployed everywhere unused, and a bounded pilot produces the evidence the other two options are waiting for without spending buildkit write authority we do not yet have."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA15-05",
+    "header": "Skill fix",
+    "block": "A shipped instruction that would damage correct code cannot be repaired by this lane, because the harness classifier refuses every agent edit under the skills configuration directory.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Measured: .claude/skills/yx-bootmig/SKILL.md line 57 in this repo reads 'extend the callgraph node key beyond {repo}:{rel}', which olamnit measured would damage an already-correct repo-qualified key and still yield zero cross-repo edges, reported at exit 0 as success.",
+      "The owner spec (yngenios specs/008-yx-bootmig-base/DESIGN.md) carries the corrected three-point prescription and states the node key is not the defect.",
+      "This lane attempted the repair twice, via two different tools, and the auto-mode classifier refused both.",
+      "gavriella fixed the identical defect inline on qhstate and olamnit-assistant, so the block is host- or session-specific rather than universal.",
+      "The same class blocks git push intermittently: refused twice this session, then succeeded on a later retry."
+    ],
+    "impact_if_unanswered": "Every lane that installed this skill keeps a live instruction that damages correct code and reports success, and no agent that detects it can fix it.",
+    "options": [
+      {
+        "key": "grant-skills-write",
+        "label": "Grant agent write access to .claude/skills",
+        "consequence": "This lane repairs line 57, the three withdrawn preconditions and the overruled era model in one pass against the owner spec; widens agent write access to harness configuration generally.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "engineer-applies",
+        "label": "Engineer applies the patch",
+        "consequence": "You paste the corrected text yourself, keeping skills configuration under human control; costs your time on every future skill defect and leaves the window open until you act.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fix-at-distribution",
+        "label": "Fix at the distribution source",
+        "consequence": "buildkit reissues the skill so every host receives the correction, rather than each lane patching locally; slowest path, and it forecloses per-lane divergence which is exactly why two lanes already have differing copies.",
+        "size": "midi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "engineer-applies",
+      "because": "It closes a live code-damaging instruction today without widening agent write access to harness configuration, and the distribution fix is the right long-term answer but leaves the window open for as long as it takes buildkit to ship."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA15-06",
+    "header": "Takt basis",
+    "block": "CPM/PERT durations for bk-flow adoption cannot be computed, because neither of the two available time columns is usable as measured.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Read from the fleet takt lake, 753 records for this host: specify effort 0.38h vs ELAPSED 15.82h; analyze effort 0.37h vs ELAPSED 76.48h; implement effort 21.83h vs ELAPSED 90.11h.",
+      "On effort, three of four phases are already inside or below your 0.5-3.0h band; only implement exceeds it.",
+      "The overrun is almost entirely GAP - time a phase sits open with no step running - totalling roughly 160h across three phases.",
+      "The tool states ELAPSED is the ONLY column a CPM/PERT duration may be built from, and that p50/p80/max are per-step and are not phase durations.",
+      "Only 13 of 135 steps are measurable, a 9.6% sample with per-phase n of 1 to 7."
+    ],
+    "impact_if_unanswered": "Any CPM/PERT plan built now is wrong by 40-200x in one direction or bakes 160h of idle time in as work, and the bk-flow adoption 3rtask would produce a confident schedule on unusable inputs.",
+    "options": [
+      {
+        "key": "close-phases-then-measure",
+        "label": "Fix phase closure first, then re-measure",
+        "consequence": "Treat gap as the defect, require phases to be closed when their work finishes, and rebuild the takt base from the corrected records before any CPM/PERT work; delays the adoption plan by however long a clean measurement base takes.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "effort-plus-declared-gap",
+        "label": "Plan on effort plus a declared gap allowance",
+        "consequence": "Build durations from measured effort and add an explicitly declared, separately-reported gap allowance so the two are never conflated; requires agreeing an allowance figure that is not itself measured.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "elapsed-as-is",
+        "label": "Use ELAPSED as measured",
+        "consequence": "Take the tool at its word and plan on ELAPSED today; this forecloses the 1.5-6h era target immediately, since the measured feature ELAPSED is 90.23h and would be enshrined as the planning baseline.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "close-phases-then-measure",
+      "because": "The measurement says the work is already fast enough and only the phase lifecycle is broken, so fixing closure makes the target reachable on current effort without any speed improvement, whereas both other options plan around the defect instead of removing it."
+    }
+  }
+]

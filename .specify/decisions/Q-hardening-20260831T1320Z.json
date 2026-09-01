@@ -1,0 +1,108 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-hardening-20260831T1320Z",
+  "lane": "olamnit",
+  "repo": "glpnet",
+  "raised_at": "2026-08-31T13:20:00+00:00",
+  "context": "Open blocks after the consolidated-interconnectivity 3rtask (run 20260828T012249Z-b414) grounded RC-06..RC-10 + FR-07..FR-11 into the HOST-INTERCONNECTIVITY-HARDENING CRDT ledgers (PR #251, pending merge), and after cutting release v2026.08.31.1. Each question is an engineer decision that gates promotion, release cadence, or the marathon's next action.",
+  "questions": [
+    {
+      "id": "Q-hardening-01",
+      "kind": "ruling",
+      "header": "Owner",
+      "question": "HOST-INTERCONNECTIVITY-HARDENING is now grounded (RC-01..RC-10, FR-01..FR-11) and ready to leave Draft. It is fleet-wide and host-symmetric, and its fix composes buildkit-scheduler + bk-flow verbs whose home is the buildkit lane. But the grounding, census and 3rtask were done on glpnet (olamnit + shiras). Which lane OWNS the feature (drives specify->ship)?",
+      "blocks": ["feature promotion off Draft", "who runs /bk-specify", "REQUIREMENTS.crdt.md open Q-C"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "buildkit lane owns",
+          "recommended": true,
+          "means": "The scheduler/bk-flow home owns the fix; glpnet lanes remain evidence contributors to the CRDT ledgers. Cleanest single-source-of-truth for a scheduler-substrate change; matches where the verbs live.",
+          "cost": "Gives up glpnet-side momentum and adds a cross-lane handoff; the lane with the freshest grounding is not the one that builds it."
+        },
+        {
+          "label": "olamnit/glpnet owns",
+          "means": "olamnit drives specify->ship on glpnet (it ran the grounding 3rtask). Keeps momentum where the evidence is freshest.",
+          "cost": "Puts a scheduler-substrate change on a consumer repo, risking a fork from buildkit's own scheduler home."
+        },
+        {
+          "label": "shiras/glpnet owns",
+          "means": "shiras owns (only Linux host, ran the census, and branch 096-host-interconnectivity already exists).",
+          "cost": "shiras is mid-rebase under gavriella's held-branch escalation; owning a fleet feature on top of that risks stalling both."
+        }
+      ]
+    },
+    {
+      "id": "Q-hardening-02",
+      "kind": "ruling",
+      "header": "FR-03/r13",
+      "question": "FR-03 (close the SCHED-R7 binding gap: a writer binds ready WPs to onboarded capability-fit actors) targets the SAME onboard!=allocate defect (RC-02/RC-07) as roadmap rank-13 'coordination-feature-stream-durable-superset-fix'. Is FR-03 the same deliverable, or a companion?",
+      "blocks": ["merge FR-03 into rank-13 or keep separate", "roadmap dedup", "REQUIREMENTS.crdt.md open Q-B"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Same - merge into rank-13",
+          "recommended": true,
+          "means": "Fold FR-03 into rank-13 as the ONE superset fix (3rtask finding F is exactly rank-13's remit); RC-07 becomes rank-13's grounded rootcause.",
+          "cost": "Rank-13's scope grows and its owner inherits the membership-contract requirements; one big feature is harder to ship than two small ones."
+        },
+        {
+          "label": "Companion - keep separate",
+          "means": "Keep FR-03 as a distinct membership/binding requirement under the hardening feature, with rank-13 as the durable-superset engine change.",
+          "cost": "Two branches touch the same bind-writer path; risk of divergent partial fixes and merge coordination between them."
+        }
+      ]
+    },
+    {
+      "id": "Q-hardening-03",
+      "kind": "ruling",
+      "header": "Release bar",
+      "question": "I cut release v2026.08.31.1 this session per your directive (develop 43 ahead, carrying the codex-CONVERGED bkquestion patch, cycle-7 clean). gavriella-glpnet at 10:50Z assessed 'nothing qualifies for /bk-release here'. That is a real difference in the release bar. Which bar governs future /bk-release on glpnet?",
+      "blocks": ["future release cadence", "whether accumulated develop auto-qualifies", "cross-lane release consistency"],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Patch-level qualifies",
+          "recommended": true,
+          "means": "Any codex-reviewed patch (or accumulated non-code develop) on a develop ahead of main qualifies for a release cut. Matches your directive this session and keeps main current.",
+          "cost": "Releases docs/roadmap churn as versions; the tag stream grows noisier and CalVer stops signalling a feature landed."
+        },
+        {
+          "label": "Feature-level only",
+          "means": "Only a fully-implemented + codex-reviewed FEATURE qualifies (gavriella's bar). Fewer, more meaningful releases.",
+          "cost": "develop drifts far ahead of main (it was 43 ahead) and reviewed hotfixes wait for a feature to ride out with them."
+        }
+      ]
+    },
+    {
+      "id": "Q-hardening-04",
+      "kind": "ruling",
+      "header": "Next",
+      "question": "The tidy-up namesake is done + released; the 3rtask is done; PR #251 (rootcause ledger) is open but its merge is classifier-blocked (needs your !-run). What should this marathon (mrun-76da6e46bd44, 24 items) do next?",
+      "blocks": ["marathon next action", "PR #251 merge", "M01/P03/D02/D03 sequencing"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Drive hardening to specify",
+          "recommended": true,
+          "means": "On the owner lane from Q-01, take HOST-INTERCONNECTIVITY-HARDENING through /bk-specify next; the grounded RC/FR set is ready.",
+          "cost": "Depends on Q-01's owner ruling and on #251 landing first; if buildkit owns, this lane hands off rather than builds."
+        },
+        {
+          "label": "Continue M01/P03 on glpnet",
+          "means": "Proceed to M01 feature-092 (bk-marathon->bk-flow gate) and P03/D02/D03 sagas, leaving hardening at Draft for its owner lane.",
+          "cost": "Defers the freshest grounded work; the 3rtask momentum cools and RC/FR ratification waits."
+        },
+        {
+          "label": "Hold for #251 + escalation",
+          "means": "Pause new work until you !-merge #251 and the 096 branch escalation resolves.",
+          "cost": "Idles the lane on a classifier/other-lane dependency I cannot clear myself."
+        }
+      ]
+    }
+  ]
+}

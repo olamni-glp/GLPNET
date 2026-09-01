@@ -602,11 +602,16 @@ function Wait-ForPaths {
     param([string[]]$Paths, [int]$TimeoutSec, [string]$Label)
     if (-not $Paths) { return @() }
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
-    $pending  = @($Paths | Where-Object { -not (Test-Path -LiteralPath $_) })
+    # An INACCESSIBLE path must count as MISSING, never throw. Test-Path throws on
+    # access-denied (e.g. I:\coop exists as a drive on gavriella but denies access),
+    # and without -ErrorAction that throw escapes Wait-ForPaths and aborts the whole
+    # launcher -- LastResult=6, zero lanes relaunched -- even though this function's
+    # only caller treats network shares as OPTIONAL and launches anyway.
+    $pending  = @($Paths | Where-Object { -not (Test-Path -LiteralPath $_ -ErrorAction SilentlyContinue) })
     while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline) {
         Write-Host ("  waiting for {0} {1}: {2}" -f $pending.Count, $Label, ($pending -join ', ')) -ForegroundColor DarkGray
         Start-Sleep -Seconds 5
-        $pending = @($pending | Where-Object { -not (Test-Path -LiteralPath $_) })
+        $pending = @($pending | Where-Object { -not (Test-Path -LiteralPath $_ -ErrorAction SilentlyContinue) })
     }
     return , @($pending)
 }

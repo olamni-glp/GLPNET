@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS13C-20260831T2115Z",
+  "lane": "gavriella-glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-08-31T21:15:00+00:00",
+  "context": "Session 13, third set. All four arise from tensions measured in this round, not from prior sessions. Q1 is a direct conflict between your 35-day instruction and a standing fleet ruling, with a measured capacity risk attached. Q2 is the scheduler starvation this lane just measured after onboarding as directed. Q3 is the largest genuinely-open branch in the repo and the tidy-up plan cannot close without a disposition for it. Q4 is a scope call on two /bk-3rtask campaigns you directed, only one of which I could deliver this session.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS13C-01",
+      "kind": "ruling",
+      "header": "Horizon",
+      "question": "You directed a 35-day shift calendar and I executed it: gavriella now has 148 availability windows spanning to 2026-10-05, 3x8h slots per day starting 00:00, verified by content. But the standing fleet ruling of 20260824T172000Z sets the shift-calendar horizon at 120 DAYS for all hosts, lanes and repos, which is also the CLI default. 35 days is 840 actor-hours; the critical path measured on this fleet has previously run to about 880h, and the wave-16 defect was exactly a capacity horizon shorter than the path, which caused silent refusal-to-schedule. The calendar is grow-only, so extending later is additive and cheap. Which horizon governs this lane?",
+      "blocks": ["CPM/PERT capacity reads on the glpnet board", "any refusal-to-schedule diagnosis", "fleet consistency with the 120-day ruling"],
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Extend to 120 days",
+          "recommended": true,
+          "means": "Re-run onboard with --shifts 120 so this lane matches the standing fleet ruling and the CLI default. Purely additive to the existing 35 days; nothing already declared is lost or contradicted.",
+          "cost": "Overrides the 35 you just specified, so if 35 was deliberate - for example to force short-horizon planning or to model a real availability limit - this silently discards that intent; and a 120-day declaration asserts availability far beyond what any session can actually honour."
+        },
+        {
+          "label": "Keep 35 days as directed",
+          "means": "Leave the horizon at 35 days exactly as instructed and treat the fleet 120-day ruling as superseded for this lane.",
+          "cost": "840h of declared capacity against a critical path measured near 880h: the board can run out of horizon before it runs out of work, which reproduces the wave-16 silent refusal, and this lane then diverges from every other lane's horizon."
+        },
+        {
+          "label": "35 now, auto-extend on shortfall",
+          "means": "Keep 35 days, but add a standing check that re-declares a longer horizon the moment a scheduling refusal is traced to horizon exhaustion rather than to capability fit.",
+          "cost": "Requires a diagnosis step that does not exist yet, so the shortfall is detected only after a refusal has already happened - and the fleet's history is that a silent refusal is read as 'no work available', not as 'horizon exhausted'."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13C-02",
+      "kind": "ruling",
+      "header": "Allocation",
+      "question": "I onboarded as directed and immediately polled the board. There are 33 allocate ops on the glpnet root, which REFUTES the standing fleet belief that the allocate verb has no writer. But 26 of them carry engineer_id=unassigned, so they address no actor and can reach no host; the only actor-addressed allocations are ariellas to ariellas twice and ariellas to olamnit once. Not one work packet has ever been addressed to gavriella - this lane's three in-progress WPs are all self-allocated. I have escalated to ariellas with an ACK request. Meanwhile, how should this lane get work?",
+      "blocks": ["this lane's inbound work queue", "the one-feature-one-lane rule", "any claim that capacity was the constraint"],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Self-allocate from local roadmap",
+          "recommended": true,
+          "means": "Keep working the locally-ruled queue - the case-keyed 13-instance registry, then the tidy-up workplan, then 083 - and treat the board as an observation surface until ariellas re-issues addressed allocations. This lane already has a ruled active feature, so nothing is idle.",
+          "cost": "Two allocation authorities then coexist, which is precisely the duplicate-allocation risk you asked to eliminate; if ariellas later addresses a WP that overlaps what this lane self-started, the collision is discovered after the work, not before."
+        },
+        {
+          "label": "Block until ariellas addresses one",
+          "means": "Stop self-allocating and work nothing until an allocation names gavriella, forcing the allocation defect to surface as visible idle capacity rather than being masked by local initiative.",
+          "cost": "Idles a fully-onboarded lane for 35 declared days on a defect owned by another host, and the fleet's own history shows an allocator with zero availability windows can stay silent for weeks."
+        },
+        {
+          "label": "Claim a ready WP unilaterally",
+          "means": "Take one of the 2 ready WPs on the board directly via claim, without waiting for an addressed allocation.",
+          "cost": "Both ready WPs are already allocated to ariellas, so claiming one directly violates the one-feature-one-lane rule ariellas broadcast on 20260825T093236Z and risks two hosts building the same feature."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13C-03",
+      "kind": "ruling",
+      "header": "059 gleam",
+      "question": "The tidy-up survey found 7 unmerged remote branches, down from 17 at the 2026-08-23 survey. Six have clear dispositions. The exception is 059-full-scope-gleam-glp-implementation with 32 unmerged commits, whose roadmap feature is state=analyzed, WSJF 2.00, RICE 738, flagged BLOCKED, in the 'Full Gleam implementation' epic. Its sibling 050-full-gleam-combined carries 48 commits and is already ARCHIVED by ruling Q-GLPNETS1-04. Merging 32 commits purely to clear a branch count is the scope-minimising move you forbade. What is 059's disposition?",
+      "blocks": ["tidy-up workplan T4", "closing the tidy-up branch", "the Full Gleam epic's roadmap state"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Complete as a full era",
+          "recommended": true,
+          "means": "Treat 059 as a feature and take it through all nine stages to close, so its 32 commits land as reviewed, shipped work rather than as a bulk merge. It is already analyzed, so specify and clarify are largely behind it.",
+          "cost": "A 32-commit maxi-sized era on a BLOCKED feature will not fit the 1.5-6h era takt band, so it will either blow the band or have to be split - and splitting an era is exactly what the era-is-a-feature ruling forbids."
+        },
+        {
+          "label": "Archive alongside 050",
+          "means": "Archive 059 the way 050 already is, recording the disposition durably so no future survey re-discovers 32 orphan commits and tries to rescue them.",
+          "cost": "Discards 32 commits of real implementation work on a feature the roadmap still scores at RICE 738, and leaves the Full Gleam epic with no live carrier at all."
+        },
+        {
+          "label": "Decide after a content read",
+          "means": "Read what the 32 commits actually contain before ruling, then bring back a disposition with the evidence attached.",
+          "cost": "Defers the tidy-up close by one session, and the survey has already been repeated three times across sessions without this branch being resolved - deferral is how it reached 32 commits."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS13C-04",
+      "kind": "prioritisation",
+      "header": "3rtask",
+      "question": "You directed two /bk-3rtask campaigns: one to design and execute a /bk-flow adoption readiness check with CPM/PERT and duplicate-free cross-host allocation, and one to survey worktrees and branches and produce a CRDT tidy-up workplan. I delivered the SECOND directly - measured survey, 8 durable marathon items, story-sized, 31pt - rather than through a 3rtask team, because the survey was a bounded measurement and a full three-role campaign would have consumed the remaining session without changing the answer. The /bk-flow readiness campaign is NOT done. How should it be run?",
+      "blocks": ["/bk-flow adoption readiness", "the marathon-to-flow migration you want inside 5-20 sessions"],
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Full 3rtask next session first",
+          "recommended": true,
+          "means": "Open the next session with the /bk-flow readiness 3rtask as its primary work: frozen method, blind builders on disjoint slices, cross-provider codex critic, so the duplicate-allocation design is adversarially tested before any host adopts it.",
+          "cost": "Consumes most of a session on design rather than delivery, and defers the case-keyed registry you ruled BUILD NOW to the session after - so a ruled code task waits on a planning campaign."
+        },
+        {
+          "label": "Registry first, 3rtask after",
+          "means": "Build the case-keyed 13-instance registry first as already ruled, then run the /bk-flow readiness campaign with the remaining capacity.",
+          "cost": "/bk-flow readiness slips a further session, and the duplicate-allocation defect this campaign is meant to design out is live right now - ariellas' 26 unassigned allocations are the evidence."
+        },
+        {
+          "label": "Accept my direct analysis",
+          "means": "Treat the measured allocation findings in this session's escalation as the readiness input and skip the formal campaign, moving straight to a /bk-flow adoption decision.",
+          "cost": "One vantage, one lane, no blind corroboration and no cross-provider critic - exactly the single-source shape that produced four withdrawn claims in this programme; a fleet-wide migration decision would rest on unreplicated local measurement."
+        }
+      ]
+    }
+  ]
+}

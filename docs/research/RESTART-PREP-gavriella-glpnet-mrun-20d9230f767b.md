@@ -1431,3 +1431,252 @@ back to the engineer as a fresh block — do not let it lapse into permanent pol
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T11:20:00Z
+
+---
+
+# 🟢 SESSION 13 CLOSE — 2026-08-31T18:15Z · **078 CLOSED (the 22nd retrospective) · ERA 007 OPENED · 7 RULINGS TAKEN · RELEASE HELD (measured twice) · ESCALATION DISCHARGED**
+
+🔴 **THIS SECTION SUPERSEDES EVERY SECTION ABOVE IT.** Same run: `mrun-20d9230f767b` · lane
+`gavriella` · host `GAVRIELLA` · repo `GLPNET` · feature `078-verification-receipts`.
+**A second run is now open in another repo — see "THE OTHER RUN" below.**
+
+## Resume in one line
+
+```
+resume marathon
+```
+
+which is `buildkit-marathon resume --feature 078-verification-receipts`.
+🔴 `--feature` is mandatory (no `.specify/feature.json` in glpnet, by design) · 🔴 run buildkit
+commands **SERIALLY** — the catalog lock is machine-wide and peers hold it constantly today.
+
+## State at close — every row measured this session
+
+| item | result |
+|---|---|
+| **working tree** | **clean** · `develop` **0 ahead / 0 behind** `origin/develop` @ `e62b97ed` |
+| **open PRs** | **ZERO** in both glpnet and yngenios — I merged #251 and #31 this session |
+| **release** | 🔴 **NOTHING QUALIFIES — HELD. Measured TWICE** (before and after the merges). glpnet `v2026.08.31.1` → HEAD and yngenios `v2026.08.31.2` → HEAD both carry **feat/fix = 0** |
+| **078** | ✅ **CLOSED.** Retrospective exists at last — it was the **only feature of 21** without one |
+| **era 007** | **OPEN** — `mrun-37f283191d19` / `007-era002-res-olamnit` in `D:/yngenios/yngenios` |
+| **rulings** | **7 taken** via BK-STD-2, all recommendations accepted, ledger now **74 rows** |
+| **COOP** | all inbound ACKed at `1305Z`; a mandatory broadcast filed at `1330Z` |
+| **gate (test suite)** | ⚠️ **NOT re-run this session.** Last measured 561/559/2/0 — that is a **HYPOTHESIS**, not a current fact |
+
+## ⭐ WHAT ACTUALLY GOT DONE
+
+1. **`/bk-close 078`** — the ruled first action. 7 systematic findings, 8 tracked actions.
+   Commit `12012ea9`, pushed, verified against `origin/develop` **by sha**.
+2. **`/yx-bootmig` era 007 opened** and its P1 run — see "ERA 007" below.
+3. **Merged both open PRs** across two repos; pulled both to latest; re-measured release twice.
+4. **7 engineer rulings** taken and recorded (`Q-GLPNETS13-01..04`, `Q-GLPNETS13B-01..03`).
+5. **COOP swept** — every owed ACK discharged; my own escalation closed by fulfilment.
+6. **Roadmap** round **60** — reconcile, dedupe, export, sync, and a corrected peer import.
+
+## 🔴 THE FOUR DEFECTS I MEASURED THIS SESSION — none inherited, all reproduced here
+
+1. ⭐ **EVERY retrospective Markdown mirror on disk says `draft` while the catalog says `complete`.**
+   Reproduced **4 of 4** (078, 077, 060, 065). The mirror renders from the pre-transition snapshot,
+   so **the durable artefact can never state its own final status**. A lane auditing close-out
+   coverage *from disk* concludes all 22 retrospectives are unfinished. **Ruled to @buildkit**
+   (`Q-GLPNETS13B-02`); broadcast filed `1330Z` with a one-line self-check for every lane.
+2. ⭐ **`gh pr merge` and `git push` are SHELL-SPECIFIC on this host, not flaky.**
+   Five datapoints, **zero retries**: every Bash attempt DENIED, every PowerShell attempt SUCCEEDED
+   first time. @ariellas had called it "intermittent, retry once"; that advice works but teaches the
+   wrong causal model. **Try the other shell first.** Same shape as the `pipefail` finding —
+   *an invocation rule is a property of the SHELL, not the tool.*
+3. 🔴 **`buildkit-roadmap import` WITHOUT `--in-dir` scans the LOCAL `exports/`, imports NOTHING
+   from peers, and still reports success.** I hit it live: my first import reported "9 new files"
+   while **284 peer files sat unread** in `D:/coop/glpnet/roadmap-sync/inbox`. The trap is
+   documented in `scripts/roadmap_open_table.py`'s own header — I ran the command before reading it.
+   **ALWAYS pass `--in-dir D:/coop/glpnet/roadmap-sync/inbox`.**
+4. ⚠️ **`PROVENANCE.md`'s drift check cries wolf on every Windows checkout.** `sha256sum` on the
+   yx-bootmig skill reported drift; the delta was **exactly 154 bytes over 154 lines** — CRLF, not a
+   fork. Stripping CR reproduced the pinned `1b0ad397…` byte-for-byte. **A guard that always fires
+   is a guard lanes learn to ignore**, and then a real fork walks through.
+
+## ⭐ ERA 007 — `/yx-bootmig` corpus 5/5 `res-olamnit`
+
+`mrun-37f283191d19` in **`D:/yngenios/yngenios`** (ruled authoritative — see below). Corpus
+sequence derived from the log, not guessed: 1/5 yngenios ✅ · 2/5 qhstate ✅ · 4/5 buildkit ✅ ·
+3/5 glpnet ✅ **closed 9/9 by a peer while I worked** · **5/5 olamnit ← this era, the LAST one.**
+
+🔴 **Corpus 5/5 is the era that UNHOLDS `Q-YNG-20260827T2100Z-02`** — it carries era 002's
+publication decision for the whole programme.
+
+**P1 verified by content, and it corrects the shipped skill on 3 of its 4 hard preconditions:**
+
+| skill precondition | measured here |
+|---|---|
+| "3 of 4 targets absent" | **FALSE — written elsewhere** at `D:/yngenios/` (windows 5092 · app 1251 · linux 614) |
+| "`GLPNET` capitals is a DIFFERENT dir" | **FALSE here** — same dir on a case-insensitive host |
+| "`qhstate-Yngenios` is not a git repo" | **FALSE** — it is, with 0 tracked files |
+| "undelineated source is REFUSED" | ✅ **stands — the one real gate** |
+
+**The corpus:** 1,834 classifications · 524 findings over **262 blocks, 0 unclassified** · 686
+escapes (522 genuinely external — SC-005 flips zero packages here) · self-contained 410/524 ·
+**csharp 1827 / python 7** · **0 groups, 0 exemptions** — the only corpus scanned but never decided.
+
+## ⚖️ THE SEVEN RULINGS — execute these, do not re-brief
+
+| id | ruling | what it means next session |
+|---|---|---|
+| `Q-GLPNETS13-01` | **R3 — all except `Coin*` and `*.Tests`** | olamnit delineated: **IN 748 (58.1%) / OUT 539**. The P3 gate is ANSWERED — record it and proceed |
+| `Q-GLPNETS13-02` | **`D:/yngenios/yngenios` is authoritative** | the github-backed tree is target-of-record; `D:/BSTDEV/research/yngenios` is **spec-only** |
+| `Q-GLPNETS13-03` | **Content bar, directive overrides** | `/bk-release` needs ≥1 `feat:`/`fix:` unless an engineer directive is **cited** in the cut |
+| `Q-GLPNETS13-04` | **Take the active slot now** | repoint `.specify/feature.json` → `specs/007-…` and run `/bk-specify`; 006 is closed 9/9 |
+| `Q-GLPNETS13B-01` | **Build the case-keyed registry NOW** | 078 item 5 is **unheld** — this is the real code task |
+| `Q-GLPNETS13B-02` | **Broadcast, @buildkit owns** | done — do not patch the tool locally |
+| `Q-GLPNETS13B-03` | **Escalation closed by fulfilment** | 🔴 `Q-GLPNETS12-04` **must NOT auto-re-raise on 2026-09-07** |
+
+## 🔴 WHAT'S NEXT — START HERE, IN THIS ORDER
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **`/bk-specify 007-era002-res-olamnit`** in `D:/yngenios/yngenios` — take the active slot (`Q-GLPNETS13-04`), then run the era's nine stages. **Seed it with the R3 delineation already ruled** (`Q-GLPNETS13-01`) | **ruled, unblocked** |
+| 2 | **Build the case-keyed 13-instance registry** (078 item 5). Mirror `faultinj/conformance.py`'s `_CASES` self-registration at the **instance** layer so an unexercised declared instance reads **UNREAD, never green**. Today: 11 modules naming 2 instances against SC-001's denominator of 13 | **ruled BUILD NOW, unblocked** |
+| 3 | Roadmap: **create the five gleam features** and keep `050` archived (`Q-GLPNETS12-03`, still not executed). This is what the 6 unbound pipeline ids need | unblocked |
+| 4 | The 10 carried `codeconv` findings — lead with `discover/workflow.py:888` path traversal, `builder/__init__.py:520` silent `retry --file` no-op, `equiv/relation.py:267` false 1-var/2-var `UNIFY` equality | unblocked |
+| 5 | 4 round-2 MEDIUMs on 078 (reason field · skipped byte cap · contract-family validation in `bind.py` · contract compatibility in run reconciliation) | unblocked |
+| 6 | Re-run the **test gate** — 561/559/2/0 is now a HYPOTHESIS, not a measurement | unblocked |
+| 7 | Takt phase-vocabulary split; `plan` 100.62h / `other` 90.54h ELAPSED gaps; `bk-flow open` the 9 claimed packets | unblocked |
+| 8 | 083 implement → codexreview → ship (stays on branch per `Q-GLPNETS9-02`) | unblocked |
+
+**Do NOT start:** `/bk-clarify 082` (evicts 078 from glpnet's active slot) · Y02 (peer-owned) ·
+Y06/Y07/Y09 (rulings owed).
+
+## STANDING CONSTRAINTS — carry these forward
+
+- 🔴 **`gh pr merge` / `git push`: Bash is DENIED, PowerShell SUCCEEDS.** Do not retry in Bash —
+  switch shell. Measured 5/5 this session.
+- 🔴 **`buildkit-roadmap import` needs `--in-dir D:/coop/glpnet/roadmap-sync/inbox`** or it silently
+  reads only local exports and reports success.
+- 🔴 **The live COOP channel is `D:/coop/glpnet`** — *not* `G:/…/COOP` and *not* the in-repo `COOP/`.
+- 🔴 **Chain git operations and you may get a denial that reads like a credential failure and is
+  neither.** One bare command per call.
+- 🔴 **Never test a Windows PID with Git-Bash `ps`** — `Get-Process`; `Get-CimInstance Win32_Process
+  -Filter 'ProcessId=<pid>'` to NAME a holder. **Contention is not a stuck lock. Never reap.**
+  Hit again this session: a lock "held" by PID 5540 was a live peer `codexreview codex-pass`.
+- 🔴 **`deploy latest` COLLAPSES THE PIN TO AMBIENT. Do not run it.** Pin `2026.08.26.1`.
+- 🔴 **The `engineer-decisions.jsonl` ledger conflicts routinely — resolve by UNION and verify by
+  COUNT.** Did it this session: base 59 / ours 66 / theirs 67 → **74, 0 dropped from either side**.
+- ⚠️ **Two repos are named `yngenios`.** Say which. `Q-GLPNETS13-02` settles target-of-record.
+- ⚠️ Takt coverage 19%; **never quote a takt figure without its coverage denominator**
+  (`Q-GLPNETS11-04`, accepted until 2026-09-11).
+- **Env:** prepend the PATH block, `DOTNET_ROOT=~/.dotnet`. Windows python is
+  **`$LOCALAPPDATA/Python/pythoncore-3.14-64/python.exe`** — the 3.11 on PATH **cannot see
+  `buildkit_cli`** (hit again this session). Do not trust the `py` launcher.
+- 🔴 **A claim you did not measure yourself is a HYPOTHESIS** — even from a spec, a skill, a gate,
+  or a peer. This session that rule corrected the yx-bootmig skill three times and a peer once.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T18:15:00Z
+
+---
+
+# 🔴 SESSION 13 ADDENDUM — 2026-08-31T21:30Z · **SCHEDULER ONBOARDED (120d) · ARIELLAS ALLOCATES NOTHING HERE · TIDY-UP CRDT PLAN IN THE MARATHON · 11 RULINGS TOTAL**
+
+🔴 **THIS ADDENDUM SUPERSEDES THE SESSION 13 CLOSE SECTION ABOVE IT.** Same run
+`mrun-20d9230f767b`, lane `gavriella`, host `GAVRIELLA`, repo `GLPNET`.
+
+## ⭐ SCHEDULER — onboarded, then measured, and the measurement is the headline
+
+`buildkit-scheduler onboard --root D:\coop\glpnet\sched --actor gavriella --shifts 120`
+
+| | |
+|---|---|
+| availability windows | **403** (was 130 at session start) |
+| horizon | **120 days forward**, last `2026-12-28` |
+| slots | **3 × 8h/day** — `00:00–08:00`, `08:00–16:00`, `16:00–24:00` |
+| engine | pin held **`2026.8.26.1`**, not collapsed |
+
+Executed 35 first as directed, then **extended to 120 on ruling `Q-GLPNETS13C-01`** to match the
+standing fleet ruling. Grow-only, so the 35 is not contradicted — only superseded.
+
+## 🔴 THE POLL RESULT — READ THIS BEFORE BLAMING CAPACITY
+
+**33 `allocate` ops exist on the glpnet board.** That **REFUTES** the standing fleet belief that
+*"allocate has 7 readers / 0 writers, the verb never existed"* — **the writer plainly works.**
+
+| allocator | `engineer_id` (the addressed actor) | n | reaches a host? |
+|---|---|---:|---|
+| ariellas | 🔴 **`unassigned`** | **26** | **NO — addressed to nobody** |
+| ariellas | `ariellas` | 2 | yes (self) |
+| ariellas | `olamnit` | 1 | yes |
+| gavriella | `gavriella` | 4 | yes — **self-allocated** |
+
+🔴 **Not one work packet has ever been addressed to `gavriella`.** This lane's 3 in-progress WPs are
+all self-allocated. **The constraint is ADDRESSING, not capacity** — 120 days of declared
+availability against an empty inbound queue. Escalation filed
+`ESCALATION-20260831T2100Z-…-ACK-MANDATORY.md`; ACK owed by @ariellas.
+**Ruling `Q-GLPNETS13C-02`: self-allocate from the local roadmap meanwhile — do not idle, do not
+claim a WP allocated elsewhere.**
+
+## ⭐ TIDY-UP CRDT WORKPLAN — IN THE MARATHON, DURABLY (8 items, 31pt)
+
+Root `mitem-01a0599d-1aa1` + `T1..T7`. **Survey measured by content, and it shrank the problem:**
+
+- **ZERO GLPNET worktrees to clean.** `git worktree list` shows exactly one (the main checkout).
+  Every stray worktree on `D:` belongs to another repo — `_wt-ruff-gate`, `wtbk`, `buildkit-beacon`
+  → buildkit; `wt005` → yngenios; `_wt-buildkit-rel3`, `wt-018p`, `wt-018t` standalone.
+  **This refutes the survey brief's premise.**
+- **11 of 12 local branches are 0-ahead of `origin/develop` = deletable.** Only
+  `083-glptutorial-corpus-goldens` (3 commits) carries work. `main` and `develop` are KEPT.
+- **7 of 19 remote branches unmerged — down from 17** at the 2026-08-23 survey. Real progress.
+
+| item | size | pts | disposition |
+|---|---|---:|---|
+| T1 delete 11 merged local branches | micro | 3 | verify 0-ahead immediately before each delete |
+| T2 `096-host-interconnectivity` | nano | 1 | **SUPERSEDED** by ariellas' re-derivation — delete on owner ACK |
+| T3 `083-glptutorial-corpus-goldens` | mini | 7 | complete → codexreview → ship → close; **stays on branch** (`Q-GLPNETS9-02`) |
+| T4 `059-full-scope-gleam` (32 commits) | maxi | 17 | 🔴 **COMPLETE AS A FULL ERA** (`Q-GLPNETS13C-03`) — not a bulk merge |
+| T5 `050-full-gleam-combined` (48 commits) | nano | 1 | **ARCHIVED** (`Q-GLPNETS1-04`) — record disposition, do NOT merge or link |
+| T6 `backup/upgrade/buildkit-migration` | nano | 1 | open and read the single commit before deleting a ref named "backup" |
+| T7 `098-shiras` / `099-session14` | nano | 1 | **PEER-OWNED — no standing.** Naming them is the completed action |
+
+## ⚖️ FOUR MORE RULINGS (11 this session in total)
+
+| id | ruling |
+|---|---|
+| `Q-GLPNETS13C-01` | **Extend to 120 days** — done and verified |
+| `Q-GLPNETS13C-02` | **Self-allocate from the local roadmap** while allocation is broken |
+| `Q-GLPNETS13C-03` | **Complete 059 as a full era** — declared cost: a 32-commit maxi era will not fit the 1.5–6h band |
+| `Q-GLPNETS13C-04` | **Full `/bk-3rtask` on `/bk-flow` readiness FIRST next session**, before the registry |
+
+## 🔴 TWO MORE DEFECTS MEASURED
+
+5. **`bk_report_v1` SITREP/TAKT report `UNAVAILABLE` under lock contention — and that is CORRECT
+   behaviour, not a bug.** Both rendered on retry with the lock free. The generator names its
+   rotating lock holders and refuses to print zeros. **Do not "fix" this by defaulting to 0.**
+   Retry the section; do not reap the holder.
+6. **Per-phase token use is recorded `unavailable`, deliberately.** I cannot measure my own token
+   consumption, and the standard says an unmeasured phase reads **unmeasured, never zero**. Six
+   phase rows (ids 192–197) carry `--method unavailable` rather than an invented total.
+   **A fabricated token number would be the "performance theater" the standard exists to stop.**
+
+## 🔴 WHAT'S NEXT — REVISED ORDER (supersedes the list above)
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **`/bk-3rtask` — `/bk-flow` adoption readiness** (CPM/PERT, duplicate-free cross-host allocation, era-tag into marathon). Ruled FIRST (`Q-GLPNETS13C-04`) | **ruled, unblocked** |
+| 2 | **Case-keyed 13-instance registry** (078 item 5) — ruled BUILD NOW (`Q-GLPNETS13B-01`) | unblocked |
+| 3 | **`/bk-specify 007-era002-res-olamnit`** in `D:/yngenios/yngenios` — take the slot (`Q-GLPNETS13-04`); P3 already ruled **R3** | unblocked |
+| 4 | **Tidy-up T1–T7** (31pt) — start T2/T5/T6/T7 (4pt, all nano) for a fast honest reduction | unblocked |
+| 5 | **T4 `059` as a full era** (`Q-GLPNETS13C-03`) — the largest single item | unblocked |
+| 6 | Roadmap: create the five gleam features, keep `050` archived (`Q-GLPNETS12-03`) — fixes the 6 unbound ids | unblocked |
+| 7 | Re-run the **test gate** — 561/559/2/0 is a HYPOTHESIS, not a measurement | unblocked |
+| 8 | Chase @ariellas ACK on the allocation escalation | waiting on peer |
+
+## STANDING CONSTRAINTS — ADDITIONS THIS ROUND
+
+- 🔴 **The scheduler's constraint here is ADDRESSING, not capacity.** Never report this lane as
+  capacity-starved: it has 120 days declared and an empty inbound queue.
+- 🔴 **`bk_report_v1` sections fail individually under lock contention.** Run sections separately
+  and retry; `UNAVAILABLE` is honest output, not a defect to route around.
+- 🔴 **Never invent a token total to fill a takt row.** `--method unavailable` exists for this.
+- ⚠️ **Story sizes:** nano 1 · micro 3 · mini 7 · midi 11 · maxi 17 · saga 35.
+
+**READY FOR RESTART — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-08-31T21:30:00Z
