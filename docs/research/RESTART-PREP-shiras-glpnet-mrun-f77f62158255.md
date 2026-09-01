@@ -5,10 +5,105 @@
 
     LANE     shiras-glpnet          HOST shiras (Linux)
     RUN      mrun-f77f62158255      FEATURE glpnet-shiras-tidyup-and-scheduler-rootcause
-    UPDATED  2026-08-31T12:05Z   ·  restart-safe: YES   ·  🔴 REBOOT-SAFE: **NO** (gate still exits 1 - see §0)
+    UPDATED  2026-08-31T22:30Z   ·  restart-safe: YES   ·  REBOOT: see §0-REBOOT
     BRANCH   097-shiras-restart-prep-frontend-handoff   (095 is MERGED via PR #249)
 
 > **RESUME WITH EXACTLY: `resume marathon`** — nothing else is needed. The pointer is durable.
+
+---
+
+## 0-REBOOT · 🔴 2026-08-31T22:30Z — REBOOT PREP. **READ §0-REBOOT.1 BEFORE PRESSING ANYTHING.**
+
+### After the reboot, this lane resumes with exactly:
+
+```
+resume marathon
+```
+
+### The 15 lanes are ALL registered, with DISTINCT names — verified in the config, not in `list`
+
+```
+ospark · tefl · ulpanit(/lang/hatzinor) · olamnit · buildkit · qhstate · crucible · glpnet ·
+lejepa · mstack · yngraw(/BSTDEV/research/yngenios) · yngwin · ynglin · yngapp · yngcor(/YNGENIOS/yngenios)
+```
+
+🔴 **`bk-onrestart list` PRINTS `yngenios` TWICE and prints `hatzinor` for `ulpanit`. That is a
+DISPLAY defect — it labels rows by directory leaf, not by the configured name.** The config keys on
+explicit `name`+`path`, all 15 names are distinct, and **no lane is dropped**. Do not "fix" a
+collision that only exists in the output. (This confirms @gavriella's `20260828T0200Z` §1 finding for
+this host, and narrows @olamnit's DEFECT 2 to the *reporting* half.)
+
+### 🔴 §0-REBOOT.1 — WHAT THE GATE SAYS, AND HOW TO READ IT
+
+**Run it BARE and read `$?`. NEVER pipe it** — `preflight 2>&1 | tail` returns `tail`'s `0` while
+printing every FAIL.
+
+```bash
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh preflight ; echo $?
+```
+
+**FIXED this session (was a real defect):** the systemd user unit had **no `[Install]` section at
+all** (`is-enabled` → `static`, un-enableable, so it could never fire at logon) plus ~65 lines of
+pasted `systemctl status` output systemd refused to parse. Now: **`enabled`,
+`WantedBy=default.target`, 0 parse errors**, unit body 93 → 15 lines.
+
+**EXPECT THE GATE TO STILL EXIT 1, on a FALSE POSITIVE.** It reports *"triggers disagree … two
+canonical roots"* by comparing the FIRST TOKEN of each Exec line:
+
+```
+systemd  ExecStart=/mnt/.../yngenios/scripts/fleet/post-reboot-restart.sh --layout tabs ...
+XDG      Exec=bash -lc "sleep 45; exec /mnt/.../post-reboot-restart.sh --layout tabs ..."
+```
+
+**They are the SAME script**, and the two triggers are DELIBERATE — the launcher carries a 600s
+single-flight guard (`$XDG_RUNTIME_DIR/bk-onrestart.guard`) so the second stands down. Verified in
+the launcher source, not assumed. Reported to @buildkit; **not patched here, because it is another
+lane's shipped artefact.**
+
+### If the trigger does not fire
+
+```bash
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh launch --wait-for-mounts
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh verify   # COUNT PROCESSES, expect 15
+```
+
+🔴 **Verify by counting processes against `list` — never against a number written in a document,
+including this one.**
+
+---
+
+## 0-NEXT · 🔴 WHAT TO DO FIRST AFTER THE REBOOT — 4 fresh engineer rulings
+
+| ruling | decision | state |
+|---|---|---|
+| **`Q-glpnetshiras-05`** | **BOARD WINS over the earlier ruling — take `wp-occurs-checked-substitution`** | 🔴 **DO THIS FIRST.** Supersedes `Q-…-04` (front-end). |
+| `Q-glpnetshiras-06` | **Archive 050 only** | ✅ **DONE** — tag `archive/050-full-gleam-combined-20260831` pushed, containment PROVEN on the remote (tag deref == branch head), branch deleted. |
+| `Q-glpnetshiras-07` | **Add a release permission rule** | ✅ DONE — `Bash(buildkit release)` added to `.claude/settings.local.json` (gitignored, machine-local). **Takes effect in the NEW session.** |
+| `Q-glpnetshiras-08` | **Escalate the era-stage defect; do NOT patch a fleet artefact here** | ✅ Escalated + corroborated at source in the coop ACK. |
+
+### The first command of the next session, after `resume marathon`
+
+```bash
+bk-flow claim wp-occurs-checked-substitution-pipeline-compiler-bind-time-occu \
+  --root /mnt/gavri/d/coop/glpnet/sched --actor shiras
+```
+
+It is the **only `ready` + `not_claimed`** packet on the board (roadmap WSJF 6.00 / RICE 2000, spec
+already exists, so the era starts at **plan**, not specify). **Roadmap marks it `BLK=1` — identify
+the blocker before planning.** Then `bk-flow open` to bind it and seed the run.
+
+🔴 **`buildkit-marathon position` still prints `next: S1 scheduler…`. That is SUPERSEDED.**
+The CLI has no ruling-awareness; the ledger is authoritative
+(`python3 tools/bkquestion/bkquestion.py decisions`).
+
+### Tidy-up plan T0–T9 (durable in the marathon)
+
+**Executed:** stray worktree `GLPNET-yx-corpus-develop` removed (0 dirty, HEAD already an ancestor of
+develop — zero-loss PROVEN) · local `095`/`097` deleted with `-d` · local `develop` + `main`
+fast-forwarded (**main had been 285 behind**) · **050 archived**.
+**Left deliberately:** `059` (+32) is FEATURE work, not tidy-up · `chore/…-olamnit` (+1) is
+**@olamnit's — do not touch without an ACK** · `083` (+3) is IN-PROGRESS on the board · `096` (+4)
+may already be absorbed — diff first.
 
 ---
 
@@ -182,6 +277,57 @@ before the ruling.
    Not closed — adoption is partial until S14/S3 lands.
 
 **Sequenced this session** (order keys): S1 `@1.0` → S3 `@2.0` → S14 `@5.0` → S9 `@6.0`.
+
+## 0-REBOOT · 🔴 REBOOT READINESS AT 2026-08-31T22:30Z — **THE TRIGGER IS FIXED; ONE TRANSIENT BLOCKER**
+
+```
+$ ~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh preflight ; echo $?   # BARE, never piped
+  OK   systemd trigger enabled, WantedBy=default.target (active)
+  OK   XDG autostart fallback present
+  OK   both triggers run the same script: .../deploy-home/onrestart/bk-onrestart.sh
+  OK   terminal driver: xfce4-terminal
+  OK   claude on PATH
+  15 lane(s) will resume, 0 will be skipped
+  FAIL registry pgdb/.lock held by PID 46018     <- TRANSIENT: a live peer catalog write
+  NOT SAFE TO REBOOT - 1 blocking check(s)
+  1
+```
+
+**Both trigger defects from the 2026-08-30 session are CLEARED** (empty `WantedBy=`; the
+"two canonical roots" reading, which was a gate artefact — both triggers always ran the same script).
+**The only blocker is a peer's in-flight catalog write.** Re-run the gate **BARE** until it exits 0.
+
+### 🔴 HOW TO REBOOT — the whole procedure
+
+```bash
+# 1. wait for the ONE blocker to clear; re-run BARE and read $? (a pipe returns tail's 0 and hides FAILs)
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh preflight ; echo $?
+# 2. exit 0 -> reboot. The trigger fires at logon (systemd user unit + XDG autostart, same script,
+#    600s single-flight guard so the second stands down).
+# 3. AFTER the reboot, VERIFY BY COUNTING PROCESSES, never by the launch message:
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh verify   # compare against `list`
+# 4. if the trigger did not fire:
+~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh launch --wait-for-mounts
+```
+
+### The 15 named lanes are ALL registered — one under a different name
+
+`ospark · tefl · ulpnit(hatzinor) · olamnit · buildkit · qhstate · crucible · glpnet · lejepa ·
+mstack · yngraw · yngwin · ynglin · yngapp` all match by name. **`yngcor` is registered as `yngorg`**
+→ `/mnt/biwin/D_DRIVE/YNGENIOS/yngenios` — the same repo under a second lane name (@olamnit's
+"the lane has four spellings"). **Nothing is missing; do not add a 16th entry for it.**
+18 lanes are registered in total; the gate reports **15 will resume, 0 skipped** — a superset, which
+is what ruling `keep-all-15` permits (additions, never substitutions).
+
+## 0-PHANTOM · 🔴 THE `D:` DIRECTORY REGENERATED AGAIN THIS SESSION (S13)
+
+It came back at `./D:/_takt-lake/takt/kind=stage/host=shiras/date=2026-08-31/` holding **1 real,
+never-lake'd record** (`bk-flow poll`, `2026-08-31T22:19:56Z`). **Recovered** into
+`/mnt/gavri/d/_takt-lake/...` preserving `kind/host/date`, **verified by basename**, then removed.
+**CHECK `git status` FOR AN UNTRACKED `D:/` EVERY SESSION — it regenerates, and it strands real
+measurements.** The writer still resolves a Windows literal on POSIX.
+
+---
 
 ## 5-NOW · 🔴 STATE AT 2026-08-31T12:05Z — **THE SINGLE OPEN ACTION**
 
