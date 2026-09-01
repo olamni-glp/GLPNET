@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [v2026.09.01.3] - 2026-09-01
+
+### Added
+- ENGINEER MANDATE - migrate the last 5 downlevel projects to net11.0; repo is now 31/31 net11.0 and 31/31 build green. 4 of the 5 were ALREADY BROKEN (NU1201) before the edit because net10.0 cannot reference the net11.0 first-party libs - a target-set scan called them healthy, a build did not. No wrapper exceptions needed. Also records the 8 BK-STD-2 engineer rulings Q-glpnetshiras-09..16
+
+### Changed
+- Merge PR #259 from olamni-glp/098-shiras-round61-restart-prep: round 61 + reboot prep - 4 rulings, 050 archived with proven containment, tidy-up plan T0-T9, scheduler onboarded
+- Merge pull request #261 from olamni-glp/main
+- Merge remote-tracking branch 'origin/develop' into 098-shiras-round61-restart-prep
+- RE-MEASURED - the reboot gate now exits 0, SAFE TO REBOOT. This lane's [Install] repair cleared check 1 and another lane converged both triggers onto one script, clearing check 2; 15 of 15 lanes will resume with 0 skipped and no session-store gaps. The first-token false-positive analysis is kept as historical because the probe is still worth hardening
+- REBOOT PREP - all 15 named lanes verified registered with DISTINCT names (bk-onrestart list prints yngenios twice and hatzinor for ulpanit, but that is a DISPLAY defect labelling by directory leaf; the config keys on name+path and drops nothing). Records the systemd unit fix (had NO [Install] at all, is-enabled=static, plus 65 lines of pasted status output), why the gate still exits 1 on a first-token false positive, and the 4 new rulings Q-05..08 with the first post-reboot command
+
 ## [v2026.09.01.2] - 2026-09-01
 
 ### Added
