@@ -1,0 +1,189 @@
+[
+  {
+    "qid": "Q-GLPNETO17-01",
+    "header": "New era",
+    "block": "The new era you directed cannot be opened as written, because its scope is 'all unfinished tasks and features in this repo' while the standing canonical definition says an era is exactly one feature.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "Your directive: 'IN A NEW ERA RUNNING ALSO TO FULL COMPLETION complete all unfinished tasks and features and work tree tasks in the current repo / lane'.",
+      "RULING-20260823T180000Z-engineer, broadcast to all lanes, is titled 'an ERA IS A FEATURE, specify to close, NO FRAGMENTATION' and Q-YXBOOTMIG-01 reinforced it as one programme, one era.",
+      "The unfinished scope measured now is 9 features in flight (078, 079, 080, 082, 083, 085, 065, 059, 066) plus 12 migrated backlog items - not one feature by any reading.",
+      "Era 083 is already open and well-formed on the successor run mrun-6765f20c723a: 0 of 9 canonical stages, next = start specify.",
+      "A single era covering 9 features would make era duration and takt meaningless for every one of them, which is the measurement you are building CPM/PERT on."
+    ],
+    "impact_if_unanswered": "Either the era model breaks or your completion directive does; and the successor run stays at 0 of 9 stages while this is unresolved.",
+    "options": [
+      {
+        "key": "programme-of-eras",
+        "label": "Completion programme = a sequence of single-feature eras, 083 first",
+        "consequence": "'Complete all unfinished work' becomes a named programme whose unit of execution is one era per feature, run back to back, with 083 as era 1. Preserves the canonical era definition and keeps per-feature takt honest. The programme, not any single era, is what runs to full completion.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "one-completion-era",
+        "label": "One repo-completion era whose nine stages each sweep a batch",
+        "consequence": "A single era named repo-completion is opened and its nine canonical stages are applied to batches of features rather than to one feature. Literal reading of your directive, but forecloses per-feature era duration and takt for all 9 features, since they share one era clock.",
+        "size": "saga",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "083-plus-backlog",
+        "label": "083 is the era; everything else stays its backlog",
+        "consequence": "Only 083 runs the nine stages; the other 8 features and 12 items remain parked items on the same run and are worked opportunistically. Simplest, but 'run to full completion' then has no defined end and the other 8 features get no stage discipline at all.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "programme-of-eras",
+      "because": "It is the only option that satisfies both your completion directive and your own canonical era ruling, and it keeps the per-feature takt you have twice told lanes to measure from actuals; the literal one-era reading would destroy exactly that measurement."
+    },
+    "decision": {
+      "option": "programme-of-eras",
+      "date": "2026-09-01",
+      "rationale": "Satisfies both the completion directive and RULING-20260823T180000Z (era=feature); preserves per-feature takt for CPM/PERT."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO17-02",
+    "header": "Board leg",
+    "block": "Board tasks cannot be released for reallocation, because the glpnet board exists as three divergent legs under one name and no ruling says which is authoritative.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Measured now: \\\\192.168.0.108\\GAVRI_D\\coop\\glpnet\\sched and I:\\coop\\glpnet\\sched are byte-identical (same leg, two paths, 56 entries); D:\\coop\\glpnet\\sched has 32; H:\\coop\\glpnet\\sched has 26. Three distinct legs.",
+      "On the UNC leg the board folds to 32 WPs: backlog 23, ready 2, claimed 1, in-progress 4, done 1, escalated 1.",
+      "That same leg reports allocated_E_t = 0.0 for ALL FOUR hosts and horizon_days = 5 - which contradicts your 120-day horizon ruling Q-GLPNETS13C-01, so that ruling was applied to a different leg.",
+      "All seven actors are stale (4.5 to 8.6 days idle); total throughput is 1 done, by 'unassigned'; the single ready-undispatched WP has waited 9.6 days.",
+      "The consolidated 3rtask already found 'board = divergent legs under one name' and ruled UNC over drive-letter, but never named which leg wins."
+    ],
+    "impact_if_unanswered": "Any release-and-reallocate I perform lands on one leg while other hosts read another, which is precisely the starvation defect that has kept allocation at zero for over a week.",
+    "options": [
+      {
+        "key": "unc-authoritative",
+        "label": "The UNC leg is authoritative; the other two are mirrors",
+        "consequence": "All release, allocation and CPM/PERT work is done against \\\\192.168.0.108\\GAVRI_D\\coop\\glpnet\\sched; D: and H: are declared read-only mirrors and any op found only there is re-published to the UNC leg. Matches the existing UNC-over-drive-letter ruling and is the leg with the most content.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "merge-legs",
+        "label": "Merge all three legs first, then release",
+        "consequence": "Every op log from all three legs is unioned onto one root before anything is released, so no host's ops are stranded. Most correct, but the substrate is grow-only per-actor and a cross-leg union has never been done here: it forecloses clean per-leg provenance and, because minted WPs cannot be un-minted, any duplicate created by the union is permanent.",
+        "size": "maxi",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "escalate-boards",
+        "label": "Release nothing; escalate the leg divergence to the fleet first",
+        "consequence": "I broadcast the three-leg measurement and wait for the owning lanes to converge before touching allocation. Safest, but forecloses this session's reallocation entirely and the board has already been starved for over a week.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "unc-authoritative",
+      "because": "It is the only option that both lets reallocation happen today and follows the UNC-over-drive-letter ruling already taken, and declaring an authority is reversible whereas a cross-leg union is not; merging becomes the right move once an authority exists to merge into."
+    },
+    "decision": {
+      "option": "unc-authoritative",
+      "date": "2026-09-01",
+      "rationale": "Enables reallocation today and follows the UNC-over-drive-letter ruling; declaring an authority is reversible, a cross-leg union is not."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO17-03",
+    "header": "Engine pin",
+    "block": "Takt and per-phase token reporting cannot be produced on this host, because glpnet is pinned to an engine older than the one the takt lake requires.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "This target is pinned to buildkit 2026.08.20.2; takt-lake read and write require 2026.08.24.x or later.",
+      "The deploy home already has 2026.08.26.2 installed, runnable, integrity-verified, and it is the home DEFAULT - so no download or install is needed, only a pin advance.",
+      "A prior ruling warned against 'buildkit-deploy latest all' because it mutates a machine-wide registry that 12 lanes serialise on; advancing ONE target is a narrower operation than that warning covers.",
+      "Consequence today: every takt figure this lane reports must be declared unmeasured, and the fleet's CPM/PERT calibration is missing this host entirely."
+    ],
+    "impact_if_unanswered": "This lane keeps reporting takt as pin-blocked indefinitely, and the fleet keeps calibrating its critical path on three hosts out of four.",
+    "options": [
+      {
+        "key": "advance-this-target",
+        "label": "Advance the glpnet target pin only, to 2026.08.26.2",
+        "consequence": "One target's pin moves to the already-installed, already-default version; other lanes and targets are untouched. Unblocks takt reporting here today. If it regresses, the pin is set back to 2026.08.20.2.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fleet-quiesce",
+        "label": "Coordinate a fleet-wide quiesced pin advance",
+        "consequence": "All hosts advance together after a quiesce, so no version skew exists anywhere. Cleanest fleet state, but needs every lane to stop, which has not been achievable in any prior session, so takt stays blocked meanwhile.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "stay-pinned",
+        "label": "Stay pinned; keep reporting takt as unmeasured",
+        "consequence": "No registry mutation at all and zero risk to the 12 serialising lanes; forecloses any takt or token measurement from this host for as long as the pin stands, including the CPM/PERT inputs you have asked for twice.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "advance-this-target",
+      "because": "The version is already installed and already the home default, so the advance is a pointer change rather than a deployment, and it is per-target rather than the machine-wide 'latest all' the earlier warning was about; waiting for a fleet quiesce has not worked in any session so far."
+    },
+    "decision": {
+      "option": "advance-this-target",
+      "date": "2026-09-01",
+      "rationale": "2026.08.26.2 already installed and the home default: a pointer change, per-target, not the machine-wide 'latest all' the earlier warning covered."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO17-04",
+    "header": "Ref tidy",
+    "block": "The remaining local refs cannot be tidied, because deleting a branch is irreversible here and three of them carry either unmerged work or a standing sensitivity.",
+    "origin": "missing-requirement",
+    "severity": "medium",
+    "background": [
+      "12 local branches remain. Fully merged into origin/develop and safely deletable: 078-olamnit-impl-preserve, 078-verification-receipts, chore/host-interconn-hardening-rootcauses-3rtask-olamnit, chore/tidy-up-branches-worktrees-20260822-olamnit, release/v2026.08.31.1, release/v2026.09.01.1.",
+      "Carrying unmerged commits: 059-full-scope-gleam (32), 050-full-gleam-combined (10, already archived as tag archive/050-full-gleam-combined-20260831), 030-phase8-polish (9), upgrade/buildkit-migration (1).",
+      "A standing instruction records 078-verification-receipts as Gavriella-owned and never to be force-deleted, and 078-olamnit-impl-preserve as a deliberate preservation branch.",
+      "Three stashes remain: 078 tasks WIP, the 049 guard shadow-layer flagged not-genuine, and the parked buildkit-to-bk migration WIP.",
+      "Only one worktree exists (the main checkout), so there is no worktree cleanup outstanding."
+    ],
+    "impact_if_unanswered": "Ref clutter persists and every future survey re-reports the same 12 branches and 3 stashes as unresolved work.",
+    "options": [
+      {
+        "key": "delete-merged-only",
+        "label": "Delete only fully-merged, non-sensitive refs; keep the rest",
+        "consequence": "The four merged chore/release branches go; 078-verification-receipts and 078-olamnit-impl-preserve are kept despite being merged, honouring the standing sensitivity; all unmerged branches and all three stashes are kept and documented. Nothing recoverable is lost.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "archive-then-delete",
+        "label": "Tag every unmerged branch as archive/*, then delete all but 078",
+        "consequence": "Each unmerged branch is preserved as an archive tag (as 050 already was) and the branch itself deleted, leaving only develop, main and the 078 pair. Tidiest, and the tags keep the commits reachable; but 059 is ruled to be completed as a full era, so archiving it now signals the opposite.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "keep-all",
+        "label": "Delete nothing this session",
+        "consequence": "No ref is touched at all. Zero risk, and forecloses closing the tidy-up thread that has now been carried across seven sessions.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "delete-merged-only",
+      "because": "It removes exactly the refs whose content is provably already on origin/develop while touching nothing unmerged and nothing you have flagged sensitive, so it is the largest tidy-up with no recoverability cost; archiving 059 would contradict the ruling to complete it as a full era."
+    },
+    "decision": {
+      "option": "delete-merged-only",
+      "date": "2026-09-01",
+      "rationale": "Largest tidy-up with no recoverability cost; keeps the sensitive 078 pair and all unmerged work; archiving 059 would contradict complete-as-a-full-era."
+    }
+  }
+]
