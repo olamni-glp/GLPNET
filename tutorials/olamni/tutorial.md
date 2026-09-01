@@ -50,7 +50,7 @@ The full design rationale lives in [`charter.md`](charter.md). The project Const
 - **planned** — sources file present; exercise not yet implemented.
 - **stub in PDF** — the book chapter itself has only headings; tutorial cannot proceed until source content is available.
 
-[^ch06-synth]: ch06 content is synthesised from ch01–ch05 sources per /speckit-clarify Q1 — the ch06 PDF chapter (book p 53) is a stub containing only the chapter title, a one-line intro, and the five §6.x section headings (no body text, no native Programs). See `ch06/ch06_tutorial.md` for the per-exercise synthesis source map.
+[^ch06-synth]: ch06 content is synthesised from ch01–ch05 sources per /buildkit-clarify Q1 — the ch06 PDF chapter (book p 53) is a stub containing only the chapter title, a one-line intro, and the five §6.x section headings (no body text, no native Programs). See `ch06/ch06_tutorial.md` for the per-exercise synthesis source map.
 
 [^ch07-remediation]: ch07 was implemented 2026-05-04 as seven exercises, one per fplay (`fplay1..fplay7`), against the canonical `programs/cssg_modules/` project. Each exercise is a multi-goal interactive REPL walkthrough that recreates each component of the play's body individually, observes the bindings, then runs the full play. The prior implementation at `26e01792` (2026-05-02) and `f094f9db` (2026-05-03) used a confabulated cluster A/B split with synthesised content; it was rejected by the project owner and replaced. The prior commits are preserved in git history; the cluster A/B subdirectory copies + Flutter pairings + Section R test mirror are preserved on disk per the no-removal directive but are not part of the chapter's runnable content.
 

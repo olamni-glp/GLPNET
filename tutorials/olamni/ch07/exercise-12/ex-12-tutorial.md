@@ -26,7 +26,7 @@ set: the §7.3 cold-call introduction protocol (plays 1–3) and the
   here.
 - Cluster B's Flutter pairing
   (`glp_multiagent/lib/main_olamni_ch07_cssg.dart`) builds cleanly
-  on the implementing host (verified at /speckit-implement T032).
+  on the implementing host (verified at /buildkit-implement T032).
 - ex-07 through ex-11 are all approved (the within-cluster pairwise
   gates from `ch07_tutorial.md`'s status block — the prior 5 cluster
   B REPL exercises must be approved before ex-12 work begins).

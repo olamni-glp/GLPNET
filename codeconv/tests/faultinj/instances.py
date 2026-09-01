@@ -45,12 +45,12 @@ FR-016, and discharges marathon item ``mdi-019ff6dc-84b0``.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 from codeconv.receipts import Outcome, Receipt, Target, emit, paths
+from codeconv.receipts import receipt as receipt_mod
 
 #: The area under which SC-001 coverage is reported.
 SC001_AREA = "test-harness"
@@ -190,29 +190,55 @@ def absorb_receipts(root: str | Path, run_id: str, registry: Registry | None = N
     """Register instances proven by receipts left on disk by a non-Python emitter.
 
     A receipt claims its instances in ``examined`` entries of the form
-    ``instance:<n>``. Only a receipt whose own outcome is *successful* may
-    register anything — a UNREAD or FAIL receipt proves the check ran, not that
-    the injection was demonstrated, and counting it would reintroduce the
-    pass-by-skip this whole feature closes (instance 5, verbatim).
+    ``instance:<n>``.
+
+    🔴 A CLAIM IS NOT EVIDENCE UNTIL THE RECEIPT ITSELF IS VERIFIED. The first
+    version of this function trusted any JSON file under the run directory that
+    declared a successful outcome — so a hand-written ``EMPTY`` receipt with
+    ``examined_count = 0`` and thirteen ``instance:`` entries would have
+    registered all thirteen and made SC-001 report PASS. That is precisely the
+    defect this whole feature exists to close, reproduced inside its own
+    coverage mechanism (adversarial review, 2026-09-01, finding
+    ``validate-receipt-claims-before-registering-instances``).
+
+    A receipt may register a claim only if ALL of the following hold:
+
+    1. it **loads and validates** as a receipt (``receipt.load`` + ``validate``)
+       — a malformed or self-inconsistent document proves nothing;
+    2. its ``run_id`` **equals the run being absorbed** — another run's receipt
+       sitting in this run's directory is not this run's evidence;
+    3. its ``check_id`` **matches its own filename** — a correctly-named file is
+       not proof of what it contains, and vice versa;
+    4. its outcome is **successful** — an UNREAD or FAIL receipt proves the check
+       ran, not that the injection was demonstrated, and counting it would be
+       instance 5 (passed-by-skip) by another route;
+    5. it **actually examined at least as many items as it claims instances**.
+       This is what stops an ``EMPTY`` 0/0 receipt from claiming anything: a
+       receipt that examined nothing cannot have demonstrated an injection.
 
     Returns the instance numbers newly registered.
     """
     reg = REGISTRY if registry is None else registry
     added: list[int] = []
     for path in paths.run_receipts(root, run_id):
+        path = Path(path)
         try:
-            data = json.loads(Path(path).read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            # An unreadable receipt registers NOTHING and is not silently
-            # equivalent to an absent one — it simply cannot prove anything.
+            r = receipt_mod.load(path)
+            receipt_mod.validate(r)
+        except Exception:
+            # Unreadable, malformed or self-inconsistent ⇒ no proof of anything.
+            # NOT silently equivalent to an absent receipt: it simply cannot
+            # register, and the instance stays UNREAD, which is the loud state.
             continue
-        try:
-            outcome = Outcome(data.get("outcome"))
-        except ValueError:
+        if r.run_id != run_id:
             continue
-        if not outcome.is_successful:
+        if r.check_id != path.name[: -len(".receipt.json")]:
             continue
-        for entry in data.get("examined", []):
+        if not r.outcome.is_successful:
+            continue
+
+        claims: list[int] = []
+        for entry in r.examined:
             text = str(entry)
             if not text.startswith("instance:"):
                 continue
@@ -220,8 +246,16 @@ def absorb_receipts(root: str | Path, run_id: str, registry: Registry | None = N
                 number = int(text.split(":", 1)[1])
             except ValueError:
                 continue
-            if number in BY_NUMBER and number not in reg.registered:
-                reg.register(number, f"receipt {data.get('check_id')} @ {path}")
+            if number in BY_NUMBER:
+                claims.append(number)
+        if not claims:
+            continue
+        # (5) A receipt cannot demonstrate more injections than it examined items.
+        if r.examined_count < len(claims):
+            continue
+        for number in claims:
+            if number not in reg.registered:
+                reg.register(number, f"receipt {r.check_id} @ {path}")
                 added.append(number)
     return sorted(added)
 

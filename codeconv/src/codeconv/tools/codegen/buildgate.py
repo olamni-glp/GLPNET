@@ -295,12 +295,31 @@ def emit_gate_receipt(
         GATE_DIMENSIONS if result.status == BUILD_FAIL else result.dimensions_examined
     )
     examined, total = len(examined_dims), len(GATE_DIMENSIONS)
+
+    # 🔴 A FAILING GATE MUST NEVER EMIT A PASS. `result.errors` holds COMPILER
+    # diagnostics only, so a `dotnet test` run whose TESTS failed comes back as
+    # BUILD_FAIL with an EMPTY errors tuple -- and an empty `problems` at 2/2
+    # classifies as PASS. That is a behavioural failure emitting a clean receipt,
+    # which is the exact defect this module was retrofitted to close (adversarial
+    # review 2026-09-01, `treat-failed-tests-as-receipt-problems`). So a failed
+    # status ALWAYS carries at least one problem, and when the compiler said
+    # nothing the problem names the pass rate, which is what actually failed.
+    problems = list(result.errors)
+    if result.status == BUILD_FAIL and not problems:
+        rate = result.test_pass_rate
+        problems.append(
+            f"build gate reported {BUILD_FAIL!r} with no compiler diagnostic: "
+            + (f"test pass rate {rate:.3f} (< 1.0) -- tests failed"
+               if rate is not None else
+               "no diagnostics and no test pass rate; cause unattributed")
+        )
+
     return emit(
         check_id=check_id, area=area,
         target=Target(kind="path", identity=proj, resolved=True),
         examined_count=examined, total_count=total,
         examined=list(examined_dims),
-        problems=list(result.errors),
+        problems=problems,
         run_id=run_id, root=root, write=write,
     )
 

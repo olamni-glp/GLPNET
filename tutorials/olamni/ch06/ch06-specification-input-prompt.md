@@ -1,6 +1,6 @@
 # Chapter 6 — specification input prompt
 
-Plain-prose input for `/speckit-specify`. **No speckit ceremony**: no Feature Branch, Status, FR-NNN, User Story, Priority, Independent Test, Acceptance Scenarios, Given-When-Then, or Clarifications block. Those are the speckit pipeline's job to produce.
+Plain-prose input for `/buildkit-specify`. **No buildkit ceremony**: no Feature Branch, Status, FR-NNN, User Story, Priority, Independent Test, Acceptance Scenarios, Given-When-Then, or Clarifications block. Those are the buildkit pipeline's job to produce.
 
 ## What the chapter delivers
 
@@ -48,8 +48,8 @@ Top-level `olamni/tutorial/tutorial.md` is updated incrementally: ch06's row fli
 ## Per-exercise format
 
 Each exercise has:
-- **One primary demo goal** plus **three inspection goals** chosen during /speckit-plan, collectively exercising every clause.
-- **Locked binding** for each goal, empirically verified against the REPL during /speckit-implement.
+- **One primary demo goal** plus **three inspection goals** chosen during /buildkit-plan, collectively exercising every clause.
+- **Locked binding** for each goal, empirically verified against the REPL during /buildkit-implement.
 - **Strict trace byte-equality** modulo REPL banner / build wallclock lines.
 - **`%%` paraphrase comment per clause** (charter §1.5).
 - **Header comment block** citing both the original earlier-chapter PDF source AND the §6.x heading under which it is re-presented; the synthesis-from-earlier-chapter status is stated explicitly.
@@ -60,7 +60,7 @@ Single linear sequence with pairwise gates between exercises (the chapter is sho
 
 ## Source provenance
 
-The implementing session re-reads each cited earlier-chapter PDF block byte-exactly during /speckit-implement (per the ch01–ch05 lesson — `chXX-sources.md` files have drifted by single characters). The ch06 PDF page (book p 53) is also re-read byte-exactly to confirm the stub state has not changed between sessions.
+The implementing session re-reads each cited earlier-chapter PDF block byte-exactly during /buildkit-implement (per the ch01–ch05 lesson — `chXX-sources.md` files have drifted by single characters). The ch06 PDF page (book p 53) is also re-read byte-exactly to confirm the stub state has not changed between sessions.
 
 ## Cross-chapter relationship
 
@@ -79,9 +79,9 @@ Same as ch01–ch05. Build with `dart compile exe glp_runtime/bin/glp_repl.dart 
 
 - Inventing Programs not present in chapters 1–5.
 - Module structure, exported types, type aliases across modules (those start in ch07+).
-- The polluted speckit-output `ch06-DEPRECATED-spec.md` (rev-eng input only).
+- The polluted buildkit-output `ch06-DEPRECATED-spec.md` (rev-eng input only).
 - Any chapter beyond 6.
 
 ## What is NOT this file
 
-This file is **not** the speckit feature spec. The spec lives at `specs/007-tutorial-ch06/spec.md` and is produced by `/speckit-specify` from this prompt.
+This file is **not** the buildkit feature spec. The spec lives at `specs/007-tutorial-ch06/spec.md` and is produced by `/buildkit-specify` from this prompt.

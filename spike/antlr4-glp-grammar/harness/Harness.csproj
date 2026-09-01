@@ -20,7 +20,7 @@ harness only adds the ANTLR runtime it uses directly for the legacy coverage tab
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageReference Include="Antlr4.Runtime.Standard" />
   </ItemGroup>
 
   <ItemGroup>
