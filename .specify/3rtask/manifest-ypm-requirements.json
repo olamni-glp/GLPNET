@@ -1,0 +1,67 @@
+{
+  "manifest_id": "ypm-requirements-20260901",
+  "task_type": "research",
+  "subject_ref": "docs/features/yx-ypm/REQUIREMENTS.crdt.md",
+  "rationale": "Three hard-disjoint research corpora. No source may appear in more than one slice: slice A is ecosystem-native package-manager documentation, slice B is supply-chain integrity and SBOM standards bodies, slice C is polyglot build orchestration and version-solver literature. Shared evidence would fake corroboration, so the partition is by SOURCE KIND, not by topic phrasing.",
+  "slices": [
+    {
+      "slice_id": "A-ecosystem-native-pm",
+      "lens": "What does each ecosystem's own package manager already guarantee, and where does it stop? Extract requirements for a uniform manager from the primitives that already exist.",
+      "source_kind": "official documentation of ecosystem-native package managers and their version-resolution/lockfile semantics",
+      "in_scope_sources": [
+        "NuGet Central Package Management (Directory.Packages.props), floating versions, lock files",
+        "npm/pnpm/yarn: package.json ranges, lockfiles, workspaces, overrides/resolutions",
+        "Cargo: Cargo.toml/Cargo.lock, semver rules, feature unification, workspace dependencies",
+        "Go modules: go.mod/go.sum, minimal version selection, replace/exclude",
+        "Dart pub: pubspec.yaml/pubspec.lock, dependency_overrides",
+        "Hex + rebar3 (Erlang/BEAM) and Gleam: gleam.toml, manifest.toml",
+        "Python: pyproject.toml/PEP 621, uv/Poetry/pip-tools lockfiles, PEP 440/508",
+        "Maven/Gradle: dependencyManagement BOM, Gradle version catalogs, conflict resolution strategies",
+        "AtomVM/embedded BEAM packaging constraints"
+      ],
+      "excluded_sources": [
+        "anything from slice B (security/SBOM/provenance standards bodies)",
+        "anything from slice C (polyglot build systems, solver papers, upgrade bots)"
+      ]
+    },
+    {
+      "slice_id": "B-supply-chain-integrity",
+      "lens": "What must a package manager record, attest and verify for the dependency chain to be trustworthy and auditable? Extract requirements for provenance, integrity and vulnerability response.",
+      "source_kind": "supply-chain security frameworks, SBOM specifications and standards-body publications",
+      "in_scope_sources": [
+        "SLSA build provenance levels",
+        "in-toto attestation framework",
+        "Sigstore / cosign signing and transparency logs",
+        "SPDX and CycloneDX SBOM specifications",
+        "OSV schema and OSV-Scanner; CVE/GHSA advisory formats",
+        "NIST SSDF (SP 800-218) and SP 800-161 supply-chain risk management",
+        "EU Cyber Resilience Act and US EO 14028 SBOM obligations",
+        "The Update Framework (TUF) and package-repository compromise resistance",
+        "Reproducible-builds requirements"
+      ],
+      "excluded_sources": [
+        "anything from slice A (ecosystem package-manager tool docs)",
+        "anything from slice C (build orchestrators, solver papers, upgrade bots)"
+      ]
+    },
+    {
+      "slice_id": "C-polyglot-orchestration-and-solvers",
+      "lens": "How do polyglot build systems and version solvers actually resolve and prevent conflict across ecosystems? Extract requirements for the resolution engine, upgrade policy and conflict adjudication.",
+      "source_kind": "polyglot build-orchestration systems, dependency-resolution algorithm literature, and automated upgrade tooling",
+      "in_scope_sources": [
+        "Bazel/Buck2/Pants: external dependency handling, hermeticity, rules_* per language",
+        "Nx / Turborepo / Lerna monorepo dependency graphs",
+        "PubGrub and CDCL/SAT-based version solving; libsolv; Molinillo",
+        "Diamond-dependency and dependency-hell literature; semantic-versioning critiques",
+        "Renovate and Dependabot: grouping, scheduling, auto-merge policy, compatibility scoring",
+        "Nix/Guix purely functional dependency management and closures",
+        "Conda/Spack multi-language environment resolution",
+        "Version-compatibility testing and API-diff tooling (e.g. semver-checks, japicmp)"
+      ],
+      "excluded_sources": [
+        "anything from slice A (ecosystem package-manager tool docs)",
+        "anything from slice B (security/SBOM/provenance standards bodies)"
+      ]
+    }
+  ]
+}
