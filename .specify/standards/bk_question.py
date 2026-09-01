@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import re as _re
 import sys
 from pathlib import Path
 
@@ -48,10 +49,53 @@ MAX_HEADER = 12
 def load(path: Path) -> list[dict]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if isinstance(data, dict):
-        data = [data]
+        # Pre-BK-STD-2 sets are a wrapper — {set_id, lane, repo, questions: [...]}.
+        # Coercing the WRAPPER to [wrapper] made every historical file report the
+        # same bogus "qid missing" violation, so the format could not read its own
+        # back-catalogue.
+        inner = data.get("questions")
+        data = inner if isinstance(inner, list) else [data]
     if not isinstance(data, list):
         raise ValueError("questions file must be an array of question objects")
     return data
+
+
+#: A sentence ENDS at `.`/`!`/`?` that is followed by whitespace or end-of-text.
+#: Counting bare periods was wrong in both directions: it passed
+#: "First is blocked! Second cannot proceed!" (two sentences, zero periods) and
+#: rejected one sentence carrying `spec.md` or `v2026.08.31.1`. A period inside a
+#: token is not a boundary because no whitespace follows it.
+_SENTENCE_END = _re.compile(r"[.!?](?=\s|$)")
+
+
+def _sentence_count(text: str) -> int:
+    """Number of sentences in ``text`` by terminator-then-boundary."""
+    return len(_SENTENCE_END.findall(str(text).strip()))
+
+
+def validate_decision(dec: dict, option_keys: list[str]) -> list[str]:
+    """Return violations for one ``decision`` object.
+
+    A decision SUPPRESSES its question from the interactive picker forever, so an
+    unvalidated one silently erases engineer input. Any dict used to pass here —
+    ``{"option": "typo"}`` validated, and the question was then never asked again.
+    """
+    problems: list[str] = []
+    opt = dec.get("option")
+    if not opt or not isinstance(opt, str):
+        problems.append("decision.option :: required, and must be a string")
+    elif option_keys and opt not in option_keys:
+        problems.append(
+            "decision.option :: %r names no option of this question (have: %s)"
+            % (opt, ", ".join(option_keys)))
+    if not str(dec.get("rationale") or "").strip():
+        problems.append("decision.rationale :: required — why this option was chosen")
+    date = str(dec.get("date") or "").strip()
+    if not date:
+        problems.append("decision.date :: required — when the engineer ruled")
+    elif not _re.match(r"^\d{4}-\d{2}-\d{2}", date):
+        problems.append("decision.date :: must start with an ISO YYYY-MM-DD date")
+    return problems
 
 
 def validate(questions: list[dict]) -> list[str]:
@@ -62,10 +106,24 @@ def validate(questions: list[dict]) -> list[str]:
     def bad(qid, field, msg):
         problems.append(f"{qid or '<no qid>'} :: {field} :: {msg}")
 
-    for q in questions:
+    for i, q in enumerate(questions):
+        # A non-object entry must be REPORTED, never dereferenced. Reaching
+        # `q.get` on e.g. `[null]` raised AttributeError and exited 1, where the
+        # documented contract is exit 2 naming the (qid, field).
+        if not isinstance(q, dict):
+            bad(f"<entry {i}>", "question", "must be an object")
+            continue
         qid = q.get("qid")
         if not qid or not isinstance(qid, str):
-            bad(qid, "qid", "missing or not a string")
+            # Name the PREDECESSOR format explicitly. Reporting the whole
+            # back-catalogue as "qid missing" told a reader the file was corrupt
+            # when it was merely written to the earlier `tools/bkquestion` shape.
+            if q.get("id") and q.get("question"):
+                bad(q.get("id"), "qid",
+                    "legacy bkquestion shape (id/question/blocks/options[].means); "
+                    "BK-STD-2 expects qid/block/background/options[].consequence")
+            else:
+                bad(qid, "qid", "missing or not a string")
             continue
         if qid in seen:
             bad(qid, "qid", "duplicate — a qid is stable AND unique")
@@ -74,7 +132,7 @@ def validate(questions: list[dict]) -> list[str]:
         block = q.get("block")
         if not block or not isinstance(block, str):
             bad(qid, "block", "required, one sentence naming what cannot proceed")
-        elif block.count(".") > 1:
+        elif _sentence_count(block) > 1:
             bad(qid, "block", "must be ONE sentence")
 
         if q.get("origin") not in ORIGINS:
@@ -139,8 +197,13 @@ def validate(questions: list[dict]) -> list[str]:
             bad(qid, "header", f"{len(str(hdr))} chars; max {MAX_HEADER}")
 
         dec = q.get("decision")
-        if dec is not None and not isinstance(dec, dict):
-            bad(qid, "decision", "must be an object with option/date/rationale")
+        if dec is not None:
+            if not isinstance(dec, dict):
+                bad(qid, "decision", "must be an object with option/date/rationale")
+            else:
+                for problem in validate_decision(dec, keys):
+                    field, _, msg = problem.partition(" :: ")
+                    bad(qid, field, msg)
     return problems
 
 
@@ -211,10 +274,19 @@ def render(questions: list[dict], qid: str | None = None) -> str:
 def interactive_payload(questions: list[dict], qid: str | None = None) -> list[dict]:
     out = []
     for q in questions:
+        if not isinstance(q, dict):
+            continue
         if qid and q.get("qid") != qid:
             continue
-        if (q.get("decision") or {}).get("option"):
-            continue  # decided questions are cited, never re-asked
+        # Only a VALID decision suppresses. A malformed one must keep the
+        # question visible — silently hiding an unanswered question is the exact
+        # failure this format exists to prevent.
+        dec = q.get("decision")
+        if isinstance(dec, dict) and dec.get("option"):
+            keys = [o.get("key") for o in (q.get("options") or [])
+                    if isinstance(o, dict)]
+            if not validate_decision(dec, keys):
+                continue  # decided questions are cited, never re-asked
         out.append({
             "header": _header_for(q),
             "question": q.get("block"),

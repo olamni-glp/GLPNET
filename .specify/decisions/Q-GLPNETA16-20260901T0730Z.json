@@ -220,6 +220,11 @@
     "recommendation": {
       "option": "patch-and-broadcast",
       "because": "The defect destroys engineer input rather than merely reporting it wrongly, which makes it the one class of bug that cannot be left waiting on another lane's queue, and a single stdlib-only file explicitly designed to be adopted by copying is the cheapest artefact in the fleet to re-converge."
+    },
+    "decision": {
+      "option": "patch-and-broadcast",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: patch all three P2s in bk_question.py here with regression cases, then broadcast the corrected file to every lane. A defect that destroys engineer input cannot wait on another lane's queue."
     }
   },
   {
@@ -305,6 +310,58 @@
     "recommendation": {
       "option": "both",
       "because": "Routing alone leaves the lane reporting a frontier it cannot act on for however long Udi takes, and resequencing alone quietly drops a specified feature onto nobody's desk, whereas doing both costs one extra write and removes the failure in each direction."
+    },
+    "decision": {
+      "option": "both",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: route the drafted 080 section-1.14 question to Udi AND resequence W11 out of the head position in the same pass."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-08",
+    "header": "WP sizing",
+    "block": "Similar-size non-overlapping work packages cannot be achieved by re-allocating the current packets, because 22 of the 25 are individually larger than a whole day of capacity",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Measured 2026-09-01T08:35Z after the readiness policy was declared: buildkit-scheduler cycle now allocates across all four hosts — ariellas 7 WPs 376h, gavriella 6 WPs 328h, olamnit 6 WPs 248h, shiras 6 WPs 320h.",
+      "It placed 2 and deferred 23; every single deferral carries the same reason, effort-exceeds-daily-capacity with e_t=288000 against slot_cap=86400 — 80 hours of packet against a 24 hour daily slot cap.",
+      "Effort distribution across the 25 allocated packets: 80h nine times, 40h thirteen times, 16h once, 8h twice — so 22 of 25 exceed the daily cap.",
+      "gavriella and olamnit already carry NEGATIVE remaining capacity at -14400s and -57600s respectively, so two of four hosts are over-allocated before any new work lands.",
+      "The critical path is 4 WPs over 252h with finish dates P50 2026-10-08, P80 2026-10-10, P95 2026-10-11, all flagged by the tool itself as a LOWER BOUND excluding 2 unbounded WPs."
+    ],
+    "impact_if_unanswered": "Every future cycle on this board produces a plan that defers on day one regardless of how the work is split between hosts, and the per-host allocation reads as a schedule while being a list of things nothing can start.",
+    "options": [
+      {
+        "key": "split-to-cap",
+        "label": "Split packets to at or under the daily cap",
+        "consequence": "The 22 oversized packets are re-minted as sub-packets of 24 hours or less so the allocator can actually place them, which is the only change that makes the per-host split executable rather than uniformly deferred; it costs a re-ingest pass over 22 packets and every existing claim and dependency edge has to be carried onto the sub-packets.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "raise-cap",
+        "label": "Raise the daily slot cap instead",
+        "consequence": "slot_cap is lifted so an 80 hour packet fits one slot, needing no packet surgery and taking effect on the next cycle; it makes the calendar dishonest because a slot would claim more hours than a day contains, and the resulting P50 P80 P95 dates stop being usable as commitments.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "accept-deferral",
+        "label": "Accept multi-day deferral as normal",
+        "consequence": "The deferred plan is treated as correct and packets simply start on 09-02 through 09-07 as the view already says, with no packet or cap change; this forecloses same-day dispatch on this board permanently and forecloses the takt phase-closure remedy in Q-GLPNETA15-06, since a phase can then never close on the day it opens.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "split-to-cap",
+      "because": "The deferral is structural rather than contention — no amount of re-allocation moves an 80 hour packet under a 24 hour cap — so every other option leaves the plan deferring on day one, and raising the cap buys a green board by making the calendar lie."
+    },
+    "decision": {
+      "option": "split-to-cap",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: split the 22 oversized packets to at-or-under the 24h daily slot cap. Raising the cap would make the calendar lie; accepting deferral forecloses same-day dispatch permanently."
     }
   }
 ]

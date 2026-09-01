@@ -38,6 +38,11 @@
     "recommendation": {
       "option": "read-only",
       "because": "The collision risk on three shared scheduler files with five live branches is concrete and has never been ruled, whereas the cost of waiting is delay rather than damage; scoped-write becomes the right answer the moment you tell us which ariellas lane owns buildkit."
+    },
+    "decision": {
+      "option": "read-only",
+      "date": "2026-09-01",
+      "rationale": "Engineer ruling 2026-09-01: this lane stays READ-ONLY on buildkit and files defects with reproductions upstream. Resolves the x8 vs R-C2 contradiction in favour of R-C2."
     }
   },
   {
