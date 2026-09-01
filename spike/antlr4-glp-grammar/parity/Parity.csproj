@@ -10,7 +10,8 @@ il-codec equality oracle; the engine comes in transitively through both.
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- net11.0: engineer directive 2026-09-01, 'migrate all code to .net 11'; extends fleet ruling C-19 (.NET 11 / C# 15, 2026-08-27) beyond csharp/. LangVersion comes from the repo-root Directory.Build.targets. -->
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>glp_grammar_spike_parity</AssemblyName>
