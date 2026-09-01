@@ -1,0 +1,143 @@
+[
+  {
+    "qid": "Q-GLPNETO19-01",
+    "header": "3rtask scope",
+    "block": "The research run you directed would largely duplicate one another lane already completed, and the input guardrail flagged a real gap in my slices, so the scope needs your call before I spend the tokens.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "gavriella already ran /bk-3rtask 20260901T114835Z-889f for exactly this subject: 4 blind builders, 4 pairwise-disjoint slices, 25 sources, merge 5 corroborated / 6 singleton / 6 assumed / 0 conflict, published 20260901T120000Z.",
+      "Their four slices were: polyglot PM design + cross-ecosystem protocol; version resolution and range algebra; supply chain, SBOM, provenance, PURL; diamond problem, lockfile design, formal models.",
+      "My drafted manifest covered ecosystem-native PM docs, supply-chain standards, and polyglot orchestration + solvers - substantially the same literature. A second run over it would mostly re-derive their corpus.",
+      "The cheap-model input guardrail returned WARN, not OK, and named a genuine gap that NEITHER my slices nor gavriella's four would surface: operator experience and CLI design, governance and policy enforcement, performance at scale, and diagnostic/error-message design. It also flagged Maven/Gradle as credibly belonging to two of my slices.",
+      "R-02 in their own corpus says PubGrub won on ERROR MESSAGES, not speed - which makes the diagnostics gap the guardrail found look load-bearing rather than cosmetic."
+    ],
+    "impact_if_unanswered": "Either I burn a full 3-builder multi-cycle run re-deriving a corpus that already exists, or the requirements ship with the operator-experience, governance and performance dimensions never sourced at all.",
+    "options": [
+      {
+        "key": "narrow-uncovered",
+        "label": "Run a narrow 3rtask on ONLY the three uncovered dimensions",
+        "consequence": "Three disjoint slices - operator experience and diagnostics; governance, policy enforcement and organisational adoption; performance and scale of dependency graphs - which are disjoint from gavriella's 25 sources by construction. Adds what is missing without re-deriving what exists, and directly serves R-02.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "accept-existing",
+        "label": "Accept gavriella's corpus plus my measurements; run no second 3rtask",
+        "consequence": "The requirements rest on 25 external sources plus this lane's six-ecosystem measured evidence, and the three uncovered dimensions are recorded as an explicit gap in the denominator. Cheapest and honest, but forecloses sourcing the operator-experience and governance requirements before the design freezes.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "full-rerun",
+        "label": "Run my original full three-slice corpus as drafted",
+        "consequence": "An independent second reading of the same literature, which would give genuine cross-run corroboration of their 5 corroborated findings. Most rigorous, and the most expensive by far - it re-derives 25 already-published sources and still leaves the guardrail's gap unsourced.",
+        "size": "saga",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "narrow-uncovered",
+      "because": "It spends the run on the only requirements nobody has sourced, and its slices are disjoint from the existing corpus by construction rather than by assertion; the full re-run buys corroboration of findings that are already corroborated, at several times the cost, while still missing the gap."
+    },
+    "decision": {
+      "option": "narrow-uncovered",
+      "date": "2026-09-01",
+      "rationale": "Spends the run on the only requirements nobody has sourced; slices disjoint from gavriella's 25 by construction; serves R-02 (error messages are the product)."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO19-02",
+    "header": "Float ban",
+    "block": "The floating-version ban you just made fleet policy does not reach a dependency that floats without a version string, and this repo has one.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "Ruling Q-shiras-36 bans floating versions and names the form: '10.*', which silently follows the .NET 10 line and would never move to 11 on its own.",
+      "MEASURED here: glp_gleam/profile_zmq/rebar.config declares {erlzmq, {git, \"https://github.com/zeromq/erlzmq2.git\", {branch, \"master\"}}} - pinned to a BRANCH, so it moves on every fetch.",
+      "It carries no version string at all, so a scan that inspects version strings reports this repo as clean - and GLPNET was in fact measured 'clean of floating versions' at CPM adoption.",
+      "It also lives in no registry, so a PURL-registry-only coordinate model cannot even name it. PURL does support vcs coordinates (pkg:github/...@<sha>).",
+      "The same shape exists in gleam_quic/profile_c/rebar.config, but that one IS pinned ({quicer, \"0.2.15\"}), so the defect is one dependency, not a class this repo is riddled with."
+    ],
+    "impact_if_unanswered": "The fleet believes floating dependencies are banned while at least one keeps moving on every fetch, and the compliance scan that says so is correct on its own terms - which is the reported-green-while-broken pattern you have repeatedly ruled against.",
+    "options": [
+      {
+        "key": "amend-now",
+        "label": "Amend the ban now: a dependency must resolve to an immutable reference",
+        "consequence": "The fleet rule becomes 'exact version OR commit SHA - never a branch, tag or wildcard', published as an amendment to Q-shiras-36 and folded into the CPM-CRDT before it freezes. Every lane rescans against references rather than version strings. I pin the erlzmq dep to a commit SHA as the first application.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-to-ypm",
+        "label": "Record it as a /yx-ypm v1 requirement and leave the ban as written",
+        "consequence": "The gap is captured in the requirements corpus and fixed when the tool ships, keeping today's ruling untouched. Simple, but leaves a known-moving dependency in place and lets other lanes keep reporting clean on a scan that cannot see it.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "pin-locally",
+        "label": "Pin this one dependency here and raise nothing fleet-wide",
+        "consequence": "The erlzmq ref is pinned to a SHA in this repo only. Removes the local instance, and forecloses the fleet ever learning that its floating-version scan has a blind spot - other repos with git-ref deps stay unmeasured.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "amend-now",
+      "because": "The ban's own stated purpose is to stop a dependency moving on its own, and a branch ref does exactly that while passing the scan; amending the rule while the CPM-CRDT is still converging costs one broadcast, whereas discovering it after the schema freezes costs a schema revision."
+    },
+    "decision": {
+      "option": "amend-now",
+      "date": "2026-09-01",
+      "rationale": "A branch ref moves on every fetch while passing the version-string scan; amend while the CPM-CRDT is still converging."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO19-03",
+    "header": "GLP pkgs",
+    "block": "Whether GLP ever gets a package or version scheme is a language-authority decision that only Udi can take, and the fleet design needs to know now whether to ask.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "MEASURED: 1,184 .glp files, 77 -module declarations, 218 imported-procedure declarations, and ZERO version/package/require/dep directives - no such directive exists in the language.",
+      "GLP resolves modules by the self.glp directory scope chain (10 such files here), so a module's identity is its filesystem position, not a coordinate.",
+      "CLAUDE.md Language Authority and DISCIPLINE 1.14 both state the GLP language definition - directives included - cannot be extended without Udi's express approval.",
+      "My contribution to the fleet recommends GLP is NOT an ecosystem and its source is carried content-addressed under Y-01, which needs no language change at all.",
+      "But if any lane later wants GLP packages to be versioned, published or depended upon by coordinate, that requires a new directive, and the proposal has never been put to Udi."
+    ],
+    "impact_if_unanswered": "The /yx-ypm design either silently assumes GLP will stay unversioned forever, or silently assumes a language change it has no authority to make.",
+    "options": [
+      {
+        "key": "content-address-only",
+        "label": "GLP stays unversioned; carry it content-addressed. Ask Udi nothing",
+        "consequence": "GLP source is identified by tree hash under Y-01, exactly like l0 blocks, and no language change is proposed. The design is unblocked today and GLP keeps its current semantics. If versioned GLP packages are ever wanted, that is a separate future proposal.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "draft-proposal",
+        "label": "Draft a 1.14 proposal to Udi for a GLP package/version directive now",
+        "consequence": "I write the proposal - directive syntax, resolution semantics, interaction with the self.glp scope chain - and relay it for his approval, without implementing anything. Puts the option on the table early, at the cost of asking him to rule on something no measured need yet requires.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-silent",
+        "label": "Leave it open and unstated in the design",
+        "consequence": "No decision is recorded either way. Cheapest now, and it forecloses nothing formally while guaranteeing the question resurfaces mid-implementation, when a lane discovers it cannot name a GLP dependency and has no ruling to cite.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "content-address-only",
+      "because": "Nothing measured needs versioned GLP packages - the coordinate GLP lacks is one nothing in the repo is currently asking for - and content-addressing already solves identity without touching the language; asking Udi to extend GLP before a real need exists spends his authority on a hypothetical."
+    },
+    "decision": {
+      "option": "content-address-only",
+      "date": "2026-09-01",
+      "rationale": "Nothing measured needs versioned GLP packages; content-addressing solves identity without touching the language or spending Udi's authority on a hypothetical."
+    }
+  }
+]
